@@ -46,7 +46,7 @@ Lift is not a route name. It is one way to run `chat`: an outside agent that cal
 
 Old names work as hidden aliases for one release, then they are rejected. The panel, the preset sections, and `HANDOFF` `suggest` use only the route column.
 
-The launcher opens `chat`. `start.sh` today opens `/?model=coder`, and that is the bug: a session was starting in the specialist. `coder` is a handoff from `chat` or `route`, not the front door.
+The launcher opens `chat`. `coder` is a handoff from `chat` or `route`, not the front door. The Linux preset keeps the section names `general`, `decision`, and `language`, and publishes `chat`, `route`, and `translate` as aliases.
 
 ## Nodes
 
