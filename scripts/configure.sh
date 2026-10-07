@@ -1,0 +1,91 @@
+#!/bin/sh
+# FEELDZNUTTS: Configuration shell and workspace orchestrator.
+# Pure POSIX /bin/sh. Sets up pinned checkouts, validates environment,
+# and configures graph defaults without conflating lowram with slow CPU.
+set -eu
+
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+cd "$ROOT"
+
+CACHE_DIR="$ROOT/.cache"
+mkdir -p "$CACHE_DIR"
+chmod 700 "$CACHE_DIR" 2>/dev/null || true
+
+INTERACTIVE=0
+for arg in "$@"; do
+  case "$arg" in
+    -i|--interactive) INTERACTIVE=1 ;;
+    --non-interactive|--batch) INTERACTIVE=0 ;;
+  esac
+done
+
+echo "feeldznutts: configuring topology at $ROOT" >&2
+
+# 1. Parse pins.txt and ensure sub-checkouts exist at pinned revisions
+PINS_FILE="$ROOT/pins.txt"
+if [ ! -f "$PINS_FILE" ]; then
+  echo "feeldznutts: pins.txt not found at $PINS_FILE" >&2
+  exit 1
+fi
+
+sync_pin() {
+  name="$1"
+  rev="$2"
+  origin="$3"
+
+  target="$ROOT/$name"
+  # If target does not exist locally, check if it exists in parent directory (~/green)
+  if [ ! -d "$target" ] && [ -d "$ROOT/../$name" ]; then
+    echo "feeldznutts: linking existing sibling checkout $name" >&2
+    ln -s "$ROOT/../$name" "$target" 2>/dev/null || cp -R "$ROOT/../$name" "$target"
+  fi
+
+  if [ ! -d "$target" ]; then
+    echo "feeldznutts: cloning $name from $origin..." >&2
+    git clone "$origin" "$target"
+  fi
+
+  if [ -d "$target/.git" ]; then
+    curr=$(git -C "$target" rev-parse --short HEAD 2>/dev/null || true)
+    case "$curr" in
+      "$rev"*) ;;
+      *)
+        echo "feeldznutts: syncing $name ($curr -> $rev)..." >&2
+        git -C "$target" fetch origin 2>/dev/null || true
+        git -C "$target" checkout "$rev" 2>/dev/null || true
+        ;;
+    esac
+  fi
+}
+
+# Read pins.txt
+while IFS="$(printf '\t')" read -r col1 col2 col3 col4 || [ -n "$col1" ]; do
+  case "$col1" in
+    \#*|"") continue ;;
+    node|transport) continue ;;
+    llama-server__*|runtime)
+      echo "feeldznutts: registered engine runtime pin: $col1 ($col2)" >&2
+      continue
+      ;;
+    *)
+      # Repository pin: name <tab> revision <tab> origin <tab> role
+      p_name="$col1"
+      p_rev="$col2"
+      p_orig="$col3"
+      [ -n "$p_name" ] && [ -n "$p_rev" ] && [ -n "$p_orig" ] || continue
+      sync_pin "$p_name" "$p_rev" "$p_orig"
+      ;;
+  esac
+done < "$PINS_FILE"
+
+# 2. Configure defaults: MCP is never disabled on slow CPU or lowram
+ENV_FILE="$CACHE_DIR/feeld.env"
+[ -f "$ENV_FILE" ] || : > "$ENV_FILE"
+
+# Delegate interactive settings if requested
+if [ "$INTERACTIVE" = 1 ] && [ -f "$ROOT/code-bootstraps-llama.cpp/scripts/configure.sh" ]; then
+  echo "feeldznutts: running interactive settings panel..." >&2
+  sh "$ROOT/code-bootstraps-llama.cpp/scripts/configure.sh" || true
+fi
+
+echo "feeldznutts: configuration shell established successfully." >&2

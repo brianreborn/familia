@@ -132,6 +132,15 @@ The agent, the router, `/local`, `/remote`, and every tool stay on step 1. They 
 
 Windows uses the same order. `SeLockMemoryPrivilege` is granted to the user for the one raise, and the process does not remain an administrator. Android is not rooted. A rooted phone still uses step 2 and then drops.
 
+## Detached daemon mode and session persistence
+
+On Android / Termux and remote machines, interactive terminal shells can be closed or reclaimed by the OS. Processes can run detached:
+
+- `DETACH_MODE` option (`foreground`, `nohup`, `tmux`, `screen`).
+- In `tmux` or `screen` mode, `start.sh` allocates a named detached session (`feeld-server`).
+- In `nohup` mode, file descriptors are detached from the controlling TTY, streaming stdout/stderr to `.cache/server.log`.
+- On Termux, `termux-wake-lock` is held unconditionally so the daemon remains scheduled when backgrounded or detached.
+
 ## License
 
 Code we write uses the existing Light-ware License, copied from `japanglify/LICENSE`. It is the 4-clause BSD license plus one addition. The four clauses are the copyright notice, the binary notice, the advertising acknowledgement ("This product includes software developed by Brian Fundakowski Feldman."), and the no-endorsement clause. The addition asks for a contribution toward rent, groceries, or keeping the lights on. That ask is an invitation, not a condition. Declining it does not change the four rights.
@@ -149,6 +158,71 @@ Green-roomz stays a checkout. Its design is the alias map and the handoff rule. 
 - A specialist's first line may be `HANDOFF {"reason","suggest"}`, and then it stops. It does not answer as some other alias. Regex over the transcript is not the router.
 - Benchmarks are cached by host fingerprint, runtime, manifest digest, and artifact identity. A new fingerprint requalifies. They do not run on every request.
 - Engines that are not llama.cpp stay adapters behind the same alias. Whisper, Piper, stable-diffusion.cpp, and an Android sidecar do not become fake GGUFs.
+
+## Engine co-existence: multiple llama.cpp branches and Ollama
+
+Cutting-edge models often require forks or experimental branches of `llama.cpp` (custom model architectures, draft speculators, community PRs before upstream merge) or alternative local inference runtimes such as Ollama. These must co-exist on the same host without naming collisions, shared-library (`.so` / `.dll`) clobbering, or ambiguous dispatch.
+
+- **Namespacing convention**: Executables and backend targets are disambiguated using the double-underscore suffix scheme:
+  ```
+  <executable>__<authorName>__<branchName>
+  ```
+  For example:
+  - `llama-server__ggerganov__master`
+  - `llama-server__ikawrakow__new-quant`
+  - `llama-cli__brianreborn__android-mmap`
+  - `ollama__ollama__main` (or an Ollama service adapter)
+
+  Branch names containing slashes (e.g. `feature/moe-fix`) replace `/` with `-` (e.g. `feature-moe-fix`). The unadorned `llama-server` remains an alias or symlink to the default reference build.
+
+- **Shared library and runtime isolation**: `llama-server` depends on dynamic libraries (`libllama.so`, `libggml.so`, `libggml-cpu-*.so`, Vulkan/CUDA backends) whose ABIs differ across forks and commits. To avoid cross-branch symbol pollution, each build tree resides in its own isolated directory:
+  ```
+  bin/llama__<authorName>__<branchName>/
+  ```
+  The suffixed executable in `bin/` (e.g. `llama-server__<authorName>__<branchName>`) is either built with an `$ORIGIN` runtime library search path (`RPATH`) or launched via a wrapper script that sets the isolated `LD_LIBRARY_PATH` / `DYLD_LIBRARY_PATH` before exec.
+
+- **Ollama integration**: Ollama runs either through its native binary (`ollama serve`, exposing its OpenAI-compatible `/v1` endpoint on loopback) or as a managed sidecar. In FEELDZNUTTS, it is registered as an engine adapter behind a standard route name.
+
+- **Route names remain clean**: The end user, UI, and coding agents still address clean, single-word route names (`chat`, `coder`, `route`). The node manifest or preset specifies the exact engine backend (e.g., `engine = llama-server__ikawrakow__new-quant` or `engine = ollama`). The graph routes the call to the declared backend without leaking compiler or branch specifics into the user-facing interface.
+
+### Branch Format Specification & DReX-DLM Runtime
+
+To support cutting-edge architectures that have not yet reached upstream `llama.cpp`, runtime branches and models follow a standardized specification:
+
+1. **Pins Declaration**:
+   Runtime forks are declared in `pins.txt` alongside repositories:
+   ```
+   llama-server__<author>__<branch>	<branch-or-commit>	<git-origin-url>	runtime: <role-description>
+   ```
+2. **Preset & Model Mapping**:
+   Model sections in `config/models-preset.ini` specify both the model GGUF (downloadable from Hugging Face) and the engine identifier:
+   ```ini
+   [chat]
+   model  = models/chat/drex-dlm-Q8_0.gguf
+   engine = llama-server__nace-ai__edlm
+   hf-repo = nace-ai/drex-dlm-Q8_0
+   ```
+3. **Candidate Model — DReX-DLM (Diffusion Language Model)**:
+   - **Upstream Project**: [nace-ai/drex-dlm](https://github.com/nace-ai/drex-dlm)
+   - **Candidate Role**: Evaluated as a potential new default for `chat`.
+   - **Model Weights**: `nace-ai/drex-dlm-Q8_0` on Hugging Face.
+   - **Required Runtime**: [nace-ai/llama.cpp](https://github.com/nace-ai/llama.cpp) branch `edlm`.
+   - **Engine Identifier**: `llama-server__nace-ai__edlm`
+   - **Execution & Invalidation**: DReX-DLM uses iterative discrete diffusion denoising rather than autoregressive causal token generation. Its execution states cannot share or restore KV cache slots from standard autoregressive models. When switching between DLM and autoregressive engines, slot states are marked engine-incompatible and re-initialized.
+
+4. **Candidate Model — GEV-26B-Decide (Decision / Router)**:
+   - **Upstream Project**: [autotrust/GEV-26B-Decide](https://huggingface.co/autotrust/GEV-26B-Decide) on Hugging Face.
+   - **Candidate Role**: `route`. This is a 26B-parameter decision/tool-routing model from Autotrust, intended to replace or augment the existing small resident router. At 26B it will not fit on lowram or moderate profiles without GPU offload — it is a candidate for `route` only when adequate VRAM or a split CPU/GPU load is available. The small CPU model remains the resident default for `route` when this model is absent.
+   - **Model Weights**: `autotrust/GEV-26B-Decide` (download from Hugging Face; GGUF conversion or an available quant required).
+   - **Engine**: Standard reference `llama-server` (no special branch required unless the architecture is unsupported upstream).
+   - **Profile Constraint**: Do not activate as the `route` resident on lowram or moderate without explicit `RESIDENT=1 PROFILE=default` override and confirmed VRAM. The current small decision model stays the fallback.
+
+5. **Candidate Model — embedding-gemma-2 (Semantic Embedding)**:
+   - **Upstream Project**: [google/embedding-gemma-2](https://huggingface.co/google/embeddinggemma-2) on Hugging Face.
+   - **Candidate Role**: `embed` — activates the `embed` route alias once the model file is on disk. No alias is published until that file exists (per the existing rule for specialist routes).
+   - **Model Weights**: `google/embeddinggemma-2` (download from Hugging Face; GGUF quant required).
+   - **Engine**: Standard reference `llama-server` with embedding mode (`--embeddings` flag). The model produces dense vector representations; it does not generate tokens. Its KV cache and slot semantics differ from generative models — slots are not persisted across requests and are not snapshotted as part of the normal virtual snapshot sequence.
+   - **Isolation**: Embedding requests must not share a llama-server slot or context with generative routes. The `embed` role runs as a separate router child with its own slot allocation.
 
 This router already has the slots. Lowram keeps two (`chat` and `coder`) and leaves `route` unpinned. Default and moderate keep `route` resident, so `--models-max` is `MODELS_MAX+1`. A handoff is a new request to that route name, not a second HTTP server. Per-request `chat_template_kwargs.enable_thinking` is how a turn thinks. The preset stays `reasoning=off` until the user asks. Tools stay in the tools container.
 
@@ -188,6 +262,8 @@ Order:
 4. `kill -CONT`.
 
 The transaction reads that named set. It does not read the live tree or the live KV. Rollback throws away an uncommitted snap. It does not restore the machine, and it cannot pull back a reply that already left.
+
+- **Cross-branch and cross-engine memory isolation**: In-memory state, session context, and KV slot dumps are strictly bound to the exact engine binary, branch, and build identity that created them. Memory cannot be swapped or restored across different branches of `llama.cpp` or between `llama.cpp` and `Ollama`, because internal tensor layouts, tokenizer mappings, context structures, or quantization layers may have changed. A snapshot metadata record includes the engine tag (`<engine>__<author>__<branch>`); if a transaction or snapshot is read by a different branch or runtime, only cold filesystem state (workspace files, configs, and transcripts) can be transferred—the in-memory KV cache must be safely invalidated and recomputed rather than restored.
 
 [@BrianReborn_alt](https://x.com/BrianReborn_alt/status/2106354991133016574) asked the right test: a utilization number is not a win until useful work is separated from cache thrash. The first measure is bytes read from the named snapshot versus bytes rewritten because the snapshot was missing.
 

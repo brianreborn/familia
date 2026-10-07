@@ -1,87 +1,127 @@
 # FEELDZNUTTS
 
-Your models stay on your machine. A file, a conversation, or a result moves only when you say so.
+**Federated, Electronic, Electively-Limited, Distribution-Zoned Neural Network Unified Topographical Teleportation System**
+
+Your models and data stay on your machine. A file, context, or result moves across boundaries only when you explicitly command it.
 
 <img src="logo.png" alt="FEELDZNUTTS: Federated, Electronic, Electively-Limited, Distribution-Zoned, Neural Network, Unified, Topographical, Teleportation System" width="170">
 
-This repository is the map. The programs live in their own checkouts, listed in `pins.txt`. Nothing here is a new model.
+FEELDZNUTTS is the top-level topology coordinator. It unites local model runtimes, specialized agent personas, and storage transports into a single controllable graph without copying external code or forcing all models into one rigid binary.
 
-## Install
+---
 
-Two steps. Run the command, then tap through the donation notice. You do not have to pay.
+## Quick Install
 
-Linux, macOS, and Termux:
+Two steps: run the command, then tap through the voluntary contribution notice. Paying is never required.
+
+**Linux, macOS, and Termux:**
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/brianreborn/code-bootstraps-llama.cpp/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/brianreborn/feeldznutts/main/install.sh | sh
 ```
 
-Windows PowerShell:
+**Windows PowerShell:**
 
 ```powershell
-irm https://raw.githubusercontent.com/brianreborn/code-bootstraps-llama.cpp/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/brianreborn/feeldznutts/main/install.ps1 | iex
 ```
 
-The page opens on chat: [http://127.0.0.1:9931/?model=chat](http://127.0.0.1:9931/?model=chat). The first visit asks for the key printed in the terminal. Paste it once.
+Once installed, your local web UI opens on chat: [http://127.0.0.1:9931/?model=chat](http://127.0.0.1:9931/?model=chat). On first visit, paste the API key printed in your terminal.
 
-If you already have the checkout, `./start.sh` does the same job (`start.bat` on Windows). Set `INSTALL_ACK=yes` when nobody is there to tap the notice.
-
-On a phone, run the Linux command inside Termux and keep the folder in the Termux home directory, not on shared storage.
-
-## Settings
-
-Change the ordinary choices without editing a script. A value you already set in the shell wins over either of these. Start the server again after you save.
-
-The form listens on [http://127.0.0.1:9932](http://127.0.0.1:9932):
+If you already have the checkout cloned, launch directly:
 
 ```sh
-python3 scripts/panel.py
+./start.sh
 ```
 
-The same questions, in the terminal:
+*(On Windows, run `start.bat`. To install non-interactively in automated environments, set `INSTALL_ACK=yes`.)*
 
-```sh
-sh scripts/configure.sh
-```
+---
 
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\configure.ps1
-```
+## Configuration & Settings
 
-## What you are running
+Configure ports, model profiles, and hardware overlays without modifying scripts. Shell environment variables always take precedence.
 
-You start in **chat**. That is the general model. Work that is code is handed to **coder**. **route** picks between them. **translate** is there when a language model is installed. Names such as vision, speech, and drawing wait until those files are actually on disk.
+- **Web Settings Panel** (GUI at [http://127.0.0.1:9932](http://127.0.0.1:9932)):
+  ```sh
+  python3 scripts/panel.py
+  ```
 
-| Piece | What it is |
+- **Interactive Configuration Shell** (Terminal):
+  ```sh
+  sh scripts/configure.sh
+  ```
+  *(On Windows PowerShell: `powershell -ExecutionPolicy Bypass -File scripts\configure.ps1`)*
+
+---
+
+## Engine Co-existence: Multiple llama.cpp Branches & Ollama
+
+Cutting-edge models frequently require unmerged forks, experimental PRs, custom draft speculators, or alternative local runtimes like Ollama. FEELDZNUTTS supports running multiple branches and engines side-by-side without collisions:
+
+- **Unambiguous Naming**: Binaries and adapters are suffixed using the double-underscore convention:
+  ```
+  <executable>__<authorName>__<branchName>
+  ```
+  *Examples:* `llama-server__ggerganov__master`, `llama-server__ikawrakow__new-quant`, `ollama__ollama__main`.
+- **Shared Library Isolation**: Each `llama.cpp` branch build lives in its own isolated directory under `bin/llama__<authorName>__<branchName>/` with `$ORIGIN` runtime linking (`RPATH`), preventing incompatible `.so` / `.dll` ABIs from polluting one another.
+- **Ollama Integration**: Runs natively or as a sidecar adapter over its OpenAI-compatible `/v1` loopback endpoint.
+- **Unified Route Interface**: Users and agents always speak simple, single-word route names (`chat`, `coder`, `route`, `translate`). The graph preset maps each role to the desired engine behind the scenes.
+
+---
+
+## What You Are Running
+
+| Route | Role | Description |
+|---|---|---|
+| `chat` | General Conversational | The front door for general queries and discussion |
+| `coder` | Code Specialist | Handed code tasks from `chat` or `route` |
+| `route` | Nexus Dispatcher | Small resident CPU model that classifies tasks and coordinates handoffs |
+| `translate` | Polyglot Translator | Preserves exact code blocks and placeholders across languages |
+
+Specialist roles (`vision`, `transcribe`, `speak`, `draw`, `embed`, `rerank`, `safety`, `guard`) become active automatically when corresponding model weights are placed on disk.
+
+### Component Projects
+
+The sub-projects live in their own checkouts and are tracked by commit hashes in [pins.txt](file:///home/green/feeldznutts/pins.txt):
+
+| Project | Role |
 | --- | --- |
-| [code-bootstraps-llama.cpp](https://github.com/brianreborn/code-bootstraps-llama.cpp) | The models, the server, and the installer |
-| [green-roomz](https://github.com/brianreborn/green-roomz) | One name in front of one backend |
-| [green-agentz](https://github.com/brianreborn/green-agentz) | The fleet |
-| [green-agency](https://github.com/brianreborn/green-agency) | Retired. Not the fleet |
-| [Agent-Reach](https://github.com/Panniantong/Agent-Reach) | Extra tools. Pinned in `pins.txt`, not copied here |
+| [code-bootstraps-llama.cpp](https://github.com/brianreborn/code-bootstraps-llama.cpp) | Model inference server, `/remote` advisor, installers, and router |
+| [green-roomz](https://github.com/brianreborn/green-roomz) | Alias gateway: one stable name in front of each backend |
+| [green-agentz](https://github.com/brianreborn/green-agentz) | Autonomous agent fleet and green-brainz |
+| [green-agency](https://github.com/brianreborn/green-agency) | Retired pipeline; referenced for historical specs |
+| [Agent-Reach](https://github.com/Panniantong/Agent-Reach) | External reach tools (pinned by commit, not vendored) |
 
-Linux is the system the others are measured against. A Galaxy A57 running Termux answered chat, coder, and route with the same server. The installer, the browser, and a tool call were not part of that phone run.
+---
 
-`/local` runs grok, agy, claude, or codex as you, on this machine. `/remote` can hand a short brief to one of those tools. It does not get your tools or your key.
+## Transactions & Safety
 
-When a change should be deliberate, say `begin`, then `commit`. `rollback` drops that declaration. It does not rewind the disk. If the model server you started is up, `begin` saves its memory to a file, pauses that one process only long enough to copy the file, and lets it continue.
+- **/local & /remote**: `/local` executes tools (grok, agy, claude, codex) directly on your machine under your user credentials. `/remote` acts as an advisor for stuck sessions without receiving your local tools or API keys.
+- **Atomic Transaction Blocks**: Declare changes with `begin`, verify, and finalize with `commit`. `rollback` reverts declared writes from snapshot before-images.
+- **Cache Coherence via Snapshots**: In-memory KV slot states are tied to specific engine builds. Snapshots safeguard state before mutations. Cross-branch transitions transfer clean filesystem state while safely refreshing in-memory KV caches.
+- **Least Privilege**: All processes run with standard user permissions. Helpers drop privileges immediately before execution; no `NOPASSWD` sudo rules or persistent administrative rights are required.
 
-BitTorrent, rsync, ssh, NFS, and ZFS are reserved names. The programs that would move bytes over them are not written yet.
+---
 
-The longer design is in `DESIGN.md`.
+## License
 
-Code in this repository is under the Light-ware License in `LICENSE`: the 4-clause BSD license, plus an invitation to help with rent, groceries, or lights. The invitation does not bind you. The advertising line is: "This product includes software developed by Brian Fundakowski Feldman." The other checkouts keep their own licenses. llama.cpp stays MIT.
+Code authored in this repository is licensed under the **Light-ware License** in [LICENSE](file:///home/green/feeldznutts/LICENSE) (4-clause BSD with a voluntary invitation to support rent, groceries, or utilities). Declining the invitation does not affect your rights. Required advertising notice: *"This product includes software developed by Brian Fundakowski Feldman."*
+
+Sub-checkouts retain their respective licenses (e.g. `llama.cpp` remains MIT).
+
+---
 
 ## Issues
 
-A search of this repository does not search the others.
+Search tickets in their respective upstream trackers:
 
-| Checkout | Issues |
+| Area | Issues |
 | --- | --- |
-| This map | https://github.com/brianreborn/feeldznutts/issues |
-| Models, the agent, installers, the server | https://github.com/brianreborn/code-bootstraps-llama.cpp/issues |
-| green-roomz | https://github.com/brianreborn/green-roomz/issues |
-| green-agentz | https://github.com/brianreborn/green-agentz/issues |
+| FEELDZNUTTS Topology & Graph | https://github.com/brianreborn/feeldznutts/issues |
+| Models, Server, Installers & Agent | https://github.com/brianreborn/code-bootstraps-llama.cpp/issues |
+| green-roomz Gateway | https://github.com/brianreborn/green-roomz/issues |
+| green-agentz Fleet | https://github.com/brianreborn/green-agentz/issues |
 | green-agency | https://github.com/brianreborn/green-agency/issues |
 
-The license text lives in [japanglify](https://github.com/brianreborn/japanglify), which is not a product tracker. Agent-Reach issues stay on its own repository. Upstream llama.cpp issues stay on [ggml-org/llama.cpp](https://github.com/ggml-org/llama.cpp/issues). This project does not patch that tree.
+*Agent-Reach issues remain on [Panniantong/Agent-Reach](https://github.com/Panniantong/Agent-Reach). Upstream llama.cpp issues remain on [ggml-org/llama.cpp](https://github.com/ggml-org/llama.cpp).*
