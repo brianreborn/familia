@@ -1,5 +1,5 @@
 #!/bin/sh
-# FEELDZNUTTS: Configuration shell and workspace orchestrator.
+# FAMILIA: Configuration shell and workspace orchestrator.
 # Pure POSIX /bin/sh. Sets up pinned checkouts, validates environment,
 # and configures graph defaults without conflating lowram with slow CPU.
 set -eu

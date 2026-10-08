@@ -1,4 +1,4 @@
-# FEELDZNUTTS
+# FAMILIA
 
 Federated Electronic Electively-Limited Distribution-Zoned Neural Network Unified Topographical Teleportation System.
 
@@ -8,7 +8,7 @@ This is the super-project that makes the existing systems one topology. It does 
 
 A graph. Nodes have named hooks. Hooks connect in pairs. Data moves along an edge. Control is addressed at a node and does not have to follow the edge. That split is Julian Elischer and Archie Cobbs' NETGRAPH: the data plane is the graph, the control plane is a message you can send to any node while data keeps moving.
 
-The user is in control of every edge. The system fills only the hooks the user left open. An explicit environment variable, a command-line parameter, and a saved panel value already follow that rule. FEELDZNUTTS keeps it for zones, transports, and agents.
+The user is in control of every edge. The system fills only the hooks the user left open. An explicit environment variable, a command-line parameter, and a saved panel value already follow that rule. FAMILIA keeps it for zones, transports, and agents.
 
 "Teleport" means a declared move of one object along one edge: a model file, a context, a room, a brief, or a tool result. It is not a hidden copy.
 
@@ -181,7 +181,7 @@ Cutting-edge models often require forks or experimental branches of `llama.cpp` 
   ```
   The suffixed executable in `bin/` (e.g. `llama-server__<authorName>__<branchName>`) is either built with an `$ORIGIN` runtime library search path (`RPATH`) or launched via a wrapper script that sets the isolated `LD_LIBRARY_PATH` / `DYLD_LIBRARY_PATH` before exec.
 
-- **Ollama integration**: Ollama runs either through its native binary (`ollama serve`, exposing its OpenAI-compatible `/v1` endpoint on loopback) or as a managed sidecar. In FEELDZNUTTS, it is registered as an engine adapter behind a standard route name.
+- **Ollama integration**: Ollama runs either through its native binary (`ollama serve`, exposing its OpenAI-compatible `/v1` endpoint on loopback) or as a managed sidecar. In FAMILIA, it is registered as an engine adapter behind a standard route name.
 
 - **Route names remain clean**: The end user, UI, and coding agents still address clean, single-word route names (`chat`, `coder`, `route`). The node manifest or preset specifies the exact engine backend (e.g., `engine = llama-server__ikawrakow__new-quant` or `engine = ollama`). The graph routes the call to the declared backend without leaking compiler or branch specifics into the user-facing interface.
 

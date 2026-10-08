@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""FEELDZNUTTS panel proxy: delegates to code-bootstraps-llama.cpp/scripts/panel.py."""
+"""FAMILIA panel proxy: delegates to code-bootstraps-llama.cpp/scripts/panel.py."""
 import os
 import sys
 

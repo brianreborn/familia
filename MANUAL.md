@@ -1,6 +1,6 @@
-# FEELDZNUTTS Administration and Usage Manual
+# FAMILIA Administration and Usage Manual
 
-Welcome to the definitive guide for setting up and managing a FEELDZNUTTS topology. This manual focuses on practical installation, daily administration, and usage.
+Welcome to the definitive guide for setting up and managing a FAMILIA topology. This manual focuses on practical installation, daily administration, and usage.
 
 ## 1. Installation
 
@@ -20,7 +20,7 @@ irm https://raw.githubusercontent.com/brianreborn/feeldznutts/main/install.ps1 |
 
 ### The Visual Topology Editor
 
-FEELDZNUTTS allows you to configure your node graph visually or via natural language commands.
+FAMILIA allows you to configure your node graph visually or via natural language commands.
 - Run `sh scripts/configure.sh` (or `scripts\configure.ps1` on Windows) to open the interactive configuration panel.
 - On Linux/Termux environments, this will launch a visual `whiptail` menu where you can set up a small local network or expand to federated topologies across multiple hosts.
 
@@ -44,7 +44,7 @@ Navigate to: `http://127.0.0.1:9931/?model=chat`
 On first load, you must provide the API key printed in the server terminal logs.
 
 ### Backgrounding and Detaching
-FEELDZNUTTS offers robust backgrounding natively. Set the `DETACH_MODE` via the configuration panel to choose between:
+FAMILIA offers robust backgrounding natively. Set the `DETACH_MODE` via the configuration panel to choose between:
 - `foreground` (default)
 - `nohup` (outputs to `.cache/server.log`)
 - `tmux` or `screen` (launches in a detached session)
@@ -60,4 +60,4 @@ To do so:
 1. Open the configuration UI.
 2. Select the `ENGINE_CHAT` setting.
 3. Enter the engine identifier (e.g., `nace-ai__edlm`).
-FEELDZNUTTS will automatically fetch, compile, and isolate the specified engine.
+FAMILIA will automatically fetch, compile, and isolate the specified engine.

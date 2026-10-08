@@ -1,5 +1,5 @@
 #!/bin/sh
-# FEELDZNUTTS: Super-project launcher
+# FAMILIA: Super-project launcher
 # Pure POSIX /bin/sh.
 set -eu
 

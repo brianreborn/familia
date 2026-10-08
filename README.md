@@ -1,12 +1,12 @@
-# FEELDZNUTTS
+# FAMILIA
 
-**Federated, Electronic, Electively-Limited, Distribution-Zoned Neural Network Unified Topographical Teleportation System**
+**Federated Agents Mesh for Intelligent Local Interoperable Autonomy** · *Federación de Agentes Multi-Inteligentes Locales Interoperables Autónomos*
 
 Your models and data stay on your machine. A file, context, or result moves across boundaries only when you explicitly command it.
 
-<img src="logo.png" alt="FEELDZNUTTS: Federated, Electronic, Electively-Limited, Distribution-Zoned, Neural Network, Unified, Topographical, Teleportation System" width="170">
+<img src="logo.png" alt="FAMILIA: Federated Agents Mesh for Intelligent Local Interoperable Autonomy" width="170">
 
-FEELDZNUTTS is the top-level topology coordinator. It unites local model runtimes, specialized agent personas, and storage transports into a single controllable graph without copying external code or forcing all models into one rigid binary.
+FAMILIA is the top-level topology coordinator. It unites local model runtimes, specialized agent personas, and storage transports into a single controllable graph without copying external code or forcing all models into one rigid binary.
 
 ---
 
@@ -17,7 +17,7 @@ Two steps: run the command, then tap through the voluntary contribution notice. 
 **Linux, macOS, and Termux:**
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/brianreborn/feeldznutts/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install.sh | sh
 ```
 
 **Windows PowerShell:**
@@ -57,7 +57,7 @@ Configure ports, model profiles, and hardware overlays without modifying scripts
 
 ## Engine Co-existence: Multiple llama.cpp Branches & Ollama
 
-Cutting-edge models frequently require unmerged forks, experimental PRs, custom draft speculators, or alternative local runtimes like Ollama. FEELDZNUTTS supports running multiple branches and engines side-by-side without collisions:
+Cutting-edge models frequently require unmerged forks, experimental PRs, custom draft speculators, or alternative local runtimes like Ollama. FAMILIA supports running multiple branches and engines side-by-side without collisions:
 
 - **Unambiguous Naming**: Binaries and adapters are suffixed using the double-underscore convention:
   ```
@@ -118,7 +118,7 @@ Search tickets in their respective upstream trackers:
 
 | Area | Issues |
 | --- | --- |
-| FEELDZNUTTS Topology & Graph | https://github.com/brianreborn/feeldznutts/issues |
+| FAMILIA Topology & Graph | https://github.com/brianreborn/familia/issues |
 | Models, Server, Installers & Agent | https://github.com/brianreborn/code-bootstraps-llama.cpp/issues |
 | green-roomz Gateway | https://github.com/brianreborn/green-roomz/issues |
 | green-agentz Fleet | https://github.com/brianreborn/green-agentz/issues |

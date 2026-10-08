@@ -1,5 +1,5 @@
 #!/bin/sh
-# FEELDZNUTTS: Top-level super-project installer.
+# FAMILIA: Top-level super-project installer.
 # Pure POSIX /bin/sh.
 # Two clicks:
 #   curl -fsSL https://raw.githubusercontent.com/brianreborn/feeldznutts/main/install.sh | sh
@@ -35,10 +35,10 @@ ack_notice() {
 ack_notice
 
 if [ ! -d "$PREFIX/.git" ]; then
-  echo "install.sh: checking out FEELDZNUTTS into $PREFIX..." >&2
+  echo "install.sh: checking out FAMILIA into $PREFIX..." >&2
   git clone "$REPO_URL" "$PREFIX"
 else
-  echo "install.sh: updating FEELDZNUTTS at $PREFIX..." >&2
+  echo "install.sh: updating FAMILIA at $PREFIX..." >&2
   git -C "$PREFIX" pull origin main || true
 fi
 
@@ -49,6 +49,6 @@ sh "$PREFIX/scripts/configure.sh"
 if [ "${INSTALL_NO_START:-0}" = "1" ]; then
   echo "install.sh: installation complete (INSTALL_NO_START=1, skipping start.sh)." >&2
 else
-  echo "install.sh: starting FEELDZNUTTS..." >&2
+  echo "install.sh: starting FAMILIA..." >&2
   exec sh "$PREFIX/start.sh"
 fi
