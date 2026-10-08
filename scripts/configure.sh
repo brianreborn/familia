@@ -21,6 +21,9 @@ done
 
 echo "feeldznutts: configuring topology at $ROOT" >&2
 
+PANEL_ENV="$ROOT/code-bootstraps-llama.cpp/.cache/panel.env"
+[ -f "$PANEL_ENV" ] && . "$PANEL_ENV"
+
 # 1. Parse pins.txt and ensure sub-checkouts exist at pinned revisions
 PINS_FILE="$ROOT/pins.txt"
 if [ ! -f "$PINS_FILE" ]; then
@@ -65,6 +68,15 @@ while IFS="$(printf '\t')" read -r col1 col2 col3 col4 || [ -n "$col1" ]; do
     node|transport) continue ;;
     llama-server__*|runtime)
       echo "feeldznutts: registered engine runtime pin: $col1 ($col2)" >&2
+      engine_name="${col1#llama-server__}"
+      # If this engine is requested by any ENGINE_* variable, sync it.
+      req=0
+      for ev in $(set | awk -F= '/^ENGINE_/ {print $2}'); do
+        if [ "$ev" = "$engine_name" ]; then req=1; break; fi
+      done
+      if [ "$req" = 1 ]; then
+        sync_pin "$col1" "$col2" "$col3"
+      fi
       continue
       ;;
     *)
