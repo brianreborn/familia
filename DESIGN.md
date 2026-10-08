@@ -310,3 +310,17 @@ The GitHub repository is created only after this plan is accepted. Nothing is co
 5. Two-click install of that tree on this Linux host and a documented PS 5.1 path. The second click is the donation-ware tap-through. Do not block on a live Windows run.
 
 Leave BitTorrent, trackers, rsync, and ssh as node types with no protocol code until the block and `/local` are real. A transport that cannot name a snapshot is not allowed to feed a model.
+
+## Visual Graph Configuration
+
+The configuration UI must support interactive topology design. This means providing the ability to visually set up components in a netgraph style, allowing users to configure both small, straightforward neural networks and easily manage larger, federated systems spanning multiple hosts. Alternatively, the UI must support configuring the system through a natural language description of the desired setup.
+
+## Documentation Requirements
+
+Serious, comprehensive documentation is a mandatory requirement for this project. There must be a dedicated, real Markdown manual (`MANUAL.md` or similar) that covers:
+
+1. Installation and initial setup
+2. Administrative tasks and configuration management
+3. End-user usage and examples
+
+The documentation must serve as a practical guide for using the software in production, moving beyond merely describing implementation details or architecture.
