@@ -325,3 +325,13 @@ def test_qodesh_plain_cuda_still_rejected():
     x["nodes"]["qodesh-gpu-decision"]["offload"]["backend"] = "cuda"
     x["runtimes"]["sm11-legacy-qodesh"]["backends"] = ["cpu", "cuda", "cuda-sm11-ptx"]
     has(x, "backend 'cuda' but GPU 0 backend is 'cuda-sm11-ptx'")
+
+
+def test_smollm2_catalog_and_measured_notes():
+    x = g()
+    assert "smollm2-135m-q4" in x["models"]
+    assert x["models"]["smollm2-135m-q4"]["role"] == "decision"
+    assert x["nodes"]["qodesh-smol-cpu"]["status"] == "planned"
+    notes = x["hosts"]["qodesh"]["gpus"][0]["notes"]
+    assert "34.3" in notes and "SmolLM2" in notes
+    assert errs(x) == []

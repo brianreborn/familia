@@ -51,10 +51,13 @@ hosts:
         driver: 9.18.13.4192 (341.92, last Tesla-arch driver)
         measured: true
         notes: >-
-          Verified 2026-10-10 PT via familia gpu-legacy (feat/qodesh-legacy-gpu):
-          stories15M FP32 full-forward ~17.3 tok/s alone; concurrent with CPU
-          Q4_0 llama-bench ~16.3 tok/s GPU + 75.2 tok/s CPU. No Vulkan. Modern
-          llama.cpp CUDA unsupported; offload backend is cuda-sm11-ptx only.
+          Verified 2026-10-10 PT via familia gpu-legacy (feat/qodesh-legacy-gpu).
+          Fast path (full residency 57/57 MiB, OMP=2, unpinned): stories15M FP32
+          full-forward 34.3 tok/s alone; concurrent with CPU SmolLM2-135M Q4_0
+          33.3 tok/s GPU + 11.5 tok/s CPU (~3% contention). Prior 17 t/s was
+          OMP=1+pinned + 4/57 MiB resident. Catalog (#24): K2-Horizon-0.9B Q4
+          ~605 MiB too large; SmolLM2-135M Q4_0 87.4 MiB fits ~100 MiB budget
+          (GGUF on-device pending ggml-sm11 Q4). Backend cuda-sm11-ptx only.
     windows:
       repo_path: TBD
       models_path: 'E:\familia\models'   # proposed: E: has the free space; not created yet
@@ -159,6 +162,16 @@ runtimes:
     spec_types: []
     bin: gpu-legacy/out/run_sm11.exe
 
+  llama-b11540-win-cpu:
+    kind: llama-server
+    build: b11540 win-cpu-x64
+    commit: 1e6f04a75
+    hosts: [qodesh]
+    supported_archs: [llama, qwen2, gemma2, gemma3]
+    backends: [cpu]
+    spec_types: []
+    bin: E:/temp/llama-cpu/llama-server.exe
+
 models:
 
   stories15m-fp32:
@@ -166,6 +179,13 @@ models:
     sha256: cd590644d963867a2b6e5a1107f51fad663c41d79c149fbecbbb1f95fa81f49a
     arch: llama2c
     trained_ctx: 256
+    role: decision
+
+  smollm2-135m-q4:
+    gguf: 'E:/temp/models/SmolLM2-135M-Instruct.Q4_0.gguf'
+    sha256: unmeasured
+    arch: llama
+    trained_ctx: 8192
     role: decision
   qwen35-2b-q4km:
     gguf: ~/.local/share/gguf/models/coder/Qwen3.5-2B-Q4_K_M.gguf
@@ -195,6 +215,20 @@ nodes:
     port: 18100
     cache_ram_mib: 64
     status: active
+
+  qodesh-smol-cpu:
+    model: smollm2-135m-q4
+    host: qodesh
+    runtime: llama-b11540-win-cpu
+    ctx: 2048
+    parallel: 1
+    kv_type: q8_0
+    flash_attn: false
+    offload: {backend: cpu, ngl: 0, split: none, main_gpu: 0}
+    bind: 127.0.0.1
+    port: 18101
+    cache_ram_mib: 256
+    status: planned
   coder:
     status: active
     model: qwen35-2b-q4km
