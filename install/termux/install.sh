@@ -10,8 +10,9 @@ set -eu
 
 PREFIX_DIR=${FAMILIA_PREFIX:-$HOME/familia}
 REPO_URL=${FAMILIA_REPO_URL:-https://github.com/brianreborn/familia.git}
-# Until the installer is merged, main lacks scripts/host_measure.py; default to this branch.
-BRANCH=${FAMILIA_BRANCH:-feat/one-click-installers}
+BRANCH=${FAMILIA_BRANCH:-main}
+# Phones: Android + apps leave only ~2-2.6 GiB free on a 7.4 GiB A57 (docs/ram-safety.md); policy, not measured.
+RESERVE_MIB=${FAMILIA_RESERVE_MIB:-5120}
 RAW_URL=${FAMILIA_RAW_URL:-https://raw.githubusercontent.com/brianreborn/familia}
 DRY=0; UNINSTALL=0; PURGE=0; NAME=""; SSHD=0; RUNTIME=1; FORCE_HOST=""; WAKE=1
 
@@ -97,7 +98,7 @@ elif [ "$DRY" = 1 ] && command -v curl >/dev/null 2>&1; then
 else MREPO=""; fi
 if [ -n "$MREPO" ]; then
   MF=""; [ "$DRY" = 1 ] && MF=--dry-run
-  python3 "$MREPO/scripts/host_measure.py" --name "$NAME" --kind phone --graph "$MREPO/graph.yaml" $MF $FORCE_HOST || say "warning: host measurement failed"
+  python3 "$MREPO/scripts/host_measure.py" --name "$NAME" --kind phone --reserve-mib "$RESERVE_MIB" --graph "$MREPO/graph.yaml" $MF $FORCE_HOST || say "warning: host measurement failed"
   if [ "$DRY" != 1 ]; then
     python3 -c 'import yaml' 2>/dev/null && { python3 "$REPO/scripts/validate_graph.py" --no-files "$REPO/graph.yaml" || say "warning: graph validation reported problems"; }
   fi
