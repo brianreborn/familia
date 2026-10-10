@@ -165,3 +165,34 @@ verified, treat the following as TBD:
 - A provider that natively accepts `model`/`kv` (e.g. HF Jobs / Spaces with SSH).
 - Primer packing strategy (token count vs char estimate) for PTY chat UIs.
 - Graph syntax for explicit trust exceptions on upcall results.
+
+## Measured 2026-10-09 22:20 PT (qodesh, Windows 10, pywinpty)
+
+| Item | Value |
+|---|---|
+| Auth | `ssh_key`: the qodesh ed25519 key is linked to HF. The banner shows `@BrianReborn`. |
+| Default model | `Qwen/Qwen3.8-27B` (via Inference Providers; `/model` switches) |
+| Reply | **None.** The provider returns `error: 402 Payment Required: You have no remaining credits. Purchase pre-paid credits...`. The service is not free for this account right now. |
+| Session setup | about 6 s to the chat screen; the 402 comes back about 1 s after enter |
+| context_tokens | TBD (needs a working reply; the adapter defaults to 32768 as a placeholder) |
+| compaction_threshold | TBD (whether the service auto-compacts or truncates, and at what fill, is unmeasured) |
+| Max single message | TBD |
+| Rate limits | TBD (blocked by credits before any rate limit) |
+
+## Limits: never let the remote compact
+
+New node fields (see `scripts/isolated/hfchat.py`):
+
+| Field | Meaning |
+|---|---|
+| `context_tokens` | remote model window (measured or from model docs; TBD here) |
+| `compaction_threshold` | fill at which the service compacts or truncates; TBD defaults to `0.8 * context_tokens` |
+| `safety_margin` | tokens kept free; default `max(512, context_tokens/20)` |
+| `max_fill` | derived: `compaction_threshold - safety_margin` |
+
+`prefill_ratio` now defaults to `max_fill / context_tokens`. Validator rule:
+`prefill_ratio * context_tokens <= max_fill`. The adapter estimates tokens
+per session (about 4 chars per token unless a tokenizer is supplied). When the
+next turn would cross `max_fill`, it opens a new session that carries a compact
+local summary instead of letting the remote compact.
+Exit codes: 0 reply, 3 timeout, 5 provider refusal (402/auth/429).
