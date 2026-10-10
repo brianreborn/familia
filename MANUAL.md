@@ -7,12 +7,9 @@ Welcome to the definitive guide for setting up and managing a FAMILIA topology. 
 Installation takes only two steps and applies identically across Linux, macOS, and Termux (Android).
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/brianreborn/feeldznutts/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install.sh | sh
 ```
-For Windows PowerShell:
-```powershell
-irm https://raw.githubusercontent.com/brianreborn/feeldznutts/main/install.ps1 | iex
-```
+*Windows is not supported yet: `install.ps1`, `start.bat` and `scripts/configure.ps1` are not shipped (see #17). Use WSL2 or Linux.*
 
 **Note**: The installer will prompt for acknowledgment of the Light-ware License. Type `yes` to proceed. If running in an automated environment, set `INSTALL_ACK=yes` before executing the script.
 
@@ -21,7 +18,7 @@ irm https://raw.githubusercontent.com/brianreborn/feeldznutts/main/install.ps1 |
 ### The Visual Topology Editor
 
 FAMILIA allows you to configure your node graph visually or via natural language commands.
-- Run `sh scripts/configure.sh` (or `scripts\configure.ps1` on Windows) to open the interactive configuration panel.
+- Run `sh scripts/configure.sh` to open the interactive configuration panel.
 - On Linux/Termux environments, this will launch a visual `whiptail` menu where you can set up a small local network or expand to federated topologies across multiple hosts.
 
 ### Environmental Overrides

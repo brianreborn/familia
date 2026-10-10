@@ -55,7 +55,15 @@ sync_pin() {
       *)
         echo "feeldznutts: syncing $name ($curr -> $rev)..." >&2
         git -C "$target" fetch origin 2>/dev/null || true
-        git -C "$target" checkout "$rev" 2>/dev/null || true
+        if ! git -C "$target" checkout "$rev" 2>/dev/null; then
+          # Shallow or rewritten history: fetch the pin by SHA and fail loud (#21).
+          echo "feeldznutts: checkout $rev failed; fetching pin by SHA..." >&2
+          git -C "$target" fetch --depth 1 origin "$rev" 2>/dev/null             || git -C "$target" fetch origin "$rev" 2>/dev/null             || true
+          if ! git -C "$target" checkout "$rev" 2>/dev/null; then
+            echo "feeldznutts: FATAL: pin $name@$rev not fetchable; refuse quiet HEAD fallback" >&2
+            exit 1
+          fi
+        fi
         ;;
     esac
   fi

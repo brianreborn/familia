@@ -2,12 +2,12 @@
 # FAMILIA: Top-level super-project installer.
 # Pure POSIX /bin/sh.
 # Two clicks:
-#   curl -fsSL https://raw.githubusercontent.com/brianreborn/feeldznutts/main/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install.sh | sh
 # Click 1 is running the command. Click 2 is the donation tap-through.
 set -eu
 
-PREFIX=${INSTALL_PREFIX:-$HOME/feeldznutts}
-REPO_URL=${FEELD_REPO_URL:-https://github.com/brianreborn/feeldznutts.git}
+PREFIX=${INSTALL_PREFIX:-$HOME/familia}
+REPO_URL=${FAMILIA_REPO_URL:-${FEELD_REPO_URL:-https://github.com/brianreborn/familia.git}}  # FEELD_REPO_URL is a deprecated alias
 
 die() { echo "install.sh: $*" >&2; exit 1; }
 

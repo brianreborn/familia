@@ -297,7 +297,7 @@ The first click is the install command: `curl | sh` or `irm | iex`. The Windows 
 
 The second click is the donation-ware tap-through. A terminal asks for one word. A phone asks for one tap. The install does not continue until that answer. Paying is not required, and the notice cannot be skipped. There is no third question.
 
-The installer records a digest when one is published and still installs when it is empty, which is the current `install.sh` / `install.ps1` behavior. The super-project installer checks out the four subdirectories at pinned revisions. It does not ask the user to assemble them.
+The installer records a digest when one is published and still installs when it is empty, which is the current `install.sh` behavior (no Windows installer is shipped yet). The super-project installer checks out the four subdirectories at pinned revisions. It does not ask the user to assemble them.
 
 ## First build, after this plan
 

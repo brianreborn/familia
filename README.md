@@ -20,11 +20,7 @@ Two steps: run the command, then tap through the voluntary contribution notice. 
 curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install.sh | sh
 ```
 
-**Windows PowerShell:**
-
-```powershell
-irm https://raw.githubusercontent.com/brianreborn/feeldznutts/main/install.ps1 | iex
-```
+*Windows is not supported yet: `install.ps1`, `start.bat` and `scripts/configure.ps1` are not shipped (see #17). Use WSL2 or Linux.*
 
 Once installed, your local web UI opens on chat: [http://127.0.0.1:9931/?model=chat](http://127.0.0.1:9931/?model=chat). On first visit, paste the API key printed in your terminal.
 
@@ -34,7 +30,7 @@ If you already have the checkout cloned, launch directly:
 ./start.sh
 ```
 
-*(On Windows, run `start.bat`. To install non-interactively in automated environments, set `INSTALL_ACK=yes`.)*
+*(To install non-interactively in automated environments, set `INSTALL_ACK=yes`.)*
 
 ---
 
@@ -51,7 +47,6 @@ Configure ports, model profiles, and hardware overlays without modifying scripts
   ```sh
   sh scripts/configure.sh
   ```
-  *(On Windows PowerShell: `powershell -ExecutionPolicy Bypass -File scripts\configure.ps1`)*
 
 ---
 
@@ -83,7 +78,7 @@ Specialist roles (`vision`, `transcribe`, `speak`, `draw`, `embed`, `rerank`, `s
 
 ### Component Projects
 
-The sub-projects live in their own checkouts and are tracked by commit hashes in [pins.txt](file:///home/green/feeldznutts/pins.txt):
+The sub-projects live in their own checkouts and are tracked by commit hashes in [pins.txt](pins.txt):
 
 | Project | Role |
 | --- | --- |
@@ -106,7 +101,7 @@ The sub-projects live in their own checkouts and are tracked by commit hashes in
 
 ## License
 
-Code authored in this repository is licensed under the **Light-ware License** in [LICENSE](file:///home/green/feeldznutts/LICENSE) (4-clause BSD with a voluntary invitation to support rent, groceries, or utilities). Declining the invitation does not affect your rights. Required advertising notice: *"This product includes software developed by Brian Fundakowski Feldman."*
+Code authored in this repository is licensed under the **Light-ware License** in [LICENSE](LICENSE) (4-clause BSD with a voluntary invitation to support rent, groceries, or utilities). Declining the invitation does not affect your rights. Required advertising notice: *"This product includes software developed by Brian Fundakowski Feldman."*
 
 Sub-checkouts retain their respective licenses (e.g. `llama.cpp` remains MIT).
 
