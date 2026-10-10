@@ -190,3 +190,93 @@ def test_cli_fails_loud(tmp_path):
     p = tmp_path / "g.yaml"; p.write_text(yaml.safe_dump(x))
     r = subprocess.run([sys.executable, "scripts/validate_graph.py", "--no-files", "--graph", str(p)], cwd=ROOT, capture_output=True, text=True)
     assert r.returncode == 1 and "graph: ERROR: agents.hermes: context_length 16384" in r.stderr
+
+
+# ---- pentest (authorized fleet testing; launch-test only) -------------------
+# These tests only validate the graph schema and launch preconditions.
+# They must NEVER run live scans, exploits, network probes, or attack procedures.
+
+def _pentest(**kw):
+    d = {
+        "name": "Android fleet authorized testing",
+        "node": "coder",
+        "agent": "hermes",
+        "scope": {"allow": [], "deny": []},
+        "tools": {"allow": []},
+        "report_to": "familia-issues",
+        "requires_operator_confirm": True,
+        "launch_test_only": True,
+        "status": "planned",
+    }
+    d.update(kw)
+    return d
+
+def test_pentest_baseline_planned():
+    """Planned pentest with empty scope is valid (nothing allowed until activated)."""
+    assert BASE["pentests"]["android-fleet"]["status"] == "planned"
+    assert BASE["pentests"]["android-fleet"]["launch_test_only"] is True
+    assert errs(g()) == []
+
+def test_pentest_launch_test_only_required():
+    x = g(); x["pentests"]["android-fleet"]["launch_test_only"] = False
+    has(x, "launch_test_only must be true")
+
+def test_pentest_no_tool_wildcards():
+    x = g(); x["pentests"]["android-fleet"]["tools"] = {"allow": ["nmap*"]}
+    has(x, "wildcard")
+    x = g(); x["pentests"]["android-fleet"]["tools"] = {"allow": ["all"]}
+    has(x, "wildcard")
+
+def test_pentest_network_tools_need_scope():
+    x = g(); x["pentests"]["android-fleet"]["tools"] = {"allow": ["nmap"]}
+    has(x, "need network/exec scope")
+    x = g()
+    x["pentests"]["android-fleet"]["scope"] = {"allow": ["miryam"], "deny": []}
+    x["pentests"]["android-fleet"]["tools"] = {"allow": ["nmap"]}
+    assert errs(x) == []
+
+def test_pentest_scope_target_kinds():
+    x = g(); x["pentests"]["android-fleet"]["scope"] = {"allow": ["not-a-host"], "deny": []}
+    has(x, "not a graph host name, CIDR/IP, or URL")
+    x = g(); x["pentests"]["android-fleet"]["scope"] = {"allow": ["192.168.1.0/24"], "deny": []}
+    assert errs(x) == []
+    x = g(); x["pentests"]["android-fleet"]["scope"] = {"allow": ["https://miryam.local/"], "deny": []}
+    assert errs(x) == []
+    x = g(); x["pentests"]["android-fleet"]["scope"] = {"allow": ["miryam"], "deny": ["miryam"]}
+    has(x, "both allow and deny")
+
+def test_pentest_active_requires_scope_confirm_and_role():
+    x = g()
+    x["pentests"]["android-fleet"]["status"] = "active"
+    has(x, "status active requires non-empty scope.allow")
+    x = g()
+    x["pentests"]["android-fleet"]["status"] = "active"
+    x["pentests"]["android-fleet"]["scope"] = {"allow": ["miryam"], "deny": []}
+    x["pentests"]["android-fleet"]["requires_operator_confirm"] = False
+    has(x, "requires_operator_confirm: true")
+    x = g()
+    x["pentests"]["android-fleet"]["status"] = "active"
+    x["pentests"]["android-fleet"]["scope"] = {"allow": ["miryam"], "deny": []}
+    # coder node uses role coder, not pentest
+    has(x, "expected role pentest")
+
+def test_pentest_active_with_pentest_role_model():
+    x = g()
+    x["models"]["cyber"] = dict(x["models"]["qwen35-2b-q4km"], role="pentest")
+    x["nodes"]["pentest-node"] = dict(x["nodes"]["coder"], model="cyber", port=9961, status="planned")
+    x["pentests"]["android-fleet"].update({
+        "node": "pentest-node",
+        "status": "active",
+        "scope": {"allow": ["miryam", "192.168.1.0/24"], "deny": []},
+        "tools": {"allow": ["http"]},
+    })
+    assert errs(x) == []
+
+def test_pentest_required_fields_and_refs():
+    x = g(); del x["pentests"]["android-fleet"]["name"]; has(x, "missing required 'name'")
+    x = g(); x["pentests"]["android-fleet"]["agent"] = "ghost"; has(x, "no such agents entry 'ghost'")
+    x = g(); x["pentests"]["android-fleet"]["report_to"] = "nowhere"; has(x, "no such agencies entry 'nowhere'")
+    x = g(); x["pentests"]["android-fleet"]["node"] = "ghost"; has(x, "no such nodes entry 'ghost'")
+
+def test_model_role_pentest_allowed():
+    x = g(); x["models"]["qwen35-2b-q4km"]["role"] = "pentest"; assert errs(x) == []

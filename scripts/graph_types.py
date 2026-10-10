@@ -5,6 +5,7 @@ field spec (required fields, no defaults) plus an optional cross-check
 function.  Adding a refined or new type = one TYPES entry + one checker.
 See docs/graph-types.md.
 """
+import ipaddress
 import re
 
 # ---- field specs -----------------------------------------------------------
@@ -277,6 +278,96 @@ def check_council(g, name, c, errs):
     elif c.get("mode") == "cascade" and "quorum" in c:
         errs.append(f"councils.{name}: 'quorum' only applies to mode quorum")
 
+
+# Authorized testing of the owner's fleet only. Not attack tooling.
+# Automated tests are launch-only: validate → start → healthcheck → stop.
+# Never run live scans, exploits, network probes, or attack procedures in tests.
+PENTEST_NETWORK_EXEC_TOOLS = frozenset({
+    "network", "exec", "shell", "ssh", "nmap", "curl", "http", "https",
+    "scan", "probe", "subprocess", "run_command", "tcp_connect", "udp_send",
+    "nc", "netcat", "wget", "fetch",
+})
+
+def _scope_target_ok(s, hosts):
+    """Host name in the graph, CIDR/IP, or http(s)/ssh URL."""
+    if not isinstance(s, str) or not s:
+        return False
+    if s in hosts:
+        return True
+    try:
+        ipaddress.ip_network(s, strict=False)
+        return True
+    except ValueError:
+        pass
+    return s.startswith(("http://", "https://", "ssh://"))
+
+def check_pentest(g, name, p, errs):
+    """Operator-authorized testing of owned systems. Launch-test only in automation."""
+    w = f"pentests.{name}"
+    if p.get("launch_test_only") is not True:
+        errs.append(f"{w}: launch_test_only must be true "
+                    "(validate/start/healthcheck/stop only; never live scans or exploits in tests)")
+    scope = p.get("scope")
+    if not isinstance(scope, dict):
+        errs.append(f"{w}.scope: expected mapping with allow and deny")
+        scope = {}
+    else:
+        for k in ("allow", "deny"):
+            if k not in scope:
+                errs.append(f"{w}.scope: missing required '{k}' (empty list = nothing allowed)")
+        for k in scope:
+            if k not in ("allow", "deny"):
+                errs.append(f"{w}.scope: unknown field {k!r}")
+    allow, deny = scope.get("allow"), scope.get("deny")
+    if not isinstance(allow, list) or not all(isinstance(x, str) and x for x in allow):
+        errs.append(f"{w}.scope.allow: expected list of strings (may be empty = nothing allowed)")
+        allow = []
+    if not isinstance(deny, list) or not all(isinstance(x, str) and x for x in deny):
+        errs.append(f"{w}.scope.deny: expected list of strings (may be empty)")
+        deny = []
+    hosts = g.get("hosts") or {}
+    for t in allow + deny:
+        if not _scope_target_ok(t, hosts):
+            errs.append(f"{w}.scope: target {t!r} is not a graph host name, CIDR/IP, or URL "
+                        "(http://, https://, or ssh://)")
+    overlap = sorted(set(allow) & set(deny))
+    if overlap:
+        errs.append(f"{w}.scope: targets in both allow and deny: {overlap}")
+    tools = p.get("tools")
+    if not isinstance(tools, dict):
+        errs.append(f"{w}.tools: expected mapping with allow")
+        tool_allow = []
+    else:
+        if "allow" not in tools:
+            errs.append(f"{w}.tools: missing required 'allow' (empty list = no tools)")
+        for k in tools:
+            if k not in ("allow",):
+                errs.append(f"{w}.tools: unknown field {k!r}")
+        tool_allow = tools.get("allow")
+        if not isinstance(tool_allow, list) or not all(isinstance(x, str) and x for x in tool_allow):
+            errs.append(f"{w}.tools.allow: expected list of tool name strings (may be empty); no wildcards")
+            tool_allow = []
+        for t in tool_allow:
+            if any(c in t for c in "*?[]") or t.lower() in ("*", "all", "any"):
+                errs.append(f"{w}.tools.allow: wildcard {t!r} rejected; list tools by exact name")
+    needs = [t for t in tool_allow
+             if t in PENTEST_NETWORK_EXEC_TOOLS or t.split(".", 1)[0] in PENTEST_NETWORK_EXEC_TOOLS]
+    if needs and not allow:
+        errs.append(f"{w}: tools {needs} need network/exec scope but scope.allow is empty")
+    if p.get("status") == "active":
+        if not allow:
+            errs.append(f"{w}: status active requires non-empty scope.allow "
+                        "(empty = nothing allowed; refuse to launch)")
+        if p.get("requires_operator_confirm") is not True:
+            errs.append(f"{w}: status active requires requires_operator_confirm: true "
+                        "(operator-authorized testing of owned systems only)")
+        node = lookup(g, "nodes", p.get("node"))
+        if node is not None:
+            m = lookup(g, "models", node.get("model"))
+            if m is not None and m.get("role") != "pentest":
+                errs.append(f"{w}: active pentest node {p.get('node')!r} model role is "
+                            f"{m.get('role')!r}; expected role pentest")
+
 # ---- registry --------------------------------------------------------------
 class T:
     def __init__(self, fields, check=None, experimental=False, doc=""):
@@ -294,7 +385,7 @@ TYPES = {
                    "hosts": req("refs", ref="hosts"), "supported_archs": req("list"),
                    "backends": req("list"), "spec_types": req("strlist"), "bin": opt("str")}, check_runtime, doc="inference engine build"),
     "models": T({"gguf": req("str"), "sha256": req("sha"), "arch": req("str"), "trained_ctx": req("int", min=1),
-                 "role": req("enum", choices={"chat", "coder", "reasoning", "embed", "vision", "diffusion"})}, doc="weights file"),
+                 "role": req("enum", choices={"chat", "coder", "reasoning", "embed", "vision", "diffusion", "pentest"})}, doc="weights file"),
     "nodes": T({"model": req("ref", ref="models"), "host": req("ref", ref="hosts"), "runtime": req("ref", ref="runtimes"),
                 "ctx": req("int", min=1), "parallel": req("int", min=1),
                 "kv_type": req("enum", choices={"f16", "bf16", "q8_0", "q4_0", "f32"}), "flash_attn": req("bool"),
@@ -329,6 +420,18 @@ TYPES = {
     "councils": T({"experimental": req("bool"), "mode": req("enum", choices={"quorum", "cascade"}),
                    "agents": req("refs", ref="agents"), "quorum": opt("int")}, check_council, experimental=True,
                   doc="multi-agent decision (quorum N-of-M or ordered cascade)"),
+    "pentests": T({"name": req("str"),
+                   "node": req("ref", ref="nodes"),
+                   "agent": req("ref", ref="agents"),
+                   "scope": req("any"),
+                   "tools": req("any"),
+                   "report_to": req("ref", ref="agencies"),
+                   "requires_operator_confirm": req("bool"),
+                   "launch_test_only": req("bool"),
+                   "status": req("enum", choices={"planned", "active"}),
+                   "notes": opt("str")},
+                  check_pentest,
+                  doc="authorized testing of the owner's fleet (launch-test only in automation; not attack tooling)"),
 }
 REQUIRED_SECTIONS = ("hosts", "runtimes", "models", "nodes", "gateways", "aliases", "agents")
 

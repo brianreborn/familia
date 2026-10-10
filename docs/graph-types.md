@@ -23,7 +23,7 @@ graph TD
   gpu["gpus[]: vendor, model, vram_mib, backend cuda|vulkan|sycl|metal|opencl|rocm|none, backend_status verified|tbd|unsupported, compute_capability, driver, measured"]
   transport["transports: kind local|ssh|nfs|rsync|bittorrent|zfs, from, to"]
   runtime["runtimes: kind llama-server|drex-dlm, build, commit, bin, hosts, supported_archs, backends, spec_types"]
-  model["models: gguf, sha256, arch, trained_ctx, role chat|coder|reasoning|embed|vision|diffusion"]
+  model["models: gguf, sha256, arch, trained_ctx, role chat|coder|reasoning|embed|vision|diffusion|pentest"]
   node["nodes: model, host, runtime, ctx, parallel, kv_type, flash_attn, offload {backend, ngl, split, main_gpu}, bind, port, cache_ram_mib, status active|planned, embeddings"]
   spec["speculative (pencilled in): status planned|experimental|active, mode draft|ngram, target, draft, draft_max, draft_min, p_min, spec_type"]:::exp
   gateway["gateways: kind green-roomz, host, port"]
@@ -36,6 +36,8 @@ graph TD
   store["stores (experimental): kind fs|sqlite|git, host, path"]:::exp
   reach["reaches (experimental, agent-reach): repo, agents"]:::exp
   council["councils (experimental): mode quorum N-of-M | cascade, agents"]:::exp
+  pentest["pentests: name, node, agent, scope.allow/deny, tools.allow, report_to, requires_operator_confirm, launch_test_only, status planned|active"]
+
 
   host -->|has| gpu
   node -->|offload main_gpu| gpu
@@ -59,6 +61,9 @@ graph TD
   store -->|on| host
   reach -->|tools for| agent
   council -->|convenes| agent
+  pentest -->|runs on| node
+  pentest -->|driven by| agent
+  pentest -->|reports to| agency
   classDef exp stroke-dasharray: 5 5
 ```
 
@@ -79,6 +84,8 @@ graph TD
 | fleet | Every listed agent must exist. |
 | agency | `repo` is owner/name, and assignments map labels from `labels` to existing agents. |
 | room, swarm, store, reach, council | Experimental. They need `experimental: true`. Council `quorum` needs 1 <= quorum <= len(agents). `cascade` runs agents in list order and takes no quorum. |
+
+| pentest | Legitimate, operator-authorized testing of the owner's fleet — not attack tooling. `scope.allow` / `scope.deny` are lists of graph host names, CIDRs/IPs, or http(s)/ssh URLs (empty allow = nothing allowed). `tools.allow` is an explicit tool-name list with no wildcards. Network/exec tools (nmap, shell, ssh, curl, …) require a non-empty `scope.allow`. `status: active` requires non-empty `scope.allow`, `requires_operator_confirm: true`, and a node whose model has `role: pentest`. `launch_test_only: true` is required: automation may only validate → start → healthcheck → stop; never live scans, exploits, or network probes in tests. See `docs/pentest-models.md`. |
 
 Unknown sections and unknown fields are errors, so a typo can't quietly do nothing.
 
@@ -124,3 +131,15 @@ promote an experimental type, set `experimental=False`, drop its
 | pixel8 | android | Mali (Tensor G3) | vulkan or opencl | tbd | no |
 
 qodesh is worth having for its 16 GB of RAM: it can hold bigger CPU-only models than miryam, at about 3 tok/s (green-roomz #4). `nodes.qodesh-resident` is pencilled in with `status: planned` until a Windows llama.cpp build is declared in `runtimes` and its `windows.startup` method is picked.
+
+## Pentest (authorized fleet testing)
+
+`pentests` is a top-level type for **operator-authorized testing of systems the
+owner controls**. It replaces the old LESSONS-LEARNED advice to hide the role as
+metadata on a generic task node for the declarative graph (the android scripts
+still say `--role pentest` until #15 lands the missing helpers).
+
+Unplaced model options from the survey (only what the user has actually
+considered — nothing invented) live in [`docs/pentest-models.md`](pentest-models.md).
+Today that is Dolphin3-Cyber-8B; WhiteRabbitNeo / Lily / DeepHat / KaliGPT were
+searched and not found in the user's RTs.

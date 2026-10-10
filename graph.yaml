@@ -244,3 +244,26 @@ agencies:
     labels: [bug, config-graph]
     assignments:
       config-graph: hermes
+
+pentests:
+  # Pencilled in. Authorized testing of the owner's fleet only — not attack tooling.
+  # Automation is launch-test only (validate → start → healthcheck → stop). Never live
+  # scans, exploits, or network probes in tests. See docs/pentest-models.md and #15.
+  # Model options from survey (unplaced): Dolphin3-Cyber-8B (BrianReborn_alt RT 2026-09-20).
+  android-fleet:
+    name: Android fleet authorized testing
+    node: coder                   # placeholder until a role:pentest model is placed
+    agent: hermes
+    scope:
+      allow: []                   # empty = nothing allowed; required non-empty to go active
+      deny: []
+    tools:
+      allow: []                   # explicit tool names only; no wildcards
+    report_to: familia-issues
+    requires_operator_confirm: true
+    launch_test_only: true
+    status: planned
+    notes: >-
+      Ties to android_start.sh --role pentest and missing scripts/pentest-role.json (#15).
+      Activate only after a pentest-role model is placed, scope.allow lists owned hosts/CIDRs,
+      and tools.allow is an explicit allowlist. Operator confirm required.
