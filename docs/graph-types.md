@@ -126,9 +126,8 @@ promote an experimental type, set `experimental=False`, drop its
 | qodesh | windows 10 | GeForce 8600 GT, 256 MiB, CC 1.1, driver 341.92 | none | unsupported | yes |
 | shalom | ? | unknown (`gpus: []`) | | | no |
 | godslove | freebsd-15 | Ironlake / NVS | none | unsupported (green-roomz #5) | no |
-| note9 | android | Adreno 630 | opencl or vulkan | tbd | no |
-| a57 | android | not recorded | | | no |
-| pixel8 | android | Mali (Tensor G3) | vulkan or opencl | tbd | no |
+| phone7 | android 16 (Galaxy A57, 192.168.1.7) | Samsung Xclipse 550, shared RAM, Vulkan 1.4.304 (driver 25.4.7) | vulkan (OpenCL blocked) | tbd | yes |
+| phone8 | android 16 (Galaxy A57, 192.168.1.8) | Samsung Xclipse 550, shared RAM, Vulkan 1.4.304 (driver 25.4.7) | vulkan (OpenCL blocked) | tbd | yes |
 
 qodesh is worth having for its 16 GB of RAM: it can hold bigger CPU-only models than miryam, at about 3 tok/s (green-roomz #4). `nodes.qodesh-resident` is pencilled in with `status: planned` until a Windows llama.cpp build is declared in `runtimes` and its `windows.startup` method is picked.
 

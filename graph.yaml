@@ -98,58 +98,60 @@ hosts:
         compute_capability: null
         driver: null
         measured: false
-  note9:
-    kind: phone
-    measured: false
-    os: android
-    cpu: Snapdragon 845 (SDM845)
-    notes: Samsung Galaxy Note 9. Which of 192.168.1.7 (u0_a439) / .8 (u0_a414) is which is unconfirmed; key not installed yet.
-    gpus:
-      - vendor: qualcomm
-        model: Adreno 630
-        vram_mib: null           # shared memory
-        backend: opencl          # vulkan or opencl possible; unmeasured
-        backend_status: tbd
-        compute_capability: null
-        driver: null
-        measured: false
-  a57:
-    kind: phone
-    measured: false
-    os: android
-    cpu: Samsung Galaxy A57 SM-A576U (SoC unconfirmed)
-    reported:
-      source: familia docs
-      ram_mib: 7430
-    gpus: []                     # GPU not recorded yet
-  pixel8:
-    kind: phone
-    measured: false
-    os: android
-    cpu: Google Tensor G3
-    gpus:
-      - vendor: arm
-        model: Mali (Immortalis-G715 class, unconfirmed)
-        vram_mib: null
-        backend: vulkan          # vulkan or opencl; unmeasured
-        backend_status: tbd
-        compute_capability: null
-        driver: null
-        measured: false
   phone7:
     kind: phone
-    measured: false              # full measurements land with feat/android-hosts
+    measured: true               # measured 2026-10-09 ~22:50 PT over key-only SSH from qodesh
     addr: 192.168.1.7            # Termux sshd, key-only
     user: u0_a439
     port: 8022
-    gpus: []
+    os: android-16
+    cpu: 8 cores, ARMv8 (3x part 0xd80 Cortex-A520, 5x part 0xd81 Cortex-A720)
+    threads: 3                   # nproc inside Termux = 3 (8 cores in /proc/cpuinfo; cpuset-limited)
+    ram_mib: 7430                # MemTotal 7608348 kB
+    reserve_ram_mib: 5120        # policy, not measured: Android + apps; MemAvailable was 2598 MiB at measurement. See docs/ram-safety.md
+    notes: >-
+      Samsung Galaxy A57 (SM-A576U, a57xsq); SoC Samsung Exynos s5e8865 (ro.board.platform erd8865). SSH key-only u0_a439@192.168.1.7:8022.
+      Termux, aarch64. $HOME: 224G, 86G used, 138G free. Termux pkgs: git, python, llama-cpp 0.5.0 (+opencl, vulkan backends), ollama 0.31.1 (+vulkan), rsync, python-torch/numpy/scipy, mesa-vulkan-icd-swrast.
+      Two physical A57s on the LAN (distinct boot_id, same build fingerprint).
+    gpus:
+      - vendor: samsung
+        model: Samsung Xclipse 550   # vulkaninfo deviceName, INTEGRATED_GPU
+        vram_mib: 0              # shared-memory iGPU; Vulkan heap0 6.83 GiB device-local (shared), heap1 64 MiB
+        backend: vulkan          # Vulkan 1.4.304, conformance 1.4.1.1; fp16, int8, 16-bit storage; subgroup 64
+        backend_status: tbd      # stays tbd until an inference test
+        compute_capability: null
+        driver: Samsung Proprietary (SPAL) 25.4.7, git 702e7fd271
+        measured: true           # vulkaninfo via /system/lib64/libvulkan.so, 2026-10-09 PT. Termux's own loader only sees llvmpipe.
+        notes: >-
+          OpenCL unusable from Termux: the vendor libSGPUOpenCL.so is blocked by the Android
+          linker namespace (missing android.hardware.graphics.mapper@4.0-impl-sgr.so), so clinfo reports 0 platforms.
   phone8:
     kind: phone
-    measured: false              # full measurements land with feat/android-hosts
+    measured: true               # measured 2026-10-09 ~22:50 PT over key-only SSH from qodesh
     addr: 192.168.1.8            # Termux sshd, key-only
     user: u0_a414
     port: 8022
-    gpus: []
+    os: android-16
+    cpu: 8 cores, ARMv8 (3x part 0xd80 Cortex-A520, 5x part 0xd81 Cortex-A720)
+    threads: 3                   # nproc inside Termux = 3 (8 cores in /proc/cpuinfo; cpuset-limited)
+    ram_mib: 7430                # MemTotal 7608348 kB
+    reserve_ram_mib: 5120        # policy, not measured: Android + apps; MemAvailable was 2127 MiB at measurement. See docs/ram-safety.md
+    notes: >-
+      Samsung Galaxy A57 (SM-A576U, a57xsq); SoC Samsung Exynos s5e8865 (ro.board.platform erd8865). SSH key-only u0_a414@192.168.1.8:8022.
+      Termux, aarch64. $HOME: 224G, 50G used, 173G free. Termux pkgs: git, python only (no llama-cpp, no rsync).
+      Two physical A57s on the LAN (distinct boot_id, same build fingerprint).
+    gpus:
+      - vendor: samsung
+        model: Samsung Xclipse 550   # vulkaninfo deviceName, INTEGRATED_GPU
+        vram_mib: 0              # shared-memory iGPU; Vulkan heap0 6.83 GiB device-local (shared), heap1 64 MiB
+        backend: vulkan          # Vulkan 1.4.304, conformance 1.4.1.1; fp16, int8, 16-bit storage; subgroup 64
+        backend_status: tbd      # stays tbd until an inference test
+        compute_capability: null
+        driver: Samsung Proprietary (SPAL) 25.4.7, git 702e7fd271
+        measured: true           # vulkaninfo via /system/lib64/libvulkan.so, 2026-10-09 PT. Termux's own loader only sees llvmpipe.
+        notes: >-
+          OpenCL unusable from Termux: the vendor libSGPUOpenCL.so is blocked by the Android
+          linker namespace (missing android.hardware.graphics.mapper@4.0-impl-sgr.so), so clinfo reports 0 platforms.
 
 transports:
   miryam-local: {kind: local, from: miryam, to: miryam}
@@ -460,7 +462,7 @@ options:
     size_note: 16.9 MB (from post)
     runtime_note: Format/runtime unknown; not llama-server. Needs an stt node kind before placement.
     placement_note: Phones and qodesh first (#25).
-    candidate_hosts: [note9, pixel8, a57, qodesh]
+    candidate_hosts: [phone7, phone8, qodesh]
   paradee-tts:
     role: tts
     unverified: true
@@ -468,7 +470,7 @@ options:
     size_note: 8M params / 9 MB, Kokoro-distilled (from post)
     runtime_note: Format/runtime unknown; not llama-server. Needs a tts node kind before placement.
     placement_note: Phones and qodesh first (#25).
-    candidate_hosts: [note9, pixel8, a57, qodesh]
+    candidate_hosts: [phone7, phone8, qodesh]
   # ---- #26 coder candidate
   qwen35-9b-coder:
     role: coder

@@ -22,9 +22,9 @@ def test_host_measure_dry_run_and_force(tmp_path):
     snap = g.read_text()
     assert _run("--name", "x1", "--graph", str(g), "--dry-run").returncode == 0
     assert g.read_text() == snap
-    assert _run("--name", "note9", "--graph", str(g), "--force", "--kind", "phone").returncode == 0
+    assert _run("--name", "shalom", "--graph", str(g), "--force", "--kind", "phone").returncode == 0
     d = yaml.safe_load(open(g))["hosts"]
-    assert d["note9"]["measured"] is True and set(d) == set(yaml.safe_load(snap)["hosts"])
+    assert d["shalom"]["measured"] is True and set(d) == set(yaml.safe_load(snap)["hosts"])
 
 def test_bad_name(tmp_path):
     assert _run("--name", "Bad Name", "--graph", os.path.join(ROOT, "graph.yaml"), "--dry-run").returncode != 0
