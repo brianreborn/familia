@@ -27,9 +27,9 @@ First tagged release.
 
 ### Changed
 - Project renamed from feeldznutts to familia across scripts and docs. (#12, #13)
-- Installer now clones `brianreborn/familia` into `~/familia` by default. `FAMILIA_REPO_URL` replaces `FEELD_REPO_URL` (old name still honored, with a deprecation warning). (#16) <!-- confirm final variable names in the #16 PR -->
-- Remaining `feeldznutts` log prefixes and the `feeld.env` / `feeld-server` names replaced. (#16)
-- Docs: Windows instructions referencing files not shipped at the top level (`install.ps1`, `start.bat`, `scripts/configure.ps1`) removed or marked unsupported. (#17) <!-- or "Added Windows installer" if #17 goes the other way -->
+- Installer now clones `brianreborn/familia` into `~/familia` by default. `FAMILIA_REPO_URL` replaces `FEELD_REPO_URL` (old name still honored, with a deprecation warning). (#16)
+- Remaining `feeldznutts` log prefixes and the `feeld.env` / `feeld-server` names replaced (`familia.env`, `familia-server`; an existing `feeld.env` is migrated). (#16)
+- Windows: one-click installer `install\windows\install.bat` / `install.ps1`, `scripts\windows\start.bat` and an opt-in logon task. Docs no longer reference unshipped top-level `install.ps1` or `scripts/configure.ps1`. (#16, #17)
 - Android scripts read host, port and user from the environment; host keys use `accept-new`; no unprompted `sudo` installs. (#18)
 
 ### Fixed

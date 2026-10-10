@@ -53,7 +53,7 @@ The launcher opens `chat`. `coder` is a handoff from `chat` or `route`, not the 
 | Node | What it is | Default hooks |
 |---|---|---|
 | model | one route name (`chat`, `coder`, `route`, `translate`, …) | `in`, `weights`, `kv` |
-| agent | `scripts/agent.py` or a green-agentz profile | `task`, `tools`, `local`, `remote` |
+| agent | a green-agentz profile (`scripts/agent.py` is planned, not in the tree yet) | `task`, `tools`, `local`, `remote` |
 | agency | one green-agency skill run | `in`, `out`, `snap` |
 | room | one green-roomz alias (a named backend) | `in`, `handoff` |
 | swarm | one green-fleetz member | `task`, `result` |
@@ -137,7 +137,7 @@ Windows uses the same order. `SeLockMemoryPrivilege` is granted to the user for 
 On Android / Termux and remote machines, interactive terminal shells can be closed or reclaimed by the OS. Processes can run detached:
 
 - `DETACH_MODE` option (`foreground`, `nohup`, `tmux`, `screen`).
-- In `tmux` or `screen` mode, `start.sh` allocates a named detached session (`feeld-server`).
+- In `tmux` or `screen` mode, `start.sh` allocates a named detached session (`familia-server`).
 - In `nohup` mode, file descriptors are detached from the controlling TTY, streaming stdout/stderr to `.cache/server.log`.
 - On Termux, `termux-wake-lock` is held unconditionally so the daemon remains scheduled when backgrounded or detached.
 
@@ -151,7 +151,7 @@ Checkouts keep their own licenses. We do not relicense them. We do not copy a fi
 
 ## Green-roomz on this llama.cpp
 
-Green-roomz stays a checkout. Its design is the alias map and the handoff rule. Residency stays in `scripts/serve.sh`.
+Green-roomz stays a checkout. Its design is the alias map and the handoff rule. Residency stays in green-roomz (its `scripts/serve.sh`), not in familia.
 
 - A stable alias points at one backend. The manifest is the node declaration.
 - `route` is the resident nexus. It is the small CPU model loaded at start, and it is moved aside only while another model is actually running. The old section name `decision` is not the route name.
@@ -305,7 +305,7 @@ The GitHub repository is created only after this plan is accepted. Nothing is co
 
 1. Top-level tree and pins. No code moved between projects. Our `LICENSE` is the Light-ware License from `japanglify/LICENSE`.
 2. The transaction block, parsed by the agent, stored next to `remote.json`.
-3. `/local` as a peer of `/remote` in `scripts/agent.py`, same subcommands, in the tool list.
+3. `/local` as a peer of `/remote` in the planned `scripts/agent.py`, same subcommands, in the tool list.
 4. Snapshot-before-write. Use the filesystem driver when one exists. Otherwise dump slot KV first, `kill -STOP`, rsync the tree plus those dumps, then `kill -CONT`. The launcher opens `chat`.
 5. Two-click install of that tree on this Linux host and a documented PS 5.1 path. The second click is the donation-ware tap-through. Do not block on a live Windows run.
 

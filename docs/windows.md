@@ -1,6 +1,6 @@
 # Windows (qodesh) startup (#17)
 
-Status: scripts shipped, **not yet run on qodesh**. `install.ps1` and `scripts\configure.ps1` are still not shipped.
+Status: scripts shipped, **not yet run end to end on qodesh**. The one-click installer is `install\windows\install.bat` / `install\windows\install.ps1` (see docs/install.md); there is no `configure.ps1`.
 
 ## Requirements
 - Windows 10 x64. **No AVX required**: the official ggml-org `llama-*-bin-win-cpu-x64.zip` selects its CPU

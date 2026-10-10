@@ -9,7 +9,7 @@ Installation takes two steps. Linux is tested; Termux (Android) is partly tested
 ```sh
 curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install.sh | sh
 ```
-*Windows: `scripts\windows\start.bat` and an opt-in logon task (`scripts\windows\install-task.ps1`) are shipped, not yet run on qodesh; see docs/windows.md. `install.ps1` and `scripts/configure.ps1` are not shipped yet (#17).*
+*Windows: one-click `install\windows\install.bat` (wraps `install\windows\install.ps1`), plus `scripts\windows\start.bat` and an opt-in logon task (`scripts\windows\install-task.ps1`); see docs/windows.md and docs/install.md. Windows has no `configure.ps1`; the installer does that step itself.*
 
 **Note**: The installer will prompt for acknowledgment of the Light-ware License. Type `yes` (or `y`) to proceed. If running in an automated environment, set `INSTALL_ACK=yes` before executing the script.
 

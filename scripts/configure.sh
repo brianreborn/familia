@@ -107,7 +107,9 @@ while IFS="$(printf '\t')" read -r col1 col2 col3 col4 || [ -n "$col1" ]; do
 done < "$PINS_FILE"
 
 # 2. Configure defaults: MCP is never disabled on slow CPU or lowram
-ENV_FILE="$CACHE_DIR/feeld.env"
+ENV_FILE="$CACHE_DIR/familia.env"
+# Pre-rename name (#16): migrate once, keep the contents.
+[ -f "$ENV_FILE" ] || { [ -f "$CACHE_DIR/feeld.env" ] && mv "$CACHE_DIR/feeld.env" "$ENV_FILE"; } || true
 [ -f "$ENV_FILE" ] || : > "$ENV_FILE"
 
 # Delegate interactive settings if requested

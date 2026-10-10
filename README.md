@@ -160,7 +160,7 @@ What is on [`fix/config-graph`](https://github.com/brianreborn/familia/tree/fix/
 | [docs/ram-safety.md](docs/ram-safety.md) | RAM reserve rule and validator checks |
 | [docs/announcements/](docs/announcements/) | Release-note and announcement **drafts** (placeholders, not published) |
 | [docs/known-issues.md](docs/known-issues.md) | Current problems and workarounds |
-| [CHANGELOG.md](CHANGELOG.md) | Release notes |
+| [docs/announcements/CHANGELOG.md](docs/announcements/CHANGELOG.md) | Release notes |
 
 ---
 
