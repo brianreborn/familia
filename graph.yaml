@@ -331,3 +331,29 @@ options:
     size_note: 26B params - far too big for 256 MB VRAM; ~15 GB at Q4 (estimate) exceeds every host's free RAM
     gpu_candidate: false
     placement_note: Catalog only.
+  # ---- #25 on-device speech
+  whistle-stt:
+    role: stt
+    unverified: true
+    sources: ["https://x.com/BrianReborn_alt/status/2108691766589415772", "https://x.com/BrianReborn_alt/status/2106699237761392838"]
+    size_note: 16.9 MB (from post)
+    runtime_note: Format/runtime unknown; not llama-server. Needs an stt node kind before placement.
+    placement_note: Phones and qodesh first (#25).
+    candidate_hosts: [note9, pixel8, a57, qodesh]
+  paradee-tts:
+    role: tts
+    unverified: true
+    sources: ["https://x.com/BrianReborn_alt/status/2108070180769407307"]
+    size_note: 8M params / 9 MB, Kokoro-distilled (from post)
+    runtime_note: Format/runtime unknown; not llama-server. Needs a tts node kind before placement.
+    placement_note: Phones and qodesh first (#25).
+    candidate_hosts: [note9, pixel8, a57, qodesh]
+  # ---- #26 coder candidate
+  qwen35-9b-coder:
+    role: coder
+    unverified: true
+    sources: ["https://x.com/BrianReborn_alt/status/2108600815808336061"]
+    size_note: 9B params; ~5.5 GB at Q4_K_M + KV (estimate, not measured)
+    placement_note: qodesh only by RAM (16 GB, ~11.5 GB free). miryam (7 GB, 3 GB reserve) cannot fit it.
+    candidate_hosts: [qodesh]
+    notes: Kimi-k3 distill claim from post; HF repo, quants and license unresolved.

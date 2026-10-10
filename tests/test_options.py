@@ -28,6 +28,10 @@ def test_option_checks():
     x = g(); del x["options"]["glide"]["unverified"]; has(x, "missing required 'unverified'")
 
 def test_options_not_ram_counted():
-    x = g(); before = validate_graph.validate(x) if hasattr(validate_graph, "validate") else None
-    x["options"]["huge"] = {"role": "coder", "unverified": True, "sources": ["s"], "size_note": "999 GB"}
+    x = g(); x["options"]["huge"] = {"role": "coder", "unverified": True, "sources": ["s"], "size_note": "999 GB"}
     assert validate_types(x) == []
+
+def test_speech_and_coder_options():
+    o = BASE["options"]
+    assert o["whistle-stt"]["role"] == "stt" and o["paradee-tts"]["role"] == "tts"
+    assert o["qwen35-9b-coder"]["candidate_hosts"] == ["qodesh"]
