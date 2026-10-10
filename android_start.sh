@@ -18,7 +18,7 @@ fi
 sshpass -p "$ANDROID_SSH_PASSWORD" ssh -o StrictHostKeyChecking=no -p 8022 u0_a439@192.168.1.6 "\
   cd /data/local/tmp && \
   ./start-green-roomz.sh && \
-  echo 'Android node started'\"
+  echo 'Android node started'"
 
 # Register the node with the fleet using the existing with-fleet.sh helper
 # Assuming with-fleet.sh is in the repo root
