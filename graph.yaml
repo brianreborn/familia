@@ -57,7 +57,9 @@ hosts:
           33.3 tok/s GPU + 11.5 tok/s CPU (~3% contention). Prior 17 t/s was
           OMP=1+pinned + 4/57 MiB resident. Catalog (#24): K2-Horizon-0.9B Q4
           ~605 MiB too large; SmolLM2-135M Q4_0 87.4 MiB fits ~100 MiB budget
-          (GGUF on-device pending ggml-sm11 Q4). Backend cuda-sm11-ptx only.
+          GGUF via ggml-sm11 (2026-10-10): SmolLM2 Q4_0 4.5 tok/s GPU, 56 MiB
+          resident (Q8_0 output stays CPU under 16 MiB VRAM margin); concurrent
+          4.5 GPU + 10.6 CPU. Backend cuda-sm11-ptx only.
     windows:
       repo_path: TBD
       models_path: 'E:\familia\models'   # proposed: E: has the free space; not created yet
