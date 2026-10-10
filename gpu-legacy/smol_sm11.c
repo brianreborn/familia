@@ -110,7 +110,7 @@ static int qmvc(CUdeviceptr y, CUdeviceptr x, CUdeviceptr w, unsigned n, unsigne
   unsigned ch=(d+R-1)/R; if(grid>ch) grid=ch;
   void* a[]={&y,&x,&w,&n,&d,&R,&L};
   return p_cuLaunchKernel(q8?f_q8r:f_q4r, grid,1,1, R*L,1,1, sm, 0, a, 0); }
-#define PFW 12
+#define PFW 1000  /* v3: no register prefetch */
 static unsigned fcfgR[4],fcfgL[4],fcfgG[4];
 static int qmvfc(CUdeviceptr y, CUdeviceptr x, CUdeviceptr w, unsigned n, unsigned d, int q8, CUdeviceptr nw, unsigned mode, unsigned R, unsigned L, unsigned grid){
   unsigned rb=n/32*(q8?34:18);
@@ -122,7 +122,7 @@ static int qmvfc(CUdeviceptr y, CUdeviceptr x, CUdeviceptr w, unsigned n, unsign
   return p_cuLaunchKernel(q8?f_q8f:f_q4f, grid,1,1, R*L,1,1, sm, 0, a, 0); }
 static int qmvf(CUdeviceptr y, CUdeviceptr x, CUdeviceptr w, unsigned n, unsigned d, int q8, CUdeviceptr nw, unsigned mode){
   int c = q8?2:(n!=576?1:(d>4096?3:0));
-  if(!fcfgR[c]){ unsigned dR[4]={16,8,4,16}, dL[4]={8,24,16,8}, dG[4]={8,8,32,32}; fcfgR[c]=dR[c]; fcfgL[c]=dL[c]; fcfgG[c]=dG[c];
+  if(!fcfgR[c]){ unsigned dR[4]={32,8,8,16}, dL[4]={8,24,16,8}, dG[4]={4,4,128,32};  /* v3 sweep 2026-10-10 */ fcfgR[c]=dR[c]; fcfgL[c]=dL[c]; fcfgG[c]=dG[c];
     char k[32]; sprintf(k,"SMOL_FCFG%d",c); if(getenv(k)) sscanf(getenv(k),"%u,%u,%u",&fcfgR[c],&fcfgL[c],&fcfgG[c]); }
   return qmvfc(y,x,w,n,d,q8,nw,mode,fcfgR[c],fcfgL[c],fcfgG[c]); }
 static int qmv(CUdeviceptr y, CUdeviceptr x, CUdeviceptr w, unsigned n, unsigned d, int q8){
@@ -233,10 +233,17 @@ static int finish_gpu(Seq* sq){
   int b=0; for(int i=1;i<nvocab;i++) if(LOG[i]>LOG[b]) b=i; t_cls+=now()-a; return b; }
 static Seq g_seq[2];
 static int fwd_gpu_tok(int tok,int pos){ Seq* q=&g_seq[0]; enqueue_gpu(q,tok,pos); seq_wait(q); return finish_gpu(q); }
+static void occ(const char* nm, CUfunction f, unsigned thr, unsigned smem){
+  CUresult (__stdcall *ga)(int*,int,CUfunction)=(void*)GetProcAddress(GetModuleHandleA("nvcuda.dll"),"cuFuncGetAttribute");
+  int regs=-1, ssm=-1, lmem=-1; if(ga){ ga(&regs,4,f); ga(&ssm,1,f); ga(&lmem,3,f); }
+  int regblk = ((regs*thr+255)/256)*256; /* sm_1x: reg alloc granularity 256/block (approx) */
+  int b1 = regblk? 8192/regblk : 8, b2 = 16384/(smem+ssm+16), b3 = 768/thr; int b=b1<b2?b1:b2; if(b3<b)b=b3; if(b>8)b=8;
+  fprintf(stderr,"occ %-10s regs/thr=%d lmem=%d static_smem=%d | %u thr, %u dyn smem -> %d CTA/SM (%d thr, %.0f%% of 768)  [limits: regs %d smem %d thr %d]\n",nm,regs,lmem,ssm,thr,smem,b,b*thr,100.0*b*thr/768,b1,b2,b3); }
 static void kbench(void){ unsigned dim=c_dim, hd=c_hd; int N=200; double a;
-  if(g_fused){ unsigned Rs[]={2,4,8,16,32}, Ls[]={8,16,24,32,48}, Gs[]={8,16,32,64}; struct {unsigned n,d; CUdeviceptr w,y,x,nw; unsigned mode; int q8;} sh[4]={{576,3072,dW[0][4],dHB,dX,dN[0][1],0,0},{1536,576,dW[0][6],dXB,dHB,0,2,0},{576,960,dW[0][0],dQKV,dX,dN[0][0],0,0},{576,(unsigned)nvocab,dEMB,dLOG,dX,dON,0,1}};
+  occ("k_q4f",f_q4f,64,576*4+8*324+128+256); occ("k_q4f/1536",f_q4f,192,1536*4+8*864+128+768); occ("k_q8f",f_q8f,128,576*4+8*612+128+512); occ("k_q4r",f_q4r,64,576*4+16*324+128+256); occ("k_attn_mh",f_attnmh,128,0); occ("k_rope_kv",f_ropekv,128,0);
+  if(g_fused){ unsigned Rs[]={2,4,8,16,32}, Ls[]={8,16,24,32,48}, Gs[]={4,8,16,32,64,128}; struct {unsigned n,d; CUdeviceptr w,y,x,nw; unsigned mode; int q8;} sh[4]={{576,3072,dW[0][4],dHB,dX,dN[0][1],0,0},{1536,576,dW[0][6],dXB,dHB,0,2,0},{576,960,dW[0][0],dQKV,dX,dN[0][0],0,0},{576,(unsigned)nvocab,dEMB,dLOG,dX,dON,0,1}};
     for(int s=0;s<4;s++){ if(s==3&&(!gpu_cls||cls_q4)) continue; double best=1e9; unsigned bR=0,bL=0,bG=0; int it=s==3?5:50;
-      for(int i=0;i<5;i++) for(int j=0;j<5;j++) for(int g=0;g<4;g++){ unsigned G=Gs[g]*(s==3?4:1);
+      for(int i=0;i<5;i++) for(int j=0;j<5;j++) for(int g=0;g<6;g++){ unsigned G=Gs[g]*(s==3?4:1);
         p_cuCtxSynchronize(); double t0=now(); int bad=0; for(int k=0;k<it&&!bad;k++) bad=qmvfc(sh[s].y,sh[s].x,sh[s].w,sh[s].n,sh[s].d,sh[s].q8,sh[s].nw,sh[s].mode,Rs[i],Ls[j],G); if(p_cuCtxSynchronize()||bad) continue; double t=(now()-t0)*1000/it; if(t<best){best=t;bR=Rs[i];bL=Ls[j];bG=G;} }
       double gbs = (double)sh[s].n/32*(sh[s].q8?34:18)*sh[s].d/(best*1e-3)/1e9;
       fprintf(stderr,"fused best %ux%u%s: R=%u L=%u G=%u %.3f ms (%.2f GB/s)\n",sh[s].n,sh[s].d,sh[s].q8?" q8":"",bR,bL,bG,best,gbs); } }

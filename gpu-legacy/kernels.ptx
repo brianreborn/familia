@@ -1272,7 +1272,7 @@ DONE: ret;
 .visible .entry k_q4f(.param .u64 py, .param .u64 px, .param .u64 pw, .param .u32 pn, .param .u32 pd, .param .u32 pR, .param .u32 pL,
                        .param .u64 pnw, .param .u32 pmode)
 {
-  .reg .u32 %r<72>; .reg .u64 %rd<32>; .reg .f32 %f<24>; .reg .pred %p<12>;
+  .reg .u32 %r<54>; .reg .u64 %rd<32>; .reg .f32 %f<24>; .reg .pred %p<12>;
   ld.param.u64 %rd1, [py]; ld.param.u64 %rd2, [px]; ld.param.u64 %rd3, [pw];
   ld.param.u32 %r1, [pn]; ld.param.u32 %r2, [pd]; ld.param.u32 %r3, [pR]; ld.param.u32 %r5, [pL]; mov.u32 %r41, %ntid.x;
   ld.param.u64 %rd20, [pnw]; ld.param.u32 %r45, [pmode];
@@ -1285,35 +1285,7 @@ DONE: ret;
   mul.lo.u32 %r13, %r2, %r9; add.u32 %r14, %r13, 3; shr.u32 %r14, %r14, 2;
   mov.u32 %r15, %ctaid.x; mov.u32 %r16, %nctaid.x; mul.lo.u32 %r17, %r15, %r3; mul.lo.u32 %r18, %r16, %r3;
   // prefetch first chunk while we build x
-  setp.ge.u32 %p1, %r17, %r2; @%p1 bra NOPF0;
-  mul.lo.u32 %r19, %r17, %r9; and.b32 %r20, %r19, 0xFFFFFFC0; sub.u32 %r21, %r19, %r20;
-  add.u32 %r22, %r17, %r3; min.u32 %r22, %r22, %r2; mul.lo.u32 %r22, %r22, %r9;
-  sub.u32 %r23, %r22, %r20; add.u32 %r23, %r23, 3; shr.u32 %r23, %r23, 2; shr.u32 %r24, %r20, 2;
-  mad.lo.u32 %r25, %r41, 0, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r54, 0; @%p2 ld.global.u32 %r54, [%rd7];
-  mad.lo.u32 %r25, %r41, 1, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r55, 0; @%p2 ld.global.u32 %r55, [%rd7];
-  mad.lo.u32 %r25, %r41, 2, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r56, 0; @%p2 ld.global.u32 %r56, [%rd7];
-  mad.lo.u32 %r25, %r41, 3, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r57, 0; @%p2 ld.global.u32 %r57, [%rd7];
-  mad.lo.u32 %r25, %r41, 4, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r58, 0; @%p2 ld.global.u32 %r58, [%rd7];
-  mad.lo.u32 %r25, %r41, 5, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r59, 0; @%p2 ld.global.u32 %r59, [%rd7];
-  mad.lo.u32 %r25, %r41, 6, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r60, 0; @%p2 ld.global.u32 %r60, [%rd7];
-  mad.lo.u32 %r25, %r41, 7, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r61, 0; @%p2 ld.global.u32 %r61, [%rd7];
-  mad.lo.u32 %r25, %r41, 8, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r62, 0; @%p2 ld.global.u32 %r62, [%rd7];
-  mad.lo.u32 %r25, %r41, 9, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r63, 0; @%p2 ld.global.u32 %r63, [%rd7];
-  mad.lo.u32 %r25, %r41, 10, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r64, 0; @%p2 ld.global.u32 %r64, [%rd7];
-  mad.lo.u32 %r25, %r41, 11, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r65, 0; @%p2 ld.global.u32 %r65, [%rd7];
-NOPF0:
+
   // ---- x prologue: mode bit1 = silu(x[i])*x[i+n]; ss for rmsnorm if pnw != 0
   and.b32 %r46, %r45, 2; mov.f32 %f12, 0f00000000;
   mov.u32 %r25, %r4;
@@ -1347,51 +1319,16 @@ CHUNK:
   mul.lo.u32 %r19, %r17, %r9; and.b32 %r20, %r19, 0xFFFFFFC0; sub.u32 %r21, %r19, %r20;
   add.u32 %r22, %r17, %r3; min.u32 %r22, %r22, %r2; mul.lo.u32 %r22, %r22, %r9;
   sub.u32 %r23, %r22, %r20; add.u32 %r23, %r23, 3; shr.u32 %r23, %r23, 2; shr.u32 %r24, %r20, 2;
-  mad.lo.u32 %r25, %r41, 0, %r4; setp.lt.u32 %p2, %r25, %r23; mul.wide.u32 %rd8, %r25, 4; add.u64 %rd8, %rd5, %rd8; @%p2 st.shared.u32 [%rd8], %r54;
-  mad.lo.u32 %r25, %r41, 1, %r4; setp.lt.u32 %p2, %r25, %r23; mul.wide.u32 %rd8, %r25, 4; add.u64 %rd8, %rd5, %rd8; @%p2 st.shared.u32 [%rd8], %r55;
-  mad.lo.u32 %r25, %r41, 2, %r4; setp.lt.u32 %p2, %r25, %r23; mul.wide.u32 %rd8, %r25, 4; add.u64 %rd8, %rd5, %rd8; @%p2 st.shared.u32 [%rd8], %r56;
-  mad.lo.u32 %r25, %r41, 3, %r4; setp.lt.u32 %p2, %r25, %r23; mul.wide.u32 %rd8, %r25, 4; add.u64 %rd8, %rd5, %rd8; @%p2 st.shared.u32 [%rd8], %r57;
-  mad.lo.u32 %r25, %r41, 4, %r4; setp.lt.u32 %p2, %r25, %r23; mul.wide.u32 %rd8, %r25, 4; add.u64 %rd8, %rd5, %rd8; @%p2 st.shared.u32 [%rd8], %r58;
-  mad.lo.u32 %r25, %r41, 5, %r4; setp.lt.u32 %p2, %r25, %r23; mul.wide.u32 %rd8, %r25, 4; add.u64 %rd8, %rd5, %rd8; @%p2 st.shared.u32 [%rd8], %r59;
-  mad.lo.u32 %r25, %r41, 6, %r4; setp.lt.u32 %p2, %r25, %r23; mul.wide.u32 %rd8, %r25, 4; add.u64 %rd8, %rd5, %rd8; @%p2 st.shared.u32 [%rd8], %r60;
-  mad.lo.u32 %r25, %r41, 7, %r4; setp.lt.u32 %p2, %r25, %r23; mul.wide.u32 %rd8, %r25, 4; add.u64 %rd8, %rd5, %rd8; @%p2 st.shared.u32 [%rd8], %r61;
-  mad.lo.u32 %r25, %r41, 8, %r4; setp.lt.u32 %p2, %r25, %r23; mul.wide.u32 %rd8, %r25, 4; add.u64 %rd8, %rd5, %rd8; @%p2 st.shared.u32 [%rd8], %r62;
-  mad.lo.u32 %r25, %r41, 9, %r4; setp.lt.u32 %p2, %r25, %r23; mul.wide.u32 %rd8, %r25, 4; add.u64 %rd8, %rd5, %rd8; @%p2 st.shared.u32 [%rd8], %r63;
-  mad.lo.u32 %r25, %r41, 10, %r4; setp.lt.u32 %p2, %r25, %r23; mul.wide.u32 %rd8, %r25, 4; add.u64 %rd8, %rd5, %rd8; @%p2 st.shared.u32 [%rd8], %r64;
-  mad.lo.u32 %r25, %r41, 11, %r4; setp.lt.u32 %p2, %r25, %r23; mul.wide.u32 %rd8, %r25, 4; add.u64 %rd8, %rd5, %rd8; @%p2 st.shared.u32 [%rd8], %r65;
+  mov.u32 %r25, %r4;
+WL: setp.ge.u32 %p2, %r25, %r23; @%p2 bra WLD;
+  add.u32 %r26, %r24, %r25; setp.ge.u32 %p3, %r26, %r14; @%p3 bra WSK;
+  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; ld.global.u32 %r27, [%rd7];
+  mul.wide.u32 %rd8, %r25, 4; add.u64 %rd8, %rd5, %rd8; st.shared.u32 [%rd8], %r27;
+WSK: add.u32 %r25, %r25, %r41; bra WL;
+WLD:
   bar.sync 0;
   // prefetch next chunk into registers while computing this one
-  add.u32 %r40, %r17, %r18; setp.ge.u32 %p1, %r40, %r2; @%p1 bra NOPF;
-  mov.u32 %r47, %r17; mov.u32 %r48, %r21; mov.u32 %r17, %r40;
-  mul.lo.u32 %r19, %r17, %r9; and.b32 %r20, %r19, 0xFFFFFFC0; sub.u32 %r21, %r19, %r20;
-  add.u32 %r22, %r17, %r3; min.u32 %r22, %r22, %r2; mul.lo.u32 %r22, %r22, %r9;
-  sub.u32 %r23, %r22, %r20; add.u32 %r23, %r23, 3; shr.u32 %r23, %r23, 2; shr.u32 %r24, %r20, 2;
-  mad.lo.u32 %r25, %r41, 0, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r54, 0; @%p2 ld.global.u32 %r54, [%rd7];
-  mad.lo.u32 %r25, %r41, 1, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r55, 0; @%p2 ld.global.u32 %r55, [%rd7];
-  mad.lo.u32 %r25, %r41, 2, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r56, 0; @%p2 ld.global.u32 %r56, [%rd7];
-  mad.lo.u32 %r25, %r41, 3, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r57, 0; @%p2 ld.global.u32 %r57, [%rd7];
-  mad.lo.u32 %r25, %r41, 4, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r58, 0; @%p2 ld.global.u32 %r58, [%rd7];
-  mad.lo.u32 %r25, %r41, 5, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r59, 0; @%p2 ld.global.u32 %r59, [%rd7];
-  mad.lo.u32 %r25, %r41, 6, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r60, 0; @%p2 ld.global.u32 %r60, [%rd7];
-  mad.lo.u32 %r25, %r41, 7, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r61, 0; @%p2 ld.global.u32 %r61, [%rd7];
-  mad.lo.u32 %r25, %r41, 8, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r62, 0; @%p2 ld.global.u32 %r62, [%rd7];
-  mad.lo.u32 %r25, %r41, 9, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r63, 0; @%p2 ld.global.u32 %r63, [%rd7];
-  mad.lo.u32 %r25, %r41, 10, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r64, 0; @%p2 ld.global.u32 %r64, [%rd7];
-  mad.lo.u32 %r25, %r41, 11, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r65, 0; @%p2 ld.global.u32 %r65, [%rd7];
-  mov.u32 %r17, %r47; mov.u32 %r21, %r48;
-NOPF:
+
   add.u32 %r28, %r17, %r7; mov.f32 %f1, 0f00000000;
   setp.ge.u32 %p4, %r28, %r2; @%p4 bra RED;
   mul.lo.u32 %r29, %r7, %r9; add.u32 %r29, %r29, %r21; cvt.u64.u32 %rd9, %r29; add.u64 %rd9, %rd5, %rd9;
@@ -1437,7 +1374,7 @@ DONE: ret;
 .visible .entry k_q8f(.param .u64 py, .param .u64 px, .param .u64 pw, .param .u32 pn, .param .u32 pd, .param .u32 pR, .param .u32 pL,
                        .param .u64 pnw, .param .u32 pmode)
 {
-  .reg .u32 %r<72>; .reg .u64 %rd<32>; .reg .f32 %f<24>; .reg .pred %p<12>;
+  .reg .u32 %r<54>; .reg .u64 %rd<32>; .reg .f32 %f<24>; .reg .pred %p<12>;
   ld.param.u64 %rd1, [py]; ld.param.u64 %rd2, [px]; ld.param.u64 %rd3, [pw];
   ld.param.u32 %r1, [pn]; ld.param.u32 %r2, [pd]; ld.param.u32 %r3, [pR]; ld.param.u32 %r5, [pL]; mov.u32 %r41, %ntid.x;
   ld.param.u64 %rd20, [pnw]; ld.param.u32 %r45, [pmode];
@@ -1450,35 +1387,7 @@ DONE: ret;
   mul.lo.u32 %r13, %r2, %r9; add.u32 %r14, %r13, 3; shr.u32 %r14, %r14, 2;
   mov.u32 %r15, %ctaid.x; mov.u32 %r16, %nctaid.x; mul.lo.u32 %r17, %r15, %r3; mul.lo.u32 %r18, %r16, %r3;
   // prefetch first chunk while we build x
-  setp.ge.u32 %p1, %r17, %r2; @%p1 bra NOPF0;
-  mul.lo.u32 %r19, %r17, %r9; and.b32 %r20, %r19, 0xFFFFFFC0; sub.u32 %r21, %r19, %r20;
-  add.u32 %r22, %r17, %r3; min.u32 %r22, %r22, %r2; mul.lo.u32 %r22, %r22, %r9;
-  sub.u32 %r23, %r22, %r20; add.u32 %r23, %r23, 3; shr.u32 %r23, %r23, 2; shr.u32 %r24, %r20, 2;
-  mad.lo.u32 %r25, %r41, 0, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r54, 0; @%p2 ld.global.u32 %r54, [%rd7];
-  mad.lo.u32 %r25, %r41, 1, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r55, 0; @%p2 ld.global.u32 %r55, [%rd7];
-  mad.lo.u32 %r25, %r41, 2, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r56, 0; @%p2 ld.global.u32 %r56, [%rd7];
-  mad.lo.u32 %r25, %r41, 3, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r57, 0; @%p2 ld.global.u32 %r57, [%rd7];
-  mad.lo.u32 %r25, %r41, 4, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r58, 0; @%p2 ld.global.u32 %r58, [%rd7];
-  mad.lo.u32 %r25, %r41, 5, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r59, 0; @%p2 ld.global.u32 %r59, [%rd7];
-  mad.lo.u32 %r25, %r41, 6, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r60, 0; @%p2 ld.global.u32 %r60, [%rd7];
-  mad.lo.u32 %r25, %r41, 7, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r61, 0; @%p2 ld.global.u32 %r61, [%rd7];
-  mad.lo.u32 %r25, %r41, 8, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r62, 0; @%p2 ld.global.u32 %r62, [%rd7];
-  mad.lo.u32 %r25, %r41, 9, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r63, 0; @%p2 ld.global.u32 %r63, [%rd7];
-  mad.lo.u32 %r25, %r41, 10, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r64, 0; @%p2 ld.global.u32 %r64, [%rd7];
-  mad.lo.u32 %r25, %r41, 11, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r65, 0; @%p2 ld.global.u32 %r65, [%rd7];
-NOPF0:
+
   // ---- x prologue: mode bit1 = silu(x[i])*x[i+n]; ss for rmsnorm if pnw != 0
   and.b32 %r46, %r45, 2; mov.f32 %f12, 0f00000000;
   mov.u32 %r25, %r4;
@@ -1512,51 +1421,16 @@ CHUNK:
   mul.lo.u32 %r19, %r17, %r9; and.b32 %r20, %r19, 0xFFFFFFC0; sub.u32 %r21, %r19, %r20;
   add.u32 %r22, %r17, %r3; min.u32 %r22, %r22, %r2; mul.lo.u32 %r22, %r22, %r9;
   sub.u32 %r23, %r22, %r20; add.u32 %r23, %r23, 3; shr.u32 %r23, %r23, 2; shr.u32 %r24, %r20, 2;
-  mad.lo.u32 %r25, %r41, 0, %r4; setp.lt.u32 %p2, %r25, %r23; mul.wide.u32 %rd8, %r25, 4; add.u64 %rd8, %rd5, %rd8; @%p2 st.shared.u32 [%rd8], %r54;
-  mad.lo.u32 %r25, %r41, 1, %r4; setp.lt.u32 %p2, %r25, %r23; mul.wide.u32 %rd8, %r25, 4; add.u64 %rd8, %rd5, %rd8; @%p2 st.shared.u32 [%rd8], %r55;
-  mad.lo.u32 %r25, %r41, 2, %r4; setp.lt.u32 %p2, %r25, %r23; mul.wide.u32 %rd8, %r25, 4; add.u64 %rd8, %rd5, %rd8; @%p2 st.shared.u32 [%rd8], %r56;
-  mad.lo.u32 %r25, %r41, 3, %r4; setp.lt.u32 %p2, %r25, %r23; mul.wide.u32 %rd8, %r25, 4; add.u64 %rd8, %rd5, %rd8; @%p2 st.shared.u32 [%rd8], %r57;
-  mad.lo.u32 %r25, %r41, 4, %r4; setp.lt.u32 %p2, %r25, %r23; mul.wide.u32 %rd8, %r25, 4; add.u64 %rd8, %rd5, %rd8; @%p2 st.shared.u32 [%rd8], %r58;
-  mad.lo.u32 %r25, %r41, 5, %r4; setp.lt.u32 %p2, %r25, %r23; mul.wide.u32 %rd8, %r25, 4; add.u64 %rd8, %rd5, %rd8; @%p2 st.shared.u32 [%rd8], %r59;
-  mad.lo.u32 %r25, %r41, 6, %r4; setp.lt.u32 %p2, %r25, %r23; mul.wide.u32 %rd8, %r25, 4; add.u64 %rd8, %rd5, %rd8; @%p2 st.shared.u32 [%rd8], %r60;
-  mad.lo.u32 %r25, %r41, 7, %r4; setp.lt.u32 %p2, %r25, %r23; mul.wide.u32 %rd8, %r25, 4; add.u64 %rd8, %rd5, %rd8; @%p2 st.shared.u32 [%rd8], %r61;
-  mad.lo.u32 %r25, %r41, 8, %r4; setp.lt.u32 %p2, %r25, %r23; mul.wide.u32 %rd8, %r25, 4; add.u64 %rd8, %rd5, %rd8; @%p2 st.shared.u32 [%rd8], %r62;
-  mad.lo.u32 %r25, %r41, 9, %r4; setp.lt.u32 %p2, %r25, %r23; mul.wide.u32 %rd8, %r25, 4; add.u64 %rd8, %rd5, %rd8; @%p2 st.shared.u32 [%rd8], %r63;
-  mad.lo.u32 %r25, %r41, 10, %r4; setp.lt.u32 %p2, %r25, %r23; mul.wide.u32 %rd8, %r25, 4; add.u64 %rd8, %rd5, %rd8; @%p2 st.shared.u32 [%rd8], %r64;
-  mad.lo.u32 %r25, %r41, 11, %r4; setp.lt.u32 %p2, %r25, %r23; mul.wide.u32 %rd8, %r25, 4; add.u64 %rd8, %rd5, %rd8; @%p2 st.shared.u32 [%rd8], %r65;
+  mov.u32 %r25, %r4;
+WL: setp.ge.u32 %p2, %r25, %r23; @%p2 bra WLD;
+  add.u32 %r26, %r24, %r25; setp.ge.u32 %p3, %r26, %r14; @%p3 bra WSK;
+  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; ld.global.u32 %r27, [%rd7];
+  mul.wide.u32 %rd8, %r25, 4; add.u64 %rd8, %rd5, %rd8; st.shared.u32 [%rd8], %r27;
+WSK: add.u32 %r25, %r25, %r41; bra WL;
+WLD:
   bar.sync 0;
   // prefetch next chunk into registers while computing this one
-  add.u32 %r40, %r17, %r18; setp.ge.u32 %p1, %r40, %r2; @%p1 bra NOPF;
-  mov.u32 %r47, %r17; mov.u32 %r48, %r21; mov.u32 %r17, %r40;
-  mul.lo.u32 %r19, %r17, %r9; and.b32 %r20, %r19, 0xFFFFFFC0; sub.u32 %r21, %r19, %r20;
-  add.u32 %r22, %r17, %r3; min.u32 %r22, %r22, %r2; mul.lo.u32 %r22, %r22, %r9;
-  sub.u32 %r23, %r22, %r20; add.u32 %r23, %r23, 3; shr.u32 %r23, %r23, 2; shr.u32 %r24, %r20, 2;
-  mad.lo.u32 %r25, %r41, 0, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r54, 0; @%p2 ld.global.u32 %r54, [%rd7];
-  mad.lo.u32 %r25, %r41, 1, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r55, 0; @%p2 ld.global.u32 %r55, [%rd7];
-  mad.lo.u32 %r25, %r41, 2, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r56, 0; @%p2 ld.global.u32 %r56, [%rd7];
-  mad.lo.u32 %r25, %r41, 3, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r57, 0; @%p2 ld.global.u32 %r57, [%rd7];
-  mad.lo.u32 %r25, %r41, 4, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r58, 0; @%p2 ld.global.u32 %r58, [%rd7];
-  mad.lo.u32 %r25, %r41, 5, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r59, 0; @%p2 ld.global.u32 %r59, [%rd7];
-  mad.lo.u32 %r25, %r41, 6, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r60, 0; @%p2 ld.global.u32 %r60, [%rd7];
-  mad.lo.u32 %r25, %r41, 7, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r61, 0; @%p2 ld.global.u32 %r61, [%rd7];
-  mad.lo.u32 %r25, %r41, 8, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r62, 0; @%p2 ld.global.u32 %r62, [%rd7];
-  mad.lo.u32 %r25, %r41, 9, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r63, 0; @%p2 ld.global.u32 %r63, [%rd7];
-  mad.lo.u32 %r25, %r41, 10, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r64, 0; @%p2 ld.global.u32 %r64, [%rd7];
-  mad.lo.u32 %r25, %r41, 11, %r4; setp.lt.u32 %p2, %r25, %r23; add.u32 %r26, %r24, %r25; setp.lt.and.u32 %p2, %r26, %r14, %p2;
-  mul.wide.u32 %rd7, %r26, 4; add.u64 %rd7, %rd3, %rd7; mov.u32 %r65, 0; @%p2 ld.global.u32 %r65, [%rd7];
-  mov.u32 %r17, %r47; mov.u32 %r21, %r48;
-NOPF:
+
   add.u32 %r28, %r17, %r7; mov.f32 %f1, 0f00000000;
   setp.ge.u32 %p4, %r28, %r2; @%p4 bra RED;
   mul.lo.u32 %r29, %r7, %r9; add.u32 %r29, %r29, %r21; cvt.u64.u32 %rd9, %r29; add.u64 %rd9, %rd5, %rd9;

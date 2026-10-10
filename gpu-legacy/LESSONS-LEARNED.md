@@ -73,3 +73,12 @@ Each entry gives the finding, the numbers behind it, and what we do now. Times a
 - `$m` vs `$M`: PowerShell variable names are case-insensitive, so the match variable overwrote the model path.
 - In a fresh shell run_sm11 failed with 0xC0000135 (libgomp not on PATH). The script now prepends the mingw bin directory.
 - stories15M with the desktop idle: before **57.5-58.4**, after (async + blocking-sync context) **53.3-59.3 tok/s**, identical text.
+
+## 15. Dropping the register prefetch (v3), ptxas -v and occupancy (08:00 UTC)
+- `ptxas -arch=sm_11 -v`: k_q4f **37 -> 22 regs/thread**, k_q8f **36 -> 23**, no local-memory spills either way. The 12-word prefetch cost 15 registers, which bought no latency hiding on sm_11.
+- Occupancy from cuFuncGetAttribute: k_q4f with 576-wide x (64 thr, 5.3 KB smem) runs 3 CTAs/SM. Shared memory (x cache + weight chunk), not registers, is now the limit at every tuned config (1536-wide: 1 CTA/SM at 13.9 KB). k_attn_mh and k_rope_kv reach 100%.
+- Re-sweep with grids down to 4: the best configs are **1 CTA per SM** (G=4, R=32, 256 threads) for the 576-wide matvecs. Fewer, wider CTAs win because each CTA re-does the x prologue (load + rmsnorm) and its barriers.
+- Kernel GB/s, v2 -> v3: 576x3072 **0.74 -> 0.88**, 576x960 0.69 -> 0.76, 1536x576 0.75 -> 0.77, Q8 classifier 576x49152 **1.06 -> 1.29**.
+- End to end, same session: SmolLM2 **7.84-7.89 tok/s (v2) -> 9.53-9.78 (v3)**, about +24%. 32/32 vs the CPU ref on all 4 prompts. Serve inflight 1/2 runs at 9.77/9.79 tok/s with identical outputs.
+- Desktop was idle this session: stories15M 70.2-71.2 (blocking) vs 69.6-70.2 (async), identical text. The coder ran 116.9 alone, 114.0 with the decision server, 113.8 with stories15M (37.2 tok/s).
+- Still about 1 GB/s against 22 GB/s peak. The next levers are the shared-memory footprint (stream the weight chunk in halves so 2-3 CTAs/SM fit) and computing the norm once per token instead of once per CTA.
