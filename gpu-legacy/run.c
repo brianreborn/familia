@@ -171,6 +171,14 @@ void build_transformer(Transformer *t, char* checkpoint_path) {
     read_checkpoint(checkpoint_path, &t->config, &t->weights, &t->fd, &t->data, &t->file_size);
     // allocate the RunState buffers
     malloc_run_state(&t->state, &t->config);
+    if (g_use_gpu) {
+        Sm11Config c = { t->config.dim, t->config.hidden_dim, t->config.n_layers, t->config.n_heads,
+                         t->config.n_kv_heads, t->config.vocab_size, t->config.seq_len };
+        TransformerWeights* w = &t->weights;
+        if (sm11_init(&c, w->token_embedding_table, w->rms_att_weight, w->rms_ffn_weight,
+                      w->wq, w->wk, w->wv, w->wo, w->w1, w->w2, w->w3, w->rms_final_weight, w->wcls) != 0)
+            g_use_gpu = 0;
+    }
 }
 
 void free_transformer(Transformer* t) {
@@ -234,7 +242,11 @@ void matmul_cpu(float* xout, float* x, float* w, int n, int d) {
 }
 
 float* forward(Transformer* transformer, int token, int pos) {
-
+    if (g_use_gpu) {
+        if (sm11_forward(token, pos, transformer->state.logits) != 0) {
+            fprintf(stderr, "sm11_forward failed, falling back\n"); g_use_gpu = 0;
+        } else return transformer->state.logits;
+    }
     // a few convenience variables
     Config* p = &transformer->config;
     TransformerWeights* w = &transformer->weights;

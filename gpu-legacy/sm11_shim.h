@@ -1,14 +1,27 @@
-/* C ABI shim: CUDA 6.5 / sm_11 kernels callable from plain C (or a modern-compiler llama.cpp/ggml build). */
+/* C ABI: CUDA sm_11 forward pass. Activations + KV stay on device; only logits return. */
 #ifndef SM11_SHIM_H
 #define SM11_SHIM_H
 #include <stddef.h>
 #ifdef __cplusplus
 extern "C" {
 #endif
-/* Upload a host weight blob [base, base+nbytes) to VRAM once. 0 = ok. */
+typedef struct {
+    int dim, hidden_dim, n_layers, n_heads, n_kv_heads, vocab_size, seq_len;
+} Sm11Config;
+
+/* Register host weight blob (llama2.c layout after Config). 0 = ok. */
 int sm11_register(const void* base, size_t nbytes);
-/* xout[d] = W[d,n] @ x[n]; W must lie inside the registered blob. 0 = ok, else caller falls back to CPU. */
+/* Compat: single matmul; prefer sm11_init + sm11_forward. */
 int sm11_matmul(float* xout, const float* x, const float* w, int n, int d);
+
+/* Bind config + weight pointers (host addresses inside the registered blob). */
+int sm11_init(const Sm11Config* cfg,
+              float* token_embedding_table, float* rms_att_weight, float* rms_ffn_weight,
+              float* wq, float* wk, float* wv, float* wo,
+              float* w1, float* w2, float* w3, float* rms_final_weight, float* wcls);
+/* One token forward; writes vocab_size logits to host. */
+int sm11_forward(int token, int pos, float* logits_out);
+void sm11_reset_kv(void);
 #ifdef __cplusplus
 }
 #endif
