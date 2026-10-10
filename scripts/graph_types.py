@@ -69,7 +69,7 @@ def lookup(g, sec, key):
     return (g.get(sec) or {}).get(key) if isinstance(key, str) else None
 
 HOST_FACTS = ("os", "cpu", "threads", "ram_mib", "gpus", "reserve_ram_mib")
-GPU_BACKENDS = {"cuda", "vulkan", "sycl", "metal", "opencl", "rocm", "none"}
+GPU_BACKENDS = {"cuda", "cuda-sm11-ptx", "vulkan", "sycl", "metal", "opencl", "rocm", "none"}
 GPU_KEYS = {"vendor", "model", "vram_mib", "backend", "backend_status", "compute_capability", "driver", "measured", "notes"}
 GPU_REQUIRED = ("vendor", "model", "vram_mib", "backend", "backend_status", "measured")
 WINDOWS_KEYS = ("repo_path", "models_path", "runtime_path", "startup", "wake")
@@ -381,11 +381,11 @@ TYPES = {
                 "windows": opt("any")}, check_host, doc="physical/virtual machine"),
     "transports": T({"kind": req("enum", choices={"local", "ssh", "nfs", "rsync", "bittorrent", "zfs"}),
                      "from": req("ref", ref="hosts"), "to": req("ref", ref="hosts")}, check_transport, doc="host-to-host link"),
-    "runtimes": T({"kind": req("enum", choices={"llama-server", "drex-dlm"}), "build": req("str"), "commit": req("str"),
+    "runtimes": T({"kind": req("enum", choices={"llama-server", "drex-dlm", "sm11-legacy"}), "build": req("str"), "commit": req("str"),
                    "hosts": req("refs", ref="hosts"), "supported_archs": req("list"),
                    "backends": req("list"), "spec_types": req("strlist"), "bin": opt("str")}, check_runtime, doc="inference engine build"),
     "models": T({"gguf": req("str"), "sha256": req("sha"), "arch": req("str"), "trained_ctx": req("int", min=1),
-                 "role": req("enum", choices={"chat", "coder", "reasoning", "embed", "vision", "diffusion", "pentest"})}, doc="weights file"),
+                 "role": req("enum", choices={"chat", "coder", "decision", "reasoning", "embed", "vision", "diffusion", "pentest"})}, doc="weights file"),
     "nodes": T({"model": req("ref", ref="models"), "host": req("ref", ref="hosts"), "runtime": req("ref", ref="runtimes"),
                 "ctx": req("int", min=1), "parallel": req("int", min=1),
                 "kv_type": req("enum", choices={"f16", "bf16", "q8_0", "q4_0", "f32"}), "flash_attn": req("bool"),

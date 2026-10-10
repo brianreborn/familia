@@ -143,3 +143,10 @@ Unplaced model options from the survey (only what the user has actually
 considered — nothing invented) live in [`docs/pentest-models.md`](pentest-models.md).
 Today that is Dolphin3-Cyber-8B; WhiteRabbitNeo / Lily / DeepHat / KaliGPT were
 searched and not found in the user's RTs.
+
+## Legacy SM11 (qodesh)
+
+- GPU backend `cuda-sm11-ptx`: hand-written PTX + CUDA driver API on compute 1.1.
+- Runtime kind `sm11-legacy`; model role `decision` for always-active draft/decision paths.
+- Validator skips GGUF checks for `.bin` / `sm11-legacy` checkpoints.
+
