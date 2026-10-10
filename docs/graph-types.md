@@ -140,6 +140,6 @@ metadata on a generic task node for the declarative graph (the android scripts
 still say `--role pentest` until #15 lands the missing helpers).
 
 Unplaced model options from the survey (only what the user has actually
-considered — nothing invented) live in [`docs/pentest-models.md`](pentest-models.md).
+considered — nothing invented) live in [`docs/pentest-models.md`](pentest-models.md). Every model, placed or not, is listed in [`docs/models-catalog.md`](models-catalog.md).
 Today that is Dolphin3-Cyber-8B; WhiteRabbitNeo / Lily / DeepHat / KaliGPT were
 searched and not found in the user's RTs.

@@ -296,10 +296,10 @@ options:
     role: decision
     unverified: true
     sources: ["https://x.com/BrianReborn_alt/status/2108691502864163123"]
-    size_note: unknown
-    gpu_candidate: true
-    gpu_host: qodesh
-    placement_note: 128k ctx claimed; Hermes-compatible per post. Small slice on GPU only if size allows.
+    hf_repo: nace-ai/drex-v1.5
+    size_note: "HF API 2026-10-09: Qwen3_5ForCausalLM, 8.95B params (bf16 ~17.9 GB); nace-ai/drex-v1.5-Q8_0 9.53 GB; mradermacher/drex-v1.5-GGUF Q4_K_M 5.63 GB, Q4_K_S 5.35 GB, Q2_K 3.83 GB"
+    gpu_candidate: false
+    placement_note: "Not a 256 MB GPU fit (9B). CPU only: Q4_K_M fits qodesh's ~9.6 GiB budget (<=60% of 16 GiB, 4 GiB reserve); does not fit miryam (4.1 GiB budget minus the coder). 128k ctx claimed."
   drex-1.1:
     role: decision
     unverified: true
@@ -308,6 +308,7 @@ options:
     gpu_candidate: true
     gpu_host: qodesh
     runtime_note: Diffusion LM; llama.cpp-compatible per post (drex-dlm runtime kind exists, unpinned).
+    notes: "Possibly nace-ai/drex-dlm (EfficientDLM, 8.19B params, cc-by-nc-4.0) - link to Drex 1.1 not confirmed. At 8B it is not a 256 MB GPU fit either."
   glide:
     role: decision
     unverified: true
@@ -336,16 +337,18 @@ options:
     role: stt
     unverified: true
     sources: ["https://x.com/BrianReborn_alt/status/2108691766589415772", "https://x.com/BrianReborn_alt/status/2106699237761392838"]
-    size_note: 16.9 MB (from post)
-    runtime_note: Format/runtime unknown; not llama-server. Needs an stt node kind before placement.
+    hf_repo: Cactus-Compute/whistle
+    size_note: "whistle.cact 16.9 MB (HF API); checkpoints/whistle.safetensors 220.6 MB; apache-2.0"
+    runtime_note: Cactus runtime (.cact, library cactus-needle); not llama-server. Needs an stt node kind before placement.
     placement_note: Phones and qodesh first (#25).
     candidate_hosts: [note9, pixel8, a57, qodesh]
   paradee-tts:
     role: tts
     unverified: true
     sources: ["https://x.com/BrianReborn_alt/status/2108070180769407307"]
-    size_note: 8M params / 9 MB, Kokoro-distilled (from post)
-    runtime_note: Format/runtime unknown; not llama-server. Needs a tts node kind before placement.
+    hf_repo: sahilmahendrakar/Paradee-8M-v1.0
+    size_note: "8M params; onnx/paradee_int8.onnx 9.0 MB, paradee.onnx 37.0 MB (HF API); apache-2.0. Repo is the most likely match for the RT, not confirmed from the post."
+    runtime_note: ONNX Runtime (CoreML port FluidInference/paradee-8m-coreml); not llama-server. Needs a tts node kind before placement.
     placement_note: Phones and qodesh first (#25).
     candidate_hosts: [note9, pixel8, a57, qodesh]
   # ---- #26 coder candidate
@@ -357,3 +360,67 @@ options:
     placement_note: qodesh only by RAM (16 GB, ~11.5 GB free). miryam (7 GB, 3 GB reserve) cannot fit it.
     candidate_hosts: [qodesh]
     notes: Kimi-k3 distill claim from post; HF repo, quants and license unresolved.
+  # ---- docs/models-catalog.md additions (RT'd, bucket 2; all unverified)
+  youtu-parsing-omni:
+    role: vision
+    unverified: true
+    hf_repo: tencent/Youtu-Parsing-Omni
+    sources: ["https://x.com/BrianReborn_alt/status/2108756031493025930"]
+    size_note: "~5B params, bf16 safetensors ~10.7 GB (rev 01f7e3e, per feat/youtu-parsing-omni-option)"
+    runtime_note: "youtu_vita custom code; transformers trust_remote_code or vLLM + Tencent plugin. No llama.cpp/GGUF support."
+    placement_note: "bf16 exceeds qodesh's ~9.6 GiB budget and miryam's. Needs a non-llama runtime and a quantized build."
+  voice-clone-1.7b:
+    role: tts
+    unverified: true
+    sources: ["https://x.com/BrianReborn_alt/status/2108533834400850249"]
+    size_note: "1.7B params (from post); file size unknown"
+    runtime_note: Model name, repo and runtime not given in the RT text.
+  tencent-translate-440mb:
+    role: chat
+    unverified: true
+    sources: ["https://x.com/BrianReborn_alt/status/2105728713950437842"]
+    size_note: "~440 MB, 33 languages (from post)"
+    notes: On-device translation. Repo id not resolved.
+  index-translate:
+    role: chat
+    unverified: true
+    sources: ["https://x.com/BrianReborn_alt/status/2105389175872847935"]
+    size_note: unknown (Qwen3.5-based family per post)
+    notes: Bilibili Index-Translate MT family. Repo id not resolved.
+  decision-2.0:
+    role: decision
+    unverified: true
+    sources: ["https://x.com/BrianReborn_alt/status/2106237127449362760"]
+    size_note: "0.6B-27B family (from post); only the 0.6B could approach the 256 MB GPU slice, and only heavily quantized"
+    gpu_candidate: true
+    gpu_host: qodesh
+  kev-1.0:
+    role: decision
+    unverified: true
+    sources: ["https://x.com/BrianReborn_alt/status/2106235881904599179"]
+    size_note: unknown
+    notes: Kev 1.0 decision model family. Repo id not resolved.
+  jev-cpu-decision:
+    role: decision
+    unverified: true
+    sources: ["https://x.com/BrianReborn_alt/status/2106949194913366275"]
+    size_note: unknown
+    notes: Jev-style decision model that runs on CPU (per post).
+  jp-decision-gguf:
+    role: decision
+    unverified: true
+    sources: ["https://x.com/BrianReborn_alt/status/2106236190940950767"]
+    size_note: unknown
+    notes: Japanese decision/chat GGUF plus training data.
+  qwen35-0.8b-jp:
+    role: chat
+    unverified: true
+    sources: ["https://x.com/BrianReborn_alt/status/2106236078533550141"]
+    size_note: "0.8B params (from post); file size unknown"
+    notes: Japanese fine-tune; tiny local option. Arch qwen35 is in the pinned llama.cpp build (qwen35-2b-q4km runs today).
+  lift-extract:
+    role: vision
+    unverified: true
+    sources: ["https://x.com/BrianReborn_alt/status/2106703750262141361"]
+    size_note: unknown
+    notes: lift JSON/document extraction model; parsing option beside Youtu.
