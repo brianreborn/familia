@@ -1,73 +1,272 @@
-# Declarative model/agent graph (see #19). Nothing is auto-selected:
-# every node, file, ctx, KV type and slot count is explicit, and
-# scripts/validate_graph.py fails loudly if the graph does not fit the
-# measured hardware or the agents' requirements.
-version: 1
-host:
-  # Baseline measured on miryam: i5-7200U (4 threads), 7.1 GiB RAM, Intel HD 620 (no VRAM).
-  # Standing rule (2026-10-09 OOM hard-hang on miryam): never aim for high RAM.
-  # Keep ~2+ GiB free after estimated node use on hosts under 8 GiB. See docs/ram-safety.md.
-  # ram_mib is miryam's measured MemTotal so the budget is checked against the real host
-  # even when validate_graph.py runs on a larger machine (e.g. the agent box).
-  ram_mib: 7270                  # measured MemTotal on miryam (7.1 GiB)
-  reserve_ram_mib: 3072          # OS + hermes-agent + browser + 3 GiB safety margin (was 2048)
+# Declarative model/agent graph, typed schema v2 (see docs/graph-types.md, #19).
+# Nothing is auto-selected and nothing has defaults: every field is explicit,
+# and scripts/validate_graph.py fails loudly if the graph does not fit the
+# measured hardware, the runtime's supported architectures, or the agents.
+# Rule: a value we did not measure ourselves is never written as measured.
+# Reported numbers go under `reported:` with a source; GPU vram_mib stays null
+# until `measured: true`.
+# Standing rule (2026-10-09 OOM): never aim for high RAM on small hosts — see docs/ram-safety.md.
+version: 2
+
+hosts:
+  miryam:
+    kind: laptop
+    measured: true
+    os: linux
+    cpu: Intel Core i5-7200U
+    threads: 4
+    ram_mib: 7270                # 7.1 GiB MemTotal
+    # Standing rule (2026-10-09 OOM hard-hang): never aim for high RAM.
+    # Keep ~2+ GiB free after estimated node use on hosts under 8 GiB. See docs/ram-safety.md.
+    reserve_ram_mib: 3072        # OS + hermes-agent + browser + 3 GiB safety margin (was 2048)
+    gpus:
+      - vendor: intel
+        model: Intel HD Graphics 620 (integrated, shares system RAM)
+        vram_mib: null           # no dedicated VRAM; usable shared budget unmeasured
+        backend: vulkan          # vulkan or sycl possible; neither measured for offload
+        backend_status: tbd
+        driver: null
+        compute_capability: null
+        measured: false
+  qodesh:
+    kind: desktop
+    measured: true               # measured 2026-10-09 20:36 PT
+    os: windows
+    cpu: AMD Athlon II X2 B24 (2 cores / 2 threads)
+    threads: 2
+    ram_mib: 16379               # total; ~11490 MiB free at measurement
+    reserve_ram_mib: 4096        # policy, not measured: Windows 10 + green-roomz
+    notes: >-
+      Windows 10 Home 10.0.19045 x64. Value is 16 GB RAM (bigger CPU models than
+      miryam) but slow: ~3.0 tok/s CPU on 0.5B Q4 per green-roomz #4 (measured
+      there, not by familia). No nvidia-smi or llama-server on PATH yet.
+      Drives: C: 4.6 GiB free, E: 35.4 GiB free (models go on E:).
+    gpus:
+      - vendor: nvidia
+        model: GeForce 8600 GT
+        vram_mib: 256
+        backend: none            # unusable for llama.cpp inference
+        backend_status: unsupported
+        compute_capability: "1.1"
+        driver: 9.18.13.4192 (341.92, last Tesla-arch driver)
+        measured: true
+        notes: >-
+          No Vulkan driver (#4). Current llama.cpp CUDA needs far newer compute
+          capability; CUDA 6.5 / sm_1.1 only serves green-roomz sm11-monitor
+          kernels (Win32 build, #13/#16). #14 partial 0.5B offload stays an
+          optional experiment, not something the graph may place.
+    windows:
+      repo_path: TBD
+      models_path: 'E:\familia\models'   # proposed: E: has the free space; not created yet
+      runtime_path: TBD                  # no llama-server installed yet
+      startup: tbd               # scheduled-task | start.bat | service | manual; green-roomz uses scripts/serve-window.cmd (#18)
+      wake: tbd
+  shalom:
+    kind: unknown
+    measured: false
+    gpus: []                     # unknown; nothing recorded
+  godslove:
+    kind: laptop
+    measured: false              # reported, not measured: excluded from placement
+    os: freebsd-15
+    cpu: Intel Core i7-620M
+    reported:
+      source: brianreborn/green-roomz#5
+      ram_mib: 8192
+    gpus:
+      - vendor: intel
+        model: Ironlake HD / NVS (per green-roomz #5; exact model unknown)
+        vram_mib: null
+        backend: none            # #5: "No Vulkan/CUDA - CPU"
+        backend_status: unsupported
+        compute_capability: null
+        driver: null
+        measured: false
+  note9:
+    kind: phone
+    measured: false
+    os: android
+    cpu: Snapdragon 845 (SDM845)
+    notes: Samsung Galaxy Note 9. Which of 192.168.1.7 (u0_a439) / .8 (u0_a414) is which is unconfirmed; key not installed yet.
+    gpus:
+      - vendor: qualcomm
+        model: Adreno 630
+        vram_mib: null           # shared memory
+        backend: opencl          # vulkan or opencl possible; unmeasured
+        backend_status: tbd
+        compute_capability: null
+        driver: null
+        measured: false
+  a57:
+    kind: phone
+    measured: false
+    os: android
+    cpu: Samsung Galaxy A57 SM-A576U (SoC unconfirmed)
+    reported:
+      source: familia docs
+      ram_mib: 7430
+    gpus: []                     # GPU not recorded yet
+  pixel8:
+    kind: phone
+    measured: false
+    os: android
+    cpu: Google Tensor G3
+    gpus:
+      - vendor: arm
+        model: Mali (Immortalis-G715 class, unconfirmed)
+        vram_mib: null
+        backend: vulkan          # vulkan or opencl; unmeasured
+        backend_status: tbd
+        compute_capability: null
+        driver: null
+        measured: false
+
+transports:
+  miryam-local: {kind: local, from: miryam, to: miryam}
+
 runtimes:
-  # llama.cpp builds deployed side by side. archs lists architectures that were
-  # load-tested on this runtime; a node whose GGUF arch is not listed fails.
-  b11374:
+  llama-b11374:
+    kind: llama-server
+    build: b11374
+    commit: b92761a515ea31e852e7fbc1fad5f874b46f3718
     bin: code-bootstraps-llama.cpp/bin/llama-b11374-linux-x64-vulkan/llama-server
-    tag: b11374
-    commit: b92761a51
-    archs: [qwen35]
-  b11539:
+    hosts: [miryam]
+    # Only archs verified to load on this build.
+    supported_archs: [qwen35]
+    backends: [cpu, vulkan]      # vulkan build; cpu always available
+    # --spec-type values accepted by this build's --help (verified on box CPU build b11374).
+    spec_types: [draft-simple, ngram-simple, ngram-map-k, ngram-map-k4v, ngram-mod, ngram-cache]
+  llama-b11539:
+    kind: llama-server
+    build: b11539
     # Official ggml-org release llama-b11539-bin-ubuntu-vulkan-x64.tar.gz
     # (sha256 c94e4cf093d38054e4b3384491b0948a659474a207149e65a12b9e5993498182);
     # includes ggml-org/llama.cpp#30054 (gemma-embedding2).
-    bin: code-bootstraps-llama.cpp/bin/llama-b11539-linux-x64-vulkan/llama-server
-    tag: b11539
     commit: 10a60cf30
-    archs: [gemma-embedding2]
+    bin: code-bootstraps-llama.cpp/bin/llama-b11539-linux-x64-vulkan/llama-server
+    hosts: [miryam]
+    supported_archs: [gemma-embedding2]
+    backends: [cpu, vulkan]
+    spec_types: [draft-simple, ngram-simple, ngram-map-k, ngram-map-k4v, ngram-mod, ngram-cache]
+
+models:
+  qwen35-2b-q4km:
+    gguf: ~/.local/share/gguf/models/coder/Qwen3.5-2B-Q4_K_M.gguf
+    sha256: unmeasured           # fill in from `sha256sum` on miryam
+    arch: qwen35                 # must match GGUF general.architecture
+    trained_ctx: 262144          # must match GGUF qwen35.context_length (checked)
+    role: coder
+  egemma2-q8:
+    gguf: ~/.local/share/gguf/models/embed/embeddinggemma-2-Q8_0.gguf
+    sha256: unmeasured
+    arch: gemma-embedding2       # unknown to b11374
+    trained_ctx: 262144          # GGUF gemma-embedding2.context_length
+    role: embed
+
 nodes:
   coder:
-    runtime: b11374
-    model: ~/.local/share/gguf/models/coder/Qwen3.5-2B-Q4_K_M.gguf
-    arch: qwen35                  # must match GGUF general.architecture
-    ctx: 65536                    # total; per-slot = ctx / parallel
+    status: active
+    model: qwen35-2b-q4km
+    host: miryam
+    runtime: llama-b11374
+    ctx: 65536                   # total; per-slot = ctx / parallel
     parallel: 1
     kv_type: q8_0
     flash_attn: true
-    gpu_layers: 0
-    host: 127.0.0.1
+    offload: {backend: cpu, ngl: 0, split: none, main_gpu: 0}
+    bind: 127.0.0.1
     port: 9941
-    aliases: [coder]
-    cache_ram_mib: 1024           # >= per-slot prompt state (validator checks)
+    cache_ram_mib: 1024          # >= per-slot prompt state (validator checks)
   embed:
-    runtime: b11539               # b11374 fails: unknown model architecture 'gemma-embedding2'
-    model: ~/.local/share/gguf/models/embed/embeddinggemma-2-Q8_0.gguf
-    arch: gemma-embedding2
+    status: active
+    model: egemma2-q8
+    host: miryam
+    runtime: llama-b11539        # b11374 fails: unknown model architecture 'gemma-embedding2'
     ctx: 8192
     parallel: 1
     kv_type: f16
     flash_attn: false
-    gpu_layers: 0
-    host: 127.0.0.1
+    offload: {backend: cpu, ngl: 0, split: none, main_gpu: 0}
+    bind: 127.0.0.1
     port: 9951
-    aliases: [embed]
     embeddings: true
+    cache_ram_mib: 0             # embedding servers keep no prompt cache
+  qodesh-resident:
+    # Pencilled in: green-roomz's resident 0.5B chat path on qodesh (#18).
+    # Planned nodes are schema-checked only; no placement, file or RAM checks.
+    status: planned
+    model: qwen35-2b-q4km        # placeholder until a 0.5B model entry exists
+    host: qodesh
+    runtime: llama-b11374        # placeholder: a Windows CPU build must be declared first
+    ctx: 4096
+    parallel: 1
+    kv_type: q8_0
+    flash_attn: false
+    offload: {backend: cpu, ngl: 0, split: none, main_gpu: 0}
+    bind: 127.0.0.1
+    port: 9941
     cache_ram_mib: 0
+
+speculative:
+  # Pencilled in. Draft is loaded inside the target's llama-server (-md).
+  coder-ngram:
+    experimental: true
+    status: planned
+    mode: ngram
+    target: coder
+    spec_type: ngram-mod         # model-free lookup decoding; no extra weights, small RAM cost
+
+gateways:
+  roomz:
+    kind: green-roomz
+    host: miryam
+    port: 9931
+
+aliases:
+  coder: {node: coder, gateway: roomz}
+  embed: {node: embed, gateway: roomz}
+
 agents:
   hermes:
-    min_ctx: 64000                # hermes-agent MINIMUM_CONTEXT_LENGTH
-    context_length: 65536         # hermes model.context_length; must equal node per-slot ctx
-    edges:
-      model: coder                # model.default / base_url
+    kind: hermes-agent
+    host: miryam
+    min_ctx: 64000               # hermes-agent MINIMUM_CONTEXT_LENGTH
+    context_length: 65536        # must equal main alias per-slot ctx
+    aliases:
+      main: coder
+      auxiliary: coder           # compaction model; explicit, not inferred
 
-# Stub roles for with-fleet.sh / android_start.sh (#15). Full typed pentests
-# live on feat/graph-types. launch_test_only: never live scans.
-roles:
-  pentest:
-    node: coder
+fleets:
+  green-agentz:
+    repo: brianreborn/green-agentz
+    agents: [hermes]
+
+agencies:
+  familia-issues:
+    repo: brianreborn/familia
+    labels: [bug, config-graph]
+    assignments:
+      config-graph: hermes
+
+pentests:
+  # Pencilled in. Authorized testing of the owner's fleet only — not attack tooling.
+  # Automation is launch-test only (validate → start → healthcheck → stop). Never live
+  # scans, exploits, or network probes in tests. See docs/pentest-models.md and #15.
+  # Model options from survey (unplaced): Dolphin3-Cyber-8B (BrianReborn_alt RT 2026-09-20).
+  android-fleet:
+    name: Android fleet authorized testing
+    node: coder                   # placeholder until a role:pentest model is placed
+    agent: hermes
+    scope:
+      allow: []                   # empty = nothing allowed; required non-empty to go active
+      deny: []
+    tools:
+      allow: []                   # explicit tool names only; no wildcards
+    report_to: familia-issues
+    requires_operator_confirm: true
     launch_test_only: true
     status: planned
-    notes: "Maps android_start.sh --role pentest; empty-scope manifest in scripts/pentest-role.json."
-
+    notes: >-
+      Ties to android_start.sh --role pentest and missing scripts/pentest-role.json (#15).
+      Activate only after a pentest-role model is placed, scope.allow lists owned hosts/CIDRs,
+      and tools.allow is an explicit allowlist. Operator confirm required.

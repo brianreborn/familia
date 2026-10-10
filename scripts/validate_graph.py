@@ -2,11 +2,14 @@
 """Validate familia graph.yaml against GGUF metadata, hardware and agent needs.
 
 Exit 0 when valid, 1 with one line per problem otherwise. With --args NODE,
-print the runtime binary and llama-server arguments for that node. Several
-llama.cpp runtimes can be deployed side by side; each node names its runtime. Never guesses or inflates.
+print the llama-server arguments for that node. Never guesses or inflates.
+--no-files skips GGUF/RAM checks (schema only); --verify-sha hashes GGUFs.
+Schema: scripts/graph_types.py, docs/graph-types.md.
 """
-import os, struct, sys
+import hashlib, os, struct, sys
 import yaml
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from graph_types import validate_types, TYPES  # noqa: E402
 
 KV_BYTES = {"f16": 2.0, "bf16": 2.0, "q8_0": 1.0625, "q4_0": 0.5625, "f32": 4.0}
 
@@ -28,20 +31,22 @@ def gguf_meta(path):
             if t == 9:
                 et, n = struct.unpack("<IQ", f.read(12))
                 if et in fmt and et != 8:
-                    f.seek(struct.calcsize(fmt[et]) * n, 1); return None
-                for _ in range(n): rval(et)
-                return None
+                    f.seek(struct.calcsize(fmt[et]) * n, 1); return ("array", n, None)
+                h = hashlib.sha256() if et == 8 else None
+                for _ in range(n):
+                    v = rval(et)
+                    if h is not None: h.update(v.encode() + b"\0")
+                return ("array", n, h.hexdigest() if h else None)
             s = fmt[t]; return struct.unpack(s, f.read(struct.calcsize(s)))[0]
         for _ in range(n_kv):
             k = rstr(); t, = struct.unpack("<I", f.read(4)); out[k] = rval(t)
     return out
 
-def mem_total_mib():
-    with open("/proc/meminfo") as f:
-        for line in f:
-            if line.startswith("MemTotal:"):
-                return int(line.split()[1]) // 1024
-    raise RuntimeError("cannot read MemTotal")
+def vocab(meta):
+    """(tokenizer model, n_vocab, sha256 of the token list) from GGUF metadata."""
+    t = meta.get("tokenizer.ggml.tokens")
+    n, h = (t[1], t[2]) if isinstance(t, tuple) else (None, None)
+    return meta.get("tokenizer.ggml.model"), n, h
 
 def kv_mib(meta, arch, ctx, kv_type):
     g = lambda k: meta.get(f"{arch}.{k}")
@@ -59,114 +64,139 @@ def kv_mib(meta, arch, ctx, kv_type):
         kv += (layers - attn_layers) * ssm_inner * ssm_state * 4  # f32 recurrent state
     return kv / 2**20
 
-RUNTIME_KEYS = ("bin", "tag", "commit", "archs")
+class UniqueKeyLoader(yaml.SafeLoader):
+    """Reject duplicate keys: a second alias/node with the same name must not silently win."""
+    def construct_mapping(self, node, deep=False):
+        seen = set()
+        for k, _ in node.value:
+            key = self.construct_object(k, deep=deep)
+            if key in seen:
+                raise yaml.constructor.ConstructorError(None, None, f"duplicate key {key!r}", k.start_mark)
+            seen.add(key)
+        return super().construct_mapping(node, deep)
 
-def runtime_version(binp):
-    import subprocess
-    try:
-        r = subprocess.run([binp, "--version"], capture_output=True, text=True, timeout=30)
-        return (r.stdout + r.stderr)
-    except Exception as e:
-        return f"error: {e}"
+def load(path):
+    with open(path) as f:
+        return yaml.load(f, Loader=UniqueKeyLoader)
 
-def validate(graph):
-    errs, host = [], graph.get("host", {})
-    runtimes = graph.get("runtimes") or {}
-    if not runtimes: errs.append("graph has no runtimes")
-    for rn, r in runtimes.items():
-        for key in RUNTIME_KEYS:
-            if key not in r: errs.append(f"runtime {rn}: missing required '{key}'")
-        if "bin" not in r: continue
-        b = os.path.join(os.path.dirname(os.path.abspath(graph.get("_path", "graph.yaml"))), os.path.expanduser(r["bin"]))
-        r["_bin"] = b
-        if not os.access(b, os.X_OK): errs.append(f"runtime {rn}: binary not executable: {b}"); continue
-        v = runtime_version(b)
-        if r.get("commit") and str(r["commit"])[:9] not in v:
-            errs.append(f"runtime {rn}: {b} does not report commit {r['commit']} (got: {v.strip().splitlines()[0] if v.strip() else '?'})")
-    nodes, total = graph.get("nodes") or {}, 0.0
-    if not nodes: errs.append("graph has no nodes")
-    ports = {}
-    for name, n in nodes.items():
-        for key in ("runtime", "model", "arch", "ctx", "parallel", "kv_type", "port", "aliases", "cache_ram_mib"):
-            if key not in n: errs.append(f"node {name}: missing required '{key}' (no defaults)")
-        if any(k not in n for k in ("model", "arch", "ctx", "parallel", "kv_type", "port")): continue
-        path = os.path.expanduser(n["model"])
-        if n["port"] in ports: errs.append(f"node {name}: port {n['port']} also used by {ports[n['port']]}")
-        ports[n["port"]] = name
-        if n["kv_type"] not in KV_BYTES: errs.append(f"node {name}: unknown kv_type {n['kv_type']}")
+def validate(graph, check_files=True):
+    """Typed schema check, then GGUF/RAM checks. Returns (errors, {host: est MiB})."""
+    errs = validate_types(graph)
+    if errs or not check_files:
+        return errs, {}
+    hosts, models, totals = graph["hosts"], graph["models"], {}
+    base = os.path.dirname(os.path.abspath(graph.get("_path", "graph.yaml")))
+    for rn, r in graph["runtimes"].items():
+        if "bin" in r and "--check-runtimes" in sys.argv:
+            b = os.path.join(base, os.path.expanduser(r["bin"]))
+            if not os.access(b, os.X_OK): errs.append(f"runtimes.{rn}: binary not executable: {b}"); continue
+            import subprocess
+            v = subprocess.run([b, "--version"], capture_output=True, text=True, timeout=30)
+            if str(r["commit"])[:9] not in v.stdout + v.stderr: errs.append(f"runtimes.{rn}: {b} does not report commit {r['commit']}")
+    metas = {}
+    for name, n in graph["nodes"].items():
+        if n["status"] == "planned": continue
+        m = models[n["model"]]
+        path = os.path.expanduser(m["gguf"])
         if not os.path.isfile(path):
-            errs.append(f"node {name}: model file not found: {path}"); continue
+            errs.append(f"nodes.{name}: model file not found: {path}"); continue
         try: meta = gguf_meta(path)
-        except Exception as e: errs.append(f"node {name}: cannot read GGUF: {e}"); continue
+        except Exception as e: errs.append(f"nodes.{name}: cannot read GGUF: {e}"); continue
         arch = meta.get("general.architecture")
-        if arch != n["arch"]: errs.append(f"node {name}: GGUF architecture is {arch!r}, graph says {n['arch']!r}")
-        rt = runtimes.get(n.get("runtime"))
-        if rt is None: errs.append(f"node {name}: runtime {n.get('runtime')!r} is not declared")
-        elif arch not in (rt.get("archs") or []):
-            errs.append(f"node {name}: runtime {n['runtime']} ({rt.get('tag')}) is not verified for architecture {arch!r}; add it to runtimes.{n['runtime']}.archs only after a load test")
+        if arch != m["arch"]: errs.append(f"models.{n['model']}: GGUF architecture is {arch!r}, graph says {m['arch']!r}")
         train = meta.get(f"{arch}.context_length")
-        if isinstance(train, int) and n["ctx"] // n["parallel"] > train:
-            errs.append(f"node {name}: per-slot ctx {n['ctx'] // n['parallel']} exceeds model's trained context {train}")
-        kv = kv_mib(meta, arch, n["ctx"], n["kv_type"]) if n["kv_type"] in KV_BYTES else None
+        if isinstance(train, int) and train != m["trained_ctx"]:
+            errs.append(f"models.{n['model']}: trained_ctx {m['trained_ctx']} but GGUF says {train}")
+        if m["sha256"] != "unmeasured" and "--verify-sha" in sys.argv:
+            h = hashlib.sha256()
+            with open(path, "rb") as f:
+                for b in iter(lambda: f.read(1 << 20), b""): h.update(b)
+            if h.hexdigest() != m["sha256"]: errs.append(f"models.{n['model']}: sha256 mismatch ({h.hexdigest()})")
+        metas[name] = meta
+        kv = kv_mib(meta, arch, n["ctx"], n["kv_type"])
+        layers = meta.get(f"{arch}.block_count")
+        ngl = n["offload"]["ngl"]
+        if ngl and isinstance(layers, int):
+            gp = hosts[n["host"]]["gpus"][n["offload"]["main_gpu"]]
+            frac = min(ngl, layers + 1) / (layers + 1)
+            need = frac * (os.path.getsize(path) / 2**20 + (kv or 0)) + n["offload"].get("vram_reserve_mib", 0)
+            if isinstance(gp.get("vram_mib"), int) and need > gp["vram_mib"]:
+                errs.append(f"nodes.{name}: offload ngl {ngl} needs ~{need:.0f} MiB VRAM > GPU {n['offload']['main_gpu']} vram_mib {gp['vram_mib']}")
         # Prompt-cache state for one full slot is roughly that slot's KV; if
         # --cache-ram is smaller, llama.cpp skips caching on every request.
-        state = kv_mib(meta, arch, n["ctx"] // n["parallel"], n["kv_type"]) if n["kv_type"] in KV_BYTES else None
-        cache = n.get("cache_ram_mib")
+        state = kv_mib(meta, arch, n["ctx"] // n["parallel"], n["kv_type"])
         if n.get("embeddings"): state = None  # embedding servers keep no prompt cache
-        if state is not None and isinstance(cache, int) and cache < state:
-            errs.append(f"node {name}: cache_ram_mib {cache} < estimated per-slot prompt state {state:.0f} MiB (prompt cache would always be skipped)")
-        total += os.path.getsize(path) / 2**20 + (kv or 0) + 256 + (cache if isinstance(cache, int) else 0)
-        n["_slot_ctx"] = n["ctx"] // n["parallel"]
-        if rt is not None and "_bin" in rt: n["_bin"] = rt["_bin"]
-    # RAM safety (docs/ram-safety.md): estimated_used + reserve must fit total_ram.
-    # Prefer host.ram_mib (measured on the target machine) over this box's MemTotal.
-    ram = int(host["ram_mib"]) if isinstance(host.get("ram_mib"), int) else mem_total_mib()
-    reserve = int(host.get("reserve_ram_mib", 2048))
-    if total + reserve > ram:
-        errs.append(
-            f"estimated RAM {total:.0f} MiB + reserve {reserve} MiB exceeds host ram_mib {ram} MiB"
-        )
-    # Soft floor on small hosts: even with a tiny reserve, leave ~2 GiB free.
-    free_after = ram - total
-    if ram < 8192 and free_after < 2048:
-        errs.append(
-            f"estimated free after nodes {free_after:.0f} MiB < 2048 MiB floor "
-            f"on host with ram_mib {ram} < 8192 (OOM safety; see docs/ram-safety.md)"
-        )
-    aliases = {a: k for k, n in nodes.items() for a in n.get("aliases", [])}
-    for an, a in (graph.get("agents") or {}).items():
-        for role, target in (a.get("edges") or {}).items():
-            node = nodes.get(aliases.get(target, target))
-            if node is None: errs.append(f"agent {an}: edge {role} -> {target}: no such node/alias"); continue
-            if "context_length" not in a:
-                errs.append(f"agent {an}: missing required 'context_length' (must equal node per-slot ctx)")
-            elif "_slot_ctx" in node and a["context_length"] != node["_slot_ctx"]:
-                errs.append(f"agent {an}: context_length {a['context_length']} != node {target} per-slot ctx {node['_slot_ctx']} (larger makes llama.cpp silently truncate; smaller wastes the window)")
-            if "_slot_ctx" in node and node["_slot_ctx"] < a.get("min_ctx", 0):
-                errs.append(f"agent {an}: edge {role} -> {target}: per-slot ctx {node['_slot_ctx']} < agent min_ctx {a['min_ctx']}")
-    return errs, total
+        if state is not None and n["cache_ram_mib"] < state:
+            errs.append(f"nodes.{name}: cache_ram_mib {n['cache_ram_mib']} < estimated per-slot prompt state {state:.0f} MiB (prompt cache would always be skipped)")
+        totals[n["host"]] = totals.get(n["host"], 0.0) + os.path.getsize(path) / 2**20 + (kv or 0) + 256 + n["cache_ram_mib"]
+    for sn, sp in (graph.get("speculative") or {}).items():
+        t = graph["nodes"][sp["target"]]
+        if t["status"] == "planned" or sp["mode"] != "draft" or sp["target"] not in metas: continue
+        d = models[sp["draft"]]; dp = os.path.expanduser(d["gguf"])
+        if not os.path.isfile(dp): errs.append(f"speculative.{sn}: draft file not found: {dp}"); continue
+        dmeta = gguf_meta(dp)
+        tv, dv = vocab(metas[sp["target"]]), vocab(dmeta)
+        if tv != dv or None in tv:
+            errs.append(f"speculative.{sn}: tokenizer/vocab mismatch target {tv[:2]} hash {str(tv[2])[:12]} vs draft {dv[:2]} hash {str(dv[2])[:12]}")
+        dctx = sp.get("draft_ctx", t["ctx"])
+        dkv = kv_mib(dmeta, dmeta.get("general.architecture"), dctx, sp.get("draft_kv_type", t["kv_type"])) or 0
+        totals[t["host"]] = totals.get(t["host"], 0.0) + os.path.getsize(dp) / 2**20 + dkv  # draft weights + its KV
+    for h, total in totals.items():
+        # RAM safety (docs/ram-safety.md): estimated_used + reserve must fit total_ram.
+        ram = hosts[h]["ram_mib"]
+        reserve = hosts[h]["reserve_ram_mib"]
+        if total + reserve > ram:
+            errs.append(
+                f"hosts.{h}: estimated RAM {total:.0f} MiB + reserve {reserve} MiB exceeds ram_mib {ram} MiB"
+            )
+        free_after = ram - total
+        if ram < 8192 and free_after < 2048:
+            errs.append(
+                f"hosts.{h}: estimated free after nodes {free_after:.0f} MiB < 2048 MiB floor "
+                f"on host with ram_mib {ram} < 8192 (OOM safety; see docs/ram-safety.md)"
+            )
+    return errs, totals
 
-def server_args(n):
-    a = [n["_bin"]] if "_bin" in n else []
-    a += ["-m", os.path.expanduser(n["model"]), "--host", n.get("host", "127.0.0.1"), "--port", str(n["port"]),
+def server_args(graph, name):
+    n = graph["nodes"][name]
+    m = graph["models"][n["model"]]
+    a = ["-m", os.path.expanduser(m["gguf"]), "--host", n["bind"], "--port", str(n["port"]),
          "-c", str(n["ctx"]), "-np", str(n["parallel"]), "-ctk", n["kv_type"], "-ctv", n["kv_type"],
-         "-ngl", str(n.get("gpu_layers", 0)), "--jinja"]
-    if n.get("flash_attn"): a += ["-fa", "on"]
-    for al in n.get("aliases", [])[:1]: a += ["--alias", al]
+         "-ngl", str(n["offload"]["ngl"]), "--jinja"]
+    if n["offload"]["ngl"]: a += ["-sm", n["offload"]["split"], "-mg", str(n["offload"]["main_gpu"])]
+    if n["flash_attn"]: a += ["-fa", "on"]
+    names = sorted(al for al, x in graph["aliases"].items() if x["node"] == name)
+    if names: a += ["--alias", names[0]]
     a += ["--cache-ram", str(n["cache_ram_mib"])]
     if n.get("embeddings"): a += ["--embeddings"]
+    # Speculative flags verified against b11374/b11539 --help; --draft-max/--draft-min were removed upstream.
+    for sp in (graph.get("speculative") or {}).values():
+        if sp["target"] != name or sp["status"] == "planned": continue
+        if sp["mode"] == "draft":
+            a += ["-md", os.path.expanduser(graph["models"][sp["draft"]]["gguf"]), "--spec-type", sp.get("spec_type", "draft-simple"),
+                  "--spec-draft-n-max", str(sp["draft_max"]), "--spec-draft-n-min", str(sp["draft_min"]),
+                  "--spec-draft-p-min", str(sp["p_min"]), "-ngld", str(sp.get("draft_ngl", 0))]
+            if "draft_kv_type" in sp: a += ["-ctkd", sp["draft_kv_type"], "-ctvd", sp["draft_kv_type"]]
+        else:
+            a += ["--spec-type", sp["spec_type"]]
+    r = graph["runtimes"][n["runtime"]]
+    if "bin" in r:
+        a = [os.path.join(os.path.dirname(os.path.abspath(graph.get("_path", "graph.yaml"))), r["bin"])] + a
     return a
 
 def main(argv):
     path = "graph.yaml"
     if "--graph" in argv: path = argv[argv.index("--graph") + 1]
-    graph = yaml.safe_load(open(path)); graph["_path"] = path
-    errs, total = validate(graph)
+    try: graph = load(path); graph["_path"] = path
+    except yaml.YAMLError as e:
+        print(f"graph: ERROR: {e}", file=sys.stderr); return 1
+    errs, totals = validate(graph, check_files="--no-files" not in argv)
     for e in errs: print(f"graph: ERROR: {e}", file=sys.stderr)
     if errs: return 1
     if "--args" in argv:
-        print(" ".join(server_args(graph["nodes"][argv[argv.index("--args") + 1]]))); return 0
-    print(f"graph: OK ({len(graph['nodes'])} node(s), est. {total:.0f} MiB)")
+        print(" ".join(server_args(graph, argv[argv.index("--args") + 1]))); return 0
+    est = ", ".join(f"{h} est. {t:.0f} MiB" for h, t in totals.items()) or "file checks skipped"
+    print(f"graph: OK ({len(graph['nodes'])} node(s); {est})")
     return 0
 
 if __name__ == "__main__":
