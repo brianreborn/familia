@@ -18,11 +18,12 @@ DEVICES=(
   "192.168.1.8 u0_a414 ${ANDROID_B_PASS:-}"
 )
 
-# ---- Helper: copy public key using password once (fallback to username) ----
+# ---- Helper: copy public key using password once (no password: skip, rely on keys) ----
 copy_key() {
-  local ip="$1" user="$2" pass="${3:-$user}"
+  local ip="$1" user="$2" pass="${3:-}"
   if [[ -z "$pass" ]]; then
-    echo "[INFO] No password supplied; using username ($user) as password for $user@$ip."
+    echo "[INFO] No password supplied for $user@$ip; skipping key copy (install the key manually)."
+    return 0
   fi
   echo "Copying SSH public key to $user@$ip..."
   sshpass -p "$pass" ssh -o StrictHostKeyChecking=no -p 8022 "$user@$ip" "mkdir -p ~/.ssh && chmod 700 ~/.ssh && echo \"$PUB_KEY\" >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"

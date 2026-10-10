@@ -1,5 +1,8 @@
 # AGY Retry Configuration
 
+> **Status: not implemented.** The configuration variables below describe a proposed design.
+> Nothing in this repository reads them yet; `scripts/retry_wrapper.py` does not consume them (#30).
+
 ## Purpose
 
 This document describes a lightweight configuration approach for the **AGY client** to automatically handle transient model‑service errors (e.g., empty responses, HTTP 503/429) by invoking the retry wrapper defined in `scripts/retry_wrapper.py`.
