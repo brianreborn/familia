@@ -252,7 +252,7 @@ pentests:
   # Pencilled in. Authorized testing of the owner's fleet only — not attack tooling.
   # Automation is launch-test only (validate → start → healthcheck → stop). Never live
   # scans, exploits, or network probes in tests. See docs/pentest-models.md and #15.
-  # Model options from survey (unplaced): Dolphin3-Cyber-8B (BrianReborn_alt RT 2026-09-20).
+  # Model options from survey (unplaced): see options.dolphin3-cyber-8b.
   android-fleet:
     name: Android fleet authorized testing
     node: coder                   # placeholder until a role:pentest model is placed
@@ -270,3 +270,64 @@ pentests:
       Ties to android_start.sh --role pentest and missing scripts/pentest-role.json (#15).
       Activate only after a pentest-role model is placed, scope.allow lists owned hosts/CIDRs,
       and tools.allow is an explicit allowlist. Operator confirm required.
+
+options:
+  # Unplaced model options (catalog only). Placement ignores this section; promote an
+  # option by adding a real models: entry with a measured sha256. Everything below is
+  # UNVERIFIED: names and claims come from reposts as summarized in #20.
+  dolphin3-cyber-8b:
+    role: pentest
+    unverified: true
+    sources: ["BrianReborn_alt RT 2026-09-20"]
+    size_note: ~3.2 GB Q2_K (from post)
+    placement_note: Launch-test only (see pentests). qodesh by RAM.
+    candidate_hosts: [qodesh]
+  # ---- #24 decision models; gpu_candidate = considered for the always-on 8600 GT role (256 MB)
+  k2-type-0.9b:
+    role: decision
+    unverified: true
+    sources: ["https://x.com/BrianReborn_alt/status/2106354389611094041"]
+    size_note: 0.9B params; ~0.5 GB at Q4 (estimate, not measured) - needs <=~200 MB slice or heavy quant for 256 MB VRAM
+    gpu_candidate: true
+    gpu_host: qodesh
+    placement_note: Best fit for 8600 GT always-on role per #20; partial offload (some layers on GPU) likely.
+    candidate_hosts: [qodesh, miryam]
+  drex-1.5:
+    role: decision
+    unverified: true
+    sources: ["https://x.com/BrianReborn_alt/status/2108691502864163123"]
+    size_note: unknown
+    gpu_candidate: true
+    gpu_host: qodesh
+    placement_note: 128k ctx claimed; Hermes-compatible per post. Small slice on GPU only if size allows.
+  drex-1.1:
+    role: decision
+    unverified: true
+    sources: ["https://x.com/BrianReborn_alt/status/2107800181316141401"]
+    size_note: unknown
+    gpu_candidate: true
+    gpu_host: qodesh
+    runtime_note: Diffusion LM; llama.cpp-compatible per post (drex-dlm runtime kind exists, unpinned).
+  glide:
+    role: decision
+    unverified: true
+    sources: ["https://x.com/BrianReborn_alt/status/2107815038589567062"]
+    size_note: unknown
+    gpu_candidate: true
+    gpu_host: qodesh
+    notes: Decision Index winner per post.
+  cloudflare-clef:
+    role: decision
+    unverified: true
+    sources: ["https://x.com/BrianReborn_alt/status/2106238504938377271"]
+    size_note: unknown
+    gpu_candidate: true
+    gpu_host: qodesh
+    notes: On HF per post; repo id not resolved.
+  gev-26b-decide:
+    role: decision
+    unverified: true
+    sources: ["https://x.com/BrianReborn_alt/status/2107731560246215067", "https://x.com/BrianReborn_alt/status/2106259773931024477"]
+    size_note: 26B params - far too big for 256 MB VRAM; ~15 GB at Q4 (estimate) exceeds every host's free RAM
+    gpu_candidate: false
+    placement_note: Catalog only.
