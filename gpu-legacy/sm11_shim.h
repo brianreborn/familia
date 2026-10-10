@@ -22,6 +22,13 @@ int sm11_init(const Sm11Config* cfg,
 /* One token forward; writes vocab_size logits to host. */
 int sm11_forward(int token, int pos, float* logits_out);
 void sm11_reset_kv(void);
+/* Quantized matvecs (GGML block layout). n must be multiple of 32. */
+int sm11_q4_matmul(float* xout, const float* x, const void* w_q4, int n, int d);
+int sm11_q8_matmul(float* xout, const float* x, const void* w_q8, int n, int d);
+/* Batch up to 8 F32 matvecs in one launch (grid.y = njobs). Each job streams W if needed. */
+typedef struct { float* y; const float* x; const float* w; int n, d; } Sm11Job;
+int sm11_matvec_batch(const Sm11Job* jobs, int njobs);
+
 #ifdef __cplusplus
 }
 #endif

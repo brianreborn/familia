@@ -614,3 +614,219 @@ VDONE:
 DONE:
   exit;
 }
+
+//   block_q4_0 { ggml_fp16_t d; uint8_t qs[16]; }  // 18 bytes, two nibbles per byte
+// y[row] = sum_j w[row,j] * x[j]
+// Grid: one block per output row. Threads stride over input blocks.
+
+// half->float: sm_11 has no native half; unpack IEEE754 binary16 in PTX.
+// d is stored as u16 at start of each 18-byte block.
+
+// Q4_0 dequant-matvec. block_q4_0 = {u16 d; u8 qs[16];} 18 bytes, 32 weights.
+// Software f16->f32 (no cvt.f32.f16 required).
+.visible .entry k_q4_matvec(.param .u64 py, .param .u64 px, .param .u64 pw, .param .u32 pn, .param .u32 pd)
+{
+  .reg .u32 %r<40>;
+  .reg .u64 %rd<24>;
+  .reg .f32 %f<20>;
+  .reg .pred %p<10>;
+  .shared .align 4 .f32 sm[128];
+
+  ld.param.u64 %rd1, [py];
+  ld.param.u64 %rd2, [px];
+  ld.param.u64 %rd3, [pw];
+  ld.param.u32 %r1, [pn];
+  ld.param.u32 %r2, [pd];
+  mov.u32 %r3, %ctaid.x;
+  setp.ge.u32 %p1, %r3, %r2;
+  @%p1 bra DONE;
+  mov.u32 %r4, %tid.x;
+  shr.u32 %r5, %r1, 5;                 // n/32 blocks/row
+  mul.lo.u32 %r6, %r3, %r5;
+  mul.lo.u32 %r6, %r6, 18;
+  mul.wide.u32 %rd4, %r6, 1;
+  add.u64 %rd4, %rd3, %rd4;
+  mov.f32 %f1, 0f00000000;
+  mov.u32 %r7, %r4;
+BLOOP:
+  setp.ge.u32 %p2, %r7, %r5;
+  @%p2 bra RED;
+  mul.lo.u32 %r8, %r7, 18;
+  mul.wide.u32 %rd5, %r8, 1;
+  add.u64 %rd5, %rd4, %rd5;
+  ld.global.u16 %r9, [%rd5];           // f16 bits
+  // f16 -> f32
+  and.b32 %r20, %r9, 0x8000;           // sign
+  shr.u32 %r21, %r9, 10;
+  and.b32 %r21, %r21, 0x1f;            // exp
+  and.b32 %r22, %r9, 0x3ff;            // mant
+  setp.eq.u32 %p7, %r21, 0;
+  @%p7 bra DENORM;
+  setp.eq.u32 %p8, %r21, 31;
+  @%p8 bra INFNAN;
+  add.u32 %r21, %r21, 112;             // rebias 127-15
+  shl.b32 %r21, %r21, 23;
+  shl.b32 %r22, %r22, 13;
+  or.b32 %r23, %r21, %r22;
+  shl.b32 %r20, %r20, 16;
+  or.b32 %r23, %r23, %r20;
+  mov.b32 %f2, %r23;
+  bra HAVED;
+DENORM:
+  mov.f32 %f2, 0f00000000;
+  bra HAVED;
+INFNAN:
+  mov.f32 %f2, 0f7f800000;
+HAVED:
+  add.u64 %rd6, %rd5, 2;
+  shl.b32 %r10, %r7, 5;
+  mul.wide.u32 %rd7, %r10, 4;
+  add.u64 %rd7, %rd2, %rd7;
+  mov.u32 %r11, 0;
+QLOOP:
+  setp.ge.u32 %p3, %r11, 16;
+  @%p3 bra QDONE;
+  mul.wide.u32 %rd9, %r11, 1;
+  add.u64 %rd8, %rd6, %rd9;
+  ld.global.u8 %r12, [%rd8];
+  // GGML Q4_0: low nibble -> j, high -> j+16
+  and.b32 %r13, %r12, 15;
+  sub.s32 %r13, %r13, 8;
+  cvt.rn.f32.s32 %f3, %r13;
+  mul.f32 %f3, %f3, %f2;
+  mul.wide.u32 %rd11, %r11, 4;
+  add.u64 %rd11, %rd7, %rd11;
+  ld.global.f32 %f4, [%rd11];
+  mad.f32 %f1, %f3, %f4, %f1;
+  shr.u32 %r13, %r12, 4;
+  and.b32 %r13, %r13, 15;
+  sub.s32 %r13, %r13, 8;
+  cvt.rn.f32.s32 %f3, %r13;
+  mul.f32 %f3, %f3, %f2;
+  add.u32 %r14, %r11, 16;
+  mul.wide.u32 %rd11, %r14, 4;
+  add.u64 %rd11, %rd7, %rd11;
+  ld.global.f32 %f4, [%rd11];
+  mad.f32 %f1, %f3, %f4, %f1;
+  add.u32 %r11, %r11, 1;
+  bra QLOOP;
+QDONE:
+  add.u32 %r7, %r7, 128;
+  bra BLOOP;
+RED:
+  mov.u64 %rd12, sm;
+  mul.wide.u32 %rd13, %r4, 4;
+  add.u64 %rd13, %rd12, %rd13;
+  st.shared.f32 [%rd13], %f1;
+  mov.u32 %r15, 64;
+RLOOP:
+  bar.sync 0;
+  setp.ge.u32 %p4, %r4, %r15;
+  @%p4 bra RSKIP;
+  mul.wide.u32 %rd14, %r15, 4;
+  add.u64 %rd14, %rd13, %rd14;
+  ld.shared.f32 %f5, [%rd13];
+  ld.shared.f32 %f6, [%rd14];
+  add.f32 %f5, %f5, %f6;
+  st.shared.f32 [%rd13], %f5;
+RSKIP:
+  shr.u32 %r15, %r15, 1;
+  setp.ne.u32 %p5, %r15, 0;
+  @%p5 bra RLOOP;
+  setp.ne.u32 %p6, %r4, 0;
+  @%p6 bra DONE;
+  ld.shared.f32 %f7, [%rd12];
+  mul.wide.u32 %rd15, %r3, 4;
+  add.u64 %rd15, %rd1, %rd15;
+  st.global.f32 [%rd15], %f7;
+DONE:
+  exit;
+}
+
+// Q8_0: block {f16 d; int8 qs[32];} = 34 bytes
+.visible .entry k_q8_matvec(.param .u64 py, .param .u64 px, .param .u64 pw, .param .u32 pn, .param .u32 pd)
+{
+  .reg .u32 %r<40>;
+  .reg .u64 %rd<20>;
+  .reg .f32 %f<16>;
+  .reg .pred %p<10>;
+  .shared .align 4 .f32 sm[128];
+  ld.param.u64 %rd1, [py]; ld.param.u64 %rd2, [px]; ld.param.u64 %rd3, [pw];
+  ld.param.u32 %r1, [pn]; ld.param.u32 %r2, [pd];
+  mov.u32 %r3, %ctaid.x; setp.ge.u32 %p1, %r3, %r2; @%p1 bra DONE;
+  mov.u32 %r4, %tid.x; shr.u32 %r5, %r1, 5;
+  mul.lo.u32 %r6, %r3, %r5; mul.lo.u32 %r6, %r6, 34;
+  mul.wide.u32 %rd4, %r6, 1; add.u64 %rd4, %rd3, %rd4;
+  mov.f32 %f1, 0f00000000; mov.u32 %r7, %r4;
+BLOOP:
+  setp.ge.u32 %p2, %r7, %r5; @%p2 bra RED;
+  mul.lo.u32 %r8, %r7, 34; mul.wide.u32 %rd5, %r8, 1; add.u64 %rd5, %rd4, %rd5;
+  ld.global.u16 %r9, [%rd5];
+  and.b32 %r20, %r9, 0x8000; shr.u32 %r21, %r9, 10; and.b32 %r21, %r21, 0x1f; and.b32 %r22, %r9, 0x3ff;
+  setp.eq.u32 %p7, %r21, 0; @%p7 bra DENORM;
+  add.u32 %r21, %r21, 112; shl.b32 %r21, %r21, 23; shl.b32 %r22, %r22, 13;
+  or.b32 %r23, %r21, %r22; shl.b32 %r20, %r20, 16; or.b32 %r23, %r23, %r20; mov.b32 %f2, %r23; bra HAVED;
+DENORM: mov.f32 %f2, 0f00000000;
+HAVED:
+  add.u64 %rd6, %rd5, 2; shl.b32 %r10, %r7, 5; mul.wide.u32 %rd7, %r10, 4; add.u64 %rd7, %rd2, %rd7;
+  mov.u32 %r11, 0;
+QLOOP:
+  setp.ge.u32 %p3, %r11, 32; @%p3 bra QDONE;
+  mul.wide.u32 %rd9, %r11, 1; add.u64 %rd8, %rd6, %rd9;
+  ld.global.s8 %r12, [%rd8];
+  cvt.rn.f32.s32 %f3, %r12; mul.f32 %f3, %f3, %f2;
+  mul.wide.u32 %rd11, %r11, 4; add.u64 %rd11, %rd7, %rd11;
+  ld.global.f32 %f4, [%rd11]; mad.f32 %f1, %f3, %f4, %f1;
+  add.u32 %r11, %r11, 1; bra QLOOP;
+QDONE: add.u32 %r7, %r7, 128; bra BLOOP;
+RED:
+  mov.u64 %rd12, sm; mul.wide.u32 %rd13, %r4, 4; add.u64 %rd13, %rd12, %rd13; st.shared.f32 [%rd13], %f1;
+  mov.u32 %r15, 64;
+RLOOP: bar.sync 0; setp.ge.u32 %p4, %r4, %r15; @%p4 bra RSKIP;
+  mul.wide.u32 %rd14, %r15, 4; add.u64 %rd14, %rd13, %rd14;
+  ld.shared.f32 %f5, [%rd13]; ld.shared.f32 %f6, [%rd14]; add.f32 %f5, %f5, %f6; st.shared.f32 [%rd13], %f5;
+RSKIP: shr.u32 %r15, %r15, 1; setp.ne.u32 %p5, %r15, 0; @%p5 bra RLOOP;
+  setp.ne.u32 %p6, %r4, 0; @%p6 bra DONE;
+  ld.shared.f32 %f7, [%rd12]; mul.wide.u32 %rd15, %r3, 4; add.u64 %rd15, %rd1, %rd15; st.global.f32 [%rd15], %f7;
+DONE: exit;
+}
+
+// Batched F32 matvec: one launch, N independent (x,W)->y jobs from a host-built job table.
+// job: {u64 y, u64 x, u64 W, u32 n, u32 d, u32 pad0, u32 pad1} = 32 bytes
+.visible .entry k_matvec_batch(.param .u64 pjobs, .param .u32 pnjobs)
+{
+  .reg .u32 %r<20>;
+  .reg .u64 %rd<20>;
+  .reg .f32 %f<8>;
+  .reg .pred %p<6>;
+  .shared .align 4 .f32 sm[128];
+  ld.param.u64 %rd0, [pjobs];
+  ld.param.u32 %r0, [pnjobs];
+  mov.u32 %r1, %ctaid.y;              // job index
+  setp.ge.u32 %p0, %r1, %r0; @%p0 bra DONE;
+  mul.lo.u32 %r2, %r1, 32;
+  mul.wide.u32 %rd1, %r2, 1; add.u64 %rd1, %rd0, %rd1;
+  ld.global.u64 %rd2, [%rd1];         // y
+  ld.global.u64 %rd3, [%rd1+8];       // x
+  ld.global.u64 %rd4, [%rd1+16];      // W
+  ld.global.u32 %r3, [%rd1+24];       // n
+  ld.global.u32 %r4, [%rd1+28];       // d
+  mov.u32 %r5, %ctaid.x;              // row
+  setp.ge.u32 %p1, %r5, %r4; @%p1 bra DONE;
+  mov.u32 %r6, %tid.x;
+  mul.wide.u32 %rd5, %r5, %r3; shl.b64 %rd5, %rd5, 2; add.u64 %rd5, %rd4, %rd5;
+  mov.f32 %f1, 0f00000000; mov.u32 %r7, %r6;
+LOOP: setp.ge.u32 %p2, %r7, %r3; @%p2 bra RED;
+  mul.wide.u32 %rd6, %r7, 4; add.u64 %rd7, %rd5, %rd6; add.u64 %rd8, %rd3, %rd6;
+  ld.global.f32 %f2, [%rd7]; ld.global.f32 %f3, [%rd8]; mad.f32 %f1, %f2, %f3, %f1;
+  add.u32 %r7, %r7, 128; bra LOOP;
+RED: mov.u64 %rd9, sm; mul.wide.u32 %rd10, %r6, 4; add.u64 %rd10, %rd9, %rd10; st.shared.f32 [%rd10], %f1;
+  mov.u32 %r8, 64;
+RLOOP: bar.sync 0; setp.ge.u32 %p3, %r6, %r8; @%p3 bra RSKIP;
+  mul.wide.u32 %rd11, %r8, 4; add.u64 %rd11, %rd10, %rd11;
+  ld.shared.f32 %f4, [%rd10]; ld.shared.f32 %f5, [%rd11]; add.f32 %f4, %f4, %f5; st.shared.f32 [%rd10], %f4;
+RSKIP: shr.u32 %r8, %r8, 1; setp.ne.u32 %p4, %r8, 0; @%p4 bra RLOOP;
+  setp.ne.u32 %p5, %r6, 0; @%p5 bra DONE;
+  ld.shared.f32 %f6, [%rd9]; mul.wide.u32 %rd12, %r5, 4; add.u64 %rd12, %rd2, %rd12; st.global.f32 [%rd12], %f6;
+DONE: exit;
+}

@@ -53,7 +53,10 @@ static char* load_ptx(void) {
 #define LOAD(n, s) do { *(FARPROC*)&p_##n = GetProcAddress(h, s); if (!p_##n) { fprintf(stderr, "sm11: missing %s\n", s); return -1; } } while (0)
 #define CK(e) do { CUresult _r = (e); if (_r) { fprintf(stderr, "sm11: %s -> %d\n", #e, _r); return -1; } } while (0)
 
-static CUfunction f_matvec, f_rmsnorm, f_add, f_silu, f_rope, f_copy, f_ascores, f_softmax, f_avalue, f_attn_fused;
+static CUfunction f_matvec, f_rmsnorm, f_add, f_silu, f_rope, f_copy, f_ascores, f_softmax, f_avalue, f_attn_fused, f_q4, f_q8, f_batch;
+static CUdeviceptr g_pool_jobs = 0, g_pool_x[8], g_pool_y[8], g_pool_w[8];
+static size_t g_pool_xsz[8], g_pool_ysz[8], g_pool_wsz[8];
+static CUdeviceptr g_mv_dx = 0, g_mv_dy = 0; static size_t g_mv_dxsz = 0, g_mv_dysz = 0;
 static const char* g_hbase; static size_t g_nbytes, g_resident;
 static CUdeviceptr g_dbase, g_stage; static size_t g_stage_bytes;
 static int g_ready;
@@ -73,7 +76,7 @@ static int launch(CUfunction f, unsigned gx, unsigned bx, void** args) {
 }
 
 static int matvec_d(CUdeviceptr dy, CUdeviceptr dx, const float* hw, int n, int d) {
-    size_t bytes = (size_t)n * d * 4, off = g_hbase ? (size_t)((const char*)hw - g_hbase) : (size_t)-1;
+    size_t bytes = (size_t)n * d * 4, off = (const char*)hw - g_hbase;
     CUdeviceptr dW;
     if (off + bytes <= g_resident) {
         dW = g_dbase + off;
@@ -122,6 +125,9 @@ int sm11_register(const void* base, size_t nbytes) {
     CK(p_cuModuleGetFunction(&f_softmax, mod, "k_softmax"));
     CK(p_cuModuleGetFunction(&f_avalue, mod, "k_attn_value"));
     if (p_cuModuleGetFunction(&f_attn_fused, mod, "k_attn_fused") != 0) { fprintf(stderr, "sm11: k_attn_fused missing, using split attn\n"); f_attn_fused = 0; }
+    if (p_cuModuleGetFunction(&f_q4, mod, "k_q4_matvec") != 0) f_q4 = 0;
+    if (p_cuModuleGetFunction(&f_q8, mod, "k_q8_matvec") != 0) f_q8 = 0;
+    if (p_cuModuleGetFunction(&f_batch, mod, "k_matvec_batch") != 0) f_batch = 0;
     CK(p_cuMemGetInfo(&fr, &tot));
     fprintf(stderr, "sm11: %s cc%d.%d vram free %u/%u MiB, weights %u MiB\n", name, ma, mi,
             (unsigned)(fr>>20), (unsigned)(tot>>20), (unsigned)(nbytes>>20));
@@ -131,14 +137,6 @@ int sm11_register(const void* base, size_t nbytes) {
     size_t budget = fr > leave ? fr - leave : (fr > (8u<<20) ? fr - (8u<<20) : 0);
     const char* cap = getenv("SM11_RESIDENT_MIB");
     if (cap) { size_t c = (size_t)atoi(cap) << 20; if (c < budget) budget = c; }
-    /* stream-only init: tiny nbytes means do not pin a weight blob; matvec_d streams every call */
-    if (nbytes <= 16) {
-        g_resident = 0; g_hbase = (const char*)0; g_nbytes = (size_t)-1; /* accept any host w* */
-        CK(p_cuMemAlloc(&g_stage, g_stage_bytes));
-        g_ready = 1;
-        fprintf(stderr, "sm11: stream-only init (partial offload / ggml hook)\n");
-        return 0;
-    }
     g_resident = nbytes < budget ? nbytes : budget;
     CK(p_cuMemAlloc(&g_stage, g_stage_bytes));
     if (g_resident) { CK(p_cuMemAlloc(&g_dbase, g_resident)); CK(p_cuMemcpyHtoD(g_dbase, base, g_resident)); }
@@ -150,12 +148,13 @@ int sm11_register(const void* base, size_t nbytes) {
 
 int sm11_matmul(float* xout, const float* x, const float* w, int n, int d) {
     if (!g_ready) return -1;
-    CUdeviceptr dx, dy;
-    CK(p_cuMemAlloc(&dx, (size_t)n * 4)); CK(p_cuMemAlloc(&dy, (size_t)d * 4));
-    CK(p_cuMemcpyHtoD(dx, x, (size_t)n * 4));
-    if (matvec_d(dy, dx, w, n, d)) return -1;
-    CK(p_cuMemcpyDtoH(xout, dy, (size_t)d * 4));
-    p_cuMemFree(dx); p_cuMemFree(dy);
+    size_t xs = (size_t)n * 4, ys = (size_t)d * 4;
+    if (xs > g_mv_dxsz) { if (g_mv_dx) p_cuMemFree(g_mv_dx); CK(p_cuMemAlloc(&g_mv_dx, xs)); g_mv_dxsz = xs; }
+    if (ys > g_mv_dysz) { if (g_mv_dy) p_cuMemFree(g_mv_dy); CK(p_cuMemAlloc(&g_mv_dy, ys)); g_mv_dysz = ys; }
+    CK(p_cuMemcpyHtoD(g_mv_dx, x, xs));
+    if (matvec_d(g_mv_dy, g_mv_dx, w, n, d)) return -1;
+    CK(p_cuCtxSynchronize());
+    CK(p_cuMemcpyDtoH(xout, g_mv_dy, ys));
     return 0;
 }
 
@@ -284,5 +283,69 @@ int sm11_forward(int token, int pos, float* logits_out) {
     if (matvec_d(d_logits, d_x, h_wcls, dim, p->vocab_size)) return -1;
     CK(p_cuCtxSynchronize());
     CK(p_cuMemcpyDtoH(logits_out, d_logits, (size_t)p->vocab_size * 4));
+    return 0;
+}
+
+
+int sm11_q4_matmul(float* xout, const float* x, const void* w_q4, int n, int d) {
+    if (!g_ready || !f_q4 || (n & 31)) return -1;
+    CUdeviceptr dx, dy, dw;
+    size_t wbytes = (size_t)(n/32) * 18 * d;
+    CK(p_cuMemAlloc(&dx, (size_t)n * 4)); CK(p_cuMemAlloc(&dy, (size_t)d * 4));
+    CK(p_cuMemAlloc(&dw, wbytes));
+    CK(p_cuMemcpyHtoD(dx, x, (size_t)n * 4));
+    CK(p_cuMemcpyHtoD(dw, w_q4, wbytes));
+    unsigned un = (unsigned)n, ud = (unsigned)d;
+    void* args[] = {&dy, &dx, &dw, &un, &ud};
+    CK(launch(f_q4, ud, 128, args));
+    CK(p_cuCtxSynchronize());
+    CK(p_cuMemcpyDtoH(xout, dy, (size_t)d * 4));
+    p_cuMemFree(dx); p_cuMemFree(dy); p_cuMemFree(dw);
+    return 0;
+}
+
+int sm11_q8_matmul(float* xout, const float* x, const void* w_q8, int n, int d) {
+    if (!g_ready || !f_q8 || (n & 31)) return -1;
+    CUdeviceptr dx, dy, dw;
+    size_t wbytes = (size_t)(n/32) * 34 * d;
+    CK(p_cuMemAlloc(&dx, (size_t)n * 4)); CK(p_cuMemAlloc(&dy, (size_t)d * 4));
+    CK(p_cuMemAlloc(&dw, wbytes));
+    CK(p_cuMemcpyHtoD(dx, x, (size_t)n * 4));
+    CK(p_cuMemcpyHtoD(dw, w_q8, wbytes));
+    unsigned un = (unsigned)n, ud = (unsigned)d;
+    void* args[] = {&dy, &dx, &dw, &un, &ud};
+    CK(launch(f_q8, ud, 128, args));
+    CK(p_cuCtxSynchronize());
+    CK(p_cuMemcpyDtoH(xout, dy, (size_t)d * 4));
+    p_cuMemFree(dx); p_cuMemFree(dy); p_cuMemFree(dw);
+    return 0;
+}
+
+int sm11_matvec_batch(const Sm11Job* jobs, int njobs) {
+    if (!g_ready || njobs < 1 || njobs > 8) return -1;
+    /* Pipelined matvec_d (uses resident W when registered) + one sync. */
+    for (int i = 0; i < njobs; i++) {
+        size_t xs = (size_t)jobs[i].n * 4, ys = (size_t)jobs[i].d * 4;
+        if (xs > g_pool_xsz[i]) {
+            if (g_pool_x[i]) p_cuMemFree(g_pool_x[i]);
+            CK(p_cuMemAlloc(&g_pool_x[i], xs)); g_pool_xsz[i] = xs;
+        }
+        if (ys > g_pool_ysz[i]) {
+            if (g_pool_y[i]) p_cuMemFree(g_pool_y[i]);
+            CK(p_cuMemAlloc(&g_pool_y[i], ys)); g_pool_ysz[i] = ys;
+        }
+        CUdeviceptr dx;
+        if (i > 0 && jobs[i].x == jobs[0].x && jobs[i].n == jobs[0].n) {
+            dx = g_pool_x[0];
+        } else {
+            CK(p_cuMemcpyHtoD(g_pool_x[i], jobs[i].x, xs));
+            dx = g_pool_x[i];
+        }
+        if (matvec_d(g_pool_y[i], dx, jobs[i].w, jobs[i].n, jobs[i].d)) return -1;
+    }
+    CK(p_cuCtxSynchronize());
+    for (int i = 0; i < njobs; i++) {
+        CK(p_cuMemcpyDtoH(jobs[i].y, g_pool_y[i], (size_t)jobs[i].d * 4));
+    }
     return 0;
 }
