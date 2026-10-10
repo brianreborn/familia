@@ -1,0 +1,6 @@
+familia is a shell/Python topology coordinator that launches and wires a
+fleet of local LLM runtimes (llama.cpp servers, agents, routers) across
+hosts according to a validated configuration graph (graph.yaml). It
+supports SSH and optional BitTorrent (aria2) transports between hosts.
+
+This port is PRELIMINARY and has not yet been built on FreeBSD.

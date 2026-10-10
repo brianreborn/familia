@@ -1,0 +1,35 @@
+#!/bin/sh
+#
+# PROVIDE: familia_server
+# REQUIRE: LOGIN NETWORKING
+# KEYWORD: shutdown
+#
+# Disabled by default. Enable with:  sysrc familia_server_enable=YES
+#   familia_server_user   (default: familia)  user that runs the fleet
+#   familia_server_dir    (default: ~user/.familia)  working dir/config
+#   familia_server_flags  extra args to familia-start
+
+. /etc/rc.subr
+
+name=familia_server
+rcvar=familia_server_enable
+load_rc_config $name
+
+: ${familia_server_enable:=NO}
+: ${familia_server_user:=familia}
+: ${familia_server_dir:=$(eval echo ~${familia_server_user})/.familia}
+: ${familia_server_flags:=}
+
+pidfile=/var/run/${name}.pid
+procname=%%PREFIX%%/bin/bash
+command=/usr/sbin/daemon
+command_args="-f -P ${pidfile} -u ${familia_server_user} -o /var/log/${name}.log %%PREFIX%%/bin/familia-start ${familia_server_flags}"
+start_precmd="${name}_prestart"
+
+familia_server_prestart()
+{
+	install -d -o ${familia_server_user} ${familia_server_dir}
+	cd ${familia_server_dir}
+}
+
+run_rc_command "$1"
