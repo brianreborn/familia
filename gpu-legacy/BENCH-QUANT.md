@@ -1,31 +1,19 @@
-﻿# SM11 quant + batch launch measurements (qodesh, GeForce 8600 GT)
+﻿# SM11 quant matvec — optimized (qodesh, GeForce 8600 GT / G84, 4 SMs)
 
-Shape: n=288, d=768 (stories15M FFN-ish). Timing: QueryPerformanceCounter, 100 iters after warmup.
-F32 weights registered resident (no per-call W H2D). Q4/Q8 still H2D their packed buffers each call.
+## Changes vs v1
+- Shared-memory cache of `x` (coalesced load, 64 threads)
+- 64 threads/block (better occupancy on sm_11)
+- Resident quantized W pool (upload once per host pointer)
+- Persistent dx/dy scratch (no per-call alloc)
 
-## Correctness (max abs err vs CPU F32; y in [-16.7, 18.9])
-| op | max_abs_err |
-|---|---:|
-| gpu F32 | 6e-6 |
-| gpu Q4_0 (GGML nibble layout) | 0.491 (~2.6% of peak) |
-| gpu Q8_0 | 0.035 |
-| gpu batch | 6e-6 |
+## Measured (QPC, resident W after first call)
 
-## Quant matvec latency
-| op | ms/call |
-|---|---:|
-| cpu F32 | 0.346 |
-| gpu F32 resident | 0.495 |
-| gpu Q4_0 | 3.463 |
-| gpu Q8_0 | 3.935 |
+| shape (n×d) | cpu F32 ms | gpu F32 ms | gpu Q4 ms | gpu Q8 ms | Q4 vs CPU |
+|---|---:|---:|---:|---:|---:|
+| 288×768 (stories15M) | 0.312 | 0.403 | **1.072** | 1.518 | 3.44× (was 11× / 3.46 ms) |
+| 512×1536 | 1.179 | **0.784** | 2.341 | 2.620 | 1.99× |
+| notes | | GPU F32 beats CPU at mid size | | | |
 
-## Launch overhead: pipelined batch vs N synced singles
-| N | batch ms | N x single ms | speedup |
-|---:|---:|---:|---:|
-| 3 | 1.236 | 1.530 | 1.24x |
-| 6 | 2.237 | 3.037 | 1.36x |
-| 8 | 2.959 | 4.115 | 1.39x |
-
-Batch = persistent scratch pool + pipelined `matvec_d` + one `cuCtxSynchronize`.
-PTX: `k_q4_matvec`, `k_q8_matvec`, `k_matvec_batch` (pipeline path used on sm_11).
-API: `sm11_q4_matmul`, `sm11_q8_matmul`, `sm11_matvec_batch`.
+Q4 max-abs-err ~0.49 on y∈[-17,19] (~2.6% peak); Q8 ~0.035.
+Target "beat CPU F32" holds for **gpu F32** at ≥512×1536; Q4 still dequant-bound on G84 but **3.2× faster** than prior kernel at stories15M shape.
+G84 = 4 SMs confirmed via device path (cc 1.1, 256 MiB).

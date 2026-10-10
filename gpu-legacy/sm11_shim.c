@@ -133,12 +133,16 @@ int sm11_register(const void* base, size_t nbytes) {
     fprintf(stderr, "sm11: %s cc%d.%d vram free %u/%u MiB, weights %u MiB\n", name, ma, mi,
             (unsigned)(fr>>20), (unsigned)(tot>>20), (unsigned)(nbytes>>20));
     g_stage_bytes = 4u << 20;
-    /* Prefer fitting the whole always-active model (decision/draft) in VRAM. */
-    size_t leave = g_stage_bytes + (16u << 20);
-    size_t budget = fr > leave ? fr - leave : (fr > (8u<<20) ? fr - (8u<<20) : 0);
+    /* Prefer full residency for always-active models. Soften leave when the blob fits. */
+    size_t leave = g_stage_bytes + (8u << 20);
+    if (nbytes + leave <= fr) leave = g_stage_bytes + (4u << 20);
+    size_t budget = fr > leave ? fr - leave : (fr > (4u<<20) ? fr - (4u<<20) : 0);
     const char* cap = getenv("SM11_RESIDENT_MIB");
     if (cap) { size_t c = (size_t)atoi(cap) << 20; if (c < budget) budget = c; }
     g_resident = nbytes < budget ? nbytes : budget;
+    if (g_resident < nbytes)
+        fprintf(stderr, "sm11: WARN only %u/%u MiB resident (freeVRAM %u); tok/s will drop.\n",
+                (unsigned)(g_resident>>20), (unsigned)(nbytes>>20), (unsigned)(fr>>20));
     CK(p_cuMemAlloc(&g_stage, g_stage_bytes));
     if (g_resident) { CK(p_cuMemAlloc(&g_dbase, g_resident)); CK(p_cuMemcpyHtoD(g_dbase, base, g_resident)); }
     g_hbase = (const char*)base; g_nbytes = nbytes; g_ready = 1;

@@ -624,7 +624,7 @@ DONE:
 
 // Q4_0 dequant-matvec. block_q4_0 = {u16 d; u8 qs[16];} 18 bytes, 32 weights.
 // Software f16->f32 (no cvt.f32.f16 required).
-.visible .entry k_q4_matvec(.param .u64 py, .param .u64 px, .param .u64 pw, .param .u32 pn, .param .u32 pd)
+.visible .entry k_q4_matvec_v1(.param .u64 py, .param .u64 px, .param .u64 pw, .param .u32 pn, .param .u32 pd)
 {
   .reg .u32 %r<40>;
   .reg .u64 %rd<24>;
@@ -744,7 +744,7 @@ DONE:
 }
 
 // Q8_0: block {f16 d; int8 qs[32];} = 34 bytes
-.visible .entry k_q8_matvec(.param .u64 py, .param .u64 px, .param .u64 pw, .param .u32 pn, .param .u32 pd)
+.visible .entry k_q8_matvec_v1(.param .u64 py, .param .u64 px, .param .u64 pw, .param .u32 pn, .param .u32 pd)
 {
   .reg .u32 %r<40>;
   .reg .u64 %rd<20>;
@@ -790,6 +790,143 @@ RSKIP: shr.u32 %r15, %r15, 1; setp.ne.u32 %p5, %r15, 0; @%p5 bra RLOOP;
   ld.shared.f32 %f7, [%rd12]; mul.wide.u32 %rd15, %r3, 4; add.u64 %rd15, %rd1, %rd15; st.global.f32 [%rd15], %f7;
 DONE: exit;
 }
+
+
+// Optimized Q4_0 matvec for G84 (sm_11, 4 SMs, 16KB smem):
+// - x cached in shared memory (coalesced load)
+// - each block owns ROWS_PER_BLOCK output rows (grid = ceil(d/ROWS))
+// - 64 threads/block (good occupancy on 8192-reg SM)
+// - GGML layout: low nibble -> j, high -> j+16
+.visible .entry k_q4_matvec(.param .u64 py, .param .u64 px, .param .u64 pw, .param .u32 pn, .param .u32 pd)
+{
+  .reg .u32 %r<48>;
+  .reg .u64 %rd<28>;
+  .reg .f32 %f<24>;
+  .reg .pred %p<12>;
+  .shared .align 4 .f32 sx[512];
+  .shared .align 4 .f32 sm[64];
+
+  ld.param.u64 %rd1, [py];
+  ld.param.u64 %rd2, [px];
+  ld.param.u64 %rd3, [pw];
+  ld.param.u32 %r1, [pn];
+  ld.param.u32 %r2, [pd];
+  mov.u32 %r4, %tid.x;            // 0..63
+  mov.u32 %r3, %ctaid.x;          // row
+  setp.ge.u32 %p1, %r3, %r2;
+  @%p1 bra DONE;
+
+  // Cooperatively load x[0..n) into shared (n<=512)
+  mov.u32 %r7, %r4;
+XLOAD:
+  setp.ge.u32 %p2, %r7, %r1; @%p2 bra XDONE;
+  mul.wide.u32 %rd6, %r7, 4; add.u64 %rd7, %rd2, %rd6;
+  ld.global.f32 %f0, [%rd7];
+  mov.u64 %rd8, sx; add.u64 %rd8, %rd8, %rd6; st.shared.f32 [%rd8], %f0;
+  add.u32 %r7, %r7, 64; bra XLOAD;
+XDONE:
+  bar.sync 0;
+
+  shr.u32 %r5, %r1, 5;            // nblocks = n/32
+  mul.lo.u32 %r6, %r3, %r5;
+  mul.lo.u32 %r6, %r6, 18;        // row byte offset in W
+  mul.wide.u32 %rd4, %r6, 1; add.u64 %rd4, %rd3, %rd4;
+
+  mov.f32 %f1, 0f00000000;
+  mov.u32 %r7, %r4;               // block index stride 64
+BLOOP:
+  setp.ge.u32 %p2, %r7, %r5; @%p2 bra RED;
+  mul.lo.u32 %r8, %r7, 18;
+  mul.wide.u32 %rd5, %r8, 1; add.u64 %rd5, %rd4, %rd5;
+  ld.global.u16 %r9, [%rd5];
+  // f16->f32 scale
+  and.b32 %r20, %r9, 0x8000; shr.u32 %r21, %r9, 10; and.b32 %r21, %r21, 0x1f; and.b32 %r22, %r9, 0x3ff;
+  setp.eq.u32 %p7, %r21, 0; @%p7 bra DENORM;
+  add.u32 %r21, %r21, 112; shl.b32 %r21, %r21, 23; shl.b32 %r22, %r22, 13;
+  or.b32 %r23, %r21, %r22; shl.b32 %r20, %r20, 16; or.b32 %r23, %r23, %r20; mov.b32 %f2, %r23; bra HAVED;
+DENORM: mov.f32 %f2, 0f00000000;
+HAVED:
+  add.u64 %rd6, %rd5, 2;
+  shl.b32 %r10, %r7, 5;           // base index = block*32
+  mov.u32 %r11, 0;
+QLOOP:
+  setp.ge.u32 %p3, %r11, 16; @%p3 bra QDONE;
+  mul.wide.u32 %rd9, %r11, 1; add.u64 %rd8, %rd6, %rd9;
+  ld.global.u8 %r12, [%rd8];
+  and.b32 %r13, %r12, 15; sub.s32 %r13, %r13, 8; cvt.rn.f32.s32 %f3, %r13; mul.f32 %f3, %f3, %f2;
+  add.u32 %r14, %r10, %r11;
+  mul.wide.u32 %rd11, %r14, 4; mov.u64 %rd12, sx; add.u64 %rd12, %rd12, %rd11;
+  ld.shared.f32 %f4, [%rd12]; mad.f32 %f1, %f3, %f4, %f1;
+  shr.u32 %r13, %r12, 4; and.b32 %r13, %r13, 15; sub.s32 %r13, %r13, 8; cvt.rn.f32.s32 %f3, %r13; mul.f32 %f3, %f3, %f2;
+  add.u32 %r14, %r10, %r11; add.u32 %r14, %r14, 16;
+  mul.wide.u32 %rd11, %r14, 4; mov.u64 %rd12, sx; add.u64 %rd12, %rd12, %rd11;
+  ld.shared.f32 %f4, [%rd12]; mad.f32 %f1, %f3, %f4, %f1;
+  add.u32 %r11, %r11, 1; bra QLOOP;
+QDONE:
+  add.u32 %r7, %r7, 64; bra BLOOP;
+
+RED:
+  mov.u64 %rd12, sm; mul.wide.u32 %rd13, %r4, 4; add.u64 %rd13, %rd12, %rd13; st.shared.f32 [%rd13], %f1;
+  mov.u32 %r15, 32;
+RLOOP: bar.sync 0; setp.ge.u32 %p4, %r4, %r15; @%p4 bra RSKIP;
+  mul.wide.u32 %rd14, %r15, 4; add.u64 %rd14, %rd13, %rd14;
+  ld.shared.f32 %f5, [%rd13]; ld.shared.f32 %f6, [%rd14]; add.f32 %f5, %f5, %f6; st.shared.f32 [%rd13], %f5;
+RSKIP: shr.u32 %r15, %r15, 1; setp.ne.u32 %p5, %r15, 0; @%p5 bra RLOOP;
+  setp.ne.u32 %p6, %r4, 0; @%p6 bra DONE;
+  ld.shared.f32 %f7, [%rd12]; mul.wide.u32 %rd15, %r3, 4; add.u64 %rd15, %rd1, %rd15; st.global.f32 [%rd15], %f7;
+DONE: exit;
+}
+
+// Optimized Q8_0: shared x, 64 threads, GGML block {f16 d; i8 qs[32]}
+.visible .entry k_q8_matvec(.param .u64 py, .param .u64 px, .param .u64 pw, .param .u32 pn, .param .u32 pd)
+{
+  .reg .u32 %r<40>;
+  .reg .u64 %rd<24>;
+  .reg .f32 %f<16>;
+  .reg .pred %p<10>;
+  .shared .align 4 .f32 sx[512];
+  .shared .align 4 .f32 sm[64];
+  ld.param.u64 %rd1, [py]; ld.param.u64 %rd2, [px]; ld.param.u64 %rd3, [pw];
+  ld.param.u32 %r1, [pn]; ld.param.u32 %r2, [pd];
+  mov.u32 %r4, %tid.x; mov.u32 %r3, %ctaid.x;
+  setp.ge.u32 %p1, %r3, %r2; @%p1 bra DONE;
+  mov.u32 %r7, %r4;
+XLOAD: setp.ge.u32 %p2, %r7, %r1; @%p2 bra XDONE;
+  mul.wide.u32 %rd6, %r7, 4; add.u64 %rd7, %rd2, %rd6; ld.global.f32 %f0, [%rd7];
+  mov.u64 %rd8, sx; add.u64 %rd8, %rd8, %rd6; st.shared.f32 [%rd8], %f0;
+  add.u32 %r7, %r7, 64; bra XLOAD;
+XDONE: bar.sync 0;
+  shr.u32 %r5, %r1, 5; mul.lo.u32 %r6, %r3, %r5; mul.lo.u32 %r6, %r6, 34;
+  mul.wide.u32 %rd4, %r6, 1; add.u64 %rd4, %rd3, %rd4;
+  mov.f32 %f1, 0f00000000; mov.u32 %r7, %r4;
+BLOOP: setp.ge.u32 %p2, %r7, %r5; @%p2 bra RED;
+  mul.lo.u32 %r8, %r7, 34; mul.wide.u32 %rd5, %r8, 1; add.u64 %rd5, %rd4, %rd5;
+  ld.global.u16 %r9, [%rd5];
+  and.b32 %r20, %r9, 0x8000; shr.u32 %r21, %r9, 10; and.b32 %r21, %r21, 0x1f; and.b32 %r22, %r9, 0x3ff;
+  setp.eq.u32 %p7, %r21, 0; @%p7 bra DENORM;
+  add.u32 %r21, %r21, 112; shl.b32 %r21, %r21, 23; shl.b32 %r22, %r22, 13;
+  or.b32 %r23, %r21, %r22; shl.b32 %r20, %r20, 16; or.b32 %r23, %r23, %r20; mov.b32 %f2, %r23; bra HAVED;
+DENORM: mov.f32 %f2, 0f00000000;
+HAVED: add.u64 %rd6, %rd5, 2; shl.b32 %r10, %r7, 5;
+  mov.u32 %r11, 0;
+QLOOP: setp.ge.u32 %p3, %r11, 32; @%p3 bra QDONE;
+  mul.wide.u32 %rd9, %r11, 1; add.u64 %rd8, %rd6, %rd9; ld.global.s8 %r12, [%rd8];
+  cvt.rn.f32.s32 %f3, %r12; mul.f32 %f3, %f3, %f2;
+  add.u32 %r14, %r10, %r11; mul.wide.u32 %rd11, %r14, 4; mov.u64 %rd12, sx; add.u64 %rd12, %rd12, %rd11;
+  ld.shared.f32 %f4, [%rd12]; mad.f32 %f1, %f3, %f4, %f1;
+  add.u32 %r11, %r11, 1; bra QLOOP;
+QDONE: add.u32 %r7, %r7, 64; bra BLOOP;
+RED: mov.u64 %rd12, sm; mul.wide.u32 %rd13, %r4, 4; add.u64 %rd13, %rd12, %rd13; st.shared.f32 [%rd13], %f1;
+  mov.u32 %r15, 32;
+RLOOP: bar.sync 0; setp.ge.u32 %p4, %r4, %r15; @%p4 bra RSKIP;
+  mul.wide.u32 %rd14, %r15, 4; add.u64 %rd14, %rd13, %rd14;
+  ld.shared.f32 %f5, [%rd13]; ld.shared.f32 %f6, [%rd14]; add.f32 %f5, %f5, %f6; st.shared.f32 [%rd13], %f5;
+RSKIP: shr.u32 %r15, %r15, 1; setp.ne.u32 %p5, %r15, 0; @%p5 bra RLOOP;
+  setp.ne.u32 %p6, %r4, 0; @%p6 bra DONE;
+  ld.shared.f32 %f7, [%rd12]; mul.wide.u32 %rd15, %r3, 4; add.u64 %rd15, %rd1, %rd15; st.global.f32 [%rd15], %f7;
+DONE: exit;
+}
+
 
 // Batched F32 matvec: one launch, N independent (x,W)->y jobs from a host-built job table.
 // job: {u64 y, u64 x, u64 W, u32 n, u32 d, u32 pad0, u32 pad1} = 32 bytes
