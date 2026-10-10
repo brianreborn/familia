@@ -3,7 +3,8 @@
 
 The hub is a plain directory on one declared host; members reach it over ssh
 with a key only (BatchMode, no passwords, StrictHostKeyChecking=accept-new).
-Nothing runs on the hub except sh, cat, mkdir, sha256sum and rsync.
+Nothing runs on the hub except sh, cat, mkdir, sha256sum and rsync (or scp/sftp
+when the member has no rsync, e.g. Windows OpenSSH; NEXUS_COPY=rsync|scp forces one).
 
   nexus.py [--graph graph.yaml] --transport lan-nexus --as phone7 register
   nexus.py ... peers
@@ -13,7 +14,7 @@ Nothing runs on the hub except sh, cat, mkdir, sha256sum and rsync.
 
 Layout on hub: <root>/peers/<host>.json, <root>/artifacts/<sha256>/{<name>,meta.json}
 """
-import argparse, hashlib, json, os, shlex, subprocess, sys, time
+import argparse, hashlib, json, os, shlex, shutil, subprocess, sys, time
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 import transport_graph as tg
 
@@ -40,10 +41,21 @@ class Nexus:
         p = subprocess.run(["ssh", *s.opts, s.dest, cmd], input=inp, capture_output=True, text=True)
         if p.returncode: raise SystemExit(f"nexus: ssh {s.dest} failed ({p.returncode}): {p.stderr.strip()}")
         return p.stdout
+    def copier(s):
+        c = os.environ.get("NEXUS_COPY") or ("rsync" if shutil.which("rsync") else "scp")
+        if c not in ("rsync", "scp"): raise SystemExit(f"nexus: NEXUS_COPY={c!r} (want rsync|scp)")
+        if not shutil.which(c): raise SystemExit(f"nexus: {c} not found on PATH")
+        return c
     def rsync(s, src, dst):
-        e = "ssh " + " ".join(shlex.quote(o) for o in s.opts)
-        p = subprocess.run(["rsync", "-a", "--partial", "-e", e, src, dst], capture_output=True, text=True)
-        if p.returncode: raise SystemExit(f"nexus: rsync failed ({p.returncode}): {p.stderr.strip()}")
+        """Copy one file; src/dst are local paths or '<dest>:<home-relative path>'."""
+        if s.copier() == "rsync":
+            e = "ssh " + " ".join(shlex.quote(o) for o in s.opts)
+            cmd = ["rsync", "-a", "--partial", "-e", e, src, dst]
+        else:   # scp/sftp (Windows OpenSSH has no rsync): -P is the port flag; remote path stays $HOME-relative
+            o = ["-P" if x == "-p" else x for x in s.opts]
+            cmd = ["scp", "-q", *o, src, dst]
+        p = subprocess.run(cmd, capture_output=True, text=True)
+        if p.returncode: raise SystemExit(f"nexus: {cmd[0]} failed ({p.returncode}): {p.stderr.strip()}")
     def register(s):
         rec = dict(name=s.me, **{k: s.mine[k] for k in tg.HOST_KEYS}, ts=int(time.time()))
         R = s.r(s.root)
