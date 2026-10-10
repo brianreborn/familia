@@ -131,3 +131,32 @@ Each entry gives the finding, the numbers behind it, and what we do now. Times a
 | 1 work | 12.86-12.89 | 76.5-76.6 / 78 | 12.91 | 124.6 | 12.35 |
 | 2 spin | 12.83-12.88 | 76.6-76.7 / 78-81 | 12.96 | 122.0 | 12.32 |
 - The coder measured alone *first* came out at 79.2 t/s, below every concurrent run. That looks like a cold-start or clock artifact of running first, so it isn't valid as a baseline yet; next round, run "alone" after a warm-up. Mode 1 has the lowest max latency and no coder penalty. Its differences from the other modes are within spread except the max-latency tail.
+
+## 2026-10-10 rows-per-thread (MR) drop-off sweep, texture Q4 kernel (v6 = v5 layout, MR 1-8, tail rows via texture clamp plus guarded store)
+Sweep: RG {2,4,8,16} x BG {1,2,3,6} x G {8,16,32}, 20 iterations per config. Registers and spills come from cuFuncGetAttribute (lmem = local/spill bytes). Occupancy is for the best config.
+
+| MR | regs/thr | spill | CTA/SM @64thr | 576x3072 ms (GB/s) | 1536x576 | 576x960 | 576x576 |
+|---|---|---|---|---|---|---|---|
+| 1 | 24 | 0 | 5 (42%) | 0.881 (1.13) | 0.444 (1.12) | 0.307 (1.01) | 0.196 (0.95) |
+| 2 | 25 | 0 | 4 (33%) | 0.694 (1.44) | 0.395 (1.26) | 0.255 (1.22) | 0.175 (1.07) |
+| 3 | 30 | 0 | 4 (33%) | 0.611 (1.63) | **0.331 (1.51)** | 0.227 (1.37) | 0.154 (1.21) |
+| 4 | 32 | 0 | 4 (33%) | **0.583 (1.71)** | 0.400 (1.24) | 0.218 (1.43) | **0.153 (1.22)** |
+| 5 | 32 | 0 | 4 (33%) | 0.590 (1.69) | 0.349 (1.42) | **0.214 (1.45)** | 0.159 (1.17) |
+| 6 | 37 | 0 | 3 (25%) | 0.631 (1.58) | 0.363 (1.37) | 0.242 (1.28) | 0.159 (1.17) |
+| 8 | 39 | 0 | 3 (25%) | 0.612 (1.63) | 0.380 (1.31) | 0.241 (1.29) | 0.173 (1.08) |
+
+- Drop-off: gains flatten at MR 3-5 and turn down from MR=6. No configuration spills. The cause is registers then occupancy: going from 32 to 37+ regs/thread drops resident CTAs per SM from 4 to 3, and an ALU-bound kernel with texture latency needs those warps. Odd MR helps the 1536-wide shape (MR=3: 18 rows/CTA-iteration keeps BG=2 at 128 threads). The best sizes per shape differ (4/3/5/4).
+- **But end-to-end (2 prompts x 32 tokens, all 32/32) the isolated winners lose:**
+
+| config (Q8 classifier on texture, MR4, in all but base) | tok/s | token latency ms |
+|---|---|---|
+| base: v4 MR2 Q4 + old Q8 classifier | 12.88 | 76.5 |
+| **v4 MR2 Q4 + Q8 classifier tex MR4 (new default)** | **14.58** | 67.5 |
+| v6 per-shape MR (4,3,5,4) | 13.99-14.03 | 70.3 |
+| v6 all MR4 | 13.51 | 72.9 |
+| v6 all MR3 | 13.45 | 73.3 |
+
+  The microbench reruns one matrix 20x, so it measures a warm texture cache. In the real token every matrix is cold and different. The v6 configs (64-thread CTAs, BG=2) appear to depend on that reuse (likely texture-cache thrash or a different access stride once cold), while v4 MR2 (BG=1, RG=8) streams better cold. Lesson: tune with an in-pipeline (cold) benchmark, not a hot loop. Next: rotate across all 30 layers' matrices inside kbench.
+- **Q8 classifier on the texture cache** (576x49152, 2 lanes/u16 misaligned-word funnel, MR4, RG8 BG1 G64): 13.8 ms vs 29.9 ms (v3 fused), 2.18 vs 1.01 GB/s, which is about +13% tok/s end to end. The biggest win this round.
+- Warm coder-alone baseline (llama-bench stories15M Q4_0, 1 thread, CPU0, after a warm-up run): 123.0-123.9 t/s at tg64. bench_async tg128: alone 115.5 +/- 3.1, alongside the SmolLM2 server 114.3 +/- 1.7 (-1%, inside the spread), alongside stories15M 115.4.
+- bench_async full (ran with v6 on by default by mistake, 13.8-14.0 tok/s): stories15M 69.6-71.5 tok/s, text identical; SmolLM2 4 prompts 32/32 vs CPU; serve inflight 1 and 2 at 13.96/13.97 tok/s, outputs identical to single runs.
