@@ -13,7 +13,7 @@ if not os.path.exists(BACKEND_PANEL):
         BACKEND_PANEL = alt
 
 if not os.path.exists(BACKEND_PANEL):
-    print("feeldznutts: panel.py backend not found. Run sh scripts/configure.sh first.", file=sys.stderr)
+    print("familia: panel.py backend not found. Run sh scripts/configure.sh first.", file=sys.stderr)
     sys.exit(1)
 
 os.execv(sys.executable, [sys.executable, BACKEND_PANEL] + sys.argv[1:])

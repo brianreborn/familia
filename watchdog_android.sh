@@ -5,8 +5,13 @@
 ANDROID_USER="u0_a439"
 ANDROID_HOST="192.168.1.6"
 ANDROID_PORT=8022
-# Expect password in env var ANDROID_PASSWORD or USER_PASSWORD
-PASSWORD_VAR="ANDROID_PASSWORD"
+# Password (optional; key auth preferred) comes from ANDROID_SSH_PASSWORD.
+# ANDROID_PASSWORD is accepted as a deprecated alias.
+if [ -z "${ANDROID_SSH_PASSWORD:-}" ] && [ -n "${ANDROID_PASSWORD:-}" ]; then
+  echo "familia: ANDROID_PASSWORD is deprecated; use ANDROID_SSH_PASSWORD" >&2
+  ANDROID_SSH_PASSWORD="$ANDROID_PASSWORD"
+fi
+PASSWORD_VAR="ANDROID_SSH_PASSWORD"
 CHECK_INTERVAL=60  # seconds
 LOG_FILE="$(dirname "$0")/watchdog_android.log"
 
