@@ -123,3 +123,11 @@ Each entry gives the finding, the numbers behind it, and what we do now. Times a
 - Correctness: 2 prompts x 32 tokens, full token match. The 3rd prompt never disagreed with the other two in any run this session.
 - tok/s A/B: 2 reps. Spread is about 0.05-0.2 tok/s (about 1-2%). Stop cutting when an effect gets under about 2x that.
 - kbench sweeps: 50 iterations per config (each config's spread is <3%). Coder llama-bench: -n 64 -r 2.
+
+### Wait-mode rerun with 139 MiB VRAM free (1 rep; spread from the earlier 2-rep run is about 0.05 tok/s)
+| mode | gpu tok/s | latency avg/max ms | serve tok/s | coder t/s (CPU0) concurrent | gpu tok/s concurrent |
+|---|---|---|---|---|---|
+| 0 old | 12.68-12.88 | 76.6-78.3 / 78-102 | 12.89 | 121.0 | 12.34 |
+| 1 work | 12.86-12.89 | 76.5-76.6 / 78 | 12.91 | 124.6 | 12.35 |
+| 2 spin | 12.83-12.88 | 76.6-76.7 / 78-81 | 12.96 | 122.0 | 12.32 |
+- The coder measured alone *first* came out at 79.2 t/s, below every concurrent run. That looks like a cold-start or clock artifact of running first, so it isn't valid as a baseline yet; next round, run "alone" after a warm-up. Mode 1 has the lowest max latency and no coder penalty. Its differences from the other modes are within spread except the max-latency tail.
