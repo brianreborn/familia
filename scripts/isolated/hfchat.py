@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """isolated_remote adapter for `ssh chat.hf.co` (familia docs/isolated-compute.md).
 
 chat.hf.co is a full-screen TUI that needs a PTY: pexpect on POSIX, pywinpty on
