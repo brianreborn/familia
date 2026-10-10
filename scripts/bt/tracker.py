@@ -5,7 +5,7 @@ Private: only infohashes that have a <hex>.torrent in --allow-dir are tracked;
 anything else gets a failure reason. Bind must be loopback or a LAN address
 (validate_graph.py enforces this for graph transports).
 
-  tracker.py --bind 192.168.1.5 --port 6969 --allow-dir ~/.familia/bt/torrents
+  tracker.py --bind 192.168.1.9 --port 6969 --allow-dir ~/.familia/bt/torrents
 """
 import argparse, ipaddress, os, socket, struct, sys, time, urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer

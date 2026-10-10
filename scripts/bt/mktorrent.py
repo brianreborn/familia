@@ -4,7 +4,7 @@
 Prints the REQ-REPO-02 key  magnet:<xt>:<path-inside-torrent>
 e.g. magnet:urn:btih:<40hex>:slot0.bin  and registers <hex>.torrent in --allow-dir.
 
-  mktorrent.py FILE --announce http://192.168.1.5:6969/announce --out-dir DIR [--allow-dir DIR]
+  mktorrent.py FILE --announce http://192.168.1.9:6969/announce --out-dir DIR [--allow-dir DIR]
 """
 import argparse, hashlib, os, shutil, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))

@@ -27,7 +27,7 @@ agents:
       model: coder                # model.default / base_url
 hosts:
   # Transport endpoints (familia #5, #22). Phones: Termux sshd on :8022, key-only.
-  miryam: {addr: 192.168.1.5, user: rcs, port: 22, kind: desktop}   # addr: confirm on miryam
+  miryam: {addr: 192.168.1.9, user: rcs, port: 22, kind: desktop}   # addr measured on miryam (wlp2s0)
   phone7: {addr: 192.168.1.7, user: u0_a439, port: 8022, kind: phone}
   phone8: {addr: 192.168.1.8, user: u0_a414, port: 8022, kind: phone}
 transports:
@@ -41,7 +41,7 @@ transports:
   lan-bt:
     type: bittorrent              # scripts/bt/; keys are magnet:<xt>:<path> (REQ-REPO-02)
     tracker: miryam
-    bind: 192.168.1.5             # LAN only; must match hosts.miryam.addr
+    bind: 192.168.1.9             # LAN only; must match hosts.miryam.addr
     port: 6969
     private: true
     client: aria2c

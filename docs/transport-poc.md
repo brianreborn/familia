@@ -14,13 +14,13 @@ the hosts in the graph meet at. It is a store, not a model.
 
 ```yaml
 hosts:
-  miryam: {addr: 192.168.1.5, user: rcs,     port: 22,   kind: desktop}  # confirm addr
+  miryam: {addr: 192.168.1.9, user: rcs,     port: 22,   kind: desktop}  # measured on miryam
   phone7: {addr: 192.168.1.7, user: u0_a439, port: 8022, kind: phone}
   phone8: {addr: 192.168.1.8, user: u0_a414, port: 8022, kind: phone}
 transports:
   lan-nexus: {type: ssh, hub: miryam, root: ~/.familia/nexus, identity: ~/.ssh/id_ed25519,
               host_key_policy: accept-new, members: [miryam, phone7, phone8]}
-  lan-bt:    {type: bittorrent, tracker: miryam, bind: 192.168.1.5, port: 6969,
+  lan-bt:    {type: bittorrent, tracker: miryam, bind: 192.168.1.9, port: 6969,
               private: true, client: aria2c, members: [miryam, phone7, phone8]}
 ```
 
@@ -48,14 +48,14 @@ $N --as phone8 get <sha256-prefix-or-name> ~/kv/
 
 ## Private tracker + aria2c (`scripts/bt/`)
 
-* `tracker.py --bind 192.168.1.5 --port 6969 --allow-dir ~/.familia/bt/allow`: HTTP
+* `tracker.py --bind 192.168.1.9 --port 6969 --allow-dir ~/.familia/bt/allow`: HTTP
   announce with compact peers. It only tracks infohashes that have `<hex>.torrent` in the
   allow dir, and it refuses to bind 0.0.0.0 or a public address.
-* `mktorrent.py FILE --announce http://192.168.1.5:6969/announce --out-dir ~/.familia/bt/t --allow-dir ~/.familia/bt/allow`
+* `mktorrent.py FILE --announce http://192.168.1.9:6969/announce --out-dir ~/.familia/bt/t --allow-dir ~/.familia/bt/allow`
   makes a private (`private=1`) torrent and prints the REQ-REPO-02 key
   `magnet:urn:btih:<40hex>:<path-inside-torrent>`.
 * `seed.sh T.torrent DATA_DIR 6881` uses aria2c with DHT, PEX, and LPD off.
-* `fetch.sh KEY http://192.168.1.5:6969/announce DEST 6882 [SHA256]` turns the key into a
+* `fetch.sh KEY http://192.168.1.9:6969/announce DEST 6882 [SHA256]` turns the key into a
   magnet URI, gets the metadata from the seeder (BEP 9), downloads, and checks sha256.
 
 Run the tracker on the host where you create torrents, or copy the `.torrent` into
