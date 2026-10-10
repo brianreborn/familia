@@ -57,6 +57,7 @@ static CUfunction f_matvec, f_rmsnorm, f_add, f_silu, f_rope, f_copy, f_ascores,
 static CUdeviceptr g_pool_jobs = 0, g_pool_x[8], g_pool_y[8], g_pool_w[8];
 static size_t g_pool_xsz[8], g_pool_ysz[8], g_pool_wsz[8];
 static CUdeviceptr g_mv_dx = 0, g_mv_dy = 0; static size_t g_mv_dxsz = 0, g_mv_dysz = 0;
+static CUdeviceptr g_q_dw = 0; static size_t g_q_dwsz = 0; static const void* g_q_host = 0; static int g_q_kind = 0;
 static const char* g_hbase; static size_t g_nbytes, g_resident;
 static CUdeviceptr g_dbase, g_stage; static size_t g_stage_bytes;
 static int g_ready;
@@ -289,35 +290,39 @@ int sm11_forward(int token, int pos, float* logits_out) {
 
 int sm11_q4_matmul(float* xout, const float* x, const void* w_q4, int n, int d) {
     if (!g_ready || !f_q4 || (n & 31)) return -1;
-    CUdeviceptr dx, dy, dw;
-    size_t wbytes = (size_t)(n/32) * 18 * d;
-    CK(p_cuMemAlloc(&dx, (size_t)n * 4)); CK(p_cuMemAlloc(&dy, (size_t)d * 4));
-    CK(p_cuMemAlloc(&dw, wbytes));
-    CK(p_cuMemcpyHtoD(dx, x, (size_t)n * 4));
-    CK(p_cuMemcpyHtoD(dw, w_q4, wbytes));
-    unsigned un = (unsigned)n, ud = (unsigned)d;
-    void* args[] = {&dy, &dx, &dw, &un, &ud};
-    CK(launch(f_q4, ud, 128, args));
+    size_t xs=(size_t)n*4, ys=(size_t)d*4, wbytes=(size_t)(n/32)*18*(size_t)d;
+    if (xs > g_mv_dxsz) { if (g_mv_dx) p_cuMemFree(g_mv_dx); CK(p_cuMemAlloc(&g_mv_dx, xs)); g_mv_dxsz=xs; }
+    if (ys > g_mv_dysz) { if (g_mv_dy) p_cuMemFree(g_mv_dy); CK(p_cuMemAlloc(&g_mv_dy, ys)); g_mv_dysz=ys; }
+    if (w_q4 != g_q_host || g_q_kind != 4 || wbytes > g_q_dwsz) {
+        if (wbytes > g_q_dwsz) { if (g_q_dw) p_cuMemFree(g_q_dw); CK(p_cuMemAlloc(&g_q_dw, wbytes)); g_q_dwsz=wbytes; }
+        CK(p_cuMemcpyHtoD(g_q_dw, w_q4, wbytes));
+        g_q_host = w_q4; g_q_kind = 4;
+    }
+    CK(p_cuMemcpyHtoD(g_mv_dx, x, xs));
+    unsigned un=(unsigned)n, ud=(unsigned)d;
+    void* args[] = {&g_mv_dy, &g_mv_dx, &g_q_dw, &un, &ud};
+    CK(launch(f_q4, ud, 64, args));
     CK(p_cuCtxSynchronize());
-    CK(p_cuMemcpyDtoH(xout, dy, (size_t)d * 4));
-    p_cuMemFree(dx); p_cuMemFree(dy); p_cuMemFree(dw);
+    CK(p_cuMemcpyDtoH(xout, g_mv_dy, ys));
     return 0;
 }
 
 int sm11_q8_matmul(float* xout, const float* x, const void* w_q8, int n, int d) {
     if (!g_ready || !f_q8 || (n & 31)) return -1;
-    CUdeviceptr dx, dy, dw;
-    size_t wbytes = (size_t)(n/32) * 34 * d;
-    CK(p_cuMemAlloc(&dx, (size_t)n * 4)); CK(p_cuMemAlloc(&dy, (size_t)d * 4));
-    CK(p_cuMemAlloc(&dw, wbytes));
-    CK(p_cuMemcpyHtoD(dx, x, (size_t)n * 4));
-    CK(p_cuMemcpyHtoD(dw, w_q8, wbytes));
-    unsigned un = (unsigned)n, ud = (unsigned)d;
-    void* args[] = {&dy, &dx, &dw, &un, &ud};
-    CK(launch(f_q8, ud, 128, args));
+    size_t xs=(size_t)n*4, ys=(size_t)d*4, wbytes=(size_t)(n/32)*34*(size_t)d;
+    if (xs > g_mv_dxsz) { if (g_mv_dx) p_cuMemFree(g_mv_dx); CK(p_cuMemAlloc(&g_mv_dx, xs)); g_mv_dxsz=xs; }
+    if (ys > g_mv_dysz) { if (g_mv_dy) p_cuMemFree(g_mv_dy); CK(p_cuMemAlloc(&g_mv_dy, ys)); g_mv_dysz=ys; }
+    if (w_q8 != g_q_host || g_q_kind != 8 || wbytes > g_q_dwsz) {
+        if (wbytes > g_q_dwsz) { if (g_q_dw) p_cuMemFree(g_q_dw); CK(p_cuMemAlloc(&g_q_dw, wbytes)); g_q_dwsz=wbytes; }
+        CK(p_cuMemcpyHtoD(g_q_dw, w_q8, wbytes));
+        g_q_host = w_q8; g_q_kind = 8;
+    }
+    CK(p_cuMemcpyHtoD(g_mv_dx, x, xs));
+    unsigned un=(unsigned)n, ud=(unsigned)d;
+    void* args[] = {&g_mv_dy, &g_mv_dx, &g_q_dw, &un, &ud};
+    CK(launch(f_q8, ud, 64, args));
     CK(p_cuCtxSynchronize());
-    CK(p_cuMemcpyDtoH(xout, dy, (size_t)d * 4));
-    p_cuMemFree(dx); p_cuMemFree(dy); p_cuMemFree(dw);
+    CK(p_cuMemcpyDtoH(xout, g_mv_dy, ys));
     return 0;
 }
 

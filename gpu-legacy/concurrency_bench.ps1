@@ -9,108 +9,92 @@ $modelGpu = Join-Path $root "stories15M.bin"
 $modelCpu = "E:\temp\llama-cpu\stories15M-q4_0.gguf"
 $env:SM11_PTX = Join-Path $root "kernels.ptx"
 
-function Start-Pinned([int]$mask, [string]$file, [string]$arguments, [string]$wd, [string]$stdout, [string]$stderr) {
+function Start-Proc([string]$file, [string]$arguments, [string]$wd, [hashtable]$extraEnv, [int]$affinity) {
   $psi = New-Object System.Diagnostics.ProcessStartInfo
-  $psi.FileName = $file
-  $psi.Arguments = $arguments
-  $psi.WorkingDirectory = $wd
-  $psi.UseShellExecute = $false
-  $psi.RedirectStandardOutput = $true
-  $psi.RedirectStandardError = $true
-  $psi.CreateNoWindow = $true
-  $p = New-Object System.Diagnostics.Process
-  $p.StartInfo = $psi
-  [void]$p.Start()
-  try { $p.ProcessorAffinity = [IntPtr]$mask } catch { "affinity: $_" | Out-File $stderr -Append }
-  $stdoutJob = $p.StandardOutput.ReadToEndAsync()
-  $stderrJob = $p.StandardError.ReadToEndAsync()
-  $p.WaitForExit()
-  [System.IO.File]::WriteAllText($stdout, $stdoutJob.Result)
-  [System.IO.File]::WriteAllText($stderr, $stderrJob.Result)
+  $psi.FileName = $file; $psi.Arguments = $arguments; $psi.WorkingDirectory = $wd
+  $psi.UseShellExecute = $false; $psi.RedirectStandardOutput = $true; $psi.RedirectStandardError = $true; $psi.CreateNoWindow = $true
+  foreach ($k in @('PATH','SM11_PTX','FAMILIA_GPU','OMP_NUM_THREADS','SM11_FULL_FWD','SM11_PARTIAL','SM11_GPU_CLS','SM11_RESIDENT_MIB')) {
+    $v = [Environment]::GetEnvironmentVariable($k)
+    if ($v) { $psi.EnvironmentVariables[$k] = $v }
+  }
+  $psi.EnvironmentVariables['PATH'] = $env:PATH
+  $psi.EnvironmentVariables['SM11_PTX'] = $env:SM11_PTX
+  if ($extraEnv) { foreach ($k in $extraEnv.Keys) { $psi.EnvironmentVariables[$k] = [string]$extraEnv[$k] } }
+  $p = New-Object System.Diagnostics.Process; $p.StartInfo = $psi; [void]$p.Start()
+  if ($affinity -gt 0) { try { $p.ProcessorAffinity = [IntPtr]$affinity } catch {} }
   return $p
 }
 function Grab-CpuTps($paths) {
   $m = Select-String -Path $paths -Pattern 'tg256' -EA 0 | Select-Object -Last 1
-  if (-not $m) { return $null }
-  if ($m.Line -match 'tg256\s*\|\s*([0-9]+\.[0-9]+)') { return [double]$Matches[1] }
-  return $null
+  if ($m -and $m.Line -match 'tg256\s*\|\s*([0-9]+\.[0-9]+)') { return [double]$Matches[1] }
+  return 0
 }
 function Grab-GpuTps($paths) {
-  $m = Select-String -Path $paths -Pattern 'tok/s' -EA 0 | Select-Object -Last 1
-  if (-not $m) { return $null }
-  if ($m.Line -match 'tok/s:\s*([0-9.]+)') { return [double]$Matches[1] }
-  return $null
+  $m = Select-String -Path $paths -Pattern 'tok/s:\s*([0-9.]+)' -EA 0 | Select-Object -Last 1
+  if ($m) { return [double]$Matches[1] }
+  return 0
+}
+function Grab-Resident($paths) {
+  $m = Select-String -Path $paths -Pattern 'resident\s+(\d+)\s+MiB\s+/\s+(\d+)' -EA 0 | Select-Object -Last 1
+  if ($m) { return "$($Matches[1])/$($Matches[2])" }
+  return "?"
 }
 
 $gpuArgs = "`"$modelGpu`" -t 0 -n 256 -i `"Once upon a time`""
 $cpuArgs = "-m `"$modelCpu`" -t 1 -p 64 -n 256 -r 3"
+# Fast path: full forward, CPU classifier with both OpenMP threads, do NOT pin GPU to 1 core
+$gpuEnv = @{ FAMILIA_GPU = "1"; OMP_NUM_THREADS = "2"; SM11_FULL_FWD = "1"; SM11_PARTIAL = "0"; SM11_GPU_CLS = "0" }
 
-"=== A: GPU alone (CPU1) ==="
-$env:FAMILIA_GPU = "1"; $env:OMP_NUM_THREADS = "1"
+"=== A: GPU alone fast-path (unpinned, OMP=2, full-fwd) ==="
 $sw = [Diagnostics.Stopwatch]::StartNew()
-[void](Start-Pinned 2 $gpuExe $gpuArgs $root "$outDir\gpu-alone.txt" "$outDir\gpu-alone.err")
-$sw.Stop()
-"GPU alone wall_s=$([math]::Round($sw.Elapsed.TotalSeconds,2))"
-Get-Content "$outDir\gpu-alone.err","$outDir\gpu-alone.txt" -EA 0 | Select-String "tok/s|backend|resident|error|PTX|Usage"
+$pg = Start-Proc $gpuExe $gpuArgs $root $gpuEnv 0
+$gout = $pg.StandardOutput.ReadToEndAsync(); $gerr = $pg.StandardError.ReadToEndAsync()
+$pg.WaitForExit(); $sw.Stop()
+[IO.File]::WriteAllText("$outDir\gpu-alone.txt", $gout.Result)
+[IO.File]::WriteAllText("$outDir\gpu-alone.err", $gerr.Result)
+"GPU alone wall_s=$([math]::Round($sw.Elapsed.TotalSeconds,2)) resident=$(Grab-Resident @("$outDir\gpu-alone.err")) tok/s=$(Grab-GpuTps @("$outDir\gpu-alone.err"))"
 
-"=== B: CPU alone Q4_0 (CPU0, t=1) ==="
-$env:FAMILIA_GPU = "0"
+"=== B: CPU alone Q4_0 (pinned CPU0, t=1) ==="
 $sw.Restart()
-[void](Start-Pinned 1 $cpuExe $cpuArgs "E:\temp\llama-cpu" "$outDir\cpu-alone.txt" "$outDir\cpu-alone.err")
-$sw.Stop()
-"CPU alone wall_s=$([math]::Round($sw.Elapsed.TotalSeconds,2))"
-Get-Content "$outDir\cpu-alone.txt","$outDir\cpu-alone.err" -EA 0 | Select-String "tg256"
+$pc = Start-Proc $cpuExe $cpuArgs "E:\temp\llama-cpu" @{ OMP_NUM_THREADS = "1"; FAMILIA_GPU = "0" } 1
+$cout = $pc.StandardOutput.ReadToEndAsync(); $cerr = $pc.StandardError.ReadToEndAsync()
+$pc.WaitForExit(); $sw.Stop()
+[IO.File]::WriteAllText("$outDir\cpu-alone.txt", $cout.Result)
+[IO.File]::WriteAllText("$outDir\cpu-alone.err", $cerr.Result)
+"CPU alone wall_s=$([math]::Round($sw.Elapsed.TotalSeconds,2)) tok/s=$(Grab-CpuTps @("$outDir\cpu-alone.txt","$outDir\cpu-alone.err"))"
 
-"=== C: BOTH (CPU0=bench, CPU1=GPU) ==="
-$env:FAMILIA_GPU = "1"; $env:OMP_NUM_THREADS = "1"
-# start both concurrently with ProcessStartInfo
-$psiC = New-Object System.Diagnostics.ProcessStartInfo
-$psiC.FileName = $cpuExe; $psiC.Arguments = $cpuArgs; $psiC.WorkingDirectory = "E:\temp\llama-cpu"
-$psiC.UseShellExecute = $false; $psiC.RedirectStandardOutput = $true; $psiC.RedirectStandardError = $true; $psiC.CreateNoWindow = $true
-$psiG = New-Object System.Diagnostics.ProcessStartInfo
-$psiG.FileName = $gpuExe; $psiG.Arguments = $gpuArgs; $psiG.WorkingDirectory = $root
-$psiG.UseShellExecute = $false; $psiG.RedirectStandardOutput = $true; $psiG.RedirectStandardError = $true; $psiG.CreateNoWindow = $true
-$psiG.EnvironmentVariables["FAMILIA_GPU"] = "1"
-$psiG.EnvironmentVariables["OMP_NUM_THREADS"] = "1"
-$psiG.EnvironmentVariables["SM11_PTX"] = $env:SM11_PTX
-$psiG.EnvironmentVariables["PATH"] = $env:PATH
+"=== C: BOTH — CPU pinned CPU0; GPU unpinned OMP=2 full-fwd ==="
 $sw.Restart()
-$pc = New-Object System.Diagnostics.Process; $pc.StartInfo = $psiC; [void]$pc.Start()
-try { $pc.ProcessorAffinity = [IntPtr]1 } catch {}
-Start-Sleep -Milliseconds 400
-$pg = New-Object System.Diagnostics.Process; $pg.StartInfo = $psiG; [void]$pg.Start()
-try { $pg.ProcessorAffinity = [IntPtr]2 } catch {}
+$pc = Start-Proc $cpuExe $cpuArgs "E:\temp\llama-cpu" @{ OMP_NUM_THREADS = "1"; FAMILIA_GPU = "0" } 1
+Start-Sleep -Milliseconds 300
+$pg = Start-Proc $gpuExe $gpuArgs $root $gpuEnv 0
 $cout = $pc.StandardOutput.ReadToEndAsync(); $cerr = $pc.StandardError.ReadToEndAsync()
 $gout = $pg.StandardOutput.ReadToEndAsync(); $gerr = $pg.StandardError.ReadToEndAsync()
 $pc.WaitForExit(); $pg.WaitForExit(); $sw.Stop()
-[System.IO.File]::WriteAllText("$outDir\cpu-both.txt", $cout.Result)
-[System.IO.File]::WriteAllText("$outDir\cpu-both.err", $cerr.Result)
-[System.IO.File]::WriteAllText("$outDir\gpu-both.txt", $gout.Result)
-[System.IO.File]::WriteAllText("$outDir\gpu-both.err", $gerr.Result)
+[IO.File]::WriteAllText("$outDir\cpu-both.txt", $cout.Result); [IO.File]::WriteAllText("$outDir\cpu-both.err", $cerr.Result)
+[IO.File]::WriteAllText("$outDir\gpu-both.txt", $gout.Result); [IO.File]::WriteAllText("$outDir\gpu-both.err", $gerr.Result)
 "BOTH wall_s=$([math]::Round($sw.Elapsed.TotalSeconds,2))"
-"CPU both:"; Get-Content "$outDir\cpu-both.txt","$outDir\cpu-both.err" -EA 0 | Select-String "tg256"
-"GPU both:"; Get-Content "$outDir\gpu-both.err","$outDir\gpu-both.txt" -EA 0 | Select-String "tok/s|backend|Usage"
+"CPU both=$(Grab-CpuTps @("$outDir\cpu-both.txt","$outDir\cpu-both.err")) GPU both=$(Grab-GpuTps @("$outDir\gpu-both.err")) resident=$(Grab-Resident @("$outDir\gpu-both.err"))"
 
 $cpuA = Grab-CpuTps @("$outDir\cpu-alone.txt","$outDir\cpu-alone.err")
-$gpuA = Grab-GpuTps @("$outDir\gpu-alone.err","$outDir\gpu-alone.txt")
+$gpuA = Grab-GpuTps @("$outDir\gpu-alone.err")
 $cpuB = Grab-CpuTps @("$outDir\cpu-both.txt","$outDir\cpu-both.err")
-$gpuB = Grab-GpuTps @("$outDir\gpu-both.err","$outDir\gpu-both.txt")
-if ($null -eq $cpuA) { $cpuA = 0 }; if ($null -eq $gpuA) { $gpuA = 0 }
-if ($null -eq $cpuB) { $cpuB = 0 }; if ($null -eq $gpuB) { $gpuB = 0 }
+$gpuB = Grab-GpuTps @("$outDir\gpu-both.err")
+$resA = Grab-Resident @("$outDir\gpu-alone.err")
+$resB = Grab-Resident @("$outDir\gpu-both.err")
 $dCpu = if ($cpuA -gt 0) { [math]::Round(100*($cpuB-$cpuA)/$cpuA,1) } else { "n/a" }
 $dGpu = if ($gpuA -gt 0) { [math]::Round(100*($gpuB-$gpuA)/$gpuA,1) } else { "n/a" }
-$sum = @"
-# Concurrency bench - qodesh Athlon II X2 (2 threads), pinned
+@"
+# Concurrency bench — qodesh Athlon II X2 (fast path)
 
-| run | CPU Q4_0 tg256 (t/s) | GPU stories15M (t/s) | combined |
-|---|---:|---:|---:|
-| alone | $cpuA | $gpuA | $($cpuA + $gpuA) |
-| concurrent (CPU0+CPU1) | $cpuB | $gpuB | $($cpuB + $gpuB) |
+Root cause of prior 17 t/s: GPU process pinned to 1 core with OMP_NUM_THREADS=1 **and** VRAM budget left only ~4/57 MiB resident (host-streaming matvecs). Fast path = full ``sm11_forward``, full weight residency, OMP=2 for CPU classifier, GPU process **unpinned**.
+
+| run | CPU Q4_0 tg256 (t/s) | GPU stories15M (t/s) | GPU resident MiB | combined |
+|---|---:|---:|---|---:|
+| alone | $cpuA | $gpuA | $resA | $($cpuA+$gpuA) |
+| concurrent | $cpuB | $gpuB | $resB | $($cpuB+$gpuB) |
 
 Delta CPU: $dCpu%
 Delta GPU: $dGpu%
-Net: combined_both=$($cpuB+$gpuB) vs max(alone)=$([math]::Max($cpuA,$gpuA)) vs sum(alone)=$($cpuA+$gpuA)
-Pinning: CPU llama-bench affinity=CPU0 (mask 1), GPU run_sm11 affinity=CPU1 (mask 2).
-"@
-$sum | Set-Content "$outDir\SUMMARY.md" -Encoding utf8
-$sum
+Pinning: llama-bench affinity=CPU0; GPU run_sm11 unpinned OMP=2 SM11_FULL_FWD=1.
+"@ | Tee-Object "$outDir\SUMMARY.md"
