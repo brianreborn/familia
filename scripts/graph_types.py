@@ -397,6 +397,24 @@ def check_kv_channel(g, name, c, errs):
     if slot_ctx(a) != slot_ctx(b): errs.append(f"{w}: per-slot ctx differs ({slot_ctx(a)} vs {slot_ctx(b)})")
     if a.get("kv_type") != b.get("kv_type"): errs.append(f"{w}: kv_type differs ({a.get('kv_type')} vs {b.get('kv_type')})")
 
+OPTION_ROLES = {"chat", "coder", "reasoning", "embed", "vision", "diffusion", "pentest", "decision", "stt", "tts"}
+GPU_CANDIDATE_HOSTS = {"qodesh"}  # 8600 GT always-on role (feat/qodesh-legacy-gpu)
+
+def check_option(g, name, o, errs):
+    """Unplaced model options: a catalog, never placed. Nothing here is read by placement."""
+    w = f"options.{name}"
+    if o.get("unverified") is not True and not o.get("hf_repo"):
+        errs.append(f"{w}: verified option needs hf_repo (otherwise keep unverified: true)")
+    if o.get("gpu_candidate") is not None:
+        if o.get("role") != "decision": errs.append(f"{w}: gpu_candidate is only for role decision (always-on GPU role, #24)")
+        gh = o.get("gpu_host")
+        if o.get("gpu_candidate") is True and gh not in GPU_CANDIDATE_HOSTS:
+            errs.append(f"{w}: gpu_candidate true needs gpu_host in {sorted(GPU_CANDIDATE_HOSTS)}")
+    for h in o.get("candidate_hosts") or []:
+        if h not in (g.get("hosts") or {}): errs.append(f"{w}.candidate_hosts: no such host {h!r}")
+    for n, nd in (g.get("models") or {}).items():
+        if n == name: errs.append(f"{w}: same name as a placed model entry; promote by moving it to models, not both")
+
 # ---- registry --------------------------------------------------------------
 class T:
     def __init__(self, fields, check=None, experimental=False, doc=""):
@@ -476,6 +494,12 @@ TYPES = {
                       "slot": opt("int", min=0), "notes": opt("str")},
                      check_kv_channel, experimental=True,
                      doc="C2C stage 1 edge: llama-server slot save/restore file shipped between same-model nodes (#22)"),
+
+    "options": T({"role": req("enum", choices=OPTION_ROLES), "unverified": req("bool"), "sources": req("list"),
+                  "hf_repo": opt("str", nullable=True), "size_note": opt("str"), "placement_note": opt("str"),
+                  "candidate_hosts": opt("strlist"), "gpu_candidate": opt("bool"), "gpu_host": opt("str"),
+                  "runtime_note": opt("str"), "notes": opt("str")},
+                 check_option, doc="unplaced model option (catalog only; never placed or RAM-counted)"),
 }
 REQUIRED_SECTIONS = ("hosts", "runtimes", "models", "nodes", "gateways", "aliases", "agents")
 
