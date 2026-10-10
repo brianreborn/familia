@@ -40,3 +40,8 @@ decision model and run the whole forward pass on the device: `smol_sm11` (SmolLM
 ## Update 07:51 UTC: measured
 - Spin-then-block cut host polls 4.1M -> 10.4k per 163-token serve run, with throughput unchanged (8.52-8.58 tok/s).
 - Fused path: about 181 launches per token, 1 event wait per token, 32/32 vs CPU ref.
+
+## 2026-10-10 wait strategy and false sharing
+- seq_wait_w: bounded useful work (pre-embed the next known token, ring staging), then 64x YieldProcessor, then cuEventSynchronize (the BLOCKING_SYNC context sleeps). No mutex anywhere. Justification for the remaining block: measured wake-up cost is <0.3 ms per ~126 ms token, the same as pure spin, and it frees the core for the CPU coder.
+- Serve worker: when the GPU is busy and there's no work left, it spins and every 64th poll blocks on the oldest event (unchanged). The idle ring wait is still a 2000-iteration spin, then WaitForSingleObject on the producer's event.
+- Ring and flag cache lines are separated (FS_PAD), each side keeps a local copy of the other side's index, and stats live on their own lines. Measured: no change (within spread), kept.

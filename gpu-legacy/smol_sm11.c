@@ -89,6 +89,9 @@ static void fwd_cpu(int tok,int pos){
 }
 /* ---- GPU full forward ---- */
 static CUfunction f_q4r, f_q8r, f_q4f, f_q8f, f_ropekv, f_attnmh; static int g_fused=1, g_prenorm=0; static CUdeviceptr dQKV, dXN;
+static CUfunction f_q4m[2][3], f_q4v[2][3]; static int g_v5=1; static int g_mr=0, g_tex=1; static unsigned mcfg[4][3];
+static int qmvmc(CUdeviceptr,CUdeviceptr,CUdeviceptr,unsigned,unsigned,unsigned,unsigned,unsigned,unsigned,int,int);
+#define MRI(m) ((m)==1?0:(m)==2?1:2)
 static CUdeviceptr dW[32][9], dN[32][2], dON, dEMB, dX, dXB, dXB2, dQ, dHB, dHB2, dKC, dVC, dCOS, dSIN, dLOG;
 static int gpu_cls; static int g_inflight=1;
 static size_t g_vram_used;
@@ -124,6 +127,9 @@ static int qmvf(CUdeviceptr y, CUdeviceptr x, CUdeviceptr w, unsigned n, unsigne
   int c = q8?2:(n!=576?1:(d>4096?3:0));
   if(!fcfgR[c]){ unsigned dR[4]={32,8,8,16}, dL[4]={8,24,16,8}, dG[4]={4,4,128,32};  /* v3 sweep 2026-10-10 */ fcfgR[c]=dR[c]; fcfgL[c]=dL[c]; fcfgG[c]=dG[c];
     char k[32]; sprintf(k,"SMOL_FCFG%d",c); if(getenv(k)) sscanf(getenv(k),"%u,%u,%u",&fcfgR[c],&fcfgL[c],&fcfgG[c]); }
+  if(g_mr && !q8 && !nw){ if(!mcfg[c][0]){ unsigned dd[4][3]={{8,1,16},{8,2,8},{8,1,16},{8,1,16}} /* v4 sweep 2026-10-10 */; memcpy(mcfg[c],dd[c],12);
+      char k[32]; sprintf(k,"SMOL_MCFG%d",c); if(getenv(k)) sscanf(getenv(k),"%u,%u,%u",&mcfg[c][0],&mcfg[c][1],&mcfg[c][2]); }
+    return qmvmc(y,x,w,n,d,mode,mcfg[c][0],mcfg[c][1],mcfg[c][2],g_mr,g_tex); }
   return qmvfc(y,x,w,n,d,q8,nw,mode,fcfgR[c],fcfgL[c],fcfgG[c]); }
 static int qmv(CUdeviceptr y, CUdeviceptr x, CUdeviceptr w, unsigned n, unsigned d, int q8){
   int c=cidx(n,q8); if(d>4096) c=q8?2:3;
@@ -133,6 +139,11 @@ static int qmv(CUdeviceptr y, CUdeviceptr x, CUdeviceptr w, unsigned n, unsigned
     char k[32]; sprintf(k,"SMOL_CFG%d",c); if(getenv(k)) sscanf(getenv(k),"%u,%u,%u",&cfgR[c],&cfgL[c],&cfgG[c]); }
   return qmvc(y,x,w,n,d,q8,cfgR[c],cfgL[c],cfgG[c]); }
 static CUdeviceptr g_ar; static size_t g_arsz, g_aroff;
+static int qmvmc(CUdeviceptr y, CUdeviceptr x, CUdeviceptr w, unsigned n, unsigned d, unsigned mode, unsigned RG, unsigned BG, unsigned grid, int mr, int tex){
+  unsigned T=RG*BG*8; if(T>512||T<32||(n/32)%BG||d%mr||(g_v5&&RG*mr>T)) return 1; unsigned sm=g_v5? n*4+mr*RG*(BG*8+1)*4 : n*4+T*mr*4; if(sm>16000) return 1;
+  unsigned ch=(d+RG*mr-1)/(RG*mr); if(grid>ch) grid=ch; unsigned woff=tex?(unsigned)((w-g_ar)/4):0;
+  void* a[]={&y,&x,&w,&woff,&n,&d,&RG,&BG,&mode};
+  return p_cuLaunchKernel((g_v5?f_q4v:f_q4m)[tex][MRI(mr)], grid,1,1, T,1,1, sm, 0, a, 0); }
 static CUdeviceptr al(size_t b){ b=(b+255)&~(size_t)255; if(g_aroff+b>g_arsz){fprintf(stderr,"arena overflow\n");exit(1);} CUdeviceptr d=g_ar+g_aroff; g_aroff+=b; g_vram_used+=b; return d; }
 static CUdeviceptr upb(const void* p,size_t b){ CUdeviceptr d=al(b); p_cuMemcpyHtoD(d,p,b); return d; }
 static CUdeviceptr up(T* t){ return upb(t->data,tbytes(t)); }
@@ -160,6 +171,15 @@ static void gpu_setup(void){
   if(!cm||!strcmp(cm,"q8")) { if(fr>=tot_need+eq8+margin){ gpu_cls=1; cls_b=eq8; } }
   if(!gpu_cls && (!cm||!strcmp(cm,"q4"))) { if(fr>=tot_need+eq4+margin){ gpu_cls=1; cls_q4=1; cls_b=eq4; } }
   g_arsz=tot_need+cls_b; if(p_cuMemAlloc(&g_ar,g_arsz)){ fprintf(stderr,"arena alloc %zu MiB failed\n",g_arsz>>20); exit(2);}
+  { HMODULE hc=GetModuleHandleA("nvcuda.dll"); CUresult (__stdcall *gtr)(void**,CUmodule,const char*)=(void*)GetProcAddress(hc,"cuModuleGetTexRef");
+    CUresult (__stdcall *sfmt)(void*,int,int)=(void*)GetProcAddress(hc,"cuTexRefSetFormat"); CUresult (__stdcall *sadr)(size_t*,void*,CUdeviceptr,size_t)=(void*)GetProcAddress(hc,"cuTexRefSetAddress_v2");
+    if(!sadr) sadr=(void*)GetProcAddress(hc,"cuTexRefSetAddress");
+    int ok=1; const char* nm[2][3]={{"k_q4g1","k_q4g2","k_q4g4"},{"k_q4t1","k_q4t2","k_q4t4"}};
+    for(int t=0;t<2;t++) for(int m=0;m<3;m++){ char v[16]; sprintf(v,"k_q4v%s",nm[t][m]+4); if(p_cuModuleGetFunction(&f_q4m[t][m],g_sm11_mod,nm[t][m])||p_cuModuleGetFunction(&f_q4v[t][m],g_sm11_mod,v)) ok=0; }
+    if(getenv("SMOL_V5")) g_v5=atoi(getenv("SMOL_V5"));
+    void* tr=0; size_t off=1; CUresult r1=gtr?gtr(&tr,g_sm11_mod,"tw_q4"):999, r2=r1?999:sfmt(tr,0x03,1), r3=r2?999:sadr(&off,tr,g_ar,g_arsz);
+    fprintf(stderr,"q4m kernels %s, texref get=%d fmt=%d bind=%d off=%zu (%zu MiB = %zu texels)\n",ok?"ok":"MISSING",(int)r1,(int)r2,(int)r3,off,g_arsz>>20,g_arsz/4);
+    if(r3||off) g_tex=0; if(getenv("SMOL_TEX")) g_tex=atoi(getenv("SMOL_TEX")); g_mr=getenv("SMOL_MR")?atoi(getenv("SMOL_MR")):2; if(!ok) g_mr=0; }
   for(int l=0;l<c_nl;l++){ for(int k=0;k<7;k++) dW[l][k]=up(gl(l,wn[k])); dN[l][0]=up(gl(l,"attn_norm.weight")); dN[l][1]=up(gl(l,"ffn_norm.weight")); }
   dON=up(gt("output_norm.weight"));
   dX=al(dim*4); dXB=al(dim*4); dXB2=al(dim*4); dQ=al(dim*4); dHB=al(c_hd*4*2); dHB2=dHB+(CUdeviceptr)c_hd*4; dQKV=al((dim+2*kvd)*4); dXN=al(dim*4); g_prenorm = !getenv("SMOL_PRENORM") || atoi(getenv("SMOL_PRENORM"));  /* default on: norm once per token */ dLOG=al((size_t)nvocab*4);
@@ -171,15 +191,17 @@ static void gpu_setup(void){
 }
 #define CKL(x) do{ if(x){ fprintf(stderr,"cu err %d line %d\n",(int)(x),__LINE__); exit(3);} }while(0)
 static double now(void); static double t_cls;
-typedef struct { CUdeviceptr kc, vc; float* plog; float* px; CUevent_ ev; int tok, pos, inflight; } Seq;
+typedef struct { CUdeviceptr kc, vc; float* plog; float* px; CUevent_ ev; int tok, pos, inflight;  float* pe[2]; int pei, pretok; double t_enq; } Seq;
 static void seq_init(Seq* q, int first){ size_t kvb=(size_t)c_nl*c_ctx*(c_dim/c_nh*c_nkv)*4;
   if(first){ q->kc=dKC; q->vc=dVC; } else { q->kc=al(kvb); q->vc=al(kvb); }
-  if(p_cuMemHostAlloc((void**)&q->plog,(size_t)nvocab*4,0)||p_cuMemHostAlloc((void**)&q->px,c_dim*4,0)||p_cuEventCreate(&q->ev,2)){fprintf(stderr,"pinned/event alloc failed\n");exit(3);} q->inflight=0; }
+  if(p_cuMemHostAlloc((void**)&q->plog,(size_t)nvocab*4,0)||p_cuMemHostAlloc((void**)&q->px,c_dim*4,0)||p_cuEventCreate(&q->ev,2)){fprintf(stderr,"pinned/event alloc failed\n");exit(3);} q->inflight=0; for(int i=0;i<2;i++) if(p_cuMemHostAlloc((void**)&q->pe[i],c_dim*4,0)){fprintf(stderr,"pinned alloc failed\n");exit(3);} q->pei=0; q->pretok=-1; }
+static int g_waitmode=1; /* 0: spin64+block (old)  1: bounded useful work, then spin64, then block  2: pure spin (latency floor) */
+static struct __attribute__((aligned(64))) { long long chunks, spins, blocks, prehits, nwait; double lat_sum, lat_max; char _p[8]; } g_hs;
 static float* g_pemb[2]; static int g_pembi;
 /* enqueue one token's whole forward; no host wait. Results land in q->plog / q->px (pinned) when q->ev fires */
 static void enqueue_gpu(Seq* sq, int tok, int pos){
   unsigned dim=c_dim, hs=dim/c_nh, kvd=hs*c_nkv, km=c_nh/c_nkv, hd=c_hd; CUdeviceptr dKC_=sq->kc, dVC_=sq->vc;
-  float* pe=g_pemb[g_pembi^=1]; embed(pe,tok); CKL(p_cuMemcpyHtoDAsync(dX,pe,dim*4,0));
+  sq->pei^=1; float* pe=sq->pe[sq->pei]; if(sq->pretok!=tok) embed(pe,tok); else g_hs.prehits++; sq->pretok=-1; CKL(p_cuMemcpyHtoDAsync(dX,pe,dim*4,0));
   CUdeviceptr cs=dCOS+(CUdeviceptr)pos*(hs/2)*4, sn=dSIN+(CUdeviceptr)pos*(hs/2)*4;
   if(g_fused){ unsigned km_=km, T1=pos+1, qkvd=dim+2*kvd, hd2=2*hd; CUdeviceptr z=0;
     for(int l=0;l<c_nl;l++){
@@ -194,7 +216,7 @@ static void enqueue_gpu(Seq* sq, int tok, int pos){
       else CKL(qmvf(dHB,dX,dW[l][4],dim,hd2,0,dN[l][1],0));                         /* rmsnorm + Wgate|Wup */
       CKL(qmvf(dX,dHB,dW[l][6],hd,dim,0,z,3));                                  /* silu(g)*u + Wdown + residual */
     }
-    if(gpu_cls && !cls_q4){ unsigned nv=nvocab; if(g_prenorm){ void* a[]={&dXN,&dX,&dON,&dim}; CKL(launch(f_rmsnorm,1,128,a)); CKL(qmvf(dLOG,dXN,dEMB,dim,nv,1,z,0)); } else CKL(qmvf(dLOG,dX,dEMB,dim,nv,1,dON,0)); CKL(p_cuMemcpyDtoHAsync(sq->plog,dLOG,(size_t)nvocab*4,0)); CKL(p_cuEventRecord(sq->ev,0)); sq->inflight=1; sq->tok=tok; sq->pos=pos; return; }
+    if(gpu_cls && !cls_q4){ unsigned nv=nvocab; if(g_prenorm){ void* a[]={&dXN,&dX,&dON,&dim}; CKL(launch(f_rmsnorm,1,128,a)); CKL(qmvf(dLOG,dXN,dEMB,dim,nv,1,z,0)); } else CKL(qmvf(dLOG,dX,dEMB,dim,nv,1,dON,0)); CKL(p_cuMemcpyDtoHAsync(sq->plog,dLOG,(size_t)nvocab*4,0)); CKL(p_cuEventRecord(sq->ev,0)); sq->t_enq=now(); sq->inflight=1; sq->tok=tok; sq->pos=pos; return; }
     goto FINAL; }
   for(int l=0;l<c_nl;l++){
     CUdeviceptr lk=dKC_+(CUdeviceptr)l*c_ctx*kvd*4, lv=dVC_+(CUdeviceptr)l*c_ctx*kvd*4;
@@ -219,9 +241,22 @@ FINAL:
   CKL(p_cuMemcpyDtoHAsync(sq->px,dX,dim*4,0));
   CKL(p_cuEventRecord(sq->ev,0)); sq->inflight=1; sq->tok=tok; sq->pos=pos;
 }
+#if !defined(FS_PAD) || FS_PAD
+static long long g_polls __attribute__((aligned(64))); static char g_polls_pad[56] __attribute__((unused));
+#else
 static long long g_polls;
+#endif
+typedef int (*WorkFn)(void*);
+/* pre-embed the next (already known) token into this seq's free pinned buffer: the buffer last used by token N-1, whose H2D is complete */
+static int pre_embed(Seq* q, int tok){ if(q->pretok==tok) return 0; embed(q->pe[q->pei^1],tok); q->pretok=tok; return 1; }
 static int seq_ready(Seq* q){ CUresult r=p_cuEventQuery(q->ev); if(r==600) return 0; CKL(r); return 1; }
-static void seq_wait(Seq* q){ for(int k=0;k<64;k++){ if(seq_ready(q)) return; g_polls++; YieldProcessor(); } p_cuEventSynchronize(q->ev); }
+static void seq_wait_w(Seq* q, WorkFn fn, void* ctx){
+  if(g_waitmode==2){ while(!seq_ready(q)) YieldProcessor(); goto done; }
+  if(g_waitmode==1 && fn){ while(fn(ctx)){ g_hs.chunks++; if(seq_ready(q)) goto done; } }   /* each chunk ~10-50 us */
+  for(int k=0;k<64;k++){ if(seq_ready(q)) goto done; g_hs.spins++; YieldProcessor(); }
+  g_hs.blocks++; p_cuEventSynchronize(q->ev);
+done: { double l=(now()-q->t_enq)*1000; g_hs.lat_sum+=l; if(l>g_hs.lat_max) g_hs.lat_max=l; g_hs.nwait++; } }
+static void seq_wait(Seq* q){ seq_wait_w(q,0,0); }
 /* host side of a finished token: classifier (CPU) or exact Q8 rescoring of GPU top-K; argmax */
 static int finish_gpu(Seq* sq){
   int dim=c_dim; double a=now(); sq->inflight=0;
@@ -234,7 +269,10 @@ static int finish_gpu(Seq* sq){
   else memcpy(LOG,sq->plog,(size_t)nvocab*4);
   int b=0; for(int i=1;i<nvocab;i++) if(LOG[i]>LOG[b]) b=i; t_cls+=now()-a; return b; }
 static Seq g_seq[2];
-static int fwd_gpu_tok(int tok,int pos){ Seq* q=&g_seq[0]; enqueue_gpu(q,tok,pos); seq_wait(q); return finish_gpu(q); }
+typedef struct { Seq* q; int next; } RunW;
+static int run_work(void* c){ RunW* w=c; if(w->next<0) return 0; int t=w->next; w->next=-1; return pre_embed(w->q,t); }
+static int fwd_gpu_tok2(int tok,int pos,int next){ Seq* q=&g_seq[0]; enqueue_gpu(q,tok,pos); RunW w={q,next}; seq_wait_w(q,run_work,&w); return finish_gpu(q); }
+static int fwd_gpu_tok(int tok,int pos){ return fwd_gpu_tok2(tok,pos,-1); }
 static void occ(const char* nm, CUfunction f, unsigned thr, unsigned smem){
   CUresult (__stdcall *ga)(int*,int,CUfunction)=(void*)GetProcAddress(GetModuleHandleA("nvcuda.dll"),"cuFuncGetAttribute");
   int regs=-1, ssm=-1, lmem=-1; if(ga){ ga(&regs,4,f); ga(&ssm,1,f); ga(&lmem,3,f); }
@@ -242,6 +280,14 @@ static void occ(const char* nm, CUfunction f, unsigned thr, unsigned smem){
   int b1 = regblk? 8192/regblk : 8, b2 = 16384/(smem+ssm+16), b3 = 768/thr; int b=b1<b2?b1:b2; if(b3<b)b=b3; if(b>8)b=8;
   fprintf(stderr,"occ %-10s regs/thr=%d lmem=%d static_smem=%d | %u thr, %u dyn smem -> %d CTA/SM (%d thr, %.0f%% of 768)  [limits: regs %d smem %d thr %d]\n",nm,regs,lmem,ssm,thr,smem,b,b*thr,100.0*b*thr/768,b1,b2,b3); }
 static void kbench(void){ unsigned dim=c_dim, hd=c_hd; int N=200; double a;
+  { struct {unsigned n,d; CUdeviceptr w,y,x; unsigned mode;} sh[4]={{576,3072,dW[0][4],dHB,dXN,0},{1536,576,dW[0][6],dXB,dHB,2},{576,960,dW[0][0],dQKV,dXN,0},{576,576,dW[0][3],dXB,dXB2,0}};
+    unsigned RGs[]={1,2,4,8,16}, BGs[]={1,2,3,6}, Gs[]={8,16,32,64,128}; int mrs[]={1,2,4};
+    for(int s=0;s<4;s++){ double ref=1e9; for(int t=0;t<2;t++) for(int mi=0;mi<3;mi++){ double best=1e9; unsigned b0=0,b1=0,b2=0;
+      for(int i=0;i<5;i++) for(int j=0;j<4;j++) for(int g=0;g<5;g++){ p_cuCtxSynchronize(); double t0=now(); int bad=0;
+        for(int k=0;k<50&&!bad;k++) bad=qmvmc(sh[s].y,sh[s].x,sh[s].w,sh[s].n,sh[s].d,sh[s].mode,RGs[i],BGs[j],Gs[g],mrs[mi],t); if(p_cuCtxSynchronize()||bad) continue;
+        double tt=(now()-t0)*1000/50; if(tt<best){best=tt;b0=RGs[i];b1=BGs[j];b2=Gs[g];} }
+      double gbs=(double)sh[s].n/32*18*sh[s].d/(best*1e-3)/1e9;
+      fprintf(stderr,"q4m%s %ux%u %s MR=%d: RG=%u BG=%u G=%u %.3f ms (%.2f GB/s)\n",sh[s].n,sh[s].d,t?"tex":"gld",mrs[mi],b0,b1,b2,best,gbs); } } }
   occ("k_q4f",f_q4f,64,576*4+8*324+128+256); occ("k_q4f/1536",f_q4f,192,1536*4+8*864+128+768); occ("k_q8f",f_q8f,128,576*4+8*612+128+512); occ("k_q4r",f_q4r,64,576*4+16*324+128+256); occ("k_attn_mh",f_attnmh,128,0); occ("k_rope_kv",f_ropekv,128,0);
   if(g_fused){ unsigned Rs[]={2,4,8,16,32}, Ls[]={8,16,24,32,48}, Gs[]={4,8,12,16,32,64}; struct {unsigned n,d; CUdeviceptr w,y,x,nw; unsigned mode; int q8;} sh[4]={{576,3072,dW[0][4],dHB,dX,dN[0][1],0,0},{1536,576,dW[0][6],dXB,dHB,0,2,0},{576,960,dW[0][0],dQKV,dX,dN[0][0],0,0},{576,(unsigned)nvocab,dEMB,dLOG,dX,dON,0,1}}; if(getenv("SMOL_PRENORM")){ sh[0].nw=0; sh[2].nw=0; sh[3].nw=0; }
     for(int s=0;s<4;s++){ if(s==3&&(!gpu_cls||cls_q4)) continue; double best=1e9; unsigned bR=0,bL=0,bG=0; int it=s==3?5:50;
@@ -271,11 +317,39 @@ static void kbench(void){ unsigned dim=c_dim, hd=c_hd; int N=200; double a;
    acquire/release via Interlocked + MemoryBarrier. No mutexes, no kernel waits. */
 typedef struct { int id, np, ngen, ids[64], out[64], nout; double t_submit, t_done; } Req;
 #define RQ 16
+#ifndef FS_PAD
+#define FS_PAD 1
+#endif
+#if FS_PAD
+/* producer line: head + producer's cached copy of tail; consumer line: tail + cached head; slots on their own lines */
+typedef struct __attribute__((aligned(64))) { volatile LONG head; LONG tail_c; char _p0[56]; volatile LONG tail; LONG head_c; char _p1[56]; Req* slot[RQ]; char _p2[64]; } Ring;
+static int ring_push(Ring* r, Req* q){ LONG h=r->head; if(h - r->tail_c >= RQ){ r->tail_c=r->tail; if(h - r->tail_c >= RQ) return 0; } r->slot[h%RQ]=q; MemoryBarrier(); InterlockedExchange(&r->head,h+1); return 1; }
+static Req* ring_pop(Ring* r){ LONG t=r->tail; if(t==r->head_c){ r->head_c=r->head; if(t==r->head_c) return 0; } MemoryBarrier(); Req* q=r->slot[t%RQ]; InterlockedExchange(&r->tail,t+1); return q; }
+static int ring_empty_c(Ring* r){ if(r->tail!=r->head_c) return 0; r->head_c=r->head; return r->tail==r->head_c; }
+typedef struct __attribute__((aligned(64))) { long long polls, spins, blocks, gpublocks; char _p[32]; } WStats;
+typedef struct __attribute__((aligned(64))) { volatile LONG v; char _p[60]; } PadFlag;
+#else
 typedef struct { volatile LONG head, tail; Req* slot[RQ]; } Ring;
+static int ring_empty_c(Ring* r){ return r->tail==r->head; }
+typedef struct { long long polls, spins, blocks, gpublocks; } WStats;
+typedef struct { volatile LONG v; } PadFlag;
+#endif
+#if !FS_PAD
 static int ring_push(Ring* r, Req* q){ LONG h=r->head; if(h - r->tail >= RQ) return 0; r->slot[h%RQ]=q; MemoryBarrier(); InterlockedExchange(&r->head,h+1); return 1; }
 static Req* ring_pop(Ring* r){ LONG t=r->tail; if(t==r->head) return 0; MemoryBarrier(); Req* q=r->slot[t%RQ]; InterlockedExchange(&r->tail,t+1); return q; }
-static Ring g_in, g_out; static volatile LONG g_stop, g_wready; static HANDLE g_inev; static long long g_spins, g_blocks, g_gpublocks;
+#endif
+static Ring g_in, g_out; static PadFlag g_stopf, g_wreadyf; static HANDLE g_inev; static WStats g_ws;
+#define g_stop g_stopf.v
+#define g_wready g_wreadyf.v
+#define g_spins g_ws.spins
+#define g_blocks g_ws.blocks
+#define g_gpublocks g_ws.gpublocks
 typedef struct { Req* r; int pos, tok; } Act;
+static Req* g_rstage; static long long g_stage_n;
+static int worker_work(Act* act){   /* one bounded chunk of useful work; 0 = nothing left */
+  for(int i=0;i<g_inflight;i++){ Act* a=&act[i]; if(a->r && a->pos+1<a->r->np && g_seq[i].pretok!=a->r->ids[a->pos+1]) return pre_embed(&g_seq[i],a->r->ids[a->pos+1]); }
+  if(!g_rstage){ Req* q=ring_pop(&g_in); if(q){ volatile int s=0; for(int j=0;j<q->np;j++) s+=q->ids[j]; q->nout=0; g_rstage=q; g_stage_n++; return 1; } }  /* drain + prefetch prompt */
+  return 0; }
 /* worker: owns the CUDA context. Keeps up to g_inflight requests in flight; while the GPU runs one
    request's token N, the host finishes another's token (top-K rescoring, argmax, embedding of N+1). */
 static DWORD WINAPI gpu_worker(LPVOID arg){
@@ -284,10 +358,10 @@ static DWORD WINAPI gpu_worker(LPVOID arg){
   InterlockedExchange(&g_wready,1);
   Act act[2]={{0}}; int nact=0;
   for(;;){
-    for(int i=0;i<g_inflight;i++) if(!act[i].r){ Req* q=ring_pop(&g_in); if(q){ act[i].r=q; act[i].pos=0; act[i].tok=q->ids[0]; q->nout=0; enqueue_gpu(&g_seq[i],act[i].tok,0); nact++; } }
+    for(int i=0;i<g_inflight;i++) if(!act[i].r){ Req* q=g_rstage?g_rstage:ring_pop(&g_in); g_rstage=0; if(q){ act[i].r=q; act[i].pos=0; act[i].tok=q->ids[0]; q->nout=0; enqueue_gpu(&g_seq[i],act[i].tok,0); nact++; } }
     if(!nact){ if(g_stop) break;   /* idle: short spin, then block on a Win32 event the producer signals */
-      int k=0; while(k<2000 && g_in.tail==g_in.head && !g_stop){ YieldProcessor(); k++; } g_spins+=k;
-      if(g_in.tail==g_in.head && !g_stop){ g_blocks++; WaitForSingleObject(g_inev,INFINITE); } continue; }
+      int k=0; while(k<2000 && !ring_empty_c(&g_in)==0 && !g_stop){ YieldProcessor(); k++; } g_spins+=k;
+      if(ring_empty_c(&g_in) && !g_stop){ g_blocks++; WaitForSingleObject(g_inev,INFINITE); } continue; }
     int progressed=0;
     for(int i=0;i<g_inflight;i++){ Act* a=&act[i]; if(!a->r || !seq_ready(&g_seq[i])) continue; progressed=1;
       int nx=finish_gpu(&g_seq[i]); Req* q=a->r;
@@ -295,6 +369,8 @@ static DWORD WINAPI gpu_worker(LPVOID arg){
       a->pos++;
       if(q->nout>=q->ngen || a->pos>=c_ctx){ q->t_done=now(); while(!ring_push(&g_out,q)) SwitchToThread(); a->r=0; nact--; }
       else enqueue_gpu(&g_seq[i],a->tok,a->pos); }
+    if(!progressed && g_waitmode==1 && worker_work(act)){ g_hs.chunks++; continue; }
+    if(!progressed && g_waitmode==2){ YieldProcessor(); continue; }
     if(!progressed){ /* GPU busy: spin a little, then sleep in the driver on the oldest in-flight event */
       g_polls++; if(g_polls % 64 == 0){ for(int i=0;i<g_inflight;i++) if(act[i].r){ g_gpublocks++; p_cuEventSynchronize(g_seq[i].ev); break; } } else YieldProcessor(); } }
   return 0; }
@@ -304,7 +380,7 @@ static int serve(char** lists, int nl, int ngen, int inflight){
   for(int i=0;i<nl;i++){ char* s=lists[i]; rq[i].id=i; rq[i].ngen=ngen; while(*s){ rq[i].ids[rq[i].np++]=strtol(s,&s,10); while(*s==','||*s==' ') s++; } rq[i].t_submit=now(); while(!ring_push(&g_in,&rq[i])) SwitchToThread(); SetEvent(g_inev); }
   for(int got=0; got<nl;){ Req* q=ring_pop(&g_out); if(!q){ SwitchToThread(); continue; } got++; ntok+=q->nout+q->np-1; }
   double dt=now()-t0; g_stop=1; SetEvent(g_inev); WaitForSingleObject(th,INFINITE);
-  printf("serve inflight=%d requests=%d forward_tokens=%d wall=%.2fs -> %.2f tok/s (gen %d/req), host polls %lld, gpu blocking waits %lld, idle spins %lld, idle blocks %lld\n",inflight,nl,ntok,dt,ntok/dt,ngen,g_polls,g_gpublocks,g_spins,g_blocks);
+  printf("serve inflight=%d requests=%d forward_tokens=%d wall=%.2fs -> %.2f tok/s (gen %d/req), host polls %lld, gpu blocking waits %lld, idle spins %lld, idle blocks %lld, wait mode %d work chunks %lld prehits %lld staged %lld\n",inflight,nl,ntok,dt,ntok/dt,ngen,g_polls,g_gpublocks,g_spins,g_blocks,g_waitmode,g_hs.chunks,g_hs.prehits,g_stage_n);
   for(int i=0;i<nl;i++){ printf("req%d_ids=",i); for(int j=0;j<rq[i].nout;j++) printf("%d,",rq[i].out[j]); printf("\n"); }
   return 0; }
 /* GPT-2 byte-level decode */
@@ -319,15 +395,16 @@ static int run(int gpu,int* pr,int np,int ngen,int* out){
   for(;pos<np+ngen-1 && pos<c_ctx;pos++){
     if(pos==np) t0=now();
     int nx;
-    if(gpu) nx=fwd_gpu_tok(tok,pos); else { fwd_cpu(tok,pos); nx=0; for(int i=1;i<nvocab;i++) if(LOG[i]>LOG[nx]) nx=i; }
+    if(gpu) nx=fwd_gpu_tok2(tok,pos,pos+1<np?pr[pos+1]:-1); else { fwd_cpu(tok,pos); nx=0; for(int i=1;i<nvocab;i++) if(LOG[i]>LOG[nx]) nx=i; }
     if(pos+1<np) tok=pr[pos+1]; else { tok=nx; out[n++]=tok; }
   }
   double dt=now()-t0; fprintf(stderr,"[%s] %d tokens, decode %.2f tok/s\n",gpu?"gpu":"cpu",n,(n-1)/dt);
-  printf("%s_tps=%.2f\n",gpu?"gpu":"cpu",(n-1)/dt); if(gpu) fprintf(stderr,"cpu classifier %.1f ms/tok of %.1f\n",t_cls*1000/(np+n-1),dt*1000/(n-1));
+  printf("%s_tps=%.2f\n",gpu?"gpu":"cpu",(n-1)/dt); if(gpu) printf("wait mode=%d tok_lat avg %.2f ms max %.2f ms, work chunks %lld, prehits %lld, spins %lld, blocks %lld\n",g_waitmode,g_hs.lat_sum/(g_hs.nwait?g_hs.nwait:1),g_hs.lat_max,g_hs.chunks,g_hs.prehits,g_hs.spins,g_hs.blocks);
+  if(gpu) fprintf(stderr,"cpu classifier %.1f ms/tok of %.1f\n",t_cls*1000/(np+n-1),dt*1000/(n-1));
   return n; }
 int main(int argc,char** argv){
   if(argc<4){fprintf(stderr,"usage\n");return 1;}
-  load(argv[1]); initdec(); if(getenv("SMOL_CTX")) c_ctx=atoi(getenv("SMOL_CTX")); if(c_ctx>128) c_ctx=128;
+  load(argv[1]); initdec(); if(getenv("SMOL_WAIT")) g_waitmode=atoi(getenv("SMOL_WAIT")); if(getenv("SMOL_CTX")) c_ctx=atoi(getenv("SMOL_CTX")); if(c_ctx>128) c_ctx=128;
   int pr[128],np=0; char* s=argv[2]; while(*s){ pr[np++]=strtol(s,&s,10); while(*s==','||*s==' '||*s==';') s++; }
   int ngen=atoi(argv[3]); const char* mode=argc>4?argv[4]:"both";
   int hs=c_dim/c_nh, kvd=hs*c_nkv;

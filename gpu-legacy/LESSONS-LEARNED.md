@@ -89,3 +89,37 @@ Each entry gives the finding, the numbers behind it, and what we do now. Times a
 - PowerShell trap again: `foreach($p in $P)` overwrote `$P` (variable names are case-insensitive), so the first comparison silently ran only 1 prompt for later configs. Rerun with distinct names.
 - Still about 1 GB/s. Since occupancy isn't the limit, the remaining cost is per-weight ALU and shared-memory bank traffic (u16 nibble loads, 4 x-loads per 4 weights). Next lever: register-block 2 rows per thread to share the x loads, or pre-quantize x to int and use mad24.
 - Serve, prenorm default, 4 req x 32 tok: serve inflight=2 requests=4 forward_tokens=163 wall=16.41s -> 9.93 tok/s (gen 32/req), host polls 7872, gpu blocking waits 123, idle spins 2324, idle blocks 1
+
+## 2026-10-10 wait loops that do useful work instead of pure polling (SmolLM2 decision node)
+- What it does: SMOL_WAIT=1 (now the default) means that while token N's event is pending, the host does bounded chunks of work (each ~10-50 us or less). Single-sequence: it pre-embeds the next *known* prompt token into a per-sequence double-buffered pinned buffer. That's safe because the free buffer belongs to token N-1, whose H2D copy is already complete. Serve worker: it pre-embeds the next prompt token for every in-flight request, and it drains and prefetches the next ring request into a staging slot. Stats sit on their own 64 B line. When there's nothing left, it spins 64x YieldProcessor and then blocks on the event (BLOCKING_SYNC context).
+- A/B over 2 reps x 2 prompts x 32 tokens, plus serve inflight=2. Every run matched 32/32 vs the CPU:
+
+| wait mode | gpu tok/s | enqueue->ready latency avg/max (ms) | serve tok/s | concurrent gpu tok/s |
+|---|---|---|---|---|
+| 0 spin64+block (old) | 7.61-7.85 | 126.3-126.9 / 135-153 | 7.86 | 7.65 |
+| 1 work+spin+block (new) | 7.85 | 126.3 / 128 | 7.86-7.87 | 7.64-7.65 |
+| 2 pure spin (latency floor) | 7.66-7.86 | 126.2-129.0 / 128-154 | 7.83-7.88 | 7.64 |
+
+- Finding: there is almost nothing to overlap. Generation is strictly serial (token N+1 needs N's argmax), and the only host prep is a 576-float embedding (a few us). In 32-token runs that came to 1-2 work chunks for a single sequence and 9 for serve. Blocking-sync wake-up costs <0.1-0.3 ms against a ~126 ms token (pure spin vs block are within the spread). So mode 1 is kept because it is free and removes polling of an idle ring, but it is not a speedup. The big lever stays GPU kernel time.
+- Caveat: these A/B runs happened while another app had taken VRAM (free fell to 14 MiB right after). The absolute tok/s (7.8) is under the 12.9 measured with the texture kernel at 123 MiB free, so treat them as relative only. The coder t/s parse failed in this job (llama-bench prints the plus-minus sign, which the ANSI-encoded script mangled); rerun pending.
+
+## 2026-10-10 false-sharing audit
+- SPSC rings: head and tail used to share one line with the slot array, and g_in/g_out/stop/ready/stats were packed together in .bss. Now (FS_PAD=1, default): the producer line holds head plus a cached copy of tail; the consumer line holds tail plus a cached copy of head; slots get their own lines plus a trailing pad; stop/ready flags, worker stats, host stats and g_polls each get their own 64 B line.
+- Measured on serve, 3 reps x inflight {1,2}: nopad 10.08-10.22 tok/s, pad 10.20-10.23 tok/s. That's within the run-to-run spread (about 0.15). The ring is touched about 10 times per 100 ms token, so there was no measurable contention to remove on a 2-thread Athlon. Kept as hygiene.
+- GPU v4 multi-row kernel: x reads at stride 2 words (2-way bank conflict), reduction scratch [t][m] (MR-way), and output written by lane-0 threads spaced L apart (uncoalesced). v5 fixes all three: planar x P_j[b*8+k], padded [m][rg*(L+1)+lane] scratch, and consecutive threads writing consecutive rows. End-to-end it is *slower* with the v4 configs: MR2 tex 10.2 vs 12.9 tok/s, MR4 tex 11.9. The extra index math in the x prologue and in the reader setup costs more than the conflicts it removes, since the kernel is ALU-bound. v5 still needs its own config sweep before it's dropped. v4 stays the default (SMOL_V5=0 is recommended; the code default flips after the sweep).
+
+## 2026-10-10 v4 register-blocked texture kernels (end-to-end, 32/32 vs CPU on 3 prompts)
+| kernel | tok/s |
+|---|---|
+| v3 fused (old default) | 9.94-10.40 |
+| v4 MR1 tex | 11.10 |
+| v4 MR2 tex | 12.86-12.91 |
+| v4 MR4 tex | 10.17-10.25 |
+| v4 MR2 global loads (no tex) | 7.85 |
+
+- The texture cache is what makes this design work (1.6-1.8x over plain ld.global). MR=2 is the register/ILP sweet spot.
+
+## Repetition counts (reduced per user directive)
+- Correctness: 2 prompts x 32 tokens, full token match. The 3rd prompt never disagreed with the other two in any run this session.
+- tok/s A/B: 2 reps. Spread is about 0.05-0.2 tok/s (about 1-2%). Stop cutting when an effect gets under about 2x that.
+- kbench sweeps: 50 iterations per config (each config's spread is <3%). Coder llama-bench: -n 64 -r 2.
