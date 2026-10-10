@@ -25,9 +25,22 @@ Each entry gives the finding, the numbers behind it, and what we do now. Times a
 - A Q8_0 classifier (30 MiB) doesn't fit next to the layers within the margin. On the CPU it costs **43 ms/token**, about 30% of a core. Requantizing it to Q4_0 (16 MiB) on the GPU takes **15.8 ms**, but the greedy output diverges (1/32 tokens match). Rescoring the GPU's top 64 exactly against Q8_0 on the CPU (0.4 ms) brings it back to **32/32**.
 
 ## 5. Correctness
-- GPU full-forward vs the CPU reference forward (same math, fp32): **32/32 greedy tokens identical** on 3 prompts.
+- GPU full-forward vs the CPU reference forward (same math, fp32): **32/32 greedy tokens identical on all 4 prompts** (capital-of-France, fibonacci, sentiment, yes/no). Tested both with the classifier as GPU Q8_0 and with Q4 top-64 + exact Q8 rescoring.
+- Blocking-sync binary vs async binary: identical token ids (48 tokens). stories15M stdout is identical before and after the async change (checked by hand; the script's automated text compare was buggy).
 - vs llama.cpp `llama-simple` (CPU): identical on "The capital of France is". "def fibonacci(n):" diverges after about 12 tokens ("n must" vs "Input must"). The CPU reference agrees with the GPU, so the difference is llama.cpp's Q8_0 activation quantization in its Q4_0 dot products, not a GPU bug.
 
-## 6. Lock-free handoff
-- SPSC rings (atomic head/tail, Interlocked + MemoryBarrier) between the caller and a GPU worker that owns the context. Up to 2 requests in flight, each with its own KV, pinned output and event. Outputs at inflight 1 and 2 must equal the single runs exactly.
-- Numbers: blocked by VRAM (entry 2) at the time of writing. They'll be added as soon as there's enough free memory to load within the margin.
+## 6. Lock-free handoff (SPSC rings + event polling)
+- Decision server with 4 requests x 32 generated tokens (163 forward tokens): inflight=1 **8.22 tok/s**, inflight=2 (double-buffered) **8.27 tok/s**. Outputs are byte-identical to the single runs in both modes.
+- Double-buffering gains almost nothing because host work per token is now tiny (embedding + argmax; Q8 classifier on GPU). The GPU is the bottleneck at about 120 ms/token. It would pay off if the classifier ran on the CPU (43 ms/token to hide).
+- Pinned + event polling vs blocking D2H, both with 1 wait/token: SmolLM2 8.05 → 8.09 tok/s. stories15M best of 3: 31.0 → 33.9 tok/s, within run-to-run noise (28–34).
+- Polling costs: the worker does about 200k `SwitchToThread` polls/s on its own core. With the coder pinned to the other core that costs nothing measurable (see 7).
+
+## 7. Concurrency with the CPU coder (llama-bench stories15M Q4_0, 1 thread, pinned CPU0; GPU worker pinned CPU1)
+| config | coder tg128 t/s | GPU node t/s |
+|---|---|---|
+| coder alone | 114.3 | — |
+| + SmolLM2 decision server (inflight 2, GPU Q8 cls) | 116.3 | 8.26 |
+| + stories15M async full-forward | 110.3 | 26.8 |
+
+## 8. VRAM is shared with the desktop
+- Free VRAM before load ranged from **72 to 154 MiB** over 20 minutes as Discord and Firefox (hardware acceleration) grew and shrank. With 150 MiB free the Q8_0 classifier fits (88 MiB resident, 58–61 MiB still free). At 99 MiB the harness falls back to Q4 + rescoring. At 72 MiB it refuses to load to protect the 16 MiB margin.

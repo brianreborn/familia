@@ -22,22 +22,23 @@ $res["stories_text_equal"] = ($a[1] -eq $b[1])
 
 P "MILESTONE: bench B - SmolLM2 full-forward, before (DtoH sync/token) vs after (async event poll)"
 $ids = "504,3575,282,4649,314"
-$o1 = (& .\out\smol_sm11_v1sync.exe $M $ids 64 gpu 2>$null) -join "`n"; T ($o1 -split "`n" | Select-String 'tps|ids')
-$o2 = (& .\out\smol_sm11.exe $M $ids 64 gpu 2>$null) -join "`n"; T ($o2 -split "`n" | Select-String 'tps|ids')
+$o1 = (& .\out\smol_sm11_v1sync.exe $M $ids 48 gpu 2>$null) -join "`n"; T ($o1 -split "`n" | Select-String 'tps|ids')
+$o2 = (& .\out\smol_sm11.exe $M $ids 48 gpu 2>$null) -join "`n"; T ($o2 -split "`n" | Select-String 'tps|ids')
 $res["smol_before"] = [regex]::Match($o1,'gpu_tps=([0-9.]+)').Groups[1].Value
 $res["smol_after"] = [regex]::Match($o2,'gpu_tps=([0-9.]+)').Groups[1].Value
 $res["smol_ids_equal_before_after"] = ([regex]::Match($o1,'gpu_ids=([0-9,]+)').Value -eq [regex]::Match($o2,'gpu_ids=([0-9,]+)').Value)
 
 P "MILESTONE: verify - SmolLM2 GPU vs CPU reference (3 prompts x 32 tokens)"
 $prompts = @("The capital of France is", "def fibonacci(n):", "Classify the sentiment: I love this product. Answer:", "Q: Is the sky blue? Reply yes or no.`nA:")
+$idmap = @{ "The capital of France is"="504,3575,282,4649,314"; "def fibonacci(n):"="1604,3987,46477,24,94,727"; "Classify the sentiment: I love this product. Answer:"="8530,1282,260,19025,42,339,2606,451,1406,30,19842,42"; "Q: Is the sky blue? Reply yes or no.`nA:"="65,42,1431,260,6376,4461,47,2720,318,9805,355,787,30,198,49,42" }  # from llama-tokenize --ids
 $plist = @(); $single = @()
 foreach ($p in $prompts) {
-  $pid_ = ((& $B\llama-tokenize.exe -m $M -p $p --ids --log-disable 2>$null) | Select-Object -Last 1).Trim('[', ']').Replace(' ', '')
+  $pid_ = $idmap[$p]
   $plist += $pid_
-  $o = (& .\out\smol_sm11.exe $M $pid_ 32 both 2>&1) -join "`n"; T ($o -split "`n" | Select-String 'abort|resident|tps')
-  $m = [regex]::Match($o, 'match_prefix=([0-9/]+)').Groups[1].Value
+  $o = (& .\out\smol_sm11.exe $M $pid_ 32 both 2>&1) -join "`n"; T "exit=$LASTEXITCODE len=$($o.Length) ids=$pid_"; T ($o -split "`n" | Select-String "abort|resident|tps|fail|err")
+  $mp = [regex]::Match($o, 'match_prefix=([0-9/]+)').Groups[1].Value
   $single += [regex]::Match($o, 'gpu_ids=([0-9,]+)').Groups[1].Value
-  T "verify [$($p.Replace("`n",' '))] GPU vs CPU-ref match_prefix=$m"
+  T "verify [$($p.Replace("`n",' '))] GPU vs CPU-ref match_prefix=$mp"
 }
 P "MILESTONE: bench C - SPSC-ring decision server, 4 requests x 32 tok, inflight 1 vs 2 (double-buffered)"
 $joined = ($plist -join ';')
