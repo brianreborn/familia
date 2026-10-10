@@ -4,7 +4,7 @@ This module provides a single function `retry_on_transient_error` that can be us
 wrap any callable that performs a model request (e.g., a function that sends a HTTP
 POST to the AGY endpoint). The wrapper catches transient errors such as empty
 responses, HTTP 503 Service Unavailable, or HTTP 429 Too Many Requests and retries
-with exponential back‑off.
+with exponential back-off.
 
 Example usage::
 
@@ -21,7 +21,7 @@ Parameters
 ==========
 * ``func`` – The function performing the model request.
 * ``max_retries`` – Maximum number of retry attempts (default 3).
-* ``base_delay`` – Base delay in seconds for exponential back‑off (default 1).
+* ``base_delay`` – Base delay in seconds for exponential back-off (default 1).
 
 The wrapper returns a new callable that incorporates the retry logic.
 """
@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 
 def _is_transient_error(exc: Exception) -> bool:
-    """Return True if *exc* looks like a transient model‑service error.
+    """Return True if *exc* looks like a transient model-service error.
 
     Currently treats the following as transient:
     * HTTPError with status 503 or 429
@@ -57,12 +57,12 @@ def retry_on_transient_error(
     max_retries: int = 3,
     base_delay: float = 1.0,
 ) -> Callable[..., Any]:
-    """Wrap *func* with retry‑on‑transient‑error logic.
+    """Wrap *func* with retry-on-transient-error logic.
 
     The returned callable forwards all positional and keyword arguments to *func*.
     If a transient error is raised, the call is retried after ``base_delay`` seconds,
-    multiplied by 2**attempt (exponential back‑off). After ``max_retries`` attempts the
-    original exception is re‑raised.
+    multiplied by 2**attempt (exponential back-off). After ``max_retries`` attempts the
+    original exception is re-raised.
     """
 
     @functools.wraps(func)
@@ -73,7 +73,7 @@ def retry_on_transient_error(
                 return func(*args, **kwargs)
             except Exception as exc:
                 if not _is_transient_error(exc) or attempt >= max_retries:
-                    logger.error("Non‑transient or max‑retry error on attempt %s: %s", attempt + 1, exc)
+                    logger.error("Non-transient or max-retry error on attempt %s: %s", attempt + 1, exc)
                     raise
                 attempt += 1
                 delay = base_delay * (2 ** (attempt - 1))
@@ -84,7 +84,7 @@ def retry_on_transient_error(
 
     return wrapper
 
-# Simple self‑test when run as a script
+# Simple self-test when run as a script
 if __name__ == "__main__":
     import random
 
