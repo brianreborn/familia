@@ -368,6 +368,25 @@ def check_pentest(g, name, p, errs):
                 errs.append(f"{w}: active pentest node {p.get('node')!r} model role is "
                             f"{m.get('role')!r}; expected role pentest")
 
+def check_kv_channel(g, name, c, errs):
+    """C2C stage 1 (#22): slot KV file shipped between same-model nodes. Both ends must match
+    model (same entry => same sha256), runtime build, per-slot ctx and kv_type."""
+    a, b = lookup(g, "nodes", c.get("from")), lookup(g, "nodes", c.get("to"))
+    if a is None or b is None: return
+    w = f"kv_channels.{name}"
+    if c.get("from") == c.get("to"): errs.append(f"{w}: from and to are the same node")
+    if c.get("status") == "planned": return   # like planned nodes: schema-checked only
+    ma, mb = lookup(g, "models", a.get("model")), lookup(g, "models", b.get("model"))
+    if ma is not None and mb is not None:
+        if ma.get("sha256") != mb.get("sha256"): errs.append(f"{w}: model sha256 differs ({ma.get('sha256')} vs {mb.get('sha256')})")
+        elif ma.get("sha256") == "unmeasured" and c.get("status") != "planned":
+            errs.append(f"{w}: model sha256 unmeasured; a non-planned kv channel needs a measured sha256 on both ends")
+    ra, rb = lookup(g, "runtimes", a.get("runtime")), lookup(g, "runtimes", b.get("runtime"))
+    if ra is not None and rb is not None and (ra.get("build"), ra.get("commit")) != (rb.get("build"), rb.get("commit")):
+        errs.append(f"{w}: runtime build differs ({ra.get('build')} vs {rb.get('build')}); slot files are build-specific")
+    if slot_ctx(a) != slot_ctx(b): errs.append(f"{w}: per-slot ctx differs ({slot_ctx(a)} vs {slot_ctx(b)})")
+    if a.get("kv_type") != b.get("kv_type"): errs.append(f"{w}: kv_type differs ({a.get('kv_type')} vs {b.get('kv_type')})")
+
 # ---- registry --------------------------------------------------------------
 class T:
     def __init__(self, fields, check=None, experimental=False, doc=""):
@@ -432,6 +451,12 @@ TYPES = {
                    "notes": opt("str")},
                   check_pentest,
                   doc="authorized testing of the owner's fleet (launch-test only in automation; not attack tooling)"),
+    "kv_channels": T({"experimental": req("bool"), "status": req("enum", choices={"planned", "experimental", "active"}),
+                      "from": req("ref", ref="nodes"), "to": req("ref", ref="nodes"),
+                      "via": req("enum", choices={"local", "nexus", "bt"}), "transport": opt("str"),
+                      "slot": opt("int", min=0), "notes": opt("str")},
+                     check_kv_channel, experimental=True,
+                     doc="C2C stage 1 edge: llama-server slot save/restore file shipped between same-model nodes (#22)"),
 }
 REQUIRED_SECTIONS = ("hosts", "runtimes", "models", "nodes", "gateways", "aliases", "agents")
 
