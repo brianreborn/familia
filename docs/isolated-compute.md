@@ -24,6 +24,9 @@ Checked 2026-10-09:
 - Isolation: the user gets a chat session, not a shell. Nothing persists locally
   and no tools run on your machine. Server-side logging/retention: TBD.
 - Session lifetime: TBD.
+- Non-interactive use: verified 2026-10-09 from miryam: `ssh -T chat.hf.co` returns
+  `Requires an active PTY`. Scripts must allocate a PTY (`ssh -tt chat.hf.co`, or
+  drive it with expect/pexpect) and parse the TUI output.
 
 **Important:** this is *not* rented isolated compute. It's chat inference over
 SSH. You can't ship model weights, a GGUF, or a KV cache to it. It only takes
@@ -47,10 +50,12 @@ Validator rules:
 1. Agents bound to an `isolated_remote` node can't have tools that need
    local state (store, reach, filesystem).
 2. `accepts` must cover each edge type (a C2C/KV edge to chat.hf.co is rejected).
-3. Its non-interactive scripting interface is TBD. Until it is verified, mark
-   the node `interactive_only: true` and exclude it from automated routing.
+3. The service requires a PTY (no plain `ssh host "prompt"` mode). The node
+   declares `requires_pty: true`; the runtime adapter must use `ssh -tt` or
+   pexpect and strip TUI escapes. Until the adapter exists, exclude the node
+   from automated routing.
 
 ## Open items (TBD)
 - Official docs, terms, quotas, data retention.
-- Whether a non-PTY (`ssh chat.hf.co "<prompt>"`) mode exists.
+- Stable output format for PTY scraping (TUI may change without notice).
 - A real isolated-compute provider (e.g. HF Jobs / Spaces with SSH) for `accepts: model|kv`.
