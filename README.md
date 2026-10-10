@@ -23,7 +23,7 @@ curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install.sh
 **Windows PowerShell:**
 
 ```powershell
-irm https://raw.githubusercontent.com/brianreborn/feeldznutts/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/brianreborn/familia/main/install.ps1 | iex
 ```
 
 Once installed, your local web UI opens on chat: [http://127.0.0.1:9931/?model=chat](http://127.0.0.1:9931/?model=chat). On first visit, paste the API key printed in your terminal.
@@ -83,7 +83,7 @@ Specialist roles (`vision`, `transcribe`, `speak`, `draw`, `embed`, `rerank`, `s
 
 ### Component Projects
 
-The sub-projects live in their own checkouts and are tracked by commit hashes in [pins.txt](file:///home/green/feeldznutts/pins.txt):
+The sub-projects live in their own checkouts and are tracked by commit hashes in [pins.txt](pins.txt):
 
 | Project | Role |
 | --- | --- |
@@ -106,7 +106,7 @@ The sub-projects live in their own checkouts and are tracked by commit hashes in
 
 ## License
 
-Code authored in this repository is licensed under the **Light-ware License** in [LICENSE](file:///home/green/feeldznutts/LICENSE) (4-clause BSD with a voluntary invitation to support rent, groceries, or utilities). Declining the invitation does not affect your rights. Required advertising notice: *"This product includes software developed by Brian Fundakowski Feldman."*
+Code authored in this repository is licensed under the **Light-ware License** in [LICENSE](LICENSE) (4-clause BSD with a voluntary invitation to support rent, groceries, or utilities). Declining the invitation does not affect your rights. Required advertising notice: *"This product includes software developed by Brian Fundakowski Feldman."*
 
 Sub-checkouts retain their respective licenses (e.g. `llama.cpp` remains MIT).
 

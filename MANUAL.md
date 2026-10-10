@@ -7,11 +7,11 @@ Welcome to the definitive guide for setting up and managing a FAMILIA topology. 
 Installation takes only two steps and applies identically across Linux, macOS, and Termux (Android).
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/brianreborn/feeldznutts/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install.sh | sh
 ```
 For Windows PowerShell:
 ```powershell
-irm https://raw.githubusercontent.com/brianreborn/feeldznutts/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/brianreborn/familia/main/install.ps1 | iex
 ```
 
 **Note**: The installer will prompt for acknowledgment of the Light-ware License. Type `yes` to proceed. If running in an automated environment, set `INSTALL_ACK=yes` before executing the script.
