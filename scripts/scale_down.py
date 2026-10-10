@@ -9,9 +9,12 @@ Backends (in order of preference):
                   (e.g. an existing IQ1_S/IQ2_XXS quant) and verify its sha256.
   llama-quantize  run llama.cpp llama-quantize (optionally llama-imatrix first)
                   on the node's original GGUF.
-  littlebit       Samsung LittleBit (arXiv 2506.13771, github.com/SamsungLabs/LittleBit).
-                  TBD: its code is QAT (GPU training) on HF checkpoints and emits no
-                  GGUF that llama.cpp can load, so this backend refuses to run.
+  littlebit       Samsung LittleBit (arXiv 2506.13771, github.com/SamsungLabs/LittleBit), see
+                  docs/littlebit.md. Converts an upstream LittleBit checkpoint
+                  (from_checkpoint) into a familia .lbit.gguf, which llama.cpp cannot load;
+                  the node must name a runtime declaring quants: [littlebit].
+                  train_on: hf-jobs is planned (needs HF credits); train_on: local-cpu-exercise
+                  runs a tiny labeled CPU self-distillation, only to exercise the pipeline.
 
 The original model file is never written to. The output gets a sidecar
 <output>.scale-down.json (sha256, backend, params, source sha256), and a derived
@@ -76,8 +79,42 @@ def backend_llama_quantize(cfg, src, out, base):
     return params
 
 def backend_littlebit(cfg, src, out, base):
-    fail("backend 'littlebit' is TBD: SamsungLabs/LittleBit is GPU QAT on HF checkpoints and produces "
-         "no llama.cpp-loadable GGUF; use 'published' or 'llama-quantize'")
+    here = os.path.dirname(os.path.abspath(__file__))
+    sys.path.insert(0, os.path.join(here, "littlebit"))
+    ck, train = cfg.get("from_checkpoint"), cfg.get("train_on")
+    if not cfg.get("runtime"): fail("littlebit backend needs 'runtime' (a runtime with quants: [littlebit]); llama.cpp cannot load the output")
+    if bool(ck) == bool(train): fail("littlebit backend needs exactly one of 'from_checkpoint' or 'train_on'")
+    params = {"runtime": cfg["runtime"]}
+    if train == "hf-jobs":
+        fail("train_on: hf-jobs is planned but not implemented: LittleBit QAT needs a CUDA GPU and the HF account "
+             "has no credits (#36). Train with SamsungLabs/LittleBit main.py elsewhere and use from_checkpoint.")
+    if train == "local-cpu-exercise":
+        up = cfg.get("upstream") or fail("train_on: local-cpu-exercise needs 'upstream' (a SamsungLabs/LittleBit checkout)")
+        ck = out + ".ckpt"
+        cmd = [cfg.get("python", sys.executable), os.path.join(here, "littlebit", "produce_tiny.py"), "--gguf", src,
+               "--upstream", resolve(base, up), "--out", ck, "--eff-bit", str(cfg.get("eff_bit", 1.0)),
+               "--qat-steps", str(cfg.get("qat_steps", 0)), "--lr", str(cfg.get("lr", 2e-3)),
+               "--threads", str(cfg.get("threads", 4)), "--seed", str(cfg.get("seed", 0))]
+        if cfg.get("use_itq", True): cmd.append("--use-itq")
+        if cfg.get("residual"): cmd.append("--residual")
+        r = subprocess.run(cmd, capture_output=True, text=True)
+        if r.returncode: fail(f"local-cpu-exercise failed: {r.stderr[-800:]}")
+        params["provenance"] = "pipeline-exercise (not the paper recipe)"
+    elif train: fail(f"unknown train_on {train!r} (hf-jobs | local-cpu-exercise)")
+    else:
+        ck = resolve(base, ck); params["provenance"] = "external checkpoint"
+    for f in ("model.safetensors", "config.json", "littlebit_config.json"):
+        if f == "model.safetensors" and os.path.exists(os.path.join(ck, "model.safetensors.index.json")): continue
+        if not os.path.isfile(os.path.join(ck, f)): fail(f"littlebit checkpoint {ck} lacks {f}")
+    from convert import convert
+    pv = os.path.join(ck, "familia_provenance.json")
+    stats = convert(ck, src, out + ".part", open(pv).read() if os.path.exists(pv) else None)
+    os.replace(out + ".part", out)
+    params.update(checkpoint=ck, littlebit_config=json.load(open(os.path.join(ck, "littlebit_config.json"))),
+                  linear_bpw_stored=round(stats["linear_bpw_stored"], 4), linear_params=stats["linear_params"],
+                  layers=stats["layers"])
+    if os.path.isfile(os.path.join(ck, "model.safetensors")): params["checkpoint_sha256"] = sha256(os.path.join(ck, "model.safetensors"))
+    return params
 
 BACKENDS = {"published": backend_published, "llama-quantize": backend_llama_quantize, "littlebit": backend_littlebit}
 
@@ -109,6 +146,7 @@ def scale_node(name, node, base, force=False):
 def derived_node(name, node, rec):
     d = copy.deepcopy(node); cfg = d.pop("scale_down")
     d["model"] = cfg["output"]
+    if cfg.get("backend") == "littlebit": d["quant"] = "littlebit"; d["runtime"] = cfg["runtime"]
     d["derived_from"] = {"node": name, "sha256": rec["output_sha256"], "manifest": cfg["output"] + ".scale-down.json"}
     d["port"] = cfg.get("port", node["port"])
     d["aliases"] = cfg.get("aliases", [f"{a}-{cfg.get('suffix', 'sd')}" for a in node.get("aliases", [])])
@@ -120,6 +158,12 @@ def main(argv):
     only = argv[argv.index("--node") + 1] if "--node" in argv else None
     base = os.path.dirname(os.path.abspath(path))
     graph = yaml.safe_load(open(path))
+    if "--method" in argv:  # CLI form: --node N --method littlebit (--from-checkpoint DIR | --train-on hf-jobs|local-cpu-exercise)
+        if not only: fail("--method needs --node")
+        sd = graph.get("nodes", {}).get(only, {}).setdefault("scale_down", {})
+        sd.update(enabled=True, backend=argv[argv.index("--method") + 1])
+        for flag, key in (("--from-checkpoint", "from_checkpoint"), ("--train-on", "train_on"), ("--output", "output"), ("--runtime", "runtime")):
+            if flag in argv: sd[key] = argv[argv.index(flag) + 1]
     picked = {n: v for n, v in (graph.get("nodes") or {}).items()
               if (v.get("scale_down") or {}).get("enabled") is True and (only is None or n == only)}
     if not picked:

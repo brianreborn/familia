@@ -100,6 +100,11 @@ def validate(graph):
         except Exception as e: errs.append(f"node {name}: cannot read GGUF: {e}"); continue
         arch = meta.get("general.architecture")
         if arch != n["arch"]: errs.append(f"node {name}: GGUF architecture is {arch!r}, graph says {n['arch']!r}")
+        fq, nq = meta.get("familia.quant"), n.get("quant")
+        if fq == "littlebit" and nq != "littlebit": errs.append(f"node {name}: model is a LittleBit file (familia.quant=littlebit); node must declare quant: littlebit")
+        if nq == "littlebit" and fq != "littlebit": errs.append(f"node {name}: quant: littlebit but {path} has no familia.quant=littlebit marker")
+        if nq == "littlebit" and fq == "littlebit" and meta.get("littlebit.format_version") != 1:
+            errs.append(f"node {name}: unsupported littlebit.format_version {meta.get('littlebit.format_version')!r} (this validator knows 1)")
         df = n.get("derived_from")
         if df:  # produced by scripts/scale_down.py
             mp = os.path.join(os.path.dirname(os.path.abspath(graph.get("_path", "graph.yaml"))), os.path.expanduser(df.get("manifest", "")))
@@ -113,6 +118,10 @@ def validate(graph):
             if src is not None and src.get("arch") != arch: errs.append(f"node {name}: arch {arch!r} differs from source node {df.get('node')} ({src.get('arch')!r})")
         rt = runtimes.get(n.get("runtime"))
         if rt is None: errs.append(f"node {name}: runtime {n.get('runtime')!r} is not declared")
+        elif nq and nq not in (rt.get("quants") or []):
+            errs.append(f"node {name}: runtime {n['runtime']} ({rt.get('tag')}) does not declare quants: [{nq}]; llama.cpp cannot load LittleBit files")
+        elif not nq and "quants" in rt:
+            errs.append(f"node {name}: runtime {n['runtime']} only serves quants {rt['quants']}; node declares no quant")
         elif arch not in (rt.get("archs") or []):
             errs.append(f"node {name}: runtime {n['runtime']} ({rt.get('tag')}) is not verified for architecture {arch!r}; add it to runtimes.{n['runtime']}.archs only after a load test")
         train = meta.get(f"{arch}.context_length")
@@ -129,6 +138,7 @@ def validate(graph):
         total += os.path.getsize(path) / 2**20 + (kv or 0) + 256 + (cache if isinstance(cache, int) else 0)
         n["_slot_ctx"] = n["ctx"] // n["parallel"]
         if rt is not None and "_bin" in rt: n["_bin"] = rt["_bin"]
+        if rt is not None: n["_rt_kind"] = rt.get("kind", "llama-server")
     budget = mem_total_mib() - int(host.get("reserve_ram_mib", 2048))
     if total > budget: errs.append(f"estimated RAM {total:.0f} MiB exceeds budget {budget} MiB (MemTotal - reserve)")
     aliases = {a: k for k, n in nodes.items() for a in n.get("aliases", [])}
@@ -145,6 +155,8 @@ def validate(graph):
     return errs, total
 
 def server_args(n):
+    if n.get("_rt_kind", "llama-server") != "llama-server":
+        raise SystemExit(f"graph: ERROR: runtime kind {n['_rt_kind']!r} is not a llama-server; it has no server args (LittleBit has no serving runtime yet)")
     a = [n["_bin"]] if "_bin" in n else []
     a += ["-m", os.path.expanduser(n["model"]), "--host", n.get("host", "127.0.0.1"), "--port", str(n["port"]),
          "-c", str(n["ctx"]), "-np", str(n["parallel"]), "-ctk", n["kv_type"], "-ctv", n["kv_type"],

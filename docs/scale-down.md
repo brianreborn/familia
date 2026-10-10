@@ -3,7 +3,7 @@
 `scripts/scale_down.py` makes a smaller copy of a model that `graph.yaml` already
 declares. It is **off unless configured**: a node is touched only if it has
 `scale_down: {enabled: true, ...}`. It only wraps existing published tooling and
-never invents or trains a compression method.
+never invents a compression method; the only training it runs is the clearly labeled LittleBit `local-cpu-exercise`.
 
 ## Origin: Samsung LittleBit
 
@@ -19,9 +19,9 @@ Samsung Research:
   contains LittleBit-2 (ICML 2026, `--use_itq`).
 
 The method needs quantization-aware training on a GPU, starting from Hugging Face
-checkpoints. Its output is a factorized PyTorch layer, not a GGUF that llama.cpp can
-load. So `backend: littlebit` exists as a placeholder and **refuses to run (TBD)**
-until a CPU-loadable export exists.
+checkpoints. `backend: littlebit` converts such a checkpoint into a familia `.lbit.gguf`
+served only by a runtime that declares `quants: [littlebit]` (today the numpy reference
+`lbref`). See [littlebit.md](littlebit.md).
 
 ## Backends (in order of preference)
 
@@ -29,7 +29,7 @@ until a CPU-loadable export exists.
 |---|---|---|
 | `published` | downloads an already-compressed GGUF (e.g. an existing IQ1_S/IQ2_XXS quant) from HF | `repo`, `file`, `sha256` (recommended), optional `revision` |
 | `llama-quantize` | runs llama.cpp `llama-quantize`, optionally after `llama-imatrix` | `type`, `quantize_bin`; for IQ1_*/IQ2_*: `imatrix` or `calibration` + `imatrix_bin` |
-| `littlebit` | TBD, refuses to run | none |
+| `littlebit` | upstream LittleBit checkpoint → `.lbit.gguf` (`from_checkpoint`); `train_on: hf-jobs` planned; `train_on: local-cpu-exercise` labeled pipeline test | `runtime` (with `quants: [littlebit]`), `output`, one of `from_checkpoint`/`train_on` |
 
 ## Example
 

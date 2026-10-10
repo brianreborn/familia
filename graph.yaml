@@ -22,6 +22,15 @@ runtimes:
     tag: b11539
     commit: 10a60cf30
     archs: [gemma-embedding2]
+  lbref:
+    # familia LittleBit reference runtime (numpy, docs/littlebit.md). Correctness only:
+    # kind: reference has no HTTP server, so validate_graph.py --args refuses it.
+    bin: scripts/littlebit/lbref.py
+    tag: lbref-v1
+    commit: lbref-v1
+    archs: [llama]
+    quants: [littlebit]           # the only runtime that may load .lbit.gguf files
+    kind: reference
 nodes:
   coder:
     runtime: b11374
@@ -51,6 +60,18 @@ nodes:
     aliases: [embed]
     embeddings: true
     cache_ram_mib: 0
+  # LittleBit example (opt-in; produced by scale_down.py --method littlebit, docs/littlebit.md):
+  # tiny-lb:
+  #   runtime: lbref              # must declare quants: [littlebit]; llama.cpp cannot load it
+  #   quant: littlebit            # must match the file's familia.quant marker (validator checks both ways)
+  #   model: ~/.local/share/gguf/models/tiny/stories15M-lb1.0.lbit.gguf
+  #   arch: llama
+  #   ctx: 128
+  #   parallel: 1
+  #   kv_type: f32
+  #   port: 9960
+  #   aliases: [tiny-lb]
+  #   cache_ram_mib: 8
 agents:
   hermes:
     min_ctx: 64000                # hermes-agent MINIMUM_CONTEXT_LENGTH
