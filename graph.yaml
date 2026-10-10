@@ -1,58 +1,100 @@
-# Declarative model/agent graph (see #19). Nothing is auto-selected:
-# every node, file, ctx, KV type and slot count is explicit, and
-# scripts/validate_graph.py fails loudly if the graph does not fit the
-# measured hardware or the agents' requirements.
-version: 1
-host:
-  # Baseline measured on miryam: i5-7200U (4 threads), 7.1 GiB RAM, Intel HD 620 (no VRAM).
-  reserve_ram_mib: 2048          # left for OS, hermes-agent, browser
+# Declarative model/agent graph, typed schema v2 (see docs/graph-types.md, #19).
+# Nothing is auto-selected and nothing has defaults: every field is explicit,
+# and scripts/validate_graph.py fails loudly if the graph does not fit the
+# measured hardware, the runtime's supported architectures, or the agents.
+version: 2
+
+hosts:
+  miryam:
+    kind: laptop
+    measured: true
+    os: linux
+    cpu: Intel Core i5-7200U
+    threads: 4
+    ram_mib: 7270                # 7.1 GiB MemTotal
+    gpu: Intel HD 620            # integrated, no dedicated VRAM
+    vram_mib: 0
+    reserve_ram_mib: 2048        # left for OS, hermes-agent, browser
+  godslove:
+    kind: unknown
+    measured: false              # reported, not measured: excluded from placement
+    os: freebsd-15
+    cpu: Intel Core i7-620M
+  qodesh: {kind: unknown, measured: false}
+  shalom: {kind: unknown, measured: false}
+  note9:
+    kind: phone
+    measured: false
+    os: android
+    notes: Samsung Galaxy Note 9; not reachable on :8022 (2026-10-09)
+  a57:
+    kind: phone
+    measured: false
+    os: android
+    notes: Samsung Galaxy A57; not reachable on :8022 (2026-10-09)
+
+transports:
+  miryam-local: {kind: local, from: miryam, to: miryam}
+
 runtimes:
-  # llama.cpp builds deployed side by side. archs lists architectures that were
-  # load-tested on this runtime; a node whose GGUF arch is not listed fails.
-  b11374:
-    bin: code-bootstraps-llama.cpp/bin/llama-b11374-linux-x64-vulkan/llama-server
-    tag: b11374
-    commit: b92761a51
-    archs: [qwen35]
-  b11539:
-    # Official ggml-org release llama-b11539-bin-ubuntu-vulkan-x64.tar.gz
-    # (sha256 c94e4cf093d38054e4b3384491b0948a659474a207149e65a12b9e5993498182);
-    # includes ggml-org/llama.cpp#30054 (gemma-embedding2).
-    bin: code-bootstraps-llama.cpp/bin/llama-b11539-linux-x64-vulkan/llama-server
-    tag: b11539
-    commit: 10a60cf30
-    archs: [gemma-embedding2]
+  llama-b11374:
+    kind: llama-server
+    build: b11374
+    commit: b92761a515ea31e852e7fbc1fad5f874b46f3718
+    hosts: [miryam]
+    # Only archs verified to load on this build. gemma-embedding2 is NOT
+    # supported (upstream added it 2026-10-06); needs a newer pin.
+    supported_archs: [qwen35]
+
+models:
+  qwen35-2b-q4km:
+    gguf: ~/.local/share/gguf/models/coder/Qwen3.5-2B-Q4_K_M.gguf
+    sha256: unmeasured           # fill in from `sha256sum` on miryam
+    arch: qwen35                 # must match GGUF general.architecture
+    trained_ctx: 262144          # must match GGUF qwen35.context_length (checked)
+    role: coder
+
 nodes:
   coder:
-    runtime: b11374
-    model: ~/.local/share/gguf/models/coder/Qwen3.5-2B-Q4_K_M.gguf
-    arch: qwen35                  # must match GGUF general.architecture
-    ctx: 65536                    # total; per-slot = ctx / parallel
+    model: qwen35-2b-q4km
+    host: miryam
+    runtime: llama-b11374
+    ctx: 65536                   # total; per-slot = ctx / parallel
     parallel: 1
     kv_type: q8_0
     flash_attn: true
     gpu_layers: 0
-    host: 127.0.0.1
+    bind: 127.0.0.1
     port: 9941
-    aliases: [coder]
-    cache_ram_mib: 1024           # >= per-slot prompt state (validator checks)
-  embed:
-    runtime: b11539               # b11374 fails: unknown model architecture 'gemma-embedding2'
-    model: ~/.local/share/gguf/models/embed/embeddinggemma-2-Q8_0.gguf
-    arch: gemma-embedding2
-    ctx: 8192
-    parallel: 1
-    kv_type: f16
-    flash_attn: false
-    gpu_layers: 0
-    host: 127.0.0.1
-    port: 9951
-    aliases: [embed]
-    embeddings: true
-    cache_ram_mib: 0
+    cache_ram_mib: 1024          # >= per-slot prompt state (validator checks)
+
+gateways:
+  roomz:
+    kind: green-roomz
+    host: miryam
+    port: 9931
+
+aliases:
+  coder: {node: coder, gateway: roomz}
+
 agents:
   hermes:
-    min_ctx: 64000                # hermes-agent MINIMUM_CONTEXT_LENGTH
-    context_length: 65536         # hermes model.context_length; must equal node per-slot ctx
-    edges:
-      model: coder                # model.default / base_url
+    kind: hermes-agent
+    host: miryam
+    min_ctx: 64000               # hermes-agent MINIMUM_CONTEXT_LENGTH
+    context_length: 65536        # must equal main alias per-slot ctx
+    aliases:
+      main: coder
+      auxiliary: coder           # compaction model; explicit, not inferred
+
+fleets:
+  green-agentz:
+    repo: brianreborn/green-agentz
+    agents: [hermes]
+
+agencies:
+  familia-issues:
+    repo: brianreborn/familia
+    labels: [bug, config-graph]
+    assignments:
+      config-graph: hermes
