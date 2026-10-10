@@ -118,10 +118,10 @@ hosts:
         model: Samsung Xclipse 550   # vulkaninfo deviceName, INTEGRATED_GPU
         vram_mib: 0              # shared-memory iGPU; Vulkan heap0 6.83 GiB device-local (shared), heap1 64 MiB
         backend: vulkan          # Vulkan 1.4.304, conformance 1.4.1.1; fp16, int8, 16-bit storage; subgroup 64
-        backend_status: tbd      # stays tbd until an inference test
+        backend_status: verified # 2026-10-10 ~00:45 PT: SmolLM2-135M Q4_K_M -ngl 99, pp64 823-1106 t/s, tg32 66-78 t/s (CPU 3t: 42.7 / 30.5); output correct (#34)
         compute_capability: null
         driver: Samsung Proprietary (SPAL) 25.4.7, git 702e7fd271
-        measured: true           # vulkaninfo via /system/lib64/libvulkan.so, 2026-10-09 PT. Termux's own loader only sees llvmpipe.
+        measured: true           # needs LD_LIBRARY_PATH dir with libvulkan.so + libvulkan.so.1 -> /system/lib64/libvulkan.so; vulkaninfo via /system/lib64/libvulkan.so, 2026-10-09 PT. Termux's own loader only sees llvmpipe.
         notes: >-
           OpenCL unusable from Termux: the vendor libSGPUOpenCL.so is blocked by the Android
           linker namespace (missing android.hardware.graphics.mapper@4.0-impl-sgr.so), so clinfo reports 0 platforms.
@@ -209,6 +209,16 @@ runtimes:
     spec_types: []
     bin: gpu-legacy/out/run_sm11.exe
 
+  termux-llama-cpp-0.5.0:
+    kind: llama-server           # from the Termux package; pinned by package version (no upstream sha)
+    build: Termux llama-cpp 0.5.0 + llama-cpp-backend-vulkan (pkg)
+    commit: pkg:llama-cpp=0.5.0  # `llama-server --version`: 0.5.0 (build 0, commit unknown); pin is the pkg version
+    bin: llama-server            # on PATH in Termux; familia-start sets LD_LIBRARY_PATH for system libvulkan
+    hosts: [phone7]
+    supported_archs: [llama]     # SmolLM2 verified 2026-10-10
+    backends: [cpu, vulkan]
+    spec_types: []
+
   llama-b11540-win-cpu:
     kind: llama-server
     build: b11540 win-cpu-x64
@@ -231,6 +241,12 @@ models:
   smollm2-135m-q4:
     gguf: 'E:/temp/models/SmolLM2-135M-Instruct.Q4_0.gguf'
     sha256: unmeasured
+    arch: llama
+    trained_ctx: 8192
+    role: decision
+  smollm2-135m-q4km:
+    gguf: ~/familia/models/SmolLM2-135M-Instruct-Q4_K_M.gguf   # on phone7 (bartowski/SmolLM2-135M-Instruct-GGUF)
+    sha256: 2e8040ceae7815abe0dcb3540b9995eaa1fa0d2ca9e797d0a635ae4433c68c2d
     arch: llama
     trained_ctx: 8192
     role: decision
@@ -276,6 +292,20 @@ nodes:
     port: 18101
     cache_ram_mib: 256
     status: planned
+
+  phone7-decision:
+    model: smollm2-135m-q4km
+    host: phone7
+    runtime: termux-llama-cpp-0.5.0
+    ctx: 2048
+    parallel: 1
+    kv_type: q8_0
+    flash_attn: false
+    offload: {backend: vulkan, ngl: 99, split: none, main_gpu: 0}   # Xclipse 550, verified
+    bind: 127.0.0.1
+    port: 18110
+    cache_ram_mib: 64            # tiny; phone7 reserve_ram_mib 5120 leaves ~2.3 GiB
+    status: planned              # launch via familia-start once the node is wired into the fleet
   coder:
     status: active
     model: qwen35-2b-q4km

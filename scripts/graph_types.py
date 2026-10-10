@@ -145,7 +145,8 @@ def check_transport(g, name, t, errs):
 def check_runtime(g, name, r, errs):
     if r.get("kind") == "llama-server":
         c = r.get("commit")
-        if isinstance(c, str) and not re.match(r"^[0-9a-f]{7,40}$", c):
+        # A git sha, or a distro package pin pkg:<name>=<version> (Termux llama-cpp reports no commit).
+        if isinstance(c, str) and not re.match(r"^([0-9a-f]{7,40}|pkg:[a-z0-9][a-z0-9.+-]*=[0-9][A-Za-z0-9.+~-]*)$", c):
             errs.append(f"runtimes.{name}: commit {c!r} is not a git sha (a branch name is not a pin)")
     b = r.get("backends")
     if isinstance(b, list):

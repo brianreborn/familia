@@ -77,6 +77,16 @@ fi
 [ -n "$NAME" ] || die "could not determine host name; pass --name (e.g. a57, note9, pixel8)"
 say "host $NAME, prefix $PREFIX_DIR"
 run mkdir -p "$PREFIX_DIR/models"
+# Vulkan: Termux's loader only sees llvmpipe; llama.cpp finds the real GPU (e.g. Xclipse 550)
+# when LD_LIBRARY_PATH holds BOTH libvulkan.so and libvulkan.so.1 -> /system/lib64/libvulkan.so (#34).
+VKDIR="$PREFIX_DIR/vulkan"
+if [ -e /system/lib64/libvulkan.so ]; then
+  run mkdir -p "$VKDIR"
+  run ln -sf /system/lib64/libvulkan.so "$VKDIR/libvulkan.so"
+  run ln -sf /system/lib64/libvulkan.so "$VKDIR/libvulkan.so.1"
+else
+  say "no /system/lib64/libvulkan.so; Vulkan offload unavailable, CPU only"
+fi
 
 if [ -d "$PREFIX_DIR/repo/.git" ]; then
   run git -C "$PREFIX_DIR/repo" pull --ff-only -q || say "warning: repo not fast-forwardable; left as is"
@@ -116,7 +126,15 @@ else
 : "\${FAMILIA_MODEL:?set FAMILIA_MODEL to a GGUF path or a name in $PREFIX_DIR/models}"
 M="\$FAMILIA_MODEL"; [ -f "\$M" ] || M="$PREFIX_DIR/models/\$FAMILIA_MODEL"
 command -v termux-wake-lock >/dev/null 2>&1 && termux-wake-lock
-exec llama-server -m "\$M" --host "\${FAMILIA_BIND:-127.0.0.1}" --port "\${FAMILIA_PORT:-9941}" -c "\${FAMILIA_CTX:-2048}" \${FAMILIA_EXTRA:-}
+VK="$VKDIR"; NGL="\${FAMILIA_NGL:-0}"
+if [ -e /system/lib64/libvulkan.so ]; then
+  mkdir -p "\$VK"
+  ln -sf /system/lib64/libvulkan.so "\$VK/libvulkan.so"
+  ln -sf /system/lib64/libvulkan.so "\$VK/libvulkan.so.1"
+  export LD_LIBRARY_PATH="\$VK\${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}"
+  NGL="\${FAMILIA_NGL:-99}"
+fi
+exec llama-server -m "\$M" -ngl "\$NGL" --host "\${FAMILIA_BIND:-127.0.0.1}" --port "\${FAMILIA_PORT:-9941}" -c "\${FAMILIA_CTX:-2048}" \${FAMILIA_EXTRA:-}
 EOS
   chmod +x "$LAUNCH"
 fi
