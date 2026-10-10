@@ -118,8 +118,21 @@ def validate(graph):
         total += os.path.getsize(path) / 2**20 + (kv or 0) + 256 + (cache if isinstance(cache, int) else 0)
         n["_slot_ctx"] = n["ctx"] // n["parallel"]
         if rt is not None and "_bin" in rt: n["_bin"] = rt["_bin"]
-    budget = mem_total_mib() - int(host.get("reserve_ram_mib", 2048))
-    if total > budget: errs.append(f"estimated RAM {total:.0f} MiB exceeds budget {budget} MiB (MemTotal - reserve)")
+    # RAM safety (docs/ram-safety.md): estimated_used + reserve must fit total_ram.
+    # Prefer host.ram_mib (measured on the target machine) over this box's MemTotal.
+    ram = int(host["ram_mib"]) if isinstance(host.get("ram_mib"), int) else mem_total_mib()
+    reserve = int(host.get("reserve_ram_mib", 2048))
+    if total + reserve > ram:
+        errs.append(
+            f"estimated RAM {total:.0f} MiB + reserve {reserve} MiB exceeds host ram_mib {ram} MiB"
+        )
+    # Soft floor on small hosts: even with a tiny reserve, leave ~2 GiB free.
+    free_after = ram - total
+    if ram < 8192 and free_after < 2048:
+        errs.append(
+            f"estimated free after nodes {free_after:.0f} MiB < 2048 MiB floor "
+            f"on host with ram_mib {ram} < 8192 (OOM safety; see docs/ram-safety.md)"
+        )
     aliases = {a: k for k, n in nodes.items() for a in n.get("aliases", [])}
     for an, a in (graph.get("agents") or {}).items():
         for role, target in (a.get("edges") or {}).items():

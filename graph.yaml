@@ -5,7 +5,12 @@
 version: 1
 host:
   # Baseline measured on miryam: i5-7200U (4 threads), 7.1 GiB RAM, Intel HD 620 (no VRAM).
-  reserve_ram_mib: 3072          # miryam: 3 GiB safety margin after hard hang 2026-10-09; never near OOM
+  # Standing rule (2026-10-09 OOM hard-hang on miryam): never aim for high RAM.
+  # Keep ~2+ GiB free after estimated node use on hosts under 8 GiB. See docs/ram-safety.md.
+  # ram_mib is miryam's measured MemTotal so the budget is checked against the real host
+  # even when validate_graph.py runs on a larger machine (e.g. the agent box).
+  ram_mib: 7270                  # measured MemTotal on miryam (7.1 GiB)
+  reserve_ram_mib: 3072          # OS + hermes-agent + browser + 3 GiB safety margin (was 2048)
 runtimes:
   # llama.cpp builds deployed side by side. archs lists architectures that were
   # load-tested on this runtime; a node whose GGUF arch is not listed fails.
