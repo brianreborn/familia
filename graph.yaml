@@ -6,8 +6,25 @@ version: 1
 host:
   # Baseline measured on miryam: i5-7200U (4 threads), 7.1 GiB RAM, Intel HD 620 (no VRAM).
   reserve_ram_mib: 2048          # left for OS, hermes-agent, browser
+runtimes:
+  # llama.cpp builds deployed side by side. archs lists architectures that were
+  # load-tested on this runtime; a node whose GGUF arch is not listed fails.
+  b11374:
+    bin: code-bootstraps-llama.cpp/bin/llama-b11374-linux-x64-vulkan/llama-server
+    tag: b11374
+    commit: b92761a51
+    archs: [qwen35]
+  b11539:
+    # Official ggml-org release llama-b11539-bin-ubuntu-vulkan-x64.tar.gz
+    # (sha256 c94e4cf093d38054e4b3384491b0948a659474a207149e65a12b9e5993498182);
+    # includes ggml-org/llama.cpp#30054 (gemma-embedding2).
+    bin: code-bootstraps-llama.cpp/bin/llama-b11539-linux-x64-vulkan/llama-server
+    tag: b11539
+    commit: 10a60cf30
+    archs: [gemma-embedding2]
 nodes:
   coder:
+    runtime: b11374
     model: ~/.local/share/gguf/models/coder/Qwen3.5-2B-Q4_K_M.gguf
     arch: qwen35                  # must match GGUF general.architecture
     ctx: 65536                    # total; per-slot = ctx / parallel
@@ -19,6 +36,20 @@ nodes:
     port: 9941
     aliases: [coder]
     cache_ram_mib: 1024           # >= per-slot prompt state (validator checks)
+  embed:
+    runtime: b11539               # b11374 fails: unknown model architecture 'gemma-embedding2'
+    model: ~/.local/share/gguf/models/embed/embeddinggemma-2-Q8_0.gguf
+    arch: gemma-embedding2
+    ctx: 8192
+    parallel: 1
+    kv_type: f16
+    flash_attn: false
+    gpu_layers: 0
+    host: 127.0.0.1
+    port: 9951
+    aliases: [embed]
+    embeddings: true
+    cache_ram_mib: 0
 agents:
   hermes:
     min_ctx: 64000                # hermes-agent MINIMUM_CONTEXT_LENGTH

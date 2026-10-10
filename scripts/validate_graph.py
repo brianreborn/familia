@@ -2,7 +2,8 @@
 """Validate familia graph.yaml against GGUF metadata, hardware and agent needs.
 
 Exit 0 when valid, 1 with one line per problem otherwise. With --args NODE,
-print the llama-server arguments for that node. Never guesses or inflates.
+print the runtime binary and llama-server arguments for that node. Several
+llama.cpp runtimes can be deployed side by side; each node names its runtime. Never guesses or inflates.
 """
 import os, struct, sys
 import yaml
@@ -58,13 +59,35 @@ def kv_mib(meta, arch, ctx, kv_type):
         kv += (layers - attn_layers) * ssm_inner * ssm_state * 4  # f32 recurrent state
     return kv / 2**20
 
+RUNTIME_KEYS = ("bin", "tag", "commit", "archs")
+
+def runtime_version(binp):
+    import subprocess
+    try:
+        r = subprocess.run([binp, "--version"], capture_output=True, text=True, timeout=30)
+        return (r.stdout + r.stderr)
+    except Exception as e:
+        return f"error: {e}"
+
 def validate(graph):
     errs, host = [], graph.get("host", {})
+    runtimes = graph.get("runtimes") or {}
+    if not runtimes: errs.append("graph has no runtimes")
+    for rn, r in runtimes.items():
+        for key in RUNTIME_KEYS:
+            if key not in r: errs.append(f"runtime {rn}: missing required '{key}'")
+        if "bin" not in r: continue
+        b = os.path.join(os.path.dirname(os.path.abspath(graph.get("_path", "graph.yaml"))), os.path.expanduser(r["bin"]))
+        r["_bin"] = b
+        if not os.access(b, os.X_OK): errs.append(f"runtime {rn}: binary not executable: {b}"); continue
+        v = runtime_version(b)
+        if r.get("commit") and str(r["commit"])[:9] not in v:
+            errs.append(f"runtime {rn}: {b} does not report commit {r['commit']} (got: {v.strip().splitlines()[0] if v.strip() else '?'})")
     nodes, total = graph.get("nodes") or {}, 0.0
     if not nodes: errs.append("graph has no nodes")
     ports = {}
     for name, n in nodes.items():
-        for key in ("model", "arch", "ctx", "parallel", "kv_type", "port", "aliases", "cache_ram_mib"):
+        for key in ("runtime", "model", "arch", "ctx", "parallel", "kv_type", "port", "aliases", "cache_ram_mib"):
             if key not in n: errs.append(f"node {name}: missing required '{key}' (no defaults)")
         if any(k not in n for k in ("model", "arch", "ctx", "parallel", "kv_type", "port")): continue
         path = os.path.expanduser(n["model"])
@@ -77,6 +100,10 @@ def validate(graph):
         except Exception as e: errs.append(f"node {name}: cannot read GGUF: {e}"); continue
         arch = meta.get("general.architecture")
         if arch != n["arch"]: errs.append(f"node {name}: GGUF architecture is {arch!r}, graph says {n['arch']!r}")
+        rt = runtimes.get(n.get("runtime"))
+        if rt is None: errs.append(f"node {name}: runtime {n.get('runtime')!r} is not declared")
+        elif arch not in (rt.get("archs") or []):
+            errs.append(f"node {name}: runtime {n['runtime']} ({rt.get('tag')}) is not verified for architecture {arch!r}; add it to runtimes.{n['runtime']}.archs only after a load test")
         train = meta.get(f"{arch}.context_length")
         if isinstance(train, int) and n["ctx"] // n["parallel"] > train:
             errs.append(f"node {name}: per-slot ctx {n['ctx'] // n['parallel']} exceeds model's trained context {train}")
@@ -85,10 +112,12 @@ def validate(graph):
         # --cache-ram is smaller, llama.cpp skips caching on every request.
         state = kv_mib(meta, arch, n["ctx"] // n["parallel"], n["kv_type"]) if n["kv_type"] in KV_BYTES else None
         cache = n.get("cache_ram_mib")
+        if n.get("embeddings"): state = None  # embedding servers keep no prompt cache
         if state is not None and isinstance(cache, int) and cache < state:
             errs.append(f"node {name}: cache_ram_mib {cache} < estimated per-slot prompt state {state:.0f} MiB (prompt cache would always be skipped)")
         total += os.path.getsize(path) / 2**20 + (kv or 0) + 256 + (cache if isinstance(cache, int) else 0)
         n["_slot_ctx"] = n["ctx"] // n["parallel"]
+        if rt is not None and "_bin" in rt: n["_bin"] = rt["_bin"]
     budget = mem_total_mib() - int(host.get("reserve_ram_mib", 2048))
     if total > budget: errs.append(f"estimated RAM {total:.0f} MiB exceeds budget {budget} MiB (MemTotal - reserve)")
     aliases = {a: k for k, n in nodes.items() for a in n.get("aliases", [])}
@@ -105,18 +134,20 @@ def validate(graph):
     return errs, total
 
 def server_args(n):
-    a = ["-m", os.path.expanduser(n["model"]), "--host", n.get("host", "127.0.0.1"), "--port", str(n["port"]),
+    a = [n["_bin"]] if "_bin" in n else []
+    a += ["-m", os.path.expanduser(n["model"]), "--host", n.get("host", "127.0.0.1"), "--port", str(n["port"]),
          "-c", str(n["ctx"]), "-np", str(n["parallel"]), "-ctk", n["kv_type"], "-ctv", n["kv_type"],
          "-ngl", str(n.get("gpu_layers", 0)), "--jinja"]
     if n.get("flash_attn"): a += ["-fa", "on"]
     for al in n.get("aliases", [])[:1]: a += ["--alias", al]
     a += ["--cache-ram", str(n["cache_ram_mib"])]
+    if n.get("embeddings"): a += ["--embeddings"]
     return a
 
 def main(argv):
     path = "graph.yaml"
     if "--graph" in argv: path = argv[argv.index("--graph") + 1]
-    graph = yaml.safe_load(open(path))
+    graph = yaml.safe_load(open(path)); graph["_path"] = path
     errs, total = validate(graph)
     for e in errs: print(f"graph: ERROR: {e}", file=sys.stderr)
     if errs: return 1
