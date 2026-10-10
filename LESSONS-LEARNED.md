@@ -15,7 +15,7 @@ A stray `\"` left `android_start.sh` unparseable. Run `sh -n` / shellcheck in CI
 miryam (7 GiB) hard-hung when the 64k coder server, an embed test and a compaction self-test ran together. Keep `reserve_ram_mib: 3072`, ~2 GiB free after estimates, and one heavy process at a time. See `docs/ram-safety.md`.
 
 ## L5. SSH passwords
-Prefer key auth. If a password is unavoidable, use `sshpass -e` (reads `SSHPASS`), never `-p`, and never disable host-key checking (#18).
+Use key-only SSH to the phones; the android scripts read addr/user/port from graph.yaml (or ANDROID_HOST/USER/PORT) and never take passwords or disable host-key checking (#18).
 
 ## L6. Use ASCII in names and code
 Non-breaking hyphens (U+2011) in file names and Python expressions break copy-paste. Keep identifiers ASCII.

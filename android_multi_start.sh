@@ -1,54 +1,15 @@
 #!/usr/bin/env bash
-# android_multi_start.sh – set up SSH key auth (once) and launch Android pentest nodes
-# Usage: export ANDROID_A_PASS="..." ANDROID_B_PASS="..."; bash ./android_multi_start.sh
-
+# Start every phone listed in graph.yaml (kind: phone with addr/user), or the names given:
+#   ./android_multi_start.sh            # phone7 phone8 ...
+#   ./android_multi_start.sh phone8
+# Key-only SSH. Install your public key on each phone first (see MANUAL.md); no passwords.
 set -euo pipefail
-
-# ---- Ensure a local SSH key exists ----
-if [[ ! -f "$HOME/.ssh/id_rsa" ]]; then
-  echo "Generating new SSH keypair..."
-  ssh-keygen -t rsa -b 4096 -N "" -f "$HOME/.ssh/id_rsa"
-fi
-PUB_KEY="$(cat "$HOME/.ssh/id_rsa.pub")"
-
-# ---- Device list (IP USER PASS) ----
-# Add/remove entries as needed.
-DEVICES=(
-  "192.168.1.7 u0_a439 ${ANDROID_A_PASS:-}"
-  "192.168.1.8 u0_a414 ${ANDROID_B_PASS:-}"
-)
-
-# ---- Helper: copy public key using password once (no password: skip, rely on keys) ----
-copy_key() {
-  local ip="$1" user="$2" pass="${3:-}"
-  if [[ -z "$pass" ]]; then
-    echo "[INFO] No password supplied for $user@$ip; skipping key copy (install the key manually)."
-    return 0
-  fi
-  echo "Copying SSH public key to $user@$ip..."
-  sshpass -p "$pass" ssh -o StrictHostKeyChecking=no -p 8022 "$user@$ip" "mkdir -p ~/.ssh && chmod 700 ~/.ssh && echo \"$PUB_KEY\" >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
-}
-
-# ---- Helper: start Android node via key auth ----
-start_node() {
-  local ip="$1" user="$2"
-  echo "Starting Android node on $user@$ip..."
-  ssh -o StrictHostKeyChecking=no -p 8022 "$user@$ip" "cd /data/local/tmp && ./start-green-roomz.sh && echo 'Node started'"
-}
-
-# ---- Main loop ----
-for desc in "${DEVICES[@]}"; do
-  read -r IP USER PASS <<<"$desc"
-  echo "=== Processing $USER@$IP ==="
-  # Ensure key is present (password only needed the first time)
-  copy_key "$IP" "$USER" "$PASS"
-  # Start the node (key auth)
-  start_node "$IP" "$USER"
-  # Register with fleet (key auth)
-  echo "Registering $USER node with fleet..."
-  ./with-fleet.sh --role pentest --manifest scripts/pentest-role.json
-  echo "Done for $USER@$IP."
-  echo
- done
-
-echo "All devices processed."
+cd "$(dirname "$0")"
+if [ $# -gt 0 ]; then HOSTS=("$@"); else mapfile -t HOSTS < <(python3 scripts/android_target.py --list); fi
+[ ${#HOSTS[@]} -gt 0 ] || { echo "android_multi_start.sh: no phone hosts with addr/user in graph.yaml" >&2; exit 1; }
+rc=0
+for h in "${HOSTS[@]}"; do
+  echo "=== $h ==="
+  ./android_start.sh "$h" || { echo "android_multi_start.sh: $h failed" >&2; rc=1; }
+done
+exit $rc
