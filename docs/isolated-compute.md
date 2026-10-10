@@ -196,3 +196,17 @@ per session (about 4 chars per token unless a tokenizer is supplied). When the
 next turn would cross `max_fill`, it opens a new session that carries a compact
 local summary instead of letting the remote compact.
 Exit codes: 0 reply, 3 timeout, 5 provider refusal (402/auth/429).
+
+## chat.hf.co model switching (measured 2026-10-09, qodesh, #36)
+
+- `/model` opens a filterable picker (press enter on the splash screen first, then type `/model`, enter;
+  type part of a name to filter, enter to select). On 2026-10-09 it listed 128 models, all served through
+  Hugging Face Inference Providers (e.g. CohereLabs/tiny-aya-*, deepseek-ai/DeepSeek-R1-Distill-Qwen-7B,
+  DeepSeek-V4-*, Qwen/Qwen3.8-27B default).
+- Credits are per account, not per model: CohereLabs/tiny-aya-global and
+  deepseek-ai/DeepSeek-R1-Distill-Qwen-7B both returned `402 Payment Required: no remaining credits`
+  in about 6 s, the same as Qwen3.8-27B. No free model was found, so context window, latency and
+  compaction behaviour remain **TBD** until the account has credits.
+- Until measured, `hfchat.py` keeps `context_tokens=32768` as a placeholder with
+  `compaction_threshold = 0.8 * context_tokens` and rotates sessions before that.
+
