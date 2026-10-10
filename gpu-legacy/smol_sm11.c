@@ -89,7 +89,7 @@ static void fwd_cpu(int tok,int pos){
 }
 /* ---- GPU full forward ---- */
 static CUfunction f_q4r, f_q8r, f_q4f, f_q8f, f_ropekv, f_attnmh; static int g_fused=1, g_prenorm=0; static CUdeviceptr dQKV, dXN;
-static CUfunction f_q4x[9]; static int g_x=0; static unsigned xcfg[4][4];
+static CUfunction f_q4x[9]; static int g_x=0; static unsigned xcfg[5][4];
 static CUfunction f_q4m[2][3], f_q4v[2][3], f_q8m[2][2]; static int g_q8m=4; static unsigned m8cfg[3]; static int g_v5=0; /* v5 slower end-to-end until re-swept */ static int g_mr=0, g_tex=1; static unsigned mcfg[4][3];
 static int qmvmc(CUdeviceptr,CUdeviceptr,CUdeviceptr,unsigned,unsigned,unsigned,unsigned,unsigned,unsigned,int,int);
 static int qmv8c(CUdeviceptr,CUdeviceptr,CUdeviceptr,unsigned,unsigned,unsigned,unsigned,unsigned,int,int);
@@ -133,7 +133,7 @@ static int qmvf(CUdeviceptr y, CUdeviceptr x, CUdeviceptr w, unsigned n, unsigne
     char k[32]; sprintf(k,"SMOL_FCFG%d",c); if(getenv(k)) sscanf(getenv(k),"%u,%u,%u",&fcfgR[c],&fcfgL[c],&fcfgG[c]); }
   if(g_q8m && q8 && !nw){ if(!m8cfg[0]){ m8cfg[0]=8; m8cfg[1]=1; m8cfg[2]=64; if(getenv("SMOL_M8CFG")) sscanf(getenv("SMOL_M8CFG"),"%u,%u,%u",&m8cfg[0],&m8cfg[1],&m8cfg[2]); }
     return qmv8c(y,x,w,n,d,m8cfg[0],m8cfg[1],m8cfg[2],g_q8m,g_tex); }
-  if(g_x && !q8 && !nw){ int xs=xshape(n,d); unsigned* c2=xcfg[xs]; if(!c2[0]){ unsigned dd[4][4]={{4,4,2,16},{3,8,2,8},{5,4,2,32},{4,4,2,16}} /* MR sweep 2026-10-10: MR,RG,BG,G */; memcpy(c2,dd[xs],16);
+  if(g_x && !q8 && !nw){ int xs=xshape(n,d); unsigned* c2=xcfg[xs]; if(!c2[0]){ unsigned dd[5][4]={{5,8,2,8},{3,8,2,8},{5,4,2,16},{3,8,2,8},{5,4,2,16}} /* cold rotating sweep 2026-10-10: MR,RG,BG,G */; memcpy(c2,dd[xs],16);
       char k[16]; sprintf(k,"SMOL_XS%d",xs); if(getenv(k)) sscanf(getenv(k),"%u,%u,%u,%u",&c2[0],&c2[1],&c2[2],&c2[3]); }
     return qmvx(y,x,w,n,d,mode,c2[1],c2[2],c2[3],c2[0]); }
   if(g_mr && !q8 && !nw){ if(!mcfg[c][0]){ unsigned dd[4][3]={{8,1,16},{8,2,8},{8,1,16},{8,1,16}} /* v4 sweep 2026-10-10 */; memcpy(mcfg[c],dd[c],12);
@@ -163,7 +163,7 @@ static int qmvx(CUdeviceptr y, CUdeviceptr x, CUdeviceptr w, unsigned n, unsigne
   unsigned ch=(d+RG*mr-1)/(RG*mr); if(grid>ch) grid=ch; unsigned woff=(unsigned)((w-g_ar)/4);
   void* a[]={&y,&x,&w,&woff,&n,&d,&RG,&BG,&mode};
   return p_cuLaunchKernel(f_q4x[mr], grid,1,1, T,1,1, sm, 0, a, 0); }
-static int xshape(unsigned n,unsigned d){ return n!=576?1:(d==3072?0:(d==960?2:3)); }
+static int xshape(unsigned n,unsigned d){ return n!=576?1:(d>4096?4:(d==3072?0:(d==960?2:3))); }
 static CUdeviceptr al(size_t b){ b=(b+255)&~(size_t)255; if(g_aroff+b>g_arsz){fprintf(stderr,"arena overflow\n");exit(1);} CUdeviceptr d=g_ar+g_aroff; g_aroff+=b; g_vram_used+=b; return d; }
 static CUdeviceptr upb(const void* p,size_t b){ CUdeviceptr d=al(b); p_cuMemcpyHtoD(d,p,b); return d; }
 static CUdeviceptr up(T* t){ return upb(t->data,tbytes(t)); }
@@ -200,7 +200,7 @@ static void gpu_setup(void){
     { const char* n8[2][2]={{"k_q8g2","k_q8g4"},{"k_q8t2","k_q8t4"}}; for(int t=0;t<2;t++) for(int m=0;m<2;m++) if(p_cuModuleGetFunction(&f_q8m[t][m],g_sm11_mod,n8[t][m])) g_q8m=0;
       if(getenv("SMOL_Q8M")) g_q8m=atoi(getenv("SMOL_Q8M")); }
     for(int m=1;m<=8;m++){ char v[16]; sprintf(v,"k_q4x%d",m); if(p_cuModuleGetFunction(&f_q4x[m],g_sm11_mod,v)) f_q4x[m]=0; }
-    g_x = f_q4x[2] && getenv("SMOL_X") && atoi(getenv("SMOL_X"));  /* off: faster in isolation, slower end-to-end */
+    g_x = f_q4x[2] && (!getenv("SMOL_X") || atoi(getenv("SMOL_X")));  /* on: cold-tuned per-shape MR (+1.5% e2e) */
     void* tr=0; size_t off=1; CUresult r1=gtr?gtr(&tr,g_sm11_mod,"tw_q4"):999, r2=r1?999:sfmt(tr,0x03,1), r3=r2?999:sadr(&off,tr,g_ar,g_arsz);
     fprintf(stderr,"q4m kernels %s, texref get=%d fmt=%d bind=%d off=%zu (%zu MiB = %zu texels)\n",ok?"ok":"MISSING",(int)r1,(int)r2,(int)r3,off,g_arsz>>20,g_arsz/4);
     if(r3||off) g_tex=0; if(getenv("SMOL_TEX")) g_tex=atoi(getenv("SMOL_TEX")); g_mr=getenv("SMOL_MR")?atoi(getenv("SMOL_MR")):2; if(!ok) g_mr=0; }
@@ -313,14 +313,25 @@ static void kbench(void){ unsigned dim=c_dim, hd=c_hd; int N=200; double a;
       double gbs=(double)sh[s].n/32*18*sh[s].d/(best*1e-3)/1e9;
       fprintf(stderr,"q4m%s %ux%u %s MR=%d: RG=%u BG=%u G=%u %.3f ms (%.2f GB/s)\n",g_v5?"v5":"v4",sh[s].n,sh[s].d,t?"tex":"gld",mrs[mi],b0,b1,b2,best,gbs); } } }
   if(getenv("SMOL_KB_X")){ struct {unsigned n,d; CUdeviceptr w,y,x; unsigned mode;} sh[4]={{576,3072,dW[0][4],dHB,dXN,0},{1536,576,dW[0][6],dXB,dHB,2},{576,960,dW[0][0],dQKV,dXN,0},{576,576,dW[0][3],dXB,dXB2,0}};
-    unsigned RGs[]={2,4,8,16}, BGs[]={1,2,3,6}, Gs[]={8,16,32}; int mrs[]={1,2,3,4,5,6,8};
+    unsigned RGs[]={2,4,8,16}, BGs[]={1,2,3,6}, Gs[]={8,16,32}; int mrs[]={1,2,3,4,5,6,8}; int wi[4]={4,6,0,3}; int IT=2*c_nl;
+    for(int s=0;s<4;s++) for(int mr=2;mr<=4;mr+=2){ unsigned rg8[]={4,8,16}, bg8[]={1,2}, g8[]={8,16,32,64}; double best=1e9; unsigned b0=0,b1=0,b2=0;
+      for(int i=0;i<3;i++) for(int j=0;j<2;j++) for(int g=0;g<4;g++){ p_cuCtxSynchronize(); double t0=now(); int bad=0;
+        for(int k=0;k<IT&&!bad;k++) bad=qmvmc(sh[s].y,sh[s].x,dW[k%c_nl][wi[s]],sh[s].n,sh[s].d,sh[s].mode,rg8[i],bg8[j],g8[g],mr,1); if(p_cuCtxSynchronize()||bad) continue;
+        double tt=(now()-t0)*1000/IT; if(tt<best){best=tt;b0=rg8[i];b1=bg8[j];b2=g8[g];} }
+      fprintf(stderr,"COLD v4 MR=%d %ux%u: RG=%u BG=%u G=%u %.3f ms (%.2f GB/s)\n",mr,sh[s].n,sh[s].d,b0,b1,b2,best,(double)sh[s].n/32*18*sh[s].d/(best*1e-3)/1e9); }
     for(int mi=0;mi<7;mi++){ int mr=mrs[mi]; char nm[16]; sprintf(nm,"k_q4x%d",mr); occ(nm,f_q4x[mr],64,576*4+mr*4*17*4);
       for(int s=0;s<4;s++){ double best=1e9; unsigned b0=0,b1=0,b2=0;
         for(int i=0;i<4;i++) for(int j=0;j<4;j++) for(int g=0;g<3;g++){ p_cuCtxSynchronize(); double t0=now(); int bad=0;
-          for(int k=0;k<20&&!bad;k++) bad=qmvx(sh[s].y,sh[s].x,sh[s].w,sh[s].n,sh[s].d,sh[s].mode,RGs[i],BGs[j],Gs[g],mr); if(p_cuCtxSynchronize()||bad) continue;
-          double tt=(now()-t0)*1000/20; if(tt<best){best=tt;b0=RGs[i];b1=BGs[j];b2=Gs[g];} }
-        fprintf(stderr,"XMR %d %ux%u: RG=%u BG=%u G=%u thr=%u %.3f ms (%.2f GB/s)\n",mr,sh[s].n,sh[s].d,b0,b1,b2,b0*b1*8,best,(double)sh[s].n/32*18*sh[s].d/(best*1e-3)/1e9);
+          for(int k=0;k<IT&&!bad;k++) bad=qmvx(sh[s].y,sh[s].x,dW[k%c_nl][wi[s]],sh[s].n,sh[s].d,sh[s].mode,RGs[i],BGs[j],Gs[g],mr); if(p_cuCtxSynchronize()||bad) continue;
+          double tt=(now()-t0)*1000/IT; if(tt<best){best=tt;b0=RGs[i];b1=BGs[j];b2=Gs[g];} }
+        fprintf(stderr,"COLD x MR=%d %ux%u: RG=%u BG=%u G=%u thr=%u %.3f ms (%.2f GB/s)\n",mr,sh[s].n,sh[s].d,b0,b1,b2,b0*b1*8,best,(double)sh[s].n/32*18*sh[s].d/(best*1e-3)/1e9);
         if(best<1e9) occ("  best",f_q4x[mr],b0*b1*8,sh[s].n*4+mr*b0*(b1*8+1)*4); } }
+    if(gpu_cls && cls_q4){ unsigned nv=nvocab; unsigned rg8[]={4,8,16}, bg8[]={1,2}, g8[]={16,64,256};
+      for(int v=0;v<2;v++) for(int mr=2;mr<=(v?5:4);mr+=(v?1:2)){ double best=1e9; unsigned b0=0,b1=0,b2=0;
+        for(int i=0;i<3;i++) for(int j=0;j<2;j++) for(int g=0;g<3;g++){ p_cuCtxSynchronize(); double t0=now(); int bad=0;
+          for(int k=0;k<3&&!bad;k++) bad= v? qmvx(dLOG,dXN,dEMB,dim,nv,0,rg8[i],bg8[j],g8[g],mr) : qmvmc(dLOG,dXN,dEMB,dim,nv,0,rg8[i],bg8[j],g8[g],mr,1); if(p_cuCtxSynchronize()||bad) continue;
+          double tt=(now()-t0)*1000/3; if(tt<best){best=tt;b0=rg8[i];b1=bg8[j];b2=g8[g];} }
+        fprintf(stderr,"CLSQ4 %s MR=%d: RG=%u BG=%u G=%u %.3f ms (%.2f GB/s)\n",v?"x":"v4",mr,b0,b1,b2,best,(double)dim/32*18*nv/(best*1e-3)/1e9); } }
     return; }
   if(gpu_cls && !cls_q4){ unsigned RGs[]={4,8,16}, BGs[]={1,2,3}, Gs[]={64,128,256,512}; int mrs[]={2,4}; unsigned nv=nvocab;
     for(int mi=0;mi<2;mi++){ double best=1e9; unsigned b0=0,b1=0,b2=0;

@@ -160,3 +160,19 @@ Sweep: RG {2,4,8,16} x BG {1,2,3,6} x G {8,16,32}, 20 iterations per config. Reg
 - **Q8 classifier on the texture cache** (576x49152, 2 lanes/u16 misaligned-word funnel, MR4, RG8 BG1 G64): 13.8 ms vs 29.9 ms (v3 fused), 2.18 vs 1.01 GB/s, which is about +13% tok/s end to end. The biggest win this round.
 - Warm coder-alone baseline (llama-bench stories15M Q4_0, 1 thread, CPU0, after a warm-up run): 123.0-123.9 t/s at tg64. bench_async tg128: alone 115.5 +/- 3.1, alongside the SmolLM2 server 114.3 +/- 1.7 (-1%, inside the spread), alongside stories15M 115.4.
 - bench_async full (ran with v6 on by default by mistake, 13.8-14.0 tok/s): stories15M 69.6-71.5 tok/s, text identical; SmolLM2 4 prompts 32/32 vs CPU; serve inflight 1 and 2 at 13.96/13.97 tok/s, outputs identical to single runs.
+
+## 2026-10-10 rotating cold-cache benchmark and per-shape re-tune
+- kbench (SMOL_KB_X) now cycles through all 30 layers' matrices: 60 calls per config, each call on a different weight matrix, like a real token. The warm 20x-same-matrix loop overstated the v6 configs.
+- Cold results (ms; best config shown as MR / RG,BG,G):
+
+| shape | v4 MR2 (old default) | v4 MR4 | v6 best cold | warm v6 best (previous round) |
+|---|---|---|---|---|
+| 576x3072 | 0.846 | 0.818 | **0.734** (MR5 8,2,8) | 0.583 |
+| 1536x576 | 0.466 | 0.550 | **0.379** (MR3 8,2,8) | 0.331 |
+| 576x960 | 0.305 | 0.293 | **0.255** (MR5 4,2,16) | 0.214 |
+| 576x576 | 0.166 | 0.215 | **0.142** (MR3 8,2,8) | 0.153 |
+
+  Cold costs 10-25% more than warm, and the ranking changes: MR4 wins warm but loses cold on 3 of 4 shapes. Cold drop-off: MR 3-5 best, and MR 6/8 are again worse on 3 of 4 shapes.
+- End to end (2 prompts x 32 tokens, 32/32): v4 MR2 14.46-14.62 tok/s, **v6 cold-tuned 14.80-14.83 (new default, SMOL_X=1)**. That's +1.5% (spread about 0.1). The per-layer kernel sum predicts about 8 ms/token less (1.78 to 1.51 ms per layer x 30), but only about 1 ms showed up. So even the rotating bench isn't the real pipeline: it repeats one shape back-to-back, which lets consecutive launches overlap, and it reuses the same x. Next: a bench that replays the real per-layer launch sequence.
+- Q4 classifier fallback on the GPU (used when the Q8 table doesn't fit; requantized Q4 plus CPU top-K Q8 rescoring), 576x49152: v4 MR2 13.2 ms, v4 MR4 12.4, v6 MR4 11.1, **v6 MR5 (4,2,16) 10.4 ms (1.53 GB/s)**, now its default. End to end: 13.99-14.01 to 14.20-14.21 tok/s, 32/32. The CPU-only classifier fallback stays on the CPU (there's no GPU table to read).
+- Known stats bug: tok_lat is garbage on the q4-classifier path (the enqueue timestamp isn't set on that path). tok/s and the match check are unaffected.
