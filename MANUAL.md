@@ -9,7 +9,7 @@ Installation takes only two steps and applies identically across Linux, macOS, a
 ```sh
 curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install.sh | sh
 ```
-*Windows is not supported yet: `install.ps1`, `start.bat` and `scripts/configure.ps1` are not shipped (see #17). Use WSL2 or Linux.*
+*Windows: `scripts\windows\start.bat` and an opt-in logon task (`scripts\windows\install-task.ps1`) are shipped, not yet run on qodesh; see docs/windows.md. `install.ps1` and `scripts/configure.ps1` are not shipped yet (#17).*
 
 **Note**: The installer will prompt for acknowledgment of the Light-ware License. Type `yes` to proceed. If running in an automated environment, set `INSTALL_ACK=yes` before executing the script.
 
