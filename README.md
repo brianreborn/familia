@@ -20,7 +20,7 @@ Two steps: run the command, then tap through the voluntary contribution notice. 
 curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install.sh | sh
 ```
 
-*Windows is not supported yet: `install.ps1`, `start.bat` and `scripts/configure.ps1` are not shipped (see #17). Use WSL2 or Linux.*
+*Windows: `scripts\windows\start.bat` and an opt-in logon task (`scripts\windows\install-task.ps1`) are shipped, not yet run on qodesh; see docs/windows.md. `install.ps1` and `scripts/configure.ps1` are not shipped yet (#17).*
 
 Once installed, your local web UI opens on chat: [http://127.0.0.1:9931/?model=chat](http://127.0.0.1:9931/?model=chat). On first visit, paste the API key printed in your terminal.
 

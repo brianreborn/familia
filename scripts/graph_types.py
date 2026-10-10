@@ -74,6 +74,7 @@ GPU_KEYS = {"vendor", "model", "vram_mib", "backend", "backend_status", "compute
 GPU_REQUIRED = ("vendor", "model", "vram_mib", "backend", "backend_status", "measured")
 WINDOWS_KEYS = ("repo_path", "models_path", "runtime_path", "startup", "wake")
 WINDOWS_STARTUP = {"scheduled-task", "start.bat", "service", "manual", "tbd"}
+WINDOWS_OPT_KEYS = ("start_script", "task_name", "autostart", "avx_required")  # #17
 
 def check_host(g, name, h, errs):
     if h.get("measured") is True:
@@ -99,9 +100,18 @@ def check_host(g, name, h, errs):
             for k in WINDOWS_KEYS:
                 if k not in win: errs.append(f"hosts.{name}.windows: missing required '{k}' (use TBD/tbd if unknown)")
             for k in win:
-                if k not in WINDOWS_KEYS: errs.append(f"hosts.{name}.windows: unknown field {k!r}")
+                if k not in WINDOWS_KEYS + WINDOWS_OPT_KEYS: errs.append(f"hosts.{name}.windows: unknown field {k!r}")
             if "startup" in win and win["startup"] not in WINDOWS_STARTUP:
                 errs.append(f"hosts.{name}.windows.startup: {win['startup']!r} not one of {sorted(WINDOWS_STARTUP)}")
+            for k in ("autostart", "avx_required"):
+                if k in win and not isinstance(win[k], bool): errs.append(f"hosts.{name}.windows.{k}: expected true/false")
+            st = win.get("startup")
+            if st in ("start.bat", "scheduled-task") and not win.get("start_script"):
+                errs.append(f"hosts.{name}.windows: startup {st} needs start_script")
+            if st == "scheduled-task" and not win.get("task_name"):
+                errs.append(f"hosts.{name}.windows: startup scheduled-task needs task_name")
+            if win.get("autostart") is True and st != "scheduled-task":
+                errs.append(f"hosts.{name}.windows: autostart true needs startup scheduled-task (opt-in via install-task.ps1 -Install)")
 
 def check_gpus(name, h, errs):
     gpus = h.get("gpus")

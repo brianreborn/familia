@@ -63,9 +63,13 @@ hosts:
           optional experiment, not something the graph may place.
     windows:
       repo_path: TBD
-      models_path: 'E:\familia\models'   # proposed: E: has the free space; not created yet
-      runtime_path: TBD                  # no llama-server installed yet
-      startup: tbd               # scheduled-task | start.bat | service | manual; green-roomz uses scripts/serve-window.cmd (#18)
+      models_path: 'E:\temp\familia\models'   # start.bat default when E:\temp exists; else %USERPROFILE%\familia\models
+      runtime_path: TBD                  # no llama-server installed yet; start.bat looks in <repo>\runtime
+      startup: start.bat         # manual run; scheduled-task once opted in (green-roomz uses scripts/serve-window.cmd, #18)
+      start_script: 'scripts\windows\start.bat'
+      task_name: familia-llama-server    # used only after install-task.ps1 -Install
+      autostart: false           # opt-in; flip with startup: scheduled-task after running install-task.ps1 -Install
+      avx_required: false        # official win-cpu-x64 build ran on the non-AVX Athlon II X2 (2026-10-09)
       wake: tbd
   shalom:
     kind: unknown
