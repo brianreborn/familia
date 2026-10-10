@@ -6,7 +6,7 @@ print the llama-server arguments for that node. Never guesses or inflates.
 --no-files skips GGUF/RAM checks (schema only); --verify-sha hashes GGUFs.
 Schema: scripts/graph_types.py, docs/graph-types.md.
 """
-import hashlib, os, struct, sys
+import hashlib, json, os, struct, sys
 import yaml
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from graph_types import validate_types, TYPES  # noqa: E402
@@ -104,6 +104,18 @@ def validate(graph, check_files=True):
         except Exception as e: errs.append(f"nodes.{name}: cannot read GGUF: {e}"); continue
         arch = meta.get("general.architecture")
         if arch != m["arch"]: errs.append(f"models.{n['model']}: GGUF architecture is {arch!r}, graph says {m['arch']!r}")
+        df = m.get("derived_from")
+        if df:  # produced by scripts/scale_down.py (docs/scale-down.md)
+            w = f"models.{n['model']}.derived_from"
+            mp = os.path.join(os.path.dirname(os.path.abspath(graph.get("_path", "graph.yaml"))), os.path.expanduser(df.get("manifest", "")))
+            try: rec = json.load(open(mp))
+            except Exception as e: errs.append(f"{w}: manifest unreadable: {e}"); rec = {}
+            if rec and rec.get("output_sha256") != df.get("sha256"): errs.append(f"{w}: sha256 does not match manifest")
+            if rec and rec.get("output_bytes") != os.path.getsize(path): errs.append(f"{w}: model size differs from scale-down manifest (file changed?)")
+            if rec and rec.get("source_bytes") and os.path.getsize(path) >= rec["source_bytes"]: errs.append(f"{w}: scaled model is not smaller than its source")
+            if rec and rec.get("arch") != arch: errs.append(f"{w}: scaled arch {arch!r} != manifest arch {rec.get('arch')!r}")
+            src = models.get(df.get("model"))
+            if src is not None and src.get("arch") != arch: errs.append(f"{w}: arch {arch!r} differs from source model {df.get('model')} ({src.get('arch')!r})")
         train = meta.get(f"{arch}.context_length")
         if isinstance(train, int) and train != m["trained_ctx"]:
             errs.append(f"models.{n['model']}: trained_ctx {m['trained_ctx']} but GGUF says {train}")
