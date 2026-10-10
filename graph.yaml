@@ -312,3 +312,14 @@ pentests:
       Ties to android_start.sh --role pentest and missing scripts/pentest-role.json (#15).
       Activate only after a pentest-role model is placed, scope.allow lists owned hosts/CIDRs,
       and tools.allow is an explicit allowlist. Operator confirm required.
+
+kv_channels:
+  # C2C stage 1 (#22). Pencilled in: a second coder node does not exist yet.
+  # scripts/c2c/kv_ship.py re-checks live: GGUF sha256, /props build_info, n_ctx per slot, kv types.
+  coder-self:
+    experimental: true
+    status: planned
+    from: coder
+    to: qodesh-resident          # placeholder peer: runtime and ctx differ today, so this cannot go active as-is
+    via: nexus
+    notes: Placeholder to exercise the type. See docs/c2c-stage1.md.
