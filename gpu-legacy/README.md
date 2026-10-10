@@ -1,23 +1,20 @@
-﻿# gpu-legacy (qodesh GeForce 8600 GT sm_11)
+﻿# gpu-legacy — always-active + partial offload on old GPUs
 
-Always-active model path: full forward on GPU (activations + KV in VRAM, logits only copied back).
+## Best number so far (qodesh 8600 GT, stories15M fp32 greedy)
+| mode | tok/s |
+|---|---|
+| CPU | ~69 |
+| GPU full forward + CPU classifier + fused attn | **33–37.5** |
+| GPU hybrid partial (SM11_PARTIAL=ffn,wcls) | ~23.5 |
 
-## Results (stories15M fp32, greedy, Athlon II X2 B24, 2 threads)
-| mode | tok/s | notes |
-|---|---|---|
-| CPU llama2.c | 70.4 | baseline |
-| GPU matvec-only (old) | 17-18 | activations bounced each matmul |
-| GPU full forward, 48 MiB resident | 19.2 | |
-| GPU full forward, 57 MiB all-resident | **21.9** | identical greedy text to CPU |
-
-VRAM free observed 105-114 / 256 MiB (desktop shares the card). stories15M (57 MiB) fits entirely — the always-active decision/draft role.
-
-## Layout
-- `kernels.ptx` — matvec, rmsnorm, add, silu_mul, rope, copy, attn_scores, softmax, attn_value
-- `sm11_shim.c` — CUDA driver API, on-device forward
-- `legacy_gpu.h` — pluggable backend contract (sm11 now; dxcs/ocl11/vulkan later)
-- `build-gcc.bat` — WinLibs gcc, no MSVC/CUDA toolkit
+Identical greedy text to CPU. All weights resident (57 MiB / ~113 MiB free VRAM).
 
 ## Env
-- `FAMILIA_GPU=1` enable
-- `SM11_RESIDENT_MIB` cap resident weights
+- `FAMILIA_GPU=1` — enable
+- `SM11_PARTIAL=ffn,wcls` — CPU forward, GPU selected matvecs (worse alone; for concurrency)
+- `SM11_FULL_FWD=1` — force on-device forward even if PARTIAL set
+- `SM11_GPU_CLS=1` — vocab matvec on GPU (usually slower)
+- `SM11_PTX` — path to kernels.ptx
+
+## ggml-sm11/
+Scaffold for llama.cpp MUL_MAT offload. Next: build b11540 with WinLibs gcc and hook F32 mul_mat.

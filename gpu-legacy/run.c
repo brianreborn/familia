@@ -242,7 +242,9 @@ void matmul_cpu(float* xout, float* x, float* w, int n, int d) {
 }
 
 float* forward(Transformer* transformer, int token, int pos) {
-    if (g_use_gpu) {
+    if (g_use_gpu && getenv("SM11_PARTIAL") && !getenv("SM11_FULL_FWD")) {
+        /* hybrid: CPU forward; matmul() offloads selected ops to GPU */
+    } else if (g_use_gpu) {
         if (sm11_forward(token, pos, transformer->state.logits) != 0) {
             fprintf(stderr, "sm11_forward failed, falling back\n"); g_use_gpu = 0;
         } else return transformer->state.logits;
@@ -730,8 +732,18 @@ int sample(Sampler* sampler, float* logits) {
     return next;
 }
 
+static int sm11_partial_ok(int n, int d) {
+    /* full forward uses sm11_forward; this path is for hybrid CPU graph + GPU matvecs */
+    const char* p = getenv("SM11_PARTIAL");
+    if (!p || !p[0]) return 1; /* all matvecs */
+    if (strstr(p, "all")) return 1;
+    if (strstr(p, "ffn") && (d == 768 || n == 768 || d == 1024 || n == 1024 || d == 2880 || n == 2880)) return 1;
+    if (strstr(p, "wcls") && d >= 1000) return 1;
+    if (strstr(p, "attn") && n == d) return 1;
+    return 0;
+}
 void matmul(float* xout, float* x, float* w, int n, int d) {
-    if (g_use_gpu && sm11_matmul(xout, x, w, n, d) == 0) return;
+    if (g_use_gpu && !getenv("SM11_FULL_FWD") && sm11_partial_ok(n, d) && sm11_matmul(xout, x, w, n, d) == 0) return;
     matmul_cpu(xout, x, w, n, d);
 }
 

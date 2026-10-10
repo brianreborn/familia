@@ -452,3 +452,165 @@ VDONE:
 DONE:
   exit;
 }
+
+// Fused per-head attention: scores + softmax + value. 1 block, 128 threads. T<=256, hs<=128.
+.visible .entry k_attn_fused(.param .u64 pq, .param .u64 pk, .param .u64 pv, .param .u64 pxb,
+                             .param .u32 phs, .param .u32 pT, .param .u32 pkvdim)
+{
+  .reg .u32 %r<16>;
+  .reg .u64 %rd<14>;
+  .reg .f32 %f<12>;
+  .reg .pred %p<4>;
+  .shared .align 4 .f32 att[256];
+  .shared .align 4 .f32 red[128];
+  ld.param.u64 %rd1, [pq];
+  ld.param.u64 %rd2, [pk];
+  ld.param.u64 %rd3, [pv];
+  ld.param.u64 %rd4, [pxb];
+  ld.param.u32 %r1, [phs];
+  ld.param.u32 %r2, [pT];
+  ld.param.u32 %r3, [pkvdim];
+  mov.u32 %r4, %tid.x;
+  // scores into att[t]
+  setp.ge.u32 %p1, %r4, %r2;
+  @%p1 bra AFTER_SCORES;
+  mul.lo.u32 %r5, %r4, %r3;
+  mul.wide.u32 %rd5, %r5, 4;
+  add.u64 %rd5, %rd2, %rd5;
+  mov.f32 %f1, 0f00000000;
+  mov.u32 %r6, 0;
+DOT:
+  setp.ge.u32 %p2, %r6, %r1;
+  @%p2 bra DOTD;
+  mul.wide.u32 %rd6, %r6, 4;
+  add.u64 %rd7, %rd1, %rd6;
+  add.u64 %rd8, %rd5, %rd6;
+  ld.global.f32 %f2, [%rd7];
+  ld.global.f32 %f3, [%rd8];
+  mad.f32 %f1, %f2, %f3, %f1;
+  add.u32 %r6, %r6, 1;
+  bra DOT;
+DOTD:
+  cvt.rn.f32.u32 %f4, %r1;
+  sqrt.approx.f32 %f4, %f4;
+  div.approx.f32 %f1, %f1, %f4;
+  mov.u64 %rd9, att;
+  mul.wide.u32 %rd10, %r4, 4;
+  add.u64 %rd10, %rd9, %rd10;
+  st.shared.f32 [%rd10], %f1;
+AFTER_SCORES:
+  bar.sync 0;
+  // max
+  mov.f32 %f5, 0fff7fffff;
+  mov.u32 %r6, %r4;
+MLOOP:
+  setp.ge.u32 %p1, %r6, %r2;
+  @%p1 bra MAFTER;
+  mov.u64 %rd9, att;
+  mul.wide.u32 %rd10, %r6, 4;
+  add.u64 %rd10, %rd9, %rd10;
+  ld.shared.f32 %f1, [%rd10];
+  max.f32 %f5, %f5, %f1;
+  add.u32 %r6, %r6, 128;
+  bra MLOOP;
+MAFTER:
+  mov.u64 %rd11, red;
+  mul.wide.u32 %rd12, %r4, 4;
+  add.u64 %rd12, %rd11, %rd12;
+  st.shared.f32 [%rd12], %f5;
+  mov.u32 %r6, 64;
+MR:
+  bar.sync 0;
+  setp.ge.u32 %p2, %r4, %r6;
+  @%p2 bra MRS;
+  mul.wide.u32 %rd5, %r6, 4;
+  add.u64 %rd6, %rd12, %rd5;
+  ld.shared.f32 %f1, [%rd12];
+  ld.shared.f32 %f2, [%rd6];
+  max.f32 %f1, %f1, %f2;
+  st.shared.f32 [%rd12], %f1;
+MRS:
+  shr.u32 %r6, %r6, 1;
+  setp.ne.u32 %p3, %r6, 0;
+  @%p3 bra MR;
+  bar.sync 0;
+  ld.shared.f32 %f5, [%rd11];
+  // exp + sum
+  mov.f32 %f8, 0f00000000;
+  mov.u32 %r6, %r4;
+ELOOP:
+  setp.ge.u32 %p1, %r6, %r2;
+  @%p1 bra EAFTER;
+  mov.u64 %rd9, att;
+  mul.wide.u32 %rd10, %r6, 4;
+  add.u64 %rd10, %rd9, %rd10;
+  ld.shared.f32 %f1, [%rd10];
+  sub.f32 %f1, %f1, %f5;
+  mul.f32 %f1, %f1, 0f3fb8aa3b;
+  ex2.approx.f32 %f1, %f1;
+  st.shared.f32 [%rd10], %f1;
+  add.f32 %f8, %f8, %f1;
+  add.u32 %r6, %r6, 128;
+  bra ELOOP;
+EAFTER:
+  st.shared.f32 [%rd12], %f8;
+  mov.u32 %r6, 64;
+SR:
+  bar.sync 0;
+  setp.ge.u32 %p2, %r4, %r6;
+  @%p2 bra SRS;
+  mul.wide.u32 %rd5, %r6, 4;
+  add.u64 %rd6, %rd12, %rd5;
+  ld.shared.f32 %f1, [%rd12];
+  ld.shared.f32 %f2, [%rd6];
+  add.f32 %f1, %f1, %f2;
+  st.shared.f32 [%rd12], %f1;
+SRS:
+  shr.u32 %r6, %r6, 1;
+  setp.ne.u32 %p3, %r6, 0;
+  @%p3 bra SR;
+  bar.sync 0;
+  ld.shared.f32 %f8, [%rd11];
+  rcp.approx.f32 %f8, %f8;
+  // normalize att
+  mov.u32 %r6, %r4;
+NLOOP:
+  setp.ge.u32 %p1, %r6, %r2;
+  @%p1 bra NAFTER;
+  mov.u64 %rd9, att;
+  mul.wide.u32 %rd10, %r6, 4;
+  add.u64 %rd10, %rd9, %rd10;
+  ld.shared.f32 %f1, [%rd10];
+  mul.f32 %f1, %f1, %f8;
+  st.shared.f32 [%rd10], %f1;
+  add.u32 %r6, %r6, 128;
+  bra NLOOP;
+NAFTER:
+  bar.sync 0;
+  // value weighted sum
+  setp.ge.u32 %p1, %r4, %r1;
+  @%p1 bra DONE;
+  mov.f32 %f1, 0f00000000;
+  mov.u32 %r6, 0;
+VLOOP:
+  setp.ge.u32 %p2, %r6, %r2;
+  @%p2 bra VDONE;
+  mov.u64 %rd9, att;
+  mul.wide.u32 %rd10, %r6, 4;
+  add.u64 %rd10, %rd9, %rd10;
+  ld.shared.f32 %f2, [%rd10];
+  mul.lo.u32 %r7, %r6, %r3;
+  add.u32 %r7, %r7, %r4;
+  mul.wide.u32 %rd6, %r7, 4;
+  add.u64 %rd6, %rd3, %rd6;
+  ld.global.f32 %f3, [%rd6];
+  mad.f32 %f1, %f2, %f3, %f1;
+  add.u32 %r6, %r6, 1;
+  bra VLOOP;
+VDONE:
+  mul.wide.u32 %rd7, %r4, 4;
+  add.u64 %rd7, %rd4, %rd7;
+  st.global.f32 [%rd7], %f1;
+DONE:
+  exit;
+}
