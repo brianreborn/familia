@@ -1,0 +1,25 @@
+# Declarative model/agent graph (see #19). Nothing is auto-selected:
+# every node, file, ctx, KV type and slot count is explicit, and
+# scripts/validate_graph.py fails loudly if the graph does not fit the
+# measured hardware or the agents' requirements.
+version: 1
+host:
+  # Baseline measured on miryam: i5-7200U (4 threads), 7.1 GiB RAM, Intel HD 620 (no VRAM).
+  reserve_ram_mib: 2048          # left for OS, hermes-agent, browser
+nodes:
+  coder:
+    model: ~/.local/share/gguf/models/coder/Qwen3.5-2B-Q4_K_M.gguf
+    arch: qwen35                  # must match GGUF general.architecture
+    ctx: 65536                    # total; per-slot = ctx / parallel
+    parallel: 1
+    kv_type: q8_0
+    flash_attn: true
+    gpu_layers: 0
+    host: 127.0.0.1
+    port: 9941
+    aliases: [coder]
+agents:
+  hermes:
+    min_ctx: 64000                # hermes-agent MINIMUM_CONTEXT_LENGTH
+    edges:
+      model: coder                # model.default / base_url
