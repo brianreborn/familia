@@ -73,7 +73,7 @@ static int launch(CUfunction f, unsigned gx, unsigned bx, void** args) {
 }
 
 static int matvec_d(CUdeviceptr dy, CUdeviceptr dx, const float* hw, int n, int d) {
-    size_t bytes = (size_t)n * d * 4, off = (const char*)hw - g_hbase;
+    size_t bytes = (size_t)n * d * 4, off = g_hbase ? (size_t)((const char*)hw - g_hbase) : (size_t)-1;
     CUdeviceptr dW;
     if (off + bytes <= g_resident) {
         dW = g_dbase + off;
@@ -131,6 +131,14 @@ int sm11_register(const void* base, size_t nbytes) {
     size_t budget = fr > leave ? fr - leave : (fr > (8u<<20) ? fr - (8u<<20) : 0);
     const char* cap = getenv("SM11_RESIDENT_MIB");
     if (cap) { size_t c = (size_t)atoi(cap) << 20; if (c < budget) budget = c; }
+    /* stream-only init: tiny nbytes means do not pin a weight blob; matvec_d streams every call */
+    if (nbytes <= 16) {
+        g_resident = 0; g_hbase = (const char*)0; g_nbytes = (size_t)-1; /* accept any host w* */
+        CK(p_cuMemAlloc(&g_stage, g_stage_bytes));
+        g_ready = 1;
+        fprintf(stderr, "sm11: stream-only init (partial offload / ggml hook)\n");
+        return 0;
+    }
     g_resident = nbytes < budget ? nbytes : budget;
     CK(p_cuMemAlloc(&g_stage, g_stage_bytes));
     if (g_resident) { CK(p_cuMemAlloc(&g_dbase, g_resident)); CK(p_cuMemcpyHtoD(g_dbase, base, g_resident)); }

@@ -29,3 +29,15 @@ GPU loses hard when weights don't fit — confirms always-active role must be <<
 
 ## llama.cpp
 WinLibs gcc build of b11540 `llama-simple` works on Athlon II (no AVX). SM11 MUL_MAT hook patched into ggml-cpu; rebuild in progress.
+
+## ggml / llama.cpp b11540 (WinLibs gcc, Athlon II, no AVX)
+Built `llama-simple` at `E:\temp\llama.cpp\build-sm11\bin`.
+Hook: F32 gemv `MUL_MAT` via `SM11_OFFLOAD=1` (ith0 + barrier; stream-only weights).
+
+| mode | eval tok/s | greedy match |
+|---|---|---|
+| CPU F32 (`SM11_OFFLOAD=0`) | ~58 | — |
+| GPU partial F32 offload | **5.8** | **identical** to CPU |
+| Q4_0 | CPU only (hook is F32) | — |
+
+Always-active full-forward (llama2.c) remains the winner for a resident decision model (~35 tok/s). ggml path is for **partial offload of a larger active F32 graph** while the CPU owns the rest — slow alone on 8600 GT due to WDDM, valuable for concurrency / other iGPUs later.
