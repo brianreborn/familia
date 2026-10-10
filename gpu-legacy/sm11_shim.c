@@ -1,4 +1,4 @@
-﻿/* Full forward pass on GeForce 8600 GT (sm_11) via CUDA driver API + hand-written PTX.
+/* Full forward pass on GeForce 8600 GT (sm_11) via CUDA driver API + hand-written PTX.
  * Activations + KV stay on device; host copies only logits. Designed as the sm11
  * implementation of legacy_gpu.h for always-active decision/draft models and partial offload. */
 #include <windows.h>
@@ -25,6 +25,70 @@ static CUresult (__stdcall *p_cuMemcpyDtoH)(void*, CUdeviceptr, size_t);
 static CUresult (__stdcall *p_cuMemcpyDtoD)(CUdeviceptr, CUdeviceptr, size_t);
 static CUresult (__stdcall *p_cuLaunchKernel)(CUfunction, unsigned, unsigned, unsigned, unsigned, unsigned, unsigned, unsigned, void*, void**, void**);
 static CUresult (__stdcall *p_cuCtxSynchronize)(void);
+
+
+/* ---- async completion: pinned staging + event polling (no cuCtxSynchronize in hot paths) ----
+   One CUDA context, default stream: work is ordered on the device. The host never blocks in the
+   driver; it records an event and polls cuEventQuery, yielding the core between polls. */
+typedef void* CUevent_;
+static CUresult (__stdcall *p_cuMemHostAlloc)(void**, size_t, unsigned);
+static CUresult (__stdcall *p_cuMemcpyHtoDAsync)(CUdeviceptr, const void*, size_t, void*);
+static CUresult (__stdcall *p_cuMemcpyDtoHAsync)(void*, CUdeviceptr, size_t, void*);
+static CUresult (__stdcall *p_cuEventCreate)(CUevent_*, unsigned);
+static CUresult (__stdcall *p_cuEventRecord)(CUevent_, void*);
+static CUresult (__stdcall *p_cuEventQuery)(CUevent_);
+static CUevent_ g_fev; static int g_async = 0;
+static unsigned char* g_pin; static size_t g_pinsz = 0, g_pinoff = 0;
+volatile long long g_sm11_polls = 0, g_sm11_fences = 0;
+static void async_init(HMODULE h) {
+    p_cuMemHostAlloc = (void*)GetProcAddress(h, "cuMemHostAlloc");
+    p_cuMemcpyHtoDAsync = (void*)GetProcAddress(h, "cuMemcpyHtoDAsync_v2");
+    p_cuMemcpyDtoHAsync = (void*)GetProcAddress(h, "cuMemcpyDtoHAsync_v2");
+    p_cuEventCreate = (void*)GetProcAddress(h, "cuEventCreate");
+    p_cuEventRecord = (void*)GetProcAddress(h, "cuEventRecord");
+    p_cuEventQuery = (void*)GetProcAddress(h, "cuEventQuery");
+    if (!p_cuMemHostAlloc || !p_cuMemcpyHtoDAsync || !p_cuMemcpyDtoHAsync || !p_cuEventCreate || !p_cuEventRecord || !p_cuEventQuery) return;
+    if (getenv("SM11_SYNC") && atoi(getenv("SM11_SYNC"))) return;      /* opt-out: legacy blocking path */
+    g_pinsz = (size_t)1 << 20;   /* 1 MiB pinned staging (x in, y out) */
+    if (p_cuMemHostAlloc((void**)&g_pin, g_pinsz, 0) || p_cuEventCreate(&g_fev, 2 /*DISABLE_TIMING*/)) { g_pin = 0; return; }
+    g_async = 1;
+    fprintf(stderr, "sm11: async path on (pinned %u KiB staging, event polling, no ctx sync)\n", (unsigned)(g_pinsz >> 10));
+}
+/* wait for all enqueued device work without blocking in the driver */
+static int sm11_fence(void) {
+    if (!g_async) return p_cuCtxSynchronize() ? -1 : 0;
+    if (p_cuEventRecord(g_fev, 0)) return -1;
+    CUresult r; g_sm11_fences++;
+    while ((r = p_cuEventQuery(g_fev)) == 600 /*NOT_READY*/) { g_sm11_polls++; SwitchToThread(); }
+    g_pinoff = 0;                     /* all staged copies have completed */
+    return r ? -1 : 0;
+}
+static unsigned char* pin_take(size_t n) {
+    n = (n + 255) & ~(size_t)255;
+    if (!g_async || g_pinoff + n > g_pinsz) return 0;
+    unsigned char* p = g_pin + g_pinoff; g_pinoff += n; return p;
+}
+/* enqueue H2D without waiting: copy into pinned staging, async DMA. Falls back to blocking copy. */
+static int sm11_htod(CUdeviceptr d, const void* h, size_t n) {
+    unsigned char* p = pin_take(n);
+    if (!p) return p_cuMemcpyHtoD(d, h, n) ? -1 : 0;
+    memcpy(p, h, n); return p_cuMemcpyHtoDAsync(d, p, n, 0) ? -1 : 0;
+}
+/* D2H results of everything enqueued so far: async DMA into pinned, one fence, then memcpy out. */
+typedef struct { void* dst; CUdeviceptr src; size_t n; unsigned char* pin; } Sm11Out;
+static int sm11_dtoh_many(Sm11Out* o, int k) {
+    int i;
+    if (!g_async) { if (p_cuCtxSynchronize()) return -1; for (i = 0; i < k; i++) if (p_cuMemcpyDtoH(o[i].dst, o[i].src, o[i].n)) return -1; return 0; }
+    for (i = 0; i < k; i++) { o[i].pin = pin_take(o[i].n);
+        if (!o[i].pin) { if (sm11_fence()) return -1; o[i].pin = pin_take(o[i].n); }
+        if (!o[i].pin) { if (p_cuMemcpyDtoH(o[i].dst, o[i].src, o[i].n)) return -1; continue; }   /* too big for staging */
+        if (p_cuMemcpyDtoHAsync(o[i].pin, o[i].src, o[i].n, 0)) return -1; }
+    unsigned char* pins[16]; for (i = 0; i < k && i < 16; i++) pins[i] = o[i].pin;
+    if (sm11_fence()) return -1;
+    for (i = 0; i < k; i++) if (pins[i]) memcpy(o[i].dst, pins[i], o[i].n);
+    return 0;
+}
+static int sm11_dtoh_wait(void* dst, CUdeviceptr src, size_t n) { Sm11Out o = {dst, src, n, 0}; return sm11_dtoh_many(&o, 1); }
 
 static char* load_ptx(void) {
     const char* candidates[3];
@@ -72,6 +136,7 @@ static CUdeviceptr dptr(const float* h) {
     return 0;
 }
 
+static CUmodule g_sm11_mod;
 static int launch(CUfunction f, unsigned gx, unsigned bx, void** args) {
     return p_cuLaunchKernel(f, gx, 1, 1, bx, 1, 1, 0, 0, args, 0);
 }
@@ -107,13 +172,14 @@ int sm11_register(const void* base, size_t nbytes) {
     LOAD(cuModuleLoadDataEx, "cuModuleLoadDataEx"); LOAD(cuModuleGetFunction, "cuModuleGetFunction");
     LOAD(cuMemAlloc, "cuMemAlloc_v2"); LOAD(cuMemFree, "cuMemFree_v2"); LOAD(cuMemGetInfo, "cuMemGetInfo_v2");
     LOAD(cuMemcpyHtoD, "cuMemcpyHtoD_v2"); LOAD(cuMemcpyDtoH, "cuMemcpyDtoH_v2");
-    LOAD(cuMemcpyDtoD, "cuMemcpyDtoD_v2"); LOAD(cuLaunchKernel, "cuLaunchKernel"); LOAD(cuCtxSynchronize, "cuCtxSynchronize");
+    LOAD(cuMemcpyDtoD, "cuMemcpyDtoD_v2"); LOAD(cuLaunchKernel, "cuLaunchKernel"); LOAD(cuCtxSynchronize, "cuCtxSynchronize"); async_init(h);
     CUdevice dev; CUcontext ctx; CUmodule mod; char name[128]; int ma=0, mi=0; size_t fr=0, tot=0;
     CK(p_cuInit(0)); CK(p_cuDeviceGet(&dev, 0)); CK(p_cuDeviceGetName(name, sizeof name, dev));
     CK(p_cuDeviceComputeCapability(&ma, &mi, dev)); CK(p_cuCtxCreate(&ctx, 0, dev));
         char* ptx = load_ptx(); if (!ptx) return -1;
     char log[8192] = {0}; int opts[2] = {5, 6}; void* vals[2] = {log, (void*)(size_t)sizeof log};
     CUresult r = p_cuModuleLoadDataEx(&mod, ptx, 2, opts, vals);
+    g_sm11_mod = mod;
     free(ptx);
     if (r) { fprintf(stderr, "sm11: PTX JIT failed %d: %s\n", r, log); return -1; }
     CK(p_cuModuleGetFunction(&f_matvec, mod, "k_matvec"));
@@ -156,10 +222,9 @@ int sm11_matmul(float* xout, const float* x, const float* w, int n, int d) {
     size_t xs = (size_t)n * 4, ys = (size_t)d * 4;
     if (xs > g_mv_dxsz) { if (g_mv_dx) p_cuMemFree(g_mv_dx); CK(p_cuMemAlloc(&g_mv_dx, xs)); g_mv_dxsz = xs; }
     if (ys > g_mv_dysz) { if (g_mv_dy) p_cuMemFree(g_mv_dy); CK(p_cuMemAlloc(&g_mv_dy, ys)); g_mv_dysz = ys; }
-    CK(p_cuMemcpyHtoD(g_mv_dx, x, xs));
+    CK(sm11_htod(g_mv_dx, x, xs));
     if (matvec_d(g_mv_dy, g_mv_dx, w, n, d)) return -1;
-    CK(p_cuCtxSynchronize());
-    CK(p_cuMemcpyDtoH(xout, g_mv_dy, ys));
+    CK(sm11_dtoh_wait(xout, g_mv_dy, ys));
     return 0;
 }
 
@@ -218,7 +283,7 @@ int sm11_forward(int token, int pos, float* logits_out) {
     const float* erow = h_tok + (size_t)token * dim;
     CUdeviceptr de = dptr(erow);
     if (de) { CK(copy_d(d_x, de, dim)); }
-    else { CK(p_cuMemcpyHtoD(d_x, erow, (size_t)dim * 4)); }
+    else { CK(sm11_htod(d_x, erow, (size_t)dim * 4)); }
 
     int h2 = hs / 2;
     float *cosb = (float*)malloc((size_t)h2 * 4), *sinb = (float*)malloc((size_t)h2 * 4);
@@ -226,7 +291,7 @@ int sm11_forward(int token, int pos, float* logits_out) {
         float freq = 1.0f / powf(10000.0f, (2.0f * i) / (float)hs);
         float val = pos * freq; cosb[i] = cosf(val); sinb[i] = sinf(val);
     }
-    CK(p_cuMemcpyHtoD(d_cos, cosb, (size_t)h2 * 4)); CK(p_cuMemcpyHtoD(d_sin, sinb, (size_t)h2 * 4));
+    CK(sm11_htod(d_cos, cosb, (size_t)h2 * 4)); CK(sm11_htod(d_sin, sinb, (size_t)h2 * 4));
     free(cosb); free(sinb);
 
     for (int l = 0; l < p->n_layers; l++) {
@@ -270,11 +335,10 @@ int sm11_forward(int token, int pos, float* logits_out) {
         if (add_d(d_x, d_xb, dim)) return -1;
     }
     if (rmsnorm_d(d_x, d_x, h_rms_f, dim)) return -1;
-    CK(p_cuCtxSynchronize());
-    /* Vocab projection is 32k rows â€” WDDM launch overhead dominates on sm_11. Default: CPU cls. */
+    /* Vocab projection is 32k rows — WDDM launch overhead dominates on sm_11. Default: CPU cls. */
     if (!getenv("SM11_GPU_CLS") || !atoi(getenv("SM11_GPU_CLS"))) {
         float* xh = (float*)malloc((size_t)dim * 4);
-        CK(p_cuMemcpyDtoH(xh, d_x, (size_t)dim * 4));
+        CK(sm11_dtoh_wait(xh, d_x, (size_t)dim * 4));
         const float* w = h_wcls;
         #pragma omp parallel for
         for (int i = 0; i < p->vocab_size; i++) {
@@ -286,8 +350,7 @@ int sm11_forward(int token, int pos, float* logits_out) {
         return 0;
     }
     if (matvec_d(d_logits, d_x, h_wcls, dim, p->vocab_size)) return -1;
-    CK(p_cuCtxSynchronize());
-    CK(p_cuMemcpyDtoH(logits_out, d_logits, (size_t)p->vocab_size * 4));
+    CK(sm11_dtoh_wait(logits_out, d_logits, (size_t)p->vocab_size * 4));
     return 0;
 }
 
@@ -302,12 +365,11 @@ int sm11_q4_matmul(float* xout, const float* x, const void* w_q4, int n, int d) 
         CK(p_cuMemcpyHtoD(g_q_dw, w_q4, wbytes));
         g_q_host = w_q4; g_q_kind = 4;
     }
-    CK(p_cuMemcpyHtoD(g_mv_dx, x, xs));
+    CK(sm11_htod(g_mv_dx, x, xs));
     unsigned un=(unsigned)n, ud=(unsigned)d;
     void* args[] = {&g_mv_dy, &g_mv_dx, &g_q_dw, &un, &ud};
     CK(launch(f_q4, ud, 64, args));
-    CK(p_cuCtxSynchronize());
-    CK(p_cuMemcpyDtoH(xout, g_mv_dy, ys));
+    CK(sm11_dtoh_wait(xout, g_mv_dy, ys));
     return 0;
 }
 
@@ -321,12 +383,11 @@ int sm11_q8_matmul(float* xout, const float* x, const void* w_q8, int n, int d) 
         CK(p_cuMemcpyHtoD(g_q_dw, w_q8, wbytes));
         g_q_host = w_q8; g_q_kind = 8;
     }
-    CK(p_cuMemcpyHtoD(g_mv_dx, x, xs));
+    CK(sm11_htod(g_mv_dx, x, xs));
     unsigned un=(unsigned)n, ud=(unsigned)d;
     void* args[] = {&g_mv_dy, &g_mv_dx, &g_q_dw, &un, &ud};
     CK(launch(f_q8, ud, 64, args));
-    CK(p_cuCtxSynchronize());
-    CK(p_cuMemcpyDtoH(xout, g_mv_dy, ys));
+    CK(sm11_dtoh_wait(xout, g_mv_dy, ys));
     return 0;
 }
 
@@ -347,15 +408,13 @@ int sm11_matvec_batch(const Sm11Job* jobs, int njobs) {
         if (i > 0 && jobs[i].x == jobs[0].x && jobs[i].n == jobs[0].n) {
             dx = g_pool_x[0];
         } else {
-            CK(p_cuMemcpyHtoD(g_pool_x[i], jobs[i].x, xs));
+            CK(sm11_htod(g_pool_x[i], jobs[i].x, xs));
             dx = g_pool_x[i];
         }
         if (matvec_d(g_pool_y[i], dx, jobs[i].w, jobs[i].n, jobs[i].d)) return -1;
     }
-    CK(p_cuCtxSynchronize());
-    for (int i = 0; i < njobs; i++) {
-        CK(p_cuMemcpyDtoH(jobs[i].y, g_pool_y[i], (size_t)jobs[i].d * 4));
-    }
+    { Sm11Out o[8]; for (int i = 0; i < njobs; i++) { o[i].dst = jobs[i].y; o[i].src = g_pool_y[i]; o[i].n = (size_t)jobs[i].d * 4; o[i].pin = 0; }
+      CK(sm11_dtoh_many(o, njobs)); }
     return 0;
 }
 
@@ -396,12 +455,12 @@ int sm11_wmatvec(int kind, float* y, const float* x, const void* w, int n, int d
     size_t xs = (size_t)n*4, ys = (size_t)d*4;
     if (xs > g_mv_dxsz) { if (g_mv_dx) p_cuMemFree(g_mv_dx); CK(p_cuMemAlloc(&g_mv_dx, xs)); g_mv_dxsz = xs; }
     if (ys > g_mv_dysz) { if (g_mv_dy) p_cuMemFree(g_mv_dy); CK(p_cuMemAlloc(&g_mv_dy, ys)); g_mv_dysz = ys; }
-    CK(p_cuMemcpyHtoD(g_mv_dx, x, xs));
+    CK(sm11_htod(g_mv_dx, x, xs));
     unsigned un = (unsigned)n, ud = (unsigned)d;
     void* args[] = {&g_mv_dy, &g_mv_dx, &dw, &un, &ud};
     unsigned grid = ud;
     if (kind) { const char* g = getenv("SM11_QGRID"); unsigned gq = g ? (unsigned)atoi(g) : 32; if (gq && gq < grid) grid = gq; }
     CK(launch(f, grid, kind ? 64 : 128, args));
-    CK(p_cuMemcpyDtoH(y, g_mv_dy, ys));   /* synchronous copy implies kernel completion */
+    CK(sm11_dtoh_wait(y, g_mv_dy, ys));   /* async D2H + event poll */
     return 0;
 }

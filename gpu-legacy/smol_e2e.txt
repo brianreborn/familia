@@ -1,0 +1,39 @@
+=== PROMPT: The capital of France is  ids=504,3575,282,4649,314
+sm11: resident 0 MiB / 0 MiB weights (role: always-active)
+resident 78 MiB (classifier on GPU q4_0 requant), free after 26 MiB
+[gpu] 32 tokens, decode 8.98 tok/s
+cpu classifier 0.5 ms/tok of 111.4
+[cpu] 32 tokens, decode 6.58 tok/s
+gpu_text= the capital of the country.
+cpu_text= the capital of the country.
+match_prefix=32/32
+llama-simple: The capital of France is the capital of the country.
+
+The country is divided into 26 regions, each with its own capital and a population. The country is divided into
+
+=== PROMPT: def fibonacci(n):  ids=1604,3987,46477,24,94,727
+sm11: resident 0 MiB / 0 MiB weights (role: always-active)
+resident 78 MiB (classifier on GPU q4_0 requant), free after 26 MiB
+[gpu] 32 tokens, decode 8.94 tok/s
+cpu classifier 0.4 ms/tok of 111.8
+[cpu] 32 tokens, decode 6.54 tok/s
+gpu_text=
+cpu_text=
+match_prefix=32/32
+llama-simple: def fibonacci(n):
+    if n < 1:
+        return "Error: Input must be a positive integer"
+    elif n == 1:
+        return "Error: Input
+
+=== PROMPT: Classify the sentiment: I love this product. Answer:  ids=8530,1282,260,19025,42,339,2606,451,1406,30,19842,42
+sm11: resident 0 MiB / 0 MiB weights (role: always-active)
+resident 78 MiB (classifier on GPU q4_0 requant), free after 26 MiB
+[gpu] 32 tokens, decode 8.83 tok/s
+cpu classifier 0.4 ms/tok of 113.2
+[cpu] 32 tokens, decode 6.43 tok/s
+gpu_text=<|im_end|>
+cpu_text=<|im_end|>
+match_prefix=32/32
+llama-simple: Classify the sentiment: I love this product. Answer:
+
