@@ -5,6 +5,7 @@
 # Rule: a value we did not measure ourselves is never written as measured.
 # Reported numbers go under `reported:` with a source; GPU vram_mib stays null
 # until `measured: true`.
+# Standing rule (2026-10-09 OOM): never aim for high RAM on small hosts — see docs/ram-safety.md.
 version: 2
 
 hosts:
@@ -15,7 +16,9 @@ hosts:
     cpu: Intel Core i5-7200U
     threads: 4
     ram_mib: 7270                # 7.1 GiB MemTotal
-    reserve_ram_mib: 3072        # miryam: 3 GiB safety margin after hard hang 2026-10-09
+    # Standing rule (2026-10-09 OOM hard-hang): never aim for high RAM.
+    # Keep ~2+ GiB free after estimated node use on hosts under 8 GiB. See docs/ram-safety.md.
+    reserve_ram_mib: 3072        # OS + hermes-agent + browser + 3 GiB safety margin (was 2048)
     gpus:
       - vendor: intel
         model: Intel HD Graphics 620 (integrated, shares system RAM)

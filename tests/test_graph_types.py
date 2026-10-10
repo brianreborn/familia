@@ -280,3 +280,25 @@ def test_pentest_required_fields_and_refs():
 
 def test_model_role_pentest_allowed():
     x = g(); x["models"]["qwen35-2b-q4km"]["role"] = "pentest"; assert errs(x) == []
+
+
+def test_ram_safety_reserve_and_small_host_floor():
+    """estimated + reserve must fit; hosts under 8 GiB keep ~2 GiB free (docs/ram-safety.md)."""
+    coder = os.path.expanduser("~/.local/share/gguf/models/coder/Qwen3.5-2B-Q4_K_M.gguf")
+    embed = os.path.expanduser("~/.local/share/gguf/models/embed/embeddinggemma-2-Q8_0.gguf")
+    if not (os.path.isfile(coder) and os.path.isfile(embed)):
+        pytest.skip("GGUF fixtures absent")
+    # Baseline with raised reserve still fits.
+    errs, totals = validate_graph.validate(g(), check_files=True)
+    ram_errs = [e for e in errs if "RAM" in e or "free after" in e or "OOM" in e]
+    assert ram_errs == [], (ram_errs, totals)
+    assert totals.get("miryam", 0) < 4000
+    # Inflate reserve so coder+embed no longer fit.
+    x = g(); x["hosts"]["miryam"]["reserve_ram_mib"] = 4000
+    errs, _ = validate_graph.validate(x, check_files=True)
+    assert any("reserve" in e and "exceeds ram_mib" in e for e in errs), errs
+    # Soft floor: tiny reserve but free-after-estimate under 2048 on a small host.
+    x = g(); x["hosts"]["miryam"]["ram_mib"] = 5000; x["hosts"]["miryam"]["reserve_ram_mib"] = 200
+    errs, _ = validate_graph.validate(x, check_files=True)
+    assert any("2048 MiB floor" in e for e in errs), errs
+

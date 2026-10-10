@@ -142,8 +142,19 @@ def validate(graph, check_files=True):
         dkv = kv_mib(dmeta, dmeta.get("general.architecture"), dctx, sp.get("draft_kv_type", t["kv_type"])) or 0
         totals[t["host"]] = totals.get(t["host"], 0.0) + os.path.getsize(dp) / 2**20 + dkv  # draft weights + its KV
     for h, total in totals.items():
-        budget = hosts[h]["ram_mib"] - hosts[h]["reserve_ram_mib"]
-        if total > budget: errs.append(f"hosts.{h}: estimated RAM {total:.0f} MiB exceeds budget {budget} MiB (ram_mib - reserve_ram_mib)")
+        # RAM safety (docs/ram-safety.md): estimated_used + reserve must fit total_ram.
+        ram = hosts[h]["ram_mib"]
+        reserve = hosts[h]["reserve_ram_mib"]
+        if total + reserve > ram:
+            errs.append(
+                f"hosts.{h}: estimated RAM {total:.0f} MiB + reserve {reserve} MiB exceeds ram_mib {ram} MiB"
+            )
+        free_after = ram - total
+        if ram < 8192 and free_after < 2048:
+            errs.append(
+                f"hosts.{h}: estimated free after nodes {free_after:.0f} MiB < 2048 MiB floor "
+                f"on host with ram_mib {ram} < 8192 (OOM safety; see docs/ram-safety.md)"
+            )
     return errs, totals
 
 def server_args(graph, name):
