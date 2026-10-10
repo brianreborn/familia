@@ -19,3 +19,16 @@ Use key-only SSH to the phones; the android scripts read addr/user/port from gra
 
 ## L6. Use ASCII in names and code
 Non-breaking hyphens (U+2011) in file names and Python expressions break copy-paste. Keep identifiers ASCII.
+
+## L7. Android Vulkan needs the system loader
+Termux's Vulkan loader only sees llvmpipe. llama.cpp finds the phone GPU (Xclipse 550) only when LD_LIBRARY_PATH holds both libvulkan.so and libvulkan.so.1 linked to /system/lib64/libvulkan.so; familia-start does this. On the A57, SmolLM2-135M Vulkan -ngl 99 gives tg 66-79 t/s against 30 t/s on 3 CPU threads (#34).
+
+## L8. Phones drop off Wi-Fi during long runs
+Both A57s left the LAN (no route to host) minutes into a detached benchmark. Take termux-wake-lock and keep the screen-off Wi-Fi policy in mind before long runs, write results to a log on the phone, and poll with backoff instead of holding one SSH session open.
+
+## L9. Same hardware is not same software
+phone7 had Termux llama-cpp 0.5.0 while a fresh install on phone8 pulled 0.6.0. Record the runtime version with every benchmark before comparing phones.
+
+## L10. A small iGPU can be slower than the CPU
+On miryam the HD 620 runs SmolLM2-135M at 46 t/s tg, versus 101 on 2 CPU threads. Its value is offloading the decision model so the CPU stays free for the coder. When both ran together, though, the Vulkan side fell from 46 to 17 t/s tg, while the CPU coder held about 14 t/s (#24).
+

@@ -70,7 +70,7 @@ def test_offload_rules():
     x = g(); del x["nodes"]["coder"]["offload"]["split"]; has(x, "offload: missing required 'split'")
     x = g(); x["nodes"]["coder"]["offload"]["ngl"] = 5; has(x, "backend cpu requires ngl 0")
     x = g(); x["nodes"]["coder"]["offload"].update(backend="cuda", ngl=5); has(x, "backend 'cuda' not in runtime")
-    x = g(); x["nodes"]["coder"]["offload"].update(backend="vulkan", ngl=5); has(x, "unmeasured/unverified GPU 0")
+    x = g(); x["hosts"]["miryam"]["gpus"][0]["backend_status"] = "tbd"; x["nodes"]["coder"]["offload"].update(backend="vulkan", ngl=5); has(x, "unmeasured/unverified GPU 0")
     x = g(); x["nodes"]["coder"]["offload"].update(backend="vulkan", ngl=5, main_gpu=3); has(x, "declares 1 GPU")
     x = g(); x["nodes"]["coder"]["offload"]["split"] = "diag"; has(x, "not one of")
 
@@ -85,7 +85,7 @@ def test_gpu_fields():
     x = g(); x["hosts"]["godslove"]["gpus"][0]["backend_status"] = "verified"; has(x, "verified requires measured")
     x = g(); x["hosts"]["miryam"]["gpus"][0]["backend"] = "directx"; has(x, "not one of")
     x = g(); del x["hosts"]["shalom"]["gpus"]; has(x, "missing required 'gpus'")
-    x = g(); x["hosts"]["miryam"]["gpus"][0]["measured"] = True; has(x, "measured GPU needs vram_mib")
+    x = g(); x["hosts"]["miryam"]["gpus"][0]["vram_mib"] = None; has(x, "measured GPU needs vram_mib")
     for h in BASE["hosts"].values(): assert isinstance(h["gpus"], list)
 
 def test_windows_host_block():
@@ -340,7 +340,8 @@ def test_smollm2_catalog_and_measured_notes():
 def test_runtime_pkg_pin_and_phone7_vulkan():
     x = g(); assert x["runtimes"]["termux-llama-cpp-0.5.0"]["commit"] == "pkg:llama-cpp=0.5.0"
     assert x["hosts"]["phone7"]["gpus"][0]["backend_status"] == "verified"
-    assert x["hosts"]["phone8"]["gpus"][0]["backend_status"] == "tbd"
+    assert x["hosts"]["phone8"]["gpus"][0]["backend_status"] == "verified"
+    assert x["hosts"]["miryam"]["gpus"][0]["backend_status"] == "verified" and x["nodes"]["miryam-gpu-decision"]["status"] == "planned"
     assert x["nodes"]["phone7-decision"]["status"] == "planned"
     x = g(); x["runtimes"]["termux-llama-cpp-0.5.0"]["commit"] = "main"; has(x, "is not a git sha")
     x = g(); x["runtimes"]["termux-llama-cpp-0.5.0"]["commit"] = "pkg:llama-cpp"; has(x, "is not a git sha")

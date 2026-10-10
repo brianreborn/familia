@@ -24,13 +24,19 @@ hosts:
     reserve_ram_mib: 3072        # OS + hermes-agent + browser + 3 GiB safety margin (was 2048)
     gpus:
       - vendor: intel
-        model: Intel HD Graphics 620 (integrated, shares system RAM)
-        vram_mib: null           # no dedicated VRAM; usable shared budget unmeasured
-        backend: vulkan          # vulkan or sycl possible; neither measured for offload
-        backend_status: tbd
-        driver: null
+        model: Intel HD Graphics 620 (KBL GT2, integrated)
+        vram_mib: 0              # shared-memory iGPU; Vulkan reports 5467 MiB shared
+        backend: vulkan
+        backend_status: verified # 2026-10-10 02:47 PT, SmolLM2-135M Q4_0 -ngl 99, identical output to CPU at temp 0
+        driver: Mesa 26.0.8 Intel Vulkan
         compute_capability: null
-        measured: false
+        measured: true
+        notes: >-
+          SmolLM2-135M Q4_0: CPU -t2 pp64 430.4 / tg32 101.4 t/s; Vulkan -ngl 99 pp64 320.0 / tg32 46.2 t/s
+          (the iGPU is slower than the CPU for this model). Concurrency 2026-10-10 08:40 PT with
+          llama-b11541: CPU stand-in coder LFM2.5-1.2B Q4_K_M -t3 alone pp128 43.5 / tg64 13.9, Vulkan SmolLM2 Q4_0
+          -t1 alone pp128 325.8 / tg64 45.8; together CPU pp128 26.9 / tg64 14.7, Vulkan pp128 134.4 / tg64 16.9;
+          min MemAvailable 3160 MiB. Real coder (Qwen3.5-2B, 64k ctx) not run: would leave under 3 GiB free.
   qodesh:
     kind: desktop
     measured: true               # measured 2026-10-09 20:36 PT
@@ -145,7 +151,7 @@ hosts:
         model: Samsung Xclipse 550   # vulkaninfo deviceName, INTEGRATED_GPU
         vram_mib: 0              # shared-memory iGPU; Vulkan heap0 6.83 GiB device-local (shared), heap1 64 MiB
         backend: vulkan          # Vulkan 1.4.304, conformance 1.4.1.1; fp16, int8, 16-bit storage; subgroup 64
-        backend_status: tbd      # stays tbd until an inference test
+        backend_status: verified # 2026-10-10 08:40 PT: SmolLM2-135M Q4_K_M -ngl 99 -t 3, pp128 1403 +/- 3, tg64 79.1 +/- 0.3 t/s; output correct (Termux llama-cpp 0.6.0)
         compute_capability: null
         driver: Samsung Proprietary (SPAL) 25.4.7, git 702e7fd271
         measured: true           # vulkaninfo via /system/lib64/libvulkan.so, 2026-10-09 PT. Termux's own loader only sees llvmpipe.
@@ -219,6 +225,16 @@ runtimes:
     backends: [cpu, vulkan]
     spec_types: []
 
+  llama-b11541-linux-vulkan:
+    kind: llama-server
+    build: b11541 ubuntu-vulkan-x64 (prebuilt)
+    commit: f2918cabb
+    bin: ~/repositories/llama-vulkan-b11541/llama-b11541/llama-server
+    hosts: [miryam]
+    supported_archs: [llama, lfm2]
+    backends: [cpu, vulkan]
+    spec_types: []
+
   llama-b11540-win-cpu:
     kind: llama-server
     build: b11540 win-cpu-x64
@@ -241,6 +257,12 @@ models:
   smollm2-135m-q4:
     gguf: 'E:/temp/models/SmolLM2-135M-Instruct.Q4_0.gguf'
     sha256: unmeasured
+    arch: llama
+    trained_ctx: 8192
+    role: decision
+  smollm2-135m-q4-miryam:
+    gguf: ~/models/SmolLM2-135M-Instruct-Q4_0.gguf
+    sha256: unmeasured           # miryam went offline before sha256sum; fill in
     arch: llama
     trained_ctx: 8192
     role: decision
@@ -291,6 +313,20 @@ nodes:
     bind: 127.0.0.1
     port: 18101
     cache_ram_mib: 256
+    status: planned
+
+  miryam-gpu-decision:
+    model: smollm2-135m-q4-miryam
+    host: miryam
+    runtime: llama-b11541-linux-vulkan
+    ctx: 2048
+    parallel: 1
+    kv_type: q8_0
+    flash_attn: false
+    offload: {backend: vulkan, ngl: 99, split: none, main_gpu: 0}   # HD 620 verified; slower than CPU, frees CPU for the coder
+    bind: 127.0.0.1
+    port: 18111
+    cache_ram_mib: 64
     status: planned
 
   phone7-decision:
