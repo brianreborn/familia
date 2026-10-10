@@ -47,39 +47,43 @@ if [ "$TERMUX" = 1 ] && [ "$DETACH_MODE" = "foreground" ]; then
   say "Termux detected, auto-selected DETACH_MODE=$DETACH_MODE"
 fi
 
-export DETACH_MODE
+# One detach, one log (code-bootstraps-llama.cpp #18 / familia start):
+# when we detach here, the backend must run in the foreground and share LOG_FILE.
+export LOG_FILE="${LOG_FILE:-$ROOT/.cache/server.log}"
+mkdir -p "$(dirname "$LOG_FILE")"
+
+_run_backend_detached() {
+  # Already detached in this process tree; backend stays foreground.
+  export FAMILIA_DETACHED=1
+  export DETACH_MODE=foreground
+  export LOG_FILE
+  nohup sh "$BACKEND_START" "$@" >> "$LOG_FILE" 2>&1 &
+  disown $! 2>/dev/null || true
+  say "server PID: $! (log $LOG_FILE)"
+}
 
 case "$DETACH_MODE" in
   tmux)
     if command -v tmux >/dev/null 2>&1; then
-      say "launching detached inside tmux session familia-server"
-      exec tmux new-session -d -s familia-server "sh '$BACKEND_START' $*"
+      say "launching detached inside tmux session familia-server (log $LOG_FILE)"
+      exec tmux new-session -d -s familia-server         "env FAMILIA_DETACHED=1 DETACH_MODE=foreground LOG_FILE='$LOG_FILE' sh '$BACKEND_START' $*"
     else
       say "tmux requested but not found; falling back to nohup"
-      mkdir -p "$ROOT/.cache"
-      nohup sh "$BACKEND_START" "$@" >> "$ROOT/.cache/server.log" 2>&1 &
-      disown $! 2>/dev/null || true
-      say "server PID: $!"
+      _run_backend_detached "$@"
     fi
     ;;
   screen)
     if command -v screen >/dev/null 2>&1; then
-      say "launching detached inside screen session familia-server"
-      exec screen -dmS familia-server sh "$BACKEND_START" "$@"
+      say "launching detached inside screen session familia-server (log $LOG_FILE)"
+      exec screen -dmS familia-server         env FAMILIA_DETACHED=1 DETACH_MODE=foreground LOG_FILE="$LOG_FILE" sh "$BACKEND_START" "$@"
     else
       say "screen requested but not found; falling back to nohup"
-      mkdir -p "$ROOT/.cache"
-      nohup sh "$BACKEND_START" "$@" >> "$ROOT/.cache/server.log" 2>&1 &
-      disown $! 2>/dev/null || true
-      say "server PID: $!"
+      _run_backend_detached "$@"
     fi
     ;;
   nohup)
-    say "launching detached with nohup (logging to .cache/server.log)"
-    mkdir -p "$ROOT/.cache"
-    nohup sh "$BACKEND_START" "$@" >> "$ROOT/.cache/server.log" 2>&1 &
-    disown $! 2>/dev/null || true
-    say "server PID: $!"
+    say "launching detached with nohup (logging to $LOG_FILE)"
+    _run_backend_detached "$@"
     ;;
   foreground|"")
     exec sh "$BACKEND_START" "$@"
