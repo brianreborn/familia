@@ -1,0 +1,3 @@
+#!/bin/sh
+# familia-validate wrapper (installed by sysutils/familia)
+exec /usr/bin/env python3 %%PREFIX%%/libexec/familia/scripts/validate_graph.py "$@"

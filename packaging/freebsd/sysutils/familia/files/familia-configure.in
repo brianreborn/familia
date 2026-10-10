@@ -1,0 +1,3 @@
+#!/bin/sh
+# familia-configure wrapper (installed by sysutils/familia)
+exec %%PREFIX%%/libexec/familia/scripts/configure.sh "$@"
