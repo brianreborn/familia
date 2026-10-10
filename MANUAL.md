@@ -4,29 +4,31 @@ Welcome to the definitive guide for setting up and managing a FAMILIA topology. 
 
 ## 1. Installation
 
-Installation takes only two steps and applies identically across Linux, macOS, and Termux (Android).
+Installation takes two steps. Linux is tested; Termux (Android) is partly tested; macOS is expected to work but untested.
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install.sh | sh
 ```
 *Windows: `scripts\windows\start.bat` and an opt-in logon task (`scripts\windows\install-task.ps1`) are shipped, not yet run on qodesh; see docs/windows.md. `install.ps1` and `scripts/configure.ps1` are not shipped yet (#17).*
 
-**Note**: The installer will prompt for acknowledgment of the Light-ware License. Type `yes` to proceed. If running in an automated environment, set `INSTALL_ACK=yes` before executing the script.
+**Note**: The installer will prompt for acknowledgment of the Light-ware License. Type `yes` (or `y`) to proceed. If running in an automated environment, set `INSTALL_ACK=yes` before executing the script.
 
 ## 2. Configuration & Administration
 
-### The Visual Topology Editor
+### Settings
 
-FAMILIA allows you to configure your node graph visually or via natural language commands.
-- Run `sh scripts/configure.sh` to open the interactive configuration panel.
-- On Linux/Termux environments, this will launch a visual `whiptail` menu where you can set up a small local network or expand to federated topologies across multiple hosts.
+- `sh scripts/configure.sh` syncs the sub-projects in `pins.txt` to their pinned revisions (non-interactive).
+- `sh scripts/configure.sh -i` adds interactive prompts in the terminal. There is no visual (whiptail) editor and no natural-language configuration yet; both are planned (see DESIGN.md and `docs/configuration-graph.md`).
+- `python3 scripts/panel.py` serves a browser settings panel at http://127.0.0.1:9932.
 
-### Environmental Overrides
-Settings are persistently stored in `.cache/panel.env`. You can always override these values dynamically by setting environment variables before launching.
+### Where settings live
+Saved settings are in `code-bootstraps-llama.cpp/.cache/panel.env` (the sub-project's panel file; `configure.sh` reads it from there). Environment variables always override them:
 
-Examples:
 - `PORT=8080 ./start.sh`
 - `PROFILE=lowram ./start.sh`
+
+### Model/agent graph
+Model nodes, runtimes and agents are declared in `graph.yaml` and checked with `python3 scripts/validate_graph.py`. The hermes-agent harness (`scripts/hermes.sh`) uses it. `start.sh` does not read the graph yet. See `docs/configuration-graph.md` and `docs/ram-safety.md`.
 
 ## 3. Usage and Operations
 
@@ -41,20 +43,21 @@ Navigate to: `http://127.0.0.1:9931/?model=chat`
 On first load, you must provide the API key printed in the server terminal logs.
 
 ### Backgrounding and Detaching
-FAMILIA offers robust backgrounding natively. Set the `DETACH_MODE` via the configuration panel to choose between:
-- `foreground` (default)
-- `nohup` (outputs to `.cache/server.log`)
-- `tmux` or `screen` (launches in a detached session)
+`start.sh` reads `DETACH_MODE` from the environment (it is not a panel setting):
 
-Android/Termux users: `termux-wake-lock` is automatically held to prevent the OS from killing the background daemon during inference.
+```sh
+DETACH_MODE=nohup ./start.sh     # foreground (default) | nohup | tmux | screen
+```
+
+- `nohup` logs to `.cache/server.log`.
+- `tmux` / `screen` start a detached session named `familia-server`.
+- On Termux, if `DETACH_MODE` is left at `foreground`, `start.sh` picks tmux, then screen, then nohup, and takes `termux-wake-lock` when it is installed.
 
 ## 4. Alternate Engines and Roles
 
 You can register alternative model runtimes (like Ollama or experimental `llama.cpp` forks).
 For instance, the `chat` route can be configured to use a specialized discrete residual diffusion model engine (DReX-DLM). 
 
-To do so:
-1. Open the configuration UI.
-2. Select the `ENGINE_CHAT` setting.
-3. Enter the engine identifier (e.g., `nace-ai__edlm`).
-FAMILIA will automatically fetch, compile, and isolate the specified engine.
+Set `ENGINE_CHAT` (e.g. `nace-ai__edlm`) in the settings panel or environment. Today `configure.sh` only **clones** the pinned engine source (`llama-server__nace-ai__edlm` in `pins.txt`); building and isolating it is not automated yet.
+
+Official llama.cpp release builds can already run side by side via the `runtimes:` section of `graph.yaml` (b11374 for `coder`, b11539 for `embed`).

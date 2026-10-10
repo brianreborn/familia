@@ -2,7 +2,7 @@
 
 - **Model:** GPT-OSS-120B-MEDIUM (transient errors)
   - **Symptom:** Occasionally the model fails with an internal error or timeout during inference, often returning an empty response or HTTP 503.
-  - **Temporary Workaround:** Pend a retry of the request. The system will automatically retry the operation after a short back‑off. This covers transient server‑load conditions.
+  - **Temporary Workaround:** Pend a retry of the request. A retry wrapper exists (`scripts/retry_wrapper.py`) but is not wired into any caller yet, so retry manually. This covers transient server-load conditions.
 
 - **Host:** miryam RAM / OOM (standing rule)
   - **Symptom:** Hard hang when estimated llama-server use plus concurrent tests approached full MemTotal (~7.1 GiB).

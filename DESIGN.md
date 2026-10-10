@@ -1,6 +1,6 @@
 # FAMILIA
 
-Federated Electronic Electively-Limited Distribution-Zoned Neural Network Unified Topographical Teleportation System.
+Federated Agents Mesh for Intelligent Local Interoperable Autonomy.
 
 This is the super-project that makes the existing systems one topology. It does not replace them, and it does not claim a new model. A user of llama.cpp, green-roomz, green-agentz, or green-agency should recognize the top level as their own system with the other pieces attached, not as a foreign shell.
 

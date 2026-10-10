@@ -5,7 +5,7 @@
 
 ## Purpose
 
-This document describes a lightweight configuration approach for the **AGY client** to automatically handle transient model‑service errors (e.g., empty responses, HTTP 503/429) by invoking the retry wrapper defined in `scripts/retry_wrapper.py`.
+This document describes a lightweight configuration approach for the **AGY client** to automatically handle transient model-service errors (e.g., empty responses, HTTP 503/429) by invoking the retry wrapper defined in `scripts/retry_wrapper.py`.
 
 ## Configuration Options
 
@@ -13,7 +13,7 @@ This document describes a lightweight configuration approach for the **AGY clien
 |----------------------|---------|-------------|
 | `AGY_RETRY_ENABLED` | `true` | Globally enable or disable the retry logic. When `false` the client calls the model directly.
 | `AGY_RETRY_MAX` | `3` | Maximum number of retry attempts before giving up.
-| `AGY_RETRY_BACKOFF` | `1` | Base back‑off delay in seconds. Actual delay = `base * 2**(attempt‑1)`.
+| `AGY_RETRY_BACKOFF` | `1` | Base back-off delay in seconds. Actual delay = `base * 2**(attempt-1)`.
 | `AGY_RETRY_LOG_LEVEL` | `warning` | Logging level for retry attempts (`debug`, `info`, `warning`, `error`).
 
 ## Usage Example (Python)
@@ -29,7 +29,7 @@ backoff = float(os.getenv('AGY_RETRY_BACKOFF', '1'))
 
 client = AGYClient()
 
-# Wrap the low‑level request method if retries are enabled
+# Wrap the low-level request method if retries are enabled
 if enabled:
     client.send_request = retry_on_transient_error(
         client.send_request,
@@ -49,9 +49,9 @@ print(response)
 4. **Optional**: expose a CLI flag `--no-retry` that sets `AGY_RETRY_ENABLED=false` for debugging.
 
 ## Benefits
-* **Resilience** – transient server‑load spikes no longer abort workflows.
+* **Resilience** – transient server-load spikes no longer abort workflows.
 * **Observability** – configurable logging allows operators to monitor retry activity.
-* **Low overhead** – exponential back‑off caps total wait time; defaults are safe for most use‑cases.
+* **Low overhead** – exponential back-off caps total wait time; defaults are safe for most use-cases.
 
 ---
 *This file is intended for version control and should be committed alongside the other documentation changes.*
