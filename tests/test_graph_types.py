@@ -34,8 +34,8 @@ def test_enums():
 
 def test_measured_host_needs_facts_and_unmeasured_excluded():
     x = g(); del x["hosts"]["miryam"]["ram_mib"]; has(x, "measured host missing required 'ram_mib'")
-    x = g(); x["hosts"]["note9"]["ram_mib"] = 6000; has(x, "measured is false")
-    x = g(); x["runtimes"]["llama-b11374"]["hosts"].append("note9"); x["nodes"]["coder"]["host"] = "note9"
+    x = g(); x["hosts"]["godslove"]["ram_mib"] = 6000; has(x, "measured is false")
+    x = g(); x["runtimes"]["llama-b11374"]["hosts"].append("godslove"); x["nodes"]["coder"]["host"] = "godslove"
     has(x, "not measured; unmeasured hosts are excluded")
 
 def test_transport_rules():
@@ -81,8 +81,8 @@ def test_qodesh_gpu_offload_rejected():
     has(x, "unmeasured/unverified GPU 0")
 
 def test_gpu_fields():
-    x = g(); x["hosts"]["note9"]["gpus"][0]["vram_mib"] = 4096; has(x, "measured is false; leave null")
-    x = g(); x["hosts"]["note9"]["gpus"][0]["backend_status"] = "verified"; has(x, "verified requires measured")
+    x = g(); x["hosts"]["godslove"]["gpus"][0]["vram_mib"] = 4096; has(x, "measured is false; leave null")
+    x = g(); x["hosts"]["godslove"]["gpus"][0]["backend_status"] = "verified"; has(x, "verified requires measured")
     x = g(); x["hosts"]["miryam"]["gpus"][0]["backend"] = "directx"; has(x, "not one of")
     x = g(); del x["hosts"]["shalom"]["gpus"]; has(x, "missing required 'gpus'")
     x = g(); x["hosts"]["miryam"]["gpus"][0]["measured"] = True; has(x, "measured GPU needs vram_mib")

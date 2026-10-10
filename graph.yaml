@@ -82,21 +82,6 @@ hosts:
         compute_capability: null
         driver: null
         measured: false
-  note9:
-    kind: phone
-    measured: false
-    os: android
-    cpu: Snapdragon 845 (SDM845)
-    notes: Samsung Galaxy Note 9. Not at 192.168.1.7 or .8 (both measured as Galaxy A57s, phone7 and phone8); address unknown.
-    gpus:
-      - vendor: qualcomm
-        model: Adreno 630
-        vram_mib: null           # shared memory
-        backend: opencl          # vulkan or opencl possible; unmeasured
-        backend_status: tbd
-        compute_capability: null
-        driver: null
-        measured: false
   phone7:
     kind: phone
     measured: true               # measured 2026-10-09 ~22:50 PT over key-only SSH from qodesh
@@ -111,13 +96,16 @@ hosts:
       Two physical A57s on the LAN (distinct boot_id, same build fingerprint).
     gpus:
       - vendor: samsung
-        model: Xclipse (Exynos s5e8865; ro.hardware.egl=samsung, exact model unconfirmed)
-        vram_mib: null           # shared memory
-        backend: vulkan          # vendor libvulkan.so + vulkan.samsung.so and libOpenCL.so present; none run
-        backend_status: tbd
+        model: Samsung Xclipse 550   # vulkaninfo deviceName, INTEGRATED_GPU
+        vram_mib: 0              # shared-memory iGPU; Vulkan heap0 6.83 GiB device-local (shared), heap1 64 MiB
+        backend: vulkan          # Vulkan 1.4.304, conformance 1.4.1.1; fp16, int8, 16-bit storage; subgroup 64
+        backend_status: tbd      # stays tbd until an inference test
         compute_capability: null
-        driver: null
-        measured: false          # no clinfo/vulkaninfo run
+        driver: Samsung Proprietary (SPAL) 25.4.7, git 702e7fd271
+        measured: true           # vulkaninfo via /system/lib64/libvulkan.so, 2026-10-09 PT. Termux's own loader only sees llvmpipe.
+        notes: >-
+          OpenCL unusable from Termux: the vendor libSGPUOpenCL.so is blocked by the Android
+          linker namespace (missing android.hardware.graphics.mapper@4.0-impl-sgr.so), so clinfo reports 0 platforms.
   phone8:
     kind: phone
     measured: true               # measured 2026-10-09 ~22:50 PT over key-only SSH from qodesh
@@ -132,27 +120,16 @@ hosts:
       Two physical A57s on the LAN (distinct boot_id, same build fingerprint).
     gpus:
       - vendor: samsung
-        model: Xclipse (Exynos s5e8865; ro.hardware.egl=samsung, exact model unconfirmed)
-        vram_mib: null           # shared memory
-        backend: vulkan          # vendor libvulkan.so + vulkan.samsung.so and libOpenCL.so present; none run
-        backend_status: tbd
+        model: Samsung Xclipse 550   # vulkaninfo deviceName, INTEGRATED_GPU
+        vram_mib: 0              # shared-memory iGPU; Vulkan heap0 6.83 GiB device-local (shared), heap1 64 MiB
+        backend: vulkan          # Vulkan 1.4.304, conformance 1.4.1.1; fp16, int8, 16-bit storage; subgroup 64
+        backend_status: tbd      # stays tbd until an inference test
         compute_capability: null
-        driver: null
-        measured: false          # no clinfo/vulkaninfo run
-  pixel8:
-    kind: phone
-    measured: false
-    os: android
-    cpu: Google Tensor G3
-    gpus:
-      - vendor: arm
-        model: Mali (Immortalis-G715 class, unconfirmed)
-        vram_mib: null
-        backend: vulkan          # vulkan or opencl; unmeasured
-        backend_status: tbd
-        compute_capability: null
-        driver: null
-        measured: false
+        driver: Samsung Proprietary (SPAL) 25.4.7, git 702e7fd271
+        measured: true           # vulkaninfo via /system/lib64/libvulkan.so, 2026-10-09 PT. Termux's own loader only sees llvmpipe.
+        notes: >-
+          OpenCL unusable from Termux: the vendor libSGPUOpenCL.so is blocked by the Android
+          linker namespace (missing android.hardware.graphics.mapper@4.0-impl-sgr.so), so clinfo reports 0 platforms.
 
 transports:
   miryam-local: {kind: local, from: miryam, to: miryam}
