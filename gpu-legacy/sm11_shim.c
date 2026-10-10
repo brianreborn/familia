@@ -37,6 +37,7 @@ static CUresult (__stdcall *p_cuMemcpyDtoHAsync)(void*, CUdeviceptr, size_t, voi
 static CUresult (__stdcall *p_cuEventCreate)(CUevent_*, unsigned);
 static CUresult (__stdcall *p_cuEventRecord)(CUevent_, void*);
 static CUresult (__stdcall *p_cuEventQuery)(CUevent_);
+static CUresult (__stdcall *p_cuEventSynchronize)(CUevent_);
 static CUevent_ g_fev; static int g_async = 0;
 static unsigned char* g_pin; static size_t g_pinsz = 0, g_pinoff = 0;
 volatile long long g_sm11_polls = 0, g_sm11_fences = 0;
@@ -47,6 +48,7 @@ static void async_init(HMODULE h) {
     p_cuEventCreate = (void*)GetProcAddress(h, "cuEventCreate");
     p_cuEventRecord = (void*)GetProcAddress(h, "cuEventRecord");
     p_cuEventQuery = (void*)GetProcAddress(h, "cuEventQuery");
+    p_cuEventSynchronize = (void*)GetProcAddress(h, "cuEventSynchronize");
     if (!p_cuMemHostAlloc || !p_cuMemcpyHtoDAsync || !p_cuMemcpyDtoHAsync || !p_cuEventCreate || !p_cuEventRecord || !p_cuEventQuery) return;
     if (getenv("SM11_SYNC") && atoi(getenv("SM11_SYNC"))) return;      /* opt-out: legacy blocking path */
     g_pinsz = (size_t)1 << 20;   /* 1 MiB pinned staging (x in, y out) */
@@ -59,7 +61,8 @@ static int sm11_fence(void) {
     if (!g_async) return p_cuCtxSynchronize() ? -1 : 0;
     if (p_cuEventRecord(g_fev, 0)) return -1;
     CUresult r; g_sm11_fences++;
-    while ((r = p_cuEventQuery(g_fev)) == 600 /*NOT_READY*/) { g_sm11_polls++; SwitchToThread(); }
+    int k = 0;
+    while ((r = p_cuEventQuery(g_fev)) == 600 /*NOT_READY*/) { g_sm11_polls++; if (++k > 64 && p_cuEventSynchronize) { r = p_cuEventSynchronize(g_fev); break; } YieldProcessor(); }
     g_pinoff = 0;                     /* all staged copies have completed */
     return r ? -1 : 0;
 }
@@ -175,7 +178,7 @@ int sm11_register(const void* base, size_t nbytes) {
     LOAD(cuMemcpyDtoD, "cuMemcpyDtoD_v2"); LOAD(cuLaunchKernel, "cuLaunchKernel"); LOAD(cuCtxSynchronize, "cuCtxSynchronize"); async_init(h);
     CUdevice dev; CUcontext ctx; CUmodule mod; char name[128]; int ma=0, mi=0; size_t fr=0, tot=0;
     CK(p_cuInit(0)); CK(p_cuDeviceGet(&dev, 0)); CK(p_cuDeviceGetName(name, sizeof name, dev));
-    CK(p_cuDeviceComputeCapability(&ma, &mi, dev)); CK(p_cuCtxCreate(&ctx, 0, dev));
+    CK(p_cuDeviceComputeCapability(&ma, &mi, dev)); CK(p_cuCtxCreate(&ctx, getenv("SM11_CTX_FLAGS") ? (unsigned)atoi(getenv("SM11_CTX_FLAGS")) : 4u /*SCHED_BLOCKING_SYNC*/, dev));
         char* ptx = load_ptx(); if (!ptx) return -1;
     char log[8192] = {0}; int opts[2] = {5, 6}; void* vals[2] = {log, (void*)(size_t)sizeof log};
     CUresult r = p_cuModuleLoadDataEx(&mod, ptx, 2, opts, vals);

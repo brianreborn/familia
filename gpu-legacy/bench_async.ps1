@@ -1,3 +1,4 @@
+$env:PATH = "E:\temp\tools\mingw64\bin;" + $env:PATH   # libgomp for run_sm11 (OpenMP)
 $ErrorActionPreference = "Continue"
 $root = "E:\temp\gpu-legacy"; Set-Location $root
 $log = Join-Path $root "progress.log"
@@ -7,9 +8,11 @@ $M = "E:\temp\models\SmolLM2-135M-Instruct.Q4_0.gguf"; $B = "E:\temp\llama.cpp\b
 $env:SM11_FULL_FWD = "1"; $env:OMP_NUM_THREADS = "2"; $env:SMOL_CTX = "64"
 $res = [ordered]@{}
 function Stories($exe, $tag, $extra) {
-  $o = (& ".\out\$exe" stories15M.bin -t 0 -n 256 -i "Once upon a time" 2>&1) | Out-String
+  $raw = & ".\out\$exe" stories15M.bin -t 0 -n 256 -i "Once upon a time" 2>&1
+  $o = $raw | Out-String
+  $stdout = ($raw | Where-Object { $_ -is [string] }) -join "`n"   # stderr lines are ErrorRecords: exclude (text-compare bug fix)
   $tps = [regex]::Match($o, 'achieved tok/s: ([0-9.]+)').Groups[1].Value
-  $txt = ($o -split "`n" | Where-Object { $_ -notmatch '^sm11|achieved' }) -join "`n"
+  $txt = ($stdout -split "`n" | Where-Object { $_ -notmatch 'achieved tok/s' }) -join "`n"
   "[$tag] stories15M tok/s=$tps" | Add-Content $log; Write-Host "stories15M [$tag] tok/s=$tps"; return @($tps, $txt.Trim())
 }
 P "MILESTONE: bench A - stories15M full-forward, before (blocking sync) vs after (async)"

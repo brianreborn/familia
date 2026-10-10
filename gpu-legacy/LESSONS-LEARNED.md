@@ -44,3 +44,32 @@ Each entry gives the finding, the numbers behind it, and what we do now. Times a
 
 ## 8. VRAM is shared with the desktop
 - Free VRAM before load ranged from **72 to 154 MiB** over 20 minutes as Discord and Firefox (hardware acceleration) grew and shrank. With 150 MiB free the Q8_0 classifier fits (88 MiB resident, 58–61 MiB still free). At 99 MiB the harness falls back to Q4 + rescoring. At 72 MiB it refuses to load to protect the 16 MiB margin.
+
+## 9. Zero-copy mapped memory on WDDM (test_mapped.c)
+- G84 reports `CAN_MAP_HOST_MEMORY=1`. A context with MAP_HOST, `cuMemHostAlloc(DEVICEMAP)` and `cuMemHostGetDevicePointer` all succeed, and a kernel writing into mapped memory gives the correct result once synced (3.0 = 1+2).
+- But spinning on a host flag in mapped memory **never sees the write** (timed out at 200 ms). WDDM queues the launch in a user-mode command buffer and doesn't submit it to the GPU until something flushes it (an event query or sync). A pure mapped-flag handoff would deadlock on this driver.
+- An event fence round trip for a tiny kernel is **0.072 ms**. Rule: on WDDM use events (`cuEventQuery` also flushes) as the completion signal. Mapped memory could carry the payload, but it still needs an event to flush.
+
+## 10. Waiting strategy (spin, then block)
+- The context is now created with `CU_CTX_SCHED_BLOCKING_SYNC` (override with `SM11_CTX_FLAGS`). `sm11_fence` and `seq_wait` spin about 64 `cuEventQuery`s, then call `cuEventSynchronize`, which sleeps in the driver instead of burning a core.
+- The idle decision-server worker spins 2000 `YieldProcessor` iterations, then blocks on a Win32 auto-reset event that the producer signals after each ring push. Before this it made about 200k `SwitchToThread` polls/s while idle.
+- Numbers pending: VRAM was unavailable (entry 11).
+
+## 11. VRAM availability blocks GPU runs
+- From 06:59 to 07:12 UTC, free VRAM dropped to **8–17 MiB**, with Firefox and Discord holding the rest. SmolLM2 needs about 60 MiB + 16 MiB margin and stories15M about 57 MiB, so every GPU run correctly refused to load. The margin guard did its job, but on a shared desktop GPU you can't schedule a decision node without coordinating with the desktop apps (turn off hardware acceleration, or reserve VRAM at boot before they start).
+
+## 12. Kernel fusion round (measured 07:40-07:51 UTC, 102-106 MiB VRAM free)
+- 6 launches/layer instead of about 22 (about 181 per token instead of about 600): rmsnorm fused into the QKV and gate|up matvecs, silu(g)*u fused into the down matvec's x load, residual add in the epilogue, k_rope_kv, k_attn_mh.
+- End to end: SmolLM2 **8.06-8.25 tok/s unfused -> 8.33-8.80 fused** (about +6%), **32/32 vs CPU ref on all 4 prompts**, serve-mode outputs identical to single runs.
+- Per byte, though, the v2 kernel (xsum trick, 2 accumulators, 12-word register prefetch) is **slower**: fused 576x3072 takes 1.34 ms vs 2 x 0.49 ms for v1, and 1536x576 takes 0.66 vs 0.59 ms (about 0.7 GB/s vs 1.0). The prefetch costs 12 extra registers per thread (up to 72), which on sm_11 (8192 regs/SM) cuts occupancy more than the hidden latency is worth. The gain comes from fewer launches, not faster math. Next: drop the prefetch and keep the fusion.
+- The sweep is still optimal at small grids (G=8, R=8). More CTAs is slower.
+
+## 13. Spin-then-block waits
+- Host polls for the 4-request serve run: **4.1M -> 10.4k** (inflight 1) and **2.3M -> 7.9k** (inflight 2), with no change in tok/s (8.52-8.58). The worker no longer burns a core while it waits.
+- Coder alongside (CPU0): 90.8 alone / 102.4 with the decision server / 95.5 with stories15M (desktop load varies �10%).
+
+## 14. Bench harness bugs (fixed)
+- stories15M text compare: PowerShell turns native stderr into ErrorRecords, which the old filter didn't remove. It now compares stdout strings only, and before vs after is identical.
+- `$m` vs `$M`: PowerShell variable names are case-insensitive, so the match variable overwrote the model path.
+- In a fresh shell run_sm11 failed with 0xC0000135 (libgomp not on PATH). The script now prepends the mingw bin directory.
+- stories15M with the desktop idle: before **57.5-58.4**, after (async + blocking-sync context) **53.3-59.3 tok/s**, identical text.

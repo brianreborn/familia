@@ -32,3 +32,11 @@ decision model and run the whole forward pass on the device: `smol_sm11` (SmolLM
 ## Lock-free CPU/GPU handoff (smol_sm11 `serve` mode)
 - Two SPSC rings (`g_in`: caller → GPU worker, `g_out`: worker → caller). Only the producer writes `head` and only the consumer writes `tail`. Publication uses `MemoryBarrier` + `InterlockedExchange`. There are no mutexes and no kernel waits; both sides poll and yield the core.
 - The GPU worker thread owns the CUDA context and keeps up to 2 requests in flight, each with its own KV cache and its own pinned result and event. While the GPU runs request A's token N, the host finishes request B's token (top-K rescoring, argmax, embedding of the next token) and enqueues it. That is the double-buffer. A single greedy stream can't overlap with itself, because token N+1 needs token N's argmax.
+
+## Update: zero-copy and waiting
+- Zero-copy mapped memory is supported on G84 (`CAN_MAP_HOST_MEMORY=1`) and works, but polling a host flag in mapped memory never completes on WDDM: launches sit in the user-mode command buffer until a flush. So completion is signalled by events. `cuEventQuery` flushes, and a fence round trip is 0.072 ms.
+- Waits spin briefly, then block. Contexts use `SCHED_BLOCKING_SYNC`. `sm11_fence` and `seq_wait` do up to 64 query spins, then `cuEventSynchronize`. The idle server worker spins 2000 times, then `WaitForSingleObject` on an auto-reset event that the producer sets after each SPSC push. Still no mutexes.
+
+## Update 07:51 UTC: measured
+- Spin-then-block cut host polls 4.1M -> 10.4k per 163-token serve run, with throughput unchanged (8.52-8.58 tok/s).
+- Fused path: about 181 launches per token, 1 event wait per token, 32/32 vs CPU ref.
