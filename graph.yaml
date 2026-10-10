@@ -15,7 +15,7 @@ hosts:
     cpu: Intel Core i5-7200U
     threads: 4
     ram_mib: 7270                # 7.1 GiB MemTotal
-    reserve_ram_mib: 2048        # left for OS, hermes-agent, browser
+    reserve_ram_mib: 3072        # miryam: 3 GiB safety margin after hard hang 2026-10-09
     gpus:
       - vendor: intel
         model: Intel HD Graphics 620 (integrated, shares system RAM)
