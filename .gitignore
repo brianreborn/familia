@@ -4,3 +4,6 @@
 /green-roomz
 /green-agentz
 /green-agency
+graph.scaled.yaml
+*.gguf.part
+__pycache__/

@@ -5,7 +5,7 @@ Exit 0 when valid, 1 with one line per problem otherwise. With --args NODE,
 print the runtime binary and llama-server arguments for that node. Several
 llama.cpp runtimes can be deployed side by side; each node names its runtime. Never guesses or inflates.
 """
-import os, struct, sys
+import json, os, struct, sys
 import yaml
 
 KV_BYTES = {"f16": 2.0, "bf16": 2.0, "q8_0": 1.0625, "q4_0": 0.5625, "f32": 4.0}
@@ -100,6 +100,17 @@ def validate(graph):
         except Exception as e: errs.append(f"node {name}: cannot read GGUF: {e}"); continue
         arch = meta.get("general.architecture")
         if arch != n["arch"]: errs.append(f"node {name}: GGUF architecture is {arch!r}, graph says {n['arch']!r}")
+        df = n.get("derived_from")
+        if df:  # produced by scripts/scale_down.py
+            mp = os.path.join(os.path.dirname(os.path.abspath(graph.get("_path", "graph.yaml"))), os.path.expanduser(df.get("manifest", "")))
+            try: rec = json.load(open(mp))
+            except Exception as e: errs.append(f"node {name}: derived_from manifest unreadable: {e}"); rec = {}
+            if rec and rec.get("output_sha256") != df.get("sha256"): errs.append(f"node {name}: derived_from sha256 does not match manifest")
+            if rec and rec.get("output_bytes") != os.path.getsize(path): errs.append(f"node {name}: model size differs from scale-down manifest (file changed?)")
+            if rec and rec.get("source_bytes") and os.path.getsize(path) >= rec["source_bytes"]: errs.append(f"node {name}: scaled model is not smaller than its source")
+            if rec and rec.get("arch") != arch: errs.append(f"node {name}: scaled arch {arch!r} != manifest arch {rec.get('arch')!r}")
+            src = nodes.get(df.get("node"))
+            if src is not None and src.get("arch") != arch: errs.append(f"node {name}: arch {arch!r} differs from source node {df.get('node')} ({src.get('arch')!r})")
         rt = runtimes.get(n.get("runtime"))
         if rt is None: errs.append(f"node {name}: runtime {n.get('runtime')!r} is not declared")
         elif arch not in (rt.get("archs") or []):
