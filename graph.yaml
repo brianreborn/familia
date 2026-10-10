@@ -61,3 +61,13 @@ agents:
     context_length: 65536         # hermes model.context_length; must equal node per-slot ctx
     edges:
       model: coder                # model.default / base_url
+
+# Stub roles for with-fleet.sh / android_start.sh (#15). Full typed pentests
+# live on feat/graph-types. launch_test_only: never live scans.
+roles:
+  pentest:
+    node: coder
+    launch_test_only: true
+    status: planned
+    notes: "Maps android_start.sh --role pentest; empty-scope manifest in scripts/pentest-role.json."
+
