@@ -88,7 +88,7 @@ static void fwd_cpu(int tok,int pos){
   mv_cpu(LOG,X,gt("token_embd.weight"),dim,nvocab);
 }
 /* ---- GPU full forward ---- */
-static CUfunction f_q4r, f_q8r, f_q4f, f_q8f, f_ropekv, f_attnmh; static int g_fused=1; static CUdeviceptr dQKV;
+static CUfunction f_q4r, f_q8r, f_q4f, f_q8f, f_ropekv, f_attnmh; static int g_fused=1, g_prenorm=0; static CUdeviceptr dQKV, dXN;
 static CUdeviceptr dW[32][9], dN[32][2], dON, dEMB, dX, dXB, dXB2, dQ, dHB, dHB2, dKC, dVC, dCOS, dSIN, dLOG;
 static int gpu_cls; static int g_inflight=1;
 static size_t g_vram_used;
@@ -162,7 +162,7 @@ static void gpu_setup(void){
   g_arsz=tot_need+cls_b; if(p_cuMemAlloc(&g_ar,g_arsz)){ fprintf(stderr,"arena alloc %zu MiB failed\n",g_arsz>>20); exit(2);}
   for(int l=0;l<c_nl;l++){ for(int k=0;k<7;k++) dW[l][k]=up(gl(l,wn[k])); dN[l][0]=up(gl(l,"attn_norm.weight")); dN[l][1]=up(gl(l,"ffn_norm.weight")); }
   dON=up(gt("output_norm.weight"));
-  dX=al(dim*4); dXB=al(dim*4); dXB2=al(dim*4); dQ=al(dim*4); dHB=al(c_hd*4*2); dHB2=dHB+(CUdeviceptr)c_hd*4; dQKV=al((dim+2*kvd)*4); dLOG=al((size_t)nvocab*4);
+  dX=al(dim*4); dXB=al(dim*4); dXB2=al(dim*4); dQ=al(dim*4); dHB=al(c_hd*4*2); dHB2=dHB+(CUdeviceptr)c_hd*4; dQKV=al((dim+2*kvd)*4); dXN=al(dim*4); g_prenorm = !getenv("SMOL_PRENORM") || atoi(getenv("SMOL_PRENORM"));  /* default on: norm once per token */ dLOG=al((size_t)nvocab*4);
   dKC=al((size_t)c_nl*c_ctx*kvd*4); dVC=al((size_t)c_nl*c_ctx*kvd*4);
   dCOS=al(c_ctx*hs/2*4); dSIN=al(c_ctx*hs/2*4); p_cuMemcpyHtoD(dCOS,ccos,c_ctx*hs/2*4); p_cuMemcpyHtoD(dSIN,csin,c_ctx*hs/2*4);
   if(gpu_cls){ if(cls_q4){ requant_q4(); dEMB=upb(emb_q4,eq4);} else dEMB=up(e); }
@@ -185,14 +185,16 @@ static void enqueue_gpu(Seq* sq, int tok, int pos){
     for(int l=0;l<c_nl;l++){
       CUdeviceptr lk=dKC_+(CUdeviceptr)l*c_ctx*kvd*4, lv=dVC_+(CUdeviceptr)l*c_ctx*kvd*4;
       CUdeviceptr K=lk+(CUdeviceptr)pos*kvd*4, V=lv+(CUdeviceptr)pos*kvd*4;
-      CKL(qmvf(dQKV,dX,dW[l][0],dim,qkvd,0,dN[l][0],0));                       /* rmsnorm + Wq|Wk|Wv */
+      if(g_prenorm){ void* a[]={&dXN,&dX,&dN[l][0],&dim}; CKL(launch(f_rmsnorm,1,128,a)); CKL(qmvf(dQKV,dXN,dW[l][0],dim,qkvd,0,z,0)); }  /* norm once per token */
+      else CKL(qmvf(dQKV,dX,dW[l][0],dim,qkvd,0,dN[l][0],0));                       /* rmsnorm + Wq|Wk|Wv */
       { void* a[]={&dQKV,&dQ,&K,&V,&cs,&sn,&dim,&kvd,&hs}; CKL(launch(f_ropekv,(qkvd/2+127)/128,128,a)); }  /* rope + KV store */
       { void* a[]={&dQ,&lk,&lv,&dXB,&hs,&T1,&kvd,&km_}; CKL(p_cuLaunchKernel(f_attnmh,c_nh,1,1,128,1,1,0,0,a,0)); }  /* all heads */
       CKL(qmvf(dX,dXB,dW[l][3],dim,dim,0,z,1));                                 /* Wo + residual */
-      CKL(qmvf(dHB,dX,dW[l][4],dim,hd2,0,dN[l][1],0));                         /* rmsnorm + Wgate|Wup */
+      if(g_prenorm){ void* a[]={&dXN,&dX,&dN[l][1],&dim}; CKL(launch(f_rmsnorm,1,128,a)); CKL(qmvf(dHB,dXN,dW[l][4],dim,hd2,0,z,0)); }
+      else CKL(qmvf(dHB,dX,dW[l][4],dim,hd2,0,dN[l][1],0));                         /* rmsnorm + Wgate|Wup */
       CKL(qmvf(dX,dHB,dW[l][6],hd,dim,0,z,3));                                  /* silu(g)*u + Wdown + residual */
     }
-    if(gpu_cls && !cls_q4){ unsigned nv=nvocab; CKL(qmvf(dLOG,dX,dEMB,dim,nv,1,dON,0)); CKL(p_cuMemcpyDtoHAsync(sq->plog,dLOG,(size_t)nvocab*4,0)); CKL(p_cuEventRecord(sq->ev,0)); sq->inflight=1; sq->tok=tok; sq->pos=pos; return; }
+    if(gpu_cls && !cls_q4){ unsigned nv=nvocab; if(g_prenorm){ void* a[]={&dXN,&dX,&dON,&dim}; CKL(launch(f_rmsnorm,1,128,a)); CKL(qmvf(dLOG,dXN,dEMB,dim,nv,1,z,0)); } else CKL(qmvf(dLOG,dX,dEMB,dim,nv,1,dON,0)); CKL(p_cuMemcpyDtoHAsync(sq->plog,dLOG,(size_t)nvocab*4,0)); CKL(p_cuEventRecord(sq->ev,0)); sq->inflight=1; sq->tok=tok; sq->pos=pos; return; }
     goto FINAL; }
   for(int l=0;l<c_nl;l++){
     CUdeviceptr lk=dKC_+(CUdeviceptr)l*c_ctx*kvd*4, lv=dVC_+(CUdeviceptr)l*c_ctx*kvd*4;
@@ -241,12 +243,12 @@ static void occ(const char* nm, CUfunction f, unsigned thr, unsigned smem){
   fprintf(stderr,"occ %-10s regs/thr=%d lmem=%d static_smem=%d | %u thr, %u dyn smem -> %d CTA/SM (%d thr, %.0f%% of 768)  [limits: regs %d smem %d thr %d]\n",nm,regs,lmem,ssm,thr,smem,b,b*thr,100.0*b*thr/768,b1,b2,b3); }
 static void kbench(void){ unsigned dim=c_dim, hd=c_hd; int N=200; double a;
   occ("k_q4f",f_q4f,64,576*4+8*324+128+256); occ("k_q4f/1536",f_q4f,192,1536*4+8*864+128+768); occ("k_q8f",f_q8f,128,576*4+8*612+128+512); occ("k_q4r",f_q4r,64,576*4+16*324+128+256); occ("k_attn_mh",f_attnmh,128,0); occ("k_rope_kv",f_ropekv,128,0);
-  if(g_fused){ unsigned Rs[]={2,4,8,16,32}, Ls[]={8,16,24,32,48}, Gs[]={4,8,16,32,64,128}; struct {unsigned n,d; CUdeviceptr w,y,x,nw; unsigned mode; int q8;} sh[4]={{576,3072,dW[0][4],dHB,dX,dN[0][1],0,0},{1536,576,dW[0][6],dXB,dHB,0,2,0},{576,960,dW[0][0],dQKV,dX,dN[0][0],0,0},{576,(unsigned)nvocab,dEMB,dLOG,dX,dON,0,1}};
+  if(g_fused){ unsigned Rs[]={2,4,8,16,32}, Ls[]={8,16,24,32,48}, Gs[]={4,8,12,16,32,64}; struct {unsigned n,d; CUdeviceptr w,y,x,nw; unsigned mode; int q8;} sh[4]={{576,3072,dW[0][4],dHB,dX,dN[0][1],0,0},{1536,576,dW[0][6],dXB,dHB,0,2,0},{576,960,dW[0][0],dQKV,dX,dN[0][0],0,0},{576,(unsigned)nvocab,dEMB,dLOG,dX,dON,0,1}}; if(getenv("SMOL_PRENORM")){ sh[0].nw=0; sh[2].nw=0; sh[3].nw=0; }
     for(int s=0;s<4;s++){ if(s==3&&(!gpu_cls||cls_q4)) continue; double best=1e9; unsigned bR=0,bL=0,bG=0; int it=s==3?5:50;
       for(int i=0;i<5;i++) for(int j=0;j<5;j++) for(int g=0;g<6;g++){ unsigned G=Gs[g]*(s==3?4:1);
         p_cuCtxSynchronize(); double t0=now(); int bad=0; for(int k=0;k<it&&!bad;k++) bad=qmvfc(sh[s].y,sh[s].x,sh[s].w,sh[s].n,sh[s].d,sh[s].q8,sh[s].nw,sh[s].mode,Rs[i],Ls[j],G); if(p_cuCtxSynchronize()||bad) continue; double t=(now()-t0)*1000/it; if(t<best){best=t;bR=Rs[i];bL=Ls[j];bG=G;} }
       double gbs = (double)sh[s].n/32*(sh[s].q8?34:18)*sh[s].d/(best*1e-3)/1e9;
-      fprintf(stderr,"fused best %ux%u%s: R=%u L=%u G=%u %.3f ms (%.2f GB/s)\n",sh[s].n,sh[s].d,sh[s].q8?" q8":"",bR,bL,bG,best,gbs); } }
+      fprintf(stderr,"fused best %ux%u%s: R=%u L=%u G=%u %.3f ms (%.2f GB/s)\n",sh[s].n,sh[s].d,sh[s].q8?" q8":"",bR,bL,bG,best,gbs); { unsigned rb=sh[s].n/32*(sh[s].q8?34:18); occ(sh[s].q8?"best q8f":"best q4f", sh[s].q8?f_q8f:f_q4f, bR*bL, sh[s].n*4+bR*rb+128+bR*bL*4); } } }
   { unsigned Rs[]={2,4,8,16}, Ls[]={8,16,24,32,48,64}, Gs[]={8,16,32,64}; struct {unsigned n,d; CUdeviceptr w,y,x; int q8;} sh[3]={{576,1536,dW[0][4],dHB,dXB,0},{1536,576,dW[0][6],dXB,dHB,0},{576,576,dW[0][0],dQ,dXB,0}};
     for(int s=0;s<3;s++){ double best=1e9; unsigned bR=0,bL=0,bG=0; unsigned rb=sh[s].n/32*18;
       for(int i=0;i<4;i++) for(int j=0;j<6;j++) for(int g=0;g<4;g++){ unsigned R=Rs[i],L=Ls[j]; if(R*L>512||R*L<32) continue; if(sh[s].n*4+R*rb+128+R*L*4>15000) continue;
