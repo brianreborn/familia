@@ -1,0 +1,68 @@
+// Hand-written PTX for GeForce 8600 GT (sm_11), JIT-compiled by driver 341.92 (no nvcc / host compiler needed).
+// y[row] = dot(W[row,:], x); one 128-thread block per output row.
+.version 4.1
+.target sm_11
+.address_size 64
+
+.visible .entry matvec(.param .u64 py, .param .u64 px, .param .u64 pw, .param .u32 pn, .param .u32 pd)
+{
+  .reg .u32 %r<12>;
+  .reg .u64 %rd<14>;
+  .reg .f32 %f<8>;
+  .reg .pred %p<5>;
+  .shared .align 4 .f32 sm[128];
+
+  ld.param.u64 %rd1, [py];
+  ld.param.u64 %rd2, [px];
+  ld.param.u64 %rd3, [pw];
+  ld.param.u32 %r1, [pn];
+  ld.param.u32 %r2, [pd];
+  mov.u32 %r3, %ctaid.x;
+  setp.ge.u32 %p1, %r3, %r2;
+  @%p1 bra DONE;
+  mov.u32 %r4, %tid.x;
+  mul.wide.u32 %rd4, %r3, %r1;
+  shl.b64 %rd4, %rd4, 2;
+  add.u64 %rd4, %rd3, %rd4;
+  mov.f32 %f1, 0f00000000;
+  mov.u32 %r5, %r4;
+LOOP:
+  setp.ge.u32 %p2, %r5, %r1;
+  @%p2 bra RED;
+  mul.wide.u32 %rd5, %r5, 4;
+  add.u64 %rd6, %rd4, %rd5;
+  add.u64 %rd7, %rd2, %rd5;
+  ld.global.f32 %f2, [%rd6];
+  ld.global.f32 %f3, [%rd7];
+  mad.f32 %f1, %f2, %f3, %f1;
+  add.u32 %r5, %r5, 128;
+  bra LOOP;
+RED:
+  mov.u64 %rd8, sm;
+  mul.wide.u32 %rd9, %r4, 4;
+  add.u64 %rd9, %rd8, %rd9;
+  st.shared.f32 [%rd9], %f1;
+  mov.u32 %r6, 64;
+RLOOP:
+  bar.sync 0;
+  setp.ge.u32 %p3, %r4, %r6;
+  @%p3 bra RSKIP;
+  mul.wide.u32 %rd10, %r6, 4;
+  add.u64 %rd10, %rd9, %rd10;
+  ld.shared.f32 %f4, [%rd9];
+  ld.shared.f32 %f5, [%rd10];
+  add.f32 %f4, %f4, %f5;
+  st.shared.f32 [%rd9], %f4;
+RSKIP:
+  shr.u32 %r6, %r6, 1;
+  setp.ne.u32 %p4, %r6, 0;
+  @%p4 bra RLOOP;
+  setp.ne.u32 %p3, %r4, 0;
+  @%p3 bra DONE;
+  ld.shared.f32 %f6, [%rd8];
+  mul.wide.u32 %rd11, %r3, 4;
+  add.u64 %rd11, %rd1, %rd11;
+  st.global.f32 [%rd11], %f6;
+DONE:
+  exit;
+}
