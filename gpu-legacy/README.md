@@ -18,3 +18,14 @@ Identical greedy text to CPU. All weights resident (57 MiB / ~113 MiB free VRAM)
 
 ## ggml-sm11/
 Scaffold for llama.cpp MUL_MAT offload. Next: build b11540 with WinLibs gcc and hook F32 mul_mat.
+
+## stories42M (fp32, n=32)
+| mode | tok/s | residency |
+|---|---|---|
+| CPU | 27.7 | — |
+| GPU full fwd + CPU cls | 6.1 | 79/159 MiB resident (streams rest) |
+
+GPU loses hard when weights don't fit — confirms always-active role must be << free VRAM (~100 MiB).
+
+## llama.cpp
+WinLibs gcc build of b11540 `llama-simple` works on Athlon II (no AVX). SM11 MUL_MAT hook patched into ggml-cpu; rebuild in progress.
