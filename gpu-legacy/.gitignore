@@ -1,0 +1,9 @@
+﻿out/
+*.exe
+*.bin
+*.gguf
+*.o
+__pycache__/
+bench-concurrency/*.txt
+bench-concurrency/*.err
+bench-concurrency/runlog*.txt
