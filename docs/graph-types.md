@@ -148,3 +148,9 @@ searched and not found in the user's RTs.
 
 Multi-member transports live in `meshes:` (`type: ssh` nexus hub or `type: bittorrent` private swarm, `members:` are host names). Point-to-point links stay in `transports:` (kind/from/to). Hosts that are mesh members must declare `addr`, `user` and `port`; passwords are never allowed. Detailed checks: `scripts/transport_graph.py`; see `docs/transport-poc.md`.
 
+## Legacy SM11 (qodesh)
+
+- GPU backend `cuda-sm11-ptx`: hand-written PTX + CUDA driver API on compute 1.1.
+- Runtime kind `sm11-legacy`; model role `decision` for always-active draft/decision paths.
+- Validator skips GGUF checks for `.bin` / `sm11-legacy` checkpoints.
+

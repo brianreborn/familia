@@ -45,26 +45,32 @@ hosts:
     notes: >-
       Windows 10 Home 10.0.19045 x64. Value is 16 GB RAM (bigger CPU models than
       miryam) but slow: ~3.0 tok/s CPU on 0.5B Q4 per green-roomz #4 (measured
-      there, not by familia). No nvidia-smi or llama-server on PATH yet.
+      there, not by familia). nvidia driver 341.92 present; sm11 PTX shim on E:\temp\gpu-legacy (not on PATH).
       Drives: C: 4.6 GiB free, E: 35.4 GiB free (models go on E:).
     gpus:
       - vendor: nvidia
         model: GeForce 8600 GT
         vram_mib: 256
-        backend: none            # unusable for llama.cpp inference
-        backend_status: unsupported
+        backend: cuda-sm11-ptx   # hand-written PTX + CUDA driver API (nvcuda.dll)
+        backend_status: verified
         compute_capability: "1.1"
         driver: 9.18.13.4192 (341.92, last Tesla-arch driver)
         measured: true
         notes: >-
-          No Vulkan driver (#4). Current llama.cpp CUDA needs far newer compute
-          capability; CUDA 6.5 / sm_1.1 only serves green-roomz sm11-monitor
-          kernels (Win32 build, #13/#16). #14 partial 0.5B offload stays an
-          optional experiment, not something the graph may place.
+          Verified 2026-10-10 PT via familia gpu-legacy (feat/qodesh-legacy-gpu).
+          Fast path (full residency 57/57 MiB, OMP=2, unpinned): stories15M FP32
+          full-forward 34.3 tok/s alone; concurrent with CPU SmolLM2-135M Q4_0
+          33.3 tok/s GPU + 11.5 tok/s CPU (~3% contention). Prior 17 t/s was
+          OMP=1+pinned + 4/57 MiB resident. Catalog (#24): K2-Horizon-0.9B Q4
+          ~605 MiB too large; SmolLM2-135M Q4_0 87.4 MiB fits ~100 MiB budget
+          GGUF via ggml-sm11 (2026-10-10): SmolLM2 Q4_0 4.5 tok/s GPU, 56 MiB
+          resident (Q8_0 output stays CPU under 16 MiB VRAM margin); concurrent
+          4.5 GPU + 10.6 CPU. Backend cuda-sm11-ptx only.
     windows:
       repo_path: TBD
       models_path: 'E:\temp\familia\models'   # start.bat default when E:\temp exists; else %USERPROFILE%\familia\models
       runtime_path: TBD                  # no llama-server installed yet; start.bat looks in <repo>\runtime
+      # sm11-legacy runtime (shim + kernels.ptx) lives in E:\temp\gpu-legacy; see runtimes.
       startup: start.bat         # manual run; scheduled-task once opted in (green-roomz uses scripts/serve-window.cmd, #18)
       start_script: 'scripts\windows\start.bat'
       task_name: familia-llama-server    # used only after install-task.ps1 -Install
@@ -191,7 +197,41 @@ runtimes:
     backends: [cpu, vulkan]
     spec_types: [draft-simple, ngram-simple, ngram-map-k, ngram-map-k4v, ngram-mod, ngram-cache]
 
+  sm11-legacy-qodesh:
+    kind: sm11-legacy
+    build: "gpu-legacy run_sm11 + kernels.ptx (CUDA driver API, sm_11)"
+    commit: 7dc2b734db35e6bbbe8da3dcef4fb12eb55f865a
+    hosts: [qodesh]
+    supported_archs: [llama2c]
+    backends: [cpu, cuda-sm11-ptx]
+    spec_types: []
+    bin: gpu-legacy/out/run_sm11.exe
+
+  llama-b11540-win-cpu:
+    kind: llama-server
+    build: b11540 win-cpu-x64
+    commit: 1e6f04a75
+    hosts: [qodesh]
+    supported_archs: [llama, qwen2, gemma2, gemma3]
+    backends: [cpu]
+    spec_types: []
+    bin: E:/temp/llama-cpu/llama-server.exe
+
 models:
+
+  stories15m-fp32:
+    gguf: 'E:/temp/gpu-legacy/stories15M.bin'   # llama2.c checkpoint (not GGUF)
+    sha256: cd590644d963867a2b6e5a1107f51fad663c41d79c149fbecbbb1f95fa81f49a
+    arch: llama2c
+    trained_ctx: 256
+    role: decision
+
+  smollm2-135m-q4:
+    gguf: 'E:/temp/models/SmolLM2-135M-Instruct.Q4_0.gguf'
+    sha256: unmeasured
+    arch: llama
+    trained_ctx: 8192
+    role: decision
   qwen35-2b-q4km:
     gguf: ~/.local/share/gguf/models/coder/Qwen3.5-2B-Q4_K_M.gguf
     sha256: unmeasured           # fill in from `sha256sum` on miryam
@@ -206,6 +246,34 @@ models:
     role: embed
 
 nodes:
+
+  qodesh-gpu-decision:
+    model: stories15m-fp32
+    host: qodesh
+    runtime: sm11-legacy-qodesh
+    ctx: 256
+    parallel: 1
+    kv_type: f32
+    flash_attn: false
+    offload: {backend: cuda-sm11-ptx, ngl: 99, split: none, main_gpu: 0}
+    bind: 127.0.0.1
+    port: 18100
+    cache_ram_mib: 64
+    status: active
+
+  qodesh-smol-cpu:
+    model: smollm2-135m-q4
+    host: qodesh
+    runtime: llama-b11540-win-cpu
+    ctx: 2048
+    parallel: 1
+    kv_type: q8_0
+    flash_attn: false
+    offload: {backend: cpu, ngl: 0, split: none, main_gpu: 0}
+    bind: 127.0.0.1
+    port: 18101
+    cache_ram_mib: 256
+    status: planned
   coder:
     status: active
     model: qwen35-2b-q4km

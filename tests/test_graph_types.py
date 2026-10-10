@@ -75,10 +75,10 @@ def test_offload_rules():
     x = g(); x["nodes"]["coder"]["offload"]["split"] = "diag"; has(x, "not one of")
 
 def test_qodesh_gpu_offload_rejected():
+    # plain cuda still mismatches the verified cuda-sm11-ptx GPU
     x = g(); x["runtimes"]["llama-b11374"]["hosts"].append("qodesh"); x["runtimes"]["llama-b11374"]["backends"].append("cuda")
     n = x["nodes"]["qodesh-resident"]; n["status"] = "active"; n["offload"].update(backend="cuda", ngl=4)
-    has(x, "backend 'cuda' but GPU 0 backend is 'none'")
-    has(x, "unmeasured/unverified GPU 0")
+    has(x, "backend 'cuda' but GPU 0 backend is 'cuda-sm11-ptx'")
 
 def test_gpu_fields():
     x = g(); x["hosts"]["note9"]["gpus"][0]["vram_mib"] = 4096; has(x, "measured is false; leave null")
@@ -302,3 +302,36 @@ def test_ram_safety_reserve_and_small_host_floor():
     errs, _ = validate_graph.validate(x, check_files=True)
     assert any("2048 MiB floor" in e for e in errs), errs
 
+
+
+def test_decision_role_enum():
+    x = g(); x["models"]["stories15m-fp32"]["role"] = "magic"; has(x, "not one of")
+    x = g(); x["models"]["stories15m-fp32"]["role"] = "decision"; assert errs(x) == []
+
+def test_cuda_sm11_ptx_backend_allowed():
+    x = g(); x["hosts"]["miryam"]["gpus"][0]["backend"] = "cuda-sm11-ptx"; assert errs(x) == []
+
+def test_qodesh_sm11_decision_accepted():
+    x = g()
+    assert x["hosts"]["qodesh"]["gpus"][0]["backend"] == "cuda-sm11-ptx"
+    assert x["hosts"]["qodesh"]["gpus"][0]["backend_status"] == "verified"
+    assert x["nodes"]["qodesh-gpu-decision"]["offload"]["backend"] == "cuda-sm11-ptx"
+    assert x["models"]["stories15m-fp32"]["role"] == "decision"
+    assert x["runtimes"]["sm11-legacy-qodesh"]["kind"] == "sm11-legacy"
+    assert errs(x) == []
+
+def test_qodesh_plain_cuda_still_rejected():
+    x = g()
+    x["nodes"]["qodesh-gpu-decision"]["offload"]["backend"] = "cuda"
+    x["runtimes"]["sm11-legacy-qodesh"]["backends"] = ["cpu", "cuda", "cuda-sm11-ptx"]
+    has(x, "backend 'cuda' but GPU 0 backend is 'cuda-sm11-ptx'")
+
+
+def test_smollm2_catalog_and_measured_notes():
+    x = g()
+    assert "smollm2-135m-q4" in x["models"]
+    assert x["models"]["smollm2-135m-q4"]["role"] == "decision"
+    assert x["nodes"]["qodesh-smol-cpu"]["status"] == "planned"
+    notes = x["hosts"]["qodesh"]["gpus"][0]["notes"]
+    assert "34.3" in notes and "SmolLM2" in notes
+    assert errs(x) == []

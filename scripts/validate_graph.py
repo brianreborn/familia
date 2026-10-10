@@ -97,6 +97,13 @@ def validate(graph, check_files=True):
     for name, n in graph["nodes"].items():
         if n["status"] == "planned": continue
         m = models[n["model"]]
+        rt = graph["runtimes"].get(n["runtime"]) or {}
+        # sm11-legacy / llama2.c .bin checkpoints are not GGUF
+        if rt.get("kind") == "sm11-legacy" or str(m.get("gguf", "")).endswith(".bin"):
+            path = os.path.expanduser(m["gguf"])
+            if os.path.isfile(path):
+                totals[n["host"]] = totals.get(n["host"], 0.0) + os.path.getsize(path) / 2**20 + n.get("cache_ram_mib", 0)
+            continue
         path = os.path.expanduser(m["gguf"])
         if not os.path.isfile(path):
             errs.append(f"nodes.{name}: model file not found: {path}"); continue
