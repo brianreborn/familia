@@ -87,7 +87,7 @@ hosts:
     measured: false
     os: android
     cpu: Snapdragon 845 (SDM845)
-    notes: Samsung Galaxy Note 9. Which of 192.168.1.7 (u0_a439) / .8 (u0_a414) is which is unconfirmed; key not installed yet.
+    notes: Samsung Galaxy Note 9. Not at 192.168.1.7 or .8 (both measured as Galaxy A57s, phone7 and phone8); address unknown.
     gpus:
       - vendor: qualcomm
         model: Adreno 630
@@ -97,15 +97,48 @@ hosts:
         compute_capability: null
         driver: null
         measured: false
-  a57:
+  phone7:
     kind: phone
-    measured: false
-    os: android
-    cpu: Samsung Galaxy A57 SM-A576U (SoC unconfirmed)
-    reported:
-      source: familia docs
-      ram_mib: 7430
-    gpus: []                     # GPU not recorded yet
+    measured: true               # measured 2026-10-09 ~22:50 PT over key-only SSH from qodesh
+    os: android-16
+    cpu: 8 cores, ARMv8 (3x part 0xd80 Cortex-A520, 5x part 0xd81 Cortex-A720)
+    threads: 3                   # nproc inside Termux = 3 (8 cores in /proc/cpuinfo; cpuset-limited)
+    ram_mib: 7430                # MemTotal 7608348 kB
+    reserve_ram_mib: 5120        # policy, not measured: Android + apps; MemAvailable was 2598 MiB at measurement. See docs/ram-safety.md
+    notes: >-
+      Samsung Galaxy A57 (SM-A576U, a57xsq); SoC Samsung Exynos s5e8865 (ro.board.platform erd8865). SSH key-only u0_a439@192.168.1.7:8022.
+      Termux, aarch64. $HOME: 224G, 86G used, 138G free. Termux pkgs: git, python, llama-cpp 0.5.0 (+opencl, vulkan backends), ollama 0.31.1 (+vulkan), rsync, python-torch/numpy/scipy, mesa-vulkan-icd-swrast.
+      Two physical A57s on the LAN (distinct boot_id, same build fingerprint).
+    gpus:
+      - vendor: samsung
+        model: Xclipse (Exynos s5e8865; ro.hardware.egl=samsung, exact model unconfirmed)
+        vram_mib: null           # shared memory
+        backend: vulkan          # vendor libvulkan.so + vulkan.samsung.so and libOpenCL.so present; none run
+        backend_status: tbd
+        compute_capability: null
+        driver: null
+        measured: false          # no clinfo/vulkaninfo run
+  phone8:
+    kind: phone
+    measured: true               # measured 2026-10-09 ~22:50 PT over key-only SSH from qodesh
+    os: android-16
+    cpu: 8 cores, ARMv8 (3x part 0xd80 Cortex-A520, 5x part 0xd81 Cortex-A720)
+    threads: 3                   # nproc inside Termux = 3 (8 cores in /proc/cpuinfo; cpuset-limited)
+    ram_mib: 7430                # MemTotal 7608348 kB
+    reserve_ram_mib: 5120        # policy, not measured: Android + apps; MemAvailable was 2127 MiB at measurement. See docs/ram-safety.md
+    notes: >-
+      Samsung Galaxy A57 (SM-A576U, a57xsq); SoC Samsung Exynos s5e8865 (ro.board.platform erd8865). SSH key-only u0_a414@192.168.1.8:8022.
+      Termux, aarch64. $HOME: 224G, 50G used, 173G free. Termux pkgs: git, python only (no llama-cpp, no rsync).
+      Two physical A57s on the LAN (distinct boot_id, same build fingerprint).
+    gpus:
+      - vendor: samsung
+        model: Xclipse (Exynos s5e8865; ro.hardware.egl=samsung, exact model unconfirmed)
+        vram_mib: null           # shared memory
+        backend: vulkan          # vendor libvulkan.so + vulkan.samsung.so and libOpenCL.so present; none run
+        backend_status: tbd
+        compute_capability: null
+        driver: null
+        measured: false          # no clinfo/vulkaninfo run
   pixel8:
     kind: phone
     measured: false

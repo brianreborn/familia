@@ -127,7 +127,8 @@ promote an experimental type, set `experimental=False`, drop its
 | shalom | ? | unknown (`gpus: []`) | | | no |
 | godslove | freebsd-15 | Ironlake / NVS | none | unsupported (green-roomz #5) | no |
 | note9 | android | Adreno 630 | opencl or vulkan | tbd | no |
-| a57 | android | not recorded | | | no |
+| phone7 | android 16 (Galaxy A57, 192.168.1.7) | Samsung Xclipse (Exynos s5e8865) | vulkan or opencl | tbd | no (the host is measured) |
+| phone8 | android 16 (Galaxy A57, 192.168.1.8) | Samsung Xclipse (Exynos s5e8865) | vulkan or opencl | tbd | no (the host is measured) |
 | pixel8 | android | Mali (Tensor G3) | vulkan or opencl | tbd | no |
 
 qodesh is worth having for its 16 GB of RAM: it can hold bigger CPU-only models than miryam, at about 3 tok/s (green-roomz #4). `nodes.qodesh-resident` is pencilled in with `status: planned` until a Windows llama.cpp build is declared in `runtimes` and its `windows.startup` method is picked.
