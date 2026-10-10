@@ -118,6 +118,9 @@ def main(argv):
     if "--graph" in argv: path = argv[argv.index("--graph") + 1]
     graph = yaml.safe_load(open(path))
     errs, total = validate(graph)
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from transport_graph import validate_transports
+    errs += validate_transports(graph)
     for e in errs: print(f"graph: ERROR: {e}", file=sys.stderr)
     if errs: return 1
     if "--args" in argv:

@@ -25,3 +25,24 @@ agents:
     context_length: 65536         # hermes model.context_length; must equal node per-slot ctx
     edges:
       model: coder                # model.default / base_url
+hosts:
+  # Transport endpoints (familia #5, #22). Phones: Termux sshd on :8022, key-only.
+  miryam: {addr: 192.168.1.5, user: rcs, port: 22, kind: desktop}   # addr: confirm on miryam
+  phone7: {addr: 192.168.1.7, user: u0_a439, port: 8022, kind: phone}
+  phone8: {addr: 192.168.1.8, user: u0_a414, port: 8022, kind: phone}
+transports:
+  lan-nexus:
+    type: ssh                     # scripts/nexus/nexus.py
+    hub: miryam
+    root: ~/.familia/nexus        # peers/ + artifacts/<sha256>/ on the hub
+    identity: ~/.ssh/id_ed25519
+    host_key_policy: accept-new
+    members: [miryam, phone7, phone8]
+  lan-bt:
+    type: bittorrent              # scripts/bt/; keys are magnet:<xt>:<path> (REQ-REPO-02)
+    tracker: miryam
+    bind: 192.168.1.5             # LAN only; must match hosts.miryam.addr
+    port: 6969
+    private: true
+    client: aria2c
+    members: [miryam, phone7, phone8]
