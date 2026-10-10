@@ -1,21 +1,27 @@
 #!/usr/bin/env bash
 # Script to start the Android node for the swarm.
-# Requires sshpass installed and the SSH password for the Android device.
+# Env: ANDROID_HOST, ANDROID_USER, optional ANDROID_PORT (8022), ANDROID_SSH_PASSWORD.
 
-# Ensure sshpass is available
-if ! command -v sshpass >/dev/null 2>&1; then
-  echo "sshpass not found, installing..."
-  sudo apt-get update && sudo apt-get install -y sshpass
-fi
+# Device settings come from the environment; nothing is hardcoded.
+: "${ANDROID_HOST:?set ANDROID_HOST to the Android device address}"
+: "${ANDROID_USER:?set ANDROID_USER to the Termux user (e.g. u0_a123)}"
+ANDROID_PORT=${ANDROID_PORT:-8022}
+SSH_OPTS=(-o StrictHostKeyChecking=accept-new -p "$ANDROID_PORT")
+SSH=(ssh)
 
-# Retrieve password from environment variable or prompt
-if [ -z "$ANDROID_SSH_PASSWORD" ]; then
-  read -s -p "Enter SSH password for Android (u0_a439@192.168.1.6): " ANDROID_SSH_PASSWORD
-  echo
+# Prefer key-based auth. Password auth only when ANDROID_SSH_PASSWORD is set,
+# passed via SSHPASS (sshpass -e) so it never appears in the process list.
+if [ -n "${ANDROID_SSH_PASSWORD:-}" ]; then
+  if ! command -v sshpass >/dev/null 2>&1; then
+    echo "android_start.sh: ANDROID_SSH_PASSWORD is set but sshpass is not installed; install it or use an SSH key" >&2
+    exit 1
+  fi
+  export SSHPASS="$ANDROID_SSH_PASSWORD"
+  SSH=(sshpass -e ssh)
 fi
 
 # Launch the remote start script on the Android device
-sshpass -p "$ANDROID_SSH_PASSWORD" ssh -o StrictHostKeyChecking=no -p 8022 u0_a439@192.168.1.6 "\
+"${SSH[@]}" "${SSH_OPTS[@]}" "$ANDROID_USER@$ANDROID_HOST" "\
   cd /data/local/tmp && \
   if [ ! -x ./start-green-roomz.sh ]; then echo 'start-green-roomz.sh not deployed to /data/local/tmp' >&2; exit 1; fi && \
   ./start-green-roomz.sh && \
