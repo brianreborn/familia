@@ -27,8 +27,14 @@ if not defined FAMILIA_MODEL (
   echo familia: set FAMILIA_MODEL to a GGUF in "%FAMILIA_MODELS%" 1>&2
   exit /b 2
 )
+rem An absolute FAMILIA_MODEL (C:\..., \\server\..., \...) is used as-is; a bare name is
+rem resolved inside FAMILIA_MODELS. Never prefix the models dir onto a full path (#17).
 set "MODEL=%FAMILIA_MODEL%"
-if not exist "%MODEL%" set "MODEL=%FAMILIA_MODELS%\%FAMILIA_MODEL%"
+set "M_ABS="
+if "%FAMILIA_MODEL:~1,1%"==":" set "M_ABS=1"
+if "%FAMILIA_MODEL:~0,1%"=="\" set "M_ABS=1"
+if "%FAMILIA_MODEL:~0,1%"=="/" set "M_ABS=1"
+if not defined M_ABS set "MODEL=%FAMILIA_MODELS%\%FAMILIA_MODEL%"
 if not exist "%MODEL%" (
   echo familia: model not found: %MODEL% 1>&2
   exit /b 2
