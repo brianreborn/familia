@@ -48,8 +48,15 @@ def kv_mib(meta, arch, ctx, kv_type):
     if not all(isinstance(x, int) and x for x in (layers, heads_kv, emb, heads)):
         return None
     head_dim = g("attention.key_length") or emb // heads
-    # Upper bound: assumes every layer has full attention (hybrid models use less).
-    return 2 * layers * heads_kv * head_dim * ctx * KV_BYTES[kv_type] / 2**20
+    # Hybrid models (e.g. qwen35) keep KV only on every Nth full-attention
+    # layer; the rest carry a small fixed recurrent state.
+    interval = g("full_attention_interval")
+    attn_layers = -(-layers // interval) if isinstance(interval, int) and interval > 1 else layers
+    kv = 2 * attn_layers * heads_kv * head_dim * ctx * KV_BYTES[kv_type]
+    ssm_inner, ssm_state = g("ssm.inner_size"), g("ssm.state_size")
+    if isinstance(ssm_inner, int) and isinstance(ssm_state, int):
+        kv += (layers - attn_layers) * ssm_inner * ssm_state * 4  # f32 recurrent state
+    return kv / 2**20
 
 def validate(graph):
     errs, host = [], graph.get("host", {})
@@ -57,7 +64,7 @@ def validate(graph):
     if not nodes: errs.append("graph has no nodes")
     ports = {}
     for name, n in nodes.items():
-        for key in ("model", "arch", "ctx", "parallel", "kv_type", "port", "aliases"):
+        for key in ("model", "arch", "ctx", "parallel", "kv_type", "port", "aliases", "cache_ram_mib"):
             if key not in n: errs.append(f"node {name}: missing required '{key}' (no defaults)")
         if any(k not in n for k in ("model", "arch", "ctx", "parallel", "kv_type", "port")): continue
         path = os.path.expanduser(n["model"])
@@ -74,7 +81,13 @@ def validate(graph):
         if isinstance(train, int) and n["ctx"] // n["parallel"] > train:
             errs.append(f"node {name}: per-slot ctx {n['ctx'] // n['parallel']} exceeds model's trained context {train}")
         kv = kv_mib(meta, arch, n["ctx"], n["kv_type"]) if n["kv_type"] in KV_BYTES else None
-        total += os.path.getsize(path) / 2**20 + (kv or 0) + 256  # + compute buffers
+        # Prompt-cache state for one full slot is roughly that slot's KV; if
+        # --cache-ram is smaller, llama.cpp skips caching on every request.
+        state = kv_mib(meta, arch, n["ctx"] // n["parallel"], n["kv_type"]) if n["kv_type"] in KV_BYTES else None
+        cache = n.get("cache_ram_mib")
+        if state is not None and isinstance(cache, int) and cache < state:
+            errs.append(f"node {name}: cache_ram_mib {cache} < estimated per-slot prompt state {state:.0f} MiB (prompt cache would always be skipped)")
+        total += os.path.getsize(path) / 2**20 + (kv or 0) + 256 + (cache if isinstance(cache, int) else 0)
         n["_slot_ctx"] = n["ctx"] // n["parallel"]
     budget = mem_total_mib() - int(host.get("reserve_ram_mib", 2048))
     if total > budget: errs.append(f"estimated RAM {total:.0f} MiB exceeds budget {budget} MiB (MemTotal - reserve)")
@@ -83,6 +96,10 @@ def validate(graph):
         for role, target in (a.get("edges") or {}).items():
             node = nodes.get(aliases.get(target, target))
             if node is None: errs.append(f"agent {an}: edge {role} -> {target}: no such node/alias"); continue
+            if "context_length" not in a:
+                errs.append(f"agent {an}: missing required 'context_length' (must equal node per-slot ctx)")
+            elif "_slot_ctx" in node and a["context_length"] != node["_slot_ctx"]:
+                errs.append(f"agent {an}: context_length {a['context_length']} != node {target} per-slot ctx {node['_slot_ctx']} (larger makes llama.cpp silently truncate; smaller wastes the window)")
             if "_slot_ctx" in node and node["_slot_ctx"] < a.get("min_ctx", 0):
                 errs.append(f"agent {an}: edge {role} -> {target}: per-slot ctx {node['_slot_ctx']} < agent min_ctx {a['min_ctx']}")
     return errs, total
@@ -93,6 +110,7 @@ def server_args(n):
          "-ngl", str(n.get("gpu_layers", 0)), "--jinja"]
     if n.get("flash_attn"): a += ["-fa", "on"]
     for al in n.get("aliases", [])[:1]: a += ["--alias", al]
+    a += ["--cache-ram", str(n["cache_ram_mib"])]
     return a
 
 def main(argv):

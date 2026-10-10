@@ -18,8 +18,10 @@ nodes:
     host: 127.0.0.1
     port: 9941
     aliases: [coder]
+    cache_ram_mib: 1024           # >= per-slot prompt state (validator checks)
 agents:
   hermes:
     min_ctx: 64000                # hermes-agent MINIMUM_CONTEXT_LENGTH
+    context_length: 65536         # hermes model.context_length; must equal node per-slot ctx
     edges:
       model: coder                # model.default / base_url
