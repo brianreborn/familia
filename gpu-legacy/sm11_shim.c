@@ -1,4 +1,4 @@
-/* Full forward pass on GeForce 8600 GT (sm_11) via CUDA driver API + hand-written PTX.
+﻿/* Full forward pass on GeForce 8600 GT (sm_11) via CUDA driver API + hand-written PTX.
  * Activations + KV stay on device; host copies only logits. Designed as the sm11
  * implementation of legacy_gpu.h for always-active decision/draft models and partial offload. */
 #include <windows.h>
@@ -271,7 +271,7 @@ int sm11_forward(int token, int pos, float* logits_out) {
     }
     if (rmsnorm_d(d_x, d_x, h_rms_f, dim)) return -1;
     CK(p_cuCtxSynchronize());
-    /* Vocab projection is 32k rows — WDDM launch overhead dominates on sm_11. Default: CPU cls. */
+    /* Vocab projection is 32k rows â€” WDDM launch overhead dominates on sm_11. Default: CPU cls. */
     if (!getenv("SM11_GPU_CLS") || !atoi(getenv("SM11_GPU_CLS"))) {
         float* xh = (float*)malloc((size_t)dim * 4);
         CK(p_cuMemcpyDtoH(xh, d_x, (size_t)dim * 4));
@@ -356,5 +356,52 @@ int sm11_matvec_batch(const Sm11Job* jobs, int njobs) {
     for (int i = 0; i < njobs; i++) {
         CK(p_cuMemcpyDtoH(jobs[i].y, g_pool_y[i], (size_t)jobs[i].d * 4));
     }
+    return 0;
+}
+
+
+/* ---- ggml weight cache: host ptr -> resident device copy, under a VRAM safety margin ---- */
+#define SM11_WC_MAX 512
+static struct { const void* h; CUdeviceptr d; size_t n; } g_wc[SM11_WC_MAX];
+static int g_wc_n = 0; static size_t g_wc_bytes = 0; static int g_wc_full = 0;
+static size_t wc_margin(void) {
+    const char* m = getenv("SM11_VRAM_MARGIN_MIB");
+    return (size_t)(m ? atoi(m) : 16) << 20;
+}
+static CUdeviceptr wc_get(const void* h, size_t n) {
+    for (int i = 0; i < g_wc_n; i++) if (g_wc[i].h == h && g_wc[i].n == n) return g_wc[i].d;
+    if (g_wc_full || g_wc_n >= SM11_WC_MAX) return 0;
+    size_t fr = 0, tot = 0;
+    if (p_cuMemGetInfo(&fr, &tot) || fr < n + wc_margin()) { g_wc_full = 1;
+        fprintf(stderr, "sm11: weight cache full at %u MiB (free %u MiB, margin %u MiB); rest stays on CPU\n",
+                (unsigned)(g_wc_bytes>>20), (unsigned)(fr>>20), (unsigned)(wc_margin()>>20));
+        return 0; }
+    CUdeviceptr d;
+    if (p_cuMemAlloc(&d, n)) { g_wc_full = 1; return 0; }
+    if (p_cuMemcpyHtoD(d, h, n)) { p_cuMemFree(d); return 0; }
+    g_wc[g_wc_n].h = h; g_wc[g_wc_n].d = d; g_wc[g_wc_n].n = n; g_wc_n++; g_wc_bytes += n;
+    return d;
+}
+size_t sm11_wcache_bytes(void) { return g_wc_bytes; }
+/* kind: 0=F32, 4=Q4_0, 8=Q8_0. Returns 0 on GPU success, -1 => caller does CPU. */
+int sm11_wmatvec(int kind, float* y, const float* x, const void* w, int n, int d) {
+    if (!g_ready) return -1;
+    CUfunction f; size_t wb;
+    if (kind == 0) { f = f_matvec; wb = (size_t)n * d * 4; }
+    else if (kind == 4) { if (!f_q4 || (n & 31)) return -1; f = f_q4; wb = (size_t)(n/32)*18*d; }
+    else if (kind == 8) { if (!f_q8 || (n & 31)) return -1; f = f_q8; wb = (size_t)(n/32)*34*d; }
+    else return -1;
+    if (kind != 0 && n > 1536) return -1;          /* smem x cache holds 1536 floats */
+    CUdeviceptr dw = wc_get(w, wb); if (!dw) return -1;
+    size_t xs = (size_t)n*4, ys = (size_t)d*4;
+    if (xs > g_mv_dxsz) { if (g_mv_dx) p_cuMemFree(g_mv_dx); CK(p_cuMemAlloc(&g_mv_dx, xs)); g_mv_dxsz = xs; }
+    if (ys > g_mv_dysz) { if (g_mv_dy) p_cuMemFree(g_mv_dy); CK(p_cuMemAlloc(&g_mv_dy, ys)); g_mv_dysz = ys; }
+    CK(p_cuMemcpyHtoD(g_mv_dx, x, xs));
+    unsigned un = (unsigned)n, ud = (unsigned)d;
+    void* args[] = {&g_mv_dy, &g_mv_dx, &dw, &un, &ud};
+    unsigned grid = ud;
+    if (kind) { const char* g = getenv("SM11_QGRID"); unsigned gq = g ? (unsigned)atoi(g) : 32; if (gq && gq < grid) grid = gq; }
+    CK(launch(f, grid, kind ? 64 : 128, args));
+    CK(p_cuMemcpyDtoH(y, g_mv_dy, ys));   /* synchronous copy implies kernel completion */
     return 0;
 }

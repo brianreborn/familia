@@ -803,77 +803,68 @@ DONE: exit;
   .reg .u64 %rd<28>;
   .reg .f32 %f<24>;
   .reg .pred %p<12>;
-  .shared .align 4 .f32 sx[512];
+  .shared .align 4 .f32 sx[1536];
   .shared .align 4 .f32 sm[64];
-
-  ld.param.u64 %rd1, [py];
-  ld.param.u64 %rd2, [px];
-  ld.param.u64 %rd3, [pw];
-  ld.param.u32 %r1, [pn];
-  ld.param.u32 %r2, [pd];
-  mov.u32 %r4, %tid.x;            // 0..63
-  mov.u32 %r3, %ctaid.x;          // row
-  setp.ge.u32 %p1, %r3, %r2;
-  @%p1 bra DONE;
-
-  // Cooperatively load x[0..n) into shared (n<=512)
+  ld.param.u64 %rd1, [py]; ld.param.u64 %rd2, [px]; ld.param.u64 %rd3, [pw];
+  ld.param.u32 %r1, [pn]; ld.param.u32 %r2, [pd];
+  mov.u32 %r4, %tid.x;
   mov.u32 %r7, %r4;
-XLOAD:
-  setp.ge.u32 %p2, %r7, %r1; @%p2 bra XDONE;
-  mul.wide.u32 %rd6, %r7, 4; add.u64 %rd7, %rd2, %rd6;
-  ld.global.f32 %f0, [%rd7];
+XLOAD: setp.ge.u32 %p2, %r7, %r1; @%p2 bra XDONE;
+  mul.wide.u32 %rd6, %r7, 4; add.u64 %rd7, %rd2, %rd6; ld.global.f32 %f0, [%rd7];
   mov.u64 %rd8, sx; add.u64 %rd8, %rd8, %rd6; st.shared.f32 [%rd8], %f0;
   add.u32 %r7, %r7, 64; bra XLOAD;
 XDONE:
+  shr.u32 %r5, %r1, 5;
+  and.b32 %r31, %r4, 3;            // sub quarter
+  shr.u32 %r32, %r4, 2;            // block lane 0..15
+  mov.u32 %r3, %ctaid.x;
+  mov.u32 %r30, %nctaid.x;
+ROW:
   bar.sync 0;
-
-  shr.u32 %r5, %r1, 5;            // nblocks = n/32
-  mul.lo.u32 %r6, %r3, %r5;
-  mul.lo.u32 %r6, %r6, 18;        // row byte offset in W
+  setp.ge.u32 %p1, %r3, %r2; @%p1 bra DONE;
+  mul.lo.u32 %r6, %r3, %r5; mul.lo.u32 %r6, %r6, 18;
   mul.wide.u32 %rd4, %r6, 1; add.u64 %rd4, %rd3, %rd4;
-
   mov.f32 %f1, 0f00000000;
-  mov.u32 %r7, %r4;               // block index stride 64
+  mov.u32 %r7, %r32;
 BLOOP:
   setp.ge.u32 %p2, %r7, %r5; @%p2 bra RED;
-  mul.lo.u32 %r8, %r7, 18;
-  mul.wide.u32 %rd5, %r8, 1; add.u64 %rd5, %rd4, %rd5;
+  mul.lo.u32 %r8, %r7, 18; mul.wide.u32 %rd5, %r8, 1; add.u64 %rd5, %rd4, %rd5;
   ld.global.u16 %r9, [%rd5];
-  // f16->f32 scale
   and.b32 %r20, %r9, 0x8000; shr.u32 %r21, %r9, 10; and.b32 %r21, %r21, 0x1f; and.b32 %r22, %r9, 0x3ff;
   setp.eq.u32 %p7, %r21, 0; @%p7 bra DENORM;
   add.u32 %r21, %r21, 112; shl.b32 %r21, %r21, 23; shl.b32 %r22, %r22, 13;
   or.b32 %r23, %r21, %r22; shl.b32 %r20, %r20, 16; or.b32 %r23, %r23, %r20; mov.b32 %f2, %r23; bra HAVED;
 DENORM: mov.f32 %f2, 0f00000000;
 HAVED:
-  add.u64 %rd6, %rd5, 2;
-  shl.b32 %r10, %r7, 5;           // base index = block*32
-  mov.u32 %r11, 0;
-QLOOP:
-  setp.ge.u32 %p3, %r11, 16; @%p3 bra QDONE;
-  mul.wide.u32 %rd9, %r11, 1; add.u64 %rd8, %rd6, %rd9;
-  ld.global.u8 %r12, [%rd8];
-  and.b32 %r13, %r12, 15; sub.s32 %r13, %r13, 8; cvt.rn.f32.s32 %f3, %r13; mul.f32 %f3, %f3, %f2;
-  add.u32 %r14, %r10, %r11;
-  mul.wide.u32 %rd11, %r14, 4; mov.u64 %rd12, sx; add.u64 %rd12, %rd12, %rd11;
-  ld.shared.f32 %f4, [%rd12]; mad.f32 %f1, %f3, %f4, %f1;
-  shr.u32 %r13, %r12, 4; and.b32 %r13, %r13, 15; sub.s32 %r13, %r13, 8; cvt.rn.f32.s32 %f3, %r13; mul.f32 %f3, %f3, %f2;
-  add.u32 %r14, %r10, %r11; add.u32 %r14, %r14, 16;
-  mul.wide.u32 %rd11, %r14, 4; mov.u64 %rd12, sx; add.u64 %rd12, %rd12, %rd11;
-  ld.shared.f32 %f4, [%rd12]; mad.f32 %f1, %f3, %f4, %f1;
-  add.u32 %r11, %r11, 1; bra QLOOP;
-QDONE:
-  add.u32 %r7, %r7, 64; bra BLOOP;
-
+  shl.b32 %r24, %r31, 2;            // byte offset sub*4
+  add.u32 %r25, %r24, 2;
+  cvt.u64.u32 %rd9, %r25; add.u64 %rd8, %rd5, %rd9;
+  shl.b32 %r10, %r7, 5; add.u32 %r10, %r10, %r24;   // x index = blk*32 + sub*4
+  mul.wide.u32 %rd11, %r10, 4; mov.u64 %rd12, sx; add.u64 %rd14, %rd12, %rd11;
+  mov.f32 %f8, 0f00000000;
+  ld.global.u16 %r12, [%rd8+0];
+  and.b32 %r13, %r12, 15; sub.s32 %r13, %r13, 8; cvt.rn.f32.s32 %f3, %r13; ld.shared.f32 %f4, [%rd14+0]; mad.f32 %f8, %f3, %f4, %f8;
+  shr.u32 %r13, %r12, 4; and.b32 %r13, %r13, 15; sub.s32 %r13, %r13, 8; cvt.rn.f32.s32 %f3, %r13; ld.shared.f32 %f4, [%rd14+64]; mad.f32 %f8, %f3, %f4, %f8;
+  shr.u32 %r13, %r12, 8; and.b32 %r13, %r13, 15; sub.s32 %r13, %r13, 8; cvt.rn.f32.s32 %f3, %r13; ld.shared.f32 %f4, [%rd14+4]; mad.f32 %f8, %f3, %f4, %f8;
+  shr.u32 %r13, %r12, 12; sub.s32 %r13, %r13, 8; cvt.rn.f32.s32 %f3, %r13; ld.shared.f32 %f4, [%rd14+68]; mad.f32 %f8, %f3, %f4, %f8;
+  ld.global.u16 %r12, [%rd8+2];
+  and.b32 %r13, %r12, 15; sub.s32 %r13, %r13, 8; cvt.rn.f32.s32 %f3, %r13; ld.shared.f32 %f4, [%rd14+8]; mad.f32 %f8, %f3, %f4, %f8;
+  shr.u32 %r13, %r12, 4; and.b32 %r13, %r13, 15; sub.s32 %r13, %r13, 8; cvt.rn.f32.s32 %f3, %r13; ld.shared.f32 %f4, [%rd14+72]; mad.f32 %f8, %f3, %f4, %f8;
+  shr.u32 %r13, %r12, 8; and.b32 %r13, %r13, 15; sub.s32 %r13, %r13, 8; cvt.rn.f32.s32 %f3, %r13; ld.shared.f32 %f4, [%rd14+12]; mad.f32 %f8, %f3, %f4, %f8;
+  shr.u32 %r13, %r12, 12; sub.s32 %r13, %r13, 8; cvt.rn.f32.s32 %f3, %r13; ld.shared.f32 %f4, [%rd14+76]; mad.f32 %f8, %f3, %f4, %f8;
+  mad.f32 %f1, %f8, %f2, %f1;
+  add.u32 %r7, %r7, 16; bra BLOOP;
 RED:
-  mov.u64 %rd12, sm; mul.wide.u32 %rd13, %r4, 4; add.u64 %rd13, %rd12, %rd13; st.shared.f32 [%rd13], %f1;
+  mov.u64 %rd15, sm; mul.wide.u32 %rd16, %r4, 4; add.u64 %rd16, %rd15, %rd16; st.shared.f32 [%rd16], %f1;
   mov.u32 %r15, 32;
 RLOOP: bar.sync 0; setp.ge.u32 %p4, %r4, %r15; @%p4 bra RSKIP;
-  mul.wide.u32 %rd14, %r15, 4; add.u64 %rd14, %rd13, %rd14;
-  ld.shared.f32 %f5, [%rd13]; ld.shared.f32 %f6, [%rd14]; add.f32 %f5, %f5, %f6; st.shared.f32 [%rd13], %f5;
+  mul.wide.u32 %rd17, %r15, 4; add.u64 %rd17, %rd16, %rd17;
+  ld.shared.f32 %f5, [%rd16]; ld.shared.f32 %f6, [%rd17]; add.f32 %f5, %f5, %f6; st.shared.f32 [%rd16], %f5;
 RSKIP: shr.u32 %r15, %r15, 1; setp.ne.u32 %p5, %r15, 0; @%p5 bra RLOOP;
-  setp.ne.u32 %p6, %r4, 0; @%p6 bra DONE;
-  ld.shared.f32 %f7, [%rd12]; mul.wide.u32 %rd15, %r3, 4; add.u64 %rd15, %rd1, %rd15; st.global.f32 [%rd15], %f7;
+  setp.ne.u32 %p6, %r4, 0; @%p6 bra NEXT;
+  ld.shared.f32 %f7, [%rd15]; mul.wide.u32 %rd18, %r3, 4; add.u64 %rd18, %rd1, %rd18; st.global.f32 [%rd18], %f7;
+NEXT:
+  add.u32 %r3, %r3, %r30; bra ROW;
 DONE: exit;
 }
 
@@ -884,19 +875,19 @@ DONE: exit;
   .reg .u64 %rd<24>;
   .reg .f32 %f<16>;
   .reg .pred %p<10>;
-  .shared .align 4 .f32 sx[512];
+  .shared .align 4 .f32 sx[1536];
   .shared .align 4 .f32 sm[64];
   ld.param.u64 %rd1, [py]; ld.param.u64 %rd2, [px]; ld.param.u64 %rd3, [pw];
   ld.param.u32 %r1, [pn]; ld.param.u32 %r2, [pd];
-  mov.u32 %r4, %tid.x; mov.u32 %r3, %ctaid.x;
-  setp.ge.u32 %p1, %r3, %r2; @%p1 bra DONE;
-  mov.u32 %r7, %r4;
+  mov.u32 %r4, %tid.x; mov.u32 %r7, %r4;
 XLOAD: setp.ge.u32 %p2, %r7, %r1; @%p2 bra XDONE;
   mul.wide.u32 %rd6, %r7, 4; add.u64 %rd7, %rd2, %rd6; ld.global.f32 %f0, [%rd7];
   mov.u64 %rd8, sx; add.u64 %rd8, %rd8, %rd6; st.shared.f32 [%rd8], %f0;
   add.u32 %r7, %r7, 64; bra XLOAD;
-XDONE: bar.sync 0;
-  shr.u32 %r5, %r1, 5; mul.lo.u32 %r6, %r3, %r5; mul.lo.u32 %r6, %r6, 34;
+XDONE:
+  shr.u32 %r5, %r1, 5; mov.u32 %r3, %ctaid.x; mov.u32 %r30, %nctaid.x;
+ROW: bar.sync 0; setp.ge.u32 %p1, %r3, %r2; @%p1 bra DONE;
+  mul.lo.u32 %r6, %r3, %r5; mul.lo.u32 %r6, %r6, 34;
   mul.wide.u32 %rd4, %r6, 1; add.u64 %rd4, %rd3, %rd4;
   mov.f32 %f1, 0f00000000; mov.u32 %r7, %r4;
 BLOOP: setp.ge.u32 %p2, %r7, %r5; @%p2 bra RED;
@@ -908,22 +899,24 @@ BLOOP: setp.ge.u32 %p2, %r7, %r5; @%p2 bra RED;
   or.b32 %r23, %r21, %r22; shl.b32 %r20, %r20, 16; or.b32 %r23, %r23, %r20; mov.b32 %f2, %r23; bra HAVED;
 DENORM: mov.f32 %f2, 0f00000000;
 HAVED: add.u64 %rd6, %rd5, 2; shl.b32 %r10, %r7, 5;
-  mov.u32 %r11, 0;
+  mul.wide.u32 %rd11, %r10, 4; mov.u64 %rd12, sx; add.u64 %rd12, %rd12, %rd11;
+  mov.f32 %f8, 0f00000000; mov.u32 %r11, 0;
 QLOOP: setp.ge.u32 %p3, %r11, 32; @%p3 bra QDONE;
   mul.wide.u32 %rd9, %r11, 1; add.u64 %rd8, %rd6, %rd9; ld.global.s8 %r12, [%rd8];
-  cvt.rn.f32.s32 %f3, %r12; mul.f32 %f3, %f3, %f2;
-  add.u32 %r14, %r10, %r11; mul.wide.u32 %rd11, %r14, 4; mov.u64 %rd12, sx; add.u64 %rd12, %rd12, %rd11;
-  ld.shared.f32 %f4, [%rd12]; mad.f32 %f1, %f3, %f4, %f1;
+  cvt.rn.f32.s32 %f3, %r12;
+  mul.wide.u32 %rd13, %r11, 4; add.u64 %rd14, %rd12, %rd13;
+  ld.shared.f32 %f4, [%rd14]; mad.f32 %f8, %f3, %f4, %f8;
   add.u32 %r11, %r11, 1; bra QLOOP;
-QDONE: add.u32 %r7, %r7, 64; bra BLOOP;
-RED: mov.u64 %rd12, sm; mul.wide.u32 %rd13, %r4, 4; add.u64 %rd13, %rd12, %rd13; st.shared.f32 [%rd13], %f1;
+QDONE: mad.f32 %f1, %f8, %f2, %f1; add.u32 %r7, %r7, 64; bra BLOOP;
+RED: mov.u64 %rd15, sm; mul.wide.u32 %rd16, %r4, 4; add.u64 %rd16, %rd15, %rd16; st.shared.f32 [%rd16], %f1;
   mov.u32 %r15, 32;
 RLOOP: bar.sync 0; setp.ge.u32 %p4, %r4, %r15; @%p4 bra RSKIP;
-  mul.wide.u32 %rd14, %r15, 4; add.u64 %rd14, %rd13, %rd14;
-  ld.shared.f32 %f5, [%rd13]; ld.shared.f32 %f6, [%rd14]; add.f32 %f5, %f5, %f6; st.shared.f32 [%rd13], %f5;
+  mul.wide.u32 %rd17, %r15, 4; add.u64 %rd17, %rd16, %rd17;
+  ld.shared.f32 %f5, [%rd16]; ld.shared.f32 %f6, [%rd17]; add.f32 %f5, %f5, %f6; st.shared.f32 [%rd16], %f5;
 RSKIP: shr.u32 %r15, %r15, 1; setp.ne.u32 %p5, %r15, 0; @%p5 bra RLOOP;
-  setp.ne.u32 %p6, %r4, 0; @%p6 bra DONE;
-  ld.shared.f32 %f7, [%rd12]; mul.wide.u32 %rd15, %r3, 4; add.u64 %rd15, %rd1, %rd15; st.global.f32 [%rd15], %f7;
+  setp.ne.u32 %p6, %r4, 0; @%p6 bra NEXT;
+  ld.shared.f32 %f7, [%rd15]; mul.wide.u32 %rd18, %r3, 4; add.u64 %rd18, %rd1, %rd18; st.global.f32 [%rd18], %f7;
+NEXT: add.u32 %r3, %r3, %r30; bra ROW;
 DONE: exit;
 }
 

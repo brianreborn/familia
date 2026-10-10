@@ -29,6 +29,8 @@ int sm11_q8_matmul(float* xout, const float* x, const void* w_q8, int n, int d);
 typedef struct { float* y; const float* x; const float* w; int n, d; } Sm11Job;
 int sm11_matvec_batch(const Sm11Job* jobs, int njobs);
 
+int sm11_wmatvec(int kind, float* y, const float* x, const void* w, int n, int d);
+size_t sm11_wcache_bytes(void);
 #ifdef __cplusplus
 }
 #endif
