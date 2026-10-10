@@ -3,13 +3,9 @@
 
 Exit 0 when valid, 1 with one line per problem otherwise. With --args NODE,
 print the llama-server arguments for that node. Never guesses or inflates.
---no-files skips GGUF/RAM checks (schema only); --verify-sha hashes GGUFs.
-Schema: scripts/graph_types.py, docs/graph-types.md.
 """
-import hashlib, os, struct, sys
+import os, struct, sys
 import yaml
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from graph_types import validate_types, TYPES  # noqa: E402
 
 KV_BYTES = {"f16": 2.0, "bf16": 2.0, "q8_0": 1.0625, "q4_0": 0.5625, "f32": 4.0}
 
@@ -39,6 +35,13 @@ def gguf_meta(path):
             k = rstr(); t, = struct.unpack("<I", f.read(4)); out[k] = rval(t)
     return out
 
+def mem_total_mib():
+    with open("/proc/meminfo") as f:
+        for line in f:
+            if line.startswith("MemTotal:"):
+                return int(line.split()[1]) // 1024
+    raise RuntimeError("cannot read MemTotal")
+
 def kv_mib(meta, arch, ctx, kv_type):
     g = lambda k: meta.get(f"{arch}.{k}")
     layers, heads_kv, emb, heads = g("block_count"), g("attention.head_count_kv"), g("embedding_length"), g("attention.head_count")
@@ -55,81 +58,71 @@ def kv_mib(meta, arch, ctx, kv_type):
         kv += (layers - attn_layers) * ssm_inner * ssm_state * 4  # f32 recurrent state
     return kv / 2**20
 
-class UniqueKeyLoader(yaml.SafeLoader):
-    """Reject duplicate keys: a second alias/node with the same name must not silently win."""
-    def construct_mapping(self, node, deep=False):
-        seen = set()
-        for k, _ in node.value:
-            key = self.construct_object(k, deep=deep)
-            if key in seen:
-                raise yaml.constructor.ConstructorError(None, None, f"duplicate key {key!r}", k.start_mark)
-            seen.add(key)
-        return super().construct_mapping(node, deep)
-
-def load(path):
-    with open(path) as f:
-        return yaml.load(f, Loader=UniqueKeyLoader)
-
-def validate(graph, check_files=True):
-    """Typed schema check, then GGUF/RAM checks. Returns (errors, {host: est MiB})."""
-    errs = validate_types(graph)
-    if errs or not check_files:
-        return errs, {}
-    hosts, models, totals = graph["hosts"], graph["models"], {}
-    for name, n in graph["nodes"].items():
-        m = models[n["model"]]
-        path = os.path.expanduser(m["gguf"])
+def validate(graph):
+    errs, host = [], graph.get("host", {})
+    nodes, total = graph.get("nodes") or {}, 0.0
+    if not nodes: errs.append("graph has no nodes")
+    ports = {}
+    for name, n in nodes.items():
+        for key in ("model", "arch", "ctx", "parallel", "kv_type", "port", "aliases", "cache_ram_mib"):
+            if key not in n: errs.append(f"node {name}: missing required '{key}' (no defaults)")
+        if any(k not in n for k in ("model", "arch", "ctx", "parallel", "kv_type", "port")): continue
+        path = os.path.expanduser(n["model"])
+        if n["port"] in ports: errs.append(f"node {name}: port {n['port']} also used by {ports[n['port']]}")
+        ports[n["port"]] = name
+        if n["kv_type"] not in KV_BYTES: errs.append(f"node {name}: unknown kv_type {n['kv_type']}")
         if not os.path.isfile(path):
-            errs.append(f"nodes.{name}: model file not found: {path}"); continue
+            errs.append(f"node {name}: model file not found: {path}"); continue
         try: meta = gguf_meta(path)
-        except Exception as e: errs.append(f"nodes.{name}: cannot read GGUF: {e}"); continue
+        except Exception as e: errs.append(f"node {name}: cannot read GGUF: {e}"); continue
         arch = meta.get("general.architecture")
-        if arch != m["arch"]: errs.append(f"models.{n['model']}: GGUF architecture is {arch!r}, graph says {m['arch']!r}")
+        if arch != n["arch"]: errs.append(f"node {name}: GGUF architecture is {arch!r}, graph says {n['arch']!r}")
         train = meta.get(f"{arch}.context_length")
-        if isinstance(train, int) and train != m["trained_ctx"]:
-            errs.append(f"models.{n['model']}: trained_ctx {m['trained_ctx']} but GGUF says {train}")
-        if m["sha256"] != "unmeasured" and "--verify-sha" in sys.argv:
-            h = hashlib.sha256()
-            with open(path, "rb") as f:
-                for b in iter(lambda: f.read(1 << 20), b""): h.update(b)
-            if h.hexdigest() != m["sha256"]: errs.append(f"models.{n['model']}: sha256 mismatch ({h.hexdigest()})")
-        kv = kv_mib(meta, arch, n["ctx"], n["kv_type"])
+        if isinstance(train, int) and n["ctx"] // n["parallel"] > train:
+            errs.append(f"node {name}: per-slot ctx {n['ctx'] // n['parallel']} exceeds model's trained context {train}")
+        kv = kv_mib(meta, arch, n["ctx"], n["kv_type"]) if n["kv_type"] in KV_BYTES else None
         # Prompt-cache state for one full slot is roughly that slot's KV; if
         # --cache-ram is smaller, llama.cpp skips caching on every request.
-        state = kv_mib(meta, arch, n["ctx"] // n["parallel"], n["kv_type"])
-        if state is not None and n["cache_ram_mib"] < state:
-            errs.append(f"nodes.{name}: cache_ram_mib {n['cache_ram_mib']} < estimated per-slot prompt state {state:.0f} MiB (prompt cache would always be skipped)")
-        totals[n["host"]] = totals.get(n["host"], 0.0) + os.path.getsize(path) / 2**20 + (kv or 0) + 256 + n["cache_ram_mib"]
-    for h, total in totals.items():
-        budget = hosts[h]["ram_mib"] - hosts[h]["reserve_ram_mib"]
-        if total > budget: errs.append(f"hosts.{h}: estimated RAM {total:.0f} MiB exceeds budget {budget} MiB (ram_mib - reserve_ram_mib)")
-    return errs, totals
+        state = kv_mib(meta, arch, n["ctx"] // n["parallel"], n["kv_type"]) if n["kv_type"] in KV_BYTES else None
+        cache = n.get("cache_ram_mib")
+        if state is not None and isinstance(cache, int) and cache < state:
+            errs.append(f"node {name}: cache_ram_mib {cache} < estimated per-slot prompt state {state:.0f} MiB (prompt cache would always be skipped)")
+        total += os.path.getsize(path) / 2**20 + (kv or 0) + 256 + (cache if isinstance(cache, int) else 0)
+        n["_slot_ctx"] = n["ctx"] // n["parallel"]
+    budget = mem_total_mib() - int(host.get("reserve_ram_mib", 2048))
+    if total > budget: errs.append(f"estimated RAM {total:.0f} MiB exceeds budget {budget} MiB (MemTotal - reserve)")
+    aliases = {a: k for k, n in nodes.items() for a in n.get("aliases", [])}
+    for an, a in (graph.get("agents") or {}).items():
+        for role, target in (a.get("edges") or {}).items():
+            node = nodes.get(aliases.get(target, target))
+            if node is None: errs.append(f"agent {an}: edge {role} -> {target}: no such node/alias"); continue
+            if "context_length" not in a:
+                errs.append(f"agent {an}: missing required 'context_length' (must equal node per-slot ctx)")
+            elif "_slot_ctx" in node and a["context_length"] != node["_slot_ctx"]:
+                errs.append(f"agent {an}: context_length {a['context_length']} != node {target} per-slot ctx {node['_slot_ctx']} (larger makes llama.cpp silently truncate; smaller wastes the window)")
+            if "_slot_ctx" in node and node["_slot_ctx"] < a.get("min_ctx", 0):
+                errs.append(f"agent {an}: edge {role} -> {target}: per-slot ctx {node['_slot_ctx']} < agent min_ctx {a['min_ctx']}")
+    return errs, total
 
-def server_args(graph, name):
-    n = graph["nodes"][name]
-    m = graph["models"][n["model"]]
-    a = ["-m", os.path.expanduser(m["gguf"]), "--host", n["bind"], "--port", str(n["port"]),
+def server_args(n):
+    a = ["-m", os.path.expanduser(n["model"]), "--host", n.get("host", "127.0.0.1"), "--port", str(n["port"]),
          "-c", str(n["ctx"]), "-np", str(n["parallel"]), "-ctk", n["kv_type"], "-ctv", n["kv_type"],
-         "-ngl", str(n["gpu_layers"]), "--jinja"]
-    if n["flash_attn"]: a += ["-fa", "on"]
-    names = sorted(al for al, x in graph["aliases"].items() if x["node"] == name)
-    if names: a += ["--alias", names[0]]
+         "-ngl", str(n.get("gpu_layers", 0)), "--jinja"]
+    if n.get("flash_attn"): a += ["-fa", "on"]
+    for al in n.get("aliases", [])[:1]: a += ["--alias", al]
     a += ["--cache-ram", str(n["cache_ram_mib"])]
     return a
 
 def main(argv):
     path = "graph.yaml"
     if "--graph" in argv: path = argv[argv.index("--graph") + 1]
-    try: graph = load(path)
-    except yaml.YAMLError as e:
-        print(f"graph: ERROR: {e}", file=sys.stderr); return 1
-    errs, totals = validate(graph, check_files="--no-files" not in argv)
+    graph = yaml.safe_load(open(path))
+    errs, total = validate(graph)
     for e in errs: print(f"graph: ERROR: {e}", file=sys.stderr)
     if errs: return 1
     if "--args" in argv:
-        print(" ".join(server_args(graph, argv[argv.index("--args") + 1]))); return 0
-    est = ", ".join(f"{h} est. {t:.0f} MiB" for h, t in totals.items()) or "file checks skipped"
-    print(f"graph: OK ({len(graph['nodes'])} node(s); {est})")
+        print(" ".join(server_args(graph["nodes"][argv[argv.index("--args") + 1]]))); return 0
+    print(f"graph: OK ({len(graph['nodes'])} node(s), est. {total:.0f} MiB)")
     return 0
 
 if __name__ == "__main__":
