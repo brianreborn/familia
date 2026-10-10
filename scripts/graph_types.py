@@ -378,9 +378,17 @@ TYPES = {
                 "measured": req("bool"), "os": opt("str"), "cpu": opt("str"), "threads": opt("int", min=1),
                 "ram_mib": opt("int", min=1), "gpus": req("gpus"),
                 "reserve_ram_mib": opt("int", min=0), "notes": opt("str"), "reported": opt("any"),
-                "windows": opt("any")}, check_host, doc="physical/virtual machine"),
+                "windows": opt("any"),
+                # reachability for meshes (transport PoC, #22); key-only, never a password
+                "addr": opt("str"), "user": opt("str"), "port": opt("int", min=1)}, check_host, doc="physical/virtual machine"),
     "transports": T({"kind": req("enum", choices={"local", "ssh", "nfs", "rsync", "bittorrent", "zfs"}),
                      "from": req("ref", ref="hosts"), "to": req("ref", ref="hosts")}, check_transport, doc="host-to-host link"),
+    # Multi-member transports (ssh nexus hub, private bittorrent swarm). Point-to-point
+    # links stay in transports:. Detailed checks live in scripts/transport_graph.py.
+    "meshes": T({"type": req("enum", choices={"ssh", "bittorrent"}), "members": req("refs", ref="hosts"),
+                 "hub": opt("str"), "root": opt("str"), "identity": opt("str"), "host_key_policy": opt("str"),
+                 "tracker": opt("str"), "bind": opt("str"), "port": opt("int", min=1), "private": opt("bool"),
+                 "client": opt("str")}, doc="multi-member transport (ssh nexus / bittorrent swarm)"),
     "runtimes": T({"kind": req("enum", choices={"llama-server", "drex-dlm"}), "build": req("str"), "commit": req("str"),
                    "hosts": req("refs", ref="hosts"), "supported_archs": req("list"),
                    "backends": req("list"), "spec_types": req("strlist"), "bin": opt("str")}, check_runtime, doc="inference engine build"),

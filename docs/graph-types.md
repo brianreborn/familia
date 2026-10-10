@@ -143,3 +143,8 @@ Unplaced model options from the survey (only what the user has actually
 considered — nothing invented) live in [`docs/pentest-models.md`](pentest-models.md).
 Today that is Dolphin3-Cyber-8B; WhiteRabbitNeo / Lily / DeepHat / KaliGPT were
 searched and not found in the user's RTs.
+
+## meshes (transport PoC, #22)
+
+Multi-member transports live in `meshes:` (`type: ssh` nexus hub or `type: bittorrent` private swarm, `members:` are host names). Point-to-point links stay in `transports:` (kind/from/to). Hosts that are mesh members must declare `addr`, `user` and `port`; passwords are never allowed. Detailed checks: `scripts/transport_graph.py`; see `docs/transport-poc.md`.
+

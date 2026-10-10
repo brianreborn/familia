@@ -191,6 +191,9 @@ def main(argv):
     except yaml.YAMLError as e:
         print(f"graph: ERROR: {e}", file=sys.stderr); return 1
     errs, totals = validate(graph, check_files="--no-files" not in argv)
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from transport_graph import validate_transports
+    errs += validate_transports(graph)  # meshes: (ssh nexus / bittorrent), #22
     for e in errs: print(f"graph: ERROR: {e}", file=sys.stderr)
     if errs: return 1
     if "--args" in argv:

@@ -12,6 +12,9 @@ hosts:
   miryam:
     kind: laptop
     measured: true
+    addr: 192.168.1.9            # measured on miryam (wlp2s0); transport PoC #22
+    user: rcs
+    port: 22
     os: linux
     cpu: Intel Core i5-7200U
     threads: 4
@@ -31,6 +34,9 @@ hosts:
   qodesh:
     kind: desktop
     measured: true               # measured 2026-10-09 20:36 PT
+    addr: 192.168.1.2            # OpenSSH client only (no sshd, no rsync)
+    user: brian
+    port: 22
     os: windows
     cpu: AMD Athlon II X2 B24 (2 cores / 2 threads)
     threads: 2
@@ -120,9 +126,41 @@ hosts:
         compute_capability: null
         driver: null
         measured: false
+  phone7:
+    kind: phone
+    measured: false              # full measurements land with feat/android-hosts
+    addr: 192.168.1.7            # Termux sshd, key-only
+    user: u0_a439
+    port: 8022
+    gpus: []
+  phone8:
+    kind: phone
+    measured: false              # full measurements land with feat/android-hosts
+    addr: 192.168.1.8            # Termux sshd, key-only
+    user: u0_a414
+    port: 8022
+    gpus: []
 
 transports:
   miryam-local: {kind: local, from: miryam, to: miryam}
+
+meshes:
+  # Transport PoC (#5, #22). Phones: Termux sshd on :8022, key-only.
+  lan-nexus:
+    type: ssh                     # scripts/nexus/nexus.py
+    hub: miryam
+    root: ~/.familia/nexus        # peers/ + artifacts/<sha256>/ on the hub
+    identity: ~/.ssh/id_ed25519
+    host_key_policy: accept-new
+    members: [miryam, qodesh, phone7, phone8]
+  lan-bt:
+    type: bittorrent              # scripts/bt/; keys are magnet:<xt>:<path> (REQ-REPO-02)
+    tracker: miryam
+    bind: 192.168.1.9             # LAN only; must match hosts.miryam.addr
+    port: 6969
+    private: true
+    client: aria2c
+    members: [miryam, phone7, phone8]
 
 runtimes:
   llama-b11374:
