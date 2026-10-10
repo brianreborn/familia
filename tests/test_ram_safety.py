@@ -19,10 +19,10 @@ def _base():
 def test_baseline_fits_raised_reserve():
     if not (os.path.isfile(CODER) and os.path.isfile(EMBED)):
         return  # skip when GGUFs are absent
-    errs, total = vg.validate(_base())
+    errs, totals = vg.validate(_base())
     ram_errs = [e for e in errs if "RAM" in e or "free after" in e or "OOM" in e]
     assert ram_errs == [], ram_errs
-    assert total < 4000  # coder+embed ~3479
+    assert totals["miryam"] < 4000  # coder+embed ~3479
 
 
 def test_estimated_plus_reserve_fails():
@@ -30,18 +30,16 @@ def test_estimated_plus_reserve_fails():
         return
     g = _base()
     # Drop embed so we only need coder; inflate reserve past miryam.
-    g["nodes"] = {"coder": g["nodes"]["coder"]}
-    g["agents"]["hermes"]["edges"] = {"model": "coder"}
-    g["host"]["reserve_ram_mib"] = 5000  # 2928 + 5000 > 7270
-    errs, total = vg.validate(g)
-    assert any("reserve" in e and "exceeds host ram_mib" in e for e in errs), errs
+    g["hosts"]["miryam"]["reserve_ram_mib"] = 5000  # coder+embed ~3479 + 5000 > 7270
+    errs, totals = vg.validate(g)
+    assert any("hosts.miryam" in e and "reserve" in e and "exceeds ram_mib" in e for e in errs), errs
 
 
 def test_small_host_free_floor():
     if not (os.path.isfile(CODER) and os.path.isfile(EMBED)):
         return
     g = _base()
-    g["host"]["ram_mib"] = 5000
-    g["host"]["reserve_ram_mib"] = 200  # budget alone would pass; floor must catch it
-    errs, total = vg.validate(g)
+    g["hosts"]["miryam"]["ram_mib"] = 5000
+    g["hosts"]["miryam"]["reserve_ram_mib"] = 200  # budget alone would pass; floor must catch it
+    errs, totals = vg.validate(g)
     assert any("2048 MiB floor" in e for e in errs), errs

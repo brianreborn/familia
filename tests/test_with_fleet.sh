@@ -6,6 +6,7 @@ ok(){ echo "ok   $*"; }
 bad(){ echo "FAIL $*"; fails=$((fails+1)); }
 
 # unknown role refused
+mkdir -p "$ROOT/.cache"
 if sh "$ROOT/with-fleet.sh" --role no-such-role-xyz 2>"$ROOT/.cache/wf.err"; then
   bad "unknown role should fail"
 else
