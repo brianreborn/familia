@@ -133,7 +133,7 @@ static int qmvf(CUdeviceptr y, CUdeviceptr x, CUdeviceptr w, unsigned n, unsigne
     char k[32]; sprintf(k,"SMOL_FCFG%d",c); if(getenv(k)) sscanf(getenv(k),"%u,%u,%u",&fcfgR[c],&fcfgL[c],&fcfgG[c]); }
   if(g_q8m && q8 && !nw){ if(!m8cfg[0]){ m8cfg[0]=8; m8cfg[1]=1; m8cfg[2]=64; if(getenv("SMOL_M8CFG")) sscanf(getenv("SMOL_M8CFG"),"%u,%u,%u",&m8cfg[0],&m8cfg[1],&m8cfg[2]); }
     return qmv8c(y,x,w,n,d,m8cfg[0],m8cfg[1],m8cfg[2],g_q8m,g_tex); }
-  if(g_x && !q8 && !nw){ int xs=xshape(n,d); unsigned* c2=xcfg[xs]; if(!c2[0]){ unsigned dd[5][4]={{5,8,2,8},{3,8,2,8},{5,4,2,16},{3,8,2,8},{5,4,2,16}} /* cold rotating sweep 2026-10-10: MR,RG,BG,G */; memcpy(c2,dd[xs],16);
+  if(g_x && !q8 && !nw){ int xs=xshape(n,d); unsigned* c2=xcfg[xs]; if(!c2[0]){ unsigned dd[5][4]={{5,16,2,8},{5,16,2,32},{5,16,2,8},{5,16,2,8},{3,8,2,8}} /* replay (real launch order) tuning 2026-10-10: MR,RG,BG,G */; memcpy(c2,dd[xs],16);
       char k[16]; sprintf(k,"SMOL_XS%d",xs); if(getenv(k)) sscanf(getenv(k),"%u,%u,%u,%u",&c2[0],&c2[1],&c2[2],&c2[3]); }
     return qmvx(y,x,w,n,d,mode,c2[1],c2[2],c2[3],c2[0]); }
   if(g_mr && !q8 && !nw){ if(!mcfg[c][0]){ unsigned dd[4][3]={{8,1,16},{8,2,8},{8,1,16},{8,1,16}} /* v4 sweep 2026-10-10 */; memcpy(mcfg[c],dd[c],12);
@@ -158,8 +158,11 @@ static int qmv8c(CUdeviceptr y, CUdeviceptr x, CUdeviceptr w, unsigned n, unsign
   unsigned ch=(d+RG*mr-1)/(RG*mr); if(grid>ch) grid=ch; unsigned woff=tex?(unsigned)((w-g_ar)/4):0, mode=0;
   void* a[]={&y,&x,&w,&woff,&n,&d,&RG,&BG,&mode};
   return p_cuLaunchKernel(f_q8m[tex][mr==2?0:1], grid,1,1, T,1,1, sm, 0, a, 0); }
+static int g_dry;
 static int qmvx(CUdeviceptr y, CUdeviceptr x, CUdeviceptr w, unsigned n, unsigned d, unsigned mode, unsigned RG, unsigned BG, unsigned grid, int mr){
-  unsigned T=RG*BG*8; if(T>512||T<32||(n/32)%BG||RG*mr>T||!f_q4x[mr]) return 1; unsigned sm=n*4+mr*RG*(BG*8+1)*4; if(sm>16000) return 1;
+  unsigned T=RG*BG*8; if(T>512||T<32||(n/32)%BG||RG*mr>T||!f_q4x[mr]) return 1;
+  { static int rgs[9]; if(!rgs[mr]){ CUresult (__stdcall *ga)(int*,int,CUfunction)=(void*)GetProcAddress(GetModuleHandleA("nvcuda.dll"),"cuFuncGetAttribute"); ga(&rgs[mr],4,f_q4x[mr]); } if((unsigned)rgs[mr]*T>8192) return 1; }  /* would fail with 701 */
+  if(g_dry) return 0; unsigned sm=n*4+mr*RG*(BG*8+1)*4; if(sm>16000) return 1;
   unsigned ch=(d+RG*mr-1)/(RG*mr); if(grid>ch) grid=ch; unsigned woff=(unsigned)((w-g_ar)/4);
   void* a[]={&y,&x,&w,&woff,&n,&d,&RG,&BG,&mode};
   return p_cuLaunchKernel(f_q4x[mr], grid,1,1, T,1,1, sm, 0, a, 0); }
@@ -263,7 +266,7 @@ FINAL:
   { void* a[]={&dX,&dX,&dON,&dim}; CKL(launch(f_rmsnorm,1,128,a)); }
   if(gpu_cls){ unsigned nv=nvocab; CKL(qmv(dLOG,dX,dEMB,dim,nv,cls_q4?0:1)); CKL(p_cuMemcpyDtoHAsync(sq->plog,dLOG,(size_t)nvocab*4,0)); }
   CKL(p_cuMemcpyDtoHAsync(sq->px,dX,dim*4,0));
-  CKL(p_cuEventRecord(sq->ev,0)); sq->inflight=1; sq->tok=tok; sq->pos=pos;
+  CKL(p_cuEventRecord(sq->ev,0)); sq->t_enq=now(); sq->inflight=1; sq->tok=tok; sq->pos=pos;  /* fix: q4-classifier path had no timestamp */
 }
 #if !defined(FS_PAD) || FS_PAD
 static long long g_polls __attribute__((aligned(64))); static char g_polls_pad[56] __attribute__((unused));
@@ -304,7 +307,16 @@ static void occ(const char* nm, CUfunction f, unsigned thr, unsigned smem){
   int b1 = regblk? 8192/regblk : 8, b2 = 16384/(smem+ssm+16), b3 = 768/thr; int b=b1<b2?b1:b2; if(b3<b)b=b3; if(b>8)b=8;
   fprintf(stderr,"occ %-10s regs/thr=%d lmem=%d static_smem=%d | %u thr, %u dyn smem -> %d CTA/SM (%d thr, %.0f%% of 768)  [limits: regs %d smem %d thr %d]\n",nm,regs,lmem,ssm,thr,smem,b,b*thr,100.0*b*thr/768,b1,b2,b3); }
 static void kbench(void){ unsigned dim=c_dim, hd=c_hd; int N=200; double a;
-  { struct {unsigned n,d; CUdeviceptr w,y,x; unsigned mode;} sh[4]={{576,3072,dW[0][4],dHB,dXN,0},{1536,576,dW[0][6],dXB,dHB,2},{576,960,dW[0][0],dQKV,dXN,0},{576,576,dW[0][3],dXB,dXB2,0}};
+  if(getenv("SMOL_KB_REPLAY")){ /* replay the real token: full enqueue_gpu forward, coordinate descent over per-shape (MR,RG,BG,G) */
+    Seq* q=&g_seq[0]; int NT=getenv("SMOL_KB_NT")?atoi(getenv("SMOL_KB_NT")):6; int MRs[]={2,3,4,5,6}; unsigned RGs[]={4,8,16}, BGs[]={1,2}, Gs[]={8,16,32};
+    #define TOKMS() ({ p_cuCtxSynchronize(); double t0_=now(); int ok_=1; for(int k_=0;k_<NT;k_++){ enqueue_gpu(q,1+k_,10); } if(p_cuCtxSynchronize()) ok_=0; ok_? (now()-t0_)*1000/NT : 1e9; })
+    for(int k=0;k<2;k++) TOKMS();
+    fprintf(stderr,"REPLAY start %.2f ms/token\n",TOKMS());
+    for(int pass=0;pass<2;pass++) for(int s=0;s<5;s++){ if(s==4 && !(gpu_cls&&cls_q4)) continue; unsigned bc[4]; memcpy(bc,xcfg[s],16); double best=TOKMS();
+      for(int m=0;m<5;m++) for(int i=0;i<3;i++) for(int j=0;j<2;j++) for(int g=0;g<3;g++){ unsigned c[4]={MRs[m],RGs[i],BGs[j],Gs[g]}; { unsigned nn[5]={576,1536,576,576,576}, dd2[5]={3072,576,960,576,(unsigned)nvocab}; g_dry=1; int bad=qmvx(0,0,g_ar,nn[s],dd2[s],0,c[1],c[2],c[3],c[0]); g_dry=0; if(bad) continue; }
+        memcpy(xcfg[s],c,16); double t=TOKMS(); if(t<best){best=t; memcpy(bc,c,16);} }
+      memcpy(xcfg[s],bc,16); fprintf(stderr,"REPLAY pass %d shape %d best MR=%u RG=%u BG=%u G=%u -> %.2f ms/token\n",pass,s,bc[0],bc[1],bc[2],bc[3],best); }
+    return; }  { struct {unsigned n,d; CUdeviceptr w,y,x; unsigned mode;} sh[4]={{576,3072,dW[0][4],dHB,dXN,0},{1536,576,dW[0][6],dXB,dHB,2},{576,960,dW[0][0],dQKV,dXN,0},{576,576,dW[0][3],dXB,dXB2,0}};
     unsigned RGs[]={1,2,4,8,16}, BGs[]={1,2,3,6}, Gs[]={8,16,32,64,128}; int mrs[]={1,2,4};
     for(int s=0;s<4;s++){ double ref=1e9; for(int t=1;t<2;t++) for(int mi=0;mi<3;mi++){ if(getenv("SMOL_KB_SKIPQ4")) break; double best=1e9; unsigned b0=0,b1=0,b2=0;
       for(int i=0;i<5;i++) for(int j=0;j<4;j++) for(int g=0;g<5;g++){ p_cuCtxSynchronize(); double t0=now(); int bad=0;

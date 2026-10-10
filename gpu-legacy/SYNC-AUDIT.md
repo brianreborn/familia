@@ -45,3 +45,7 @@ decision model and run the whole forward pass on the device: `smol_sm11` (SmolLM
 - seq_wait_w: bounded useful work (pre-embed the next known token, ring staging), then 64x YieldProcessor, then cuEventSynchronize (the BLOCKING_SYNC context sleeps). No mutex anywhere. Justification for the remaining block: measured wake-up cost is <0.3 ms per ~126 ms token, the same as pure spin, and it frees the core for the CPU coder.
 - Serve worker: when the GPU is busy and there's no work left, it spins and every 64th poll blocks on the oldest event (unchanged). The idle ring wait is still a 2000-iteration spin, then WaitForSingleObject on the producer's event.
 - Ring and flag cache lines are separated (FS_PAD), each side keeps a local copy of the other side's index, and stats live on their own lines. Measured: no change (within spread), kept.
+
+## 2026-10-10 replay tuning
+- The replay bench calls cuCtxSynchronize only at bench boundaries, outside the hot path (diagnostic). The hot path is unchanged: one event per token, the wait does bounded work, then spins, then blocks.
+

@@ -176,3 +176,22 @@ Sweep: RG {2,4,8,16} x BG {1,2,3,6} x G {8,16,32}, 20 iterations per config. Reg
 - End to end (2 prompts x 32 tokens, 32/32): v4 MR2 14.46-14.62 tok/s, **v6 cold-tuned 14.80-14.83 (new default, SMOL_X=1)**. That's +1.5% (spread about 0.1). The per-layer kernel sum predicts about 8 ms/token less (1.78 to 1.51 ms per layer x 30), but only about 1 ms showed up. So even the rotating bench isn't the real pipeline: it repeats one shape back-to-back, which lets consecutive launches overlap, and it reuses the same x. Next: a bench that replays the real per-layer launch sequence.
 - Q4 classifier fallback on the GPU (used when the Q8 table doesn't fit; requantized Q4 plus CPU top-K Q8 rescoring), 576x49152: v4 MR2 13.2 ms, v4 MR4 12.4, v6 MR4 11.1, **v6 MR5 (4,2,16) 10.4 ms (1.53 GB/s)**, now its default. End to end: 13.99-14.01 to 14.20-14.21 tok/s, 32/32. The CPU-only classifier fallback stays on the CPU (there's no GPU table to read).
 - Known stats bug: tok_lat is garbage on the q4-classifier path (the enqueue timestamp isn't set on that path). tok/s and the match check are unaffected.
+
+## 2026-10-10 replay benchmark (real per-layer launch order) and final defaults
+- SMOL_KB_REPLAY times whole real token forwards (enqueue_gpu, 6 tokens per setting) and does coordinate descent per shape over MR {2..6} x RG {4,8,16} x BG {1,2} x G {8,16,32}, 2 passes. Invalid settings are rejected with a dry-run check first: register budget regs*T <= 8192, otherwise CUDA 701.
+- The replay picks **256-thread CTAs (RG=16, BG=2) with 5 rows/thread** for all four layer shapes. Neither the warm bench nor the rotating cold bench chose that. In the real sequence, big CTAs win: fewer CTAs per launch, and the next launch's CTAs start sooner on a 4-SM G84. Replay: 70.1 to 58.4 ms/token (q8 classifier). Q4-classifier path: shape 4 = MR3 RG8 BG2 G8.
+- End to end (32/32 on all runs): cold-tuned 14.57-14.68 tok/s; **replay-tuned 15.31-16.87** (defaults now); Q4-classifier path 14.09 to 16.27-16.28. Verify run of the new defaults: 15.61 / 16.27 tok/s. Spread is wider this session (some runs were 1-1.5 tok/s low; desktop activity on qodesh while the user was on it).
+- Lesson: tune with the real sequence. A hot loop over one matrix, or even a rotating loop over one shape, ranks configs differently from the real token.
+- Latency bug fixed: the q4-classifier path now sets the enqueue timestamp (tok_lat 60.3 ms instead of garbage).
+
+## Tuning arc (SmolLM2-135M Q4_0 decision node, GeForce 8600 GT sm_11, all 32/32 vs CPU)
+| step | tok/s |
+|---|---|
+| ~211 GPU calls per token, each with a driver sync | ~4.5 |
+| full forward on GPU, one sync per token, async plus SPSC rings | ~7.9 |
+| fusion without register prefetch | 9.8 |
+| norm once per token | 9.9 |
+| v4 register-blocked Q4 through the texture cache, 2 rows/thread | 12.9 |
+| Q8 classifier through the texture cache, 4 rows/thread (29.9 to 13.8 ms) | 14.6 |
+| per-shape rows tuned on the rotating cold bench | 14.8 |
+| **per-shape tuned on the real-sequence replay (256-thread CTAs, 5 rows/thread)** | **15.3-16.9** |
