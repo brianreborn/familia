@@ -54,15 +54,24 @@ def load_graph(path):
 
 def node_for(g, agent):
     a = (g.get("agents") or {}).get(agent) or die(f"agent {agent!r} not in graph")
-    target = (a.get("edges") or {}).get("model") or die(f"agent {agent}: no 'model' edge")
-    aliases = {al: k for k, n in g["nodes"].items() for al in n.get("aliases", [])}
-    name = aliases.get(target, target)
+    if "aliases" in a:  # schema v2: agents.X.aliases.main -> top-level aliases -> node
+        target = a["aliases"].get("main") or die(f"agent {agent}: no 'main' alias")
+        al = (g.get("aliases") or {}).get(target)
+        name = al["node"] if al else target
+    else:  # schema v1: agents.X.edges.model -> node aliases
+        target = (a.get("edges") or {}).get("model") or die(f"agent {agent}: no 'model' edge")
+        aliases = {al: k for k, n in g["nodes"].items() for al in n.get("aliases", [])}
+        name = aliases.get(target, target)
     return a, name, g["nodes"][name], target
+
+
+def bind(n):
+    return n.get("bind") or n.get("host", "127.0.0.1")
 
 
 def render(g, agent, user_cfg_path=os.path.join(USER_HOME, "config.yaml")):
     a, name, n, alias = node_for(g, agent)
-    base = f"http://{n.get('host', '127.0.0.1')}:{n['port']}/v1"
+    base = f"http://{bind(n)}:{n['port']}/v1"
     user = {}
     if os.path.isfile(user_cfg_path):
         user = yaml.safe_load(open(user_cfg_path)) or {}
@@ -94,7 +103,7 @@ def render(g, agent, user_cfg_path=os.path.join(USER_HOME, "config.yaml")):
 
 
 def props(n):
-    url = f"http://{n.get('host', '127.0.0.1')}:{n['port']}/props"
+    url = f"http://{bind(n)}:{n['port']}/props"
     try:
         with urllib.request.urlopen(url, timeout=5) as r:
             return json.load(r)
@@ -106,7 +115,7 @@ def ensure_server(g, name, n, timeout=900):
     want = n["ctx"] // n["parallel"]
     p = props(n)
     if p is None:
-        args = vg.server_args(n)
+        args = vg.server_args(g, name)
         logd = os.path.expanduser("~/.cache/familia/logs"); os.makedirs(logd, exist_ok=True)
         log = open(os.path.join(logd, f"{name}.log"), "ab")
         print(f"hermes.sh: starting node {name}: {' '.join(args)}", file=sys.stderr)
