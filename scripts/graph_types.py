@@ -49,6 +49,14 @@ def check_field(g, sec, name, key, spec, val, errs):
         if len(set(map(str, val))) != len(val): errs.append(f"{where}: duplicate entries")
         for v in val:
             if v not in (g.get(spec.ref) or {}): errs.append(f"{where}: no such {spec.ref} entry {v!r}")
+    elif k == "any":
+        pass
+    elif k == "num":
+        if not isinstance(val, (int, float)) or isinstance(val, bool): errs.append(f"{where}: expected number, got {val!r}")
+    elif k == "strlist":
+        if not isinstance(val, list) or not all(isinstance(x, str) and x for x in val): errs.append(f"{where}: expected list of strings (may be empty)")
+    elif k == "gpus":
+        if not isinstance(val, list): errs.append(f"{where}: expected list of GPUs ([] if none known)")
     elif k == "map":
         if not isinstance(val, dict) or not val: errs.append(f"{where}: expected non-empty mapping")
     else:
@@ -59,18 +67,63 @@ def lookup(g, sec, key):
     """Entry `key` of section `sec`, or None (also for malformed, unhashable keys)."""
     return (g.get(sec) or {}).get(key) if isinstance(key, str) else None
 
-HOST_FACTS = ("os", "cpu", "threads", "ram_mib", "gpu", "vram_mib", "reserve_ram_mib")
+HOST_FACTS = ("os", "cpu", "threads", "ram_mib", "gpus", "reserve_ram_mib")
+GPU_BACKENDS = {"cuda", "vulkan", "sycl", "metal", "opencl", "rocm", "none"}
+GPU_KEYS = {"vendor", "model", "vram_mib", "backend", "backend_status", "compute_capability", "driver", "measured", "notes"}
+GPU_REQUIRED = ("vendor", "model", "vram_mib", "backend", "backend_status", "measured")
+WINDOWS_KEYS = ("repo_path", "models_path", "runtime_path", "startup", "wake")
+WINDOWS_STARTUP = {"scheduled-task", "start.bat", "service", "manual", "tbd"}
 
 def check_host(g, name, h, errs):
     if h.get("measured") is True:
         for k in HOST_FACTS:
             if k not in h: errs.append(f"hosts.{name}: measured host missing required '{k}'")
         if h.get("kind") == "unknown": errs.append(f"hosts.{name}: measured host cannot have kind 'unknown'")
+        if "reported" in h: errs.append(f"hosts.{name}: 'reported' is only for unmeasured hosts")
         if isinstance(h.get("ram_mib"), int) and isinstance(h.get("reserve_ram_mib"), int) and h["reserve_ram_mib"] >= h["ram_mib"]:
             errs.append(f"hosts.{name}: reserve_ram_mib >= ram_mib leaves nothing for nodes")
     elif h.get("measured") is False:
         for k in ("threads", "ram_mib", "vram_mib", "reserve_ram_mib"):
             if k in h: errs.append(f"hosts.{name}: '{k}' given but measured is false; record only measured facts (set measured: true)")
+        rep = h.get("reported")
+        if rep is not None and not (isinstance(rep, dict) and isinstance(rep.get("source"), str)):
+            errs.append(f"hosts.{name}.reported: must be a mapping with a 'source' (where the unmeasured facts came from)")
+    check_gpus(name, h, errs)
+    win = h.get("windows")
+    if h.get("os") == "windows" and not isinstance(win, dict):
+        errs.append(f"hosts.{name}: os windows requires a 'windows' block ({', '.join(WINDOWS_KEYS)}; TBD allowed)")
+    if win is not None:
+        if h.get("os") != "windows": errs.append(f"hosts.{name}: 'windows' block requires os: windows")
+        elif isinstance(win, dict):
+            for k in WINDOWS_KEYS:
+                if k not in win: errs.append(f"hosts.{name}.windows: missing required '{k}' (use TBD/tbd if unknown)")
+            for k in win:
+                if k not in WINDOWS_KEYS: errs.append(f"hosts.{name}.windows: unknown field {k!r}")
+            if "startup" in win and win["startup"] not in WINDOWS_STARTUP:
+                errs.append(f"hosts.{name}.windows.startup: {win['startup']!r} not one of {sorted(WINDOWS_STARTUP)}")
+
+def check_gpus(name, h, errs):
+    gpus = h.get("gpus")
+    if not isinstance(gpus, list): return
+    for i, gp in enumerate(gpus):
+        w = f"hosts.{name}.gpus[{i}]"
+        if not isinstance(gp, dict): errs.append(f"{w}: expected mapping"); continue
+        for k in GPU_REQUIRED:
+            if k not in gp: errs.append(f"{w}: missing required '{k}' (null allowed where unknown)")
+        for k in gp:
+            if k not in GPU_KEYS: errs.append(f"{w}: unknown field {k!r}")
+        if gp.get("backend") not in GPU_BACKENDS: errs.append(f"{w}.backend: {gp.get('backend')!r} not one of {sorted(GPU_BACKENDS)}")
+        if gp.get("backend_status") not in ("verified", "tbd", "unsupported"):
+            errs.append(f"{w}.backend_status: {gp.get('backend_status')!r} not one of ['tbd', 'unsupported', 'verified']")
+        if not isinstance(gp.get("measured"), bool): errs.append(f"{w}.measured: expected true/false")
+        v = gp.get("vram_mib")
+        if v is not None and (not isinstance(v, int) or isinstance(v, bool) or v < 0):
+            errs.append(f"{w}.vram_mib: expected integer >= 0 or null")
+        if gp.get("measured") is not True:
+            if v is not None: errs.append(f"{w}: vram_mib {v} given but measured is false; leave null until measured")
+            if gp.get("backend_status") == "verified": errs.append(f"{w}: backend_status verified requires measured: true")
+        elif v is None:
+            errs.append(f"{w}: measured GPU needs vram_mib (0 for shared-memory iGPUs)")
 
 def check_transport(g, name, t, errs):
     if t.get("kind") == "local" and t.get("from") != t.get("to"):
@@ -83,17 +136,27 @@ def check_runtime(g, name, r, errs):
         c = r.get("commit")
         if isinstance(c, str) and not re.match(r"^[0-9a-f]{7,40}$", c):
             errs.append(f"runtimes.{name}: commit {c!r} is not a git sha (a branch name is not a pin)")
+    b = r.get("backends")
+    if isinstance(b, list):
+        bad = [x for x in b if x not in GPU_BACKENDS | {"cpu"}]
+        if bad: errs.append(f"runtimes.{name}.backends: unknown {bad} (allowed: cpu + {sorted(GPU_BACKENDS - {'none'})})")
+        if "cpu" not in b: errs.append(f"runtimes.{name}.backends: must include cpu")
+    st = r.get("spec_types")
+    if isinstance(st, list):
+        bad = [x for x in st if x not in SPEC_TYPES]
+        if bad: errs.append(f"runtimes.{name}.spec_types: unknown {bad}")
 
 def slot_ctx(n):
     return n["ctx"] // n["parallel"] if isinstance(n.get("ctx"), int) and isinstance(n.get("parallel"), int) and n["parallel"] > 0 else None
 
 def check_node(g, name, n, errs):
     h, r, m = lookup(g, "hosts", n.get("host")), lookup(g, "runtimes", n.get("runtime")), lookup(g, "models", n.get("model"))
-    if h is not None and h.get("measured") is not True:
+    planned = n.get("status") == "planned"
+    if h is not None and h.get("measured") is not True and not planned:
         errs.append(f"nodes.{name}: host {n['host']!r} is not measured; unmeasured hosts are excluded from placement")
-    if r is not None and n.get("host") not in (r.get("hosts") or []):
+    if r is not None and not planned and n.get("host") not in (r.get("hosts") or []):
         errs.append(f"nodes.{name}: runtime {n['runtime']!r} is not installed on host {n.get('host')!r} (runtime hosts: {r.get('hosts')})")
-    if r is not None and m is not None and m.get("arch") not in (r.get("supported_archs") or []):
+    if r is not None and m is not None and not planned and m.get("arch") not in (r.get("supported_archs") or []):
         errs.append(f"nodes.{name}: model {n['model']!r} arch {m.get('arch')!r} not in runtime {n['runtime']!r} "
                     f"(build {r.get('build')}) supported_archs {r.get('supported_archs')}; upgrade the runtime pin, do not drop the model")
     if isinstance(n.get("ctx"), int) and isinstance(n.get("parallel"), int) and n["parallel"] > 0 and n["ctx"] % n["parallel"]:
@@ -101,11 +164,71 @@ def check_node(g, name, n, errs):
     s = slot_ctx(n)
     if m is not None and s is not None and isinstance(m.get("trained_ctx"), int) and s > m["trained_ctx"]:
         errs.append(f"nodes.{name}: per-slot ctx {s} exceeds model trained_ctx {m['trained_ctx']} (no inflation)")
-    if h is not None and isinstance(n.get("gpu_layers"), int) and n["gpu_layers"] > 0 and h.get("vram_mib") == 0:
-        errs.append(f"nodes.{name}: gpu_layers {n['gpu_layers']} but host {n['host']!r} has vram_mib 0")
+    check_offload(name, n, h, r, errs)
     for other, o in (g.get("nodes") or {}).items():
-        if other < name and o.get("host") == n.get("host") and o.get("port") == n.get("port"):
+        if other < name and "planned" not in (o.get("status"), n.get("status")) and o.get("host") == n.get("host") and o.get("port") == n.get("port"):
             errs.append(f"nodes.{name}: port {n.get('port')} on host {n.get('host')!r} also used by node {other!r}")
+
+SPLIT_MODES = {"none", "layer", "row", "tensor"}  # llama-server -sm (b11374/b11539 --help)
+
+def check_offload(name, n, h, r, errs):
+    o = n.get("offload")
+    if not isinstance(o, dict): return
+    w = f"nodes.{name}.offload"
+    for k in ("backend", "ngl", "split", "main_gpu"):
+        if k not in o: errs.append(f"{w}: missing required '{k}' (no defaults)")
+    for k in o:
+        if k not in ("backend", "ngl", "split", "main_gpu", "vram_reserve_mib"): errs.append(f"{w}: unknown field {k!r}")
+    be, ngl, mg = o.get("backend"), o.get("ngl"), o.get("main_gpu")
+    if be not in GPU_BACKENDS | {"cpu"} or be == "none": errs.append(f"{w}.backend: {be!r} must be cpu or one of {sorted(GPU_BACKENDS - {'none'})}")
+    if o.get("split") not in SPLIT_MODES: errs.append(f"{w}.split: {o.get('split')!r} not one of {sorted(SPLIT_MODES)}")
+    if not isinstance(ngl, int) or isinstance(ngl, bool) or ngl < 0: errs.append(f"{w}.ngl: expected integer >= 0"); return
+    if not isinstance(mg, int) or isinstance(mg, bool) or mg < 0: errs.append(f"{w}.main_gpu: expected integer >= 0"); return
+    if be == "cpu":
+        if ngl: errs.append(f"{w}: backend cpu requires ngl 0")
+        return
+    if r is not None and be not in (r.get("backends") or []):
+        errs.append(f"{w}: backend {be!r} not in runtime {n.get('runtime')!r} backends {r.get('backends')}")
+    if ngl == 0 or n.get("status") == "planned": return
+    gpus = (h or {}).get("gpus") or []
+    if mg >= len(gpus): errs.append(f"{w}: main_gpu {mg} but host {n.get('host')!r} declares {len(gpus)} GPU(s)"); return
+    gp = gpus[mg]
+    if gp.get("backend") != be: errs.append(f"{w}: backend {be!r} but GPU {mg} backend is {gp.get('backend')!r}")
+    if gp.get("measured") is not True or gp.get("backend_status") != "verified":
+        errs.append(f"{w}: ngl {ngl} on unmeasured/unverified GPU {mg} ({gp.get('model')}); measure it and set backend_status verified first")
+    elif gp.get("vram_mib") == 0 and gp.get("vendor") not in ("intel", "qualcomm", "arm", "apple"):
+        errs.append(f"{w}: ngl {ngl} but GPU {mg} has vram_mib 0")
+
+SPEC_TYPES = {"draft-simple", "draft-eagle3", "draft-mtp", "draft-dflash", "draft-dspark",
+              "ngram-simple", "ngram-map-k", "ngram-map-k4v", "ngram-mod", "ngram-cache"}
+
+def check_speculative(g, name, sp, errs):
+    w = f"speculative.{name}"
+    t = lookup(g, "nodes", sp.get("target"))
+    rt = lookup(g, "runtimes", t.get("runtime")) if t else None
+    st = sp.get("spec_type")
+    mode = sp.get("mode")
+    if mode == "draft":
+        for k in ("draft", "draft_max", "draft_min", "p_min"):
+            if k not in sp: errs.append(f"{w}: mode draft requires '{k}'")
+        if st is not None and not str(st).startswith("draft-"): errs.append(f"{w}: mode draft needs a draft-* spec_type, got {st!r}")
+        d = lookup(g, "models", sp.get("draft"))
+        tm = lookup(g, "models", t.get("model")) if t else None
+        if d is not None and tm is not None and d is tm: errs.append(f"{w}: draft model is the target model")
+        dm, dn = sp.get("draft_max"), sp.get("draft_min")
+        if isinstance(dm, int) and isinstance(dn, int) and dn > dm: errs.append(f"{w}: draft_min {dn} > draft_max {dm}")
+        p = sp.get("p_min")
+        if p is not None and not (isinstance(p, (int, float)) and not isinstance(p, bool) and 0 <= p <= 1):
+            errs.append(f"{w}.p_min: expected 0..1, got {p!r}")
+    elif mode == "ngram":
+        for k in ("draft", "draft_ctx", "draft_kv_type", "draft_ngl"):
+            if k in sp: errs.append(f"{w}: '{k}' only applies to mode draft")
+        if not (isinstance(st, str) and st.startswith("ngram-")): errs.append(f"{w}: mode ngram needs an ngram-* spec_type, got {st!r}")
+    eff = st or ("draft-simple" if mode == "draft" else None)
+    if rt is not None and eff and eff not in (rt.get("spec_types") or []):
+        errs.append(f"{w}: runtime {t.get('runtime')!r} does not list spec_type {eff!r} (spec_types {rt.get('spec_types')}); TBD until verified")
+    others = [o for o, x in (g.get("speculative") or {}).items() if x.get("target") == sp.get("target") and x.get("status") == "active" and o != name]
+    if sp.get("status") == "active" and others: errs.append(f"{w}: target {sp.get('target')!r} already has active speculative {others}")
 
 def check_alias(g, name, a, errs):
     gw, nd = lookup(g, "gateways", a.get("gateway")), lookup(g, "nodes", a.get("node"))
@@ -162,19 +285,30 @@ class T:
 TYPES = {
     "hosts": T({"kind": req("enum", choices={"desktop", "laptop", "phone", "vm", "unknown"}),
                 "measured": req("bool"), "os": opt("str"), "cpu": opt("str"), "threads": opt("int", min=1),
-                "ram_mib": opt("int", min=1), "gpu": opt("str", nullable=True), "vram_mib": opt("int", min=0),
-                "reserve_ram_mib": opt("int", min=0), "notes": opt("str")}, check_host, doc="physical/virtual machine"),
+                "ram_mib": opt("int", min=1), "gpus": req("gpus"),
+                "reserve_ram_mib": opt("int", min=0), "notes": opt("str"), "reported": opt("any"),
+                "windows": opt("any")}, check_host, doc="physical/virtual machine"),
     "transports": T({"kind": req("enum", choices={"local", "ssh", "nfs", "rsync", "bittorrent", "zfs"}),
                      "from": req("ref", ref="hosts"), "to": req("ref", ref="hosts")}, check_transport, doc="host-to-host link"),
     "runtimes": T({"kind": req("enum", choices={"llama-server", "drex-dlm"}), "build": req("str"), "commit": req("str"),
-                   "hosts": req("refs", ref="hosts"), "supported_archs": req("list")}, check_runtime, doc="inference engine build"),
+                   "hosts": req("refs", ref="hosts"), "supported_archs": req("list"),
+                   "backends": req("list"), "spec_types": req("strlist"), "bin": opt("str")}, check_runtime, doc="inference engine build"),
     "models": T({"gguf": req("str"), "sha256": req("sha"), "arch": req("str"), "trained_ctx": req("int", min=1),
                  "role": req("enum", choices={"chat", "coder", "reasoning", "embed", "vision", "diffusion"})}, doc="weights file"),
     "nodes": T({"model": req("ref", ref="models"), "host": req("ref", ref="hosts"), "runtime": req("ref", ref="runtimes"),
                 "ctx": req("int", min=1), "parallel": req("int", min=1),
                 "kv_type": req("enum", choices={"f16", "bf16", "q8_0", "q4_0", "f32"}), "flash_attn": req("bool"),
-                "gpu_layers": req("int", min=0), "bind": req("str"), "port": req("int", min=1),
-                "cache_ram_mib": req("int", min=0)}, check_node, doc="model instance on host+runtime"),
+                "offload": req("any"), "bind": req("str"), "port": req("int", min=1),
+                "cache_ram_mib": req("int", min=0), "status": req("enum", choices={"active", "planned"}),
+                "embeddings": opt("bool")}, check_node, doc="model instance on host+runtime"),
+    "speculative": T({"experimental": req("bool"), "status": req("enum", choices={"planned", "experimental", "active"}),
+                      "mode": req("enum", choices={"draft", "ngram"}), "target": req("ref", ref="nodes"),
+                      "spec_type": opt("enum", choices=SPEC_TYPES), "draft": opt("ref", ref="models"),
+                      "draft_max": opt("int", min=1), "draft_min": opt("int", min=0), "p_min": opt("num"),
+                      "draft_ctx": opt("int", min=1), "draft_kv_type": opt("enum", choices={"f16", "bf16", "q8_0", "q4_0", "f32"}),
+                      "draft_ngl": opt("int", min=0), "notes": opt("str")},
+                     check_speculative, experimental=True,
+                     doc="edge draft->target (same vocab) or model-free n-gram lookup decoding"),
     "gateways": T({"kind": req("enum", choices={"green-roomz"}), "host": req("ref", ref="hosts"),
                    "port": req("int", min=1)}, doc="router exposing aliases"),
     "aliases": T({"node": req("ref", ref="nodes"), "gateway": req("ref", ref="gateways")}, check_alias,
@@ -203,7 +337,7 @@ def validate_types(g):
     if not isinstance(g, dict): return ["graph: top level must be a mapping"]
     if g.get("version") != 2: errs.append(f"version: expected 2 (typed schema), got {g.get('version')!r}")
     for sec in g:
-        if sec != "version" and sec not in TYPES: errs.append(f"{sec}: unknown section (registered types: {sorted(TYPES)})")
+        if sec != "version" and not str(sec).startswith("_") and sec not in TYPES: errs.append(f"{sec}: unknown section (registered types: {sorted(TYPES)})")
     for sec in REQUIRED_SECTIONS:
         if not g.get(sec): errs.append(f"{sec}: required section missing or empty")
     for sec, t in TYPES.items():

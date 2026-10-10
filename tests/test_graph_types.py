@@ -65,8 +65,74 @@ def test_ctx_rules():
     x = g(); x["agents"]["hermes"]["context_length"] = 131072; has(x, "context_length 131072 != alias 'coder' per-slot ctx 65536")
     x = g(); x["nodes"]["coder"]["parallel"] = 3; has(x, "not divisible")
 
-def test_gpu_layers_without_vram():
-    x = g(); x["nodes"]["coder"]["gpu_layers"] = 10; has(x, "vram_mib 0")
+def test_offload_rules():
+    x = g(); x["nodes"]["coder"]["gpu_layers"] = 10; has(x, "unknown field 'gpu_layers'")
+    x = g(); del x["nodes"]["coder"]["offload"]["split"]; has(x, "offload: missing required 'split'")
+    x = g(); x["nodes"]["coder"]["offload"]["ngl"] = 5; has(x, "backend cpu requires ngl 0")
+    x = g(); x["nodes"]["coder"]["offload"].update(backend="cuda", ngl=5); has(x, "backend 'cuda' not in runtime")
+    x = g(); x["nodes"]["coder"]["offload"].update(backend="vulkan", ngl=5); has(x, "unmeasured/unverified GPU 0")
+    x = g(); x["nodes"]["coder"]["offload"].update(backend="vulkan", ngl=5, main_gpu=3); has(x, "declares 1 GPU")
+    x = g(); x["nodes"]["coder"]["offload"]["split"] = "diag"; has(x, "not one of")
+
+def test_qodesh_gpu_offload_rejected():
+    x = g(); x["runtimes"]["llama-b11374"]["hosts"].append("qodesh"); x["runtimes"]["llama-b11374"]["backends"].append("cuda")
+    n = x["nodes"]["qodesh-resident"]; n["status"] = "active"; n["offload"].update(backend="cuda", ngl=4)
+    has(x, "backend 'cuda' but GPU 0 backend is 'none'")
+    has(x, "unmeasured/unverified GPU 0")
+
+def test_gpu_fields():
+    x = g(); x["hosts"]["note9"]["gpus"][0]["vram_mib"] = 4096; has(x, "measured is false; leave null")
+    x = g(); x["hosts"]["note9"]["gpus"][0]["backend_status"] = "verified"; has(x, "verified requires measured")
+    x = g(); x["hosts"]["miryam"]["gpus"][0]["backend"] = "directx"; has(x, "not one of")
+    x = g(); del x["hosts"]["shalom"]["gpus"]; has(x, "missing required 'gpus'")
+    x = g(); x["hosts"]["miryam"]["gpus"][0]["measured"] = True; has(x, "measured GPU needs vram_mib")
+    for h in BASE["hosts"].values(): assert isinstance(h["gpus"], list)
+
+def test_windows_host_block():
+    x = g(); del x["hosts"]["qodesh"]["windows"]; has(x, "os windows requires a 'windows' block")
+    x = g(); x["hosts"]["qodesh"]["windows"]["startup"] = "magic"; has(x, "windows.startup")
+    x = g(); del x["hosts"]["qodesh"]["windows"]["wake"]; has(x, "missing required 'wake'")
+    x = g(); x["hosts"]["miryam"]["windows"] = dict(BASE["hosts"]["qodesh"]["windows"]); has(x, "requires os: windows")
+
+def test_reported_only_unmeasured():
+    x = g(); x["hosts"]["miryam"]["reported"] = {"source": "x"}; has(x, "only for unmeasured")
+    x = g(); x["hosts"]["godslove"]["reported"] = {"ram_mib": 1}; has(x, "with a 'source'")
+
+def test_planned_node_skips_placement():
+    assert BASE["nodes"]["qodesh-resident"]["status"] == "planned" and errs(g()) == []
+    x = g(); x["nodes"]["qodesh-resident"]["status"] = "active"; has(x, "not installed on host 'qodesh'")
+
+def spec_draft(**kw):
+    d = {"experimental": True, "status": "planned", "mode": "draft", "target": "coder", "draft": "egemma2-q8",
+         "draft_max": 8, "draft_min": 1, "p_min": 0.75}
+    d.update(kw); return d
+
+def test_speculative_draft():
+    x = g(); x["speculative"]["d"] = spec_draft(); assert errs(x) == []
+    x = g(); x["speculative"]["d"] = spec_draft(draft_min=9); has(x, "draft_min 9 > draft_max 8")
+    x = g(); x["speculative"]["d"] = spec_draft(p_min=2); has(x, "expected 0..1")
+    x = g(); d = spec_draft(); del d["draft_max"]; x["speculative"]["d"] = d; has(x, "requires 'draft_max'")
+    x = g(); x["speculative"]["d"] = spec_draft(draft="qwen35-2b-q4km"); has(x, "draft model is the target")
+    x = g(); x["speculative"]["d"] = spec_draft(experimental=False); has(x, "experimental type")
+    x = g(); x["runtimes"]["llama-b11374"]["spec_types"] = []; x["speculative"]["d"] = spec_draft(); has(x, "does not list spec_type")
+
+def test_speculative_ngram():
+    x = g(); x["speculative"]["coder-ngram"]["spec_type"] = "draft-simple"; has(x, "needs an ngram-* spec_type")
+    x = g(); x["speculative"]["coder-ngram"]["draft"] = "egemma2-q8"; has(x, "only applies to mode draft")
+
+def test_speculative_vocab_mismatch_and_ram():
+    # egemma2 (gemma4 tokenizer) cannot draft for qwen35 (gpt2 tokenizer): file-level check
+    x = g(); x["_path"] = os.path.join(ROOT, "graph.yaml"); x["speculative"]["d"] = spec_draft()
+    if not os.path.isfile(os.path.expanduser(BASE["models"]["egemma2-q8"]["gguf"])): pytest.skip("GGUFs not on this machine")
+    e, tot = validate_graph.validate(x); assert any("tokenizer/vocab mismatch" in m for m in e), e
+    _, base = validate_graph.validate(g()); assert tot["miryam"] > base["miryam"] + 290  # draft weights counted
+
+def test_server_args_spec_flags():
+    x = g(); x["speculative"]["d"] = spec_draft(status="experimental"); x["speculative"]["coder-ngram"]["status"] = "planned"
+    a = validate_graph.server_args(x, "coder")
+    for f in ("-md", "--spec-draft-n-max", "--spec-draft-n-min", "--spec-draft-p-min"): assert f in a
+    assert "--draft-max" not in a  # removed upstream
+    assert "--embeddings" in validate_graph.server_args(g(), "embed")
 
 def test_alias_exactly_one_node():
     x = g(); x["aliases"]["coder"]["node"] = ["coder"]; has(x, "expected a nodes name")
