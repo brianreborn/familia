@@ -89,7 +89,7 @@ static void fwd_cpu(int tok,int pos){
 }
 /* ---- GPU full forward ---- */
 static CUfunction f_q4r, f_q8r, f_q4f, f_q8f, f_ropekv, f_attnmh; static int g_fused=1, g_prenorm=0; static CUdeviceptr dQKV, dXN;
-static CUfunction f_q4m[2][3], f_q4v[2][3]; static int g_v5=1; static int g_mr=0, g_tex=1; static unsigned mcfg[4][3];
+static CUfunction f_q4m[2][3], f_q4v[2][3]; static int g_v5=0; /* v5 slower end-to-end until re-swept */ static int g_mr=0, g_tex=1; static unsigned mcfg[4][3];
 static int qmvmc(CUdeviceptr,CUdeviceptr,CUdeviceptr,unsigned,unsigned,unsigned,unsigned,unsigned,unsigned,int,int);
 #define MRI(m) ((m)==1?0:(m)==2?1:2)
 static CUdeviceptr dW[32][9], dN[32][2], dON, dEMB, dX, dXB, dXB2, dQ, dHB, dHB2, dKC, dVC, dCOS, dSIN, dLOG;
