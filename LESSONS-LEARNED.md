@@ -143,3 +143,43 @@ cross-host edge without recorded consent (docs/escalation.md).
 
 ## HANDOFF — 2026-10-10
 Credits cut mid-sprint. Public resume index: [`docs/HANDOFF.md`](docs/HANDOFF.md) (issues #39–#48, label `handoff-2026-10-10`). Offline commands: [`docs/offline-test-plan.md`](docs/offline-test-plan.md). Private transcript/ops: `brianreborn/familia-private` `logs/2026-10-10-familia-sprint.md` + `HANDOFF.md`.
+
+
+## L-nvidia340. Legacy NVIDIA 340.108 driver on Linux 6.12 / CentOS Stream 10 (2026-10-17)
+
+**Relevant repo:** [`brianreborn/nvidia-340.108-updated`](https://github.com/brianreborn/nvidia-340.108-updated)
+
+This project adapts the legacy NVIDIA 340.108 driver (for GeForce 8600 GT / G84) to
+build and install on Linux kernel 6.12 with DKMS, and documents the full display stack
+for CentOS Stream 10.
+
+### Key findings
+
+- **DKMS build:** The upstream 340.108 source required patches to compile on 6.12.
+  See the repo's `Makefile` and `dkms.conf` for details. `dkms install --force` was
+  needed to override the existing `nvidia/615.71.09` entry.
+
+- **CUDA driver test passed:** `cuInit(0) = 0`, `cuDeviceGetCount = 1`, device detected as
+  "GeForce 8600 GT, Compute Capability 1.1, Total Memory: 255 MB". The legacy userspace
+  stack was installed via `make post-install` (runs the `.run` installer with
+  `--no-kernel-module --no-x-check --no-check-for-alternate-installs`).
+
+- **GSP firmware warning is harmless:** The open-source `nvidia.ko` (from nvidia-615
+  package) logs `NVRM: GPU ... not supported ... does not include the required GPU System
+  Processor (GSP)`. This is expected — the G84 does not use GSP. Our DKMS module is what
+  actually drives the card.
+
+- **CentOS Stream 10 dropped native Xorg:** `xorg-x11-server-Xorg` is not available in
+  any EL10 repo. GDM can only do Wayland (or Xwayland for legacy X11 apps). Trying to
+  force Xorg mode in GDM causes a crash loop ("Session never registered, failing").
+
+- **Weston (pixman renderer) works as a lightweight display:** GDM was masked; Weston
+  14.0.1 runs as a user-level systemd service (`~/.config/systemd/user/weston.service`)
+  with `--backend=drm --renderer=pixman` (software renderer — no EGL/Mesa required).
+  `loginctl enable-linger` keeps it running at boot. Keyboard, mouse, and DRM output
+  all detected correctly.
+
+- **EGL / GBM not available out of box:** `weston --backend=drm` (hardware GL) fails with
+  "EGL does not support gbm platform" until proper Mesa DRI is installed. The pixman
+  fallback requires zero GPU support and is sufficient for a functional desktop when
+  performance is not needed.
