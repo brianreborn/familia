@@ -1,0 +1,34 @@
+#!/bin/sh
+# familia: one entry point. With no arguments it opens the menu (./familia-menu.sh).
+# Usage:
+#   ./familia                      the menu
+#   ./familia skills list          scripts/skills.py ...
+#   ./familia licenses review      scripts/licenses.py ...
+#   ./familia hermes [...]         scripts/hermes.sh ...
+#   ./familia add-model DIR        scripts/add-model.sh ...
+#   ./familia check                scripts/validate_graph.py --graph graph.yaml
+#   ./familia monitor [...]       ./familia-monitor (read-only SSH console)
+#   ./familia start | configure | test | list | run KEY
+# Example: ./familia skills enable green-probe --dry-run
+set -eu
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+PY=${PYTHON:-python3}
+cmd=${1:-}
+[ $# -eq 0 ] || shift
+case "$cmd" in
+  "") exec bash "$ROOT/familia-menu.sh" ;;
+  -h|--help|help) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  skills) exec "$PY" "$ROOT/scripts/skills.py" "$@" ;;
+  licenses) exec "$PY" "$ROOT/scripts/licenses.py" "$@" ;;
+  hermes) exec bash "$ROOT/scripts/hermes.sh" "$@" ;;
+  add-model) exec bash "$ROOT/scripts/add-model.sh" "$@" ;;
+  check|validate) exec "$PY" "$ROOT/scripts/validate_graph.py" --graph "$ROOT/graph.yaml" "$@" ;;
+  monitor) exec sh "$ROOT/familia-monitor" "$@" ;;
+  start) exec sh "$ROOT/start.sh" "$@" ;;
+  configure) exec sh "$ROOT/scripts/configure.sh" "$@" ;;
+  test) exec sh "$ROOT/scripts/run-tests.sh" "$@" ;;
+  list) exec bash "$ROOT/familia-menu.sh" --list ;;
+  run) exec bash "$ROOT/familia-menu.sh" --run "$@" ;;
+  menu) exec bash "$ROOT/familia-menu.sh" "$@" ;;
+  *) echo "familia: unknown command '$cmd'. Try: ./familia help" >&2; exit 2 ;;
+esac

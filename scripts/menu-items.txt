@@ -1,0 +1,38 @@
+# familia menu items: one table for familia-menu.sh (POSIX) and familia.cmd (Windows).
+# key|group|label|posix command|gate|need|windows command
+#   gate: lic = run scripts/licenses.py gate first
+#   need: file:PATH or grep:PATH:TEXT; shown but disabled until it holds
+#   {NAME:prompt [default]} is asked for, or taken from --run KEY ARG... in order
+#   PY = python3 (or $PYTHON); INSTALLER = this platform's installer; PAGER = $PAGER or more
+#   empty windows command = not available on Windows
+setup.configure|Set up|Get or update the pinned parts (code-bootstraps, green-agentz, ...)|sh scripts/configure.sh|lic||
+setup.licenses|Set up|Review the licenses of everything you have chosen|PY scripts/licenses.py review|||python scripts\licenses.py review
+setup.settings|Set up|Change launcher settings (port, threads, context) on the terminal|sh scripts/configure.sh --interactive|||
+setup.panel|Set up|Change launcher settings in a browser form (127.0.0.1:9932)|PY scripts/panel.py|||python scripts\panel.py
+setup.install|Set up|Install or update this host (llama.cpp runtime, host entry): dry run first|sh INSTALLER --dry-run|||powershell -NoProfile -ExecutionPolicy Bypass -File install\windows\install.ps1 -DryRun
+skills.menu|Skills|Bundled skills: switch skills on/off for an agent (license-checked)|PY scripts/skills.py menu --agent {AGENT:agent name [hermes]}|||python scripts\skills.py menu --agent {AGENT:agent name [hermes]}
+skills.list|Skills|List every skill with its license and status|PY scripts/skills.py list|||python scripts\skills.py list
+skills.vendor|Skills|Show the plan to bring a survey skill into green-zkillz (no changes)|PY scripts/skills.py vendor {SKILL:skill id} --dry-run|||python scripts\skills.py vendor {SKILL:skill id} --dry-run
+skills.validate|Skills|Check the skills catalog and the skills in graph.yaml|PY scripts/skills.py validate|||python scripts\skills.py validate
+models.add|Models|Add a model from a Hugging Face folder or a .gguf (dry run)|scripts/add-model.sh {PATH:model folder or .gguf file} --dry-run|||python scripts\add_model.py {PATH:model folder or .gguf file} --dry-run
+models.check|Models|Check graph.yaml: models, RAM budget, required launch parameters|PY scripts/validate_graph.py --graph graph.yaml|||python scripts\validate_graph.py --graph graph.yaml
+models.explain|Models|Show the exact launch parameters for one node|PY scripts/validate_graph.py --graph graph.yaml --explain {NODE:node name, e.g. coder}|||python scripts\validate_graph.py --graph graph.yaml --explain {NODE:node name, e.g. coder}
+models.licenses|Models|List model, skill and engine licenses (records nothing)|PY scripts/licenses.py list|||python scripts\licenses.py list
+agents.hermes-model|Agents (hermes)|Hermes: single model (pick model)|scripts/hermes.sh --model {MODEL:model or node [coder]}|lic|grep:scripts/hermes_harness.py:"--model"|
+agents.hermes-graph|Agents (hermes)|Hermes: full graph|scripts/hermes.sh --graph|lic|grep:scripts/hermes_harness.py:--graph-mode|
+agents.hermes|Agents (hermes)|Hermes on the graph coder node (64K context)|scripts/hermes.sh|lic||
+agents.hermes-render|Agents (hermes)|Write the hermes config only; start nothing|scripts/hermes.sh --render-only|||
+agents.fleet-test|Agents (hermes)|Launch-test a role: validate, would-start, stop|sh with-fleet.sh --role {ROLE:role name, e.g. hermes} --launch-test|||
+harness2.status|Self-improving harness (Harness2)|Show which agents have Harness2 and in which mode|PY scripts/harness2.py status||file:scripts/harness2.py|python scripts\harness2.py status
+harness2.set|Self-improving harness (Harness2)|Choose target agent and mode (off / propose / apply)|PY scripts/harness2.py set --agent {AGENT:agent name} --mode {MODE:off, propose or apply}|lic|file:scripts/harness2.py|python scripts\harness2.py set --agent {AGENT:agent name} --mode {MODE:off, propose or apply}
+harness2.review|Self-improving harness (Harness2)|Review proposals: list, accept or revert|PY scripts/harness2.py review||file:scripts/harness2.py|python scripts\harness2.py review
+test.unit|Test & benchmark|Run the unit tests (installs pytest into .cache/pylib once)|sh scripts/run-tests.sh|||
+test.offline|Test & benchmark|Offline test plan (prints live steps; RUN=1 to run them)|bash scripts/offline-test-plan.sh|||
+test.registry|Test & benchmark|Benchmark records: best measured model per host and role|PY scripts/registry.py suggest --host {HOST:host name} --role {ROLE:role, e.g. coder}|||python scripts\registry.py suggest --host {HOST:host name} --role {ROLE:role, e.g. coder}
+hosts.monitor|Hosts|Monitor hosts over SSH (read-only console; --once for one snapshot)|sh familia-monitor|||python scripts\monitor.py
+hosts.start|Hosts|Start the model server on this machine|sh start.sh|lic||scripts\windows\start.bat
+hosts.measure|Hosts|Measure this machine for graph.yaml (dry run)|PY scripts/host_measure.py --name {HOST:host name} --dry-run|||
+hosts.generate|Hosts|Write a per-host graph to generated/graph-HOST.yaml|PY scripts/generate_graph.py {HOST:host name}|||python scripts\generate_graph.py {HOST:host name}
+hosts.android|Hosts|Start the node on an Android phone over SSH|bash android_start.sh {HOST:phone host, e.g. phone7}|lic||
+help.quickstart|Help|Read the quick start|PAGER QUICKSTART.md|||more QUICKSTART.md
+help.cli|Help|Every menu item as a command (same as --list)|./familia-menu.sh --list|||familia.cmd -List
