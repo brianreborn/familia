@@ -655,7 +655,8 @@ def backfill(args):
 
 PROJECTED = ("db_id", "base_model", "base_revision", "card_defaults", "card_default_set", "card_defaults_source",
              "card_sampling_modes", "card_default_mode", "card_ctx", "card_ctx_source", "bytes", "license", "ctx",
-             "native_ctx", "native_ctx_source", "required", "chat_template_file", "blockers", "weights")
+             "native_ctx", "native_ctx_source", "required", "chat_template_repo", "chat_template_revision",
+             "chat_template_path", "chat_template_sha256", "blockers", "weights")
 
 
 def chat_template_file(e):
@@ -687,7 +688,12 @@ def manifest_projection(e):
             "card_default_mode": e.get("card_default_mode"), "card_ctx": e.get("card_ctx"), "card_ctx_source": e.get("card_ctx_source"),
             "bytes": e.get("bytes"), "license": e.get("license"), "ctx": e.get("ctx"),
             "native_ctx": e.get("native_ctx"), "native_ctx_source": e.get("native_ctx_source"),
-            "required": required_compact(e), "chat_template_file": chat_template_file(e),
+            "required": required_compact(e),
+            # flat, so the launchers' manifest.awk can read them
+            "chat_template_repo": (chat_template_file(e) or {}).get("repo"),
+            "chat_template_revision": (chat_template_file(e) or {}).get("revision"),
+            "chat_template_path": (chat_template_file(e) or {}).get("file"),
+            "chat_template_sha256": (chat_template_file(e) or {}).get("sha256"),
             "blockers": [b["what"] if isinstance(b, dict) else b for b in e.get("blockers") or []] or None,
             "weights": e.get("weights") if e.get("weights", "").startswith("absent") else None}
 
@@ -702,6 +708,8 @@ def project_manifest(env, built):
             log("  manifest %s: revision %s kept (entry %s)" % (c["file"], c["revision"], e["revision"]))
             continue
         for k, v in manifest_projection(e).items():
+            if k == "license" and c.get("license") and (v == "unknown" or str(c["license"]).split()[0] == str(v).split()[0]):
+                continue                # the manifest's longer wording (notice, code license) of the same license
             if v is None:
                 c.pop(k, None)          # stale copy of a value the entry no longer has
             else:
