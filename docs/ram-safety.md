@@ -4,15 +4,14 @@ After miryam OOM'd and hard-hung (2026-10-09 PT) while coder (~3 GiB),
 embed, and a long compaction self-test ran together, we do **not** aim for
 high RAM utilization.
 
-> **Status (2026-10-10):** the numbers below (`reserve_ram_mib`, the ~2 GiB
+> **Status (2026-10-19):** the numbers below (`reserve_ram_mib`, the ~2 GiB
 > small-host floor, the 3 / 3.5 GiB free targets used in benchmark guards) are
-> **provisional, fuzzy guidance, not hard lines.** Reason: nobody has
-> characterized idle memory load on our hosts yet (registry records of kind
-> `idle-ram` are the first attempt), and no system-level protection (earlyoom,
-> systemd-oomd, cgroup limits, zram) is deployed. Until both exist, the margins
-> are a judgment call, and they should be revisited when the data and protections land.
-> Under-using RAM is preferred to idle CPU/iGPU only up to the point of risk;
-> brushing a target (e.g. 3.43 GiB vs 3.5) is within guidance.
+> **provisional, fuzzy guidance, not hard lines.** Idle load on miryam has been
+> sampled once (LESSONS-LEARNED L-memcap), and earlyoom, zram and the memcap
+> scope are deployed there (table below). Revisit the margins as more idle and
+> load data lands in the registry. Under-using RAM is preferred to idle CPU/iGPU
+> only up to the point of risk; brushing a target (e.g. 3.43 GiB vs 3.5) is within
+> guidance.
 
 ## Guidance
 
@@ -22,7 +21,14 @@ high RAM utilization.
 2. **Aim for ~2 GiB free after estimated node use on hosts under 8 GiB**
    (weights + KV + 256 MiB overhead + `cache_ram_mib` + draft weights).
 3. **Prefer one heavy server at a time on miryam.**
+   Test hard on purpose, but rely on earlyoom and zram to catch a spike instead of
+   packing several heavy processes together.
 4. **Validate against the target host's measured `ram_mib`.**
+5. **iGPU and Vulkan memory is system RAM.** A Vulkan build allocates about
+   1.8 GB of shared-memory host buffers even with `-ngl 0`, which counts against the
+   memcap scope. `scripts/serve.sh` and the hermes harness hide the Vulkan devices
+   (`GGML_VK_VISIBLE_DEVICES=`) for `-ngl 0` nodes (LESSONS-LEARNED L-vkshm; live
+   re-check planned, [#40](https://github.com/brianreborn/familia/issues/40)).
 
 ## What the validator does
 
@@ -48,16 +54,16 @@ high RAM utilization.
 | zram-tools (zstd, 25%, prio 100) | **deployed**: `/dev/zram0` is 1.8 GiB, zstd, priority 100. The old 16 MiB sda3 swap stays at priority -1 |
 | systemd-oomd | **not configured by us** (Ubuntu default, active). It only watches the `user@*.service` cgroups, killing at 50% memory pressure sustained for 20 s, and swap above 90%. earlyoom acts first, on low free memory, and only targets llama-*. Coexistence looks OK: they trigger on different signals, and earlyoom normally fires earlier. The risk is that oomd may pick a whole desktop app cgroup under sustained pressure. Our memcapped scope is the most likely large candidate, which is what we want. |
 
-Before deployment, swap was a 16 MiB `/dev/sda3` partition and it was full. swappiness was 60.
+Before deployment, swap was a 16 MiB `/dev/sda3` partition and it was full. swappiness was 60. It still is: a 4 GiB swapfile at a lower priority than zram is planned ([#43](https://github.com/brianreborn/familia/issues/43)).
 
 Sudo block for miryam (paste into a terminal):
 ```
 sudo apt-get install -y earlyoom zram-tools && echo "EARLYOOM_ARGS=\"-m 8,4 -s 10,5 -r 60 --prefer '(^|/)(llama-server|llama-bench|llama-cli)\$' --avoid '(^|/)(gnome-shell|Xwayland|sshd|systemd|grok-bot)\$' -n\"" | sudo tee /etc/default/earlyoom && printf 'ALGO=zstd\nPERCENT=25\nPRIORITY=100\n' | sudo tee /etc/default/zramswap && sudo systemctl enable --now earlyoom && sudo systemctl restart earlyoom zramswap && swapon --show && journalctl -u earlyoom -n 5 --no-pager
 ```
 
-## Draft system-level protections (reference)
+## System-level protections (reference)
 
-All need root on miryam. Nothing below has been run. Proposed in order of value.
+All but 3 and 4 need root. On miryam, 1 and 5 are deployed (by the sudo block above) and 3 is what `scripts/serve.sh` does by default; 2 is the alternative we did not choose. Listed in order of value.
 
 ### 1. earlyoom (kill the biggest *model* process before the desktop freezes)
 ```
@@ -96,7 +102,7 @@ Note: page cache from mmapped weights counts toward the cgroup. Test once before
 echo 800 > /proc/<llama-server pid>/oom_score_adj     # makes the kernel pick it first
 ```
 
-### 5. zram swap (cushion for spikes; miryam has only a 15 MiB swap)
+### 5. zram swap (cushion for spikes; miryam's disk swap is only 16 MiB)
 ```
 sudo apt install zram-tools
 echo -e "ALGO=zstd\nPERCENT=25\nPRIORITY=100" | sudo tee /etc/default/zramswap
