@@ -424,6 +424,9 @@ def check_option(g, name, o, errs):
     for n, nd in (g.get("models") or {}).items():
         if n == name: errs.append(f"{w}: same name as a placed model entry; promote by moving it to models, not both")
 
+def check_system_agent(g, name, e, errs):
+    from system_agents import check_entry as f; f(g, name, e, errs)
+
 def check_harness(g, name, h, errs):
     """Target harness descriptor (docs/harness2.md); checks live in scripts/self_improve.py."""
     from self_improve import check_harness as f; f(g, name, h, errs)
@@ -540,6 +543,16 @@ TYPES = {
                       check_self_improve, experimental=True,
                       doc="Harness² optimizer setting over harness descriptors (off by default; pentests never)"),
 
+    # Phone system agents (#80, docs/system-agents.md): Bixby / Gemini reached through Shizuku
+    # (no root). Off by default: absent or status off. Pentest roles never get them.
+    "system_agents": T({"kind": req("enum", choices={"system-agent"}), "provider": req("enum", choices={"bixby", "gemini"}),
+                        "backend": req("enum", choices={"app", "nano"}), "host": req("ref", ref="hosts"),
+                        "transport": req("enum", choices={"shizuku"}), "cloud": req("bool"),
+                        "consent": req("enum", choices={"ask"}), "status": req("enum", choices={"off", "planned", "active"}),
+                        "experimental": req("bool"), "agents": opt("refs", ref="agents"), "notes": opt("str")},
+                       check_system_agent, experimental=True,
+                       doc="phone assistant (Bixby/Gemini) via Shizuku; cloud calls need consent; never for pentests"),
+
     "options": T({"role": req("enum", choices=OPTION_ROLES), "unverified": req("bool"), "sources": req("list"),
                   "hf_repo": opt("str", nullable=True), "size_note": opt("str"), "placement_note": opt("str"),
                   "candidate_hosts": opt("strlist"), "gpu_candidate": opt("bool"), "gpu_host": opt("str"),
@@ -582,4 +595,7 @@ def validate_types(g):
                 errs.append(f"{sec}.{name}: experimental type; set 'experimental: true' to acknowledge")
             if t.check: t.check(g, name, item, errs)
     check_skills(g, errs)
+    if g.get("system_agents"):
+        from system_agents import check_graph as _sa_check
+        errs.extend(_sa_check(g))
     return errs

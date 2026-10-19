@@ -337,6 +337,15 @@ def engine_items(g):
     return out
 
 
+def system_agent_items(g):
+    """Phone system agents (#80): Shizuku + each provider's service terms, only when switched on."""
+    try:
+        import system_agents as _sa
+    except Exception:  # noqa: BLE001
+        return []
+    return [item(k, i, use, lic, link=link, notes=notes, source="declared") for k, i, use, lic, link, notes in _sa.license_rows(g)]
+
+
 def component_items():
     out = [item("component", "familia", "this project", sniff_license(os.path.join(ROOT, "LICENSE")) or "unknown",
                 text=os.path.join(ROOT, "LICENSE"), link="https://github.com/brianreborn/familia/blob/main/LICENSE")]
@@ -376,7 +385,7 @@ def load_graph(path):
 
 def selection(graph_path, add_skills=()):
     g = load_graph(graph_path)
-    items = model_items(g) + skill_items(g, add_skills) + engine_items(g) + component_items()
+    items = model_items(g) + skill_items(g, add_skills) + engine_items(g) + system_agent_items(g) + component_items()
     key = [[i["kind"], i["id"], i["license"]] for i in items]
     digest = hashlib.sha256(json.dumps(sorted(key), sort_keys=True).encode()).hexdigest()
     return items, digest
