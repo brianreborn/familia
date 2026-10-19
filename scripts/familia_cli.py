@@ -74,11 +74,15 @@ def table(windows=False):
             continue
         pre, _, short = i["key"].partition(".")
         names.setdefault((i["key"],), ("item", i))
-        names.setdefault((pre, short), ("item", i))
+        if pre not in BUILTINS:  # "help cli" stays "help on cli"
+            names.setdefault((pre, short), ("item", i))
         if len(shorts[short]) == 1 and short not in BUILTINS and (short,) not in names:
             names[(short,)] = ("item", i)
         if i["key"] not in prefer:
-            prefer[i["key"]] = (short,) if names.get((short,), (None, {}))[1] is i else (pre, short)
+            if names.get((short,), (None, {}))[1] is i:
+                prefer[i["key"]] = (short,)
+            else:
+                prefer[i["key"]] = (pre, short) if names.get((pre, short), (None, {}))[1] is i else (i["key"],)
     return names, prefer
 
 

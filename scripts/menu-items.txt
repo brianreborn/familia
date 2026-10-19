@@ -82,4 +82,5 @@ adv.poudriere|Advanced: hosts & benchmarks|FreeBSD: build the familia package wi
 help.quickstart|Help|Read the quick start|PAGER QUICKSTART.md|||more QUICKSTART.md
 help.search|Help|Search every group for a word (in the menu: /word, then n / N)|./familia-menu.sh --search {WORD:word to look for, e.g. model}|||familia.cmd -Search {WORD:word to look for, e.g. model}
 help.cli|Help|Every menu item as a command (same as --list)|./familia-menu.sh --list|||familia.cmd -List
+help.man|Help|The familia(1) manual: every command, option, setting and file|./familia help --man|||
 help.internal|Help|Scripts the menu leaves out on purpose, and why|PAGER scripts/menu-internal.txt|||more scripts\menu-internal.txt

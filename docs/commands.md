@@ -148,6 +148,7 @@ familia.cmd -Search WORD [-Run N] [-DryRun]
 | `help.quickstart` | Read the quick start | `more QUICKSTART.md` | `more QUICKSTART.md` |
 | `help.search` | Search every group for a word (in the menu: /word, then n / N) | `./familia-menu.sh --search <WORD>` | `familia.cmd -Search <WORD>` |
 | `help.cli` | Every menu item as a command (same as --list) | `./familia-menu.sh --list` | `familia.cmd -List` |
+| `help.man` | The familia(1) manual: every command, option, setting and file | `./familia help --man` | - |
 | `help.internal` | Scripts the menu leaves out on purpose, and why | `more scripts/menu-internal.txt` | `more scripts\menu-internal.txt` |
 
 ## Left out of the menu on purpose
