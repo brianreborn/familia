@@ -12,6 +12,7 @@ scripts/monitor/probe.py|read-only probe the monitor pipes to each host over SSH
 scripts/monitor/probe.ps1|Windows version of the probe the monitor pipes over SSH
 scripts/bench_parse.py|filter for llama-bench output (pipe llama-bench -o csv into it); nothing to do on its own
 scripts/bench_guard.py|library for perf/bench drivers (GGUF metadata validation, flag rewriting, encoder ubatch, memory cap); meta/memcap subcommands are for drivers, not people
+scripts/prompt_cache.py|library: saves and restores an agent's fixed prompt prefix in llama-server slots (#85); used by hermes.sh
 scripts/retry_wrapper.py|library for agent model calls; its main is only a self-demo
 scripts/isolated/hfchat.py|adapter that graph nodes of kind isolated_remote call; not run by hand
 scripts/c2c/kv_ship.py|step of the C2C loopback test (Advanced menu), needs two running servers

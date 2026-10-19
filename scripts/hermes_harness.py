@@ -37,6 +37,10 @@ USER_HOME = os.path.expanduser("~/.hermes")
 SECRET_RE = re.compile(r"(api_?key|token|secret|password|passwd|auth|cookie|credential)", re.I)
 # Sections the harness owns; never inherited from the user's config.
 OWNED = {"model", "auxiliary", "compression", "custom_providers", "providers", "smart_model_routing", "fallback_model"}
+# Lean prompt profile (#85): the toolsets a coding agent on a small or old node needs. Long
+# guidance stays reachable through the skills tools (skills_list / skill_view load on demand).
+LEAN_TOOLSETS = ("terminal", "file", "todo", "clarify", "skills")
+LEAN_RAM_MIB = 8192   # same line as the small-host floor in docs/ram-safety.md
 AUX_TASKS = ["web_extract", "compression", "skills_hub", "approval", "mcp", "title_generation",
              "memory_query_rewrite", "tts_audio_tags", "triage_specifier", "kanban_decomposer",
              "profile_describer", "goal_judge", "curator", "monitor"]
@@ -79,6 +83,22 @@ def bind(n):
     return n.get("bind") or n.get("host", "127.0.0.1")
 
 
+def prompt_profile(g, a, n):
+    """agents.<a>.prompt_profile: lean | full | auto (default). auto = lean on a phone or a host
+    with ram_mib < 8192, where the full 27-tool prompt costs ~12.5k tokens of CPU prefill."""
+    p = a.get("prompt_profile", "auto")
+    if p != "auto":
+        return p
+    h = (g.get("hosts") or {}).get(n.get("host"), {})
+    return "lean" if h.get("kind") == "phone" or (h.get("ram_mib") or 0) < LEAN_RAM_MIB else "full"
+
+
+def lean_toolsets(cfg):
+    """Only ever narrows: toolsets the user did not enable are never added."""
+    have = ((cfg.get("platform_toolsets") or {}).get("cli"))
+    return [t for t in have if t in LEAN_TOOLSETS] if isinstance(have, list) else list(LEAN_TOOLSETS)
+
+
 def render(g, agent, user_cfg_path=os.path.join(USER_HOME, "config.yaml"), base_override=None):
     a, name, n, alias = node_for(g, agent)
     base = base_override or f"http://{bind(n)}:{n['port']}/v1"
@@ -102,6 +122,8 @@ def render(g, agent, user_cfg_path=os.path.join(USER_HOME, "config.yaml"), base_
         aux[t] = {"provider": "custom", "model": alias, "base_url": base, "api_key": "local",
                   "timeout": comp.get("aux_timeout", 3600)}
     cfg["auxiliary"] = aux
+    if prompt_profile(g, a, n) == "lean":
+        cfg["platform_toolsets"] = dict(cfg.get("platform_toolsets") or {}, cli=lean_toolsets(cfg))
     home = os.path.expanduser(f"~/.cache/familia/hermes-{agent}")
     if os.path.realpath(home) == os.path.realpath(USER_HOME):
         die("refusing to render into ~/.hermes")
@@ -161,6 +183,47 @@ def ensure_server(g, name, n, timeout=900):
         die(f"node {name} on port {n['port']} reports n_ctx {got}, graph expects per-slot {want}; "
             "something else is on that port or it was started with other args")
     return got
+
+
+PREFIX_CHILD = r'''
+import json, os, sys
+sys.path.insert(0, os.environ["HERMES_SP"])
+from hermes_cli.prompt_size import _build_inspection_agent
+from agent.system_prompt import build_system_prompt, build_system_prompt_parts
+a = _build_inspection_agent("cli")
+json.dump({"system": build_system_prompt(a), "volatile": build_system_prompt_parts(a).get("volatile", ""),
+           "tools": a.tools}, sys.stdout)
+'''
+
+
+def hermes_prefix(home):
+    """The system prompt + tool schemas hermes will send, built offline by hermes itself. A snap
+    hermes is asked inside its own snap environment (outside it, fewer tools are detected)."""
+    env = dict(os.environ, HERMES_HOME=home, HERMES_SP=HERMES_SP, FAMILIA_PREFIX_CHILD=PREFIX_CHILD)
+    if HERMES_BIN.startswith("/snap/bin/"):
+        cmd = ["snap", "run", "--shell", os.path.basename(HERMES_BIN), "-c", '"$SNAP/bin/python3" -c "$FAMILIA_PREFIX_CHILD"']
+    else:
+        cmd = [HERMES_PY, "-c", PREFIX_CHILD]
+    r = subprocess.run(cmd, capture_output=True, text=True, env=env, timeout=600)
+    if r.returncode != 0:
+        raise RuntimeError(r.stderr[-500:])
+    return json.loads(r.stdout)
+
+
+def warm_prompt(g, name, n, home):
+    """Nodes with slot_save: restore the fixed prompt prefix from disk, or prefill and save it once
+    (scripts/prompt_cache.py, #85). Best effort: any failure only means a slower first turn."""
+    if not n.get("slot_save"):
+        return None
+    import prompt_cache
+    base = f"http://{bind(n)}:{n['port']}"
+    try:
+        d = hermes_prefix(home)
+        text = prompt_cache.stable_prefix(base, d["system"], d["tools"], d.get("volatile", ""))
+        return prompt_cache.warm(base, prompt_cache.prefix_tokens(base, text), tag=name)[0]
+    except Exception as e:
+        print(f"hermes.sh: prompt cache skipped ({e})", file=sys.stderr)
+        return None
 
 
 def chat(base, alias, messages, max_tokens=400):
@@ -236,6 +299,7 @@ def run_escalating(g, agent, light, swap_back, rest):
     srv = EP.serve(esc)
     base = f"http://127.0.0.1:{srv.server_address[1]}/v1"
     home, _, _, _ = render(g, agent, base_override=base)
+    warm_prompt(g, light, g["nodes"][light], home)
     print(f"hermes.sh: escalation proxy {base} light={light} targets={g['nodes'][light].get('escalates_to')}", file=sys.stderr)
     return subprocess.call([HERMES_BIN] + rest, env=dict(os.environ, HERMES_HOME=home))
 
@@ -286,6 +350,7 @@ def main(argv):
     if mode == "escalate":
         return run_escalating(g, agent, light or name, swap_back, rest)
     ensure_server(g, name, n)
+    warm_prompt(g, name, n, home)
     os.environ["HERMES_HOME"] = home
     os.execv(HERMES_BIN, [HERMES_BIN] + rest)
 

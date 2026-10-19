@@ -447,6 +447,7 @@ nodes:
     flash_attn: true
     offload: {backend: cpu, ngl: 0, split: none, main_gpu: 0}   # iGPU measured worse + needs extra RAM (LESSONS L-miryam-perf)
     threads: 3                   # -t 3 beat -t 2 in two 3-rep runs (2026-10-19: tg 6.58 vs 6.14 mean under desktop load; 7.22 vs 6.77); -t 4 is worse (6.3 vs 8.4, 2026-10-10)
+    slot_save: true              # hermes' fixed prompt prefix is prefilled once, then restored from disk (#85)
     load_mode: none              # -lm none: real launch peak RSS 1790-1863 vs 2353 MiB with mmap, load 23-35 vs 25-41 s, tg 8.55-8.66 vs 8.84-8.86 (2026-10-19, x2)
     bind: 127.0.0.1
     port: 9941

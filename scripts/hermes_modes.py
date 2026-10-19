@@ -203,6 +203,7 @@ def main(argv):
     print(f"hermes.sh: HERMES_HOME={home} model={base}", file=sys.stderr)
     if o["action"] == "render": return 0
     hh.ensure_server(g2, nname, n)
+    hh.warm_prompt(g2, nname, n, home)
     os.environ["HERMES_HOME"] = home
     os.execv(hh.HERMES_BIN, [hh.HERMES_BIN] + o["rest"])
 

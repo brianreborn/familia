@@ -471,7 +471,8 @@ TYPES = {
                 "offload": req("any"), "bind": req("str"), "port": req("int", min=1),
                 "cache_ram_mib": req("int", min=0), "status": req("enum", choices={"active", "planned"}),
                 "embeddings": opt("bool"), "threads": opt("int", min=1), "scale_down": opt("any"),
-                "load_mode": opt("enum", choices={"auto", "mmap", "none"}),  # llama.cpp -lm (b11374+)
+                "load_mode": opt("enum", choices={"auto", "mmap", "none"}),
+                "slot_save": opt("bool"),  # --slot-save-path ~/.cache/familia/slots/<node> (#85)  # llama.cpp -lm (b11374+)
                 "selection": opt("enum", choices={"default", "fallback"}), "note": opt("str"),
                 # heavyweight escalation (docs/escalation.md); checked in escalation.check_node_escalation
                 "escalates_to": opt("list"), "escalation": opt("any"),
@@ -493,6 +494,7 @@ TYPES = {
     "aliases": T({"node": req("ref", ref="nodes"), "gateway": req("ref", ref="gateways")}, check_alias,
                  doc="route name -> exactly one node"),
     "agents": T({"kind": req("enum", choices={"hermes-agent"}), "host": req("ref", ref="hosts"),
+                 "prompt_profile": opt("enum", choices={"auto", "lean", "full"}),  # #85
                  "min_ctx": req("int", min=1), "context_length": req("int", min=1), "aliases": req("map"),
                  # bundled skills (skills/catalog.json, scripts/skills.py, docs/skills.md)
                  "skills": opt("strlist")},
