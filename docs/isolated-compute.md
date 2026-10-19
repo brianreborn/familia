@@ -1,6 +1,6 @@
 # Isolated compute (`isolated_remote`) — design draft
 
-Status: design only. Nothing here is implemented.
+Status: design draft. Implemented so far: the PTY adapter `scripts/isolated/hfchat.py` (session rotation before the compaction threshold, exit code 5 on 402/429/auth). The `isolated_remote` graph type is not in `graph_types.py` yet. Blocked on Hugging Face credits: every prompt returned 402 on 2026-10-09 ([#36](https://github.com/brianreborn/familia/issues/36)).
 
 ## The trigger: `ssh chat.hf.co`
 
@@ -14,8 +14,9 @@ Checked 2026-10-09:
 - What it is: a terminal chat front end to models served by **HF Inference
   Providers** (e.g. Qwen3.8-27B; one user reports 127 models after logging in
   with a free account, another reports Kimi K3 after setting an SSH key).
-- Auth: anonymous works. Signing in to an HF account / adding an SSH key unlocks
-  more models (user reports; mechanism TBD).
+- Auth: posts claim anonymous use works and that signing in / adding an SSH key
+  unlocks more models. **Unverified:** with a linked key, every prompt got
+  `402 Payment Required` (#36).
 - Official docs page: TBD (none found; chat.hf.co returned 504 to our fetch,
   and the box network could not reach port 22).
 - Pricing / limits: posts claim free and "unlimited"; official quota TBD.
