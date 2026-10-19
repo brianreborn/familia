@@ -9,8 +9,21 @@ All notable changes to familia are recorded here. The format follows [Keep a Cha
 
 ## [Unreleased]
 
-### Planned
-- Declarative configuration graph: models and agents declared explicitly and validated against measured hardware, with no silent model choice, no silent context inflation, and a loud failure on mismatch. Design draft: `docs/configuration-graph.md`. Format and commands TBD.
+Landed on `main` after `v0.1.0-rc2`.
+
+### Added
+- Model database (`registry/models/`, `scripts/model_db.py`, `scripts/hf_fetch.py`): one entry per model from its full Hugging Face repo pinned to a commit; model-card sampling becomes the launch default and the validator fails on unexplained differences. (#51)
+- `add-model.sh` takes a Hugging Face snapshot directory, explicit flags or a lone GGUF, picks up auxiliary models (`--aux`, mmproj/draft/MTP files), and infers the role.
+- Semi-automatic light-to-heavy escalation: `escalates_to` / `escalation` node fields, `scripts/escalate.py`, and `scripts/hermes.sh --escalate` with a localhost proxy. Default mode `suggest`; cross-host targets need recorded consent. (#39 tracks the router hookup and live swap.)
+- `selection: default|fallback` node field; `qodesh-resident` (Qwen3.5-2B) is a user-selectable fallback on qodesh.
+- Pentest launch-test rule: tools disabled two independent ways.
+
+### Fixed
+- Vulkan builds no longer allocate ~1.8 GB of unused shared memory on `-ngl 0` nodes: `scripts/serve.sh` and the hermes harness export an empty `GGML_VK_VISIBLE_DEVICES`. (#40 tracks live verification.)
+- Prompt cache sized per profile in the pinned code-bootstraps-llama.cpp (#16 there). (#41 tracks live verification.)
+
+### Documentation
+- README, QUICKSTART, MANUAL rewritten as one entry path; configuration-graph and graph-types describe schema v2 on `main`; LAN addresses removed from public docs.
 
 ## [0.1.0-rc1] - 2026-10-10
 
