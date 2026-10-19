@@ -14,31 +14,13 @@ familia is a **topology coordinator**. It doesn't replace your inference server 
 
 ## Quick start
 
-**Linux, macOS, Termux (Android):**
-
 ```sh
 curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install.sh | sh
 ```
 
-That is the first of two clicks. The second is a one-word acknowledgement of the voluntary contribution notice (type `yes`). You never have to pay. For unattended installs, set `INSTALL_ACK=yes`.
+That clones familia into `~/familia`, syncs the pinned sub-projects and starts the router. You type `yes` once to acknowledge the voluntary contribution notice (`INSTALL_ACK=yes` for unattended installs); paying is never required. Then open **http://127.0.0.1:9931/?model=chat** (or the URL the launcher prints) and paste the API key from the terminal.
 
-*Windows: one-click `install\windows\install.bat` (wraps `install\windows\install.ps1`), plus `scripts\windows\start.bat` and an opt-in logon task (`scripts\windows\install-task.ps1`); see docs/windows.md. Termux and desktop Linux installers live in `install/termux/` and `install/linux/`.*
-
-The installer:
-
-1. clones familia into `~/familia` (override with `INSTALL_PREFIX`),
-2. runs `scripts/configure.sh`, which checks out every sub-project in [`pins.txt`](pins.txt) at its pinned revision,
-3. starts `./start.sh` (skip with `INSTALL_NO_START=1`).
-
-When the server is ready, open the chat UI at **http://127.0.0.1:9931/?model=chat**, or at whatever URL the launcher prints if 9931 is taken. On first visit, click **Enter API Key** and paste the key printed in the terminal.
-
-Already have a checkout?
-
-```sh
-./start.sh
-```
-
-**Windows:** run `install\windows\install.bat` (wraps `install\windows\install.ps1`), then `scripts\windows\start.bat`. See [docs/windows.md](docs/windows.md).
+Windows, per-graph-node installers, and everything after the first start: **[QUICKSTART.md](QUICKSTART.md)**, then [MANUAL.md](MANUAL.md).
 
 ---
 
@@ -66,10 +48,10 @@ familia is a **graph**. Nodes have named *hooks*, and hooks connect in pairs. Da
 ```
 
 - **Node types** (from `pins.txt`): `model`, `agent`, `agency`, `room`, `swarm`, `store`, `reach`.
-- **Transports**: `local`, `ssh`, `nfs`, `rsync`, `bittorrent`, `zfs`. On this branch they are names in the graph only; an SSH nexus and BitTorrent tracker proof of concept is on the unmerged `feat/transport-poc` branch.
+- **Transports**: `local`, `ssh`, `nfs`, `rsync`, `bittorrent`, `zfs` are the declared edge kinds. Only two have code, as an opt-in proof of concept: an SSH nexus and a private BitTorrent tracker (`meshes:` in the graph, [docs/transport-poc.md](docs/transport-poc.md)). The rest are names only.
 - **Route names** are single English words for the job: `chat` (front door), `coder` (handoff target), `route` (small resident dispatcher), `translate`. Specialist routes (`vision`, `transcribe`, `speak`, `draw`, `embed`, `rerank`, `safety`, `guard`) exist only when they are declared and their pinned weights are on disk. A file appearing on disk doesn't create a route by itself.
 - **The user owns every edge.** An environment variable, a command-line flag, or a saved setting always wins. The system may *suggest* an edge, and it never opens one on its own.
-- **Configuration is a declarative graph.** [`graph.yaml`](graph.yaml) declares every model node and agent explicitly; [`scripts/validate_graph.py`](scripts/validate_graph.py) checks it against the measured host and fails loudly instead of quietly picking another model or inflating context. See [docs/configuration-graph.md](docs/configuration-graph.md). `start.sh` does not read the graph yet; today the graph is consumed by `scripts/hermes.sh` (and `validate_graph.py --args NODE` prints the `llama-server` command line for a node).
+- **Configuration is a declarative graph.** [`graph.yaml`](graph.yaml) declares every model node and agent explicitly; [`scripts/validate_graph.py`](scripts/validate_graph.py) checks it against the measured host and fails loudly instead of quietly picking another model or inflating context. See [docs/configuration-graph.md](docs/configuration-graph.md). `start.sh` does not read the graph yet. Today the graph is used by `scripts/serve.sh NODE` and `scripts/hermes.sh`, both of which launch `llama-server` with the exact arguments `validate_graph.py --args NODE` prints.
 
 For the full design (transaction blocks, `/local` and `/remote`, snapshots as cache coherence, least privilege), read [DESIGN.md](DESIGN.md).
 
@@ -88,16 +70,9 @@ The sub-projects keep their own repositories and licenses. familia pins each one
 | `agent-reach` | External reach tools, pinned and not vendored | [Panniantong/Agent-Reach](https://github.com/Panniantong/Agent-Reach) |
 | `llama-server__nace-ai__edlm` | Experimental runtime: DReX-DLM diffusion engine. Cloned only when an `ENGINE_*` setting asks for it | [nace-ai/llama.cpp](https://github.com/nace-ai/llama.cpp) (branch `edlm`) |
 
-**Used but not pinned:** [hermes-agent](https://github.com/NousResearch/hermes-agent). Run it through the graph harness:
+**Used but not pinned:** [hermes-agent](https://github.com/NousResearch/hermes-agent). Always run it through the graph harness, `scripts/hermes.sh`, never as stock `hermes`. The stock `~/.hermes` config has compression off and points at small-context models, which fails with HTTP 400 on long turns ([#19](https://github.com/brianreborn/familia/issues/19)). The harness renders its own config (65,536-token context on the `coder` node, compression on, auxiliary tasks on local nodes) and only reads `~/.hermes`. Commands: [QUICKSTART.md](QUICKSTART.md#always-run-hermes-through-the-harness).
 
-```sh
-scripts/hermes.sh                 # validate graph, start the coder node if needed, launch hermes
-scripts/hermes.sh --render-only   # only write the generated hermes config
-```
-
-The harness validates `graph.yaml`, renders a separate `HERMES_HOME` under `~/.cache/familia/hermes-<agent>` (it only reads `~/.hermes`, never writes it), sets `context_length` to the node's exact per-slot context (65,536 on the `coder` node), turns compression on, keeps every auxiliary task on local nodes, and starts the node's `llama-server` from `validate_graph.py --args` if it is not already up. This replaces the old manual advice for [#19](https://github.com/brianreborn/familia/issues/19) (16,384-token slot with compression off looping on HTTP 400).
-
-Alternative engine builds follow the `<executable>__<author>__<branch>` naming scheme (for example `llama-server__ggerganov__master`), and each build lives in its own `bin/llama__<author>__<branch>/` directory so shared libraries can't collide. Building alternative engines from these pins is still TBD; `configure.sh` only clones them. Separately, the graph runs **official llama.cpp release builds side by side**: `b11374` serves `coder` (qwen35) and `b11539` serves `embed` (embeddinggemma-2), each declared under `runtimes:` in `graph.yaml` with the architectures it was load-tested on. A node whose GGUF architecture isn't listed for its runtime fails validation.
+Alternative engine builds follow the `<executable>__<author>__<branch>` naming scheme (for example `llama-server__ggerganov__master`), and each build lives in its own `bin/llama__<author>__<branch>/` directory so shared libraries can't collide. Building alternative engines from these pins is still TBD; `configure.sh` only clones them. Separately, the graph runs **official llama.cpp release builds side by side**: `b11374` serves `coder` (qwen35) and `b11539` is load-tested for `embed` (embeddinggemma-2, deferred in [#38](https://github.com/brianreborn/familia/issues/38)), each declared under `runtimes:` in `graph.yaml` with the architectures it was load-tested on. A node whose GGUF architecture isn't listed for its runtime fails validation.
 
 ---
 
@@ -114,21 +89,27 @@ Shell environment variables always take precedence over saved settings.
 
 ## Implementation status
 
-Everything below is on `main` (all feature branches have been merged; nothing is pending on side branches).
+Everything below is on `main`. "Planned (#N)" means tracked in that issue and not done yet.
 
 | Feature | Status |
 |---|---|
-| Declarative graph `graph.yaml` (typed schema v2, multi-host, GPU fields, speculative edges, `pentests` launch-test-only type) + `scripts/validate_graph.py` | Implemented; fails loud on runtime, GGUF arch, `context_length`, prompt-cache size and RAM violations |
-| hermes harness `scripts/hermes.sh` / `hermes_harness.py` | Implemented; compaction self-test (`--selftest-compaction`) not yet completed on miryam |
+| Declarative graph `graph.yaml` (typed schema v2, multi-host, GPU fields, speculative edges, `pentests` launch-test-only type) + `scripts/validate_graph.py` | Implemented. Fails on schema, runtime, GGUF arch, `context_length`, prompt-cache size and RAM overcommit; the RAM reserve and small-host floor are warnings ([docs/ram-safety.md](docs/ram-safety.md)) |
+| Model selection: `selection: default\|fallback` per node | Implemented (`qodesh-resident`, Qwen3.5-2B, is a user-selectable fallback; SmolLM2 stays the qodesh default) |
+| hermes harness `scripts/hermes.sh` / `hermes_harness.py` | Implemented; live `--selftest-compaction` on miryam planned ([#42](https://github.com/brianreborn/familia/issues/42)) |
+| Light-to-heavy escalation (`escalates_to`, `escalation: {mode: off\|suggest\|auto}`, `scripts/escalate.py`, `hermes.sh --escalate`) | Implemented behind a flag, default `suggest`, tested against mock servers. green-roomz router hookup, live swap, reachability probe and live end-to-end run planned ([#39](https://github.com/brianreborn/familia/issues/39)). See [docs/escalation.md](docs/escalation.md) |
 | Side-by-side pinned llama.cpp runtimes | Implemented |
-| RAM safety reserve (`reserve_ram_mib`, memcap scope in `scripts/serve.sh`, earlyoom+zram on miryam) | Implemented, see [docs/ram-safety.md](docs/ram-safety.md) |
-| Measured model/hardware registry (`registry/records.jsonl`, `scripts/registry.py`) | Implemented, see [docs/model-registry.md](docs/model-registry.md) |
+| RAM safety (`reserve_ram_mib`, memcap scope in `scripts/serve.sh`, earlyoom+zram on miryam) | Implemented; 4 GiB swapfile on miryam planned ([#43](https://github.com/brianreborn/familia/issues/43)) |
+| Vulkan `-ngl 0` workaround (`GGML_VK_VISIBLE_DEVICES=` exported when a node has no GPU layers) | Implemented in `scripts/serve.sh` and the harness; live verification planned ([#40](https://github.com/brianreborn/familia/issues/40)). Not in Windows `serve.ps1` |
+| Prompt cache sized per profile (lowram 768 / moderate 1024 / default 2048 MiB, at most a quarter of free RAM; code-bootstraps-llama.cpp #16) | Implemented in the pinned code-bootstraps; graph nodes set `cache_ram_mib` explicitly. Live reuse check planned ([#41](https://github.com/brianreborn/familia/issues/41)) |
+| Measured model/hardware registry (`registry/records.jsonl`, `scripts/registry.py`), coarse binary-search tuning | Implemented, see [docs/model-registry.md](docs/model-registry.md) |
 | Model database from the full pinned HF repo (`registry/models/`, `scripts/model_db.py`, `add-model.sh --fetch`); card sampling as launch defaults, overrides need reasons (#51) | Implemented, see [docs/model-database.md](docs/model-database.md); RoPE/stop/template recorded, not yet applied |
-| One-click installers (Windows, desktop Linux/macOS, Termux) + Windows startup | Implemented, see [docs/install.md](docs/install.md), [docs/windows.md](docs/windows.md) |
+| `add-model.sh`: HF snapshot dirs, auxiliary models (`--aux`), inferred role | Implemented |
+| One-click installers (Windows, desktop Linux/macOS, Termux) + Windows startup | Implemented, see [docs/install.md](docs/install.md), [docs/windows.md](docs/windows.md). Old-device lowram/non-AVX smoke planned ([#48](https://github.com/brianreborn/familia/issues/48)) |
 | Legacy GPU decision node (GeForce 8600 GT, sm_11 PTX) | Measured; tuning notes in [docs/perf/pgo-followup.md](docs/perf/pgo-followup.md) |
 | Transports PoC (SSH nexus, private BitTorrent tracker), C2C stage 1 `kv_ship` | Opt-in proof of concept (loopback- and cross-host-tested) |
 | `scripts/scale_down.py`, LittleBit reference runtime | Implemented (LittleBit is correctness-only) |
-| `isolated_remote` compute | Design doc only |
+| `isolated_remote` compute | Design doc plus the `scripts/isolated/hfchat.py` adapter; blocked on Hugging Face credits ([#36](https://github.com/brianreborn/familia/issues/36)) |
+| Pentest roles | Launch-tested only, with tools disabled two independent ways (see [REQUIREMENTS.md](REQUIREMENTS.md)) |
 
 ---
 
@@ -137,7 +118,7 @@ Everything below is on `main` (all feature branches have been merged; nothing is
 | Platform | Status |
 |---|---|
 | Linux x86_64 | Tested |
-| Termux (Android) | Server runs; detach and wake lock handled by `start.sh`. Android fleet-node scripts are being fixed ([#14](https://github.com/brianreborn/familia/issues/14), [#15](https://github.com/brianreborn/familia/issues/15), [#18](https://github.com/brianreborn/familia/issues/18)) |
+| Termux (Android) | Server runs; detach and wake lock handled by `start.sh`. The Android fleet scripts are fixed (#14, #15, #18). The phones are out of range for now; the next measurement round is planned ([#46](https://github.com/brianreborn/familia/issues/46)) |
 | macOS | Expected to work through the POSIX installer; untested |
 | Windows | One-click installer `install\windows\install.bat` + `scripts\windows\start.bat`; measured on qodesh (Windows 10, non-AVX Athlon II X2) |
 
@@ -154,15 +135,27 @@ Everything below is on `main` (all feature branches have been merged; nothing is
 
 ## Documentation
 
+Start with [QUICKSTART.md](QUICKSTART.md), then [MANUAL.md](MANUAL.md).
+
 | Doc | What's in it |
 |---|---|
-| [MANUAL.md](MANUAL.md) | Install, administer, use |
+| [QUICKSTART.md](QUICKSTART.md) | Install, validate, start, add a model, test |
+| [MANUAL.md](MANUAL.md) | Settings, detaching, models, escalation, RAM safety, Windows |
+| [TESTING.md](TESTING.md) | Testing on your own hardware and reporting back |
 | [DESIGN.md](DESIGN.md) | The graph, transactions, transports, snapshots |
-| [docs/configuration-graph.md](docs/configuration-graph.md) | Declarative model/agent graph: what is implemented, what is planned |
-| [docs/ram-safety.md](docs/ram-safety.md) | RAM reserve rule and validator checks |
-| [docs/announcements/](docs/announcements/) | Release-note and announcement **drafts** (placeholders, not published) |
+| [REQUIREMENTS.md](REQUIREMENTS.md) | Requirements and their status |
+| [LESSONS-LEARNED.md](LESSONS-LEARNED.md) | What went wrong before, and the rule that came out of it |
+| [docs/graph-types.md](docs/graph-types.md) | Every `graph.yaml` section and the validator's rules |
+| [docs/configuration-graph.md](docs/configuration-graph.md) | Why the graph exists, what it checks, what is still open |
+| [docs/model-database.md](docs/model-database.md) | Model entries from the full pinned HF repo |
+| [docs/model-registry.md](docs/model-registry.md) | Measured results and hardware profiles |
+| [docs/models-catalog.md](docs/models-catalog.md) | Every model in use or under consideration |
+| [docs/escalation.md](docs/escalation.md) | Light-to-heavy model escalation |
+| [docs/ram-safety.md](docs/ram-safety.md) | RAM reserve rule and protections |
+| [docs/install.md](docs/install.md), [docs/windows.md](docs/windows.md) | Installers and Windows startup |
 | [docs/known-issues.md](docs/known-issues.md) | Current problems and workarounds |
-| [docs/announcements/CHANGELOG.md](docs/announcements/CHANGELOG.md) | Release notes |
+| [docs/HANDOFF.md](docs/HANDOFF.md), [docs/offline-test-plan.md](docs/offline-test-plan.md) | Open work and the tests that resume it |
+| [docs/announcements/](docs/announcements/) | Release-note and announcement **drafts** (not published) |
 
 ---
 
