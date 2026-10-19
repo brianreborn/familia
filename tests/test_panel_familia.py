@@ -1,6 +1,6 @@
 """familia pages of the settings panel (scripts/panel_familia.py) and its accessibility check.
 
-They run against the code-bootstraps-llama.cpp panel when that checkout is present
+They run against the pinned, nested code-bootstraps-llama.cpp panel (synced first) when present
 (sh scripts/configure.sh fetches it) and are skipped otherwise.
 """
 import importlib.util
@@ -14,9 +14,27 @@ import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
-CB = next((p for p in (os.path.join(ROOT, "code-bootstraps-llama.cpp"), os.path.join(ROOT, "..", "code-bootstraps-llama.cpp"))
-           if os.path.isfile(os.path.join(p, "scripts", "panel.py"))), None)
-pytestmark = pytest.mark.skipif(CB is None, reason="code-bootstraps-llama.cpp checkout not present")
+CB_PINNED = os.path.join(ROOT, "code-bootstraps-llama.cpp")
+
+
+def _sync_pinned():
+    """Bring the nested, pinned checkout to its pin before the tests load panel.py from it.
+
+    Only the nested checkout is used: a stray or stale code-bootstraps-llama.cpp next to
+    the familia checkout must never shadow the pinned one. FAMILIA_SYNC=0 skips the sync.
+    """
+    if os.environ.get("FAMILIA_SYNC") == "0" or not os.path.isdir(CB_PINNED):
+        return
+    try:
+        subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "sync_pins.py"), "--auto", "--quiet"],
+                       cwd=ROOT, timeout=300, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except (OSError, subprocess.TimeoutExpired):
+        pass
+
+
+_sync_pinned()
+CB = CB_PINNED if os.path.isfile(os.path.join(CB_PINNED, "scripts", "panel.py")) else None
+pytestmark = pytest.mark.skipif(CB is None, reason="pinned code-bootstraps-llama.cpp checkout not present (sh scripts/configure.sh)")
 EXTRA = os.path.join(ROOT, "scripts", "panel_familia.py")
 
 
