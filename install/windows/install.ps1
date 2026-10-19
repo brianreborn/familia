@@ -20,6 +20,10 @@
   powershell -ExecutionPolicy Bypass -File install\windows\install.ps1 -Yes
   (-Yes accepts the license review without a prompt; the summary is still printed.
    -AcceptUnknown also accepts items whose license could not be found. See docs\licenses.md.)
+.EXAMPLE
+  powershell -ExecutionPolicy Bypass -File install\windows\install.ps1 -NoPath
+  (by default `familia` is put on your user PATH: a 2-line shim in %LOCALAPPDATA%\Programs\familia\bin
+   plus HKCU\Environment, no admin; see scripts\windows\install-cli.ps1. -NoPath skips that.)
 #>
 [CmdletBinding(SupportsShouldProcess = $true)]
 param(
@@ -37,7 +41,8 @@ param(
   [switch]$LogonTask,
   [string]$Model,
   [switch]$Yes,
-  [switch]$AcceptUnknown
+  [switch]$AcceptUnknown,
+  [switch]$NoPath
 )
 $ErrorActionPreference = 'Stop'
 Import-Module CimCmdlets -Verbose:$false  # load before WhatIf so module aliases are not reported
@@ -55,6 +60,8 @@ if (-not $ModelsPath) {
 if ($Uninstall) {
   $task = Join-Path $repo 'scripts\windows\install-task.ps1'
   if (Test-Path $task) { & $task -Uninstall -WhatIf:$dry }
+  $cli = Join-Path $repo 'scripts\windows\install-cli.ps1'
+  if (Test-Path $cli) { & $cli -Uninstall -WhatIf:$dry }  # shim + PATH entry, exactly what it recorded
   foreach ($p in @($repo, $runtimeRoot)) {
     if ((Test-Path $p) -and $PSCmdlet.ShouldProcess($p, 'Remove')) { Remove-Item -Recurse -Force $p }
   }
@@ -213,5 +220,9 @@ if ($LogonTask) {
   if (Test-Path $task) { & $task -Install -Model $Model -ModelsPath $ModelsPath -RuntimePath $rt -WhatIf:$dry }
   else { Say "would register logon task via $task" }
 }
+# 5. `familia` on the user PATH: 2-line shim + HKCU\Environment (no admin); -NoPath skips
+$cli = Join-Path $repo 'scripts\windows\install-cli.ps1'
+if (Test-Path $cli) { & $cli -NoPath:$NoPath -WhatIf:$dry }
+else { Say "would put familia on PATH via $cli" }
 Say "done. Start a node: set FAMILIA_RUNTIME to the runtime dir and FAMILIA_MODEL, then run $repo\scripts\windows\start.bat"
 Say "what now: run $repo\familia.cmd for the menu (Skills, Models, licenses). Quick start: $repo\QUICKSTART.md"

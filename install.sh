@@ -8,10 +8,11 @@ set -eu
 case "${1:-}" in -h|--help) cat <<'USAGE'
 install.sh: Install familia into ~/familia (or $INSTALL_PREFIX), sync the pinned parts, then start it.
 Usage:
-  sh install.sh [--dry-run] [--yes] [--no-start]
+  sh install.sh [--dry-run] [--yes] [--no-start] [--no-path]
     --dry-run   say what would happen; change nothing
     --yes       non-interactive: acknowledge the notice and accept licenses (the summary is still printed)
     --no-start  stop after setup (same as INSTALL_NO_START=1)
+    --no-path   do not put `familia` on PATH (default: 2-line shim ~/.local/bin/familia; scripts/install-cli.sh)
 Example: curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install.sh | sh -s -- --yes --no-start
 USAGE
   exit 0 ;; esac
@@ -28,6 +29,7 @@ while [ $# -gt 0 ]; do
     --yes|-y) INSTALL_ACK=yes; FAMILIA_ACCEPT_LICENSES=yes; export INSTALL_ACK FAMILIA_ACCEPT_LICENSES ;;
     --accept-unknown) FAMILIA_ACCEPT_UNKNOWN_LICENSES=yes; export FAMILIA_ACCEPT_UNKNOWN_LICENSES ;;
     --no-start) INSTALL_NO_START=1 ;;
+    --no-path) INSTALL_NO_PATH=1 ;;
     *) die "unknown option '$1'. Try: sh install.sh --help" ;;
   esac
   shift
@@ -36,6 +38,7 @@ if [ "$DRY" = 1 ]; then
   echo "install.sh: [dry-run] would clone or update $REPO_URL in $PREFIX" >&2
   echo "install.sh: [dry-run] would show the license review (scripts/licenses.py gate)" >&2
   echo "install.sh: [dry-run] would run sh $PREFIX/scripts/configure.sh (fetches the pins in pins.txt)" >&2
+  [ "${INSTALL_NO_PATH:-0}" = 1 ] || echo "install.sh: [dry-run] would put familia on PATH: sh $PREFIX/scripts/install-cli.sh" >&2
   [ "${INSTALL_NO_START:-0}" = 1 ] || echo "install.sh: [dry-run] would start: sh $PREFIX/start.sh" >&2
   exit 0
 fi
@@ -78,6 +81,9 @@ python3 "$PREFIX/scripts/licenses.py" gate || die "licenses not accepted; stoppe
 # Run configuration shell
 echo "install.sh: running configuration shell..." >&2
 sh "$PREFIX/scripts/configure.sh"
+if [ "${INSTALL_NO_PATH:-0}" != 1 ] && [ -f "$PREFIX/scripts/install-cli.sh" ]; then
+  sh "$PREFIX/scripts/install-cli.sh" >&2 || echo "install.sh: warning: could not put familia on PATH" >&2
+fi
 
 echo "install.sh: next steps: cd $PREFIX && ./familia   (opens the menu; start with Skills, then Agents)" >&2
 if [ "${INSTALL_NO_START:-0}" = "1" ]; then

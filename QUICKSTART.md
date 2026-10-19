@@ -18,6 +18,7 @@ Pick one. All of them are per-user (no root or admin).
 | A graph node: familia, a checksum-verified llama.cpp CPU build, this host measured into `graph.yaml` | `curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install/linux/install.sh \| sh` (Termux: `install/termux/install.sh`) | `powershell -ExecutionPolicy Bypass -File install\windows\install.ps1` (or double-click `install\windows\install.bat`) |
 
 - The full-stack installer clones into `~/familia` (`INSTALL_PREFIX` changes that), runs `scripts/configure.sh`, and starts `./start.sh` (`INSTALL_NO_START=1` skips that). It asks you to type `yes` once to acknowledge the voluntary contribution notice; `INSTALL_ACK=yes` answers it for unattended installs. Paying is never required.
+- Every installer also puts `familia` on your PATH: a 2-line shim in `~/.local/bin` (Windows: `%LOCALAPPDATA%\Programs\familia\bin` + your user PATH), with the code left where it is. If `~/.local/bin` isn't on your PATH it prints the one line to add, or run `familia path --add`. `--no-path` skips it; from a checkout, `sh scripts/install-cli.sh --dry-run` previews it. Details: [docs/install.md](docs/install.md#familia-on-your-path).
 - The graph-node installers, their flags (`--dry-run`, `--uninstall`, `--name`, ...) and install locations are in [docs/install.md](docs/install.md). Windows details: [docs/windows.md](docs/windows.md).
 
 Already have a checkout? Sync the pinned sub-projects:

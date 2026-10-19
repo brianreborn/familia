@@ -36,6 +36,30 @@ syntax-checked but **not run on a Mac**.
    `scripts\windows\install-task.ps1`), Termux:Boot hint. Termux `--sshd` installs
    openssh and starts Termux's sshd (key auth).
 
+## familia on your PATH
+
+Every installer ends by putting `familia` on your PATH for your user only (no root, no admin). `--no-path` (Windows `-NoPath`) skips it, and `familia install-cli [--dry-run] [--prefix DIR]` (same as `sh scripts/install-cli.sh`; menu: Set up) does it later from any checkout.
+
+- **The code is not copied.** The only file written is a 2-line shim that runs the checkout's `familia`:
+  ```
+  #!/bin/sh
+  exec '/home/you/.local/share/familia/repo/familia' "$@"
+  ```
+  A shim, not a symlink: `familia` finds its checkout from `$0`, and old `sh` and BSD `readlink` can't reliably resolve a symlink back to the repo.
+- **Where:** `$XDG_BIN_HOME/familia` (default `~/.local/bin/familia`). The man page and bash completion, once the checkout has them (`man/familia.1`, `completions/familia.bash`), are linked into `$XDG_DATA_HOME/man/man1/familia.1` and `$XDG_DATA_HOME/bash-completion/completions/familia` (default `~/.local/share`), where `man` and bash-completion find them on their own. If the checkout doesn't have them yet they're skipped. `--prefix DIR` uses `DIR/bin` and `DIR/share` instead.
+- **Termux:** the shim goes in `$PREFIX/bin`, which is already on PATH. **FreeBSD:** the port installs to `/usr/local` as before.
+- **Windows:** `%LOCALAPPDATA%\Programs\familia\bin\familia.cmd` (2 lines, `@echo off` + the checkout's `familia.cmd %*`), and that folder is appended to your user PATH in `HKCU\Environment` (kept as `REG_EXPAND_SZ`). `-WhatIf` previews. `scripts\windows\install-cli.ps1 -Uninstall` removes the shim and the PATH entry only if it added them.
+- **PATH:** most distros already put `~/.local/bin` on PATH. If yours doesn't, the installer prints the one line to add, `export PATH="$HOME/.local/bin:$PATH"`, and changes no rc file. `familia path --add` (or `sh scripts/install-cli.sh path --add`) shows a block and asks before adding it to `~/.profile`:
+  ```
+  # >>> familia >>>
+  # added by `familia path --add`; `familia path --remove` deletes this block
+  case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *) export PATH="$HOME/.local/bin:$PATH" ;; esac
+  # <<< familia <<<
+  ```
+  Running it again changes nothing. `path --remove` deletes only the lines between the markers. `--yes` answers the question for scripts. If you have `~/.bash_profile` or `~/.bash_login`, bash login shells read that instead of `~/.profile`, and it's pointed out.
+- **Uninstall:** every file written is recorded in `$XDG_STATE_HOME/familia/installed.txt` (default `~/.local/state`). `familia uninstall-cli` (`sh scripts/install-cli.sh uninstall`) lists what it would remove and asks; `--dry-run` only lists it, and without a terminal it only lists unless you pass `--yes`. It removes only those files, and only while they are still a familia shim or link (a file you replaced is kept), plus the `~/.profile` block. The installers' `--uninstall` does this too.
+- **Status:** `familia install-cli status` (Windows `-Status`).
+
 ## Flags
 
 | | Linux/macOS | Termux | Windows |
@@ -45,6 +69,7 @@ syntax-checked but **not run on a Mac**.
 | Remove everything | `--uninstall --purge` | `--uninstall --purge` | `-Uninstall -Purge` |
 | Host name | `--name` | `--name` | `-Name` |
 | Skip runtime | `--no-runtime` | `--no-runtime` | `-NoRuntime` |
+| Don't put `familia` on PATH | `--no-path` | `--no-path` | `-NoPath` |
 
 Safety: no secrets are read or written; downloads are checksum-verified;
 nothing runs as root/admin; installers are idempotent. Measuring a host only

@@ -12,17 +12,18 @@
 #        --force-host  replace an existing hosts.NAME block
 #        --yes         accept the license review without a prompt (summary still printed)
 #        --accept-unknown  also accept components whose license could not be found
+#        --no-path     do not put `familia` on PATH (default: 2-line shim ~/.local/bin/familia, scripts/install-cli.sh)
 # Safety: llama.cpp assets are verified against the sha256 digest published by
 # the GitHub release API at install time. No hash is hardcoded. Idempotent.
 # Example: sh install/linux/install.sh --dry-run
 set -eu
 
 PREFIX=${FAMILIA_PREFIX:-$HOME/.local/share/familia}
-BIN_DIR=${FAMILIA_BIN_DIR:-$HOME/.local/bin}
+BIN_DIR=${FAMILIA_BIN_DIR:-${XDG_BIN_HOME:-$HOME/.local/bin}}
 REPO_URL=${FAMILIA_REPO_URL:-https://github.com/brianreborn/familia.git}
 BRANCH=${FAMILIA_BRANCH:-main}
 API=${FAMILIA_LLAMA_API:-https://api.github.com/repos/ggml-org/llama.cpp/releases}
-DRY=0; UNINSTALL=0; PURGE=0; NAME=""; BUILD=${FAMILIA_LLAMA_BUILD:-b11539}; RUNTIME=1; SYSTEMD=0; FORCE_HOST=""
+DRY=0; UNINSTALL=0; PURGE=0; NAME=""; BUILD=${FAMILIA_LLAMA_BUILD:-b11539}; RUNTIME=1; SYSTEMD=0; FORCE_HOST=""; NOPATH=0
 
 say() { echo "familia-install: $*" >&2; }
 die() { say "error: $*"; exit 1; }
@@ -37,10 +38,11 @@ while [ $# -gt 0 ]; do
     --build) shift; BUILD=${1:-} ;;
     --no-runtime) RUNTIME=0 ;;
     --systemd) SYSTEMD=1 ;;
+    --no-path) NOPATH=1 ;;
     --force-host) FORCE_HOST=--force ;;
     --yes|-y) FAMILIA_ACCEPT_LICENSES=yes; export FAMILIA_ACCEPT_LICENSES ;;
     --accept-unknown) FAMILIA_ACCEPT_UNKNOWN_LICENSES=yes; export FAMILIA_ACCEPT_UNKNOWN_LICENSES ;;
-    -h|--help) sed -n '2,17p' "$0" 2>/dev/null | sed 's/^# \{0,1\}//' || true; exit 0 ;;
+    -h|--help) sed -n '2,18p' "$0" 2>/dev/null | sed 's/^# \{0,1\}//' || true; exit 0 ;;
     *) die "unknown flag: $1 (see --help)" ;;
   esac
   shift
@@ -55,6 +57,10 @@ if [ "$UNINSTALL" = 1 ]; then
     run rm -f "$UNIT"
   fi
   run rm -f "$BIN_DIR/familia-start"
+  if [ -f "$PREFIX/repo/scripts/install-cli.sh" ]; then  # the PATH shim etc., exactly what it recorded
+    if [ "$DRY" = 1 ]; then XDG_BIN_HOME=$BIN_DIR sh "$PREFIX/repo/scripts/install-cli.sh" uninstall --dry-run
+    else XDG_BIN_HOME=$BIN_DIR sh "$PREFIX/repo/scripts/install-cli.sh" uninstall --yes; fi
+  fi
   if [ "$PURGE" = 1 ]; then run rm -rf "$PREFIX"
   else
     run rm -rf "$PREFIX/repo" "$PREFIX/runtime"
@@ -194,5 +200,11 @@ EOS
     say "wrote $UNIT; put FAMILIA_MODEL=... in ~/.config/familia/node.env, then: systemctl --user enable --now familia-node"
   fi
 fi
+# 5. `familia` on PATH: a 2-line shim in $BIN_DIR that runs $PREFIX/repo/familia (docs/install.md)
+if [ "$NOPATH" = 1 ]; then say "--no-path: familia not put on PATH (later: sh $PREFIX/repo/scripts/install-cli.sh)"
+elif [ -f "$PREFIX/repo/scripts/install-cli.sh" ]; then
+  CF=""; [ "$DRY" = 1 ] && CF=--dry-run
+  XDG_BIN_HOME=$BIN_DIR sh "$PREFIX/repo/scripts/install-cli.sh" $CF | sed 's/^/  /' >&2 || say "warning: could not put familia on PATH"
+else say "[dry-run] put familia on PATH: sh $PREFIX/repo/scripts/install-cli.sh (shim $BIN_DIR/familia)"; fi
 say "done. Models go in $PREFIX/models; start with: FAMILIA_MODEL=x.gguf familia-start"
 say "what now: run $PREFIX/repo/familia for the menu (Skills, Models, Agents). Quick start: $PREFIX/repo/QUICKSTART.md"

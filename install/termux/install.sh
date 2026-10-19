@@ -9,6 +9,7 @@
 # Flags: --dry-run  --uninstall [--purge]  --name NAME  --sshd (install+start openssh)
 #        --yes (accept the license review; summary still printed)  --accept-unknown
 #        --no-runtime  --force-host  --no-wakelock
+#        --no-path (do not write the $PREFIX/bin/familia shim; scripts/install-cli.sh)
 #   --name defaults to <model>-<last IPv4 octet> (or <model>-<boot_id prefix>), unique per phone.
 # Example: sh install/termux/install.sh --dry-run
 set -eu
@@ -19,7 +20,7 @@ BRANCH=${FAMILIA_BRANCH:-main}
 # Phones: Android + apps leave only ~2-2.6 GiB free on a 7.4 GiB A57 (docs/ram-safety.md); policy, not measured.
 RESERVE_MIB=${FAMILIA_RESERVE_MIB:-5120}
 RAW_URL=${FAMILIA_RAW_URL:-https://raw.githubusercontent.com/brianreborn/familia}
-DRY=0; UNINSTALL=0; PURGE=0; NAME=""; SSHD=0; RUNTIME=1; FORCE_HOST=""; WAKE=1
+DRY=0; UNINSTALL=0; PURGE=0; NAME=""; SSHD=0; RUNTIME=1; FORCE_HOST=""; WAKE=1; NOPATH=0
 
 say() { echo "familia-termux: $*" >&2; }
 die() { say "error: $*"; exit 1; }
@@ -35,9 +36,10 @@ while [ $# -gt 0 ]; do
     --no-runtime) RUNTIME=0 ;;
     --force-host) FORCE_HOST=--force ;;
     --no-wakelock) WAKE=0 ;;
+    --no-path) NOPATH=1 ;;
     --yes|-y) FAMILIA_ACCEPT_LICENSES=yes; export FAMILIA_ACCEPT_LICENSES ;;
     --accept-unknown) FAMILIA_ACCEPT_UNKNOWN_LICENSES=yes; export FAMILIA_ACCEPT_UNKNOWN_LICENSES ;;
-    -h|--help) sed -n '2,13p' "$0" 2>/dev/null | sed 's/^# \{0,1\}//' || true; exit 0 ;;
+    -h|--help) sed -n '2,14p' "$0" 2>/dev/null | sed 's/^# \{0,1\}//' || true; exit 0 ;;
     *) die "unknown flag: $1 (see --help)" ;;
   esac
   shift
@@ -51,6 +53,10 @@ BOOT="$HOME/.termux/boot/familia-node.sh"
 
 if [ "$UNINSTALL" = 1 ]; then
   run rm -f "$BOOT" "$PREFIX/bin/familia-start" 2>/dev/null || true
+  if [ -f "$PREFIX_DIR/repo/scripts/install-cli.sh" ]; then  # the familia shim, exactly what it recorded
+    if [ "$DRY" = 1 ]; then sh "$PREFIX_DIR/repo/scripts/install-cli.sh" uninstall --dry-run
+    else sh "$PREFIX_DIR/repo/scripts/install-cli.sh" uninstall --yes; fi
+  fi
   if [ "$PURGE" = 1 ]; then run rm -rf "$PREFIX_DIR"
   else run rm -rf "$PREFIX_DIR/repo"; say "kept $PREFIX_DIR/models (use --purge)"; fi
   say "left Termux packages (git python llama-cpp openssh) installed; remove with pkg uninstall if wanted"
@@ -161,5 +167,11 @@ fi
 if [ -d "$HOME/.termux/boot" ]; then
   say "Termux:Boot detected; to autostart, create $BOOT that exports FAMILIA_MODEL and runs familia-start"
 fi
+# `familia` on PATH: Termux's $PREFIX/bin is already on PATH, so this is just the 2-line shim.
+if [ "$NOPATH" = 1 ]; then say "--no-path: no familia shim (later: sh $REPO/scripts/install-cli.sh)"
+elif [ -f "$REPO/scripts/install-cli.sh" ]; then
+  CF=""; [ "$DRY" = 1 ] && CF=--dry-run
+  sh "$REPO/scripts/install-cli.sh" $CF | sed 's/^/  /' >&2 || say "warning: could not write the familia shim"
+else say "[dry-run] write the familia shim: sh $REPO/scripts/install-cli.sh"; fi
 say "done. Put GGUFs in $PREFIX_DIR/models; start: FAMILIA_MODEL=x.gguf familia-start"
 say "what now: run $REPO/familia for the menu (Skills, Models, Agents). Quick start: $REPO/QUICKSTART.md"
