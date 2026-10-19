@@ -1,7 +1,7 @@
 # LittleBit on sm_11 (GeForce 8600 GT): fused sign-matmul kernel spec
 
-Handoff to the qodesh legacy-GPU work (`feat/qodesh-legacy-gpu`, not edited here). It follows the rules
-already in that branch's LESSONS-LEARNED: **no host sync per op, at most one wait per token, one VRAM
+Handoff to the qodesh legacy-GPU work (`gpu-legacy/`, now on `main`). It follows the rules
+already in [gpu-legacy/LESSONS-LEARNED.md](../gpu-legacy/LESSONS-LEARNED.md): **no host sync per op, at most one wait per token, one VRAM
 arena, a 16 MiB margin, refuse to load rather than eat into the margin.** Nothing here has run on the GPU yet.
 The throughput numbers are estimates and are labeled as such.
 

@@ -17,7 +17,7 @@ Run locally on the target host. Prefer **coarse binary search**: test ends + mid
 
 ## B. Hermes compaction (#42)
 ```bash
-python3 scripts/hermes_harness.py --selftest-compaction
+./scripts/hermes.sh --selftest-compaction
 # expect PASS
 ```
 
@@ -40,9 +40,9 @@ python3 scripts/hermes_harness.py --escalate --light <light-node>
 # Windows: start qodesh-resident; one completion; then co-run with GPU SmolLM2; watch free RAM
 ```
 
-## F. Pre-existing failures (#45)
+## F. Pre-existing failures (#45, closed)
 ```bash
-python3 -m pytest tests/ -q --tb=line  # capture node ids for android/installers/overcommit
+python3 -m pytest tests/ -q --tb=line  # only test_ram_safety::test_overcommit_is_hard_error is expected to fail
 ```
 
 ## G. Old-device smoke (#48)

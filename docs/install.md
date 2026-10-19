@@ -34,7 +34,7 @@ syntax-checked but **not run on a Mac**.
 5. Writes a launcher. Optional autostart: `--systemd` (systemd --user unit, written
    but not enabled), `-LogonTask -Model x.gguf` (per-user scheduled task via
    `scripts\windows\install-task.ps1`), Termux:Boot hint. Termux `--sshd` installs
-   openssh and starts sshd on port 8022 (key auth).
+   openssh and starts Termux's sshd (key auth).
 
 ## Flags
 

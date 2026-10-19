@@ -5,7 +5,7 @@ llama-server features only:
 
 - both servers start with `--slot-save-path DIR`
 - source: `POST /slots/{id}?action=save {"filename": NAME}` writes `DIR/NAME`
-- the file moves over a transport (`local` copy, SSH nexus, or BT from `feat/transport-poc`)
+- the file moves over a transport (`local` copy, SSH nexus, or BT; see [transport-poc.md](transport-poc.md))
 - destination: `POST /slots/{id}?action=restore {"filename": NAME}`
 
 ## Compatibility (refuse on any mismatch)
@@ -34,6 +34,6 @@ token instead of 20 (cache_n=19). Pytest runs it when `C2C_LLAMA_SERVER` and `C2
   it does `put` as `--src-host` and `get` as `--dst-host` from that same process, so cross-host use today
   means running on a host that holds both identities, or splitting into put on source / get + restore on dest
   by hand. The `bt` path calls `scripts/bt/{mktorrent.py,seed.sh,fetch.sh}`; it has **not** been tested here
-  and the argument order should be checked against `feat/transport-poc` when the branches merge.
+  and its argument order should be checked against `scripts/bt/` before first use (both are on `main` now).
 - Same model only. Cross-model KV projection is stage 2+.
 - Mind the RAM rule: on miryam, don't run a second server next to the coder for this test.
