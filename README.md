@@ -12,13 +12,41 @@ familia is a **topology coordinator**. It doesn't replace your inference server 
 
 ---
 
+## Skills: why familia wins hearts, minds and computers
+
+A small model running on an old laptop or phone does far more when it has
+good instructions for the job in front of it. Skills provide those
+instructions: a skill is a folder with a `SKILL.md`, sometimes with scripts,
+that teaches an agent one task, such as probing a host or formatting a
+manuscript. familia treats skills as a headline feature.
+
+- **Picked from a menu.** Choose `./familia`, then **Skills**, and switch
+  skills on or off for an agent. Scripts can do the same with
+  `scripts/skills.py enable ID`.
+- **License-checked.** Before anything is enabled, installed or started,
+  `scripts/licenses.py` shows every license your selection brings in. Unknown
+  or restrictive licenses are listed first, and nothing goes ahead until you
+  accept ([docs/licenses.md](docs/licenses.md)).
+- **Pinned.** Each skill is tied to an exact commit in `skills/catalog.json`.
+- **Living in green-zkillz.** Bundled skills live in green-zkillz, the skills
+  tree of [green-agentz](https://github.com/brianreborn/green-agentz).
+  familia's catalog is the selection layer over it.
+
+Today the catalog has the 7 green-zkillz skills plus 2 surveyed sources (one
+not vendored yet, one license-blocked). We haven't measured how much skills
+improve small-model results yet. Details are in [docs/skills.md](docs/skills.md).
+
+---
+
 ## Quick start
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install.sh | sh
 ```
 
-That clones familia into `~/familia`, syncs the pinned sub-projects and starts the router. You type `yes` once to acknowledge the voluntary contribution notice (`INSTALL_ACK=yes` for unattended installs); paying is never required. Then open **http://127.0.0.1:9931/?model=chat** (or the URL the launcher prints) and paste the API key from the terminal.
+That clones familia into `~/familia`, shows the license review, syncs the pinned sub-projects and starts the router. You type `yes` once to acknowledge the voluntary contribution notice (`INSTALL_ACK=yes` for unattended installs); paying is never required. Then open **http://127.0.0.1:9931/?model=chat** (or the URL the launcher prints) and paste the API key from the terminal.
+
+**What now?** Run `./familia` in the checkout. It opens a menu grouped by task (Set up, Skills, Models, Agents, Test, Hosts, Help), and each item shows the command it runs (on Windows, `familia.cmd`). `./familia-menu.sh --list` prints them all.
 
 Windows, per-graph-node installers, and everything after the first start: **[QUICKSTART.md](QUICKSTART.md)**, then [MANUAL.md](MANUAL.md).
 

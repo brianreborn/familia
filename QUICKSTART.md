@@ -4,6 +4,8 @@ The shortest path from nothing to a running, validated setup. Read [README.md](R
 
 Everything below runs from the root of a familia checkout unless it says otherwise.
 
+**The easy way:** run `./familia` (on Windows, `familia.cmd`). It opens a menu grouped by task, and every item shows the exact command it runs, so you pick up the commands below as you go. `./familia-menu.sh --list` prints every item, and `./familia-menu.sh --run KEY` runs one without the menu. Without a terminal it prints the list and exits instead of waiting.
+
 ## 1. Install
 
 Pick one. All of them are per-user (no root or admin).
@@ -28,7 +30,24 @@ On Windows, run the same through Git Bash (there is no `configure.ps1`):
 & 'C:\Program Files\Git\bin\bash.exe' scripts/configure.sh
 ```
 
-## 2. Check the graph
+### Licenses come first
+
+Installers, `start.sh`, `with-fleet.sh`, `start.bat` and the menu's start and fetch items all show the license review before they do anything: every license your models, skills, engines and pinned parts bring in, with unknown or restrictive ones at the top. Type `yes` to accept. You are asked again only if something changes. For unattended runs use `--yes`, which still prints the summary, and add `--accept-unknown` if some licenses are unknown. Details: [docs/licenses.md](docs/licenses.md).
+
+```sh
+python3 scripts/licenses.py review
+```
+
+## 2. Pick skills
+
+Skills give a small local model written instructions for specific jobs. In the menu, choose **Skills**, then **Bundled skills**, and switch them on or off; each one shows its license and status. A `license-blocked` skill can't be enabled, and pentest roles never get skills that add tools. Bundled skills live in green-zkillz (inside green-agentz). Details: [docs/skills.md](docs/skills.md).
+
+```sh
+scripts/skills.py list
+scripts/skills.py enable green-probe --dry-run
+```
+
+## 3. Check the graph
 
 `graph.yaml` declares every host, model, node and agent. Nothing starts unless it validates.
 
@@ -40,7 +59,7 @@ python3 scripts/validate_graph.py --args coder # the exact llama-server command 
 
 On Windows use `python` instead of `python3` and set `$env:PYTHONUTF8 = '1'` first. Warnings such as `no registry record` are informational. What the checks mean: [docs/graph-types.md](docs/graph-types.md).
 
-## 3. Start something
+## 4. Start something
 
 | Goal | Command |
 |---|---|
@@ -64,7 +83,7 @@ scripts/hermes.sh --escalate -- ARGS      # with the light-to-heavy escalation p
 
 The harness expects hermes-agent at `/snap/bin/hermes-agent`; set `HERMES_BIN` if yours is elsewhere.
 
-## 4. Add a model
+## 5. Add a model
 
 ```sh
 ./scripts/add-model.sh --dry-run ~/models/SomeOrg--Some-Model-GGUF   # see what it infers; writes nothing
@@ -81,7 +100,7 @@ The harness expects hermes-agent at `/snap/bin/hermes-agent`; set `HERMES_BIN` i
 
 Model database rules (full pinned HF repo, card settings as launch defaults): [docs/model-database.md](docs/model-database.md).
 
-## 5. Test
+## 6. Test
 
 ```sh
 python3 -m pip install --user pyyaml pytest

@@ -2,6 +2,10 @@
 
 How to run and look after a familia setup day to day. Install and first start are in [QUICKSTART.md](QUICKSTART.md); this manual picks up from there. Commands run from the root of the checkout. On Windows, use `python` for `python3` and run `.sh` scripts with Git Bash (`& 'C:\Program Files\Git\bin\bash.exe' scripts/NAME.sh`); PowerShell 5.1 has no `&&`, so run commands one per line.
 
+## The menu
+
+`./familia` (Windows: `familia.cmd`) opens the menu. Items are grouped by task, and each one shows the command it runs. One table, `scripts/menu-items.txt`, drives the menu on both platforms, so a new item goes in that file. `./familia-menu.sh --list` prints every item, `--run KEY [ARG...]` runs one, and `--dry-run` prints the command instead of running it. Items that start or fetch something run the license review first (`scripts/licenses.py gate`, [docs/licenses.md](docs/licenses.md)). Items whose command hasn't landed yet are marked "not available yet". Without a terminal the menu prints its items and exits 2. Use `--pipe` to feed choices from a script.
+
 ## 1. Settings
 
 - `sh scripts/configure.sh` checks out every sub-project in [`pins.txt`](pins.txt) at its pinned revision. It is non-interactive and safe to re-run.
@@ -97,6 +101,10 @@ Tuning uses a coarse binary search: try the ends and the midpoint of a setting w
 ### hermes-agent
 
 Always launch hermes through the harness, `scripts/hermes.sh`. Stock `hermes` uses `~/.hermes`, which has compression off and small-context models, and fails with HTTP 400 on long turns. Commands and what the harness sets: [QUICKSTART.md](QUICKSTART.md#always-run-hermes-through-the-harness).
+
+### Skills
+
+Skills are chosen per agent with `scripts/skills.py`, or with the menu (Skills, then Bundled skills). The choice is saved as `skills: [ids]` under the agent in `graph.yaml`, with comments preserved. The catalog is `skills/catalog.json`, and the bundled skills themselves live in green-zkillz (`green-agentz/skills`). Before a skill is enabled, its license is shown and has to be accepted. `license-blocked` and not-yet-vendored skills are refused with the reason, and the graph check rejects tool-adding skills on pentest roles. `scripts/skills.py paths` prints the folders of the enabled skills. hermes doesn't load them on its own yet. Details: [docs/skills.md](docs/skills.md).
 
 ### Escalating to a heavier model
 
