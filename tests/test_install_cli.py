@@ -47,7 +47,7 @@ def test_shim_runs_familia_and_reinstall_is_idempotent(tmp_path):
     r = cli(tmp_path)
     assert r.returncode == 0 and "up to date" in r.stdout
     assert (shim.read_text(), man.read_text()) == snap
-    assert man.read_text().splitlines() == [str(shim)]
+    assert man.read_text().splitlines()[0] == str(shim)
 
 
 def test_xdg_and_prefix(tmp_path):

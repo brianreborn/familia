@@ -12,6 +12,9 @@ panel|setup.panel
 install|setup.install-run
 install preview|setup.install
 uninstall preview|adv.uninstall
+install-cli|raw|sh scripts/install-cli.sh||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-cli.ps1|put familia on your PATH (2-line shim, code stays here): [--dry-run] [--prefix DIR] [--force]; Windows -WhatIf
+uninstall-cli|raw|sh scripts/install-cli.sh uninstall||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-cli.ps1 -Uninstall|take familia off your PATH: removes exactly the recorded files (--dry-run previews, --yes skips the question)
+path|raw|sh scripts/install-cli.sh path|||path --add / --remove: the marked familia block in ~/.profile (asks first; --dry-run, --yes)
 logon-task|setup.logon-task
 logon-task remove|adv.logon-task-remove
 licenses review|setup.licenses

@@ -178,6 +178,8 @@ FILES = [
     ("skills/catalog.json", "The bundled skills catalog (green\\-zkillz)."),
     (".cache/familia/license\\-acceptance.json", "Recorded license acceptance (selection hash and license set)."),
     (".cache/familia/model\\-license\\-acceptance.json", "Per\\-model license acceptance for downloads."),
+    ("~/.local/bin/familia", "The 2\\-line shim familia install\\-cli writes ($XDG_BIN_HOME; Termux $PREFIX/bin) that runs this checkout's familia."),
+    ("~/.local/state/familia/installed.txt", "Every file familia install\\-cli wrote; familia uninstall\\-cli removes exactly those."),
     ("~/.local/state/familia/monitor\\-events.jsonl", "Monitor event log (deaths, OOM kills)."),
     ("registry/models/", "The model database, one JSON file per model file."),
     ("pins.txt", "Pinned sub\\-projects that scripts/configure.sh checks out."),

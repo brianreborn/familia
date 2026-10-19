@@ -55,6 +55,36 @@ Runs: \fBsh install/linux/install.sh \-\-dry\-run\fR
 Install or update this host for real (asks you to accept licenses).
 .br
 Runs: \fBsh install/linux/install.sh\fR
+.TP
+\fBsetup install\-cli\fR
+Put familia on your PATH (~/.local/bin/familia shim): preview, writes nothing.
+.br
+Runs: \fBsh scripts/install\-cli.sh \-\-dry\-run\fR
+.TP
+\fBinstall\-cli\-run\fR
+Put familia on your PATH for real (2\-line shim; the code stays in this checkout).
+.br
+Runs: \fBsh scripts/install\-cli.sh\fR
+.TP
+\fBpath\-add\fR
+Add ~/.local/bin to PATH in ~/.profile (shows the marked block, asks first).
+.br
+Runs: \fBsh scripts/install\-cli.sh path \-\-add\fR
+.TP
+\fBpath\-remove\fR
+Remove familia's PATH block from ~/.profile (only that block).
+.br
+Runs: \fBsh scripts/install\-cli.sh path \-\-remove\fR
+.TP
+\fBcli\-status\fR
+Show where familia is installed on PATH and what was recorded.
+.br
+Runs: \fBsh scripts/install\-cli.sh status\fR
+.TP
+\fBsetup uninstall\-cli\fR
+Take familia off your PATH: remove exactly the recorded files (preview, then asks).
+.br
+Runs: \fBsh scripts/install\-cli.sh uninstall\fR
 .SS Skills
 .TP
 \fBskills menu\fR \fI<AGENT>\fR
@@ -407,6 +437,21 @@ Scripts the menu leaves out on purpose, and why.
 Runs: \fBmore scripts/menu\-internal.txt\fR
 .SS Pass\-through commands
 .TP
+\fBinstall\-cli\fR \fIARG\fR...
+put familia on your PATH (2\-line shim, code stays here): [\-\-dry\-run] [\-\-prefix DIR] [\-\-force]; Windows \-WhatIf.
+.br
+Runs: \fBsh scripts/install\-cli.sh\fR \fIARG\fR...
+.TP
+\fBuninstall\-cli\fR \fIARG\fR...
+take familia off your PATH: removes exactly the recorded files (\-\-dry\-run previews, \-\-yes skips the question).
+.br
+Runs: \fBsh scripts/install\-cli.sh uninstall\fR \fIARG\fR...
+.TP
+\fBpath\fR \fIARG\fR...
+path \-\-add / \-\-remove: the marked familia block in ~/.profile (asks first; \-\-dry\-run, \-\-yes).
+.br
+Runs: \fBsh scripts/install\-cli.sh path\fR \fIARG\fR...
+.TP
 \fBlicenses\fR \fIARG\fR...
 any licenses.py command: review, check, gate, list [\-\-json].
 .br
@@ -527,6 +572,12 @@ Recorded license acceptance (selection hash and license set).
 .TP
 \fI.cache/familia/model\-license\-acceptance.json\fR
 Per\-model license acceptance for downloads.
+.TP
+\fI~/.local/bin/familia\fR
+The 2\-line shim familia install\-cli writes ($XDG_BIN_HOME; Termux $PREFIX/bin) that runs this checkout's familia.
+.TP
+\fI~/.local/state/familia/installed.txt\fR
+Every file familia install\-cli wrote; familia uninstall\-cli removes exactly those.
 .TP
 \fI~/.local/state/familia/monitor\-events.jsonl\fR
 Monitor event log (deaths, OOM kills).
