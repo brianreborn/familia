@@ -1,13 +1,16 @@
 #!/data/data/com.termux/files/usr/bin/sh
 # familia one-click installer: Android via Termux (F-Droid or GitHub build, not Play Store).
+# Usage: sh install/termux/install.sh [flags]   (flags below)
 # Add-ons must match Termux's signing key: with Termux from GitHub releases, get Termux:API from
 #   https://github.com/termux/termux-api/releases (the termux-api pkg alone is not enough; termux-battery-status hangs).
 #   curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install/termux/install.sh | sh
 # Runtime comes from Termux's own `llama-cpp` package (pkg verifies package
 # signatures/hashes), so no unverified binary is downloaded here.
 # Flags: --dry-run  --uninstall [--purge]  --name NAME  --sshd (install+start openssh)
+#        --yes (accept the license review; summary still printed)  --accept-unknown
 #        --no-runtime  --force-host  --no-wakelock
 #   --name defaults to <model>-<last IPv4 octet> (or <model>-<boot_id prefix>), unique per phone.
+# Example: sh install/termux/install.sh --dry-run
 set -eu
 
 PREFIX_DIR=${FAMILIA_PREFIX:-$HOME/familia}
@@ -32,8 +35,10 @@ while [ $# -gt 0 ]; do
     --no-runtime) RUNTIME=0 ;;
     --force-host) FORCE_HOST=--force ;;
     --no-wakelock) WAKE=0 ;;
-    -h|--help) sed -n '2,8p' "$0" 2>/dev/null || true; exit 0 ;;
-    *) die "unknown flag: $1" ;;
+    --yes|-y) FAMILIA_ACCEPT_LICENSES=yes; export FAMILIA_ACCEPT_LICENSES ;;
+    --accept-unknown) FAMILIA_ACCEPT_UNKNOWN_LICENSES=yes; export FAMILIA_ACCEPT_UNKNOWN_LICENSES ;;
+    -h|--help) sed -n '2,13p' "$0" 2>/dev/null | sed 's/^# \{0,1\}//' || true; exit 0 ;;
+    *) die "unknown flag: $1 (see --help)" ;;
   esac
   shift
 done
@@ -97,6 +102,12 @@ else
 fi
 
 REPO="$PREFIX_DIR/repo"
+# Licenses before anything else is downloaded (docs/licenses.md).
+if [ "$DRY" = 1 ]; then
+  say "[dry-run] would show the license review: python $REPO/scripts/licenses.py gate"
+elif [ -f "$REPO/scripts/licenses.py" ]; then
+  python "$REPO/scripts/licenses.py" gate || die "licenses not accepted; nothing else was downloaded. Review: python $REPO/scripts/licenses.py review (or re-run with --yes, plus --accept-unknown)"
+fi
 SELF_REPO=$(cd "$(dirname "$0")/../.." 2>/dev/null && pwd || true)
 MTMP=""
 if [ -f "$REPO/scripts/host_measure.py" ]; then MREPO="$REPO"
@@ -151,3 +162,4 @@ if [ -d "$HOME/.termux/boot" ]; then
   say "Termux:Boot detected; to autostart, create $BOOT that exports FAMILIA_MODEL and runs familia-start"
 fi
 say "done. Put GGUFs in $PREFIX_DIR/models; start: FAMILIA_MODEL=x.gguf familia-start"
+say "what now: run $REPO/familia for the menu (Skills, Models, Agents). Quick start: $REPO/QUICKSTART.md"

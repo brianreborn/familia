@@ -16,6 +16,10 @@
   powershell -ExecutionPolicy Bypass -File install\windows\install.ps1 -DryRun
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File install\windows\install.ps1 -Uninstall
+.EXAMPLE
+  powershell -ExecutionPolicy Bypass -File install\windows\install.ps1 -Yes
+  (-Yes accepts the license review without a prompt; the summary is still printed.
+   -AcceptUnknown also accepts items whose license could not be found. See docs\licenses.md.)
 #>
 [CmdletBinding(SupportsShouldProcess = $true)]
 param(
@@ -31,7 +35,9 @@ param(
   [switch]$NoRuntime,
   [switch]$ForceHost,
   [switch]$LogonTask,
-  [string]$Model
+  [string]$Model,
+  [switch]$Yes,
+  [switch]$AcceptUnknown
 )
 $ErrorActionPreference = 'Stop'
 Import-Module CimCmdlets -Verbose:$false  # load before WhatIf so module aliases are not reported
@@ -79,6 +85,20 @@ if (Test-Path (Join-Path $repo '.git')) {
       Move-Item (Get-ChildItem $ex | Select-Object -First 1).FullName $repo
       Remove-Item -Recurse -Force $ex, $tmpz
     }
+  }
+}
+
+# Licenses before anything else is downloaded (docs\licenses.md)
+if ($Yes) { $env:FAMILIA_ACCEPT_LICENSES = 'yes' }
+if ($AcceptUnknown) { $env:FAMILIA_ACCEPT_UNKNOWN_LICENSES = 'yes' }
+$lic = Join-Path $repo 'scripts\licenses.py'
+if ($dry) { Say "would show the license review: python $lic gate" }
+elseif (Test-Path $lic) {
+  if (Get-Command python -ErrorAction SilentlyContinue) {
+    & python $lic gate
+    if ($LASTEXITCODE) { throw "licenses not accepted; nothing else was downloaded. Review: python $lic review (or re-run with -Yes, plus -AcceptUnknown)" }
+  } elseif ($env:FAMILIA_ACCEPT_LICENSES -ne 'yes') {
+    throw "python not found, so the license review can't run. Install Python 3, or read docs\licenses.md and re-run with -Yes."
   }
 }
 
@@ -194,3 +214,4 @@ if ($LogonTask) {
   else { Say "would register logon task via $task" }
 }
 Say "done. Start a node: set FAMILIA_RUNTIME to the runtime dir and FAMILIA_MODEL, then run $repo\scripts\windows\start.bat"
+Say "what now: run $repo\familia.cmd for the menu (Skills, Models, licenses). Quick start: $repo\QUICKSTART.md"

@@ -16,14 +16,19 @@ while [ $# -gt 0 ]; do
     --role=*) ROLE=${1#*=}; shift ;;
     --manifest) MANIFEST=${2-}; shift 2 ;;
     --manifest=*) MANIFEST=${1#*=}; shift ;;
-    --launch-test) LAUNCH_TEST=1; shift ;;
+    --launch-test|--dry-run) LAUNCH_TEST=1; shift ;;
+    --yes|-y) export FAMILIA_ACCEPT_LICENSES=yes; shift ;;
     -h|--help)
-      echo "usage: with-fleet.sh --role NAME [--manifest path] [--launch-test]" >&2
+      echo "with-fleet.sh: validate graph.yaml, resolve a role, and launch it (pentest roles: launch-test only)."
+      echo "Usage: sh with-fleet.sh --role NAME [--manifest FILE] [--launch-test|--dry-run] [--yes]"
+      echo "  --launch-test, --dry-run  validate and show what would start; start nothing"
+      echo "  --yes                     accept the license review without a prompt (summary still printed)"
+      echo "Example: sh with-fleet.sh --role hermes --launch-test"
       exit 0 ;;
     *) echo "with-fleet.sh: unknown arg: $1" >&2; exit 2 ;;
   esac
 done
-[ -n "$ROLE" ] || { echo "with-fleet.sh: --role is required" >&2; exit 2; }
+[ -n "$ROLE" ] || { echo "with-fleet.sh: --role is required. Example: sh with-fleet.sh --role hermes --launch-test (see --help)" >&2; exit 2; }
 
 GRAPH=${GRAPH:-$ROOT/graph.yaml}
 [ -f "$GRAPH" ] || { echo "with-fleet.sh: graph not found: $GRAPH" >&2; exit 1; }
@@ -103,7 +108,10 @@ fi
 
 # Non-pentest roles: start via hermes harness against the agent name when present.
 if [ "$kind" = "agents" ]; then
-  exec sh "$ROOT/scripts/hermes.sh" --agent "$name"
+  # Licenses first: show what this selection brings in (docs/licenses.md).
+  python3 "$ROOT/scripts/licenses.py" gate || {
+    rc=$?; echo "with-fleet.sh: licenses not accepted; nothing started. Review: python3 scripts/licenses.py review" >&2; exit $rc; }
+  exec bash "$ROOT/scripts/hermes.sh" --agent "$name"   # hermes.sh is bash (pipefail)
 fi
 
 echo "with-fleet.sh: no launcher for $kind.$name (status=$status); nothing started" >&2

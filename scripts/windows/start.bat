@@ -23,8 +23,11 @@ if not defined FAMILIA_CTX set "FAMILIA_CTX=4096"
 if not defined FAMILIA_THREADS set "FAMILIA_THREADS=2"
 if not defined FAMILIA_KV set "FAMILIA_KV=q8_0"
 
+if /i "%~1"=="--help" goto :help
+if /i "%~1"=="-h" goto :help
+if /i "%~1"=="/?" goto :help
 if not defined FAMILIA_MODEL (
-  echo familia: set FAMILIA_MODEL to a GGUF in "%FAMILIA_MODELS%" 1>&2
+  echo familia: set FAMILIA_MODEL to a GGUF in "%FAMILIA_MODELS%" first. Example: set FAMILIA_MODEL=qwen2.5-0.5b-instruct-q4_0.gguf 1>&2
   exit /b 2
 )
 rem An absolute FAMILIA_MODEL (C:\..., \\server\..., \...) is used as-is; a bare name is
@@ -39,6 +42,20 @@ if not exist "%MODEL%" (
   echo familia: model not found: %MODEL% 1>&2
   exit /b 2
 )
+rem Licenses before anything runs (docs\licenses.md). FAMILIA_ACCEPT_LICENSES=yes is the non-interactive answer.
+where python >nul 2>&1
+if not errorlevel 1 (
+  python "%~dp0..\licenses.py" gate
+  if errorlevel 1 (
+    echo familia: licenses not accepted; nothing started. Review: python "%~dp0..\licenses.py" review 1>&2
+    exit /b 1
+  )
+) else (
+  if /i not "%FAMILIA_ACCEPT_LICENSES%"=="yes" (
+    echo familia: python not found, so the license review can't run. Install Python 3, or read docs\licenses.md and set FAMILIA_ACCEPT_LICENSES=yes 1>&2
+    exit /b 2
+  )
+)
 set "BIN=%FAMILIA_RUNTIME%\llama-server.exe"
 if not exist "%BIN%" (
   echo familia: llama-server.exe not found in "%FAMILIA_RUNTIME%" ^(unzip llama-*-bin-win-cpu-x64.zip there^) 1>&2
@@ -50,3 +67,10 @@ set "LOG=%FAMILIA_MODELS%\..\logs\llama-server-%FAMILIA_PORT%.log"
 echo familia: %BIN% -m "%MODEL%" on %FAMILIA_BIND%:%FAMILIA_PORT% (log %LOG%)
 "%BIN%" -m "%MODEL%" --host %FAMILIA_BIND% --port %FAMILIA_PORT% -c %FAMILIA_CTX% -t %FAMILIA_THREADS% -np 1 -ctk %FAMILIA_KV% -ctv %FAMILIA_KV% %FAMILIA_EXTRA% >> "%LOG%" 2>&1
 exit /b %ERRORLEVEL%
+
+:help
+echo start.bat: start one llama-server node on this Windows machine (settings via FAMILIA_* variables above).
+echo Usage: set FAMILIA_MODEL=NAME.gguf ^& scripts\windows\start.bat
+echo Example: set FAMILIA_MODEL=qwen2.5-0.5b-instruct-q4_0.gguf ^& scripts\windows\start.bat
+echo Licenses are reviewed first (python scripts\licenses.py review). Menu: familia.cmd
+exit /b 0

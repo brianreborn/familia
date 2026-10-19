@@ -1,5 +1,6 @@
 #!/bin/sh
 # familia one-click installer: desktop Linux (Ubuntu/Debian and similar) and macOS.
+# Usage: sh install/linux/install.sh [flags]   (flags below)
 #   curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install/linux/install.sh | sh
 # No sudo. Everything goes under ~/.local (override with FAMILIA_PREFIX).
 # Flags: --dry-run  print every action, change nothing
@@ -9,8 +10,11 @@
 #                     'latest' = newest bNNNN release that has this platform's asset)
 #        --no-runtime  skip the llama.cpp download     --systemd  install a systemd --user unit
 #        --force-host  replace an existing hosts.NAME block
+#        --yes         accept the license review without a prompt (summary still printed)
+#        --accept-unknown  also accept components whose license could not be found
 # Safety: llama.cpp assets are verified against the sha256 digest published by
 # the GitHub release API at install time. No hash is hardcoded. Idempotent.
+# Example: sh install/linux/install.sh --dry-run
 set -eu
 
 PREFIX=${FAMILIA_PREFIX:-$HOME/.local/share/familia}
@@ -34,8 +38,10 @@ while [ $# -gt 0 ]; do
     --no-runtime) RUNTIME=0 ;;
     --systemd) SYSTEMD=1 ;;
     --force-host) FORCE_HOST=--force ;;
-    -h|--help) sed -n '2,13p' "$0" 2>/dev/null || true; exit 0 ;;
-    *) die "unknown flag: $1" ;;
+    --yes|-y) FAMILIA_ACCEPT_LICENSES=yes; export FAMILIA_ACCEPT_LICENSES ;;
+    --accept-unknown) FAMILIA_ACCEPT_UNKNOWN_LICENSES=yes; export FAMILIA_ACCEPT_UNKNOWN_LICENSES ;;
+    -h|--help) sed -n '2,17p' "$0" 2>/dev/null | sed 's/^# \{0,1\}//' || true; exit 0 ;;
+    *) die "unknown flag: $1 (see --help)" ;;
   esac
   shift
 done
@@ -80,6 +86,13 @@ if [ -d "$PREFIX/repo/.git" ]; then
   run git -C "$PREFIX/repo" pull --ff-only -q || say "warning: repo not fast-forwardable; left as is"
 else
   run git clone -q --branch "$BRANCH" "$REPO_URL" "$PREFIX/repo"
+fi
+
+# Licenses before anything else is downloaded (docs/licenses.md).
+if [ "$DRY" = 1 ]; then
+  say "[dry-run] would show the license review: python3 $PREFIX/repo/scripts/licenses.py gate"
+elif [ "$UNINSTALL" != 1 ]; then
+  python3 "$PREFIX/repo/scripts/licenses.py" gate || die "licenses not accepted; nothing else was downloaded. Review: python3 $PREFIX/repo/scripts/licenses.py review (or re-run with --yes, plus --accept-unknown for unknown licenses)"
 fi
 
 # 2. llama.cpp CPU runtime, sha256 verified against the release API digest
@@ -182,3 +195,4 @@ EOS
   fi
 fi
 say "done. Models go in $PREFIX/models; start with: FAMILIA_MODEL=x.gguf familia-start"
+say "what now: run $PREFIX/repo/familia for the menu (Skills, Models, Agents). Quick start: $PREFIX/repo/QUICKSTART.md"
