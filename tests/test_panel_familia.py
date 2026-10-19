@@ -192,3 +192,17 @@ def test_proxy_help_and_a11y_cli():
     r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "panel.py"), "--a11y-check"],
                        capture_output=True, text=True, timeout=300)
     assert r.returncode == 0 and "0 problem(s)" in r.stdout, r.stdout + r.stderr
+
+
+def test_harness2_mode_and_hermes_modes_detected():
+    """The Harness2 page reads familia's shape (harnesses + self_improve) and the hermes page goes live."""
+    import yaml
+    sys.path.insert(0, os.path.join(ROOT, "scripts"))
+    spec = importlib.util.spec_from_file_location("pf_h2", EXTRA)
+    pf = importlib.util.module_from_spec(spec); spec.loader.exec_module(pf)
+    g = yaml.safe_load(open(os.path.join(ROOT, "graph.yaml")))
+    assert pf.h2_mode(g["agents"]["hermes-lab"], g, "hermes-lab") == "off"
+    g["self_improve"]["harness2"]["mode"] = "propose"
+    assert pf.h2_mode(g["agents"]["hermes-lab"], g, "hermes-lab") == "propose"
+    assert pf.h2_mode(g["agents"]["hermes"], g, "hermes") == "off"
+    assert pf.hermes_modes_supported()

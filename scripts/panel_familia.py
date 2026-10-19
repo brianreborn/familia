@@ -50,15 +50,24 @@ def harness2_script():
 
 
 def hermes_modes_supported():
-    try:
-        with open(os.path.join(HERE, "hermes_harness.py"), encoding="utf-8") as fh:
-            t = fh.read()
-    except OSError:
-        return False
+    t = ""
+    for f in ("hermes_harness.py", "hermes_modes.py"):  # the two modes live in hermes_modes.py
+        try:
+            with open(os.path.join(HERE, f), encoding="utf-8") as fh:
+                t += fh.read()
+        except OSError:
+            pass
     return "--graph-mode" in t and '"--model"' in t
 
 
-def h2_mode(a):
+def h2_mode(a, g=None, name=None):
+    """Mode for one agent. familia's shape (docs/harness2.md): harnesses.<T>.agent == name and a
+    self_improve.<S> entry listing T in targets; older per-agent keys are still read."""
+    for t, h in ((g or {}).get("harnesses") or {}).items():
+        if isinstance(h, dict) and h.get("agent") == name:
+            for s in ((g or {}).get("self_improve") or {}).values():
+                if isinstance(s, dict) and t in (s.get("targets") or []) and s.get("mode") in ("off", "propose", "apply"):
+                    return s["mode"]
     v = (a or {}).get("harness2", (a or {}).get("self_improve"))
     if isinstance(v, dict):
         v = v.get("mode", "propose" if v.get("enabled") else "off")
@@ -319,7 +328,7 @@ class Pages:
         st = self._run([PY, script, "status"])
         groups = ""
         for name in self._h2_agents(g):
-            cur = (values or {}).get("h2." + name) or h2_mode((g.get("agents") or {}).get(name))
+            cur = (values or {}).get("h2." + name) or h2_mode((g.get("agents") or {}).get(name), g, name)
             groups += ui.radio_group("h2." + name, "Harness2 for agent %s" % name,
                                      [(v, ui.esc(lab)) for v, lab in H2_MODES], cur)
         body = groups + "<p>%s %s</p>" % (ui.button("Next: show what will change"), ui.link_button("/", "Cancel"))
@@ -340,7 +349,7 @@ class Pages:
             if want not in [m for m, _ in H2_MODES]:
                 errors.append(("h2." + name, "%r is not off, propose or apply." % want))
                 continue
-            have = h2_mode((g.get("agents") or {}).get(name))
+            have = h2_mode((g.get("agents") or {}).get(name), g, name)
             if want != have:
                 changes.append("Harness2 for %s: %s to %s" % (name, have, want))
                 cmds.append([PY, harness2_script() or "scripts/harness2.py", "set", "--agent", name, "--mode", want])
