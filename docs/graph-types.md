@@ -176,3 +176,7 @@ Multi-member transports live in `meshes:` (`type: ssh` nexus hub or `type: bitto
   surface as `crosses_host: true` (first-time consent required before auto).
 - `escalation: {mode: off|suggest|auto, triggers: {...}}`; default mode `suggest`.
   See docs/escalation.md.
+
+## Phone system agents (system_agents)
+
+`system_agents.<name>` (experimental) puts a phone assistant (Gemini or Bixby, reached through Shizuku without root) into the graph. It is off unless an entry exists with `status: planned` or `active`. See [system-agents.md](system-agents.md).

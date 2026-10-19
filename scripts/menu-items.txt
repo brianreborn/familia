@@ -60,6 +60,13 @@ hosts.generate|Hosts|Write a per-host graph to generated/graph-HOST.yaml|PY scri
 hosts.android|Hosts|Start the node on an Android phone over SSH|bash android_start.sh {HOST:phone host, e.g. phone7}|lic||
 hosts.phones|Hosts|Start every phone listed in graph.yaml|bash android_multi_start.sh|lic||
 hosts.watchdog|Hosts|Keep a phone's node running (restart it if it stops answering)|bash watchdog_android.sh {HOST:phone host, e.g. phone7}|lic||
+hosts.phone-agents|Hosts|Phone assistants (Bixby, Gemini): which are set up and what leaves the phone|PY scripts/system_agents.py status|||python scripts\system_agents.py status
+hosts.phone-agents-licenses|Hosts|Phone assistants: Shizuku license and the terms each assistant brings|PY scripts/system_agents.py licenses|||python scripts\system_agents.py licenses
+hosts.phone-agent-probe|Hosts|On this phone (Termux): is Shizuku running, which assistants are installed|PY scripts/termux/system_agent.py probe|||
+hosts.phone-agent-open|Hosts|On this phone: bring Gemini or Bixby to the front (sends nothing)|PY scripts/termux/system_agent.py open --provider {PROVIDER:gemini or bixby}|||
+hosts.phone-agent-ask-preview|Hosts|On this phone: ask Gemini, preview only (shows the commands, sends nothing)|PY scripts/termux/system_agent.py ask --provider gemini --text {TEXT:what to ask} --dry-run|||
+hosts.phone-agent-ask|Hosts|On this phone: ask Gemini (CLOUD: your text goes to Google; asks first)|PY scripts/termux/system_agent.py ask --provider gemini --text {TEXT:what to ask}|lic||
+hosts.phone-agent-consent|Hosts|On this phone: allow or withdraw cloud calls to an assistant|PY scripts/termux/system_agent.py consent --provider {PROVIDER:gemini or bixby} {CHOICE:--grant, --revoke or --show}|||
 adv.args|Advanced: models & graph|validate_graph: the llama-server arguments for one node|PY scripts/validate_graph.py --graph graph.yaml --args {NODE:node name, e.g. coder}|||python scripts\validate_graph.py --graph graph.yaml --args {NODE:node name, e.g. coder}
 adv.verify|Advanced: models & graph|validate_graph: also verify model sha256 and runtimes (slow)|PY scripts/validate_graph.py --graph graph.yaml --verify-sha --check-runtimes|||python scripts\validate_graph.py --graph graph.yaml --verify-sha --check-runtimes
 adv.graph-edit|Advanced: models & graph|modify_graph: assign a model to a node (preview; a real run drops graph.yaml comments)|PY scripts/modify_graph.py --assign-model {ASSIGN:node=role:pick, e.g. coder=coder:default} --dry-run|||python scripts\modify_graph.py --assign-model {ASSIGN:node=role:pick, e.g. coder=coder:default} --dry-run

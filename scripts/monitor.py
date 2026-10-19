@@ -409,6 +409,17 @@ def run_hook(cmd, e):
 
 # ---------------------------------------------------------------- rendering
 
+def system_agents_line(sa):
+    """One line for the phone-assistant state written by scripts/termux/system_agent.py probe."""
+    st = sa.get("shizuku") or "unknown"
+    word = {"running": "running", "stopped": "STOPPED", "absent": "not set up",
+            "stopped-after-reboot": "STOPPED after reboot (expected without root: open Shizuku, press Start)"}.get(st, st)
+    prov = sa.get("providers") or {}
+    have = [p for p, d in sorted(prov.items()) if isinstance(d, dict) and d.get("app")]
+    age = sa.get("age_s")
+    return "assistants: shizuku %s; apps %s%s" % (word, ", ".join(have) or "-", "" if age is None else " (checked %s ago)" % fmt_dur(age))
+
+
 def fmt_dur(s):
     if s is None:
         return "?"
@@ -525,6 +536,8 @@ def detail_lines(st, now, interval):
         "".join("; %s %s->%s MiB" % (z["dev"], z["orig_mib"], z["compr_mib"]) for z in s.get("zram", []))))
     if s.get("battery"):
         out.append("   battery %s%% %s" % (s["battery"].get("pct"), s["battery"].get("status") or ""))
+    if s.get("system_agents"):  # phone assistants via Shizuku (#80, docs/system-agents.md)
+        out.append("   " + system_agents_line(s["system_agents"]))
     out.append("   familia processes:")
     for p in s.get("familia", []) or []:
         f = p.get("flags") or {}

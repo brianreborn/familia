@@ -207,3 +207,16 @@ def test_pentest_role_refused_and_usage(tmp_path):
 def test_status_cli(tmp_path):
     p = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "system_agents.py"), "status"], capture_output=True, text=True)
     assert p.returncode == 0 and "off by default" in p.stdout
+
+
+def test_monitor_shows_shizuku_state(tmp_path, monkeypatch):
+    sys.path.insert(0, os.path.join(ROOT, "scripts", "monitor"))
+    import probe, monitor
+    d = tmp_path / ".cache" / "familia"; d.mkdir(parents=True)
+    json.dump({"shizuku": "stopped-after-reboot", "providers": {"gemini": {"app": True}, "bixby": {"app": False}},
+               "time": 0, "boot_id": "secret-ish"}, open(d / "system-agent.json", "w"))
+    monkeypatch.setenv("HOME", str(tmp_path))
+    st = probe.system_agent_state()
+    assert st["shizuku"] == "stopped-after-reboot" and "boot_id" not in st
+    line = monitor.system_agents_line(st)
+    assert "STOPPED after reboot" in line and "gemini" in line

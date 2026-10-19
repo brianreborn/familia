@@ -389,6 +389,21 @@ def procs_snapshot():
     return snap
 
 
+def system_agent_state():
+    """Last phone-assistant probe (scripts/termux/system_agent.py probe); reading only, never runs rish."""
+    try:
+        with open(os.path.expanduser("~/.cache/familia/system-agent.json")) as f:
+            d = json.load(f)
+    except (OSError, ValueError):
+        return None
+    if not isinstance(d, dict):
+        return None
+    out = {k: d.get(k) for k in ("shizuku", "providers", "sdk") if k in d}
+    if isinstance(d.get("time"), (int, float)):
+        out["age_s"] = int(time.time() - d["time"])
+    return out
+
+
 def collect(o):
     t0, c0 = time.time(), time.process_time()
     hz = os.sysconf("SC_CLK_TCK") if hasattr(os, "sysconf") else 100
@@ -456,6 +471,9 @@ def collect(o):
            "familia": sorted(fam, key=lambda x: x["pid"]), "health": sorted(hres, key=lambda x: x["port"]),
            "kills": [k for k in kres if k.get("ts") is None or k["ts"] >= o["since"]][-20:], "logs": logs}
     res.update(rest)
+    sa = system_agent_state()
+    if sa:
+        res["system_agents"] = sa
     try:
         import resource
         maxrss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss

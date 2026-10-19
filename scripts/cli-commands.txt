@@ -95,3 +95,10 @@ numpy-wheel|adv.numpy-wheel
 poudriere|adv.poudriere
 quickstart|help.quickstart
 internal|help.internal
+phone agents|hosts.phone-agents
+phone agents licenses|hosts.phone-agents-licenses
+phone agent probe|hosts.phone-agent-probe
+phone agent open|hosts.phone-agent-open
+phone agent ask preview|hosts.phone-agent-ask-preview
+phone agent ask|hosts.phone-agent-ask
+phone agent consent|hosts.phone-agent-consent

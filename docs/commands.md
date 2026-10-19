@@ -124,6 +124,13 @@ familia.cmd -Search WORD [-Run N] [-DryRun]
 | `hosts.android` | Start the node on an Android phone over SSH (licenses first) | `bash android_start.sh <HOST>` | - |
 | `hosts.phones` | Start every phone listed in graph.yaml (licenses first) | `bash android_multi_start.sh` | - |
 | `hosts.watchdog` | Keep a phone's node running (restart it if it stops answering) (licenses first) | `bash watchdog_android.sh <HOST>` | - |
+| `hosts.phone-agents` | Phone assistants (Bixby, Gemini): which are set up and what leaves the phone | `python3 scripts/system_agents.py status` | `python scripts\system_agents.py status` |
+| `hosts.phone-agents-licenses` | Phone assistants: Shizuku license and the terms each assistant brings | `python3 scripts/system_agents.py licenses` | `python scripts\system_agents.py licenses` |
+| `hosts.phone-agent-probe` | On this phone (Termux): is Shizuku running, which assistants are installed | `python3 scripts/termux/system_agent.py probe` | - |
+| `hosts.phone-agent-open` | On this phone: bring Gemini or Bixby to the front (sends nothing) | `python3 scripts/termux/system_agent.py open --provider <PROVIDER>` | - |
+| `hosts.phone-agent-ask-preview` | On this phone: ask Gemini, preview only (shows the commands, sends nothing) | `python3 scripts/termux/system_agent.py ask --provider gemini --text <TEXT> --dry-run` | - |
+| `hosts.phone-agent-ask` | On this phone: ask Gemini (CLOUD: your text goes to Google; asks first) (licenses first) | `python3 scripts/termux/system_agent.py ask --provider gemini --text <TEXT>` | - |
+| `hosts.phone-agent-consent` | On this phone: allow or withdraw cloud calls to an assistant | `python3 scripts/termux/system_agent.py consent --provider <PROVIDER> <CHOICE>` | - |
 
 ## Advanced: models & graph
 
