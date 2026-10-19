@@ -24,3 +24,6 @@ that old devices without PyYAML can still read it.
 
 `scripts/skills.py validate` checks this format, and `tests/test_skills.py`
 covers it.
+
+Move plan (vendoring survey skills into green-zkillz): https://github.com/brianreborn/green-agentz/issues/17.
+hermes loading enabled skills: https://github.com/brianreborn/familia/issues/72.

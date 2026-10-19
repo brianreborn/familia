@@ -42,4 +42,5 @@ Seeded with the seven green-zkillz skills (bundled, BSD-3-Clause) and the
 familia #67 survey: `artemis-android-skill` (Apache-2.0, available) and the
 GoClaw `skills/` set (license-blocked). hermes does not yet load the enabled
 skills on its own; `scripts/skills.py paths` prints their folders, and the
-tracking issue is linked from `skills/README.md`.
+tracking issue is [familia #72](https://github.com/brianreborn/familia/issues/72). The plan for vendoring
+survey skills into green-zkillz is [green-agentz #17](https://github.com/brianreborn/green-agentz/issues/17).
