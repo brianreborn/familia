@@ -2,6 +2,7 @@
 # familia: one entry point. With no arguments it opens the menu (./familia-menu.sh).
 # Usage:
 #   ./familia                      the menu
+#   ./familia panel                settings in a simple browser window (keyboard, switch, mouse)
 #   ./familia skills list          scripts/skills.py ...
 #   ./familia licenses review      scripts/licenses.py ...
 #   ./familia hermes [...]         scripts/hermes.sh ...
@@ -18,6 +19,7 @@ cmd=${1:-}
 case "$cmd" in
   "") exec bash "$ROOT/familia-menu.sh" ;;
   -h|--help|help) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  panel) exec "$PY" "$ROOT/scripts/panel.py" "$@" ;;
   skills) exec "$PY" "$ROOT/scripts/skills.py" "$@" ;;
   licenses) exec "$PY" "$ROOT/scripts/licenses.py" "$@" ;;
   hermes) exec bash "$ROOT/scripts/hermes.sh" "$@" ;;

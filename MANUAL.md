@@ -10,7 +10,7 @@ How to run and look after a familia setup day to day. Install and first start ar
 
 - `sh scripts/configure.sh` checks out every sub-project in [`pins.txt`](pins.txt) at its pinned revision. It is non-interactive and safe to re-run.
 - `sh scripts/configure.sh -i` also asks for settings in the terminal.
-- `python3 scripts/panel.py` starts the code-bootstraps-llama.cpp settings panel at http://127.0.0.1:9932 (it needs `configure.sh` to have run first).
+- `./familia panel` (or `python3 scripts/panel.py`) starts the settings panel at http://127.0.0.1:9932 and opens it in your browser. It is the code-bootstraps-llama.cpp panel with familia's pages added (skills, licenses, hermes, Harness2, models); it needs `configure.sh` to have run first. See [docs/panel.md](docs/panel.md).
 
 Saved settings live in `code-bootstraps-llama.cpp/.cache/panel.env`. An environment variable always overrides a saved setting:
 

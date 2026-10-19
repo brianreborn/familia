@@ -108,7 +108,7 @@ Alternative engine builds follow the `<executable>__<author>__<branch>` naming s
 
 Shell environment variables always take precedence over saved settings.
 
-- **Settings panel (browser):** `python3 scripts/panel.py` serves http://127.0.0.1:9932. It proxies the code-bootstraps-llama.cpp panel and writes `code-bootstraps-llama.cpp/.cache/panel.env`.
+- **Settings panel (simple window):** `./familia panel` opens http://127.0.0.1:9932/ in your browser. It works with a mouse, a keyboard alone, a single switch or a screen reader (big buttons, short pages, no time limits, no JavaScript). It covers skills, license acceptance, the hermes mode, Harness2, a read-only view of each model's launch parameters, and the launcher settings. Every change is previewed before it is saved and can be undone. It listens on this computer only; from elsewhere use `ssh -L 9932:127.0.0.1:9932 HOST`. Details: [docs/panel.md](docs/panel.md).
 - **Settings in the terminal:** `sh scripts/configure.sh -i`. Without `-i` it only syncs pins.
 - **Common variables:** `PORT`, `PROFILE` (`lowram` | `moderate` | `default`), `CTX`, `CODER_CTX`, `MODELS_MAX`, `TOOLS`. These are handed to the model server. See the [code-bootstraps-llama.cpp README](https://github.com/brianreborn/code-bootstraps-llama.cpp#readme) for the full list.
 - **Detaching:** `DETACH_MODE=foreground|nohup|tmux|screen ./start.sh`. On Termux the default switches to tmux, then screen, then nohup, so the server survives when the terminal closes, and a wake lock is taken when `termux-wake-lock` is installed. tmux and screen sessions are named `familia-server`. nohup logs go to `.cache/server.log`.

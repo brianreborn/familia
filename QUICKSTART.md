@@ -6,6 +6,8 @@ Everything below runs from the root of a familia checkout unless it says otherwi
 
 **The easy way:** run `./familia` (on Windows, `familia.cmd`). It opens a menu grouped by task, and every item shows the exact command it runs, so you pick up the commands below as you go. `./familia-menu.sh --list` prints every item ([docs/commands.md](docs/commands.md) has the same list as a table), and `./familia-menu.sh --run KEY` runs one without the menu. Without a terminal it prints the list and exits instead of waiting.
 
+**Prefer a window?** Run `./familia panel` (Windows: `python scripts\panel.py`). It opens a settings page in your browser that works with a mouse, a keyboard alone, a single switch or a screen reader: skills, licenses, hermes mode, Harness2, model launch parameters and launcher settings. You see every change before it is saved, and you can undo it. See [docs/panel.md](docs/panel.md).
+
 ## 1. Install
 
 Pick one. All of them are per-user (no root or admin).

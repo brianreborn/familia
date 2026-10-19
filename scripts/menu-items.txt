@@ -7,10 +7,10 @@
 #   empty windows command = not available on Windows
 #   empty posix command = Windows only (hidden by familia-menu.sh)
 #   every user-facing script must appear here; internal-only ones are listed in scripts/menu-internal.txt
+setup.panel|Set up|Configure in a simple window (mouse, keyboard or switch friendly)|PY scripts/panel.py|||python scripts\panel.py
 setup.configure|Set up|Get or update the pinned parts (code-bootstraps, green-agentz, ...)|sh scripts/configure.sh|lic||
 setup.licenses|Set up|Review the licenses of everything you have chosen|PY scripts/licenses.py review|||python scripts\licenses.py review
 setup.settings|Set up|Change launcher settings (port, threads, context) on the terminal|sh scripts/configure.sh --interactive|||
-setup.panel|Set up|Change launcher settings in a browser form (127.0.0.1:9932)|PY scripts/panel.py|||python scripts\panel.py
 setup.install|Set up|Install or update this host (llama.cpp runtime, host entry): dry run first|sh INSTALLER --dry-run|||powershell -NoProfile -ExecutionPolicy Bypass -File install\windows\install.ps1 -DryRun
 setup.install-run|Set up|Install or update this host for real (asks you to accept licenses)|sh INSTALLER|||powershell -NoProfile -ExecutionPolicy Bypass -File install\windows\install.ps1
 setup.logon-task|Set up|Windows: start the model server at logon (preview; drop -WhatIf to register)||||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-task.ps1 -Install -Model {MODEL:model file name, e.g. qwen2.5-0.5b-instruct-q4_0.gguf} -WhatIf

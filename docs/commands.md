@@ -9,10 +9,10 @@ Run any row from the menu, or directly with `./familia-menu.sh --run KEY [ARG...
 
 | key | what it does | Linux / Android | Windows |
 |---|---|---|---|
+| `setup.panel` | Configure in a simple window (mouse, keyboard or switch friendly) ([panel.md](panel.md)) | `python3 scripts/panel.py` | `python scripts\panel.py` |
 | `setup.configure` | Get or update the pinned parts (code-bootstraps, green-agentz, ...) (licenses first) | `sh scripts/configure.sh` | - |
 | `setup.licenses` | Review the licenses of everything you have chosen | `python3 scripts/licenses.py review` | `python scripts\licenses.py review` |
 | `setup.settings` | Change launcher settings (port, threads, context) on the terminal | `sh scripts/configure.sh --interactive` | - |
-| `setup.panel` | Change launcher settings in a browser form (127.0.0.1:9932) | `python3 scripts/panel.py` | `python scripts\panel.py` |
 | `setup.install` | Install or update this host (llama.cpp runtime, host entry): dry run first | `sh install/linux/install.sh --dry-run` | `powershell -NoProfile -ExecutionPolicy Bypass -File install\windows\install.ps1 -DryRun` |
 | `setup.install-run` | Install or update this host for real (asks you to accept licenses) | `sh install/linux/install.sh` | `powershell -NoProfile -ExecutionPolicy Bypass -File install\windows\install.ps1` |
 | `setup.logon-task` | Windows: start the model server at logon (preview; drop -WhatIf to register) | Windows only | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-task.ps1 -Install -Model <MODEL> -WhatIf` |
@@ -150,6 +150,7 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/monitor/probe.py` | read-only probe the monitor pipes to each host over SSH |
 | `scripts/monitor/probe.ps1` | Windows version of the probe the monitor pipes over SSH |
 | `scripts/bench_parse.py` | filter for llama-bench output (pipe llama-bench -o csv into it); nothing to do on its own |
+| `scripts/panel_familia.py` | familia's pages for the settings panel; loaded by scripts/panel.py, which the menu runs |
 | `scripts/retry_wrapper.py` | library for agent model calls; its main is only a self-demo |
 | `scripts/isolated/hfchat.py` | adapter that graph nodes of kind isolated_remote call; not run by hand |
 | `scripts/c2c/kv_ship.py` | step of the C2C loopback test (Advanced menu), needs two running servers |

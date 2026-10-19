@@ -224,15 +224,43 @@ def license_gate(sids, yes):
     return licenses.do_review(items, digest, yes or licenses.env_yes("FAMILIA_ACCEPT_LICENSES"), unknown_ok, False)
 
 
-def write_skills(sec, agent, new):
-    p = graph_path()
-    with open(p, encoding="utf-8") as fh:
+def owner_of(g, sec, agent):
+    """The agent whose skills apply: the agent itself, or a pentest role's agent."""
+    return ((g.get("pentests") or {}).get(agent) or {}).get("agent") if sec == "pentests" else agent
+
+
+def refusal(s, sec, owner):
+    """Why skill s cannot be switched on for owner (sec is 'agents' or 'pentests'), or None.
+    The one rule set for the terminal menu and the settings panel (scripts/panel_familia.py)."""
+    if s["status"] == "license-blocked":
+        return f"{s['id']} is license-blocked and can't be enabled: {s.get('blocked_reason')}"
+    if s["status"] == "available":
+        return (f"{s['id']} isn't vendored into green-zkillz yet ({s['license']}), so there are no files to load. "
+                f"Plan: scripts/skills.py vendor {s['id']} --dry-run")
+    if owner not in (s.get("applies_to") or []):
+        return f"{s['id']} is for {', '.join(s.get('applies_to') or [])}, not {owner}."
+    if sec == "pentests" and s["adds_tools"] is not False:
+        return f"{s['id']} adds tools; pentest roles never get those (launch-test only)."
+    return None
+
+
+def graph_text_with(sec, agent, new):
+    """graph.yaml text with sec.agent.skills set to new (comments kept). ValueError lists refusals."""
+    with open(graph_path(), encoding="utf-8") as fh:
         text = fh.read()
     out = familia_yaml.set_node_list(text, sec, agent, "skills", new)
-    g = familia_yaml.loads(out)
-    errs = check_graph_skills(g)
+    errs = check_graph_skills(familia_yaml.loads(out))
     if errs:
-        die("refusing to write graph.yaml:\n  " + "\n  ".join(errs))
+        raise ValueError("refusing to write graph.yaml:\n  " + "\n  ".join(errs))
+    return out
+
+
+def write_skills(sec, agent, new):
+    p = graph_path()
+    try:
+        out = graph_text_with(sec, agent, new)
+    except ValueError as e:
+        die(str(e))
     tmp = p + ".tmp"
     with open(tmp, "w", encoding="utf-8") as fh:
         fh.write(out)
@@ -254,7 +282,7 @@ def cmd_enable(cat, g, sids, agent, dry, yes, disable=False):
         if s["status"] == "available":
             die(f"{sid} is not vendored into green-zkillz yet, so there are no files to load.\n"
                 f"  Its license is {s['license']}. See the plan: scripts/skills.py vendor {sid} --dry-run")
-        owner = ((g.get("pentests") or {}).get(agent) or {}).get("agent") if sec == "pentests" else agent
+        owner = owner_of(g, sec, agent)
         if owner not in s["applies_to"]:
             die(f"{sid} is for {s['applies_to']}, not {owner!r}. Pick one of those with --agent.")
         if sec == "pentests" and s["adds_tools"]:
@@ -352,12 +380,9 @@ def cmd_menu(cat, g, agent, yes):
             cmd_show(cat, s["id"]); continue
         if s["id"] in sel:
             sel.remove(s["id"]); continue
-        if s["status"] == "license-blocked":
-            print(f"  {s['id']} is license-blocked and can't be enabled: {s.get('blocked_reason')}"); continue
-        if s["status"] == "available":
-            print(f"  {s['id']} isn't vendored into green-zkillz yet ({s['license']}). Plan: scripts/skills.py vendor {s['id']} --dry-run"); continue
-        if sec == "pentests" and s["adds_tools"]:
-            print(f"  {s['id']} adds tools; pentest roles never get those."); continue
+        why = refusal(s, sec, owner_of(g, sec, agent))
+        if why:
+            print(f"  {why}"); continue
         sel.append(s["id"])
     off = [x for x in cur if x not in sel]
     on = [x for x in sel if x not in cur]
