@@ -22,7 +22,7 @@ PY=${PYTHON:-python3}
 
 ITEMS_FILE="$ROOT/scripts/menu-items.txt"
 [ -f "$ITEMS_FILE" ] || { echo "familia-menu: $ITEMS_FILE is missing; restore it with: git checkout scripts/menu-items.txt" >&2; exit 1; }
-ITEMS=$(grep -v '^#' "$ITEMS_FILE" | grep -v '^[[:space:]]*$')
+ITEMS=$(grep -v '^#' "$ITEMS_FILE" | grep -v '^[[:space:]]*$' | awk -F'|' '$4 != ""')  # empty posix command = Windows only
 
 DRY=0; PIPE=0; MODE=menu; RUN_KEY=""
 say() { printf '%s\n' "$*"; }
@@ -72,7 +72,10 @@ group_desc() {
     "Self-improving harness (Harness2)") echo "opt-in; attach to any agent, review every change" ;;
     "Test & benchmark") echo "unit tests, offline plan, benchmark records" ;;
     "Hosts") echo "start servers, measure machines, phones" ;;
-    "Help") echo "quick start and the full command list" ;;
+    "Advanced: models & graph") echo "model database, launch arguments, graph edits, scale-down" ;;
+    "Advanced: agents") echo "skill folders, hermes self-test and escalation" ;;
+    "Advanced: hosts & benchmarks") echo "benchmark records, power, CPU level, uninstall, FreeBSD" ;;
+    "Help") echo "quick start, the full command list, what the menu leaves out" ;;
   esac
 }
 

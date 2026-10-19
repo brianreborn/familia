@@ -41,7 +41,9 @@ foreach ($line in (Get-Content $itemsFile)) {
 $groupDesc = @{
   'Set up' = 'licenses, settings, install'; 'Skills' = 'pick the skills your agents use (green-zkillz)';
   'Models' = 'add models, check the graph, see launch parameters'; 'Self-improving harness (Harness2)' = 'opt-in; review every change';
-  'Test & benchmark' = 'benchmark records'; 'Hosts' = 'start this node, per-host graph'; 'Help' = 'quick start and the full command list'
+  'Agents (hermes)' = 'run hermes on one model or the whole graph'; 'Test & benchmark' = 'benchmark records'; 'Hosts' = 'start this node, measure, monitor';
+  'Advanced: models & graph' = 'model database, launch arguments, graph edits'; 'Advanced: agents' = 'skill folders, escalation';
+  'Advanced: hosts & benchmarks' = 'benchmark records, CPU level, uninstall, logon task'; 'Help' = 'quick start, the full command list, what the menu leaves out'
 }
 $groups = @(); foreach ($i in $items) { if (-not ($groups -contains $i.Group)) { $groups += $i.Group } }
 

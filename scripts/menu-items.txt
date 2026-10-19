@@ -5,16 +5,26 @@
 #   {NAME:prompt [default]} is asked for, or taken from --run KEY ARG... in order
 #   PY = python3 (or $PYTHON); INSTALLER = this platform's installer; PAGER = $PAGER or more
 #   empty windows command = not available on Windows
+#   empty posix command = Windows only (hidden by familia-menu.sh)
+#   every user-facing script must appear here; internal-only ones are listed in scripts/menu-internal.txt
 setup.configure|Set up|Get or update the pinned parts (code-bootstraps, green-agentz, ...)|sh scripts/configure.sh|lic||
 setup.licenses|Set up|Review the licenses of everything you have chosen|PY scripts/licenses.py review|||python scripts\licenses.py review
 setup.settings|Set up|Change launcher settings (port, threads, context) on the terminal|sh scripts/configure.sh --interactive|||
 setup.panel|Set up|Change launcher settings in a browser form (127.0.0.1:9932)|PY scripts/panel.py|||python scripts\panel.py
 setup.install|Set up|Install or update this host (llama.cpp runtime, host entry): dry run first|sh INSTALLER --dry-run|||powershell -NoProfile -ExecutionPolicy Bypass -File install\windows\install.ps1 -DryRun
+setup.install-run|Set up|Install or update this host for real (asks you to accept licenses)|sh INSTALLER|||powershell -NoProfile -ExecutionPolicy Bypass -File install\windows\install.ps1
+setup.logon-task|Set up|Windows: start the model server at logon (preview; drop -WhatIf to register)||||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-task.ps1 -Install -Model {MODEL:model file name, e.g. qwen2.5-0.5b-instruct-q4_0.gguf} -WhatIf
 skills.menu|Skills|Bundled skills: switch skills on/off for an agent (license-checked)|PY scripts/skills.py menu --agent {AGENT:agent name [hermes]}|||python scripts\skills.py menu --agent {AGENT:agent name [hermes]}
 skills.list|Skills|List every skill with its license and status|PY scripts/skills.py list|||python scripts\skills.py list
+skills.show|Skills|Show one skill: license, where it lives, what it adds|PY scripts/skills.py show {SKILL:skill id, e.g. green-probe}|||python scripts\skills.py show {SKILL:skill id, e.g. green-probe}
 skills.vendor|Skills|Show the plan to bring a survey skill into green-zkillz (no changes)|PY scripts/skills.py vendor {SKILL:skill id} --dry-run|||python scripts\skills.py vendor {SKILL:skill id} --dry-run
 skills.validate|Skills|Check the skills catalog and the skills in graph.yaml|PY scripts/skills.py validate|||python scripts\skills.py validate
 models.add|Models|Add a model from a Hugging Face folder or a .gguf (dry run)|scripts/add-model.sh {PATH:model folder or .gguf file} --dry-run|||python scripts\add_model.py {PATH:model folder or .gguf file} --dry-run
+models.add-apply|Models|Add a model from a folder or .gguf for real (writes manifest and preset)|scripts/add-model.sh {PATH:model folder or .gguf file}|||python scripts\add_model.py {PATH:model folder or .gguf file}
+models.fetch-preview|Models|Download a model from Hugging Face: preview (no download)|scripts/add-model.sh --fetch {REPO:Hugging Face repo ORG/NAME[@REV]} --quant {QUANT:quant [Q4_K_M]} --dry-run|||python scripts\add_model.py --fetch {REPO:Hugging Face repo ORG/NAME[@REV]} --quant {QUANT:quant [Q4_K_M]} --dry-run
+models.fetch|Models|Download and add a model from Hugging Face (asks you to accept its license)|scripts/add-model.sh --fetch {REPO:Hugging Face repo ORG/NAME[@REV]} --quant {QUANT:quant [Q4_K_M]}|||python scripts\add_model.py --fetch {REPO:Hugging Face repo ORG/NAME[@REV]} --quant {QUANT:quant [Q4_K_M]}
+models.cards|Models|Fetch only a model's card, config and license (no weights)|PY scripts/hf_fetch.py {REPO:Hugging Face repo ORG/NAME[@REV]} --damp-run|||python scripts\hf_fetch.py {REPO:Hugging Face repo ORG/NAME[@REV]} --damp-run
+models.license|Models|Show one model's license and what it obliges you to|PY scripts/model_license.py show {ID:model database id (see Advanced: model database list)}|||python scripts\model_license.py show {ID:model database id (see Advanced: model database list)}
 models.check|Models|Check graph.yaml: models, RAM budget, required launch parameters|PY scripts/validate_graph.py --graph graph.yaml|||python scripts\validate_graph.py --graph graph.yaml
 models.explain|Models|Show the exact launch parameters for one node|PY scripts/validate_graph.py --graph graph.yaml --explain {NODE:node name, e.g. coder}|||python scripts\validate_graph.py --graph graph.yaml --explain {NODE:node name, e.g. coder}
 models.licenses|Models|List model, skill and engine licenses (records nothing)|PY scripts/licenses.py list|||python scripts\licenses.py list
@@ -23,16 +33,52 @@ agents.hermes-graph|Agents (hermes)|Hermes: full graph|scripts/hermes.sh --graph
 agents.hermes|Agents (hermes)|Hermes on the graph coder node (64K context)|scripts/hermes.sh|lic||
 agents.hermes-render|Agents (hermes)|Write the hermes config only; start nothing|scripts/hermes.sh --render-only|||
 agents.fleet-test|Agents (hermes)|Launch-test a role: validate, would-start, stop|sh with-fleet.sh --role {ROLE:role name, e.g. hermes} --launch-test|||
+agents.fleet|Agents (hermes)|Launch a role from graph.yaml (pentest roles are only launch-tested)|sh with-fleet.sh --role {ROLE:role name, e.g. hermes}|lic||
 harness2.status|Self-improving harness (Harness2)|Show which agents have Harness2 and in which mode|PY scripts/harness2.py status||file:scripts/harness2.py|python scripts\harness2.py status
 harness2.set|Self-improving harness (Harness2)|Choose target agent and mode (off / propose / apply)|PY scripts/harness2.py set --agent {AGENT:agent name} --mode {MODE:off, propose or apply}|lic|file:scripts/harness2.py|python scripts\harness2.py set --agent {AGENT:agent name} --mode {MODE:off, propose or apply}
 harness2.review|Self-improving harness (Harness2)|Review proposals: list, accept or revert|PY scripts/harness2.py review||file:scripts/harness2.py|python scripts\harness2.py review
 test.unit|Test & benchmark|Run the unit tests (installs pytest into .cache/pylib once)|sh scripts/run-tests.sh|||
 test.offline|Test & benchmark|Offline test plan (prints live steps; RUN=1 to run them)|bash scripts/offline-test-plan.sh|||
 test.registry|Test & benchmark|Benchmark records: best measured model per host and role|PY scripts/registry.py suggest --host {HOST:host name} --role {ROLE:role, e.g. coder}|||python scripts\registry.py suggest --host {HOST:host name} --role {ROLE:role, e.g. coder}
+test.registry-summary|Test & benchmark|Summary of every benchmark record|PY scripts/registry.py summarize|||python scripts\registry.py summarize
 hosts.monitor|Hosts|Monitor hosts over SSH (read-only console; --once for one snapshot)|sh familia-monitor|||python scripts\monitor.py
+hosts.monitor-once|Hosts|One snapshot of every host, then exit|sh familia-monitor --once|||python scripts\monitor.py --once
 hosts.start|Hosts|Start the model server on this machine|sh start.sh|lic||scripts\windows\start.bat
+hosts.serve|Hosts|Start one graph node's model server (exact launch parameters from the graph)|sh scripts/serve.sh {NODE:node name, e.g. coder}|lic||
 hosts.measure|Hosts|Measure this machine for graph.yaml (dry run)|PY scripts/host_measure.py --name {HOST:host name} --dry-run|||
+hosts.measure-write|Hosts|Measure this machine and write it into graph.yaml|PY scripts/host_measure.py --name {HOST:host name}|||python scripts\host_measure.py --name {HOST:host name}
 hosts.generate|Hosts|Write a per-host graph to generated/graph-HOST.yaml|PY scripts/generate_graph.py {HOST:host name}|||python scripts\generate_graph.py {HOST:host name}
 hosts.android|Hosts|Start the node on an Android phone over SSH|bash android_start.sh {HOST:phone host, e.g. phone7}|lic||
+hosts.phones|Hosts|Start every phone listed in graph.yaml|bash android_multi_start.sh|lic||
+hosts.watchdog|Hosts|Keep a phone's node running (restart it if it stops answering)|bash watchdog_android.sh {HOST:phone host, e.g. phone7}|lic||
+adv.args|Advanced: models & graph|validate_graph: the llama-server arguments for one node|PY scripts/validate_graph.py --graph graph.yaml --args {NODE:node name, e.g. coder}|||python scripts\validate_graph.py --graph graph.yaml --args {NODE:node name, e.g. coder}
+adv.verify|Advanced: models & graph|validate_graph: also verify model sha256 and runtimes (slow)|PY scripts/validate_graph.py --graph graph.yaml --verify-sha --check-runtimes|||python scripts\validate_graph.py --graph graph.yaml --verify-sha --check-runtimes
+adv.graph-edit|Advanced: models & graph|modify_graph: assign a model to a node (preview; a real run drops graph.yaml comments)|PY scripts/modify_graph.py --assign-model {ASSIGN:node=role:pick, e.g. coder=coder:default} --dry-run|||python scripts\modify_graph.py --assign-model {ASSIGN:node=role:pick, e.g. coder=coder:default} --dry-run
+adv.db-list|Advanced: models & graph|Model database: list entries|PY scripts/model_db.py list|||python scripts\model_db.py list
+adv.db-show|Advanced: models & graph|Model database: show one entry|PY scripts/model_db.py show {ID:model database id}|||python scripts\model_db.py show {ID:model database id}
+adv.db-damp|Advanced: models & graph|Model database: add a repo without weights (preview)|PY scripts/model_db.py damp {REPO:Hugging Face repo ORG/NAME[@REV]} --dry-run|||python scripts\model_db.py damp {REPO:Hugging Face repo ORG/NAME[@REV]} --dry-run
+adv.db-backfill|Advanced: models & graph|Model database: backfill entries for models in the manifest (preview)|PY scripts/model_db.py backfill --dry-run|||python scripts\model_db.py backfill --dry-run
+adv.llama-flags|Advanced: models & graph|llama_flags: does a pinned llama.cpp build have a flag?|PY scripts/llama_flags.py show {BUILD:build name, e.g. b11374} {FLAG:flag, e.g. --jinja}|||python scripts\llama_flags.py show {BUILD:build name, e.g. b11374} {FLAG:flag, e.g. --jinja}
+adv.scale-down|Advanced: models & graph|Scale-down (opt-in smaller models): preview|PY scripts/scale_down.py --dry-run|||python scripts\scale_down.py --dry-run
+adv.licenses-json|Advanced: models & graph|All licenses as JSON (records nothing)|PY scripts/licenses.py list --json|||python scripts\licenses.py list --json
+adv.skills-paths|Advanced: agents|Folders of the skills enabled for an agent|PY scripts/skills.py paths --agent {AGENT:agent name [hermes]}|||python scripts\skills.py paths --agent {AGENT:agent name [hermes]}
+adv.hermes-selftest|Advanced: agents|Hermes: check that context compaction keeps facts|scripts/hermes.sh --selftest-compaction|lic||
+adv.hermes-escalate|Advanced: agents|Hermes with escalation to a bigger model when stuck|scripts/hermes.sh --escalate|lic||
+adv.escalate-accept|Advanced: agents|Escalation: accept the pending suggestion|PY scripts/escalate.py accept|||python scripts\escalate.py accept
+adv.escalate-consent|Advanced: agents|Escalation: allow a node to hand off to another host|PY scripts/escalate.py consent --node {NODE:light node} --target {TARGET:heavy node}|||python scripts\escalate.py consent --node {NODE:light node} --target {TARGET:heavy node}
+adv.registry-query|Advanced: hosts & benchmarks|Benchmark records for one host|PY scripts/registry.py query --host {HOST:host name}|||python scripts\registry.py query --host {HOST:host name}
+adv.registry-match|Advanced: hosts & benchmarks|Hardware profile that matches a host|PY scripts/registry.py match --graph graph.yaml --host {HOST:host name}|||python scripts\registry.py match --graph graph.yaml --host {HOST:host name}
+adv.registry-power|Advanced: hosts & benchmarks|Power use recorded per host|PY scripts/registry.py power|||python scripts\registry.py power
+adv.registry-lint|Advanced: hosts & benchmarks|Check the benchmark records|PY scripts/registry.py lint|||python scripts\registry.py lint
+adv.power-probe|Advanced: hosts & benchmarks|One power reading of this machine (read-only)|sh scripts/power_probe.sh {SECONDS:seconds [5]}|||
+adv.cpu-level|Advanced: hosts & benchmarks|This CPU's x86-64 level and the numpy it needs|PY scripts/cpu_level.py|||python scripts\cpu_level.py
+adv.phone-target|Advanced: hosts & benchmarks|Phones in graph.yaml and how they are reached|PY scripts/android_target.py --list|||python scripts\android_target.py --list
+adv.monitor-deaths|Advanced: hosts & benchmarks|Monitor: alert on crashed or killed model servers|sh familia-monitor --watch-deaths|||python scripts\monitor.py --watch-deaths
+adv.c2c-loopback|Advanced: hosts & benchmarks|C2C test: move a KV cache between two local servers|sh scripts/c2c/loopback_test.sh {SERVER:path to llama-server} {GGUF:small .gguf model}|||
+adv.uninstall|Advanced: hosts & benchmarks|Uninstall from this host: preview (models are kept)|sh INSTALLER --uninstall --dry-run|||powershell -NoProfile -ExecutionPolicy Bypass -File install\windows\install.ps1 -Uninstall -DryRun
+adv.logon-task-remove|Advanced: hosts & benchmarks|Windows: remove the logon task||||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-task.ps1 -Uninstall
+adv.numpy-wheel|Advanced: hosts & benchmarks|Windows: build numpy for CPUs without SSE4 (long; needs MSYS2)||||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\build_numpy_wheel.ps1 -Version {VERSION:numpy version [2.5.3]}
+adv.poudriere|Advanced: hosts & benchmarks|FreeBSD: build the familia package with poudriere (preview)|sh scripts/freebsd/poudriere-build.sh -n|||
 help.quickstart|Help|Read the quick start|PAGER QUICKSTART.md|||more QUICKSTART.md
 help.cli|Help|Every menu item as a command (same as --list)|./familia-menu.sh --list|||familia.cmd -List
+help.internal|Help|Scripts the menu leaves out on purpose, and why|PAGER scripts/menu-internal.txt|||more scripts\menu-internal.txt
