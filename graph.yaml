@@ -426,6 +426,7 @@ nodes:
     flash_attn: true
     offload: {backend: cpu, ngl: 0, split: none, main_gpu: 0}   # iGPU measured worse + needs extra RAM (LESSONS L-miryam-perf)
     threads: 2                   # 2 physical cores: tg 8.4 t/s vs 6.3 at -t 4 (2026-10-10 llama-bench)
+    load_mode: none              # -lm none: real launch peak RSS 1790-1863 vs 2353 MiB with mmap, load 23-35 vs 25-41 s, tg 8.55-8.66 vs 8.84-8.86 (2026-10-19, x2)
     bind: 127.0.0.1
     port: 9941
     cache_ram_mib: 1024          # >= per-slot prompt state (validator checks)

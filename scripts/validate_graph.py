@@ -258,6 +258,7 @@ def server_args(graph, name):
     if n["offload"]["ngl"]: a += ["-sm", n["offload"]["split"], "-mg", str(n["offload"]["main_gpu"])]
     if n["flash_attn"]: a += ["-fa", "on"]
     if n.get("threads"): a += ["-t", str(n["threads"])]
+    if n.get("load_mode"): a += ["-lm", n["load_mode"]]   # none: no mmap, ~-0.5 GiB RSS on repacked weights (docs/perf/2026-10-19-tuning-2.md)
     names = sorted(al for al, x in graph["aliases"].items() if x["node"] == name)
     if names: a += ["--alias", names[0]]
     a += ["--cache-ram", str(n["cache_ram_mib"])]

@@ -471,6 +471,7 @@ TYPES = {
                 "offload": req("any"), "bind": req("str"), "port": req("int", min=1),
                 "cache_ram_mib": req("int", min=0), "status": req("enum", choices={"active", "planned"}),
                 "embeddings": opt("bool"), "threads": opt("int", min=1), "scale_down": opt("any"),
+                "load_mode": opt("enum", choices={"auto", "mmap", "none"}),  # llama.cpp -lm (b11374+)
                 "selection": opt("enum", choices={"default", "fallback"}), "note": opt("str"),
                 # heavyweight escalation (docs/escalation.md); checked in escalation.check_node_escalation
                 "escalates_to": opt("list"), "escalation": opt("any"),

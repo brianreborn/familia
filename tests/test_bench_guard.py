@@ -98,3 +98,15 @@ def test_effective_from_load_log():
            "llama_context: n_ubatch      = 512\nllama_context: flash_attn    = enabled\n")
     e = bg.effective(log)
     assert e["n_ctx"] == "8448" and e["n_ubatch"] == "512" and e["flash_attn"] == "enabled"
+
+
+def test_graph_load_mode_reaches_server_args():
+    import validate_graph as vg
+    g = vg.load(os.path.join(ROOT, "graph.yaml"))
+    if g["nodes"].get("coder", {}).get("load_mode") != "none":
+        pytest.skip("coder has no load_mode")
+    a = vg.server_args(g, "coder")
+    assert a[a.index("-lm") + 1] == "none"
+    g["nodes"]["coder"]["load_mode"] = "bogus"
+    errs, _ = vg.validate(g, check_files=False)
+    assert any("load_mode" in e for e in errs), errs
