@@ -14,6 +14,12 @@ High-level requirements for the familia topology coordinator: the Linux orchestr
 - **RAM safety:** keep a large reserve on small hosts; `reserve_ram_mib: 3072` on miryam (implemented; provisional guidance — see `docs/ram-safety.md`).
 - **Tests:** Python unit tests for the graph and registry (implemented); shell syntax CI (`sh -n` / shellcheck) planned (#14).
 
+## Model database (planned: #51)
+- **Full Hugging Face repo, pinned:** every model gets a database entry built from the *entire* upstream HF repo at a pinned revision (commit SHA), not a lone `.gguf`. That covers the model card `README.md`, `config.json`, `generation_config.json`, tokenizer and chat-template files, the license, and the base repo when the GGUF is a third-party quant. Record a sha256 for each file.
+- **Use all of it:** the card's recommended sampling parameters, context length and RoPE/YaRN scaling, thinking modes, chat template, system-prompt rules, stop tokens and documented command lines become the node's launch defaults (serve.sh/ps1, hermes harness). Any deviation must be recorded explicitly with a reason.
+- **Fail loud:** `validate_graph.py` rejects a node whose model has no database entry, or whose settings contradict the card without a recorded override. Registry benchmark records reference the entry, so results are reproducible with card-correct settings.
+- **Old hardware still wins:** the fetch skips weight files we don't use, so entries stay small enough for ~15-year-old devices.
+
 ## Android node
 - Launch via `android_start.sh` with host, port and user from the graph / environment and key-based SSH (#18). Fleet helpers `with-fleet.sh` and `scripts/pentest-role.json` are on `main` (fixes #15); pentest role remains launch-test only.
 - `watchdog_android.sh` monitoring: planned cleanup (password variable name, cwd-relative path, log location).
