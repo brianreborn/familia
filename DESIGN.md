@@ -14,12 +14,14 @@ The user is in control of every edge. The system fills only the hooks the user l
 
 ## Super-project
 
-One development tree. Each major project is a subdirectory checkout, left intact:
+One development tree. Each major project is a subdirectory checkout, left intact, pinned by revision in `pins.txt`:
 
 - `code-bootstraps-llama.cpp` — local router, models, `/remote`, installers
 - `green-roomz` — alias gateway: one name, one backend, handoff back to the nexus
 - `green-agentz` — agents, green-brainz, green-fleetz (the swarm), green-zkillz
-- `green-agency` — the agency skill pipeline (probe, cache, snapshot, deploy)
+- `green-agency` — the agency skill pipeline (probe, cache, snapshot, deploy). **Retired**; kept for its historical specs
+- `agent-reach` — external reach tools (see Agent-Reach below)
+- `llama-server__nace-ai__edlm` — an experimental engine fork, cloned only when an `ENGINE_*` setting asks for it
 
 The top directory is only the graph: node types, the transaction block, `/local`, `/remote`, and the two-click installer. It pulls a piece by naming a hook, not by copying source into a neighbor. green-fleetz stays the swarm until it has a reason to be its own checkout.
 
@@ -53,8 +55,8 @@ The launcher opens `chat`. `coder` is a handoff from `chat` or `route`, not the 
 | Node | What it is | Default hooks |
 |---|---|---|
 | model | one route name (`chat`, `coder`, `route`, `translate`, …) | `in`, `weights`, `kv` |
-| agent | a green-agentz profile (`scripts/agent.py` is planned, not in the tree yet) | `task`, `tools`, `local`, `remote` |
-| agency | one green-agency skill run | `in`, `out`, `snap` |
+| agent | a green-agentz profile, or an external agent such as hermes-agent (run through `scripts/hermes.sh`) | `task`, `tools`, `local`, `remote` |
+| agency | one green-agency skill run (retired; kept for compatibility) | `in`, `out`, `snap` |
 | room | one green-roomz alias (a named backend) | `in`, `handoff` |
 | swarm | one green-fleetz member | `task`, `result` |
 | store | a coherent snapshot of bytes | `read`, `write` |
@@ -181,7 +183,7 @@ Cutting-edge models often require forks or experimental branches of `llama.cpp` 
   ```
   The suffixed executable in `bin/` (e.g. `llama-server__<authorName>__<branchName>`) is either built with an `$ORIGIN` runtime library search path (`RPATH`) or launched via a wrapper script that sets the isolated `LD_LIBRARY_PATH` / `DYLD_LIBRARY_PATH` before exec.
 
-- **Ollama integration**: Ollama runs either through its native binary (`ollama serve`, exposing its OpenAI-compatible `/v1` endpoint on loopback) or as a managed sidecar. In FAMILIA, it is registered as an engine adapter behind a standard route name.
+- **Ollama integration** (future, not planned yet): Ollama would run either through its native binary (`ollama serve`, exposing its OpenAI-compatible `/v1` endpoint on loopback) or as a managed sidecar. In FAMILIA, it would be registered as an engine adapter behind a standard route name.
 
 - **Route names remain clean**: The end user, UI, and coding agents still address clean, single-word route names (`chat`, `coder`, `route`). The node manifest or preset specifies the exact engine backend (e.g., `engine = llama-server__ikawrakow__new-quant` or `engine = ollama`). The graph routes the call to the declared backend without leaking compiler or branch specifics into the user-facing interface.
 
@@ -204,7 +206,7 @@ To support cutting-edge architectures that have not yet reached upstream `llama.
    ```
 3. **Candidate Model — DReX-DLM (Diffusion Language Model)**:
    - **Upstream Project**: [nace-ai/drex-dlm](https://github.com/nace-ai/drex-dlm)
-   - **Candidate Role**: Evaluated as a potential new default for `chat`.
+   - **Candidate Role**: Evaluated as a potential new default for `chat`. Status: candidate only, tracked with the other decision models in [#24](https://github.com/brianreborn/familia/issues/24); not placed in `graph.yaml`.
    - **Model Weights**: `nace-ai/drex-dlm-Q8_0` on Hugging Face.
    - **Required Runtime**: [nace-ai/llama.cpp](https://github.com/nace-ai/llama.cpp) branch `edlm`.
    - **Engine Identifier**: `llama-server__nace-ai__edlm`
@@ -212,6 +214,7 @@ To support cutting-edge architectures that have not yet reached upstream `llama.
 
 4. **Candidate Model — GEV-26B-Decide (Decision / Router)**:
    - **Upstream Project**: [autotrust/GEV-26B-Decide](https://huggingface.co/autotrust/GEV-26B-Decide) on Hugging Face.
+   - **Status**: catalog only ([#24](https://github.com/brianreborn/familia/issues/24)); too big for the current hosts.
    - **Candidate Role**: `route`. This is a 26B-parameter decision/tool-routing model from Autotrust, intended to replace or augment the existing small resident router. At 26B it will not fit on lowram or moderate profiles without GPU offload — it is a candidate for `route` only when adequate VRAM or a split CPU/GPU load is available. The small CPU model remains the resident default for `route` when this model is absent.
    - **Model Weights**: `autotrust/GEV-26B-Decide` (download from Hugging Face; GGUF conversion or an available quant required).
    - **Engine**: Standard reference `llama-server` (no special branch required unless the architecture is unsupported upstream).
@@ -219,6 +222,7 @@ To support cutting-edge architectures that have not yet reached upstream `llama.
 
 5. **Candidate Model — embedding-gemma-2 (Semantic Embedding)**:
    - **Upstream Project**: [google/embedding-gemma-2](https://huggingface.co/google/embeddinggemma-2) on Hugging Face.
+   - **Status**: declared in `graph.yaml` as the `embed` node on runtime b11539, and **deferred until further notice** ([#38](https://github.com/brianreborn/familia/issues/38)).
    - **Candidate Role**: `embed` — activates the `embed` route alias once the model file is on disk. No alias is published until that file exists (per the existing rule for specialist routes).
    - **Model Weights**: `google/embeddinggemma-2` (download from Hugging Face; GGUF quant required).
    - **Engine**: Standard reference `llama-server` with embedding mode (`--embeddings` flag). The model produces dense vector representations; it does not generate tokens. Its KV cache and slot semantics differ from generative models — slots are not persisted across requests and are not snapshotted as part of the normal virtual snapshot sequence.
@@ -297,11 +301,11 @@ The first click is the install command: `curl | sh` or `irm | iex`. The Windows 
 
 The second click is the donation-ware tap-through. A terminal asks for one word. A phone asks for one tap. The install does not continue until that answer. Paying is not required, and the notice cannot be skipped. There is no third question.
 
-The installer records a digest when one is published and still installs when it is empty, which is the current `install.sh` behavior (no Windows installer is shipped yet). The super-project installer checks out the four subdirectories at pinned revisions. It does not ask the user to assemble them.
+The per-platform installers (`install/linux`, `install/termux`, `install/windows`) verify the llama.cpp release against the sha256 digest the release API publishes and stop when there is none. The super-project installer (`install.sh`) checks out every sub-project in `pins.txt` at its pinned revision. It does not ask the user to assemble them. See docs/install.md.
 
-## First build, after this plan
+## Original build plan (historical)
 
-The GitHub repository is created only after this plan is accepted. Nothing is committed before that review.
+Kept for the record. The repository exists and most of this has landed; current status is the Implementation status table in README.md. `scripts/agent.py` (item 3) was never added: `/local` lives in the code-bootstraps-llama.cpp agent.
 
 1. Top-level tree and pins. No code moved between projects. Our `LICENSE` is the Light-ware License from `japanglify/LICENSE`.
 2. The transaction block, parsed by the agent, stored next to `remote.json`.
@@ -309,11 +313,13 @@ The GitHub repository is created only after this plan is accepted. Nothing is co
 4. Snapshot-before-write. Use the filesystem driver when one exists. Otherwise dump slot KV first, `kill -STOP`, rsync the tree plus those dumps, then `kill -CONT`. The launcher opens `chat`.
 5. Two-click install of that tree on this Linux host and a documented PS 5.1 path. The second click is the donation-ware tap-through. Do not block on a live Windows run.
 
-Leave BitTorrent, trackers, rsync, and ssh as node types with no protocol code until the block and `/local` are real. A transport that cannot name a snapshot is not allowed to feed a model.
+Leave BitTorrent, trackers, rsync, and ssh as node types with no protocol code until the block and `/local` are real. A transport that cannot name a snapshot is not allowed to feed a model. (Since then an opt-in SSH nexus and private tracker proof of concept has landed; see docs/transport-poc.md.)
 
-## Visual Graph Configuration
+## Future ideas (not planned yet)
 
-The configuration UI must support interactive topology design. This means providing the ability to visually set up components in a netgraph style, allowing users to configure both small, straightforward neural networks and easily manage larger, federated systems spanning multiple hosts. Alternatively, the UI must support configuring the system through a natural language description of the desired setup.
+### Visual graph configuration
+
+No issue tracks this and nothing is built. The idea: the configuration UI would support interactive topology design. This means providing the ability to visually set up components in a netgraph style, allowing users to configure both small, straightforward neural networks and easily manage larger, federated systems spanning multiple hosts. Alternatively, the UI would support configuring the system through a natural language description of the desired setup.
 
 ## Documentation Requirements
 
