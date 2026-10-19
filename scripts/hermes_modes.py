@@ -16,9 +16,18 @@ descriptor with agent: <this agent> and a self_improve entry with mode != "off" 
 starting hermes so the accepted harness version is in place. Nothing is imported from it;
 if it is absent, hermes starts unchanged. Harness² itself never needs hermes.
 
-usage: hermes.sh [--mode graph|single] [--model NODE] [--agent NAME] [--graph FILE] [--self-improve]
+Enabled skills (agents.<agent>.skills, scripts/skills.py, docs/skills.md) are linked into
+HERMES_HOME/skills/<id> in both modes (`scripts/skills.py paths`); existing entries are kept.
+
+Licenses of the graph selection are accepted before a node starts (scripts/licenses.py gate;
+--accept-licenses / --yes accepts).
+
+usage: hermes.sh [--graph-mode | --model NODE | --mode graph|single] [--agent NAME] [--graph FILE]
+                 [--self-improve] [--accept-licenses|--yes]
                  [--render-only | --selftest-compaction | --escalate [--light NODE] [--no-swap-back] | --no-escalate]
                  [-h|--help] [-- HERMES-ARGS...]
+  --graph-mode is the same as --mode graph (the default); --graph FILE only picks which graph.yaml.
+example: scripts/hermes.sh --model coder --render-only
        hermes.sh harness2 COMMAND ...    Harness² review CLI (scripts/harness2.py); launches nothing
 """
 import copy, os, socket, subprocess, sys
@@ -38,7 +47,7 @@ def usage_err(msg):
 def parse(argv):
     o = {"mode": None, "model": None, "agent": "hermes", "graph": os.path.join(ROOT, "graph.yaml"),
          "action": "run", "light": None, "swap_back": True, "escalate": None, "self_improve": False,
-         "rest": [], "seen": []}
+         "accept": False, "rest": [], "seen": []}
     it = iter(argv)
     def val(x):
         v = next(it, None)
@@ -49,6 +58,10 @@ def parse(argv):
         elif x == "--mode":
             o["mode"] = val(x)
             if o["mode"] not in ("graph", "single"): usage_err(f"--mode must be graph or single, got {o['mode']!r}")
+        elif x == "--graph-mode":
+            if o["mode"] == "single": usage_err("--graph-mode conflicts with --mode single")
+            o["mode"] = "graph"
+        elif x in ("--accept-licenses", "--yes"): o["accept"] = True
         elif x == "--model": o["model"] = val(x)
         elif x == "--agent": o["agent"] = val(x)
         elif x == "--graph": o["graph"] = val(x)
@@ -64,7 +77,7 @@ def parse(argv):
         if x.startswith("--"): o["seen"].append(x)
     if o["mode"] is None: o["mode"] = "single" if o["model"] else "graph"
     if o["mode"] == "graph" and o["model"]:
-        usage_err("--model selects single-model mode; drop --mode graph (graph mode uses the agent's aliases)")
+        usage_err("--model selects single-model mode; drop --graph-mode/--mode graph (graph mode uses the agent's aliases)")
     if o["mode"] == "single":
         bad = [f for f in o["seen"] if f in GRAPH_ONLY]
         if bad: usage_err(f"{', '.join(bad)}: graph mode only (single-model mode has no router or escalation proxy)")
@@ -132,14 +145,36 @@ def pickup(g, o, agent, into=None):
         sys.exit(f"hermes.sh: --self-improve: no harnesses.* entry has agent: {agent} (docs/harness2.md)")
 
 
+def link_skills(raw, agent, home):
+    """Link agents.<agent>.skills folders into HOME/skills/<id> (docs/skills.md, #72). Never replaces
+    an existing entry; a missing skills.py or a skill without files is a note, not a failure."""
+    a = (raw.get("agents") or {}).get(agent) or {}
+    if not a.get("skills"): return
+    tool = os.path.join(ROOT, "scripts", "skills.py")
+    if not os.path.isfile(tool):
+        print("hermes.sh: skills listed but scripts/skills.py is absent; starting without them", file=sys.stderr); return
+    r = subprocess.run([sys.executable, tool, "paths", "--agent", agent], capture_output=True, text=True,
+                       env=dict(os.environ, FAMILIA_GRAPH=os.path.abspath(raw.get("_path") or os.path.join(ROOT, "graph.yaml"))))
+    if r.stderr.strip(): print(r.stderr.strip(), file=sys.stderr)
+    d = os.path.join(home, "skills"); os.makedirs(d, exist_ok=True); linked = []
+    for src in [l.strip() for l in r.stdout.splitlines() if l.strip()]:
+        dst = os.path.join(d, os.path.basename(src.rstrip("/")))
+        if os.path.islink(dst) and os.path.realpath(dst) == os.path.realpath(src): linked.append(os.path.basename(dst)); continue
+        if os.path.lexists(dst):
+            print(f"hermes.sh: skills: {dst} exists and is not a link to {src}; left as is", file=sys.stderr); continue
+        os.symlink(src, dst); linked.append(os.path.basename(dst))
+    print(f"hermes.sh: skills linked into {d}: {', '.join(linked) or 'none'}", file=sys.stderr)
+
+
 def main(argv):
     o = parse(argv)
     import hermes_harness as hh
     agent = o["agent"]
+    if o["accept"]: hh.ACCEPT_LICENSES = True
     if o["mode"] == "graph":
-        raw = yaml.safe_load(open(o["graph"]))
+        raw = yaml.safe_load(open(o["graph"])); raw["_path"] = o["graph"]
         a = (raw.get("agents") or {}).get(agent)
-        fwd = ["--agent", agent, "--graph", o["graph"]]
+        fwd = ["--agent", agent, "--graph", o["graph"]] + (["--accept-licenses"] if o["accept"] else [])
         if o["action"] == "render": fwd.append("--render-only")
         elif o["action"] == "selftest": fwd.append("--selftest-compaction")
         if a and o["action"] == "run" and o["escalate"] is None:
@@ -152,7 +187,9 @@ def main(argv):
             if o["light"]: fwd += ["--light", o["light"]]
             if not o["swap_back"]: fwd.append("--no-swap-back")
         print(f"hermes.sh: mode=graph agent={agent} escalation={'proxy' if o['escalate'] else 'off'}", file=sys.stderr)
-        if a: pickup(raw, o, agent)
+        if a:
+            pickup(raw, o, agent)
+            link_skills(raw, agent, os.path.expanduser(f"~/.cache/familia/hermes-{agent}"))
         return hh.main(fwd + (["--"] + o["rest"] if o["rest"] else []))
     g = hh.load_graph(o["graph"])
     node = o["model"] or hh.node_for(g, agent)[1]
@@ -160,6 +197,7 @@ def main(argv):
     home = os.path.expanduser(f"~/.cache/familia/hermes-{name}")
     print(f"hermes.sh: mode=single agent={agent} node={node} ctx={g2['agents'][name]['context_length']} router=none compression=on", file=sys.stderr)
     pickup(g, o, agent, into=home)
+    link_skills(g, agent, home)
     if o["action"] == "selftest": return hh.selftest(g2, name)
     home, base, n, nname = hh.render(g2, name)
     print(f"hermes.sh: HERMES_HOME={home} model={base}", file=sys.stderr)

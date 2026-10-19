@@ -5,6 +5,7 @@ install.sh|bootstrap you run before familia is on disk (curl ... | sh); inside a
 scripts/windows/familia-menu.ps1|the Windows menu itself (started by familia.cmd)
 scripts/monitor.sh|the same console as ./familia-monitor, which the menu runs
 scripts/hermes_harness.py|always run through scripts/hermes.sh, which the menu runs
+scripts/hermes_modes.py|the graph/single-model front end scripts/hermes.sh execs; run hermes.sh
 install/windows/install.bat|double-click wrapper for install\windows\install.ps1, which the Windows menu runs
 start-green-roomz.sh|guard stub; the real one is deployed onto the phone by android_start.sh
 scripts/monitor/probe.py|read-only probe the monitor pipes to each host over SSH

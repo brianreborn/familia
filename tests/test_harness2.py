@@ -262,3 +262,78 @@ def test_engine_end_to_end_fake_endpoint(tmp_path, monkeypatch):
     assert "Handle the empty input" in (tmp_path / "t" / "SOUL.md").read_text()
     r = subprocess.run(cli + ["revert", "--target", "hermes-lab"], capture_output=True, text=True, env=env)
     assert r.returncode == 0 and not (tmp_path / "t" / "SOUL.md").exists()
+
+
+# ---- menu-facing commands (#73), license shape, hermes flags (#72) ------------------------
+def h2(gp, *a, **env):
+    e = dict(os.environ, FAMILIA_NO_TTY="1", **env)
+    return subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "harness2.py"), "--graph", gp, *a],
+                          capture_output=True, text=True, env=e, stdin=subprocess.DEVNULL)
+
+def test_set_round_trip_keeps_file(tmp_path):
+    gp = tmp_path / "graph.yaml"; shutil.copy(os.path.join(ROOT, "graph.yaml"), gp); orig = gp.read_text()
+    lic = dict(FAMILIA_LICENSE_ACCEPT_FILE=str(tmp_path / "lic.json"))
+    r = h2(str(gp), "set", "--agent", "hermes-lab", "--mode", "propose", "--dry-run", **lic)
+    assert r.returncode == 0 and "[dry-run]" in r.stdout and gp.read_text() == orig
+    r = h2(str(gp), "set", "--agent", "hermes-lab", "--mode", "propose", "--yes", **lic)
+    assert r.returncode == 0, r.stderr
+    assert yaml.safe_load(gp.read_text())["self_improve"]["harness2"]["mode"] == "propose"
+    assert "# Target harness descriptors" in gp.read_text()           # comments kept
+    r = h2(str(gp), "set", "--agent", "hermes-lab", "--mode", "off", **lic)
+    assert r.returncode == 0 and gp.read_text() == orig
+
+def test_set_refuses_pentest_agent(tmp_path):
+    gp = tmp_path / "graph.yaml"; shutil.copy(os.path.join(ROOT, "graph.yaml"), gp); orig = gp.read_text()
+    r = h2(str(gp), "set", "--agent", "hermes", "--mode", "propose", "--yes")
+    assert r.returncode == 1 and "pentest" in r.stderr and gp.read_text() == orig
+
+def test_set_declares_descriptor_for_any_hermes_agent(tmp_path):
+    g = copy.deepcopy(GRAPH); g["agents"]["lab2"] = copy.deepcopy(g["agents"]["hermes-lab"])
+    gp = write_graph(tmp_path, g)
+    r = h2(gp, "set", "--agent", "lab2", "--mode", "propose", "--yes", FAMILIA_LICENSE_ACCEPT_FILE=str(tmp_path / "l.json"))
+    assert r.returncode == 0, r.stderr
+    g2 = yaml.safe_load(open(gp))
+    assert g2["harnesses"]["lab2"]["agent"] == "lab2" and g2["harnesses"]["lab2"]["prompt"] == "SOUL.md"
+    assert g2["self_improve"]["harness2-lab2"]["mode"] == "propose" and g2["self_improve"]["harness2"]["mode"] == "off"
+    assert not validate_types(g2)
+
+def test_review_lists_without_terminal(tmp_path):
+    g = graph(root=tmp_path / "t"); gp = write_graph(tmp_path, g)
+    st = SI.State(SI.target(g, "hermes-lab"), str(tmp_path / "s")); st.init()
+    st.save_proposal("p9", "0000", dict(st.tree(), **{"systemprompt.md": "v2\n"}), {"status": "pending"})
+    r = h2(gp, "--state", str(tmp_path / "s"), "review")
+    assert r.returncode == 0 and "p9" in r.stdout and "no terminal" in r.stdout
+    assert st.current() == "0000"
+
+def test_licenses_sees_this_shape():
+    import licenses
+    assert not licenses.harness2_on(GRAPH)
+    assert licenses.harness2_on(graph(mode="propose"))
+
+def test_help_and_menu_predicates():
+    for s in ("harness2.py", "hermes_modes.py"):
+        r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", s), "--help"], capture_output=True, text=True)
+        assert r.returncode == 0 and "usage" in r.stdout.lower()
+    src = open(os.path.join(ROOT, "scripts", "hermes_modes.py")).read()
+    assert '"--model"' in src and "--graph-mode" in src
+
+def test_graph_mode_flag(capsys):
+    hm = modes()
+    assert hm.parse(["--graph-mode"])["mode"] == "graph"
+    assert hm.parse(["--graph", "x.yaml"])["mode"] == "graph" and hm.parse(["--graph", "x.yaml"])["graph"] == "x.yaml"
+    with pytest.raises(SystemExit): hm.parse(["--graph-mode", "--model", "coder"])
+    assert hm.parse(["--yes"])["accept"] is True
+
+def test_enabled_skills_linked(tmp_path, home, monkeypatch, capsys):
+    hm = modes(); fake = tmp_path / "repo"; (fake / "scripts").mkdir(parents=True)
+    sk = tmp_path / "zk" / "green-probe"; sk.mkdir(parents=True); (sk / "SKILL.md").write_text("x")
+    (fake / "scripts" / "skills.py").write_text(f"print({str(sk)!r})\n")
+    monkeypatch.setattr(hm, "ROOT", str(fake))
+    g = copy.deepcopy(GRAPH); g["agents"]["hermes-lab"]["skills"] = ["green-probe"]; gp = write_graph(tmp_path, g)
+    import hermes_harness as hh, graph_types
+    monkeypatch.setattr(graph_types, "check_skills", lambda g, errs: None)
+    assert hm.main(["--graph", gp, "--agent", "hermes-lab", "--render-only"]) == 0
+    link = home / ".cache/familia/hermes-hermes-lab/skills/green-probe"
+    assert link.is_symlink() and os.path.realpath(link) == str(sk)
+    assert hm.main(["--graph", gp, "--agent", "hermes-lab", "--model", "coder", "--render-only"]) == 0
+    assert (home / ".cache/familia/hermes-hermes-lab@coder/skills/green-probe").is_symlink()

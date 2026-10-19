@@ -59,8 +59,8 @@ familia.cmd -Search WORD [-Run N] [-DryRun]
 
 | key | what it does | Linux / Android | Windows |
 |---|---|---|---|
-| `agents.hermes-model` | Hermes: single model (pick model) (licenses first; not available until `scripts/hermes_harness.py` lands) | `scripts/hermes.sh --model <MODEL>` | - |
-| `agents.hermes-graph` | Hermes: full graph (licenses first; not available until `scripts/hermes_harness.py` lands) | `scripts/hermes.sh --graph-mode` | - |
+| `agents.hermes-model` | Hermes: single model (pick model) (licenses first) | `scripts/hermes.sh --model <MODEL>` | - |
+| `agents.hermes-graph` | Hermes: full graph (licenses first) | `scripts/hermes.sh --graph-mode` | - |
 | `agents.hermes` | Hermes on the graph coder node (64K context) (licenses first) | `scripts/hermes.sh` | - |
 | `agents.hermes-render` | Write the hermes config only; start nothing | `scripts/hermes.sh --render-only` | - |
 | `agents.fleet-test` | Launch-test a role: validate, would-start, stop | `sh with-fleet.sh --role <ROLE> --launch-test` | - |
@@ -70,9 +70,9 @@ familia.cmd -Search WORD [-Run N] [-DryRun]
 
 | key | what it does | Linux / Android | Windows |
 |---|---|---|---|
-| `harness2.status` | Show which agents have Harness2 and in which mode (not available until `scripts/harness2.py` lands) | `python3 scripts/harness2.py status` | `python scripts\harness2.py status` |
-| `harness2.set` | Choose target agent and mode (off / propose / apply) (licenses first; not available until `scripts/harness2.py` lands) | `python3 scripts/harness2.py set --agent <AGENT> --mode <MODE>` | `python scripts\harness2.py set --agent <AGENT> --mode <MODE>` |
-| `harness2.review` | Review proposals: list, accept or revert (not available until `scripts/harness2.py` lands) | `python3 scripts/harness2.py review` | `python scripts\harness2.py review` |
+| `harness2.status` | Show which agents have Harness2 and in which mode | `python3 scripts/harness2.py status` | `python scripts\harness2.py status` |
+| `harness2.set` | Choose target agent and mode (off / propose / apply) (licenses first) | `python3 scripts/harness2.py set --agent <AGENT> --mode <MODE>` | `python scripts\harness2.py set --agent <AGENT> --mode <MODE>` |
+| `harness2.review` | Review proposals: list, accept or revert | `python3 scripts/harness2.py review` | `python scripts\harness2.py review` |
 
 ## Test & benchmark
 
@@ -160,6 +160,7 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/windows/familia-menu.ps1` | the Windows menu itself (started by familia.cmd) |
 | `scripts/monitor.sh` | the same console as ./familia-monitor, which the menu runs |
 | `scripts/hermes_harness.py` | always run through scripts/hermes.sh, which the menu runs |
+| `scripts/hermes_modes.py` | the graph/single-model front end scripts/hermes.sh execs; run hermes.sh |
 | `install/windows/install.bat` | double-click wrapper for install\windows\install.ps1, which the Windows menu runs |
 | `start-green-roomz.sh` | guard stub; the real one is deployed onto the phone by android_start.sh |
 | `scripts/monitor/probe.py` | read-only probe the monitor pipes to each host over SSH |

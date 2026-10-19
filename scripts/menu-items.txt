@@ -28,8 +28,8 @@ models.license|Models|Show one model's license and what it obliges you to|PY scr
 models.check|Models|Check graph.yaml: models, RAM budget, required launch parameters|PY scripts/validate_graph.py --graph graph.yaml|||python scripts\validate_graph.py --graph graph.yaml
 models.explain|Models|Show the exact launch parameters for one node|PY scripts/validate_graph.py --graph graph.yaml --explain {NODE:node name, e.g. coder}|||python scripts\validate_graph.py --graph graph.yaml --explain {NODE:node name, e.g. coder}
 models.licenses|Models|List model, skill and engine licenses (records nothing)|PY scripts/licenses.py list|||python scripts\licenses.py list
-agents.hermes-model|Agents (hermes)|Hermes: single model (pick model)|scripts/hermes.sh --model {MODEL:model or node [coder]}|lic|grep:scripts/hermes_harness.py:"--model"|
-agents.hermes-graph|Agents (hermes)|Hermes: full graph|scripts/hermes.sh --graph-mode|lic|grep:scripts/hermes_harness.py:--graph-mode|
+agents.hermes-model|Agents (hermes)|Hermes: single model (pick model)|scripts/hermes.sh --model {MODEL:model or node [coder]}|lic|grep:scripts/hermes_modes.py:"--model"|
+agents.hermes-graph|Agents (hermes)|Hermes: full graph|scripts/hermes.sh --graph-mode|lic|grep:scripts/hermes_modes.py:--graph-mode|
 agents.hermes|Agents (hermes)|Hermes on the graph coder node (64K context)|scripts/hermes.sh|lic||
 agents.hermes-render|Agents (hermes)|Write the hermes config only; start nothing|scripts/hermes.sh --render-only|||
 agents.fleet-test|Agents (hermes)|Launch-test a role: validate, would-start, stop|sh with-fleet.sh --role {ROLE:role name, e.g. hermes} --launch-test|||

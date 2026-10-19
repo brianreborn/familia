@@ -92,10 +92,12 @@ scripts/hermes.sh --render-only           # graph mode: write the config, start 
 scripts/hermes.sh                         # validate, start the coder node if needed, run hermes
 scripts/hermes.sh --selftest-compaction   # check that compaction keeps facts on this node
 scripts/hermes.sh --escalate -- ARGS      # with the light-to-heavy escalation proxy (docs/escalation.md)
+scripts/hermes.sh --graph-mode            # graph mode, said explicitly (same as no flag; --graph FILE only picks the file)
 scripts/hermes.sh --model coder           # single-model mode on node coder
 scripts/hermes.sh --model coder --selftest-compaction
 ```
 
+Skills you enabled with `scripts/skills.py` are linked into the HERMES_HOME in both modes.
 `--escalate`, `--light` and `--no-swap-back` work in graph mode only; with `--model` they exit with
 an error. `--no-escalate` turns the automatic proxy off. Self-improving harnesses (Harness²)
 are a separate, optional layer that hermes picks up when the graph enables it:

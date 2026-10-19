@@ -64,6 +64,8 @@ and a `harness2` setting with mode `"off"`.
 
 ```sh
 scripts/harness2.py status                                   # every target: setting, version, endpoint, engine
+scripts/harness2.py set --agent hermes-lab --mode propose    # switch one agent (graph.yaml, comments kept); --dry-run shows the edit
+scripts/harness2.py review                                   # pending proposals; on a terminal: accept / skip / revert
 scripts/harness2.py install                                  # fetch the pinned engine (below)
 scripts/harness2.py propose --target hermes-lab --dry-run    # plan and call estimate; no model calls
 scripts/harness2.py propose --target hermes-lab [--enable] [--max-tasks N] [--k K] [--start-node] [--record]
@@ -79,8 +81,17 @@ scripts/hermes.sh harness2 status                            # same CLI, through
 `--root DIR` swaps in a scratch copy of the target's root. `--state DIR` (or
 `FAMILIA_HARNESS2_STATE`) moves the state directory, which defaults to `.cache/familia/harness2/`.
 
+`set` edits only the `mode:` or `targets:` line it needs. If the agent has no descriptor and
+is a `hermes-agent`, `set` declares one using the HERMES_HOME layout. If the agent shares a
+setting with other targets, `set` gives it its own `self_improve.harness2-<target>` entry. The
+edited graph is validated before it is written, so a pentest agent is refused. Turning a mode
+on runs the license review first (`scripts/licenses.py gate`; `--yes` accepts). Harness² is
+Apache-2.0 and shows up in the review once it is on. `apply` also needs
+`scripts/licenses.py check` to pass before it accepts anything by itself. The menu group
+**Self-improving harness (Harness2)** runs `status`, `set` and `review`.
+
 `propose` needs the node to be running. Start it with `sh scripts/serve.sh coder`, or pass
-`--start-node`: the node is started from `validate_graph.py --args` and stopped when the run ends.
+`--start-node`: the license gate runs, then the node is started from `validate_graph.py --args` and stopped when the run ends.
 
 ## What one `propose` does
 

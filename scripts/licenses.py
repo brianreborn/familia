@@ -297,6 +297,10 @@ def harness2_on(g):
     for h in (g.get("harness2") or {}).values() if isinstance(g.get("harness2"), dict) else []:
         if on(h):
             return True
+    # the shape familia uses (docs/harness2.md): self_improve.<name>: {engine: harness2, mode: ...}
+    for s in (g.get("self_improve") or {}).values() if isinstance(g.get("self_improve"), dict) else []:
+        if isinstance(s, dict) and s.get("engine", "harness2") == "harness2" and on(s):
+            return True
     return False
 
 
