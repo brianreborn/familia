@@ -43,10 +43,17 @@ DETACH_MODE=tmux ./start.sh
 
 ### Add a model
 ```sh
-./scripts/add-model.sh <role> <path-to-gguf>
+./scripts/add-model.sh <hf-snapshot-dir>             # whole HF repo: README.md card, config.json, GGUFs, mmproj/draft
+./scripts/add-model.sh <path-to-gguf> [--role ROLE]  # a lone GGUF; the role is inferred when omitted
+./scripts/add-model.sh <role> <path-to-gguf>         # legacy form, still works
+./scripts/add-model.sh --repo ORG/NAME --revision SHA --file F.gguf --card README.md --aux mmproj=mmproj.gguf
+./scripts/add-model.sh --fetch ORG/NAME[@REV] --quant Q4_K_M   # opt-in download via hf/huggingface-cli
+./scripts/add-model.sh --dry-run <dir>               # print the entry, write nothing
 ```
-* Updates `config/models-manifest.json` and `config/models-preset.ini`.
-* Calculates SHA‑256 and stores it for validation.
+* Updates `code-bootstraps-llama.cpp/config/models-manifest.json` (adds the entry, or updates it in place for the same repo + file) and sets `model =` in the role's `[section]` of `models-preset.ini` (comments and sections kept).
+* `--role`/`--type` is optional: it is inferred from the card front matter (`pipeline_tag`, `tags`, `library_name`, `base_model`), `config.json`, GGUF metadata (`decision.*`, `<arch>.pooling_type`, `general.name`), the filename, the `models/<role>/` directory and an existing manifest entry with the same sha256. The evidence is printed; if it is still ambiguous it asks on a TTY and otherwise exits 2.
+* Records sha256 + bytes of every GGUF (main and auxiliary: `--aux KIND=PATH`, or `mmproj-*`/`*draft*` files found in the directory) and sha256 of the card and config files, plus license, base model, context length, RoPE, quant, chat template, stop tokens, and the card's recommended sampling settings (per thinking mode) and command lines (`card_defaults`, `card_sampling_modes`, `card_commands`, with the source line of each). Unknown values stay null and are listed. Model database requirement: #51.
+* No network unless `--fetch` is given. `./scripts/add-model.sh --help` lists every flag.
 
 ### Select a model for a role (interactive)
 ```sh
@@ -203,7 +210,7 @@ sequenceDiagram
 
 ## 13. Next Steps
 1. Review the quick‑start steps above and ensure the environment variables you need are set.
-2. Run `./scripts/add-model.sh` for any custom GGUF you want to use.
+2. Run `./scripts/add-model.sh <hf-snapshot-dir>` (or `<path-to-gguf>`) for any custom model you want to use; add `--dry-run` first to see what it infers.
 3. Launch the UI (`http://127.0.0.1:9931`) and start chatting with the default `chat` route.
 4. Explore the **graph editor** (via the Settings Panel) to add new routes such as `embed` or `rerank`.
 
