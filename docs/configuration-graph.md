@@ -1,18 +1,10 @@
 # The configuration graph
 
-> **Status:** a first version is implemented on `fix/config-graph`: [`graph.yaml`](../graph.yaml) (schema v1, single host) and [`scripts/validate_graph.py`](../scripts/validate_graph.py). A typed, multi-host schema v2 exists only on the unmerged [`feat/graph-types`](https://github.com/brianreborn/familia/tree/feat/graph-types) branch. Sections below marked **TBD** are still design. `illustrative` blocks show intent, not a supported syntax.
+> **Status (2026-10-19):** implemented on `main` as typed, multi-host schema v2: [`graph.yaml`](../graph.yaml), [`scripts/graph_types.py`](../scripts/graph_types.py) and [`scripts/validate_graph.py`](../scripts/validate_graph.py). Every section and field is documented in [graph-types.md](graph-types.md); this page explains why the graph exists and what is still open. Items marked **TBD** are undecided. `illustrative` blocks show intent, not a supported syntax.
 
-## Implemented today (fix/config-graph)
+## Implemented today
 
-`graph.yaml` has four top-level keys:
-
-| Key | Meaning |
-|---|---|
-| `version: 1` | Schema version |
-| `host` | Measured `ram_mib` (miryam: 7270) and `reserve_ram_mib` (miryam: **3072**) |
-| `runtimes` | llama.cpp builds deployed side by side: `bin`, `tag`, `commit`, and `archs` (architectures load-tested on that build). Today `b11374` (qwen35) and `b11539` (gemma-embedding2) |
-| `nodes` | Model servers: `runtime`, `model`, `arch`, `ctx`, `parallel`, `kv_type`, `flash_attn`, `gpu_layers`, `host`, `port`, `aliases`, `cache_ram_mib`, optional `embeddings`. Today `coder` (Qwen3.5-2B, 65,536 ctx, port 9941) and `embed` (embeddinggemma-2, port 9951) |
-| `agents` | Agents and their requirements, e.g. `hermes` with `min_ctx: 64000` and `context_length: 65536` |
+`graph.yaml` declares `hosts` (measured RAM, CPU, GPUs, `reserve_ram_mib`), `runtimes` (llama.cpp builds side by side, with the architectures each was load-tested on), `models` (GGUF, sha256, arch, trained context, model-database entry), `nodes` (model servers: host, runtime, context, slots, KV type, offload, port, prompt cache, `selection: default|fallback`, card sampling, `escalates_to`), plus `aliases`, `agents`, `pentests`, `meshes`, `speculative` and `options` (catalog-only models).
 
 ```sh
 python3 scripts/validate_graph.py                 # exit 0 if valid, else one line per problem
@@ -20,21 +12,20 @@ python3 scripts/validate_graph.py --graph FILE    # validate another file
 python3 scripts/validate_graph.py --args coder    # print the llama-server command line for a node
 ```
 
-What the validator checks now:
+What the validator checks now (full list in [graph-types.md](graph-types.md#rules-the-validator-enforces)):
 
-- each runtime binary exists, is executable, and reports the declared version;
-- each node's GGUF `arch` is in its runtime's `archs` (e.g. embeddinggemma-2 fails on b11374);
+- each runtime is installed on the node's host, and with `--check-runtimes` its binary reports the declared build;
+- each node's GGUF `arch` is in its runtime's `supported_archs` (e.g. embeddinggemma-2 fails on b11374);
 - an agent's `context_length` equals its node's per-slot context (`ctx / parallel`) and is at least `min_ctx` (the #19 case);
 - `cache_ram_mib` is large enough to hold one slot's prompt state;
-- **RAM:** estimated use (weights + KV + 256 MiB overhead + `cache_ram_mib`) plus `reserve_ram_mib` must fit `ram_mib`, and hosts under 8 GiB must keep about 2 GiB free after the estimate. See [ram-safety.md](ram-safety.md).
+- each model has a model-database entry pinned to a revision, and a node's context and sampling match the model card unless `override_reasons` explains why ([model-database.md](model-database.md), #51);
+- **RAM:** estimated use (weights + KV + 256 MiB overhead + `cache_ram_mib`) above `ram_mib` fails. Estimated use plus `reserve_ram_mib` above `ram_mib`, or less than 2 GiB free on a host under 8 GiB, is a warning. See [ram-safety.md](ram-safety.md).
 
-Consumers: [`scripts/hermes.sh`](../scripts/hermes.sh) refuses to start hermes-agent unless the graph validates, then renders hermes's config from it. `start.sh` and the settings panel do **not** read the graph yet.
-
-On unmerged branches (not shipped): schema v2 with multiple hosts, GPU fields, speculative-decoding edges and a launch-test-only `pentests` type (`feat/graph-types`); `hosts`/`transports` with ssh and bittorrent (`feat/transport-poc`); `derived_from` checks for scaled-down models (`feat/scale-down`).
+Consumers: [`scripts/serve.sh`](../scripts/serve.sh) and [`scripts/hermes.sh`](../scripts/hermes.sh) launch `llama-server` from `--args`, and hermes.sh refuses to start hermes-agent unless the graph validates. `start.sh` and the settings panel do **not** read the graph yet.
 
 ## Why
 
-Before the graph, a familia install configured itself mostly by inference (and `start.sh` still does):
+Before the graph, a familia install configured itself mostly by inference (and `start.sh`, which doesn't read the graph yet, still does):
 
 - the model server picks a RAM profile (`PROFILE=auto` → `lowram` / `moderate` / `default`) from free memory and CPU speed,
 - a specialist route appears when a model file appears on disk,
@@ -75,45 +66,36 @@ The graph uses the node and transport names already reserved in [`pins.txt`](../
 | `reach` | Agent-Reach tools | `query`, `result` |
 | `agency` | Retired green-agency runs (kept for compatibility only) | `in`, `out`, `snap` |
 
-Transports (`local`, `ssh`, `nfs`, `rsync`, `bittorrent`, `zfs`) label how an edge between machines moves bytes. In the current revision they are names only, with no protocol code.
+Transports (`local`, `ssh`, `nfs`, `rsync`, `bittorrent`, `zfs`) label how an edge between machines moves bytes. Only the SSH nexus and private BitTorrent tracker have code, as an opt-in proof of concept ([transport-poc.md](transport-poc.md)); the rest are names only.
 
 A hook that isn't connected is closed.
 
 ### Hosts
 
-Each node is placed on a host, meaning one of your machines. Schema v1 describes one host (`host.ram_mib` is that host's measured MemTotal, so validation is correct even when run elsewhere). Named multi-host placement is on `feat/graph-types` (unmerged). **TBD:** how a remote host's measurements are gathered automatically.
+Each node is placed on a named host, meaning one of your machines. A host's facts (`ram_mib` is its measured MemTotal) are recorded in the graph, so validation is correct even when run elsewhere. The installers measure the host they run on and write its `hosts.<name>` block. **TBD:** how a remote host's measurements are gathered automatically.
 
 ### What a model node declares
 
-Decided in principle (the field names are TBD):
-
-- route name
-- weights identity: file plus pinned source and hash, matching what `config/models-manifest.json` already pins in code-bootstraps-llama.cpp
-- engine identifier (`llama-server`, or `<executable>__<author>__<branch>` for an alternative build). **TBD:** a single spelling. Today `ENGINE_CHAT=nace-ai__edlm` and `engine = llama-server__nace-ai__edlm` both appear in the docs.
-- context per slot and slot count
-- residency (always loaded, or loaded on demand)
-- host
+Implemented (field names in [graph-types.md](graph-types.md)): route name (through `aliases`), weights identity (GGUF, sha256 and the pinned model-database entry), runtime, context and slot count, KV type, offload, host, port, prompt cache, and whether it is the default or a user-selectable fallback (`selection`). **TBD:** residency (always loaded or on demand), and a single engine spelling for forks (`ENGINE_CHAT=nace-ai__edlm` and `engine = llama-server__nace-ai__edlm` both appear in the docs).
 
 ### What an agent node declares
 
-- which routes it calls (edges to `model` or `room` nodes)
-- the largest request it may send (its context budget)
-- whether it compacts or compresses, and at what threshold. **TBD:** how familia reads or sets this for external agents. For hermes-agent, the relevant settings live in `~/.hermes/config.yaml` (`compression.enabled`, `compression.threshold`).
+The aliases it calls (`main`, `auxiliary`), its `min_ctx` and its `context_length`. For hermes-agent, `scripts/hermes.sh` writes the compression settings into its own rendered config (compression on); familia never edits `~/.hermes`. **TBD:** how other external agents report and receive their context budget.
 
 ## Validation
 
 Validation runs before start and before any change is applied. These are the checks planned so far. The list is not exhaustive and the order is TBD:
 
-| Check | Fails when |
-|---|---|
-| Weights present and verified | The declared weights are missing, or the hash doesn't match the pin |
-| Engine present | **Implemented** for `runtimes:`. The declared binary is missing or reports a different version. (No fallback to another `llama-server`.) |
-| Memory fit | **Implemented.** Estimated use plus `reserve_ram_mib` exceeds `ram_mib`, or a host under 8 GiB would keep less than ~2 GiB free |
-| Accelerator fit | A node declares GPU offload and no usable device is measured. (The sub-project already warns that a CPU-only binary with a GPU present is a mismatch. This makes it an error in the graph.) |
-| Agent ↔ model context | **Implemented** (as exact `context_length` = per-slot ctx ≥ `min_ctx`; hermes.sh turns compaction on). This is the #19 case. |
-| Route uniqueness | Two nodes publish the same route name |
-| Edges | An edge connects a hook that doesn't exist, or crosses hosts without a declared transport |
-| Specialist routes | A specialist route has a weights file on disk but no declaration. Today this activates the route. Under the graph it only produces a notice and the route stays off. |
+| Check | Status | Fails when |
+|---|---|---|
+| Weights present and verified | **Implemented** (hash with `--verify-sha`) | The declared weights are missing, or the hash doesn't match |
+| Engine present | **Implemented** | The runtime isn't installed on the host; with `--check-runtimes`, the binary reports a different build. No fallback to another `llama-server` |
+| Memory fit | **Implemented** | Estimated use exceeds `ram_mib` (error); reserve or small-host floor broken (warning) |
+| Accelerator fit | **Implemented** | A node offloads layers to a GPU that isn't measured, verified, or big enough |
+| Agent ↔ model context | **Implemented** | `context_length` differs from the per-slot ctx or is below `min_ctx` (#19) |
+| Model card | **Implemented** (#51) | No pinned model-database entry, or ctx/sampling differ from the card without a reason |
+| Alias uniqueness | **Implemented** | An alias resolves to more than one node, or crosses hosts without a transport |
+| Specialist routes | Graph side only | Under the graph a weights file on disk does nothing until declared. `start.sh` still activates a specialist route when its file appears |
 
 ### Error shape (intent)
 
@@ -152,15 +134,14 @@ familia: graph check failed
 
 ## Editing the graph
 
-DESIGN.md requires two ways to configure: a visual, netgraph-style editor for anything from one host to a federated multi-host setup, and a natural-language description. Under this design, both produce a declaration that goes through the **same validation**. Neither may bypass it. **TBD:** the editor, the declaration file format, and where it is stored (likely under the familia tree or `.cache/`, which is undecided).
+Edit `graph.yaml` by hand, or use `scripts/generate_graph.py HOST` / `scripts/modify_graph.py` for scripted per-host changes, then validate. A visual editor and natural-language configuration are future ideas, not planned yet; if they come, they must produce a declaration that goes through the same validation.
 
 ## Open questions
 
-- Declaration format: `graph.yaml` at the repo root (v1). Whether v2 replaces it is decided when `feat/graph-types` merges.
 - How multi-host measurements are collected and trusted (ssh probe? an agent on each host?).
 - Refining the memory estimator (today: weights + KV + 256 MiB + cache). The safety margin is decided: see ram-safety.md.
 - Whether validation reruns on a schedule, only on change, or on every start (it reruns at least on every start and every change).
-- How external agents (hermes-agent and others) report their context budget, and whether familia may write their config or only check it.
+- How external agents other than hermes-agent report their context budget.
 - Migration: how an existing `panel.env` becomes a first graph without silently baking in today's auto-picked values. (Proposal: generate a draft declaration, show it, and require the user to accept it.)
 
 ## See also
