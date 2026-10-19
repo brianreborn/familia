@@ -12,7 +12,7 @@ known_good_setup:
   - "Use the official llama.cpp ubuntu-vulkan prebuilt release; no packages needed."
 best_settings:
   decision: {backend: cpu, threads: 2, tg_tps: "101.4 (measured, SmolLM2-135M Q4_0)", pp_tps: "430.4"}
-  coder: {backend: cpu, threads: 2, ubatch: 256, model: "Qwen3.5-2B Q4_K_M", tg_tps: "6.5-6.8 (measured 2026-10-19, 1 rep; -t 3 ties, -t 4 5.2)", pp_tps: "28.2 (pp1024)", load_mode: none, load_mode_note: "-lm none: peak RSS 1366 vs 1854 MiB with mmap, tg 6.75 vs 6.52, cold load ~2 s slower (2026-10-19 pass 2, x2)", note: "desktop in use; 8.4 tg on 2026-10-10 with it idle; -t 3 7.22 vs -t 2 6.77 x3, overlapping sd"}
+  coder: {backend: cpu, threads: 3, ubatch: 256, model: "Qwen3.5-2B Q4_K_M", tg_tps: "6.5-6.8 (measured 2026-10-19, 1 rep; -t 3 ties, -t 4 5.2)", pp_tps: "28.2 (pp1024)", load_mode: none, load_mode_note: "-lm none: peak RSS 1366 vs 1854 MiB with mmap, tg 6.75 vs 6.52, cold load ~2 s slower (2026-10-19 pass 2, x2)", note: "desktop in use; 8.4 tg on 2026-10-10 with it idle (-t 3 not tested idle). -t 3 beat -t 2 in two 3-rep runs on 2026-10-19: AM tg 7.22 vs 6.77; PM (load avg 6.5-7.5, llama-bench -p 512 -n 128 -lm none -fa on q8_0 KV) tg 6.68/6.45/6.62 vs 5.69/6.32/6.42, pp 26.9/26.7/26.0 vs 23.7/27.2/24.2"}
   general: {backend: cpu, threads: 2, ubatch: 256, flash_attn: false, kv_type: f16, model: "LFM2.5-1.2B Q4_K_M", tg_tps: "12.9-14.2 (measured 2026-10-19, 1 rep; -t 4 9.3)", pp_tps: "40.8 (pp1024)", load_mode: none, load_mode_note: "-lm none: peak RSS 769 vs 1243 MiB, tg 13.28 vs 13.21, cold load 1.5-3 s slower (2026-10-19 pass 2, x2)"}
 gotchas:
   - The HD 620 is slower than the CPU for small-model generation (46 vs 101 t/s tg on SmolLM2).
@@ -21,6 +21,7 @@ gotchas:
   - "Default mmap keeps the mapped file resident beside the repacked Q4_K weights: peak RSS Qwen3.5-2B 1828 MiB vs 1343 with --no-mmap, LFM2.5 1216 vs 746, same speed (2026-10-19, 1 rep)."
   - "Vulkan (HD 620) Qwen3.5-2B tg 2.0 vs 6.7 on the CPU, LFM2.5 3.3 vs 14.2 (2026-10-19)."
   - "Sustained clock is the 2.5 GHz base under 2-thread load although turbo is enabled (no_turbo=0, EPP performance, performance profile, AC); idle reads 3.1 GHz, no throttle events - likely the firmware PL1 (2026-10-19)."
+  - "Turbo is enabled and reached: 3.1 GHz (this CPU's max) on all cores with the desktop quiet (2026-10-19 PM). Under heavy desktop load it sat at the 2.5 GHz base with no thermal-throttle counts; RAPL MSR PL1 25 W / PL2 31.25 W (TDP 15 W) and thermald is active, so the sustained cap is the package power/thermal budget, not a turbo switch."
   - "A Qwen3.5-0.8B draft model slows the 2B coder 2.4x here (2.56-2.92 vs 6.94 tg, 68-80 % accepted); ngram-mod was best on edits (6.57 vs 4.64) (2026-10-19)."
   - Under 8 GiB RAM - keep reserve 3072 MiB and >= 2 GiB free; one heavy process at a time (OOM hard-hang seen).
 power:
