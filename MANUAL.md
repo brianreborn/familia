@@ -52,6 +52,10 @@ python3 scripts/validate_graph.py --args coder  # print those arguments without 
 - When a node has no GPU layers (`-ngl 0`), `serve.sh` and the hermes harness export an empty `GGML_VK_VISIBLE_DEVICES`. Without it a Vulkan build allocates about 1.8 GB of shared memory it never uses, which stalls a memcapped server (LESSONS-LEARNED L-vkshm). Live re-verification is planned ([#40](https://github.com/brianreborn/familia/issues/40)). Windows `serve.ps1` can't set an empty variable, so on Windows use a CPU build for `-ngl 0` nodes.
 - On Windows: `$env:FAMILIA_MODEL = 'your-model.gguf'` then `.\scripts\windows\start.bat`. Autostart at logon and the variables are in [docs/windows.md](docs/windows.md).
 
+### Watching the fleet
+
+`./familia-monitor` (live), `--once`, `--json` or `--watch-deaths` probes every host over SSH, read-only, and raises an alert when a server dies or is OOM-killed. See [docs/monitoring.md](docs/monitoring.md).
+
 ## 3. The graph
 
 [`graph.yaml`](graph.yaml) declares hosts, runtimes, models, nodes, aliases, agents and pentest roles. Nothing is picked for you: a model runs only when a `models:` entry and a `nodes:` entry say so, and `scripts/validate_graph.py` refuses a graph that doesn't fit the measured host.

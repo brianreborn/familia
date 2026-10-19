@@ -92,5 +92,6 @@ Expected results per platform, the bash smoke tests, and how to report back: [TE
 
 ## Next
 
+- `./familia-monitor` watches every host over SSH and flags any familia process that dies ([docs/monitoring.md](docs/monitoring.md)).
 - [MANUAL.md](MANUAL.md): settings, detaching, models, escalation, RAM safety, Windows.
 - [docs/known-issues.md](docs/known-issues.md): current problems and workarounds.

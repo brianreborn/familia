@@ -152,6 +152,7 @@ Start with [QUICKSTART.md](QUICKSTART.md), then [MANUAL.md](MANUAL.md).
 | [docs/models-catalog.md](docs/models-catalog.md) | Every model in use or under consideration |
 | [docs/escalation.md](docs/escalation.md) | Light-to-heavy model escalation |
 | [docs/ram-safety.md](docs/ram-safety.md) | RAM reserve rule and protections |
+| [docs/monitoring.md](docs/monitoring.md) | `./familia-monitor`: SSH-based live console for every host, with process-death alerts |
 | [docs/install.md](docs/install.md), [docs/windows.md](docs/windows.md) | Installers and Windows startup |
 | [docs/known-issues.md](docs/known-issues.md) | Current problems and workarounds |
 | [docs/HANDOFF.md](docs/HANDOFF.md), [docs/offline-test-plan.md](docs/offline-test-plan.md) | Open work and the tests that resume it |
