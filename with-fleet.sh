@@ -29,7 +29,7 @@ GRAPH=${GRAPH:-$ROOT/graph.yaml}
 [ -f "$GRAPH" ] || { echo "with-fleet.sh: graph not found: $GRAPH" >&2; exit 1; }
 
 echo "with-fleet.sh: validating $GRAPH" >&2
-python3 "$ROOT/scripts/validate_graph.py" "$GRAPH" || {
+python3 "$ROOT/scripts/validate_graph.py" --graph "$GRAPH" || {
   echo "with-fleet.sh: graph validation failed; refusing to launch" >&2
   exit 1
 }
@@ -94,7 +94,7 @@ if [ "$launch_only" = 1 ] || [ "$LAUNCH_TEST" = 1 ]; then
   echo "with-fleet.sh: LAUNCH TEST ONLY — validate ok; not starting live tools/scans" >&2
   if [ -n "$node" ]; then
     echo "with-fleet.sh: would start node '$node' (args only, no exec):" >&2
-    python3 "$ROOT/scripts/validate_graph.py" --args "$node" 2>/dev/null || \
+    python3 "$ROOT/scripts/validate_graph.py" --graph "$GRAPH" --args "$node" 2>/dev/null || \
       echo "with-fleet.sh: note: --args $node not available (node planned or missing)" >&2
   fi
   echo "with-fleet.sh: launch-test PASS (stopped without exercising the role)" >&2

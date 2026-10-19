@@ -169,7 +169,7 @@ if (Test-Path $graph) {
   $py = Get-Command python -ErrorAction SilentlyContinue
   if ($py) {
     & python -c 'import yaml' 2>$null
-    if ($LASTEXITCODE -eq 0) { & python (Join-Path $repo 'scripts\validate_graph.py') --no-files $graph; if ($LASTEXITCODE) { Say 'warning: graph validation reported problems' } }
+    if ($LASTEXITCODE -eq 0) { & python (Join-Path $repo 'scripts\validate_graph.py') --no-files --graph $graph; if ($LASTEXITCODE) { Say 'warning: graph validation reported problems' } }
     else { Say 'PyYAML missing: graph validation skipped (pip install pyyaml)' }
   } else { Say 'python not found: graph validation skipped' }
   if ($py) {

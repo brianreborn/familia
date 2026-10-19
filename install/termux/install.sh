@@ -114,7 +114,7 @@ if [ -n "$MREPO" ]; then
   MF=""; [ "$DRY" = 1 ] && MF=--dry-run
   python3 "$MREPO/scripts/host_measure.py" --name "$NAME" --kind phone --reserve-mib "$RESERVE_MIB" --graph "$MREPO/graph.yaml" $MF $FORCE_HOST || say "warning: host measurement failed"
   if [ "$DRY" != 1 ]; then
-    python3 -c 'import yaml' 2>/dev/null && { python3 "$REPO/scripts/validate_graph.py" --no-files "$REPO/graph.yaml" || say "warning: graph validation reported problems"; }
+    python3 -c 'import yaml' 2>/dev/null && { python3 "$REPO/scripts/validate_graph.py" --no-files --graph "$REPO/graph.yaml" || say "warning: graph validation reported problems"; }
   fi
 else
   say "warning: host_measure.py unavailable; host not measured"

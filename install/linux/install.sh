@@ -145,7 +145,7 @@ else
     [ "$NPOK" = 1 ] || say "note: numpy not installed (optional; pip install --user '$NPSPEC')"
   fi
   if python3 -c 'import yaml' 2>/dev/null; then
-    python3 "$REPO/scripts/validate_graph.py" --no-files "$REPO/graph.yaml" || say "warning: graph validation reported problems (see above)"
+    python3 "$REPO/scripts/validate_graph.py" --no-files --graph "$REPO/graph.yaml" || say "warning: graph validation reported problems (see above)"
   fi
 fi
 
