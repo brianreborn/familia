@@ -121,23 +121,25 @@ promote an experimental type, set `experimental=False`, drop its
 
 ## Hosts and GPUs today
 
-| host | os | GPU | backend | status | measured |
-|---|---|---|---|---|---|
-| miryam | linux | Intel HD 620 (shared RAM) | vulkan or sycl | tbd | no (the host is measured) |
-| qodesh | windows 10 | GeForce 8600 GT, 256 MiB, CC 1.1, driver 341.92 | none | unsupported | yes |
-| shalom | ? | unknown (`gpus: []`) | | | no |
-| godslove | freebsd-15 | Ironlake / NVS | none | unsupported (green-roomz #5) | no |
-| phone7 | android 16 (Galaxy A57, 192.168.1.7) | Samsung Xclipse 550, shared RAM, Vulkan 1.4.304 (driver 25.4.7) | vulkan (OpenCL blocked) | tbd | yes |
-| phone8 | android 16 (Galaxy A57, 192.168.1.8) | Samsung Xclipse 550, shared RAM, Vulkan 1.4.304 (driver 25.4.7) | vulkan (OpenCL blocked) | tbd | yes |
+From `graph.yaml` on 2026-10-19. Addresses, users and ports live in the graph, not in the docs.
 
-qodesh is worth having for its 16 GB of RAM: it can hold bigger CPU-only models than miryam, at about 3 tok/s (green-roomz #4). `nodes.qodesh-resident` is a user-selectable fallback (`selection: fallback`, probably slower than the SmolLM2 default, unmeasured on qodesh) and stays `status: planned` until a Windows llama.cpp build is declared in `runtimes` and its `windows.startup` method is picked.
+| host | os | GPU | backend | backend_status | GPU measured |
+|---|---|---|---|---|---|
+| miryam | linux | Intel HD 620 (shared RAM) | vulkan | verified (slower than the CPU for decode, LESSONS-LEARNED L10) | yes |
+| qodesh | windows 10 | GeForce 8600 GT, 256 MiB, CC 1.1, driver 341.92 | cuda-sm11-ptx (hand-written PTX, `gpu-legacy/`) | verified | yes |
+| shalom | ? | unknown (`gpus: []`) | | | no (host unmeasured) |
+| godslove | freebsd-15 | Ironlake / NVS | none | unsupported (green-roomz #5) | no |
+| phone7, phone8 | android 16 (Galaxy A57) | Samsung Xclipse 550, shared RAM, Vulkan 1.4.304 (driver 25.4.7) | vulkan (OpenCL blocked) | verified | yes |
+
+qodesh is worth having for its 16 GB of RAM: it can hold bigger CPU-only models than miryam. `nodes.qodesh-resident` (Qwen3.5-2B on the non-AVX b11540 CPU build) is `active` but marked `selection: fallback`: user-selectable, about 0.91 tok/s (coarse binary search), while SmolLM2 stays the qodesh default. The phone nodes stay `planned` while the phones are out of range ([#46](https://github.com/brianreborn/familia/issues/46)).
 
 ## Pentest (authorized fleet testing)
 
 `pentests` is a top-level type for **operator-authorized testing of systems the
 owner controls**. It replaces the old LESSONS-LEARNED advice to hide the role as
-metadata on a generic task node for the declarative graph (the android scripts
-still say `--role pentest` until #15 lands the missing helpers).
+metadata on a generic task node. `android_start.sh` and `with-fleet.sh` still pass
+`--role pentest`; with-fleet.sh resolves it against `pentests.*` and honours
+`launch_test_only`.
 
 Unplaced model options from the survey (only what the user has actually
 considered — nothing invented) live in [`docs/pentest-models.md`](pentest-models.md). Every model, placed or not, is listed in [`docs/models-catalog.md`](models-catalog.md).
