@@ -59,7 +59,7 @@ sensor (nvidia-smi does not support G84), so it stays unmeasured unless a wall m
 Profiles are keyed by device model/SKU, SoC/board, GPU + driver, OS build, RAM and runtime version,
 not by our host names. Each holds the known-good setup, best measured settings, gotchas, power notes,
 and `records.hardware_profile` to find the matching result records.
-`registry.py match` takes `install/host_measure.py` output (cpu, os, ram_mib; add sku, board,
+`registry.py match` takes either `--graph graph.yaml --host NAME` or `--measure-json F`, a JSON file of the host facts that `scripts/host_measure.py --dry-run` prints as YAML (cpu, os, ram_mib; add sku, board,
 gpu_driver, runtime if known), picks the profile, prints the setup and pre-filled defaults, and warns
 on SKU, RAM, driver or runtime mismatch.
 
