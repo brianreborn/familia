@@ -201,6 +201,7 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/monitor/probe.py` | read-only probe the monitor pipes to each host over SSH |
 | `scripts/monitor/probe.ps1` | Windows version of the probe the monitor pipes over SSH |
 | `scripts/bench_parse.py` | filter for llama-bench output (pipe llama-bench -o csv into it); nothing to do on its own |
+| `scripts/bench_guard.py` | library for perf/bench drivers: GGUF metadata validation, current llama.cpp flag spellings, encoder ubatch rule, per-run memory cap (`meta FILE`, `memcap PEAK_MIB`) |
 | `scripts/panel_familia.py` | familia's pages for the settings panel; loaded by scripts/panel.py, which the menu runs |
 | `scripts/retry_wrapper.py` | library for agent model calls; its main is only a self-demo |
 | `scripts/isolated/hfchat.py` | adapter that graph nodes of kind isolated_remote call; not run by hand |
