@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "bartowski--SmolLM2-135M-Instruct-GGUF--SmolLM2-135M-Instruct-Q4_0",
  "repo": "bartowski/SmolLM2-135M-Instruct-GGUF",
  "revision": "09816acd5d99df7be770d85ea30822623dab342c",
@@ -46,27 +46,191 @@
  ],
  "card_commands": [
   {
-   "tool": "huggingface-cli",
-   "command": "huggingface-cli download bartowski/SmolLM2-135M-Instruct-GGUF --include \"SmolLM2-135M-Instruct-Q4_K_M.gguf\" --local-dir ./",
-   "source": "bartowski/SmolLM2-135M-Instruct-GGUF README.md:L77"
+   "source": "bartowski/SmolLM2-135M-Instruct-GGUF README.md:L23-27",
+   "file": "README.md",
+   "lines": [
+    23,
+    27
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "prompt-format",
+   "text": "<|im_start|>system\n{system_prompt}<|im_end|>\n<|im_start|>user\n{prompt}<|im_end|>\n<|im_start|>assistant",
+   "doc": "card",
+   "doc_sha": "09816acd5d99df7be770d85ea30822623dab342c",
+   "scope": "model"
   },
   {
-   "tool": "huggingface-cli",
-   "command": "huggingface-cli download bartowski/SmolLM2-135M-Instruct-GGUF --include \"SmolLM2-135M-Instruct-Q8_0/*\" --local-dir ./",
-   "source": "bartowski/SmolLM2-135M-Instruct-GGUF README.md:L83"
+   "source": "bartowski/SmolLM2-135M-Instruct-GGUF README.md:L71-71",
+   "file": "README.md",
+   "lines": [
+    71,
+    71
+   ],
+   "lang": null,
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install -U \"huggingface_hub[cli]\"",
+   "doc": "card",
+   "doc_sha": "09816acd5d99df7be770d85ea30822623dab342c",
+   "scope": "model"
+  },
+  {
+   "source": "bartowski/SmolLM2-135M-Instruct-GGUF README.md:L77-77",
+   "file": "README.md",
+   "lines": [
+    77,
+    77
+   ],
+   "lang": null,
+   "tool": "hf-download",
+   "kind": "command",
+   "text": "huggingface-cli download bartowski/SmolLM2-135M-Instruct-GGUF --include \"SmolLM2-135M-Instruct-Q4_K_M.gguf\" --local-dir ./",
+   "doc": "card",
+   "doc_sha": "09816acd5d99df7be770d85ea30822623dab342c",
+   "scope": "model"
+  },
+  {
+   "source": "bartowski/SmolLM2-135M-Instruct-GGUF README.md:L83-83",
+   "file": "README.md",
+   "lines": [
+    83,
+    83
+   ],
+   "lang": null,
+   "tool": "hf-download",
+   "kind": "command",
+   "text": "huggingface-cli download bartowski/SmolLM2-135M-Instruct-GGUF --include \"SmolLM2-135M-Instruct-Q8_0/*\" --local-dir ./",
+   "doc": "card",
+   "doc_sha": "09816acd5d99df7be770d85ea30822623dab342c",
+   "scope": "model"
+  },
+  {
+   "source": "HuggingFaceTB/SmolLM2-135M-Instruct README.md:L41-41",
+   "file": "README.md",
+   "lines": [
+    41,
+    41
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install transformers",
+   "doc": "base-card",
+   "doc_sha": "12fd25f77366fa6b3b4b768ec3050bf629380bac",
+   "scope": "model"
+  },
+  {
+   "source": "HuggingFaceTB/SmolLM2-135M-Instruct README.md:L45-58",
+   "file": "README.md",
+   "lines": [
+    45,
+    58
+   ],
+   "lang": "python",
+   "tool": "transformers",
+   "kind": "code",
+   "text": "from transformers import AutoModelForCausalLM, AutoTokenizer\ncheckpoint = \"HuggingFaceTB/SmolLM2-135M-Instruct\"\n\ndevice = \"cuda\" # for GPU usage or \"cpu\" for CPU usage\ntokenizer = AutoTokenizer.from_pretrained(checkpoint)\n# for multiple GPUs install accelerate and do `model = AutoModelForCausalLM.from_pretrained(checkpoint, device_map=\"auto\")`\nmodel = AutoModelForCausalLM.from_pretrained(checkpoint).to(device)\n\nmessages = [{\"role\": \"user\", \"content\": \"What is gravity?\"}]\ninput_text=tokenizer.apply_chat_template(messages, tokenize=False)\nprint(input_text)\ninputs = tokenizer.encode(input_text, return_tensors=\"pt\").to(device)\noutputs = model.generate(inputs, max_new_tokens=50, temperature=0.2, top_p=0.9, do_sample=True)\nprint(tokenizer.decode(outputs[0]))",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-n",
+      "value": "50",
+      "from": "max_new_tokens: 50"
+     },
+     {
+      "flag": "--temp",
+      "value": "0.2",
+      "from": "temperature: 0.2"
+     },
+     {
+      "flag": "--top-p",
+      "value": "0.9",
+      "from": "top_p: 0.9"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "12fd25f77366fa6b3b4b768ec3050bf629380bac",
+   "scope": "model"
+  },
+  {
+   "source": "HuggingFaceTB/SmolLM2-135M-Instruct README.md:L64-65",
+   "file": "README.md",
+   "lines": [
+    64,
+    65
+   ],
+   "lang": "bash",
+   "tool": "trl",
+   "kind": "command",
+   "text": "pip install trl\ntrl chat --model_name_or_path HuggingFaceTB/SmolLM2-135M-Instruct --device cpu",
+   "doc": "base-card",
+   "doc_sha": "12fd25f77366fa6b3b4b768ec3050bf629380bac",
+   "scope": "model"
+  },
+  {
+   "source": "HuggingFaceTB/SmolLM2-135M-Instruct README.md:L71-71",
+   "file": "README.md",
+   "lines": [
+    71,
+    71
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "npm i @huggingface/transformers",
+   "doc": "base-card",
+   "doc_sha": "12fd25f77366fa6b3b4b768ec3050bf629380bac",
+   "scope": "model"
+  },
+  {
+   "source": "HuggingFaceTB/SmolLM2-135M-Instruct README.md:L75-92",
+   "file": "README.md",
+   "lines": [
+    75,
+    92
+   ],
+   "lang": "js",
+   "tool": "transformers",
+   "kind": "code",
+   "text": "import { pipeline } from \"@huggingface/transformers\";\n\n// Create a text generation pipeline\nconst generator = await pipeline(\n  \"text-generation\",\n  \"HuggingFaceTB/SmolLM2-135M-Instruct\",\n);\n\n// Define the list of messages\nconst messages = [\n  { role: \"system\", content: \"You are a helpful assistant.\" },\n  { role: \"user\", content: \"What is the capital of France?\" },\n];\n\n// Generate a response\nconst output = await generator(messages, { max_new_tokens: 128 });\nconsole.log(output[0].generated_text.at(-1).content);\n// \"The capital of France is Paris.\"",
+   "doc": "base-card",
+   "doc_sha": "12fd25f77366fa6b3b4b768ec3050bf629380bac",
+   "scope": "model"
   }
  ],
  "card_notes": null,
  "chat_template": {
   "gguf_sha256": "872be49dbb638044ad01b60388f48d469ff2980e5f0dccdc22ec907db54d0788",
   "repo_sha256": "872be49dbb638044ad01b60388f48d469ff2980e5f0dccdc22ec907db54d0788",
-  "repo_file": "HuggingFaceTB/SmolLM2-135M-Instruct tokenizer_config.json:chat_template",
-  "same": true
+  "repo_file": "tokenizer_config.json:chat_template",
+  "same": true,
+  "gguf_chars": 368,
+  "repo_chars": 368,
+  "repo_label": "HuggingFaceTB/SmolLM2-135M-Instruct",
+  "use": "gguf"
  },
  "stop": {
   "eos_token": "<|im_end|>",
   "eos_token_id": 2,
-  "eos_token_id_source": "HuggingFaceTB/SmolLM2-135M-Instruct generation_config.json"
+  "eos_token_id_source": "HuggingFaceTB/SmolLM2-135M-Instruct generation_config.json",
+  "analysis": {
+   "tokens": [
+    {
+     "id": 2,
+     "text": "<|im_end|>",
+     "source": "HuggingFaceTB/SmolLM2-135M-Instruct generation_config.json eos_token_id",
+     "eog_by": "GGUF tokenizer.ggml.eos_token_id"
+    }
+   ],
+   "missing": [],
+   "gguf": {
+    "eos": 2
+   }
+  }
  },
  "rope": {
   "rope.freq_base": 100000.0
@@ -460,5 +624,342 @@
  "unknown": null,
  "warnings": null,
  "updated": "2026-10-19",
- "by": "scripts/model_db.py"
+ "by": "scripts/model_db.py",
+ "gguf_meta": {
+  "general.architecture": "llama",
+  "general.type": "model",
+  "general.name": "Smollm2 135M 8k Lc100K Mix1 Ep2",
+  "general.organization": "HuggingFaceTB",
+  "general.finetune": "8k-lc100k-mix1-ep2",
+  "general.basename": "smollm2",
+  "general.size_label": "135M",
+  "general.license": "apache-2.0",
+  "general.languages": [
+   "en"
+  ],
+  "llama.block_count": 30,
+  "llama.context_length": 8192,
+  "llama.embedding_length": 576,
+  "llama.feed_forward_length": 1536,
+  "llama.attention.head_count": 9,
+  "llama.attention.head_count_kv": 3,
+  "llama.rope.freq_base": 100000.0,
+  "llama.attention.layer_norm_rms_epsilon": 9.999999747378752e-06,
+  "general.file_type": 2,
+  "llama.vocab_size": 49152,
+  "llama.rope.dimension_count": 64,
+  "tokenizer.ggml.add_space_prefix": false,
+  "tokenizer.ggml.add_bos_token": false,
+  "tokenizer.ggml.model": "gpt2",
+  "tokenizer.ggml.pre": "smollm",
+  "tokenizer.ggml.tokens": {
+   "array_len": 49152
+  },
+  "tokenizer.ggml.token_type": {
+   "array_len": 49152
+  },
+  "tokenizer.ggml.merges": {
+   "array_len": 48900
+  },
+  "tokenizer.ggml.bos_token_id": 1,
+  "tokenizer.ggml.eos_token_id": 2,
+  "tokenizer.ggml.unknown_token_id": 0,
+  "tokenizer.ggml.padding_token_id": 2,
+  "tokenizer.chat_template": {
+   "sha256": "872be49dbb638044ad01b60388f48d469ff2980e5f0dccdc22ec907db54d0788",
+   "chars": 368
+  },
+  "general.quantization_version": 2,
+  "quantize.imatrix.file": "/models_out/SmolLM2-135M-Instruct-GGUF/SmolLM2-135M-Instruct.imatrix",
+  "quantize.imatrix.dataset": "/training_dir/calibration_datav3.txt",
+  "quantize.imatrix.entries_count": 210,
+  "quantize.imatrix.chunks_count": 141,
+  "_gguf_version": 3,
+  "_n_tensors": 272
+ },
+ "base_chain": [
+  {
+   "repo": "HuggingFaceTB/SmolLM2-135M-Instruct",
+   "api_id": "HuggingFaceTB/SmolLM2-135M-Instruct",
+   "revision": "12fd25f77366fa6b3b4b768ec3050bf629380bac",
+   "via": "card base_model",
+   "card_data": {
+    "license": "apache-2.0",
+    "language": [
+     "en"
+    ],
+    "base_model": [
+     "HuggingFaceTB/SmolLM2-135M"
+    ],
+    "pipeline_tag": "text-generation",
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "text-generation",
+   "safetensors": {
+    "parameters": {
+     "BF16": 134515008
+    },
+    "total": 134515008
+   },
+   "license_files": null
+  },
+  {
+   "repo": "HuggingFaceTB/SmolLM2-135M",
+   "api_id": "HuggingFaceTB/SmolLM2-135M",
+   "revision": "93efa2f097d58c2a74874c7e644dbc9b0cee75a2",
+   "via": "HuggingFaceTB/SmolLM2-135M-Instruct card base_model",
+   "card_data": {
+    "license": "apache-2.0",
+    "language": [
+     "en"
+    ],
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "text-generation",
+   "safetensors": {
+    "parameters": {
+     "BF16": 134515008
+    },
+    "total": 134515008
+   },
+   "license_files": null
+  }
+ ],
+ "github": null,
+ "github_dropped": [
+  {
+   "repo": "ggerganov/llama.cpp",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "huggingface/alignment-handbook",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "huggingface/lighteval",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "huggingface/nanotron",
+   "why": "inference/training tool repo"
+  }
+ ],
+ "descriptor": {
+  "repo_id": {
+   "effective": "bartowski/SmolLM2-135M-Instruct-GGUF",
+   "source": "HF API id"
+  },
+  "revision": {
+   "effective": "09816acd5d99df7be770d85ea30822623dab342c",
+   "source": "pinned (manifest / database)"
+  },
+  "file": {
+   "effective": "SmolLM2-135M-Instruct-Q4_0.gguf",
+   "source": "HF API siblings"
+  },
+  "bytes": {
+   "effective": 91893088,
+   "source": "HF API LFS size"
+  },
+  "sha256": {
+   "effective": "bcc3af2849ad6095af57e9b5cd43775256efdc66e306acb529172f92d0c04b03",
+   "source": "HF API LFS oid"
+  },
+  "quant": {
+   "effective": "Q4_0",
+   "source": "file name",
+   "values": [
+    {
+     "value": "Q4_0",
+     "source": "file name"
+    },
+    {
+     "value": "Q4_0",
+     "source": "GGUF general.file_type"
+    }
+   ]
+  },
+  "license": {
+   "effective": "apache-2.0",
+   "source": "bartowski/SmolLM2-135M-Instruct-GGUF card license",
+   "values": [
+    {
+     "value": "apache-2.0",
+     "source": "bartowski/SmolLM2-135M-Instruct-GGUF card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "HuggingFaceTB/SmolLM2-135M-Instruct card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "HuggingFaceTB/SmolLM2-135M card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "GGUF general.license"
+    }
+   ]
+  },
+  "base_model_chain": {
+   "effective": "HuggingFaceTB/SmolLM2-135M-Instruct",
+   "source": "card base_model",
+   "values": [
+    {
+     "value": "HuggingFaceTB/SmolLM2-135M-Instruct",
+     "source": "card base_model"
+    },
+    {
+     "value": "HuggingFaceTB/SmolLM2-135M",
+     "source": "HuggingFaceTB/SmolLM2-135M-Instruct card base_model"
+    }
+   ]
+  },
+  "architecture": {
+   "effective": "llama",
+   "source": "GGUF general.architecture",
+   "values": [
+    {
+     "value": "llama",
+     "source": "GGUF general.architecture"
+    },
+    {
+     "value": "llama",
+     "source": "HF API gguf.architecture"
+    }
+   ]
+  },
+  "hf_architectures": {
+   "effective": [
+    "LlamaForCausalLM"
+   ],
+   "source": "HuggingFaceTB/SmolLM2-135M-Instruct config.json architectures"
+  },
+  "hf_model_type": {
+   "effective": "llama",
+   "source": "HuggingFaceTB/SmolLM2-135M-Instruct config.json model_type"
+  },
+  "parameters": {
+   "effective": 134515008,
+   "source": "HF API gguf.total (bartowski/SmolLM2-135M-Instruct-GGUF)",
+   "values": [
+    {
+     "value": 134515008,
+     "source": "HF API gguf.total (bartowski/SmolLM2-135M-Instruct-GGUF)"
+    },
+    {
+     "value": 134515008,
+     "source": "HF API safetensors.total (HuggingFaceTB/SmolLM2-135M-Instruct)"
+    },
+    {
+     "value": 134515008,
+     "source": "HF API safetensors.total (HuggingFaceTB/SmolLM2-135M)"
+    }
+   ]
+  },
+  "size_label": {
+   "effective": "135M",
+   "source": "GGUF general.size_label"
+  },
+  "ctx": {
+   "effective": 8192,
+   "source": "HuggingFaceTB/SmolLM2-135M-Instruct config.json max_position_embeddings",
+   "values": [
+    {
+     "value": 8192,
+     "source": "HuggingFaceTB/SmolLM2-135M-Instruct config.json max_position_embeddings"
+    },
+    {
+     "value": 8192,
+     "source": "GGUF llama.context_length"
+    }
+   ],
+   "precedence": "card statement > config.json > GGUF header > GitHub README"
+  },
+  "pipeline_tag": {
+   "effective": "text-generation",
+   "source": "bartowski/SmolLM2-135M-Instruct-GGUF HF API pipeline_tag",
+   "values": [
+    {
+     "value": "text-generation",
+     "source": "bartowski/SmolLM2-135M-Instruct-GGUF HF API pipeline_tag"
+    },
+    {
+     "value": "text-generation",
+     "source": "HuggingFaceTB/SmolLM2-135M-Instruct HF API pipeline_tag"
+    },
+    {
+     "value": "text-generation",
+     "source": "HuggingFaceTB/SmolLM2-135M HF API pipeline_tag"
+    }
+   ]
+  },
+  "languages": {
+   "effective": [
+    "en"
+   ],
+   "source": "bartowski/SmolLM2-135M-Instruct-GGUF card language",
+   "values": [
+    {
+     "value": [
+      "en"
+     ],
+     "source": "bartowski/SmolLM2-135M-Instruct-GGUF card language"
+    },
+    {
+     "value": [
+      "en"
+     ],
+     "source": "HuggingFaceTB/SmolLM2-135M-Instruct card language"
+    },
+    {
+     "value": [
+      "en"
+     ],
+     "source": "HuggingFaceTB/SmolLM2-135M card language"
+    },
+    {
+     "value": [
+      "en"
+     ],
+     "source": "GGUF general.languages"
+    }
+   ]
+  }
+ },
+ "required_params": {
+  "kind": "chat",
+  "native_ctx": 8192,
+  "native_ctx_source": "HuggingFaceTB/SmolLM2-135M-Instruct config.json max_position_embeddings",
+  "yarn": null,
+  "yarn_source": null,
+  "items": [
+   {
+    "class": "REQUIRED",
+    "flag": "--jinja",
+    "value": null,
+    "source": "GGUF tokenizer.chat_template (872be49dbb63)",
+    "why_required": "messages, tool calls and thinking are formatted by the model's chat template; without --jinja llama-server falls back to a built-in approximation"
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--temp",
+    "value": "0.2",
+    "source": "HuggingFaceTB/SmolLM2-135M-Instruct HuggingFaceTB/SmolLM2-135M-Instruct README.md:L57 (code example)",
+    "why_required": "the card's recommended sampling (example: Transformers)"
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--top-p",
+    "value": "0.9",
+    "source": "HuggingFaceTB/SmolLM2-135M-Instruct HuggingFaceTB/SmolLM2-135M-Instruct README.md:L57 (code example)",
+    "why_required": "the card's recommended sampling (example: Transformers)"
+   }
+  ]
+ },
+ "blockers": null,
+ "params_problems": null,
+ "params_build": "b11374",
+ "native_ctx": 8192,
+ "native_ctx_source": "HuggingFaceTB/SmolLM2-135M-Instruct config.json max_position_embeddings"
 }

@@ -23,10 +23,15 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import add_model as am  # noqa: E402
 import hf_fetch as hf   # noqa: E402
+import llama_flags as lf  # noqa: E402
+import model_params as mp  # noqa: E402
 
 REPO_ROOT = os.path.dirname(HERE)
 DB_DIR = os.path.join(REPO_ROOT, "registry", "models")
-SCHEMA = 1
+SCHEMA = 2      # 2: descriptor, card_commands (verbatim), required_params, blockers, github docs (#51)
+PARAMS_BUILD = "b11374"   # flag table / EOG list the analysis is run against (code-bootstraps pin)
+CONFIG_FILES = ("tokenizer.json", "config.json", "generation_config.json", "tokenizer_config.json", "config_sentence_transformers.json",
+                "1_Pooling/config.json", "modules.json", "sentence_bert_config.json", "special_tokens_map.json")
 LLAMA_DEFAULTS = {"temp": 0.8, "top-p": 0.95, "top-k": 40, "min-p": 0.05, "repeat-penalty": 1.0,
                   "presence-penalty": 0.0, "frequency-penalty": 0.0}   # llama.cpp b11374 common/common.h
 SAMPLING_FLAGS = {"temp": "--temp", "top-p": "--top-p", "top-k": "--top-k", "min-p": "--min-p",
@@ -131,7 +136,7 @@ def template_sha(snap):
 
 # ------------------------------------------------------------------ ingest
 def ingest(repo, revision, file, local=None, role=None, found_in=None, match=None, max_bytes=hf.DEFAULT_MAX,
-           root=None, db_dir=None, write=True, fetch_base=True):
+           root=None, db_dir=None, write=True, fetch_base=True, refresh_github=False):
     """Build (and save) the database entry for repo@revision/file. Raises hf.HFError."""
     unknown, warnings = [], []
     snap = hf.snapshot(repo, revision, max_bytes=max_bytes, root=root, log=log)
@@ -168,6 +173,17 @@ def ingest(repo, revision, file, local=None, role=None, found_in=None, match=Non
     base = repo_from_url(bm) or repo_from_url(meta.get("general.base_model.0.repo_url")) \
         or repo_from_url(meta.get("general.base_model.0.organization", "") + "/" + meta.get("general.base_model.0.name", "")
                          if meta.get("general.base_model.0.organization") else None)
+    cur_ = (mp.load_curated().get(entry_id(repo, file)) or {})
+    if not base and cur_.get("base_model"):
+        base = cur_["base_model"]["value"]
+        warnings.append("base_model %s from registry/model-params.yaml (%s)" % (base, cur_["base_model"]["source"]))
+    if not base:   # "This is quantized version of [owner/repo](https://huggingface.co/owner/repo)" (QuantFactory)
+        p_ = os.path.join(snap["dir"], "README.md")
+        mm = re.search(r"(?i)quantized version of \[?([A-Za-z0-9][\w.-]*/[\w.-]+)\]?\(https://huggingface\.co/\1\)",
+                       _read(p_)) if os.path.isfile(p_) else None
+        if mm:
+            base = mm.group(1)
+            warnings.append("base_model from the card text (\"quantized version of %s\"); not in the front matter or GGUF" % base)
     bsnap, bfm, bsc = None, {}, None
     if base and base != repo and fetch_base:
         try:
@@ -249,7 +265,7 @@ def ingest(repo, revision, file, local=None, role=None, found_in=None, match=Non
             if not any(a["file"] == os.path.basename(mm.group(1)) for a in aux):
                 aux.append({"kind": "mmproj" if "mm" in c["command"][mm.start():mm.start() + 8] else "draft",
                             "ref": mm.group(1), "source": c["source"]})
-    commands = ((bsc or {}).get("commands", []) + (sc or {}).get("commands", []))[:30]
+    commands = None   # filled verbatim by apply_params (model_params.extract_examples)
     notes = ((bsc or {}).get("notes", []) + (sc or {}).get("notes", []))[:30]
     sets = [x for _, s in scans for x in s["sets"]]
     if not defaults:
@@ -267,7 +283,7 @@ def ingest(repo, revision, file, local=None, role=None, found_in=None, match=Non
         "base_model": base if bsnap or base else None, "base_revision": bsnap["revision"] if bsnap else None,
         "card_defaults": defaults, "card_defaults_source": dsrc or None, "card_default_set": dset, "card_defaults_how": how,
         "card_sampling_modes": modes, "card_default_mode": dmode[0], "card_default_mode_source": dmode[1],
-        "card_sampling_sets": sets or None, "card_commands": commands or None, "card_notes": notes or None,
+        "card_sampling_sets": sets or None, "card_commands": commands, "card_notes": notes or None,
         "chat_template": tmpl or None, "stop": stop or None, "rope": rope or None, "aux": aux or None,
         "gguf": {k: meta.get(k) for k in ("general.architecture", "general.name", "general.file_type", "general.quantization_version",
                                          "_gguf_version") if k in meta} or None,
@@ -281,8 +297,192 @@ def ingest(repo, revision, file, local=None, role=None, found_in=None, match=Non
         "unknown": unknown or None, "warnings": warnings or None,
         "updated": time.strftime("%Y-%m-%d"), "by": "scripts/model_db.py",
     }
+    entry["gguf_meta"] = gguf_scalars(meta) or None
+    try:
+        apply_params(entry, snap, bsnap, meta, root=root, refresh_github=refresh_github)
+    except hf.HFError as ex:
+        warnings.append("model parameters: %s" % ex)
+        entry["warnings"] = warnings
     if write:
         save(entry, db_dir)
+    return entry
+
+
+def gguf_scalars(meta):
+    """Every GGUF header value except token arrays; the chat template as its sha256 and length."""
+    out = {}
+    for k, v in (meta or {}).items():
+        if k == "tokenizer.chat_template" and isinstance(v, str):
+            out[k] = {"sha256": hashlib.sha256(v.encode("utf-8")).hexdigest(), "chars": len(v)}
+        elif isinstance(v, dict) and "array" in v:
+            out[k] = {"array_len": v["array"]}
+        elif isinstance(v, list) and len(v) > 64:
+            out[k] = {"array_len": len(v)}
+        else:
+            out[k] = v
+    return out
+
+
+# ------------------------------------------------------------------ model parameters (#51)
+def base_chain(base, bsnap, log_=log, depth=4):
+    """[{repo, revision, via, card_data, pipeline_tag, safetensors, license_files}] from the base
+    model up its own base_model links (API only beyond the first level)."""
+    chain, seen = [], set()
+    cur, info, via = base, bsnap, "card base_model"
+    while cur and cur not in seen and len(chain) < depth:
+        seen.add(cur)
+        if info is None:
+            try:
+                ri = hf.repo_info(cur)
+            except hf.HFError as ex:
+                chain.append({"repo": cur, "via": via, "error": str(ex)})
+                break
+            info = {"repo": cur, "revision": ri["sha"], "card_data": ri.get("cardData"), "pipeline_tag": ri.get("pipeline_tag"),
+                    "safetensors": ri.get("safetensors"), "api_id": ri.get("id"),
+                    "files": {x["rfilename"]: {} for x in ri.get("siblings") or []}}
+        cd = info.get("card_data") or {}
+        chain.append({"repo": cur, "api_id": info.get("api_id"), "revision": info.get("revision"), "via": via,
+                      "card_data": {k: cd.get(k) for k in ("license", "license_name", "license_link", "language", "base_model",
+                                                           "pipeline_tag", "library_name") if cd.get(k) is not None},
+                      "pipeline_tag": info.get("pipeline_tag"), "safetensors": info.get("safetensors"),
+                      "license_files": [p for p in sorted(info.get("files") or {}) if re.match(r"(?i)^licen[cs]e", p)] or None})
+        nb = cd.get("base_model")
+        nb = nb[0] if isinstance(nb, list) and nb else nb
+        cur, info, via = repo_from_url(nb) if isinstance(nb, str) else None, None, "%s card base_model" % cur
+    return chain
+
+
+def _read(p):
+    with open(p, encoding="utf-8", errors="replace") as f:
+        return f.read()
+
+
+def snap_configs(s):
+    out = {}
+    for name in CONFIG_FILES:
+        p = os.path.join(s["dir"], name)
+        if os.path.isfile(p):
+            try:
+                out[name] = json.loads(_read(p))
+            except ValueError:
+                pass
+    return out
+
+
+def snap_template(s):
+    p = os.path.join(s["dir"], "chat_template.jinja")
+    if os.path.isfile(p):
+        return {"text": _read(p), "file": "chat_template.jinja", "path": p}
+    tok = read_snap_json(s, "tokenizer_config.json") or {}
+    t = tok.get("chat_template")
+    if isinstance(t, list):   # named templates: the default one
+        t = next((x.get("template") for x in t if isinstance(x, dict) and x.get("name") == "default"), None)
+    if isinstance(t, str):
+        d = os.path.join(s["dir"], ".familia")
+        os.makedirs(d, exist_ok=True)
+        p = os.path.join(d, "chat_template.from-tokenizer_config.jinja")
+        if not os.path.isfile(p) or _read(p) != t:
+            with open(p, "w", encoding="utf-8", newline="") as f:
+                f.write(t)
+        return {"text": t, "file": "tokenizer_config.json:chat_template", "path": p}
+    return None
+
+
+def template_path(sha, root=None):
+    """Path of a stored repo chat template with this sha256 (any snapshot under the meta root), or None."""
+    r = root or hf.meta_root()
+    for p in glob.glob(os.path.join(r, "*", "*", "chat_template.jinja")) + glob.glob(os.path.join(r, "*", "*", ".familia", "*.jinja")):
+        with open(p, "rb") as f:
+            if hashlib.sha256(f.read()).hexdigest() == sha:
+                return p
+    return None
+
+
+def apply_params(entry, snap, bsnap, meta, root=None, curated=None, refresh_github=False, build=None):
+    """Fill descriptor / card_commands / required_params / template / stop / blockers of an entry."""
+    cur_all = curated if curated is not None else mp.load_curated()
+    cur = cur_all.get(entry["id"]) or {}
+    chain = base_chain(entry.get("base_model"), bsnap) if entry.get("base_model") else []
+    docs, doc_meta, cfgs, tmpls = {}, [], {}, {}
+    for lab, s_, kind in [(entry["repo"], snap, "card")] + ([(entry["base_model"], bsnap, "base-card")] if bsnap else []):
+        p = os.path.join(s_["dir"], "README.md")
+        if os.path.isfile(p):
+            docs.setdefault(lab, {})["README.md"] = _read(p)
+            doc_meta.append({"label": lab, "file": "README.md", "kind": kind, "sha": s_["revision"]})
+        cfgs[lab] = snap_configs(s_)
+        t = snap_template(s_)
+        if t:
+            tmpls[lab] = t
+    links = []
+    for lab in list(docs):
+        links += hf.github_links(docs[lab]["README.md"])
+    kept, dropped = hf.official_github(links, [entry["repo"]] + [c["repo"] for c in chain])
+    extra = {}
+    for g in cur.get("github") or []:
+        if g["repo"] not in kept:
+            kept.append(g["repo"])
+        extra.setdefault(g["repo"], []).extend(g.get("paths") or [])
+    gh = []
+    kept = list(dict.fromkeys(kept))
+    for g in kept:
+        if refresh_github:
+            import shutil
+            shutil.rmtree(os.path.join(root or hf.meta_root(), "github", g.replace("/", "--")), ignore_errors=True)
+        rec = hf.github_snapshot(g, root=root, log=log, extra=tuple(extra.get(g, ())))
+        if rec.get("error"):
+            gh.append({"repo": g, "error": rec["error"]})
+            continue
+        lab = "github.com/%s" % g
+        files = [("README.md" if rec["files"].get("readme", {}).get("path") else None, rec["files"].get("readme", {}).get("path"))]
+        files += [(x, x) for x in (rec["files"].get("extra") or {})]
+        for shown, path in files:
+            if not path:
+                continue
+            fp = os.path.join(rec["dir"], path)
+            if os.path.isfile(fp):
+                docs.setdefault(lab, {})[path] = _read(fp)
+                doc_meta.append({"label": lab, "file": path, "kind": "github", "sha": rec["sha"],
+                                 "license_spdx": rec.get("license_spdx") if path == rec["files"].get("readme", {}).get("path") else None,
+                                 "license_file": (rec["files"].get("license") or {}).get("path") if path == rec["files"].get("readme", {}).get("path") else None})
+        gh.append({"repo": g, "resolved": rec["repo"], "sha": rec["sha"], "renamed": rec["repo"].lower() != g.lower() or None,
+                   "description": rec.get("description"), "license_spdx": rec.get("license_spdx"),
+                   "files": {k: {"path": v["path"], "sha256": v["sha256"], "bytes": v["bytes"]} for k, v in rec["files"].items() if k in ("readme", "license")},
+                   "extra": {k: {"sha256": v["sha256"], "bytes": v["bytes"]} for k, v in (rec["files"].get("extra") or {}).items()} or None,
+                   "snapshot": "github/%s/%s" % (g.replace("/", "--"), rec["sha"])})
+    if build is None:
+        build = lf.load(PARAMS_BUILD)
+    latest = None
+    try:
+        li = hf.repo_info(entry["repo"], "main")
+        latest = li["sha"] if li["sha"] != entry["revision"] else None
+    except hf.HFError:
+        pass
+    res = mp.analyze({"repo": entry["repo"], "revision": entry["revision"], "file": entry["file"], "entry": entry, "meta": meta,
+                      "docs": docs, "doc_meta": doc_meta, "snap": snap, "bsnap": bsnap, "configs": cfgs, "chain": chain,
+                      "templates": tmpls, "build": build, "curated": cur, "latest_revision": latest})
+    entry["base_chain"] = chain or None
+    entry["github"] = gh or None
+    entry["github_dropped"] = [{"repo": g, "why": w} for g, w in dropped] or None
+    entry["descriptor"] = res["descriptor"]
+    entry["card_commands"] = res["card_commands"] or None
+    entry["required_params"] = res["required_params"]
+    if res["template"]:
+        t = dict(entry.get("chat_template") or {})
+        t.update({k: v for k, v in res["template"].items() if k != "repo_path"})
+        entry["chat_template"] = t
+    entry["stop"] = dict(entry.get("stop") or {}, analysis=res["stop"]) if res["stop"] else entry.get("stop")
+    entry["blockers"] = res["blockers"]
+    entry["params_problems"] = res["problems"]
+    entry["params_build"] = PARAMS_BUILD
+    d = res["descriptor"]
+    if (d.get("ctx") or {}).get("effective"):
+        entry["native_ctx"], entry["native_ctx_source"] = res["required_params"]["native_ctx"], res["required_params"]["native_ctx_source"]
+    if cur.get("role"):
+        entry["roles"] = sorted(set([cur["role"]] + [r for r in entry.get("roles") or [] if r not in (cur.get("not_roles") or [])]))
+    for r in cur.get("not_roles") or []:
+        entry["roles"] = [x for x in entry.get("roles") or [] if x != r]
+    if cur.get("license"):
+        entry["license"], entry["license_source"] = cur["license"]["value"], cur["license"]["source"]
     return entry
 
 
@@ -453,12 +653,43 @@ def backfill(args):
     return targets, failures, built
 
 
+PROJECTED = ("db_id", "base_model", "base_revision", "card_defaults", "card_default_set", "card_defaults_source",
+             "card_sampling_modes", "card_default_mode", "card_ctx", "card_ctx_source", "bytes", "license", "ctx",
+             "native_ctx", "native_ctx_source", "required", "chat_template_file", "blockers", "weights")
+
+
+def chat_template_file(e):
+    """{repo, revision, file, sha256} of the repo template a launch must pass with --chat-template-file,
+    or None when the GGUF's own template is used. file "X.json:key" means: take X.json's key."""
+    t = e.get("chat_template") or {}
+    if t.get("use") != "repo" or not t.get("repo_sha256"):
+        return None
+    lab = t.get("repo_label") or e["repo"]
+    rev = e.get("base_revision") if lab == e.get("base_model") else e["revision"]
+    return {"repo": lab, "revision": rev, "file": t.get("repo_file"), "sha256": t["repo_sha256"]}
+
+
+def required_compact(e):
+    """REQUIRED server items as "flag value" strings (client-side ones as "@x value")."""
+    out = []
+    for it in (e.get("required_params") or {}).get("items") or []:
+        if it["class"] == mp.REQ:
+            out.append(it["flag"] + ("" if it.get("value") is None else " " + str(it["value"])))
+    return out or None
+
+
 def manifest_projection(e):
-    p = {"db_id": e["id"], "base_model": e.get("base_model"), "base_revision": e.get("base_revision"),
-         "card_defaults": e.get("card_defaults"), "card_default_set": e.get("card_default_set"),
-         "card_defaults_source": e.get("card_defaults_source"), "card_sampling_modes": e.get("card_sampling_modes"),
-         "card_default_mode": e.get("card_default_mode"), "card_ctx": e.get("card_ctx"), "card_ctx_source": e.get("card_ctx_source")}
-    return {k: v for k, v in p.items() if v is not None}
+    """The entry's fields carried into the code-bootstraps manifest candidate. A key whose entry value
+    is None is listed with None, so project_manifest removes a stale copy."""
+    return {"db_id": e["id"], "base_model": e.get("base_model"), "base_revision": e.get("base_revision"),
+            "card_defaults": e.get("card_defaults"), "card_default_set": e.get("card_default_set"),
+            "card_defaults_source": e.get("card_defaults_source"), "card_sampling_modes": e.get("card_sampling_modes"),
+            "card_default_mode": e.get("card_default_mode"), "card_ctx": e.get("card_ctx"), "card_ctx_source": e.get("card_ctx_source"),
+            "bytes": e.get("bytes"), "license": e.get("license"), "ctx": e.get("ctx"),
+            "native_ctx": e.get("native_ctx"), "native_ctx_source": e.get("native_ctx_source"),
+            "required": required_compact(e), "chat_template_file": chat_template_file(e),
+            "blockers": [b["what"] if isinstance(b, dict) else b for b in e.get("blockers") or []] or None,
+            "weights": e.get("weights") if e.get("weights", "").startswith("absent") else None}
 
 
 def project_manifest(env, built):
@@ -471,7 +702,10 @@ def project_manifest(env, built):
             log("  manifest %s: revision %s kept (entry %s)" % (c["file"], c["revision"], e["revision"]))
             continue
         for k, v in manifest_projection(e).items():
-            c[k] = v
+            if v is None:
+                c.pop(k, None)          # stale copy of a value the entry no longer has
+            else:
+                c[k] = v
         if not c.get("revision"):
             c["revision"] = e["revision"]
         if c.get("sha256") != e["sha256"]:
@@ -627,6 +861,76 @@ def launch_sampling(entry, node):
     return params
 
 
+OVERRIDE_ALIASES = {"ctx": "ctx-size", "ctx-size": "ctx", "parallel": "np"}
+
+
+def _ovr(reasons, flag):
+    k = flag.lstrip("-")
+    return reasons.get(k) or reasons.get(OVERRIDE_ALIASES.get(k, "")) or None
+
+
+def runtime_build(graph, node):
+    rt = (graph.get("runtimes") or {}).get(node.get("runtime")) or {}
+    name = lf.build_for_runtime(rt)
+    return name, (lf.load(name) if name else None)
+
+
+def node_params(graph, name, entry):
+    """Model parameters a node must launch with (#51): (argv, errors, notes).
+    argv holds the REQUIRED and RECOMMENDED items resolved for the node's ctx / slots, the
+    node's sampling overrides applied; RECOMMENDED items with node.override_reasons.<flag>
+    are left out. errors: blockers, unsupported flags, ctx past the native window, missing
+    template files, undecided template mismatches."""
+    n = graph["nodes"][name]
+    rp = entry.get("required_params")
+    if not rp:
+        return [], ["model database entry %s has no required_params (scripts/model_db.py refresh)" % entry["id"]], []
+    reasons = n.get("override_reasons") or {}
+    bname, build = runtime_build(graph, n)
+    ctx, par = n.get("ctx"), n.get("parallel") or 1
+    drop = []
+    for it in rp["items"]:
+        if it["class"] == mp.REC and _ovr(reasons, it["flag"]):
+            drop.append(it["flag"])
+    samp = launch_sampling(entry, n) if rp.get("kind") == "chat" else {}
+    for k in samp:
+        drop.append(SAMPLING_FLAGS[k])
+    argv, errs, notes = mp.launch_items(rp, ctx, par, build, drop=tuple(drop))
+    for k, v in samp.items():
+        argv += [SAMPLING_FLAGS[k], str(v)]
+    out, i = [], 0
+    while i < len(argv):          # resolve ${template:<sha>} to this host's stored template
+        a = argv[i]
+        if i + 1 < len(argv) and argv[i + 1].startswith("${template:"):
+            sha = argv[i + 1][len("${template:"):-1]
+            pth = template_path(sha)
+            if pth is None:
+                errs.append("%s needs the chat template %s (%s) but it is not under %s on this host (scripts/model_db.py refresh fetches it)"
+                            % (a, sha[:12], entry["id"], hf.meta_root()))
+                i += 2
+                continue
+            out += [a, pth]
+            i += 2
+            continue
+        out.append(a)
+        i += 1
+    for b in entry.get("blockers") or []:
+        errs.append("BLOCKER (%s): %s" % (b.get("source") or "model database", b["what"]))
+    for pr in entry.get("params_problems") or []:
+        if pr.startswith("chat template:") or pr.startswith("curated"):
+            errs.append(pr)
+    arch = entry.get("arch")
+    if build and build.get("archs") is not None and arch and arch not in build["archs"]:
+        errs.append("BLOCKER: llama.cpp %s cannot load architecture %r (not in its src/llama-arch.cpp)" % (bname, arch))
+    if build is None and (graph.get("runtimes") or {}).get(n.get("runtime"), {}).get("kind") == "llama-server":
+        notes.append("runtime %s: no flag table (registry/llama-builds), flag support is unverified" % n.get("runtime"))
+    for it in rp["items"]:
+        if it["flag"] == "@runtime" and it["class"] == mp.REQ:
+            if not (build and build.get("archs") and arch in build["archs"]):
+                errs.append("BLOCKER: %s needs %s (%s)" % (entry["id"], it["value"], it["source"]))
+    return out, errs, notes
+
+
 def check_graph(graph, db_dir=None):
     """Errors / warnings for graph models and nodes against the model database."""
     errs, warns = [], []
@@ -668,6 +972,28 @@ def check_graph(graph, db_dir=None):
             if "ctx" not in reasons:
                 errs.append("%s: ctx %s differs from the model card's %d (%s) without override_reasons.ctx"
                             % (w, n.get("ctx"), card_ctx, e.get("card_ctx_source") or e.get("ctx_source")))
+        kind = (e.get("required_params") or {}).get("kind")
+        if n.get("embeddings") and kind not in (None, "embed"):
+            errs.append("%s: embeddings: true but %s is a %s model" % (w, e["id"], kind))
+        if kind == "embed" and not n.get("embeddings"):
+            errs.append("%s: %s is an embedding model; set embeddings: true" % (w, e["id"]))
+        if (graph.get("runtimes") or {}).get(n.get("runtime"), {}).get("kind", "llama-server") == "llama-server":
+            try:
+                pargv, perrs, pnotes = node_params(graph, name, e)
+            except Exception as ex:   # never let a bad entry pass silently
+                perrs, pnotes = ["model parameters: %s" % ex], []
+            for x in perrs:
+                if n.get("status") == "planned":   # not launched yet: reported, not fatal
+                    warns.append("%s (planned): %s" % (w, x))
+                else:
+                    errs.append("%s: %s" % (w, x))
+            for x in pnotes:
+                if x.startswith("runtime "):     # client-side requirements are listed by --explain
+                    warns.append("%s: %s" % (w, x))
+            rp = e.get("required_params") or {}
+            for it in rp.get("items") or []:
+                if it["class"] == mp.REC and _ovr(reasons, it["flag"]):
+                    needed.add(it["flag"].lstrip("-"))
         if n.get("embeddings"):
             continue
         try:
@@ -690,9 +1016,73 @@ def check_graph(graph, db_dir=None):
                     errs.append("%s.sampling.%s = %s contradicts the model card (%s: %s) without override_reasons.%s"
                                 % (w, k, v, label, card[k], k))
         for k in reasons:
-            if k not in needed:
+            if k not in needed and OVERRIDE_ALIASES.get(k) not in needed:
                 warns.append("%s.override_reasons.%s: nothing overrides the card here (stale reason?)" % (w, k))
     return errs, warns
+
+
+def refresh(db_dir=None, only=None, refresh_github=False, max_bytes=hf.DEFAULT_MAX):
+    """Re-ingest every entry at its pinned revision (the local weights file when found)."""
+    done, failures = [], []
+    for eid, e in sorted(load_all(db_dir).items()):
+        if only and only.lower() not in eid.lower():
+            continue
+        log("== refresh %s" % eid)
+        try:
+            n = ingest(e["repo"], e["revision"], e["file"], local=find_local(e["file"]), found_in=e.get("found_in"),
+                       match=e.get("match"), max_bytes=max_bytes, db_dir=db_dir, refresh_github=refresh_github)
+            done.append(n["id"])
+        except hf.HFError as ex:
+            failures.append({"what": eid, "why": str(ex)})
+            log("  FAILED: %s" % ex)
+    return done, failures
+
+
+def _cell(s):
+    return str(s).replace("|", "\\|").replace("\n", " ")
+
+
+def params_doc(db_dir=None):
+    """docs/model-params.md: per model, what a launch must pass and where each value comes from."""
+    ents = load_all(db_dir)
+    out = ["# Model parameters (#51)", "",
+           "Generated by `python3 scripts/model_db.py params-doc` from registry/models (do not edit by hand).",
+           "Every value cites the card / config / GGUF / GitHub line it comes from; registry/model-params.yaml holds",
+           "the curated decisions (each with a verified quote). REQUIRED items are enforced by `validate_graph.py --args`",
+           "(and so scripts/serve.sh and the hermes harness): a node missing one does not start. RECOMMENDED items are",
+           "added unless the node gives an override reason. Client items (`@...`) are for the caller, not llama-server.", "",
+           "| model | kind | native ctx | REQUIRED (server) | client REQUIRED | RECOMMENDED | chat template | blockers |",
+           "|---|---|---|---|---|---|---|---|"]
+    for eid, e in sorted(ents.items()):
+        rp = e.get("required_params") or {}
+        its = rp.get("items") or []
+        srv = [it["flag"] + ("" if it.get("value") is None else " " + str(it["value"])) for it in its if it["class"] == mp.REQ and not it.get("client")]
+        cli = [it["flag"] + ("" if it.get("value") is None else " " + str(it["value"])[:40]) for it in its if it["class"] == mp.REQ and it.get("client")]
+        rec = [it["flag"] + ("" if it.get("value") is None else " " + str(it["value"])) for it in its if it["class"] == mp.REC]
+        t = e.get("chat_template") or {}
+        tm = "repo %s (%s)" % (t.get("repo_sha256", "")[:12], t.get("repo_label")) if t.get("use") == "repo" else \
+             ("GGUF %s" % t.get("gguf_sha256", "")[:12] if t.get("gguf_sha256") else "-")
+        bl = "; ".join((b["what"] if isinstance(b, dict) else b) for b in e.get("blockers") or []) or "-"
+        out.append("| %s | %s | %s | %s | %s | %s | %s | %s |" % (
+            "`%s`" % eid, rp.get("kind", "?"), "%s (%s)" % (rp.get("native_ctx"), rp.get("native_ctx_source")),
+            "<br>".join("`%s`" % _cell(x) for x in srv) or "-", "<br>".join("`%s`" % _cell(x) for x in cli) or "-",
+            "<br>".join("`%s`" % _cell(x) for x in rec) or "-", _cell(tm), _cell(bl)))
+    for eid, e in sorted(ents.items()):
+        rp = e.get("required_params") or {}
+        out += ["", "## %s" % eid, "",
+                "%s@%s `%s`, %s bytes, license %s" % (e["repo"], e["revision"][:10], e["file"], e.get("bytes"), e.get("license")), ""]
+        for it in rp.get("items") or []:
+            out.append("- **%s** `%s%s`%s - %s (%s)" % (it["class"], it["flag"], "" if it.get("value") is None else " " + str(it["value"]),
+                       " (client)" if it.get("client") else "", _cell(it.get("why_required", "")), _cell(it.get("source", ""))))
+        cmds = [c for c in e.get("card_commands") or [] if c.get("kind") != "inline"]
+        if cmds:
+            out += ["", "Card / GitHub examples (verbatim in the entry's `card_commands`):", ""]
+            for c in cmds:
+                out.append("- %s `%s` (%s)%s" % (c["source"], c.get("tool") or c.get("lang") or "?", c.get("scope", "model"),
+                           " - translated" if c.get("translation") else ""))
+        for p_ in e.get("params_problems") or []:
+            out.append("- problem: %s" % _cell(p_))
+    return "\n".join(out) + "\n"
 
 
 def main(argv=None):
@@ -714,6 +1104,11 @@ def main(argv=None):
     b.add_argument("--no-graph", action="store_true")
     b.add_argument("--no-registry", action="store_true")
     b.add_argument("--bootstraps")
+    r = sp.add_parser("refresh", help="re-ingest every entry at its pinned revision")
+    r.add_argument("--only")
+    r.add_argument("--refresh-github", action="store_true")
+    pd = sp.add_parser("params-doc", help="write docs/model-params.md")
+    pd.add_argument("--out", default=os.path.join(REPO_ROOT, "docs", "model-params.md"))
     s = sp.add_parser("show")
     s.add_argument("id")
     sp.add_parser("list")
@@ -731,6 +1126,14 @@ def main(argv=None):
         targets, failures, built = backfill(a)
         print(json.dumps({"targets": len(targets), "built": sorted(built), "failures": failures}, indent=1))
         return 1 if failures else 0
+    if a.cmd == "refresh":
+        done, failures = refresh(a.db_dir, a.only, a.refresh_github, a.max_bytes)
+        print(json.dumps({"refreshed": len(done), "failures": failures}, indent=1))
+        return 1 if failures else 0
+    if a.cmd == "params-doc":
+        am.atomic_write(a.out, params_doc(a.db_dir))
+        log("wrote %s" % a.out)
+        return 0
     if a.cmd == "show":
         e = load(a.id, a.db_dir)
         if not e:

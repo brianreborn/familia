@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "QuantFactory--SmolLM2-135M-Instruct-GGUF--SmolLM2-135M-Instruct.Q4_0",
  "repo": "QuantFactory/SmolLM2-135M-Instruct-GGUF",
  "revision": "476854d00ede130660aba430d15f9347ad2e7d0e",
@@ -17,15 +17,15 @@
  "ctx_source": "GGUF llama.context_length",
  "card_ctx": null,
  "card_ctx_source": null,
- "base_model": null,
- "base_revision": null,
+ "base_model": "HuggingFaceTB/SmolLM2-135M-Instruct",
+ "base_revision": "12fd25f77366fa6b3b4b768ec3050bf629380bac",
  "card_defaults": {
   "temp": 0.2,
   "top-p": 0.9
  },
  "card_defaults_source": {
-  "temp": "QuantFactory/SmolLM2-135M-Instruct-GGUF QuantFactory/SmolLM2-135M-Instruct-GGUF README.md:L61 (code example)",
-  "top-p": "QuantFactory/SmolLM2-135M-Instruct-GGUF QuantFactory/SmolLM2-135M-Instruct-GGUF README.md:L61 (code example)"
+  "temp": "HuggingFaceTB/SmolLM2-135M-Instruct HuggingFaceTB/SmolLM2-135M-Instruct README.md:L57 (code example)",
+  "top-p": "HuggingFaceTB/SmolLM2-135M-Instruct HuggingFaceTB/SmolLM2-135M-Instruct README.md:L57 (code example)"
  },
  "card_default_set": "example: Transformers",
  "card_defaults_how": "the card's only code example with sampling values",
@@ -41,17 +41,212 @@
     "temp": 0.2,
     "top-p": 0.9
    },
+   "source": "HuggingFaceTB/SmolLM2-135M-Instruct README.md:L57"
+  },
+  {
+   "label": "Transformers",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 0.2,
+    "top-p": 0.9
+   },
    "source": "QuantFactory/SmolLM2-135M-Instruct-GGUF README.md:L61"
   }
  ],
- "card_commands": null,
+ "card_commands": [
+  {
+   "source": "QuantFactory/SmolLM2-135M-Instruct-GGUF README.md:L45-45",
+   "file": "README.md",
+   "lines": [
+    45,
+    45
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install transformers",
+   "doc": "card",
+   "doc_sha": "476854d00ede130660aba430d15f9347ad2e7d0e",
+   "scope": "model"
+  },
+  {
+   "source": "QuantFactory/SmolLM2-135M-Instruct-GGUF README.md:L49-62",
+   "file": "README.md",
+   "lines": [
+    49,
+    62
+   ],
+   "lang": "python",
+   "tool": "transformers",
+   "kind": "code",
+   "text": "from transformers import AutoModelForCausalLM, AutoTokenizer\ncheckpoint = \"HuggingFaceTB/SmolLM2-135M-Instruct\"\n\ndevice = \"cuda\" # for GPU usage or \"cpu\" for CPU usage\ntokenizer = AutoTokenizer.from_pretrained(checkpoint)\n# for multiple GPUs install accelerate and do `model = AutoModelForCausalLM.from_pretrained(checkpoint, device_map=\"auto\")`\nmodel = AutoModelForCausalLM.from_pretrained(checkpoint).to(device)\n\nmessages = [{\"role\": \"user\", \"content\": \"What is gravity?\"}]\ninput_text=tokenizer.apply_chat_template(messages, tokenize=False)\nprint(input_text)\ninputs = tokenizer.encode(input_text, return_tensors=\"pt\").to(device)\noutputs = model.generate(inputs, max_new_tokens=50, temperature=0.2, top_p=0.9, do_sample=True)\nprint(tokenizer.decode(outputs[0]))",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-n",
+      "value": "50",
+      "from": "max_new_tokens: 50"
+     },
+     {
+      "flag": "--temp",
+      "value": "0.2",
+      "from": "temperature: 0.2"
+     },
+     {
+      "flag": "--top-p",
+      "value": "0.9",
+      "from": "top_p: 0.9"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "card",
+   "doc_sha": "476854d00ede130660aba430d15f9347ad2e7d0e",
+   "scope": "model"
+  },
+  {
+   "source": "QuantFactory/SmolLM2-135M-Instruct-GGUF README.md:L68-69",
+   "file": "README.md",
+   "lines": [
+    68,
+    69
+   ],
+   "lang": "bash",
+   "tool": "trl",
+   "kind": "command",
+   "text": "pip install trl\ntrl chat --model_name_or_path HuggingFaceTB/SmolLM2-135M-Instruct --device cpu",
+   "doc": "card",
+   "doc_sha": "476854d00ede130660aba430d15f9347ad2e7d0e",
+   "scope": "model"
+  },
+  {
+   "source": "HuggingFaceTB/SmolLM2-135M-Instruct README.md:L41-41",
+   "file": "README.md",
+   "lines": [
+    41,
+    41
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install transformers",
+   "doc": "base-card",
+   "doc_sha": "12fd25f77366fa6b3b4b768ec3050bf629380bac",
+   "scope": "model"
+  },
+  {
+   "source": "HuggingFaceTB/SmolLM2-135M-Instruct README.md:L45-58",
+   "file": "README.md",
+   "lines": [
+    45,
+    58
+   ],
+   "lang": "python",
+   "tool": "transformers",
+   "kind": "code",
+   "text": "from transformers import AutoModelForCausalLM, AutoTokenizer\ncheckpoint = \"HuggingFaceTB/SmolLM2-135M-Instruct\"\n\ndevice = \"cuda\" # for GPU usage or \"cpu\" for CPU usage\ntokenizer = AutoTokenizer.from_pretrained(checkpoint)\n# for multiple GPUs install accelerate and do `model = AutoModelForCausalLM.from_pretrained(checkpoint, device_map=\"auto\")`\nmodel = AutoModelForCausalLM.from_pretrained(checkpoint).to(device)\n\nmessages = [{\"role\": \"user\", \"content\": \"What is gravity?\"}]\ninput_text=tokenizer.apply_chat_template(messages, tokenize=False)\nprint(input_text)\ninputs = tokenizer.encode(input_text, return_tensors=\"pt\").to(device)\noutputs = model.generate(inputs, max_new_tokens=50, temperature=0.2, top_p=0.9, do_sample=True)\nprint(tokenizer.decode(outputs[0]))",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-n",
+      "value": "50",
+      "from": "max_new_tokens: 50"
+     },
+     {
+      "flag": "--temp",
+      "value": "0.2",
+      "from": "temperature: 0.2"
+     },
+     {
+      "flag": "--top-p",
+      "value": "0.9",
+      "from": "top_p: 0.9"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "12fd25f77366fa6b3b4b768ec3050bf629380bac",
+   "scope": "model"
+  },
+  {
+   "source": "HuggingFaceTB/SmolLM2-135M-Instruct README.md:L64-65",
+   "file": "README.md",
+   "lines": [
+    64,
+    65
+   ],
+   "lang": "bash",
+   "tool": "trl",
+   "kind": "command",
+   "text": "pip install trl\ntrl chat --model_name_or_path HuggingFaceTB/SmolLM2-135M-Instruct --device cpu",
+   "doc": "base-card",
+   "doc_sha": "12fd25f77366fa6b3b4b768ec3050bf629380bac",
+   "scope": "model"
+  },
+  {
+   "source": "HuggingFaceTB/SmolLM2-135M-Instruct README.md:L71-71",
+   "file": "README.md",
+   "lines": [
+    71,
+    71
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "npm i @huggingface/transformers",
+   "doc": "base-card",
+   "doc_sha": "12fd25f77366fa6b3b4b768ec3050bf629380bac",
+   "scope": "model"
+  },
+  {
+   "source": "HuggingFaceTB/SmolLM2-135M-Instruct README.md:L75-92",
+   "file": "README.md",
+   "lines": [
+    75,
+    92
+   ],
+   "lang": "js",
+   "tool": "transformers",
+   "kind": "code",
+   "text": "import { pipeline } from \"@huggingface/transformers\";\n\n// Create a text generation pipeline\nconst generator = await pipeline(\n  \"text-generation\",\n  \"HuggingFaceTB/SmolLM2-135M-Instruct\",\n);\n\n// Define the list of messages\nconst messages = [\n  { role: \"system\", content: \"You are a helpful assistant.\" },\n  { role: \"user\", content: \"What is the capital of France?\" },\n];\n\n// Generate a response\nconst output = await generator(messages, { max_new_tokens: 128 });\nconsole.log(output[0].generated_text.at(-1).content);\n// \"The capital of France is Paris.\"",
+   "doc": "base-card",
+   "doc_sha": "12fd25f77366fa6b3b4b768ec3050bf629380bac",
+   "scope": "model"
+  }
+ ],
  "card_notes": null,
  "chat_template": {
-  "gguf_sha256": "872be49dbb638044ad01b60388f48d469ff2980e5f0dccdc22ec907db54d0788"
+  "gguf_sha256": "872be49dbb638044ad01b60388f48d469ff2980e5f0dccdc22ec907db54d0788",
+  "repo_sha256": "872be49dbb638044ad01b60388f48d469ff2980e5f0dccdc22ec907db54d0788",
+  "repo_file": "tokenizer_config.json:chat_template",
+  "same": true,
+  "gguf_chars": 368,
+  "repo_chars": 368,
+  "repo_label": "HuggingFaceTB/SmolLM2-135M-Instruct",
+  "use": "gguf"
  },
  "stop": {
+  "eos_token": "<|im_end|>",
   "eos_token_id": 2,
-  "eos_token_id_source": "GGUF"
+  "eos_token_id_source": "HuggingFaceTB/SmolLM2-135M-Instruct generation_config.json",
+  "analysis": {
+   "tokens": [
+    {
+     "id": 2,
+     "text": "<|im_end|>",
+     "source": "HuggingFaceTB/SmolLM2-135M-Instruct generation_config.json eos_token_id",
+     "eog_by": "GGUF tokenizer.ggml.eos_token_id"
+    }
+   ],
+   "missing": [],
+   "gguf": {
+    "eos": 2
+   }
+  }
  },
  "rope": {
   "rope.freq_base": 100000.0
@@ -70,7 +265,12 @@
   "errors": null,
   "gated": false
  },
- "base_snapshot": null,
+ "base_snapshot": {
+  "path": "HuggingFaceTB--SmolLM2-135M-Instruct/12fd25f77366fa6b3b4b768ec3050bf629380bac",
+  "fetched_bytes": 3529643,
+  "errors": null,
+  "gated": false
+ },
  "repo_files": {
   ".gitattributes": {
    "size": 2485,
@@ -185,16 +385,525 @@
    "skipped": "weight file not used here (144 MB)"
   }
  },
- "base_repo_files": null,
+ "base_repo_files": {
+  ".gitattributes": {
+   "size": 1519,
+   "sha256": null,
+   "blob": "a6344aac8c09253b3b630fb776ae94478aa0275b",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "README.md": {
+   "size": 6772,
+   "sha256": null,
+   "blob": "d168166639f4dec33a0d0bb5f8e7d4e20d9d52ac",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "all_results.json": {
+   "size": 783,
+   "sha256": null,
+   "blob": "85c006f9a5e464072db2465b66ac20be695963d0",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "config.json": {
+   "size": 861,
+   "sha256": null,
+   "blob": "36293b6099200eb8aeb55ae2c01bca2ba46d80d0",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "eval_results.json": {
+   "size": 586,
+   "sha256": null,
+   "blob": "b6c91c24d0db60c08b7a8be9692d83b5c071d5c7",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "generation_config.json": {
+   "size": 132,
+   "sha256": null,
+   "blob": "da6c4d71a43aa7e6f785bdbb28ea5025438a73fa",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "merges.txt": {
+   "size": 466391,
+   "sha256": null,
+   "blob": "69503b13f727ba3812b6803e97442a6de05ef5eb",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "model.safetensors": {
+   "size": 269060552,
+   "sha256": "5af571cbf074e6d21a03528d2330792e532ca608f24ac70a143f6b369968ab8c",
+   "blob": "2ef707371406f95f8aa91fb03a75f22f3c568299",
+   "fetched": false,
+   "skipped": "weight file not used here (269 MB)"
+  },
+  "onnx/model.onnx": {
+   "size": 540345794,
+   "sha256": "1e790f1d6fac94097a6516ed1f07c29049097271d536d538562cd31ffc011a71",
+   "blob": "909ef4de400bb640ec89ff71ec9c06d005dd127d",
+   "fetched": false,
+   "skipped": "weight file not used here (540 MB)"
+  },
+  "onnx/model_bnb4.onnx": {
+   "size": 175434623,
+   "sha256": "bc32b446540fe380adb6b29c7e95b0a8402c9e6addb948307daee99735a776bb",
+   "blob": "2810bffebb155e3f37f5466aff8e44822c8fa38a",
+   "fetched": false,
+   "skipped": "weight file not used here (175 MB)"
+  },
+  "onnx/model_fp16.onnx": {
+   "size": 270267067,
+   "sha256": "e85e706ce14a3499e1f698c0d638b430df75b5f67131d1516bd0d46b844dfb2e",
+   "blob": "427f1b4cf16e375695c148f4a7aec91fb6c67460",
+   "fetched": false,
+   "skipped": "weight file not used here (270 MB)"
+  },
+  "onnx/model_int8.onnx": {
+   "size": 137147867,
+   "sha256": "a7c33f9ef85d06734cc9d1f943f7e2ba57c77e769df727f4d3e217d9f672b0cc",
+   "blob": "9ac229360441ba1e8891a7d9ea6ad0c1af38a29a",
+   "fetched": false,
+   "skipped": "weight file not used here (137 MB)"
+  },
+  "onnx/model_q4.onnx": {
+   "size": 182068553,
+   "sha256": "933577110303a2964096d19b6f15d3b4639bef7f99481ac0b61d9f3ad72f392a",
+   "blob": "d871dd8ab48cf55b491091639ac3c953cf754843",
+   "fetched": false,
+   "skipped": "weight file not used here (182 MB)"
+  },
+  "onnx/model_q4f16.onnx": {
+   "size": 117691126,
+   "sha256": "9358cd4ce037c304621f8c194a525607ae7c5ea73239fcae4c21bd02f2e34ff7",
+   "blob": "04b2fdf2d2ff8267e05a36545095c1fe704ac36a",
+   "fetched": false,
+   "skipped": "weight file not used here (117 MB)"
+  },
+  "onnx/model_quantized.onnx": {
+   "size": 137147981,
+   "sha256": "ecc1a19eece6494e2963cf74f78ace35916e8d0b803168ddd41db00979f18e39",
+   "blob": "0973be84a0863fe14df904921ade5a532e0c8831",
+   "fetched": false,
+   "skipped": "weight file not used here (137 MB)"
+  },
+  "onnx/model_uint8.onnx": {
+   "size": 137147981,
+   "sha256": "ecc1a19eece6494e2963cf74f78ace35916e8d0b803168ddd41db00979f18e39",
+   "blob": "0973be84a0863fe14df904921ade5a532e0c8831",
+   "fetched": false,
+   "skipped": "weight file not used here (137 MB)"
+  },
+  "runs/Oct31_10-14-22_ip-26-0-174-36/events.out.tfevents.1730370128.ip-26-0-174-36.3239327.0": {
+   "size": 78157,
+   "sha256": "774faae98f36baa1ee525b594023c5fc25b4ad9249e04ccdf4cba9ee4f4585fd",
+   "blob": "a5b8d3714ae75cfb3f52ee04950c7329595c41a3",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "runs/Oct31_10-14-22_ip-26-0-174-36/events.out.tfevents.1730376056.ip-26-0-174-36.3239327.1": {
+   "size": 828,
+   "sha256": "043a35029ecb401ef0df75148304075329cd444faf2097b0316e9200018fea5c",
+   "blob": "02a97f0a43b5d34fa5a6baf42c8dab90d5aa5d58",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "special_tokens_map.json": {
+   "size": 655,
+   "sha256": null,
+   "blob": "44719d2e365acac0637fd25a3acf46494ca45940",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "tokenizer.json": {
+   "size": 2104556,
+   "sha256": null,
+   "blob": "f922b1797f0c88e71addc8393787831f2477a4bd",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "tokenizer_config.json": {
+   "size": 3764,
+   "sha256": null,
+   "blob": "8c7b22013909450429303ed10be4398bd63f5457",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "train_results.json": {
+   "size": 232,
+   "sha256": null,
+   "blob": "246b9556e2d21f927f43ff1a0ff9447c5906b46f",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "trainer_state.json": {
+   "size": 57225,
+   "sha256": null,
+   "blob": "6870fd88eb2bd4aa2a3c7d3ecb9214bfdddf64f1",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "training_args.bin": {
+   "size": 6520,
+   "sha256": "90f508e5769b31070c2c8f82e7ecdce816d610763df89479b5258bc66ee8b357",
+   "blob": "24687c3b6c17e3c5fb3443798bc9d79442d5f98c",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "vocab.json": {
+   "size": 800662,
+   "sha256": null,
+   "blob": "0ad5ecc2035b7031b88afb544ee95e2d49baa484",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  }
+ },
  "found_in": [
   "graph.yaml models.smollm2-135m-q4"
  ],
  "match": "unique filename + size match (sha256 not measured)",
  "local_check": null,
- "unknown": [
-  "base_model (not in the card front matter or GGUF metadata)"
+ "unknown": null,
+ "warnings": [
+  "base_model HuggingFaceTB/SmolLM2-135M-Instruct from registry/model-params.yaml (QuantFactory/SmolLM2-135M-Instruct-GGUF README.md:L15)"
  ],
- "warnings": null,
  "updated": "2026-10-19",
- "by": "scripts/model_db.py"
+ "by": "scripts/model_db.py",
+ "gguf_meta": {
+  "general.architecture": "llama",
+  "general.type": "model",
+  "general.name": "Smollm2 135M 8k Lc100K Mix1 Ep2",
+  "general.organization": "HuggingFaceTB",
+  "general.finetune": "8k-lc100k-mix1-ep2",
+  "general.basename": "smollm2",
+  "general.size_label": "135M",
+  "general.license": "apache-2.0",
+  "general.languages": [
+   "en"
+  ],
+  "llama.block_count": 30,
+  "llama.context_length": 8192,
+  "llama.embedding_length": 576,
+  "llama.feed_forward_length": 1536,
+  "llama.attention.head_count": 9,
+  "llama.attention.head_count_kv": 3,
+  "llama.rope.freq_base": 100000.0,
+  "llama.attention.layer_norm_rms_epsilon": 9.999999747378752e-06,
+  "general.file_type": 2,
+  "llama.vocab_size": 49152,
+  "llama.rope.dimension_count": 64,
+  "tokenizer.ggml.add_space_prefix": false,
+  "tokenizer.ggml.add_bos_token": false,
+  "tokenizer.ggml.model": "gpt2",
+  "tokenizer.ggml.pre": "smollm",
+  "tokenizer.ggml.tokens": {
+   "array_len": 49152
+  },
+  "tokenizer.ggml.token_type": {
+   "array_len": 49152
+  },
+  "tokenizer.ggml.merges": {
+   "array_len": 48900
+  },
+  "tokenizer.ggml.bos_token_id": 1,
+  "tokenizer.ggml.eos_token_id": 2,
+  "tokenizer.ggml.unknown_token_id": 0,
+  "tokenizer.ggml.padding_token_id": 2,
+  "tokenizer.chat_template": {
+   "sha256": "872be49dbb638044ad01b60388f48d469ff2980e5f0dccdc22ec907db54d0788",
+   "chars": 368
+  },
+  "general.quantization_version": 2,
+  "_gguf_version": 3,
+  "_n_tensors": 272
+ },
+ "base_chain": [
+  {
+   "repo": "HuggingFaceTB/SmolLM2-135M-Instruct",
+   "api_id": "HuggingFaceTB/SmolLM2-135M-Instruct",
+   "revision": "12fd25f77366fa6b3b4b768ec3050bf629380bac",
+   "via": "card base_model",
+   "card_data": {
+    "license": "apache-2.0",
+    "language": [
+     "en"
+    ],
+    "base_model": [
+     "HuggingFaceTB/SmolLM2-135M"
+    ],
+    "pipeline_tag": "text-generation",
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "text-generation",
+   "safetensors": {
+    "parameters": {
+     "BF16": 134515008
+    },
+    "total": 134515008
+   },
+   "license_files": null
+  },
+  {
+   "repo": "HuggingFaceTB/SmolLM2-135M",
+   "api_id": "HuggingFaceTB/SmolLM2-135M",
+   "revision": "93efa2f097d58c2a74874c7e644dbc9b0cee75a2",
+   "via": "HuggingFaceTB/SmolLM2-135M-Instruct card base_model",
+   "card_data": {
+    "license": "apache-2.0",
+    "language": [
+     "en"
+    ],
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "text-generation",
+   "safetensors": {
+    "parameters": {
+     "BF16": 134515008
+    },
+    "total": 134515008
+   },
+   "license_files": null
+  }
+ ],
+ "github": null,
+ "github_dropped": [
+  {
+   "repo": "huggingface/lighteval",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "huggingface/nanotron",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "huggingface/alignment-handbook",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "huggingface/lighteval",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "huggingface/nanotron",
+   "why": "inference/training tool repo"
+  }
+ ],
+ "descriptor": {
+  "repo_id": {
+   "effective": "QuantFactory/SmolLM2-135M-Instruct-GGUF",
+   "source": "HF API id"
+  },
+  "revision": {
+   "effective": "476854d00ede130660aba430d15f9347ad2e7d0e",
+   "source": "pinned (manifest / database)"
+  },
+  "file": {
+   "effective": "SmolLM2-135M-Instruct.Q4_0.gguf",
+   "source": "HF API siblings"
+  },
+  "bytes": {
+   "effective": 91726912,
+   "source": "HF API LFS size"
+  },
+  "sha256": {
+   "effective": "f68203bfb98b1b1e8c64fac75fab10c4e36acac081609573b4df0fcc19c90dd9",
+   "source": "HF API LFS oid"
+  },
+  "quant": {
+   "effective": "Q4_0",
+   "source": "file name",
+   "values": [
+    {
+     "value": "Q4_0",
+     "source": "file name"
+    },
+    {
+     "value": "Q4_0",
+     "source": "GGUF general.file_type"
+    }
+   ]
+  },
+  "license": {
+   "effective": "apache-2.0",
+   "source": "QuantFactory/SmolLM2-135M-Instruct-GGUF card license",
+   "values": [
+    {
+     "value": "apache-2.0",
+     "source": "QuantFactory/SmolLM2-135M-Instruct-GGUF card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "HuggingFaceTB/SmolLM2-135M-Instruct card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "HuggingFaceTB/SmolLM2-135M card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "GGUF general.license"
+    }
+   ]
+  },
+  "base_model_chain": {
+   "effective": "HuggingFaceTB/SmolLM2-135M-Instruct",
+   "source": "card base_model",
+   "values": [
+    {
+     "value": "HuggingFaceTB/SmolLM2-135M-Instruct",
+     "source": "card base_model"
+    },
+    {
+     "value": "HuggingFaceTB/SmolLM2-135M",
+     "source": "HuggingFaceTB/SmolLM2-135M-Instruct card base_model"
+    }
+   ]
+  },
+  "architecture": {
+   "effective": "llama",
+   "source": "GGUF general.architecture",
+   "values": [
+    {
+     "value": "llama",
+     "source": "GGUF general.architecture"
+    },
+    {
+     "value": "llama",
+     "source": "HF API gguf.architecture"
+    }
+   ]
+  },
+  "hf_architectures": {
+   "effective": [
+    "LlamaForCausalLM"
+   ],
+   "source": "HuggingFaceTB/SmolLM2-135M-Instruct config.json architectures"
+  },
+  "hf_model_type": {
+   "effective": "llama",
+   "source": "HuggingFaceTB/SmolLM2-135M-Instruct config.json model_type"
+  },
+  "parameters": {
+   "effective": 134515008,
+   "source": "HF API gguf.total (QuantFactory/SmolLM2-135M-Instruct-GGUF)",
+   "values": [
+    {
+     "value": 134515008,
+     "source": "HF API gguf.total (QuantFactory/SmolLM2-135M-Instruct-GGUF)"
+    },
+    {
+     "value": 134515008,
+     "source": "HF API safetensors.total (HuggingFaceTB/SmolLM2-135M-Instruct)"
+    },
+    {
+     "value": 134515008,
+     "source": "HF API safetensors.total (HuggingFaceTB/SmolLM2-135M)"
+    }
+   ]
+  },
+  "size_label": {
+   "effective": "135M",
+   "source": "GGUF general.size_label"
+  },
+  "ctx": {
+   "effective": 8192,
+   "source": "HuggingFaceTB/SmolLM2-135M-Instruct config.json max_position_embeddings",
+   "values": [
+    {
+     "value": 8192,
+     "source": "HuggingFaceTB/SmolLM2-135M-Instruct config.json max_position_embeddings"
+    },
+    {
+     "value": 8192,
+     "source": "GGUF llama.context_length"
+    }
+   ],
+   "precedence": "card statement > config.json > GGUF header > GitHub README"
+  },
+  "pipeline_tag": {
+   "effective": "text-generation",
+   "source": "HuggingFaceTB/SmolLM2-135M-Instruct HF API pipeline_tag",
+   "values": [
+    {
+     "value": "text-generation",
+     "source": "HuggingFaceTB/SmolLM2-135M-Instruct HF API pipeline_tag"
+    },
+    {
+     "value": "text-generation",
+     "source": "HuggingFaceTB/SmolLM2-135M HF API pipeline_tag"
+    }
+   ]
+  },
+  "languages": {
+   "effective": [
+    "en"
+   ],
+   "source": "QuantFactory/SmolLM2-135M-Instruct-GGUF card language",
+   "values": [
+    {
+     "value": [
+      "en"
+     ],
+     "source": "QuantFactory/SmolLM2-135M-Instruct-GGUF card language"
+    },
+    {
+     "value": [
+      "en"
+     ],
+     "source": "HuggingFaceTB/SmolLM2-135M-Instruct card language"
+    },
+    {
+     "value": [
+      "en"
+     ],
+     "source": "HuggingFaceTB/SmolLM2-135M card language"
+    },
+    {
+     "value": [
+      "en"
+     ],
+     "source": "GGUF general.languages"
+    }
+   ]
+  }
+ },
+ "required_params": {
+  "kind": "chat",
+  "native_ctx": 8192,
+  "native_ctx_source": "HuggingFaceTB/SmolLM2-135M-Instruct config.json max_position_embeddings",
+  "yarn": null,
+  "yarn_source": null,
+  "items": [
+   {
+    "class": "REQUIRED",
+    "flag": "--jinja",
+    "value": null,
+    "source": "GGUF tokenizer.chat_template (872be49dbb63)",
+    "why_required": "messages, tool calls and thinking are formatted by the model's chat template; without --jinja llama-server falls back to a built-in approximation"
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--temp",
+    "value": "0.2",
+    "source": "HuggingFaceTB/SmolLM2-135M-Instruct HuggingFaceTB/SmolLM2-135M-Instruct README.md:L57 (code example)",
+    "why_required": "the card's recommended sampling (example: Transformers)"
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--top-p",
+    "value": "0.9",
+    "source": "HuggingFaceTB/SmolLM2-135M-Instruct HuggingFaceTB/SmolLM2-135M-Instruct README.md:L57 (code example)",
+    "why_required": "the card's recommended sampling (example: Transformers)"
+   }
+  ]
+ },
+ "blockers": null,
+ "params_problems": null,
+ "params_build": "b11374",
+ "native_ctx": 8192,
+ "native_ctx_source": "HuggingFaceTB/SmolLM2-135M-Instruct config.json max_position_embeddings"
 }

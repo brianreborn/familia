@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "nace-ai--drex-dlm-Q8_0--drex-dlm-Q8_0",
  "repo": "nace-ai/drex-dlm-Q8_0",
  "revision": "4622c4086d40f5be932bc2a6fd67605d2247f6a5",
@@ -9,7 +9,7 @@
  "quant": "Q8_0",
  "arch": "edlm",
  "roles": [
-  "general"
+  "decision"
  ],
  "license": "cc-by-nc-4.0",
  "license_source": "nace-ai/drex-dlm-Q8_0 card license",
@@ -39,24 +39,1089 @@
  ],
  "card_commands": [
   {
-   "tool": "hf",
-   "command": "hf download nace-ai/drex-dlm --local-dir weights/drex-dlm",
-   "source": "nace-ai/drex-dlm README.md:L59"
+   "source": "nace-ai/drex-dlm-Q8_0 README.md:L22",
+   "file": "README.md",
+   "lines": [
+    22,
+    22
+   ],
+   "lang": null,
+   "tool": "hf-download",
+   "kind": "inline",
+   "text": "hf download nace-ai/drex-dlm-Q8_0 drex-dlm-Q8_0.gguf --local-dir ./drex-dlm-q8",
+   "doc": "card",
+   "doc_sha": "4622c4086d40f5be932bc2a6fd67605d2247f6a5",
+   "scope": "model"
   },
   {
-   "tool": "python3",
-   "command": "python3.12 -m venv llama.cpp/.venv-convert",
-   "source": "nace-ai/drex-dlm README.md:L176"
+   "source": "nace-ai/drex-dlm-Q8_0 README.md:L22",
+   "file": "README.md",
+   "lines": [
+    22,
+    22
+   ],
+   "lang": null,
+   "tool": "llama.cpp",
+   "kind": "inline",
+   "text": "--embedding --pooling none -c 16384 -b 16384 -ub 16384 -np 1 --no-warmup",
+   "doc": "card",
+   "doc_sha": "4622c4086d40f5be932bc2a6fd67605d2247f6a5",
+   "scope": "model"
   },
   {
+   "source": "nace-ai/drex-dlm README.md:L54-60",
+   "file": "README.md",
+   "lines": [
+    54,
+    60
+   ],
+   "lang": "bash",
+   "tool": "hf-download",
+   "kind": "command",
+   "text": "git clone https://github.com/nace-ai/drex-decision-models.git\ncd drex-decision-models\npython3.12 -m venv .venv\nsource .venv/bin/activate\npython -m pip install -r requirements.txt\nhf download nace-ai/drex-dlm --local-dir weights/drex-dlm\npython inference.py --model weights/drex-dlm --request examples/request.json",
+   "doc": "base-card",
+   "doc_sha": "8f6f8244ce0b186b3caa4cdbaae1c9f3986bf63e",
+   "scope": "family: weights/drex-dlm"
+  },
+  {
+   "source": "nace-ai/drex-dlm README.md:L66-69",
+   "file": "README.md",
+   "lines": [
+    66,
+    69
+   ],
+   "lang": "bash",
+   "tool": "curl",
+   "kind": "command",
+   "text": "python serve.py --model weights/drex-dlm --port 8000\ncurl http://127.0.0.1:8000/v1/systemone \\\n  -H 'Content-Type: application/json' \\\n  -d @examples/request.json",
+   "doc": "base-card",
+   "doc_sha": "8f6f8244ce0b186b3caa4cdbaae1c9f3986bf63e",
+   "scope": "family: weights/drex-dlm"
+  },
+  {
+   "source": "nace-ai/drex-dlm README.md:L82-106",
+   "file": "README.md",
+   "lines": [
+    82,
+    106
+   ],
+   "lang": "json",
+   "tool": "json",
+   "kind": "config",
+   "text": "{\n  \"state\": {\n    \"ticket\": \"I was charged twice for the same order. Please refund the extra payment.\"\n  },\n  \"questions\": {\n    \"team\": {\n      \"type\": \"choice\",\n      \"instructions\": \"Which team should handle this ticket?\",\n      \"criteria\": {\n        \"billing\": \"Payments, charges, and refunds\",\n        \"technical\": \"Bugs and outages\",\n        \"other\": \"Anything else\"\n      }\n    },\n    \"refund\": {\n      \"type\": \"noul\",\n      \"instructions\": \"Does the customer explicitly ask for a refund?\"\n    },\n    \"urgency\": {\n      \"type\": \"score\",\n      \"instructions\": \"How urgent is this ticket?\",\n      \"criteria\": [\"Routine\", \"Soon\", \"Urgent\"]\n    }\n  }\n}",
+   "doc": "base-card",
+   "doc_sha": "8f6f8244ce0b186b3caa4cdbaae1c9f3986bf63e",
+   "scope": "model"
+  },
+  {
+   "source": "nace-ai/drex-dlm README.md:L120-137",
+   "file": "README.md",
+   "lines": [
+    120,
+    137
+   ],
+   "lang": "json",
+   "tool": "json",
+   "kind": "config",
+   "text": "{\n  \"answers\": {\n    \"team\": {\n      \"type\": \"choice\",\n      \"choice\": \"billing\",\n      \"confidence\": 0.9461,\n      \"probabilities\": { \"billing\": 0.9641, \"technical\": 0.001, \"other\": 0.0349 }\n    },\n    \"refund\": { \"type\": \"noul\", \"noul\": 0.8548 },\n    \"urgency\": {\n      \"type\": \"score\",\n      \"score\": 1.4078,\n      \"legend\": [\"Routine\", \"Soon\", \"Urgent\"],\n      \"probabilities\": { \"0\": 0.1876, \"1\": 0.2169, \"2\": 0.5955 },\n      \"confidence\": 0.7039\n    }\n  }\n}",
+   "doc": "base-card",
+   "doc_sha": "8f6f8244ce0b186b3caa4cdbaae1c9f3986bf63e",
+   "scope": "model"
+  },
+  {
+   "source": "nace-ai/drex-dlm README.md:L157-158",
+   "file": "README.md",
+   "lines": [
+    157,
+    158
+   ],
+   "lang": "bash",
    "tool": "python",
-   "command": "llama.cpp/.venv-convert/bin/python -m pip install -r llama.cpp/requirements/requirements-convert_hf_to_gguf.txt",
-   "source": "nace-ai/drex-dlm README.md:L177"
+   "kind": "code",
+   "text": "source .venv/bin/activate\npython serve.py --model weights/drex-dlm --host 127.0.0.1 --port 8000",
+   "doc": "base-card",
+   "doc_sha": "8f6f8244ce0b186b3caa4cdbaae1c9f3986bf63e",
+   "scope": "family: weights/drex-dlm"
   },
   {
-   "tool": "python",
-   "command": "llama.cpp/.venv-convert/bin/python llama.cpp/convert_hf_to_gguf.py weights/drex-dlm --outfile weights/drex-dlm/drex-dlm-f16.gguf --outtype f16",
-   "source": "nace-ai/drex-dlm README.md:L179"
+   "source": "nace-ai/drex-dlm README.md:L168-170",
+   "file": "README.md",
+   "lines": [
+    168,
+    170
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "git clone --branch edlm --single-branch https://github.com/nace-ai/llama.cpp.git llama.cpp\ncmake -S llama.cpp -B llama.cpp/build\ncmake --build llama.cpp/build --target llama-server --parallel 8",
+   "doc": "base-card",
+   "doc_sha": "8f6f8244ce0b186b3caa4cdbaae1c9f3986bf63e",
+   "scope": "model"
+  },
+  {
+   "source": "nace-ai/drex-dlm README.md:L176-180",
+   "file": "README.md",
+   "lines": [
+    176,
+    180
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "python3.12 -m venv llama.cpp/.venv-convert\nllama.cpp/.venv-convert/bin/python -m pip install \\\n  -r llama.cpp/requirements/requirements-convert_hf_to_gguf.txt\nllama.cpp/.venv-convert/bin/python llama.cpp/convert_hf_to_gguf.py weights/drex-dlm \\\n  --outfile weights/drex-dlm/drex-dlm-f16.gguf --outtype f16",
+   "doc": "base-card",
+   "doc_sha": "8f6f8244ce0b186b3caa4cdbaae1c9f3986bf63e",
+   "scope": "model"
+  },
+  {
+   "source": "nace-ai/drex-dlm README.md:L186-190",
+   "file": "README.md",
+   "lines": [
+    186,
+    190
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "GGML_METAL_TENSOR_DISABLE=1 llama.cpp/build/bin/llama-server \\\n  -m weights/drex-dlm/drex-dlm-f16.gguf \\\n  --host 127.0.0.1 --port 8097 \\\n  --embedding --pooling none \\\n  -c 16384 -b 16384 -ub 16384 -np 1 --no-warmup",
+   "llama": [
+    {
+     "tool": "llama-server",
+     "raw": "GGML_METAL_TENSOR_DISABLE=1 llama.cpp/build/bin/llama-server    -m weights/drex-dlm/drex-dlm-f16.gguf    --host 127.0.0.1 --port 8097    --embedding --pooling none    -c 16384 -b 16384 -ub 16384 -np 1 --no-warmup",
+     "flags": [
+      {
+       "flag": "-m",
+       "canonical": "--model",
+       "value": "weights/drex-dlm/drex-dlm-f16.gguf",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--host",
+       "canonical": "--host",
+       "value": "127.0.0.1",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--port",
+       "canonical": "--port",
+       "value": "8097",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--embedding",
+       "canonical": "--embedding",
+       "value": null,
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--pooling",
+       "canonical": "--pooling",
+       "value": "none",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-c",
+       "canonical": "--ctx-size",
+       "value": "16384",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-b",
+       "canonical": "--batch-size",
+       "value": "16384",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-ub",
+       "canonical": "--ubatch-size",
+       "value": "16384",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-np",
+       "canonical": "--parallel",
+       "value": "1",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--no-warmup",
+       "canonical": "--no-warmup",
+       "value": null,
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": {
+      "GGML_METAL_TENSOR_DISABLE": "1"
+     }
+    }
+   ],
+   "doc": "base-card",
+   "doc_sha": "8f6f8244ce0b186b3caa4cdbaae1c9f3986bf63e",
+   "scope": "model"
+  },
+  {
+   "source": "nace-ai/drex-dlm README.md:L196-197",
+   "file": "README.md",
+   "lines": [
+    196,
+    197
+   ],
+   "lang": "bash",
+   "tool": "curl",
+   "kind": "command",
+   "text": "curl http://127.0.0.1:8097/v1/systemone \\\n  -H 'Content-Type: application/json' -d @examples/request.json",
+   "doc": "base-card",
+   "doc_sha": "8f6f8244ce0b186b3caa4cdbaae1c9f3986bf63e",
+   "scope": "model"
+  },
+  {
+   "source": "nace-ai/drex-dlm README.md:L207-213",
+   "file": "README.md",
+   "lines": [
+    207,
+    213
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "git clone --branch nace-edlm --single-branch https://github.com/nace-ai/ollama.git ollama\ncd ollama\nexport OLLAMA_LLAMA_CPP_SOURCE=\"$PWD/../llama.cpp\"\ncmake -S llama/server --preset darwin\ncmake --build build/llama-server-darwin --target llama-server --parallel 8\nGOTOOLCHAIN=auto go build -trimpath -o ollama .\ncd ..",
+   "doc": "base-card",
+   "doc_sha": "8f6f8244ce0b186b3caa4cdbaae1c9f3986bf63e",
+   "scope": "model"
+  },
+  {
+   "source": "nace-ai/drex-dlm README.md:L219-223",
+   "file": "README.md",
+   "lines": [
+    219,
+    223
+   ],
+   "lang": "bash",
+   "tool": "ollama",
+   "kind": "command",
+   "text": "cat > weights/drex-dlm/Modelfile <<'EOF'\nFROM ./drex-dlm-f16.gguf\nCAPABILITY decision\nPARAMETER num_ctx 16384\nEOF",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-c",
+      "value": "16384",
+      "from": "PARAMETER num_ctx 16384"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "8f6f8244ce0b186b3caa4cdbaae1c9f3986bf63e",
+   "scope": "model"
+  },
+  {
+   "source": "nace-ai/drex-dlm README.md:L229-231",
+   "file": "README.md",
+   "lines": [
+    229,
+    231
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "OLLAMA_HOST=127.0.0.1:11434 \\\nOLLAMA_LLAMA_SERVER=\"$PWD/ollama/build/llama-server-darwin/bin/llama-server\" \\\n  ollama/ollama serve",
+   "doc": "base-card",
+   "doc_sha": "8f6f8244ce0b186b3caa4cdbaae1c9f3986bf63e",
+   "scope": "model"
+  },
+  {
+   "source": "nace-ai/drex-dlm README.md:L237-240",
+   "file": "README.md",
+   "lines": [
+    237,
+    240
+   ],
+   "lang": "bash",
+   "tool": "curl",
+   "kind": "command",
+   "text": "OLLAMA_HOST=127.0.0.1:11434 ollama/ollama create drex-dlm \\\n  -f weights/drex-dlm/Modelfile\ncurl http://127.0.0.1:11434/v1/systemone \\\n  -H 'Content-Type: application/json' -d @examples/request.json",
+   "doc": "base-card",
+   "doc_sha": "8f6f8244ce0b186b3caa4cdbaae1c9f3986bf63e",
+   "scope": "model"
+  },
+  {
+   "source": "nace-ai/drex-dlm README.md:L252-252",
+   "file": "README.md",
+   "lines": [
+    252,
+    252
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "KEV_CONTEXT=32768 python serve.py --model weights/drex-dlm --port 8000",
+   "doc": "base-card",
+   "doc_sha": "8f6f8244ce0b186b3caa4cdbaae1c9f3986bf63e",
+   "scope": "family: weights/drex-dlm"
+  },
+  {
+   "source": "nace-ai/drex-dlm README.md:L258-263",
+   "file": "README.md",
+   "lines": [
+    258,
+    263
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "GGML_METAL_TENSOR_DISABLE=1 SYSTEMONE_CONTEXT=32768 llama.cpp/build/bin/llama-server \\\n  -m weights/drex-dlm/drex-dlm-f16.gguf \\\n  --host 127.0.0.1 --port 8097 \\\n  --embedding --pooling none \\\n  -c 32768 -b 32768 -ub 32768 -np 1 \\\n  --no-warmup",
+   "llama": [
+    {
+     "tool": "llama-server",
+     "raw": "GGML_METAL_TENSOR_DISABLE=1 SYSTEMONE_CONTEXT=32768 llama.cpp/build/bin/llama-server    -m weights/drex-dlm/drex-dlm-f16.gguf    --host 127.0.0.1 --port 8097    --embedding --pooling none    -c 32768 -b 32768 -ub 32768 -np 1    --no-warmup",
+     "flags": [
+      {
+       "flag": "-m",
+       "canonical": "--model",
+       "value": "weights/drex-dlm/drex-dlm-f16.gguf",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--host",
+       "canonical": "--host",
+       "value": "127.0.0.1",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--port",
+       "canonical": "--port",
+       "value": "8097",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--embedding",
+       "canonical": "--embedding",
+       "value": null,
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--pooling",
+       "canonical": "--pooling",
+       "value": "none",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-c",
+       "canonical": "--ctx-size",
+       "value": "32768",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-b",
+       "canonical": "--batch-size",
+       "value": "32768",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-ub",
+       "canonical": "--ubatch-size",
+       "value": "32768",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-np",
+       "canonical": "--parallel",
+       "value": "1",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--no-warmup",
+       "canonical": "--no-warmup",
+       "value": null,
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": {
+      "GGML_METAL_TENSOR_DISABLE": "1",
+      "SYSTEMONE_CONTEXT": "32768"
+     }
+    }
+   ],
+   "doc": "base-card",
+   "doc_sha": "8f6f8244ce0b186b3caa4cdbaae1c9f3986bf63e",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/nace-ai/drex-agent-skill README.md:L29-29",
+   "file": "README.md",
+   "lines": [
+    29,
+    29
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "   export DREX_API_KEY='paste-your-key-here'",
+   "doc": "github",
+   "doc_sha": "a8e5914e784f2c54f6d826fb406c86f014b11edd",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/nace-ai/drex-agent-skill README.md:L43-44",
+   "file": "README.md",
+   "lines": [
+    43,
+    44
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "claude plugin marketplace add nace-ai/drex-agent-skills\nclaude plugin install drex@nace-ai --config make_default=true",
+   "doc": "github",
+   "doc_sha": "a8e5914e784f2c54f6d826fb406c86f014b11edd",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/nace-ai/drex-agent-skill README.md:L54-57",
+   "file": "README.md",
+   "lines": [
+    54,
+    57
+   ],
+   "lang": "bash",
+   "tool": "git",
+   "kind": "command",
+   "text": "git clone --depth 1 https://github.com/nace-ai/drex-agent-skills.git \"$HOME/drex-agent-skills\"\nmkdir -p ~/.config/opencode/skills\nln -s \"$HOME/drex-agent-skills/skills/drex-for-harness\" ~/.config/opencode/skills/drex-for-harness\nln -s \"$HOME/drex-agent-skills/skills/drexify\" ~/.config/opencode/skills/drexify",
+   "doc": "github",
+   "doc_sha": "a8e5914e784f2c54f6d826fb406c86f014b11edd",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/nace-ai/drex-agent-skill README.md:L71-73",
+   "file": "README.md",
+   "lines": [
+    71,
+    73
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "hermes skills install nace-ai/drex-agent-skills/skills/drex-for-harness\nhermes skills install nace-ai/drex-agent-skills/skills/drexify\nhermes skills list",
+   "doc": "github",
+   "doc_sha": "a8e5914e784f2c54f6d826fb406c86f014b11edd",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/nace-ai/drex-agent-skill README.md:L79-81",
+   "file": "README.md",
+   "lines": [
+    79,
+    81
+   ],
+   "lang": "yaml",
+   "tool": "yaml",
+   "kind": "config",
+   "text": "terminal:\n  env_passthrough:\n    - DREX_API_KEY",
+   "doc": "github",
+   "doc_sha": "a8e5914e784f2c54f6d826fb406c86f014b11edd",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/nace-ai/drex-agent-skill README.md:L91-91",
+   "file": "README.md",
+   "lines": [
+    91,
+    91
+   ],
+   "lang": "text",
+   "tool": "text",
+   "kind": "other",
+   "text": "$skill-installer Install https://github.com/nace-ai/drex-agent-skills/tree/main/skills/drex-for-harness and https://github.com/nace-ai/drex-agent-skills/tree/main/skills/drexify",
+   "doc": "github",
+   "doc_sha": "a8e5914e784f2c54f6d826fb406c86f014b11edd",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/nace-ai/drex-agent-skill README.md:L101-104",
+   "file": "README.md",
+   "lines": [
+    101,
+    104
+   ],
+   "lang": "bash",
+   "tool": "git",
+   "kind": "command",
+   "text": "git clone --depth 1 https://github.com/nace-ai/drex-agent-skills.git \"$HOME/drex-agent-skills\"\nmkdir -p ~/.cursor/skills\nln -s \"$HOME/drex-agent-skills/skills/drex-for-harness\" ~/.cursor/skills/drex-for-harness\nln -s \"$HOME/drex-agent-skills/skills/drexify\" ~/.cursor/skills/drexify",
+   "doc": "github",
+   "doc_sha": "a8e5914e784f2c54f6d826fb406c86f014b11edd",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/nace-ai/drex-agent-skill README.md:L112-112",
+   "file": "README.md",
+   "lines": [
+    112,
+    112
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "export DREX_API_KEY=\"$(security find-generic-password -a \"$USER\" -s drex -w)\"",
+   "doc": "github",
+   "doc_sha": "a8e5914e784f2c54f6d826fb406c86f014b11edd",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/nace-ai/drex-agent-skill README.md:L122-124",
+   "file": "README.md",
+   "lines": [
+    122,
+    124
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "gemini skills install https://github.com/nace-ai/drex-agent-skills.git --path skills/drex-for-harness\ngemini skills install https://github.com/nace-ai/drex-agent-skills.git --path skills/drexify\ngemini skills list --all",
+   "doc": "github",
+   "doc_sha": "a8e5914e784f2c54f6d826fb406c86f014b11edd",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/nace-ai/drex-agent-skill README.md:L134-137",
+   "file": "README.md",
+   "lines": [
+    134,
+    137
+   ],
+   "lang": "bash",
+   "tool": "git",
+   "kind": "command",
+   "text": "git clone --depth 1 https://github.com/nace-ai/drex-agent-skills.git \"$HOME/drex-agent-skills\"\ncopilot skill add \"$HOME/drex-agent-skills/skills/drex-for-harness\"\ncopilot skill add \"$HOME/drex-agent-skills/skills/drexify\"\ncopilot skill list",
+   "doc": "github",
+   "doc_sha": "a8e5914e784f2c54f6d826fb406c86f014b11edd",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/nace-ai/drex-agent-skill README.md:L149-152",
+   "file": "README.md",
+   "lines": [
+    149,
+    152
+   ],
+   "lang": "bash",
+   "tool": "git",
+   "kind": "command",
+   "text": "git clone --depth 1 https://github.com/nace-ai/drex-agent-skills.git \"$HOME/drex-agent-skills\"\nmkdir -p ~/.codeium/windsurf/skills\nln -s \"$HOME/drex-agent-skills/skills/drex-for-harness\" ~/.codeium/windsurf/skills/drex-for-harness\nln -s \"$HOME/drex-agent-skills/skills/drexify\" ~/.codeium/windsurf/skills/drexify",
+   "doc": "github",
+   "doc_sha": "a8e5914e784f2c54f6d826fb406c86f014b11edd",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/nace-ai/drex-agent-skill README.md:L162-165",
+   "file": "README.md",
+   "lines": [
+    162,
+    165
+   ],
+   "lang": "bash",
+   "tool": "git",
+   "kind": "command",
+   "text": "git clone --depth 1 https://github.com/nace-ai/drex-agent-skills.git \"$HOME/drex-agent-skills\"\nmkdir -p ~/.cline/skills\nln -s \"$HOME/drex-agent-skills/skills/drex-for-harness\" ~/.cline/skills/drex-for-harness\nln -s \"$HOME/drex-agent-skills/skills/drexify\" ~/.cline/skills/drexify",
+   "doc": "github",
+   "doc_sha": "a8e5914e784f2c54f6d826fb406c86f014b11edd",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/nace-ai/drex-agent-skill README.md:L175-177",
+   "file": "README.md",
+   "lines": [
+    175,
+    177
+   ],
+   "lang": "bash",
+   "tool": "git",
+   "kind": "command",
+   "text": "git clone --depth 1 https://github.com/nace-ai/drex-agent-skills.git \"$HOME/drex-agent-skills\"\nopenclaw skills install \"$HOME/drex-agent-skills/skills/drex-for-harness\" --global\nopenclaw skills install \"$HOME/drex-agent-skills/skills/drexify\" --global",
+   "doc": "github",
+   "doc_sha": "a8e5914e784f2c54f6d826fb406c86f014b11edd",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/nace-ai/drex-agent-skill README.md:L187-188",
+   "file": "README.md",
+   "lines": [
+    187,
+    188
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "pi install git:github.com/nace-ai/drex-agent-skills\npi list",
+   "doc": "github",
+   "doc_sha": "a8e5914e784f2c54f6d826fb406c86f014b11edd",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/nace-ai/drex-agent-skill README.md:L200-203",
+   "file": "README.md",
+   "lines": [
+    200,
+    203
+   ],
+   "lang": "bash",
+   "tool": "git",
+   "kind": "command",
+   "text": "git clone --depth 1 https://github.com/nace-ai/drex-agent-skills.git \"$HOME/drex-agent-skills\"\nmkdir -p \"${DSH_HOME:-$HOME/.dsh}/skills\"\nln -s \"$HOME/drex-agent-skills/skills/drex-for-harness\" \"${DSH_HOME:-$HOME/.dsh}/skills/drex-for-harness\"\nln -s \"$HOME/drex-agent-skills/skills/drexify\" \"${DSH_HOME:-$HOME/.dsh}/skills/drexify\"",
+   "doc": "github",
+   "doc_sha": "a8e5914e784f2c54f6d826fb406c86f014b11edd",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/nace-ai/drex-agent-skill README.md:L213-216",
+   "file": "README.md",
+   "lines": [
+    213,
+    216
+   ],
+   "lang": "bash",
+   "tool": "git",
+   "kind": "command",
+   "text": "git clone --depth 1 https://github.com/nace-ai/drex-agent-skills.git \"$HOME/drex-agent-skills\"\nmkdir -p \"/path/to/your-agent/skills\"\nln -s \"$HOME/drex-agent-skills/skills/drex-for-harness\" \"/path/to/your-agent/skills/drex-for-harness\"\nln -s \"$HOME/drex-agent-skills/skills/drexify\" \"/path/to/your-agent/skills/drexify\"",
+   "doc": "github",
+   "doc_sha": "a8e5914e784f2c54f6d826fb406c86f014b11edd",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/nace-ai/drex-agent-skill README.md:L277-279",
+   "file": "README.md",
+   "lines": [
+    277,
+    279
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "claude plugin marketplace update nace-ai\nclaude plugin update drex@nace-ai\nclaude plugin uninstall drex@nace-ai",
+   "doc": "github",
+   "doc_sha": "a8e5914e784f2c54f6d826fb406c86f014b11edd",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/nace-ai/drex-decision-models README.md:L36-41",
+   "file": "README.md",
+   "lines": [
+    36,
+    41
+   ],
+   "lang": "bash",
+   "tool": "hf-download",
+   "kind": "command",
+   "text": "git clone https://github.com/nace-ai/drex-decision-models.git\ncd drex-decision-models\npython3 -m venv .venv && source .venv/bin/activate\npip install -r requirements.txt\nhf download nace-ai/drex-v1.5 --local-dir weights/drex-v1.5\npython inference.py --model weights/drex-v1.5 --request examples/request.json",
+   "doc": "github",
+   "doc_sha": "be8ba7c8157241b9393862e9fcec104d0dc5caff",
+   "scope": "family: weights/drex-v1.5"
+  },
+  {
+   "source": "github.com/nace-ai/drex-decision-models README.md:L47-49",
+   "file": "README.md",
+   "lines": [
+    47,
+    49
+   ],
+   "lang": "bash",
+   "tool": "curl",
+   "kind": "command",
+   "text": "python serve.py --model weights/drex-v1.5 --port 8000\ncurl http://127.0.0.1:8000/v1/systemone \\\n  -H 'Content-Type: application/json' -d @examples/request.json",
+   "doc": "github",
+   "doc_sha": "be8ba7c8157241b9393862e9fcec104d0dc5caff",
+   "scope": "family: weights/drex-v1.5"
+  },
+  {
+   "source": "github.com/nace-ai/drex-decision-models README.md:L64-71",
+   "file": "README.md",
+   "lines": [
+    64,
+    71
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "git clone --branch drex-v2.0 --single-branch https://github.com/nace-ai/llama.cpp.git\ncmake -S llama.cpp -B llama.cpp/build\ncmake --build llama.cpp/build -j --target llama-server llama-quantize\n\npython llama.cpp/convert_hf_to_gguf.py weights/drex-v1.5 --no-mtp --outtype bf16 \\\n  --outfile weights/drex-v1.5/drex-v1.5.gguf\nllama.cpp/build/bin/llama-server -m weights/drex-v1.5/drex-v1.5.gguf \\\n  --embedding --pooling none -np 2 -c 32768 -b 16384 -ub 2048 --port 8000",
+   "llama": [
+    {
+     "tool": "llama-server",
+     "raw": "llama.cpp/build/bin/llama-server -m weights/drex-v1.5/drex-v1.5.gguf    --embedding --pooling none -np 2 -c 32768 -b 16384 -ub 2048 --port 8000",
+     "flags": [
+      {
+       "flag": "-m",
+       "canonical": "--model",
+       "value": "weights/drex-v1.5/drex-v1.5.gguf",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--embedding",
+       "canonical": "--embedding",
+       "value": null,
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--pooling",
+       "canonical": "--pooling",
+       "value": "none",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-np",
+       "canonical": "--parallel",
+       "value": "2",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-c",
+       "canonical": "--ctx-size",
+       "value": "32768",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-b",
+       "canonical": "--batch-size",
+       "value": "16384",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-ub",
+       "canonical": "--ubatch-size",
+       "value": "2048",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--port",
+       "canonical": "--port",
+       "value": "8000",
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    }
+   ],
+   "doc": "github",
+   "doc_sha": "be8ba7c8157241b9393862e9fcec104d0dc5caff",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/nace-ai/drex-decision-models README.md:L81-87",
+   "file": "README.md",
+   "lines": [
+    81,
+    87
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "git clone --branch drex-v2.0 --single-branch https://github.com/nace-ai/ollama.git\ncd ollama\nexport OLLAMA_LLAMA_CPP_SOURCE=\"$PWD/../llama.cpp\"\ncmake -S llama/server --preset darwin\ncmake --build build/llama-server-darwin --target llama-server --parallel 8\nGOTOOLCHAIN=auto go build -trimpath -o ollama .\ncd ..",
+   "doc": "github",
+   "doc_sha": "be8ba7c8157241b9393862e9fcec104d0dc5caff",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/nace-ai/drex-decision-models README.md:L93-99",
+   "file": "README.md",
+   "lines": [
+    93,
+    99
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "cat > weights/drex-v1.5/Modelfile <<'EOF'\nFROM ./drex-v1.5.gguf\nCAPABILITY decision\nPARAMETER num_ctx 16384\nEOF\nOLLAMA_HOST=127.0.0.1:11434 \\\nOLLAMA_LLAMA_SERVER=\"$PWD/ollama/build/llama-server-darwin/bin/llama-server\" ollama/ollama serve",
+   "doc": "github",
+   "doc_sha": "be8ba7c8157241b9393862e9fcec104d0dc5caff",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/nace-ai/drex-decision-models README.md:L105-107",
+   "file": "README.md",
+   "lines": [
+    105,
+    107
+   ],
+   "lang": "bash",
+   "tool": "curl",
+   "kind": "command",
+   "text": "OLLAMA_HOST=127.0.0.1:11434 ollama/ollama create drex-v1.5 -f weights/drex-v1.5/Modelfile\njq '. + {model: \"drex-v1.5\"}' examples/request.json | curl http://127.0.0.1:11434/v1/systemone \\\n  -H 'Content-Type: application/json' -d @-",
+   "doc": "github",
+   "doc_sha": "be8ba7c8157241b9393862e9fcec104d0dc5caff",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/nace-ai/drex-decision-models models/drex-dlm/README.md:L35-36",
+   "file": "models/drex-dlm/README.md",
+   "lines": [
+    35,
+    36
+   ],
+   "lang": "bash",
+   "tool": "hf-download",
+   "kind": "command",
+   "text": "hf download nace-ai/drex-dlm --local-dir weights/drex-dlm\npython serve.py --model weights/drex-dlm --port 8000",
+   "doc": "github",
+   "doc_sha": "be8ba7c8157241b9393862e9fcec104d0dc5caff",
+   "scope": "family: weights/drex-dlm"
+  },
+  {
+   "source": "github.com/nace-ai/drex-decision-models models/drex-dlm/README.md:L46-48",
+   "file": "models/drex-dlm/README.md",
+   "lines": [
+    46,
+    48
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "git clone --branch edlm --single-branch https://github.com/nace-ai/llama.cpp.git\ncmake -S llama.cpp -B llama.cpp/build\ncmake --build llama.cpp/build --target llama-server --parallel 8",
+   "doc": "github",
+   "doc_sha": "be8ba7c8157241b9393862e9fcec104d0dc5caff",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/nace-ai/drex-decision-models models/drex-dlm/README.md:L54-58",
+   "file": "models/drex-dlm/README.md",
+   "lines": [
+    54,
+    58
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "python3.12 -m venv llama.cpp/.venv-convert\nllama.cpp/.venv-convert/bin/python -m pip install \\\n  -r llama.cpp/requirements/requirements-convert_hf_to_gguf.txt\nllama.cpp/.venv-convert/bin/python llama.cpp/convert_hf_to_gguf.py weights/drex-dlm \\\n  --outfile weights/drex-dlm/drex-dlm-f16.gguf --outtype f16",
+   "doc": "github",
+   "doc_sha": "be8ba7c8157241b9393862e9fcec104d0dc5caff",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/nace-ai/drex-decision-models models/drex-dlm/README.md:L64-68",
+   "file": "models/drex-dlm/README.md",
+   "lines": [
+    64,
+    68
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "GGML_METAL_TENSOR_DISABLE=1 llama.cpp/build/bin/llama-server \\\n  -m weights/drex-dlm/drex-dlm-f16.gguf \\\n  --host 127.0.0.1 --port 8097 \\\n  --embedding --pooling none \\\n  -c 16384 -b 16384 -ub 16384 -np 1 --no-warmup",
+   "llama": [
+    {
+     "tool": "llama-server",
+     "raw": "GGML_METAL_TENSOR_DISABLE=1 llama.cpp/build/bin/llama-server    -m weights/drex-dlm/drex-dlm-f16.gguf    --host 127.0.0.1 --port 8097    --embedding --pooling none    -c 16384 -b 16384 -ub 16384 -np 1 --no-warmup",
+     "flags": [
+      {
+       "flag": "-m",
+       "canonical": "--model",
+       "value": "weights/drex-dlm/drex-dlm-f16.gguf",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--host",
+       "canonical": "--host",
+       "value": "127.0.0.1",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--port",
+       "canonical": "--port",
+       "value": "8097",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--embedding",
+       "canonical": "--embedding",
+       "value": null,
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--pooling",
+       "canonical": "--pooling",
+       "value": "none",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-c",
+       "canonical": "--ctx-size",
+       "value": "16384",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-b",
+       "canonical": "--batch-size",
+       "value": "16384",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-ub",
+       "canonical": "--ubatch-size",
+       "value": "16384",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-np",
+       "canonical": "--parallel",
+       "value": "1",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--no-warmup",
+       "canonical": "--no-warmup",
+       "value": null,
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": {
+      "GGML_METAL_TENSOR_DISABLE": "1"
+     }
+    }
+   ],
+   "doc": "github",
+   "doc_sha": "be8ba7c8157241b9393862e9fcec104d0dc5caff",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/nace-ai/drex-decision-models models/drex-dlm/README.md:L74-75",
+   "file": "models/drex-dlm/README.md",
+   "lines": [
+    74,
+    75
+   ],
+   "lang": "bash",
+   "tool": "curl",
+   "kind": "command",
+   "text": "curl http://127.0.0.1:8097/v1/systemone \\\n  -H 'Content-Type: application/json' -d @examples/request.json",
+   "doc": "github",
+   "doc_sha": "be8ba7c8157241b9393862e9fcec104d0dc5caff",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/nace-ai/drex-decision-models models/drex-dlm/README.md:L80",
+   "file": "models/drex-dlm/README.md",
+   "lines": [
+    80,
+    80
+   ],
+   "lang": null,
+   "tool": "llama.cpp",
+   "kind": "inline",
+   "text": "-c 32768 -b 32768 -ub 32768",
+   "doc": "github",
+   "doc_sha": "be8ba7c8157241b9393862e9fcec104d0dc5caff",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/nace-ai/drex-decision-models models/drex-dlm/README.md:L87-93",
+   "file": "models/drex-dlm/README.md",
+   "lines": [
+    87,
+    93
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "git clone --branch nace-edlm --single-branch https://github.com/nace-ai/ollama.git\ncd ollama\nexport OLLAMA_LLAMA_CPP_SOURCE=\"$PWD/../llama.cpp\"\ncmake -S llama/server --preset darwin\ncmake --build build/llama-server-darwin --target llama-server --parallel 8\nGOTOOLCHAIN=auto go build -trimpath -o ollama .\ncd ..",
+   "doc": "github",
+   "doc_sha": "be8ba7c8157241b9393862e9fcec104d0dc5caff",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/nace-ai/drex-decision-models models/drex-dlm/README.md:L99-103",
+   "file": "models/drex-dlm/README.md",
+   "lines": [
+    99,
+    103
+   ],
+   "lang": "bash",
+   "tool": "ollama",
+   "kind": "command",
+   "text": "cat > weights/drex-dlm/Modelfile <<'EOF'\nFROM ./drex-dlm-f16.gguf\nCAPABILITY decision\nPARAMETER num_ctx 16384\nEOF",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-c",
+      "value": "16384",
+      "from": "PARAMETER num_ctx 16384"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "github",
+   "doc_sha": "be8ba7c8157241b9393862e9fcec104d0dc5caff",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/nace-ai/drex-decision-models models/drex-dlm/README.md:L109-111",
+   "file": "models/drex-dlm/README.md",
+   "lines": [
+    109,
+    111
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "OLLAMA_HOST=127.0.0.1:11434 \\\nOLLAMA_LLAMA_SERVER=\"$PWD/ollama/build/llama-server-darwin/bin/llama-server\" \\\n  ollama/ollama serve",
+   "doc": "github",
+   "doc_sha": "be8ba7c8157241b9393862e9fcec104d0dc5caff",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/nace-ai/drex-decision-models models/drex-dlm/README.md:L117-119",
+   "file": "models/drex-dlm/README.md",
+   "lines": [
+    117,
+    119
+   ],
+   "lang": "bash",
+   "tool": "curl",
+   "kind": "command",
+   "text": "OLLAMA_HOST=127.0.0.1:11434 ollama/ollama create drex-dlm -f weights/drex-dlm/Modelfile\njq '. + {model: \"drex-dlm\"}' examples/request.json | curl http://127.0.0.1:11434/v1/systemone \\\n  -H 'Content-Type: application/json' -d @-",
+   "doc": "github",
+   "doc_sha": "be8ba7c8157241b9393862e9fcec104d0dc5caff",
+   "scope": "model"
   }
  ],
  "card_notes": [
@@ -72,13 +1137,37 @@
  "chat_template": {
   "gguf_sha256": "a55ee1b1660128b7098723e0abcd92caa0788061051c62d51cbe87d9cf1974d8",
   "repo_sha256": "a55ee1b1660128b7098723e0abcd92caa0788061051c62d51cbe87d9cf1974d8",
-  "repo_file": "nace-ai/drex-dlm chat_template.jinja",
-  "same": true
+  "repo_file": "chat_template.jinja",
+  "same": true,
+  "gguf_chars": 4168,
+  "repo_chars": 4168,
+  "repo_label": "nace-ai/drex-dlm",
+  "use": "gguf"
  },
  "stop": {
   "eos_token": "<|im_end|>",
   "eos_token_id": 151643,
-  "eos_token_id_source": "nace-ai/drex-dlm generation_config.json"
+  "eos_token_id_source": "nace-ai/drex-dlm generation_config.json",
+  "analysis": {
+   "tokens": [
+    {
+     "id": 151643,
+     "text": "<|endoftext|>",
+     "source": "nace-ai/drex-dlm generation_config.json eos_token_id",
+     "eog_by": "llama.cpp built-in EOG text"
+    },
+    {
+     "id": 151645,
+     "text": "<|im_end|>",
+     "source": "nace-ai/drex-dlm tokenizer_config.json eos_token",
+     "eog_by": "GGUF tokenizer.ggml.eos_token_id"
+    }
+   ],
+   "missing": [],
+   "gguf": {
+    "eos": 151645
+   }
+  }
  },
  "rope": {
   "rope.freq_base": 1000000.0,
@@ -345,5 +1434,540 @@
  ],
  "warnings": null,
  "updated": "2026-10-19",
- "by": "scripts/model_db.py"
+ "by": "scripts/model_db.py",
+ "gguf_meta": {
+  "general.architecture": "edlm",
+  "general.type": "model",
+  "general.name": "Drex Dlm",
+  "general.size_label": "8.2B",
+  "general.license": "cc-by-nc-4.0",
+  "general.base_model.count": 1,
+  "general.base_model.0.name": "Efficient DLM 8B",
+  "general.base_model.0.organization": "Nvidia",
+  "general.base_model.0.repo_url": "https://huggingface.co/nvidia/Efficient-DLM-8B",
+  "general.tags": [
+   "decision-model",
+   "system-one",
+   "text-classification"
+  ],
+  "edlm.block_count": 36,
+  "edlm.context_length": 32768,
+  "edlm.embedding_length": 4096,
+  "edlm.feed_forward_length": 12288,
+  "edlm.attention.head_count": 32,
+  "edlm.attention.head_count_kv": 8,
+  "edlm.rope.freq_base": 1000000.0,
+  "edlm.attention.layer_norm_rms_epsilon": 9.999999974752427e-07,
+  "edlm.attention.key_length": 128,
+  "edlm.attention.value_length": 128,
+  "tokenizer.ggml.model": "gpt2",
+  "tokenizer.ggml.pre": "qwen2",
+  "tokenizer.ggml.tokens": {
+   "array_len": 151936
+  },
+  "tokenizer.ggml.token_type": {
+   "array_len": 151936
+  },
+  "tokenizer.ggml.merges": {
+   "array_len": 151387
+  },
+  "tokenizer.ggml.eos_token_id": 151645,
+  "tokenizer.ggml.padding_token_id": 151643,
+  "tokenizer.ggml.bos_token_id": 151643,
+  "tokenizer.ggml.mask_token_id": 151662,
+  "tokenizer.ggml.add_bos_token": false,
+  "tokenizer.ggml.add_eos_token": false,
+  "tokenizer.chat_template": {
+   "sha256": "a55ee1b1660128b7098723e0abcd92caa0788061051c62d51cbe87d9cf1974d8",
+   "chars": 4168
+  },
+  "general.quantization_version": 2,
+  "general.file_type": 7,
+  "_gguf_version": 3,
+  "_n_tensors": 404
+ },
+ "base_chain": [
+  {
+   "repo": "nace-ai/drex-dlm",
+   "api_id": "nace-ai/drex-dlm",
+   "revision": "8f6f8244ce0b186b3caa4cdbaae1c9f3986bf63e",
+   "via": "card base_model",
+   "card_data": {
+    "license": "cc-by-nc-4.0",
+    "base_model": "nvidia/Efficient-DLM-8B",
+    "pipeline_tag": "text-classification",
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "text-classification",
+   "safetensors": {
+    "parameters": {
+     "BF16": 8190735360
+    },
+    "total": 8190735360
+   },
+   "license_files": [
+    "LICENSE"
+   ]
+  },
+  {
+   "repo": "nvidia/Efficient-DLM-8B",
+   "api_id": "nvidia/Efficient-DLM-8B",
+   "revision": "18404169688dda8bf0305cd8e5c33e7c9dd86c3b",
+   "via": "nace-ai/drex-dlm card base_model",
+   "card_data": {
+    "license": "other",
+    "license_name": "cc-by-nc-4.0",
+    "pipeline_tag": "text-generation",
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "text-generation",
+   "safetensors": {
+    "parameters": {
+     "BF16": 8190735360
+    },
+    "total": 8190735360
+   },
+   "license_files": null
+  }
+ ],
+ "github": [
+  {
+   "repo": "nace-ai/drex-dlm",
+   "resolved": "nace-ai/drex-dlm",
+   "sha": "aca8a21e577b7ea9392e743a77f69ac7aaa64d02",
+   "renamed": null,
+   "description": "Moved to nace-ai/drex-decision-models (archived)",
+   "license_spdx": "NOASSERTION",
+   "files": {
+    "license": {
+     "path": "LICENSE",
+     "sha256": "6f90f45297f07800bb3d8bf05905d185356149d8474eabfe7c2a16698daf1266",
+     "bytes": 1293
+    },
+    "readme": {
+     "path": "README.md",
+     "sha256": "ef2f5e1a90aba222cc43526a65bed7dd533e927e31dbdfb27a326ce7fe6bf5eb",
+     "bytes": 397
+    }
+   },
+   "extra": null,
+   "snapshot": "github/nace-ai--drex-dlm/aca8a21e577b7ea9392e743a77f69ac7aaa64d02"
+  },
+  {
+   "repo": "nace-ai/drex-agent-skill",
+   "resolved": "nace-ai/drex-agent-skills",
+   "sha": "a8e5914e784f2c54f6d826fb406c86f014b11edd",
+   "renamed": true,
+   "description": "Skill that teaches agents to use Drex for quick decision-making and system one thinking.",
+   "license_spdx": "MIT",
+   "files": {
+    "license": {
+     "path": "LICENSE",
+     "sha256": "1bdfe5b6976a92612f62a94dff7f465331c42428e4ac0a4fe9b58a23b777adcb",
+     "bytes": 1064
+    },
+    "readme": {
+     "path": "README.md",
+     "sha256": "d1c2b3f4aa8754845d372420233a3137d0fd7696b6b0106f45acbea04f55158e",
+     "bytes": 17899
+    }
+   },
+   "extra": null,
+   "snapshot": "github/nace-ai--drex-agent-skill/a8e5914e784f2c54f6d826fb406c86f014b11edd"
+  },
+  {
+   "repo": "nace-ai/drex-decision-models",
+   "resolved": "nace-ai/drex-decision-models",
+   "sha": "be8ba7c8157241b9393862e9fcec104d0dc5caff",
+   "renamed": null,
+   "description": "Open Drex decision models: runtime, docs and model pages",
+   "license_spdx": "Apache-2.0",
+   "files": {
+    "license": {
+     "path": "LICENSE",
+     "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+     "bytes": 11358
+    },
+    "readme": {
+     "path": "README.md",
+     "sha256": "a38526d0dfe5cce96b8a400f13fcee6134a9bed3aa1c7892fac485db242cc0d2",
+     "bytes": 6873
+    }
+   },
+   "extra": {
+    "models/drex-dlm/README.md": {
+     "sha256": "51a4852d8d79bd065d9de3e5baf0f77da4fa43d6abb6c8d6bc22edd3af5e59f3",
+     "bytes": 6399
+    }
+   },
+   "snapshot": "github/nace-ai--drex-decision-models/be8ba7c8157241b9393862e9fcec104d0dc5caff"
+  }
+ ],
+ "github_dropped": [
+  {
+   "repo": "nace-ai/llama.cpp",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "nace-ai/ollama",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "nace-ai/llama.cpp",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "nace-ai/ollama",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "jaredpalmer/kev",
+   "why": "owner and name unrelated to the model's Hugging Face repos"
+  }
+ ],
+ "descriptor": {
+  "repo_id": {
+   "effective": "nace-ai/drex-dlm-Q8_0",
+   "source": "HF API id"
+  },
+  "revision": {
+   "effective": "4622c4086d40f5be932bc2a6fd67605d2247f6a5",
+   "source": "pinned (manifest / database)"
+  },
+  "file": {
+   "effective": "drex-dlm-Q8_0.gguf",
+   "source": "HF API siblings"
+  },
+  "bytes": {
+   "effective": 8713715232,
+   "source": "HF API LFS size"
+  },
+  "sha256": {
+   "effective": "04a592249958762d04ba0daf8e851eb89506e9fd0a38291e1e2ec9e6f6d61710",
+   "source": "HF API LFS oid"
+  },
+  "quant": {
+   "effective": "Q8_0",
+   "source": "file name",
+   "values": [
+    {
+     "value": "Q8_0",
+     "source": "file name"
+    },
+    {
+     "value": "Q8_0",
+     "source": "GGUF general.file_type"
+    }
+   ]
+  },
+  "license": {
+   "effective": "cc-by-nc-4.0",
+   "source": "nace-ai/drex-dlm-Q8_0 card license",
+   "values": [
+    {
+     "value": "cc-by-nc-4.0",
+     "source": "nace-ai/drex-dlm-Q8_0 card license"
+    },
+    {
+     "value": "cc-by-nc-4.0",
+     "source": "nace-ai/drex-dlm card license"
+    },
+    {
+     "value": "other",
+     "source": "nvidia/Efficient-DLM-8B card license"
+    },
+    {
+     "value": "cc-by-nc-4.0",
+     "source": "GGUF general.license"
+    },
+    {
+     "value": "NOASSERTION",
+     "source": "GitHub github.com/nace-ai/drex-dlm license (spdx)"
+    },
+    {
+     "value": "MIT",
+     "source": "GitHub github.com/nace-ai/drex-agent-skill license (spdx)"
+    },
+    {
+     "value": "Apache-2.0",
+     "source": "GitHub github.com/nace-ai/drex-decision-models license (spdx)"
+    }
+   ],
+   "conflict": true
+  },
+  "license_name": {
+   "effective": "cc-by-nc-4.0",
+   "source": "nvidia/Efficient-DLM-8B card license_name"
+  },
+  "license_file": {
+   "effective": "github.com/nace-ai/drex-dlm@aca8a21e577b/LICENSE",
+   "source": "GitHub github.com/nace-ai/drex-dlm",
+   "values": [
+    {
+     "value": "github.com/nace-ai/drex-dlm@aca8a21e577b/LICENSE",
+     "source": "GitHub github.com/nace-ai/drex-dlm"
+    },
+    {
+     "value": "github.com/nace-ai/drex-agent-skill@a8e5914e784f/LICENSE",
+     "source": "GitHub github.com/nace-ai/drex-agent-skill"
+    },
+    {
+     "value": "github.com/nace-ai/drex-decision-models@be8ba7c81572/LICENSE",
+     "source": "GitHub github.com/nace-ai/drex-decision-models"
+    },
+    {
+     "value": "nace-ai/drex-dlm@8f6f8244ce0b/LICENSE",
+     "source": "nace-ai/drex-dlm repo file"
+    }
+   ]
+  },
+  "base_model_chain": {
+   "effective": "nace-ai/drex-dlm",
+   "source": "card base_model",
+   "values": [
+    {
+     "value": "nace-ai/drex-dlm",
+     "source": "card base_model"
+    },
+    {
+     "value": "nvidia/Efficient-DLM-8B",
+     "source": "nace-ai/drex-dlm card base_model"
+    }
+   ]
+  },
+  "gguf_base_model": {
+   "effective": {
+    "name": "Efficient DLM 8B",
+    "organization": "Nvidia",
+    "repo_url": "https://huggingface.co/nvidia/Efficient-DLM-8B"
+   },
+   "source": "GGUF general.base_model.0"
+  },
+  "architecture": {
+   "effective": "edlm",
+   "source": "GGUF general.architecture",
+   "values": [
+    {
+     "value": "edlm",
+     "source": "GGUF general.architecture"
+    },
+    {
+     "value": "edlm",
+     "source": "HF API gguf.architecture"
+    }
+   ]
+  },
+  "hf_architectures": {
+   "effective": [
+    "EfficientDLM"
+   ],
+   "source": "nace-ai/drex-dlm config.json architectures"
+  },
+  "hf_model_type": {
+   "effective": "edlm",
+   "source": "nace-ai/drex-dlm config.json model_type"
+  },
+  "parameters": {
+   "effective": 8192833025,
+   "source": "HF API gguf.total (nace-ai/drex-dlm-Q8_0)",
+   "values": [
+    {
+     "value": 8192833025,
+     "source": "HF API gguf.total (nace-ai/drex-dlm-Q8_0)"
+    },
+    {
+     "value": 8190735360,
+     "source": "HF API safetensors.total (nace-ai/drex-dlm)"
+    },
+    {
+     "value": 8190735360,
+     "source": "HF API safetensors.total (nvidia/Efficient-DLM-8B)"
+    }
+   ],
+   "conflict": true
+  },
+  "size_label": {
+   "effective": "8.2B",
+   "source": "GGUF general.size_label"
+  },
+  "ctx_statements": {
+   "effective": {
+    "value": 16384,
+    "quote": "Download the GGUF with `hf download nace-ai/drex-dlm-Q8_0 drex-dlm-Q8_0.gguf --local-dir ./drex-dlm-q8`, then point the native server at `./drex-dlm-q8/drex-dlm-Q8_0.gguf`. On Apple Silicon, set `GGML_METAL_TENSOR_DISABLE=1`; use `--embeddi"
+   },
+   "source": "nace-ai/drex-dlm-Q8_0 README.md:L22",
+   "values": [
+    {
+     "value": {
+      "value": 16384,
+      "quote": "Download the GGUF with `hf download nace-ai/drex-dlm-Q8_0 drex-dlm-Q8_0.gguf --local-dir ./drex-dlm-q8`, then point the native server at `./drex-dlm-q8/drex-dlm-Q8_0.gguf`. On Apple Silicon, set `GGML_METAL_TENSOR_DISABLE=1`; use `--embeddi"
+     },
+     "source": "nace-ai/drex-dlm-Q8_0 README.md:L22"
+    },
+    {
+     "value": {
+      "value": 32768,
+      "quote": "Download the GGUF with `hf download nace-ai/drex-dlm-Q8_0 drex-dlm-Q8_0.gguf --local-dir ./drex-dlm-q8`, then point the native server at `./drex-dlm-q8/drex-dlm-Q8_0.gguf`. On Apple Silicon, set `GGML_METAL_TENSOR_DISABLE=1`; use `--embeddi"
+     },
+     "source": "nace-ai/drex-dlm-Q8_0 README.md:L22"
+    },
+    {
+     "value": {
+      "value": 16384,
+      "quote": "Native serving was tested on an Apple M5 Pro with 48 GiB unified memory. The server loaded the Q8_0 GGUF at a 16,384-token context, completed requests, and returned the expected result for the short sample."
+     },
+     "source": "nace-ai/drex-dlm-Q8_0 README.md:L26"
+    },
+    {
+     "value": {
+      "value": 16384,
+      "quote": "Results were checked across the Python, llama-server and Ollama runners on Apple M5 Max and M5 Pro, and across Python and llama-server on CUDA. The Q8_0 GGUF loads and serves requests through llama-server at a 16,384-token context."
+     },
+     "source": "nace-ai/drex-dlm README.md:L272"
+    },
+    {
+     "value": {
+      "value": 16384,
+      "quote": "Results were checked across the Python, llama-server and Ollama runners on Apple M5 Max and M5 Pro, and across Python and llama-server on CUDA. The Q8_0 GGUF loads and serves requests through llama-server at a 16,384-token context."
+     },
+     "source": "github.com/nace-ai/drex-decision-models models/drex-dlm/README.md:L126"
+    }
+   ]
+  },
+  "ctx": {
+   "effective": 32768,
+   "source": "nace-ai/drex-dlm config.json max_position_embeddings",
+   "values": [
+    {
+     "value": 32768,
+     "source": "nace-ai/drex-dlm config.json max_position_embeddings"
+    },
+    {
+     "value": 32768,
+     "source": "GGUF edlm.context_length"
+    }
+   ],
+   "precedence": "card statement > config.json > GGUF header > GitHub README"
+  },
+  "pipeline_tag": {
+   "effective": "text-classification",
+   "source": "nace-ai/drex-dlm HF API pipeline_tag",
+   "values": [
+    {
+     "value": "text-classification",
+     "source": "nace-ai/drex-dlm HF API pipeline_tag"
+    },
+    {
+     "value": "text-generation",
+     "source": "nvidia/Efficient-DLM-8B HF API pipeline_tag"
+    }
+   ],
+   "conflict": true
+  }
+ },
+ "required_params": {
+  "kind": "decision",
+  "native_ctx": 32768,
+  "native_ctx_source": "nace-ai/drex-dlm-Q8_0 README.md:L22",
+  "yarn": null,
+  "yarn_source": null,
+  "items": [
+   {
+    "class": "REQUIRED",
+    "flag": "@runtime",
+    "value": "nace-ai/llama.cpp branch edlm (llama-server with the edlm architecture and POST /v1/systemone)",
+    "source": "nace-ai/drex-dlm-Q8_0 README.md:L12",
+    "why_required": "the edlm architecture exists only in the fork; stock builds cannot load the GGUF",
+    "quote": "a stock llama.cpp or Ollama installation is not a supported runner",
+    "curated": true
+   },
+   {
+    "class": "REQUIRED",
+    "flag": "@endpoint",
+    "value": "POST /v1/systemone",
+    "source": "nace-ai/drex-dlm-Q8_0 README.md:L12",
+    "why_required": "client: a decision model, not chat",
+    "quote": "The model uses the custom `edlm` architecture and `POST /v1/systemone`",
+    "client": true,
+    "curated": true
+   },
+   {
+    "class": "REQUIRED",
+    "flag": "--embedding",
+    "value": null,
+    "source": "nace-ai/drex-dlm-Q8_0 README.md:L22",
+    "why_required": "the card's tested native configuration",
+    "quote": "use `--embedding --pooling none -c 16384 -b 16384 -ub 16384 -np 1 --no-warmup` for the tested native configuration",
+    "curated": true
+   },
+   {
+    "class": "REQUIRED",
+    "flag": "--pooling",
+    "value": "none",
+    "source": "nace-ai/drex-dlm-Q8_0 README.md:L22",
+    "why_required": "the decision head reads per-token states (no pooling)",
+    "quote": "--embedding --pooling none",
+    "curated": true
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--ctx-size",
+    "value": "16384",
+    "source": "nace-ai/drex-dlm-Q8_0 README.md:L22",
+    "why_required": "the card's serving context",
+    "quote": "The recommended serving context is 16,384 tokens; the model's maximum position window is 32,768 tokens.",
+    "curated": true
+   },
+   {
+    "class": "REQUIRED",
+    "flag": "--batch-size",
+    "value": "${ctx}",
+    "source": "nace-ai/drex-dlm README.md:L255",
+    "why_required": "-b must equal -c: the whole request is one batch",
+    "quote": "Raise the encode cap (`SYSTEMONE_CONTEXT`) and the slot size (`-c`, `-b`, `-ub`) together:",
+    "curated": true
+   },
+   {
+    "class": "REQUIRED",
+    "flag": "--ubatch-size",
+    "value": "${ctx}",
+    "source": "nace-ai/drex-dlm README.md:L255",
+    "why_required": "-ub must equal -c: the bidirectional state is evaluated in one micro-batch",
+    "quote": "Raise the encode cap (`SYSTEMONE_CONTEXT`) and the slot size (`-c`, `-b`, `-ub`) together:",
+    "curated": true
+   },
+   {
+    "class": "REQUIRED",
+    "flag": "--parallel",
+    "value": "1",
+    "source": "nace-ai/drex-dlm-Q8_0 README.md:L22",
+    "why_required": "one slot holds the whole window (the tested configuration)",
+    "quote": "-np 1 --no-warmup",
+    "curated": true
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--no-warmup",
+    "value": null,
+    "source": "nace-ai/drex-dlm-Q8_0 README.md:L22",
+    "why_required": "the tested configuration skips the warmup run",
+    "quote": "-np 1 --no-warmup",
+    "curated": true
+   },
+   {
+    "class": "REQUIRED",
+    "flag": "@env",
+    "value": "SYSTEMONE_CONTEXT=${ctx} when ctx > 16384",
+    "source": "nace-ai/drex-dlm README.md:L247",
+    "why_required": "the fork's encode cap is 16,384 unless SYSTEMONE_CONTEXT raises it",
+    "quote": "Every runner defaults to **16,384**; the full window must be enabled explicitly.",
+    "curated": true
+   }
+  ]
+ },
+ "blockers": null,
+ "params_problems": null,
+ "params_build": "b11374",
+ "native_ctx": 32768,
+ "native_ctx_source": "nace-ai/drex-dlm-Q8_0 README.md:L22"
 }

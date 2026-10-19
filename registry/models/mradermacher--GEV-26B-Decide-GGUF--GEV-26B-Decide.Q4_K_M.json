@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "mradermacher--GEV-26B-Decide-GGUF--GEV-26B-Decide.Q4_K_M",
  "repo": "mradermacher/GEV-26B-Decide-GGUF",
  "revision": "6a97ccdaccdbdb0bbbe274f8f92d5771009e314f",
@@ -8,11 +8,9 @@
  "bytes": 16796018528,
  "quant": "Q4_K_M",
  "arch": "gemma4",
- "roles": [
-  "decision"
- ],
- "license": "apache-2.0",
- "license_source": "mradermacher/GEV-26B-Decide-GGUF card license",
+ "roles": [],
+ "license": "apache-2.0 (adapter, head and calibration files) + Gemma 4 terms for the base weights (https://ai.google.dev/gemma/docs/gemma_4_license)",
+ "license_source": "autotrust/GEV-26B-Decide README.md:L581",
  "ctx": 262144,
  "ctx_source": "GGUF gemma4.context_length",
  "card_ctx": null,
@@ -63,9 +61,110 @@
  ],
  "card_commands": [
   {
-   "tool": "hf",
-   "command": "hf download autotrust/GEV-26B-Decide --local-dir GEV-26B-Decide",
-   "source": "autotrust/GEV-26B-Decide README.md:L408"
+   "source": "autotrust/GEV-26B-Decide README.md:L408-409",
+   "file": "README.md",
+   "lines": [
+    408,
+    409
+   ],
+   "lang": "bash",
+   "tool": "hf-download",
+   "kind": "command",
+   "text": "hf download autotrust/GEV-26B-Decide --local-dir GEV-26B-Decide\nbash GEV-26B-Decide/serve.sh          # vLLM on :8000; one GPU with 80 GB or more",
+   "doc": "base-card",
+   "doc_sha": "eea849038e792cd09aa731d59d586f0eaf2c18f6",
+   "scope": "model"
+  },
+  {
+   "source": "autotrust/GEV-26B-Decide README.md:L421-426",
+   "file": "README.md",
+   "lines": [
+    421,
+    426
+   ],
+   "lang": "bash",
+   "tool": "curl",
+   "kind": "command",
+   "text": "curl localhost:8000/v1/decide -H 'Content-Type: application/json' -d '{\n  \"kind\": \"choice\",\n  \"state\": \"A bat and a ball cost $1.10 in total. The bat costs $1.00 more than the ball.\",\n  \"question\": \"How much does the ball cost?\",\n  \"options\": [\"$0.10\", \"$0.05\", \"$1.00\", \"$0.55\"],\n  \"thinking\": \"auto\"}'",
+   "doc": "base-card",
+   "doc_sha": "eea849038e792cd09aa731d59d586f0eaf2c18f6",
+   "scope": "model"
+  },
+  {
+   "source": "autotrust/GEV-26B-Decide README.md:L447-454",
+   "file": "README.md",
+   "lines": [
+    447,
+    454
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "import requests\n\ndef decide(kind, state, question, options=None, thinking=\"auto\"):\n    body = {\"kind\": kind, \"state\": state, \"question\": question, \"thinking\": thinking, **({\"options\": options} if options else {})}\n    r = requests.post(\"http://localhost:8000/v1/decide\", json=body).json()\n    return dict(zip(r[\"options\"], r[\"probabilities\"])), r.get(\"thinking\", {}).get(\"used\")\n\ndecide(\"noul\", \"John was born on 29 February 1996.\", \"Was John's 7th birthday celebrated on a 29 February?\")",
+   "doc": "base-card",
+   "doc_sha": "eea849038e792cd09aa731d59d586f0eaf2c18f6",
+   "scope": "model"
+  },
+  {
+   "source": "autotrust/GEV-26B-Decide README.md:L460-463",
+   "file": "README.md",
+   "lines": [
+    460,
+    463
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "requests.post(\"http://localhost:8000/v1/chat/completions\", json={\n    \"model\": \"autotrust/GEV-26B-Decide\",\n    \"messages\": [{\"role\": \"user\", \"content\": \"In one sentence, what is safety stock?\"}],\n    \"max_tokens\": 200, \"chat_template_kwargs\": {\"enable_thinking\": False}})",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-n",
+      "value": "200",
+      "from": "max_tokens: 200"
+     },
+     {
+      "flag": "--chat-template-kwargs",
+      "value": "{\"enable_thinking\":false}",
+      "from": "chat_template_kwargs: {\"enable_thinking\": false}"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "eea849038e792cd09aa731d59d586f0eaf2c18f6",
+   "scope": "model"
+  },
+  {
+   "source": "autotrust/GEV-26B-Decide README.md:L487-515",
+   "file": "README.md",
+   "lines": [
+    487,
+    515
+   ],
+   "lang": "python",
+   "tool": "transformers",
+   "kind": "code",
+   "text": "import json, torch\nfrom huggingface_hub import snapshot_download\nfrom peft import PeftModel\nfrom safetensors.torch import load_file\nfrom transformers import AutoTokenizer, Gemma4ForConditionalGeneration\n\nd = snapshot_download(\"autotrust/GEV-26B-Decide\")\ntok = AutoTokenizer.from_pretrained(d)\nbase = Gemma4ForConditionalGeneration.from_pretrained(d, dtype=torch.bfloat16, device_map=\"cuda\")\n# System 2: `base` is gemma-4-26B-A4B-it unchanged; use base.generate(...) (text or images).\n\n# System 1: adapter merged in memory + head\nm = PeftModel.from_pretrained(base, f\"{d}/adapter\").merge_and_unload().eval()\nbackbone = m.model\njc, T = json.load(open(f\"{d}/judge_config.json\")), json.load(open(f\"{d}/calibration.json\"))[\"per_kind\"]\nhead = load_file(f\"{d}/head.safetensors\"); W, b = head[\"proj.weight\"].cuda(), head[\"proj.bias\"].cuda()\n\n@torch.no_grad()\ndef decide(kind, state, question, options):\n    lines = options if kind != \"choice\" else [f\"{'ABCDEFGHIJKLMNOP'[i]}) {o}\" for i, o in enumerate(options)]\n    text = f\"[kind] {kind}\\n[state] {state}\\n[question] {question}\\n[options]\\n\" + \"\\n\".join(lines) + \"\\n[decision]:\"\n    ids = torch.tensor([[tok.bos_token_id] + tok.encode(text, add_special_tokens=False)], device=\"cuda\")\n    h = backbone(input_ids=ids, use_cache=False).last_hidden_state[0, -1].float()\n    z = 30.0 * torch.tanh((W @ h + b) / 30.0)\n    s, _ = jc[\"slots\"][\"ranges\"][kind]\n    return dict(zip(options, torch.softmax(z[s:s + len(options)] / T[kind], 0).tolist()))\n\nprint(decide(\"noul\", \"Customer says the parcel arrived damaged and wants their money back.\",\n             \"Is the customer asking for a refund?\", [\"false\", \"true\"]))",
+   "doc": "base-card",
+   "doc_sha": "eea849038e792cd09aa731d59d586f0eaf2c18f6",
+   "scope": "model"
+  },
+  {
+   "source": "autotrust/GEV-26B-Decide README.md:L563-576",
+   "file": "README.md",
+   "lines": [
+    563,
+    576
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "model-*.safetensors · config.json · processor_config.json · tokenizer* · chat_template.jinja · generation_config.json\n                          google/gemma-4-26B-A4B-it, unchanged (System 2; text + image input)\nadapter/                  System 1 LoRA (peft), for the transformers path\nhead.safetensors          24-slot decision head (fp32): proj.weight [24, 2816], proj.bias [24]\njudge_config.json         slot layout, verbalizer ids, softcap, read-out\ncalibration.json          per-kind temperatures (default)\ncalibration_gold.json     per-kind temperatures calibrated against ground-truth answers\nadapter_vllm/             System 1 for vLLM: backbone LoRA + the head as an lm_head LoRA, plus decision_head.json\nserve_decide.py · serve.sh\n                          vLLM server with POST /v1/decide (System 1, adaptive thinking) next to the OpenAI endpoints\npatches/                  vLLM patch: LoRA on Gemma-4's tied lm_head\nreports/                  adaptive thinking: validation summary, Decision Index recomputation, latency summary, other-area sample, games\nreports/demos/            computer use and robot arm: per-episode results\nvideos/                   adaptive-thinking videos (Minesweeper, Connect Four, Wordle, Sudoku); computer use and robot arm",
+   "doc": "base-card",
+   "doc_sha": "eea849038e792cd09aa731d59d586f0eaf2c18f6",
+   "scope": "model"
   }
  ],
  "card_notes": [
@@ -93,8 +192,12 @@
  "chat_template": {
   "gguf_sha256": "ae53464bf3be25802b3a5b37def7fd89667067d7577049b3b2d74c4d8de4c6d4",
   "repo_sha256": "ae53464bf3be25802b3a5b37def7fd89667067d7577049b3b2d74c4d8de4c6d4",
-  "repo_file": "autotrust/GEV-26B-Decide chat_template.jinja",
-  "same": true
+  "repo_file": "chat_template.jinja",
+  "same": true,
+  "gguf_chars": 18681,
+  "repo_chars": 18681,
+  "repo_label": "autotrust/GEV-26B-Decide",
+  "use": "gguf"
  },
  "stop": {
   "eos_token": "<eos>",
@@ -103,7 +206,33 @@
    106,
    50
   ],
-  "eos_token_id_source": "autotrust/GEV-26B-Decide generation_config.json"
+  "eos_token_id_source": "autotrust/GEV-26B-Decide generation_config.json",
+  "analysis": {
+   "tokens": [
+    {
+     "id": 1,
+     "text": "<eos>",
+     "source": "autotrust/GEV-26B-Decide generation_config.json eos_token_id",
+     "eog_by": "GGUF tokenizer.ggml.eos_token_id"
+    },
+    {
+     "id": 106,
+     "text": "<turn|>",
+     "source": "autotrust/GEV-26B-Decide generation_config.json eos_token_id",
+     "eog_by": "llama.cpp built-in EOG text"
+    },
+    {
+     "id": 50,
+     "text": "<|tool_response>",
+     "source": "autotrust/GEV-26B-Decide generation_config.json eos_token_id",
+     "eog_by": "llama.cpp built-in EOG text"
+    }
+   ],
+   "missing": [],
+   "gguf": {
+    "eos": 1
+   }
+  }
  },
  "rope": {
   "rope.freq_base": 1000000.0,
@@ -539,5 +668,464 @@
  "unknown": null,
  "warnings": null,
  "updated": "2026-10-19",
- "by": "scripts/model_db.py"
+ "by": "scripts/model_db.py",
+ "gguf_meta": {
+  "general.architecture": "gemma4",
+  "general.type": "model",
+  "general.sampling.top_k": 64,
+  "general.sampling.top_p": 0.949999988079071,
+  "general.sampling.temp": 1.0,
+  "general.name": "GEV 26B Decide",
+  "general.finetune": "Decide",
+  "general.basename": "GEV",
+  "general.size_label": "26B",
+  "general.license": "apache-2.0",
+  "general.license.link": "https://ai.google.dev/gemma/docs/gemma_4_license",
+  "general.base_model.count": 1,
+  "general.base_model.0.name": "Gemma 4 26B A4B It",
+  "general.base_model.0.organization": "Google",
+  "general.base_model.0.repo_url": "https://huggingface.co/google/gemma-4-26B-A4B-it",
+  "general.tags": [
+   "system-one",
+   "system-two",
+   "adaptive-thinking",
+   "typed-decisions",
+   "decision-model",
+   "calibrated-probabilities",
+   "jev",
+   "noul",
+   "choice",
+   "score",
+   "lora",
+   "gemma4",
+   "mixture-of-experts",
+   "multimodal",
+   "vllm",
+   "text-classification"
+  ],
+  "general.languages": [
+   "en"
+  ],
+  "gemma4.block_count": 30,
+  "gemma4.context_length": 262144,
+  "gemma4.embedding_length": 2816,
+  "gemma4.feed_forward_length": 2112,
+  "gemma4.attention.head_count": 16,
+  "gemma4.attention.head_count_kv": {
+   "array_len": 30
+  },
+  "gemma4.rope.freq_base": 1000000.0,
+  "gemma4.rope.freq_base_swa": 10000.0,
+  "gemma4.attention.layer_norm_rms_epsilon": 9.999999974752427e-07,
+  "gemma4.expert_count": 128,
+  "gemma4.expert_used_count": 8,
+  "gemma4.attention.key_length": 512,
+  "gemma4.attention.value_length": 512,
+  "gemma4.final_logit_softcapping": 30.0,
+  "gemma4.attention.sliding_window": 1024,
+  "gemma4.attention.shared_kv_layers": 0,
+  "gemma4.embedding_length_per_layer_input": 0,
+  "gemma4.attention.sliding_window_pattern": {
+   "array_len": 30
+  },
+  "gemma4.attention.key_length_swa": 256,
+  "gemma4.attention.value_length_swa": 256,
+  "gemma4.expert_feed_forward_length": 704,
+  "gemma4.rope.dimension_count": 512,
+  "gemma4.rope.dimension_count_swa": 256,
+  "tokenizer.ggml.model": "gemma4",
+  "tokenizer.ggml.tokens": {
+   "array_len": 262144
+  },
+  "tokenizer.ggml.scores": {
+   "array_len": 262144
+  },
+  "tokenizer.ggml.token_type": {
+   "array_len": 262144
+  },
+  "tokenizer.ggml.merges": {
+   "array_len": 514906
+  },
+  "tokenizer.ggml.bos_token_id": 2,
+  "tokenizer.ggml.eos_token_id": 1,
+  "tokenizer.ggml.unknown_token_id": 3,
+  "tokenizer.ggml.padding_token_id": 0,
+  "tokenizer.ggml.mask_token_id": 4,
+  "tokenizer.chat_template": {
+   "sha256": "ae53464bf3be25802b3a5b37def7fd89667067d7577049b3b2d74c4d8de4c6d4",
+   "chars": 18681
+  },
+  "tokenizer.ggml.add_space_prefix": false,
+  "tokenizer.ggml.add_bos_token": true,
+  "general.quantization_version": 2,
+  "general.file_type": 15,
+  "general.url": "https://huggingface.co/mradermacher/GEV-26B-Decide-GGUF",
+  "mradermacher.quantize_version": "2",
+  "mradermacher.quantized_by": "mradermacher",
+  "mradermacher.quantized_at": "2026-10-03T07:26:11+02:00",
+  "mradermacher.quantized_on": "nico1",
+  "general.source.url": "https://huggingface.co/autotrust/GEV-26B-Decide",
+  "mradermacher.convert_type": "hf",
+  "_gguf_version": 3,
+  "_n_tensors": 658
+ },
+ "base_chain": [
+  {
+   "repo": "autotrust/GEV-26B-Decide",
+   "api_id": "autotrust/GEV-26B-Decide",
+   "revision": "eea849038e792cd09aa731d59d586f0eaf2c18f6",
+   "via": "card base_model",
+   "card_data": {
+    "license": "apache-2.0",
+    "license_link": "https://ai.google.dev/gemma/docs/gemma_4_license",
+    "language": [
+     "en"
+    ],
+    "base_model": "google/gemma-4-26B-A4B-it",
+    "pipeline_tag": "text-classification",
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "text-classification",
+   "safetensors": {
+    "parameters": {
+     "BF16": 25805936206
+    },
+    "total": 25805936206
+   },
+   "license_files": null
+  },
+  {
+   "repo": "google/gemma-4-26B-A4B-it",
+   "api_id": "google/gemma-4-26B-A4B-it",
+   "revision": "4d7ae4984b7db7de8f8457170b3f1a419ee76d52",
+   "via": "autotrust/GEV-26B-Decide card base_model",
+   "card_data": {
+    "license": "apache-2.0",
+    "license_link": "https://ai.google.dev/gemma/docs/gemma_4_license",
+    "base_model": [
+     "google/gemma-4-26B-A4B"
+    ],
+    "pipeline_tag": "image-text-to-text",
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "image-text-to-text",
+   "safetensors": {
+    "parameters": {
+     "BF16": 25805936206
+    },
+    "total": 25805936206
+   },
+   "license_files": null
+  },
+  {
+   "repo": "google/gemma-4-26B-A4B",
+   "api_id": "google/gemma-4-26B-A4B",
+   "revision": "24548b62aa021d562695c04aaf7758a1ea47990b",
+   "via": "google/gemma-4-26B-A4B-it card base_model",
+   "card_data": {
+    "license": "apache-2.0",
+    "license_link": "https://ai.google.dev/gemma/docs/gemma_4_license",
+    "pipeline_tag": "image-text-to-text",
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "image-text-to-text",
+   "safetensors": {
+    "parameters": {
+     "BF16": 25805936206
+    },
+    "total": 26544131376
+   },
+   "license_files": null
+  }
+ ],
+ "github": null,
+ "github_dropped": [
+  {
+   "repo": "embodiedreasoning/ERQA",
+   "why": "inference/training tool repo"
+  }
+ ],
+ "descriptor": {
+  "repo_id": {
+   "effective": "mradermacher/GEV-26B-Decide-GGUF",
+   "source": "HF API id"
+  },
+  "revision": {
+   "effective": "6a97ccdaccdbdb0bbbe274f8f92d5771009e314f",
+   "source": "pinned (manifest / database)"
+  },
+  "file": {
+   "effective": "GEV-26B-Decide.Q4_K_M.gguf",
+   "source": "HF API siblings"
+  },
+  "bytes": {
+   "effective": 16796018528,
+   "source": "HF API LFS size"
+  },
+  "sha256": {
+   "effective": "f26cb0de214c58f8495468a2ed075af29bc93972120564e220538414cecba726",
+   "source": "HF API LFS oid"
+  },
+  "quant": {
+   "effective": "Q4_K_M",
+   "source": "file name",
+   "values": [
+    {
+     "value": "Q4_K_M",
+     "source": "file name"
+    },
+    {
+     "value": "Q4_K_M",
+     "source": "GGUF general.file_type"
+    }
+   ]
+  },
+  "license": {
+   "effective": "apache-2.0",
+   "source": "mradermacher/GEV-26B-Decide-GGUF card license",
+   "values": [
+    {
+     "value": "apache-2.0",
+     "source": "mradermacher/GEV-26B-Decide-GGUF card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "autotrust/GEV-26B-Decide card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "google/gemma-4-26B-A4B-it card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "google/gemma-4-26B-A4B card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "GGUF general.license"
+    }
+   ]
+  },
+  "license_link": {
+   "effective": "https://ai.google.dev/gemma/docs/gemma_4_license",
+   "source": "mradermacher/GEV-26B-Decide-GGUF card license_link",
+   "values": [
+    {
+     "value": "https://ai.google.dev/gemma/docs/gemma_4_license",
+     "source": "mradermacher/GEV-26B-Decide-GGUF card license_link"
+    },
+    {
+     "value": "https://ai.google.dev/gemma/docs/gemma_4_license",
+     "source": "autotrust/GEV-26B-Decide card license_link"
+    },
+    {
+     "value": "https://ai.google.dev/gemma/docs/gemma_4_license",
+     "source": "google/gemma-4-26B-A4B-it card license_link"
+    },
+    {
+     "value": "https://ai.google.dev/gemma/docs/gemma_4_license",
+     "source": "google/gemma-4-26B-A4B card license_link"
+    },
+    {
+     "value": "https://ai.google.dev/gemma/docs/gemma_4_license",
+     "source": "GGUF general.license.link"
+    }
+   ]
+  },
+  "base_model_chain": {
+   "effective": "autotrust/GEV-26B-Decide",
+   "source": "card base_model",
+   "values": [
+    {
+     "value": "autotrust/GEV-26B-Decide",
+     "source": "card base_model"
+    },
+    {
+     "value": "google/gemma-4-26B-A4B-it",
+     "source": "autotrust/GEV-26B-Decide card base_model"
+    },
+    {
+     "value": "google/gemma-4-26B-A4B",
+     "source": "google/gemma-4-26B-A4B-it card base_model"
+    }
+   ]
+  },
+  "gguf_base_model": {
+   "effective": {
+    "name": "Gemma 4 26B A4B It",
+    "organization": "Google",
+    "repo_url": "https://huggingface.co/google/gemma-4-26B-A4B-it"
+   },
+   "source": "GGUF general.base_model.0"
+  },
+  "architecture": {
+   "effective": "gemma4",
+   "source": "GGUF general.architecture",
+   "values": [
+    {
+     "value": "gemma4",
+     "source": "GGUF general.architecture"
+    },
+    {
+     "value": "gemma4",
+     "source": "HF API gguf.architecture"
+    }
+   ]
+  },
+  "hf_architectures": {
+   "effective": [
+    "Gemma4ForConditionalGeneration"
+   ],
+   "source": "autotrust/GEV-26B-Decide config.json architectures"
+  },
+  "hf_model_type": {
+   "effective": "gemma4",
+   "source": "autotrust/GEV-26B-Decide config.json model_type"
+  },
+  "parameters": {
+   "effective": 25233142046,
+   "source": "HF API gguf.total (mradermacher/GEV-26B-Decide-GGUF)",
+   "values": [
+    {
+     "value": 25233142046,
+     "source": "HF API gguf.total (mradermacher/GEV-26B-Decide-GGUF)"
+    },
+    {
+     "value": 25805936206,
+     "source": "HF API safetensors.total (autotrust/GEV-26B-Decide)"
+    },
+    {
+     "value": 25805936206,
+     "source": "HF API safetensors.total (google/gemma-4-26B-A4B-it)"
+    },
+    {
+     "value": 26544131376,
+     "source": "HF API safetensors.total (google/gemma-4-26B-A4B)"
+    }
+   ],
+   "conflict": true
+  },
+  "size_label": {
+   "effective": "26B",
+   "source": "GGUF general.size_label"
+  },
+  "ctx_statements": {
+   "effective": {
+    "value": 262144,
+    "quote": "The backbone's native context is **262,144 tokens (256K)**. We tested decisions that hinge on a single sentence placed at"
+   },
+   "source": "autotrust/GEV-26B-Decide README.md:L373"
+  },
+  "ctx": {
+   "effective": 262144,
+   "source": "autotrust/GEV-26B-Decide config.json max_position_embeddings",
+   "values": [
+    {
+     "value": 262144,
+     "source": "autotrust/GEV-26B-Decide config.json max_position_embeddings"
+    },
+    {
+     "value": 262144,
+     "source": "GGUF gemma4.context_length"
+    }
+   ],
+   "precedence": "card statement > config.json > GGUF header > GitHub README"
+  },
+  "pipeline_tag": {
+   "effective": "text-classification",
+   "source": "autotrust/GEV-26B-Decide HF API pipeline_tag",
+   "values": [
+    {
+     "value": "text-classification",
+     "source": "autotrust/GEV-26B-Decide HF API pipeline_tag"
+    },
+    {
+     "value": "image-text-to-text",
+     "source": "google/gemma-4-26B-A4B-it HF API pipeline_tag"
+    },
+    {
+     "value": "image-text-to-text",
+     "source": "google/gemma-4-26B-A4B HF API pipeline_tag"
+    }
+   ],
+   "conflict": true
+  },
+  "languages": {
+   "effective": [
+    "en"
+   ],
+   "source": "mradermacher/GEV-26B-Decide-GGUF card language",
+   "values": [
+    {
+     "value": [
+      "en"
+     ],
+     "source": "mradermacher/GEV-26B-Decide-GGUF card language"
+    },
+    {
+     "value": [
+      "en"
+     ],
+     "source": "autotrust/GEV-26B-Decide card language"
+    },
+    {
+     "value": [
+      "en"
+     ],
+     "source": "GGUF general.languages"
+    }
+   ]
+  }
+ },
+ "required_params": {
+  "kind": "chat",
+  "native_ctx": 262144,
+  "native_ctx_source": "autotrust/GEV-26B-Decide config.json max_position_embeddings",
+  "yarn": null,
+  "yarn_source": null,
+  "items": [
+   {
+    "class": "REQUIRED",
+    "flag": "--jinja",
+    "value": null,
+    "source": "GGUF tokenizer.chat_template (ae53464bf3be)",
+    "why_required": "messages, tool calls and thinking are formatted by the model's chat template; without --jinja llama-server falls back to a built-in approximation"
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--top-k",
+    "value": "0",
+    "source": "autotrust/GEV-26B-Decide autotrust/GEV-26B-Decide README.md:L481",
+    "why_required": "the card's recommended sampling (If you call /v1/completions for System 1 yourself, pass)"
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--top-p",
+    "value": "1",
+    "source": "autotrust/GEV-26B-Decide autotrust/GEV-26B-Decide README.md:L481",
+    "why_required": "the card's recommended sampling (If you call /v1/completions for System 1 yourself, pass)"
+   },
+   {
+    "class": "REQUIRED",
+    "flag": "--chat-template-kwargs",
+    "value": "{\"enable_thinking\":false}",
+    "source": "autotrust/GEV-26B-Decide README.md:L460-463",
+    "why_required": "the card's own System 2 chat example turns thinking off; with thinking on, thoughts reach the 8,192-token budget",
+    "quote": "\"max_tokens\": 200, \"chat_template_kwargs\": {\"enable_thinking\": False}})",
+    "translated": true,
+    "curated": true
+   }
+  ]
+ },
+ "blockers": [
+  {
+   "what": "the GGUF converts only the Gemma-4 backbone: System 1 (the typed decisions) needs adapter/ (LoRA) and head.safetensors, which are not in the GGUF repo and have no llama.cpp loader; as a decision model it does not work",
+   "source": "autotrust/GEV-26B-Decide README.md:L565-566",
+   "quote": "adapter/                  System 1 LoRA (peft), for the transformers path"
+  }
+ ],
+ "params_problems": null,
+ "params_build": "b11374",
+ "native_ctx": 262144,
+ "native_ctx_source": "autotrust/GEV-26B-Decide config.json max_position_embeddings"
 }

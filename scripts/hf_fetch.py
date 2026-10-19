@@ -216,6 +216,8 @@ def snapshot(repo, revision=None, keep=(), max_bytes=DEFAULT_MAX, root=None, log
             "dir": d, "gated": info.get("gated", False), "private": info.get("private", False),
             "card_data": info.get("cardData"), "pipeline_tag": info.get("pipeline_tag"), "tags": info.get("tags"),
             "library_name": info.get("library_name"), "fetched_bytes": total,
+            "api_id": info.get("id"), "author": info.get("author"), "last_modified": info.get("lastModified"),
+            "safetensors": info.get("safetensors"), "gguf": _gguf_info(info.get("gguf")),
             "files": files, "errors": errors}
     if not dry_run:
         os.makedirs(d, exist_ok=True)
@@ -224,6 +226,16 @@ def snapshot(repo, revision=None, keep=(), max_bytes=DEFAULT_MAX, root=None, log
             json.dump(snap, f, indent=1, sort_keys=True)
         os.replace(tmp, snap_path)
     return snap
+
+
+def _gguf_info(g):
+    """The API's gguf block without the template text (its sha256 instead)."""
+    if not isinstance(g, dict):
+        return None
+    out = {k: v for k, v in g.items() if k != "chat_template"}
+    if isinstance(g.get("chat_template"), str):
+        out["chat_template_sha256"] = hashlib.sha256(g["chat_template"].encode("utf-8")).hexdigest()
+    return out
 
 
 def gguf_remote_header(repo, rev, path, parse, start=4 << 20, limit=64 << 20):
@@ -260,3 +272,143 @@ if __name__ == "__main__":
         print("hf_fetch: %s" % e, file=sys.stderr)
         sys.exit(1)
     print(json.dumps({k: s[k] for k in ("repo", "revision", "dir", "fetched_bytes", "errors")}, indent=1))
+
+
+# ------------------------------------------------------------------ GitHub READMEs a card links (#51)
+GH_API = "https://api.github.com"
+GH_TOOL_REPOS = {  # inference / training tools: their READMEs say nothing about one model
+    "ggml-org/llama.cpp", "ggerganov/llama.cpp", "vllm-project/vllm", "sgl-project/sglang", "huggingface/transformers",
+    "huggingface/trl", "huggingface/text-generation-inference", "huggingface/lighteval", "huggingface/nanotron",
+    "huggingface/alignment-handbook", "huggingface/transformers.js", "huggingface/huggingface_hub", "ollama/ollama",
+    "ml-explore/mlx", "ml-explore/mlx-examples", "ml-explore/mlx-lm", "unslothai/unsloth", "unslothai/notebooks",
+    "kvcache-ai/ktransformers", "QwenLM/Qwen-Agent", "QwenLM/qwen-code", "lm-sys/FastChat", "arcee-ai/mergekit",
+    "UKPLab/sentence-transformers", "huggingface/sentence-transformers", "nomic-ai/gpt4all", "LostRuins/koboldcpp",
+    "mudler/LocalAI", "lmstudio-ai/lms", "turboderp/exllamav2", "intel/neural-compressor", "openvinotoolkit/openvino",
+    "ggml-org/convert", "NVIDIA/TensorRT-LLM", "microsoft/onnxruntime", "pytorch/executorch", "google-ai-edge/LiteRT", "embodiedreasoning/ERQA",
+}
+
+
+def github_links(text):
+    """owner/repo of every github.com link in text, in order, without duplicates."""
+    out = []
+    for m in re.finditer(r"https?://github\.com/([A-Za-z0-9][\w.-]*)/([\w.-]+?)(?:\.git)?(?=[/#?)\s\]'\">`]|$)", text):
+        r = "%s/%s" % (m.group(1), m.group(2))
+        if r.lower() not in [x.lower() for x in out] and m.group(1).lower() not in ("orgs", "settings", "sponsors", "features"):
+            out.append(r)
+    return out
+
+
+def official_github(links, hf_repos):
+    """Keep the links that belong to the model: the GitHub owner matches an HF org of the
+    model or its base (one a prefix of the other, case-insensitive), or the repo name shares
+    a 4+ character word with a model name. Tool repos are dropped. -> (kept, dropped-with-reason)."""
+    orgs = {r.split("/")[0].lower() for r in hf_repos if r}
+    words = set()
+    for r in hf_repos:
+        if r:
+            words |= {w for w in re.split(r"[^a-z0-9]+", r.split("/")[-1].lower().replace("gguf", "")) if len(w) >= 4}
+    kept, dropped = [], []
+    for g in links:
+        own, name = g.split("/")
+        if g.lower() in {x.lower() for x in GH_TOOL_REPOS} or name.lower() in ("llama.cpp", "ollama", "vllm", "sglang"):
+            dropped.append((g, "inference/training tool repo"))
+            continue
+        if own.lower() == "huggingface":
+            dropped.append((g, "Hugging Face tool repo"))
+            continue
+        nw = {w for w in re.split(r"[^a-z0-9]+", name.lower()) if len(w) >= 4}
+        if any(own.lower().startswith(o) or o.startswith(own.lower()) for o in orgs if len(o) >= 3) or (nw & words):
+            kept.append(g)
+        else:
+            dropped.append((g, "owner and name unrelated to the model's Hugging Face repos"))
+    return kept, dropped
+
+
+def _gh_json(path):
+    h = {"User-Agent": UA, "Accept": "application/vnd.github+json"}
+    tok = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+    if tok:
+        h["Authorization"] = "Bearer " + tok
+    req = urllib.request.Request(GH_API + path, headers=h)
+    last = None
+    for i in range(3):
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                return json.load(r)
+        except urllib.error.HTTPError as e:
+            if e.code in (404, 451):
+                return None
+            last = e
+            if e.code in (401, 403):
+                break
+        except (urllib.error.URLError, OSError) as e:
+            last = e
+        time.sleep(2 * (i + 1))
+    raise HFError("GitHub %s: %s" % (path, last))
+
+
+def github_snapshot(repo, root=None, ref=None, log=None, extra=()):
+    """README (and LICENSE, plus `extra` paths) of a GitHub repo at one commit, stored under
+    <meta_root>/github/<owner>--<repo>/<sha>/ with github.json. A stored snapshot is reused
+    (refresh=True in the caller removes it first)."""
+    log = log or (lambda m: print(m, file=sys.stderr))
+    base = os.path.join(root or meta_root(), "github", repo.replace("/", "--"))
+    if ref is None and os.path.isdir(base):
+        for sha in sorted(os.listdir(base)):
+            p = os.path.join(base, sha, "github.json")
+            if os.path.isfile(p):
+                with open(p, encoding="utf-8") as f:
+                    rec = json.load(f)
+                missing = [x for x in extra if x not in rec["files"].get("extra", {})]
+                for x in missing:
+                    _gh_extra(rec, x, log)
+                if missing:
+                    with open(p, "w", encoding="utf-8") as f:
+                        json.dump(rec, f, indent=1, sort_keys=True)
+                rec["dir"] = os.path.join(base, sha)
+                return rec
+    info = _gh_json("/repos/%s" % repo)
+    if info is None:
+        return {"repo": repo, "error": "not found"}
+    commit = _gh_json("/repos/%s/commits/%s" % (repo, urllib.parse.quote(ref or info["default_branch"], safe="")))
+    sha = commit["sha"]
+    d = os.path.join(base, sha)
+    os.makedirs(d, exist_ok=True)
+    rec = {"repo": info["full_name"], "requested": repo, "sha": sha, "ref": ref or info["default_branch"], "dir": d,
+           "description": info.get("description"), "license_spdx": (info.get("license") or {}).get("spdx_id"),
+           "fetched_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "files": {}}
+    for kind, path in (("readme", "/repos/%s/readme?ref=%s" % (repo, sha)), ("license", "/repos/%s/license?ref=%s" % (repo, sha))):
+        meta = _gh_json(path)
+        if not meta or not meta.get("download_url"):
+            continue
+        name = meta.get("path") or meta.get("name")
+        raw = "https://raw.githubusercontent.com/%s/%s/%s" % (info["full_name"], sha, urllib.parse.quote(name))
+        with _request(raw) as r:
+            data = r.read()
+        dest = os.path.join(d, name)
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        with open(dest, "wb") as f:
+            f.write(data)
+        rec["files"][kind] = {"path": name, "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest(), "url": raw}
+        log("  github %s@%s %s (%d bytes)" % (repo, sha[:10], name, len(data)))
+    for x in extra:
+        _gh_extra(rec, x, log)
+    with open(os.path.join(d, "github.json"), "w", encoding="utf-8") as f:
+        json.dump(rec, f, indent=1, sort_keys=True)
+    return rec
+
+
+def _gh_extra(rec, path, log):
+    raw = "https://raw.githubusercontent.com/%s/%s/%s" % (rec["repo"], rec["sha"], urllib.parse.quote(path))
+    try:
+        with _request(raw) as r:
+            data = r.read()
+    except HFError as e:
+        rec["files"].setdefault("extra_errors", {})[path] = str(e)
+        return
+    dest = os.path.join(rec["dir"], path)
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    with open(dest, "wb") as f:
+        f.write(data)
+    rec["files"].setdefault("extra", {})[path] = {"path": path, "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest(), "url": raw}
+    log("  github %s@%s %s (%d bytes)" % (rec["repo"], rec["sha"][:10], path, len(data)))

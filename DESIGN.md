@@ -199,14 +199,14 @@ To support cutting-edge architectures that have not yet reached upstream `llama.
 2. **Preset & Model Mapping**:
    Model sections in `config/models-preset.ini` specify both the model GGUF (downloadable from Hugging Face) and the engine identifier:
    ```ini
-   [chat]
-   model  = models/chat/drex-dlm-Q8_0.gguf
+   [decision]
+   model  = models/decision/drex-dlm-Q8_0.gguf
    engine = llama-server__nace-ai__edlm
    hf-repo = nace-ai/drex-dlm-Q8_0
    ```
 3. **Candidate Model — DReX-DLM (Diffusion Language Model)**:
-   - **Upstream Project**: [nace-ai/drex-dlm](https://github.com/nace-ai/drex-dlm)
-   - **Candidate Role**: Evaluated as a potential new default for `chat`. Status: candidate only, tracked with the other decision models in [#24](https://github.com/brianreborn/familia/issues/24); not placed in `graph.yaml`.
+   - **Upstream Project**: [nace-ai/drex-decision-models](https://github.com/nace-ai/drex-decision-models) (`models/drex-dlm/`; the old nace-ai/drex-dlm repo is archived and points there). License cc-by-nc-4.0 (HF card), not Apache.
+   - **Role**: a decision (System 1) model served through llama-server's embeddings endpoint (`--embedding --pooling none --parallel 1`, `-b`/`-ub` = ctx; card L22), not a chat model. Status: candidate only, tracked with the other decision models in [#24](https://github.com/brianreborn/familia/issues/24); not placed in `graph.yaml`.
    - **Model Weights**: `nace-ai/drex-dlm-Q8_0` on Hugging Face.
    - **Required Runtime**: [nace-ai/llama.cpp](https://github.com/nace-ai/llama.cpp) branch `edlm`.
    - **Engine Identifier**: `llama-server__nace-ai__edlm`

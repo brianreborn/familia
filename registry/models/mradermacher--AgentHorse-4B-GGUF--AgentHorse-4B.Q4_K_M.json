@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "mradermacher--AgentHorse-4B-GGUF--AgentHorse-4B.Q4_K_M",
  "repo": "mradermacher/AgentHorse-4B-GGUF",
  "revision": "9ec59226a5612a1317159802af0ed0173b8e1fb5",
@@ -27,18 +27,52 @@
  "card_default_mode": null,
  "card_default_mode_source": null,
  "card_sampling_sets": null,
- "card_commands": null,
+ "card_commands": [
+  {
+   "source": "CloudGoat/AgentHorse-4B README.md:L27-43",
+   "file": "README.md",
+   "lines": [
+    27,
+    43
+   ],
+   "lang": "yaml",
+   "tool": "mergekit",
+   "kind": "config",
+   "text": "slices:\n  - sources:\n      - model: ./NeoHorse-1-4B-aligned\n        layer_range: [0, 32]\n      - model: InternScience/Agents-A1-4B\n        layer_range: [0, 32]\nmerge_method: slerp\nbase_model: ./NeoHorse-1-4B-aligned\nparameters:\n  t:\n    - filter: self_attn\n      value: [0.55, 0.5, 0.4, 0.3, 0.2, 0.15]\n    - filter: mlp\n      value: [0.6, 0.55, 0.45, 0.35, 0.25, 0.2]\n    - value: 0.3\ndtype: bfloat16\ntokenizer_source: ./NeoHorse-1-4B-aligned",
+   "doc": "base-card",
+   "doc_sha": "19f9ca4f2e0288da139f073faaf8e2d5aabd04f0",
+   "scope": "model"
+  }
+ ],
  "card_notes": null,
  "chat_template": {
   "gguf_sha256": "a4aee8afcf2e0711942cf848899be66016f8d14a889ff9ede07bca099c28f715",
   "repo_sha256": "a4aee8afcf2e0711942cf848899be66016f8d14a889ff9ede07bca099c28f715",
-  "repo_file": "CloudGoat/AgentHorse-4B chat_template.jinja",
-  "same": true
+  "repo_file": "chat_template.jinja",
+  "same": true,
+  "gguf_chars": 7756,
+  "repo_chars": 7756,
+  "repo_label": "CloudGoat/AgentHorse-4B",
+  "use": "gguf"
  },
  "stop": {
   "eos_token": "<|im_end|>",
   "eos_token_id": 248046,
-  "eos_token_id_source": "GGUF"
+  "eos_token_id_source": "GGUF",
+  "analysis": {
+   "tokens": [
+    {
+     "id": 248046,
+     "text": "<|im_end|>",
+     "source": "CloudGoat/AgentHorse-4B tokenizer_config.json eos_token",
+     "eog_by": "GGUF tokenizer.ggml.eos_token_id"
+    }
+   ],
+   "missing": [],
+   "gguf": {
+    "eos": 248046
+   }
+  }
  },
  "rope": {
   "rope.freq_base": 10000000.0,
@@ -278,5 +312,286 @@
  ],
  "warnings": null,
  "updated": "2026-10-19",
- "by": "scripts/model_db.py"
+ "by": "scripts/model_db.py",
+ "gguf_meta": {
+  "general.architecture": "qwen35",
+  "general.type": "model",
+  "general.name": "AgentHorse 4B",
+  "general.basename": "AgentHorse",
+  "general.size_label": "4B",
+  "general.base_model.count": 1,
+  "general.base_model.0.name": "Agents A1 4B",
+  "general.base_model.0.organization": "InternScience",
+  "general.base_model.0.repo_url": "https://huggingface.co/InternScience/Agents-A1-4B",
+  "general.tags": [
+   "mergekit",
+   "merge"
+  ],
+  "qwen35.block_count": 32,
+  "qwen35.context_length": 262144,
+  "qwen35.embedding_length": 2560,
+  "qwen35.feed_forward_length": 9216,
+  "qwen35.attention.head_count": 16,
+  "qwen35.attention.head_count_kv": 4,
+  "qwen35.rope.dimension_sections": {
+   "array_len": 4
+  },
+  "qwen35.rope.freq_base": 10000000.0,
+  "qwen35.attention.layer_norm_rms_epsilon": 9.999999974752427e-07,
+  "qwen35.attention.key_length": 256,
+  "qwen35.attention.value_length": 256,
+  "qwen35.ssm.conv_kernel": 4,
+  "qwen35.ssm.state_size": 128,
+  "qwen35.ssm.group_count": 16,
+  "qwen35.ssm.time_step_rank": 32,
+  "qwen35.ssm.inner_size": 4096,
+  "qwen35.attention.recurrent_layers": {
+   "array_len": 32
+  },
+  "qwen35.full_attention_interval": 4,
+  "qwen35.rope.dimension_count": 64,
+  "tokenizer.ggml.model": "gpt2",
+  "tokenizer.ggml.pre": "qwen35",
+  "tokenizer.ggml.tokens": {
+   "array_len": 248077
+  },
+  "tokenizer.ggml.token_type": {
+   "array_len": 248077
+  },
+  "tokenizer.ggml.merges": {
+   "array_len": 247587
+  },
+  "tokenizer.ggml.eos_token_id": 248046,
+  "tokenizer.ggml.padding_token_id": 248044,
+  "tokenizer.ggml.add_bos_token": false,
+  "tokenizer.ggml.add_eos_token": false,
+  "tokenizer.chat_template": {
+   "sha256": "a4aee8afcf2e0711942cf848899be66016f8d14a889ff9ede07bca099c28f715",
+   "chars": 7756
+  },
+  "general.quantization_version": 2,
+  "general.file_type": 15,
+  "general.url": "https://huggingface.co/mradermacher/AgentHorse-4B-GGUF",
+  "mradermacher.quantize_version": "2",
+  "mradermacher.quantized_by": "mradermacher",
+  "mradermacher.quantized_at": "2026-10-04T10:13:17+02:00",
+  "mradermacher.quantized_on": "back",
+  "general.source.url": "https://huggingface.co/CloudGoat/AgentHorse-4B",
+  "mradermacher.convert_type": "hf",
+  "_gguf_version": 3,
+  "_n_tensors": 426
+ },
+ "base_chain": [
+  {
+   "repo": "CloudGoat/AgentHorse-4B",
+   "api_id": "CloudGoat/AgentHorse-4B",
+   "revision": "19f9ca4f2e0288da139f073faaf8e2d5aabd04f0",
+   "via": "card base_model",
+   "card_data": {
+    "base_model": [
+     "InternScience/Agents-A1-4B"
+    ],
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "image-text-to-text",
+   "safetensors": {
+    "parameters": {
+     "BF16": 4205129216
+    },
+    "total": 4205129216
+   },
+   "license_files": null
+  },
+  {
+   "repo": "InternScience/Agents-A1-4B",
+   "api_id": "InternScience/Agents-A1-4B",
+   "revision": "945c40a4aa6f534d434a353207b8d42ecf7a5293",
+   "via": "CloudGoat/AgentHorse-4B card base_model",
+   "card_data": {
+    "license": "apache-2.0",
+    "pipeline_tag": "text-generation",
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "text-generation",
+   "safetensors": {
+    "parameters": {
+     "BF16": 4539265536
+    },
+    "total": 4539265536
+   },
+   "license_files": null
+  }
+ ],
+ "github": null,
+ "github_dropped": null,
+ "descriptor": {
+  "repo_id": {
+   "effective": "mradermacher/AgentHorse-4B-GGUF",
+   "source": "HF API id"
+  },
+  "revision": {
+   "effective": "9ec59226a5612a1317159802af0ed0173b8e1fb5",
+   "source": "pinned (manifest / database)"
+  },
+  "file": {
+   "effective": "AgentHorse-4B.Q4_K_M.gguf",
+   "source": "HF API siblings"
+  },
+  "bytes": {
+   "effective": 2708288960,
+   "source": "HF API LFS size"
+  },
+  "sha256": {
+   "effective": "39182c1c76dda8361124544a02a0ae71a48024326ed46e8e0c478b36ecfdc9bb",
+   "source": "HF API LFS oid"
+  },
+  "quant": {
+   "effective": "Q4_K_M",
+   "source": "file name",
+   "values": [
+    {
+     "value": "Q4_K_M",
+     "source": "file name"
+    },
+    {
+     "value": "Q4_K_M",
+     "source": "GGUF general.file_type"
+    }
+   ]
+  },
+  "license": {
+   "effective": "apache-2.0",
+   "source": "InternScience/Agents-A1-4B card license"
+  },
+  "base_model_chain": {
+   "effective": "CloudGoat/AgentHorse-4B",
+   "source": "card base_model",
+   "values": [
+    {
+     "value": "CloudGoat/AgentHorse-4B",
+     "source": "card base_model"
+    },
+    {
+     "value": "InternScience/Agents-A1-4B",
+     "source": "CloudGoat/AgentHorse-4B card base_model"
+    }
+   ]
+  },
+  "gguf_base_model": {
+   "effective": {
+    "name": "Agents A1 4B",
+    "organization": "InternScience",
+    "repo_url": "https://huggingface.co/InternScience/Agents-A1-4B"
+   },
+   "source": "GGUF general.base_model.0"
+  },
+  "architecture": {
+   "effective": "qwen35",
+   "source": "GGUF general.architecture",
+   "values": [
+    {
+     "value": "qwen35",
+     "source": "GGUF general.architecture"
+    },
+    {
+     "value": "qwen35",
+     "source": "HF API gguf.architecture"
+    }
+   ]
+  },
+  "hf_architectures": {
+   "effective": [
+    "Qwen3_5ForConditionalGeneration"
+   ],
+   "source": "CloudGoat/AgentHorse-4B config.json architectures"
+  },
+  "hf_model_type": {
+   "effective": "qwen3_5_text",
+   "source": "CloudGoat/AgentHorse-4B config.json model_type"
+  },
+  "parameters": {
+   "effective": 4205129216,
+   "source": "HF API gguf.total (mradermacher/AgentHorse-4B-GGUF)",
+   "values": [
+    {
+     "value": 4205129216,
+     "source": "HF API gguf.total (mradermacher/AgentHorse-4B-GGUF)"
+    },
+    {
+     "value": 4205129216,
+     "source": "HF API safetensors.total (CloudGoat/AgentHorse-4B)"
+    },
+    {
+     "value": 4539265536,
+     "source": "HF API safetensors.total (InternScience/Agents-A1-4B)"
+    }
+   ],
+   "conflict": true
+  },
+  "size_label": {
+   "effective": "4B",
+   "source": "GGUF general.size_label"
+  },
+  "ctx": {
+   "effective": 262144,
+   "source": "CloudGoat/AgentHorse-4B config.json max_position_embeddings",
+   "values": [
+    {
+     "value": 262144,
+     "source": "CloudGoat/AgentHorse-4B config.json max_position_embeddings"
+    },
+    {
+     "value": 262144,
+     "source": "GGUF qwen35.context_length"
+    }
+   ],
+   "precedence": "card statement > config.json > GGUF header > GitHub README"
+  },
+  "pipeline_tag": {
+   "effective": "image-text-to-text",
+   "source": "CloudGoat/AgentHorse-4B HF API pipeline_tag",
+   "values": [
+    {
+     "value": "image-text-to-text",
+     "source": "CloudGoat/AgentHorse-4B HF API pipeline_tag"
+    },
+    {
+     "value": "text-generation",
+     "source": "InternScience/Agents-A1-4B HF API pipeline_tag"
+    }
+   ],
+   "conflict": true
+  },
+  "languages": {
+   "effective": [
+    "en"
+   ],
+   "source": "mradermacher/AgentHorse-4B-GGUF card language"
+  }
+ },
+ "required_params": {
+  "kind": "chat",
+  "native_ctx": 262144,
+  "native_ctx_source": "CloudGoat/AgentHorse-4B config.json max_position_embeddings",
+  "yarn": null,
+  "yarn_source": null,
+  "items": [
+   {
+    "class": "REQUIRED",
+    "flag": "--jinja",
+    "value": null,
+    "source": "GGUF tokenizer.chat_template (a4aee8afcf2e)",
+    "why_required": "messages, tool calls and thinking are formatted by the model's chat template; without --jinja llama-server falls back to a built-in approximation"
+   }
+  ]
+ },
+ "blockers": [
+  {
+   "what": "license not stated: neither the GGUF card, CloudGoat/AgentHorse-4B's card nor the GGUF header names one (no GitHub repo found)"
+  }
+ ],
+ "params_problems": null,
+ "params_build": "b11374",
+ "native_ctx": 262144,
+ "native_ctx_source": "CloudGoat/AgentHorse-4B config.json max_position_embeddings"
 }

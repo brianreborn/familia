@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "karpathy--tinyllamas--stories15M",
  "repo": "karpathy/tinyllamas",
  "revision": "0bd21da7698eaf29a0d7de3992de8a46ef624add",
@@ -27,7 +27,488 @@
  "card_default_mode": null,
  "card_default_mode_source": null,
  "card_sampling_sets": null,
- "card_commands": null,
+ "card_commands": [
+  {
+   "source": "github.com/karpathy/llama2.c README.md:L22-22",
+   "file": "README.md",
+   "lines": [
+    22,
+    22
+   ],
+   "lang": "bash",
+   "tool": "git",
+   "kind": "command",
+   "text": "git clone https://github.com/karpathy/llama2.c.git",
+   "doc": "github",
+   "doc_sha": "350e04fe35433e6d2941dce5a1f53308f87058eb",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/karpathy/llama2.c README.md:L28-28",
+   "file": "README.md",
+   "lines": [
+    28,
+    28
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "cd llama2.c",
+   "doc": "github",
+   "doc_sha": "350e04fe35433e6d2941dce5a1f53308f87058eb",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/karpathy/llama2.c README.md:L34-34",
+   "file": "README.md",
+   "lines": [
+    34,
+    34
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "wget https://huggingface.co/karpathy/tinyllamas/resolve/main/stories15M.bin",
+   "doc": "github",
+   "doc_sha": "350e04fe35433e6d2941dce5a1f53308f87058eb",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/karpathy/llama2.c README.md:L40-41",
+   "file": "README.md",
+   "lines": [
+    40,
+    41
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "make run\n./run stories15M.bin",
+   "doc": "github",
+   "doc_sha": "350e04fe35433e6d2941dce5a1f53308f87058eb",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/karpathy/llama2.c README.md:L47-48",
+   "file": "README.md",
+   "lines": [
+    47,
+    48
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "wget https://huggingface.co/karpathy/tinyllamas/resolve/main/stories42M.bin\n./run stories42M.bin",
+   "doc": "github",
+   "doc_sha": "350e04fe35433e6d2941dce5a1f53308f87058eb",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/karpathy/llama2.c README.md:L58-58",
+   "file": "README.md",
+   "lines": [
+    58,
+    58
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "./run stories42M.bin -t 0.8 -n 256 -i \"One day, Lily met a Shoggoth\"",
+   "doc": "github",
+   "doc_sha": "350e04fe35433e6d2941dce5a1f53308f87058eb",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/karpathy/llama2.c README.md:L65",
+   "file": "README.md",
+   "lines": [
+    65,
+    65
+   ],
+   "lang": null,
+   "tool": "llama.cpp",
+   "kind": "inline",
+   "text": "-t 1.0 -p 0.9",
+   "doc": "github",
+   "doc_sha": "350e04fe35433e6d2941dce5a1f53308f87058eb",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/karpathy/llama2.c README.md:L73-73",
+   "file": "README.md",
+   "lines": [
+    73,
+    73
+   ],
+   "lang": "bash",
+   "tool": "python",
+   "kind": "code",
+   "text": "python export.py llama2_7b.bin --meta-llama path/to/llama/model/7B",
+   "doc": "github",
+   "doc_sha": "350e04fe35433e6d2941dce5a1f53308f87058eb",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/karpathy/llama2.c README.md:L79-79",
+   "file": "README.md",
+   "lines": [
+    79,
+    79
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "./run llama2_7b.bin",
+   "doc": "github",
+   "doc_sha": "350e04fe35433e6d2941dce5a1f53308f87058eb",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/karpathy/llama2.c README.md:L91-91",
+   "file": "README.md",
+   "lines": [
+    91,
+    91
+   ],
+   "lang": "bash",
+   "tool": "python",
+   "kind": "code",
+   "text": "python export.py llama2_7b_chat.bin --meta-llama /path/to/7B-chat",
+   "doc": "github",
+   "doc_sha": "350e04fe35433e6d2941dce5a1f53308f87058eb",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/karpathy/llama2.c README.md:L97-97",
+   "file": "README.md",
+   "lines": [
+    97,
+    97
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "./run llama2_7b_chat.bin -m chat",
+   "doc": "github",
+   "doc_sha": "350e04fe35433e6d2941dce5a1f53308f87058eb",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/karpathy/llama2.c README.md:L103-105",
+   "file": "README.md",
+   "lines": [
+    103,
+    105
+   ],
+   "lang": "bash",
+   "tool": "python",
+   "kind": "code",
+   "text": "python export.py codellama2_7b.bin --meta-llama /path/to/CodeLlama-7b\npython tokenizer.py --tokenizer-model=/path/to/CodeLlama-7b/tokenizer.model\n./run codellama2_7b.bin -z /path/to/CodeLlama-7b/tokenizer.bin",
+   "doc": "github",
+   "doc_sha": "350e04fe35433e6d2941dce5a1f53308f87058eb",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/karpathy/llama2.c README.md:L111-113",
+   "file": "README.md",
+   "lines": [
+    111,
+    113
+   ],
+   "lang": "bash",
+   "tool": "python",
+   "kind": "code",
+   "text": "python export.py codellama2_7b_instruct.bin --meta-llama /path/to/CodeLlama-7b-Instruct\npython tokenizer.py --tokenizer-model=/path/to/CodeLlama-7b-Instruct/tokenizer.model\n./run codellama2_7b_instruct.bin -m chat -z /path/to/CodeLlama-7b-Instruct/tokenizer.bin",
+   "doc": "github",
+   "doc_sha": "350e04fe35433e6d2941dce5a1f53308f87058eb",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/karpathy/llama2.c README.md:L123-123",
+   "file": "README.md",
+   "lines": [
+    123,
+    123
+   ],
+   "lang": null,
+   "tool": "python",
+   "kind": "code",
+   "text": "python export.py llama2_7b.bin --meta-llama path/to/llama/model/7B",
+   "doc": "github",
+   "doc_sha": "350e04fe35433e6d2941dce5a1f53308f87058eb",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/karpathy/llama2.c README.md:L129-129",
+   "file": "README.md",
+   "lines": [
+    129,
+    129
+   ],
+   "lang": null,
+   "tool": "python",
+   "kind": "code",
+   "text": "python export.py llama2_7b_q80.bin --version 2 --meta-llama path/to/llama/model/7B",
+   "doc": "github",
+   "doc_sha": "350e04fe35433e6d2941dce5a1f53308f87058eb",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/karpathy/llama2.c README.md:L135-137",
+   "file": "README.md",
+   "lines": [
+    135,
+    137
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "make runomp\nOMP_NUM_THREADS=64 ./run llama2_7b.bin -n 40\nOMP_NUM_THREADS=64 ./runq llama2_7b_q80.bin -n 40",
+   "doc": "github",
+   "doc_sha": "350e04fe35433e6d2941dce5a1f53308f87058eb",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/karpathy/llama2.c README.md:L164-165",
+   "file": "README.md",
+   "lines": [
+    164,
+    165
+   ],
+   "lang": "bash",
+   "tool": "python",
+   "kind": "code",
+   "text": "python tinystories.py download\npython tinystories.py pretokenize",
+   "doc": "github",
+   "doc_sha": "350e04fe35433e6d2941dce5a1f53308f87058eb",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/karpathy/llama2.c README.md:L171-171",
+   "file": "README.md",
+   "lines": [
+    171,
+    171
+   ],
+   "lang": "bash",
+   "tool": "python",
+   "kind": "code",
+   "text": "python train.py",
+   "doc": "github",
+   "doc_sha": "350e04fe35433e6d2941dce5a1f53308f87058eb",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/karpathy/llama2.c README.md:L179-179",
+   "file": "README.md",
+   "lines": [
+    179,
+    179
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "wget https://huggingface.co/karpathy/tinyllamas/resolve/main/stories15M.bin",
+   "doc": "github",
+   "doc_sha": "350e04fe35433e6d2941dce5a1f53308f87058eb",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/karpathy/llama2.c README.md:L185-185",
+   "file": "README.md",
+   "lines": [
+    185,
+    185
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "make run",
+   "doc": "github",
+   "doc_sha": "350e04fe35433e6d2941dce5a1f53308f87058eb",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/karpathy/llama2.c README.md:L191-191",
+   "file": "README.md",
+   "lines": [
+    191,
+    191
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "./run stories15M.bin",
+   "doc": "github",
+   "doc_sha": "350e04fe35433e6d2941dce5a1f53308f87058eb",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/karpathy/llama2.c README.md:L197-198",
+   "file": "README.md",
+   "lines": [
+    197,
+    198
+   ],
+   "lang": "bash",
+   "tool": "python",
+   "kind": "code",
+   "text": "wget https://huggingface.co/karpathy/tinyllamas/resolve/main/stories15M.pt -P out15M\npython sample.py --checkpoint=out15M/stories15M.pt",
+   "doc": "github",
+   "doc_sha": "350e04fe35433e6d2941dce5a1f53308f87058eb",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/karpathy/llama2.c README.md:L210-211",
+   "file": "README.md",
+   "lines": [
+    210,
+    211
+   ],
+   "lang": null,
+   "tool": "python",
+   "kind": "code",
+   "text": "python tinystories.py download\npython tinystories.py pretokenize",
+   "doc": "github",
+   "doc_sha": "350e04fe35433e6d2941dce5a1f53308f87058eb",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/karpathy/llama2.c README.md:L217-219",
+   "file": "README.md",
+   "lines": [
+    217,
+    219
+   ],
+   "lang": null,
+   "tool": "python",
+   "kind": "code",
+   "text": "python tinystories.py download\npython tinystories.py train_vocab --vocab_size=4096\npython tinystories.py pretokenize --vocab_size=4096",
+   "doc": "github",
+   "doc_sha": "350e04fe35433e6d2941dce5a1f53308f87058eb",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/karpathy/llama2.c README.md:L229-229",
+   "file": "README.md",
+   "lines": [
+    229,
+    229
+   ],
+   "lang": null,
+   "tool": "python",
+   "kind": "code",
+   "text": "python train.py --vocab_source=custom --vocab_size=4096",
+   "doc": "github",
+   "doc_sha": "350e04fe35433e6d2941dce5a1f53308f87058eb",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/karpathy/llama2.c README.md:L235-235",
+   "file": "README.md",
+   "lines": [
+    235,
+    235
+   ],
+   "lang": null,
+   "tool": "python",
+   "kind": "code",
+   "text": "python tokenizer.py --tokenizer-model=data/tok4096.model",
+   "doc": "github",
+   "doc_sha": "350e04fe35433e6d2941dce5a1f53308f87058eb",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/karpathy/llama2.c README.md:L241-241",
+   "file": "README.md",
+   "lines": [
+    241,
+    241
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "./run out/model.bin -z data/tok4096.bin",
+   "doc": "github",
+   "doc_sha": "350e04fe35433e6d2941dce5a1f53308f87058eb",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/karpathy/llama2.c README.md:L251-251",
+   "file": "README.md",
+   "lines": [
+    251,
+    251
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "gcc -O3 -o run run.c -lm",
+   "doc": "github",
+   "doc_sha": "350e04fe35433e6d2941dce5a1f53308f87058eb",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/karpathy/llama2.c README.md:L270-270",
+   "file": "README.md",
+   "lines": [
+    270,
+    270
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "clang -Ofast -fopenmp -march=native run.c  -lm  -o run",
+   "doc": "github",
+   "doc_sha": "350e04fe35433e6d2941dce5a1f53308f87058eb",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/karpathy/llama2.c README.md:L276-276",
+   "file": "README.md",
+   "lines": [
+    276,
+    276
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "OMP_NUM_THREADS=4 ./run out/model.bin",
+   "doc": "github",
+   "doc_sha": "350e04fe35433e6d2941dce5a1f53308f87058eb",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/karpathy/llama2.c README.md:L295-296",
+   "file": "README.md",
+   "lines": [
+    295,
+    296
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "$ pip install pytest\n$ pytest",
+   "doc": "github",
+   "doc_sha": "350e04fe35433e6d2941dce5a1f53308f87058eb",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/karpathy/llama2.c README.md:L304-304",
+   "file": "README.md",
+   "lines": [
+    304,
+    304
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "make testcc VERBOSITY=1",
+   "doc": "github",
+   "doc_sha": "350e04fe35433e6d2941dce5a1f53308f87058eb",
+   "scope": "model"
+  }
+ ],
  "card_notes": null,
  "chat_template": null,
  "stop": null,
@@ -148,5 +629,91 @@
  ],
  "warnings": null,
  "updated": "2026-10-19",
- "by": "scripts/model_db.py"
+ "by": "scripts/model_db.py",
+ "gguf_meta": null,
+ "base_chain": null,
+ "github": [
+  {
+   "repo": "karpathy/llama2.c",
+   "resolved": "karpathy/llama2.c",
+   "sha": "350e04fe35433e6d2941dce5a1f53308f87058eb",
+   "renamed": null,
+   "description": "Inference Llama 2 in one file of pure C",
+   "license_spdx": "MIT",
+   "files": {
+    "license": {
+     "path": "LICENSE",
+     "sha256": "e87b912002f04cdfa837eaf7f70548ab79b9cb62a285495edf575f3da875aec4",
+     "bytes": 1063
+    },
+    "readme": {
+     "path": "README.md",
+     "sha256": "9fe4d94f4774397868a65e2d3068b499b16788d7387bc06d439af97dfbaf1367",
+     "bytes": 35271
+    }
+   },
+   "extra": null,
+   "snapshot": "github/karpathy--llama2.c/350e04fe35433e6d2941dce5a1f53308f87058eb"
+  }
+ ],
+ "github_dropped": null,
+ "descriptor": {
+  "repo_id": {
+   "effective": "karpathy/tinyllamas",
+   "source": "HF API id"
+  },
+  "revision": {
+   "effective": "0bd21da7698eaf29a0d7de3992de8a46ef624add",
+   "source": "pinned (manifest / database)"
+  },
+  "file": {
+   "effective": "stories15M.bin",
+   "source": "HF API siblings"
+  },
+  "bytes": {
+   "effective": 60816028,
+   "source": "HF API LFS size"
+  },
+  "sha256": {
+   "effective": "cd590644d963867a2b6e5a1107f51fad663c41d79c149fbecbbb1f95fa81f49a",
+   "source": "HF API LFS oid"
+  },
+  "license": {
+   "effective": "mit",
+   "source": "karpathy/tinyllamas card license",
+   "values": [
+    {
+     "value": "mit",
+     "source": "karpathy/tinyllamas card license"
+    },
+    {
+     "value": "MIT",
+     "source": "GitHub github.com/karpathy/llama2.c license (spdx)"
+    }
+   ],
+   "conflict": true
+  },
+  "license_file": {
+   "effective": "github.com/karpathy/llama2.c@350e04fe3543/LICENSE",
+   "source": "GitHub github.com/karpathy/llama2.c"
+  },
+  "ctx_statements": {
+   "effective": {
+    "value": 1024,
+    "quote": "You'll notice that the 110M model is equivalent to GPT-1 in size. Alternatively, this is also the smallest model in the GPT-2 series (`GPT-2 small`), except the max context length is only 1024 instead of 2048. The only notable changes from "
+   },
+   "source": "github.com/karpathy/llama2.c README.md:L157"
+  }
+ },
+ "required_params": {
+  "kind": "raw",
+  "native_ctx": null,
+  "native_ctx_source": null,
+  "yarn": null,
+  "yarn_source": null,
+  "items": []
+ },
+ "blockers": null,
+ "params_problems": null,
+ "params_build": "b11374"
 }

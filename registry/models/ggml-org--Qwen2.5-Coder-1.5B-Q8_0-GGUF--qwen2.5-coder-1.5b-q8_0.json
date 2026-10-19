@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "ggml-org--Qwen2.5-Coder-1.5B-Q8_0-GGUF--qwen2.5-coder-1.5b-q8_0",
  "repo": "ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF",
  "revision": "8be1b8a895a84beea772817caaa71eba6b6e0d07",
@@ -27,24 +27,425 @@
  "card_sampling_sets": null,
  "card_commands": [
   {
-   "tool": "llama-cli",
-   "command": "llama-cli --hf-repo ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF --hf-file qwen2.5-coder-1.5b-q8_0.gguf -p \"The meaning to life and the universe is\"",
-   "source": "ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF README.md:L33"
+   "source": "ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF README.md:L26-27",
+   "file": "README.md",
+   "lines": [
+    26,
+    27
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "brew install llama.cpp\n",
+   "doc": "card",
+   "doc_sha": "8be1b8a895a84beea772817caaa71eba6b6e0d07",
+   "scope": "model"
   },
   {
-   "tool": "llama-server",
-   "command": "llama-server --hf-repo ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF --hf-file qwen2.5-coder-1.5b-q8_0.gguf -c 2048",
-   "source": "ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF README.md:L38"
+   "source": "ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF README.md:L33-33",
+   "file": "README.md",
+   "lines": [
+    33,
+    33
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "llama-cli --hf-repo ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF --hf-file qwen2.5-coder-1.5b-q8_0.gguf -p \"The meaning to life and the universe is\"",
+   "llama": [
+    {
+     "tool": "llama-cli",
+     "raw": "llama-cli --hf-repo ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF --hf-file qwen2.5-coder-1.5b-q8_0.gguf -p \"The meaning to life and the universe is\"",
+     "flags": [
+      {
+       "flag": "--hf-repo",
+       "canonical": "--hf-repo",
+       "value": "ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--hf-file",
+       "canonical": "--hf-file",
+       "value": "qwen2.5-coder-1.5b-q8_0.gguf",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-p",
+       "canonical": "--prompt",
+       "value": "The meaning to life and the universe is",
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    }
+   ],
+   "doc": "card",
+   "doc_sha": "8be1b8a895a84beea772817caaa71eba6b6e0d07",
+   "scope": "model"
   },
   {
-   "tool": "llama-cli",
-   "command": "./llama-cli --hf-repo ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF --hf-file qwen2.5-coder-1.5b-q8_0.gguf -p \"The meaning to life and the universe is\"",
-   "source": "ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF README.md:L55"
+   "source": "ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF README.md:L38-38",
+   "file": "README.md",
+   "lines": [
+    38,
+    38
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "llama-server --hf-repo ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF --hf-file qwen2.5-coder-1.5b-q8_0.gguf -c 2048",
+   "llama": [
+    {
+     "tool": "llama-server",
+     "raw": "llama-server --hf-repo ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF --hf-file qwen2.5-coder-1.5b-q8_0.gguf -c 2048",
+     "flags": [
+      {
+       "flag": "--hf-repo",
+       "canonical": "--hf-repo",
+       "value": "ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--hf-file",
+       "canonical": "--hf-file",
+       "value": "qwen2.5-coder-1.5b-q8_0.gguf",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-c",
+       "canonical": "--ctx-size",
+       "value": "2048",
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    }
+   ],
+   "doc": "card",
+   "doc_sha": "8be1b8a895a84beea772817caaa71eba6b6e0d07",
+   "scope": "model"
   },
   {
-   "tool": "llama-server",
-   "command": "./llama-server --hf-repo ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF --hf-file qwen2.5-coder-1.5b-q8_0.gguf -c 2048",
-   "source": "ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF README.md:L59"
+   "source": "ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF README.md:L45-45",
+   "file": "README.md",
+   "lines": [
+    45,
+    45
+   ],
+   "lang": null,
+   "tool": "git",
+   "kind": "command",
+   "text": "git clone https://github.com/ggerganov/llama.cpp",
+   "doc": "card",
+   "doc_sha": "8be1b8a895a84beea772817caaa71eba6b6e0d07",
+   "scope": "model"
+  },
+  {
+   "source": "ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF README.md:L50-50",
+   "file": "README.md",
+   "lines": [
+    50,
+    50
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "cd llama.cpp && LLAMA_CURL=1 make",
+   "doc": "card",
+   "doc_sha": "8be1b8a895a84beea772817caaa71eba6b6e0d07",
+   "scope": "model"
+  },
+  {
+   "source": "ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF README.md:L55-55",
+   "file": "README.md",
+   "lines": [
+    55,
+    55
+   ],
+   "lang": null,
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "./llama-cli --hf-repo ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF --hf-file qwen2.5-coder-1.5b-q8_0.gguf -p \"The meaning to life and the universe is\"",
+   "llama": [
+    {
+     "tool": "llama-cli",
+     "raw": "./llama-cli --hf-repo ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF --hf-file qwen2.5-coder-1.5b-q8_0.gguf -p \"The meaning to life and the universe is\"",
+     "flags": [
+      {
+       "flag": "--hf-repo",
+       "canonical": "--hf-repo",
+       "value": "ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--hf-file",
+       "canonical": "--hf-file",
+       "value": "qwen2.5-coder-1.5b-q8_0.gguf",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-p",
+       "canonical": "--prompt",
+       "value": "The meaning to life and the universe is",
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    }
+   ],
+   "doc": "card",
+   "doc_sha": "8be1b8a895a84beea772817caaa71eba6b6e0d07",
+   "scope": "model"
+  },
+  {
+   "source": "ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF README.md:L59-59",
+   "file": "README.md",
+   "lines": [
+    59,
+    59
+   ],
+   "lang": null,
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "./llama-server --hf-repo ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF --hf-file qwen2.5-coder-1.5b-q8_0.gguf -c 2048",
+   "llama": [
+    {
+     "tool": "llama-server",
+     "raw": "./llama-server --hf-repo ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF --hf-file qwen2.5-coder-1.5b-q8_0.gguf -c 2048",
+     "flags": [
+      {
+       "flag": "--hf-repo",
+       "canonical": "--hf-repo",
+       "value": "ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--hf-file",
+       "canonical": "--hf-file",
+       "value": "qwen2.5-coder-1.5b-q8_0.gguf",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-c",
+       "canonical": "--ctx-size",
+       "value": "2048",
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    }
+   ],
+   "doc": "card",
+   "doc_sha": "8be1b8a895a84beea772817caaa71eba6b6e0d07",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen2.5-Coder-1.5B README.md:L46-46",
+   "file": "README.md",
+   "lines": [
+    46,
+    46
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "KeyError: 'qwen2'",
+   "doc": "base-card",
+   "doc_sha": "df3ce67c0e24480f20468b6ef2894622d69eb73b",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen2.5-Coder README.md:L68-68",
+   "file": "README.md",
+   "lines": [
+    68,
+    68
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "['ABAP', 'ActionScript', 'Ada', 'Agda', 'Alloy', 'ApacheConf', 'AppleScript', 'Arc', 'Arduino', 'AsciiDoc', 'AspectJ', 'Assembly', 'Augeas', 'AutoHotkey', 'AutoIt', 'Awk', 'Batchfile', 'Befunge', 'Bison', 'BitBake', 'BlitzBasic', 'BlitzMax', 'Bluespec', 'Boo', 'Brainfuck', 'Brightscript', 'Bro', 'C', 'C#', 'C++', 'C2hs Haskell', 'CLIPS', 'CMake', 'COBOL', 'CSS', 'CSV', \"Cap'n Proto\", 'CartoCSS', 'Ceylon', 'Chapel', 'ChucK', 'Cirru', 'Clarion', 'Clean', 'Click', 'Clojure', 'CoffeeScript', 'ColdFusion', 'ColdFusion CFC', 'Common Lisp', 'Component Pascal', 'Coq', 'Creole', 'Crystal', 'Csound', 'Cucumber', 'Cuda', 'Cycript', 'Cython', 'D', 'DIGITAL Command Language', 'DM', 'DNS Zone', 'Darcs Patch', 'Dart', 'Diff', 'Dockerfile', 'Dogescript', 'Dylan', 'E', 'ECL', 'Eagle', 'Ecere Projects', 'Eiffel', 'Elixir', 'Elm', 'Emacs Lisp', 'EmberScript', 'Erlang', 'F#', 'FLUX', 'FORTRAN', 'Factor', 'Fancy', 'Fantom', 'Forth', 'FreeMarker', 'G-code', 'GAMS', 'GAP', 'GAS', 'GDScript', 'GLSL', 'Genshi', 'Gentoo Ebuild', 'Gentoo Eclass', 'Gettext Catalog', 'Glyph', 'Gnuplot', 'Go', 'Golo', 'Gosu', 'Grace', 'Gradle', 'Grammatical Framework', 'GraphQL', 'Graphviz (DOT)', 'Groff', 'Groovy', 'Groovy Server Pages', 'HCL', 'HLSL', 'HTML', 'HTML+Django', 'HTML+EEX', 'HTML+ERB', 'HTML+PHP', 'HTTP', 'Haml', 'Handlebars', 'Harbour', 'Haskell', 'Haxe', 'Hy', 'IDL', 'IGOR Pro', 'INI', 'IRC log', 'Idris', 'Inform 7', 'Inno Setup', 'Io', 'Ioke', 'Isabelle', 'J', 'JFlex', 'JSON', 'JSON5', 'JSONLD', 'JSONiq', 'JSX', 'Jade', 'Jasmin', 'Java', 'Java Server Pages', 'JavaScript', 'Julia', 'Jupyter Notebook', 'KRL', 'KiCad', 'Kit', 'Kotlin', 'LFE', 'LLVM', 'LOLCODE', 'LSL', 'LabVIEW', 'Lasso', 'Latte', 'Lean', 'Less', 'Lex', 'LilyPond', 'Linker Script', 'Liquid', 'Literate Agda', 'Literate CoffeeScript', 'Literate Haskell', 'LiveScript', 'Logos', 'Logtalk', 'LookML', 'Lua', 'M', 'M4', 'MAXScript', 'MTML', 'MUF', 'Makefile', 'Mako', 'Maple', 'Markdown', 'Mask', 'Mathematica', 'Matlab', 'Max', 'MediaWiki', 'Metal', 'MiniD', 'Mirah', 'Modelica', 'Module Management System', 'Monkey', 'MoonScript', 'Myghty', 'NSIS', 'NetLinx', 'NetLogo', 'Nginx', 'Nimrod', 'Ninja', 'Nit', 'Nix', 'Nu', 'NumPy', 'OCaml', 'ObjDump', 'Objective-C++', 'Objective-J', 'Octave', 'Omgrofl', 'Opa', 'Opal', 'OpenCL', 'OpenEdge ABL', 'OpenSCAD', 'Org', 'Ox', 'Oxygene', 'Oz', 'PAWN', 'PHP', 'POV-Ray SDL', 'Pan', 'Papyrus', 'Parrot', 'Parrot Assembly', 'Parrot Internal Representation', 'Pascal', 'Perl', 'Perl6', 'Pickle', 'PigLatin', 'Pike', 'Pod', 'PogoScript', 'Pony', 'PostScript', 'PowerShell', 'Processing', 'Prolog', 'Propeller Spin', 'Protocol Buffer', 'Public Key', 'Pure Data', 'PureBasic', 'PureScript', 'Python', 'Python traceback', 'QML', 'QMake', 'R', 'RAML', 'RDoc', 'REALbasic', 'RHTML', 'RMarkdown', 'Racket', 'Ragel in Ruby Host', 'Raw token data', 'Rebol', 'Red', 'Redcode', \"Ren'Py\", 'RenderScript', 'RobotFramework', 'Rouge', 'Ruby', 'Rust', 'SAS', 'SCSS', 'SMT', 'SPARQL', 'SQF', 'SQL', 'STON', 'SVG', 'Sage', 'SaltStack', 'Sass', 'Scala', 'Scaml', 'Scheme', 'Scilab', 'Self', 'Shell', 'ShellSession', 'Shen', 'Slash', 'Slim', 'Smali', 'Smalltalk', 'Smarty', 'Solidity', 'SourcePawn', 'Squirrel', 'Stan', 'Standard ML', 'Stata', 'Stylus', 'SuperCollider', 'Swift', 'SystemVerilog', 'TOML', 'TXL', 'Tcl', 'Tcsh', 'TeX', 'Tea', 'Text', 'Textile', 'Thrift', 'Turing', 'Turtle', 'Twig', 'TypeScript', 'Unified Parallel C', 'Unity3D Asset', 'Uno', 'UnrealScript', 'UrWeb', 'VCL', 'VHDL', 'Vala', 'Verilog', 'VimL', 'Visual Basic', 'Volt', 'Vue', 'Web Ontology Language', 'WebAssembly', 'WebIDL', 'X10', 'XC', 'XML', 'XPages', 'XProc', 'XQuery', 'XS', 'XSLT', 'Xojo', 'Xtend', 'YAML', 'YANG', 'Yacc', 'Zephir', 'Zig', 'Zimpl', 'desktop', 'eC', 'edn', 'fish', 'mupad', 'nesC', 'ooc', 'reStructuredText', 'wisp', 'xBase']",
+   "doc": "github",
+   "doc_sha": "33bc6aabd7791ad7b32f7e92104f11f2359ba890",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen2.5-Coder README.md:L108-138",
+   "file": "README.md",
+   "lines": [
+    108,
+    138
+   ],
+   "lang": "python",
+   "tool": "transformers",
+   "kind": "code",
+   "text": "from transformers import AutoModelForCausalLM, AutoTokenizer\n\nmodel_name = \"Qwen/Qwen3-Coder-Next\"\n\nmodel = AutoModelForCausalLM.from_pretrained(\n    model_name,\n    torch_dtype=\"auto\",\n    device_map=\"auto\"\n)\ntokenizer = AutoTokenizer.from_pretrained(model_name)\n\nprompt = \"write a quick sort algorithm.\"\nmessages = [\n    {\"role\": \"user\", \"content\": prompt}\n]\ntext = tokenizer.apply_chat_template(\n    messages,\n    tokenize=False,\n    add_generation_prompt=True\n)\nmodel_inputs = tokenizer([text], return_tensors=\"pt\").to(model.device)\n\ngenerated_ids = model.generate(\n    **model_inputs,\n    max_new_tokens=65536\n)\ngenerated_ids = [\n    output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)\n]\n\nresponse = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-n",
+      "value": "65536",
+      "from": "max_new_tokens: 65536"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "github",
+   "doc_sha": "33bc6aabd7791ad7b32f7e92104f11f2359ba890",
+   "scope": "family: Qwen/Qwen3-Coder-Next"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen2.5-Coder README.md:L156-156",
+   "file": "README.md",
+   "lines": [
+    156,
+    156
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "prompt = '<|fim_prefix|>' + prefix_code + '<|fim_suffix|>' + suffix_code + '<|fim_middle|>'",
+   "doc": "github",
+   "doc_sha": "33bc6aabd7791ad7b32f7e92104f11f2359ba890",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen2.5-Coder README.md:L161-197",
+   "file": "README.md",
+   "lines": [
+    161,
+    197
+   ],
+   "lang": "python",
+   "tool": "transformers",
+   "kind": "code",
+   "text": "from transformers import AutoTokenizer, AutoModelForCausalLM\n# load model\ndevice = \"cuda\" # the device to load the model onto\n\nTOKENIZER = AutoTokenizer.from_pretrained(\"Qwen/Qwen3-Coder-Next\")\nMODEL = AutoModelForCausalLM.from_pretrained(\"Qwen/Qwen3-Coder-Next\", device_map=\"auto\").eval()\n\n\ninput_text = \"\"\"<|fim_prefix|>def quicksort(arr):\n    if len(arr) <= 1:\n        return arr\n    pivot = arr[len(arr) // 2]\n    <|fim_suffix|>\n    middle = [x for x in arr if x == pivot]\n    right = [x for x in arr if x > pivot]\n    return quicksort(left) + middle + quicksort(right)<|fim_middle|>\"\"\"\n            \nmessages = [\n    {\"role\": \"system\", \"content\": \"You are a code completion assistant.\"},\n    {\"role\": \"user\", \"content\": input_text}\n]\n\n\ntext = tokenizer.apply_chat_template(\n    messages,\n    tokenize=False,\n    add_generation_prompt=True\n)\nmodel_inputs = TOKENIZER([text], return_tensors=\"pt\").to(model.device)\n\n# Use `max_new_tokens` to control the maximum output length.\neos_token_ids = [151659, 151661, 151662, 151663, 151664, 151643, 151645]\ngenerated_ids = MODEL.generate(model_inputs.input_ids, max_new_tokens=512, do_sample=False, eos_token_id=eos_token_ids)[0]\n# The generated_ids include prompt_ids, we only need to decode the tokens after prompt_ids.\noutput_text = TOKENIZER.decode(generated_ids[len(model_inputs.input_ids[0]):], skip_special_tokens=True)\n\nprint(f\"Prompt: {input_text}\\n\\nGenerated text: {output_text}\")",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-n",
+      "value": "512",
+      "from": "max_new_tokens: 512"
+     },
+     {
+      "flag": "--temp",
+      "value": "0",
+      "from": "do_sample=False"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "github",
+   "doc_sha": "33bc6aabd7791ad7b32f7e92104f11f2359ba890",
+   "scope": "family: Qwen/Qwen3-Coder-Next"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen2.5-Coder README.md:L208-208",
+   "file": "README.md",
+   "lines": [
+    208,
+    208
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "next week we will release new coder model, can you collect the history of qwen coder and write a web page, the release the website with the nginx, you can seach how to do this in alibaba cloud linux first",
+   "doc": "github",
+   "doc_sha": "33bc6aabd7791ad7b32f7e92104f11f2359ba890",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen2.5-Coder README.md:L226-226",
+   "file": "README.md",
+   "lines": [
+    226,
+    226
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "Please tidy up my desk.",
+   "doc": "github",
+   "doc_sha": "33bc6aabd7791ad7b32f7e92104f11f2359ba890",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen2.5-Coder README.md:L242-281",
+   "file": "README.md",
+   "lines": [
+    242,
+    281
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "帮我实现《僵尸大战植物》网页游戏\n\n【核心机制】\n- 反向塔防：玩家扮演僵尸方，从地图右侧（部署区）召唤僵尸向左进攻\n- 资源循环：初始300脑子点数，僵尸吃掉植物返还100点，形成经济循环\n- 倒计时制：120秒内清除所有植物获胜，超时失败\n\n【地图规格】\n- 5行9列网格，右侧3列为可部署区域（红色高亮标识）\n- 每格100x100像素，草地纹理交替渲染\n- 坐标系：左侧为植物防线，右侧为僵尸出生点\n\n【单位系统】\n僵尸方（右侧购买）：\n- 普通僵尸：50脑，100HP，0.5速，标准单位\n- 路障僵尸：100脑，200HP，0.5速，中期肉盾  \n- 铁桶僵尸：150脑，400HP，0.3速，重型坦克\n- 冲刺僵尸：80脑，80HP，1.2速，快速突进\n\n植物方（左侧随机初始部署12个）：\n- 豌豆射手：100HP，20伤/发，2秒间隔，直线射击\n- 双发射手：120HP，20伤/发，1秒间隔，火力压制\n- 坚果墙：300HP，0伤，纯肉盾阻挡\n- 向日葵：80HP，0伤，经济单位（纯干扰）\n\n【战斗逻辑】\n- 碰撞检测：僵尸到达植物50px内触发啃食状态，停止移动\n- 伤害结算：僵尸30帧/次咬击（0.5秒），植物射出弹道物理\n- 击毁反馈：植物死亡时生成\"+100\"飘字特效与粒子爆炸\n- 路径AI：同格僵尸队列不重叠，植物优先攻击横向最近目标\n\n【交互设计】\n- 右侧卡片式UI：显示僵尸图标、名称、脑子消耗\n- 资源不足时卡片置灰并自动切换可选类型\n- 鼠标悬停部署区显示半透明预览圈\n- 实时血条：实体头顶显示绿/黄/红三色血槽\n\n【胜利条件】\n- 胜利：plants.length === 0 && timeLeft > 0\n- 失败：timeLeft === 0 || (可选)僵尸全灭且脑子为0",
+   "doc": "github",
+   "doc_sha": "33bc6aabd7791ad7b32f7e92104f11f2359ba890",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen2.5-Coder README.md:L298-310",
+   "file": "README.md",
+   "lines": [
+    298,
+    310
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "Build an interactive ASCII art drawing tool with sound feedback. The application should:\n \n1. Create a canvas where users can draw by clicking and dragging\n2. Place different ASCII characters or symbols when the user draws\n3. Play corresponding musical notes when each character is placed\n4. Include multiple pattern sets with different characters and\ncorresponding note scales\n5. Add a pattern switcher button to cycle through different\ncharacter/sound themes\n6. Include a clear button to reset the canvas\n7. Support both mouse and touch input for mobile compatibility\n \nThe application should be creative and fun to use, creating an audio-visual experience where patterns of characters create both visual art and musical patterns. Ensure the musical notes are harmonious when played in sequence.",
+   "doc": "github",
+   "doc_sha": "33bc6aabd7791ad7b32f7e92104f11f2359ba890",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen2.5-Coder README.md:L328-328",
+   "file": "README.md",
+   "lines": [
+    328,
+    328
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "Vibe test this website. Click around, try things, report what's broken.",
+   "doc": "github",
+   "doc_sha": "33bc6aabd7791ad7b32f7e92104f11f2359ba890",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen2.5-Coder README.md:L345-362",
+   "file": "README.md",
+   "lines": [
+    345,
+    362
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "Create an interactive real-time particle system using HTML5 Canvas:\n\nCore Features:\n- Render 800-1200 animated particles with physics-based movement\n- Mouse cursor exerts attractive/repulsive force on nearby particles\n- Click to toggle between attraction and repulsion modes\n- Particles respond with smooth acceleration and velocity calculations\n\nTechnical Requirements:\n- Use requestAnimationFrame for optimal performance\n- Implement force calculation based on distance from cursor\n- Add visual feedback: particle glow, color variation, and fade effects\n- Include performance monitoring (FPS counter)\n\nDeliverables:\n- Single HTML file with embedded CSS and JavaScript\n- Clean, commented code following best practices\n- Responsive design compatible with modern browsers",
+   "doc": "github",
+   "doc_sha": "33bc6aabd7791ad7b32f7e92104f11f2359ba890",
+   "scope": "model"
   }
  ],
  "card_notes": [
@@ -56,13 +457,31 @@
  "chat_template": {
   "gguf_sha256": "cd8e9439f0570856fd70470bf8889ebd8b5d1107207f67a5efb46e342330527f",
   "repo_sha256": "cd8e9439f0570856fd70470bf8889ebd8b5d1107207f67a5efb46e342330527f",
-  "repo_file": "Qwen/Qwen2.5-Coder-1.5B tokenizer_config.json:chat_template",
-  "same": true
+  "repo_file": "tokenizer_config.json:chat_template",
+  "same": true,
+  "gguf_chars": 2507,
+  "repo_chars": 2507,
+  "repo_label": "Qwen/Qwen2.5-Coder-1.5B",
+  "use": "gguf"
  },
  "stop": {
   "eos_token": "<|endoftext|>",
   "eos_token_id": 151643,
-  "eos_token_id_source": "Qwen/Qwen2.5-Coder-1.5B generation_config.json"
+  "eos_token_id_source": "Qwen/Qwen2.5-Coder-1.5B generation_config.json",
+  "analysis": {
+   "tokens": [
+    {
+     "id": 151643,
+     "text": "<|endoftext|>",
+     "source": "Qwen/Qwen2.5-Coder-1.5B generation_config.json eos_token_id",
+     "eog_by": "GGUF tokenizer.ggml.eos_token_id"
+    }
+   ],
+   "missing": [],
+   "gguf": {
+    "eos": 151643
+   }
+  }
  },
  "rope": {
   "rope.freq_base": 1000000.0
@@ -196,5 +615,414 @@
  ],
  "warnings": null,
  "updated": "2026-10-19",
- "by": "scripts/model_db.py"
+ "by": "scripts/model_db.py",
+ "gguf_meta": {
+  "general.architecture": "qwen2",
+  "general.type": "model",
+  "general.name": "Qwen2.5 Coder 1.5B",
+  "general.basename": "Qwen2.5-Coder",
+  "general.size_label": "1.5B",
+  "general.license": "apache-2.0",
+  "general.license.link": "https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B/blob/main/LICENSE",
+  "general.base_model.count": 1,
+  "general.base_model.0.name": "Qwen2.5 1.5B",
+  "general.base_model.0.organization": "Qwen",
+  "general.base_model.0.repo_url": "https://huggingface.co/Qwen/Qwen2.5-1.5B",
+  "general.tags": [
+   "code",
+   "qwen",
+   "qwen-coder",
+   "codeqwen",
+   "text-generation"
+  ],
+  "general.languages": [
+   "en"
+  ],
+  "qwen2.block_count": 28,
+  "qwen2.context_length": 32768,
+  "qwen2.embedding_length": 1536,
+  "qwen2.feed_forward_length": 8960,
+  "qwen2.attention.head_count": 12,
+  "qwen2.attention.head_count_kv": 2,
+  "qwen2.rope.freq_base": 1000000.0,
+  "qwen2.attention.layer_norm_rms_epsilon": 9.999999974752427e-07,
+  "general.file_type": 7,
+  "tokenizer.ggml.model": "gpt2",
+  "tokenizer.ggml.pre": "qwen2",
+  "tokenizer.ggml.tokens": {
+   "array_len": 151936
+  },
+  "tokenizer.ggml.token_type": {
+   "array_len": 151936
+  },
+  "tokenizer.ggml.merges": {
+   "array_len": 151387
+  },
+  "tokenizer.ggml.eos_token_id": 151643,
+  "tokenizer.ggml.padding_token_id": 151643,
+  "tokenizer.ggml.bos_token_id": 151643,
+  "tokenizer.ggml.add_bos_token": false,
+  "tokenizer.chat_template": {
+   "sha256": "cd8e9439f0570856fd70470bf8889ebd8b5d1107207f67a5efb46e342330527f",
+   "chars": 2507
+  },
+  "general.quantization_version": 2,
+  "_gguf_version": 3,
+  "_n_tensors": 338
+ },
+ "base_chain": [
+  {
+   "repo": "Qwen/Qwen2.5-Coder-1.5B",
+   "api_id": "Qwen/Qwen2.5-Coder-1.5B",
+   "revision": "df3ce67c0e24480f20468b6ef2894622d69eb73b",
+   "via": "card base_model",
+   "card_data": {
+    "license": "apache-2.0",
+    "license_link": "https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B/blob/main/LICENSE",
+    "language": [
+     "en"
+    ],
+    "base_model": [
+     "Qwen/Qwen2.5-1.5B"
+    ],
+    "pipeline_tag": "text-generation",
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "text-generation",
+   "safetensors": {
+    "parameters": {
+     "BF16": 1543714304
+    },
+    "total": 1543714304
+   },
+   "license_files": [
+    "LICENSE"
+   ]
+  },
+  {
+   "repo": "Qwen/Qwen2.5-1.5B",
+   "api_id": "Qwen/Qwen2.5-1.5B",
+   "revision": "8faed761d45a263340a0528343f099c05c9a4323",
+   "via": "Qwen/Qwen2.5-Coder-1.5B card base_model",
+   "card_data": {
+    "license": "apache-2.0",
+    "license_link": "https://huggingface.co/Qwen/Qwen2.5-1.5B/blob/main/LICENSE",
+    "language": [
+     "en"
+    ],
+    "pipeline_tag": "text-generation",
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "text-generation",
+   "safetensors": {
+    "parameters": {
+     "BF16": 1543714304
+    },
+    "total": 1543714304
+   },
+   "license_files": [
+    "LICENSE"
+   ]
+  }
+ ],
+ "github": [
+  {
+   "repo": "QwenLM/Qwen2.5-Coder",
+   "resolved": "QwenLM/Qwen3-Coder",
+   "sha": "33bc6aabd7791ad7b32f7e92104f11f2359ba890",
+   "renamed": true,
+   "description": "Qwen3-Coder is the code version of Qwen3, the large language model series developed by Qwen team.",
+   "license_spdx": null,
+   "files": {
+    "readme": {
+     "path": "README.md",
+     "sha256": "7553f06c6f17a7ce22a76995a210b07fb6724d32a0cdc7bd4961ed2866d80fd4",
+     "bytes": 21967
+    }
+   },
+   "extra": null,
+   "snapshot": "github/QwenLM--Qwen2.5-Coder/33bc6aabd7791ad7b32f7e92104f11f2359ba890"
+  }
+ ],
+ "github_dropped": [
+  {
+   "repo": "ggerganov/llama.cpp",
+   "why": "inference/training tool repo"
+  }
+ ],
+ "descriptor": {
+  "repo_id": {
+   "effective": "ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF",
+   "source": "HF API id"
+  },
+  "revision": {
+   "effective": "8be1b8a895a84beea772817caaa71eba6b6e0d07",
+   "source": "pinned (manifest / database)"
+  },
+  "file": {
+   "effective": "qwen2.5-coder-1.5b-q8_0.gguf",
+   "source": "HF API siblings"
+  },
+  "bytes": {
+   "effective": 1646573056,
+   "source": "HF API LFS size"
+  },
+  "sha256": {
+   "effective": "29871c94d15727a6e243f79a37113d4ae625a6215b5e800bf41a23af2da32832",
+   "source": "HF API LFS oid"
+  },
+  "quant": {
+   "effective": "Q8_0",
+   "source": "file name",
+   "values": [
+    {
+     "value": "Q8_0",
+     "source": "file name"
+    },
+    {
+     "value": "Q8_0",
+     "source": "GGUF general.file_type"
+    }
+   ]
+  },
+  "license": {
+   "effective": "apache-2.0",
+   "source": "ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF card license",
+   "values": [
+    {
+     "value": "apache-2.0",
+     "source": "ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "Qwen/Qwen2.5-Coder-1.5B card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "Qwen/Qwen2.5-1.5B card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "GGUF general.license"
+    }
+   ]
+  },
+  "license_link": {
+   "effective": "https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B/blob/main/LICENSE",
+   "source": "ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF card license_link",
+   "values": [
+    {
+     "value": "https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B/blob/main/LICENSE",
+     "source": "ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF card license_link"
+    },
+    {
+     "value": "https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B/blob/main/LICENSE",
+     "source": "Qwen/Qwen2.5-Coder-1.5B card license_link"
+    },
+    {
+     "value": "https://huggingface.co/Qwen/Qwen2.5-1.5B/blob/main/LICENSE",
+     "source": "Qwen/Qwen2.5-1.5B card license_link"
+    },
+    {
+     "value": "https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B/blob/main/LICENSE",
+     "source": "GGUF general.license.link"
+    }
+   ]
+  },
+  "license_file": {
+   "effective": "Qwen/Qwen2.5-Coder-1.5B@df3ce67c0e24/LICENSE",
+   "source": "Qwen/Qwen2.5-Coder-1.5B repo file",
+   "values": [
+    {
+     "value": "Qwen/Qwen2.5-Coder-1.5B@df3ce67c0e24/LICENSE",
+     "source": "Qwen/Qwen2.5-Coder-1.5B repo file"
+    },
+    {
+     "value": "Qwen/Qwen2.5-1.5B@8faed761d45a/LICENSE",
+     "source": "Qwen/Qwen2.5-1.5B repo file"
+    }
+   ]
+  },
+  "base_model_chain": {
+   "effective": "Qwen/Qwen2.5-Coder-1.5B",
+   "source": "card base_model",
+   "values": [
+    {
+     "value": "Qwen/Qwen2.5-Coder-1.5B",
+     "source": "card base_model"
+    },
+    {
+     "value": "Qwen/Qwen2.5-1.5B",
+     "source": "Qwen/Qwen2.5-Coder-1.5B card base_model"
+    }
+   ]
+  },
+  "gguf_base_model": {
+   "effective": {
+    "name": "Qwen2.5 1.5B",
+    "organization": "Qwen",
+    "repo_url": "https://huggingface.co/Qwen/Qwen2.5-1.5B"
+   },
+   "source": "GGUF general.base_model.0"
+  },
+  "architecture": {
+   "effective": "qwen2",
+   "source": "GGUF general.architecture",
+   "values": [
+    {
+     "value": "qwen2",
+     "source": "GGUF general.architecture"
+    },
+    {
+     "value": "qwen2",
+     "source": "HF API gguf.architecture"
+    }
+   ]
+  },
+  "hf_architectures": {
+   "effective": [
+    "Qwen2ForCausalLM"
+   ],
+   "source": "Qwen/Qwen2.5-Coder-1.5B config.json architectures"
+  },
+  "hf_model_type": {
+   "effective": "qwen2",
+   "source": "Qwen/Qwen2.5-Coder-1.5B config.json model_type"
+  },
+  "parameters": {
+   "effective": 1543714304,
+   "source": "HF API gguf.total (ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF)",
+   "values": [
+    {
+     "value": 1543714304,
+     "source": "HF API gguf.total (ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF)"
+    },
+    {
+     "value": 1543714304,
+     "source": "HF API safetensors.total (Qwen/Qwen2.5-Coder-1.5B)"
+    },
+    {
+     "value": 1543714304,
+     "source": "HF API safetensors.total (Qwen/Qwen2.5-1.5B)"
+    }
+   ]
+  },
+  "size_label": {
+   "effective": "1.5B",
+   "source": "GGUF general.size_label"
+  },
+  "ctx_statements": {
+   "effective": {
+    "value": 32768,
+    "quote": "- Context Length: Full 32,768 tokens"
+   },
+   "source": "Qwen/Qwen2.5-Coder-1.5B README.md:L34",
+   "values": [
+    {
+     "value": {
+      "value": 32768,
+      "quote": "- Context Length: Full 32,768 tokens"
+     },
+     "source": "Qwen/Qwen2.5-Coder-1.5B README.md:L34"
+    },
+    {
+     "value": {
+      "value": 262144,
+      "quote": "1. ✨ Supporting long context understanding and generation with the context length of 256K tokens;"
+     },
+     "source": "github.com/QwenLM/Qwen2.5-Coder README.md:L62"
+    }
+   ]
+  },
+  "ctx": {
+   "effective": 32768,
+   "source": "card: Qwen/Qwen2.5-Coder-1.5B README.md:L34",
+   "values": [
+    {
+     "value": 32768,
+     "source": "card: Qwen/Qwen2.5-Coder-1.5B README.md:L34"
+    },
+    {
+     "value": 32768,
+     "source": "Qwen/Qwen2.5-Coder-1.5B config.json max_position_embeddings"
+    },
+    {
+     "value": 32768,
+     "source": "GGUF qwen2.context_length"
+    }
+   ],
+   "precedence": "card statement > config.json > GGUF header > GitHub README"
+  },
+  "pipeline_tag": {
+   "effective": "text-generation",
+   "source": "ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF HF API pipeline_tag",
+   "values": [
+    {
+     "value": "text-generation",
+     "source": "ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF HF API pipeline_tag"
+    },
+    {
+     "value": "text-generation",
+     "source": "Qwen/Qwen2.5-Coder-1.5B HF API pipeline_tag"
+    },
+    {
+     "value": "text-generation",
+     "source": "Qwen/Qwen2.5-1.5B HF API pipeline_tag"
+    }
+   ]
+  },
+  "languages": {
+   "effective": [
+    "en"
+   ],
+   "source": "ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF card language",
+   "values": [
+    {
+     "value": [
+      "en"
+     ],
+     "source": "ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF card language"
+    },
+    {
+     "value": [
+      "en"
+     ],
+     "source": "Qwen/Qwen2.5-Coder-1.5B card language"
+    },
+    {
+     "value": [
+      "en"
+     ],
+     "source": "Qwen/Qwen2.5-1.5B card language"
+    },
+    {
+     "value": [
+      "en"
+     ],
+     "source": "GGUF general.languages"
+    }
+   ]
+  }
+ },
+ "required_params": {
+  "kind": "chat",
+  "native_ctx": 32768,
+  "native_ctx_source": "card: Qwen/Qwen2.5-Coder-1.5B README.md:L34",
+  "yarn": null,
+  "yarn_source": null,
+  "items": [
+   {
+    "class": "REQUIRED",
+    "flag": "--jinja",
+    "value": null,
+    "source": "GGUF tokenizer.chat_template (cd8e9439f057)",
+    "why_required": "messages, tool calls and thinking are formatted by the model's chat template; without --jinja llama-server falls back to a built-in approximation"
+   }
+  ]
+ },
+ "blockers": null,
+ "params_problems": null,
+ "params_build": "b11374",
+ "native_ctx": 32768,
+ "native_ctx_source": "card: Qwen/Qwen2.5-Coder-1.5B README.md:L34"
 }

@@ -1,10 +1,18 @@
 #!/usr/bin/env python3
 """Validate familia graph.yaml against GGUF metadata, hardware and agent needs.
 
-Exit 0 when valid, 1 with one line per problem otherwise. With --args NODE,
-print the llama-server arguments for that node. Never guesses or inflates.
---no-files skips GGUF/RAM checks (schema only); --verify-sha hashes GGUFs.
-Schema: scripts/graph_types.py, docs/graph-types.md.
+usage: validate_graph.py [--graph FILE] [--no-files] [--verify-sha] [--check-runtimes]
+                         [--args NODE | --explain NODE] [-h|--help]
+
+Exit 0 when valid, 1 with one line per problem otherwise (2 for a usage error).
+--args NODE      print the llama-server arguments for that node: graph settings plus every
+                 REQUIRED and RECOMMENDED model parameter from the model database (#51,
+                 docs/model-params.md); exits 1 when a REQUIRED one cannot be met.
+--explain NODE   the same, one parameter per line with its class and source, plus the
+                 client-side requirements (prompt prefixes, endpoints, stop strings).
+--no-files       skip GGUF/RAM checks (schema only); --verify-sha hashes GGUFs.
+--check-runtimes check that runtime binaries are executable.
+Never guesses or inflates. Schema: scripts/graph_types.py, docs/graph-types.md.
 """
 import hashlib, json, os, struct, sys
 import yaml
@@ -90,6 +98,13 @@ def validate(graph, check_files=True):
         de, dw = model_db.check_graph(graph)
         errs += de
         WARNINGS.extend(dw)
+    if not errs:  # every launched node gets its REQUIRED model parameters (#51)
+        for nn, nd in graph["nodes"].items():
+            if nd.get("status") == "planned": continue
+            if (graph["runtimes"].get(nd["runtime"]) or {}).get("kind", "llama-server") != "llama-server": continue
+            try: server_args(graph, nn)
+            except SystemExit as ex: errs += [l.replace("graph: ERROR: ", "") for l in str(ex).split("\n") if l]
+    errs = list(dict.fromkeys(errs))
     if errs or not check_files:
         return errs, {}
     hosts, models, totals = graph["hosts"], graph["models"], {}
@@ -202,6 +217,35 @@ def server_env(graph, name, env=None):
         env["GGML_VK_VISIBLE_DEVICES"] = ""
     return env
 
+def merge_args(base, extra):
+    """base argv plus extra: a flag already in base keeps base's value unless extra is a
+    model REQUIRED value for -b/-ub (base has none of those)."""
+    have = set(x for x in base if x.startswith("-"))
+    out, i = list(base), 0
+    alias = {"--ctx-size": "-c", "--parallel": "-np", "--embedding": "--embeddings", "--n-gpu-layers": "-ngl", "--gpu-layers": "-ngl"}
+    while i < len(extra):
+        f = extra[i]
+        v = extra[i + 1] if i + 1 < len(extra) and not (extra[i + 1].startswith("-") and not extra[i + 1][1:2].isdigit()) else None
+        if f not in have and alias.get(f) not in have:
+            out.append(f)
+            if v is not None: out.append(v)
+        i += 2 if v is not None else 1
+    return out
+
+def explain(graph, name):
+    import model_db, model_params as mp
+    n = graph["nodes"][name]; m = graph["models"][n["model"]]
+    e = model_db.load(m["db"]) if m.get("db") else None
+    if e is None: return [f"nodes.{name}: no model database entry"]
+    rp = e.get("required_params") or {}
+    out = [f"node {name}: {e['id']} ({rp.get('kind')}), native ctx {rp.get('native_ctx')} ({rp.get('native_ctx_source')}), node ctx {n.get('ctx')} x {n.get('parallel')} slot(s)"]
+    for it in rp.get("items") or []:
+        ov = model_db._ovr(n.get("override_reasons") or {}, it["flag"])
+        out.append(f"  {it['class']:<11} {it['flag']} {it.get('value') or ''}  <- {it['source']}" + (f"  [override: {ov}]" if ov else "") + ("  [client]" if it.get("client") else ""))
+    _, errs, notes = model_db.node_params(graph, name, e)
+    out += [f"  ERROR {x}" for x in errs] + [f"  note: {x}" for x in notes]
+    return out
+
 def server_args(graph, name):
     n = graph["nodes"][name]
     kind = (graph["runtimes"].get(n["runtime"]) or {}).get("kind", "llama-server")
@@ -217,13 +261,26 @@ def server_args(graph, name):
     names = sorted(al for al, x in graph["aliases"].items() if x["node"] == name)
     if names: a += ["--alias", names[0]]
     a += ["--cache-ram", str(n["cache_ram_mib"])]
-    if n.get("embeddings"): a += ["--embeddings"]
-    else:  # model-card sampling defaults (#51); node.sampling overrides need override_reasons
-        import model_db
-        e = model_db.load(m["db"]) if m.get("db") else None
-        if e is not None:
-            for k, v in model_db.launch_sampling(e, n).items():
-                a += [model_db.SAMPLING_FLAGS[k], str(v)]
+    # Model parameters (#51): REQUIRED + RECOMMENDED from the model database (cards, configs,
+    # GGUF), node.sampling / override_reasons applied. A REQUIRED one that cannot be met is fatal.
+    import model_db
+    e = model_db.load(m["db"]) if m.get("db") else None
+    if e is None:
+        raise SystemExit(f"graph: ERROR: nodes.{name}: model {n['model']} has no model database entry; its required parameters are unknown")
+    extra, errs, _ = model_db.node_params(graph, name, e)
+    if errs:
+        raise SystemExit("\n".join(f"graph: ERROR: nodes.{name}: {x}" for x in errs))
+    a = merge_args(a, extra)
+    import model_params as mp
+    _, build = model_db.runtime_build(graph, n)
+    reasons = n.get("override_reasons") or {}
+    ovr = {it["flag"].lstrip("-"): True for it in (e.get("required_params") or {}).get("items") or []
+           if it["class"] == mp.REC and model_db._ovr(reasons, it["flag"])}
+    for k in model_db.launch_sampling(e, n) if (e.get("required_params") or {}).get("kind") == "chat" else {}:
+        ovr[model_db.SAMPLING_FLAGS[k].lstrip("-")] = True       # node.sampling (checked by check_graph)
+    miss = mp.missing_required(e["required_params"], a, n.get("ctx"), n.get("parallel") or 1, build, ovr)
+    if miss:
+        raise SystemExit("\n".join(f"graph: ERROR: nodes.{name}: {x}" for x in miss))
     # Speculative flags verified against b11374/b11539 --help; --draft-max/--draft-min were removed upstream.
     for sp in (graph.get("speculative") or {}).values():
         if sp["target"] != name or sp["status"] == "planned": continue
@@ -239,21 +296,42 @@ def server_args(graph, name):
         a = [os.path.join(os.path.dirname(os.path.abspath(graph.get("_path", "graph.yaml"))), r["bin"])] + a
     return a
 
+USAGE = __doc__.split("\n\n")[1]
+
+def parse_argv(argv):
+    """-> dict of options; SystemExit(2) on an unknown flag or a missing value."""
+    o = {"graph": "graph.yaml", "no_files": False, "verify_sha": False, "check_runtimes": False, "args": None, "explain": None}
+    it = iter(argv)
+    for x in it:
+        if x in ("-h", "--help"): print(__doc__.strip()); raise SystemExit(0)
+        elif x in ("--graph", "--args", "--explain"):
+            v = next(it, None)
+            if v is None or v.startswith("-"): print(f"validate_graph.py: {x} needs a value\n{USAGE}", file=sys.stderr); raise SystemExit(2)
+            o[x[2:]] = v
+        elif x in ("--no-files", "--verify-sha", "--check-runtimes"): o[x[2:].replace("-", "_")] = True
+        else: print(f"validate_graph.py: unknown argument {x!r}\n{USAGE}", file=sys.stderr); raise SystemExit(2)
+    return o
+
 def main(argv):
-    path = "graph.yaml"
-    if "--graph" in argv: path = argv[argv.index("--graph") + 1]
+    o = parse_argv(argv)
+    path = o["graph"]
     try: graph = load(path); graph["_path"] = path
     except yaml.YAMLError as e:
         print(f"graph: ERROR: {e}", file=sys.stderr); return 1
-    errs, totals = validate(graph, check_files="--no-files" not in argv)
+    errs, totals = validate(graph, check_files=not o["no_files"])
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     from transport_graph import validate_transports
     errs += validate_transports(graph)  # meshes: (ssh nexus / bittorrent), #22
     for w in WARNINGS: print(f"graph: WARNING: {w}", file=sys.stderr)
     for e in errs: print(f"graph: ERROR: {e}", file=sys.stderr)
     if errs: return 1
-    if "--args" in argv:
-        print(" ".join(server_args(graph, argv[argv.index("--args") + 1]))); return 0
+    for k in ("args", "explain"):
+        if o[k] and o[k] not in graph["nodes"]:
+            print(f"graph: ERROR: no node {o[k]!r}", file=sys.stderr); return 1
+    if o["args"]:
+        print(" ".join(server_args(graph, o["args"]))); return 0
+    if o["explain"]:
+        print("\n".join(explain(graph, o["explain"]))); return 0
     try:  # model registry evidence (docs/model-registry.md): warn only, never fail
         import registry as _reg
         for w in _reg.graph_warnings(graph): print(f"graph: WARNING: {w}", file=sys.stderr)

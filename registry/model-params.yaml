@@ -1,0 +1,181 @@
+# registry/model-params.yaml: judgement calls on model parameters that cannot be derived (#51).
+# scripts/model_params.py derives most REQUIRED / RECOMMENDED parameters from the model cards,
+# configs and GGUF headers; this file adds what needs a decision. Every item quotes the line it
+# rests on ("source: owner/repo FILE:Lx[-y]" + "quote"); the check fails when the quote is not
+# in those lines of the stored snapshot, so nothing here can drift from upstream silently.
+# Keys per entry id (registry/models/<id>.json):
+#   template:  {use: repo|gguf, sha256: <the repo template it was decided for>, reason, verified}
+#   requires:  [{class, flag, value, source, quote, why, client}]   flag "@..." = not a llama-server flag
+#              value "${ctx}" / "${slot_ctx}" is resolved per launch; ">=N" is a minimum, checked not emitted
+#   blockers:  [{what, source, quote}]
+#   base_model / role / not_roles / kind / license / github: [{repo, paths}] / native_ctx
+
+LiquidAI--LFM2.5-1.2B-Instruct-GGUF--LFM2.5-1.2B-Instruct-Q4_K_M:
+  template:
+    use: repo
+    sha256: ba551d58630afa3190b1be3602e28301f3d2e9bbac978dfc49d6d825171648b6
+    reason: "the GGUF's embedded template (f05bf4b967dc, 1783 chars) drops the assistant's tool_calls from the history; the base repo's chat_template.jinja renders them as <|tool_call_start|>[...]<|tool_call_end|>, the format the card's Tool Use section describes"
+    verified: "rendered on llama-server b11374 /apply-template with a tool-call conversation (2026-10-19): repo template shows the call, GGUF template omits it"
+  requires:
+    - class: REQUIRED
+      flag: "@tools"
+      value: "tools in the system prompt as a JSON list; calls come back as a Python list between <|tool_call_start|> and <|tool_call_end|>"
+      source: "LiquidAI/LFM2.5-1.2B-Instruct README.md:L102"
+      quote: "By default, LFM2.5 writes Pythonic function calls (a Python list between `<|tool_call_start|>` and `<|tool_call_end|>` special tokens)"
+      why: "client: tool calls are Pythonic, not JSON; llama-server's --jinja LFM2 parser reads them only with the repo template"
+      client: true
+
+LiquidAI--LFM2.5-350M-GGUF--LFM2.5-350M-Q4_K_M:
+  template:
+    use: repo
+    sha256: ba551d58630afa3190b1be3602e28301f3d2e9bbac978dfc49d6d825171648b6
+    reason: "the GGUF's embedded template (013eed605464, 2553 chars) is older than the base repo's chat_template.jinja (the same file as LFM2.5-1.2B-Instruct's) and drops assistant tool_calls from the history"
+    verified: "same template file as LFM2.5-1.2B-Instruct, rendered on b11374 /apply-template"
+
+Qwen--Qwen3-0.6B-GGUF--Qwen3-0.6B-Q8_0:
+  template:
+    use: repo
+    sha256: a55ee1b1660128b7098723e0abcd92caa0788061051c62d51cbe87d9cf1974d8
+    reason: "the GGUF carries an older revision of the Qwen3 template (4100 chars); the base repo's (4168 chars) adds handling of non-string message content and of a reasoning_content string"
+    verified: "rendered on llama-server b11374 /apply-template (2026-10-19)"
+
+unsloth--Qwen3.5-0.8B-GGUF--Qwen3.5-0.8B-Q4_K_M:
+  template:
+    use: gguf
+    sha256: 273d8e0e683b885071fb17e08d71e5f2a5ddfb5309756181681de4f5a1822d80
+    reason: "unsloth's only change to Qwen's template: tool_call.arguments is iterated as a mapping instead of with |items (llama.cpp compatibility), plus a trailing newline; llama-server passes tool-call arguments as objects, so both render the same"
+    verified: "jinja2 render of a tool-call + thinking conversation with enable_thinking unset/true/false: identical output (2026-10-19); the GGUF template is the one the coder ran tool calls with on b11374"
+
+unsloth--Qwen3.5-2B-GGUF--Qwen3.5-2B-Q4_K_M:
+  template:
+    use: gguf
+    sha256: 273d8e0e683b885071fb17e08d71e5f2a5ddfb5309756181681de4f5a1822d80
+    reason: "unsloth's only change to Qwen's template: tool_call.arguments is iterated as a mapping instead of with |items (llama.cpp compatibility), plus a trailing newline; llama-server passes tool-call arguments as objects, so both render the same"
+    verified: "jinja2 render of a tool-call + thinking conversation with enable_thinking unset/true/false: identical output (2026-10-19); the coder node runs this template on b11374"
+
+unsloth--Qwen3.5-4B-GGUF--Qwen3.5-4B-Q4_K_M:
+  template:
+    use: repo
+    sha256: a4aee8afcf2e0711942cf848899be66016f8d14a889ff9ede07bca099c28f715
+    reason: "unsloth's 4B GGUF embeds the 2B/0.8B template (7f0e529032c2), which ends the generation prompt with an empty <think></think> unless enable_thinking is true: the 4B would run non-thinking, but its card says it thinks by default; Qwen's Qwen3.5-4B template opens <think>"
+    verified: "rendered on llama-server b11374 /apply-template (2026-10-19): official template starts the turn with <think>\\n"
+  requires:
+    - class: RECOMMENDED
+      flag: "--ctx-size"
+      value: ">=131072"
+      source: "Qwen/Qwen3.5-4B README.md:L732"
+      quote: "we advise maintaining a context length of at least 128K tokens to preserve thinking capabilities"
+      why: "thinking needs room: the card advises at least 128K context"
+
+Takenoko12345678--Qwen3.5-0.8B-Japanese-SFT-v2-GGUF--Qwen3.5-0.8B-Japanese-SFT-v2-Q4_K_M:
+  github:
+    - repo: atemoyacode-sudo/Pitcher
+
+QuantFactory--SmolLM2-135M-Instruct-GGUF--SmolLM2-135M-Instruct.Q4_0:
+  base_model:
+    value: HuggingFaceTB/SmolLM2-135M-Instruct
+    source: "QuantFactory/SmolLM2-135M-Instruct-GGUF README.md:L15"
+    quote: "This is quantized version of [HuggingFaceTB/SmolLM2-135M-Instruct](https://huggingface.co/HuggingFaceTB/SmolLM2-135M-Instruct) created using llama.cpp"
+
+tencent--HY-MT1.5-1.8B-GGUF--HY-MT1.5-1.8B-Q4_K_M:
+  base_model:
+    value: tencent/HY-MT1.5-1.8B
+    source: "tencent/HY-MT1.5-1.8B-GGUF README.md:L93"
+    quote: "| HY-MT1.5-1.8B  | Hunyuan 1.8B translation model |🤗 [Model](https://huggingface.co/tencent/HY-MT1.5-1.8B)|"
+  license:
+    value: "Tencent HY Community License Agreement (License.txt in the repo; not valid in the EU, UK and South Korea)"
+    source: "tencent/HY-MT1.5-1.8B-GGUF License.txt"
+  requires:
+    - class: REQUIRED
+      flag: "@prompt"
+      value: "将以下文本翻译为{target_language}，注意只需要输出翻译后的结果，不要额外解释：\n\n{source_text}"
+      name: "ZH<=>XX"
+      source: "tencent/HY-MT1.5-1.8B-GGUF README.md:L102-107"
+      quote: "将以下文本翻译为{target_language}，注意只需要输出翻译后的结果，不要额外解释："
+      why: "client: the user turn must be this template when Chinese is the source or target"
+      client: true
+    - class: REQUIRED
+      flag: "@prompt"
+      value: "Translate the following segment into {target_language}, without additional explanation.\n\n{source_text}"
+      name: "XX<=>XX"
+      source: "tencent/HY-MT1.5-1.8B-GGUF README.md:L111-116"
+      quote: "Translate the following segment into {target_language}, without additional explanation."
+      why: "client: the user turn must be this template for other language pairs"
+      client: true
+    - class: REQUIRED
+      flag: "@system"
+      value: "none"
+      source: "tencent/HY-MT1.5-1.8B-GGUF README.md:L164"
+      quote: "Note that our model does not have the default system_prompt."
+      why: "client: send no system message"
+      client: true
+
+unsloth--embeddinggemma-2-GGUF--embeddinggemma-2-Q8_0:
+  requires:
+    - class: REQUIRED
+      flag: "@prompt"
+      value: "title: {title} | text: {content}"
+      name: "Document (with a title)"
+      source: "google/embeddinggemma-2 README.md:L132"
+      quote: "Documents with a real title should be formatted as `title: {title} | text: {content}`. Use `title: none` when no title is available."
+      why: "client: documents carry their title in the prefix"
+      client: true
+
+nace-ai--drex-dlm-Q8_0--drex-dlm-Q8_0:
+  kind: decision
+  role: decision
+  not_roles: [general]
+  github:
+    - repo: nace-ai/drex-decision-models
+      paths: [models/drex-dlm/README.md]
+  requires:
+    - class: REQUIRED
+      flag: "@runtime"
+      value: "nace-ai/llama.cpp branch edlm (llama-server with the edlm architecture and POST /v1/systemone)"
+      source: "nace-ai/drex-dlm-Q8_0 README.md:L12"
+      quote: "a stock llama.cpp or Ollama installation is not a supported runner"
+      why: "the edlm architecture exists only in the fork; stock builds cannot load the GGUF"
+    - class: REQUIRED
+      flag: "@endpoint"
+      value: "POST /v1/systemone"
+      source: "nace-ai/drex-dlm-Q8_0 README.md:L12"
+      quote: "The model uses the custom `edlm` architecture and `POST /v1/systemone`"
+      why: "client: a decision model, not chat"
+      client: true
+    - {class: REQUIRED, flag: "--embedding", source: "nace-ai/drex-dlm-Q8_0 README.md:L22", quote: "use `--embedding --pooling none -c 16384 -b 16384 -ub 16384 -np 1 --no-warmup` for the tested native configuration", why: "the card's tested native configuration"}
+    - {class: REQUIRED, flag: "--pooling", value: "none", source: "nace-ai/drex-dlm-Q8_0 README.md:L22", quote: "--embedding --pooling none", why: "the decision head reads per-token states (no pooling)"}
+    - {class: RECOMMENDED, flag: "--ctx-size", value: "16384", source: "nace-ai/drex-dlm-Q8_0 README.md:L22", quote: "The recommended serving context is 16,384 tokens; the model's maximum position window is 32,768 tokens.", why: "the card's serving context"}
+    - {class: REQUIRED, flag: "--batch-size", value: "${ctx}", source: "nace-ai/drex-dlm README.md:L255", quote: "Raise the encode cap (`SYSTEMONE_CONTEXT`) and the slot size (`-c`, `-b`, `-ub`) together:", why: "-b must equal -c: the whole request is one batch"}
+    - {class: REQUIRED, flag: "--ubatch-size", value: "${ctx}", source: "nace-ai/drex-dlm README.md:L255", quote: "Raise the encode cap (`SYSTEMONE_CONTEXT`) and the slot size (`-c`, `-b`, `-ub`) together:", why: "-ub must equal -c: the bidirectional state is evaluated in one micro-batch"}
+    - {class: REQUIRED, flag: "--parallel", value: "1", source: "nace-ai/drex-dlm-Q8_0 README.md:L22", quote: "-np 1 --no-warmup", why: "one slot holds the whole window (the tested configuration)"}
+    - {class: RECOMMENDED, flag: "--no-warmup", source: "nace-ai/drex-dlm-Q8_0 README.md:L22", quote: "-np 1 --no-warmup", why: "the tested configuration skips the warmup run"}
+    - {class: REQUIRED, flag: "@env", value: "SYSTEMONE_CONTEXT=${ctx} when ctx > 16384", source: "nace-ai/drex-dlm README.md:L247", quote: "Every runner defaults to **16,384**; the full window must be enabled explicitly.", why: "the fork's encode cap is 16,384 unless SYSTEMONE_CONTEXT raises it"}
+  native_ctx:
+    value: 32768
+    source: "nace-ai/drex-dlm-Q8_0 README.md:L22"
+    quote: "the model's maximum position window is 32,768 tokens"
+
+mradermacher--GEV-26B-Decide-GGUF--GEV-26B-Decide.Q4_K_M:
+  not_roles: [decision]
+  drop_card_defaults:
+    reason: "the card's top-k 0 / top-p 1.0 are for System 1 /v1/completions calls, which this GGUF cannot serve (no adapter / head)"
+    source: "autotrust/GEV-26B-Decide README.md:L481"
+  blockers:
+    - what: "the GGUF converts only the Gemma-4 backbone: System 1 (the typed decisions) needs adapter/ (LoRA) and head.safetensors, which are not in the GGUF repo and have no llama.cpp loader; as a decision model it does not work"
+      source: "autotrust/GEV-26B-Decide README.md:L565-566"
+      quote: "adapter/                  System 1 LoRA (peft), for the transformers path"
+  requires:
+    - class: REQUIRED
+      flag: "--chat-template-kwargs"
+      value: '{"enable_thinking":false}'
+      source: "autotrust/GEV-26B-Decide README.md:L460-463"
+      quote: '"max_tokens": 200, "chat_template_kwargs": {"enable_thinking": False}})'
+      why: "the card's own System 2 chat example turns thinking off; with thinking on, thoughts reach the 8,192-token budget"
+      translated: true
+  license:
+    value: "apache-2.0 (adapter, head and calibration files) + Gemma 4 terms for the base weights (https://ai.google.dev/gemma/docs/gemma_4_license)"
+    source: "autotrust/GEV-26B-Decide README.md:L581"
+
+mradermacher--AgentHorse-4B-GGUF--AgentHorse-4B.Q4_K_M:
+  blockers:
+    - what: "license not stated: neither the GGUF card, CloudGoat/AgentHorse-4B's card nor the GGUF header names one (no GitHub repo found)"

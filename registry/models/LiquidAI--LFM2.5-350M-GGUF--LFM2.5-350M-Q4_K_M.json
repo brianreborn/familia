@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "LiquidAI--LFM2.5-350M-GGUF--LFM2.5-350M-Q4_K_M",
  "repo": "LiquidAI/LFM2.5-350M-GGUF",
  "revision": "657e078c94084481950a2d555a941481f715536b",
@@ -77,14 +77,207 @@
  ],
  "card_commands": [
   {
-   "tool": "llama-cli",
-   "command": "llama-cli -hf LiquidAI/LFM2.5-350M-GGUF --conversation --temp 0.1 --top-k 50 --repeat-penalty 1.05",
-   "source": "LiquidAI/LFM2.5-350M-GGUF README.md:L51"
+   "source": "LiquidAI/LFM2.5-350M-GGUF README.md:L51-52",
+   "file": "README.md",
+   "lines": [
+    51,
+    52
+   ],
+   "lang": null,
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "llama-cli -hf LiquidAI/LFM2.5-350M-GGUF --conversation \\\n    --temp 0.1 --top-k 50 --repeat-penalty 1.05",
+   "llama": [
+    {
+     "tool": "llama-cli",
+     "raw": "llama-cli -hf LiquidAI/LFM2.5-350M-GGUF --conversation      --temp 0.1 --top-k 50 --repeat-penalty 1.05",
+     "flags": [
+      {
+       "flag": "-hf",
+       "canonical": "--hf-repo",
+       "value": "LiquidAI/LFM2.5-350M-GGUF",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--conversation",
+       "canonical": "--conversation",
+       "value": null,
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--temp",
+       "canonical": "--temp",
+       "value": "0.1",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--top-k",
+       "canonical": "--top-k",
+       "value": "50",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--repeat-penalty",
+       "canonical": "--repeat-penalty",
+       "value": "1.05",
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    }
+   ],
+   "doc": "card",
+   "doc_sha": "657e078c94084481950a2d555a941481f715536b",
+   "scope": "model"
   },
   {
-   "tool": "llama-cli",
-   "command": "llama-cli -hf LiquidAI/LFM2.5-350M-GGUF --hf-file LFM2.5-350M-QAD-Q4_0.gguf -p \"What is C. elegans?\"",
-   "source": "LiquidAI/LFM2.5-350M-GGUF README.md:L66"
+   "source": "LiquidAI/LFM2.5-350M-GGUF README.md:L66-68",
+   "file": "README.md",
+   "lines": [
+    66,
+    68
+   ],
+   "lang": null,
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "llama-cli -hf LiquidAI/LFM2.5-350M-GGUF \\\n  --hf-file LFM2.5-350M-QAD-Q4_0.gguf \\\n  -p \"What is C. elegans?\"",
+   "llama": [
+    {
+     "tool": "llama-cli",
+     "raw": "llama-cli -hf LiquidAI/LFM2.5-350M-GGUF    --hf-file LFM2.5-350M-QAD-Q4_0.gguf    -p \"What is C. elegans?\"",
+     "flags": [
+      {
+       "flag": "-hf",
+       "canonical": "--hf-repo",
+       "value": "LiquidAI/LFM2.5-350M-GGUF",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--hf-file",
+       "canonical": "--hf-file",
+       "value": "LFM2.5-350M-QAD-Q4_0.gguf",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-p",
+       "canonical": "--prompt",
+       "value": "What is C. elegans?",
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    }
+   ],
+   "doc": "card",
+   "doc_sha": "657e078c94084481950a2d555a941481f715536b",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM2.5-350M-GGUF README.md:L79-92",
+   "file": "README.md",
+   "lines": [
+    79,
+    92
+   ],
+   "lang": "python",
+   "tool": "transformers",
+   "kind": "code",
+   "text": "from transformers import AutoModelForCausalLM, AutoTokenizer\n\nrepo_id = \"LiquidAI/LFM2.5-350M-GGUF\"\ntokenizer = AutoTokenizer.from_pretrained(repo_id, subfolder=\"qad\")\nmodel = AutoModelForCausalLM.from_pretrained(\n    repo_id, subfolder=\"qad\", dtype=\"auto\", device_map=\"auto\"\n)\n\ninputs = tokenizer.apply_chat_template(\n    [{\"role\": \"user\", \"content\": \"What is 2 + 2?\"}],\n    tokenize=True, add_generation_prompt=True, return_dict=True, return_tensors=\"pt\",\n).to(model.device)\noutputs = model.generate(**inputs, max_new_tokens=128)\nprint(tokenizer.decode(outputs[0, inputs[\"input_ids\"].shape[-1]:], skip_special_tokens=True))",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-n",
+      "value": "128",
+      "from": "max_new_tokens: 128"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "card",
+   "doc_sha": "657e078c94084481950a2d555a941481f715536b",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM2.5-350M README.md:L90-94",
+   "file": "README.md",
+   "lines": [
+    90,
+    94
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "prompt-format",
+   "text": "<|startoftext|><|im_start|>system\nYou are a helpful assistant trained by Liquid AI.<|im_end|>\n<|im_start|>user\nWhat is C. elegans?<|im_end|>\n<|im_start|>assistant",
+   "doc": "base-card",
+   "doc_sha": "9e6c6ccf47cd318696e137d381a7ded8fe4df09f",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM2.5-350M README.md:L111-120",
+   "file": "README.md",
+   "lines": [
+    111,
+    120
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "prompt-format",
+   "text": "<|startoftext|><|im_start|>system\nList of tools: [{\"name\": \"get_candidate_status\", \"description\": \"Retrieves the current status of a candidate in the recruitment process\", \"parameters\": {\"type\": \"object\", \"properties\": {\"candidate_id\": {\"type\": \"string\", \"description\": \"Unique identifier for the candidate\"}}, \"required\": [\"candidate_id\"]}}]<|im_end|>\n<|im_start|>user\nWhat is the current status of candidate ID 12345?<|im_end|>\n<|im_start|>assistant\n<|tool_call_start|>[get_candidate_status(candidate_id=\"12345\")]<|tool_call_end|>Checking the current status of candidate ID 12345.<|im_end|>\n<|im_start|>tool\n[{\"candidate_id\": \"12345\", \"status\": \"Interview Scheduled\", \"position\": \"Clinical Research Associate\", \"date\": \"2023-11-20\"}]<|im_end|>\n<|im_start|>assistant\nThe candidate with ID 12345 is currently in the \"Interview Scheduled\" stage for the position of Clinical Research Associate, with an interview date set for 2023-11-20.<|im_end|>",
+   "doc": "base-card",
+   "doc_sha": "9e6c6ccf47cd318696e137d381a7ded8fe4df09f",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM2.5-350M README.md:L139-168",
+   "file": "README.md",
+   "lines": [
+    139,
+    168
+   ],
+   "lang": "python",
+   "tool": "transformers",
+   "kind": "code",
+   "text": "from transformers import AutoModelForCausalLM, AutoTokenizer, TextStreamer\n\nmodel_id = \"LiquidAI/LFM2.5-350M\"\nmodel = AutoModelForCausalLM.from_pretrained(\n    model_id,\n    device_map=\"auto\",\n    dtype=\"bfloat16\",\n#   attn_implementation=\"flash_attention_2\" <- uncomment on compatible GPU\n)\ntokenizer = AutoTokenizer.from_pretrained(model_id)\nstreamer = TextStreamer(tokenizer, skip_prompt=True, skip_special_tokens=True)\n\nprompt = \"What is C. elegans?\"\n\ninput_ids = tokenizer.apply_chat_template(\n    [{\"role\": \"user\", \"content\": prompt}],\n    add_generation_prompt=True,\n    return_tensors=\"pt\",\n    tokenize=True,\n)[\"input_ids\"].to(model.device)\n\noutput = model.generate(\n    input_ids,\n    do_sample=True,\n    temperature=0.1,\n    top_k=50,\n    repetition_penalty=1.05,\n    max_new_tokens=512,\n    streamer=streamer,\n)",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--temp",
+      "value": "0.1",
+      "from": "temperature: 0.1"
+     },
+     {
+      "flag": "--top-k",
+      "value": "50",
+      "from": "top_k: 50"
+     },
+     {
+      "flag": "--repeat-penalty",
+      "value": "1.05",
+      "from": "repetition_penalty: 1.05"
+     },
+     {
+      "flag": "-n",
+      "value": "512",
+      "from": "max_new_tokens: 512"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "9e6c6ccf47cd318696e137d381a7ded8fe4df09f",
+   "scope": "model"
   }
  ],
  "card_notes": [
@@ -120,13 +313,33 @@
  "chat_template": {
   "gguf_sha256": "013eed60546434b6967e3483153d8c5c37abcb1d667f8b1f914683f2a9411531",
   "repo_sha256": "ba551d58630afa3190b1be3602e28301f3d2e9bbac978dfc49d6d825171648b6",
-  "repo_file": "LiquidAI/LFM2.5-350M chat_template.jinja",
-  "same": false
+  "repo_file": "chat_template.jinja",
+  "same": false,
+  "gguf_chars": 2553,
+  "repo_chars": 5487,
+  "repo_label": "LiquidAI/LFM2.5-350M",
+  "use": "repo",
+  "reason": "the GGUF's embedded template (013eed605464, 2553 chars) is older than the base repo's chat_template.jinja (the same file as LFM2.5-1.2B-Instruct's) and drops assistant tool_calls from the history",
+  "verified": "same template file as LFM2.5-1.2B-Instruct, rendered on b11374 /apply-template"
  },
  "stop": {
   "eos_token": "<|im_end|>",
   "eos_token_id": 7,
-  "eos_token_id_source": "LiquidAI/LFM2.5-350M generation_config.json"
+  "eos_token_id_source": "LiquidAI/LFM2.5-350M generation_config.json",
+  "analysis": {
+   "tokens": [
+    {
+     "id": 7,
+     "text": "<|im_end|>",
+     "source": "LiquidAI/LFM2.5-350M generation_config.json eos_token_id",
+     "eog_by": "GGUF tokenizer.ggml.eos_token_id"
+    }
+   ],
+   "missing": [],
+   "gguf": {
+    "eos": 7
+   }
+  }
  },
  "rope": {
   "rope.freq_base": 1000000.0,
@@ -428,5 +641,537 @@
   "card states context 32768 (LiquidAI/LFM2.5-350M README.md:L65) but GGUF lfm2.context_length is 128000"
  ],
  "updated": "2026-10-19",
- "by": "scripts/model_db.py"
+ "by": "scripts/model_db.py",
+ "gguf_meta": {
+  "general.architecture": "lfm2",
+  "general.type": "model",
+  "general.name": "LFM2.5-350M",
+  "general.basename": "LFM2.5",
+  "general.size_label": "350M",
+  "general.license": "other",
+  "general.license.name": "lfm1.0",
+  "general.license.link": "LICENSE",
+  "general.base_model.count": 1,
+  "general.base_model.0.name": "LFM2.5 350M Base",
+  "general.base_model.0.organization": "LiquidAI",
+  "general.base_model.0.repo_url": "https://huggingface.co/LiquidAI/LFM2.5-350M-Base",
+  "general.tags": [
+   "liquid",
+   "lfm2.5",
+   "edge",
+   "text-generation"
+  ],
+  "general.languages": [
+   "en",
+   "ar",
+   "zh",
+   "fr",
+   "de",
+   "ja",
+   "ko",
+   "es",
+   "pt"
+  ],
+  "lfm2.block_count": 16,
+  "lfm2.context_length": 128000,
+  "lfm2.embedding_length": 1024,
+  "lfm2.feed_forward_length": 4608,
+  "lfm2.attention.head_count": 16,
+  "lfm2.attention.head_count_kv": {
+   "array_len": 16
+  },
+  "lfm2.rope.freq_base": 1000000.0,
+  "lfm2.attention.layer_norm_rms_epsilon": 9.999999747378752e-06,
+  "lfm2.vocab_size": 65536,
+  "lfm2.shortconv.l_cache": 3,
+  "tokenizer.ggml.model": "gpt2",
+  "tokenizer.ggml.pre": "lfm2",
+  "tokenizer.ggml.tokens": {
+   "array_len": 65536
+  },
+  "tokenizer.ggml.token_type": {
+   "array_len": 65536
+  },
+  "tokenizer.ggml.merges": {
+   "array_len": 63683
+  },
+  "tokenizer.ggml.bos_token_id": 1,
+  "tokenizer.ggml.eos_token_id": 7,
+  "tokenizer.ggml.padding_token_id": 0,
+  "tokenizer.ggml.add_bos_token": true,
+  "tokenizer.ggml.add_sep_token": false,
+  "tokenizer.chat_template": {
+   "sha256": "013eed60546434b6967e3483153d8c5c37abcb1d667f8b1f914683f2a9411531",
+   "chars": 2553
+  },
+  "general.quantization_version": 2,
+  "general.file_type": 15,
+  "_gguf_version": 3,
+  "_n_tensors": 148
+ },
+ "base_chain": [
+  {
+   "repo": "LiquidAI/LFM2.5-350M",
+   "api_id": "LiquidAI/LFM2.5-350M",
+   "revision": "9e6c6ccf47cd318696e137d381a7ded8fe4df09f",
+   "via": "card base_model",
+   "card_data": {
+    "license": "other",
+    "license_name": "lfm1.0",
+    "license_link": "LICENSE",
+    "language": [
+     "en",
+     "ar",
+     "zh",
+     "fr",
+     "de",
+     "ja",
+     "ko",
+     "es",
+     "pt"
+    ],
+    "base_model": "LiquidAI/LFM2.5-350M-Base",
+    "pipeline_tag": "text-generation",
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "text-generation",
+   "safetensors": {
+    "parameters": {
+     "BF16": 354483968
+    },
+    "total": 354483968
+   },
+   "license_files": [
+    "LICENSE"
+   ]
+  },
+  {
+   "repo": "LiquidAI/LFM2.5-350M-Base",
+   "api_id": "LiquidAI/LFM2.5-350M-Base",
+   "revision": "9960764e30892e01f29a6dc23df2533fcd8bd5ae",
+   "via": "LiquidAI/LFM2.5-350M card base_model",
+   "card_data": {
+    "license": "other",
+    "license_name": "lfm1.0",
+    "license_link": "LICENSE",
+    "language": [
+     "en",
+     "ar",
+     "zh",
+     "fr",
+     "de",
+     "ja",
+     "ko",
+     "es",
+     "pt"
+    ],
+    "pipeline_tag": "text-generation",
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "text-generation",
+   "safetensors": {
+    "parameters": {
+     "BF16": 354483968
+    },
+    "total": 354483968
+   },
+   "license_files": [
+    "LICENSE"
+   ]
+  }
+ ],
+ "github": null,
+ "github_dropped": [
+  {
+   "repo": "ggml-org/llama.cpp",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "huggingface/transformers",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "vllm-project/vllm",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "ggml-org/llama.cpp",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "ml-explore/mlx",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "unslothai/unsloth",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "huggingface/trl",
+   "why": "inference/training tool repo"
+  }
+ ],
+ "descriptor": {
+  "repo_id": {
+   "effective": "LiquidAI/LFM2.5-350M-GGUF",
+   "source": "HF API id"
+  },
+  "revision": {
+   "effective": "657e078c94084481950a2d555a941481f715536b",
+   "source": "pinned (manifest / database)"
+  },
+  "file": {
+   "effective": "LFM2.5-350M-Q4_K_M.gguf",
+   "source": "HF API siblings"
+  },
+  "bytes": {
+   "effective": 229312224,
+   "source": "HF API LFS size"
+  },
+  "sha256": {
+   "effective": "7e6f72643caafc9a68256686638c4d7916f2cec76d1df478d4c3ddcd95a6aed4",
+   "source": "HF API LFS oid"
+  },
+  "quant": {
+   "effective": "Q4_K_M",
+   "source": "file name",
+   "values": [
+    {
+     "value": "Q4_K_M",
+     "source": "file name"
+    },
+    {
+     "value": "Q4_K_M",
+     "source": "GGUF general.file_type"
+    }
+   ]
+  },
+  "license": {
+   "effective": "other",
+   "source": "LiquidAI/LFM2.5-350M-GGUF card license",
+   "values": [
+    {
+     "value": "other",
+     "source": "LiquidAI/LFM2.5-350M-GGUF card license"
+    },
+    {
+     "value": "other",
+     "source": "LiquidAI/LFM2.5-350M card license"
+    },
+    {
+     "value": "other",
+     "source": "LiquidAI/LFM2.5-350M-Base card license"
+    },
+    {
+     "value": "other",
+     "source": "GGUF general.license"
+    }
+   ]
+  },
+  "license_name": {
+   "effective": "lfm1.0",
+   "source": "LiquidAI/LFM2.5-350M-GGUF card license_name",
+   "values": [
+    {
+     "value": "lfm1.0",
+     "source": "LiquidAI/LFM2.5-350M-GGUF card license_name"
+    },
+    {
+     "value": "lfm1.0",
+     "source": "LiquidAI/LFM2.5-350M card license_name"
+    },
+    {
+     "value": "lfm1.0",
+     "source": "LiquidAI/LFM2.5-350M-Base card license_name"
+    },
+    {
+     "value": "lfm1.0",
+     "source": "GGUF general.license.name"
+    }
+   ]
+  },
+  "license_link": {
+   "effective": "LICENSE",
+   "source": "LiquidAI/LFM2.5-350M-GGUF card license_link",
+   "values": [
+    {
+     "value": "LICENSE",
+     "source": "LiquidAI/LFM2.5-350M-GGUF card license_link"
+    },
+    {
+     "value": "LICENSE",
+     "source": "LiquidAI/LFM2.5-350M card license_link"
+    },
+    {
+     "value": "LICENSE",
+     "source": "LiquidAI/LFM2.5-350M-Base card license_link"
+    },
+    {
+     "value": "LICENSE",
+     "source": "GGUF general.license.link"
+    }
+   ]
+  },
+  "license_file": {
+   "effective": "LiquidAI/LFM2.5-350M-GGUF@657e078c9408/LICENSE",
+   "source": "LiquidAI/LFM2.5-350M-GGUF repo file",
+   "values": [
+    {
+     "value": "LiquidAI/LFM2.5-350M-GGUF@657e078c9408/LICENSE",
+     "source": "LiquidAI/LFM2.5-350M-GGUF repo file"
+    },
+    {
+     "value": "LiquidAI/LFM2.5-350M@9e6c6ccf47cd/LICENSE",
+     "source": "LiquidAI/LFM2.5-350M repo file"
+    },
+    {
+     "value": "LiquidAI/LFM2.5-350M-Base@9960764e3089/LICENSE",
+     "source": "LiquidAI/LFM2.5-350M-Base repo file"
+    }
+   ]
+  },
+  "base_model_chain": {
+   "effective": "LiquidAI/LFM2.5-350M",
+   "source": "card base_model",
+   "values": [
+    {
+     "value": "LiquidAI/LFM2.5-350M",
+     "source": "card base_model"
+    },
+    {
+     "value": "LiquidAI/LFM2.5-350M-Base",
+     "source": "LiquidAI/LFM2.5-350M card base_model"
+    }
+   ]
+  },
+  "gguf_base_model": {
+   "effective": {
+    "name": "LFM2.5 350M Base",
+    "organization": "LiquidAI",
+    "repo_url": "https://huggingface.co/LiquidAI/LFM2.5-350M-Base"
+   },
+   "source": "GGUF general.base_model.0"
+  },
+  "architecture": {
+   "effective": "lfm2",
+   "source": "GGUF general.architecture",
+   "values": [
+    {
+     "value": "lfm2",
+     "source": "GGUF general.architecture"
+    },
+    {
+     "value": "lfm2",
+     "source": "HF API gguf.architecture"
+    }
+   ]
+  },
+  "hf_architectures": {
+   "effective": [
+    "Lfm2ForCausalLM"
+   ],
+   "source": "LiquidAI/LFM2.5-350M config.json architectures"
+  },
+  "hf_model_type": {
+   "effective": "lfm2",
+   "source": "LiquidAI/LFM2.5-350M config.json model_type"
+  },
+  "parameters": {
+   "effective": 354483968,
+   "source": "HF API gguf.total (LiquidAI/LFM2.5-350M-GGUF)",
+   "values": [
+    {
+     "value": 354483968,
+     "source": "HF API gguf.total (LiquidAI/LFM2.5-350M-GGUF)"
+    },
+    {
+     "value": 354483968,
+     "source": "HF API safetensors.total (LiquidAI/LFM2.5-350M)"
+    },
+    {
+     "value": 354483968,
+     "source": "HF API safetensors.total (LiquidAI/LFM2.5-350M-Base)"
+    }
+   ]
+  },
+  "size_label": {
+   "effective": "350M",
+   "source": "GGUF general.size_label"
+  },
+  "ctx_statements": {
+   "effective": {
+    "value": 32768,
+    "quote": "- **Context length**: 32,768 tokens"
+   },
+   "source": "LiquidAI/LFM2.5-350M README.md:L65"
+  },
+  "ctx": {
+   "effective": 32768,
+   "source": "card: LiquidAI/LFM2.5-350M README.md:L65",
+   "values": [
+    {
+     "value": 32768,
+     "source": "card: LiquidAI/LFM2.5-350M README.md:L65"
+    },
+    {
+     "value": 128000,
+     "source": "LiquidAI/LFM2.5-350M config.json max_position_embeddings"
+    },
+    {
+     "value": 128000,
+     "source": "GGUF lfm2.context_length"
+    }
+   ],
+   "conflict": true,
+   "precedence": "card statement > config.json > GGUF header > GitHub README"
+  },
+  "pipeline_tag": {
+   "effective": "text-generation",
+   "source": "LiquidAI/LFM2.5-350M-GGUF HF API pipeline_tag",
+   "values": [
+    {
+     "value": "text-generation",
+     "source": "LiquidAI/LFM2.5-350M-GGUF HF API pipeline_tag"
+    },
+    {
+     "value": "text-generation",
+     "source": "LiquidAI/LFM2.5-350M HF API pipeline_tag"
+    },
+    {
+     "value": "text-generation",
+     "source": "LiquidAI/LFM2.5-350M-Base HF API pipeline_tag"
+    }
+   ]
+  },
+  "languages": {
+   "effective": [
+    "en",
+    "ar",
+    "zh",
+    "fr",
+    "de",
+    "ja",
+    "ko",
+    "es"
+   ],
+   "source": "LiquidAI/LFM2.5-350M-GGUF card language",
+   "values": [
+    {
+     "value": [
+      "en",
+      "ar",
+      "zh",
+      "fr",
+      "de",
+      "ja",
+      "ko",
+      "es"
+     ],
+     "source": "LiquidAI/LFM2.5-350M-GGUF card language"
+    },
+    {
+     "value": [
+      "en",
+      "ar",
+      "zh",
+      "fr",
+      "de",
+      "ja",
+      "ko",
+      "es",
+      "pt"
+     ],
+     "source": "LiquidAI/LFM2.5-350M card language"
+    },
+    {
+     "value": [
+      "en",
+      "ar",
+      "zh",
+      "fr",
+      "de",
+      "ja",
+      "ko",
+      "es",
+      "pt"
+     ],
+     "source": "LiquidAI/LFM2.5-350M-Base card language"
+    },
+    {
+     "value": [
+      "en",
+      "ar",
+      "zh",
+      "fr",
+      "de",
+      "ja",
+      "ko",
+      "es",
+      "pt"
+     ],
+     "source": "GGUF general.languages"
+    }
+   ],
+   "conflict": true
+  }
+ },
+ "required_params": {
+  "kind": "chat",
+  "native_ctx": 32768,
+  "native_ctx_source": "card: LiquidAI/LFM2.5-350M README.md:L65",
+  "yarn": null,
+  "yarn_source": null,
+  "items": [
+   {
+    "class": "REQUIRED",
+    "flag": "--jinja",
+    "value": null,
+    "source": "GGUF tokenizer.chat_template (013eed605464)",
+    "why_required": "messages, tool calls and thinking are formatted by the model's chat template; without --jinja llama-server falls back to a built-in approximation"
+   },
+   {
+    "class": "REQUIRED",
+    "flag": "--chat-template-file",
+    "value": "${template:ba551d58630afa3190b1be3602e28301f3d2e9bbac978dfc49d6d825171648b6}",
+    "source": "LiquidAI/LFM2.5-350M chat_template.jinja",
+    "why_required": "the GGUF's embedded template (013eed605464, 2553 chars) is older than the base repo's chat_template.jinja (the same file as LFM2.5-1.2B-Instruct's) and drops assistant tool_calls from the history",
+    "template_sha256": "ba551d58630afa3190b1be3602e28301f3d2e9bbac978dfc49d6d825171648b6"
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--temp",
+    "value": "0.1",
+    "source": "LiquidAI/LFM2.5-350M-GGUF README.md:L51-52",
+    "why_required": "sampling in the card's llama-cli command",
+    "also": [
+     "LiquidAI/LFM2.5-350M LiquidAI/LFM2.5-350M README.md:L70"
+    ]
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--top-k",
+    "value": "50",
+    "source": "LiquidAI/LFM2.5-350M-GGUF README.md:L51-52",
+    "why_required": "sampling in the card's llama-cli command",
+    "also": [
+     "LiquidAI/LFM2.5-350M LiquidAI/LFM2.5-350M README.md:L70"
+    ]
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--repeat-penalty",
+    "value": "1.05",
+    "source": "LiquidAI/LFM2.5-350M-GGUF README.md:L51-52",
+    "why_required": "sampling in the card's llama-cli command",
+    "also": [
+     "LiquidAI/LFM2.5-350M LiquidAI/LFM2.5-350M README.md:L70"
+    ]
+   }
+  ]
+ },
+ "blockers": null,
+ "params_problems": null,
+ "params_build": "b11374",
+ "native_ctx": 32768,
+ "native_ctx_source": "card: LiquidAI/LFM2.5-350M README.md:L65"
 }

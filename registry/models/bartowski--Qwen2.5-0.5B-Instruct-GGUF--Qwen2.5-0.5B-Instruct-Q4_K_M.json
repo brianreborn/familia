@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "bartowski--Qwen2.5-0.5B-Instruct-GGUF--Qwen2.5-0.5B-Instruct-Q4_K_M",
  "repo": "bartowski/Qwen2.5-0.5B-Instruct-GGUF",
  "revision": "41ba88dbac95fed2528c92514c131d73eb5a174b",
@@ -39,14 +39,692 @@
  "card_sampling_sets": null,
  "card_commands": [
   {
-   "tool": "huggingface-cli",
-   "command": "huggingface-cli download bartowski/Qwen2.5-0.5B-Instruct-GGUF --include \"Qwen2.5-0.5B-Instruct-Q4_K_M.gguf\" --local-dir ./",
-   "source": "bartowski/Qwen2.5-0.5B-Instruct-GGUF README.md:L79"
+   "source": "bartowski/Qwen2.5-0.5B-Instruct-GGUF README.md:L26-30",
+   "file": "README.md",
+   "lines": [
+    26,
+    30
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "prompt-format",
+   "text": "<|im_start|>system\n{system_prompt}<|im_end|>\n<|im_start|>user\n{prompt}<|im_end|>\n<|im_start|>assistant",
+   "doc": "card",
+   "doc_sha": "41ba88dbac95fed2528c92514c131d73eb5a174b",
+   "scope": "model"
   },
   {
-   "tool": "huggingface-cli",
-   "command": "huggingface-cli download bartowski/Qwen2.5-0.5B-Instruct-GGUF --include \"Qwen2.5-0.5B-Instruct-Q8_0/*\" --local-dir ./",
-   "source": "bartowski/Qwen2.5-0.5B-Instruct-GGUF README.md:L85"
+   "source": "bartowski/Qwen2.5-0.5B-Instruct-GGUF README.md:L73-73",
+   "file": "README.md",
+   "lines": [
+    73,
+    73
+   ],
+   "lang": null,
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install -U \"huggingface_hub[cli]\"",
+   "doc": "card",
+   "doc_sha": "41ba88dbac95fed2528c92514c131d73eb5a174b",
+   "scope": "model"
+  },
+  {
+   "source": "bartowski/Qwen2.5-0.5B-Instruct-GGUF README.md:L79-79",
+   "file": "README.md",
+   "lines": [
+    79,
+    79
+   ],
+   "lang": null,
+   "tool": "hf-download",
+   "kind": "command",
+   "text": "huggingface-cli download bartowski/Qwen2.5-0.5B-Instruct-GGUF --include \"Qwen2.5-0.5B-Instruct-Q4_K_M.gguf\" --local-dir ./",
+   "doc": "card",
+   "doc_sha": "41ba88dbac95fed2528c92514c131d73eb5a174b",
+   "scope": "model"
+  },
+  {
+   "source": "bartowski/Qwen2.5-0.5B-Instruct-GGUF README.md:L85-85",
+   "file": "README.md",
+   "lines": [
+    85,
+    85
+   ],
+   "lang": null,
+   "tool": "hf-download",
+   "kind": "command",
+   "text": "huggingface-cli download bartowski/Qwen2.5-0.5B-Instruct-GGUF --include \"Qwen2.5-0.5B-Instruct-Q8_0/*\" --local-dir ./",
+   "doc": "card",
+   "doc_sha": "41ba88dbac95fed2528c92514c131d73eb5a174b",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen2.5-0.5B-Instruct README.md:L42-42",
+   "file": "README.md",
+   "lines": [
+    42,
+    42
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "KeyError: 'qwen2'",
+   "doc": "base-card",
+   "doc_sha": "7ae557604adf67be50417f59c2c2f167def9a775",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen2.5-0.5B-Instruct README.md:L50-81",
+   "file": "README.md",
+   "lines": [
+    50,
+    81
+   ],
+   "lang": "python",
+   "tool": "transformers",
+   "kind": "code",
+   "text": "from transformers import AutoModelForCausalLM, AutoTokenizer\n\nmodel_name = \"Qwen/Qwen2.5-0.5B-Instruct\"\n\nmodel = AutoModelForCausalLM.from_pretrained(\n    model_name,\n    torch_dtype=\"auto\",\n    device_map=\"auto\"\n)\ntokenizer = AutoTokenizer.from_pretrained(model_name)\n\nprompt = \"Give me a short introduction to large language model.\"\nmessages = [\n    {\"role\": \"system\", \"content\": \"You are Qwen, created by Alibaba Cloud. You are a helpful assistant.\"},\n    {\"role\": \"user\", \"content\": prompt}\n]\ntext = tokenizer.apply_chat_template(\n    messages,\n    tokenize=False,\n    add_generation_prompt=True\n)\nmodel_inputs = tokenizer([text], return_tensors=\"pt\").to(model.device)\n\ngenerated_ids = model.generate(\n    **model_inputs,\n    max_new_tokens=512\n)\ngenerated_ids = [\n    output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)\n]\n\nresponse = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-n",
+      "value": "512",
+      "from": "max_new_tokens: 512"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "7ae557604adf67be50417f59c2c2f167def9a775",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen2.5 README.md:L96-129",
+   "file": "README.md",
+   "lines": [
+    96,
+    129
+   ],
+   "lang": "python",
+   "tool": "transformers",
+   "kind": "code",
+   "text": "from transformers import AutoModelForCausalLM, AutoTokenizer\n\nmodel_name = \"Qwen/Qwen3-30B-A3B-Instruct-2507\"\n\n# load the tokenizer and the model\ntokenizer = AutoTokenizer.from_pretrained(model_name)\nmodel = AutoModelForCausalLM.from_pretrained(\n    model_name,\n    torch_dtype=\"auto\",\n    device_map=\"auto\"\n)\n\n# prepare the model input\nprompt = \"Give me a short introduction to large language model.\"\nmessages = [\n    {\"role\": \"user\", \"content\": prompt}\n]\ntext = tokenizer.apply_chat_template(\n    messages,\n    tokenize=False,\n    add_generation_prompt=True,\n)\nmodel_inputs = tokenizer([text], return_tensors=\"pt\").to(model.device)\n\n# conduct text completion\ngenerated_ids = model.generate(\n    **model_inputs,\n    max_new_tokens=16384\n)\noutput_ids = generated_ids[0][len(model_inputs.input_ids[0]):].tolist() \n\ncontent = tokenizer.decode(output_ids, skip_special_tokens=True)\n\nprint(\"content:\", content)",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-n",
+      "value": "16384",
+      "from": "max_new_tokens: 16384"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "github",
+   "doc_sha": "7a2f61ffc7a20d47efcd2bf97f6f2bf52729042e",
+   "scope": "family: Qwen/Qwen3-30B-A3B-Instruct-2507"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen2.5 README.md:L140-183",
+   "file": "README.md",
+   "lines": [
+    140,
+    183
+   ],
+   "lang": "python",
+   "tool": "transformers",
+   "kind": "code",
+   "text": "from transformers import AutoModelForCausalLM, AutoTokenizer\n\nmodel_name = \"Qwen/Qwen3-30B-A3B-Thinking-2507\"\n\n# load the tokenizer and the model\ntokenizer = AutoTokenizer.from_pretrained(model_name)\nmodel = AutoModelForCausalLM.from_pretrained(\n    model_name,\n    torch_dtype=\"auto\",\n    device_map=\"auto\"\n)\n\n# prepare the model input\nprompt = \"Give me a short introduction to large language model.\"\nmessages = [\n    {\"role\": \"user\", \"content\": prompt}\n]\ntext = tokenizer.apply_chat_template(\n    messages,\n    tokenize=False,\n    add_generation_prompt=True,\n)\nmodel_inputs = tokenizer([text], return_tensors=\"pt\").to(model.device)\n\n# conduct text completion\ngenerated_ids = model.generate(\n    **model_inputs,\n    max_new_tokens=32768\n)\noutput_ids = generated_ids[0][len(model_inputs.input_ids[0]):].tolist() \n\n# parsing thinking content\ntry:\n    # rindex finding 151668 (</think>)\n    index = len(output_ids) - output_ids[::-1].index(151668)\nexcept ValueError:\n    index = 0\n\nthinking_content = tokenizer.decode(output_ids[:index], skip_special_tokens=True).strip(\"\\n\")\ncontent = tokenizer.decode(output_ids[index:], skip_special_tokens=True).strip(\"\\n\")\n\nprint(\"thinking content:\", thinking_content)  # no opening <think> tag\nprint(\"content:\", content)\n",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-n",
+      "value": "32768",
+      "from": "max_new_tokens: 32768"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "github",
+   "doc_sha": "7a2f61ffc7a20d47efcd2bf97f6f2bf52729042e",
+   "scope": "family: Qwen/Qwen3-30B-A3B-Thinking-2507"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen2.5 README.md:L222-223",
+   "file": "README.md",
+   "lines": [
+    222,
+    223
+   ],
+   "lang": "shell",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "./llama-cli -hf Qwen/Qwen3-8B-GGUF:Q8_0 --jinja --color -ngl 99 -fa -sm row --temp 0.6 --top-k 20 --top-p 0.95 --min-p 0 -c 40960 -n 32768 --no-context-shift\n# CTRL+C to exit",
+   "llama": [
+    {
+     "tool": "llama-cli",
+     "raw": "./llama-cli -hf Qwen/Qwen3-8B-GGUF:Q8_0 --jinja --color -ngl 99 -fa -sm row --temp 0.6 --top-k 20 --top-p 0.95 --min-p 0 -c 40960 -n 32768 --no-context-shift",
+     "flags": [
+      {
+       "flag": "-hf",
+       "canonical": "--hf-repo",
+       "value": "Qwen/Qwen3-8B-GGUF:Q8_0",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--jinja",
+       "canonical": "--jinja",
+       "value": null,
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--color",
+       "canonical": "--color",
+       "value": null,
+       "known": true,
+       "note": "given without a value (older llama.cpp syntax); this build's --color takes a value"
+      },
+      {
+       "flag": "-ngl",
+       "canonical": "--gpu-layers",
+       "value": "99",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-fa",
+       "canonical": "--flash-attn",
+       "value": null,
+       "known": true,
+       "note": "given without a value (older llama.cpp syntax); this build's -fa takes a value"
+      },
+      {
+       "flag": "-sm",
+       "canonical": "--split-mode",
+       "value": "row",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--temp",
+       "canonical": "--temp",
+       "value": "0.6",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--top-k",
+       "canonical": "--top-k",
+       "value": "20",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--top-p",
+       "canonical": "--top-p",
+       "value": "0.95",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--min-p",
+       "canonical": "--min-p",
+       "value": "0",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-c",
+       "canonical": "--ctx-size",
+       "value": "40960",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-n",
+       "canonical": "--predict",
+       "value": "32768",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--no-context-shift",
+       "canonical": "--no-context-shift",
+       "value": null,
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    }
+   ],
+   "doc": "github",
+   "doc_sha": "7a2f61ffc7a20d47efcd2bf97f6f2bf52729042e",
+   "scope": "family: Qwen/Qwen3-8B-GGUF:Q8_0"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen2.5 README.md:L228-228",
+   "file": "README.md",
+   "lines": [
+    228,
+    228
+   ],
+   "lang": "shell",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "./llama-server -hf Qwen/Qwen3-8B-GGUF:Q8_0 --jinja --reasoning-format deepseek -ngl 99 -fa -sm row --temp 0.6 --top-k 20 --top-p 0.95 --min-p 0 -c 40960 -n 32768 --no-context-shift --port 8080",
+   "llama": [
+    {
+     "tool": "llama-server",
+     "raw": "./llama-server -hf Qwen/Qwen3-8B-GGUF:Q8_0 --jinja --reasoning-format deepseek -ngl 99 -fa -sm row --temp 0.6 --top-k 20 --top-p 0.95 --min-p 0 -c 40960 -n 32768 --no-context-shift --port 8080",
+     "flags": [
+      {
+       "flag": "-hf",
+       "canonical": "--hf-repo",
+       "value": "Qwen/Qwen3-8B-GGUF:Q8_0",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--jinja",
+       "canonical": "--jinja",
+       "value": null,
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--reasoning-format",
+       "canonical": "--reasoning-format",
+       "value": "deepseek",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-ngl",
+       "canonical": "--gpu-layers",
+       "value": "99",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-fa",
+       "canonical": "--flash-attn",
+       "value": null,
+       "known": true,
+       "note": "given without a value (older llama.cpp syntax); this build's -fa takes a value"
+      },
+      {
+       "flag": "-sm",
+       "canonical": "--split-mode",
+       "value": "row",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--temp",
+       "canonical": "--temp",
+       "value": "0.6",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--top-k",
+       "canonical": "--top-k",
+       "value": "20",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--top-p",
+       "canonical": "--top-p",
+       "value": "0.95",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--min-p",
+       "canonical": "--min-p",
+       "value": "0",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-c",
+       "canonical": "--ctx-size",
+       "value": "40960",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-n",
+       "canonical": "--predict",
+       "value": "32768",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--no-context-shift",
+       "canonical": "--no-context-shift",
+       "value": null,
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--port",
+       "canonical": "--port",
+       "value": "8080",
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    }
+   ],
+   "doc": "github",
+   "doc_sha": "7a2f61ffc7a20d47efcd2bf97f6f2bf52729042e",
+   "scope": "family: Qwen/Qwen3-8B-GGUF:Q8_0"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen2.5 README.md:L243-244",
+   "file": "README.md",
+   "lines": [
+    243,
+    244
+   ],
+   "lang": "shell",
+   "tool": "ollama",
+   "kind": "command",
+   "text": "ollama serve\n# You need to keep this service running whenever you are using ollama",
+   "doc": "github",
+   "doc_sha": "7a2f61ffc7a20d47efcd2bf97f6f2bf52729042e",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen2.5 README.md:L249-254",
+   "file": "README.md",
+   "lines": [
+    249,
+    254
+   ],
+   "lang": "shell",
+   "tool": "ollama",
+   "kind": "command",
+   "text": "ollama run qwen3:8b\n# Setting parameters, type \"/set parameter num_ctx 40960\" and \"/set parameter num_predict 32768\"\n# To exit, type \"/bye\" and press ENTER\n# For Qwen3-2504 models,\n# - To enable thinking, which is the default, type \"/set think\"\n# - To disable thinking, type \"/set nothink\"",
+   "translation": {
+    "translated": true,
+    "params": [],
+    "untranslatable": [
+     {
+      "arg": "ollama run qwen3:8b",
+      "why": "Ollama pulls and runs the model with its own defaults; no flags to translate"
+     }
+    ]
+   },
+   "doc": "github",
+   "doc_sha": "7a2f61ffc7a20d47efcd2bf97f6f2bf52729042e",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen2.5 README.md:L258",
+   "file": "README.md",
+   "lines": [
+    258,
+    258
+   ],
+   "lang": null,
+   "tool": "ollama",
+   "kind": "inline",
+   "text": "ollama run qwen3:8b",
+   "translation": {
+    "translated": true,
+    "params": [],
+    "untranslatable": [
+     {
+      "arg": "ollama run qwen3:8b",
+      "why": "Ollama pulls and runs the model with its own defaults; no flags to translate"
+     }
+    ]
+   },
+   "doc": "github",
+   "doc_sha": "7a2f61ffc7a20d47efcd2bf97f6f2bf52729042e",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen2.5 README.md:L314-314",
+   "file": "README.md",
+   "lines": [
+    314,
+    314
+   ],
+   "lang": "shell",
+   "tool": "sglang",
+   "kind": "command",
+   "text": "python -m sglang.launch_server --model-path Qwen/Qwen3-30B-A3B-Instruct-2507 --port 30000 --context-length 262144",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-c",
+      "value": "262144",
+      "from": "--context-length 262144"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--model-path Qwen/Qwen3-30B-A3B-Instruct-2507",
+      "why": "the model is the GGUF file"
+     }
+    ]
+   },
+   "doc": "github",
+   "doc_sha": "7a2f61ffc7a20d47efcd2bf97f6f2bf52729042e",
+   "scope": "family: Qwen/Qwen3-30B-A3B-Instruct-2507"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen2.5 README.md:L319-319",
+   "file": "README.md",
+   "lines": [
+    319,
+    319
+   ],
+   "lang": "shell",
+   "tool": "sglang",
+   "kind": "command",
+   "text": "python -m sglang.launch_server --model-path Qwen/Qwen3-30B-A3B-Thinking-2507 --port 30000 --context-length 262144 --reasoning-parser deepseek-r1",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-c",
+      "value": "262144",
+      "from": "--context-length 262144"
+     },
+     {
+      "flag": "--reasoning-format",
+      "value": "deepseek",
+      "from": "--reasoning-parser deepseek-r1"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--model-path Qwen/Qwen3-30B-A3B-Thinking-2507",
+      "why": "the model is the GGUF file"
+     }
+    ]
+   },
+   "doc": "github",
+   "doc_sha": "7a2f61ffc7a20d47efcd2bf97f6f2bf52729042e",
+   "scope": "family: Qwen/Qwen3-30B-A3B-Thinking-2507"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen2.5 README.md:L324-324",
+   "file": "README.md",
+   "lines": [
+    324,
+    324
+   ],
+   "lang": "shell",
+   "tool": "sglang",
+   "kind": "command",
+   "text": "python -m sglang.launch_server --model-path Qwen/Qwen3-8B --port 30000 --context-length 131072 --reasoning-parser qwen3",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-c",
+      "value": "131072",
+      "from": "--context-length 131072"
+     },
+     {
+      "flag": "--reasoning-format",
+      "value": "deepseek",
+      "from": "--reasoning-parser qwen3"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--model-path Qwen/Qwen3-8B",
+      "why": "the model is the GGUF file"
+     }
+    ]
+   },
+   "doc": "github",
+   "doc_sha": "7a2f61ffc7a20d47efcd2bf97f6f2bf52729042e",
+   "scope": "family: Qwen/Qwen3-8B"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen2.5 README.md:L339-339",
+   "file": "README.md",
+   "lines": [
+    339,
+    339
+   ],
+   "lang": "shell",
+   "tool": "vllm",
+   "kind": "command",
+   "text": "vllm serve Qwen/Qwen3-30B-A3B-Instruct-2507 --port 8000 --max-model-len 262144",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-c",
+      "value": "262144",
+      "from": "--max-model-len 262144"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "github",
+   "doc_sha": "7a2f61ffc7a20d47efcd2bf97f6f2bf52729042e",
+   "scope": "family: Qwen/Qwen3-30B-A3B-Instruct-2507"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen2.5 README.md:L344-344",
+   "file": "README.md",
+   "lines": [
+    344,
+    344
+   ],
+   "lang": "shell",
+   "tool": "vllm",
+   "kind": "command",
+   "text": "vllm serve Qwen/Qwen3-30B-A3B-Thinking-2507 --port 8000 --max-model-len 262144 --enable-reasoning --reasoning-parser deepseek_r1",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-c",
+      "value": "262144",
+      "from": "--max-model-len 262144"
+     },
+     {
+      "flag": "--reasoning-format",
+      "value": "deepseek",
+      "from": "--reasoning-parser deepseek_r1"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--enable-reasoning",
+      "why": "reasoning extraction is on by default in llama-server (--reasoning-format deepseek)"
+     }
+    ]
+   },
+   "doc": "github",
+   "doc_sha": "7a2f61ffc7a20d47efcd2bf97f6f2bf52729042e",
+   "scope": "family: Qwen/Qwen3-30B-A3B-Thinking-2507"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen2.5 README.md:L349-349",
+   "file": "README.md",
+   "lines": [
+    349,
+    349
+   ],
+   "lang": "shell",
+   "tool": "vllm",
+   "kind": "command",
+   "text": "vllm serve Qwen/Qwen3-8B --port 8000 --max-model-len 131072 --enable-reasoning --reasoning-parser qwen3",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-c",
+      "value": "131072",
+      "from": "--max-model-len 131072"
+     },
+     {
+      "flag": "--reasoning-format",
+      "value": "deepseek",
+      "from": "--reasoning-parser qwen3"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--enable-reasoning",
+      "why": "reasoning extraction is on by default in llama-server (--reasoning-format deepseek)"
+     }
+    ]
+   },
+   "doc": "github",
+   "doc_sha": "7a2f61ffc7a20d47efcd2bf97f6f2bf52729042e",
+   "scope": "family: Qwen/Qwen3-8B"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen2.5 README.md:L361-361",
+   "file": "README.md",
+   "lines": [
+    361,
+    361
+   ],
+   "lang": "shell",
+   "tool": "shell",
+   "kind": "command",
+   "text": "trtllm-serve Qwen/Qwen3-8B --host localhost --port 8000 --backend pytorch",
+   "doc": "github",
+   "doc_sha": "7a2f61ffc7a20d47efcd2bf97f6f2bf52729042e",
+   "scope": "family: Qwen/Qwen3-8B"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen2.5 README.md:L375-375",
+   "file": "README.md",
+   "lines": [
+    375,
+    375
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "openllm serve qwen2.5:7b",
+   "doc": "github",
+   "doc_sha": "7a2f61ffc7a20d47efcd2bf97f6f2bf52729042e",
+   "scope": "model"
   }
  ],
  "card_notes": [
@@ -66,8 +744,12 @@
  "chat_template": {
   "gguf_sha256": "cd8e9439f0570856fd70470bf8889ebd8b5d1107207f67a5efb46e342330527f",
   "repo_sha256": "cd8e9439f0570856fd70470bf8889ebd8b5d1107207f67a5efb46e342330527f",
-  "repo_file": "Qwen/Qwen2.5-0.5B-Instruct tokenizer_config.json:chat_template",
-  "same": true
+  "repo_file": "tokenizer_config.json:chat_template",
+  "same": true,
+  "gguf_chars": 2507,
+  "repo_chars": 2507,
+  "repo_label": "Qwen/Qwen2.5-0.5B-Instruct",
+  "use": "gguf"
  },
  "stop": {
   "eos_token": "<|im_end|>",
@@ -75,7 +757,27 @@
    151645,
    151643
   ],
-  "eos_token_id_source": "Qwen/Qwen2.5-0.5B-Instruct generation_config.json"
+  "eos_token_id_source": "Qwen/Qwen2.5-0.5B-Instruct generation_config.json",
+  "analysis": {
+   "tokens": [
+    {
+     "id": 151645,
+     "text": "<|im_end|>",
+     "source": "Qwen/Qwen2.5-0.5B-Instruct generation_config.json eos_token_id",
+     "eog_by": "GGUF tokenizer.ggml.eos_token_id"
+    },
+    {
+     "id": 151643,
+     "text": "<|endoftext|>",
+     "source": "Qwen/Qwen2.5-0.5B-Instruct generation_config.json eos_token_id",
+     "eog_by": "llama.cpp built-in EOG text"
+    }
+   ],
+   "missing": [],
+   "gguf": {
+    "eos": 151645
+   }
+  }
  },
  "rope": {
   "rope.freq_base": 1000000.0
@@ -371,5 +1073,477 @@
  "unknown": null,
  "warnings": null,
  "updated": "2026-10-19",
- "by": "scripts/model_db.py"
+ "by": "scripts/model_db.py",
+ "gguf_meta": {
+  "general.architecture": "qwen2",
+  "general.type": "model",
+  "general.name": "Qwen2.5 0.5B Instruct",
+  "general.finetune": "Instruct",
+  "general.basename": "Qwen2.5",
+  "general.size_label": "0.5B",
+  "general.license": "apache-2.0",
+  "general.license.link": "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct/blob/main/LICENSE",
+  "general.base_model.count": 1,
+  "general.base_model.0.name": "Qwen2.5 0.5B",
+  "general.base_model.0.organization": "Qwen",
+  "general.base_model.0.repo_url": "https://huggingface.co/Qwen/Qwen2.5-0.5B",
+  "general.tags": [
+   "chat",
+   "text-generation"
+  ],
+  "general.languages": [
+   "en"
+  ],
+  "qwen2.block_count": 24,
+  "qwen2.context_length": 32768,
+  "qwen2.embedding_length": 896,
+  "qwen2.feed_forward_length": 4864,
+  "qwen2.attention.head_count": 14,
+  "qwen2.attention.head_count_kv": 2,
+  "qwen2.rope.freq_base": 1000000.0,
+  "qwen2.attention.layer_norm_rms_epsilon": 9.999999974752427e-07,
+  "general.file_type": 15,
+  "tokenizer.ggml.model": "gpt2",
+  "tokenizer.ggml.pre": "qwen2",
+  "tokenizer.ggml.tokens": {
+   "array_len": 151936
+  },
+  "tokenizer.ggml.token_type": {
+   "array_len": 151936
+  },
+  "tokenizer.ggml.merges": {
+   "array_len": 151387
+  },
+  "tokenizer.ggml.eos_token_id": 151645,
+  "tokenizer.ggml.padding_token_id": 151643,
+  "tokenizer.ggml.bos_token_id": 151643,
+  "tokenizer.ggml.add_bos_token": false,
+  "tokenizer.chat_template": {
+   "sha256": "cd8e9439f0570856fd70470bf8889ebd8b5d1107207f67a5efb46e342330527f",
+   "chars": 2507
+  },
+  "general.quantization_version": 2,
+  "quantize.imatrix.file": "/models_out/Qwen2.5-0.5B-Instruct-GGUF/Qwen2.5-0.5B-Instruct.imatrix",
+  "quantize.imatrix.dataset": "/training_dir/calibration_datav3.txt",
+  "quantize.imatrix.entries_count": 168,
+  "quantize.imatrix.chunks_count": 128,
+  "_gguf_version": 3,
+  "_n_tensors": 290
+ },
+ "base_chain": [
+  {
+   "repo": "Qwen/Qwen2.5-0.5B-Instruct",
+   "api_id": "Qwen/Qwen2.5-0.5B-Instruct",
+   "revision": "7ae557604adf67be50417f59c2c2f167def9a775",
+   "via": "card base_model",
+   "card_data": {
+    "license": "apache-2.0",
+    "license_link": "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct/blob/main/LICENSE",
+    "language": [
+     "en"
+    ],
+    "base_model": "Qwen/Qwen2.5-0.5B",
+    "pipeline_tag": "text-generation",
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "text-generation",
+   "safetensors": {
+    "parameters": {
+     "BF16": 494032768
+    },
+    "total": 494032768
+   },
+   "license_files": [
+    "LICENSE"
+   ]
+  },
+  {
+   "repo": "Qwen/Qwen2.5-0.5B",
+   "api_id": "Qwen/Qwen2.5-0.5B",
+   "revision": "060db6499f32faf8b98477b0a26969ef7d8b9987",
+   "via": "Qwen/Qwen2.5-0.5B-Instruct card base_model",
+   "card_data": {
+    "license": "apache-2.0",
+    "license_link": "https://huggingface.co/Qwen/Qwen2.5-0.5B/blob/main/LICENSE",
+    "language": [
+     "en"
+    ],
+    "pipeline_tag": "text-generation",
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "text-generation",
+   "safetensors": {
+    "parameters": {
+     "BF16": 494032768
+    },
+    "total": 494032768
+   },
+   "license_files": [
+    "LICENSE"
+   ]
+  }
+ ],
+ "github": [
+  {
+   "repo": "QwenLM/Qwen2.5",
+   "resolved": "QwenLM/Qwen3",
+   "sha": "7a2f61ffc7a20d47efcd2bf97f6f2bf52729042e",
+   "renamed": true,
+   "description": "Qwen3 is the large language model series developed by Qwen team, Alibaba Cloud.",
+   "license_spdx": null,
+   "files": {
+    "readme": {
+     "path": "README.md",
+     "sha256": "0b2c2bb11806f7a00c8465f2586e2e99f15de28622fd5c9b70b83ae1ab18c75d",
+     "bytes": 24732
+    }
+   },
+   "extra": null,
+   "snapshot": "github/QwenLM--Qwen2.5/7a2f61ffc7a20d47efcd2bf97f6f2bf52729042e"
+  }
+ ],
+ "github_dropped": [
+  {
+   "repo": "ggerganov/llama.cpp",
+   "why": "inference/training tool repo"
+  }
+ ],
+ "descriptor": {
+  "repo_id": {
+   "effective": "bartowski/Qwen2.5-0.5B-Instruct-GGUF",
+   "source": "HF API id"
+  },
+  "revision": {
+   "effective": "41ba88dbac95fed2528c92514c131d73eb5a174b",
+   "source": "pinned (manifest / database)"
+  },
+  "file": {
+   "effective": "Qwen2.5-0.5B-Instruct-Q4_K_M.gguf",
+   "source": "HF API siblings"
+  },
+  "bytes": {
+   "effective": 397808192,
+   "source": "HF API LFS size"
+  },
+  "sha256": {
+   "effective": "6eb923e7d26e9cea28811e1a8e852009b21242fb157b26149d3b188f3a8c8653",
+   "source": "HF API LFS oid"
+  },
+  "quant": {
+   "effective": "Q4_K_M",
+   "source": "file name",
+   "values": [
+    {
+     "value": "Q4_K_M",
+     "source": "file name"
+    },
+    {
+     "value": "Q4_K_M",
+     "source": "GGUF general.file_type"
+    }
+   ]
+  },
+  "license": {
+   "effective": "apache-2.0",
+   "source": "bartowski/Qwen2.5-0.5B-Instruct-GGUF card license",
+   "values": [
+    {
+     "value": "apache-2.0",
+     "source": "bartowski/Qwen2.5-0.5B-Instruct-GGUF card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "Qwen/Qwen2.5-0.5B-Instruct card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "Qwen/Qwen2.5-0.5B card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "GGUF general.license"
+    }
+   ]
+  },
+  "license_link": {
+   "effective": "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct/blob/main/LICENSE",
+   "source": "bartowski/Qwen2.5-0.5B-Instruct-GGUF card license_link",
+   "values": [
+    {
+     "value": "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct/blob/main/LICENSE",
+     "source": "bartowski/Qwen2.5-0.5B-Instruct-GGUF card license_link"
+    },
+    {
+     "value": "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct/blob/main/LICENSE",
+     "source": "Qwen/Qwen2.5-0.5B-Instruct card license_link"
+    },
+    {
+     "value": "https://huggingface.co/Qwen/Qwen2.5-0.5B/blob/main/LICENSE",
+     "source": "Qwen/Qwen2.5-0.5B card license_link"
+    },
+    {
+     "value": "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct/blob/main/LICENSE",
+     "source": "GGUF general.license.link"
+    }
+   ]
+  },
+  "license_file": {
+   "effective": "Qwen/Qwen2.5-0.5B-Instruct@7ae557604adf/LICENSE",
+   "source": "Qwen/Qwen2.5-0.5B-Instruct repo file",
+   "values": [
+    {
+     "value": "Qwen/Qwen2.5-0.5B-Instruct@7ae557604adf/LICENSE",
+     "source": "Qwen/Qwen2.5-0.5B-Instruct repo file"
+    },
+    {
+     "value": "Qwen/Qwen2.5-0.5B@060db6499f32/LICENSE",
+     "source": "Qwen/Qwen2.5-0.5B repo file"
+    }
+   ]
+  },
+  "base_model_chain": {
+   "effective": "Qwen/Qwen2.5-0.5B-Instruct",
+   "source": "card base_model",
+   "values": [
+    {
+     "value": "Qwen/Qwen2.5-0.5B-Instruct",
+     "source": "card base_model"
+    },
+    {
+     "value": "Qwen/Qwen2.5-0.5B",
+     "source": "Qwen/Qwen2.5-0.5B-Instruct card base_model"
+    }
+   ]
+  },
+  "gguf_base_model": {
+   "effective": {
+    "name": "Qwen2.5 0.5B",
+    "organization": "Qwen",
+    "repo_url": "https://huggingface.co/Qwen/Qwen2.5-0.5B"
+   },
+   "source": "GGUF general.base_model.0"
+  },
+  "architecture": {
+   "effective": "qwen2",
+   "source": "GGUF general.architecture",
+   "values": [
+    {
+     "value": "qwen2",
+     "source": "GGUF general.architecture"
+    },
+    {
+     "value": "qwen2",
+     "source": "HF API gguf.architecture"
+    }
+   ]
+  },
+  "hf_architectures": {
+   "effective": [
+    "Qwen2ForCausalLM"
+   ],
+   "source": "Qwen/Qwen2.5-0.5B-Instruct config.json architectures"
+  },
+  "hf_model_type": {
+   "effective": "qwen2",
+   "source": "Qwen/Qwen2.5-0.5B-Instruct config.json model_type"
+  },
+  "parameters": {
+   "effective": 494032768,
+   "source": "HF API gguf.total (bartowski/Qwen2.5-0.5B-Instruct-GGUF)",
+   "values": [
+    {
+     "value": 494032768,
+     "source": "HF API gguf.total (bartowski/Qwen2.5-0.5B-Instruct-GGUF)"
+    },
+    {
+     "value": 494032768,
+     "source": "HF API safetensors.total (Qwen/Qwen2.5-0.5B-Instruct)"
+    },
+    {
+     "value": 494032768,
+     "source": "HF API safetensors.total (Qwen/Qwen2.5-0.5B)"
+    }
+   ]
+  },
+  "size_label": {
+   "effective": "0.5B",
+   "source": "GGUF general.size_label"
+  },
+  "ctx_statements": {
+   "effective": {
+    "value": 131072,
+    "quote": "- **Long-context Support** up to 128K tokens and can generate up to 8K tokens."
+   },
+   "source": "Qwen/Qwen2.5-0.5B-Instruct README.md:L21",
+   "values": [
+    {
+     "value": {
+      "value": 131072,
+      "quote": "- **Long-context Support** up to 128K tokens and can generate up to 8K tokens."
+     },
+     "source": "Qwen/Qwen2.5-0.5B-Instruct README.md:L21"
+    },
+    {
+     "value": {
+      "value": 32768,
+      "quote": "- Context Length: Full 32,768 tokens and generation 8192 tokens"
+     },
+     "source": "Qwen/Qwen2.5-0.5B-Instruct README.md:L32"
+    },
+    {
+     "value": {
+      "value": 8080,
+      "quote": "./llama-server -hf Qwen/Qwen3-8B-GGUF:Q8_0 --jinja --reasoning-format deepseek -ngl 99 -fa -sm row --temp 0.6 --top-k 20 --top-p 0.95 --min-p 0 -c 40960 -n 32768 --no-context-shift --port 8080"
+     },
+     "source": "github.com/QwenLM/Qwen2.5 README.md:L228"
+    },
+    {
+     "value": {
+      "value": 2048,
+      "quote": "> However, its default settings (`num_ctx` 2048 and `num_predict` -1), suggesting infinite generation with a 2048-token context,"
+     },
+     "source": "github.com/QwenLM/Qwen2.5 README.md:L271"
+    },
+    {
+     "value": {
+      "value": 262144,
+      "quote": "python -m sglang.launch_server --model-path Qwen/Qwen3-30B-A3B-Instruct-2507 --port 30000 --context-length 262144"
+     },
+     "source": "github.com/QwenLM/Qwen2.5 README.md:L314"
+    },
+    {
+     "value": {
+      "value": 262144,
+      "quote": "python -m sglang.launch_server --model-path Qwen/Qwen3-30B-A3B-Thinking-2507 --port 30000 --context-length 262144 --reasoning-parser deepseek-r1"
+     },
+     "source": "github.com/QwenLM/Qwen2.5 README.md:L319"
+    },
+    {
+     "value": {
+      "value": 131072,
+      "quote": "python -m sglang.launch_server --model-path Qwen/Qwen3-8B --port 30000 --context-length 131072 --reasoning-parser qwen3"
+     },
+     "source": "github.com/QwenLM/Qwen2.5 README.md:L324"
+    }
+   ]
+  },
+  "ctx": {
+   "effective": 32768,
+   "source": "card: Qwen/Qwen2.5-0.5B-Instruct README.md:L32",
+   "values": [
+    {
+     "value": 32768,
+     "source": "card: Qwen/Qwen2.5-0.5B-Instruct README.md:L32"
+    },
+    {
+     "value": 32768,
+     "source": "Qwen/Qwen2.5-0.5B-Instruct config.json max_position_embeddings"
+    },
+    {
+     "value": 32768,
+     "source": "GGUF qwen2.context_length"
+    }
+   ],
+   "precedence": "card statement > config.json > GGUF header > GitHub README"
+  },
+  "pipeline_tag": {
+   "effective": "text-generation",
+   "source": "bartowski/Qwen2.5-0.5B-Instruct-GGUF HF API pipeline_tag",
+   "values": [
+    {
+     "value": "text-generation",
+     "source": "bartowski/Qwen2.5-0.5B-Instruct-GGUF HF API pipeline_tag"
+    },
+    {
+     "value": "text-generation",
+     "source": "Qwen/Qwen2.5-0.5B-Instruct HF API pipeline_tag"
+    },
+    {
+     "value": "text-generation",
+     "source": "Qwen/Qwen2.5-0.5B HF API pipeline_tag"
+    }
+   ]
+  },
+  "languages": {
+   "effective": [
+    "en"
+   ],
+   "source": "bartowski/Qwen2.5-0.5B-Instruct-GGUF card language",
+   "values": [
+    {
+     "value": [
+      "en"
+     ],
+     "source": "bartowski/Qwen2.5-0.5B-Instruct-GGUF card language"
+    },
+    {
+     "value": [
+      "en"
+     ],
+     "source": "Qwen/Qwen2.5-0.5B-Instruct card language"
+    },
+    {
+     "value": [
+      "en"
+     ],
+     "source": "Qwen/Qwen2.5-0.5B card language"
+    },
+    {
+     "value": [
+      "en"
+     ],
+     "source": "GGUF general.languages"
+    }
+   ]
+  }
+ },
+ "required_params": {
+  "kind": "chat",
+  "native_ctx": 32768,
+  "native_ctx_source": "card: Qwen/Qwen2.5-0.5B-Instruct README.md:L32",
+  "yarn": null,
+  "yarn_source": null,
+  "items": [
+   {
+    "class": "REQUIRED",
+    "flag": "--jinja",
+    "value": null,
+    "source": "GGUF tokenizer.chat_template (cd8e9439f057)",
+    "why_required": "messages, tool calls and thinking are formatted by the model's chat template; without --jinja llama-server falls back to a built-in approximation"
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--temp",
+    "value": "0.7",
+    "source": "Qwen/Qwen2.5-0.5B-Instruct generation_config.json",
+    "why_required": "the card's recommended sampling (generation_config.json)"
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--top-p",
+    "value": "0.8",
+    "source": "Qwen/Qwen2.5-0.5B-Instruct generation_config.json",
+    "why_required": "the card's recommended sampling (generation_config.json)"
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--top-k",
+    "value": "20",
+    "source": "Qwen/Qwen2.5-0.5B-Instruct generation_config.json",
+    "why_required": "the card's recommended sampling (generation_config.json)"
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--repeat-penalty",
+    "value": "1.1",
+    "source": "Qwen/Qwen2.5-0.5B-Instruct generation_config.json",
+    "why_required": "the card's recommended sampling (generation_config.json)"
+   }
+  ]
+ },
+ "blockers": null,
+ "params_problems": null,
+ "params_build": "b11374",
+ "native_ctx": 32768,
+ "native_ctx_source": "card: Qwen/Qwen2.5-0.5B-Instruct README.md:L32"
 }

@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "tencent--HY-MT1.5-1.8B-GGUF--HY-MT1.5-1.8B-Q4_K_M",
  "repo": "tencent/HY-MT1.5-1.8B-GGUF",
  "revision": "265b2e615a7dc9b06c435dc878829ad99a512ba2",
@@ -11,14 +11,14 @@
  "roles": [
   "language"
  ],
- "license": "unknown",
- "license_source": null,
+ "license": "Tencent HY Community License Agreement (License.txt in the repo; not valid in the EU, UK and South Korea)",
+ "license_source": "tencent/HY-MT1.5-1.8B-GGUF License.txt",
  "ctx": 262144,
  "ctx_source": "GGUF hunyuan-dense.context_length",
  "card_ctx": null,
  "card_ctx_source": null,
- "base_model": null,
- "base_revision": null,
+ "base_model": "tencent/HY-MT1.5-1.8B",
+ "base_revision": "dbad03788f49709801014c95d481a514c272ca52",
  "card_defaults": {
   "top-k": 20,
   "top-p": 0.6,
@@ -26,10 +26,10 @@
   "temp": 0.7
  },
  "card_defaults_source": {
-  "top-k": "tencent/HY-MT1.5-1.8B-GGUF tencent/HY-MT1.5-1.8B-GGUF README.md:L168",
-  "top-p": "tencent/HY-MT1.5-1.8B-GGUF tencent/HY-MT1.5-1.8B-GGUF README.md:L168",
-  "repeat-penalty": "tencent/HY-MT1.5-1.8B-GGUF tencent/HY-MT1.5-1.8B-GGUF README.md:L168",
-  "temp": "tencent/HY-MT1.5-1.8B-GGUF tencent/HY-MT1.5-1.8B-GGUF README.md:L168"
+  "top-k": "tencent/HY-MT1.5-1.8B tencent/HY-MT1.5-1.8B README.md:L190",
+  "top-p": "tencent/HY-MT1.5-1.8B tencent/HY-MT1.5-1.8B README.md:L190",
+  "repeat-penalty": "tencent/HY-MT1.5-1.8B tencent/HY-MT1.5-1.8B README.md:L190",
+  "temp": "tencent/HY-MT1.5-1.8B tencent/HY-MT1.5-1.8B README.md:L190"
  },
  "card_default_set": "We recommend using the following set of parameters for inference. Note that our model does not have the default system prompt",
  "card_defaults_how": "the card's only recommended set",
@@ -44,6 +44,18 @@
  "card_default_mode": null,
  "card_default_mode_source": null,
  "card_sampling_sets": [
+  {
+   "label": "We recommend using the following set of parameters for inference. Note that our model does not have the default system prompt",
+   "kind": "recommended",
+   "mode": null,
+   "params": {
+    "top-k": 20,
+    "top-p": 0.6,
+    "repeat-penalty": 1.05,
+    "temp": 0.7
+   },
+   "source": "tencent/HY-MT1.5-1.8B README.md:L190"
+  },
   {
    "label": "Use with llama.cpp",
    "kind": "example",
@@ -71,34 +83,1099 @@
  ],
  "card_commands": [
   {
-   "tool": "llama-cli",
-   "command": "llama-cli -hf tencent/HY-MT1.5-1.8B-GGUF:Q8_0 -p \"Translate the following segment into Chinese, without additional explanation.\\n\\nIt’s on the house.\" -n 4096 --temp 0.7 --top-k 20 --top-p 0.6 --repeat-penalty 1.05 --no-warmup",
-   "source": "tencent/HY-MT1.5-1.8B-GGUF README.md:L154"
+   "source": "tencent/HY-MT1.5-1.8B-GGUF README.md:L105-107",
+   "file": "README.md",
+   "lines": [
+    105,
+    107
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "prompt-format",
+   "text": "将以下文本翻译为{target_language}，注意只需要输出翻译后的结果，不要额外解释：\n\n{source_text}",
+   "doc": "card",
+   "doc_sha": "265b2e615a7dc9b06c435dc878829ad99a512ba2",
+   "scope": "model"
   },
   {
-   "tool": "ollama",
-   "command": "ollama create hy-mt1.5-1.8b -f Modelfile",
-   "source": "tencent/HY-MT1.5-1.8B-GGUF README.md:L160"
+   "source": "tencent/HY-MT1.5-1.8B-GGUF README.md:L114-116",
+   "file": "README.md",
+   "lines": [
+    114,
+    116
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "prompt-format",
+   "text": "Translate the following segment into {target_language}, without additional explanation.\n\n{source_text}",
+   "doc": "card",
+   "doc_sha": "265b2e615a7dc9b06c435dc878829ad99a512ba2",
+   "scope": "model"
   },
   {
+   "source": "tencent/HY-MT1.5-1.8B-GGUF README.md:L123-127",
+   "file": "README.md",
+   "lines": [
+    123,
+    127
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "prompt-format",
+   "text": "参考下面的翻译：\n{source_term} 翻译成 {target_term}\n\n将以下文本翻译为{target_language}，注意只需要输出翻译后的结果，不要额外解释：\n{source_text}",
+   "doc": "card",
+   "doc_sha": "265b2e615a7dc9b06c435dc878829ad99a512ba2",
+   "scope": "model"
+  },
+  {
+   "source": "tencent/HY-MT1.5-1.8B-GGUF README.md:L134-137",
+   "file": "README.md",
+   "lines": [
+    134,
+    137
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "prompt-format",
+   "text": "{context}\n参考上面的信息，把下面的文本翻译成{target_language}，注意不需要翻译上文，也不要额外解释：\n{source_text}\n",
+   "doc": "card",
+   "doc_sha": "265b2e615a7dc9b06c435dc878829ad99a512ba2",
+   "scope": "model"
+  },
+  {
+   "source": "tencent/HY-MT1.5-1.8B-GGUF README.md:L144-146",
+   "file": "README.md",
+   "lines": [
+    144,
+    146
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "prompt-format",
+   "text": "将以下<source></source>之间的文本翻译为中文，注意只需要输出翻译后的结果，不要额外解释，原文中的<sn></sn>标签表示标签内文本包含格式信息，需要在译文中相应的位置尽量保留该标签。输出格式为：<target>str</target>\n\n<source>{src_text_with_format}</source>",
+   "doc": "card",
+   "doc_sha": "265b2e615a7dc9b06c435dc878829ad99a512ba2",
+   "scope": "model"
+  },
+  {
+   "source": "tencent/HY-MT1.5-1.8B-GGUF README.md:L154-154",
+   "file": "README.md",
+   "lines": [
+    154,
+    154
+   ],
+   "lang": "SHELL",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "llama-cli -hf tencent/HY-MT1.5-1.8B-GGUF:Q8_0 -p \"Translate the following segment into Chinese, without additional explanation.\\n\\nIt’s on the house.\" -n 4096 --temp 0.7 --top-k 20 --top-p 0.6 --repeat-penalty 1.05 --no-warmup",
+   "llama": [
+    {
+     "tool": "llama-cli",
+     "raw": "llama-cli -hf tencent/HY-MT1.5-1.8B-GGUF:Q8_0 -p \"Translate the following segment into Chinese, without additional explanation.\\n\\nIt’s on the house.\" -n 4096 --temp 0.7 --top-k 20 --top-p 0.6 --repeat-penalty 1.05 --no-warmup",
+     "flags": [
+      {
+       "flag": "-hf",
+       "canonical": "--hf-repo",
+       "value": "tencent/HY-MT1.5-1.8B-GGUF:Q8_0",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-p",
+       "canonical": "--prompt",
+       "value": "Translate the following segment into Chinese, without additional explanation.\\n\\nIt’s on the house.",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-n",
+       "canonical": "--predict",
+       "value": "4096",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--temp",
+       "canonical": "--temp",
+       "value": "0.7",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--top-k",
+       "canonical": "--top-k",
+       "value": "20",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--top-p",
+       "canonical": "--top-p",
+       "value": "0.6",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--repeat-penalty",
+       "canonical": "--repeat-penalty",
+       "value": "1.05",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--no-warmup",
+       "canonical": "--no-warmup",
+       "value": null,
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    }
+   ],
+   "doc": "card",
+   "doc_sha": "265b2e615a7dc9b06c435dc878829ad99a512ba2",
+   "scope": "model"
+  },
+  {
+   "source": "tencent/HY-MT1.5-1.8B-GGUF README.md:L159-161",
+   "file": "README.md",
+   "lines": [
+    159,
+    161
+   ],
+   "lang": "SHELL",
    "tool": "ollama",
-   "command": "ollama run hy-mt1.5-1.8b",
-   "source": "tencent/HY-MT1.5-1.8B-GGUF README.md:L161"
+   "kind": "command",
+   "text": "echo 'FROM hf.co/tencent/HY-MT1.5-1.8B-GGUF:Q8_0\\nTEMPLATE \"\"\"<｜hy_begin▁of▁sentence｜>{{ if .System }}{{ .System }}<｜hy_place▁holder▁no▁3｜>{{ end }}{{ if .Prompt }}<｜hy_User｜>{{ .Prompt }}{{ end }}<｜hy_Assistant｜>\"\"\"' > Modelfile\nollama create hy-mt1.5-1.8b -f Modelfile\nollama run hy-mt1.5-1.8b",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "@template",
+      "value": "Ollama TEMPLATE",
+      "from": "TEMPLATE"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "ollama run hy-mt1.5-1.8b",
+      "why": "Ollama pulls and runs the model with its own defaults; no flags to translate"
+     }
+    ]
+   },
+   "doc": "card",
+   "doc_sha": "265b2e615a7dc9b06c435dc878829ad99a512ba2",
+   "scope": "model"
+  },
+  {
+   "source": "tencent/HY-MT1.5-1.8B-GGUF README.md:L167-172",
+   "file": "README.md",
+   "lines": [
+    167,
+    172
+   ],
+   "lang": "json",
+   "tool": "json",
+   "kind": "config",
+   "text": "{\n  \"top_k\": 20,\n  \"top_p\": 0.6,\n  \"repetition_penalty\": 1.05,\n  \"temperature\": 0.7\n}",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--top-k",
+      "value": "20",
+      "from": "top_k: 20"
+     },
+     {
+      "flag": "--top-p",
+      "value": "0.6",
+      "from": "top_p: 0.6"
+     },
+     {
+      "flag": "--repeat-penalty",
+      "value": "1.05",
+      "from": "repetition_penalty: 1.05"
+     },
+     {
+      "flag": "--temp",
+      "value": "0.7",
+      "from": "temperature: 0.7"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "card",
+   "doc_sha": "265b2e615a7dc9b06c435dc878829ad99a512ba2",
+   "scope": "model"
+  },
+  {
+   "source": "tencent/HY-MT1.5-1.8B README.md:L105-107",
+   "file": "README.md",
+   "lines": [
+    105,
+    107
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "prompt-format",
+   "text": "将以下文本翻译为{target_language}，注意只需要输出翻译后的结果，不要额外解释：\n\n{source_text}",
+   "doc": "base-card",
+   "doc_sha": "dbad03788f49709801014c95d481a514c272ca52",
+   "scope": "model"
+  },
+  {
+   "source": "tencent/HY-MT1.5-1.8B README.md:L114-116",
+   "file": "README.md",
+   "lines": [
+    114,
+    116
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "prompt-format",
+   "text": "Translate the following segment into {target_language}, without additional explanation.\n\n{source_text}",
+   "doc": "base-card",
+   "doc_sha": "dbad03788f49709801014c95d481a514c272ca52",
+   "scope": "model"
+  },
+  {
+   "source": "tencent/HY-MT1.5-1.8B README.md:L123-127",
+   "file": "README.md",
+   "lines": [
+    123,
+    127
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "prompt-format",
+   "text": "参考下面的翻译：\n{source_term} 翻译成 {target_term}\n\n将以下文本翻译为{target_language}，注意只需要输出翻译后的结果，不要额外解释：\n{source_text}",
+   "doc": "base-card",
+   "doc_sha": "dbad03788f49709801014c95d481a514c272ca52",
+   "scope": "model"
+  },
+  {
+   "source": "tencent/HY-MT1.5-1.8B README.md:L134-137",
+   "file": "README.md",
+   "lines": [
+    134,
+    137
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "prompt-format",
+   "text": "{context}\n参考上面的信息，把下面的文本翻译成{target_language}，注意不需要翻译上文，也不要额外解释：\n{source_text}\n",
+   "doc": "base-card",
+   "doc_sha": "dbad03788f49709801014c95d481a514c272ca52",
+   "scope": "model"
+  },
+  {
+   "source": "tencent/HY-MT1.5-1.8B README.md:L144-146",
+   "file": "README.md",
+   "lines": [
+    144,
+    146
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "prompt-format",
+   "text": "将以下<source></source>之间的文本翻译为中文，注意只需要输出翻译后的结果，不要额外解释，原文中的<sn></sn>标签表示标签内文本包含格式信息，需要在译文中相应的位置尽量保留该标签。输出格式为：<target>str</target>\n\n<source>{src_text_with_format}</source>",
+   "doc": "base-card",
+   "doc_sha": "dbad03788f49709801014c95d481a514c272ca52",
+   "scope": "model"
+  },
+  {
+   "source": "tencent/HY-MT1.5-1.8B README.md:L155-155",
+   "file": "README.md",
+   "lines": [
+    155,
+    155
+   ],
+   "lang": "SHELL",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install transformers==4.56.0",
+   "doc": "base-card",
+   "doc_sha": "dbad03788f49709801014c95d481a514c272ca52",
+   "scope": "model"
+  },
+  {
+   "source": "tencent/HY-MT1.5-1.8B README.md:L165-183",
+   "file": "README.md",
+   "lines": [
+    165,
+    183
+   ],
+   "lang": "python",
+   "tool": "transformers",
+   "kind": "code",
+   "text": "from transformers import AutoModelForCausalLM, AutoTokenizer\nimport os\n\nmodel_name_or_path = \"tencent/HY-MT1.5-1.8B\"\n\ntokenizer = AutoTokenizer.from_pretrained(model_name_or_path)\nmodel = AutoModelForCausalLM.from_pretrained(model_name_or_path, device_map=\"auto\")  # You may want to use bfloat16 and/or move to GPU here\nmessages = [\n    {\"role\": \"user\", \"content\": \"Translate the following segment into Chinese, without additional explanation.\\n\\nIt’s on the house.\"},\n]\ntokenized_chat = tokenizer.apply_chat_template(\n    messages,\n    tokenize=True,\n    add_generation_prompt=False,\n    return_tensors=\"pt\"\n)\n\noutputs = model.generate(tokenized_chat.to(model.device), max_new_tokens=2048)\noutput_text = tokenizer.decode(outputs[0])",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-n",
+      "value": "2048",
+      "from": "max_new_tokens: 2048"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "dbad03788f49709801014c95d481a514c272ca52",
+   "scope": "model"
+  },
+  {
+   "source": "tencent/HY-MT1.5-1.8B README.md:L189-194",
+   "file": "README.md",
+   "lines": [
+    189,
+    194
+   ],
+   "lang": "json",
+   "tool": "json",
+   "kind": "config",
+   "text": "{\n  \"top_k\": 20,\n  \"top_p\": 0.6,\n  \"repetition_penalty\": 1.05,\n  \"temperature\": 0.7\n}",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--top-k",
+      "value": "20",
+      "from": "top_k: 20"
+     },
+     {
+      "flag": "--top-p",
+      "value": "0.6",
+      "from": "top_p: 0.6"
+     },
+     {
+      "flag": "--repeat-penalty",
+      "value": "1.05",
+      "from": "repetition_penalty: 1.05"
+     },
+     {
+      "flag": "--temp",
+      "value": "0.7",
+      "from": "temperature: 0.7"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "dbad03788f49709801014c95d481a514c272ca52",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/Tencent-Hunyuan/HY-MT README.md:L82-84",
+   "file": "README.md",
+   "lines": [
+    82,
+    84
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "prompt-format",
+   "text": "将以下文本翻译为{target_language}，注意只需要输出翻译后的结果，不要额外解释：\n\n{source_text}",
+   "doc": "github",
+   "doc_sha": "13c207d7ac1f93d54e96385a89bcd076d06a5579",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/Tencent-Hunyuan/HY-MT README.md:L91-93",
+   "file": "README.md",
+   "lines": [
+    91,
+    93
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "prompt-format",
+   "text": "Translate the following segment into {target_language}, without additional explanation.\n\n{source_text}",
+   "doc": "github",
+   "doc_sha": "13c207d7ac1f93d54e96385a89bcd076d06a5579",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/Tencent-Hunyuan/HY-MT README.md:L100-104",
+   "file": "README.md",
+   "lines": [
+    100,
+    104
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "prompt-format",
+   "text": "参考下面的翻译：\n{source_term} 翻译成 {target_term}\n\n将以下文本翻译为{target_language}，注意只需要输出翻译后的结果，不要额外解释：\n{source_text}",
+   "doc": "github",
+   "doc_sha": "13c207d7ac1f93d54e96385a89bcd076d06a5579",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/Tencent-Hunyuan/HY-MT README.md:L111-114",
+   "file": "README.md",
+   "lines": [
+    111,
+    114
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "prompt-format",
+   "text": "{context}\n参考上面的信息，把下面的文本翻译成{target_language}，注意不需要翻译上文，也不要额外解释：\n{source_text}\n",
+   "doc": "github",
+   "doc_sha": "13c207d7ac1f93d54e96385a89bcd076d06a5579",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/Tencent-Hunyuan/HY-MT README.md:L121-123",
+   "file": "README.md",
+   "lines": [
+    121,
+    123
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "prompt-format",
+   "text": "将以下<source></source>之间的文本翻译为中文，注意只需要输出翻译后的结果，不要额外解释，原文中的<sn></sn>标签表示标签内文本包含格式信息，需要在译文中相应的位置尽量保留该标签。输出格式为：<target>str</target>\n\n<source>{src_text_with_format}</source>",
+   "doc": "github",
+   "doc_sha": "13c207d7ac1f93d54e96385a89bcd076d06a5579",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/Tencent-Hunyuan/HY-MT README.md:L132-132",
+   "file": "README.md",
+   "lines": [
+    132,
+    132
+   ],
+   "lang": "SHELL",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install transformers==4.56.0",
+   "doc": "github",
+   "doc_sha": "13c207d7ac1f93d54e96385a89bcd076d06a5579",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/Tencent-Hunyuan/HY-MT README.md:L142-160",
+   "file": "README.md",
+   "lines": [
+    142,
+    160
+   ],
+   "lang": "python",
+   "tool": "transformers",
+   "kind": "code",
+   "text": "from transformers import AutoModelForCausalLM, AutoTokenizer\nimport os\n\nmodel_name_or_path = \"tencent/HY-MT1.5-1.8B\"\n\ntokenizer = AutoTokenizer.from_pretrained(model_name_or_path)\nmodel = AutoModelForCausalLM.from_pretrained(model_name_or_path, device_map=\"auto\")  # You may want to use bfloat16 and/or move to GPU here\nmessages = [\n    {\"role\": \"user\", \"content\": \"Translate the following segment into Chinese, without additional explanation.\\n\\nIt’s on the house.\"},\n]\ntokenized_chat = tokenizer.apply_chat_template(\n    messages,\n    tokenize=True,\n    add_generation_prompt=False,\n    return_tensors=\"pt\"\n)\n\noutputs = model.generate(tokenized_chat.to(model.device), max_new_tokens=2048)\noutput_text = tokenizer.decode(outputs[0])",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-n",
+      "value": "2048",
+      "from": "max_new_tokens: 2048"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "github",
+   "doc_sha": "13c207d7ac1f93d54e96385a89bcd076d06a5579",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/Tencent-Hunyuan/HY-MT README.md:L166-171",
+   "file": "README.md",
+   "lines": [
+    166,
+    171
+   ],
+   "lang": "json",
+   "tool": "json",
+   "kind": "config",
+   "text": "{\n  \"top_k\": 20,\n  \"top_p\": 0.6,\n  \"repetition_penalty\": 1.05,\n  \"temperature\": 0.7\n}",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--top-k",
+      "value": "20",
+      "from": "top_k: 20"
+     },
+     {
+      "flag": "--top-p",
+      "value": "0.6",
+      "from": "top_p: 0.6"
+     },
+     {
+      "flag": "--repeat-penalty",
+      "value": "1.05",
+      "from": "repetition_penalty: 1.05"
+     },
+     {
+      "flag": "--temp",
+      "value": "0.7",
+      "from": "temperature: 0.7"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "github",
+   "doc_sha": "13c207d7ac1f93d54e96385a89bcd076d06a5579",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/Tencent-Hunyuan/HY-MT README.md:L224-233",
+   "file": "README.md",
+   "lines": [
+    224,
+    233
+   ],
+   "lang": "python",
+   "tool": "transformers",
+   "kind": "code",
+   "text": "\nmessages = [\n    {\"role\": \"system\", \"content\": \"You are a helpful assistant.\"},\n    {\"role\": \"user\", \"content\": \"Why is seawater salty?\" },\n    {\"role\": \"assistant\", \"content\": \"Seawater is primarily saline due to dissolved salts and minerals. These substances come from the chemical materials in rocks and soil on the Earth's surface, which are carried into the ocean over time. When seawater evaporates, the water vapor leaves, but the salts and minerals remain, making the seawater saltier. Therefore, the salinity of seawater is determined by the amount of salts and minerals it contains.\"}\n]\n\nfrom transformers import AutoTokenizer\ntokenizer = AutoTokenizer.from_pretrained(\"your_tokenizer_path\", trust_remote_code=True)\ntrain_ids = tokenizer.apply_chat_template(messages)",
+   "doc": "github",
+   "doc_sha": "13c207d7ac1f93d54e96385a89bcd076d06a5579",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/Tencent-Hunyuan/HY-MT README.md:L249-249",
+   "file": "README.md",
+   "lines": [
+    249,
+    249
+   ],
+   "lang": null,
+   "tool": "pip",
+   "kind": "command",
+   "text": "    pip install git+https://github.com/huggingface/transformers@4970b23cedaf745f963779b4eae68da281e8c6ca",
+   "doc": "github",
+   "doc_sha": "13c207d7ac1f93d54e96385a89bcd076d06a5579",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/Tencent-Hunyuan/HY-MT README.md:L257-274",
+   "file": "README.md",
+   "lines": [
+    257,
+    274
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "[\n  {\n    \"messages\": [\n      {\n        \"role\": \"system\",\n        \"content\": \"System prompt (optional)\"\n      },\n      {\n        \"role\": \"user\",\n        \"content\": \"Human instruction\"\n      },\n      {\n        \"role\": \"assistant\",\n        \"content\": \"Model response\"\n      }\n    ]\n  }\n]",
+   "doc": "github",
+   "doc_sha": "13c207d7ac1f93d54e96385a89bcd076d06a5579",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/Tencent-Hunyuan/HY-MT README.md:L280-293",
+   "file": "README.md",
+   "lines": [
+    280,
+    293
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "\"dataset_name\": {\n  \"file_name\": \"dataset.json\",\n  \"formatting\": \"sharegpt\",\n  \"columns\": {\n    \"messages\": \"messages\"\n  },\n  \"tags\": {\n    \"role_tag\": \"role\",\n    \"content_tag\": \"content\",\n    \"user_tag\": \"user\",\n    \"assistant_tag\": \"assistant\",\n    \"system_tag\": \"system\"\n  }\n}",
+   "doc": "github",
+   "doc_sha": "13c207d7ac1f93d54e96385a89bcd076d06a5579",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/Tencent-Hunyuan/HY-MT README.md:L301-305",
+   "file": "README.md",
+   "lines": [
+    301,
+    305
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "### model\nmodel_name_or_path: [!!!add the model path here!!!]\n\n### dataset\ndataset: [!!!add the dataset name here!!!]",
+   "doc": "github",
+   "doc_sha": "13c207d7ac1f93d54e96385a89bcd076d06a5579",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/Tencent-Hunyuan/HY-MT README.md:L311-312",
+   "file": "README.md",
+   "lines": [
+    311,
+    312
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "    export DISABLE_VERSION_CHECK=1\n    llamafactory-cli train examples/hunyuan/hunyuan_full.yaml",
+   "doc": "github",
+   "doc_sha": "13c207d7ac1f93d54e96385a89bcd076d06a5579",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/Tencent-Hunyuan/HY-MT README.md:L317-319",
+   "file": "README.md",
+   "lines": [
+    317,
+    319
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "    export DISABLE_VERSION_CHECK=1\n    FORCE_TORCHRUN=1 NNODES=${NNODES} NODE_RANK=${NODE_RANK} MASTER_ADDR=${MASTER_ADDR} MASTER_PORT=${MASTER_PORT} \\\n    llamafactory-cli train examples/hunyuan/hunyuan_full.yaml",
+   "doc": "github",
+   "doc_sha": "13c207d7ac1f93d54e96385a89bcd076d06a5579",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/Tencent-Hunyuan/HY-MT README.md:L349-349",
+   "file": "README.md",
+   "lines": [
+    349,
+    349
+   ],
+   "lang": null,
+   "tool": "docker",
+   "kind": "command",
+   "text": "docker pull docker.cnb.cool/tencent/hunyuan/hunyuan-7b:hunyuan-7b-trtllm",
+   "doc": "github",
+   "doc_sha": "13c207d7ac1f93d54e96385a89bcd076d06a5579",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/Tencent-Hunyuan/HY-MT README.md:L352-352",
+   "file": "README.md",
+   "lines": [
+    352,
+    352
+   ],
+   "lang": null,
+   "tool": "docker",
+   "kind": "command",
+   "text": "docker run --privileged --user root --name hunyuanLLM_infer --rm -it --ipc=host --ulimit memlock=-1 --ulimit stack=67108864 --gpus=all hunyuaninfer/hunyuan-7b:hunyuan-7b-trtllm",
+   "doc": "github",
+   "doc_sha": "13c207d7ac1f93d54e96385a89bcd076d06a5579",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/Tencent-Hunyuan/HY-MT README.md:L358-369",
+   "file": "README.md",
+   "lines": [
+    358,
+    369
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "cat >/path/to/extra-llm-api-config.yml <<EOF\nuse_cuda_graph: true\ncuda_graph_padding_enabled: true\ncuda_graph_batch_sizes:\n- 1\n- 2\n- 4\n- 8\n- 16\n- 32\nprint_iter_log: true\nEOF",
+   "doc": "github",
+   "doc_sha": "13c207d7ac1f93d54e96385a89bcd076d06a5579",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/Tencent-Hunyuan/HY-MT README.md:L377-387",
+   "file": "README.md",
+   "lines": [
+    377,
+    387
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "trtllm-serve \\\n  /path/to/HunYuan-7b \\\n  --host localhost \\\n  --port 8000 \\\n  --backend pytorch \\\n  --max_batch_size 32 \\\n  --max_num_tokens 16384 \\\n  --tp_size 2 \\\n  --kv_cache_free_gpu_memory_fraction 0.6 \\\n  --trust_remote_code \\\n  --extra_llm_api_options /path/to/extra-llm-api-config.yml",
+   "doc": "github",
+   "doc_sha": "13c207d7ac1f93d54e96385a89bcd076d06a5579",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/Tencent-Hunyuan/HY-MT README.md:L398-398",
+   "file": "README.md",
+   "lines": [
+    398,
+    398
+   ],
+   "lang": "SHELL",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install git+https://github.com/huggingface/transformers@4970b23cedaf745f963779b4eae68da281e8c6ca",
+   "doc": "github",
+   "doc_sha": "13c207d7ac1f93d54e96385a89bcd076d06a5579",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/Tencent-Hunyuan/HY-MT README.md:L408-408",
+   "file": "README.md",
+   "lines": [
+    408,
+    408
+   ],
+   "lang": "shell",
+   "tool": "shell",
+   "kind": "command",
+   "text": "export MODEL_PATH=tencent/Hunyuan-7B-MT",
+   "doc": "github",
+   "doc_sha": "13c207d7ac1f93d54e96385a89bcd076d06a5579",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/Tencent-Hunyuan/HY-MT README.md:L413-413",
+   "file": "README.md",
+   "lines": [
+    413,
+    413
+   ],
+   "lang": "shell",
+   "tool": "shell",
+   "kind": "command",
+   "text": "export MODEL_PATH=/root/.cache/modelscope/hub/models/Tencent-Hunyuan/Hunyuan-7B-MT/",
+   "doc": "github",
+   "doc_sha": "13c207d7ac1f93d54e96385a89bcd076d06a5579",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/Tencent-Hunyuan/HY-MT README.md:L419-428",
+   "file": "README.md",
+   "lines": [
+    419,
+    428
+   ],
+   "lang": "shell",
+   "tool": "vllm",
+   "kind": "command",
+   "text": "python3 -m vllm.entrypoints.openai.api_server \\\n    --host 0.0.0.0 \\\n    --port 8000 \\\n    --trust-remote-code \\\n    --model ${MODEL_PATH} \\\n    --tensor-parallel-size 1 \\\n    --dtype bfloat16 \\\n    --quantization experts_int8 \\\n    --served-model-name hunyuan \\\n    2>&1 | tee log_server.txt",
+   "translation": {
+    "translated": true,
+    "params": [],
+    "untranslatable": [
+     {
+      "arg": "--trust-remote-code",
+      "why": "n/a for GGUF"
+     },
+     {
+      "arg": "--model ${MODEL_PATH}",
+      "why": "the model is the GGUF file"
+     },
+     {
+      "arg": "--tensor-parallel-size 1",
+      "why": "multi-GPU tensor parallelism; n/a (one device per llama-server here)"
+     },
+     {
+      "arg": "--dtype bfloat16",
+      "why": "weights dtype is fixed by the GGUF quant"
+     },
+     {
+      "arg": "--quantization experts_int8",
+      "why": "no llama.cpp mapping known"
+     }
+    ]
+   },
+   "doc": "github",
+   "doc_sha": "13c207d7ac1f93d54e96385a89bcd076d06a5579",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/Tencent-Hunyuan/HY-MT README.md:L432-450",
+   "file": "README.md",
+   "lines": [
+    432,
+    450
+   ],
+   "lang": "shell",
+   "tool": "curl",
+   "kind": "command",
+   "text": "curl http://0.0.0.0:8000/v1/chat/completions -H 'Content-Type: application/json' -d '{\n\"model\": \"hunyuan\",\n\"messages\": [\n    {\n        \"role\": \"system\",\n        \"content\": [{\"type\": \"text\", \"text\": \"You are a helpful assistant.\"}]\n    },\n    {\n        \"role\": \"user\",\n        \"content\": [{\"type\": \"text\", \"text\": \"请按面积大小对四大洋进行排序，并给出面积最小的洋是哪一个？直接输出结果。\"}]\n    }\n],\n\"max_tokens\": 2048,\n\"temperature\":0.7,\n\"top_p\": 0.6,\n\"top_k\": 20,\n\"repetition_penalty\": 1.05,\n\"stop_token_ids\": [127960]\n}'",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-n",
+      "value": "2048",
+      "from": "max_tokens: 2048"
+     },
+     {
+      "flag": "--temp",
+      "value": "0.7",
+      "from": "temperature: 0.7"
+     },
+     {
+      "flag": "--top-p",
+      "value": "0.6",
+      "from": "top_p: 0.6"
+     },
+     {
+      "flag": "--top-k",
+      "value": "20",
+      "from": "top_k: 20"
+     },
+     {
+      "flag": "--repeat-penalty",
+      "value": "1.05",
+      "from": "repetition_penalty: 1.05"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "github",
+   "doc_sha": "13c207d7ac1f93d54e96385a89bcd076d06a5579",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/Tencent-Hunyuan/HY-MT README.md:L462-471",
+   "file": "README.md",
+   "lines": [
+    462,
+    471
+   ],
+   "lang": "shell",
+   "tool": "vllm",
+   "kind": "command",
+   "text": "python3 -m vllm.entrypoints.openai.api_server \\\n    --host 0.0.0.0 \\\n    --port 8000 \\\n    --trust-remote-code \\\n    --model ${MODEL_PATH} \\\n    --tensor-parallel-size 1 \\\n    --dtype bfloat16 \\\n    --served-model-name hunyuan \\\n    --quantization experts_int8 \\\n    2>&1 | tee log_server.txt",
+   "translation": {
+    "translated": true,
+    "params": [],
+    "untranslatable": [
+     {
+      "arg": "--trust-remote-code",
+      "why": "n/a for GGUF"
+     },
+     {
+      "arg": "--model ${MODEL_PATH}",
+      "why": "the model is the GGUF file"
+     },
+     {
+      "arg": "--tensor-parallel-size 1",
+      "why": "multi-GPU tensor parallelism; n/a (one device per llama-server here)"
+     },
+     {
+      "arg": "--dtype bfloat16",
+      "why": "weights dtype is fixed by the GGUF quant"
+     },
+     {
+      "arg": "--quantization experts_int8",
+      "why": "no llama.cpp mapping known"
+     }
+    ]
+   },
+   "doc": "github",
+   "doc_sha": "13c207d7ac1f93d54e96385a89bcd076d06a5579",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/Tencent-Hunyuan/HY-MT README.md:L478-478",
+   "file": "README.md",
+   "lines": [
+    478,
+    478
+   ],
+   "lang": "shell",
+   "tool": "shell",
+   "kind": "command",
+   "text": "export MODEL_PATH=PATH_TO_INT4_MODEL",
+   "doc": "github",
+   "doc_sha": "13c207d7ac1f93d54e96385a89bcd076d06a5579",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/Tencent-Hunyuan/HY-MT README.md:L482-491",
+   "file": "README.md",
+   "lines": [
+    482,
+    491
+   ],
+   "lang": "shell",
+   "tool": "vllm",
+   "kind": "command",
+   "text": "python3 -m vllm.entrypoints.openai.api_server \\\n    --host 0.0.0.0 \\\n    --port 8000 \\\n    --trust-remote-code \\\n    --model ${MODEL_PATH} \\\n    --tensor-parallel-size 1 \\\n    --dtype bfloat16 \\\n    --served-model-name hunyuan \\\n    --quantization gptq_marlin \\\n    2>&1 | tee log_server.txt",
+   "translation": {
+    "translated": true,
+    "params": [],
+    "untranslatable": [
+     {
+      "arg": "--trust-remote-code",
+      "why": "n/a for GGUF"
+     },
+     {
+      "arg": "--model ${MODEL_PATH}",
+      "why": "the model is the GGUF file"
+     },
+     {
+      "arg": "--tensor-parallel-size 1",
+      "why": "multi-GPU tensor parallelism; n/a (one device per llama-server here)"
+     },
+     {
+      "arg": "--dtype bfloat16",
+      "why": "weights dtype is fixed by the GGUF quant"
+     },
+     {
+      "arg": "--quantization gptq_marlin",
+      "why": "no llama.cpp mapping known"
+     }
+    ]
+   },
+   "doc": "github",
+   "doc_sha": "13c207d7ac1f93d54e96385a89bcd076d06a5579",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/Tencent-Hunyuan/HY-MT README.md:L500-509",
+   "file": "README.md",
+   "lines": [
+    500,
+    509
+   ],
+   "lang": "shell",
+   "tool": "vllm",
+   "kind": "command",
+   "text": "python3 -m vllm.entrypoints.openai.api_server \\\n    --host 0.0.0.0 \\\n    --port 8000 \\\n    --trust-remote-code \\\n    --model ${MODEL_PATH} \\\n    --tensor-parallel-size 1 \\\n    --dtype bfloat16 \\\n    --served-model-name hunyuan \\\n    --kv-cache-dtype fp8 \\\n    2>&1 | tee log_server.txt",
+   "translation": {
+    "translated": true,
+    "params": [],
+    "untranslatable": [
+     {
+      "arg": "--trust-remote-code",
+      "why": "n/a for GGUF"
+     },
+     {
+      "arg": "--model ${MODEL_PATH}",
+      "why": "the model is the GGUF file"
+     },
+     {
+      "arg": "--tensor-parallel-size 1",
+      "why": "multi-GPU tensor parallelism; n/a (one device per llama-server here)"
+     },
+     {
+      "arg": "--dtype bfloat16",
+      "why": "weights dtype is fixed by the GGUF quant"
+     },
+     {
+      "arg": "--kv-cache-dtype fp8",
+      "why": "no llama.cpp mapping known"
+     }
+    ]
+   },
+   "doc": "github",
+   "doc_sha": "13c207d7ac1f93d54e96385a89bcd076d06a5579",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/Tencent-Hunyuan/HY-MT README.md:L528-528",
+   "file": "README.md",
+   "lines": [
+    528,
+    528
+   ],
+   "lang": null,
+   "tool": "docker",
+   "kind": "command",
+   "text": "docker pull lmsysorg/sglang:latest",
+   "doc": "github",
+   "doc_sha": "13c207d7ac1f93d54e96385a89bcd076d06a5579",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/Tencent-Hunyuan/HY-MT README.md:L534-541",
+   "file": "README.md",
+   "lines": [
+    534,
+    541
+   ],
+   "lang": null,
+   "tool": "sglang",
+   "kind": "command",
+   "text": "docker run --entrypoint=\"python3\" --gpus all \\\n    --shm-size 32g \\\n    -p 30000:30000 \\\n    --ulimit nproc=10000 \\\n    --privileged \\\n    --ipc=host \\\n     lmsysorg/sglang:latest \\\n    -m sglang.launch_server --model-path hunyuan/huanyuan_7B --tp 4 --trust-remote-code --host 0.0.0.0 --port 30000",
+   "translation": {
+    "translated": true,
+    "params": [],
+    "untranslatable": [
+     {
+      "arg": "--entrypoint python3",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--gpus all",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--shm-size 32g",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--ulimit nproc=10000",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--privileged",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--ipc host",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--model-path hunyuan/huanyuan_7B",
+      "why": "the model is the GGUF file"
+     },
+     {
+      "arg": "--tp 4",
+      "why": "multi-GPU tensor parallelism; n/a"
+     },
+     {
+      "arg": "--trust-remote-code",
+      "why": "n/a for GGUF"
+     }
+    ]
+   },
+   "doc": "github",
+   "doc_sha": "13c207d7ac1f93d54e96385a89bcd076d06a5579",
+   "scope": "family: hunyuan/huanyuan_7B"
   }
  ],
  "card_notes": null,
  "chat_template": {
-  "gguf_sha256": "b7491ec0e9c869dfce20f2176758099bf248d979dd05530ede99deb21698acee"
+  "gguf_sha256": "b7491ec0e9c869dfce20f2176758099bf248d979dd05530ede99deb21698acee",
+  "repo_sha256": "b7491ec0e9c869dfce20f2176758099bf248d979dd05530ede99deb21698acee",
+  "repo_file": "chat_template.jinja",
+  "same": true,
+  "gguf_chars": 596,
+  "repo_chars": 596,
+  "repo_label": "tencent/HY-MT1.5-1.8B",
+  "use": "gguf"
  },
  "stop": {
+  "eos_token": "<｜hy_place▁holder▁no▁2｜>",
   "eos_token_id": 120020,
-  "eos_token_id_source": "GGUF"
+  "eos_token_id_source": "tencent/HY-MT1.5-1.8B generation_config.json",
+  "analysis": {
+   "tokens": [
+    {
+     "id": 120020,
+     "text": "<｜hy_place▁holder▁no▁2｜>",
+     "source": "tencent/HY-MT1.5-1.8B generation_config.json eos_token_id",
+     "eog_by": "GGUF tokenizer.ggml.eos_token_id"
+    }
+   ],
+   "missing": [],
+   "gguf": {
+    "eos": 120020
+   }
+  }
  },
  "rope": {
   "rope.freq_base": 11158840.0,
   "rope.scaling.type": "none",
   "rope.scaling.factor": 1.0,
-  "rope.scaling.original_context_length": 262144
+  "rope.scaling.original_context_length": 262144,
+  "config": {
+   "alpha": 1000.0,
+   "beta_fast": 32,
+   "beta_slow": 1,
+   "factor": 1.0,
+   "mscale": 1.0,
+   "mscale_all_dim": 1.0,
+   "type": "dynamic"
+  }
  },
  "aux": null,
  "gguf": {
@@ -114,7 +1191,12 @@
   "errors": null,
   "gated": false
  },
- "base_snapshot": null,
+ "base_snapshot": {
+  "path": "tencent--HY-MT1.5-1.8B/dbad03788f49709801014c95d481a514c272ca52",
+  "fetched_bytes": 9722599,
+  "errors": null,
+  "gated": false
+ },
  "repo_files": {
   ".gitattributes": {
    "size": 1701,
@@ -159,17 +1241,586 @@
    "fetched": true
   }
  },
- "base_repo_files": null,
+ "base_repo_files": {
+  ".gitattributes": {
+   "size": 1519,
+   "sha256": null,
+   "blob": "a6344aac8c09253b3b630fb776ae94478aa0275b",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "License.txt": {
+   "size": 16270,
+   "sha256": null,
+   "blob": "1b502c594266512e3f80deb4e021b9b52024f671",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "README.md": {
+   "size": 9003,
+   "sha256": null,
+   "blob": "22a6e0634690d52953bbb53a2c775528a9f08ff6",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "chat_template.jinja": {
+   "size": 654,
+   "sha256": null,
+   "blob": "11f06996e3fdef5fc75a350af36dc9862e34cbde",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "config.json": {
+   "size": 1342,
+   "sha256": null,
+   "blob": "86cc52f2b149938fea6fa30dbc14c33ccbc30990",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "generation_config.json": {
+   "size": 221,
+   "sha256": null,
+   "blob": "9ce2ba135ca6ce1eb0758c7fb452c470bbafd86a",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "model.safetensors": {
+   "size": 4077072784,
+   "sha256": "07736f560253d8c991616060fb2d855420957c268fa7d32fa8593df2f83b21ab",
+   "blob": "4899401644ae4a0d069ae9262c244dda3c5edaa8",
+   "fetched": false,
+   "skipped": "weight file not used here (4077 MB)"
+  },
+  "special_tokens_map.json": {
+   "size": 488,
+   "sha256": null,
+   "blob": "ede21e29cb7086f12a84eca01cda0a448e368772",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "tokenizer.json": {
+   "size": 9527287,
+   "sha256": null,
+   "blob": "bc8fca20a7f6dbb3c6a6d9e814c6efc999ec80fe",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "tokenizer_config.json": {
+   "size": 165815,
+   "sha256": null,
+   "blob": "04a620eef4b09f76d35f8a6f4ac331d96f01eee2",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  }
+ },
  "found_in": [
   "manifest language/language"
  ],
  "match": null,
  "local_check": null,
  "unknown": [
-  "base_model (not in the card front matter or GGUF metadata)",
   "license"
  ],
- "warnings": null,
+ "warnings": [
+  "base_model tencent/HY-MT1.5-1.8B from registry/model-params.yaml (tencent/HY-MT1.5-1.8B-GGUF README.md:L93)"
+ ],
  "updated": "2026-10-19",
- "by": "scripts/model_db.py"
+ "by": "scripts/model_db.py",
+ "gguf_meta": {
+  "general.architecture": "hunyuan-dense",
+  "general.type": "model",
+  "general.sampling.top_k": 20,
+  "general.sampling.top_p": 0.800000011920929,
+  "general.sampling.temp": 0.699999988079071,
+  "general.name": "HY MT 1.8B 1222",
+  "general.version": "1222",
+  "general.basename": "HY-MT",
+  "general.size_label": "1.8B",
+  "hunyuan-dense.block_count": 32,
+  "hunyuan-dense.context_length": 262144,
+  "hunyuan-dense.embedding_length": 2048,
+  "hunyuan-dense.feed_forward_length": 6144,
+  "hunyuan-dense.attention.head_count": 16,
+  "hunyuan-dense.attention.head_count_kv": 4,
+  "hunyuan-dense.rope.freq_base": 11158840.0,
+  "hunyuan-dense.attention.layer_norm_rms_epsilon": 9.999999747378752e-06,
+  "hunyuan-dense.attention.key_length": 128,
+  "hunyuan-dense.attention.value_length": 128,
+  "hunyuan-dense.rope.scaling.type": "none",
+  "hunyuan-dense.rope.scaling.factor": 1.0,
+  "hunyuan-dense.rope.scaling.original_context_length": 262144,
+  "tokenizer.ggml.model": "gpt2",
+  "tokenizer.ggml.pre": "hunyuan-dense",
+  "tokenizer.ggml.tokens": {
+   "array_len": 120818
+  },
+  "tokenizer.ggml.token_type": {
+   "array_len": 120818
+  },
+  "tokenizer.ggml.merges": {
+   "array_len": 119758
+  },
+  "tokenizer.ggml.bos_token_id": 120000,
+  "tokenizer.ggml.eos_token_id": 120020,
+  "tokenizer.ggml.padding_token_id": 120002,
+  "tokenizer.ggml.seperator_token_id": 120007,
+  "tokenizer.chat_template": {
+   "sha256": "b7491ec0e9c869dfce20f2176758099bf248d979dd05530ede99deb21698acee",
+   "chars": 596
+  },
+  "general.quantization_version": 2,
+  "general.file_type": 15,
+  "_gguf_version": 3,
+  "_n_tensors": 354
+ },
+ "base_chain": [
+  {
+   "repo": "tencent/HY-MT1.5-1.8B",
+   "api_id": "tencent/HY-MT1.5-1.8B",
+   "revision": "dbad03788f49709801014c95d481a514c272ca52",
+   "via": "card base_model",
+   "card_data": {
+    "language": [
+     "zh",
+     "en",
+     "fr",
+     "pt",
+     "es",
+     "ja",
+     "tr",
+     "ru",
+     "ar",
+     "ko",
+     "th",
+     "it",
+     "de",
+     "vi",
+     "ms",
+     "id",
+     "tl",
+     "hi",
+     "pl",
+     "cs",
+     "nl",
+     "km",
+     "my",
+     "fa",
+     "gu",
+     "ur",
+     "te",
+     "mr",
+     "he",
+     "bn",
+     "ta",
+     "uk",
+     "bo",
+     "kk",
+     "mn",
+     "ug"
+    ],
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "translation",
+   "safetensors": {
+    "parameters": {
+     "BF16": 2038515712
+    },
+    "total": 2038515712
+   },
+   "license_files": [
+    "License.txt"
+   ]
+  }
+ ],
+ "github": [
+  {
+   "repo": "Tencent-Hunyuan/HY-MT",
+   "resolved": "Tencent-Hunyuan/Hy-MT",
+   "sha": "13c207d7ac1f93d54e96385a89bcd076d06a5579",
+   "renamed": null,
+   "description": null,
+   "license_spdx": "NOASSERTION",
+   "files": {
+    "license": {
+     "path": "License.txt",
+     "sha256": "90e12d37f9bbdba78738465d3bde218036636b60f7609ccfde8a54fc7c338d8b",
+     "bytes": 16380
+    },
+    "readme": {
+     "path": "README.md",
+     "sha256": "eec670cea53442a41e53492a1c43ec47f2099c8faf45668d008f759e9022e87d",
+     "bytes": 19693
+    }
+   },
+   "extra": null,
+   "snapshot": "github/Tencent-Hunyuan--HY-MT/13c207d7ac1f93d54e96385a89bcd076d06a5579"
+  }
+ ],
+ "github_dropped": null,
+ "descriptor": {
+  "repo_id": {
+   "effective": "tencent/HY-MT1.5-1.8B-GGUF",
+   "source": "HF API id"
+  },
+  "revision": {
+   "effective": "265b2e615a7dc9b06c435dc878829ad99a512ba2",
+   "source": "pinned (manifest / database)"
+  },
+  "file": {
+   "effective": "HY-MT1.5-1.8B-Q4_K_M.gguf",
+   "source": "HF API siblings"
+  },
+  "bytes": {
+   "effective": 1133080512,
+   "source": "HF API LFS size"
+  },
+  "sha256": {
+   "effective": "4383ac0c3c8e476de98ff979c2a3f069f8c4fb385e7860cf2d28da896cc477c7",
+   "source": "HF API LFS oid"
+  },
+  "quant": {
+   "effective": "Q4_K_M",
+   "source": "file name",
+   "values": [
+    {
+     "value": "Q4_K_M",
+     "source": "file name"
+    },
+    {
+     "value": "Q4_K_M",
+     "source": "GGUF general.file_type"
+    }
+   ]
+  },
+  "license": {
+   "effective": "NOASSERTION",
+   "source": "GitHub github.com/Tencent-Hunyuan/HY-MT license (spdx)"
+  },
+  "license_file": {
+   "effective": "github.com/Tencent-Hunyuan/HY-MT@13c207d7ac1f/License.txt",
+   "source": "GitHub github.com/Tencent-Hunyuan/HY-MT",
+   "values": [
+    {
+     "value": "github.com/Tencent-Hunyuan/HY-MT@13c207d7ac1f/License.txt",
+     "source": "GitHub github.com/Tencent-Hunyuan/HY-MT"
+    },
+    {
+     "value": "tencent/HY-MT1.5-1.8B-GGUF@265b2e615a7d/License.txt",
+     "source": "tencent/HY-MT1.5-1.8B-GGUF repo file"
+    },
+    {
+     "value": "tencent/HY-MT1.5-1.8B@dbad03788f49/License.txt",
+     "source": "tencent/HY-MT1.5-1.8B repo file"
+    }
+   ]
+  },
+  "base_model_chain": {
+   "effective": "tencent/HY-MT1.5-1.8B",
+   "source": "card base_model"
+  },
+  "architecture": {
+   "effective": "hunyuan-dense",
+   "source": "GGUF general.architecture",
+   "values": [
+    {
+     "value": "hunyuan-dense",
+     "source": "GGUF general.architecture"
+    },
+    {
+     "value": "hunyuan-dense",
+     "source": "HF API gguf.architecture"
+    }
+   ]
+  },
+  "hf_architectures": {
+   "effective": [
+    "HunYuanDenseV1ForCausalLM"
+   ],
+   "source": "tencent/HY-MT1.5-1.8B config.json architectures"
+  },
+  "hf_model_type": {
+   "effective": "hunyuan_v1_dense",
+   "source": "tencent/HY-MT1.5-1.8B config.json model_type"
+  },
+  "parameters": {
+   "effective": 1791080448,
+   "source": "HF API gguf.total (tencent/HY-MT1.5-1.8B-GGUF)",
+   "values": [
+    {
+     "value": 1791080448,
+     "source": "HF API gguf.total (tencent/HY-MT1.5-1.8B-GGUF)"
+    },
+    {
+     "value": 2038515712,
+     "source": "HF API safetensors.total (tencent/HY-MT1.5-1.8B)"
+    }
+   ],
+   "conflict": true
+  },
+  "size_label": {
+   "effective": "1.8B",
+   "source": "GGUF general.size_label"
+  },
+  "ctx": {
+   "effective": 262144,
+   "source": "tencent/HY-MT1.5-1.8B config.json max_position_embeddings",
+   "values": [
+    {
+     "value": 262144,
+     "source": "tencent/HY-MT1.5-1.8B config.json max_position_embeddings"
+    },
+    {
+     "value": 262144,
+     "source": "GGUF hunyuan-dense.context_length"
+    }
+   ],
+   "precedence": "card statement > config.json > GGUF header > GitHub README"
+  },
+  "pipeline_tag": {
+   "effective": "translation",
+   "source": "tencent/HY-MT1.5-1.8B-GGUF HF API pipeline_tag",
+   "values": [
+    {
+     "value": "translation",
+     "source": "tencent/HY-MT1.5-1.8B-GGUF HF API pipeline_tag"
+    },
+    {
+     "value": "translation",
+     "source": "tencent/HY-MT1.5-1.8B HF API pipeline_tag"
+    }
+   ]
+  },
+  "languages": {
+   "effective": [
+    "zh",
+    "en",
+    "fr",
+    "pt",
+    "es",
+    "ja",
+    "tr",
+    "ru",
+    "ar",
+    "ko",
+    "th",
+    "it",
+    "de",
+    "vi",
+    "ms",
+    "id",
+    "tl",
+    "hi",
+    "pl",
+    "cs",
+    "nl",
+    "km",
+    "my",
+    "fa",
+    "gu",
+    "ur",
+    "te",
+    "mr",
+    "he",
+    "bn",
+    "ta",
+    "uk",
+    "bo",
+    "kk",
+    "mn",
+    "ug"
+   ],
+   "source": "tencent/HY-MT1.5-1.8B-GGUF card language",
+   "values": [
+    {
+     "value": [
+      "zh",
+      "en",
+      "fr",
+      "pt",
+      "es",
+      "ja",
+      "tr",
+      "ru",
+      "ar",
+      "ko",
+      "th",
+      "it",
+      "de",
+      "vi",
+      "ms",
+      "id",
+      "tl",
+      "hi",
+      "pl",
+      "cs",
+      "nl",
+      "km",
+      "my",
+      "fa",
+      "gu",
+      "ur",
+      "te",
+      "mr",
+      "he",
+      "bn",
+      "ta",
+      "uk",
+      "bo",
+      "kk",
+      "mn",
+      "ug"
+     ],
+     "source": "tencent/HY-MT1.5-1.8B-GGUF card language"
+    },
+    {
+     "value": [
+      "zh",
+      "en",
+      "fr",
+      "pt",
+      "es",
+      "ja",
+      "tr",
+      "ru",
+      "ar",
+      "ko",
+      "th",
+      "it",
+      "de",
+      "vi",
+      "ms",
+      "id",
+      "tl",
+      "hi",
+      "pl",
+      "cs",
+      "nl",
+      "km",
+      "my",
+      "fa",
+      "gu",
+      "ur",
+      "te",
+      "mr",
+      "he",
+      "bn",
+      "ta",
+      "uk",
+      "bo",
+      "kk",
+      "mn",
+      "ug"
+     ],
+     "source": "tencent/HY-MT1.5-1.8B card language"
+    }
+   ]
+  }
+ },
+ "required_params": {
+  "kind": "chat",
+  "native_ctx": 262144,
+  "native_ctx_source": "tencent/HY-MT1.5-1.8B config.json max_position_embeddings",
+  "yarn": null,
+  "yarn_source": null,
+  "items": [
+   {
+    "class": "REQUIRED",
+    "flag": "--jinja",
+    "value": null,
+    "source": "GGUF tokenizer.chat_template (b7491ec0e9c8)",
+    "why_required": "messages, tool calls and thinking are formatted by the model's chat template; without --jinja llama-server falls back to a built-in approximation"
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--predict",
+    "value": "4096",
+    "source": "tencent/HY-MT1.5-1.8B-GGUF README.md:L154-154",
+    "why_required": "performance / tool option in the card's command"
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--temp",
+    "value": "0.7",
+    "source": "tencent/HY-MT1.5-1.8B-GGUF README.md:L154-154",
+    "why_required": "sampling in the card's llama-cli command",
+    "also": [
+     "tencent/HY-MT1.5-1.8B tencent/HY-MT1.5-1.8B README.md:L190"
+    ]
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--top-k",
+    "value": "20",
+    "source": "tencent/HY-MT1.5-1.8B-GGUF README.md:L154-154",
+    "why_required": "sampling in the card's llama-cli command",
+    "also": [
+     "tencent/HY-MT1.5-1.8B tencent/HY-MT1.5-1.8B README.md:L190"
+    ]
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--top-p",
+    "value": "0.6",
+    "source": "tencent/HY-MT1.5-1.8B-GGUF README.md:L154-154",
+    "why_required": "sampling in the card's llama-cli command",
+    "also": [
+     "tencent/HY-MT1.5-1.8B tencent/HY-MT1.5-1.8B README.md:L190"
+    ]
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--repeat-penalty",
+    "value": "1.05",
+    "source": "tencent/HY-MT1.5-1.8B-GGUF README.md:L154-154",
+    "why_required": "sampling in the card's llama-cli command",
+    "also": [
+     "tencent/HY-MT1.5-1.8B tencent/HY-MT1.5-1.8B README.md:L190"
+    ]
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--no-warmup",
+    "value": null,
+    "source": "tencent/HY-MT1.5-1.8B-GGUF README.md:L154-154",
+    "why_required": "performance / tool option in the card's command"
+   },
+   {
+    "class": "REQUIRED",
+    "flag": "@prompt",
+    "value": "将以下文本翻译为{target_language}，注意只需要输出翻译后的结果，不要额外解释：\n\n{source_text}",
+    "source": "tencent/HY-MT1.5-1.8B-GGUF README.md:L102-107",
+    "why_required": "client: the user turn must be this template when Chinese is the source or target",
+    "quote": "将以下文本翻译为{target_language}，注意只需要输出翻译后的结果，不要额外解释：",
+    "client": true,
+    "name": "ZH<=>XX",
+    "curated": true
+   },
+   {
+    "class": "REQUIRED",
+    "flag": "@prompt",
+    "value": "Translate the following segment into {target_language}, without additional explanation.\n\n{source_text}",
+    "source": "tencent/HY-MT1.5-1.8B-GGUF README.md:L111-116",
+    "why_required": "client: the user turn must be this template for other language pairs",
+    "quote": "Translate the following segment into {target_language}, without additional explanation.",
+    "client": true,
+    "name": "XX<=>XX",
+    "curated": true
+   },
+   {
+    "class": "REQUIRED",
+    "flag": "@system",
+    "value": "none",
+    "source": "tencent/HY-MT1.5-1.8B-GGUF README.md:L164",
+    "why_required": "client: send no system message",
+    "quote": "Note that our model does not have the default system_prompt.",
+    "client": true,
+    "curated": true
+   }
+  ]
+ },
+ "blockers": null,
+ "params_problems": null,
+ "params_build": "b11374",
+ "native_ctx": 262144,
+ "native_ctx_source": "tencent/HY-MT1.5-1.8B config.json max_position_embeddings"
 }

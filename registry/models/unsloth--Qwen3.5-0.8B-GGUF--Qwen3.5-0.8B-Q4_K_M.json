@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "unsloth--Qwen3.5-0.8B-GGUF--Qwen3.5-0.8B-Q4_K_M",
  "repo": "unsloth/Qwen3.5-0.8B-GGUF",
  "revision": "6ab461498e2023f6e3c1baea90a8f0fe38ab64d0",
@@ -498,44 +498,1160 @@
  ],
  "card_commands": [
   {
-   "tool": "vllm",
-   "command": "vllm serve Qwen/Qwen3.5-0.8B --port 8000 --tensor-parallel-size 1 --max-model-len 262144",
-   "source": "Qwen/Qwen3.5-0.8B README.md:L649"
+   "source": "unsloth/Qwen3.5-0.8B-GGUF README.md:L635-635",
+   "file": "README.md",
+   "lines": [
+    635,
+    635
+   ],
+   "lang": "shell",
+   "tool": "pip",
+   "kind": "command",
+   "text": "uv pip install 'git+https://github.com/sgl-project/sglang.git#subdirectory=python&egg=sglang[all]'",
+   "doc": "card",
+   "doc_sha": "6ab461498e2023f6e3c1baea90a8f0fe38ab64d0",
+   "scope": "model"
   },
   {
-   "tool": "vllm",
-   "command": "vllm serve Qwen/Qwen3.5-0.8B --port 8000 --tensor-parallel-size 1 --max-model-len 262144 --enable-auto-tool-choice --tool-call-parser qwen3_coder",
-   "source": "Qwen/Qwen3.5-0.8B README.md:L655"
+   "source": "unsloth/Qwen3.5-0.8B-GGUF README.md:L644-644",
+   "file": "README.md",
+   "lines": [
+    644,
+    644
+   ],
+   "lang": "shell",
+   "tool": "sglang",
+   "kind": "command",
+   "text": "    python -m sglang.launch_server --model-path Qwen/Qwen3.5-0.8B --port 8000 --tp-size 1 --mem-fraction-static 0.8 --context-length 262144",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-c",
+      "value": "262144",
+      "from": "--context-length 262144"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--model-path Qwen/Qwen3.5-0.8B",
+      "why": "the model is the GGUF file"
+     },
+     {
+      "arg": "--tp-size 1",
+      "why": "multi-GPU tensor parallelism; n/a"
+     },
+     {
+      "arg": "--mem-fraction-static 0.8",
+      "why": "SGLang memory pool fraction; n/a"
+     }
+    ]
+   },
+   "doc": "card",
+   "doc_sha": "6ab461498e2023f6e3c1baea90a8f0fe38ab64d0",
+   "scope": "model"
   },
   {
-   "tool": "vllm",
-   "command": "vllm serve Qwen/Qwen3.5-0.8B --port 8000 --tensor-parallel-size 1 --max-model-len 262144 --speculative-config '{\"method\":\"qwen3_next_mtp\",\"num_speculative_tokens\":2}'",
-   "source": "Qwen/Qwen3.5-0.8B README.md:L661"
+   "source": "unsloth/Qwen3.5-0.8B-GGUF README.md:L650-650",
+   "file": "README.md",
+   "lines": [
+    650,
+    650
+   ],
+   "lang": "shell",
+   "tool": "sglang",
+   "kind": "command",
+   "text": "    python -m sglang.launch_server --model-path Qwen/Qwen3.5-0.8B --port 8000 --tp-size 1 --mem-fraction-static 0.8 --context-length 262144 --tool-call-parser qwen3_coder",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-c",
+      "value": "262144",
+      "from": "--context-length 262144"
+     },
+     {
+      "flag": "--jinja",
+      "value": null,
+      "from": "--tool-call-parser qwen3_coder"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--model-path Qwen/Qwen3.5-0.8B",
+      "why": "the model is the GGUF file"
+     },
+     {
+      "arg": "--tp-size 1",
+      "why": "multi-GPU tensor parallelism; n/a"
+     },
+     {
+      "arg": "--mem-fraction-static 0.8",
+      "why": "SGLang memory pool fraction; n/a"
+     }
+    ]
+   },
+   "doc": "card",
+   "doc_sha": "6ab461498e2023f6e3c1baea90a8f0fe38ab64d0",
+   "scope": "model"
   },
   {
-   "tool": "vllm",
-   "command": "vllm serve Qwen/Qwen3.5-0.8B --port 8000 --tensor-parallel-size 1 --max-model-len 262144 --language-model-only",
-   "source": "Qwen/Qwen3.5-0.8B README.md:L667"
+   "source": "unsloth/Qwen3.5-0.8B-GGUF README.md:L656-656",
+   "file": "README.md",
+   "lines": [
+    656,
+    656
+   ],
+   "lang": "shell",
+   "tool": "sglang",
+   "kind": "command",
+   "text": "    python -m sglang.launch_server --model-path Qwen/Qwen3.5-0.8B --port 8000 --tp-size 1 --mem-fraction-static 0.8 --context-length 262144 --speculative-algo NEXTN --speculative-num-steps 3 --speculative-eagle-topk 1 --speculative-num-draft-tokens 4",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-c",
+      "value": "262144",
+      "from": "--context-length 262144"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--model-path Qwen/Qwen3.5-0.8B",
+      "why": "the model is the GGUF file"
+     },
+     {
+      "arg": "--tp-size 1",
+      "why": "multi-GPU tensor parallelism; n/a"
+     },
+     {
+      "arg": "--mem-fraction-static 0.8",
+      "why": "SGLang memory pool fraction; n/a"
+     },
+     {
+      "arg": "--speculative-algo NEXTN",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--speculative-num-steps 3",
+      "why": "see --speculative-algorithm"
+     },
+     {
+      "arg": "--speculative-eagle-topk 1",
+      "why": "see --speculative-algorithm"
+     },
+     {
+      "arg": "--speculative-num-draft-tokens 4",
+      "why": "see --speculative-algorithm"
+     }
+    ]
+   },
+   "doc": "card",
+   "doc_sha": "6ab461498e2023f6e3c1baea90a8f0fe38ab64d0",
+   "scope": "model"
   },
   {
-   "tool": "vllm",
-   "command": "vllm serve Qwen/Qwen3.5-0.8B --port 8000 --tensor-parallel-size 1 --max-model-len 262144",
-   "source": "unsloth/Qwen3.5-0.8B-GGUF README.md:L675"
+   "source": "unsloth/Qwen3.5-0.8B-GGUF README.md:L664-664",
+   "file": "README.md",
+   "lines": [
+    664,
+    664
+   ],
+   "lang": "shell",
+   "tool": "pip",
+   "kind": "command",
+   "text": "uv pip install vllm --torch-backend=auto --extra-index-url https://wheels.vllm.ai/nightly",
+   "doc": "card",
+   "doc_sha": "6ab461498e2023f6e3c1baea90a8f0fe38ab64d0",
+   "scope": "model"
   },
   {
+   "source": "unsloth/Qwen3.5-0.8B-GGUF README.md:L675-675",
+   "file": "README.md",
+   "lines": [
+    675,
+    675
+   ],
+   "lang": "shell",
    "tool": "vllm",
-   "command": "vllm serve Qwen/Qwen3.5-0.8B --port 8000 --tensor-parallel-size 1 --max-model-len 262144 --enable-auto-tool-choice --tool-call-parser qwen3_coder",
-   "source": "unsloth/Qwen3.5-0.8B-GGUF README.md:L681"
+   "kind": "command",
+   "text": "    vllm serve Qwen/Qwen3.5-0.8B --port 8000 --tensor-parallel-size 1 --max-model-len 262144 ",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-c",
+      "value": "262144",
+      "from": "--max-model-len 262144"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--tensor-parallel-size 1",
+      "why": "multi-GPU tensor parallelism; n/a (one device per llama-server here)"
+     }
+    ]
+   },
+   "doc": "card",
+   "doc_sha": "6ab461498e2023f6e3c1baea90a8f0fe38ab64d0",
+   "scope": "model"
   },
   {
+   "source": "unsloth/Qwen3.5-0.8B-GGUF README.md:L681-681",
+   "file": "README.md",
+   "lines": [
+    681,
+    681
+   ],
+   "lang": "shell",
    "tool": "vllm",
-   "command": "vllm serve Qwen/Qwen3.5-0.8B --port 8000 --tensor-parallel-size 1 --max-model-len 262144 --speculative-config '{\"method\":\"qwen3_next_mtp\",\"num_speculative_tokens\":2}'",
-   "source": "unsloth/Qwen3.5-0.8B-GGUF README.md:L687"
+   "kind": "command",
+   "text": "    vllm serve Qwen/Qwen3.5-0.8B --port 8000 --tensor-parallel-size 1 --max-model-len 262144 --enable-auto-tool-choice --tool-call-parser qwen3_coder ",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-c",
+      "value": "262144",
+      "from": "--max-model-len 262144"
+     },
+     {
+      "flag": "--jinja",
+      "value": null,
+      "from": "--enable-auto-tool-choice"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--tensor-parallel-size 1",
+      "why": "multi-GPU tensor parallelism; n/a (one device per llama-server here)"
+     }
+    ]
+   },
+   "doc": "card",
+   "doc_sha": "6ab461498e2023f6e3c1baea90a8f0fe38ab64d0",
+   "scope": "model"
   },
   {
+   "source": "unsloth/Qwen3.5-0.8B-GGUF README.md:L687-687",
+   "file": "README.md",
+   "lines": [
+    687,
+    687
+   ],
+   "lang": "shell",
    "tool": "vllm",
-   "command": "vllm serve Qwen/Qwen3.5-0.8B --port 8000 --tensor-parallel-size 1 --max-model-len 262144 --language-model-only",
-   "source": "unsloth/Qwen3.5-0.8B-GGUF README.md:L693"
+   "kind": "command",
+   "text": "    vllm serve Qwen/Qwen3.5-0.8B --port 8000 --tensor-parallel-size 1 --max-model-len 262144 --speculative-config '{\"method\":\"qwen3_next_mtp\",\"num_speculative_tokens\":2}'",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-c",
+      "value": "262144",
+      "from": "--max-model-len 262144"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--tensor-parallel-size 1",
+      "why": "multi-GPU tensor parallelism; n/a (one device per llama-server here)"
+     },
+     {
+      "arg": "--speculative-config {\"method\":\"qwen3_next_mtp\",\"num_speculative_tokens\":2}",
+      "why": "MTP / speculative heads of the safetensors checkpoint are not in this GGUF; no llama.cpp equivalent here"
+     }
+    ]
+   },
+   "doc": "card",
+   "doc_sha": "6ab461498e2023f6e3c1baea90a8f0fe38ab64d0",
+   "scope": "model"
+  },
+  {
+   "source": "unsloth/Qwen3.5-0.8B-GGUF README.md:L693-693",
+   "file": "README.md",
+   "lines": [
+    693,
+    693
+   ],
+   "lang": "shell",
+   "tool": "vllm",
+   "kind": "command",
+   "text": "    vllm serve Qwen/Qwen3.5-0.8B --port 8000 --tensor-parallel-size 1 --max-model-len 262144 --language-model-only",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-c",
+      "value": "262144",
+      "from": "--max-model-len 262144"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--tensor-parallel-size 1",
+      "why": "multi-GPU tensor parallelism; n/a (one device per llama-server here)"
+     },
+     {
+      "arg": "--language-model-only",
+      "why": "text only: do not pass --mmproj (llama.cpp loads no vision tower without it)"
+     }
+    ]
+   },
+   "doc": "card",
+   "doc_sha": "6ab461498e2023f6e3c1baea90a8f0fe38ab64d0",
+   "scope": "model"
+  },
+  {
+   "source": "unsloth/Qwen3.5-0.8B-GGUF README.md:L706-706",
+   "file": "README.md",
+   "lines": [
+    706,
+    706
+   ],
+   "lang": "shell",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install \"transformers[serving] @ git+https://github.com/huggingface/transformers.git@main\"",
+   "doc": "card",
+   "doc_sha": "6ab461498e2023f6e3c1baea90a8f0fe38ab64d0",
+   "scope": "model"
+  },
+  {
+   "source": "unsloth/Qwen3.5-0.8B-GGUF README.md:L712-712",
+   "file": "README.md",
+   "lines": [
+    712,
+    712
+   ],
+   "lang": "shell",
+   "tool": "transformers-serve",
+   "kind": "command",
+   "text": "transformers serve --force-model Qwen/Qwen3.5-0.8B --port 8000 --continuous-batching",
+   "translation": {
+    "translated": true,
+    "params": [],
+    "untranslatable": [
+     {
+      "arg": "--force-model Qwen/Qwen3.5-0.8B",
+      "why": "the model is the GGUF file"
+     },
+     {
+      "arg": "--continuous-batching",
+      "why": "llama-server batches continuously by default (--cont-batching)"
+     }
+    ]
+   },
+   "doc": "card",
+   "doc_sha": "6ab461498e2023f6e3c1baea90a8f0fe38ab64d0",
+   "scope": "model"
+  },
+  {
+   "source": "unsloth/Qwen3.5-0.8B-GGUF README.md:L722-726",
+   "file": "README.md",
+   "lines": [
+    722,
+    726
+   ],
+   "lang": "shell",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install -U openai\n\n# Set the following accordingly\nexport OPENAI_BASE_URL=\"http://localhost:8000/v1\"\nexport OPENAI_API_KEY=\"EMPTY\"",
+   "doc": "card",
+   "doc_sha": "6ab461498e2023f6e3c1baea90a8f0fe38ab64d0",
+   "scope": "model"
+  },
+  {
+   "source": "unsloth/Qwen3.5-0.8B-GGUF README.md:L741-760",
+   "file": "README.md",
+   "lines": [
+    741,
+    760
+   ],
+   "lang": "python",
+   "tool": "openai-client",
+   "kind": "code",
+   "text": "from openai import OpenAI\n# Configured by environment variables\nclient = OpenAI()\n\nmessages = [\n    {\"role\": \"user\", \"content\": \"Give me a short introduction to large language models.\"},\n]\n\nchat_response = client.chat.completions.create(\n    model=\"Qwen/Qwen3.5-0.8B\",\n    messages=messages,\n    max_tokens=32768,\n    temperature=1.0,\n    top_p=1.0,\n    presence_penalty=2.0,\n    extra_body={\n        \"top_k\": 20,\n    }, \n)\nprint(\"Chat response:\", chat_response)",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--top-k",
+      "value": "20",
+      "from": "top_k: 20"
+     },
+     {
+      "flag": "-n",
+      "value": "32768",
+      "from": "max_tokens: 32768"
+     },
+     {
+      "flag": "--temp",
+      "value": "1",
+      "from": "temperature: 1.0"
+     },
+     {
+      "flag": "--top-p",
+      "value": "1",
+      "from": "top_p: 1.0"
+     },
+     {
+      "flag": "--presence-penalty",
+      "value": "2",
+      "from": "presence_penalty: 2.0"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "card",
+   "doc_sha": "6ab461498e2023f6e3c1baea90a8f0fe38ab64d0",
+   "scope": "model"
+  },
+  {
+   "source": "unsloth/Qwen3.5-0.8B-GGUF README.md:L766-799",
+   "file": "README.md",
+   "lines": [
+    766,
+    799
+   ],
+   "lang": "python",
+   "tool": "openai-client",
+   "kind": "code",
+   "text": "from openai import OpenAI\n# Configured by environment variables\nclient = OpenAI()\n\nmessages = [\n    {\n        \"role\": \"user\",\n        \"content\": [\n            {\n                \"type\": \"image_url\",\n                \"image_url\": {\n                    \"url\": \"https://qianwen-res.oss-accelerate.aliyuncs.com/Qwen3.5/demo/RealWorld/RealWorld-04.png\"\n                }\n            },\n            {\n                \"type\": \"text\",\n                \"text\": \"Where is this?\"\n            }\n        ]\n    }\n]\n\nchat_response = client.chat.completions.create(\n    model=\"Qwen/Qwen3.5-0.8B\",\n    messages=messages,\n    max_tokens=32768,\n    temperature=0.7,\n    top_p=0.8,\n    presence_penalty=1.5,\n    extra_body={\n        \"top_k\": 20,\n    }, \n)\nprint(\"Chat response:\", chat_response)",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--top-k",
+      "value": "20",
+      "from": "top_k: 20"
+     },
+     {
+      "flag": "-n",
+      "value": "32768",
+      "from": "max_tokens: 32768"
+     },
+     {
+      "flag": "--temp",
+      "value": "0.7",
+      "from": "temperature: 0.7"
+     },
+     {
+      "flag": "--top-p",
+      "value": "0.8",
+      "from": "top_p: 0.8"
+     },
+     {
+      "flag": "--presence-penalty",
+      "value": "1.5",
+      "from": "presence_penalty: 1.5"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "card",
+   "doc_sha": "6ab461498e2023f6e3c1baea90a8f0fe38ab64d0",
+   "scope": "model"
+  },
+  {
+   "source": "unsloth/Qwen3.5-0.8B-GGUF README.md:L805-846",
+   "file": "README.md",
+   "lines": [
+    805,
+    846
+   ],
+   "lang": "python",
+   "tool": "openai-client",
+   "kind": "code",
+   "text": "from openai import OpenAI\n# Configured by environment variables\nclient = OpenAI()\n\nmessages = [\n    {\n        \"role\": \"user\",\n        \"content\": [\n            {\n                \"type\": \"video_url\",\n                \"video_url\": {\n                    \"url\": \"https://qianwen-res.oss-accelerate.aliyuncs.com/Qwen3.5/demo/video/N1cdUjctpG8.mp4\"\n                }\n            },\n            {\n                \"type\": \"text\",\n                \"text\": \"Summarize the video content.\"\n            }\n        ]\n    }\n]\n\n# When vLLM is launched with `--media-io-kwargs '{\"video\": {\"num_frames\": -1}}'`,\n# video frame sampling can be configured via `extra_body` (e.g., by setting `fps`).\n# This feature is currently supported only in vLLM.\n#\n# By default, `fps=2` and `do_sample_frames=True`.\n# With `do_sample_frames=True`, you can customize the `fps` value to set your desired video sampling rate.\nchat_response = client.chat.completions.create(\n    model=\"Qwen/Qwen3.5-0.8B\",\n    messages=messages,\n    max_tokens=32768,\n    temperature=0.7,\n    top_p=0.8,\n    presence_penalty=1.5,\n    extra_body={\n        \"top_k\": 20,\n        \"mm_processor_kwargs\": {\"fps\": 2, \"do_sample_frames\": True},\n    }, \n)\n\nprint(\"Chat response:\", chat_response)",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--top-k",
+      "value": "20",
+      "from": "top_k: 20"
+     },
+     {
+      "flag": "-n",
+      "value": "32768",
+      "from": "max_tokens: 32768"
+     },
+     {
+      "flag": "--temp",
+      "value": "0.7",
+      "from": "temperature: 0.7"
+     },
+     {
+      "flag": "--top-p",
+      "value": "0.8",
+      "from": "top_p: 0.8"
+     },
+     {
+      "flag": "--presence-penalty",
+      "value": "1.5",
+      "from": "presence_penalty: 1.5"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "card",
+   "doc_sha": "6ab461498e2023f6e3c1baea90a8f0fe38ab64d0",
+   "scope": "model"
+  },
+  {
+   "source": "unsloth/Qwen3.5-0.8B-GGUF README.md:L858-878",
+   "file": "README.md",
+   "lines": [
+    858,
+    878
+   ],
+   "lang": "python",
+   "tool": "openai-client",
+   "kind": "code",
+   "text": "from openai import OpenAI\n# Configured by environment variables\nclient = OpenAI()\n\nmessages = [\n    {\"role\": \"user\", \"content\": \"Type \\\"I love Qwen3.5\\\" backwards\"},\n]\n\nchat_response = client.chat.completions.create(\n    model=\"Qwen/Qwen3.5-0.8B\",\n    messages=messages,\n    max_tokens=81920,\n    temperature=1.0,\n    top_p=0.95,\n    presence_penalty=1.5,\n    extra_body={\n        \"top_k\": 20,\n        \"enable_thinking\": True,\n    }, \n)\nprint(\"Chat response:\", chat_response)",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--top-k",
+      "value": "20",
+      "from": "top_k: 20"
+     },
+     {
+      "flag": "-n",
+      "value": "81920",
+      "from": "max_tokens: 81920"
+     },
+     {
+      "flag": "--temp",
+      "value": "1",
+      "from": "temperature: 1.0"
+     },
+     {
+      "flag": "--top-p",
+      "value": "0.95",
+      "from": "top_p: 0.95"
+     },
+     {
+      "flag": "--presence-penalty",
+      "value": "1.5",
+      "from": "presence_penalty: 1.5"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "card",
+   "doc_sha": "6ab461498e2023f6e3c1baea90a8f0fe38ab64d0",
+   "scope": "model"
+  },
+  {
+   "source": "unsloth/Qwen3.5-0.8B-GGUF README.md:L896-941",
+   "file": "README.md",
+   "lines": [
+    896,
+    941
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "import os\nfrom qwen_agent.agents import Assistant\n\n# Define LLM\n# Using OpenAI-compatible API endpoint. The API backend should disable response parsers.\nllm_cfg = {\n    # Use your own model service compatible with OpenAI API by vLLM/SGLang:\n    'model': 'Qwen/Qwen3.5-0.8B',\n    'model_type': 'qwenvl_oai',\n    'model_server': 'http://localhost:8000/v1',  # api_base\n    'api_key': 'EMPTY',\n\n    'generate_cfg': {\n        'use_raw_api': True,  \n        # Pass the parameter of whether to enable thinking mode in this way\n        # 'extra_body': {\n        #    'chat_template_kwargs': {'enable_thinking': True}\n        # },\n    },\n}\n\n# Define Tools\ntools = [\n    {'mcpServers': {  # You can specify the MCP configuration file\n            \"filesystem\": {\n                \"command\": \"npx\",\n                \"args\": [\"-y\", \"@modelcontextprotocol/server-filesystem\", \"/Users/xxxx/Desktop\"]\n            }\n        }\n    }\n]\n\n# Define Agent\nbot = Assistant(llm=llm_cfg, function_list=tools)\n\n# Streaming generation\nmessages = [{'role': 'user', 'content': 'Help me organize my desktop.'}]\nfor responses in bot.run(messages=messages):\n    pass\nprint(responses)\n\n# Streaming generation\nmessages = [{'role': 'user', 'content': 'Develop a dog website and save it on the desktop'}]\nfor responses in bot.run(messages=messages):\n    pass\nprint(responses)",
+   "doc": "card",
+   "doc_sha": "6ab461498e2023f6e3c1baea90a8f0fe38ab64d0",
+   "scope": "model"
+  },
+  {
+   "source": "unsloth/Qwen3.5-0.8B-GGUF README.md:L978-978",
+   "file": "README.md",
+   "lines": [
+    978,
+    978
+   ],
+   "lang": "json",
+   "tool": "json",
+   "kind": "config",
+   "text": "    {\"longest_edge\": 469762048, \"shortest_edge\": 4096}",
+   "doc": "card",
+   "doc_sha": "6ab461498e2023f6e3c1baea90a8f0fe38ab64d0",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-0.8B README.md:L609-609",
+   "file": "README.md",
+   "lines": [
+    609,
+    609
+   ],
+   "lang": "shell",
+   "tool": "pip",
+   "kind": "command",
+   "text": "uv pip install 'git+https://github.com/sgl-project/sglang.git#subdirectory=python&egg=sglang[all]'",
+   "doc": "base-card",
+   "doc_sha": "2fc06364715b967f1860aea9cf38778875588b17",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-0.8B README.md:L618-618",
+   "file": "README.md",
+   "lines": [
+    618,
+    618
+   ],
+   "lang": "shell",
+   "tool": "sglang",
+   "kind": "command",
+   "text": "    python -m sglang.launch_server --model-path Qwen/Qwen3.5-0.8B --port 8000 --tp-size 1 --mem-fraction-static 0.8 --context-length 262144",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-c",
+      "value": "262144",
+      "from": "--context-length 262144"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--model-path Qwen/Qwen3.5-0.8B",
+      "why": "the model is the GGUF file"
+     },
+     {
+      "arg": "--tp-size 1",
+      "why": "multi-GPU tensor parallelism; n/a"
+     },
+     {
+      "arg": "--mem-fraction-static 0.8",
+      "why": "SGLang memory pool fraction; n/a"
+     }
+    ]
+   },
+   "doc": "base-card",
+   "doc_sha": "2fc06364715b967f1860aea9cf38778875588b17",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-0.8B README.md:L624-624",
+   "file": "README.md",
+   "lines": [
+    624,
+    624
+   ],
+   "lang": "shell",
+   "tool": "sglang",
+   "kind": "command",
+   "text": "    python -m sglang.launch_server --model-path Qwen/Qwen3.5-0.8B --port 8000 --tp-size 1 --mem-fraction-static 0.8 --context-length 262144 --tool-call-parser qwen3_coder",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-c",
+      "value": "262144",
+      "from": "--context-length 262144"
+     },
+     {
+      "flag": "--jinja",
+      "value": null,
+      "from": "--tool-call-parser qwen3_coder"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--model-path Qwen/Qwen3.5-0.8B",
+      "why": "the model is the GGUF file"
+     },
+     {
+      "arg": "--tp-size 1",
+      "why": "multi-GPU tensor parallelism; n/a"
+     },
+     {
+      "arg": "--mem-fraction-static 0.8",
+      "why": "SGLang memory pool fraction; n/a"
+     }
+    ]
+   },
+   "doc": "base-card",
+   "doc_sha": "2fc06364715b967f1860aea9cf38778875588b17",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-0.8B README.md:L630-630",
+   "file": "README.md",
+   "lines": [
+    630,
+    630
+   ],
+   "lang": "shell",
+   "tool": "sglang",
+   "kind": "command",
+   "text": "    python -m sglang.launch_server --model-path Qwen/Qwen3.5-0.8B --port 8000 --tp-size 1 --mem-fraction-static 0.8 --context-length 262144 --speculative-algo NEXTN --speculative-num-steps 3 --speculative-eagle-topk 1 --speculative-num-draft-tokens 4",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-c",
+      "value": "262144",
+      "from": "--context-length 262144"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--model-path Qwen/Qwen3.5-0.8B",
+      "why": "the model is the GGUF file"
+     },
+     {
+      "arg": "--tp-size 1",
+      "why": "multi-GPU tensor parallelism; n/a"
+     },
+     {
+      "arg": "--mem-fraction-static 0.8",
+      "why": "SGLang memory pool fraction; n/a"
+     },
+     {
+      "arg": "--speculative-algo NEXTN",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--speculative-num-steps 3",
+      "why": "see --speculative-algorithm"
+     },
+     {
+      "arg": "--speculative-eagle-topk 1",
+      "why": "see --speculative-algorithm"
+     },
+     {
+      "arg": "--speculative-num-draft-tokens 4",
+      "why": "see --speculative-algorithm"
+     }
+    ]
+   },
+   "doc": "base-card",
+   "doc_sha": "2fc06364715b967f1860aea9cf38778875588b17",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-0.8B README.md:L638-638",
+   "file": "README.md",
+   "lines": [
+    638,
+    638
+   ],
+   "lang": "shell",
+   "tool": "pip",
+   "kind": "command",
+   "text": "uv pip install vllm --torch-backend=auto --extra-index-url https://wheels.vllm.ai/nightly",
+   "doc": "base-card",
+   "doc_sha": "2fc06364715b967f1860aea9cf38778875588b17",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-0.8B README.md:L649-649",
+   "file": "README.md",
+   "lines": [
+    649,
+    649
+   ],
+   "lang": "shell",
+   "tool": "vllm",
+   "kind": "command",
+   "text": "    vllm serve Qwen/Qwen3.5-0.8B --port 8000 --tensor-parallel-size 1 --max-model-len 262144 ",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-c",
+      "value": "262144",
+      "from": "--max-model-len 262144"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--tensor-parallel-size 1",
+      "why": "multi-GPU tensor parallelism; n/a (one device per llama-server here)"
+     }
+    ]
+   },
+   "doc": "base-card",
+   "doc_sha": "2fc06364715b967f1860aea9cf38778875588b17",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-0.8B README.md:L655-655",
+   "file": "README.md",
+   "lines": [
+    655,
+    655
+   ],
+   "lang": "shell",
+   "tool": "vllm",
+   "kind": "command",
+   "text": "    vllm serve Qwen/Qwen3.5-0.8B --port 8000 --tensor-parallel-size 1 --max-model-len 262144 --enable-auto-tool-choice --tool-call-parser qwen3_coder ",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-c",
+      "value": "262144",
+      "from": "--max-model-len 262144"
+     },
+     {
+      "flag": "--jinja",
+      "value": null,
+      "from": "--enable-auto-tool-choice"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--tensor-parallel-size 1",
+      "why": "multi-GPU tensor parallelism; n/a (one device per llama-server here)"
+     }
+    ]
+   },
+   "doc": "base-card",
+   "doc_sha": "2fc06364715b967f1860aea9cf38778875588b17",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-0.8B README.md:L661-661",
+   "file": "README.md",
+   "lines": [
+    661,
+    661
+   ],
+   "lang": "shell",
+   "tool": "vllm",
+   "kind": "command",
+   "text": "    vllm serve Qwen/Qwen3.5-0.8B --port 8000 --tensor-parallel-size 1 --max-model-len 262144 --speculative-config '{\"method\":\"qwen3_next_mtp\",\"num_speculative_tokens\":2}'",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-c",
+      "value": "262144",
+      "from": "--max-model-len 262144"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--tensor-parallel-size 1",
+      "why": "multi-GPU tensor parallelism; n/a (one device per llama-server here)"
+     },
+     {
+      "arg": "--speculative-config {\"method\":\"qwen3_next_mtp\",\"num_speculative_tokens\":2}",
+      "why": "MTP / speculative heads of the safetensors checkpoint are not in this GGUF; no llama.cpp equivalent here"
+     }
+    ]
+   },
+   "doc": "base-card",
+   "doc_sha": "2fc06364715b967f1860aea9cf38778875588b17",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-0.8B README.md:L667-667",
+   "file": "README.md",
+   "lines": [
+    667,
+    667
+   ],
+   "lang": "shell",
+   "tool": "vllm",
+   "kind": "command",
+   "text": "    vllm serve Qwen/Qwen3.5-0.8B --port 8000 --tensor-parallel-size 1 --max-model-len 262144 --language-model-only",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-c",
+      "value": "262144",
+      "from": "--max-model-len 262144"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--tensor-parallel-size 1",
+      "why": "multi-GPU tensor parallelism; n/a (one device per llama-server here)"
+     },
+     {
+      "arg": "--language-model-only",
+      "why": "text only: do not pass --mmproj (llama.cpp loads no vision tower without it)"
+     }
+    ]
+   },
+   "doc": "base-card",
+   "doc_sha": "2fc06364715b967f1860aea9cf38778875588b17",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-0.8B README.md:L680-680",
+   "file": "README.md",
+   "lines": [
+    680,
+    680
+   ],
+   "lang": "shell",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install \"transformers[serving] @ git+https://github.com/huggingface/transformers.git@main\"",
+   "doc": "base-card",
+   "doc_sha": "2fc06364715b967f1860aea9cf38778875588b17",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-0.8B README.md:L686-686",
+   "file": "README.md",
+   "lines": [
+    686,
+    686
+   ],
+   "lang": "shell",
+   "tool": "transformers-serve",
+   "kind": "command",
+   "text": "transformers serve --force-model Qwen/Qwen3.5-0.8B --port 8000 --continuous-batching",
+   "translation": {
+    "translated": true,
+    "params": [],
+    "untranslatable": [
+     {
+      "arg": "--force-model Qwen/Qwen3.5-0.8B",
+      "why": "the model is the GGUF file"
+     },
+     {
+      "arg": "--continuous-batching",
+      "why": "llama-server batches continuously by default (--cont-batching)"
+     }
+    ]
+   },
+   "doc": "base-card",
+   "doc_sha": "2fc06364715b967f1860aea9cf38778875588b17",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-0.8B README.md:L696-700",
+   "file": "README.md",
+   "lines": [
+    696,
+    700
+   ],
+   "lang": "shell",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install -U openai\n\n# Set the following accordingly\nexport OPENAI_BASE_URL=\"http://localhost:8000/v1\"\nexport OPENAI_API_KEY=\"EMPTY\"",
+   "doc": "base-card",
+   "doc_sha": "2fc06364715b967f1860aea9cf38778875588b17",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-0.8B README.md:L715-734",
+   "file": "README.md",
+   "lines": [
+    715,
+    734
+   ],
+   "lang": "python",
+   "tool": "openai-client",
+   "kind": "code",
+   "text": "from openai import OpenAI\n# Configured by environment variables\nclient = OpenAI()\n\nmessages = [\n    {\"role\": \"user\", \"content\": \"Give me a short introduction to large language models.\"},\n]\n\nchat_response = client.chat.completions.create(\n    model=\"Qwen/Qwen3.5-0.8B\",\n    messages=messages,\n    max_tokens=32768,\n    temperature=1.0,\n    top_p=1.0,\n    presence_penalty=2.0,\n    extra_body={\n        \"top_k\": 20,\n    }, \n)\nprint(\"Chat response:\", chat_response)",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--top-k",
+      "value": "20",
+      "from": "top_k: 20"
+     },
+     {
+      "flag": "-n",
+      "value": "32768",
+      "from": "max_tokens: 32768"
+     },
+     {
+      "flag": "--temp",
+      "value": "1",
+      "from": "temperature: 1.0"
+     },
+     {
+      "flag": "--top-p",
+      "value": "1",
+      "from": "top_p: 1.0"
+     },
+     {
+      "flag": "--presence-penalty",
+      "value": "2",
+      "from": "presence_penalty: 2.0"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "2fc06364715b967f1860aea9cf38778875588b17",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-0.8B README.md:L740-773",
+   "file": "README.md",
+   "lines": [
+    740,
+    773
+   ],
+   "lang": "python",
+   "tool": "openai-client",
+   "kind": "code",
+   "text": "from openai import OpenAI\n# Configured by environment variables\nclient = OpenAI()\n\nmessages = [\n    {\n        \"role\": \"user\",\n        \"content\": [\n            {\n                \"type\": \"image_url\",\n                \"image_url\": {\n                    \"url\": \"https://qianwen-res.oss-accelerate.aliyuncs.com/Qwen3.5/demo/RealWorld/RealWorld-04.png\"\n                }\n            },\n            {\n                \"type\": \"text\",\n                \"text\": \"Where is this?\"\n            }\n        ]\n    }\n]\n\nchat_response = client.chat.completions.create(\n    model=\"Qwen/Qwen3.5-0.8B\",\n    messages=messages,\n    max_tokens=32768,\n    temperature=0.7,\n    top_p=0.8,\n    presence_penalty=1.5,\n    extra_body={\n        \"top_k\": 20,\n    }, \n)\nprint(\"Chat response:\", chat_response)",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--top-k",
+      "value": "20",
+      "from": "top_k: 20"
+     },
+     {
+      "flag": "-n",
+      "value": "32768",
+      "from": "max_tokens: 32768"
+     },
+     {
+      "flag": "--temp",
+      "value": "0.7",
+      "from": "temperature: 0.7"
+     },
+     {
+      "flag": "--top-p",
+      "value": "0.8",
+      "from": "top_p: 0.8"
+     },
+     {
+      "flag": "--presence-penalty",
+      "value": "1.5",
+      "from": "presence_penalty: 1.5"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "2fc06364715b967f1860aea9cf38778875588b17",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-0.8B README.md:L779-820",
+   "file": "README.md",
+   "lines": [
+    779,
+    820
+   ],
+   "lang": "python",
+   "tool": "openai-client",
+   "kind": "code",
+   "text": "from openai import OpenAI\n# Configured by environment variables\nclient = OpenAI()\n\nmessages = [\n    {\n        \"role\": \"user\",\n        \"content\": [\n            {\n                \"type\": \"video_url\",\n                \"video_url\": {\n                    \"url\": \"https://qianwen-res.oss-accelerate.aliyuncs.com/Qwen3.5/demo/video/N1cdUjctpG8.mp4\"\n                }\n            },\n            {\n                \"type\": \"text\",\n                \"text\": \"Summarize the video content.\"\n            }\n        ]\n    }\n]\n\n# When vLLM is launched with `--media-io-kwargs '{\"video\": {\"num_frames\": -1}}'`,\n# video frame sampling can be configured via `extra_body` (e.g., by setting `fps`).\n# This feature is currently supported only in vLLM.\n#\n# By default, `fps=2` and `do_sample_frames=True`.\n# With `do_sample_frames=True`, you can customize the `fps` value to set your desired video sampling rate.\nchat_response = client.chat.completions.create(\n    model=\"Qwen/Qwen3.5-0.8B\",\n    messages=messages,\n    max_tokens=32768,\n    temperature=0.7,\n    top_p=0.8,\n    presence_penalty=1.5,\n    extra_body={\n        \"top_k\": 20,\n        \"mm_processor_kwargs\": {\"fps\": 2, \"do_sample_frames\": True},\n    }, \n)\n\nprint(\"Chat response:\", chat_response)",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--top-k",
+      "value": "20",
+      "from": "top_k: 20"
+     },
+     {
+      "flag": "-n",
+      "value": "32768",
+      "from": "max_tokens: 32768"
+     },
+     {
+      "flag": "--temp",
+      "value": "0.7",
+      "from": "temperature: 0.7"
+     },
+     {
+      "flag": "--top-p",
+      "value": "0.8",
+      "from": "top_p: 0.8"
+     },
+     {
+      "flag": "--presence-penalty",
+      "value": "1.5",
+      "from": "presence_penalty: 1.5"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "2fc06364715b967f1860aea9cf38778875588b17",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-0.8B README.md:L832-852",
+   "file": "README.md",
+   "lines": [
+    832,
+    852
+   ],
+   "lang": "python",
+   "tool": "openai-client",
+   "kind": "code",
+   "text": "from openai import OpenAI\n# Configured by environment variables\nclient = OpenAI()\n\nmessages = [\n    {\"role\": \"user\", \"content\": \"Type \\\"I love Qwen3.5\\\" backwards\"},\n]\n\nchat_response = client.chat.completions.create(\n    model=\"Qwen/Qwen3.5-0.8B\",\n    messages=messages,\n    max_tokens=81920,\n    temperature=1.0,\n    top_p=0.95,\n    presence_penalty=1.5,\n    extra_body={\n        \"top_k\": 20,\n        \"enable_thinking\": True,\n    }, \n)\nprint(\"Chat response:\", chat_response)",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--top-k",
+      "value": "20",
+      "from": "top_k: 20"
+     },
+     {
+      "flag": "-n",
+      "value": "81920",
+      "from": "max_tokens: 81920"
+     },
+     {
+      "flag": "--temp",
+      "value": "1",
+      "from": "temperature: 1.0"
+     },
+     {
+      "flag": "--top-p",
+      "value": "0.95",
+      "from": "top_p: 0.95"
+     },
+     {
+      "flag": "--presence-penalty",
+      "value": "1.5",
+      "from": "presence_penalty: 1.5"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "2fc06364715b967f1860aea9cf38778875588b17",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-0.8B README.md:L870-915",
+   "file": "README.md",
+   "lines": [
+    870,
+    915
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "import os\nfrom qwen_agent.agents import Assistant\n\n# Define LLM\n# Using OpenAI-compatible API endpoint. The API backend should disable response parsers.\nllm_cfg = {\n    # Use your own model service compatible with OpenAI API by vLLM/SGLang:\n    'model': 'Qwen/Qwen3.5-0.8B',\n    'model_type': 'qwenvl_oai',\n    'model_server': 'http://localhost:8000/v1',  # api_base\n    'api_key': 'EMPTY',\n\n    'generate_cfg': {\n        'use_raw_api': True,  \n        # Pass the parameter of whether to enable thinking mode in this way\n        # 'extra_body': {\n        #    'chat_template_kwargs': {'enable_thinking': True}\n        # },\n    },\n}\n\n# Define Tools\ntools = [\n    {'mcpServers': {  # You can specify the MCP configuration file\n            \"filesystem\": {\n                \"command\": \"npx\",\n                \"args\": [\"-y\", \"@modelcontextprotocol/server-filesystem\", \"/Users/xxxx/Desktop\"]\n            }\n        }\n    }\n]\n\n# Define Agent\nbot = Assistant(llm=llm_cfg, function_list=tools)\n\n# Streaming generation\nmessages = [{'role': 'user', 'content': 'Help me organize my desktop.'}]\nfor responses in bot.run(messages=messages):\n    pass\nprint(responses)\n\n# Streaming generation\nmessages = [{'role': 'user', 'content': 'Develop a dog website and save it on the desktop'}]\nfor responses in bot.run(messages=messages):\n    pass\nprint(responses)",
+   "doc": "base-card",
+   "doc_sha": "2fc06364715b967f1860aea9cf38778875588b17",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-0.8B README.md:L952-952",
+   "file": "README.md",
+   "lines": [
+    952,
+    952
+   ],
+   "lang": "json",
+   "tool": "json",
+   "kind": "config",
+   "text": "    {\"longest_edge\": 469762048, \"shortest_edge\": 4096}",
+   "doc": "base-card",
+   "doc_sha": "2fc06364715b967f1860aea9cf38778875588b17",
+   "scope": "model"
   }
  ],
  "card_notes": [
@@ -663,13 +1779,33 @@
  "chat_template": {
   "gguf_sha256": "7f0e529032c25183bcd66c7f238da2d377f43be754a94e2725a58c4e16d2ed67",
   "repo_sha256": "273d8e0e683b885071fb17e08d71e5f2a5ddfb5309756181681de4f5a1822d80",
-  "repo_file": "Qwen/Qwen3.5-0.8B chat_template.jinja",
-  "same": false
+  "repo_file": "chat_template.jinja",
+  "same": false,
+  "gguf_chars": 7816,
+  "repo_chars": 7755,
+  "repo_label": "Qwen/Qwen3.5-0.8B",
+  "use": "gguf",
+  "reason": "unsloth's only change to Qwen's template: tool_call.arguments is iterated as a mapping instead of with |items (llama.cpp compatibility), plus a trailing newline; llama-server passes tool-call arguments as objects, so both render the same",
+  "verified": "jinja2 render of a tool-call + thinking conversation with enable_thinking unset/true/false: identical output (2026-10-19); the GGUF template is the one the coder ran tool calls with on b11374"
  },
  "stop": {
   "eos_token": "<|im_end|>",
   "eos_token_id": 248046,
-  "eos_token_id_source": "GGUF"
+  "eos_token_id_source": "GGUF",
+  "analysis": {
+   "tokens": [
+    {
+     "id": 248046,
+     "text": "<|im_end|>",
+     "source": "Qwen/Qwen3.5-0.8B tokenizer_config.json eos_token",
+     "eog_by": "GGUF tokenizer.ggml.eos_token_id"
+    }
+   ],
+   "missing": [],
+   "gguf": {
+    "eos": 248046
+   }
+  }
  },
  "rope": {
   "rope.freq_base": 10000000.0,
@@ -1030,5 +2166,542 @@
  "unknown": null,
  "warnings": null,
  "updated": "2026-10-19",
- "by": "scripts/model_db.py"
+ "by": "scripts/model_db.py",
+ "gguf_meta": {
+  "general.architecture": "qwen35",
+  "general.type": "model",
+  "general.name": "Qwen3.5-0.8B",
+  "general.basename": "Qwen3.5-0.8B",
+  "general.quantized_by": "Unsloth",
+  "general.size_label": "0.8B",
+  "general.license": "apache-2.0",
+  "general.license.link": "https://huggingface.co/Qwen/Qwen3.5-0.8B/blob/main/LICENSE",
+  "general.repo_url": "https://huggingface.co/unsloth",
+  "general.base_model.count": 1,
+  "general.base_model.0.name": "Qwen3.5 0.8B",
+  "general.base_model.0.organization": "Qwen",
+  "general.base_model.0.repo_url": "https://huggingface.co/Qwen/Qwen3.5-0.8B",
+  "general.tags": [
+   "image-text-to-text"
+  ],
+  "qwen35.block_count": 24,
+  "qwen35.context_length": 262144,
+  "qwen35.embedding_length": 1024,
+  "qwen35.feed_forward_length": 3584,
+  "qwen35.attention.head_count": 8,
+  "qwen35.attention.head_count_kv": 2,
+  "qwen35.rope.dimension_sections": {
+   "array_len": 4
+  },
+  "qwen35.rope.freq_base": 10000000.0,
+  "qwen35.attention.layer_norm_rms_epsilon": 9.999999974752427e-07,
+  "qwen35.attention.key_length": 256,
+  "qwen35.attention.value_length": 256,
+  "qwen35.ssm.conv_kernel": 4,
+  "qwen35.ssm.state_size": 128,
+  "qwen35.ssm.group_count": 16,
+  "qwen35.ssm.time_step_rank": 16,
+  "qwen35.ssm.inner_size": 2048,
+  "qwen35.full_attention_interval": 4,
+  "qwen35.rope.dimension_count": 64,
+  "tokenizer.ggml.model": "gpt2",
+  "tokenizer.ggml.pre": "qwen35",
+  "tokenizer.ggml.tokens": {
+   "array_len": 248320
+  },
+  "tokenizer.ggml.token_type": {
+   "array_len": 248320
+  },
+  "tokenizer.ggml.merges": {
+   "array_len": 247587
+  },
+  "tokenizer.ggml.eos_token_id": 248046,
+  "tokenizer.ggml.padding_token_id": 248055,
+  "tokenizer.chat_template": {
+   "sha256": "7f0e529032c25183bcd66c7f238da2d377f43be754a94e2725a58c4e16d2ed67",
+   "chars": 7816
+  },
+  "general.quantization_version": 2,
+  "general.file_type": 15,
+  "quantize.imatrix.file": "Qwen3.5-0.8B-GGUF/imatrix_unsloth.gguf",
+  "quantize.imatrix.dataset": "unsloth_calibration_Qwen3.5-0.8B.txt",
+  "quantize.imatrix.entries_count": 186,
+  "quantize.imatrix.chunks_count": 80,
+  "_gguf_version": 3,
+  "_n_tensors": 320
+ },
+ "base_chain": [
+  {
+   "repo": "Qwen/Qwen3.5-0.8B",
+   "api_id": "Qwen/Qwen3.5-0.8B",
+   "revision": "2fc06364715b967f1860aea9cf38778875588b17",
+   "via": "card base_model",
+   "card_data": {
+    "license": "apache-2.0",
+    "license_link": "https://huggingface.co/Qwen/Qwen3.5-0.8B/blob/main/LICENSE",
+    "base_model": [
+     "Qwen/Qwen3.5-0.8B-Base"
+    ],
+    "pipeline_tag": "image-text-to-text",
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "image-text-to-text",
+   "safetensors": {
+    "parameters": {
+     "F32": 2592,
+     "BF16": 873436192
+    },
+    "total": 873438784
+   },
+   "license_files": [
+    "LICENSE"
+   ]
+  },
+  {
+   "repo": "Qwen/Qwen3.5-0.8B-Base",
+   "api_id": "Qwen/Qwen3.5-0.8B-Base",
+   "revision": "dc7cdfe2ee4154fa7e30f5b51ca41bfa40174e68",
+   "via": "Qwen/Qwen3.5-0.8B card base_model",
+   "card_data": {
+    "license": "apache-2.0",
+    "license_link": "https://huggingface.co/Qwen/Qwen3.5-0.8B-Base/blob/main/LICENSE",
+    "pipeline_tag": "image-text-to-text",
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "image-text-to-text",
+   "safetensors": {
+    "parameters": {
+     "F32": 2592,
+     "BF16": 873436192
+    },
+    "total": 873438784
+   },
+   "license_files": [
+    "LICENSE"
+   ]
+  }
+ ],
+ "github": null,
+ "github_dropped": [
+  {
+   "repo": "unslothai/unsloth",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "sgl-project/sglang",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "vllm-project/vllm",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "kvcache-ai/ktransformers",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "QwenLM/Qwen-Agent",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "QwenLM/qwen-code",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "sgl-project/sglang",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "vllm-project/vllm",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "kvcache-ai/ktransformers",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "QwenLM/Qwen-Agent",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "QwenLM/qwen-code",
+   "why": "inference/training tool repo"
+  }
+ ],
+ "descriptor": {
+  "repo_id": {
+   "effective": "unsloth/Qwen3.5-0.8B-GGUF",
+   "source": "HF API id"
+  },
+  "revision": {
+   "effective": "6ab461498e2023f6e3c1baea90a8f0fe38ab64d0",
+   "source": "pinned (manifest / database)"
+  },
+  "file": {
+   "effective": "Qwen3.5-0.8B-Q4_K_M.gguf",
+   "source": "HF API siblings"
+  },
+  "bytes": {
+   "effective": 532517120,
+   "source": "HF API LFS size"
+  },
+  "sha256": {
+   "effective": "bd258782e35f7f458f8aced1adc053e6e92e89bc735ba3be89d38a06121dc517",
+   "source": "HF API LFS oid"
+  },
+  "quant": {
+   "effective": "Q4_K_M",
+   "source": "file name",
+   "values": [
+    {
+     "value": "Q4_K_M",
+     "source": "file name"
+    },
+    {
+     "value": "Q4_K_M",
+     "source": "GGUF general.file_type"
+    }
+   ]
+  },
+  "license": {
+   "effective": "apache-2.0",
+   "source": "unsloth/Qwen3.5-0.8B-GGUF card license",
+   "values": [
+    {
+     "value": "apache-2.0",
+     "source": "unsloth/Qwen3.5-0.8B-GGUF card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "Qwen/Qwen3.5-0.8B card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "Qwen/Qwen3.5-0.8B-Base card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "GGUF general.license"
+    }
+   ]
+  },
+  "license_link": {
+   "effective": "https://huggingface.co/Qwen/Qwen3.5-0.8B/blob/main/LICENSE",
+   "source": "unsloth/Qwen3.5-0.8B-GGUF card license_link",
+   "values": [
+    {
+     "value": "https://huggingface.co/Qwen/Qwen3.5-0.8B/blob/main/LICENSE",
+     "source": "unsloth/Qwen3.5-0.8B-GGUF card license_link"
+    },
+    {
+     "value": "https://huggingface.co/Qwen/Qwen3.5-0.8B/blob/main/LICENSE",
+     "source": "Qwen/Qwen3.5-0.8B card license_link"
+    },
+    {
+     "value": "https://huggingface.co/Qwen/Qwen3.5-0.8B-Base/blob/main/LICENSE",
+     "source": "Qwen/Qwen3.5-0.8B-Base card license_link"
+    },
+    {
+     "value": "https://huggingface.co/Qwen/Qwen3.5-0.8B/blob/main/LICENSE",
+     "source": "GGUF general.license.link"
+    }
+   ]
+  },
+  "license_file": {
+   "effective": "Qwen/Qwen3.5-0.8B@2fc06364715b/LICENSE",
+   "source": "Qwen/Qwen3.5-0.8B repo file",
+   "values": [
+    {
+     "value": "Qwen/Qwen3.5-0.8B@2fc06364715b/LICENSE",
+     "source": "Qwen/Qwen3.5-0.8B repo file"
+    },
+    {
+     "value": "Qwen/Qwen3.5-0.8B-Base@dc7cdfe2ee41/LICENSE",
+     "source": "Qwen/Qwen3.5-0.8B-Base repo file"
+    }
+   ]
+  },
+  "base_model_chain": {
+   "effective": "Qwen/Qwen3.5-0.8B",
+   "source": "card base_model",
+   "values": [
+    {
+     "value": "Qwen/Qwen3.5-0.8B",
+     "source": "card base_model"
+    },
+    {
+     "value": "Qwen/Qwen3.5-0.8B-Base",
+     "source": "Qwen/Qwen3.5-0.8B card base_model"
+    }
+   ]
+  },
+  "gguf_base_model": {
+   "effective": {
+    "name": "Qwen3.5 0.8B",
+    "organization": "Qwen",
+    "repo_url": "https://huggingface.co/Qwen/Qwen3.5-0.8B"
+   },
+   "source": "GGUF general.base_model.0"
+  },
+  "architecture": {
+   "effective": "qwen35",
+   "source": "GGUF general.architecture",
+   "values": [
+    {
+     "value": "qwen35",
+     "source": "GGUF general.architecture"
+    },
+    {
+     "value": "qwen35",
+     "source": "HF API gguf.architecture"
+    }
+   ]
+  },
+  "hf_architectures": {
+   "effective": [
+    "Qwen3_5ForConditionalGeneration"
+   ],
+   "source": "Qwen/Qwen3.5-0.8B config.json architectures"
+  },
+  "hf_model_type": {
+   "effective": "qwen3_5",
+   "source": "Qwen/Qwen3.5-0.8B config.json model_type"
+  },
+  "parameters": {
+   "effective": 752393024,
+   "source": "HF API gguf.total (unsloth/Qwen3.5-0.8B-GGUF)",
+   "values": [
+    {
+     "value": 752393024,
+     "source": "HF API gguf.total (unsloth/Qwen3.5-0.8B-GGUF)"
+    },
+    {
+     "value": 873438784,
+     "source": "HF API safetensors.total (Qwen/Qwen3.5-0.8B)"
+    },
+    {
+     "value": 873438784,
+     "source": "HF API safetensors.total (Qwen/Qwen3.5-0.8B-Base)"
+    }
+   ],
+   "conflict": true
+  },
+  "size_label": {
+   "effective": "0.8B",
+   "source": "GGUF general.size_label"
+  },
+  "ctx_statements": {
+   "effective": {
+    "value": 262144,
+    "quote": "- Context Length: 262,144 natively"
+   },
+   "source": "unsloth/Qwen3.5-0.8B-GGUF README.md:L89",
+   "values": [
+    {
+     "value": {
+      "value": 262144,
+      "quote": "- Context Length: 262,144 natively"
+     },
+     "source": "unsloth/Qwen3.5-0.8B-GGUF README.md:L89"
+    },
+    {
+     "value": {
+      "value": 262144,
+      "quote": "> The model has a default context length of 262,144 tokens."
+     },
+     "source": "unsloth/Qwen3.5-0.8B-GGUF README.md:L627"
+    },
+    {
+     "value": {
+      "value": 262144,
+      "quote": "- **Standard Version**: The following command can be used to create an API endpoint with maximum context length 262,144 tokens using tensor parallel on 8 GPUs."
+     },
+     "source": "unsloth/Qwen3.5-0.8B-GGUF README.md:L641"
+    },
+    {
+     "value": {
+      "value": 262144,
+      "quote": "python -m sglang.launch_server --model-path Qwen/Qwen3.5-0.8B --port 8000 --tp-size 1 --mem-fraction-static 0.8 --context-length 262144"
+     },
+     "source": "unsloth/Qwen3.5-0.8B-GGUF README.md:L644"
+    },
+    {
+     "value": {
+      "value": 262144,
+      "quote": "python -m sglang.launch_server --model-path Qwen/Qwen3.5-0.8B --port 8000 --tp-size 1 --mem-fraction-static 0.8 --context-length 262144 --tool-call-parser qwen3_coder"
+     },
+     "source": "unsloth/Qwen3.5-0.8B-GGUF README.md:L650"
+    },
+    {
+     "value": {
+      "value": 262144,
+      "quote": "python -m sglang.launch_server --model-path Qwen/Qwen3.5-0.8B --port 8000 --tp-size 1 --mem-fraction-static 0.8 --context-length 262144 --speculative-algo NEXTN --speculative-num-steps 3 --speculative-eagle-topk 1 --speculative-num-draft-to"
+     },
+     "source": "unsloth/Qwen3.5-0.8B-GGUF README.md:L656"
+    },
+    {
+     "value": {
+      "value": 262144,
+      "quote": "- **Standard Version**: The following command can be used to create an API endpoint with maximum context length 262,144 tokens using tensor parallel on 8 GPUs."
+     },
+     "source": "unsloth/Qwen3.5-0.8B-GGUF README.md:L672"
+    },
+    {
+     "value": {
+      "value": 262144,
+      "quote": "- Context Length: 262,144 natively"
+     },
+     "source": "Qwen/Qwen3.5-0.8B README.md:L63"
+    },
+    {
+     "value": {
+      "value": 262144,
+      "quote": "> The model has a default context length of 262,144 tokens."
+     },
+     "source": "Qwen/Qwen3.5-0.8B README.md:L601"
+    },
+    {
+     "value": {
+      "value": 262144,
+      "quote": "- **Standard Version**: The following command can be used to create an API endpoint with maximum context length 262,144 tokens using tensor parallel on 8 GPUs."
+     },
+     "source": "Qwen/Qwen3.5-0.8B README.md:L615"
+    },
+    {
+     "value": {
+      "value": 262144,
+      "quote": "python -m sglang.launch_server --model-path Qwen/Qwen3.5-0.8B --port 8000 --tp-size 1 --mem-fraction-static 0.8 --context-length 262144"
+     },
+     "source": "Qwen/Qwen3.5-0.8B README.md:L618"
+    },
+    {
+     "value": {
+      "value": 262144,
+      "quote": "python -m sglang.launch_server --model-path Qwen/Qwen3.5-0.8B --port 8000 --tp-size 1 --mem-fraction-static 0.8 --context-length 262144 --tool-call-parser qwen3_coder"
+     },
+     "source": "Qwen/Qwen3.5-0.8B README.md:L624"
+    },
+    {
+     "value": {
+      "value": 262144,
+      "quote": "python -m sglang.launch_server --model-path Qwen/Qwen3.5-0.8B --port 8000 --tp-size 1 --mem-fraction-static 0.8 --context-length 262144 --speculative-algo NEXTN --speculative-num-steps 3 --speculative-eagle-topk 1 --speculative-num-draft-to"
+     },
+     "source": "Qwen/Qwen3.5-0.8B README.md:L630"
+    },
+    {
+     "value": {
+      "value": 262144,
+      "quote": "- **Standard Version**: The following command can be used to create an API endpoint with maximum context length 262,144 tokens using tensor parallel on 8 GPUs."
+     },
+     "source": "Qwen/Qwen3.5-0.8B README.md:L646"
+    }
+   ]
+  },
+  "ctx": {
+   "effective": 262144,
+   "source": "card: Qwen/Qwen3.5-0.8B README.md:L63",
+   "values": [
+    {
+     "value": 262144,
+     "source": "card: Qwen/Qwen3.5-0.8B README.md:L63"
+    },
+    {
+     "value": 262144,
+     "source": "Qwen/Qwen3.5-0.8B config.json max_position_embeddings"
+    },
+    {
+     "value": 262144,
+     "source": "GGUF qwen35.context_length"
+    }
+   ],
+   "precedence": "card statement > config.json > GGUF header > GitHub README"
+  },
+  "pipeline_tag": {
+   "effective": "image-text-to-text",
+   "source": "unsloth/Qwen3.5-0.8B-GGUF HF API pipeline_tag",
+   "values": [
+    {
+     "value": "image-text-to-text",
+     "source": "unsloth/Qwen3.5-0.8B-GGUF HF API pipeline_tag"
+    },
+    {
+     "value": "image-text-to-text",
+     "source": "Qwen/Qwen3.5-0.8B HF API pipeline_tag"
+    },
+    {
+     "value": "image-text-to-text",
+     "source": "Qwen/Qwen3.5-0.8B-Base HF API pipeline_tag"
+    }
+   ]
+  }
+ },
+ "required_params": {
+  "kind": "chat",
+  "native_ctx": 262144,
+  "native_ctx_source": "card: Qwen/Qwen3.5-0.8B README.md:L63",
+  "yarn": null,
+  "yarn_source": null,
+  "items": [
+   {
+    "class": "REQUIRED",
+    "flag": "--jinja",
+    "value": null,
+    "source": "GGUF tokenizer.chat_template (7f0e529032c2)",
+    "why_required": "messages, tool calls and thinking are formatted by the model's chat template; without --jinja llama-server falls back to a built-in approximation",
+    "also": [
+     "Qwen/Qwen3.5-0.8B README.md:L624-624",
+     "Qwen/Qwen3.5-0.8B README.md:L655-655",
+     "unsloth/Qwen3.5-0.8B-GGUF README.md:L650-650",
+     "unsloth/Qwen3.5-0.8B-GGUF README.md:L681-681"
+    ]
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--temp",
+    "value": "1",
+    "source": "Qwen/Qwen3.5-0.8B Qwen/Qwen3.5-0.8B README.md:L705",
+    "why_required": "the card's recommended sampling (Non-thinking mode for text tasks)"
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--top-p",
+    "value": "1",
+    "source": "Qwen/Qwen3.5-0.8B Qwen/Qwen3.5-0.8B README.md:L705",
+    "why_required": "the card's recommended sampling (Non-thinking mode for text tasks)"
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--top-k",
+    "value": "20",
+    "source": "Qwen/Qwen3.5-0.8B Qwen/Qwen3.5-0.8B README.md:L705",
+    "why_required": "the card's recommended sampling (Non-thinking mode for text tasks)"
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--min-p",
+    "value": "0.0",
+    "source": "Qwen/Qwen3.5-0.8B Qwen/Qwen3.5-0.8B README.md:L705",
+    "why_required": "the card's recommended sampling (Non-thinking mode for text tasks)"
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--presence-penalty",
+    "value": "2",
+    "source": "Qwen/Qwen3.5-0.8B Qwen/Qwen3.5-0.8B README.md:L705",
+    "why_required": "the card's recommended sampling (Non-thinking mode for text tasks)"
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--repeat-penalty",
+    "value": "1",
+    "source": "Qwen/Qwen3.5-0.8B Qwen/Qwen3.5-0.8B README.md:L705",
+    "why_required": "the card's recommended sampling (Non-thinking mode for text tasks)"
+   }
+  ]
+ },
+ "blockers": null,
+ "params_problems": null,
+ "params_build": "b11374",
+ "native_ctx": 262144,
+ "native_ctx_source": "card: Qwen/Qwen3.5-0.8B README.md:L63"
 }

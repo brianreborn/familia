@@ -37,7 +37,7 @@ file name + size match (recorded in `match`). It then writes the entries, links 
 models and registry records, and projects the card fields into the manifest. Failures are listed
 per repo and do not stop the other repos.
 
-## Entry fields (schema 1)
+## Entry fields (schema 2)
 | field | meaning |
 |---|---|
 | `id`, `repo`, `revision`, `file`, `sha256`, `bytes`, `quant`, `arch`, `roles` | the GGUF and the repo commit it came from (sha256 = the LFS oid) |
@@ -55,7 +55,14 @@ per repo and do not stop the other repos.
 | `snapshot`, `repo_files` | snapshot path, fetched bytes, errors, gated flag; every repo file with size, sha256 and status |
 | `found_in`, `match`, `local_check` | where backfill found the model; how a repo-less file was matched; local sha256 check (host, result, date) |
 | `unknown`, `warnings` | what could not be determined, and disagreements (e.g. card ctx vs GGUF ctx) |
+| `descriptor` | every descriptor field (repo id, revision, bytes, sha256, quant, license, base chain, architecture, ctx, rope/yarn, pipeline tag, languages) with its effective value, source, all values seen and conflicts |
+| `card_commands` | the card's / base card's / official GitHub README's examples verbatim: source `repo FILE:Lx-y`, tool, scope (model or family), parsed llama.cpp flags or a `translation` |
+| `required_params` | `kind` (chat / embed / decision / raw), `native_ctx` and its source, `yarn`, and `items`: class REQUIRED / RECOMMENDED / OPTIONAL, flag, value, source, why_required (`@...` items are for the client) |
+| `blockers`, `params_problems`, `params_build` | what prevents a correct launch; unresolved checks; the llama.cpp build the flags were checked against |
+| `base_chain`, `github`, `github_dropped` | base models up to 4 levels; the official GitHub repos used (commit-pinned) and links not used |
 | `updated`, `by` | date and tool |
+
+Parameters a launch needs: `docs/model-params.md` (`scripts/model_db.py params-doc`); `scripts/model_db.py refresh` re-ingests every entry at its pinned revision.
 
 Card values are copied, never invented. Anything the card or config does not state stays `null`.
 

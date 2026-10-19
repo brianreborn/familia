@@ -14,6 +14,11 @@
 docs/escalation.md) between hermes and the node; hermes then runs as a child, not exec.
 --selftest-compaction runs hermes' own ContextCompressor on a synthetic
 transcript against the node and checks that facts survive the summary.
+
+usage: hermes_harness.py [--agent NAME] [--graph FILE] [--render-only | --selftest-compaction |
+                          --escalate [--light NODE] [--no-swap-back]] [-h|--help] [-- HERMES-ARGS...]
+Arguments for hermes-agent itself go after "--"; anything else unknown is an error (exit 2),
+so a typo never renders a config and starts a server.
 """
 import copy, json, os, re, subprocess, sys, time, urllib.request
 import yaml
@@ -210,20 +215,39 @@ def run_escalating(g, agent, light, swap_back, rest):
     return subprocess.call([HERMES_BIN] + rest, env=dict(os.environ, HERMES_HOME=home))
 
 
-def main(argv):
+USAGE = __doc__.split("usage: ", 1)[1].strip()
+
+
+def parse_argv(argv):
+    """-> (agent, graph_path, mode, light, swap_back, rest). SystemExit(0) for --help,
+    SystemExit(2) for an unknown argument or a missing value."""
     agent, graph_path, rest = "hermes", os.path.join(ROOT, "graph.yaml"), []
     mode, light, swap_back = "run", None, True
     it = iter(argv)
+
+    def val(x):
+        v = next(it, None)
+        if v is None or v.startswith("-"):
+            print(f"hermes_harness.py: {x} needs a value\nusage: {USAGE}", file=sys.stderr); raise SystemExit(2)
+        return v
     for x in it:
-        if x == "--agent": agent = next(it)
-        elif x == "--graph": graph_path = next(it)
+        if x in ("-h", "--help"): print(__doc__.strip()); raise SystemExit(0)
+        elif x == "--agent": agent = val(x)
+        elif x == "--graph": graph_path = val(x)
         elif x == "--render-only": mode = "render"
         elif x == "--selftest-compaction": mode = "selftest"
         elif x == "--escalate": mode = "escalate"
-        elif x == "--light": light = next(it)
+        elif x == "--light": light = val(x)
         elif x == "--no-swap-back": swap_back = False
         elif x == "--": rest = list(it); break
-        else: rest.append(x)
+        else:
+            print(f"hermes_harness.py: unknown argument {x!r} (hermes-agent arguments go after --)\nusage: {USAGE}", file=sys.stderr)
+            raise SystemExit(2)
+    return agent, graph_path, mode, light, swap_back, rest
+
+
+def main(argv):
+    agent, graph_path, mode, light, swap_back, rest = parse_argv(argv)
     g = load_graph(graph_path)
     if mode == "selftest":
         return selftest(g, agent)

@@ -239,7 +239,10 @@ def entry(**kw):
     e = {"id": "org--Thing-GGUF--Thing-Q4_K_M", "repo": "org/Thing-GGUF", "revision": SHA, "file": "Thing-Q4_K_M.gguf",
          "sha256": "c" * 64, "arch": "qwen3", "ctx": 40960, "card_ctx": 32768,
          "card_defaults": {"temp": 0.7, "top-p": 0.8}, "card_default_set": "Non-thinking mode",
-         "card_sampling_modes": {"Thinking mode": {"temp": 0.6, "top-p": 0.95}, "Non-thinking mode": {"temp": 0.7, "top-p": 0.8}}}
+         "card_sampling_modes": {"Thinking mode": {"temp": 0.6, "top-p": 0.95}, "Non-thinking mode": {"temp": 0.7, "top-p": 0.8}},
+         "required_params": {"kind": "chat", "native_ctx": 40960, "native_ctx_source": "GGUF", "yarn": None,
+                             "items": [{"class": "REQUIRED", "flag": "--jinja", "value": None, "source": "chat model",
+                                        "why_required": "the chat template is only applied with --jinja"}]}}
     e.update(kw)
     return e
 
@@ -319,9 +322,20 @@ def test_check_graph_sha_and_trained_ctx(db):
 
 
 def test_embedding_nodes_get_no_sampling(db):
-    model_db.save(entry(card_defaults=None, card_default_set=None), db)
+    rp = {"kind": "embed", "native_ctx": 40960, "yarn": None, "items": [
+        {"class": "REQUIRED", "flag": "--embeddings", "value": None, "source": "s", "why_required": "w"},
+        {"class": "REQUIRED", "flag": "--pooling", "value": "mean", "source": "s", "why_required": "w"}]}
+    model_db.save(entry(card_defaults=None, card_default_set=None, card_sampling_modes=None, required_params=rp), db)
     e, _ = errs(graph({"embeddings": True}), db)
     assert e == []
+    e, _ = errs(graph(), db)              # an embedder served as chat
+    assert any("embed" in x for x in e)
+
+
+def test_entry_without_required_params_is_an_error(db):
+    model_db.save(entry(required_params=None), db)
+    e, _ = errs(graph(), db)
+    assert any("has no required_params" in x for x in e)
 
 
 # ---------------------------------------------------------------- linking

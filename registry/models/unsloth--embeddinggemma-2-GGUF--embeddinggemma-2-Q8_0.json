@@ -1,5 +1,5 @@
 {
- "schema": 1,
+ "schema": 2,
  "id": "unsloth--embeddinggemma-2-GGUF--embeddinggemma-2-Q8_0",
  "repo": "unsloth/embeddinggemma-2-GGUF",
  "revision": "031f0d4b35536f69ab3509d4893c923264fcf253",
@@ -27,7 +27,190 @@
  "card_default_mode": null,
  "card_default_mode_source": null,
  "card_sampling_sets": null,
- "card_commands": null,
+ "card_commands": [
+  {
+   "source": "unsloth/embeddinggemma-2-GGUF README.md:L125-125",
+   "file": "README.md",
+   "lines": [
+    125,
+    125
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install -U sentence-transformers transformers",
+   "doc": "card",
+   "doc_sha": "031f0d4b35536f69ab3509d4893c923264fcf253",
+   "scope": "model"
+  },
+  {
+   "source": "unsloth/embeddinggemma-2-GGUF README.md:L130-139",
+   "file": "README.md",
+   "lines": [
+    130,
+    139
+   ],
+   "lang": "python",
+   "tool": "sentence-transformers",
+   "kind": "code",
+   "text": "from sentence_transformers import SentenceTransformer\n\nmodel = SentenceTransformer(\"google/embeddinggemma-2\")\n\nquery = \"What causes the northern lights?\"\ndocument = \"The northern lights are caused by charged particles from the sun.\"\n\nquery_emb = model.encode(query, prompt_name=\"SearchQuery\")\ndoc_emb = model.encode(document, prompt_name=\"Document\")\nprint(model.similarity(query_emb, doc_emb))",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "@prompt",
+      "value": "SearchQuery",
+      "from": "prompt_name=\"SearchQuery\""
+     },
+     {
+      "flag": "@prompt",
+      "value": "Document",
+      "from": "prompt_name=\"Document\""
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "card",
+   "doc_sha": "031f0d4b35536f69ab3509d4893c923264fcf253",
+   "scope": "model"
+  },
+  {
+   "source": "unsloth/embeddinggemma-2-GGUF README.md:L197-201",
+   "file": "README.md",
+   "lines": [
+    197,
+    201
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "query_emb = model.encode(\n   query,\n   truncate_dim=128, # or 512, 256\n   normalize_embeddings=True,\n)",
+   "doc": "card",
+   "doc_sha": "031f0d4b35536f69ab3509d4893c923264fcf253",
+   "scope": "model"
+  },
+  {
+   "source": "unsloth/embeddinggemma-2-GGUF README.md:L217-219",
+   "file": "README.md",
+   "lines": [
+    217,
+    219
+   ],
+   "lang": "python",
+   "tool": "sentence-transformers",
+   "kind": "code",
+   "text": "dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float32\n\nmodel = SentenceTransformer(\"google/embeddinggemma-2\", model_kwargs={\"torch_dtype\": dtype})",
+   "doc": "card",
+   "doc_sha": "031f0d4b35536f69ab3509d4893c923264fcf253",
+   "scope": "model"
+  },
+  {
+   "source": "unsloth/embeddinggemma-2-GGUF README.md:L237-241",
+   "file": "README.md",
+   "lines": [
+    237,
+    241
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "emb_interleaved = model.encode({\n    \"text\": \"Waterproof running shoes. <|image|> Featuring a breathable mesh upper. <|image|> Grip test on wet rock: <|video|>\",\n    \"image\": [\"shoe.jpg\", \"mesh.jpg\"],\n    \"video\": \"demo.mp4\",\n})",
+   "doc": "card",
+   "doc_sha": "031f0d4b35536f69ab3509d4893c923264fcf253",
+   "scope": "model"
+  },
+  {
+   "source": "google/embeddinggemma-2 README.md:L106-106",
+   "file": "README.md",
+   "lines": [
+    106,
+    106
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install -U sentence-transformers transformers",
+   "doc": "base-card",
+   "doc_sha": "914f7f89142e33e77833254d9c9b90c3cef7303b",
+   "scope": "model"
+  },
+  {
+   "source": "google/embeddinggemma-2 README.md:L111-120",
+   "file": "README.md",
+   "lines": [
+    111,
+    120
+   ],
+   "lang": "python",
+   "tool": "sentence-transformers",
+   "kind": "code",
+   "text": "from sentence_transformers import SentenceTransformer\n\nmodel = SentenceTransformer(\"google/embeddinggemma-2\")\n\nquery = \"What causes the northern lights?\"\ndocument = \"The northern lights are caused by charged particles from the sun.\"\n\nquery_emb = model.encode(query, prompt_name=\"SearchQuery\")\ndoc_emb = model.encode(document, prompt_name=\"Document\")\nprint(model.similarity(query_emb, doc_emb))",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "@prompt",
+      "value": "SearchQuery",
+      "from": "prompt_name=\"SearchQuery\""
+     },
+     {
+      "flag": "@prompt",
+      "value": "Document",
+      "from": "prompt_name=\"Document\""
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "914f7f89142e33e77833254d9c9b90c3cef7303b",
+   "scope": "model"
+  },
+  {
+   "source": "google/embeddinggemma-2 README.md:L178-182",
+   "file": "README.md",
+   "lines": [
+    178,
+    182
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "query_emb = model.encode(\n   query,\n   truncate_dim=128, # or 512, 256\n   normalize_embeddings=True,\n)",
+   "doc": "base-card",
+   "doc_sha": "914f7f89142e33e77833254d9c9b90c3cef7303b",
+   "scope": "model"
+  },
+  {
+   "source": "google/embeddinggemma-2 README.md:L198-200",
+   "file": "README.md",
+   "lines": [
+    198,
+    200
+   ],
+   "lang": "python",
+   "tool": "sentence-transformers",
+   "kind": "code",
+   "text": "dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float32\n\nmodel = SentenceTransformer(\"google/embeddinggemma-2\", model_kwargs={\"torch_dtype\": dtype})",
+   "doc": "base-card",
+   "doc_sha": "914f7f89142e33e77833254d9c9b90c3cef7303b",
+   "scope": "model"
+  },
+  {
+   "source": "google/embeddinggemma-2 README.md:L218-222",
+   "file": "README.md",
+   "lines": [
+    218,
+    222
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "emb_interleaved = model.encode({\n    \"text\": \"Waterproof running shoes. <|image|> Featuring a breathable mesh upper. <|image|> Grip test on wet rock: <|video|>\",\n    \"image\": [\"shoe.jpg\", \"mesh.jpg\"],\n    \"video\": \"demo.mp4\",\n})",
+   "doc": "base-card",
+   "doc_sha": "914f7f89142e33e77833254d9c9b90c3cef7303b",
+   "scope": "model"
+  }
+ ],
  "card_notes": [
   {
    "text": "* **Context length:** 8K token context window, capable of processing minutes of audio or video.",
@@ -41,13 +224,31 @@
  "chat_template": {
   "gguf_sha256": "4b852efc0b9960283e735363331e6f325b33bc74bdbaa076f595bc4e9b94d85e",
   "repo_sha256": "4b852efc0b9960283e735363331e6f325b33bc74bdbaa076f595bc4e9b94d85e",
-  "repo_file": "google/embeddinggemma-2 chat_template.jinja",
-  "same": true
+  "repo_file": "chat_template.jinja",
+  "same": true,
+  "gguf_chars": 1016,
+  "repo_chars": 1016,
+  "repo_label": "google/embeddinggemma-2",
+  "use": "gguf"
  },
  "stop": {
   "eos_token": "<eos>",
   "eos_token_id": 1,
-  "eos_token_id_source": "GGUF"
+  "eos_token_id_source": "GGUF",
+  "analysis": {
+   "tokens": [
+    {
+     "id": 1,
+     "text": "<eos>",
+     "source": "google/embeddinggemma-2 tokenizer_config.json eos_token",
+     "eog_by": "GGUF tokenizer.ggml.eos_token_id"
+    }
+   ],
+   "missing": [],
+   "gguf": {
+    "eos": 1
+   }
+  }
  },
  "rope": {
   "rope.freq_base": 1000000.0,
@@ -309,5 +510,514 @@
   "card states context 8192 (google/embeddinggemma-2 README.md:L45) but GGUF gemma-embedding2.context_length is 262144"
  ],
  "updated": "2026-10-19",
- "by": "scripts/model_db.py"
+ "by": "scripts/model_db.py",
+ "gguf_meta": {
+  "general.architecture": "gemma-embedding2",
+  "general.type": "model",
+  "general.name": "Embeddinggemma 2",
+  "general.version": "2",
+  "general.basename": "embeddinggemma",
+  "general.size_label": "271M",
+  "general.license": "apache-2.0",
+  "general.tags": [
+   "embedding",
+   "feature-extraction",
+   "sentence-transformers",
+   "multimodal-embedding",
+   "multimodal",
+   "vision",
+   "audio",
+   "video",
+   "image-feature-extraction",
+   "audio-feature-extraction",
+   "video-feature-extraction",
+   "sentence-similarity",
+   "feature-extraction"
+  ],
+  "general.languages": [
+   "multilingual"
+  ],
+  "gemma-embedding2.block_count": 24,
+  "gemma-embedding2.context_length": 262144,
+  "gemma-embedding2.embedding_length": 512,
+  "gemma-embedding2.feed_forward_length": 2048,
+  "gemma-embedding2.attention.head_count": 4,
+  "gemma-embedding2.attention.head_count_kv": {
+   "array_len": 24
+  },
+  "gemma-embedding2.rope.freq_base": 1000000.0,
+  "gemma-embedding2.rope.freq_base_swa": 10000.0,
+  "gemma-embedding2.attention.layer_norm_rms_epsilon": 9.999999974752427e-07,
+  "gemma-embedding2.attention.key_length": 512,
+  "gemma-embedding2.attention.value_length": 512,
+  "gemma-embedding2.attention.sliding_window": 1024,
+  "gemma-embedding2.attention.shared_kv_layers": 0,
+  "gemma-embedding2.embedding_length_per_layer_input": 512,
+  "gemma-embedding2.attention.sliding_window_pattern": {
+   "array_len": 24
+  },
+  "gemma-embedding2.attention.key_length_swa": 256,
+  "gemma-embedding2.attention.value_length_swa": 256,
+  "gemma-embedding2.rope.dimension_count": 512,
+  "gemma-embedding2.rope.dimension_count_swa": 256,
+  "gemma-embedding2.embedding_length_out": 768,
+  "gemma-embedding2.attention.causal": false,
+  "gemma-embedding2.pooling_type": 1,
+  "tokenizer.ggml.model": "gemma4",
+  "tokenizer.ggml.tokens": {
+   "array_len": 262144
+  },
+  "tokenizer.ggml.scores": {
+   "array_len": 262144
+  },
+  "tokenizer.ggml.token_type": {
+   "array_len": 262144
+  },
+  "tokenizer.ggml.merges": {
+   "array_len": 514906
+  },
+  "tokenizer.ggml.bos_token_id": 2,
+  "tokenizer.ggml.eos_token_id": 1,
+  "tokenizer.ggml.unknown_token_id": 3,
+  "tokenizer.ggml.padding_token_id": 0,
+  "tokenizer.ggml.mask_token_id": 4,
+  "tokenizer.ggml.add_bos_token": true,
+  "tokenizer.ggml.add_eos_token": true,
+  "tokenizer.ggml.add_sep_token": false,
+  "tokenizer.chat_template": {
+   "sha256": "4b852efc0b9960283e735363331e6f325b33bc74bdbaa076f595bc4e9b94d85e",
+   "chars": 1016
+  },
+  "tokenizer.ggml.add_space_prefix": false,
+  "general.quantization_version": 2,
+  "general.file_type": 7,
+  "_gguf_version": 3,
+  "_n_tensors": 413
+ },
+ "base_chain": [
+  {
+   "repo": "google/embeddinggemma-2",
+   "api_id": "google/embeddinggemma-2",
+   "revision": "914f7f89142e33e77833254d9c9b90c3cef7303b",
+   "via": "card base_model",
+   "card_data": {
+    "license": "apache-2.0",
+    "language": [
+     "multilingual"
+    ],
+    "pipeline_tag": "feature-extraction",
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "feature-extraction",
+   "safetensors": {
+    "parameters": {
+     "BF16": 744371512
+    },
+    "total": 744371512
+   },
+   "license_files": null
+  }
+ ],
+ "github": null,
+ "github_dropped": [
+  {
+   "repo": "unslothai/unsloth",
+   "why": "inference/training tool repo"
+  }
+ ],
+ "descriptor": {
+  "repo_id": {
+   "effective": "unsloth/embeddinggemma-2-GGUF",
+   "source": "HF API id"
+  },
+  "revision": {
+   "effective": "031f0d4b35536f69ab3509d4893c923264fcf253",
+   "source": "pinned (manifest / database)"
+  },
+  "file": {
+   "effective": "embeddinggemma-2-Q8_0.gguf",
+   "source": "HF API siblings"
+  },
+  "bytes": {
+   "effective": 309855520,
+   "source": "HF API LFS size"
+  },
+  "sha256": {
+   "effective": "6f1bd4ac6c5df7444f9cca7ca36cafe6cfa34cd6f49fefb1e0b4be8143aed8bc",
+   "source": "HF API LFS oid"
+  },
+  "quant": {
+   "effective": "Q8_0",
+   "source": "file name",
+   "values": [
+    {
+     "value": "Q8_0",
+     "source": "file name"
+    },
+    {
+     "value": "Q8_0",
+     "source": "GGUF general.file_type"
+    }
+   ]
+  },
+  "license": {
+   "effective": "apache-2.0",
+   "source": "unsloth/embeddinggemma-2-GGUF card license",
+   "values": [
+    {
+     "value": "apache-2.0",
+     "source": "unsloth/embeddinggemma-2-GGUF card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "google/embeddinggemma-2 card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "GGUF general.license"
+    }
+   ]
+  },
+  "base_model_chain": {
+   "effective": "google/embeddinggemma-2",
+   "source": "card base_model"
+  },
+  "architecture": {
+   "effective": "gemma-embedding2",
+   "source": "GGUF general.architecture",
+   "values": [
+    {
+     "value": "gemma-embedding2",
+     "source": "GGUF general.architecture"
+    },
+    {
+     "value": "gemma-embedding2",
+     "source": "HF API gguf.architecture"
+    }
+   ]
+  },
+  "hf_architectures": {
+   "effective": [
+    "EmbeddingGemma2Model"
+   ],
+   "source": "google/embeddinggemma-2 config.json architectures"
+  },
+  "hf_model_type": {
+   "effective": "embedding_gemma2",
+   "source": "google/embeddinggemma-2 config.json model_type"
+  },
+  "parameters": {
+   "effective": 271002648,
+   "source": "HF API gguf.total (unsloth/embeddinggemma-2-GGUF)",
+   "values": [
+    {
+     "value": 271002648,
+     "source": "HF API gguf.total (unsloth/embeddinggemma-2-GGUF)"
+    },
+    {
+     "value": 744371512,
+     "source": "HF API safetensors.total (google/embeddinggemma-2)"
+    }
+   ],
+   "conflict": true
+  },
+  "size_label": {
+   "effective": "271M",
+   "source": "GGUF general.size_label"
+  },
+  "ctx_statements": {
+   "effective": {
+    "value": 8192,
+    "quote": "* **Context length:** 8K token context window, capable of processing minutes of audio or video."
+   },
+   "source": "unsloth/embeddinggemma-2-GGUF README.md:L64",
+   "values": [
+    {
+     "value": {
+      "value": 8192,
+      "quote": "* **Context length:** 8K token context window, capable of processing minutes of audio or video."
+     },
+     "source": "unsloth/embeddinggemma-2-GGUF README.md:L64"
+    },
+    {
+     "value": {
+      "value": 8192,
+      "quote": "* **Context length:** 8K token context window, capable of processing minutes of audio or video."
+     },
+     "source": "unsloth/embeddinggemma-2-GGUF README.md:L64"
+    },
+    {
+     "value": {
+      "value": 8192,
+      "quote": "|  | **Context Window** | 8,192 tokens |"
+     },
+     "source": "unsloth/embeddinggemma-2-GGUF README.md:L87"
+    },
+    {
+     "value": {
+      "value": 8192,
+      "quote": "A single input may mix text with images, video, and audio, using a single shared 8,192-token context."
+     },
+     "source": "unsloth/embeddinggemma-2-GGUF README.md:L226"
+    },
+    {
+     "value": {
+      "value": 8192,
+      "quote": "All modalities share a single 8,192-token context window. Each modality consumes that budget at a fixed rate:"
+     },
+     "source": "unsloth/embeddinggemma-2-GGUF README.md:L248"
+    },
+    {
+     "value": {
+      "value": 8192,
+      "quote": "* **Context length:** 8K token context window, capable of processing minutes of audio or video."
+     },
+     "source": "google/embeddinggemma-2 README.md:L45"
+    },
+    {
+     "value": {
+      "value": 8192,
+      "quote": "* **Context length:** 8K token context window, capable of processing minutes of audio or video."
+     },
+     "source": "google/embeddinggemma-2 README.md:L45"
+    },
+    {
+     "value": {
+      "value": 8192,
+      "quote": "|  | **Context Window** | 8,192 tokens |"
+     },
+     "source": "google/embeddinggemma-2 README.md:L68"
+    },
+    {
+     "value": {
+      "value": 8192,
+      "quote": "A single input may mix text with images, video, and audio, using a single shared 8,192-token context."
+     },
+     "source": "google/embeddinggemma-2 README.md:L207"
+    },
+    {
+     "value": {
+      "value": 8192,
+      "quote": "All modalities share a single 8,192-token context window. Each modality consumes that budget at a fixed rate:"
+     },
+     "source": "google/embeddinggemma-2 README.md:L229"
+    }
+   ]
+  },
+  "ctx": {
+   "effective": 8192,
+   "source": "card: google/embeddinggemma-2 README.md:L45",
+   "values": [
+    {
+     "value": 8192,
+     "source": "card: google/embeddinggemma-2 README.md:L45"
+    },
+    {
+     "value": 262144,
+     "source": "google/embeddinggemma-2 config.json max_position_embeddings"
+    },
+    {
+     "value": 262144,
+     "source": "GGUF gemma-embedding2.context_length"
+    }
+   ],
+   "conflict": true,
+   "precedence": "card statement > config.json > GGUF header > GitHub README"
+  },
+  "pipeline_tag": {
+   "effective": "feature-extraction",
+   "source": "unsloth/embeddinggemma-2-GGUF HF API pipeline_tag",
+   "values": [
+    {
+     "value": "feature-extraction",
+     "source": "unsloth/embeddinggemma-2-GGUF HF API pipeline_tag"
+    },
+    {
+     "value": "feature-extraction",
+     "source": "google/embeddinggemma-2 HF API pipeline_tag"
+    }
+   ]
+  },
+  "languages": {
+   "effective": [
+    "multilingual"
+   ],
+   "source": "unsloth/embeddinggemma-2-GGUF card language",
+   "values": [
+    {
+     "value": [
+      "multilingual"
+     ],
+     "source": "unsloth/embeddinggemma-2-GGUF card language"
+    },
+    {
+     "value": [
+      "multilingual"
+     ],
+     "source": "google/embeddinggemma-2 card language"
+    },
+    {
+     "value": [
+      "multilingual"
+     ],
+     "source": "GGUF general.languages"
+    }
+   ]
+  }
+ },
+ "required_params": {
+  "kind": "embed",
+  "native_ctx": 8192,
+  "native_ctx_source": "card: google/embeddinggemma-2 README.md:L45",
+  "yarn": null,
+  "yarn_source": null,
+  "items": [
+   {
+    "class": "REQUIRED",
+    "flag": "--embeddings",
+    "value": null,
+    "source": "unsloth/embeddinggemma-2-GGUF pipeline_tag / GGUF gemma-embedding2.pooling_type",
+    "why_required": "an embedding model: serve /v1/embeddings, no text generation"
+   },
+   {
+    "class": "REQUIRED",
+    "flag": "--pooling",
+    "value": "mean",
+    "source": "unsloth/embeddinggemma-2-GGUF README.md:L84: |  | **Pooling** | Mean Pooling |",
+    "why_required": "sentence embeddings are the mean-pooled token states, as the model was trained"
+   },
+   {
+    "class": "REQUIRED",
+    "flag": "--ubatch-size",
+    "value": "${slot_ctx}",
+    "source": "llama.cpp tools/server/server-context.cpp (b11374): \"input (%d tokens) is too large to process. increase the physical batch size\" for inputs that cannot be split",
+    "why_required": "non-causal encoder: the whole input must fit in one micro-batch: -ub must be at least the longest input (the slot context)"
+   },
+   {
+    "class": "REQUIRED",
+    "flag": "--batch-size",
+    "value": "${slot_ctx}",
+    "source": "llama.cpp tools/server/server-context.cpp (b11374): \"input (%d tokens) is too large to process. increase the physical batch size\" for inputs that cannot be split",
+    "why_required": "llama.cpp caps -ub at -b, so -b must be at least -ub"
+   },
+   {
+    "class": "REQUIRED",
+    "flag": "@prompt",
+    "value": "task: search result | query: ",
+    "source": "google/embeddinggemma-2 config_sentence_transformers.json prompts.BitextMining",
+    "why_required": "client: prefix every BitextMining input with this text before embedding (the model was trained with it)",
+    "name": "BitextMining",
+    "client": true,
+    "also": [
+     "google/embeddinggemma-2 config_sentence_transformers.json prompts.Reranking",
+     "google/embeddinggemma-2 config_sentence_transformers.json prompts.Retrieval",
+     "google/embeddinggemma-2 config_sentence_transformers.json prompts.Retrieval-query",
+     "google/embeddinggemma-2 config_sentence_transformers.json prompts.SearchQuery",
+     "google/embeddinggemma-2 config_sentence_transformers.json prompts.query"
+    ]
+   },
+   {
+    "class": "REQUIRED",
+    "flag": "@prompt",
+    "value": "task: classification | query: ",
+    "source": "google/embeddinggemma-2 config_sentence_transformers.json prompts.Classification",
+    "why_required": "client: prefix every Classification input with this text before embedding (the model was trained with it)",
+    "name": "Classification",
+    "client": true,
+    "also": [
+     "google/embeddinggemma-2 config_sentence_transformers.json prompts.MultilabelClassification"
+    ]
+   },
+   {
+    "class": "REQUIRED",
+    "flag": "@prompt",
+    "value": "task: clustering | query: ",
+    "source": "google/embeddinggemma-2 config_sentence_transformers.json prompts.Clustering",
+    "why_required": "client: prefix every Clustering input with this text before embedding (the model was trained with it)",
+    "name": "Clustering",
+    "client": true
+   },
+   {
+    "class": "REQUIRED",
+    "flag": "@prompt",
+    "value": "task: code retrieval | query: ",
+    "source": "google/embeddinggemma-2 config_sentence_transformers.json prompts.CodeRetrieval",
+    "why_required": "client: prefix every CodeRetrieval input with this text before embedding (the model was trained with it)",
+    "name": "CodeRetrieval",
+    "client": true,
+    "also": [
+     "google/embeddinggemma-2 config_sentence_transformers.json prompts.InstructionRetrieval"
+    ]
+   },
+   {
+    "class": "REQUIRED",
+    "flag": "@prompt",
+    "value": "title: none | text: ",
+    "source": "google/embeddinggemma-2 config_sentence_transformers.json prompts.Document",
+    "why_required": "client: prefix every Document input with this text before embedding (the model was trained with it)",
+    "name": "Document",
+    "client": true,
+    "also": [
+     "google/embeddinggemma-2 config_sentence_transformers.json prompts.Retrieval-document",
+     "google/embeddinggemma-2 config_sentence_transformers.json prompts.document"
+    ]
+   },
+   {
+    "class": "REQUIRED",
+    "flag": "@prompt",
+    "value": "task: fact checking | query: ",
+    "source": "google/embeddinggemma-2 config_sentence_transformers.json prompts.FactChecking",
+    "why_required": "client: prefix every FactChecking input with this text before embedding (the model was trained with it)",
+    "name": "FactChecking",
+    "client": true
+   },
+   {
+    "class": "REQUIRED",
+    "flag": "@prompt",
+    "value": "task: sentence similarity | query: ",
+    "source": "google/embeddinggemma-2 config_sentence_transformers.json prompts.PairClassification",
+    "why_required": "client: prefix every PairClassification input with this text before embedding (the model was trained with it)",
+    "name": "PairClassification",
+    "client": true,
+    "also": [
+     "google/embeddinggemma-2 config_sentence_transformers.json prompts.STS",
+     "google/embeddinggemma-2 config_sentence_transformers.json prompts.SentenceSimilarity",
+     "google/embeddinggemma-2 config_sentence_transformers.json prompts.Summarization"
+    ]
+   },
+   {
+    "class": "REQUIRED",
+    "flag": "@prompt",
+    "value": "task: question answering | query: ",
+    "source": "google/embeddinggemma-2 config_sentence_transformers.json prompts.QuestionAnswering",
+    "why_required": "client: prefix every QuestionAnswering input with this text before embedding (the model was trained with it)",
+    "name": "QuestionAnswering",
+    "client": true
+   },
+   {
+    "class": "REQUIRED",
+    "flag": "@normalize",
+    "value": "euclidean",
+    "source": "sentence-transformers modules.json Normalize",
+    "why_required": "client: embeddings are L2-normalised; llama-server does this by default (embd_normalize 2)",
+    "client": true
+   },
+   {
+    "class": "REQUIRED",
+    "flag": "@prompt",
+    "value": "title: {title} | text: {content}",
+    "source": "google/embeddinggemma-2 README.md:L132",
+    "why_required": "client: documents carry their title in the prefix",
+    "quote": "Documents with a real title should be formatted as `title: {title} | text: {content}`. Use `title: none` when no title is available.",
+    "client": true,
+    "name": "Document (with a title)",
+    "curated": true
+   }
+  ]
+ },
+ "blockers": null,
+ "params_problems": null,
+ "params_build": "b11374",
+ "native_ctx": 8192,
+ "native_ctx_source": "card: google/embeddinggemma-2 README.md:L45"
 }
