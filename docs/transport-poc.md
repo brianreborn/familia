@@ -14,13 +14,13 @@ the hosts in the graph meet at. It is a store, not a model.
 
 ```yaml
 hosts:
-  miryam: {addr: 192.168.1.9, user: rcs,     port: 22,   kind: desktop}  # measured on miryam
-  phone7: {addr: 192.168.1.7, user: u0_a439, port: 8022, kind: phone}
-  phone8: {addr: 192.168.1.8, user: u0_a414, port: 8022, kind: phone}
+  miryam: {addr: <hub-lan-ip>,    user: <hub-user>,    port: <ssh-port>, kind: desktop}
+  phone7: {addr: <phone7-lan-ip>, user: <termux-user>, port: <ssh-port>, kind: phone}
+  phone8: {addr: <phone8-lan-ip>, user: <termux-user>, port: <ssh-port>, kind: phone}
 meshes:
   lan-nexus: {type: ssh, hub: miryam, root: ~/.familia/nexus, identity: ~/.ssh/id_ed25519,
               host_key_policy: accept-new, members: [miryam, phone7, phone8]}
-  lan-bt:    {type: bittorrent, tracker: miryam, bind: 192.168.1.9, port: 6969,
+  lan-bt:    {type: bittorrent, tracker: miryam, bind: <hub-lan-ip>, port: 6969,
               private: true, client: aria2c, members: [miryam, phone7, phone8]}
 ```
 
@@ -48,14 +48,14 @@ $N --as phone8 get <sha256-prefix-or-name> ~/kv/
 
 ## Private tracker + aria2c (`scripts/bt/`)
 
-* `tracker.py --bind 192.168.1.9 --port 6969 --allow-dir ~/.familia/bt/allow`: HTTP
+* `tracker.py --bind <hub-lan-ip> --port 6969 --allow-dir ~/.familia/bt/allow`: HTTP
   announce with compact peers. It only tracks infohashes that have `<hex>.torrent` in the
   allow dir, and it refuses to bind 0.0.0.0 or a public address.
-* `mktorrent.py FILE --announce http://192.168.1.9:6969/announce --out-dir ~/.familia/bt/t --allow-dir ~/.familia/bt/allow`
+* `mktorrent.py FILE --announce http://<hub-lan-ip>:6969/announce --out-dir ~/.familia/bt/t --allow-dir ~/.familia/bt/allow`
   makes a private (`private=1`) torrent and prints the REQ-REPO-02 key
   `magnet:urn:btih:<40hex>:<path-inside-torrent>`.
 * `seed.sh T.torrent DATA_DIR 6881` uses aria2c with DHT, PEX, and LPD off.
-* `fetch.sh KEY http://192.168.1.9:6969/announce DEST 6882 [SHA256]` turns the key into a
+* `fetch.sh KEY http://<hub-lan-ip>:6969/announce DEST 6882 [SHA256]` turns the key into a
   magnet URI, gets the metadata from the seeder (BEP 9), downloads, and checks sha256.
 
 Run the tracker on the host where you create torrents, or copy the `.torrent` into
@@ -73,16 +73,17 @@ python3 scripts/bt/tracker.py --bind <miryam-ip> --port 6969 --allow-dir ~/.fami
 
 ```sh
 pkg install openssh rsync aria2 python && pip install pyyaml
-sshd                                   # listens on :8022
+sshd                                   # Termux's sshd, key auth only
 # once per phone: add miryam's key (from familia chat), and generate the phone's own key
 ssh-keygen -t ed25519 -N '' -f ~/.ssh/id_ed25519
 # append the phone's ~/.ssh/id_ed25519.pub to the hub user's ~/.ssh/authorized_keys on miryam
 termux-wake-lock                       # keep seeding while backgrounded
 ```
 
-Status: on 2026-10-09 both phones (192.168.1.7 u0_a439, 192.168.1.8 u0_a414) answer on
-:8022 but do not have miryam's key installed yet, so phone tests have not run.
-Phones are clients of the nexus (they reach the hub's `:22`). They do not need to be
+Status: on 2026-10-09 both phones answered on SSH but did not have the hub's key
+installed yet, so phone tests have not run. The phones are out of range for now
+([#46](https://github.com/brianreborn/familia/issues/46)).
+Phones are clients of the nexus (they reach the hub's sshd). They do not need to be
 reachable themselves, except as BitTorrent peers on their aria2c `--listen-port`.
 
 ## Tests (run on the box)
