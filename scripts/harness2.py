@@ -127,6 +127,8 @@ def cmd_propose(a, g):
                                           "leak_terms": L.leak_terms(tasks)}
         if cand is None:
             meta.update(status="no_change", reason="Harness² kept the base harness"); cand = base
+        elif SI.editable(cand) == SI.editable(base):
+            meta.update(status="no_change", reason="Harness² picked a candidate with no change to the editable files"); cand = base
         else:
             errs = SI.gate(base, cand, meta["leak_terms"], bool(t.skills))
             if errs: meta.update(status="rejected", reason=errs)

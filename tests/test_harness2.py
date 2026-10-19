@@ -337,3 +337,27 @@ def test_enabled_skills_linked(tmp_path, home, monkeypatch, capsys):
     assert link.is_symlink() and os.path.realpath(link) == str(sk)
     assert hm.main(["--graph", gp, "--agent", "hermes-lab", "--model", "coder", "--render-only"]) == 0
     assert (home / ".cache/familia/hermes-hermes-lab@coder/skills/green-probe").is_symlink()
+
+
+class Echo(Fake):
+    """An editor that echoes files instead of emitting <file> blocks (what Qwen3.5-2B did on miryam)."""
+    def do_POST(self):
+        body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+        text = "\n".join(m["content"] for m in body["messages"])
+        out = ("NO_ENTRY" if "complete record of one improvement round" in text else
+               "# FILE systemprompt.md\nsame as before\n<notes>none</notes>" if "You are adapting" in text or "You are composing" in text
+               else "```python\ndef f():\n    return 1\n```")
+        data = json.dumps({"choices": [{"message": {"content": out}}], "usage": {}}).encode()
+        self.send_response(200); self.send_header("Content-Type", "application/json"); self.end_headers(); self.wfile.write(data)
+
+@pytest.mark.skipif(h2_src() is None, reason="Harness² source not installed (scripts/harness2.py install)")
+def test_engine_no_edit_is_no_change(tmp_path):
+    srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Echo); threading.Thread(target=srv.serve_forever, daemon=True).start()
+    g = graph(agent=None, root=tmp_path / "t"); g["nodes"]["coder"]["port"] = srv.server_address[1]
+    gp = write_graph(tmp_path, g)
+    env = dict(os.environ, FAMILIA_HARNESS2_SRC=h2_src(), FAMILIA_HARNESS2_STATE=str(tmp_path / "s"))
+    r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "harness2.py"), "--graph", gp, "propose",
+                        "--target", "hermes-lab", "--max-tasks", "1"], capture_output=True, text=True, env=env, timeout=600)
+    srv.shutdown()
+    assert r.returncode == 0, r.stderr[-2000:]
+    assert ": no_change" in r.stdout, r.stdout

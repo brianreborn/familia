@@ -192,8 +192,18 @@ prompts are 11 to 14 K characters, plus the inlined files (capped at 90 K charac
 fits the 64 K window on `coder`.
 
 On miryam (Qwen3.5-2B Q4_K_M, CPU, two threads), one run with `--max-tasks 1`
-and `k=1` took MEASURED_WALL. The measurement is in `registry/records.jsonl` (`kind: harness2`) and is
-a coarse binary search (one pass, one rollout per task), not a benchmark.
+and `k=1` (2026-10-19, other jobs sharing the CPU) took **58 minutes**: 12 model calls and 4,890
+completion tokens. Prompt processing ran at about 14 to 17 tokens per second and generation at
+about 3.5 to 4.4, so each editor call (about 4,600 prompt tokens) took around 8 to 10 minutes.
+The measurement is in `registry/records.jsonl` (`kind: harness2`). It is a coarse binary search
+(one pass, one rollout per task), not a benchmark.
+
+What happened: the loop ran end to end, but Qwen3.5-2B did not follow the editor protocol. It
+echoed the files instead of emitting `<file>` blocks, so no harness file changed. Base and
+candidate both scored 0/1 on evolve and 0/1 on holdout. That run reported `pending` with an
+empty diff. `propose` now reports `no_change` for a candidate whose editable files equal the
+base. A useful editor needs a stronger local model than the 2B `coder` node, for example a
+heavier node on another host. The executor can stay small.
 
 ## Limits
 
