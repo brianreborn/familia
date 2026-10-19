@@ -35,7 +35,8 @@ fi
 
 # Licenses first: show what this selection brings in before anything runs (docs/licenses.md).
 if [ "$DRY" = 1 ]; then
-  say "[dry-run] would check licenses (python3 scripts/licenses.py gate), then run the backend start.sh (fetching the pinned parts first if missing) $*"
+  say "[dry-run] would check licenses (python3 scripts/licenses.py gate), then sync the pinned parts (scripts/sync_pins.py) and run the backend start.sh $*"
+  python3 "$ROOT/scripts/sync_pins.py" --dry-run || true
   say "[dry-run] DETACH_MODE=${DETACH_MODE:-foreground}, log ${LOG_FILE:-$ROOT/.cache/server.log}"
   exit 0
 fi
@@ -47,9 +48,10 @@ else
   exit 1
 fi
 
-# Ensure configuration / subprojects exist
-if [ ! -d "$ROOT/code-bootstraps-llama.cpp" ] && [ ! -d "$ROOT/../code-bootstraps-llama.cpp" ]; then
-  sh "$ROOT/scripts/configure.sh"
+# Pinned parts first, all together (REQUIREMENTS.md R-sync; scripts/sync_pins.py).
+if [ -f "$ROOT/scripts/sync_pins.py" ]; then
+  python3 "$ROOT/scripts/sync_pins.py" --auto || { rc=$?; echo "start.sh: the pinned parts could not be synced (see above); stopped" >&2; exit $rc; }
+  FAMILIA_SYNC_DONE="$ROOT"; export FAMILIA_SYNC_DONE
 fi
 
 BACKEND_START="$ROOT/code-bootstraps-llama.cpp/start.sh"

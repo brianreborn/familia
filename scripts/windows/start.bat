@@ -50,6 +50,12 @@ if not errorlevel 1 (
     echo familia: licenses not accepted; nothing started. Review: python "%~dp0..\licenses.py" review 1>&2
     exit /b 1
   )
+  rem Pinned parts first, all together (scripts\sync_pins.py).
+  python "%~dp0..\sync_pins.py" --auto
+  if errorlevel 1 (
+    echo familia: the pinned parts could not be synced ^(see above^); nothing started 1>&2
+    exit /b 1
+  )
 ) else (
   if /i not "%FAMILIA_ACCEPT_LICENSES%"=="yes" (
     echo familia: python not found, so the license review can't run. Install Python 3, or read docs\licenses.md and set FAMILIA_ACCEPT_LICENSES=yes 1>&2

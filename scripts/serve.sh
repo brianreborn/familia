@@ -32,6 +32,11 @@ if ! python3 "$here/scripts/licenses.py" gate --graph "$here/graph.yaml"; then
   say "licenses not accepted (scripts/licenses.py review, or FAMILIA_ACCEPT_LICENSES=yes); not starting $node"
   exit 1
 fi
+# Pinned parts first, all together (REQUIREMENTS.md R-sync; scripts/sync_pins.py).
+if [ -f "$here/scripts/sync_pins.py" ]; then
+  python3 "$here/scripts/sync_pins.py" --auto || { rc=$?; echo "familia-serve: the pinned parts could not be synced (see above); stopped" >&2; exit $rc; }
+  FAMILIA_SYNC_DONE="$here"; export FAMILIA_SYNC_DONE
+fi
 if [ -z "${FAMILIA_MEMCAP:-}" ]; then
   case "$(hostname)" in miryam*) FAMILIA_MEMCAP=1 ;; *) FAMILIA_MEMCAP=0 ;; esac
 fi

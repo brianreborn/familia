@@ -15,6 +15,7 @@ Listens on 127.0.0.1:9932 only. From another computer: ssh -L 9932:127.0.0.1:993
 then open http://127.0.0.1:9932/ there. Docs: docs/panel.md.
 """
 import os
+import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -32,6 +33,15 @@ def backend():
             return p
     return None
 
+
+# Pinned parts first, all together (scripts/sync_pins.py): a code-bootstraps behind its pin breaks this panel.
+_SYNC = os.path.join(HERE, "sync_pins.py")
+if os.path.isfile(_SYNC):
+    _rc = subprocess.call([sys.executable, _SYNC, "--auto"])
+    if _rc:
+        print("familia: the pinned parts could not be synced (see above), and the panel needs them.\n"
+              "Next: fix what it says, then run: ./familia sync", file=sys.stderr)
+        sys.exit(_rc)
 
 BACKEND_PANEL = backend()
 if not BACKEND_PANEL:

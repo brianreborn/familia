@@ -114,6 +114,13 @@ if [ "$DRY" = 1 ]; then
 elif [ -f "$REPO/scripts/licenses.py" ]; then
   python "$REPO/scripts/licenses.py" gate || die "licenses not accepted; nothing else was downloaded. Review: python $REPO/scripts/licenses.py review (or re-run with --yes, plus --accept-unknown)"
 fi
+# Every pinned part to its pin, together (scripts/sync_pins.py); again after each later git pull.
+if [ "$DRY" = 1 ]; then
+  say "[dry-run] would sync the pinned parts: python $REPO/scripts/sync_pins.py"
+elif [ -f "$REPO/scripts/sync_pins.py" ]; then
+  python "$REPO/scripts/sync_pins.py" --root "$REPO" || die "the pinned parts could not be synced (see above)"
+  python "$REPO/scripts/sync_pins.py" --root "$REPO" --install-hooks || true
+fi
 SELF_REPO=$(cd "$(dirname "$0")/../.." 2>/dev/null && pwd || true)
 MTMP=""
 if [ -f "$REPO/scripts/host_measure.py" ]; then MREPO="$REPO"

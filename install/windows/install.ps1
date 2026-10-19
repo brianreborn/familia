@@ -108,6 +108,14 @@ elseif (Test-Path $lic) {
     throw "python not found, so the license review can't run. Install Python 3, or read docs\licenses.md and re-run with -Yes."
   }
 }
+# Every pinned part to its pin, together (scripts\sync_pins.py); again after each later git pull.
+$sync = Join-Path $repo 'scripts\sync_pins.py'
+if ($dry) { Say "would sync the pinned parts: python $sync" }
+elseif ((Test-Path $sync) -and (Get-Command python -ErrorAction SilentlyContinue)) {
+  & python $sync --root $repo
+  if ($LASTEXITCODE) { throw 'the pinned parts could not be synced (see above)' }
+  & python $sync --root $repo --install-hooks | Out-Null
+}
 
 # 2. llama.cpp CPU runtime, verified against the release API digest
 if (-not $NoRuntime) {

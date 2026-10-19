@@ -100,6 +100,13 @@ if [ "$DRY" = 1 ]; then
 elif [ "$UNINSTALL" != 1 ]; then
   python3 "$PREFIX/repo/scripts/licenses.py" gate || die "licenses not accepted; nothing else was downloaded. Review: python3 $PREFIX/repo/scripts/licenses.py review (or re-run with --yes, plus --accept-unknown for unknown licenses)"
 fi
+# Every pinned part to its pin, together (scripts/sync_pins.py); again after each later git pull.
+if [ "$DRY" = 1 ]; then
+  [ -f "$PREFIX/repo/scripts/sync_pins.py" ] && python3 "$PREFIX/repo/scripts/sync_pins.py" --dry-run --root "$PREFIX/repo" || say "[dry-run] would sync the pinned parts (scripts/sync_pins.py)"
+elif [ "$UNINSTALL" != 1 ] && [ -f "$PREFIX/repo/scripts/sync_pins.py" ]; then
+  python3 "$PREFIX/repo/scripts/sync_pins.py" --root "$PREFIX/repo" || die "the pinned parts could not be synced (see above)"
+  python3 "$PREFIX/repo/scripts/sync_pins.py" --root "$PREFIX/repo" --install-hooks || true
+fi
 
 # 2. llama.cpp CPU runtime, sha256 verified against the release API digest
 if [ "$RUNTIME" = 1 ]; then

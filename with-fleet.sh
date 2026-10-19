@@ -38,6 +38,15 @@ python3 "$ROOT/scripts/validate_graph.py" --graph "$GRAPH" || {
   echo "with-fleet.sh: graph validation failed; refusing to launch" >&2
   exit 1
 }
+if [ "$LAUNCH_TEST" = 1 ]; then
+  [ ! -f "$ROOT/scripts/sync_pins.py" ] || python3 "$ROOT/scripts/sync_pins.py" --check --quiet || echo "with-fleet.sh: note: the pinned parts are behind pins.txt; a real launch syncs them first (./familia sync --dry-run)" >&2
+else
+  # Pinned parts first, all together (REQUIREMENTS.md R-sync; scripts/sync_pins.py).
+  if [ -f "$ROOT/scripts/sync_pins.py" ]; then
+    python3 "$ROOT/scripts/sync_pins.py" --auto || { rc=$?; echo "with-fleet.sh: the pinned parts could not be synced (see above); stopped" >&2; exit $rc; }
+    FAMILIA_SYNC_DONE="$ROOT"; export FAMILIA_SYNC_DONE
+  fi
+fi
 
 # Resolve role in graph: pentests.NAME, roles.NAME, agents.NAME (in that order).
 RESOLVED=$(ROLE="$ROLE" GRAPH="$GRAPH" python3 - <<'PY'

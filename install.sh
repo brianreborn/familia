@@ -37,7 +37,7 @@ done
 if [ "$DRY" = 1 ]; then
   echo "install.sh: [dry-run] would clone or update $REPO_URL in $PREFIX" >&2
   echo "install.sh: [dry-run] would show the license review (scripts/licenses.py gate)" >&2
-  echo "install.sh: [dry-run] would run sh $PREFIX/scripts/configure.sh (fetches the pins in pins.txt)" >&2
+  echo "install.sh: [dry-run] would run sh $PREFIX/scripts/configure.sh (syncs every pin in pins.txt together; scripts/sync_pins.py)" >&2
   [ "${INSTALL_NO_PATH:-0}" = 1 ] || echo "install.sh: [dry-run] would put familia on PATH: sh $PREFIX/scripts/install-cli.sh" >&2
   [ "${INSTALL_NO_START:-0}" = 1 ] || echo "install.sh: [dry-run] would start: sh $PREFIX/start.sh" >&2
   exit 0
