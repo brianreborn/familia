@@ -75,7 +75,7 @@ group_desc() {
     "Advanced: models & graph") echo "model database, launch arguments, graph edits, scale-down" ;;
     "Advanced: agents") echo "skill folders, hermes self-test and escalation" ;;
     "Advanced: hosts & benchmarks") echo "benchmark records, power, CPU level, uninstall, FreeBSD" ;;
-    "Help") echo "quick start, the full command list, what the menu leaves out" ;;
+    "Help") echo "quick start, the full command list (docs/commands.md), what the menu leaves out" ;;
   esac
 }
 

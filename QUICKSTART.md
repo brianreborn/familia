@@ -4,7 +4,7 @@ The shortest path from nothing to a running, validated setup. Read [README.md](R
 
 Everything below runs from the root of a familia checkout unless it says otherwise.
 
-**The easy way:** run `./familia` (on Windows, `familia.cmd`). It opens a menu grouped by task, and every item shows the exact command it runs, so you pick up the commands below as you go. `./familia-menu.sh --list` prints every item, and `./familia-menu.sh --run KEY` runs one without the menu. Without a terminal it prints the list and exits instead of waiting.
+**The easy way:** run `./familia` (on Windows, `familia.cmd`). It opens a menu grouped by task, and every item shows the exact command it runs, so you pick up the commands below as you go. `./familia-menu.sh --list` prints every item ([docs/commands.md](docs/commands.md) has the same list as a table), and `./familia-menu.sh --run KEY` runs one without the menu. Without a terminal it prints the list and exits instead of waiting.
 
 ## 1. Install
 

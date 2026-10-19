@@ -219,3 +219,9 @@ def test_no_hardcoded_homes():
                     assert not bad.search(open(p, encoding="utf-8", errors="ignore").read()), p
                 except IsADirectoryError:
                     pass
+
+
+def test_commands_doc_lists_every_item():
+    doc = open(os.path.join(ROOT, "docs", "commands.md"), encoding="utf-8").read()
+    missing = [i["key"] for i in items() if f"`{i['key']}`" not in doc] + [p for p in internal() if f"`{p}`" not in doc]
+    assert not missing, "add to docs/commands.md: " + ", ".join(missing)
