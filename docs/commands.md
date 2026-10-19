@@ -1,8 +1,24 @@
 # Every familia command
 
 This page mirrors `scripts/menu-items.txt`, the same table `./familia` and `familia.cmd` read; `tests/test_menu.py` checks this page lists every item.
-Run any row from the menu, or directly with `./familia-menu.sh --run KEY [ARG...]` (Windows: `familia.cmd -Run KEY`). Add `--dry-run` to see the command without running it.
+Run any row from the menu, as a command (`./familia COMMAND`, below), or with `./familia run KEY [ARG...]` (Windows: `familia.cmd run KEY`). Add `--dry-run` to see the command without running it.
 `<NAME>` is asked for when you pick the item. "licenses first" means `scripts/licenses.py gate` runs before it ([licenses.md](licenses.md)).
+
+## Command line
+
+Every row is also a command: `./familia COMMAND [VALUE...] [ARG...]` (Windows: `familia.cmd COMMAND ...`). It runs the identical command, with the same license review, as picking it in the menu. `./familia help` lists every command by group; `./familia help COMMAND` or `./familia COMMAND --help` shows what one runs and then the script's own `--help`. The full manual is `man ./man/familia.1` (or `./familia help --man`).
+
+```
+./familia skills list                  # = Skills > List every skill
+./familia model params coder           # <NODE> = coder
+./familia harness2 set --agent hermes --mode propose   # values by the flag they follow, or in order
+./familia --dry-run serve coder        # print the command (and the license step), run nothing
+./familia monitor --once HOST          # anything after the values goes to the script
+./familia skills enable green-probe    # pass-through: any skills.py / licenses.py / harness2.py / registry.py command
+eval "$(./familia completion bash)"    # tab completion in bash
+```
+
+Names come from `scripts/cli-commands.txt` (natural names such as `model add`, `host measure`). Every row also gets automatic ones: its key (`models.explain`), `GROUP NAME` (`models explain`), and the short name when it is unique (`explain`), so a new row in `scripts/menu-items.txt` is a command and is in `familia help` and the man page at once. After adding a row, regenerate the man page: `python3 scripts/familia_cli.py man --write` (`tests/test_cli.py` checks it is current). Options for familia itself go before the command (`--dry-run`, `--yes`, `--pipe`); after the command everything goes to the script, so `./familia install --dry-run` is the installer's own preview. A value that has no default and is not given is asked for on a terminal; without one the command stops with exit status 2 and says which value it needs.
 
 
 ## Search

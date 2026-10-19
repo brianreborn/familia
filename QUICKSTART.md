@@ -4,7 +4,7 @@ The shortest path from nothing to a running, validated setup. Read [README.md](R
 
 Everything below runs from the root of a familia checkout unless it says otherwise.
 
-**The easy way:** run `./familia` (on Windows, `familia.cmd`). It opens a menu grouped by task, and every item shows the exact command it runs, so you pick up the commands below as you go. `./familia-menu.sh --list` prints every item ([docs/commands.md](docs/commands.md) has the same list as a table), and `./familia-menu.sh --run KEY` runs one without the menu. Type `/` and a word at any prompt to search every group (`n`/`N` next/previous), or run `./familia search WORD`. Without a terminal it prints the list and exits instead of waiting.
+**The easy way:** run `./familia` (on Windows, `familia.cmd`). It opens a menu grouped by task, and every item shows the exact command it runs, so you pick up the commands below as you go. `./familia-menu.sh --list` prints every item ([docs/commands.md](docs/commands.md) has the same list as a table), and every item is also a command: `./familia help` lists them, e.g. `./familia skills list` or `./familia --dry-run model params coder` (prints the command, runs nothing). Type `/` and a word at any prompt to search every group (`n`/`N` next/previous), or run `./familia search WORD`. Without a terminal it prints the list and exits instead of waiting.
 
 **Prefer a window?** Run `./familia panel` (Windows: `python scripts\panel.py`). It opens a settings page in your browser that works with a mouse, a keyboard alone, a single switch or a screen reader: skills, licenses, hermes mode, Harness2, model launch parameters and launcher settings. You see every change before it is saved, and you can undo it. See [docs/panel.md](docs/panel.md).
 
