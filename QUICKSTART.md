@@ -21,17 +21,14 @@ Pick one. All of them are per-user (no root or admin).
 - Every installer also puts `familia` on your PATH: a 2-line shim in `~/.local/bin` (Windows: `%LOCALAPPDATA%\Programs\familia\bin` + your user PATH), with the code left where it is. If `~/.local/bin` isn't on your PATH it prints the one line to add, or run `familia path --add`. `--no-path` skips it; from a checkout, `sh scripts/install-cli.sh --dry-run` previews it. Details: [docs/install.md](docs/install.md#familia-on-your-path).
 - The graph-node installers, their flags (`--dry-run`, `--uninstall`, `--name`, ...) and install locations are in [docs/install.md](docs/install.md). Windows details: [docs/windows.md](docs/windows.md).
 
-Already have a checkout? Sync the pinned sub-projects:
+Already have a checkout? Update familia and bring every pinned sub-project to its pin, together:
 
 ```sh
-sh scripts/configure.sh
+./familia update          # git pull --ff-only, then sync; add --dry-run to only look
+./familia sync --dry-run  # what is behind pins.txt and would move
 ```
 
-On Windows, run the same through Git Bash (there is no `configure.ps1`):
-
-```powershell
-& 'C:\Program Files\Git\bin\bash.exe' scripts/configure.sh
-```
+On Windows: `python scripts\sync_pins.py --update` (or `--dry-run`). You rarely need to do this by hand: the installers, `configure.sh`, `start.sh`, `serve.sh`, `with-fleet.sh`, the panel and the tests all sync first, and after `configure.sh` a `git pull` of familia syncs too. Adding or fetching a model does not.
 
 ### Licenses come first
 

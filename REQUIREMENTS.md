@@ -17,6 +17,7 @@ High-level requirements for the familia topology coordinator: the Linux orchestr
 - **Agents use the graph harness:** hermes-agent runs only through `scripts/hermes.sh`, whose `context_length` equals the node's per-slot context and whose compression is on (implemented; #19, live compaction self-test planned #42). Stock `hermes` with `~/.hermes` is not supported.
 - **Escalation:** a light node may escalate to heavier nodes (`escalates_to`, `escalation.mode` off/suggest/auto, default suggest). The system may suggest, never opens a cross-host edge without recorded consent (implemented behind `hermes.sh --escalate`; router hookup and live swap planned #39).
 - **Measured, not guessed:** placements and tuning come from `registry/records.jsonl`; tuning uses a coarse binary search and says so in the record (implemented; docs/model-registry.md).
+- **Pinned parts stay in step (R-sync):** every script that updates anything, or runs code from a pinned part, first brings every part in `pins.txt` to its pin together (`scripts/sync_pins.py`); updating familia itself syncs right after. Never discards local changes (it stops instead), never force-pushes. Adding or fetching a model does not sync (implemented; see MANUAL.md).
 - **Tests:** Python unit tests for the graph, registry, model database and escalation (implemented); shell syntax CI (`sh -n` / shellcheck) not set up yet (only CodeQL runs).
 
 ## Model database (implemented: #51; see `docs/model-database.md`)

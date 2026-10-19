@@ -11,9 +11,20 @@ How to run and look after a familia setup day to day. Install and first start ar
 
 ## 1. Settings
 
-- `sh scripts/configure.sh` checks out every sub-project in [`pins.txt`](pins.txt) at its pinned revision. It is non-interactive and safe to re-run.
+- `sh scripts/configure.sh` checks out every sub-project in [`pins.txt`](pins.txt) at its pinned revision (through `scripts/sync_pins.py`, below) and installs the git hooks that sync again after each `git pull`. It is non-interactive and safe to re-run.
 - `sh scripts/configure.sh -i` also asks for settings in the terminal.
 - `./familia panel` (or `python3 scripts/panel.py`) starts the settings panel at http://127.0.0.1:9932 and opens it in your browser. It is the code-bootstraps-llama.cpp panel with familia's pages added (skills, licenses, hermes, Harness2, models); it needs `configure.sh` to have run first. See [docs/panel.md](docs/panel.md).
+
+### Keeping the pinned parts in sync
+
+`scripts/sync_pins.py` (`./familia sync`) moves every part in `pins.txt` (code-bootstraps-llama.cpp, agent-reach, green-roomz, green-agentz, green-agency; engine pins such as `llama-server__nace-ai__edlm` only when checked out or picked with `ENGINE_*`) to its pin, all together:
+
+- In sync costs one file read per part: no git, no network. A pin that is already here is checked out without fetching; only a missing pin is fetched (by commit, then the branches).
+- All or nothing. Nothing moves if any part has uncommitted changes, a HEAD on no branch, or a pin that can't be fetched; the message says what to do. A failed checkout puts back the parts already moved. Nothing is reset, cleaned or force-pushed.
+- When a part was cloned or moved, its licenses are checked again (`scripts/licenses.py gate`), so you are asked only when they changed. Tests only warn.
+- `--dry-run` shows what would move and uses no network; `--check` exits 1 when something is behind; `./familia update` is `git pull --ff-only` of familia and then a sync with the new `pins.txt`.
+
+Called automatically by: `install.sh`, `install/linux`, `install/termux` and `install/windows` installers, `scripts/configure.sh`, `start.sh`, `scripts/serve.sh`, `with-fleet.sh` (live launches; `--launch-test` only notes drift), `scripts/panel.py`, `scripts/run-tests.sh`, `scripts/windows/start.bat`, and the `post-merge` / `post-rewrite` / `post-checkout` hooks `configure.sh` installs (an existing hook of yours is left alone). Not by `add-model` or model fetches. `FAMILIA_SYNC=0` skips it (it says so).
 
 Saved settings live in `code-bootstraps-llama.cpp/.cache/panel.env`. An environment variable always overrides a saved setting:
 
@@ -165,7 +176,7 @@ Pentest roles (`pentests:` in the graph) are for operator-authorized testing of 
 
 Official llama.cpp release builds run side by side through the `runtimes:` section of `graph.yaml` (b11374 for `coder`; b11539 is load-tested for `embed`, which is deferred in [#38](https://github.com/brianreborn/familia/issues/38)). A node whose GGUF architecture isn't listed for its runtime fails validation.
 
-Experimental forks are pinned as `<executable>__<author>__<branch>` in `pins.txt`. For example, `ENGINE_CHAT=nace-ai__edlm` selects the DReX-DLM diffusion engine for `chat`. Today `configure.sh` only clones that source; building and isolating it is not automated.
+Experimental forks are pinned as `<executable>__<author>__<branch>` in `pins.txt`. For example, `ENGINE_CHAT=nace-ai__edlm` selects the DReX-DLM diffusion engine for `chat`. Today the sync only clones that source (when an `ENGINE_*` setting picks it); building and isolating it is not automated.
 
 ## Future ideas
 
