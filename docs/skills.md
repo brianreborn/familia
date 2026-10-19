@@ -32,8 +32,13 @@ scripts/skills.py vendor artemis-android-skill --dry-run   # plan only
 - A `license-blocked` skill can't be enabled. The message tells you why.
 - An `available` skill can't be enabled until it is vendored into
   green-zkillz, because there are no files to load before that. Vendoring
-  itself is still manual and waits on license review (familia #67).
-- A pentest role never gets a skill with `adds_tools: true`. Both
+  itself is still manual and waits on license review (familia #67). This is
+  a decision, not a gap: available skills stay refused until vendored.
+- etioz is listed as `bundled` even though its own status is still
+  awaiting-ratification. It adds no tools.
+- A pentest role never gets a skill with `adds_tools: true` in its own
+  `pentests.<name>.skills`. Skills inherited from the pentest's agent are not
+  checked yet; that decision is deferred (#77). Both
   `skills.py` and the graph check refuse it.
 
 ## Status

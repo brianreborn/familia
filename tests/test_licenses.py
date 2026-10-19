@@ -115,6 +115,9 @@ def test_real_graph_lists_everything():
     assert len(digest) == 64
     ids = " ".join(i["id"] for i in items)
     assert "familia" in ids and "llama.cpp" in ids
+    for i in items:
+        if i["id"].split(" @ ")[0] in ("green-roomz", "green-agentz"):
+            assert "Light-ware" in i["license"], i  # familia#75
 
 
 def test_stdlib_yaml_matches_pyyaml_on_graph():

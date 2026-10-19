@@ -51,11 +51,16 @@ DECLARED = {
     "code-bootstraps-llama.cpp": ("MIT", "https://github.com/brianreborn/code-bootstraps-llama.cpp/blob/main/LICENSE"),
     "agent-reach": ("MIT", "https://github.com/Panniantong/Agent-Reach/blob/main/LICENSE"),
     "green-agency": ("BSD-3-Clause", "https://github.com/brianreborn/green-agency/blob/main/LICENSE"),
+    # LICENSE added 2026-10-19 (familia#75); older pinned revisions have no file, so use the declared one.
+    "green-roomz": ("Light-ware License (BSD 4-clause plus an addition)",
+                    "https://github.com/brianreborn/green-roomz/blob/9a8e0c1521e8c540b62a4928e4510fd3ef7d63b4/LICENSE"),
+    "green-agentz": ("Light-ware License (BSD 4-clause plus an addition)",
+                     "https://github.com/brianreborn/green-agentz/blob/02b8e2482032be346a51ea0deb2c7ea33e13f8eb/LICENSE"),
 }
 NOTES = {
-    "green-agentz": "No top-level LICENSE. NOTICE.md says the green-zkillz part is BSD-3-Clause "
-                    "(docs/green-zkillz/LICENSE) and declares no license for the rest.",
-    "green-roomz": "No LICENSE file in the repo.",
+    "green-agentz": "Light-ware License for the repo (LICENSE, added at 02b8e2482032); the green-zkillz part keeps "
+                    "BSD-3-Clause (docs/green-zkillz/LICENSE)." ,
+    "green-roomz": "Light-ware License (LICENSE, added at 9a8e0c1521e8).",
 }
 
 ATTENTION_RE = re.compile(r"(acceptable use|prohibited use|use policy|attribution|non-?commercial|not valid in|"
@@ -347,10 +352,11 @@ def component_items():
         if lf:
             out.append(item("component", f"{name} @ {rev[:12]}", role, sniff_license(lf) or "unknown",
                             text=lf, link=link, notes=NOTES.get(name)))
-        elif name in DECLARED and not d:
+        elif name in DECLARED:
             lic, l2 = DECLARED[name]
             out.append(item("component", f"{name} @ {rev[:12]}", role, lic, link=l2, source="declared",
-                            notes="not downloaded yet; license as published on GitHub"))
+                            notes=NOTES.get(name) or ("not downloaded yet; license as published on GitHub" if not d
+                                                      else "no LICENSE file at this revision; license as published")))
         else:
             out.append(item("component", f"{name} @ {rev[:12]}", role, "unknown", link=link,
                             notes=NOTES.get(name) or ("not downloaded yet" if not d else "no LICENSE file found")))

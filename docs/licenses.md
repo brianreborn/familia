@@ -22,7 +22,10 @@ scripts/licenses.py list --json   # machine-readable list; records nothing
 - **Engines**: llama.cpp builds used by nodes (MIT), hermes-agent (MIT), and
   Harness2 (Apache-2.0) only when it is switched on.
 - **Components**: familia itself and every repo in `pins.txt`, read from its
-  LICENSE file. A repo with no LICENSE file is marked **unknown**.
+  LICENSE file. A repo with no LICENSE file is marked **unknown**, unless
+  `scripts/licenses.py` has a declared license for it. green-roomz and
+  green-agentz got their LICENSE files (the Light-ware License) after the
+  revisions pinned in `pins.txt`, so their declared license is used (#75).
 
 Items are grouped by license. These come first:
 
@@ -33,6 +36,11 @@ Items are grouped by license. These come first:
 - **custom**: not OSI-approved (for example LFM `lfm1.0`, Tencent HY
   Community License, Gemma terms, and familia's own Light-ware License, which
   has a BSD-4 advertising clause).
+
+familia's own license, and green-roomz and green-agentz, which use the same
+text, show up under **custom / needs attention** on purpose. The advertising
+clause (condition 3) is a real obligation that OSI-approved licenses don't
+have, so you should see it before you accept. This is deliberate, not a bug.
 
 For each one it shows what it is used for, where the full text is on disk, a
 link, and lines quoted from the license or card that carry obligations. These
