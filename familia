@@ -10,7 +10,9 @@
 #   ./familia check                scripts/validate_graph.py --graph graph.yaml
 #   ./familia monitor [...]       ./familia-monitor (read-only SSH console)
 #   ./familia start | configure | test | list | run KEY
-# Example: ./familia skills enable green-probe --dry-run
+#   ./familia search WORD [--run N]  find menu items in every group (also: --search)
+# Examples: ./familia skills enable green-probe --dry-run
+#           ./familia search license
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 PY=${PYTHON:-python3}
@@ -18,7 +20,7 @@ cmd=${1:-}
 [ $# -eq 0 ] || shift
 case "$cmd" in
   "") exec bash "$ROOT/familia-menu.sh" ;;
-  -h|--help|help) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+  -h|--help|help) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
   panel) exec "$PY" "$ROOT/scripts/panel.py" "$@" ;;
   skills) exec "$PY" "$ROOT/scripts/skills.py" "$@" ;;
   licenses) exec "$PY" "$ROOT/scripts/licenses.py" "$@" ;;
@@ -32,5 +34,9 @@ case "$cmd" in
   list) exec bash "$ROOT/familia-menu.sh" --list ;;
   run) exec bash "$ROOT/familia-menu.sh" --run "$@" ;;
   menu) exec bash "$ROOT/familia-menu.sh" "$@" ;;
+  search|--search|/*)
+    case "$cmd" in /*) set -- "${cmd#/}" "$@" ;; esac
+    [ $# -ge 1 ] || { echo "familia: search needs a word, e.g. ./familia search model" >&2; exit 2; }
+    w=$1; shift; exec bash "$ROOT/familia-menu.sh" --search "$w" "$@" ;;
   *) echo "familia: unknown command '$cmd'. Try: ./familia help" >&2; exit 2 ;;
 esac
