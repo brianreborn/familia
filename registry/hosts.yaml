@@ -3,3 +3,6 @@ phone7: samsung-a57-sm-a576u-exynos1680-android16
 phone8: samsung-a57-sm-a576u-exynos1680-android16
 miryam: intel-kbl-i5-7200u-hd620-linux
 qodesh: nvidia-g84-8600gt-athlon2x2-win10
+# Placeholder key: the CentOS Stream 10 big-RAM desktop has no hostname set yet (its commits
+# show localhost.localdomain). Rename this key to the real host name once it is chosen.
+centos10-bigram: nvidia-g84-8600gt-x86v3-centos10

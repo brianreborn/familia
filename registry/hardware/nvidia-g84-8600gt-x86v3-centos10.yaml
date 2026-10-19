@@ -1,0 +1,31 @@
+# Shareable hardware profile. No hostnames, IPs, usernames or keys.
+# STATUS: partial. Only the facts below were verified; everything null is UNKNOWN until
+# the read-only probe in docs/perf/centos-bigram-models.md (Phase 0) runs on the host.
+id: nvidia-g84-8600gt-x86v3-centos10
+identity:
+  device_model: desktop with GeForce 8600 GT, large system RAM (exact model unknown)
+  soc: null                       # CPU model unknown - not yet probed
+  cpu_match: []                   # fill from lscpu "Model name" after Phase 0
+  cpu_isa:
+    x86_64_level: ">= v3 (inferred)"
+    inferred_from: "CentOS Stream 10 x86_64 is built for x86-64-v3 and does not boot below it (https://centos.org/centos10/); v3 = AVX, AVX2, FMA, F16C, BMI1/2, LZCNT, MOVBE"
+    avx512: null                  # unknown
+    measured: false
+  gpu: NVIDIA GeForce 8600 GT (G84, compute capability 1.1, 256 MiB; cuDeviceTotalMem reports 255 MB)
+  gpu_driver: "340.108 legacy, DKMS-patched for kernel 6.12 (https://github.com/brianreborn/nvidia-340.108-updated)"
+  os: linux (CentOS Stream 10, kernel 6.12)
+  ram_mib: null                   # "a lot" per the owner; size, type and channel count unknown
+  runtime_tested: []
+known_good_setup:
+  - "Display: GDM is Wayland-only on EL10 and native Xorg is gone; Weston 14 with --backend=drm --renderer=pixman as a user systemd service works (LESSONS-LEARNED.md L-nvidia340)."
+  - "CUDA driver API works on the legacy stack: cuInit(0)=0, one device, CC 1.1 (LESSONS-LEARNED.md L-nvidia340). No stock llama.cpp backend supports sm_11; only familia gpu-legacy (hand-written PTX) can use it."
+best_settings: {}                  # nothing measured yet
+gotchas:
+  - "The open nvidia.ko (615 series) logs a GSP 'not supported' warning for G84; harmless, the legacy DKMS module drives the card."
+  - "EGL/GBM unavailable without Mesa DRI, so no hardware GL compositor."
+  - "Treat the GPU as a decision-model side unit at most (256 MiB); every LLM role on this host is CPU + RAM bound."
+power:
+  gpu_board_w: {value: 47, source: "https://www.techpowerup.com/gpu-specs/geforce-8600-gt.c198 (max board power)"}
+  cpu_tdp_w: null
+  measured: false
+records: {hardware_profile: nvidia-g84-8600gt-x86v3-centos10}
