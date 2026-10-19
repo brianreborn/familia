@@ -18,6 +18,7 @@ while true; do
   echo "5) Run start.sh (launch the router)"
   echo "6) Run benchmark (benchmark.sh)"
   echo "7) Reset Termux SSH (reset_termux_ssh.sh)"
+  echo "m) Monitor hosts over SSH (./familia-monitor)"
   echo "8) Exit"
   hr
   read -rp "Choose an option [1-8]: " choice
@@ -61,6 +62,9 @@ while true; do
       else
         echo "reset_termux_ssh.sh not found – you may need to create it."
       fi
+      ;;
+    m|M)
+      ./familia-monitor || true
       ;;
     8)
       echo "Good‑bye!"
