@@ -50,5 +50,6 @@ def test_overcommit_is_hard_error():
         return
     g = _base()
     g["hosts"]["miryam"]["ram_mib"] = 1000  # estimate > physical RAM
+    g["hosts"]["miryam"]["reserve_ram_mib"] = 0  # else the reserve >= ram_mib check fires first and hides it
     errs, totals = vg.validate(g)
     assert any("overcommit" in e for e in errs), errs
