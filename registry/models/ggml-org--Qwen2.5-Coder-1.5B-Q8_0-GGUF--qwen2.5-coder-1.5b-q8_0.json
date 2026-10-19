@@ -1024,5 +1024,78 @@
  "params_problems": null,
  "params_build": "b11374",
  "native_ctx": 32768,
- "native_ctx_source": "card: Qwen/Qwen2.5-Coder-1.5B README.md:L34"
+ "native_ctx_source": "card: Qwen/Qwen2.5-Coder-1.5B README.md:L34",
+ "license_info": {
+  "id": "apache-2.0",
+  "id_source": "ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF card front matter license",
+  "name": null,
+  "summary": "apache-2.0",
+  "summary_source": "ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF card license",
+  "link": "https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B/blob/main/LICENSE",
+  "link_source": "ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF card license_link",
+  "texts": [
+   {
+    "file": "Qwen/Qwen2.5-Coder-1.5B@df3ce67c0e24/LICENSE",
+    "path": "/home/green/.local/share/gguf/hf-meta/Qwen--Qwen2.5-Coder-1.5B/df3ce67c0e24480f20468b6ef2894622d69eb73b/LICENSE",
+    "url": "https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B/blob/df3ce67c0e24480f20468b6ef2894622d69eb73b/LICENSE",
+    "sha256": "832dd9e00a68dd83b3c3fb9f5588dad7dcf337a0db50f7d9483f310cd292e92e",
+    "bytes": 11343,
+    "what": "model"
+   }
+  ],
+  "obligations": [
+   {
+    "quote": "(a) You must give any other recipients of the Work or",
+    "source": "Qwen/Qwen2.5-Coder-1.5B LICENSE:L95"
+   },
+   {
+    "quote": "(b) You must cause any modified files to carry prominent notices",
+    "source": "Qwen/Qwen2.5-Coder-1.5B LICENSE:L98"
+   },
+   {
+    "quote": "(c) You must retain, in the Source form of any Derivative Works",
+    "source": "Qwen/Qwen2.5-Coder-1.5B LICENSE:L101"
+   },
+   {
+    "quote": "attribution notices from the Source form of the Work,",
+    "source": "Qwen/Qwen2.5-Coder-1.5B LICENSE:L103"
+   },
+   {
+    "quote": "include a readable copy of the attribution notices contained",
+    "source": "Qwen/Qwen2.5-Coder-1.5B LICENSE:L109"
+   },
+   {
+    "quote": "within such NOTICE file, excluding those notices that do not",
+    "source": "Qwen/Qwen2.5-Coder-1.5B LICENSE:L110"
+   },
+   {
+    "quote": "of the NOTICE file are for informational purposes only and",
+    "source": "Qwen/Qwen2.5-Coder-1.5B LICENSE:L117"
+   },
+   {
+    "quote": "do not modify the License. You may add Your own attribution",
+    "source": "Qwen/Qwen2.5-Coder-1.5B LICENSE:L118"
+   }
+  ],
+  "gated": false,
+  "unknown": false,
+  "seen": [
+   {
+    "value": "apache-2.0",
+    "source": "ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF card license"
+   },
+   {
+    "value": "apache-2.0",
+    "source": "Qwen/Qwen2.5-Coder-1.5B card license"
+   },
+   {
+    "value": "apache-2.0",
+    "source": "Qwen/Qwen2.5-1.5B card license"
+   },
+   {
+    "value": "apache-2.0",
+    "source": "GGUF general.license"
+   }
+  ]
+ }
 }

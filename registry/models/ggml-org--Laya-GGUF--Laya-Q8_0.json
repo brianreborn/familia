@@ -1778,13 +1778,12 @@
     {
      "value": "apache-2.0",
      "source": "GGUF general.license"
-    },
-    {
-     "value": "Apache-2.0",
-     "source": "GitHub github.com/NandhaKishorM/laya license (spdx)"
     }
-   ],
-   "conflict": true
+   ]
+  },
+  "code_license": {
+   "effective": "Apache-2.0",
+   "source": "GitHub github.com/NandhaKishorM/laya license (spdx)"
   },
   "license_file": {
    "effective": "github.com/NandhaKishorM/laya@ffc142012af6/LICENSE",
@@ -1915,5 +1914,41 @@
  "params_problems": null,
  "params_build": "b11374",
  "native_ctx": 8192,
- "native_ctx_source": "GGUF modern-bert.context_length"
+ "native_ctx_source": "GGUF modern-bert.context_length",
+ "license_info": {
+  "id": "apache-2.0",
+  "id_source": "ggml-org/Laya-GGUF card front matter license",
+  "name": null,
+  "summary": "apache-2.0",
+  "summary_source": "ggml-org/Laya-GGUF card license",
+  "link": "https://spdx.org/licenses/Apache-2.0.html",
+  "link_source": "SPDX license list (standard text of apache-2.0)",
+  "texts": [
+   {
+    "file": "github.com/NandhaKishorM/laya@ffc142012af6/LICENSE",
+    "path": "/home/green/.local/share/gguf/hf-meta/github/NandhaKishorM--laya/ffc142012af63d015fa19f05f29f9c5ff329a2cc/LICENSE",
+    "url": "https://github.com/NandhaKishorM/laya/blob/ffc142012af63d015fa19f05f29f9c5ff329a2cc/LICENSE",
+    "sha256": "a6cba85bc92e0cff7a450b1d873c0eaa2e9fc96bf472df0247a26bec77bf3ff9",
+    "bytes": 10173,
+    "what": "code (GitHub NandhaKishorM/laya, spdx Apache-2.0)"
+   }
+  ],
+  "obligations": null,
+  "gated": false,
+  "unknown": false,
+  "seen": [
+   {
+    "value": "apache-2.0",
+    "source": "ggml-org/Laya-GGUF card license"
+   },
+   {
+    "value": "apache-2.0",
+    "source": "convaiinnovations/laya card license"
+   },
+   {
+    "value": "apache-2.0",
+    "source": "GGUF general.license"
+   }
+  ]
+ }
 }

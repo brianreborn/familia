@@ -80,6 +80,15 @@ python3 scripts/validate_graph.py --verify-sha # also hash the GGUFs
 
 `./scripts/add-model.sh` takes a Hugging Face snapshot directory, a lone GGUF, or explicit flags (`--repo`, `--file`, `--card`, `--aux KIND=PATH`, ...), infers the role when you don't give one, and writes the code-bootstraps-llama.cpp manifest and preset. Examples are in [QUICKSTART.md](QUICKSTART.md#5-add-a-model); `--help` lists every flag. After adding, put the model into `graph.yaml` if a graph node should serve it.
 
+Run modes: `--dry-run` prints the plan and changes nothing. `--damp-run` fetches only small files (`--max-file-mb`, default 50) and records the weights' size and sha256 with `weights: absent (damp)`; such a node is not runnable until a full run. The full run is the default. The same flags exist in `scripts/hf_fetch.py`, `scripts/model_db.py backfill`, `scripts/model_db.py damp REPO...` and code-bootstraps `scripts/fetch-models.sh`.
+
+License acceptance: every DB entry carries `license_info` with:
+- the exact license id and where it came from
+- the license file(s), with path, URL and sha256, and a link
+- obligations quoted from the card or license, each with `file:line`
+
+Unknown stays unknown. A full fetch prints this and needs `--accept-licenses`/`--yes` or an interactive yes before it downloads weights. Acceptance is recorded per model and license digest in `.cache/familia/model-license-acceptance.json`, so a changed license is asked again. Launching (`serve.sh`, `hermes_harness.py`) is gated by `scripts/licenses.py gate --graph`. See [docs/licenses.md](docs/licenses.md).
+
 ### The model database
 
 Every model in use has an entry in `registry/models/`, built from its full Hugging Face repo pinned to a commit. The model card's recommended settings are the launch defaults, and the validator fails on a node that differs from its card without a written reason. Details and the remaining work: [docs/model-database.md](docs/model-database.md) (#51).

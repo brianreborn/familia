@@ -16,7 +16,10 @@ docs/escalation.md) between hermes and the node; hermes then runs as a child, no
 transcript against the node and checks that facts survive the summary.
 
 usage: hermes_harness.py [--agent NAME] [--graph FILE] [--render-only | --selftest-compaction |
-                          --escalate [--light NODE] [--no-swap-back]] [-h|--help] [-- HERMES-ARGS...]
+                          --escalate [--light NODE] [--no-swap-back]] [--accept-licenses|--yes]
+                          [-h|--help] [-- HERMES-ARGS...]
+Before a node is started, the licenses of the graph selection must be accepted (scripts/licenses.py
+gate: prompts on a terminal; --accept-licenses / --yes or FAMILIA_ACCEPT_LICENSES=yes accepts).
 Arguments for hermes-agent itself go after "--"; anything else unknown is an error (exit 2),
 so a typo never renders a config and starts a server.
 """
@@ -118,10 +121,32 @@ def props(n):
         return None
 
 
+ACCEPT_LICENSES = False   # --accept-licenses / --yes
+
+
+def license_gate(g):
+    """Before a node is started: the licenses of the graph selection must be accepted
+    (scripts/licenses.py gate; docs/licenses.md). Once per run."""
+    if getattr(license_gate, "done", False):
+        return
+    lp = os.path.join(ROOT, "scripts", "licenses.py")
+    if not os.path.isfile(lp):
+        die("scripts/licenses.py not found; licenses must be accepted before a model is started")
+    cmd = [sys.executable, lp, "gate"] + (["--yes"] if ACCEPT_LICENSES else [])
+    if g.get("_path"):
+        cmd += ["--graph", g["_path"]]
+    rc = subprocess.run(cmd).returncode
+    if rc != 0:
+        die("licenses not accepted (scripts/licenses.py exit %d); no model was started. Accept with "
+            "scripts/licenses.py review, or pass --accept-licenses" % rc)
+    license_gate.done = True
+
+
 def ensure_server(g, name, n, timeout=900):
     want = n["ctx"] // n["parallel"]
     p = props(n)
     if p is None:
+        license_gate(g)
         args = vg.server_args(g, name)
         logd = os.path.expanduser("~/.cache/familia/logs"); os.makedirs(logd, exist_ok=True)
         log = open(os.path.join(logd, f"{name}.log"), "ab")
@@ -239,6 +264,9 @@ def parse_argv(argv):
         elif x == "--escalate": mode = "escalate"
         elif x == "--light": light = val(x)
         elif x == "--no-swap-back": swap_back = False
+        elif x in ("--accept-licenses", "--yes"):
+            global ACCEPT_LICENSES
+            ACCEPT_LICENSES = True
         elif x == "--": rest = list(it); break
         else:
             print(f"hermes_harness.py: unknown argument {x!r} (hermes-agent arguments go after --)\nusage: {USAGE}", file=sys.stderr)

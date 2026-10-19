@@ -219,6 +219,10 @@ def test_hermes_harness_rejects_unknown_and_helps(capsys):
         hh.parse_argv(["chat"])          # a stray word is not passed to hermes silently
     assert ex.value.code == 2
     assert hh.parse_argv(["--render-only", "--", "chat", "-q", "x"])[2:] == ("render", None, True, ["chat", "-q", "x"])
+    hh.ACCEPT_LICENSES = False
+    hh.parse_argv(["--accept-licenses"])
+    assert hh.ACCEPT_LICENSES is True
+    hh.ACCEPT_LICENSES = False
 
 
 # ------------------------------------------------------------------ scripts/serve.sh
@@ -233,6 +237,8 @@ def _serve_env(tmp_path, args, server_body):
     model = tmp_path / "m.gguf"
     model.write_text("x")
     (d / "scripts" / "validate_graph.py").write_text("print(%r)\n" % (str(srv) + " -m " + str(model) + " " + args))
+    # licenses.py stub: exit status from LICENSE_RC (0 = accepted)
+    (d / "scripts" / "licenses.py").write_text("import os, sys\nsys.exit(int(os.environ.get('LICENSE_RC', '0')))\n")
     env = dict(os.environ, FAMILIA_MEMCAP="0", FAMILIA_LOG_DIR=str(tmp_path / "logs"), CALLS=str(tmp_path / "calls"))
     env.pop("GGML_VK_VISIBLE_DEVICES", None)
     return d, env
@@ -285,3 +291,13 @@ def test_serve_embed_needs_pooling_and_model(tmp_path):
     assert r.returncode == 1 and "not found" in r.stderr
     r = subprocess.run(["sh", str(d / "scripts" / "serve.sh"), "--help"], env=env, capture_output=True, text=True)
     assert r.returncode == 0 and "Launch a graph node" in r.stdout
+
+
+def test_serve_needs_accepted_licenses(tmp_path):
+    d, env = _serve_env(tmp_path, "-ngl 0", LOGGER + "exit 0\n")
+    env["LICENSE_RC"] = "1"
+    r = subprocess.run(["sh", str(d / "scripts" / "serve.sh"), "coder"], env=env, capture_output=True, text=True)
+    assert r.returncode == 1 and "licenses not accepted" in r.stderr and not _calls(tmp_path)
+    (d / "scripts" / "licenses.py").unlink()
+    r = subprocess.run(["sh", str(d / "scripts" / "serve.sh"), "coder"], env=env, capture_output=True, text=True)
+    assert r.returncode == 1 and "licenses.py not found" in r.stderr and not _calls(tmp_path)

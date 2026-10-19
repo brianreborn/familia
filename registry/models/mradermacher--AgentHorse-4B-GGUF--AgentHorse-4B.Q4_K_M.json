@@ -593,5 +593,24 @@
  "params_problems": null,
  "params_build": "b11374",
  "native_ctx": 262144,
- "native_ctx_source": "CloudGoat/AgentHorse-4B config.json max_position_embeddings"
+ "native_ctx_source": "CloudGoat/AgentHorse-4B config.json max_position_embeddings",
+ "license_info": {
+  "id": "unknown",
+  "id_source": null,
+  "name": null,
+  "summary": "unknown",
+  "summary_source": null,
+  "link": null,
+  "link_source": null,
+  "texts": null,
+  "obligations": null,
+  "gated": false,
+  "unknown": true,
+  "seen": [
+   {
+    "effective": "apache-2.0",
+    "source": "InternScience/Agents-A1-4B card license"
+   }
+  ]
+ }
 }

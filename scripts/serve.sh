@@ -3,6 +3,7 @@
 # The arguments come from `validate_graph.py --args <node>`, which includes every REQUIRED and
 # RECOMMENDED model parameter (#51, docs/model-params.md) and exits 1 when one cannot be met;
 # serve.sh then refuses to start. An embedding node must carry --embeddings and --pooling.
+# The licenses of the graph selection must be accepted first (scripts/licenses.py gate).
 # Memory cap (docs/ram-safety.md): FAMILIA_MEMCAP=1 wraps the server in a
 # `systemd-run --user --scope` with MemoryHigh/MemoryMax and sets oom_score_adj 800,
 # so on memory pressure the model dies, not the desktop. Default: on for miryam, off elsewhere.
@@ -13,12 +14,22 @@
 set -eu
 say() { printf '%s\n' "familia-serve: $*" >&2; }
 case "${1:-}" in
-  ""|-h|--help) sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; [ -n "${1:-}" ] && exit 0; exit 2 ;;
+  ""|-h|--help) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; [ -n "${1:-}" ] && exit 0; exit 2 ;;
 esac
 node="$1"; shift
 here="$(cd "$(dirname "$0")/.." && pwd)"
 if ! args="$(python3 "$here/scripts/validate_graph.py" --graph "$here/graph.yaml" --args "$node")"; then
   say "validate_graph.py --args $node failed (see above); not starting"
+  exit 1
+fi
+# Licenses first (docs/licenses.md): the graph selection's licenses must be accepted before any
+# model starts. scripts/licenses.py gate asks on a terminal; FAMILIA_ACCEPT_LICENSES=yes accepts.
+if [ ! -f "$here/scripts/licenses.py" ]; then
+  say "scripts/licenses.py not found; licenses must be accepted before a model starts; not starting"
+  exit 1
+fi
+if ! python3 "$here/scripts/licenses.py" gate --graph "$here/graph.yaml"; then
+  say "licenses not accepted (scripts/licenses.py review, or FAMILIA_ACCEPT_LICENSES=yes); not starting $node"
   exit 1
 fi
 if [ -z "${FAMILIA_MEMCAP:-}" ]; then

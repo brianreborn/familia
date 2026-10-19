@@ -1152,6 +1152,11 @@ def choose_mode(entry, preset_kv, args):
 
 
 # ---------------------------------------------------------------- fetch
+def hf_max(args):
+    import hf_fetch as hf
+    return hf.max_bytes_of(args)
+
+
 def fetch(spec, args):
     """--fetch ORG/NAME[@REV]: stdlib HTTPS (scripts/hf_fetch.py, no pip). Fetches every
     small repo file into the shared hf-meta snapshot (pinned to the commit SHA) plus the
@@ -1177,18 +1182,30 @@ def fetch(spec, args):
     main_sib = sel[0]
     root = hf.meta_root()
     d = os.path.join(root, repo.replace("/", "--"), sha)
+    mb = hf.max_bytes_of(args)
     log("fetch %s@%s: small files -> %s; %s (%d MB)" % (repo, sha[:10], d, main_sib["rfilename"], (main_sib.get("size") or 0) // 1000000))
+    dest = os.path.join(d, main_sib["rfilename"])
+    have = os.path.isfile(dest) and os.path.getsize(dest) == main_sib.get("size")
     if args.dry_run:
-        fetch_, skip = hf.plan(info)
-        log("dry run: would fetch %d small files (%.1f MB) and %s; skip %d large files"
-            % (len(fetch_), sum(x.get("size") or 0 for x in fetch_) / 1e6, main_sib["rfilename"], len(skip)))
-        if not os.path.isfile(os.path.join(d, main_sib["rfilename"])):
+        info.setdefault("id", repo)
+        hf.print_plan(repo, sha, hf.plan_rows(info, (), mb, want=() if have else (main_sib["rfilename"],)), sys.stderr, "dry run: ")
+        lic = (info.get("cardData") or {}).get("license")
+        log("dry run: card license %s%s; a full run shows the license summary and asks you to accept it before the "
+            "%d MB download" % (lic or "not stated in this repo's card", " (gated)" if info.get("gated") else "",
+                                (main_sib.get("size") or 0) // 1000000))
+        if not have:
             raise SystemExit(0)
     else:
         try:
-            hf.snapshot(repo, sha, log=log)
-            dest = os.path.join(d, main_sib["rfilename"])
-            if not (os.path.isfile(dest) and os.path.getsize(dest) == main_sib.get("size")):
+            hf.snapshot(repo, sha, max_bytes=mb, log=log)
+            if not have:
+                import model_db, model_license
+                e0 = model_db.ingest(repo, sha, main_sib["rfilename"], found_in=["add-model.sh --fetch"], max_bytes=mb, write=False)
+                rc = model_license.gate([e0], yes=getattr(args, "accept_licenses", False),
+                                        what="download %s (%d MB)" % (main_sib["rfilename"], (main_sib.get("size") or 0) // 1000000))
+                if rc != 0:
+                    raise UsageError("--fetch %s: license not accepted; %s was not downloaded (--damp-run fetches the metadata only)"
+                                     % (spec, main_sib["rfilename"]))
                 log("downloading %s ..." % main_sib["rfilename"])
                 hf.download(repo, sha, main_sib, dest)
         except hf.HFError as e:
@@ -1232,7 +1249,17 @@ writes:
   the same repo+file is already there) and models-preset.ini ([ROLE] model = PATH; with
   --apply-card-defaults also the card's sampling keys). --dry-run prints and writes nothing.
 
-exit status: 0 ok, 1 error, 2 usage / role ambiguous / fetch failed.
+run modes (with --fetch):
+  (default)     small repo files, then the license summary; after you accept it (prompt, or
+                --accept-licenses / --yes) the GGUF is downloaded and the model registered
+  --dry-run     prints every repo file with size, sha and status (present / fetch / skip-weight /
+                weight-wanted) and the card license; downloads and writes nothing
+  --damp-run    fetches only the missing small files (up to --max-file-mb, default 50) and writes
+                registry/models/<id>.json with weights: absent (damp); prints the license (nothing
+                to accept: no weights are fetched); manifest and preset are not changed
+  --max-file-mb N  small-file limit
+
+exit status: 0 ok, 1 error, 2 usage / role ambiguous / fetch failed / license not accepted.
 """ % ", ".join(AUX_KINDS)
 
 
@@ -1265,7 +1292,11 @@ def parse_args(argv):
     ap.add_argument("--bootstraps", help="code-bootstraps-llama.cpp checkout (default: $CODE_BOOTSTRAPS, else code-bootstraps-llama.cpp in the familia checkout)")
     ap.add_argument("--manifest", help="manifest path (default: BOOTSTRAPS/config/models-manifest.json)")
     ap.add_argument("--preset", help="preset path (default: BOOTSTRAPS/config/models-preset.ini)")
-    ap.add_argument("--dry-run", action="store_true", help="print the entry and the preset change; write nothing")
+    import hf_fetch as hf
+    hf.add_mode_args(ap, "print the plan, the entry and the preset change; write nothing (with --fetch: every repo file, "
+                         "size, sha and status, and the license; no download)")
+    ap.add_argument("--accept-licenses", "--yes", dest="accept_licenses", action="store_true",
+                    help="accept the model's license without a prompt (the summary is still printed); also FAMILIA_ACCEPT_LICENSES=yes")
     ap.add_argument("--json", action="store_true", help="print only the entry as JSON on stdout")
     return ap.parse_args(argv)
 
@@ -1313,6 +1344,19 @@ def main(argv=None):
         env = Env(args.bootstraps, args.manifest, args.preset)
         if env.data is None and not args.dry_run:
             raise UsageError("manifest %s not found (run scripts/configure.sh, or pass --bootstraps/--manifest)" % env.manifest)
+        if args.damp_run:
+            if not args.fetch:
+                raise UsageError("--damp-run needs --fetch ORG/NAME[@REV] (a local DIR has nothing to fetch)")
+            import model_db
+            r = model_db.damp(args.fetch, file=args.file, quant=args.quant, role=args.role,
+                              found_in=["add-model.sh --fetch --damp-run"], max_bytes=hf_max(args))
+            e = r.get("entry")
+            print(json.dumps({"repo": r["repo"], "revision": r["revision"], "id": e and e["id"], "roles": e and e.get("roles"),
+                              "weights": e and e.get("weights"), "license": e and (e.get("license_info") or {}).get("id"),
+                              "fetched_bytes": r.get("fetched_bytes"), "skipped": r.get("plan_totals"), "why": r.get("why")}, indent=1))
+            print("damp run: database entry only (weights absent); the manifest and preset are not changed. "
+                  "Run again without --damp-run to download the weights and register the model.")
+            return 0
         if args.fetch:
             args.inputs = [fetch(args.fetch, args)]
         resolve_inputs(args, env.roles())

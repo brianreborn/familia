@@ -849,13 +849,8 @@
     {
      "value": "apache-2.0",
      "source": "Qwen/Qwen3.5-0.8B-Base card license"
-    },
-    {
-     "value": "MIT",
-     "source": "GitHub github.com/atemoyacode-sudo/Pitcher license (spdx)"
     }
-   ],
-   "conflict": true
+   ]
   },
   "license_link": {
    "effective": "https://huggingface.co/Qwen/Qwen3.5-0.8B/blob/main/LICENSE",
@@ -870,6 +865,10 @@
      "source": "Qwen/Qwen3.5-0.8B-Base card license_link"
     }
    ]
+  },
+  "code_license": {
+   "effective": "MIT",
+   "source": "GitHub github.com/atemoyacode-sudo/Pitcher license (spdx)"
   },
   "license_file": {
    "effective": "github.com/atemoyacode-sudo/Pitcher@08adba478ae4/LICENSE",
@@ -1126,5 +1125,126 @@
  "params_problems": null,
  "params_build": "b11374",
  "native_ctx": 262144,
- "native_ctx_source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 config.json max_position_embeddings"
+ "native_ctx_source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 config.json max_position_embeddings",
+ "license_info": {
+  "id": "apache-2.0",
+  "id_source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2-GGUF card front matter license",
+  "name": null,
+  "summary": "apache-2.0",
+  "summary_source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2-GGUF card license",
+  "link": "https://huggingface.co/Qwen/Qwen3.5-0.8B/blob/main/LICENSE",
+  "link_source": "Qwen/Qwen3.5-0.8B card license_link",
+  "texts": [
+   {
+    "file": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2-GGUF@a5c9ba2dd922/LICENSE",
+    "path": "/home/green/.local/share/gguf/hf-meta/Takenoko12345678--Qwen3.5-0.8B-Japanese-SFT-v2-GGUF/a5c9ba2dd9220a0163e82af3a08e2ab4e77c343b/LICENSE",
+    "url": "https://huggingface.co/Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2-GGUF/blob/a5c9ba2dd9220a0163e82af3a08e2ab4e77c343b/LICENSE",
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "bytes": 11358,
+    "what": "model"
+   },
+   {
+    "file": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2@969b0903193c/LICENSE",
+    "path": "/home/green/.local/share/gguf/hf-meta/Takenoko12345678--Qwen3.5-0.8B-Japanese-SFT-v2/969b0903193cc0028b3bac5d23a7aa21db971233/LICENSE",
+    "url": "https://huggingface.co/Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2/blob/969b0903193cc0028b3bac5d23a7aa21db971233/LICENSE",
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "bytes": 11358,
+    "what": "model"
+   },
+   {
+    "file": "github.com/atemoyacode-sudo/Pitcher@08adba478ae4/LICENSE",
+    "path": "/home/green/.local/share/gguf/hf-meta/github/atemoyacode-sudo--Pitcher/08adba478ae4ab622fa3fff561d7af74e1e2b972/LICENSE",
+    "url": "https://github.com/atemoyacode-sudo/Pitcher/blob/08adba478ae4ab622fa3fff561d7af74e1e2b972/LICENSE",
+    "sha256": "562282e1c747db9ae801efe4ba55865178be7bf949e94501c616e9a416f50ee3",
+    "bytes": 1068,
+    "what": "code (GitHub atemoyacode-sudo/Pitcher, spdx MIT)"
+   }
+  ],
+  "obligations": [
+   {
+    "quote": "(a) You must give any other recipients of the Work or",
+    "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2-GGUF LICENSE:L95"
+   },
+   {
+    "quote": "(b) You must cause any modified files to carry prominent notices",
+    "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2-GGUF LICENSE:L98"
+   },
+   {
+    "quote": "(c) You must retain, in the Source form of any Derivative Works",
+    "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2-GGUF LICENSE:L101"
+   },
+   {
+    "quote": "attribution notices from the Source form of the Work,",
+    "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2-GGUF LICENSE:L103"
+   },
+   {
+    "quote": "include a readable copy of the attribution notices contained",
+    "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2-GGUF LICENSE:L109"
+   },
+   {
+    "quote": "within such NOTICE file, excluding those notices that do not",
+    "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2-GGUF LICENSE:L110"
+   },
+   {
+    "quote": "of the NOTICE file are for informational purposes only and",
+    "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2-GGUF LICENSE:L117"
+   },
+   {
+    "quote": "do not modify the License. You may add Your own attribution",
+    "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2-GGUF LICENSE:L118"
+   },
+   {
+    "quote": "(a) You must give any other recipients of the Work or",
+    "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 LICENSE:L95"
+   },
+   {
+    "quote": "(b) You must cause any modified files to carry prominent notices",
+    "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 LICENSE:L98"
+   },
+   {
+    "quote": "(c) You must retain, in the Source form of any Derivative Works",
+    "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 LICENSE:L101"
+   },
+   {
+    "quote": "attribution notices from the Source form of the Work,",
+    "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 LICENSE:L103"
+   },
+   {
+    "quote": "include a readable copy of the attribution notices contained",
+    "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 LICENSE:L109"
+   },
+   {
+    "quote": "within such NOTICE file, excluding those notices that do not",
+    "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 LICENSE:L110"
+   },
+   {
+    "quote": "of the NOTICE file are for informational purposes only and",
+    "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 LICENSE:L117"
+   },
+   {
+    "quote": "do not modify the License. You may add Your own attribution",
+    "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 LICENSE:L118"
+   }
+  ],
+  "gated": false,
+  "unknown": false,
+  "seen": [
+   {
+    "value": "apache-2.0",
+    "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2-GGUF card license"
+   },
+   {
+    "value": "apache-2.0",
+    "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 card license"
+   },
+   {
+    "value": "apache-2.0",
+    "source": "Qwen/Qwen3.5-0.8B card license"
+   },
+   {
+    "value": "apache-2.0",
+    "source": "Qwen/Qwen3.5-0.8B-Base card license"
+   }
+  ]
+ }
 }

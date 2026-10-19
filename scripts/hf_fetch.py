@@ -156,6 +156,9 @@ def plan(info, keep=(), max_bytes=DEFAULT_MAX):
         size = s.get("size") or (s.get("lfs") or {}).get("size") or 0
         if p in keep and size <= max_bytes:
             fetch.append(s)
+        elif p.lower().endswith((".gguf", ".safetensors", ".pt", ".pth", ".onnx")) or re.search(r"\.(gguf|safetensors)\.part\d+$", p.lower()):
+            # model weights, however small: only a full run downloads them, after the license is accepted
+            skip.append((s, "weight file, fetched only by a full run (%d MB)" % (size // 1000000)))
         elif size > max_bytes:
             skip.append((s, ("weight file not used here (%d MB)" if is_weight(p) else "larger than the limit (%d MB)")
                          % (size // 1000000)))
@@ -255,23 +258,6 @@ def gguf_remote_header(repo, rev, path, parse, start=4 << 20, limit=64 << 20):
             n *= 4
         finally:
             os.unlink(t.name)
-
-
-if __name__ == "__main__":
-    import argparse
-    ap = argparse.ArgumentParser(description="Fetch the small files of a Hugging Face repo, pinned to a commit.")
-    ap.add_argument("repo", help="ORG/NAME[@REV]")
-    ap.add_argument("--keep", action="append", default=[], help="also fetch this file even if it is a weight")
-    ap.add_argument("--max-bytes", type=int, default=DEFAULT_MAX)
-    ap.add_argument("--dry-run", action="store_true")
-    a = ap.parse_args()
-    r, _, v = a.repo.partition("@")
-    try:
-        s = snapshot(r, v or None, a.keep, a.max_bytes, dry_run=a.dry_run)
-    except HFError as e:
-        print("hf_fetch: %s" % e, file=sys.stderr)
-        sys.exit(1)
-    print(json.dumps({k: s[k] for k in ("repo", "revision", "dir", "fetched_bytes", "errors")}, indent=1))
 
 
 # ------------------------------------------------------------------ GitHub READMEs a card links (#51)
@@ -412,3 +398,99 @@ def _gh_extra(rec, path, log):
         f.write(data)
     rec["files"].setdefault("extra", {})[path] = {"path": path, "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest(), "url": raw}
     log("  github %s@%s %s (%d bytes)" % (rec["repo"], rec["sha"][:10], path, len(data)))
+
+
+# ------------------------------------------------------------------ run modes (shared by the model scripts)
+MODES_HELP = """run modes (every model script):
+  (default)        full run: small files, and the weights the command is for
+  --dry-run        no file writes, no network writes: prints the plan (every file, size,
+                   sha, and whether it is present, would be fetched, or is skipped as large)
+  --damp-run       fetches only the missing small files (card, config, generation_config,
+                   tokenizer*, chat templates, license, small json/txt: up to --max-file-mb);
+                   weights and large files are skipped but recorded with size and LFS sha256,
+                   and the database entry is marked weights: absent (damp)
+  --max-file-mb N  the small-file limit (default 50)"""
+
+
+def add_mode_args(ap, dry_help=None):
+    """--dry-run / --damp-run / --max-file-mb on an argparse parser (mutually exclusive modes)."""
+    g = ap.add_mutually_exclusive_group()
+    g.add_argument("--dry-run", action="store_true", help=dry_help or "print the plan; write nothing (no file or network writes)")
+    g.add_argument("--damp-run", action="store_true", help="fetch only the missing small files; record weights (size, sha256) without downloading them")
+    ap.add_argument("--max-file-mb", type=float, default=DEFAULT_MAX / 1e6, metavar="N",
+                    help="small-file limit for snapshots and damp runs, in MB (default %(default)g)")
+    return ap
+
+
+def max_bytes_of(args):
+    return int(float(getattr(args, "max_file_mb", None) or DEFAULT_MAX / 1e6) * 1000 * 1000)
+
+
+def plan_rows(info, keep=(), max_bytes=DEFAULT_MAX, root=None, want=()):
+    """[{path, size, sha256, blob, status}] for repo info: status is present / fetch / skip-large /
+    skip-weight; files in `want` (the weights a full run downloads) are 'weight-wanted'."""
+    rev = info["sha"]
+    d = os.path.join(root or meta_root(), info.get("id", "").replace("/", "--") if info.get("id") else "", rev)
+    old = {}
+    sp = os.path.join(d, "snapshot.json")
+    if os.path.isfile(sp):
+        try:
+            with open(sp, encoding="utf-8") as f:
+                old = json.load(f).get("files", {})
+        except (OSError, ValueError):
+            old = {}
+    fetch, skip = plan(info, keep, max_bytes)
+    fset = {s["rfilename"] for s in fetch}
+    rows = []
+    for s in info.get("siblings", []):
+        p = s["rfilename"]
+        r = sibling_record(s)
+        o = old.get(p) or {}
+        present = o.get("fetched") and os.path.isfile(os.path.join(d, p)) and os.path.getsize(os.path.join(d, p)) == r["size"]
+        if present:
+            st = "present"
+        elif p in want:
+            st = "weight-wanted"
+        elif p in fset:
+            st = "fetch"
+        else:
+            st = "skip-weight" if is_weight(p) else "skip-large"
+        rows.append({"path": p, "size": r["size"], "sha256": r["sha256"], "blob": r["blob"], "status": st})
+    return rows
+
+
+def print_plan(repo, rev, rows, out=None, header=""):
+    out = out or sys.stderr
+    tot = {}
+    for r in rows:
+        tot[r["status"]] = tot.get(r["status"], 0) + (r["size"] or 0)
+    out.write("%splan for %s@%s (%d files):\n" % (header, repo, rev[:10], len(rows)))
+    for r in rows:
+        out.write("  %-13s %12s  %s  %s\n" % (r["status"], "{:,}".format(r["size"] or 0), (r["sha256"] or ("blob " + str(r["blob"])))[:20], r["path"]))
+    out.write("  totals: " + ", ".join("%s %.1f MB" % (k, v / 1e6) for k, v in sorted(tot.items())) + "\n")
+    return tot
+
+
+if __name__ == "__main__":
+    import argparse
+    ap = argparse.ArgumentParser(description="Fetch the small files of a Hugging Face repo, pinned to a commit. "
+                                 "This script never downloads weights, so a normal run and --damp-run are the same.",
+                                 epilog=MODES_HELP, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("repo", help="ORG/NAME[@REV]")
+    ap.add_argument("--keep", action="append", default=[], help="also fetch this file even if it is a weight")
+    ap.add_argument("--max-bytes", type=int, default=None, help="small-file limit in bytes (overrides --max-file-mb)")
+    add_mode_args(ap)
+    a = ap.parse_args()
+    r, _, v = a.repo.partition("@")
+    mb = a.max_bytes or max_bytes_of(a)
+    try:
+        if a.dry_run:
+            info = repo_info(r, v or "main")
+            info.setdefault("id", r)
+            print_plan(r, info["sha"], plan_rows(info, a.keep, mb), sys.stdout, "dry run: ")
+            sys.exit(0)
+        s = snapshot(r, v or None, a.keep, mb)
+    except HFError as e:
+        print("hf_fetch: %s" % e, file=sys.stderr)
+        sys.exit(1)
+    print(json.dumps({k: s[k] for k in ("repo", "revision", "dir", "fetched_bytes", "errors")}, indent=1))

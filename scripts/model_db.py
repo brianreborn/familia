@@ -136,7 +136,7 @@ def template_sha(snap):
 
 # ------------------------------------------------------------------ ingest
 def ingest(repo, revision, file, local=None, role=None, found_in=None, match=None, max_bytes=hf.DEFAULT_MAX,
-           root=None, db_dir=None, write=True, fetch_base=True, refresh_github=False):
+           root=None, db_dir=None, write=True, fetch_base=True, refresh_github=False, weights=None):
     """Build (and save) the database entry for repo@revision/file. Raises hf.HFError."""
     unknown, warnings = [], []
     snap = hf.snapshot(repo, revision, max_bytes=max_bytes, root=root, log=log)
@@ -297,6 +297,13 @@ def ingest(repo, revision, file, local=None, role=None, found_in=None, match=Non
         "unknown": unknown or None, "warnings": warnings or None,
         "updated": time.strftime("%Y-%m-%d"), "by": "scripts/model_db.py",
     }
+    # weights: "absent (damp)" for a damp-run entry (validate_graph refuses to run it), "present (...)"
+    # once a full run verified the file; kept from the old entry otherwise.
+    w = weights or old.get("weights")
+    if local_check and local_check.get("sha256_ok") and (w or "").startswith("absent"):
+        w = "present (%s, sha256 checked %s)" % (local_check["host"], local_check.get("checked"))
+    if w:
+        entry["weights"] = w
     entry["gguf_meta"] = gguf_scalars(meta) or None
     try:
         apply_params(entry, snap, bsnap, meta, root=root, refresh_github=refresh_github)
@@ -483,7 +490,107 @@ def apply_params(entry, snap, bsnap, meta, root=None, curated=None, refresh_gith
         entry["roles"] = [x for x in entry.get("roles") or [] if x != r]
     if cur.get("license"):
         entry["license"], entry["license_source"] = cur["license"]["value"], cur["license"]["source"]
+    entry["license_info"] = license_info(entry, snap, bsnap, cur)
     return entry
+
+
+LICENSE_NAMES = ("LICENSE", "LICENSE.md", "LICENSE.txt", "License.txt", "license.txt", "LICENCE", "COPYING",
+                 "LICENSE-MIT", "LICENSE-APACHE", "NOTICE", "NOTICE.md", "USE_POLICY.md", "Responsible_AI_License.md")
+# lines that carry an obligation or a limit (quoted, never paraphrased)
+OBLIGATION_RE = re.compile(r"(?i)(attribution|acceptable use|prohibited|use policy|non-?commercial|not (be )?valid in|"
+                           r"does not apply in|monthly active|commercial (use|purposes)|you (must|shall) (not )?|must (retain|include|give|display|cause)|"
+                           r"built with|powered by|notice file|export control|territory|indemnif|gated|agree to share)")
+
+
+SPDX_LINKS = {"apache-2.0": "https://spdx.org/licenses/Apache-2.0.html", "mit": "https://spdx.org/licenses/MIT.html",
+              "cc-by-nc-4.0": "https://spdx.org/licenses/CC-BY-NC-4.0.html", "cc-by-4.0": "https://spdx.org/licenses/CC-BY-4.0.html",
+              "bsd-3-clause": "https://spdx.org/licenses/BSD-3-Clause.html", "gpl-3.0": "https://spdx.org/licenses/GPL-3.0-only.html",
+              "cc-by-sa-4.0": "https://spdx.org/licenses/CC-BY-SA-4.0.html", "openrail": "https://huggingface.co/blog/open_rail"}
+
+
+def _url_of(repo, rev, path):
+    return "https://huggingface.co/%s/blob/%s/%s" % (repo, rev, path)
+
+
+def license_info(entry, snap, bsnap, cur=None, max_quotes=8):
+    """{id, name, source, texts: [{file, path, sha256, bytes, what}], link, obligations: [{quote, source}],
+    gated, unknown}: the exact license of an entry, where its full text is, and the lines that oblige
+    or limit, quoted with file:line. Nothing is inferred: no id stays "unknown"."""
+    cur = cur or {}
+    d = entry.get("descriptor") or {}
+    def eff(k):
+        return (d.get(k) or {}).get("effective"), (d.get(k) or {}).get("source")
+    fm_id, fm_src = None, None
+    for s_, lab in ((snap, entry["repo"]), (bsnap, entry.get("base_model"))):
+        cd = (s_ or {}).get("card_data") or {}
+        if cd.get("license"):
+            fm_id, fm_src = cd["license"], "%s card front matter license" % lab
+            if fm_id == "other" and cd.get("license_name"):
+                fm_id, fm_src = cd["license_name"], "%s card front matter license_name" % lab
+            break
+    lid, lsrc = fm_id, fm_src
+    if not lid and entry.get("license") not in (None, "unknown") and re.search(r"card license|GGUF", str(entry.get("license_source"))):
+        lid, lsrc = entry["license"], entry["license_source"]      # the card front matter as ingest parsed it
+    if not lid:
+        g = (entry.get("gguf_meta") or {}).get("general.license")
+        if g:
+            lid, lsrc = g, "GGUF general.license"
+    cl = cur.get("license") or {}
+    if cl.get("id"):
+        lid, lsrc = cl["id"], cl.get("source")
+    texts, quotes = [], []
+    for s_, lab in ((snap, entry["repo"]), (bsnap, entry.get("base_model"))):
+        if not s_:
+            continue
+        for n in LICENSE_NAMES:
+            fp = os.path.join(s_["dir"], n)
+            if os.path.isfile(fp):
+                b = open(fp, "rb").read()
+                texts.append({"file": "%s@%s/%s" % (lab, s_["revision"][:12], n), "path": fp, "url": _url_of(lab, s_["revision"], n),
+                              "sha256": hashlib.sha256(b).hexdigest(), "bytes": len(b), "what": "model"})
+        for n in [x for x in LICENSE_NAMES if os.path.isfile(os.path.join(s_["dir"], x))] + ["README.md"]:
+            fp = os.path.join(s_["dir"], n)
+            if not os.path.isfile(fp):
+                continue
+            body = _read(fp).split("\n")
+            start = 0
+            if n == "README.md" and body and body[0].strip() == "---":   # skip the front matter
+                start = next((i for i in range(1, len(body)) if body[i].strip() == "---"), 0) + 1
+            for i in range(start, len(body)):
+                t = " ".join(body[i].split())
+                if 20 < len(t) and OBLIGATION_RE.search(t):
+                    quotes.append({"quote": t[:300] + ("..." if len(t) > 300 else ""), "source": "%s %s:L%d" % (lab, n, i + 1)})
+                    if sum(1 for q in quotes if q["source"].startswith("%s %s:" % (lab, n))) >= max_quotes:
+                        break
+    for g in entry.get("github") or []:
+        lfile = ((g.get("files") or {}).get("license") or {})
+        if lfile.get("path"):
+            fp = os.path.join(hf.meta_root(), g["snapshot"], lfile["path"])
+            texts.append({"file": "github.com/%s@%s/%s" % (g["resolved"], g["sha"][:12], lfile["path"]),
+                          "path": fp if os.path.isfile(fp) else None,
+                          "url": "https://github.com/%s/blob/%s/%s" % (g["resolved"], g["sha"], lfile["path"]),
+                          "sha256": lfile.get("sha256"), "bytes": lfile.get("bytes"),
+                          "what": "code (GitHub %s, spdx %s)" % (g["resolved"], g.get("license_spdx"))})
+    link, link_src = eff("license_link")
+    if link and not re.match(r"https?://", str(link)):
+        base_lab = entry["repo"]
+        link = _url_of(base_lab, entry["revision"], link)
+    if not link:
+        mt = [t for t in texts if t["what"] == "model"]
+        link = mt[0]["url"] if mt else None
+        link_src = "license file in the repo" if mt else None
+    if not link and lid and SPDX_LINKS.get(str(lid).lower()):
+        link, link_src = SPDX_LINKS[str(lid).lower()], "SPDX license list (standard text of %s)" % lid
+    gated = bool((snap or {}).get("gated")) or bool((bsnap or {}).get("gated"))
+    if gated:
+        quotes.insert(0, {"quote": "gated repo: Hugging Face asks you to accept its terms before download", "source": "HF API gated"})
+    out = {"id": lid or "unknown", "id_source": lsrc, "name": eff("license_name")[0] or (cl.get("value") if cl else None),
+           "summary": entry.get("license"), "summary_source": entry.get("license_source"),
+           "link": link, "link_source": link_src, "texts": texts or None, "obligations": quotes or None,
+           "gated": gated, "unknown": not lid,
+           # every license statement seen up the base chain; a base model's license is NOT the fine-tune's
+           "seen": [v for v in ((d.get("license") or {}).get("values") or [d.get("license")] if d.get("license") else [])] or None}
+    return out
 
 
 # ------------------------------------------------------------------ backfill discovery
@@ -628,12 +735,20 @@ def backfill(args):
             continue
         log("== %s@%s %s%s" % (repo, (t["revision"] or "main")[:10], file, " (local)" if t["local"] else ""))
         if args.dry_run:
+            try:
+                info = hf.repo_info(repo, t["revision"] or "main")
+                info.setdefault("id", repo)
+                hf.print_plan(repo, info["sha"], hf.plan_rows(info, (), args.max_bytes), sys.stderr, "dry run: ")
+            except hf.HFError as ex:
+                log("  dry run: %s" % ex)
             continue
         try:
             e = ingest(repo, t["revision"], file, local=t["local"], found_in=sorted(set(t["found_in"])), match=t["match"],
                        max_bytes=args.max_bytes, db_dir=args.db_dir)
             e["roles"] = sorted(set(e["roles"] + [r for r in t["roles"] if r]))
             save(e, args.db_dir)
+            import model_license          # metadata only: printed, no acceptance needed (no weights fetched)
+            model_license.summary(e)
             built[e["id"]] = (e, t)
         except hf.HFError as ex:
             failures.append({"what": "%s %s" % (repo, file), "why": str(ex)})
@@ -904,6 +1019,9 @@ def node_params(graph, name, entry):
     for k in samp:
         drop.append(SAMPLING_FLAGS[k])
     argv, errs, notes = mp.launch_items(rp, ctx, par, build, drop=tuple(drop))
+    if str(entry.get("weights") or "").startswith("absent"):
+        errs.insert(0, "not runnable yet: %s has weights: %s (metadata only); fetch %s first: scripts/add-model.sh --fetch %s@%s --file %s"
+                    % (entry["id"], entry["weights"], entry["file"], entry["repo"], entry["revision"], entry["file"]))
     for k, v in samp.items():
         argv += [SAMPLING_FLAGS[k], str(v)]
     out, i = [], 0
@@ -1029,6 +1147,120 @@ def check_graph(graph, db_dir=None):
     return errs, warns
 
 
+ROLE_FALLBACK = ("general", "coder", "decision", "embed", "language", "reranker", "jev")
+GGUF_PREF = ("Q4_K_M", "Q4_K_S", "Q5_K_M", "Q8_0", "Q4_0", "Q6_K", "IQ4_XS", "Q3_K_M", "F16", "BF16")
+
+
+def pick_main(info, file=None, quant=None):
+    """The file an entry is about: --file, else the GGUF of --quant, else the first GGUF in GGUF_PREF
+    order (first part of a split), else the main safetensors. -> (path, how) or (None, why)."""
+    sib = {s["rfilename"]: s for s in info.get("siblings", [])}
+    if file:
+        hit = [p for p in sib if p == file or os.path.basename(p) == os.path.basename(file)]
+        return (hit[0], "--file") if len(hit) == 1 else (None, "--file %s: %d matches" % (file, len(hit)))
+    ggufs = [p for p in sib if p.lower().endswith(".gguf") and not am.classify_gguf_name(p)
+             and (not am.SPLIT_RE.match(os.path.basename(p)) or "-00001-of-" in p)]
+    if quant:
+        hit = [p for p in ggufs if (am.quant_of(p) or "").upper() == quant.upper()]
+        return (hit[0], "--quant %s" % quant) if len(hit) == 1 else (None, "--quant %s: %d GGUFs" % (quant, len(hit)))
+    for q in GGUF_PREF:
+        hit = [p for p in ggufs if (am.quant_of(p) or "").upper() == q]
+        if hit:
+            return sorted(hit)[0], "GGUF %s (preference %s)" % (q, "/".join(GGUF_PREF[:4]))
+    if ggufs:
+        return sorted(ggufs)[0], "only GGUF(s): %s" % ", ".join(sorted(ggufs)[:3])
+    st = sorted(p for p in sib if p.endswith(".safetensors"))
+    if st:
+        main = next((p for p in st if os.path.basename(p) == "model.safetensors"), None) or next((p for p in st if "-00001-of-" in p), st[0])
+        return main, "no GGUF; main safetensors"
+    return None, "no GGUF or safetensors weights in the repo"
+
+
+def infer_role(e, snap, roles=ROLE_FALLBACK):
+    """add_model's evidence rules on what a damp run has: card front matter, config.json, the GGUF
+    header (read remotely) and the file name. -> (role or None, [evidence lines])."""
+    ev = am.Evidence()
+    fm = (snap or {}).get("card_data") or {}
+    title = None
+    p = os.path.join(snap["dir"], "README.md") if snap else None
+    if p and os.path.isfile(p):
+        fm2, body, _ = am.split_card(_read(p))
+        fm = dict(fm2 or {}, **{k: v for k, v in fm.items() if v})
+        title = next((l.lstrip("# ").strip() for l in body.split("\n") if l.startswith("# ")), None)
+    am.infer_from_card(ev, fm, title)
+    cfg = read_snap_json(snap, "config.json") or {} if snap else {}
+    am.infer_from_config(ev, cfg, bool(snap and os.path.isfile(os.path.join(snap["dir"], "decision_config.json"))))
+    meta = dict(e.get("gguf_meta") or {})
+    if meta:
+        am.infer_from_gguf(ev, meta, e["file"])
+    am.infer_from_filename(ev, e["file"])
+    rp = (e.get("required_params") or {}).get("kind")
+    if rp == "embed":
+        ev.add("embed", 3, "model_params", "required_params kind embed")
+    elif rp == "decision":
+        ev.add("decision", 3, "model_params", "required_params kind decision")
+    role, ranked = ev.decide(list(roles))
+    lines = ["%s +%d (%s: %s)" % (x["role"], x["weight"], x["source"], x["why"]) for x in ev.items]
+    return role, lines + (["ranked: %s" % ranked] if not role else [])
+
+
+def damp(spec, file=None, quant=None, role=None, found_in=None, dry_run=False, max_bytes=hf.DEFAULT_MAX,
+         db_dir=None, show_license=True):
+    """Damp run of one HF repo: small files into hf-meta, weights listed (size, LFS sha256) but not
+    downloaded, a database entry with weights: absent (damp) and an inferred role. Never downloads
+    weights, so no license acceptance is needed; the license is printed. --dry-run prints the plan.
+    -> {"repo", "revision", "entry" or None, "plan_totals", "why"}."""
+    repo, _, rev = spec.partition("@")
+    info = hf.repo_info(repo, rev or "main")
+    info.setdefault("id", repo)
+    main, how = pick_main(info, file, quant)
+    rows = hf.plan_rows(info, (), max_bytes)
+    tot = {}
+    for r in rows:
+        tot[r["status"]] = tot.get(r["status"], 0) + (r["size"] or 0)
+    out = {"repo": repo, "revision": info["sha"], "main": main, "main_how": how, "gated": info.get("gated"),
+           "repo_bytes": sum(r["size"] or 0 for r in rows), "plan_totals": tot, "entry": None,
+           "license_card": ((info.get("cardData") or {}).get("license"))}
+    if dry_run:
+        hf.print_plan(repo, info["sha"], rows, sys.stderr, "dry run: ")
+        log("dry run: main file %s (%s); card license %s; nothing written" % (main, how, out["license_card"]))
+        return out
+    if not main:
+        snap = hf.snapshot(repo, info["sha"], max_bytes=max_bytes, log=log)
+        out["fetched_bytes"] = snap["fetched_bytes"]
+        out["why"] = how
+        log("damp %s: %s; snapshot only, no database entry" % (repo, how))
+        return out
+    e = ingest(repo, info["sha"], main, role=role, found_in=found_in or ["model_db.py damp"], max_bytes=max_bytes,
+               db_dir=db_dir, write=False, weights="absent (damp)")
+    if not role:
+        r_, ev = infer_role(e, _snap_of(e.get("snapshot")))
+        e["role_inference"] = {"role": r_, "evidence": ev}
+        if r_:
+            e["roles"] = sorted(set((e.get("roles") or []) + [r_]))
+    e["repo_bytes"] = out["repo_bytes"]
+    save(e, db_dir)
+    out["entry"] = e
+    out["fetched_bytes"] = (e.get("snapshot") or {}).get("fetched_bytes", 0) + ((e.get("base_snapshot") or {}).get("fetched_bytes") or 0)
+    if show_license:
+        import model_license
+        model_license.summary(e)
+    return out
+
+
+def _snap_of(rec):
+    if not rec:
+        return None
+    d = os.path.join(hf.meta_root(), rec["path"])
+    try:
+        with open(os.path.join(d, "snapshot.json"), encoding="utf-8") as f:
+            j = json.load(f)
+    except (OSError, ValueError):
+        return None
+    j["dir"] = d
+    return j
+
+
 def refresh(db_dir=None, only=None, refresh_github=False, max_bytes=hf.DEFAULT_MAX):
     """Re-ingest every entry at its pinned revision (the local weights file when found)."""
     done, failures = [], []
@@ -1097,15 +1329,26 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0], epilog=__doc__.split("\n\n", 1)[1],
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--db-dir", default=None, help="database directory (default registry/models)")
-    ap.add_argument("--max-bytes", type=int, default=hf.DEFAULT_MAX, help="skip repo files larger than this (default 50 MB)")
+    ap.add_argument("--max-bytes", type=int, default=None, help="skip repo files larger than this (overrides --max-file-mb)")
+    ap.add_argument("--max-file-mb", type=float, default=hf.DEFAULT_MAX / 1e6, metavar="N", help="small-file limit in MB (default %(default)g)")
     sp = ap.add_subparsers(dest="cmd", required=True)
+    dm = sp.add_parser("damp", help="damp-run repos: small files + a database entry with weights: absent (damp)",
+                       epilog=hf.MODES_HELP, formatter_class=argparse.RawDescriptionHelpFormatter)
+    dm.add_argument("repos", nargs="+", metavar="ORG/NAME[@REV]")
+    dm.add_argument("--file")
+    dm.add_argument("--quant")
+    dm.add_argument("--role")
+    dm.add_argument("--found-in", action="append", help="where the repo was found (e.g. 'familia #53')")
+    dm.add_argument("--dry-run", action="store_true", help="print the plan; write nothing")
+    dm.add_argument("--json", action="store_true", help="print the results as JSON")
     i = sp.add_parser("ingest")
     i.add_argument("repo")
     i.add_argument("file")
     i.add_argument("--local")
     i.add_argument("--role")
     b = sp.add_parser("backfill")
-    b.add_argument("--dry-run", action="store_true")
+    b.add_argument("--dry-run", action="store_true", help="print each target's plan; write nothing")
+    b.add_argument("--damp-run", action="store_true", help="the default for backfill: it never downloads weights")
     b.add_argument("--only")
     b.add_argument("--skip-search", action="store_true")
     b.add_argument("--no-manifest", action="store_true")
@@ -1121,6 +1364,23 @@ def main(argv=None):
     s.add_argument("id")
     sp.add_parser("list")
     a = ap.parse_args(argv)
+    a.max_bytes = a.max_bytes or int(a.max_file_mb * 1e6)
+    if a.cmd == "damp":
+        res, rc = [], 0
+        for spec in a.repos:
+            try:
+                r = damp(spec, a.file, a.quant, a.role, a.found_in, a.dry_run, a.max_bytes, a.db_dir)
+            except hf.HFError as ex:
+                log("model_db: damp %s: %s" % (spec, ex))
+                r, rc = {"repo": spec, "error": str(ex), "status": getattr(ex, "status", None)}, 1
+            e = r.pop("entry", None)
+            if e:
+                r.update({"id": e["id"], "roles": e.get("roles"), "license": (e.get("license_info") or {}).get("id"),
+                          "weights": e.get("weights"), "bytes": e.get("bytes"), "role_inference": e.get("role_inference")})
+            res.append(r)
+        print(json.dumps(res, indent=1, ensure_ascii=False) if a.json else "\n".join(
+            "%s: %s" % (x["repo"], x.get("error") or ("dry run" if a.dry_run else x.get("id") or x.get("why"))) for x in res))
+        return rc
     if a.cmd == "ingest":
         repo, _, rev = a.repo.partition("@")
         try:

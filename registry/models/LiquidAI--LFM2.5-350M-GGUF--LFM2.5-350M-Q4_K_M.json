@@ -1173,5 +1173,122 @@
  "params_problems": null,
  "params_build": "b11374",
  "native_ctx": 32768,
- "native_ctx_source": "card: LiquidAI/LFM2.5-350M README.md:L65"
+ "native_ctx_source": "card: LiquidAI/LFM2.5-350M README.md:L65",
+ "license_info": {
+  "id": "lfm1.0",
+  "id_source": "LiquidAI/LFM2.5-350M-GGUF card front matter license_name",
+  "name": "lfm1.0",
+  "summary": "lfm1.0 (LICENSE)",
+  "summary_source": "LiquidAI/LFM2.5-350M-GGUF card license",
+  "link": "https://huggingface.co/LiquidAI/LFM2.5-350M-GGUF/blob/657e078c94084481950a2d555a941481f715536b/LICENSE",
+  "link_source": "LiquidAI/LFM2.5-350M-GGUF card license_link",
+  "texts": [
+   {
+    "file": "LiquidAI/LFM2.5-350M-GGUF@657e078c9408/LICENSE",
+    "path": "/home/green/.local/share/gguf/hf-meta/LiquidAI--LFM2.5-350M-GGUF/657e078c94084481950a2d555a941481f715536b/LICENSE",
+    "url": "https://huggingface.co/LiquidAI/LFM2.5-350M-GGUF/blob/657e078c94084481950a2d555a941481f715536b/LICENSE",
+    "sha256": "5188f2b355da20647257a3156db5834c794e5fb5e6d8dc4d4cdbb3180e75b85b",
+    "bytes": 10596,
+    "what": "model"
+   },
+   {
+    "file": "LiquidAI/LFM2.5-350M@9e6c6ccf47cd/LICENSE",
+    "path": "/home/green/.local/share/gguf/hf-meta/LiquidAI--LFM2.5-350M/9e6c6ccf47cd318696e137d381a7ded8fe4df09f/LICENSE",
+    "url": "https://huggingface.co/LiquidAI/LFM2.5-350M/blob/9e6c6ccf47cd318696e137d381a7ded8fe4df09f/LICENSE",
+    "sha256": "4d28ca14dedc0b3d0fcc2b3339f0e79931faa33874f3d24f522183a8fc70068c",
+    "bytes": 10574,
+    "what": "model"
+   }
+  ],
+  "obligations": [
+   {
+    "quote": "\"Commercial Use\" shall mean any use of the Work for direct or indirect commercial advantage or monetary compensation.",
+    "source": "LiquidAI/LFM2.5-350M-GGUF LICENSE:L19"
+   },
+   {
+    "quote": "\"Non-Commercial or Research Purposes\" shall mean purposes that do not involve any use of the Work or a Derivative Work for Commercial Use.",
+    "source": "LiquidAI/LFM2.5-350M-GGUF LICENSE:L21"
+   },
+   {
+    "quote": "2. Grant of Copyright License. Subject to the terms and conditions of this License, including the Commercial Use limitation set forth in Section 5, each Contributor hereby grants to You a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable copyright license to reproduce, prepar...",
+    "source": "LiquidAI/LFM2.5-350M-GGUF LICENSE:L23"
+   },
+   {
+    "quote": "3. Grant of Patent License. Subject to the terms and conditions of this License, including the Commercial Use limitation set forth in Section 5, each Contributor hereby grants to You a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable (except as stated in this section) patent...",
+    "source": "LiquidAI/LFM2.5-350M-GGUF LICENSE:L24"
+   },
+   {
+    "quote": "(a) You must give any other recipients of the Work or Derivative Works a copy of this License; and",
+    "source": "LiquidAI/LFM2.5-350M-GGUF LICENSE:L26"
+   },
+   {
+    "quote": "(b) You must cause any modified files to carry prominent notices stating that You changed the files; and",
+    "source": "LiquidAI/LFM2.5-350M-GGUF LICENSE:L27"
+   },
+   {
+    "quote": "(c) You must retain, in the Source form of any Derivative Works that You distribute, all copyright, patent, trademark, and attribution notices from the Source form of the Work, excluding those notices that do not pertain to any part of the Derivative Works; and",
+    "source": "LiquidAI/LFM2.5-350M-GGUF LICENSE:L28"
+   },
+   {
+    "quote": "(d) If the Work includes a \"NOTICE\" text file as part of its distribution, then any Derivative Works that You distribute must include a readable copy of the attribution notices contained within such NOTICE file, excluding those notices that do not pertain to any part of the Derivative Works, in at l...",
+    "source": "LiquidAI/LFM2.5-350M-GGUF LICENSE:L29"
+   },
+   {
+    "quote": "\"Commercial Use\" shall mean any use of the Work for direct or indirect commercial advantage or monetary compensation.",
+    "source": "LiquidAI/LFM2.5-350M LICENSE:L27"
+   },
+   {
+    "quote": "\"Non-Commercial or Research Purposes\" shall mean purposes that do not involve any use of the Work or a Derivative Work for Commercial Use.",
+    "source": "LiquidAI/LFM2.5-350M LICENSE:L31"
+   },
+   {
+    "quote": "2. Grant of Copyright License. Subject to the terms and conditions of this License, including the Commercial Use limitation set forth in Section 5, each Contributor hereby grants to You a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable copyright license to reproduce, prepar...",
+    "source": "LiquidAI/LFM2.5-350M LICENSE:L35"
+   },
+   {
+    "quote": "3. Grant of Patent License. Subject to the terms and conditions of this License, including the Commercial Use limitation set forth in Section 5, each Contributor hereby grants to You a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable (except as stated in this section) patent...",
+    "source": "LiquidAI/LFM2.5-350M LICENSE:L37"
+   },
+   {
+    "quote": "(a) You must give any other recipients of the Work or Derivative Works a copy of this License; and",
+    "source": "LiquidAI/LFM2.5-350M LICENSE:L41"
+   },
+   {
+    "quote": "(b) You must cause any modified files to carry prominent notices stating that You changed the files; and",
+    "source": "LiquidAI/LFM2.5-350M LICENSE:L43"
+   },
+   {
+    "quote": "(c) You must retain, in the Source form of any Derivative Works that You distribute, all copyright, patent, trademark, and attribution notices from the Source form of the Work, excluding those notices that do not pertain to any part of the Derivative Works; and",
+    "source": "LiquidAI/LFM2.5-350M LICENSE:L45"
+   },
+   {
+    "quote": "(d) If the Work includes a \"NOTICE\" text file as part of its distribution, then any Derivative Works that You distribute must include a readable copy of the attribution notices contained within such NOTICE file, excluding those notices that do not pertain to any part of the Derivative Works, in at l...",
+    "source": "LiquidAI/LFM2.5-350M LICENSE:L47"
+   },
+   {
+    "quote": "- **Number of layers**: 16 (10 double-gated convolution blocks + 6 GQA blocks)",
+    "source": "LiquidAI/LFM2.5-350M README.md:L63"
+   }
+  ],
+  "gated": false,
+  "unknown": false,
+  "seen": [
+   {
+    "value": "other",
+    "source": "LiquidAI/LFM2.5-350M-GGUF card license"
+   },
+   {
+    "value": "other",
+    "source": "LiquidAI/LFM2.5-350M card license"
+   },
+   {
+    "value": "other",
+    "source": "LiquidAI/LFM2.5-350M-Base card license"
+   },
+   {
+    "value": "other",
+    "source": "GGUF general.license"
+   }
+  ]
+ }
 }

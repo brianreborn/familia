@@ -733,8 +733,9 @@ def descriptor(inp, meta, cfgs, stm, problems):
     for k, f in (("general.license", "license"), ("general.license.name", "license_name"), ("general.license.link", "license_link")):
         put(f, meta.get(k), "GGUF %s" % k)
     for d in inp.get("doc_meta", []):
-        if d["kind"] == "github" and d.get("license_spdx"):
-            put("license", d["license_spdx"], "GitHub %s license (spdx)" % d["label"])
+        if d["kind"] == "github" and d.get("license_spdx") and d["license_spdx"] != "NOASSERTION":
+            # the code repo's license, not the weights' (drex-dlm: MIT code, cc-by-nc-4.0 weights)
+            put("code_license", d["license_spdx"], "GitHub %s license (spdx)" % d["label"])
         if d["kind"] == "github" and d.get("license_file"):
             put("license_file", "%s@%s/%s" % (d["label"], d["sha"][:12], d["license_file"]), "GitHub %s" % d["label"])
     for p in sorted((snap.get("files") or {})):

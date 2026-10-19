@@ -1679,18 +1679,6 @@
     {
      "value": "cc-by-nc-4.0",
      "source": "GGUF general.license"
-    },
-    {
-     "value": "NOASSERTION",
-     "source": "GitHub github.com/nace-ai/drex-dlm license (spdx)"
-    },
-    {
-     "value": "MIT",
-     "source": "GitHub github.com/nace-ai/drex-agent-skill license (spdx)"
-    },
-    {
-     "value": "Apache-2.0",
-     "source": "GitHub github.com/nace-ai/drex-decision-models license (spdx)"
     }
    ],
    "conflict": true
@@ -1720,6 +1708,21 @@
      "source": "nace-ai/drex-dlm repo file"
     }
    ]
+  },
+  "code_license": {
+   "effective": "MIT",
+   "source": "GitHub github.com/nace-ai/drex-agent-skill license (spdx)",
+   "values": [
+    {
+     "value": "MIT",
+     "source": "GitHub github.com/nace-ai/drex-agent-skill license (spdx)"
+    },
+    {
+     "value": "Apache-2.0",
+     "source": "GitHub github.com/nace-ai/drex-decision-models license (spdx)"
+    }
+   ],
+   "conflict": true
   },
   "base_model_chain": {
    "effective": "nace-ai/drex-dlm",
@@ -1969,5 +1972,69 @@
  "params_problems": null,
  "params_build": "b11374",
  "native_ctx": 32768,
- "native_ctx_source": "nace-ai/drex-dlm-Q8_0 README.md:L22"
+ "native_ctx_source": "nace-ai/drex-dlm-Q8_0 README.md:L22",
+ "license_info": {
+  "id": "cc-by-nc-4.0",
+  "id_source": "nace-ai/drex-dlm-Q8_0 card front matter license",
+  "name": "cc-by-nc-4.0",
+  "summary": "cc-by-nc-4.0",
+  "summary_source": "nace-ai/drex-dlm-Q8_0 card license",
+  "link": "https://huggingface.co/nace-ai/drex-dlm/blob/8f6f8244ce0b186b3caa4cdbaae1c9f3986bf63e/LICENSE",
+  "link_source": "license file in the repo",
+  "texts": [
+   {
+    "file": "nace-ai/drex-dlm@8f6f8244ce0b/LICENSE",
+    "path": "/home/green/.local/share/gguf/hf-meta/nace-ai--drex-dlm/8f6f8244ce0b186b3caa4cdbaae1c9f3986bf63e/LICENSE",
+    "url": "https://huggingface.co/nace-ai/drex-dlm/blob/8f6f8244ce0b186b3caa4cdbaae1c9f3986bf63e/LICENSE",
+    "sha256": "6f90f45297f07800bb3d8bf05905d185356149d8474eabfe7c2a16698daf1266",
+    "bytes": 1293,
+    "what": "model"
+   },
+   {
+    "file": "github.com/nace-ai/drex-dlm@aca8a21e577b/LICENSE",
+    "path": "/home/green/.local/share/gguf/hf-meta/github/nace-ai--drex-dlm/aca8a21e577b7ea9392e743a77f69ac7aaa64d02/LICENSE",
+    "url": "https://github.com/nace-ai/drex-dlm/blob/aca8a21e577b7ea9392e743a77f69ac7aaa64d02/LICENSE",
+    "sha256": "6f90f45297f07800bb3d8bf05905d185356149d8474eabfe7c2a16698daf1266",
+    "bytes": 1293,
+    "what": "code (GitHub nace-ai/drex-dlm, spdx NOASSERTION)"
+   },
+   {
+    "file": "github.com/nace-ai/drex-agent-skills@a8e5914e784f/LICENSE",
+    "path": "/home/green/.local/share/gguf/hf-meta/github/nace-ai--drex-agent-skill/a8e5914e784f2c54f6d826fb406c86f014b11edd/LICENSE",
+    "url": "https://github.com/nace-ai/drex-agent-skills/blob/a8e5914e784f2c54f6d826fb406c86f014b11edd/LICENSE",
+    "sha256": "1bdfe5b6976a92612f62a94dff7f465331c42428e4ac0a4fe9b58a23b777adcb",
+    "bytes": 1064,
+    "what": "code (GitHub nace-ai/drex-agent-skills, spdx MIT)"
+   },
+   {
+    "file": "github.com/nace-ai/drex-decision-models@be8ba7c81572/LICENSE",
+    "path": "/home/green/.local/share/gguf/hf-meta/github/nace-ai--drex-decision-models/be8ba7c8157241b9393862e9fcec104d0dc5caff/LICENSE",
+    "url": "https://github.com/nace-ai/drex-decision-models/blob/be8ba7c8157241b9393862e9fcec104d0dc5caff/LICENSE",
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "bytes": 11358,
+    "what": "code (GitHub nace-ai/drex-decision-models, spdx Apache-2.0)"
+   }
+  ],
+  "obligations": null,
+  "gated": false,
+  "unknown": false,
+  "seen": [
+   {
+    "value": "cc-by-nc-4.0",
+    "source": "nace-ai/drex-dlm-Q8_0 card license"
+   },
+   {
+    "value": "cc-by-nc-4.0",
+    "source": "nace-ai/drex-dlm card license"
+   },
+   {
+    "value": "other",
+    "source": "nvidia/Efficient-DLM-8B card license"
+   },
+   {
+    "value": "cc-by-nc-4.0",
+    "source": "GGUF general.license"
+   }
+  ]
+ }
 }

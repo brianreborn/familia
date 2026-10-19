@@ -1127,5 +1127,40 @@
  "params_problems": null,
  "params_build": "b11374",
  "native_ctx": 262144,
- "native_ctx_source": "autotrust/GEV-26B-Decide config.json max_position_embeddings"
+ "native_ctx_source": "autotrust/GEV-26B-Decide config.json max_position_embeddings",
+ "license_info": {
+  "id": "apache-2.0",
+  "id_source": "mradermacher/GEV-26B-Decide-GGUF card front matter license",
+  "name": "apache-2.0 (adapter, head and calibration files) + Gemma 4 terms for the base weights (https://ai.google.dev/gemma/docs/gemma_4_license)",
+  "summary": "apache-2.0 (adapter, head and calibration files) + Gemma 4 terms for the base weights (https://ai.google.dev/gemma/docs/gemma_4_license)",
+  "summary_source": "autotrust/GEV-26B-Decide README.md:L581",
+  "link": "https://ai.google.dev/gemma/docs/gemma_4_license",
+  "link_source": "mradermacher/GEV-26B-Decide-GGUF card license_link",
+  "texts": null,
+  "obligations": null,
+  "gated": false,
+  "unknown": false,
+  "seen": [
+   {
+    "value": "apache-2.0",
+    "source": "mradermacher/GEV-26B-Decide-GGUF card license"
+   },
+   {
+    "value": "apache-2.0",
+    "source": "autotrust/GEV-26B-Decide card license"
+   },
+   {
+    "value": "apache-2.0",
+    "source": "google/gemma-4-26B-A4B-it card license"
+   },
+   {
+    "value": "apache-2.0",
+    "source": "google/gemma-4-26B-A4B card license"
+   },
+   {
+    "value": "apache-2.0",
+    "source": "GGUF general.license"
+   }
+  ]
+ }
 }

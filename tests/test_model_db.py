@@ -122,8 +122,12 @@ def test_snapshot_pins_verifies_and_skips_weights(hub, tmp_path):
     assert s["revision"] == SHA and s["dir"].endswith("org--Thing-GGUF/" + SHA)
     f = s["files"]
     assert f["README.md"]["fetched"] and f["README.md"]["verified"] == "git-blob-sha1"
-    assert f["Thing-Q4_K_M.gguf"]["verified"] == "lfs-sha256"          # small enough here
-    assert not f["Thing-F16.gguf"]["fetched"] and "weight file not used here" in f["Thing-F16.gguf"]["skipped"]
+    # weights are never part of a snapshot, however small: a full run fetches them after the license
+    assert not f["Thing-Q4_K_M.gguf"]["fetched"] and "weight file" in f["Thing-Q4_K_M.gguf"]["skipped"]
+    assert f["Thing-Q4_K_M.gguf"]["sha256"] == hashlib.sha256(hub.gguf).hexdigest()
+    assert not f["Thing-F16.gguf"]["fetched"] and "weight file" in f["Thing-F16.gguf"]["skipped"]
+    s2 = hf.snapshot("org/Thing-GGUF", "main", keep=("Thing-Q4_K_M.gguf",), log=lambda m: None)
+    assert s2["files"]["Thing-Q4_K_M.gguf"]["verified"] == "lfs-sha256"   # --keep: explicitly wanted
     assert f["Thing-F16.gguf"]["sha256"] == "f" * 64 and f["Thing-F16.gguf"]["size"] == 2_000_000_000
     assert json.load(open(os.path.join(s["dir"], "snapshot.json")))["revision"] == SHA
     n = len(hub.seen)
@@ -143,7 +147,7 @@ def test_download_rejects_bad_hash(hub, tmp_path):
 
 def test_token_sent_to_hub_only_and_never_printed(hub, tmp_path, monkeypatch, capsys):
     monkeypatch.setenv("HF_TOKEN", "hf_SECRETSECRET")
-    s = hf.snapshot("org/Thing-GGUF", None, log=print)
+    s = hf.snapshot("org/Thing-GGUF", None, keep=("Thing-Q4_K_M.gguf",), log=print)
     api = [a for p, a, h in hub.seen if p.startswith("/api/")]
     cdn = [a for p, a, h in hub.seen if p.startswith("/cdn/")]
     assert api and all(a == "Bearer hf_SECRETSECRET" for a in api)
@@ -188,8 +192,19 @@ def test_add_model_fetch_end_to_end(hub, tmp_path, monkeypatch, capsys):
     (boot / "config" / "models-manifest.json").write_text(json.dumps(MANIFEST, indent=4))
     (boot / "config" / "models-preset.ini").write_text(PRESET)
     monkeypatch.setattr(model_db, "DB_DIR", str(tmp_path / "db"))
-    rc = am.main(["--bootstraps", str(boot), "--role", "coder", "--fetch", "org/Thing-GGUF", "--quant", "Q4_K_M"])
+    monkeypatch.setenv("FAMILIA_MODEL_LICENSE_ACCEPT_FILE", str(tmp_path / "acc.json"))
+    monkeypatch.setenv("FAMILIA_NO_TTY", "1")
+    monkeypatch.delenv("FAMILIA_ACCEPT_LICENSES", raising=False)
+    import model_license
+    monkeypatch.setattr(model_license, "ACCEPT_FILE", str(tmp_path / "acc.json"))
+    args = ["--bootstraps", str(boot), "--role", "coder", "--fetch", "org/Thing-GGUF", "--quant", "Q4_K_M"]
+    # no terminal, no --accept-licenses: the license is shown and nothing is downloaded
+    assert am.main(args) == 2
+    assert "license of org--Thing-GGUF--Thing-Q4_K_M" in capsys.readouterr().err
+    assert not os.path.isfile(tmp_path / "meta" / "org--Thing-GGUF" / SHA / "Thing-Q4_K_M.gguf")
+    rc = am.main(args + ["--accept-licenses"])
     assert rc == 0
+    assert json.load(open(tmp_path / "acc.json"))["models"]["org--Thing-GGUF--Thing-Q4_K_M"]["license"] == "apache-2.0"
     m = json.loads((boot / "config" / "models-manifest.json").read_text())
     c = next(c for c in m["candidates"] if c["file"] == "Thing-Q4_K_M.gguf")
     assert c["repo"] == "org/Thing-GGUF" and c["revision"] == SHA and c["sha256"] == hashlib.sha256(hub.gguf).hexdigest()
@@ -396,3 +411,77 @@ def test_repo_graph_launch_args_carry_card_sampling():
             continue
         for k, v in model_db.launch_sampling(ent, n).items() if not n.get("embeddings") else []:
             assert "--%s %s" % (k, v) in args, (name, k)
+
+
+# ---------------------------------------------------------------- run modes (#51): dry / damp
+def test_dry_run_writes_nothing(hub, tmp_path, capsys):
+    rc = model_db.main(["--db-dir", str(tmp_path / "db"), "damp", "org/Thing-GGUF", "--dry-run"])
+    err = capsys.readouterr().err
+    assert rc == 0 and "dry run: plan for org/Thing-GGUF" in err
+    assert "skip-weight" in err and "fetch" in err and "README.md" in err
+    assert not os.path.exists(tmp_path / "meta") and not os.path.exists(tmp_path / "db")
+    assert not [p for p, a, h in hub.seen if "/resolve/" in p]           # only the API was read
+
+
+def test_damp_run_entry_is_not_runnable(hub, tmp_path, capsys):
+    db = str(tmp_path / "db")
+    rc = model_db.main(["--db-dir", db, "--max-file-mb", "0.5", "damp", "org/Thing-GGUF", "--json"])
+    out = json.loads(capsys.readouterr().out)
+    assert rc == 0 and out[0]["weights"] == "absent (damp)" and out[0]["id"] == "org--Thing-GGUF--Thing-Q4_K_M"
+    e = model_db.load("org--Thing-GGUF--Thing-Q4_K_M", db)
+    assert e["weights"] == "absent (damp)" and e["bytes"] == len(hub.gguf) and e["sha256"] == hashlib.sha256(hub.gguf).hexdigest()
+    assert e["license_info"]["id"] == "apache-2.0" and e["role_inference"]["evidence"]
+    assert not os.path.isfile(tmp_path / "meta" / "org--Thing-GGUF" / SHA / "Thing-Q4_K_M.gguf")   # header read by Range only
+    g = graph()
+    e2, _ = model_db.check_graph(g, db)
+    assert any("not runnable yet" in x and "absent (damp)" in x for x in e2)
+    g["nodes"]["n"]["status"] = "planned"
+    e3, w3 = model_db.check_graph(g, db)
+    assert not any("not runnable" in x for x in e3) and any("not runnable" in x for x in w3)
+
+
+def test_model_license_gate(tmp_path, monkeypatch, capsys):
+    import model_license as ml
+    monkeypatch.setattr(ml, "ACCEPT_FILE", str(tmp_path / "acc.json"))
+    monkeypatch.setenv("FAMILIA_NO_TTY", "1")
+    monkeypatch.delenv("FAMILIA_ACCEPT_LICENSES", raising=False)
+    monkeypatch.setattr(ml, "licenses_py_has_models", lambda: False)
+    e = entry(license="cc-by-nc-4.0", license_info={"id": "cc-by-nc-4.0", "id_source": "card", "link": "https://x/LICENSE",
+              "obligations": [{"quote": "NonCommercial: not for commercial purposes", "source": "o/m LICENSE:L3"}]})
+    assert ml.gate([e], dry_run=True) == 0 and not os.path.exists(tmp_path / "acc.json")
+    assert "NonCommercial" in capsys.readouterr().err
+    assert ml.gate([e]) == 2                      # no terminal: refused, explained
+    assert ml.gate([e], yes=True) == 0 and ml.accepted(e)
+    e["license_info"]["id"] = "other"             # the license changed: asked again
+    assert not ml.accepted(e)
+    u = entry(license="unknown", license_info={"id": "unknown", "unknown": True})
+    ml.summary(u)
+    assert "UNKNOWN" in capsys.readouterr().err
+
+
+def test_plan_rows_statuses(tmp_path):
+    info = {"id": "o/m", "sha": "c" * 40, "siblings": [
+        {"rfilename": "README.md", "size": 10, "blobId": "b"},
+        {"rfilename": "m-Q4_K_M.gguf", "size": 10 ** 9, "lfs": {"sha256": "d" * 64, "size": 10 ** 9}},
+        {"rfilename": "big.json", "size": 60 * 10 ** 6, "blobId": "e"}]}
+    rows = {r["path"]: r["status"] for r in hf.plan_rows(info, (), 50 * 10 ** 6, root=str(tmp_path), want=("m-Q4_K_M.gguf",))}
+    assert rows == {"README.md": "fetch", "m-Q4_K_M.gguf": "weight-wanted", "big.json": "skip-large"}
+
+
+def test_add_model_damp_needs_fetch(capsys):
+    assert am.main(["--damp-run", "x.gguf"]) == 2
+    assert "--damp-run needs --fetch" in capsys.readouterr().err
+
+
+def test_license_info_quotes_obligations(tmp_path):
+    d = tmp_path / "snap"
+    d.mkdir()
+    (d / "LICENSE").write_text("THING LICENSE\nYou must retain this notice in all copies of the Model.\n")
+    (d / "README.md").write_text("---\nlicense: other\nlicense_name: thing\n---\n# T\nAcceptable use: see the policy.\n")
+    snap = {"dir": str(d), "revision": "a" * 40, "card_data": {"license": "other", "license_name": "thing"}}
+    e = entry(descriptor={})
+    li = model_db.license_info(e, snap, None)
+    assert li["id"] == "thing" and li["id_source"].endswith("license_name")
+    assert li["texts"][0]["file"].endswith("/LICENSE") and li["texts"][0]["sha256"]
+    q = {x["source"]: x["quote"] for x in li["obligations"]}
+    assert q["org/Thing-GGUF LICENSE:L2"].startswith("You must retain") and "org/Thing-GGUF README.md:L6" in q

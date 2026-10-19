@@ -1019,5 +1019,57 @@
  "params_problems": null,
  "params_build": "b11374",
  "native_ctx": 8192,
- "native_ctx_source": "card: google/embeddinggemma-2 README.md:L45"
+ "native_ctx_source": "card: google/embeddinggemma-2 README.md:L45",
+ "license_info": {
+  "id": "apache-2.0",
+  "id_source": "unsloth/embeddinggemma-2-GGUF card front matter license",
+  "name": null,
+  "summary": "apache-2.0",
+  "summary_source": "unsloth/embeddinggemma-2-GGUF card license",
+  "link": "https://spdx.org/licenses/Apache-2.0.html",
+  "link_source": "SPDX license list (standard text of apache-2.0)",
+  "texts": null,
+  "obligations": [
+   {
+    "quote": "| | **Activation** | Gated FFN with GELU |",
+    "source": "unsloth/embeddinggemma-2-GGUF README.md:L83"
+   },
+   {
+    "quote": "Deployments must adhere to the [Gemma Prohibited Use Policy](https://ai.google.dev/gemma/prohibited_use_policy).",
+    "source": "unsloth/embeddinggemma-2-GGUF README.md:L301"
+   },
+   {
+    "quote": "* **Fact Verification:** Embeddings for retrieving evidence documents given a claim, like automated fact-checking systems or source attribution pipelines.",
+    "source": "unsloth/embeddinggemma-2-GGUF README.md:L317"
+   },
+   {
+    "quote": "| | **Activation** | Gated FFN with GELU |",
+    "source": "google/embeddinggemma-2 README.md:L64"
+   },
+   {
+    "quote": "Deployments must adhere to the [Gemma Prohibited Use Policy](https://ai.google.dev/gemma/prohibited_use_policy).",
+    "source": "google/embeddinggemma-2 README.md:L282"
+   },
+   {
+    "quote": "* **Fact Verification:** Embeddings for retrieving evidence documents given a claim, like automated fact-checking systems or source attribution pipelines.",
+    "source": "google/embeddinggemma-2 README.md:L298"
+   }
+  ],
+  "gated": false,
+  "unknown": false,
+  "seen": [
+   {
+    "value": "apache-2.0",
+    "source": "unsloth/embeddinggemma-2-GGUF card license"
+   },
+   {
+    "value": "apache-2.0",
+    "source": "google/embeddinggemma-2 card license"
+   },
+   {
+    "value": "apache-2.0",
+    "source": "GGUF general.license"
+   }
+  ]
+ }
 }

@@ -90,8 +90,16 @@ The harness expects hermes-agent at `/snap/bin/hermes-agent`; set `HERMES_BIN` i
 ./scripts/add-model.sh ~/models/SomeOrg--Some-Model-GGUF             # a Hugging Face snapshot directory
 ./scripts/add-model.sh path/to/model.gguf                            # a lone GGUF; the role is inferred
 ./scripts/add-model.sh --fetch ORG/NAME@REV --quant Q4_K_M           # download the repo's small files and one GGUF first
+./scripts/add-model.sh --fetch ORG/NAME@REV --dry-run                # plan only: each file, size, sha256, license; no network writes
+./scripts/add-model.sh --fetch ORG/NAME@REV --damp-run               # small files + DB entry, weights skipped ("weights: absent (damp)")
 ./scripts/add-model.sh --help                                        # every flag
 ```
+
+- Run modes, the same in `add-model.sh --fetch`, `scripts/hf_fetch.py` and `scripts/model_db.py backfill` (code-bootstraps `scripts/fetch-models.sh` has them too):
+  - `--dry-run` downloads and writes nothing. It prints the plan: every file in the repo with its size and sha, and whether it is present, would be fetched, or skipped as a weight or as too large. It also prints the license.
+  - `--damp-run` fetches only missing small files (under 50 MB; change with `--max-file-mb`). Weights are skipped, but their size and LFS sha256 are recorded. The DB entry says `weights: absent (damp)`, and `validate_graph.py` refuses to run such a node until a full run fetches it. `scripts/model_db.py damp REPO...` does this for many repos.
+  - With neither flag you get the full run, the default.
+- Licenses come before anything runs. Before a full fetch downloads weights, the license of what you picked is printed: id, link, the license file and obligations quoted from the card with file and line. You must accept it with `--accept-licenses` (alias `--yes`) or answer yes at the prompt. With no terminal and no flag, nothing is downloaded (exit 2). `serve.sh` and `hermes_harness.py` likewise run `scripts/licenses.py gate --graph` before starting a server. `--dry-run` only prints. A damp run prints the license and needs no acceptance, since no weights are fetched. Unknown licenses are shown as UNKNOWN, never guessed.
 
 - Give it a whole Hugging Face snapshot directory when you can: the model card, `config.json`, tokenizer and chat-template files are what the launch settings come from. Auxiliary files (`mmproj-*`, draft and MTP GGUFs) in the directory are picked up automatically, or name them with `--aux KIND=PATH`.
 - `--role` (alias `--type`) is optional. The role is inferred from the card, `config.json`, GGUF metadata, the filename and the directory, and the evidence is printed. If it's still ambiguous it asks, or exits 2 when there is no terminal.

@@ -680,18 +680,11 @@
   },
   "license": {
    "effective": "mit",
-   "source": "karpathy/tinyllamas card license",
-   "values": [
-    {
-     "value": "mit",
-     "source": "karpathy/tinyllamas card license"
-    },
-    {
-     "value": "MIT",
-     "source": "GitHub github.com/karpathy/llama2.c license (spdx)"
-    }
-   ],
-   "conflict": true
+   "source": "karpathy/tinyllamas card license"
+  },
+  "code_license": {
+   "effective": "MIT",
+   "source": "GitHub github.com/karpathy/llama2.c license (spdx)"
   },
   "license_file": {
    "effective": "github.com/karpathy/llama2.c@350e04fe3543/LICENSE",
@@ -715,5 +708,33 @@
  },
  "blockers": null,
  "params_problems": null,
- "params_build": "b11374"
+ "params_build": "b11374",
+ "license_info": {
+  "id": "mit",
+  "id_source": "karpathy/tinyllamas card front matter license",
+  "name": null,
+  "summary": "mit",
+  "summary_source": "karpathy/tinyllamas card license",
+  "link": "https://spdx.org/licenses/MIT.html",
+  "link_source": "SPDX license list (standard text of mit)",
+  "texts": [
+   {
+    "file": "github.com/karpathy/llama2.c@350e04fe3543/LICENSE",
+    "path": "/home/green/.local/share/gguf/hf-meta/github/karpathy--llama2.c/350e04fe35433e6d2941dce5a1f53308f87058eb/LICENSE",
+    "url": "https://github.com/karpathy/llama2.c/blob/350e04fe35433e6d2941dce5a1f53308f87058eb/LICENSE",
+    "sha256": "e87b912002f04cdfa837eaf7f70548ab79b9cb62a285495edf575f3da875aec4",
+    "bytes": 1063,
+    "what": "code (GitHub karpathy/llama2.c, spdx MIT)"
+   }
+  ],
+  "obligations": null,
+  "gated": false,
+  "unknown": false,
+  "seen": [
+   {
+    "effective": "mit",
+    "source": "karpathy/tinyllamas card license"
+   }
+  ]
+ }
 }

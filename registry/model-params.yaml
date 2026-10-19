@@ -83,8 +83,10 @@ tencent--HY-MT1.5-1.8B-GGUF--HY-MT1.5-1.8B-Q4_K_M:
     source: "tencent/HY-MT1.5-1.8B-GGUF README.md:L93"
     quote: "| HY-MT1.5-1.8B  | Hunyuan 1.8B translation model |🤗 [Model](https://huggingface.co/tencent/HY-MT1.5-1.8B)|"
   license:
+    id: "Tencent HY Community License Agreement"
     value: "Tencent HY Community License Agreement (License.txt in the repo; not valid in the EU, UK and South Korea)"
-    source: "tencent/HY-MT1.5-1.8B-GGUF License.txt"
+    source: "tencent/HY-MT1.5-1.8B-GGUF License.txt:L1"
+    quote: "TENCENT HY COMMUNITY LICENSE AGREEMENT"
   requires:
     - class: REQUIRED
       flag: "@prompt"

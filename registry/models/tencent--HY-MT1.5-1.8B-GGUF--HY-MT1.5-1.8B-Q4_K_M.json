@@ -12,7 +12,7 @@
   "language"
  ],
  "license": "Tencent HY Community License Agreement (License.txt in the repo; not valid in the EU, UK and South Korea)",
- "license_source": "tencent/HY-MT1.5-1.8B-GGUF License.txt",
+ "license_source": "tencent/HY-MT1.5-1.8B-GGUF License.txt:L1",
  "ctx": 262144,
  "ctx_source": "GGUF hunyuan-dense.context_length",
  "card_ctx": null,
@@ -1246,43 +1246,43 @@
    "size": 1519,
    "sha256": null,
    "blob": "a6344aac8c09253b3b630fb776ae94478aa0275b",
-   "fetched": true,
-   "verified": "git-blob-sha1"
+   "verified": "git-blob-sha1",
+   "fetched": true
   },
   "License.txt": {
    "size": 16270,
    "sha256": null,
    "blob": "1b502c594266512e3f80deb4e021b9b52024f671",
-   "fetched": true,
-   "verified": "git-blob-sha1"
+   "verified": "git-blob-sha1",
+   "fetched": true
   },
   "README.md": {
    "size": 9003,
    "sha256": null,
    "blob": "22a6e0634690d52953bbb53a2c775528a9f08ff6",
-   "fetched": true,
-   "verified": "git-blob-sha1"
+   "verified": "git-blob-sha1",
+   "fetched": true
   },
   "chat_template.jinja": {
    "size": 654,
    "sha256": null,
    "blob": "11f06996e3fdef5fc75a350af36dc9862e34cbde",
-   "fetched": true,
-   "verified": "git-blob-sha1"
+   "verified": "git-blob-sha1",
+   "fetched": true
   },
   "config.json": {
    "size": 1342,
    "sha256": null,
    "blob": "86cc52f2b149938fea6fa30dbc14c33ccbc30990",
-   "fetched": true,
-   "verified": "git-blob-sha1"
+   "verified": "git-blob-sha1",
+   "fetched": true
   },
   "generation_config.json": {
    "size": 221,
    "sha256": null,
    "blob": "9ce2ba135ca6ce1eb0758c7fb452c470bbafd86a",
-   "fetched": true,
-   "verified": "git-blob-sha1"
+   "verified": "git-blob-sha1",
+   "fetched": true
   },
   "model.safetensors": {
    "size": 4077072784,
@@ -1295,22 +1295,22 @@
    "size": 488,
    "sha256": null,
    "blob": "ede21e29cb7086f12a84eca01cda0a448e368772",
-   "fetched": true,
-   "verified": "git-blob-sha1"
+   "verified": "git-blob-sha1",
+   "fetched": true
   },
   "tokenizer.json": {
    "size": 9527287,
    "sha256": null,
    "blob": "bc8fca20a7f6dbb3c6a6d9e814c6efc999ec80fe",
-   "fetched": true,
-   "verified": "git-blob-sha1"
+   "verified": "git-blob-sha1",
+   "fetched": true
   },
   "tokenizer_config.json": {
    "size": 165815,
    "sha256": null,
    "blob": "04a620eef4b09f76d35f8a6f4ac331d96f01eee2",
-   "fetched": true,
-   "verified": "git-blob-sha1"
+   "verified": "git-blob-sha1",
+   "fetched": true
   }
  },
  "found_in": [
@@ -1491,10 +1491,6 @@
      "source": "GGUF general.file_type"
     }
    ]
-  },
-  "license": {
-   "effective": "NOASSERTION",
-   "source": "GitHub github.com/Tencent-Hunyuan/HY-MT license (spdx)"
   },
   "license_file": {
    "effective": "github.com/Tencent-Hunyuan/HY-MT@13c207d7ac1f/License.txt",
@@ -1822,5 +1818,109 @@
  "params_problems": null,
  "params_build": "b11374",
  "native_ctx": 262144,
- "native_ctx_source": "tencent/HY-MT1.5-1.8B config.json max_position_embeddings"
+ "native_ctx_source": "tencent/HY-MT1.5-1.8B config.json max_position_embeddings",
+ "license_info": {
+  "id": "Tencent HY Community License Agreement",
+  "id_source": "tencent/HY-MT1.5-1.8B-GGUF License.txt:L1",
+  "name": "Tencent HY Community License Agreement (License.txt in the repo; not valid in the EU, UK and South Korea)",
+  "summary": "Tencent HY Community License Agreement (License.txt in the repo; not valid in the EU, UK and South Korea)",
+  "summary_source": "tencent/HY-MT1.5-1.8B-GGUF License.txt:L1",
+  "link": "https://huggingface.co/tencent/HY-MT1.5-1.8B-GGUF/blob/265b2e615a7dc9b06c435dc878829ad99a512ba2/License.txt",
+  "link_source": "license file in the repo",
+  "texts": [
+   {
+    "file": "tencent/HY-MT1.5-1.8B-GGUF@265b2e615a7d/License.txt",
+    "path": "/home/green/.local/share/gguf/hf-meta/tencent--HY-MT1.5-1.8B-GGUF/265b2e615a7dc9b06c435dc878829ad99a512ba2/License.txt",
+    "url": "https://huggingface.co/tencent/HY-MT1.5-1.8B-GGUF/blob/265b2e615a7dc9b06c435dc878829ad99a512ba2/License.txt",
+    "sha256": "d7d9db858500ac9073f4b5decef8e208454357226f535f65079ce4376047569f",
+    "bytes": 16270,
+    "what": "model"
+   },
+   {
+    "file": "tencent/HY-MT1.5-1.8B@dbad03788f49/License.txt",
+    "path": "/home/green/.local/share/gguf/hf-meta/tencent--HY-MT1.5-1.8B/dbad03788f49709801014c95d481a514c272ca52/License.txt",
+    "url": "https://huggingface.co/tencent/HY-MT1.5-1.8B/blob/dbad03788f49709801014c95d481a514c272ca52/License.txt",
+    "sha256": "d7d9db858500ac9073f4b5decef8e208454357226f535f65079ce4376047569f",
+    "bytes": 16270,
+    "what": "model"
+   },
+   {
+    "file": "github.com/Tencent-Hunyuan/Hy-MT@13c207d7ac1f/License.txt",
+    "path": "/home/green/.local/share/gguf/hf-meta/github/Tencent-Hunyuan--HY-MT/13c207d7ac1f93d54e96385a89bcd076d06a5579/License.txt",
+    "url": "https://github.com/Tencent-Hunyuan/Hy-MT/blob/13c207d7ac1f93d54e96385a89bcd076d06a5579/License.txt",
+    "sha256": "90e12d37f9bbdba78738465d3bde218036636b60f7609ccfde8a54fc7c338d8b",
+    "bytes": 16380,
+    "what": "code (GitHub Tencent-Hunyuan/Hy-MT, spdx NOASSERTION)"
+   }
+  ],
+  "obligations": [
+   {
+    "quote": "THIS LICENSE AGREEMENT DOES NOT APPLY IN THE EUROPEAN UNION, UNITED KINGDOM AND SOUTH KOREA AND IS EXPRESSLY LIMITED TO THE TERRITORY, AS DEFINED BELOW.",
+    "source": "tencent/HY-MT1.5-1.8B-GGUF License.txt:L3"
+   },
+   {
+    "quote": "a. “Acceptable Use Policy” shall mean the policy made available by Tencent as set forth in the Exhibit A.",
+    "source": "tencent/HY-MT1.5-1.8B-GGUF License.txt:L6"
+   },
+   {
+    "quote": "l. “Territory” shall mean the worldwide territory, excluding the territory of the European Union, United Kingdom and South Korea.",
+    "source": "tencent/HY-MT1.5-1.8B-GGUF License.txt:L17"
+   },
+   {
+    "quote": "We grant You, for the Territory only, a non-exclusive, non-transferable and royalty-free limited license under Tencent’s intellectual property or other rights owned by Us embodied in or utilized by the Materials to use, reproduce, distribute, create derivative works of (including Model Derivatives),...",
+    "source": "tencent/HY-MT1.5-1.8B-GGUF License.txt:L21"
+   },
+   {
+    "quote": "You may, subject to Your compliance with this Agreement, distribute or make available to Third Parties the Tencent HY Works, exclusively in the Territory, provided that You meet all of the following conditions:",
+    "source": "tencent/HY-MT1.5-1.8B-GGUF License.txt:L23"
+   },
+   {
+    "quote": "a. You must provide all such Third Party recipients of the Tencent HY Works or products or services using them a copy of this Agreement;",
+    "source": "tencent/HY-MT1.5-1.8B-GGUF License.txt:L24"
+   },
+   {
+    "quote": "b. You must cause any modified files to carry prominent notices stating that You changed the files;",
+    "source": "tencent/HY-MT1.5-1.8B-GGUF License.txt:L25"
+   },
+   {
+    "quote": "c. You are encouraged to: (i) publish at least one technology introduction blogpost or one public statement expressing Your experience of using the Tencent HY Works; and (ii) mark the products or services developed by using the Tencent HY Works to indicate that the product/service is “Powered by Ten...",
+    "source": "tencent/HY-MT1.5-1.8B-GGUF License.txt:L26"
+   },
+   {
+    "quote": "THIS LICENSE AGREEMENT DOES NOT APPLY IN THE EUROPEAN UNION, UNITED KINGDOM AND SOUTH KOREA AND IS EXPRESSLY LIMITED TO THE TERRITORY, AS DEFINED BELOW.",
+    "source": "tencent/HY-MT1.5-1.8B License.txt:L3"
+   },
+   {
+    "quote": "a. “Acceptable Use Policy” shall mean the policy made available by Tencent as set forth in the Exhibit A.",
+    "source": "tencent/HY-MT1.5-1.8B License.txt:L6"
+   },
+   {
+    "quote": "l. “Territory” shall mean the worldwide territory, excluding the territory of the European Union, United Kingdom and South Korea.",
+    "source": "tencent/HY-MT1.5-1.8B License.txt:L17"
+   },
+   {
+    "quote": "We grant You, for the Territory only, a non-exclusive, non-transferable and royalty-free limited license under Tencent’s intellectual property or other rights owned by Us embodied in or utilized by the Materials to use, reproduce, distribute, create derivative works of (including Model Derivatives),...",
+    "source": "tencent/HY-MT1.5-1.8B License.txt:L21"
+   },
+   {
+    "quote": "You may, subject to Your compliance with this Agreement, distribute or make available to Third Parties the Tencent HY Works, exclusively in the Territory, provided that You meet all of the following conditions:",
+    "source": "tencent/HY-MT1.5-1.8B License.txt:L23"
+   },
+   {
+    "quote": "a. You must provide all such Third Party recipients of the Tencent HY Works or products or services using them a copy of this Agreement;",
+    "source": "tencent/HY-MT1.5-1.8B License.txt:L24"
+   },
+   {
+    "quote": "b. You must cause any modified files to carry prominent notices stating that You changed the files;",
+    "source": "tencent/HY-MT1.5-1.8B License.txt:L25"
+   },
+   {
+    "quote": "c. You are encouraged to: (i) publish at least one technology introduction blogpost or one public statement expressing Your experience of using the Tencent HY Works; and (ii) mark the products or services developed by using the Tencent HY Works to indicate that the product/service is “Powered by Ten...",
+    "source": "tencent/HY-MT1.5-1.8B License.txt:L26"
+   }
+  ],
+  "gated": false,
+  "unknown": false,
+  "seen": null
+ }
 }

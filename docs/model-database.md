@@ -17,6 +17,7 @@ and `scripts/validate_graph.py` fails when a node differs from it without a writ
 `scripts/hf_fetch.py` uses urllib, so nothing has to be installed:
 - the file list comes from `https://huggingface.co/api/models/ORG/NAME/revision/REV?blobs=true` (size, LFS sha256, git blob id); downloads from `https://huggingface.co/ORG/NAME/resolve/<sha>/FILE`;
 - a branch or tag is resolved to its commit SHA first and everything is stored and recorded under the SHA;
+- weight files (`.gguf`, `.safetensors`, `.pt`, `.onnx`, ...), whatever their size, are fetched only by a full run after the license is accepted (or when named with `--keep`); 
 - files above `--max-bytes` (default 50 MB: the weights) are **not** downloaded. They are listed in `snapshot.json` / `repo_files` with size and LFS sha256 and `status: skipped`;
 - every download is verified (LFS: sha256; others: git blob sha1) and written atomically; a rerun reuses verified files;
 - `HF_TOKEN` is sent as a bearer token to huggingface.co only. It is dropped when a redirect leaves that host (CDN) and is never printed or logged;
@@ -41,6 +42,8 @@ per repo and do not stop the other repos.
 | field | meaning |
 |---|---|
 | `id`, `repo`, `revision`, `file`, `sha256`, `bytes`, `quant`, `arch`, `roles` | the GGUF and the repo commit it came from (sha256 = the LFS oid) |
+| `license_info` | `id` + `id_source` (curated > card front matter > LICENSE/GGUF), `link`, `texts[]` (license files: path, url, sha256, bytes), `obligations[]` (`quote` + `source` as `repo file:line`), `gated`, `unknown`, all ids `seen` in the chain. Printed and accepted before weights are fetched |
+| `weights` | `present (...)` after a verified local file, `absent (damp)` after `--damp-run` (not runnable) |
 | `license`, `license_source` | from the card front matter, LICENSE file or base repo; `unknown` when none states it |
 | `ctx`, `ctx_source` | trained context from the GGUF metadata |
 | `card_ctx`, `card_ctx_source` | a context length the card states (file:line) |

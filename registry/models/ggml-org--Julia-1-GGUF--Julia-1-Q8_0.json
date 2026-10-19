@@ -4472,5 +4472,36 @@
  "params_problems": null,
  "params_build": "b11374",
  "native_ctx": 8192,
- "native_ctx_source": "GGUF modern-bert.context_length"
+ "native_ctx_source": "GGUF modern-bert.context_length",
+ "license_info": {
+  "id": "apache-2.0",
+  "id_source": "ggml-org/Julia-1-GGUF card front matter license",
+  "name": null,
+  "summary": "apache-2.0",
+  "summary_source": "ggml-org/Julia-1-GGUF card license",
+  "link": "https://spdx.org/licenses/Apache-2.0.html",
+  "link_source": "SPDX license list (standard text of apache-2.0)",
+  "texts": null,
+  "obligations": null,
+  "gated": false,
+  "unknown": false,
+  "seen": [
+   {
+    "value": "apache-2.0",
+    "source": "ggml-org/Julia-1-GGUF card license"
+   },
+   {
+    "value": "apache-2.0",
+    "source": "SupersonicLabs/Julia-1 card license"
+   },
+   {
+    "value": "mit",
+    "source": "jhu-clsp/mmBERT-small card license"
+   },
+   {
+    "value": "apache-2.0",
+    "source": "GGUF general.license"
+   }
+  ]
+ }
 }

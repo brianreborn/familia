@@ -2822,5 +2822,94 @@
  "params_problems": null,
  "params_build": "b11374",
  "native_ctx": 262144,
- "native_ctx_source": "card: Qwen/Qwen3.5-2B README.md:L64"
+ "native_ctx_source": "card: Qwen/Qwen3.5-2B README.md:L64",
+ "license_info": {
+  "id": "apache-2.0",
+  "id_source": "unsloth/Qwen3.5-2B-GGUF card front matter license",
+  "name": null,
+  "summary": "apache-2.0",
+  "summary_source": "unsloth/Qwen3.5-2B-GGUF card license",
+  "link": "https://huggingface.co/Qwen/Qwen3.5-2B/blob/main/LICENSE",
+  "link_source": "unsloth/Qwen3.5-2B-GGUF card license_link",
+  "texts": [
+   {
+    "file": "Qwen/Qwen3.5-2B@15852e8c1636/LICENSE",
+    "path": "/home/green/.local/share/gguf/hf-meta/Qwen--Qwen3.5-2B/15852e8c16360a2fea060d615a32b45270f8a8fc/LICENSE",
+    "url": "https://huggingface.co/Qwen/Qwen3.5-2B/blob/15852e8c16360a2fea060d615a32b45270f8a8fc/LICENSE",
+    "sha256": "bbedc3fda3305820b977265f01b8619d87570a6739de3a5582c3464840f1e57a",
+    "bytes": 11544,
+    "what": "model"
+   }
+  ],
+  "obligations": [
+   {
+    "quote": "- **Efficient Hybrid Architecture**: Gated Delta Networks combined with sparse Mixture-of-Experts deliver high-throughput inference with minimal latency and cost overhead.",
+    "source": "unsloth/Qwen3.5-2B-GGUF README.md:L58"
+   },
+   {
+    "quote": "- Hidden Layout: 6 × (3 × (Gated DeltaNet → FFN) → 1 × (Gated Attention → FFN))",
+    "source": "unsloth/Qwen3.5-2B-GGUF README.md:L78"
+   },
+   {
+    "quote": "(a) You must give any other recipients of the Work or",
+    "source": "Qwen/Qwen3.5-2B LICENSE:L95"
+   },
+   {
+    "quote": "(b) You must cause any modified files to carry prominent notices",
+    "source": "Qwen/Qwen3.5-2B LICENSE:L98"
+   },
+   {
+    "quote": "(c) You must retain, in the Source form of any Derivative Works",
+    "source": "Qwen/Qwen3.5-2B LICENSE:L101"
+   },
+   {
+    "quote": "attribution notices from the Source form of the Work,",
+    "source": "Qwen/Qwen3.5-2B LICENSE:L103"
+   },
+   {
+    "quote": "include a readable copy of the attribution notices contained",
+    "source": "Qwen/Qwen3.5-2B LICENSE:L109"
+   },
+   {
+    "quote": "within such NOTICE file, excluding those notices that do not",
+    "source": "Qwen/Qwen3.5-2B LICENSE:L110"
+   },
+   {
+    "quote": "of the NOTICE file are for informational purposes only and",
+    "source": "Qwen/Qwen3.5-2B LICENSE:L117"
+   },
+   {
+    "quote": "do not modify the License. You may add Your own attribution",
+    "source": "Qwen/Qwen3.5-2B LICENSE:L118"
+   },
+   {
+    "quote": "- **Efficient Hybrid Architecture**: Gated Delta Networks combined with sparse Mixture-of-Experts deliver high-throughput inference with minimal latency and cost overhead.",
+    "source": "Qwen/Qwen3.5-2B README.md:L32"
+   },
+   {
+    "quote": "- Hidden Layout: 6 × (3 × (Gated DeltaNet → FFN) → 1 × (Gated Attention → FFN))",
+    "source": "Qwen/Qwen3.5-2B README.md:L52"
+   }
+  ],
+  "gated": false,
+  "unknown": false,
+  "seen": [
+   {
+    "value": "apache-2.0",
+    "source": "unsloth/Qwen3.5-2B-GGUF card license"
+   },
+   {
+    "value": "apache-2.0",
+    "source": "Qwen/Qwen3.5-2B card license"
+   },
+   {
+    "value": "apache-2.0",
+    "source": "Qwen/Qwen3.5-2B-Base card license"
+   },
+   {
+    "value": "apache-2.0",
+    "source": "GGUF general.license"
+   }
+  ]
+ }
 }
