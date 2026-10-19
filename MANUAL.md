@@ -111,9 +111,22 @@ Tuning uses a coarse binary search: try the ends and the midpoint of a setting w
 
 Always launch hermes through the harness, `scripts/hermes.sh`. Stock `hermes` uses `~/.hermes`, which has compression off and small-context models, and fails with HTTP 400 on long turns. Commands and what the harness sets: [QUICKSTART.md](QUICKSTART.md#always-run-hermes-through-the-harness).
 
+`hermes.sh` runs in graph mode by default: the agent's aliases from `graph.yaml`, plus the escalation proxy where the main node declares `escalates_to`. `hermes.sh --model NODE` is single-model mode: that one node, its own HERMES_HOME, no router, and nodes under the 64K floor refused.
+
 ### Skills
 
 Skills are chosen per agent with `scripts/skills.py`, or with the menu (Skills, then Bundled skills). The choice is saved as `skills: [ids]` under the agent in `graph.yaml`, with comments preserved. The catalog is `skills/catalog.json`, and the bundled skills themselves live in green-zkillz (`green-agentz/skills`). Before a skill is enabled, its license is shown and has to be accepted. `license-blocked` and not-yet-vendored skills are refused with the reason, and the graph check rejects tool-adding skills on pentest roles. `scripts/skills.py paths` prints the folders of the enabled skills. hermes doesn't load them on its own yet. Details: [docs/skills.md](docs/skills.md).
+
+### Self-improving harnesses (optional)
+
+`harnesses:` descriptors name an agent's prompt, guardrails, memory and skills files. `self_improve:` settings point Harness² at them (`mode: "off" | propose | apply`, off in the repo). `scripts/harness2.py` proposes, shows, accepts and reverts changes to those files. It never launches an agent and doesn't need hermes. hermes picks up the accepted version only when the graph enables it for that agent. Pentest agents and models never self-improve. Details: [docs/harness2.md](docs/harness2.md).
+
+```sh
+scripts/harness2.py status
+scripts/harness2.py propose --target hermes-lab --enable --max-tasks 1 --start-node
+scripts/harness2.py show --target hermes-lab ID && scripts/harness2.py accept --target hermes-lab ID
+scripts/harness2.py revert --target hermes-lab
+```
 
 ### Escalating to a heavier model
 

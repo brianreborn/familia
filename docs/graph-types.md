@@ -37,6 +37,8 @@ graph TD
   reach["reaches (experimental, agent-reach): repo, agents"]:::exp
   council["councils (experimental): mode quorum N-of-M | cascade, agents"]:::exp
   pentest["pentests: name, node, agent, scope.allow/deny, tools.allow, report_to, requires_operator_confirm, launch_test_only, status planned|active"]
+  harness["harnesses: kind files, root, prompt, guardrails, memory, skills, node (loopback), agent (optional)"]
+  selfimp["self_improve (experimental): engine harness2, mode off|propose|apply, targets, k, recursion parallel|sequential, tasks, max_tasks"]:::exp
 
 
   host -->|has| gpu
@@ -89,6 +91,16 @@ graph TD
 | pentest | Legitimate, operator-authorized testing of the owner's fleet — not attack tooling. `scope.allow` / `scope.deny` are lists of graph host names, CIDRs/IPs, or http(s)/ssh URLs (empty allow = nothing allowed). `tools.allow` is an explicit tool-name list with no wildcards. Network/exec tools (nmap, shell, ssh, curl, …) require a non-empty `scope.allow`. `status: active` requires non-empty `scope.allow`, `requires_operator_confirm: true`, and a node whose model has `role: pentest`. `launch_test_only: true` is required: automation may only validate → start → healthcheck → stop; never live scans, exploits, or network probes in tests. See `docs/pentest-models.md`. |
 
 Unknown sections and unknown fields are errors, so a typo can't quietly do nothing.
+
+## Self-improving harnesses (harnesses, self_improve)
+
+`harnesses.<name>` describes one harness's files (`prompt` is required; `guardrails`,
+`memory` and `skills` are optional relative paths under `root`) and the loopback `node` that
+edits and evaluates it. `agent` is optional. `self_improve.<name>` is an experimental Harness²
+setting over descriptors. When its mode is not `"off"`, validation rejects targets whose agent
+any pentest uses, and targets whose node serves a `role: pentest` model. It also requires
+`registry/harness2-tasks/<tasks>.json` to exist. Write `mode: "off"` quoted: YAML reads a bare
+`off` as false. See [harness2.md](harness2.md).
 
 ## Adding a refined or new type
 

@@ -76,12 +76,30 @@ On Windows use `python` instead of `python3` and set `$env:PYTHONUTF8 = '1'` fir
 
 Run `scripts/hermes.sh`, not the stock `hermes` command. The stock config in `~/.hermes` has compression off and points at models whose context is far smaller than what hermes sends, so every long turn fails with HTTP 400 (the [#19](https://github.com/brianreborn/familia/issues/19) failure, seen again on 2026-10-18). The harness renders its own config under `~/.cache/familia/hermes-<agent>` with `context_length` equal to the node's per-slot context (65,536 on `coder`) and compression on. It only reads `~/.hermes`.
 
+It has two modes:
+
+- **Graph mode**, the default and the same behaviour as before. hermes uses its agent's
+  `main` and `auxiliary` aliases from `graph.yaml`. The escalation proxy comes on by itself
+  only when the main node declares `escalates_to` (none does today).
+- **Single-model mode**, `--model NODE`. hermes uses that one node, with its own
+  `~/.cache/familia/hermes-<agent>@<node>`, `context_length` set to the node's per-slot
+  context, compression on, auxiliary tasks on the same node, and no aliases or proxy. Nodes
+  under the agent's `min_ctx` (hermes needs 64,000 tokens) are refused, with a list of the
+  nodes that fit.
+
 ```sh
-scripts/hermes.sh --render-only           # write the config, start nothing
+scripts/hermes.sh --render-only           # graph mode: write the config, start nothing
 scripts/hermes.sh                         # validate, start the coder node if needed, run hermes
 scripts/hermes.sh --selftest-compaction   # check that compaction keeps facts on this node
 scripts/hermes.sh --escalate -- ARGS      # with the light-to-heavy escalation proxy (docs/escalation.md)
+scripts/hermes.sh --model coder           # single-model mode on node coder
+scripts/hermes.sh --model coder --selftest-compaction
 ```
+
+`--escalate`, `--light` and `--no-swap-back` work in graph mode only; with `--model` they exit with
+an error. `--no-escalate` turns the automatic proxy off. Self-improving harnesses (Harness²)
+are a separate, optional layer that hermes picks up when the graph enables it:
+[docs/harness2.md](docs/harness2.md).
 
 The harness expects hermes-agent at `/snap/bin/hermes-agent`; set `HERMES_BIN` if yours is elsewhere.
 

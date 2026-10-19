@@ -66,6 +66,15 @@ python scripts/escalate.py accept       # accept the pending suggestion from the
 starts `scripts/escalation_proxy.py` on 127.0.0.1 (random port), renders the
 hermes config to point at it, and runs hermes as a child.
 
+Escalation belongs to hermes.sh's **graph mode**, the default. In graph mode the proxy also
+comes on without `--escalate` when the agent's main node declares `escalates_to` and its
+`escalation.mode` is not `off`. No node used by an agent declares it today, so the default
+launch has not changed. `--no-escalate` turns the proxy off. **Single-model mode**
+(`hermes.sh --model NODE`) has no router and no proxy: `--escalate`, `--light`,
+`--no-swap-back` and `--no-escalate` exit with code 2 there. Self-improving harnesses
+([harness2.md](harness2.md)) never change escalation settings. A descriptor has no field
+for them.
+
 - Signals come from the traffic: assistant replies (repeat detection), `tool`
   messages since the last user turn matching error/traceback/failed/exit code N,
   the last user message (phrases), elapsed time, upstream errors.

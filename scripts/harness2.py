@@ -51,8 +51,12 @@ def start_node(g, node):
     if errs: die("cannot start node: " + "; ".join(errs[:3]))
     logd = os.path.join(ROOT, ".cache", "familia", "logs"); os.makedirs(logd, exist_ok=True)
     log = open(os.path.join(logd, f"{node}.harness2.log"), "ab")
-    p = subprocess.Popen(vg.server_args(g, node), stdout=log, stderr=log, stdin=subprocess.DEVNULL,
-                         start_new_session=True, env=vg.server_env(g, node))
+    args = vg.server_args(g, node)
+    try:
+        p = subprocess.Popen(args, stdout=log, stderr=log, stdin=subprocess.DEVNULL,
+                             start_new_session=True, env=vg.server_env(g, node))
+    except FileNotFoundError:
+        die(f"runtime binary not found: {args[0]} (run scripts/configure.sh, or start the node yourself)")
     print(f"harness2: started node {node} (pid {p.pid}); it is stopped when propose ends", file=sys.stderr)
     return p
 
