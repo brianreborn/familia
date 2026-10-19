@@ -46,6 +46,15 @@ if [ -n "$model" ] && [ ! -f "$model" ]; then
   say "model file $model of node $node not found; not starting"
   exit 1
 fi
+# The runtime binary must exist too: a pinned runtime that was never fetched used to end
+# in a bare "not found" and rc 127 (#84).
+bin="${args%% *}"
+case "$bin" in */*)
+  if [ ! -x "$bin" ]; then
+    say "runtime $bin of node $node is missing or not executable; fetch the pinned runtime (sh scripts/configure.sh, or scripts/sync_pins.py) and check runtimes.*.bin in graph.yaml; not starting"
+    exit 1
+  fi ;;
+esac
 # Embedders need --embeddings and --pooling (REQUIRED, #51). grep -e: the pattern starts with "-".
 if printf '%s\n' "$args" | grep -q -E -e '(^|[[:space:]])--embeddings?([[:space:]]|$)'; then
   if ! printf '%s\n' "$args" | grep -q -E -e '(^|[[:space:]])--pooling[[:space:]]'; then
