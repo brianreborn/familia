@@ -29,6 +29,12 @@ familia.cmd -Search WORD [-Run N] [-DryRun]
 | `setup.settings` | Change launcher settings (port, threads, context) on the terminal | `sh scripts/configure.sh --interactive` | - |
 | `setup.install` | Install or update this host (llama.cpp runtime, host entry): dry run first | `sh install/linux/install.sh --dry-run` | `powershell -NoProfile -ExecutionPolicy Bypass -File install\windows\install.ps1 -DryRun` |
 | `setup.install-run` | Install or update this host for real (asks you to accept licenses) | `sh install/linux/install.sh` | `powershell -NoProfile -ExecutionPolicy Bypass -File install\windows\install.ps1` |
+| `setup.install-cli` | Put familia on your PATH (~/.local/bin/familia shim): preview, writes nothing ([install.md](install.md#familia-on-your-path)) | `sh scripts/install-cli.sh --dry-run` | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-cli.ps1 -WhatIf` |
+| `setup.install-cli-run` | Put familia on your PATH for real (2-line shim; the code stays in this checkout) | `sh scripts/install-cli.sh` | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-cli.ps1` |
+| `setup.path-add` | Add ~/.local/bin to PATH in ~/.profile (shows the marked block, asks first) | `sh scripts/install-cli.sh path --add` | - |
+| `setup.path-remove` | Remove familia's PATH block from ~/.profile (only that block) | `sh scripts/install-cli.sh path --remove` | - |
+| `setup.cli-status` | Show where familia is installed on PATH and what was recorded | `sh scripts/install-cli.sh status` | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-cli.ps1 -Status` |
+| `setup.uninstall-cli` | Take familia off your PATH: remove exactly the recorded files (preview, then asks) | `sh scripts/install-cli.sh uninstall` | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-cli.ps1 -Uninstall -WhatIf` |
 | `setup.logon-task` | Windows: start the model server at logon (preview; drop -WhatIf to register) | Windows only | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-task.ps1 -Install -Model <MODEL> -WhatIf` |
 
 ## Skills

@@ -13,6 +13,12 @@ setup.licenses|Set up|Review the licenses of everything you have chosen|PY scrip
 setup.settings|Set up|Change launcher settings (port, threads, context) on the terminal|sh scripts/configure.sh --interactive|||
 setup.install|Set up|Install or update this host (llama.cpp runtime, host entry): dry run first|sh INSTALLER --dry-run|||powershell -NoProfile -ExecutionPolicy Bypass -File install\windows\install.ps1 -DryRun
 setup.install-run|Set up|Install or update this host for real (asks you to accept licenses)|sh INSTALLER|||powershell -NoProfile -ExecutionPolicy Bypass -File install\windows\install.ps1
+setup.install-cli|Set up|Put familia on your PATH (~/.local/bin/familia shim): preview, writes nothing|sh scripts/install-cli.sh --dry-run|||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-cli.ps1 -WhatIf
+setup.install-cli-run|Set up|Put familia on your PATH for real (2-line shim; the code stays in this checkout)|sh scripts/install-cli.sh|||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-cli.ps1
+setup.path-add|Set up|Add ~/.local/bin to PATH in ~/.profile (shows the marked block, asks first)|sh scripts/install-cli.sh path --add|||
+setup.path-remove|Set up|Remove familia's PATH block from ~/.profile (only that block)|sh scripts/install-cli.sh path --remove|||
+setup.cli-status|Set up|Show where familia is installed on PATH and what was recorded|sh scripts/install-cli.sh status|||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-cli.ps1 -Status
+setup.uninstall-cli|Set up|Take familia off your PATH: remove exactly the recorded files (preview, then asks)|sh scripts/install-cli.sh uninstall|||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-cli.ps1 -Uninstall -WhatIf
 setup.logon-task|Set up|Windows: start the model server at logon (preview; drop -WhatIf to register)||||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-task.ps1 -Install -Model {MODEL:model file name, e.g. qwen2.5-0.5b-instruct-q4_0.gguf} -WhatIf
 skills.menu|Skills|Bundled skills: switch skills on/off for an agent (license-checked)|PY scripts/skills.py menu --agent {AGENT:agent name [hermes]}|||python scripts\skills.py menu --agent {AGENT:agent name [hermes]}
 skills.list|Skills|List every skill with its license and status|PY scripts/skills.py list|||python scripts\skills.py list
