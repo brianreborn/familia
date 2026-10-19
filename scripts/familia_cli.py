@@ -100,7 +100,7 @@ def resolve(words, windows=False):
 
 def usage_of(i, words, windows=False):
     vals = " ".join("<" + m.group(1) + ">" for m in PH.finditer(i["win"] if windows else i["cmd"]))
-    return " ".join(("familia",) + tuple(words)) + (" " + vals if vals else "") + " [ARG...]"
+    return " ".join(("familia.cmd" if windows else "familia",) + tuple(words)) + (" " + vals if vals else "") + " [ARG...]"
 
 
 def help_all(windows=False):
@@ -138,7 +138,7 @@ def help_one(words, windows=False):
         return None
     kind, r = hit
     if kind == "raw":
-        return f"familia {' '.join(words[:k])} ARG...: {r['summary']}\n  runs: {shown(r['cmd'], windows)} ARG..."
+        return f"{'familia.cmd' if windows else 'familia'} {' '.join(words[:k])} ARG...: {r['summary']}\n  runs: {shown(r['cmd'], windows)} ARG..."
     i = r
     lines = [usage_of(i, words[:k], windows), f"  {i['label']}  (menu: {i['group']}, key {i['key']})",
              f"  runs: {shown(i['win'] if windows else i['cmd'], windows)}"]
@@ -314,7 +314,8 @@ def main(argv):
     if cmd == "help":
         text = help_one(rest, windows) if rest else help_all(windows)
         if text is None:
-            print(f"familia: no command '{' '.join(rest)}'. See: familia help, or familia search WORD", file=sys.stderr)
+            exe = "familia.cmd" if windows else "familia"
+            print(f"familia: no command '{' '.join(rest)}'. See: {exe} help, or {exe} search WORD", file=sys.stderr)
             return 2
         print(text)
         return 0
