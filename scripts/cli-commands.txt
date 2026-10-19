@@ -1,0 +1,92 @@
+# familia(1) subcommand names: words|target
+#   target = a menu item key (scripts/menu-items.txt): `familia WORDS [VALUE...] [ARG...]` runs that item,
+#            with the same license review and dry-run, values for {NAME:...} given as args or flags.
+#   target = raw|posix command|gate|windows command|summary: pass every ARG to that command.
+# Every menu item is also reachable as `familia KEY`, `familia GROUP NAME` (e.g. familia hosts serve) and,
+# when the part after the dot is unique, `familia NAME`. The first name listed here for a key is the one
+# help and the man page show. Longest match wins.
+setup|setup.configure
+configure|setup.configure
+settings|setup.settings
+panel|setup.panel
+install|setup.install-run
+install preview|setup.install
+uninstall preview|adv.uninstall
+logon-task|setup.logon-task
+logon-task remove|adv.logon-task-remove
+licenses review|setup.licenses
+licenses list|models.licenses
+licenses json|adv.licenses-json
+licenses|raw|PY scripts/licenses.py||python scripts\licenses.py|any licenses.py command: review, check, gate, list [--json]
+skills menu|skills.menu
+skills list|skills.list
+skills show|skills.show
+skills vendor|skills.vendor
+skills validate|skills.validate
+skills paths|adv.skills-paths
+skills|raw|PY scripts/skills.py||python scripts\skills.py|any skills.py command: list, show, enable, disable, menu, vendor, paths, validate
+model add|models.add-apply
+model add preview|models.add
+model fetch|models.fetch
+model fetch preview|models.fetch-preview
+model cards|models.cards
+model license|models.license
+model check|models.check
+model params|models.explain
+model args|adv.args
+model verify|adv.verify
+model flags|adv.llama-flags
+model scale-down|adv.scale-down
+model db list|adv.db-list
+model db show|adv.db-show
+model db damp|adv.db-damp
+model db backfill|adv.db-backfill
+model db|raw|PY scripts/model_db.py||python scripts\model_db.py|any model_db.py command: list, show, damp, ingest, backfill, refresh
+add-model|raw|scripts/add-model.sh||python scripts\add_model.py|scripts/add-model.sh with any arguments (same as familia model add)
+check|models.check
+graph check|models.check
+graph explain|models.explain
+graph args|adv.args
+graph generate|hosts.generate
+graph edit|adv.graph-edit
+hermes|agents.hermes
+hermes model|agents.hermes-model
+hermes graph|agents.hermes-graph
+hermes render|agents.hermes-render
+hermes selftest|adv.hermes-selftest
+hermes escalate|adv.hermes-escalate
+escalate accept|adv.escalate-accept
+escalate consent|adv.escalate-consent
+fleet test|agents.fleet-test
+fleet|agents.fleet
+harness2 status|harness2.status
+harness2 set|harness2.set
+harness2 review|harness2.review
+harness2|raw|PY scripts/harness2.py||python scripts\harness2.py|any harness2.py command
+test|test.unit
+test offline|test.offline
+bench suggest|test.registry
+bench summary|test.registry-summary
+bench query|adv.registry-query
+bench match|adv.registry-match
+bench power|adv.registry-power
+bench lint|adv.registry-lint
+bench|raw|PY scripts/registry.py||python scripts\registry.py|any registry.py command: add, query, summarize, suggest, match, power, lint
+monitor once|hosts.monitor-once
+monitor deaths|adv.monitor-deaths
+monitor|hosts.monitor
+start|hosts.start
+serve|hosts.serve
+host measure|hosts.measure-write
+host measure preview|hosts.measure
+host power|adv.power-probe
+host cpu|adv.cpu-level
+phone start|hosts.android
+phone watchdog|hosts.watchdog
+phone list|adv.phone-target
+phones|hosts.phones
+c2c loopback|adv.c2c-loopback
+numpy-wheel|adv.numpy-wheel
+poudriere|adv.poudriere
+quickstart|help.quickstart
+internal|help.internal

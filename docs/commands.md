@@ -182,3 +182,4 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/littlebit/hfllama.py` | LittleBit developer helper (needs transformers) |
 | `scripts/littlebit/produce_tiny.py` | LittleBit pipeline exercise only (docs/littlebit.md) |
 | `scripts/littlebit/lbformat.py` | LittleBit file format library |
+| `scripts/familia_cli.py` | engine behind ./familia: subcommand names, help, man page, completion (run as familia help / familia completion) |

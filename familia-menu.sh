@@ -31,7 +31,7 @@ ITEMS=$(grep -v '^#' "$ITEMS_FILE" | grep -v '^[[:space:]]*$' | awk -F'|' '$4 !=
 
 DRY=0; PIPE=0; MODE=menu; RUN_KEY=""; SEARCH=""
 say() { printf '%s\n' "$*"; }
-err() { printf 'familia-menu: %s\n' "$*" >&2; }
+err() { printf '%s: %s\n' "${ERR_NAME:-familia-menu}" "$*" >&2; }
 
 usage() { sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'; }
 
@@ -109,21 +109,47 @@ read_line() {  # read_line PROMPT VAR ; returns 1 on EOF
   printf -v "$2" '%s' "$__v"
 }
 
-fill() {  # fill CMD ARGS... -> prints command with {NAME:prompt} replaced
+can_prompt() { [ -t 0 ] && [ "${FAMILIA_NO_TTY:-}" != 1 ]; }
+
+fill() {  # fill CMD ARGS... -> CMD with {NAME:prompt} filled from ARGS (as the --flag before it, else in order); rest appended
   local cmd=$1; shift
-  local out="" rest=$cmd ph name prompt def val
-  while [[ $rest == *"{"*"}"* ]]; do
-    out+=${rest%%\{*}; rest=${rest#*\{}; ph=${rest%%\}*}; rest=${rest#*\}}
-    name=${ph%%:*}; prompt=${ph#*:}; def=""
-    [[ $prompt =~ \[([^]]*)\] ]] && def=${BASH_REMATCH[1]}
-    if [ $# -gt 0 ]; then val=$1; shift
-    elif [ "$MODE" = run ]; then err "item needs $name ($prompt). Pass it after the key: --run KEY VALUE"; return 2
-    else read_line "  $prompt: " val || return 1; fi
-    [ -n "$val" ] || val=$def
-    [ -n "$val" ] || { err "$name is required ($prompt)"; return 2; }
-    out+=$(printf '%q' "$val")
+  local args=("$@") out="" rest before ph i j n=0 val
+  local -a names=() prompts=() defs=() flags=() vals=() got=() pre=()
+  rest=$cmd
+  while [[ $rest == *"{"*"}"* ]]; do  # pass 1: placeholders, and the flag written just before each
+    before=${rest%%\{*}; rest=${rest#*\{}; ph=${rest%%\}*}; rest=${rest#*\}}
+    pre+=("$before"); names+=("${ph%%:*}"); prompts+=("${ph#*:}"); vals+=(""); got+=(0)
+    if [[ ${ph#*:} =~ \[([^]]*)\] ]]; then defs+=("${BASH_REMATCH[1]}"); else defs+=(""); fi
+    if [[ $before =~ (^|[[:space:]])(-[-A-Za-z0-9]+)[[:space:]]+$ ]]; then flags+=("${BASH_REMATCH[2]}"); else flags+=(""); fi
+    n=$((n+1))
   done
-  printf '%s' "$out$rest"
+  for ((j=0; j<n; j++)); do  # pass 2: --flag VALUE / --flag=VALUE given by the user
+    [ -n "${flags[$j]}" ] && [ ${#args[@]} -gt 0 ] || continue
+    for i in "${!args[@]}"; do
+      if [ "${args[$i]}" = "${flags[$j]}" ] && [ $((i+1)) -lt ${#args[@]} ]; then
+        vals[$j]=${args[$((i+1))]}; got[$j]=1; unset "args[$i]" "args[$((i+1))]"; break
+      elif [[ ${args[$i]} == "${flags[$j]}="* ]]; then
+        vals[$j]=${args[$i]#*=}; got[$j]=1; unset "args[$i]"; break
+      fi
+    done
+    args=(${args[@]+"${args[@]}"})
+  done
+  for ((j=0; j<n; j++)); do  # pass 3: leading plain values in order, then defaults or prompts
+    [ "${got[$j]}" = 1 ] && continue
+    if [ ${#args[@]} -gt 0 ] && [[ ${args[0]} != -* ]]; then
+      vals[$j]=${args[0]}; args=("${args[@]:1}")
+    elif [ "$MODE" = menu ] || { [ -z "${defs[$j]}" ] && can_prompt; }; then
+      read_line "  ${prompts[$j]}: " val || return 1; vals[$j]=$val
+    elif [ -z "${defs[$j]}" ]; then
+      err "item needs ${names[$j]} (${prompts[$j]}). Give it as a value: ${CLI_HINT:---run KEY} VALUE"; return 2
+    fi
+    [ -n "${vals[$j]}" ] || vals[$j]=${defs[$j]}
+    [ -n "${vals[$j]}" ] || { err "${names[$j]} is required (${prompts[$j]})"; return 2; }
+  done
+  for ((j=0; j<n; j++)); do out+="${pre[$j]}$(printf '%q' "${vals[$j]}")"; done
+  out+=$rest
+  for val in ${args[@]+"${args[@]}"}; do out+=" $(printf '%q' "$val")"; done
+  printf '%s' "$out"
 }
 
 run_item() {  # run_item KEY ARGS...
@@ -297,10 +323,108 @@ EOF2
   done
 }
 
+# ---- familia(1): `familia COMMAND ...` (names in scripts/cli-commands.txt, engine scripts/familia_cli.py) ----
+script_part() {  # the command up to and including its script, for `familia COMMAND --help`
+  local c=$1 out="" t
+  for t in $c; do
+    out+="${out:+ }$t"
+    case "$t" in *.py|*.sh|*.ps1|familia-monitor|with-fleet.sh) [ -f "$t" ] && { printf '%s' "$out"; return 0; } ;; esac
+  done
+  return 1
+}
+run_raw() {  # run_raw GATE CMD ARGS...
+  local gate=$1 cmd=$2 a; shift 2
+  cmd=$(expand "$cmd")
+  for a in "$@"; do cmd+=" $(printf '%q' "$a")"; done
+  if [ "$DRY" = 1 ]; then
+    [ "$gate" = lic ] && say "[dry-run] would first run: $PY scripts/licenses.py gate"
+    say "[dry-run] ${cmd% }"; return 0
+  fi
+  if [ "$gate" = lic ]; then
+    $PY scripts/licenses.py gate || { local rc=$?; err "stopped: the licenses for this selection are not accepted yet. Review them with: $PY scripts/licenses.py review"; return $rc; }
+  fi
+  bash -c "$cmd"
+}
+cli_help() {  # cli_help [--man | COMMAND...]
+  if [ "${1:-}" = --man ]; then
+    if command -v man >/dev/null 2>&1; then man "$ROOT/man/familia.1"; return $?; fi
+    err "man is not installed here; showing the plain help instead (the page is man/familia.1)."
+    $PY scripts/familia_cli.py help; return $?
+  fi
+  $PY scripts/familia_cli.py help "$@"
+}
+cli_search() {  # cli_search WORD [--run N ARG...]
+  [ $# -ge 1 ] && [ -n "$1" ] || { err "search needs a word, e.g. familia search model"; return 2; }
+  SEARCH=$1; shift
+  if [ "${1:-}" = --run ]; then
+    [ $# -ge 2 ] || { err "--run needs a match number"; return 2; }
+    find_matches "$SEARCH"
+    [ ${#SK[@]} -gt 0 ] || { no_match "$SEARCH" >&2; return 1; }
+    local n=$2; shift 2
+    if [[ $n =~ ^[0-9]+$ ]]; then
+      [ "$n" -ge 1 ] && [ "$n" -le ${#SK[@]} ] || { err "--run $n: there are ${#SK[@]} match(es) for '$SEARCH'"; return 2; }
+      n=${SK[$((n-1))]}
+    fi
+    MODE=run; run_item "$n" "$@"; return $?
+  fi
+  local rc=0; print_matches "$SEARCH" || rc=$?
+  [ $rc = 0 ] && say "Run one with: familia search $(printf '%q' "$SEARCH") --run N [VALUE...]"
+  return $rc
+}
+cli_main() {
+  while [ $# -gt 0 ]; do  # options before the command belong to familia itself
+    case "$1" in
+      --dry-run|-n) DRY=1 ;;
+      --yes|-y) export FAMILIA_ACCEPT_LICENSES=yes ;;
+      --pipe) PIPE=1; export FAMILIA_MENU_PIPE=1 ;;
+      -h|--help) shift; cli_help "$@"; return $? ;;
+      --list) list_items; return 0 ;;
+      --run) shift; [ $# -ge 1 ] || { err "--run needs an item key (see: familia list)"; return 2; }
+             MODE=run; local k=$1; shift; run_item "$k" "$@"; return $? ;;
+      --search) shift; cli_search "$@"; return $? ;;
+      --search=*) local w=${1#*=}; shift; cli_search "$w" "$@"; return $? ;;
+      -*) err "unknown option '$1'. Try: familia help"; return 2 ;;
+      *) break ;;
+    esac
+    shift
+  done
+  [ $# -gt 0 ] || { MODE=menu; start_menu; return $?; }
+  case "$1" in
+    help) shift; cli_help "$@"; return $? ;;
+    list) list_items; return 0 ;;
+    run) shift; [ $# -ge 1 ] || { err "run needs an item key (see: familia list)"; return 2; }
+         MODE=run; local k=$1; shift; run_item "$k" "$@"; return $? ;;
+    search) shift; cli_search "$@"; return $? ;;
+    menu) MODE=menu; start_menu; return $? ;;
+    completion) shift; $PY scripts/familia_cli.py completion "$@"; return $? ;;
+  esac
+  local kind f1 f2 f3 res
+  res=$($PY scripts/familia_cli.py resolve "$@") || return 2
+  read -r kind f1 f2 f3 <<<"$res"
+  case "$kind" in
+    item) local words=("${@:1:$f2}"); shift "$f2"; CLI_HINT="familia ${words[*]}"
+          if [ "${1:-}" = --help ] || [ "${1:-}" = -h ]; then cli_help_item "$f1" "${words[@]}"; return $?; fi
+          MODE=run; run_item "$f1" "$@"; return $? ;;
+    raw) shift "$f1"
+         if [ "${1:-}" = --help ] || [ "${1:-}" = -h ]; then bash -c "$(expand "$f3") --help"; return $?; fi
+         [ "$f2" = - ] && f2=""
+         run_raw "$f2" "$f3" "$@"; return $? ;;
+    *) err "unknown command '$1'. Try: familia help, or: familia search $1"; return 2 ;;
+  esac
+}
+cli_help_item() {  # cli_help_item KEY WORDS...: familia's view of the item, then the script's own --help
+  local key=$1 sp; shift
+  $PY scripts/familia_cli.py help "$@"
+  sp=$(script_part "$(expand "$(field "$key" 4)")") || return 0
+  say ""; say "--- $sp --help ---"
+  bash -c "$sp --help"
+}
+
 while [ $# -gt 0 ]; do
   case "$1" in
     -h|--help) usage; exit 0 ;;
     --list) MODE=list ;;
+    --cli) MODE=cli; shift; break ;;
     --run) MODE=run; RUN_KEY=${2-}; shift || true; [ -n "$RUN_KEY" ] || { err "--run needs an item key (see --list)"; exit 2; }; shift; break ;;
     --run=*) MODE=run; RUN_KEY=${1#*=}; shift; break ;;
     --dry-run|-n) DRY=1 ;;
@@ -313,6 +437,19 @@ while [ $# -gt 0 ]; do
   esac
   shift
 done
+start_menu() {
+  if [ ! -t 0 ] && [ "$PIPE" != 1 ]; then
+    list_items
+    err "no terminal, so no interactive menu. Run an item with --run KEY, or pipe choices with --pipe."
+    return 2
+  fi
+  menu
+}
+if [ "$MODE" = cli ]; then
+  ERR_NAME=familia
+  command -v "$PY" >/dev/null 2>&1 || { err "$PY was not found. Install Python 3 (Debian/Ubuntu: sudo apt install python3; Termux: pkg install python)."; exit 1; }
+  rc=0; cli_main "$@" || rc=$?; exit $rc
+fi
 # options may also follow --run KEY
 ARGS=()
 while [ $# -gt 0 ]; do

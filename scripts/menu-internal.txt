@@ -27,3 +27,4 @@ scripts/littlebit/hfllama.py|LittleBit developer helper (needs transformers)
 scripts/littlebit/produce_tiny.py|LittleBit pipeline exercise only (docs/littlebit.md)
 scripts/littlebit/lbformat.py|LittleBit file format library
 scripts/panel_familia.py|familia's pages for the settings panel; loaded by scripts/panel.py, which the menu runs
+scripts/familia_cli.py|engine behind ./familia: subcommand names, help, man page, completion (run as familia help / familia completion)
