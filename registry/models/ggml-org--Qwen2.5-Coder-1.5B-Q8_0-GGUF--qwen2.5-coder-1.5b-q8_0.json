@@ -1,0 +1,200 @@
+{
+ "schema": 1,
+ "id": "ggml-org--Qwen2.5-Coder-1.5B-Q8_0-GGUF--qwen2.5-coder-1.5b-q8_0",
+ "repo": "ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF",
+ "revision": "8be1b8a895a84beea772817caaa71eba6b6e0d07",
+ "file": "qwen2.5-coder-1.5b-q8_0.gguf",
+ "sha256": "29871c94d15727a6e243f79a37113d4ae625a6215b5e800bf41a23af2da32832",
+ "bytes": 1646573056,
+ "quant": "Q8_0",
+ "arch": "qwen2",
+ "roles": [],
+ "license": "apache-2.0",
+ "license_source": "ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF card license",
+ "ctx": 32768,
+ "ctx_source": "GGUF qwen2.context_length",
+ "card_ctx": 32768,
+ "card_ctx_source": "Qwen/Qwen2.5-Coder-1.5B README.md:L34",
+ "base_model": "Qwen/Qwen2.5-Coder-1.5B",
+ "base_revision": "df3ce67c0e24480f20468b6ef2894622d69eb73b",
+ "card_defaults": null,
+ "card_defaults_source": null,
+ "card_default_set": null,
+ "card_defaults_how": "the card and generation_config.json state no sampling values",
+ "card_sampling_modes": null,
+ "card_default_mode": null,
+ "card_default_mode_source": null,
+ "card_sampling_sets": null,
+ "card_commands": [
+  {
+   "tool": "llama-cli",
+   "command": "llama-cli --hf-repo ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF --hf-file qwen2.5-coder-1.5b-q8_0.gguf -p \"The meaning to life and the universe is\"",
+   "source": "ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF README.md:L33"
+  },
+  {
+   "tool": "llama-server",
+   "command": "llama-server --hf-repo ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF --hf-file qwen2.5-coder-1.5b-q8_0.gguf -c 2048",
+   "source": "ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF README.md:L38"
+  },
+  {
+   "tool": "llama-cli",
+   "command": "./llama-cli --hf-repo ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF --hf-file qwen2.5-coder-1.5b-q8_0.gguf -p \"The meaning to life and the universe is\"",
+   "source": "ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF README.md:L55"
+  },
+  {
+   "tool": "llama-server",
+   "command": "./llama-server --hf-repo ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF --hf-file qwen2.5-coder-1.5b-q8_0.gguf -c 2048",
+   "source": "ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF README.md:L59"
+  }
+ ],
+ "card_notes": [
+  {
+   "text": "- Context Length: Full 32,768 tokens",
+   "source": "Qwen/Qwen2.5-Coder-1.5B README.md:L34"
+  }
+ ],
+ "chat_template": {
+  "gguf_sha256": "cd8e9439f0570856fd70470bf8889ebd8b5d1107207f67a5efb46e342330527f",
+  "repo_sha256": "cd8e9439f0570856fd70470bf8889ebd8b5d1107207f67a5efb46e342330527f",
+  "repo_file": "Qwen/Qwen2.5-Coder-1.5B tokenizer_config.json:chat_template",
+  "same": true
+ },
+ "stop": {
+  "eos_token": "<|endoftext|>",
+  "eos_token_id": 151643,
+  "eos_token_id_source": "Qwen/Qwen2.5-Coder-1.5B generation_config.json"
+ },
+ "rope": {
+  "rope.freq_base": 1000000.0
+ },
+ "aux": null,
+ "gguf": {
+  "general.architecture": "qwen2",
+  "general.name": "Qwen2.5 Coder 1.5B",
+  "general.file_type": 7,
+  "general.quantization_version": 2,
+  "_gguf_version": 3
+ },
+ "snapshot": {
+  "path": "ggml-org--Qwen2.5-Coder-1.5B-Q8_0-GGUF/8be1b8a895a84beea772817caaa71eba6b6e0d07",
+  "fetched_bytes": 3513,
+  "errors": null,
+  "gated": false
+ },
+ "base_snapshot": {
+  "path": "Qwen--Qwen2.5-Coder-1.5B/df3ce67c0e24480f20468b6ef2894622d69eb73b",
+  "fetched_bytes": 11505317,
+  "errors": null,
+  "gated": false
+ },
+ "repo_files": {
+  ".gitattributes": {
+   "size": 1584,
+   "sha256": null,
+   "blob": "8b508a8a2389f8ca88f5a42a2d19e9b4fcda385d",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "README.md": {
+   "size": 1929,
+   "sha256": null,
+   "blob": "21d889d44f5eb1b225b6279b074aaef20255fea7",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "qwen2.5-coder-1.5b-q8_0.gguf": {
+   "size": 1646573056,
+   "sha256": "29871c94d15727a6e243f79a37113d4ae625a6215b5e800bf41a23af2da32832",
+   "blob": "1e43820267cf7f63b00d24e548f9118a81f1599f",
+   "fetched": false,
+   "skipped": "weight file not used here (1646 MB)"
+  }
+ },
+ "base_repo_files": {
+  ".gitattributes": {
+   "size": 1519,
+   "sha256": null,
+   "blob": "a6344aac8c09253b3b630fb776ae94478aa0275b",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "LICENSE": {
+   "size": 11343,
+   "sha256": null,
+   "blob": "6634c8cc3133b3848ec74b9f275acaaa1ea618ab",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "README.md": {
+   "size": 4053,
+   "sha256": null,
+   "blob": "a228e93de3518e8fc1cfb26e88c0335a97fed514",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "config.json": {
+   "size": 660,
+   "sha256": null,
+   "blob": "e05d00aea2f25388d63c239fff651f01a9ba3c4a",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "generation_config.json": {
+   "size": 117,
+   "sha256": null,
+   "blob": "df3252542c682096421f5b6e7fed9482896789e6",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "merges.txt": {
+   "size": 1671839,
+   "sha256": null,
+   "blob": "20024bfe7c83998e9aeaf98a0cd6a2ce6306c2f0",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "model.safetensors": {
+   "size": 3087467144,
+   "sha256": "535485b26038ac24f4e8a86e1a73ed417d8992e3192f6305b7fcc4fb92efa210",
+   "blob": "cb5e68d682cba93281da68b494cfe98ea1259a73",
+   "fetched": false,
+   "skipped": "weight file not used here (3087 MB)"
+  },
+  "tokenizer.json": {
+   "size": 7031645,
+   "sha256": null,
+   "blob": "443909a61d429dff23010e5bddd28ff530edda00",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "tokenizer_config.json": {
+   "size": 7308,
+   "sha256": null,
+   "blob": "a17fc944ddabb147e791b535735dcf175f0281fe",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "vocab.json": {
+   "size": 2776833,
+   "sha256": null,
+   "blob": "4783fe10ac3adce15ac8f358ef5462739852c569",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  }
+ },
+ "found_in": [
+  "hf-cache"
+ ],
+ "match": null,
+ "local_check": {
+  "host": "miryam",
+  "sha256_ok": true,
+  "checked": "2026-10-19"
+ },
+ "unknown": [
+  "card_defaults: the card and generation_config.json state no sampling values"
+ ],
+ "warnings": null,
+ "updated": "2026-10-19",
+ "by": "scripts/model_db.py"
+}

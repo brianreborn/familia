@@ -1,0 +1,342 @@
+{
+ "schema": 1,
+ "id": "Takenoko12345678--Qwen3.5-0.8B-Japanese-SFT-v2-GGUF--Qwen3.5-0.8B-Japanese-SFT-v2-Q4_K_M",
+ "repo": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2-GGUF",
+ "revision": "a5c9ba2dd9220a0163e82af3a08e2ab4e77c343b",
+ "file": "Qwen3.5-0.8B-Japanese-SFT-v2-Q4_K_M.gguf",
+ "sha256": "fc3404fe7aa1f9dce8ff88d348308606c73eb6dfbf7c920148fe7a722bf105dc",
+ "bytes": 529296736,
+ "quant": "Q4_K_M",
+ "arch": "qwen35",
+ "roles": [
+  "general"
+ ],
+ "license": "apache-2.0",
+ "license_source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2-GGUF card license",
+ "ctx": 262144,
+ "ctx_source": "GGUF qwen35.context_length",
+ "card_ctx": null,
+ "card_ctx_source": null,
+ "base_model": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2",
+ "base_revision": "969b0903193cc0028b3bac5d23a7aa21db971233",
+ "card_defaults": {
+  "temp": 1.0,
+  "top-k": 20,
+  "top-p": 1.0,
+  "presence-penalty": 2.0
+ },
+ "card_defaults_source": {
+  "temp": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 README.md:L139",
+  "top-k": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 README.md:L139",
+  "top-p": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 README.md:L139",
+  "presence-penalty": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 README.md:L139"
+ },
+ "card_default_set": "推奨の生成設定",
+ "card_defaults_how": "the card's only recommended set",
+ "card_sampling_modes": {
+  "推奨の生成設定": {
+   "temp": 1.0,
+   "top-k": 20,
+   "top-p": 1.0,
+   "presence-penalty": 2.0
+  }
+ },
+ "card_default_mode": null,
+ "card_default_mode_source": null,
+ "card_sampling_sets": [
+  {
+   "label": "国会議事堂はどこ？（llama.cpp、",
+   "kind": "mention",
+   "mode": null,
+   "params": {
+    "temp": 0
+   },
+   "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 README.md:L72"
+  },
+  {
+   "label": "同じ質問・同じ設定で、元の Qwen3.5-0.8B・v1 と比べました。評価の仕組みと全データは [Pitcher プロジェクト](https://github.com/atemoyacode-sudo/Pitcher) にあります。",
+   "kind": "mention",
+   "mode": null,
+   "params": {
+    "repeat-penalty": 1.1
+   },
+   "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 README.md:L91"
+  },
+  {
+   "label": "transformers 5 系 （5.17 で確認）を使ってください。重みは元のモデルと同じ形式（画像も扱える構造）ですが、学習・評価はテキストだけで行っています。",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 1.0,
+    "top-k": 20,
+    "top-p": 1.0
+   },
+   "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 README.md:L129"
+  },
+  {
+   "label": "推奨の生成設定",
+   "kind": "recommended",
+   "mode": null,
+   "params": {
+    "temp": 1.0,
+    "top-k": 20,
+    "top-p": 1.0,
+    "presence-penalty": 2.0
+   },
+   "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 README.md:L139"
+  },
+  {
+   "label": "llama.cpp では",
+   "kind": "mention",
+   "mode": null,
+   "params": {
+    "repeat-penalty": 1.1
+   },
+   "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 README.md:L140"
+  },
+  {
+   "label": "事実を答えさせる・選択問題：",
+   "kind": "mention",
+   "mode": null,
+   "params": {
+    "temp": 0
+   },
+   "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 README.md:L141"
+  },
+  {
+   "label": "使い方",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 1.0,
+    "top-k": 20,
+    "top-p": 1.0,
+    "presence-penalty": 2.0,
+    "repeat-penalty": 1.1
+   },
+   "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2-GGUF README.md:L43"
+  },
+  {
+   "label": "事実を答えさせる・選択問題では",
+   "kind": "mention",
+   "mode": null,
+   "params": {
+    "temp": 0
+   },
+   "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2-GGUF README.md:L52"
+  }
+ ],
+ "card_commands": [
+  {
+   "tool": "llama-server",
+   "command": "llama-server -m Qwen3.5-0.8B-Japanese-SFT-v2-Q4_K_M.gguf --port 8080 --jinja",
+   "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2-GGUF README.md:L37"
+  }
+ ],
+ "card_notes": [
+  {
+   "text": "*An unofficial Japanese fine-tune of Qwen3.5-0.8B (v2 of Qwen3.5-0.8B-Japanese-SFT). Adds continued pre-training on 100M tokens of Japanese Wikipedia, casual and multi-turn chat distilled from Qwen3.8-27B, and DPO on the model's own answers scored by Gemma 4 31B. Runaway repetition dropped from 8/59",
+   "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 README.md:L33"
+  },
+  {
+   "text": "**`enable_thinking=False` を必ず指定してください。** このモデルの学習はすべて思考なしで行っています。vLLM（0.30）でも動きます（評価に使用）。",
+   "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 README.md:L135"
+  },
+  {
+   "text": "- 会話：temperature 1.0、top_k 20、top_p 1.0、presence_penalty 2.0（元のモデルの推奨値）",
+   "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 README.md:L139"
+  },
+  {
+   "text": "- `--jinja` を付けて、GGUF に入っているチャットテンプレートを使ってください",
+   "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2-GGUF README.md:L49"
+  },
+  {
+   "text": "- **`\"chat_template_kwargs\": {\"enable_thinking\": false}` を必ず付けてください。** 学習はすべて思考なしで行っています",
+   "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2-GGUF README.md:L50"
+  }
+ ],
+ "chat_template": {
+  "gguf_sha256": "a718c4c7c74cb590a4ef4d30e23a88c8f47d7125d62c19f202383ada53f30809",
+  "repo_sha256": "a718c4c7c74cb590a4ef4d30e23a88c8f47d7125d62c19f202383ada53f30809",
+  "repo_file": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 chat_template.jinja",
+  "same": true
+ },
+ "stop": {
+  "eos_token": "<|im_end|>",
+  "eos_token_id": 248044,
+  "eos_token_id_source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 generation_config.json"
+ },
+ "rope": {
+  "rope.freq_base": 10000000.0,
+  "config": {
+   "mrope_interleaved": true,
+   "mrope_section": [
+    11,
+    11,
+    10
+   ],
+   "partial_rotary_factor": 0.25,
+   "rope_theta": 10000000,
+   "rope_type": "default"
+  }
+ },
+ "aux": null,
+ "gguf": {
+  "general.architecture": "qwen35",
+  "general.name": "Merged",
+  "general.file_type": 15,
+  "general.quantization_version": 2,
+  "_gguf_version": 3
+ },
+ "snapshot": {
+  "path": "Takenoko12345678--Qwen3.5-0.8B-Japanese-SFT-v2-GGUF/a5c9ba2dd9220a0163e82af3a08e2ab4e77c343b",
+  "fetched_bytes": 17006,
+  "errors": null,
+  "gated": false
+ },
+ "base_snapshot": {
+  "path": "Takenoko12345678--Qwen3.5-0.8B-Japanese-SFT-v2/969b0903193cc0028b3bac5d23a7aa21db971233",
+  "fetched_bytes": 30106439,
+  "errors": null,
+  "gated": false
+ },
+ "repo_files": {
+  ".gitattributes": {
+   "size": 1671,
+   "sha256": null,
+   "blob": "14f4981f85ea75f0ff68ddd7535dfba85f750632",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "LICENSE": {
+   "size": 11358,
+   "sha256": null,
+   "blob": "d645695673349e3947e8e5ae42332d0ac3164cd7",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "Qwen3.5-0.8B-Japanese-SFT-v2-Q4_K_M.gguf": {
+   "size": 529296736,
+   "sha256": "fc3404fe7aa1f9dce8ff88d348308606c73eb6dfbf7c920148fe7a722bf105dc",
+   "blob": "d9aeddd86dd18bd4f59f5b9230b909269b8006aa",
+   "fetched": false,
+   "skipped": "weight file not used here (529 MB)"
+  },
+  "Qwen3.5-0.8B-Japanese-SFT-v2-Q8_0.gguf": {
+   "size": 811842912,
+   "sha256": "e92ac5e7e87b0c34e11cadb37efea707c6ec8ae0cb117b5ab9ca54b74e77c063",
+   "blob": "2d741adbe6ef28f4da4292c56b99ae29287e7026",
+   "fetched": false,
+   "skipped": "weight file not used here (811 MB)"
+  },
+  "README.md": {
+   "size": 3977,
+   "sha256": null,
+   "blob": "14554757939e3c1dc6f73514160c3c8d5f62b67b",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  }
+ },
+ "base_repo_files": {
+  ".gitattributes": {
+   "size": 1570,
+   "sha256": null,
+   "blob": "52373fe24473b1aa44333d318f578ae6bf04b49b",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "LICENSE": {
+   "size": 11358,
+   "sha256": null,
+   "blob": "d645695673349e3947e8e5ae42332d0ac3164cd7",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "README.md": {
+   "size": 15692,
+   "sha256": null,
+   "blob": "33bcc30ffe52beab30e29ca844120380aa46461a",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "chat_template.jinja": {
+   "size": 7753,
+   "sha256": null,
+   "blob": "99b6f5c5fc8943cc61ba1918259837fd2a46ce72",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "config.json": {
+   "size": 2708,
+   "sha256": null,
+   "blob": "2dc2cf8791f3ee3d210e52947548ad160c84a837",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "generation_config.json": {
+   "size": 116,
+   "sha256": null,
+   "blob": "31ec2a53cc9cde720b0a8fbc68b9c4e73ac5a18f",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "merges.txt": {
+   "size": 3353259,
+   "sha256": null,
+   "blob": "a494e019ca1502219fd0128658b979e5f05ae8e8",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "model.safetensors": {
+   "size": 1706030528,
+   "sha256": "af0b17d3119d70d722634c95f19de22a917aac9ab11a56eec531ec70fb2db79b",
+   "blob": "ebdeb7e050caaddc642744e0c49c334295a44fee",
+   "fetched": false,
+   "skipped": "weight file not used here (1706 MB)"
+  },
+  "preprocessor_config.json": {
+   "size": 390,
+   "sha256": null,
+   "blob": "2ea84a437d448ff71b08df68fdd949d5cc4ebb64",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "tokenizer.json": {
+   "size": 19989325,
+   "sha256": "06b9509352d2af50381ab2247e083b80d32d5c0aba91c272ca9ff729b6a0e523",
+   "blob": "5520bfd2dd834ce386c1312c410fa71af56db5ad",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "tokenizer_config.json": {
+   "size": 1124,
+   "sha256": null,
+   "blob": "d1a20cc3a8838d08eca9de8a7b84d510d60a0524",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "video_preprocessor_config.json": {
+   "size": 385,
+   "sha256": null,
+   "blob": "3ba673a5ad7d4d13f54155ecd38b2a94a6dac8fe",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "vocab.json": {
+   "size": 6722759,
+   "sha256": null,
+   "blob": "0aa0ce0658d60ac4a5d609f4eadb0e8e43514176",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  }
+ },
+ "found_in": [
+  "manifest general/locale-ja"
+ ],
+ "match": null,
+ "local_check": null,
+ "unknown": null,
+ "warnings": null,
+ "updated": "2026-10-19",
+ "by": "scripts/model_db.py"
+}

@@ -157,13 +157,14 @@ def test_hf_dir_coder_inference_aux_and_card(env, tmp_path, capsys):
     assert e["ctx"] == 40960 and e["inferred"]["ctx"].startswith("GGUF")
     assert e["repo"] is None and e["revision"] is None
     assert len(e["sha256"]) == 64 and e["bytes"] == os.path.getsize(d / "Tiny-Coder-1B-Q4_K_M.gguf")
-    assert e["card_sampling_modes"]["thinking"] == {"temp": 0.6, "top-p": 0.95, "top-k": 20, "min-p": 0}
-    assert e["card_sampling_modes"]["non-thinking"] == {"temp": 0.7, "top-p": 0.8, "top-k": 20, "min-p": 0}
-    # the card's own llama-server command wins over generation_config.json; gaps come from the latter
-    assert e["card_defaults"] == {"temp": 0.7, "top-p": 0.8, "top-k": 20}
+    modes = e["card_sampling_modes"]
+    th = next(k for k in modes if k.startswith("For thinking mode"))
+    nt = next(k for k in modes if k.startswith("For non-thinking mode"))
+    assert modes[th] == {"temp": 0.6, "top-p": 0.95, "top-k": 20, "min-p": 0}
+    assert modes[nt] == {"temp": 0.7, "top-p": 0.8, "top-k": 20, "min-p": 0}
+    # two recommended sets, no stated default mode: generation_config.json (0.6/0.95/20) picks the thinking set
+    assert e["card_defaults"] == modes[th] and e["card_default_set"] == th
     assert e["card_defaults_source"]["temp"].startswith("README.md:L")
-    assert e["card_defaults_source"]["top-k"] == "generation_config.json"
-    assert e["card_defaults_source"]["thinking:temp"].startswith("README.md:L")
     assert any(c["tool"] == "llama-server" and "--jinja" in c["command"] for c in e["card_commands"])
     kinds = sorted(a["kind"] for a in e["aux"])
     assert kinds == ["draft", "mmproj"]
@@ -177,7 +178,7 @@ def test_hf_dir_coder_inference_aux_and_card(env, tmp_path, capsys):
     p = preset(env)
     assert "model = %s" % (d / "Tiny-Coder-1B-Q4_K_M.gguf") in p and "models/coder/old.gguf" not in p
     assert p.count("[") == PRESET.count("[") and "[decision]" in p and "; coder" in p
-    assert "card mode non-thinking" in out.err
+    assert "card temp" in out.err
 
 
 def test_awk_reader_sees_flat_fields(env, tmp_path):
@@ -315,15 +316,6 @@ def test_preset_set_keeps_sections():
     out = add_model.preset_set(lines, "general", {"temp": "0.3", "min-p": "0.15"})
     t = "\n".join(out)
     assert "temp     = 0.3" in t and "min-p = 0.15\n\n[coder]" in t
-
-
-def test_fetch_without_tool_prints_command(env, monkeypatch, capsys):
-    monkeypatch.setattr(add_model.shutil, "which", lambda n: None)
-    with pytest.raises(SystemExit) as ex:
-        run(env, "--fetch", "org/Thing-GGUF@abc", "--quant", "Q4_K_M")
-    assert ex.value.code == 3
-    err = capsys.readouterr().err
-    assert "hf download org/Thing-GGUF --revision abc --local-dir" in err and "'*Q4_K_M*.gguf'" in err
 
 
 def test_no_args_not_a_tty(env, monkeypatch, capsys):

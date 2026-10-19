@@ -1,0 +1,175 @@
+{
+ "schema": 1,
+ "id": "tencent--HY-MT1.5-1.8B-GGUF--HY-MT1.5-1.8B-Q4_K_M",
+ "repo": "tencent/HY-MT1.5-1.8B-GGUF",
+ "revision": "265b2e615a7dc9b06c435dc878829ad99a512ba2",
+ "file": "HY-MT1.5-1.8B-Q4_K_M.gguf",
+ "sha256": "4383ac0c3c8e476de98ff979c2a3f069f8c4fb385e7860cf2d28da896cc477c7",
+ "bytes": 1133080512,
+ "quant": "Q4_K_M",
+ "arch": "hunyuan-dense",
+ "roles": [
+  "language"
+ ],
+ "license": "unknown",
+ "license_source": null,
+ "ctx": 262144,
+ "ctx_source": "GGUF hunyuan-dense.context_length",
+ "card_ctx": null,
+ "card_ctx_source": null,
+ "base_model": null,
+ "base_revision": null,
+ "card_defaults": {
+  "top-k": 20,
+  "top-p": 0.6,
+  "repeat-penalty": 1.05,
+  "temp": 0.7
+ },
+ "card_defaults_source": {
+  "top-k": "tencent/HY-MT1.5-1.8B-GGUF tencent/HY-MT1.5-1.8B-GGUF README.md:L168",
+  "top-p": "tencent/HY-MT1.5-1.8B-GGUF tencent/HY-MT1.5-1.8B-GGUF README.md:L168",
+  "repeat-penalty": "tencent/HY-MT1.5-1.8B-GGUF tencent/HY-MT1.5-1.8B-GGUF README.md:L168",
+  "temp": "tencent/HY-MT1.5-1.8B-GGUF tencent/HY-MT1.5-1.8B-GGUF README.md:L168"
+ },
+ "card_default_set": "We recommend using the following set of parameters for inference. Note that our model does not have the default system prompt",
+ "card_defaults_how": "the card's only recommended set",
+ "card_sampling_modes": {
+  "We recommend using the following set of parameters for inference. Note that our model does not have the default system prompt": {
+   "top-k": 20,
+   "top-p": 0.6,
+   "repeat-penalty": 1.05,
+   "temp": 0.7
+  }
+ },
+ "card_default_mode": null,
+ "card_default_mode_source": null,
+ "card_sampling_sets": [
+  {
+   "label": "Use with llama.cpp",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 0.7,
+    "top-k": 20,
+    "top-p": 0.6,
+    "repeat-penalty": 1.05
+   },
+   "source": "tencent/HY-MT1.5-1.8B-GGUF README.md:L154"
+  },
+  {
+   "label": "We recommend using the following set of parameters for inference. Note that our model does not have the default system prompt",
+   "kind": "recommended",
+   "mode": null,
+   "params": {
+    "top-k": 20,
+    "top-p": 0.6,
+    "repeat-penalty": 1.05,
+    "temp": 0.7
+   },
+   "source": "tencent/HY-MT1.5-1.8B-GGUF README.md:L168"
+  }
+ ],
+ "card_commands": [
+  {
+   "tool": "llama-cli",
+   "command": "llama-cli -hf tencent/HY-MT1.5-1.8B-GGUF:Q8_0 -p \"Translate the following segment into Chinese, without additional explanation.\\n\\nIt’s on the house.\" -n 4096 --temp 0.7 --top-k 20 --top-p 0.6 --repeat-penalty 1.05 --no-warmup",
+   "source": "tencent/HY-MT1.5-1.8B-GGUF README.md:L154"
+  },
+  {
+   "tool": "ollama",
+   "command": "ollama create hy-mt1.5-1.8b -f Modelfile",
+   "source": "tencent/HY-MT1.5-1.8B-GGUF README.md:L160"
+  },
+  {
+   "tool": "ollama",
+   "command": "ollama run hy-mt1.5-1.8b",
+   "source": "tencent/HY-MT1.5-1.8B-GGUF README.md:L161"
+  }
+ ],
+ "card_notes": null,
+ "chat_template": {
+  "gguf_sha256": "b7491ec0e9c869dfce20f2176758099bf248d979dd05530ede99deb21698acee"
+ },
+ "stop": {
+  "eos_token_id": 120020,
+  "eos_token_id_source": "GGUF"
+ },
+ "rope": {
+  "rope.freq_base": 11158840.0,
+  "rope.scaling.type": "none",
+  "rope.scaling.factor": 1.0,
+  "rope.scaling.original_context_length": 262144
+ },
+ "aux": null,
+ "gguf": {
+  "general.architecture": "hunyuan-dense",
+  "general.name": "HY MT 1.8B 1222",
+  "general.file_type": 15,
+  "general.quantization_version": 2,
+  "_gguf_version": 3
+ },
+ "snapshot": {
+  "path": "tencent--HY-MT1.5-1.8B-GGUF/265b2e615a7dc9b06c435dc878829ad99a512ba2",
+  "fetched_bytes": 26059,
+  "errors": null,
+  "gated": false
+ },
+ "base_snapshot": null,
+ "repo_files": {
+  ".gitattributes": {
+   "size": 1701,
+   "sha256": null,
+   "blob": "f2ce7cce717058a55dff8ba6fb8d85797e9550f0",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "HY-MT1.5-1.8B-Q4_K_M.gguf": {
+   "size": 1133080512,
+   "sha256": "4383ac0c3c8e476de98ff979c2a3f069f8c4fb385e7860cf2d28da896cc477c7",
+   "blob": "bdc919af0546b1d1db29cb063e9c45ec1ff3bd42",
+   "fetched": false,
+   "skipped": "weight file not used here (1133 MB)"
+  },
+  "HY-MT1.5-1.8B-Q6_K.gguf": {
+   "size": 1474785216,
+   "sha256": "c3819200ab9a79cb29b9a05ce8920e2eb01ae7ce520094fc5b57356494f3c641",
+   "blob": "a6e72b61bada58e8ff8dadd68dfd61d9884cc0b5",
+   "fetched": false,
+   "skipped": "weight file not used here (1474 MB)"
+  },
+  "HY-MT1.5-1.8B-Q8_0.gguf": {
+   "size": 1908528288,
+   "sha256": "6789b06d0902f2f5312c0e1703d56ccbddfcfb6c653d22519b7c720f7db9a98e",
+   "blob": "88944f9b28f2c6989d644ff702fd492b26705bdf",
+   "fetched": false,
+   "skipped": "weight file not used here (1908 MB)"
+  },
+  "License.txt": {
+   "size": 16270,
+   "sha256": null,
+   "blob": "1b502c594266512e3f80deb4e021b9b52024f671",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "README.md": {
+   "size": 8088,
+   "sha256": null,
+   "blob": "5c4200c70eb143ed7161d6aa90d87b47c7bb4c54",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  }
+ },
+ "base_repo_files": null,
+ "found_in": [
+  "manifest language/language"
+ ],
+ "match": null,
+ "local_check": null,
+ "unknown": [
+  "base_model (not in the card front matter or GGUF metadata)",
+  "license"
+ ],
+ "warnings": null,
+ "updated": "2026-10-19",
+ "by": "scripts/model_db.py"
+}

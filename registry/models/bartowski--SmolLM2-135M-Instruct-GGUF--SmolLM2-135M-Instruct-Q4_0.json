@@ -1,0 +1,464 @@
+{
+ "schema": 1,
+ "id": "bartowski--SmolLM2-135M-Instruct-GGUF--SmolLM2-135M-Instruct-Q4_0",
+ "repo": "bartowski/SmolLM2-135M-Instruct-GGUF",
+ "revision": "09816acd5d99df7be770d85ea30822623dab342c",
+ "file": "SmolLM2-135M-Instruct-Q4_0.gguf",
+ "sha256": "bcc3af2849ad6095af57e9b5cd43775256efdc66e306acb529172f92d0c04b03",
+ "bytes": 91893088,
+ "quant": "Q4_0",
+ "arch": "llama",
+ "roles": [
+  "decision"
+ ],
+ "license": "apache-2.0",
+ "license_source": "bartowski/SmolLM2-135M-Instruct-GGUF card license",
+ "ctx": 8192,
+ "ctx_source": "GGUF llama.context_length",
+ "card_ctx": null,
+ "card_ctx_source": null,
+ "base_model": "HuggingFaceTB/SmolLM2-135M-Instruct",
+ "base_revision": "12fd25f77366fa6b3b4b768ec3050bf629380bac",
+ "card_defaults": {
+  "temp": 0.2,
+  "top-p": 0.9
+ },
+ "card_defaults_source": {
+  "temp": "HuggingFaceTB/SmolLM2-135M-Instruct HuggingFaceTB/SmolLM2-135M-Instruct README.md:L57 (code example)",
+  "top-p": "HuggingFaceTB/SmolLM2-135M-Instruct HuggingFaceTB/SmolLM2-135M-Instruct README.md:L57 (code example)"
+ },
+ "card_default_set": "example: Transformers",
+ "card_defaults_how": "the card's only code example with sampling values",
+ "card_sampling_modes": null,
+ "card_default_mode": null,
+ "card_default_mode_source": null,
+ "card_sampling_sets": [
+  {
+   "label": "Transformers",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 0.2,
+    "top-p": 0.9
+   },
+   "source": "HuggingFaceTB/SmolLM2-135M-Instruct README.md:L57"
+  }
+ ],
+ "card_commands": [
+  {
+   "tool": "huggingface-cli",
+   "command": "huggingface-cli download bartowski/SmolLM2-135M-Instruct-GGUF --include \"SmolLM2-135M-Instruct-Q4_K_M.gguf\" --local-dir ./",
+   "source": "bartowski/SmolLM2-135M-Instruct-GGUF README.md:L77"
+  },
+  {
+   "tool": "huggingface-cli",
+   "command": "huggingface-cli download bartowski/SmolLM2-135M-Instruct-GGUF --include \"SmolLM2-135M-Instruct-Q8_0/*\" --local-dir ./",
+   "source": "bartowski/SmolLM2-135M-Instruct-GGUF README.md:L83"
+  }
+ ],
+ "card_notes": null,
+ "chat_template": {
+  "gguf_sha256": "872be49dbb638044ad01b60388f48d469ff2980e5f0dccdc22ec907db54d0788",
+  "repo_sha256": "872be49dbb638044ad01b60388f48d469ff2980e5f0dccdc22ec907db54d0788",
+  "repo_file": "HuggingFaceTB/SmolLM2-135M-Instruct tokenizer_config.json:chat_template",
+  "same": true
+ },
+ "stop": {
+  "eos_token": "<|im_end|>",
+  "eos_token_id": 2,
+  "eos_token_id_source": "HuggingFaceTB/SmolLM2-135M-Instruct generation_config.json"
+ },
+ "rope": {
+  "rope.freq_base": 100000.0
+ },
+ "aux": null,
+ "gguf": {
+  "general.architecture": "llama",
+  "general.name": "Smollm2 135M 8k Lc100K Mix1 Ep2",
+  "general.file_type": 2,
+  "general.quantization_version": 2,
+  "_gguf_version": 3
+ },
+ "snapshot": {
+  "path": "bartowski--SmolLM2-135M-Instruct-GGUF/09816acd5d99df7be770d85ea30822623dab342c",
+  "fetched_bytes": 619171,
+  "errors": null,
+  "gated": false
+ },
+ "base_snapshot": {
+  "path": "HuggingFaceTB--SmolLM2-135M-Instruct/12fd25f77366fa6b3b4b768ec3050bf629380bac",
+  "fetched_bytes": 3529643,
+  "errors": null,
+  "gated": false
+ },
+ "repo_files": {
+  ".gitattributes": {
+   "size": 3124,
+   "sha256": null,
+   "blob": "177957f9fdf43ab38388026e1f330096d2a95539",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "README.md": {
+   "size": 10039,
+   "sha256": null,
+   "blob": "21ee370e26e197f591ef3e1d288b9d91eb8ce3e7",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "SmolLM2-135M-Instruct-IQ3_M.gguf": {
+   "size": 90213472,
+   "sha256": "e8a0e942fe93529b7601a7620c8aa1bdc1bede40ff668ed9d6339686384392d7",
+   "blob": "dceedae55c368ebdd83a909049dcf2d240fda651",
+   "fetched": false,
+   "skipped": "weight file not used here (90 MB)"
+  },
+  "SmolLM2-135M-Instruct-IQ3_XS.gguf": {
+   "size": 88202080,
+   "sha256": "dfb39501dd5f4b5e0bf0285e195ba044b5fd1b2b26eb12c166c116d5c867bbce",
+   "blob": "591471f5f7d5290b4f5245111c35a395b3814a86",
+   "fetched": false,
+   "skipped": "weight file not used here (88 MB)"
+  },
+  "SmolLM2-135M-Instruct-IQ4_XS.gguf": {
+   "size": 90897760,
+   "sha256": "d766661c2e39c3da78d8eddf15287af263dce1eedc1c9c8093ed8e54eb067dbc",
+   "blob": "67dd9f009659d1d14e1492c01e4b3424272dd5b3",
+   "fetched": false,
+   "skipped": "weight file not used here (90 MB)"
+  },
+  "SmolLM2-135M-Instruct-Q2_K.gguf": {
+   "size": 88202080,
+   "sha256": "741ad12b64088fedc17c33aacb22e48be1972ef36a39f03666dd68bd15614fb9",
+   "blob": "05e6b292ebbd639ad805c1702341d2f8d0134287",
+   "fetched": false,
+   "skipped": "weight file not used here (88 MB)"
+  },
+  "SmolLM2-135M-Instruct-Q2_K_L.gguf": {
+   "size": 88202080,
+   "sha256": "741ad12b64088fedc17c33aacb22e48be1972ef36a39f03666dd68bd15614fb9",
+   "blob": "05e6b292ebbd639ad805c1702341d2f8d0134287",
+   "fetched": false,
+   "skipped": "weight file not used here (88 MB)"
+  },
+  "SmolLM2-135M-Instruct-Q3_K_L.gguf": {
+   "size": 97533280,
+   "sha256": "af0cfb0051df7e10205f841dfc744f033ca245f7e2df001e51c00e36296792e8",
+   "blob": "9634036cde8ed9644443f31d1438dd4ec1bb25cc",
+   "fetched": false,
+   "skipped": "weight file not used here (97 MB)"
+  },
+  "SmolLM2-135M-Instruct-Q3_K_M.gguf": {
+   "size": 93510496,
+   "sha256": "0b431be309b25c9496463b3362d89a7156c44cdd899ee64f1390f11a059188ef",
+   "blob": "61647da7678925f057dd8061aa433b2e4d9c530d",
+   "fetched": false,
+   "skipped": "weight file not used here (93 MB)"
+  },
+  "SmolLM2-135M-Instruct-Q3_K_S.gguf": {
+   "size": 88202080,
+   "sha256": "7add77b8d3736d6b2fd21dc96e69be026f19bde843e9988b43cef1315fc5eebe",
+   "blob": "75144b22397d9f995be49819bd804a6e0fd28af1",
+   "fetched": false,
+   "skipped": "weight file not used here (88 MB)"
+  },
+  "SmolLM2-135M-Instruct-Q3_K_XL.gguf": {
+   "size": 97533280,
+   "sha256": "af0cfb0051df7e10205f841dfc744f033ca245f7e2df001e51c00e36296792e8",
+   "blob": "9634036cde8ed9644443f31d1438dd4ec1bb25cc",
+   "fetched": false,
+   "skipped": "weight file not used here (97 MB)"
+  },
+  "SmolLM2-135M-Instruct-Q4_0.gguf": {
+   "size": 91893088,
+   "sha256": "bcc3af2849ad6095af57e9b5cd43775256efdc66e306acb529172f92d0c04b03",
+   "blob": "23333427c1800dba5a9ad243cdd490d382d4f969",
+   "fetched": false,
+   "skipped": "weight file not used here (91 MB)"
+  },
+  "SmolLM2-135M-Instruct-Q4_0_4_4.gguf": {
+   "size": 91727200,
+   "sha256": "46dc6d6135f2bc0f20545bc00f6d82fbcffc4d6eddf1f390db1fb5a605f130e6",
+   "blob": "b974d242b25578ad452566a0a0bebce4799084ce",
+   "fetched": false,
+   "skipped": "weight file not used here (91 MB)"
+  },
+  "SmolLM2-135M-Instruct-Q4_0_4_8.gguf": {
+   "size": 91727200,
+   "sha256": "c26af42515f42f38166012de59c6818c88862c4408bb548cbb90fcb4caf1e0e4",
+   "blob": "a586cca22a8b43262dd1433a0babd4e9d4a94573",
+   "fetched": false,
+   "skipped": "weight file not used here (91 MB)"
+  },
+  "SmolLM2-135M-Instruct-Q4_0_8_8.gguf": {
+   "size": 91727200,
+   "sha256": "ee5e106cc3f9b6fd52d8ef4f82a8352a11eef7c7d5c905d5dfbbbcd5631fbad0",
+   "blob": "feae33552d39739820e6b8a8eba40fb105d5fc38",
+   "fetched": false,
+   "skipped": "weight file not used here (91 MB)"
+  },
+  "SmolLM2-135M-Instruct-Q4_K_L.gguf": {
+   "size": 105454432,
+   "sha256": "2e8040ceae7815abe0dcb3540b9995eaa1fa0d2ca9e797d0a635ae4433c68c2d",
+   "blob": "bbd90a1d40b01f026dbc0e40d87c88211de68572",
+   "fetched": false,
+   "skipped": "weight file not used here (105 MB)"
+  },
+  "SmolLM2-135M-Instruct-Q4_K_M.gguf": {
+   "size": 105454432,
+   "sha256": "2e8040ceae7815abe0dcb3540b9995eaa1fa0d2ca9e797d0a635ae4433c68c2d",
+   "blob": "bbd90a1d40b01f026dbc0e40d87c88211de68572",
+   "fetched": false,
+   "skipped": "weight file not used here (105 MB)"
+  },
+  "SmolLM2-135M-Instruct-Q4_K_S.gguf": {
+   "size": 102039904,
+   "sha256": "a8654d8eb14c45ef3c6170b3f0c6ccd02ba3e1a6b406ca02f4ffadf0b1b222a0",
+   "blob": "6c4dab301f3123c07281ac42293792f95c6e7bd5",
+   "fetched": false,
+   "skipped": "weight file not used here (102 MB)"
+  },
+  "SmolLM2-135M-Instruct-Q5_K_L.gguf": {
+   "size": 112103776,
+   "sha256": "731d0c9cf598dada9712242ceddcca88aa0502fc8f9b8f773917df9f9113463a",
+   "blob": "85bffaf5353805f2c8ec449c5bbbaec87292538d",
+   "fetched": false,
+   "skipped": "weight file not used here (112 MB)"
+  },
+  "SmolLM2-135M-Instruct-Q5_K_M.gguf": {
+   "size": 112103776,
+   "sha256": "731d0c9cf598dada9712242ceddcca88aa0502fc8f9b8f773917df9f9113463a",
+   "blob": "85bffaf5353805f2c8ec449c5bbbaec87292538d",
+   "fetched": false,
+   "skipped": "weight file not used here (112 MB)"
+  },
+  "SmolLM2-135M-Instruct-Q5_K_S.gguf": {
+   "size": 109974880,
+   "sha256": "604c0c03ddcc3539d54705d0a165bd7ea8e7e9f5acb4bc8456cf136ef09d9a4e",
+   "blob": "c3009c6650cdb7c306b001d47a55c73adfc8eda3",
+   "fetched": false,
+   "skipped": "weight file not used here (109 MB)"
+  },
+  "SmolLM2-135M-Instruct-Q6_K.gguf": {
+   "size": 138383200,
+   "sha256": "012e83bc3f8ae14bdead7abdd577bdb0b8ad5a3a913ac1a843a6a3a8d7d5d8a5",
+   "blob": "bc764037d6ef31f677dcfb8bd88cc6b507b6f86e",
+   "fetched": false,
+   "skipped": "weight file not used here (138 MB)"
+  },
+  "SmolLM2-135M-Instruct-Q6_K_L.gguf": {
+   "size": 138383200,
+   "sha256": "012e83bc3f8ae14bdead7abdd577bdb0b8ad5a3a913ac1a843a6a3a8d7d5d8a5",
+   "blob": "bc764037d6ef31f677dcfb8bd88cc6b507b6f86e",
+   "fetched": false,
+   "skipped": "weight file not used here (138 MB)"
+  },
+  "SmolLM2-135M-Instruct-Q8_0.gguf": {
+   "size": 144811360,
+   "sha256": "5a1395716f7913741cc51d98581b9b1228d80987a9f7d3664106742eb06bba83",
+   "blob": "9205e07ed1e87ab60c269bb20f4c73e4bdd194e1",
+   "fetched": false,
+   "skipped": "weight file not used here (144 MB)"
+  },
+  "SmolLM2-135M-Instruct-f16.gguf": {
+   "size": 270885952,
+   "sha256": "f535f83ec568d040f88ddc04a199fa6da90923bbb41d4dcaed02caa924d6ef57",
+   "blob": "3cc5c90de665e3795a90c454bc75fc21d57b5270",
+   "fetched": false,
+   "skipped": "weight file not used here (270 MB)"
+  },
+  "SmolLM2-135M-Instruct.imatrix": {
+   "size": 606008,
+   "sha256": null,
+   "blob": "96614cd7627bc0cd5c613b3099a24d850b2d2981",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  }
+ },
+ "base_repo_files": {
+  ".gitattributes": {
+   "size": 1519,
+   "sha256": null,
+   "blob": "a6344aac8c09253b3b630fb776ae94478aa0275b",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "README.md": {
+   "size": 6772,
+   "sha256": null,
+   "blob": "d168166639f4dec33a0d0bb5f8e7d4e20d9d52ac",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "all_results.json": {
+   "size": 783,
+   "sha256": null,
+   "blob": "85c006f9a5e464072db2465b66ac20be695963d0",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "config.json": {
+   "size": 861,
+   "sha256": null,
+   "blob": "36293b6099200eb8aeb55ae2c01bca2ba46d80d0",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "eval_results.json": {
+   "size": 586,
+   "sha256": null,
+   "blob": "b6c91c24d0db60c08b7a8be9692d83b5c071d5c7",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "generation_config.json": {
+   "size": 132,
+   "sha256": null,
+   "blob": "da6c4d71a43aa7e6f785bdbb28ea5025438a73fa",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "merges.txt": {
+   "size": 466391,
+   "sha256": null,
+   "blob": "69503b13f727ba3812b6803e97442a6de05ef5eb",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "model.safetensors": {
+   "size": 269060552,
+   "sha256": "5af571cbf074e6d21a03528d2330792e532ca608f24ac70a143f6b369968ab8c",
+   "blob": "2ef707371406f95f8aa91fb03a75f22f3c568299",
+   "fetched": false,
+   "skipped": "weight file not used here (269 MB)"
+  },
+  "onnx/model.onnx": {
+   "size": 540345794,
+   "sha256": "1e790f1d6fac94097a6516ed1f07c29049097271d536d538562cd31ffc011a71",
+   "blob": "909ef4de400bb640ec89ff71ec9c06d005dd127d",
+   "fetched": false,
+   "skipped": "weight file not used here (540 MB)"
+  },
+  "onnx/model_bnb4.onnx": {
+   "size": 175434623,
+   "sha256": "bc32b446540fe380adb6b29c7e95b0a8402c9e6addb948307daee99735a776bb",
+   "blob": "2810bffebb155e3f37f5466aff8e44822c8fa38a",
+   "fetched": false,
+   "skipped": "weight file not used here (175 MB)"
+  },
+  "onnx/model_fp16.onnx": {
+   "size": 270267067,
+   "sha256": "e85e706ce14a3499e1f698c0d638b430df75b5f67131d1516bd0d46b844dfb2e",
+   "blob": "427f1b4cf16e375695c148f4a7aec91fb6c67460",
+   "fetched": false,
+   "skipped": "weight file not used here (270 MB)"
+  },
+  "onnx/model_int8.onnx": {
+   "size": 137147867,
+   "sha256": "a7c33f9ef85d06734cc9d1f943f7e2ba57c77e769df727f4d3e217d9f672b0cc",
+   "blob": "9ac229360441ba1e8891a7d9ea6ad0c1af38a29a",
+   "fetched": false,
+   "skipped": "weight file not used here (137 MB)"
+  },
+  "onnx/model_q4.onnx": {
+   "size": 182068553,
+   "sha256": "933577110303a2964096d19b6f15d3b4639bef7f99481ac0b61d9f3ad72f392a",
+   "blob": "d871dd8ab48cf55b491091639ac3c953cf754843",
+   "fetched": false,
+   "skipped": "weight file not used here (182 MB)"
+  },
+  "onnx/model_q4f16.onnx": {
+   "size": 117691126,
+   "sha256": "9358cd4ce037c304621f8c194a525607ae7c5ea73239fcae4c21bd02f2e34ff7",
+   "blob": "04b2fdf2d2ff8267e05a36545095c1fe704ac36a",
+   "fetched": false,
+   "skipped": "weight file not used here (117 MB)"
+  },
+  "onnx/model_quantized.onnx": {
+   "size": 137147981,
+   "sha256": "ecc1a19eece6494e2963cf74f78ace35916e8d0b803168ddd41db00979f18e39",
+   "blob": "0973be84a0863fe14df904921ade5a532e0c8831",
+   "fetched": false,
+   "skipped": "weight file not used here (137 MB)"
+  },
+  "onnx/model_uint8.onnx": {
+   "size": 137147981,
+   "sha256": "ecc1a19eece6494e2963cf74f78ace35916e8d0b803168ddd41db00979f18e39",
+   "blob": "0973be84a0863fe14df904921ade5a532e0c8831",
+   "fetched": false,
+   "skipped": "weight file not used here (137 MB)"
+  },
+  "runs/Oct31_10-14-22_ip-26-0-174-36/events.out.tfevents.1730370128.ip-26-0-174-36.3239327.0": {
+   "size": 78157,
+   "sha256": "774faae98f36baa1ee525b594023c5fc25b4ad9249e04ccdf4cba9ee4f4585fd",
+   "blob": "a5b8d3714ae75cfb3f52ee04950c7329595c41a3",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "runs/Oct31_10-14-22_ip-26-0-174-36/events.out.tfevents.1730376056.ip-26-0-174-36.3239327.1": {
+   "size": 828,
+   "sha256": "043a35029ecb401ef0df75148304075329cd444faf2097b0316e9200018fea5c",
+   "blob": "02a97f0a43b5d34fa5a6baf42c8dab90d5aa5d58",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "special_tokens_map.json": {
+   "size": 655,
+   "sha256": null,
+   "blob": "44719d2e365acac0637fd25a3acf46494ca45940",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "tokenizer.json": {
+   "size": 2104556,
+   "sha256": null,
+   "blob": "f922b1797f0c88e71addc8393787831f2477a4bd",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "tokenizer_config.json": {
+   "size": 3764,
+   "sha256": null,
+   "blob": "8c7b22013909450429303ed10be4398bd63f5457",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "train_results.json": {
+   "size": 232,
+   "sha256": null,
+   "blob": "246b9556e2d21f927f43ff1a0ff9447c5906b46f",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "trainer_state.json": {
+   "size": 57225,
+   "sha256": null,
+   "blob": "6870fd88eb2bd4aa2a3c7d3ecb9214bfdddf64f1",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "training_args.bin": {
+   "size": 6520,
+   "sha256": "90f508e5769b31070c2c8f82e7ecdce816d610763df89479b5258bc66ee8b357",
+   "blob": "24687c3b6c17e3c5fb3443798bc9d79442d5f98c",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "vocab.json": {
+   "size": 800662,
+   "sha256": null,
+   "blob": "0ad5ecc2035b7031b88afb544ee95e2d49baa484",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  }
+ },
+ "found_in": [
+  "graph.yaml models.smollm2-135m-q4-miryam"
+ ],
+ "match": "LFS sha256 match",
+ "local_check": null,
+ "unknown": null,
+ "warnings": null,
+ "updated": "2026-10-19",
+ "by": "scripts/model_db.py"
+}

@@ -1,0 +1,437 @@
+{
+ "schema": 1,
+ "id": "Qwen--Qwen3-0.6B-GGUF--Qwen3-0.6B-Q8_0",
+ "repo": "Qwen/Qwen3-0.6B-GGUF",
+ "revision": "23749fefcc72300e3a2ad315e1317431b06b590a",
+ "file": "Qwen3-0.6B-Q8_0.gguf",
+ "sha256": "9465e63a22add5354d9bb4b99e90117043c7124007664907259bd16d043bb031",
+ "bytes": 639446688,
+ "quant": "Q8_0",
+ "arch": "qwen3",
+ "roles": [
+  "jev"
+ ],
+ "license": "apache-2.0",
+ "license_source": "Qwen/Qwen3-0.6B-GGUF card license",
+ "ctx": 40960,
+ "ctx_source": "GGUF qwen3.context_length",
+ "card_ctx": 32768,
+ "card_ctx_source": "Qwen/Qwen3-0.6B README.md:L34",
+ "base_model": "Qwen/Qwen3-0.6B",
+ "base_revision": "c1899de289a04d12100db370d81485cdf75e47ca",
+ "card_defaults": {
+  "temp": 0.6,
+  "top-p": 0.95,
+  "top-k": 20,
+  "min-p": 0
+ },
+ "card_defaults_source": {
+  "temp": "Qwen/Qwen3-0.6B Qwen/Qwen3-0.6B README.md:L132",
+  "top-p": "Qwen/Qwen3-0.6B Qwen/Qwen3-0.6B README.md:L132",
+  "top-k": "Qwen/Qwen3-0.6B Qwen/Qwen3-0.6B README.md:L132",
+  "min-p": "Qwen/Qwen3-0.6B Qwen/Qwen3-0.6B README.md:L132"
+ },
+ "card_default_set": "For thinking mode, use",
+ "card_defaults_how": "recommended set for the card's default mode (thinking, Qwen/Qwen3-0.6B README.md:L118)",
+ "card_sampling_modes": {
+  "For thinking mode, use": {
+   "temp": 0.6,
+   "top-p": 0.95,
+   "top-k": 20,
+   "min-p": 0
+  },
+  "For non-thinking mode, we suggest using": {
+   "temp": 0.7,
+   "top-p": 0.8,
+   "top-k": 20,
+   "min-p": 0
+  }
+ },
+ "card_default_mode": "thinking",
+ "card_default_mode_source": "Qwen/Qwen3-0.6B README.md:L118",
+ "card_sampling_sets": [
+  {
+   "label": "For thinking mode, use",
+   "kind": "recommended",
+   "mode": "thinking",
+   "params": {
+    "temp": 0.6,
+    "top-p": 0.95,
+    "top-k": 20,
+    "min-p": 0
+   },
+   "source": "Qwen/Qwen3-0.6B README.md:L132"
+  },
+  {
+   "label": "For non-thinking mode, we suggest using",
+   "kind": "recommended",
+   "mode": "non-thinking",
+   "params": {
+    "temp": 0.7,
+    "top-p": 0.8,
+    "top-k": 20,
+    "min-p": 0
+   },
+   "source": "Qwen/Qwen3-0.6B README.md:L151"
+  },
+  {
+   "label": "For thinking mode ( enable thinking=True ), use",
+   "kind": "recommended",
+   "mode": "thinking",
+   "params": {
+    "temp": 0.6,
+    "top-p": 0.95,
+    "top-k": 20,
+    "min-p": 0
+   },
+   "source": "Qwen/Qwen3-0.6B README.md:L275"
+  },
+  {
+   "label": "For non-thinking mode ( enable thinking=False ), we suggest using",
+   "kind": "recommended",
+   "mode": "non-thinking",
+   "params": {
+    "temp": 0.7,
+    "top-p": 0.8,
+    "top-k": 20,
+    "min-p": 0
+   },
+   "source": "Qwen/Qwen3-0.6B README.md:L276"
+  },
+  {
+   "label": "In the following demonstration, we assume that you are running commands under the repository llama.cpp",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 0.6,
+    "top-k": 20,
+    "top-p": 0.95,
+    "min-p": 0,
+    "presence-penalty": 1.5
+   },
+   "source": "Qwen/Qwen3-0.6B-GGUF README.md:L49"
+  },
+  {
+   "label": "For thinking mode ( enable thinking=True ), use",
+   "kind": "recommended",
+   "mode": "thinking",
+   "params": {
+    "temp": 0.6,
+    "top-p": 0.95,
+    "top-k": 20,
+    "min-p": 0,
+    "presence-penalty": 1.5
+   },
+   "source": "Qwen/Qwen3-0.6B-GGUF README.md:L93"
+  },
+  {
+   "label": "For non-thinking mode ( enable thinking=False ), we suggest using",
+   "kind": "recommended",
+   "mode": "non-thinking",
+   "params": {
+    "temp": 0.7,
+    "top-p": 0.8,
+    "top-k": 20,
+    "min-p": 0,
+    "presence-penalty": 1.5
+   },
+   "source": "Qwen/Qwen3-0.6B-GGUF README.md:L94"
+  }
+ ],
+ "card_commands": [
+  {
+   "tool": "vllm",
+   "command": "vllm serve Qwen/Qwen3-0.6B --enable-reasoning --reasoning-parser deepseek_r1",
+   "source": "Qwen/Qwen3-0.6B README.md:L105"
+  },
+  {
+   "tool": "llama-cli",
+   "command": "./llama-cli -hf Qwen/Qwen3-0.6B-GGUF:Q8_0 --jinja --color -ngl 99 -fa -sm row --temp 0.6 --top-k 20 --top-p 0.95 --min-p 0 --presence-penalty 1.5 -c 40960 -n 32768 --no-context-shift",
+   "source": "Qwen/Qwen3-0.6B-GGUF README.md:L49"
+  },
+  {
+   "tool": "ollama",
+   "command": "ollama run hf.co/Qwen/Qwen3-0.6B-GGUF:Q8_0",
+   "source": "Qwen/Qwen3-0.6B-GGUF README.md:L59"
+  }
+ ],
+ "card_notes": [
+  {
+   "text": "- **Uniquely support of seamless switching between thinking mode** (for complex logical reasoning, math, and coding) and **non-thinking mode** (for efficient, general-purpose dialogue) **within single model**, ensuring optimal performance across various scenarios.",
+   "source": "Qwen/Qwen3-0.6B README.md:L19"
+  },
+  {
+   "text": "- **Significantly enhancement in its reasoning capabilities**, surpassing previous QwQ (in thinking mode) and Qwen2.5 instruct models (in non-thinking mode) on mathematics, code generation, and commonsense logical reasoning.",
+   "source": "Qwen/Qwen3-0.6B README.md:L20"
+  },
+  {
+   "text": "- **Expertise in agent capabilities**, enabling precise integration with external tools in both thinking and unthinking modes and achieving leading performance among open-source models in complex agent-based tasks.",
+   "source": "Qwen/Qwen3-0.6B README.md:L22"
+  },
+  {
+   "text": "- Context Length: 32,768",
+   "source": "Qwen/Qwen3-0.6B README.md:L34"
+  },
+  {
+   "text": "> If you encounter significant endless repetitions, please refer to the [Best Practices](#best-practices) section for optimal sampling parameters, and set the ``presence_penalty`` to 1.5.",
+   "source": "Qwen/Qwen3-0.6B README.md:L39"
+  },
+  {
+   "text": "## Switching Between Thinking and Non-Thinking Mode",
+   "source": "Qwen/Qwen3-0.6B README.md:L110"
+  },
+  {
+   "text": "> The `enable_thinking` switch is also available in APIs created by SGLang and vLLM.",
+   "source": "Qwen/Qwen3-0.6B README.md:L113"
+  },
+  {
+   "text": "> Please refer to our documentation for [SGLang](https://qwen.readthedocs.io/en/latest/deployment/sglang.html#thinking-non-thinking-modes) and [vLLM](https://qwen.readthedocs.io/en/latest/deployment/vllm.html#thinking-non-thinking-modes) users.",
+   "source": "Qwen/Qwen3-0.6B README.md:L114"
+  },
+  {
+   "text": "### `enable_thinking=True`",
+   "source": "Qwen/Qwen3-0.6B README.md:L116"
+  },
+  {
+   "text": "By default, Qwen3 has thinking capabilities enabled, similar to QwQ-32B. This means the model will use its reasoning abilities to enhance the quality of generated responses. For example, when explicitly setting `enable_thinking=True` or leaving it as the default value in `tokenizer.apply_chat_templa",
+   "source": "Qwen/Qwen3-0.6B README.md:L118"
+  },
+  {
+   "text": "In this mode, the model will generate think content wrapped in a `<think>...</think>` block, followed by the final response.",
+   "source": "Qwen/Qwen3-0.6B README.md:L129"
+  },
+  {
+   "text": "> For thinking mode, use `Temperature=0.6`, `TopP=0.95`, `TopK=20`, and `MinP=0` (the default setting in `generation_config.json`). **DO NOT use greedy decoding**, as it can lead to performance degradation and endless repetitions. For more detailed guidance, please refer to the [Best Practices](#bes",
+   "source": "Qwen/Qwen3-0.6B README.md:L132"
+  },
+  {
+   "text": "### `enable_thinking=False`",
+   "source": "Qwen/Qwen3-0.6B README.md:L135"
+  },
+  {
+   "text": "In this mode, the model will not generate any think content and will not include a `<think>...</think>` block.",
+   "source": "Qwen/Qwen3-0.6B README.md:L148"
+  },
+  {
+   "text": "> For non-thinking mode, we suggest using `Temperature=0.7`, `TopP=0.8`, `TopK=20`, and `MinP=0`. For more detailed guidance, please refer to the [Best Practices](#best-practices) section.",
+   "source": "Qwen/Qwen3-0.6B README.md:L151"
+  },
+  {
+   "text": "### Advanced Usage: Switching Between Thinking and Non-Thinking Modes via User Input",
+   "source": "Qwen/Qwen3-0.6B README.md:L153"
+  },
+  {
+   "text": "We provide a soft switch mechanism that allows users to dynamically control the model's behavior when `enable_thinking=True`. Specifically, you can add `/think` and `/no_think` to user prompts or system messages to switch the model's thinking mode from turn to turn. The model will follow the most re",
+   "source": "Qwen/Qwen3-0.6B README.md:L155"
+  },
+  {
+   "text": "> For API compatibility, when `enable_thinking=True`, regardless of whether the user uses `/think` or `/no_think`, the model will always output a block wrapped in `<think>...</think>`. However, the content inside this block may be empty if thinking is disabled.",
+   "source": "Qwen/Qwen3-0.6B README.md:L213"
+  },
+  {
+   "text": "> When `enable_thinking=False`, the soft switches are not valid. Regardless of any `/think` or `/no_think` tags input by the user, the model will not generate think content and will not include a `<think>...</think>` block.",
+   "source": "Qwen/Qwen3-0.6B README.md:L214"
+  },
+  {
+   "text": "- For thinking mode (`enable_thinking=True`), use `Temperature=0.6`, `TopP=0.95`, `TopK=20`, and `MinP=0`. **DO NOT use greedy decoding**, as it can lead to performance degradation and endless repetitions.",
+   "source": "Qwen/Qwen3-0.6B README.md:L275"
+  },
+  {
+   "text": "- **Uniquely support of seamless switching between thinking mode** (for complex logical reasoning, math, and coding) and **non-thinking mode** (for efficient, general-purpose dialogue) **within single model**, ensuring optimal performance across various scenarios.",
+   "source": "Qwen/Qwen3-0.6B-GGUF README.md:L17"
+  },
+  {
+   "text": "- **Significantly enhancement in its reasoning capabilities**, surpassing previous QwQ (in thinking mode) and Qwen2.5 instruct models (in non-thinking mode) on mathematics, code generation, and commonsense logical reasoning.",
+   "source": "Qwen/Qwen3-0.6B-GGUF README.md:L18"
+  },
+  {
+   "text": "- **Expertise in agent capabilities**, enabling precise integration with external tools in both thinking and unthinking modes and achieving leading performance among open-source models in complex agent-based tasks.",
+   "source": "Qwen/Qwen3-0.6B-GGUF README.md:L20"
+  },
+  {
+   "text": "- Context Length: 32,768.",
+   "source": "Qwen/Qwen3-0.6B-GGUF README.md:L34"
+  },
+  {
+   "text": "## Switching Between Thinking and Non-Thinking Mode",
+   "source": "Qwen/Qwen3-0.6B-GGUF README.md:L62"
+  },
+  {
+   "text": "You can add `/think` and `/no_think` to user prompts or system messages to switch the model's thinking mode from turn to turn. The model will follow the most recent instruction in multi-turn conversations.",
+   "source": "Qwen/Qwen3-0.6B-GGUF README.md:L64"
+  },
+  {
+   "text": "- For thinking mode (`enable_thinking=True`), use `Temperature=0.6`, `TopP=0.95`, `TopK=20`, `MinP=0`, and `PresencePenalty=1.5`. **DO NOT use greedy decoding**, as it can lead to performance degradation and endless repetitions.",
+   "source": "Qwen/Qwen3-0.6B-GGUF README.md:L93"
+  },
+  {
+   "text": "- For non-thinking mode (`enable_thinking=False`), we suggest using `Temperature=0.7`, `TopP=0.8`, `TopK=20`, `MinP=0`, and `PresencePenalty=1.5`.",
+   "source": "Qwen/Qwen3-0.6B-GGUF README.md:L94"
+  },
+  {
+   "text": "- **We recommend setting `presence_penalty` to 1.5 for quantized models to suppress repetitive outputs.** You can adjust the `presence_penalty` parameter between 0 and 2. A higher value may occasionally lead to language mixing and a slight reduction in model performance.",
+   "source": "Qwen/Qwen3-0.6B-GGUF README.md:L95"
+  },
+  {
+   "text": "4. **No Thinking Content in History**: In multi-turn conversations, the historical model output should only include the final output part and does not need to include the thinking content. It is implemented in the provided chat template in Jinja2. However, for frameworks that do not directly use the",
+   "source": "Qwen/Qwen3-0.6B-GGUF README.md:L103"
+  }
+ ],
+ "chat_template": {
+  "gguf_sha256": "57f1fd00f0013a2be96aa79b857391f27e23df5b5f847072b524c897e24d0361",
+  "repo_sha256": "a55ee1b1660128b7098723e0abcd92caa0788061051c62d51cbe87d9cf1974d8",
+  "repo_file": "Qwen/Qwen3-0.6B tokenizer_config.json:chat_template",
+  "same": false
+ },
+ "stop": {
+  "eos_token": "<|im_end|>",
+  "eos_token_id": [
+   151645,
+   151643
+  ],
+  "eos_token_id_source": "Qwen/Qwen3-0.6B generation_config.json"
+ },
+ "rope": {
+  "rope.freq_base": 1000000.0
+ },
+ "aux": null,
+ "gguf": {
+  "general.architecture": "qwen3",
+  "general.name": "Qwen3 0.6B Instruct",
+  "general.file_type": 7,
+  "general.quantization_version": 2,
+  "_gguf_version": 3
+ },
+ "snapshot": {
+  "path": "Qwen--Qwen3-0.6B-GGUF/23749fefcc72300e3a2ad315e1317431b06b590a",
+  "fetched_bytes": 19858,
+  "errors": null,
+  "gated": false
+ },
+ "base_snapshot": {
+  "path": "Qwen--Qwen3-0.6B/c1899de289a04d12100db370d81485cdf75e47ca",
+  "fetched_bytes": 15908915,
+  "errors": null,
+  "gated": false
+ },
+ "repo_files": {
+  ".gitattributes": {
+   "size": 1808,
+   "sha256": null,
+   "blob": "e1d1e4f56dfb09e2f8179b74589e7533dff34072",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "LICENSE": {
+   "size": 11544,
+   "sha256": null,
+   "blob": "6f9739bb281a3d2ade8fb5f6dd6dde597a739c80",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "Qwen3-0.6B-Q8_0.gguf": {
+   "size": 639446688,
+   "sha256": "9465e63a22add5354d9bb4b99e90117043c7124007664907259bd16d043bb031",
+   "blob": "11bf194c8059f3b03e4454376ac67813a1e0eb52",
+   "fetched": false,
+   "skipped": "weight file not used here (639 MB)"
+  },
+  "README.md": {
+   "size": 6236,
+   "sha256": null,
+   "blob": "249fd4077b71e5870ffd09f9627982065925ceef",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "params": {
+   "size": 270,
+   "sha256": null,
+   "blob": "b79a3bdde8373ca566bd404904abbd5270d7825d",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  }
+ },
+ "base_repo_files": {
+  ".gitattributes": {
+   "size": 1570,
+   "sha256": null,
+   "blob": "52373fe24473b1aa44333d318f578ae6bf04b49b",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "LICENSE": {
+   "size": 11343,
+   "sha256": null,
+   "blob": "6634c8cc3133b3848ec74b9f275acaaa1ea618ab",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "README.md": {
+   "size": 13965,
+   "sha256": null,
+   "blob": "a50b19e76f5274f9ec99f5a5d99873dca5bff25e",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "config.json": {
+   "size": 726,
+   "sha256": null,
+   "blob": "f5c3703b78ae2a478ae15b247e9f855e0ce2107b",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "generation_config.json": {
+   "size": 239,
+   "sha256": null,
+   "blob": "20a8a9156fc8c3f25295ca067f61fdf120d517c5",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "merges.txt": {
+   "size": 1671853,
+   "sha256": null,
+   "blob": "31349551d90c7606f325fe0f11bbb8bd5fa0d7c7",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "model.safetensors": {
+   "size": 1503300328,
+   "sha256": "f47f71177f32bcd101b7573ec9171e6a57f4f4d31148d38e382306f42996874b",
+   "blob": "a0458bbfda764d86cf930900d5f0f933933da9a3",
+   "fetched": false,
+   "skipped": "weight file not used here (1503 MB)"
+  },
+  "tokenizer.json": {
+   "size": 11422654,
+   "sha256": "aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4",
+   "blob": "cd71f61a15a522601badb3dc960d800d9cb3766c",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "tokenizer_config.json": {
+   "size": 9732,
+   "sha256": null,
+   "blob": "417d038a63fa3de29cfde265caedae14d1a58d92",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "vocab.json": {
+   "size": 2776833,
+   "sha256": null,
+   "blob": "4783fe10ac3adce15ac8f358ef5462739852c569",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  }
+ },
+ "found_in": [
+  "manifest jev/jev"
+ ],
+ "match": null,
+ "local_check": null,
+ "unknown": null,
+ "warnings": [
+  "card states context 32768 (Qwen/Qwen3-0.6B README.md:L34) but GGUF qwen3.context_length is 40960"
+ ],
+ "updated": "2026-10-19",
+ "by": "scripts/model_db.py"
+}

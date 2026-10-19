@@ -452,6 +452,8 @@ TYPES = {
     "models": T({"gguf": req("str"), "sha256": req("sha"), "arch": req("str"), "trained_ctx": req("int", min=1),
                  "role": req("enum", choices={"chat", "coder", "decision", "reasoning", "embed", "vision", "diffusion", "pentest"}),
                  "derived_from": opt("any"),
+                 # model database entry (registry/models/<db>.json, docs/model-database.md, #51)
+                 "db": opt("str"),
                  "quant": opt("enum", choices={"littlebit"})}, doc="weights file"),  # derived_from: written by scripts/scale_down.py
     "nodes": T({"model": req("ref", ref="models"), "host": req("ref", ref="hosts"), "runtime": req("ref", ref="runtimes"),
                 "ctx": req("int", min=1), "parallel": req("int", min=1),
@@ -461,7 +463,12 @@ TYPES = {
                 "embeddings": opt("bool"), "threads": opt("int", min=1), "scale_down": opt("any"),
                 "selection": opt("enum", choices={"default", "fallback"}), "note": opt("str"),
                 # heavyweight escalation (docs/escalation.md); checked in escalation.check_node_escalation
-                "escalates_to": opt("list"), "escalation": opt("any")}, check_node, doc="model instance on host+runtime"),
+                "escalates_to": opt("list"), "escalation": opt("any"),
+                # model-card launch defaults (#51, docs/model-database.md): card_set picks one of the
+                # card's recommended sampling sets; sampling overrides single values; every value that
+                # contradicts the card (ctx, sampling keys, a non-default card_set) needs override_reasons.<key>
+                "card_set": opt("str"), "sampling": opt("map"), "override_reasons": opt("map")},
+               check_node, doc="model instance on host+runtime"),
     "speculative": T({"experimental": req("bool"), "status": req("enum", choices={"planned", "experimental", "active"}),
                       "mode": req("enum", choices={"draft", "ngram"}), "target": req("ref", ref="nodes"),
                       "spec_type": opt("enum", choices=SPEC_TYPES), "draft": opt("ref", ref="models"),

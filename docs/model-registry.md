@@ -13,7 +13,7 @@ what was already measured on it (or on identical hardware) and get a placement f
 
 ## Record fields
 `host`, `hardware_profile`, `device` {kind, name, backend, driver}, `runtime` {name, commit or pkg},
-`model` {repo, file, sha256, arch, quant, size_mib}, `settings` {ngl, threads, batch, ubatch, fa,
+`model` {repo, file, sha256, arch, quant, size_mib, db_id, revision, db_match | db_note} (db_id: the `registry/models/` entry, see docs/model-database.md; null with a db_note when the match is ambiguous), `settings` {ngl, threads, batch, ubatch, fa,
 kv_type, ctx, rows_per_thread, ...}, `metrics` {pp_tps, tg_tps as {min, max, measured}, latency_ms,
 ram_peak_mib, vram_peak_mib, free_ram_min_mib}, `concurrency` {co_runner, co_runner_tps,
 co_runner_alone_tps} or null, `correctness` (e.g. "32/32 vs CPU ref"), `power` {measured, watts,

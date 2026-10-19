@@ -85,6 +85,11 @@ def validate(graph, check_files=True):
     del WARNINGS[:]
     """Typed schema check, then GGUF/RAM checks. Returns (errors, {host: est MiB})."""
     errs = validate_types(graph)
+    if not errs:  # model database (#51): every node's model has a pinned, card-checked entry
+        import model_db
+        de, dw = model_db.check_graph(graph)
+        errs += de
+        WARNINGS.extend(dw)
     if errs or not check_files:
         return errs, {}
     hosts, models, totals = graph["hosts"], graph["models"], {}
@@ -213,6 +218,12 @@ def server_args(graph, name):
     if names: a += ["--alias", names[0]]
     a += ["--cache-ram", str(n["cache_ram_mib"])]
     if n.get("embeddings"): a += ["--embeddings"]
+    else:  # model-card sampling defaults (#51); node.sampling overrides need override_reasons
+        import model_db
+        e = model_db.load(m["db"]) if m.get("db") else None
+        if e is not None:
+            for k, v in model_db.launch_sampling(e, n).items():
+                a += [model_db.SAMPLING_FLAGS[k], str(v)]
     # Speculative flags verified against b11374/b11539 --help; --draft-max/--draft-min were removed upstream.
     for sp in (graph.get("speculative") or {}).values():
         if sp["target"] != name or sp["status"] == "planned": continue

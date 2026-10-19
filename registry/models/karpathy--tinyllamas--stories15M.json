@@ -1,0 +1,152 @@
+{
+ "schema": 1,
+ "id": "karpathy--tinyllamas--stories15M",
+ "repo": "karpathy/tinyllamas",
+ "revision": "0bd21da7698eaf29a0d7de3992de8a46ef624add",
+ "file": "stories15M.bin",
+ "sha256": "cd590644d963867a2b6e5a1107f51fad663c41d79c149fbecbbb1f95fa81f49a",
+ "bytes": 60816028,
+ "quant": null,
+ "arch": null,
+ "roles": [
+  "decision"
+ ],
+ "license": "mit",
+ "license_source": "karpathy/tinyllamas card license",
+ "ctx": null,
+ "ctx_source": null,
+ "card_ctx": null,
+ "card_ctx_source": null,
+ "base_model": null,
+ "base_revision": null,
+ "card_defaults": null,
+ "card_defaults_source": null,
+ "card_default_set": null,
+ "card_defaults_how": "the card and generation_config.json state no sampling values",
+ "card_sampling_modes": null,
+ "card_default_mode": null,
+ "card_default_mode_source": null,
+ "card_sampling_sets": null,
+ "card_commands": null,
+ "card_notes": null,
+ "chat_template": null,
+ "stop": null,
+ "rope": null,
+ "aux": null,
+ "gguf": null,
+ "snapshot": {
+  "path": "karpathy--tinyllamas/0bd21da7698eaf29a0d7de3992de8a46ef624add",
+  "fetched_bytes": 2136008,
+  "errors": null,
+  "gated": false
+ },
+ "base_snapshot": null,
+ "repo_files": {
+  ".gitattributes": {
+   "size": 1519,
+   "sha256": null,
+   "blob": "a6344aac8c09253b3b630fb776ae94478aa0275b",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "README.md": {
+   "size": 183,
+   "sha256": null,
+   "blob": "e35666f8707f682b6a08a44ed4f4ef41143fbd3f",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "stories110M.bin": {
+   "size": 438381596,
+   "sha256": "515267168726a1ed1317a64a408492e6af3b67c1f71c5bd98c01d9d721803a24",
+   "blob": "53c027c7a3ac4a40993ed58d085e205d23f1df1e",
+   "fetched": false,
+   "skipped": "weight file not used here (438 MB)"
+  },
+  "stories110M.pt": {
+   "size": 438163693,
+   "sha256": "cdef30b5108d1b5d1c232fcf7e2ea433cc6cdc473aa876af9d8d6ce83bf4b5e0",
+   "blob": "552d945cd7414d3f65f4d1bbabced661595b770a",
+   "fetched": false,
+   "skipped": "weight file not used here (438 MB)"
+  },
+  "stories15M.bin": {
+   "size": 60816028,
+   "sha256": "cd590644d963867a2b6e5a1107f51fad663c41d79c149fbecbbb1f95fa81f49a",
+   "blob": "04adc9e042e7f6dbfab3a4587eebd9dba1bfe00a",
+   "fetched": false,
+   "skipped": "weight file not used here (60 MB)"
+  },
+  "stories15M.pt": {
+   "size": 60789090,
+   "sha256": "3da00c0fef684f3f83b457736837c46ab55e92a26662b61d6104de2d271c708d",
+   "blob": "390150e5e7ede56a4a57b918d510491de21a4b13",
+   "fetched": false,
+   "skipped": "weight file not used here (60 MB)"
+  },
+  "stories260K/readme.md": {
+   "size": 2804,
+   "sha256": null,
+   "blob": "016007a3e0ec928c31a3fc6fa5c03618a729c128",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "stories260K/stories260K.bin": {
+   "size": 1056540,
+   "sha256": "b0a507e7ad0f626624f17112325e66691f9076d622e1d3274d103d00299f2696",
+   "blob": "a68dba0ed17d2c7fd0ce69f550fe3b82b8cae7d8",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "stories260K/stories260K.pt": {
+   "size": 1061090,
+   "sha256": "eec953f9d0f139e894ef8996302680e64b24813c7a98425424f5c85f7cf4abb1",
+   "blob": "e0d45bc554630688712c9c9093d029c27711b3fb",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "stories260K/tok512.bin": {
+   "size": 6227,
+   "sha256": "037cb335abb25d1fa9e8ecae30ed2a3a8ace9302862ebcdc05d51a6bbb10c312",
+   "blob": "1a7155fdd6f2ad8d0605b4b3a630cdbad82e3716",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "stories260K/tok512.model": {
+   "size": 7645,
+   "sha256": "dfff07d929db979913f166ec94a6f5ecad4c70cfed8eb5c9cbe7e464455e46f5",
+   "blob": "4807f0c708152e1585b677a4fa7659c6fa0f325e",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "stories42M.bin": {
+   "size": 167020572,
+   "sha256": "9f65a1000e17d0bc167dd6332e0ce5119a0222a3d920cead5bce413bfab2ee7b",
+   "blob": "dbb57724e2255ce76dcd8895fd043ca52cfb4d9b",
+   "fetched": false,
+   "skipped": "weight file not used here (167 MB)"
+  },
+  "stories42M.pt": {
+   "size": 166787298,
+   "sha256": "fbe124df8794c2e033432c22b59cff64485455b4644046c52a456d0bbd8859fe",
+   "blob": "fc878202032b317a36c1753b8ca5bc6923e9c304",
+   "fetched": false,
+   "skipped": "weight file not used here (166 MB)"
+  }
+ },
+ "base_repo_files": null,
+ "found_in": [
+  "graph.yaml models.stories15m-fp32"
+ ],
+ "match": "LFS sha256 match",
+ "local_check": null,
+ "unknown": [
+  "base_model (not in the card front matter or GGUF metadata)",
+  "card_defaults: the card and generation_config.json state no sampling values",
+  "quant",
+  "ctx"
+ ],
+ "warnings": null,
+ "updated": "2026-10-19",
+ "by": "scripts/model_db.py"
+}

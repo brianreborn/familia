@@ -13,7 +13,7 @@ Usage (wrapper: scripts/add-model.sh):
   add-model.sh FILE.gguf                a lone GGUF (+ --card/--config/... if you have them)
   add-model.sh ROLE FILE.gguf           legacy form, still works
   add-model.sh --repo ORG/NAME --revision SHA --file FILE.gguf [--card README.md] ...
-  add-model.sh --fetch ORG/NAME[@REV] [--quant Q4_K_M]   download with hf/huggingface-cli, then add
+  add-model.sh --fetch ORG/NAME[@REV] --quant Q4_K_M   download (stdlib HTTPS, pinned), then add
 Run with --help for every flag.
 """
 import argparse, hashlib, json, os, re, shutil, struct, subprocess, sys
@@ -28,7 +28,7 @@ CARD_FILES = ("README.md", "config.json", "generation_config.json", "tokenizer_c
 # manifest with scripts/lib/manifest.awk, which only understands flat "key": value lines.
 NESTED_KEYS = ("base_model", "card_defaults", "card_defaults_source", "card_sampling_modes",
                "card_commands", "card_notes", "chat_template", "stop", "rope", "files", "aux",
-               "parts", "inferred", "unknown", "deviations")
+               "parts", "inferred", "unknown", "deviations", "override_reasons", "repo_files", "base_repo_files")
 FTYPES = {0: "F32", 1: "F16", 2: "Q4_0", 3: "Q4_1", 7: "Q8_0", 8: "Q5_0", 9: "Q5_1", 10: "Q2_K",
           11: "Q3_K_S", 12: "Q3_K_M", 13: "Q3_K_L", 14: "Q4_K_S", 15: "Q4_K_M", 16: "Q5_K_S",
           17: "Q5_K_M", 18: "Q6_K", 19: "IQ2_XXS", 20: "IQ2_XS", 21: "Q2_K_S", 22: "IQ3_XS",
@@ -212,12 +212,47 @@ def _mode_of(text):
     return None
 
 
+BENCH_RE = re.compile(r"(?i)experimental setting|benchmark|evaluat|were used|we used|adopted|leaderboard|for reproduc")
+DEFAULT_MODE_RE = re.compile(r"(?i)(?:operates?|runs?|works?) in (non-thinking|thinking|instruct|reasoning) mode by default|"
+                             r"defaults? to (non-thinking|thinking|instruct|reasoning) mode|"
+                             r"(non-thinking|thinking) mode is (?:the )?default|"
+                             r"(thinking) mode is enabled by default|"
+                             r"by default,? [^.]{0,40}?has (thinking) capabilities enabled")
+RECOMMEND_RE = re.compile(r"(?i)recommend|suggest|best practice|generation (?:parameters|settings)|sampling (?:parameters|settings)|"
+                          r"推奨|おすすめ|推荐|建议")
+CTX_RE = re.compile(r"(?i)context (?:length|window)\W{0,6}(?:full\s+|of\s+|up to\s+)?(\d[\d,]*(?:\.\d+)?)\s*([km])?\b")
+
+
+def _clean_label(t):
+    t = re.sub(r"[`*_>#|]+", " ", t)
+    t = re.sub(r"\s+", " ", t).strip(" -:;,.()")
+    return t[:160]
+
+
+def _card_ctx(lines, first_line, src):
+    for i, line in enumerate(lines):
+        m = CTX_RE.search(line)
+        if m:
+            v = float(m.group(1).replace(",", ""))
+            if m.group(2):
+                v *= 1024 if m.group(2).lower() == "k" else 1024 * 1024
+            if v >= 256:
+                return int(v), "%s:L%d" % (src, first_line + i)
+    return None, None
+
+
 def scan_card_body(body, first_line, src="README.md"):
-    """Sampling params (per mode), command lines and notes found in the card body."""
+    """Everything the card body states, without interpretation:
+    sets      sampling parameter sets, one per labelled line / list / code example:
+              {label, kind: recommended|example|benchmark|mention, mode, params, source, conflicts}
+    commands  llama.cpp / vllm / hf command lines from code blocks
+    notes     lines about thinking modes, templates, context, penalties
+    ctx       (context length the card states, source)
+    default_mode  (mode the card says is the default, source)"""
     lines = body.splitlines()
-    groups, order = {}, []          # mode -> {param: (value, source)}
-    conflicts, commands, notes = [], [], []
-    heading_mode, in_code, code_buf, code_start = None, False, [], 0
+    sets, commands, notes = [], [], []
+    heading, prose, in_code, code_buf, code_start = "", "", False, [], 0
+    cur, cur_last = None, -10
     for i, line in enumerate(lines):
         ln = first_line + i
         s = line.strip()
@@ -228,27 +263,123 @@ def scan_card_body(body, first_line, src="README.md"):
             else:
                 code_start = ln + 1
             in_code = not in_code
+            cur = None
             continue
         if in_code:
             code_buf.append(line)
-        if not in_code and s.startswith("#"):
-            heading_mode = _mode_of(s)
-        ctx = " ".join(lines[max(0, i - 2):i + 1])
-        found = [(n, v) for n, v in PARAM_RE.findall(line) if _norm_param(n)]
+        found = [(m.start(), _norm_param(m.group(1)), _num(m.group(2))) for m in PARAM_RE.finditer(line) if _norm_param(m.group(1))]
         if found:
-            mode = _mode_of(line) or _mode_of(ctx) or heading_mode or "default"
-            g = groups.setdefault(mode, {})
-            if mode not in order:
-                order.append(mode)
-            for n, v in found:
-                p, val = _norm_param(n), _num(v)
-                if p in g and g[p][0] != val:
-                    conflicts.append({"mode": mode, "param": p, "kept": g[p][0], "also": val, "source": "%s:L%d" % (src, ln)})
-                    continue
-                g.setdefault(p, (val, "%s:L%d" % (src, ln)))
+            prefix = _clean_label(line[:found[0][0]])
+            labelled = len(re.findall(r"[^\W\d_]", prefix)) >= 3 and not in_code
+            gap = 4 if in_code else 1
+            if cur is None or labelled or i - cur_last > gap:
+                label = prefix if labelled else (_clean_label(prose) or _clean_label(heading) or "unlabelled")
+                ctx = " ".join([heading, prose, label])
+                if BENCH_RE.search(label) or BENCH_RE.search(line):
+                    kind = "benchmark"
+                elif in_code and not RECOMMEND_RE.search(label):
+                    kind = "example"
+                else:
+                    kind = "recommended"
+                cur = {"label": label, "kind": kind, "mode": _mode_of(label) or _mode_of(line) or _mode_of(heading),
+                       "params": {}, "source": "%s:L%d" % (src, ln)}
+                sets.append(cur)
+            for _, p, v in found:
+                if p in cur["params"] and cur["params"][p] != v:
+                    cur.setdefault("conflicts", []).append({"param": p, "also": v, "source": "%s:L%d" % (src, ln)})
+                else:
+                    cur["params"].setdefault(p, v)
+            cur_last = i
+        elif s and not in_code:
+            if s.startswith("#"):
+                heading, prose = s, ""
+            elif len(re.findall(r"[A-Za-z]", s)) >= 3 and not s.startswith("|") and not s.startswith("<"):
+                prose = s
+            if i - cur_last > 1:
+                cur = None
         if not in_code and NOTE_RE.search(s) and len(notes) < 20:
             notes.append({"text": s[:300], "source": "%s:L%d" % (src, ln)})
-    return groups, order, conflicts, commands[:20], notes
+    for x in sets:   # one value in passing ("temperature 0" in an example answer) is not a recommended set
+        if x["kind"] == "recommended" and len(x["params"]) < 2:
+            x["kind"] = "mention"
+    ctx, ctx_src = _card_ctx(lines, first_line, src)
+    dm, dm_src = None, None
+    for i, line in enumerate(lines):
+        m = DEFAULT_MODE_RE.search(line)
+        if m:
+            w = next(g for g in m.groups() if g).lower()
+            dm, dm_src = {"instruct": "non-thinking", "reasoning": "thinking"}.get(w, w), "%s:L%d" % (src, first_line + i)
+            break
+    return {"sets": sets, "commands": commands[:20], "notes": notes, "ctx": ctx, "ctx_source": ctx_src,
+            "default_mode": dm, "default_mode_source": dm_src}
+
+
+GEN_KEYS = (("temperature", "temp"), ("top_p", "top-p"), ("top_k", "top-k"), ("min_p", "min-p"),
+            ("repetition_penalty", "repeat-penalty"), ("presence_penalty", "presence-penalty"))
+
+
+def gen_config_params(gen):
+    out = {}
+    if not isinstance(gen, dict) or gen.get("do_sample") is False:
+        return out
+    for gk, p in GEN_KEYS:
+        v = gen.get(gk)
+        if isinstance(v, (int, float)) and not isinstance(v, bool):
+            out[p] = v
+    return out
+
+
+def choose_card_defaults(scans, gens):
+    """scans: [(label, scan)] strongest card first (base model card, then the GGUF repo
+    card); gens: [(label, generation_config dict)]. Returns
+    (defaults, sources, default_set_label, modes, how) without inventing values:
+      1. the card's recommended sets: one set -> it; several -> those of the mode the
+         card calls the default, then the text/general one of those; still several -> none
+      2. else generation_config.json sampling values
+      3. else a single distinct code-example set (flagged as an example)."""
+    for label, sc in scans:
+        rec, seen = [], set()
+        for x in sc["sets"]:      # cards often repeat their table further down: keep the first
+            key = json.dumps(x["params"], sort_keys=True)
+            if x["kind"] == "recommended" and x["params"] and key not in seen:
+                seen.add(key)
+                rec.append(x)
+        if not rec:
+            continue
+        modes = {x["label"]: x["params"] for x in rec}
+        pick = rec
+        how = "the card's only recommended set"
+        dm = [x for x in pick if sc.get("default_mode") and x.get("mode") == sc["default_mode"]]
+        if len(pick) > 1 and dm:
+            pick = dm
+            how = "recommended set for the card's default mode (%s, %s)" % (sc["default_mode"], sc.get("default_mode_source"))
+        if len(pick) > 1:
+            tx = [x for x in pick if re.search(r"(?i)\btext\b|\bgeneral\b", x["label"])]
+            if len(tx) == 1:
+                pick, how = tx, how + ", text/general task set"
+        if len(pick) > 1:      # the repo's generation_config.json is the default the card's authors ship
+            for glabel, gen in gens:
+                gp = gen_config_params(gen)
+                hit = [x for x in pick if gp and all(x["params"].get(k) == v for k, v in gp.items())]
+                if len(hit) == 1:
+                    pick, how = hit, "recommended set matching %s generation_config.json" % glabel
+                    break
+        if len(pick) == 1:
+            x = pick[0]
+            return dict(x["params"]), {k: "%s %s" % (label, x["source"]) for k in x["params"]}, x["label"], modes, how
+        return None, {}, None, modes, "ambiguous: %d recommended sets and no single default" % len(rec)
+    for label, gen in gens:
+        gp = gen_config_params(gen)
+        if gp:
+            return gp, {k: "%s generation_config.json" % label for k in gp}, "generation_config.json", None, "generation_config.json"
+    for label, sc in scans:
+        ex = [x for x in sc["sets"] if x["kind"] == "example" and x["params"]]
+        uniq = {json.dumps(x["params"], sort_keys=True): x for x in ex}
+        if len(uniq) == 1:
+            x = next(iter(uniq.values()))
+            return dict(x["params"]), {k: "%s %s (code example)" % (label, x["source"]) for k in x["params"]}, \
+                "example: " + x["label"], None, "the card's only code example with sampling values"
+    return None, {}, None, None, "the card and generation_config.json state no sampling values"
 
 
 def _commands_in_block(buf, start, src):
@@ -326,6 +457,15 @@ def hf_snapshot_info(d):
     oids = {}
     if m:
         return m.group(1) + "/" + m.group(2), m.group(3), oids, "HF hub cache path (%s)" % p
+    sj = os.path.join(d, "snapshot.json")      # scripts/hf_fetch.py layout: hf-meta/ORG--NAME/REV/
+    if os.path.isfile(sj):
+        try:
+            with open(sj, encoding="utf-8") as f:
+                snap = json.load(f)
+            oids = {k: v["sha256"] for k, v in snap.get("files", {}).items() if v.get("sha256")}
+            return snap.get("repo"), snap.get("revision"), oids, "hf-meta snapshot.json"
+        except (OSError, ValueError):
+            pass
     md = os.path.join(d, ".cache", "huggingface", "download")
     rev = None
     if os.path.isdir(md):
@@ -553,6 +693,8 @@ def build(args, env, interactive):
         main = os.path.abspath(args.file)
     elif d:
         found = ggufs_in(d)
+        if not args.file and getattr(args, "_fetch_main", None):
+            args.file = args._fetch_main
         if args.file:
             sel = [f for f in found if f == args.file or os.path.basename(f) == args.file]
             if not sel:
@@ -732,22 +874,13 @@ def build(args, env, interactive):
         rope.setdefault("source", "config.json")
 
     # ---- sampling + commands from the card and generation_config
-    groups, order, conflicts, commands, notes = scan_card_body(body, body_ln) if body else ({}, [], [], [], [])
-    defaults, dsrc = {}, {}
-    if "default" in groups:
-        for p, (v, s) in groups["default"].items():
-            defaults[p], dsrc[p] = v, s
-    for gk, p in (("temperature", "temp"), ("top_p", "top-p"), ("top_k", "top-k"), ("min_p", "min-p"),
-                  ("repetition_penalty", "repeat-penalty"), ("presence_penalty", "presence-penalty")):
-        if isinstance(gen.get(gk), (int, float)) and not isinstance(gen.get(gk), bool) and p not in defaults:
-            defaults[p], dsrc[p] = gen[gk], "generation_config.json"
-    modes = {m: {p: v for p, (v, _) in g.items()} for m, g in groups.items() if m != "default"}
-    for m, g in groups.items():
-        if m != "default":
-            for p, (_, s) in g.items():
-                dsrc["%s:%s" % (m, p)] = s
+    sc = scan_card_body(body, body_ln) if body else scan_card_body("", 1)
+    commands, notes = sc["commands"], sc["notes"]
+    defaults, dsrc, dset, modes, dhow = choose_card_defaults([("", sc)] if body else [], [("", gen)])
+    dsrc = {k: v.strip() for k, v in dsrc.items()}
     if gen and gen.get("do_sample") is False:
         notes.append({"text": "generation_config.json: do_sample=false (greedy)", "source": "generation_config.json"})
+    conflicts = [dict(c, set=x["label"]) for x in sc["sets"] for c in x.get("conflicts", [])]
 
     tmpl = {}
     gt = meta.get("tokenizer.chat_template")
@@ -822,15 +955,20 @@ def build(args, env, interactive):
     if parts:
         entry["parts"] = [{"file": os.path.basename(p), "bytes": os.path.getsize(p), "sha256": sha256_file(p) if p != main else sha} for p in parts]
     entry["card_defaults"] = defaults or None
+    entry["card_default_set"] = dset
     if modes:
         entry["card_sampling_modes"] = modes
     entry["card_defaults_source"] = dsrc or None
+    if sc["ctx"]:
+        entry["card_ctx"], entry["card_ctx_source"] = sc["ctx"], sc["ctx_source"]
+    if sc["default_mode"]:
+        entry["card_default_mode"] = sc["default_mode"]
     entry["card_commands"] = commands or None
     if notes:
         entry["card_notes"] = notes[:20]
     if conflicts:
         report["warnings"].append("card gives conflicting values: %s" % "; ".join(
-            "%s %s %s vs %s (%s)" % (c["mode"], c["param"], c["kept"], c["also"], c["source"]) for c in conflicts))
+            "%s: %s also %s (%s)" % (c["set"], c["param"], c["also"], c["source"]) for c in conflicts))
     if tmpl:
         entry["chat_template"] = tmpl
     if stop:
@@ -849,8 +987,8 @@ def build(args, env, interactive):
         report["unknown"].append("quant")
     if not files.get("README.md"):
         report["unknown"].append("model card (README.md): no card, so no card defaults/commands")
-    elif not defaults and not modes:
-        report["unknown"].append("sampling settings: none found on the card or generation_config.json")
+    elif not defaults:
+        report["unknown"].append("card_defaults: %s" % dhow)
     if not files.get("config.json"):
         report["unknown"].append("config.json")
     unknown = [u for u in report["unknown"]]
@@ -1002,53 +1140,64 @@ def atomic_write(path, text):
 
 
 def choose_mode(entry, preset_kv, args):
+    """(label, how) of the card set chosen with --card-set (case-insensitive substring)."""
     modes = entry.get("card_sampling_modes") or {}
-    if not modes:
+    if not args.card_set:
         return None, None
-    if args.card_mode:
-        return args.card_mode, "--card-mode"
-    r = (preset_kv.get("reasoning") or "").lower()
-    if r == "off" and "non-thinking" in modes:
-        return "non-thinking", "preset reasoning = off"
-    if r == "on" and "thinking" in modes:
-        return "thinking", "preset reasoning = on"
-    return None, None
+    hits = [l for l in modes if args.card_set.lower() in l.lower()]
+    if len(hits) != 1:
+        raise UsageError("--card-set %r matches %d of the card's sets: %s" % (args.card_set, len(hits), "; ".join(modes) or "none"))
+    return hits[0], "--card-set"
 
 
 # ---------------------------------------------------------------- fetch
 def fetch(spec, args):
+    """--fetch ORG/NAME[@REV]: stdlib HTTPS (scripts/hf_fetch.py, no pip). Fetches every
+    small repo file into the shared hf-meta snapshot (pinned to the commit SHA) plus the
+    chosen GGUF, verified against its LFS sha256. Returns the snapshot directory."""
+    import hf_fetch as hf
     repo, _, rev = spec.partition("@")
-    tool = shutil.which("hf") or shutil.which("huggingface-cli")
-    dest = args.dest or os.path.join(REPO_ROOT, ".cache", "hf", repo.replace("/", "--"))
-    inc = ["*.md", "*.json", "*.jinja", "*.txt", "LICENSE*", "NOTICE*"]
+    try:
+        info = hf.repo_info(repo, rev or "main")
+    except hf.HFError as e:
+        raise UsageError("--fetch %s: %s" % (spec, e))
+    sha = info["sha"]
+    ggufs = [s for s in info.get("siblings", []) if s["rfilename"].lower().endswith(".gguf")]
     if args.file:
-        inc.append(os.path.basename(args.file))
+        sel = [s for s in ggufs if s["rfilename"] == args.file or os.path.basename(s["rfilename"]) == os.path.basename(args.file)]
     elif args.quant:
-        inc += ["*%s*.gguf" % args.quant, "*mmproj*.gguf"]
+        sel = [s for s in ggufs if not classify_gguf_name(s["rfilename"]) and (quant_of(s["rfilename"]) or "").upper() == args.quant.upper()]
     else:
-        inc.append("*.gguf")
-    cmd = [os.path.basename(tool) if tool else "hf", "download", repo]
-    if rev:
-        cmd += ["--revision", rev]
-    cmd += ["--local-dir", dest, "--include"] + inc
-    shown = " ".join("'%s'" % c if "*" in c else c for c in cmd)
-    if not tool:
-        log("neither 'hf' nor 'huggingface-cli' is installed; no network call was made. Run:")
-        log("  " + shown)
-        log("(install with: python3 -m pip install --user -U huggingface_hub), then: scripts/add-model.sh %s" % dest)
-        raise SystemExit(3)
+        sel = [s for s in ggufs if not classify_gguf_name(s["rfilename"])]
+    sel = [s for s in sel if not SPLIT_RE.match(os.path.basename(s["rfilename"])) or "-00001-of-" in s["rfilename"]]
+    if len(sel) != 1:
+        listing = ", ".join("%s (%d MB)" % (s["rfilename"], (s.get("size") or 0) // 1000000) for s in ggufs) or "none"
+        raise UsageError("--fetch %s@%s: choose one GGUF with --quant or --file (repo GGUFs: %s)" % (repo, sha[:10], listing))
+    main_sib = sel[0]
+    root = hf.meta_root()
+    d = os.path.join(root, repo.replace("/", "--"), sha)
+    log("fetch %s@%s: small files -> %s; %s (%d MB)" % (repo, sha[:10], d, main_sib["rfilename"], (main_sib.get("size") or 0) // 1000000))
     if args.dry_run:
-        log("dry run: would run: " + shown)
-        if not os.path.isdir(dest):
+        fetch_, skip = hf.plan(info)
+        log("dry run: would fetch %d small files (%.1f MB) and %s; skip %d large files"
+            % (len(fetch_), sum(x.get("size") or 0 for x in fetch_) / 1e6, main_sib["rfilename"], len(skip)))
+        if not os.path.isfile(os.path.join(d, main_sib["rfilename"])):
             raise SystemExit(0)
-        return dest
-    if not (args.quant or args.file):
-        log("warning: no --quant/--file, so every GGUF in %s is downloaded" % repo)
-    log("running: " + shown)
-    subprocess.check_call([tool] + cmd[1:])
-    if not args.repo:
-        args.repo = repo
-    return dest
+    else:
+        try:
+            hf.snapshot(repo, sha, log=log)
+            dest = os.path.join(d, main_sib["rfilename"])
+            if not (os.path.isfile(dest) and os.path.getsize(dest) == main_sib.get("size")):
+                log("downloading %s ..." % main_sib["rfilename"])
+                hf.download(repo, sha, main_sib, dest)
+        except hf.HFError as e:
+            raise UsageError("--fetch %s: %s" % (spec, e))
+    args.repo = args.repo or repo
+    args.revision = args.revision or sha
+    args.file = None           # the main GGUF is picked inside the snapshot directory
+    args._fetched = (repo, sha, main_sib["rfilename"])
+    args._fetch_main = main_sib["rfilename"]
+    return d
 
 
 # ---------------------------------------------------------------- CLI
@@ -1061,8 +1210,9 @@ inputs (pick one):
                           (.cache/huggingface/download) give the repo id / revision.
   FILE.gguf               a lone GGUF; add --card/--config/... for the repo files you have.
   ROLE FILE.gguf          legacy form (same as FILE.gguf --role ROLE).
-  --fetch ORG/NAME[@REV]  download the repo with hf / huggingface-cli (only if installed; otherwise
-                          prints the exact command), skipping GGUFs other than --quant/--file.
+  --fetch ORG/NAME[@REV]  download over plain HTTPS (stdlib, HF_TOKEN honoured): every small repo file
+                          into $GGUF_HOME/hf-meta/ORG--NAME/REV/ plus the --quant/--file GGUF, all
+                          verified against the LFS sha256; also writes registry/models/<id>.json.
 
 role / type:
   optional. Inferred, strongest first, from the card front matter (pipeline_tag, tags,
@@ -1081,7 +1231,7 @@ writes:
   the same repo+file is already there) and models-preset.ini ([ROLE] model = PATH; with
   --apply-card-defaults also the card's sampling keys). --dry-run prints and writes nothing.
 
-exit status: 0 ok, 1 error, 2 usage / role ambiguous, 3 --fetch tool missing.
+exit status: 0 ok, 1 error, 2 usage / role ambiguous / fetch failed.
 """ % ", ".join(AUX_KINDS)
 
 
@@ -1109,9 +1259,8 @@ def parse_args(argv):
     ap.add_argument("--note", help="free-text note for a new entry")
     ap.add_argument("--no-preset", action="store_true", help="do not touch models-preset.ini")
     ap.add_argument("--apply-card-defaults", action="store_true", help="write the card's sampling keys into [ROLE]")
-    ap.add_argument("--card-mode", choices=("thinking", "non-thinking"), help="which per-mode card settings to apply/compare")
-    ap.add_argument("--fetch", metavar="ORG/NAME[@REV]", help="download with hf/huggingface-cli first (opt-in network)")
-    ap.add_argument("--dest", help="--fetch download directory (default .cache/hf/ORG--NAME)")
+    ap.add_argument("--card-set", metavar="LABEL", help="use this recommended card set (substring of its label) instead of card_defaults")
+    ap.add_argument("--fetch", metavar="ORG/NAME[@REV]", help="download the repo's small files + one GGUF first (opt-in network)")
     ap.add_argument("--bootstraps", help="code-bootstraps-llama.cpp checkout (default: $CODE_BOOTSTRAPS, else code-bootstraps-llama.cpp in the familia checkout)")
     ap.add_argument("--manifest", help="manifest path (default: BOOTSTRAPS/config/models-manifest.json)")
     ap.add_argument("--preset", help="preset path (default: BOOTSTRAPS/config/models-preset.ini)")
@@ -1186,10 +1335,12 @@ def main(argv=None):
             text = f.read()
         preset_lines = text.split("\n")
         cur = preset_get(preset_lines, final["role"])
-        mode, msrc = choose_mode(final, cur, args)
-        card = dict(final.get("card_defaults") or {})
-        if mode:
-            card.update(final["card_sampling_modes"][mode])
+        try:
+            mode, msrc = choose_mode(final, cur, args)
+        except UsageError as e:
+            log("add-model: %s" % e)
+            return 2
+        card = dict(final["card_sampling_modes"][mode]) if mode else dict(final.get("card_defaults") or {})
         star = preset_get(preset_lines, "*")
         for k, v in sorted(card.items()):
             have = cur.get(k, star.get(k))
@@ -1197,9 +1348,9 @@ def main(argv=None):
             log("  card %-17s %-8s preset [%s] %s%s" % (k, v, final["role"], have if have is not None else "(unset)",
                                                      "" if same else "   <- differs" if have is not None else ""))
         if mode:
-            log("  (card mode %s, chosen by %s)" % (mode, msrc))
-        elif final.get("card_sampling_modes"):
-            log("  card gives per-mode settings (%s); pick one with --card-mode" % ", ".join(final["card_sampling_modes"]))
+            log("  (card set %r, chosen by %s)" % (mode, msrc))
+        elif final.get("card_sampling_modes") and len(final["card_sampling_modes"]) > 1:
+            log("  card sets: %s (default: %s; another with --card-set)" % ("; ".join(final["card_sampling_modes"]), final.get("card_default_set")))
         if not args.no_preset and final["role"] not in preset_sections(env.preset):
             report["warnings"].append("preset has no [%s] section; not adding one, because the router would serve it "
                                       "as a new model (add it by hand, then re-run)" % final["role"])
@@ -1229,6 +1380,14 @@ def main(argv=None):
         return 0
     atomic_write(env.manifest, dump_manifest(data))
     (log if args.json else print)("%s %s" % ("Updated" if action == "updated" else "Added entry to", env.manifest))
+    if getattr(args, "_fetched", None):
+        try:
+            import model_db
+            repo, sha, fn = args._fetched
+            e = model_db.ingest(repo, sha, fn, local=main_path, role=final["role"], found_in=["add-model.sh --fetch"])
+            (log if args.json else print)("Model database entry registry/models/%s.json" % e["id"])
+        except Exception as ex:  # the manifest is already written; the entry can be rebuilt with model_db.py ingest
+            log("warning: model database entry not written: %s (run scripts/model_db.py ingest %s@%s %s)" % (ex, *args._fetched))
     if preset_changes and preset_lines is not None:
         out = "\n".join(preset_set(preset_lines, final["role"], preset_changes))
         atomic_write(env.preset, out if out.endswith("\n") or not text.endswith("\n") else out + "\n")

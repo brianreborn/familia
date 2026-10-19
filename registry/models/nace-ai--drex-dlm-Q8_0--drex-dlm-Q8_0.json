@@ -1,0 +1,349 @@
+{
+ "schema": 1,
+ "id": "nace-ai--drex-dlm-Q8_0--drex-dlm-Q8_0",
+ "repo": "nace-ai/drex-dlm-Q8_0",
+ "revision": "4622c4086d40f5be932bc2a6fd67605d2247f6a5",
+ "file": "drex-dlm-Q8_0.gguf",
+ "sha256": "04a592249958762d04ba0daf8e851eb89506e9fd0a38291e1e2ec9e6f6d61710",
+ "bytes": 8713715232,
+ "quant": "Q8_0",
+ "arch": "edlm",
+ "roles": [
+  "general"
+ ],
+ "license": "cc-by-nc-4.0",
+ "license_source": "nace-ai/drex-dlm-Q8_0 card license",
+ "ctx": 32768,
+ "ctx_source": "GGUF edlm.context_length",
+ "card_ctx": null,
+ "card_ctx_source": null,
+ "base_model": "nace-ai/drex-dlm",
+ "base_revision": "8f6f8244ce0b186b3caa4cdbaae1c9f3986bf63e",
+ "card_defaults": null,
+ "card_defaults_source": null,
+ "card_default_set": null,
+ "card_defaults_how": "the card and generation_config.json state no sampling values",
+ "card_sampling_modes": null,
+ "card_default_mode": null,
+ "card_default_mode_source": null,
+ "card_sampling_sets": [
+  {
+   "label": "This repository holds the weights: model- -of-00004.safetensors (about 16 GB in bfloat16) and head.pt , the 256-dim pointer head with",
+   "kind": "mention",
+   "mode": null,
+   "params": {
+    "temp": 1.0
+   },
+   "source": "nace-ai/drex-dlm README.md:L276"
+  }
+ ],
+ "card_commands": [
+  {
+   "tool": "hf",
+   "command": "hf download nace-ai/drex-dlm --local-dir weights/drex-dlm",
+   "source": "nace-ai/drex-dlm README.md:L59"
+  },
+  {
+   "tool": "python3",
+   "command": "python3.12 -m venv llama.cpp/.venv-convert",
+   "source": "nace-ai/drex-dlm README.md:L176"
+  },
+  {
+   "tool": "python",
+   "command": "llama.cpp/.venv-convert/bin/python -m pip install -r llama.cpp/requirements/requirements-convert_hf_to_gguf.txt",
+   "source": "nace-ai/drex-dlm README.md:L177"
+  },
+  {
+   "tool": "python",
+   "command": "llama.cpp/.venv-convert/bin/python llama.cpp/convert_hf_to_gguf.py weights/drex-dlm --outfile weights/drex-dlm/drex-dlm-f16.gguf --outtype f16",
+   "source": "nace-ai/drex-dlm README.md:L179"
+  }
+ ],
+ "card_notes": [
+  {
+   "text": "**Tested on** Apple M5 Max (128 GiB), Apple M5 Pro (48 GiB) and NVIDIA H100 80 GB SXM (CUDA). CPU-only inference has not been tested. Python 3.12 is the validated interpreter. The BF16 weights take about 16 GB; memory use grows with context length and batch size.",
+   "source": "nace-ai/drex-dlm README.md:L24"
+  },
+  {
+   "text": "## Context length",
+   "source": "nace-ai/drex-dlm README.md:L245"
+  }
+ ],
+ "chat_template": {
+  "gguf_sha256": "a55ee1b1660128b7098723e0abcd92caa0788061051c62d51cbe87d9cf1974d8",
+  "repo_sha256": "a55ee1b1660128b7098723e0abcd92caa0788061051c62d51cbe87d9cf1974d8",
+  "repo_file": "nace-ai/drex-dlm chat_template.jinja",
+  "same": true
+ },
+ "stop": {
+  "eos_token": "<|im_end|>",
+  "eos_token_id": 151643,
+  "eos_token_id_source": "nace-ai/drex-dlm generation_config.json"
+ },
+ "rope": {
+  "rope.freq_base": 1000000.0,
+  "config": {
+   "rope_theta": 1000000,
+   "rope_type": "default"
+  }
+ },
+ "aux": null,
+ "gguf": {
+  "general.architecture": "edlm",
+  "general.name": "Drex Dlm",
+  "general.file_type": 7,
+  "general.quantization_version": 2,
+  "_gguf_version": 3
+ },
+ "snapshot": {
+  "path": "nace-ai--drex-dlm-Q8_0/4622c4086d40f5be932bc2a6fd67605d2247f6a5",
+  "fetched_bytes": 3582,
+  "errors": null,
+  "gated": false
+ },
+ "base_snapshot": {
+  "path": "nace-ai--drex-dlm/8f6f8244ce0b186b3caa4cdbaae1c9f3986bf63e",
+  "fetched_bytes": 21490720,
+  "errors": null,
+  "gated": false
+ },
+ "repo_files": {
+  ".gitattributes": {
+   "size": 1574,
+   "sha256": null,
+   "blob": "d2f0d1a8d3082bbbb3ca128414ed01fb66b2ef57",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "README.md": {
+   "size": 2008,
+   "sha256": null,
+   "blob": "efab56c369ec94aaab3961453cabedc3e503d5c2",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "drex-dlm-Q8_0.gguf": {
+   "size": 8713715232,
+   "sha256": "04a592249958762d04ba0daf8e851eb89506e9fd0a38291e1e2ec9e6f6d61710",
+   "blob": "ed9e2c7d727d91dd32a4cd2e4a47ad9457c8428d",
+   "fetched": false,
+   "skipped": "weight file not used here (8713 MB)"
+  }
+ },
+ "base_repo_files": {
+  ".gitattributes": {
+   "size": 1639,
+   "sha256": null,
+   "blob": "804405aed8c1936aaf971b1f6f74d8f54b9a3ca5",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "LICENSE": {
+   "size": 1293,
+   "sha256": null,
+   "blob": "6f6c2e075b4db70d86663119c81d80c5c29228b3",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "MODEL_LICENSE.md": {
+   "size": 1477,
+   "sha256": null,
+   "blob": "20a83b0ee4099d1941610a227e0fba5a8d9e233f",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "Modelfile": {
+   "size": 287,
+   "sha256": null,
+   "blob": "5d10183dd8a1c8030889977b2667e783b096d358",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "README.md": {
+   "size": 12643,
+   "sha256": null,
+   "blob": "5b60e3fed964b9df4fad39ad683f4ac38c6652b0",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "assets/drex-dlm-architecture.png": {
+   "size": 1555953,
+   "sha256": "74bfd443bc78cf1c9627c45abe4814d606c352cebfaa1220b5d22d53e26504ce",
+   "blob": "aad23f749aee85ec53a87a03fa73c3444e832b1f",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "chat_template.jinja": {
+   "size": 4168,
+   "sha256": null,
+   "blob": "01be9b307daa2d425f7c168c9fb145a286e0afb4",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "code/kev/__init__.py": {
+   "size": 0,
+   "sha256": null,
+   "blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "code/kev/api.py": {
+   "size": 6891,
+   "sha256": null,
+   "blob": "f8eb952742c1dff93e6517952dfbe9e1334d5540",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "code/kev/checkpoint.py": {
+   "size": 1443,
+   "sha256": null,
+   "blob": "238eee7b8c502fc7de3953afafe7a786cc73c74b",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "code/kev/model.py": {
+   "size": 28790,
+   "sha256": null,
+   "blob": "2b0e7690829048c6454d5bf3721cb51805a78d66",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "config.json": {
+   "size": 1930,
+   "sha256": null,
+   "blob": "7d74f2d751195f10587dac05e5be7d17a12c00df",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "configuration_edlm.py": {
+   "size": 808,
+   "sha256": null,
+   "blob": "b62c4e5cf2df220f1a69682bee0fa80a3ee716a7",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "examples/request.json": {
+   "size": 680,
+   "sha256": null,
+   "blob": "ca08bf2d1a668970855d7994a3532850ca6cca1c",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "generation_config.json": {
+   "size": 143,
+   "sha256": null,
+   "blob": "8e0dcbfc5f8380d134104b648690f5002dd7ce31",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "head.pt": {
+   "size": 8392959,
+   "sha256": "ba60dbdcab2447b0f7fd056173f98030d2aee2f36961febc71e8c16c47df869f",
+   "blob": "da7c0c2f6e03773f0189ea57a1a8201874aaf460",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "inference.py": {
+   "size": 3311,
+   "sha256": null,
+   "blob": "c5ffebd43f3ccdc82f915197e77b06abc6a91826",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "model-00001-of-00004.safetensors": {
+   "size": 4905356144,
+   "sha256": "e22b1fb8b8fcdec9553abc23acfe6c8e457219a08ad119d030c1f2c447186123",
+   "blob": "23ce0f7d4319d6b9149c46f456d56dcde1183022",
+   "fetched": false,
+   "skipped": "weight file not used here (4905 MB)"
+  },
+  "model-00002-of-00004.safetensors": {
+   "size": 4915960328,
+   "sha256": "2d8cceaf67a100564cff639a5c30f43b5d433f32c3636cf6ff13cb3adfe9b306",
+   "blob": "b7dcfe2682d7ac3bf6785ddc2400d60cc28b9610",
+   "fetched": false,
+   "skipped": "weight file not used here (4915 MB)"
+  },
+  "model-00003-of-00004.safetensors": {
+   "size": 4974672216,
+   "sha256": "149bfc54bf9835485fcb6f689f22717865f39b9aa77c124c1cce04b36e229178",
+   "blob": "b6d05be16d662e55c7bc06506a887be6f7195bb6",
+   "fetched": false,
+   "skipped": "weight file not used here (4974 MB)"
+  },
+  "model-00004-of-00004.safetensors": {
+   "size": 1585528088,
+   "sha256": "8d5ce10be3c5e9e74ee62dc788ce6cd31d28dbc3cb6f18aef86d6dffe9333229",
+   "blob": "e2f21daf9a8c0460f407dd08d1f2a4e074663313",
+   "fetched": false,
+   "skipped": "weight file not used here (1585 MB)"
+  },
+  "model.safetensors.index.json": {
+   "size": 32914,
+   "sha256": null,
+   "blob": "4153f499e2605dde56418247a0317649154f5c2f",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "modeling_edlm.py": {
+   "size": 2800,
+   "sha256": null,
+   "blob": "9f81d6a0b84e93995ac0da9122b36d54a6f7bfee",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "onboard.py": {
+   "size": 9939,
+   "sha256": null,
+   "blob": "bf2939c21d368ffed9f42065c2f7367b27255230",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "requirements.txt": {
+   "size": 72,
+   "sha256": null,
+   "blob": "a5ceecd6702fef01d15710d1457de281689e601c",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "serve.py": {
+   "size": 3587,
+   "sha256": null,
+   "blob": "39847bfea97276cdabace27379d47e402d912bc9",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "tokenizer.json": {
+   "size": 11422650,
+   "sha256": "be75606093db2094d7cd20f3c2f385c212750648bd6ea4fb2bf507a6a4c55506",
+   "blob": "c7afbed2efcdf019f88ab0572ec29d3bf595dfe2",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "tokenizer_config.json": {
+   "size": 377,
+   "sha256": null,
+   "blob": "9158804bfff9329ed49a867d691553315871282d",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "validation/RESULTS.md": {
+   "size": 3966,
+   "sha256": null,
+   "blob": "98a2aea0e32ea7b8a5584dc75a34d345294eb514",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  }
+ },
+ "found_in": [
+  "manifest general/fallback"
+ ],
+ "match": null,
+ "local_check": null,
+ "unknown": [
+  "card_defaults: the card and generation_config.json state no sampling values"
+ ],
+ "warnings": null,
+ "updated": "2026-10-19",
+ "by": "scripts/model_db.py"
+}

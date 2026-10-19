@@ -1,0 +1,395 @@
+{
+ "schema": 1,
+ "id": "ggml-org--Laya-GGUF--Laya-Q8_0",
+ "repo": "ggml-org/Laya-GGUF",
+ "revision": "da4b4753d62197659d8c90103cd4c43bef9afea6",
+ "file": "Laya-Q8_0.gguf",
+ "sha256": "c06528c5746d3bb8baa72a27938be95abbfd0b226f8471e8a9e365ed0bb066d2",
+ "bytes": 449397600,
+ "quant": "Q8_0",
+ "arch": "modern-bert",
+ "roles": [
+  "decision"
+ ],
+ "license": "apache-2.0",
+ "license_source": "ggml-org/Laya-GGUF card license",
+ "ctx": 8192,
+ "ctx_source": "GGUF modern-bert.context_length",
+ "card_ctx": null,
+ "card_ctx_source": null,
+ "base_model": "convaiinnovations/laya",
+ "base_revision": "7b928d828b7b0e022f929d9bd2e44165aa270148",
+ "card_defaults": null,
+ "card_defaults_source": null,
+ "card_default_set": null,
+ "card_defaults_how": "the card and generation_config.json state no sampling values",
+ "card_sampling_modes": null,
+ "card_default_mode": null,
+ "card_default_mode_source": null,
+ "card_sampling_sets": null,
+ "card_commands": null,
+ "card_notes": null,
+ "chat_template": null,
+ "stop": {
+  "eos_token_id": 50282,
+  "eos_token_id_source": "GGUF"
+ },
+ "rope": {
+  "rope.freq_base": 160000.0,
+  "rope.scaling.type": "none"
+ },
+ "aux": null,
+ "gguf": {
+  "general.architecture": "modern-bert",
+  "general.name": "Laya",
+  "general.file_type": 7,
+  "general.quantization_version": 2,
+  "_gguf_version": 3
+ },
+ "snapshot": {
+  "path": "ggml-org--Laya-GGUF/da4b4753d62197659d8c90103cd4c43bef9afea6",
+  "fetched_bytes": 57780,
+  "errors": null,
+  "gated": false
+ },
+ "base_snapshot": {
+  "path": "convaiinnovations--laya/7b928d828b7b0e022f929d9bd2e44165aa270148",
+  "fetched_bytes": 43540985,
+  "errors": null,
+  "gated": false
+ },
+ "repo_files": {
+  ".gitattributes": {
+   "size": 1621,
+   "sha256": null,
+   "blob": "5ecccd9f547a08cc770177dc48727e5f5dea558f",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  ".src_sha": {
+   "size": 49,
+   "sha256": null,
+   "blob": "d817987dfe96abf7f7b011d169400c26df1f4b74",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "Laya-BF16.gguf": {
+   "size": 844026720,
+   "sha256": "edeea94939cd1575c1f984c28982170c0e47caab66e4b80993fed992519573b4",
+   "blob": "e4c8625bf8f849cc7d585464e1d741fc052c2140",
+   "fetched": false,
+   "skipped": "weight file not used here (844 MB)"
+  },
+  "Laya-Q8_0.gguf": {
+   "size": 449397600,
+   "sha256": "c06528c5746d3bb8baa72a27938be95abbfd0b226f8471e8a9e365ed0bb066d2",
+   "blob": "08be2755df929ee8cc09ce15ea9e01ae933a8a48",
+   "fetched": false,
+   "skipped": "weight file not used here (449 MB)"
+  },
+  "README.md": {
+   "size": 506,
+   "sha256": null,
+   "blob": "b3ac8559c588750eb8f384ce870c79e62e0fcb94",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "convert.log": {
+   "size": 55604,
+   "sha256": null,
+   "blob": "ad32df1455578eae3b605c4379abd08301b19a25",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  }
+ },
+ "base_repo_files": {
+  ".gitattributes": {
+   "size": 1913,
+   "sha256": null,
+   "blob": "dceb67c98a62aff599412b8884267372c16870bf",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "README.md": {
+   "size": 23187,
+   "sha256": null,
+   "blob": "ac11a565c217959d0cb062748a2f83e05da446a5",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "assets/laya_benchmark.png": {
+   "size": 260892,
+   "sha256": "e01e49f0d842b4616e44c4c9a0feb92a9ae45efeb533f8f838888715dc89c2b9",
+   "blob": "b514d800b01bdc9eeb5df4fa37294fd63262ca64",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "assets/laya_benchmark_common.png": {
+   "size": 278159,
+   "sha256": "183b0b17e8d90e091582e415d9f1da0ef34b40c3db6ccd2c8bbfd2b9232b95a6",
+   "blob": "98b8f335652d8f051f9d7c213c4dd20d22d280ec",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "assets/laya_vs_jev.png": {
+   "size": 216412,
+   "sha256": "5c06517ea7f3e5f3f84873ddaa3cb470f101ad0276f921c58886f8fb12fbe0a8",
+   "blob": "30ec453679622fbc541fe6fb68cf81665d6fcc6d",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "assets/laya_vs_jev_full.png": {
+   "size": 487005,
+   "sha256": "ee47b751d524a0bb65159e026141b4ce70cc83d03b14df8ec68afbc7bcdb95b3",
+   "blob": "2725f4d30d16b2868229a754d1290e23dfdbbfe1",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "assets/logo-lockup-dark.png": {
+   "size": 27666,
+   "sha256": null,
+   "blob": "dd36fd15f0b8e78ab37571146f3342695f476257",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "assets/logo-lockup-dark.svg": {
+   "size": 1590,
+   "sha256": null,
+   "blob": "4c554bff104db984f9e7fbeee6723089b6caadb5",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "assets/logo-lockup.png": {
+   "size": 26761,
+   "sha256": null,
+   "blob": "4eb8314e10129298d87fc8961431fb8bdf455fcc",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "assets/logo-lockup.svg": {
+   "size": 1590,
+   "sha256": null,
+   "blob": "df3c20fd2c2cd346763b2a19847549dc7a15e125",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "assets/logo-mark-ink.png": {
+   "size": 17378,
+   "sha256": null,
+   "blob": "3de0fb5871026c69bfcf6a2171af9878d190c21d",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "assets/logo-mark-ink.svg": {
+   "size": 1320,
+   "sha256": null,
+   "blob": "81a5dc2ea0be5588ff56d1843d257e89a3132f07",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "assets/logo-mark-mono.svg": {
+   "size": 1380,
+   "sha256": null,
+   "blob": "d5ea7429b190610006a5ffd6d1b3957da9f8dad8",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "assets/logo-mark.png": {
+   "size": 17962,
+   "sha256": null,
+   "blob": "c90077fc8eab8c7689ad748aeefa763bfab5f595",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "assets/logo-mark.svg": {
+   "size": 1320,
+   "sha256": null,
+   "blob": "ba86d6a056c48d2ecb28e2ae516d40ceadcdc185",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "config.json": {
+   "size": 160,
+   "sha256": null,
+   "blob": "7b4305a11f6d6936882e99492abe8e34d8ae6e3a",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "email_utils.py": {
+   "size": 3937,
+   "sha256": null,
+   "blob": "7fad36ed6e631fb3fb62c7ad26cc440923efca27",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "encoder/config.json": {
+   "size": 2083,
+   "sha256": null,
+   "blob": "5881ba831f2db5ce0f606bbaa1f2668e1e6cb706",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "eval/benchmark_comparison.png": {
+   "size": 467466,
+   "sha256": "78e4b926bfca3950ff5441d1030a1453515973fbe5d7dd70a1c764a81f0d3d38",
+   "blob": "4beb2735e3f259c78787d082870b70c08f758ebe",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "eval/reliability_eval_in.png": {
+   "size": 65436,
+   "sha256": null,
+   "blob": "ec88017c0d24d9eefaabd7540916dc9b244e06a7",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "eval/reliability_eval_zs.png": {
+   "size": 72014,
+   "sha256": null,
+   "blob": "e17099e08c5c1970de51c4c00db674635c8a28db",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "eval/results.json": {
+   "size": 2976,
+   "sha256": null,
+   "blob": "db4219c92927e0c5d3f44daca3133eb3d179b836",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "eval/results.md": {
+   "size": 1608,
+   "sha256": null,
+   "blob": "99340c1099ebe7139cb33acab5f57735626ce7f2",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "model.safetensors": {
+   "size": 842609210,
+   "sha256": "891102d372688fc2a094dac56a384bc537b87c63f21f9f3dac0be2b7cbc8d86c",
+   "blob": "9bef25a12dcb807627a798837cfbb0ea73c0e38d",
+   "fetched": false,
+   "skipped": "weight file not used here (842 MB)"
+  },
+  "multilingual/encoder/config.json": {
+   "size": 1938,
+   "sha256": null,
+   "blob": "0de0e2d30638873790cf962def52e2acf4db3eef",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "multilingual/model.safetensors": {
+   "size": 643835514,
+   "sha256": "9d628fd971b700382ac6f65920a86f149777b2e748e0c955fb3b19695aa8f204",
+   "blob": "b99c8bea239c53f6f6bce734557dc6c403fa6b3e",
+   "fetched": false,
+   "skipped": "weight file not used here (643 MB)"
+  },
+  "multilingual/rl_agent_config.json": {
+   "size": 472,
+   "sha256": null,
+   "blob": "00e35f88bb731bb9126a914666ab1cdac8a204c8",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "multilingual/tokenizer/tokenizer.json": {
+   "size": 34363188,
+   "sha256": "609d8f4c067cd3950f88594c5a802616cea245823836ef5848ee4fc40aab5b6f",
+   "blob": "56d765858ed38eaabd35cd90759cbb1f89b0baa4",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "multilingual/tokenizer/tokenizer_config.json": {
+   "size": 524,
+   "sha256": null,
+   "blob": "c255ac0c8cb34a37d066cd0dafe313fd769d27ae",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "rl_agent_api.py": {
+   "size": 4732,
+   "sha256": null,
+   "blob": "51b0c3b899d2f6b45c1ffe5a57522f75a686f2bc",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "rl_agent_config.json": {
+   "size": 745,
+   "sha256": null,
+   "blob": "3e4fcbf12cf36164ce18a1398aa9f35f58375ae0",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "rl_common.py": {
+   "size": 19139,
+   "sha256": null,
+   "blob": "d90d564964bcdc77586a257b0acccb5b7b19d6cf",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "tokenizer/tokenizer.json": {
+   "size": 3583228,
+   "sha256": null,
+   "blob": "2f4d8583e507b7466d2490e2d6c045647a822698",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "tokenizer/tokenizer_config.json": {
+   "size": 308,
+   "sha256": null,
+   "blob": "9fd800115c5c92353220aa66addfce67a9135f32",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "typed-decisions/encoder/config.json": {
+   "size": 2084,
+   "sha256": null,
+   "blob": "d4be4829750fb04c0aa8b9897c3ea827f76c0109",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "typed-decisions/model.safetensors": {
+   "size": 842609220,
+   "sha256": "4fa56de72383a9d3efa9cfa78955733c81b9fc8067a587ca4beb82c78107a24e",
+   "blob": "3fb9c9678050815e76d0c847115919d7871ace3e",
+   "fetched": false,
+   "skipped": "weight file not used here (842 MB)"
+  },
+  "typed-decisions/rl_agent_config.json": {
+   "size": 847,
+   "sha256": null,
+   "blob": "5f0e1d5f2366fe8ba2ff330dffaeed53b469e97e",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "typed-decisions/tokenizer/tokenizer.json": {
+   "size": 3583228,
+   "sha256": null,
+   "blob": "2f4d8583e507b7466d2490e2d6c045647a822698",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "typed-decisions/tokenizer/tokenizer_config.json": {
+   "size": 337,
+   "sha256": null,
+   "blob": "ed1ffabc2ce11120754705709569e365e46da71a",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  }
+ },
+ "found_in": [
+  "manifest decision/default"
+ ],
+ "match": null,
+ "local_check": {
+  "host": "miryam",
+  "sha256_ok": true,
+  "checked": "2026-10-19"
+ },
+ "unknown": [
+  "card_defaults: the card and generation_config.json state no sampling values"
+ ],
+ "warnings": null,
+ "updated": "2026-10-19",
+ "by": "scripts/model_db.py"
+}

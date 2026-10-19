@@ -1,0 +1,432 @@
+{
+ "schema": 1,
+ "id": "LiquidAI--LFM2.5-350M-GGUF--LFM2.5-350M-Q4_K_M",
+ "repo": "LiquidAI/LFM2.5-350M-GGUF",
+ "revision": "657e078c94084481950a2d555a941481f715536b",
+ "file": "LFM2.5-350M-Q4_K_M.gguf",
+ "sha256": "7e6f72643caafc9a68256686638c4d7916f2cec76d1df478d4c3ddcd95a6aed4",
+ "bytes": 229312224,
+ "quant": "Q4_K_M",
+ "arch": "lfm2",
+ "roles": [
+  "general"
+ ],
+ "license": "lfm1.0 (LICENSE)",
+ "license_source": "LiquidAI/LFM2.5-350M-GGUF card license",
+ "ctx": 128000,
+ "ctx_source": "GGUF lfm2.context_length",
+ "card_ctx": 32768,
+ "card_ctx_source": "LiquidAI/LFM2.5-350M README.md:L65",
+ "base_model": "LiquidAI/LFM2.5-350M",
+ "base_revision": "9e6c6ccf47cd318696e137d381a7ded8fe4df09f",
+ "card_defaults": {
+  "temp": 0.1,
+  "top-k": 50,
+  "repeat-penalty": 1.05
+ },
+ "card_defaults_source": {
+  "temp": "LiquidAI/LFM2.5-350M LiquidAI/LFM2.5-350M README.md:L70",
+  "top-k": "LiquidAI/LFM2.5-350M LiquidAI/LFM2.5-350M README.md:L70",
+  "repeat-penalty": "LiquidAI/LFM2.5-350M LiquidAI/LFM2.5-350M README.md:L70"
+ },
+ "card_default_set": "Generation parameters",
+ "card_defaults_how": "the card's only recommended set",
+ "card_sampling_modes": {
+  "Generation parameters": {
+   "temp": 0.1,
+   "top-k": 50,
+   "repeat-penalty": 1.05
+  }
+ },
+ "card_default_mode": null,
+ "card_default_mode_source": null,
+ "card_sampling_sets": [
+  {
+   "label": "Generation parameters",
+   "kind": "recommended",
+   "mode": null,
+   "params": {
+    "temp": 0.1,
+    "top-k": 50,
+    "repeat-penalty": 1.05
+   },
+   "source": "LiquidAI/LFM2.5-350M README.md:L70"
+  },
+  {
+   "label": "Here's a quick start example with Transformers",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 0.1,
+    "top-k": 50,
+    "repeat-penalty": 1.05
+   },
+   "source": "LiquidAI/LFM2.5-350M README.md:L163"
+  },
+  {
+   "label": "Example usage with [llama.cpp](https://github.com/ggml-org/llama.cpp",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 0.1,
+    "top-k": 50,
+    "repeat-penalty": 1.05
+   },
+   "source": "LiquidAI/LFM2.5-350M-GGUF README.md:L52"
+  }
+ ],
+ "card_commands": [
+  {
+   "tool": "llama-cli",
+   "command": "llama-cli -hf LiquidAI/LFM2.5-350M-GGUF --conversation --temp 0.1 --top-k 50 --repeat-penalty 1.05",
+   "source": "LiquidAI/LFM2.5-350M-GGUF README.md:L51"
+  },
+  {
+   "tool": "llama-cli",
+   "command": "llama-cli -hf LiquidAI/LFM2.5-350M-GGUF --hf-file LFM2.5-350M-QAD-Q4_0.gguf -p \"What is C. elegans?\"",
+   "source": "LiquidAI/LFM2.5-350M-GGUF README.md:L66"
+  }
+ ],
+ "card_notes": [
+  {
+   "text": "- **Context length**: 32,768 tokens",
+   "source": "LiquidAI/LFM2.5-350M README.md:L65"
+  },
+  {
+   "text": "### Chat Template",
+   "source": "LiquidAI/LFM2.5-350M README.md:L85"
+  },
+  {
+   "text": "LFM2.5 uses a ChatML-like format. See the [Chat Template documentation](https://docs.liquid.ai/lfm/key-concepts/chat-template) for details. Example:",
+   "source": "LiquidAI/LFM2.5-350M README.md:L87"
+  },
+  {
+   "text": "You can use [`tokenizer.apply_chat_template()`](https://huggingface.co/docs/transformers/en/chat_templating#using-applychattemplate) to format your messages automatically.",
+   "source": "LiquidAI/LFM2.5-350M README.md:L97"
+  },
+  {
+   "text": "1. **Function definition**: We recommend providing the list of tools as a JSON object in the system prompt. You can also use the [`tokenizer.apply_chat_template()`](https://huggingface.co/docs/transformers/en/chat_extras#passing-tools) function with tools.",
+   "source": "LiquidAI/LFM2.5-350M README.md:L103"
+  },
+  {
+   "text": "2. **Function call**: By default, LFM2.5 writes Pythonic function calls (a Python list between `<|tool_call_start|>` and `<|tool_call_end|>` special tokens), as the assistant answer. You can override this behavior by asking the model to output JSON function calls in the system prompt.",
+   "source": "LiquidAI/LFM2.5-350M README.md:L104"
+  },
+  {
+   "text": "tokenizer, generation defaults, and the same chat template as the released QAD GGUF.",
+   "source": "LiquidAI/LFM2.5-350M-GGUF README.md:L75"
+  }
+ ],
+ "chat_template": {
+  "gguf_sha256": "013eed60546434b6967e3483153d8c5c37abcb1d667f8b1f914683f2a9411531",
+  "repo_sha256": "ba551d58630afa3190b1be3602e28301f3d2e9bbac978dfc49d6d825171648b6",
+  "repo_file": "LiquidAI/LFM2.5-350M chat_template.jinja",
+  "same": false
+ },
+ "stop": {
+  "eos_token": "<|im_end|>",
+  "eos_token_id": 7,
+  "eos_token_id_source": "LiquidAI/LFM2.5-350M generation_config.json"
+ },
+ "rope": {
+  "rope.freq_base": 1000000.0,
+  "config": {
+   "rope_theta": 1000000.0,
+   "rope_type": "default"
+  }
+ },
+ "aux": null,
+ "gguf": {
+  "general.architecture": "lfm2",
+  "general.name": "LFM2.5-350M",
+  "general.file_type": 15,
+  "general.quantization_version": 2,
+  "_gguf_version": 3
+ },
+ "snapshot": {
+  "path": "LiquidAI--LFM2.5-350M-GGUF/657e078c94084481950a2d555a941481f715536b",
+  "fetched_bytes": 4772513,
+  "errors": null,
+  "gated": false
+ },
+ "base_snapshot": {
+  "path": "LiquidAI--LFM2.5-350M/9e6c6ccf47cd318696e137d381a7ded8fe4df09f",
+  "fetched_bytes": 4768598,
+  "errors": null,
+  "gated": false
+ },
+ "repo_files": {
+  ".gitattributes": {
+   "size": 1990,
+   "sha256": null,
+   "blob": "e8a2bda7961270dd2bba1fd505dbf7d27a1b590a",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "LFM2.5-350M-BF16.gguf": {
+   "size": 711485152,
+   "sha256": "8da576155e67ae093f49e4ebf638c025a04c0d28d5ec42bd28617ca18a52539d",
+   "blob": "dea5bb326fbf5a31493c342df677d1e5bd16bc5c",
+   "fetched": false,
+   "skipped": "weight file not used here (711 MB)"
+  },
+  "LFM2.5-350M-F16.gguf": {
+   "size": 711485152,
+   "sha256": "18e2f6b61045bed8c3e8575c01fa7898b2df5ae884964322dcf49e5d12f6eb79",
+   "blob": "9fe7bd04f2bee811e6a7e055a00c5bcec7ab7f98",
+   "fetched": false,
+   "skipped": "weight file not used here (711 MB)"
+  },
+  "LFM2.5-350M-Q4_0.gguf": {
+   "size": 219309792,
+   "sha256": "85e32858daafad55b7bcd6b97a1343ee0661188e8036f9862d14d6b563142f50",
+   "blob": "ac0fa5b48712836834f86d94462f4a756fc2603a",
+   "fetched": false,
+   "skipped": "weight file not used here (219 MB)"
+  },
+  "LFM2.5-350M-Q4_K_M.gguf": {
+   "size": 229312224,
+   "sha256": "7e6f72643caafc9a68256686638c4d7916f2cec76d1df478d4c3ddcd95a6aed4",
+   "blob": "bdbc79b3f36ce3828f89fd15557da48bce324128",
+   "fetched": false,
+   "skipped": "weight file not used here (229 MB)"
+  },
+  "LFM2.5-350M-Q5_K_M.gguf": {
+   "size": 260376288,
+   "sha256": "e8985a31d95fab69e894216ce1712b57a55f1561093ec7cf408b781834eb8435",
+   "blob": "cca75c3baffacaebb9e50514e25e9fc3fda5be5c",
+   "fetched": false,
+   "skipped": "weight file not used here (260 MB)"
+  },
+  "LFM2.5-350M-Q6_K.gguf": {
+   "size": 293381856,
+   "sha256": "3ed48149a87dd9a0b04688780828854fc0c607d8c241af2b1100045e0d6b45c7",
+   "blob": "4378d68d8bd5134233d6f1b2722c73c4a3c29a34",
+   "fetched": false,
+   "skipped": "weight file not used here (293 MB)"
+  },
+  "LFM2.5-350M-Q8_0.gguf": {
+   "size": 379217632,
+   "sha256": "be036a757295e550098b85e13f6af2735d0fa73b41e1156a40c7d8e8e32a5766",
+   "blob": "03b4e3159538185977f75bc7806c3a1076e64b5a",
+   "fetched": false,
+   "skipped": "weight file not used here (379 MB)"
+  },
+  "LFM2.5-350M-QAD-Q4_0.gguf": {
+   "size": 219312832,
+   "sha256": "3d10b6ab8fc91a919534b9558e266255aca0bbc7f6d015963599aa9e74e05b1d",
+   "blob": "2acf9261ca12dac80f61386de9bb379f73ebe76e",
+   "fetched": false,
+   "skipped": "weight file not used here (219 MB)"
+  },
+  "LICENSE": {
+   "size": 10596,
+   "sha256": null,
+   "blob": "d24c9208b10e63d317589bc8d6fc34967c3068d3",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "README.md": {
+   "size": 3277,
+   "sha256": null,
+   "blob": "149171d2f49ff842e962973b8238b56266b8375a",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "leap/Q4_0.json": {
+   "size": 302,
+   "sha256": null,
+   "blob": "3155d7691d5717d55d979b37afad66d351e2f1c4",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "leap/Q4_K_M.json": {
+   "size": 304,
+   "sha256": null,
+   "blob": "7491eb5df3224361f1635583ca7044bf0b534ad8",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "leap/Q5_K_M.json": {
+   "size": 304,
+   "sha256": null,
+   "blob": "be228925c60d9762afbeef91ca855f3b4545fb04",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "leap/Q8_0.json": {
+   "size": 302,
+   "sha256": null,
+   "blob": "072ec9e591db4bb85df8778fe6651264d4f68185",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "qad/LICENSE": {
+   "size": 10596,
+   "sha256": null,
+   "blob": "d24c9208b10e63d317589bc8d6fc34967c3068d3",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "qad/README.md": {
+   "size": 3098,
+   "sha256": null,
+   "blob": "be3c0c3f4c6b3316a0df37594e5ee0def3ca7635",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "qad/chat_template.jinja": {
+   "size": 5487,
+   "sha256": null,
+   "blob": "4bba41b1eea86b9f3725ca30a89bb4656e17e25a",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "qad/config.json": {
+   "size": 1308,
+   "sha256": null,
+   "blob": "9f7ce76145bb32ecb7b32f78180a78de72eec9bb",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "qad/generation_config.json": {
+   "size": 134,
+   "sha256": null,
+   "blob": "ccb4c027399f74601d15f8a8cc6e176552f02f9f",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "qad/model.safetensors": {
+   "size": 1417952352,
+   "sha256": "1d90518482c4ec204bebb4820bbaee4f8a38c5a6df72256f86bcd21fe52ad079",
+   "blob": "207af9b2b582d317f39d073330166534f39c036c",
+   "fetched": false,
+   "skipped": "weight file not used here (1417 MB)"
+  },
+  "qad/provenance.json": {
+   "size": 936,
+   "sha256": null,
+   "blob": "7d9a0c1f4e0eb47b936a2b6befaaa3c3f4fa93d8",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "qad/tokenizer.json": {
+   "size": 4733389,
+   "sha256": null,
+   "blob": "2e27bba0b0505b2b2124fa9225c9b5dda7531474",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "qad/tokenizer_config.json": {
+   "size": 490,
+   "sha256": null,
+   "blob": "93b7f2e1afe24967fd35fc777b33a231a4511c2e",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  }
+ },
+ "base_repo_files": {
+  ".eval_results/LFM2.5-350M.yaml": {
+   "size": 232,
+   "sha256": null,
+   "blob": "bf3b1925067f6d3d420781428d61b005a710b0db",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  ".eval_results/LiquidAI-LFM2.5-350M.yaml": {
+   "size": 479,
+   "sha256": null,
+   "blob": "6c0be5c57043b644a455fd0e290362fe8d143aa8",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  ".eval_results/gpqa_diamond.yaml": {
+   "size": 198,
+   "sha256": null,
+   "blob": "632274d95f293fa178e3a1683aca8e7e4a7b46a9",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  ".eval_results/mmlu_pro.yaml": {
+   "size": 202,
+   "sha256": null,
+   "blob": "57b4a8963b1572480cb2d0cd795b21c8f3ccabca",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  ".gitattributes": {
+   "size": 1519,
+   "sha256": null,
+   "blob": "a6344aac8c09253b3b630fb776ae94478aa0275b",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "LICENSE": {
+   "size": 10574,
+   "sha256": null,
+   "blob": "25e731c697c4fe4c52ee654cedf7106a827748d2",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "README.md": {
+   "size": 14508,
+   "sha256": null,
+   "blob": "1d377d386bc6e690899c3531ad7121567b0d6ccf",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "chat_template.jinja": {
+   "size": 5487,
+   "sha256": null,
+   "blob": "4bba41b1eea86b9f3725ca30a89bb4656e17e25a",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "config.json": {
+   "size": 1281,
+   "sha256": null,
+   "blob": "9d07848aac929912fbfd24f93ea18d7cd9281728",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "generation_config.json": {
+   "size": 134,
+   "sha256": null,
+   "blob": "ccb4c027399f74601d15f8a8cc6e176552f02f9f",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "model.safetensors": {
+   "size": 708984464,
+   "sha256": "1c9c77a4471a7f590f85240f74ed1fc26df7fbde88c3006724e2f93ca993ea4e",
+   "blob": "3455b2485885f53ca459be4d6f97227bb0e19a5d",
+   "fetched": false,
+   "skipped": "weight file not used here (708 MB)"
+  },
+  "tokenizer.json": {
+   "size": 4733389,
+   "sha256": null,
+   "blob": "2e27bba0b0505b2b2124fa9225c9b5dda7531474",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "tokenizer_config.json": {
+   "size": 595,
+   "sha256": null,
+   "blob": "12830994a198f53f17c9040af5856e446482d244",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  }
+ },
+ "found_in": [
+  "manifest general/fallback"
+ ],
+ "match": null,
+ "local_check": null,
+ "unknown": null,
+ "warnings": [
+  "card states context 32768 (LiquidAI/LFM2.5-350M README.md:L65) but GGUF lfm2.context_length is 128000"
+ ],
+ "updated": "2026-10-19",
+ "by": "scripts/model_db.py"
+}

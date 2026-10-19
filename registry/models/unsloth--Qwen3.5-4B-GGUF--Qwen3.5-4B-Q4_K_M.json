@@ -1,0 +1,957 @@
+{
+ "schema": 1,
+ "id": "unsloth--Qwen3.5-4B-GGUF--Qwen3.5-4B-Q4_K_M",
+ "repo": "unsloth/Qwen3.5-4B-GGUF",
+ "revision": "e87f176479d0855a907a41277aca2f8ee7a09523",
+ "file": "Qwen3.5-4B-Q4_K_M.gguf",
+ "sha256": "00fe7986ff5f6b463e62455821146049db6f9313603938a70800d1fb69ef11a4",
+ "bytes": 2740937888,
+ "quant": "Q4_K_M",
+ "arch": "qwen35",
+ "roles": [
+  "coder"
+ ],
+ "license": "apache-2.0",
+ "license_source": "unsloth/Qwen3.5-4B-GGUF card license",
+ "ctx": 262144,
+ "ctx_source": "GGUF qwen35.context_length",
+ "card_ctx": 262144,
+ "card_ctx_source": "Qwen/Qwen3.5-4B README.md:L64",
+ "base_model": "Qwen/Qwen3.5-4B",
+ "base_revision": "851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a",
+ "card_defaults": {
+  "temp": 1.0,
+  "top-p": 0.95,
+  "top-k": 20,
+  "min-p": 0.0,
+  "presence-penalty": 1.5,
+  "repeat-penalty": 1.0
+ },
+ "card_defaults_source": {
+  "temp": "Qwen/Qwen3.5-4B Qwen/Qwen3.5-4B README.md:L835",
+  "top-p": "Qwen/Qwen3.5-4B Qwen/Qwen3.5-4B README.md:L835",
+  "top-k": "Qwen/Qwen3.5-4B Qwen/Qwen3.5-4B README.md:L835",
+  "min-p": "Qwen/Qwen3.5-4B Qwen/Qwen3.5-4B README.md:L835",
+  "presence-penalty": "Qwen/Qwen3.5-4B Qwen/Qwen3.5-4B README.md:L835",
+  "repeat-penalty": "Qwen/Qwen3.5-4B Qwen/Qwen3.5-4B README.md:L835"
+ },
+ "card_default_set": "Thinking mode for general tasks",
+ "card_defaults_how": "recommended set for the card's default mode (thinking, Qwen/Qwen3.5-4B README.md:L712), text/general task set",
+ "card_sampling_modes": {
+  "Thinking mode for general tasks": {
+   "temp": 1.0,
+   "top-p": 0.95,
+   "top-k": 20,
+   "min-p": 0.0,
+   "presence-penalty": 1.5,
+   "repeat-penalty": 1.0
+  },
+  "Thinking mode for precise coding tasks (e.g. WebDev": {
+   "temp": 0.6,
+   "top-p": 0.95,
+   "top-k": 20,
+   "min-p": 0.0,
+   "presence-penalty": 0.0,
+   "repeat-penalty": 1.0
+  },
+  "Instruct (or non-thinking) mode for general tasks": {
+   "temp": 0.7,
+   "top-p": 0.8,
+   "top-k": 20,
+   "min-p": 0.0,
+   "presence-penalty": 1.5,
+   "repeat-penalty": 1.0
+  },
+  "Instruct (or non-thinking) mode for reasoning tasks": {
+   "temp": 1.0,
+   "top-p": 1.0,
+   "top-k": 40,
+   "min-p": 0.0,
+   "presence-penalty": 2.0,
+   "repeat-penalty": 1.0
+  }
+ },
+ "card_default_mode": "thinking",
+ "card_default_mode_source": "Qwen/Qwen3.5-4B README.md:L712",
+ "card_sampling_sets": [
+  {
+   "label": "Multi-Token Prediction (MTP) : The following command is recommended for MTP",
+   "kind": "mention",
+   "mode": null,
+   "params": {
+    "top-k": 1
+   },
+   "source": "Qwen/Qwen3.5-4B README.md:L760"
+  },
+  {
+   "label": "Thinking mode for general tasks",
+   "kind": "recommended",
+   "mode": "thinking",
+   "params": {
+    "temp": 1.0,
+    "top-p": 0.95,
+    "top-k": 20,
+    "min-p": 0.0,
+    "presence-penalty": 1.5,
+    "repeat-penalty": 1.0
+   },
+   "source": "Qwen/Qwen3.5-4B README.md:L835"
+  },
+  {
+   "label": "Thinking mode for precise coding tasks (e.g. WebDev",
+   "kind": "recommended",
+   "mode": "thinking",
+   "params": {
+    "temp": 0.6,
+    "top-p": 0.95,
+    "top-k": 20,
+    "min-p": 0.0,
+    "presence-penalty": 0.0,
+    "repeat-penalty": 1.0
+   },
+   "source": "Qwen/Qwen3.5-4B README.md:L836"
+  },
+  {
+   "label": "Instruct (or non-thinking) mode for general tasks",
+   "kind": "recommended",
+   "mode": "non-thinking",
+   "params": {
+    "temp": 0.7,
+    "top-p": 0.8,
+    "top-k": 20,
+    "min-p": 0.0,
+    "presence-penalty": 1.5,
+    "repeat-penalty": 1.0
+   },
+   "source": "Qwen/Qwen3.5-4B README.md:L837"
+  },
+  {
+   "label": "Instruct (or non-thinking) mode for reasoning tasks",
+   "kind": "recommended",
+   "mode": "non-thinking",
+   "params": {
+    "temp": 1.0,
+    "top-p": 0.95,
+    "top-k": 20,
+    "min-p": 0.0,
+    "presence-penalty": 1.5,
+    "repeat-penalty": 1.0
+   },
+   "source": "Qwen/Qwen3.5-4B README.md:L838"
+  },
+  {
+   "label": "Text-Only Input",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 1.0,
+    "top-p": 0.95,
+    "presence-penalty": 1.5,
+    "top-k": 20
+   },
+   "source": "Qwen/Qwen3.5-4B README.md:L857"
+  },
+  {
+   "label": "Image Input",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 1.0,
+    "top-p": 0.95,
+    "presence-penalty": 1.5,
+    "top-k": 20
+   },
+   "source": "Qwen/Qwen3.5-4B README.md:L897"
+  },
+  {
+   "label": "Video Input",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 1.0,
+    "top-p": 0.95,
+    "presence-penalty": 1.5,
+    "top-k": 20
+   },
+   "source": "Qwen/Qwen3.5-4B README.md:L942"
+  },
+  {
+   "label": "For example",
+   "kind": "example",
+   "mode": "non-thinking",
+   "params": {
+    "temp": 0.7,
+    "top-p": 0.8,
+    "presence-penalty": 1.5,
+    "top-k": 20
+   },
+   "source": "Qwen/Qwen3.5-4B README.md:L989"
+  },
+  {
+   "label": "Thinking mode for general tasks",
+   "kind": "recommended",
+   "mode": "thinking",
+   "params": {
+    "temp": 1.0,
+    "top-p": 0.95,
+    "top-k": 20,
+    "min-p": 0.0,
+    "presence-penalty": 1.5,
+    "repeat-penalty": 1.0
+   },
+   "source": "Qwen/Qwen3.5-4B README.md:L1138"
+  },
+  {
+   "label": "Thinking mode for precise coding tasks (e.g., WebDev",
+   "kind": "recommended",
+   "mode": "thinking",
+   "params": {
+    "temp": 0.6,
+    "top-p": 0.95,
+    "top-k": 20,
+    "min-p": 0.0,
+    "presence-penalty": 0.0,
+    "repeat-penalty": 1.0
+   },
+   "source": "Qwen/Qwen3.5-4B README.md:L1140"
+  },
+  {
+   "label": "Instruct (or non-thinking) mode for general tasks",
+   "kind": "recommended",
+   "mode": "non-thinking",
+   "params": {
+    "temp": 0.7,
+    "top-p": 0.8,
+    "top-k": 20,
+    "min-p": 0.0,
+    "presence-penalty": 1.5,
+    "repeat-penalty": 1.0
+   },
+   "source": "Qwen/Qwen3.5-4B README.md:L1142"
+  },
+  {
+   "label": "Instruct (or non-thinking) mode for reasoning tasks",
+   "kind": "recommended",
+   "mode": "non-thinking",
+   "params": {
+    "temp": 1.0,
+    "top-p": 1.0,
+    "top-k": 40,
+    "min-p": 0.0,
+    "presence-penalty": 2.0,
+    "repeat-penalty": 1.0
+   },
+   "source": "Qwen/Qwen3.5-4B README.md:L1144"
+  },
+  {
+   "label": "Multi-Token Prediction (MTP) : The following command is recommended for MTP",
+   "kind": "mention",
+   "mode": null,
+   "params": {
+    "top-k": 1
+   },
+   "source": "unsloth/Qwen3.5-4B-GGUF README.md:L786"
+  },
+  {
+   "label": "Thinking mode for general tasks",
+   "kind": "recommended",
+   "mode": "thinking",
+   "params": {
+    "temp": 1.0,
+    "top-p": 0.95,
+    "top-k": 20,
+    "min-p": 0.0,
+    "presence-penalty": 1.5,
+    "repeat-penalty": 1.0
+   },
+   "source": "unsloth/Qwen3.5-4B-GGUF README.md:L861"
+  },
+  {
+   "label": "Thinking mode for precise coding tasks (e.g. WebDev",
+   "kind": "recommended",
+   "mode": "thinking",
+   "params": {
+    "temp": 0.6,
+    "top-p": 0.95,
+    "top-k": 20,
+    "min-p": 0.0,
+    "presence-penalty": 0.0,
+    "repeat-penalty": 1.0
+   },
+   "source": "unsloth/Qwen3.5-4B-GGUF README.md:L862"
+  },
+  {
+   "label": "Instruct (or non-thinking) mode for general tasks",
+   "kind": "recommended",
+   "mode": "non-thinking",
+   "params": {
+    "temp": 0.7,
+    "top-p": 0.8,
+    "top-k": 20,
+    "min-p": 0.0,
+    "presence-penalty": 1.5,
+    "repeat-penalty": 1.0
+   },
+   "source": "unsloth/Qwen3.5-4B-GGUF README.md:L863"
+  },
+  {
+   "label": "Instruct (or non-thinking) mode for reasoning tasks",
+   "kind": "recommended",
+   "mode": "non-thinking",
+   "params": {
+    "temp": 1.0,
+    "top-p": 0.95,
+    "top-k": 20,
+    "min-p": 0.0,
+    "presence-penalty": 1.5,
+    "repeat-penalty": 1.0
+   },
+   "source": "unsloth/Qwen3.5-4B-GGUF README.md:L864"
+  },
+  {
+   "label": "Text-Only Input",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 1.0,
+    "top-p": 0.95,
+    "presence-penalty": 1.5,
+    "top-k": 20
+   },
+   "source": "unsloth/Qwen3.5-4B-GGUF README.md:L883"
+  },
+  {
+   "label": "Image Input",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 1.0,
+    "top-p": 0.95,
+    "presence-penalty": 1.5,
+    "top-k": 20
+   },
+   "source": "unsloth/Qwen3.5-4B-GGUF README.md:L923"
+  },
+  {
+   "label": "Video Input",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 1.0,
+    "top-p": 0.95,
+    "presence-penalty": 1.5,
+    "top-k": 20
+   },
+   "source": "unsloth/Qwen3.5-4B-GGUF README.md:L968"
+  },
+  {
+   "label": "For example",
+   "kind": "example",
+   "mode": "non-thinking",
+   "params": {
+    "temp": 0.7,
+    "top-p": 0.8,
+    "presence-penalty": 1.5,
+    "top-k": 20
+   },
+   "source": "unsloth/Qwen3.5-4B-GGUF README.md:L1015"
+  },
+  {
+   "label": "Thinking mode for general tasks",
+   "kind": "recommended",
+   "mode": "thinking",
+   "params": {
+    "temp": 1.0,
+    "top-p": 0.95,
+    "top-k": 20,
+    "min-p": 0.0,
+    "presence-penalty": 1.5,
+    "repeat-penalty": 1.0
+   },
+   "source": "unsloth/Qwen3.5-4B-GGUF README.md:L1164"
+  },
+  {
+   "label": "Thinking mode for precise coding tasks (e.g., WebDev",
+   "kind": "recommended",
+   "mode": "thinking",
+   "params": {
+    "temp": 0.6,
+    "top-p": 0.95,
+    "top-k": 20,
+    "min-p": 0.0,
+    "presence-penalty": 0.0,
+    "repeat-penalty": 1.0
+   },
+   "source": "unsloth/Qwen3.5-4B-GGUF README.md:L1166"
+  },
+  {
+   "label": "Instruct (or non-thinking) mode for general tasks",
+   "kind": "recommended",
+   "mode": "non-thinking",
+   "params": {
+    "temp": 0.7,
+    "top-p": 0.8,
+    "top-k": 20,
+    "min-p": 0.0,
+    "presence-penalty": 1.5,
+    "repeat-penalty": 1.0
+   },
+   "source": "unsloth/Qwen3.5-4B-GGUF README.md:L1168"
+  },
+  {
+   "label": "Instruct (or non-thinking) mode for reasoning tasks",
+   "kind": "recommended",
+   "mode": "non-thinking",
+   "params": {
+    "temp": 1.0,
+    "top-p": 1.0,
+    "top-k": 40,
+    "min-p": 0.0,
+    "presence-penalty": 2.0,
+    "repeat-penalty": 1.0
+   },
+   "source": "unsloth/Qwen3.5-4B-GGUF README.md:L1170"
+  }
+ ],
+ "card_commands": [
+  {
+   "tool": "vllm",
+   "command": "vllm serve Qwen/Qwen3.5-4B --port 8000 --tensor-parallel-size 1 --max-model-len 262144 --reasoning-parser qwen3",
+   "source": "Qwen/Qwen3.5-4B README.md:L779"
+  },
+  {
+   "tool": "vllm",
+   "command": "vllm serve Qwen/Qwen3.5-4B --port 8000 --tensor-parallel-size 1 --max-model-len 262144 --reasoning-parser qwen3 --enable-auto-tool-choice --tool-call-parser qwen3_coder",
+   "source": "Qwen/Qwen3.5-4B README.md:L785"
+  },
+  {
+   "tool": "vllm",
+   "command": "vllm serve Qwen/Qwen3.5-4B --port 8000 --tensor-parallel-size 1 --max-model-len 262144 --reasoning-parser qwen3 --speculative-config '{\"method\":\"qwen3_next_mtp\",\"num_speculative_tokens\":2}'",
+   "source": "Qwen/Qwen3.5-4B README.md:L791"
+  },
+  {
+   "tool": "vllm",
+   "command": "vllm serve Qwen/Qwen3.5-4B --port 8000 --tensor-parallel-size 1 --max-model-len 262144 --reasoning-parser qwen3 --language-model-only",
+   "source": "Qwen/Qwen3.5-4B README.md:L797"
+  },
+  {
+   "tool": "vllm",
+   "command": "vllm serve Qwen/Qwen3.5-4B --port 8000 --tensor-parallel-size 1 --max-model-len 262144 --reasoning-parser qwen3",
+   "source": "unsloth/Qwen3.5-4B-GGUF README.md:L805"
+  },
+  {
+   "tool": "vllm",
+   "command": "vllm serve Qwen/Qwen3.5-4B --port 8000 --tensor-parallel-size 1 --max-model-len 262144 --reasoning-parser qwen3 --enable-auto-tool-choice --tool-call-parser qwen3_coder",
+   "source": "unsloth/Qwen3.5-4B-GGUF README.md:L811"
+  },
+  {
+   "tool": "vllm",
+   "command": "vllm serve Qwen/Qwen3.5-4B --port 8000 --tensor-parallel-size 1 --max-model-len 262144 --reasoning-parser qwen3 --speculative-config '{\"method\":\"qwen3_next_mtp\",\"num_speculative_tokens\":2}'",
+   "source": "unsloth/Qwen3.5-4B-GGUF README.md:L817"
+  },
+  {
+   "tool": "vllm",
+   "command": "vllm serve Qwen/Qwen3.5-4B --port 8000 --tensor-parallel-size 1 --max-model-len 262144 --reasoning-parser qwen3 --language-model-only",
+   "source": "unsloth/Qwen3.5-4B-GGUF README.md:L823"
+  }
+ ],
+ "card_notes": [
+  {
+   "text": "- Context Length: 262,144 natively and extensible up to 1,010,000 tokens.",
+   "source": "Qwen/Qwen3.5-4B README.md:L64"
+  },
+  {
+   "text": "> Qwen3.5 models operate in thinking mode by default, generating thinking content signified by `<think>\\n...</think>\\n\\n` before producing the final responses.",
+   "source": "Qwen/Qwen3.5-4B README.md:L712"
+  },
+  {
+   "text": "> To disable thinking content and obtain direct response, refer to the examples [here](#instruct-or-non-thinking-mode).",
+   "source": "Qwen/Qwen3.5-4B README.md:L713"
+  },
+  {
+   "text": "> The model has a default context length of 262,144 tokens.",
+   "source": "Qwen/Qwen3.5-4B README.md:L730"
+  },
+  {
+   "text": "> However, because Qwen3.5 leverages extended context for complex tasks, we advise maintaining a context length of at least 128K tokens to preserve thinking capabilities.",
+   "source": "Qwen/Qwen3.5-4B README.md:L732"
+  },
+  {
+   "text": "- **Standard Version**: The following command can be used to create an API endpoint with maximum context length 262,144 tokens using tensor parallel on 8 GPUs.",
+   "source": "Qwen/Qwen3.5-4B README.md:L745"
+  },
+  {
+   "text": "- **Standard Version**: The following command can be used to create an API endpoint with maximum context length 262,144 tokens using tensor parallel on 8 GPUs.",
+   "source": "Qwen/Qwen3.5-4B README.md:L776"
+  },
+  {
+   "text": "> - Thinking mode for general tasks: `temperature=1.0, top_p=0.95, top_k=20, min_p=0.0, presence_penalty=1.5, repetition_penalty=1.0`",
+   "source": "Qwen/Qwen3.5-4B README.md:L835"
+  },
+  {
+   "text": "> - Thinking mode for precise coding tasks (e.g. WebDev): `temperature=0.6, top_p=0.95, top_k=20, min_p=0.0, presence_penalty=0.0, repetition_penalty=1.0`",
+   "source": "Qwen/Qwen3.5-4B README.md:L836"
+  },
+  {
+   "text": "> - Instruct (or non-thinking) mode for general tasks: `temperature=0.7, top_p=0.8, top_k=20, min_p=0.0, presence_penalty=1.5, repetition_penalty=1.0`",
+   "source": "Qwen/Qwen3.5-4B README.md:L837"
+  },
+  {
+   "text": "> - Instruct (or non-thinking) mode for reasoning tasks: `temperature=1.0, top_p=0.95, top_k=20, min_p=0.0, presence_penalty=1.5, repetition_penalty=1.0`",
+   "source": "Qwen/Qwen3.5-4B README.md:L838"
+  },
+  {
+   "text": "#### Instruct (or Non-Thinking) Mode",
+   "source": "Qwen/Qwen3.5-4B README.md:L954"
+  },
+  {
+   "text": "> Qwen3.5 does not officially support the soft switch of Qwen3, i.e., `/think` and `/nothink`.",
+   "source": "Qwen/Qwen3.5-4B README.md:L957"
+  },
+  {
+   "text": "> If you are using APIs from Alibaba Cloud Model Studio, in addition to changing `model`, please use `\"enable_thinking\": False` instead of `\"chat_template_kwargs\": {\"enable_thinking\": False}`.",
+   "source": "Qwen/Qwen3.5-4B README.md:L1001"
+  },
+  {
+   "text": "Qwen3.5 natively supports context lengths of up to 262,144 tokens.",
+   "source": "Qwen/Qwen3.5-4B README.md:L1090"
+  },
+  {
+   "text": "For long-horizon tasks where the total length (including both input and output) exceeds this limit, we recommend using RoPE scaling techniques to handle long texts effectively., e.g., YaRN.",
+   "source": "Qwen/Qwen3.5-4B README.md:L1091"
+  },
+  {
+   "text": "YaRN is currently supported by several inference frameworks, e.g., `transformers`, `vllm`, `ktransformers` and `sglang`.",
+   "source": "Qwen/Qwen3.5-4B README.md:L1093"
+  },
+  {
+   "text": "In general, there are two approaches to enabling YaRN for supported frameworks:",
+   "source": "Qwen/Qwen3.5-4B README.md:L1094"
+  },
+  {
+   "text": "> All the notable open-source frameworks implement static YaRN, which means the scaling factor remains constant regardless of input length, **potentially impacting performance on shorter texts.**",
+   "source": "Qwen/Qwen3.5-4B README.md:L1127"
+  },
+  {
+   "text": "> It is also recommended to modify the `factor` as needed. For example, if the typical context length for your application is 524,288 tokens, it would be better to set `factor` as 2.0.",
+   "source": "Qwen/Qwen3.5-4B README.md:L1129"
+  },
+  {
+   "text": "- Context Length: 262,144 natively and extensible up to 1,010,000 tokens.",
+   "source": "unsloth/Qwen3.5-4B-GGUF README.md:L90"
+  },
+  {
+   "text": "> Qwen3.5 models operate in thinking mode by default, generating thinking content signified by `<think>\\n...</think>\\n\\n` before producing the final responses.",
+   "source": "unsloth/Qwen3.5-4B-GGUF README.md:L738"
+  },
+  {
+   "text": "> To disable thinking content and obtain direct response, refer to the examples [here](#instruct-or-non-thinking-mode).",
+   "source": "unsloth/Qwen3.5-4B-GGUF README.md:L739"
+  },
+  {
+   "text": "> The model has a default context length of 262,144 tokens.",
+   "source": "unsloth/Qwen3.5-4B-GGUF README.md:L756"
+  },
+  {
+   "text": "> However, because Qwen3.5 leverages extended context for complex tasks, we advise maintaining a context length of at least 128K tokens to preserve thinking capabilities.",
+   "source": "unsloth/Qwen3.5-4B-GGUF README.md:L758"
+  },
+  {
+   "text": "- **Standard Version**: The following command can be used to create an API endpoint with maximum context length 262,144 tokens using tensor parallel on 8 GPUs.",
+   "source": "unsloth/Qwen3.5-4B-GGUF README.md:L771"
+  },
+  {
+   "text": "- **Standard Version**: The following command can be used to create an API endpoint with maximum context length 262,144 tokens using tensor parallel on 8 GPUs.",
+   "source": "unsloth/Qwen3.5-4B-GGUF README.md:L802"
+  },
+  {
+   "text": "> - Thinking mode for general tasks: `temperature=1.0, top_p=0.95, top_k=20, min_p=0.0, presence_penalty=1.5, repetition_penalty=1.0`",
+   "source": "unsloth/Qwen3.5-4B-GGUF README.md:L861"
+  },
+  {
+   "text": "> - Thinking mode for precise coding tasks (e.g. WebDev): `temperature=0.6, top_p=0.95, top_k=20, min_p=0.0, presence_penalty=0.0, repetition_penalty=1.0`",
+   "source": "unsloth/Qwen3.5-4B-GGUF README.md:L862"
+  },
+  {
+   "text": "> - Instruct (or non-thinking) mode for general tasks: `temperature=0.7, top_p=0.8, top_k=20, min_p=0.0, presence_penalty=1.5, repetition_penalty=1.0`",
+   "source": "unsloth/Qwen3.5-4B-GGUF README.md:L863"
+  }
+ ],
+ "chat_template": {
+  "gguf_sha256": "7f0e529032c25183bcd66c7f238da2d377f43be754a94e2725a58c4e16d2ed67",
+  "repo_sha256": "a4aee8afcf2e0711942cf848899be66016f8d14a889ff9ede07bca099c28f715",
+  "repo_file": "Qwen/Qwen3.5-4B chat_template.jinja",
+  "same": false
+ },
+ "stop": {
+  "eos_token": "<|im_end|>",
+  "eos_token_id": 248046,
+  "eos_token_id_source": "GGUF"
+ },
+ "rope": {
+  "rope.freq_base": 10000000.0,
+  "config": {
+   "mrope_interleaved": true,
+   "mrope_section": [
+    11,
+    11,
+    10
+   ],
+   "rope_type": "default",
+   "rope_theta": 10000000,
+   "partial_rotary_factor": 0.25
+  }
+ },
+ "aux": [
+  {
+   "kind": "mmproj",
+   "file": "mmproj-BF16.gguf",
+   "size": 675569344,
+   "sha256": "302b92d565080b9cc0281186979ae75a7429ec23d14f6f7607a035539b21f3a6",
+   "fetched": false,
+   "source": "unsloth/Qwen3.5-4B-GGUF repo file"
+  },
+  {
+   "kind": "mmproj",
+   "file": "mmproj-F16.gguf",
+   "size": 672423616,
+   "sha256": "cd88edcf8d031894960bb0c9c5b9b7e1fea6ebee02b9f7ce925a00d12891f864",
+   "fetched": false,
+   "source": "unsloth/Qwen3.5-4B-GGUF repo file"
+  },
+  {
+   "kind": "mmproj",
+   "file": "mmproj-F32.gguf",
+   "size": 1334075072,
+   "sha256": "758b74e604c5374577c21026c5bdc3aec75560eccb4c67844c8f585d6ec74804",
+   "fetched": false,
+   "source": "unsloth/Qwen3.5-4B-GGUF repo file"
+  }
+ ],
+ "gguf": {
+  "general.architecture": "qwen35",
+  "general.name": "Qwen3.5-4B",
+  "general.file_type": 15,
+  "general.quantization_version": 2,
+  "_gguf_version": 3
+ },
+ "snapshot": {
+  "path": "unsloth--Qwen3.5-4B-GGUF/e87f176479d0855a907a41277aca2f8ee7a09523",
+  "fetched_bytes": 3708462,
+  "errors": null,
+  "gated": false
+ },
+ "base_snapshot": {
+  "path": "Qwen--Qwen3.5-4B/851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a",
+  "fetched_bytes": 23079373,
+  "errors": null,
+  "gated": false
+ },
+ "repo_files": {
+  ".gitattributes": {
+   "size": 3060,
+   "sha256": null,
+   "blob": "45f8f828f55e4c751966fb9abf15538f95561206",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "Qwen3.5-4B-BF16.gguf": {
+   "size": 8424393632,
+   "sha256": "9e6e2841a75f503ccb330831832fd7861266e187e0dbf149a954219ccb8c197a",
+   "blob": "60d6faa77f0534c585542c7b845a93e394ede42c",
+   "fetched": false,
+   "skipped": "weight file not used here (8424 MB)"
+  },
+  "Qwen3.5-4B-IQ4_NL.gguf": {
+   "size": 2579944608,
+   "sha256": "ff5c3e9740a5aa53f04fdf3b0b8cc75da556bf8948cdb19d61c512d3a43465d9",
+   "blob": "b72e76b9a262e679f41f6f01ead031b3fbd52cfa",
+   "fetched": false,
+   "skipped": "weight file not used here (2579 MB)"
+  },
+  "Qwen3.5-4B-IQ4_XS.gguf": {
+   "size": 2477053088,
+   "sha256": "658a9e7e406deb06d0179755e3c14f6a82915a4be4962a2f92a64d948d2e572f",
+   "blob": "09d5aae9fc0b42b0a475e3827b09399a714029f8",
+   "fetched": false,
+   "skipped": "weight file not used here (2477 MB)"
+  },
+  "Qwen3.5-4B-Q3_K_M.gguf": {
+   "size": 2293388448,
+   "sha256": "d6981ab4d77ba712b48ef69d69042d75b5e39b9dce5fb5a5b054fd08e06afb95",
+   "blob": "dcf0727ddb539ad33338782905646da6be8efb9d",
+   "fetched": false,
+   "skipped": "weight file not used here (2293 MB)"
+  },
+  "Qwen3.5-4B-Q3_K_S.gguf": {
+   "size": 2105791648,
+   "sha256": "7e2dd96b6141226b62fa88c775db06e0e9ff0aa84130805d7091a768868a3353",
+   "blob": "300c9c72af94f6ce42249290b56dc74a85a07abc",
+   "fetched": false,
+   "skipped": "weight file not used here (2105 MB)"
+  },
+  "Qwen3.5-4B-Q4_0.gguf": {
+   "size": 2583221408,
+   "sha256": "298fcb5fe7a77ccc79745ae24751560c5ac56874caff4bb39b1f2055bd72b8bb",
+   "blob": "74d884178d928595eee50a590ef778cd97f09bc4",
+   "fetched": false,
+   "skipped": "weight file not used here (2583 MB)"
+  },
+  "Qwen3.5-4B-Q4_1.gguf": {
+   "size": 2784416928,
+   "sha256": "af1fa652b5c78980b105a2ffef954bfa724bc4d69d2d44463e27c4f3c2953bbd",
+   "blob": "2a286c165e21bc32e775e92951b934bca8636ff8",
+   "fetched": false,
+   "skipped": "weight file not used here (2784 MB)"
+  },
+  "Qwen3.5-4B-Q4_K_M.gguf": {
+   "size": 2740937888,
+   "sha256": "00fe7986ff5f6b463e62455821146049db6f9313603938a70800d1fb69ef11a4",
+   "blob": "4ca59aa028e499c9351f394e844f5e27056e5846",
+   "fetched": false,
+   "skipped": "weight file not used here (2740 MB)"
+  },
+  "Qwen3.5-4B-Q4_K_S.gguf": {
+   "size": 2590430368,
+   "sha256": "27caeb0e4b999d92ce0a9fdbdd1a7ba5112908d9de125645883732274be2ea77",
+   "blob": "fa4da4a0fb5c0d8ea9b790fd4ab440fee0932642",
+   "fetched": false,
+   "skipped": "weight file not used here (2590 MB)"
+  },
+  "Qwen3.5-4B-Q5_K_M.gguf": {
+   "size": 3143656608,
+   "sha256": "8814232b85594dcd46c50e5b8b29324a7efe9e746edbe8a3d1df3d3fce7aad39",
+   "blob": "70e40ee1a3b4a6ab98839781accccfc2187348cf",
+   "fetched": false,
+   "skipped": "weight file not used here (3143 MB)"
+  },
+  "Qwen3.5-4B-Q5_K_S.gguf": {
+   "size": 3024934048,
+   "sha256": "161be121617c45ea247eae0fd4477d26f287a368b52702e3fc99c9bc52f23061",
+   "blob": "88f3e622d934a54ccb42168ae8dfd19add022b45",
+   "fetched": false,
+   "skipped": "weight file not used here (3024 MB)"
+  },
+  "Qwen3.5-4B-Q6_K.gguf": {
+   "size": 3525956768,
+   "sha256": "fdedd781c9ce676ab66b018ca247ff78e8a33c98098a822c1e2d5075e7718f66",
+   "blob": "8b46ce5a77cd55feaa51a05c649176784a2b034f",
+   "fetched": false,
+   "skipped": "weight file not used here (3525 MB)"
+  },
+  "Qwen3.5-4B-Q8_0.gguf": {
+   "size": 4482403488,
+   "sha256": "10cc391b403021dd11c614679d2fd92f611c3681d29e29651b717316965d61e1",
+   "blob": "871df22fc125cd971cc5c8aaee7d16b1e9ef9c68",
+   "fetched": false,
+   "skipped": "weight file not used here (4482 MB)"
+  },
+  "Qwen3.5-4B-UD-IQ2_M.gguf": {
+   "size": 1759997088,
+   "sha256": "cb4c45ca42c0d7777667e94e3963f8e59e939b3665098328ce601feb5be129c1",
+   "blob": "12b299eac42398b29defe48ef99a11497eee9af3",
+   "fetched": false,
+   "skipped": "weight file not used here (1759 MB)"
+  },
+  "Qwen3.5-4B-UD-IQ2_XXS.gguf": {
+   "size": 1520217248,
+   "sha256": "4c1ba794e8d6098f4fb6482b4db6e880c80b5ee0b4c64d8668afaf9541163677",
+   "blob": "1acab0ccc8460ef4b900e9b2dc718e13d2858b10",
+   "fetched": false,
+   "skipped": "weight file not used here (1520 MB)"
+  },
+  "Qwen3.5-4B-UD-IQ3_XXS.gguf": {
+   "size": 1949047968,
+   "sha256": "00aab66a2359a9afc52f0ab757e61f9be1656e6fcaba8468bd95579a8b2cbc40",
+   "blob": "a7689b79e1bea2cfc86cec8c287f9ebafc66255d",
+   "fetched": false,
+   "skipped": "weight file not used here (1949 MB)"
+  },
+  "Qwen3.5-4B-UD-Q2_K_XL.gguf": {
+   "size": 1940825248,
+   "sha256": "79aa0b583c888976013002f66b9f617070d91cf8de6a09dc775983640ac59463",
+   "blob": "2bcb744472a4bc6f9ad13b78d5152788ae649e36",
+   "fetched": false,
+   "skipped": "weight file not used here (1940 MB)"
+  },
+  "Qwen3.5-4B-UD-Q3_K_XL.gguf": {
+   "size": 2436420768,
+   "sha256": "1874727e4bb6ac23fd0cd134ac6562d2759fe44f37fa68c55197b36526da4e37",
+   "blob": "9c8883680f7af72792dc49cd3ff3de93c6c656e3",
+   "fetched": false,
+   "skipped": "weight file not used here (2436 MB)"
+  },
+  "Qwen3.5-4B-UD-Q4_K_XL.gguf": {
+   "size": 2912109728,
+   "sha256": "b252c5610a42ca82d20fe2a12813e9d069eed89292907e26c783eeb0bc961bc7",
+   "blob": "5896df429fa8a782f02d97a61fc6368e00abac76",
+   "fetched": false,
+   "skipped": "weight file not used here (2912 MB)"
+  },
+  "Qwen3.5-4B-UD-Q5_K_XL.gguf": {
+   "size": 3250869408,
+   "sha256": "b4c36a8e14a80c21bcab5a067ce342b2e70e28f60b4aa95ad12203fa17b87426",
+   "blob": "23867ba06ac09b1328da976f7d7b9a825a3e008b",
+   "fetched": false,
+   "skipped": "weight file not used here (3250 MB)"
+  },
+  "Qwen3.5-4B-UD-Q6_K_XL.gguf": {
+   "size": 4145548448,
+   "sha256": "87f58d94410b81429268d8389a3d686e6c6bffecf7852772720fbea059cbbb9d",
+   "blob": "bb88c43e04870443a5a459e9d1df9e13f0f7a23a",
+   "fetched": false,
+   "skipped": "weight file not used here (4145 MB)"
+  },
+  "Qwen3.5-4B-UD-Q8_K_XL.gguf": {
+   "size": 5952048288,
+   "sha256": "e786a3c6570474c3885199bfb5adc54325aa7521a314e10b0aaefe16a54ba42f",
+   "blob": "44ede2300530708d78e52868e70c50981cf2270e",
+   "fetched": false,
+   "skipped": "weight file not used here (5952 MB)"
+  },
+  "README.md": {
+   "size": 78906,
+   "sha256": null,
+   "blob": "265d2de0d83ddb04cb105d27413ba83e87bc41dd",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "imatrix_unsloth.gguf_file": {
+   "size": 3626496,
+   "sha256": "63718abd33c6ddcbb67f9089fb8bbaf0bc9996be4e23bba14ce17dcee76924d2",
+   "blob": "8169357ab7fabada6c1ab5b23b74d5a9edb8070a",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "mmproj-BF16.gguf": {
+   "size": 675569344,
+   "sha256": "302b92d565080b9cc0281186979ae75a7429ec23d14f6f7607a035539b21f3a6",
+   "blob": "463d1078fc2d0285190d031551c25d08fc28d568",
+   "fetched": false,
+   "skipped": "weight file not used here (675 MB)"
+  },
+  "mmproj-F16.gguf": {
+   "size": 672423616,
+   "sha256": "cd88edcf8d031894960bb0c9c5b9b7e1fea6ebee02b9f7ce925a00d12891f864",
+   "blob": "df5eff16338bf924865eb98723fc7ef20eb54e7f",
+   "fetched": false,
+   "skipped": "weight file not used here (672 MB)"
+  },
+  "mmproj-F32.gguf": {
+   "size": 1334075072,
+   "sha256": "758b74e604c5374577c21026c5bdc3aec75560eccb4c67844c8f585d6ec74804",
+   "blob": "b31ec78c6d346b63be1343f159597e50bb3104bd",
+   "fetched": false,
+   "skipped": "weight file not used here (1334 MB)"
+  }
+ },
+ "base_repo_files": {
+  ".gitattributes": {
+   "size": 1570,
+   "sha256": null,
+   "blob": "52373fe24473b1aa44333d318f578ae6bf04b49b",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "LICENSE": {
+   "size": 11544,
+   "sha256": null,
+   "blob": "f938136e3adacfd92be087f6e113b5d6d97f678f",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "README.md": {
+   "size": 77661,
+   "sha256": null,
+   "blob": "7950a3aadf378cd13758097bc52f0ed849a59007",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "chat_template.jinja": {
+   "size": 7756,
+   "sha256": null,
+   "blob": "a585dec894e63da457d9440ec6aa7caa16d20860",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "config.json": {
+   "size": 3161,
+   "sha256": null,
+   "blob": "557d961b205319c6a7da5f757f565b69b3967b7d",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "merges.txt": {
+   "size": 3353259,
+   "sha256": null,
+   "blob": "a494e019ca1502219fd0128658b979e5f05ae8e8",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "model.safetensors-00001-of-00002.safetensors": {
+   "size": 5329398688,
+   "sha256": "26a93f066e1916adb13453dae5a0c707c0fbc71299ed98779571a907b8e74c61",
+   "blob": "d2e1801a99c9c1618c526812e779d9543df84891",
+   "fetched": false,
+   "skipped": "weight file not used here (5329 MB)"
+  },
+  "model.safetensors-00002-of-00002.safetensors": {
+   "size": 3990429408,
+   "sha256": "cb544bd9bfae93dc59b0f22b292f5933573854a7f9b97835c67060d7d910e188",
+   "blob": "8fbeeec18827d3b20e3df1dc0abf94f7e85bcef1",
+   "fetched": false,
+   "skipped": "weight file not used here (3990 MB)"
+  },
+  "model.safetensors.index.json": {
+   "size": 76196,
+   "sha256": null,
+   "blob": "fddda6039f7c1d17260c9e923b8a72fd025d9a86",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "preprocessor_config.json": {
+   "size": 390,
+   "sha256": null,
+   "blob": "2ea84a437d448ff71b08df68fdd949d5cc4ebb64",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "tokenizer.json": {
+   "size": 12807982,
+   "sha256": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42",
+   "blob": "a73a846725794819aa6e1c9e97d8dc9671c2006d",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "tokenizer_config.json": {
+   "size": 16710,
+   "sha256": null,
+   "blob": "eda48d3e75a8e59a8479ee4ec8b37f76e711d9c1",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "video_preprocessor_config.json": {
+   "size": 385,
+   "sha256": null,
+   "blob": "3ba673a5ad7d4d13f54155ecd38b2a94a6dac8fe",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "vocab.json": {
+   "size": 6722759,
+   "sha256": null,
+   "blob": "0aa0ce0658d60ac4a5d609f4eadb0e8e43514176",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  }
+ },
+ "found_in": [
+  "manifest coder/step-up"
+ ],
+ "match": null,
+ "local_check": null,
+ "unknown": null,
+ "warnings": null,
+ "updated": "2026-10-19",
+ "by": "scripts/model_db.py"
+}

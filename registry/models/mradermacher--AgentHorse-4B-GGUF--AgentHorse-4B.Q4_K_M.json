@@ -1,0 +1,282 @@
+{
+ "schema": 1,
+ "id": "mradermacher--AgentHorse-4B-GGUF--AgentHorse-4B.Q4_K_M",
+ "repo": "mradermacher/AgentHorse-4B-GGUF",
+ "revision": "9ec59226a5612a1317159802af0ed0173b8e1fb5",
+ "file": "AgentHorse-4B.Q4_K_M.gguf",
+ "sha256": "39182c1c76dda8361124544a02a0ae71a48024326ed46e8e0c478b36ecfdc9bb",
+ "bytes": 2708288960,
+ "quant": "Q4_K_M",
+ "arch": "qwen35",
+ "roles": [
+  "coder"
+ ],
+ "license": "unknown",
+ "license_source": null,
+ "ctx": 262144,
+ "ctx_source": "GGUF qwen35.context_length",
+ "card_ctx": null,
+ "card_ctx_source": null,
+ "base_model": "CloudGoat/AgentHorse-4B",
+ "base_revision": "19f9ca4f2e0288da139f073faaf8e2d5aabd04f0",
+ "card_defaults": null,
+ "card_defaults_source": null,
+ "card_default_set": null,
+ "card_defaults_how": "the card and generation_config.json state no sampling values",
+ "card_sampling_modes": null,
+ "card_default_mode": null,
+ "card_default_mode_source": null,
+ "card_sampling_sets": null,
+ "card_commands": null,
+ "card_notes": null,
+ "chat_template": {
+  "gguf_sha256": "a4aee8afcf2e0711942cf848899be66016f8d14a889ff9ede07bca099c28f715",
+  "repo_sha256": "a4aee8afcf2e0711942cf848899be66016f8d14a889ff9ede07bca099c28f715",
+  "repo_file": "CloudGoat/AgentHorse-4B chat_template.jinja",
+  "same": true
+ },
+ "stop": {
+  "eos_token": "<|im_end|>",
+  "eos_token_id": 248046,
+  "eos_token_id_source": "GGUF"
+ },
+ "rope": {
+  "rope.freq_base": 10000000.0,
+  "config": {
+   "mrope_interleaved": true,
+   "mrope_section": [
+    11,
+    11,
+    10
+   ],
+   "partial_rotary_factor": 0.25,
+   "rope_theta": 10000000,
+   "rope_type": "default"
+  }
+ },
+ "aux": null,
+ "gguf": {
+  "general.architecture": "qwen35",
+  "general.name": "AgentHorse 4B",
+  "general.file_type": 15,
+  "general.quantization_version": 2,
+  "_gguf_version": 3
+ },
+ "snapshot": {
+  "path": "mradermacher--AgentHorse-4B-GGUF/9ec59226a5612a1317159802af0ed0173b8e1fb5",
+  "fetched_bytes": 5697,
+  "errors": null,
+  "gated": false
+ },
+ "base_snapshot": {
+  "path": "CloudGoat--AgentHorse-4B/19f9ca4f2e0288da139f073faaf8e2d5aabd04f0",
+  "fetched_bytes": 20045895,
+  "errors": null,
+  "gated": false
+ },
+ "repo_files": {
+  ".gitattributes": {
+   "size": 2254,
+   "sha256": null,
+   "blob": "543545a17094756ce4a5b7a346fcdcc6861ab21a",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "AgentHorse-4B.IQ4_XS.gguf": {
+   "size": 2528515520,
+   "sha256": "0c0ba79e3a6ec52d9d3d779b4afca00b25fbabc372a32fa57a8c191b547fbe7a",
+   "blob": "9f3f77b3d2eecc6aa5c90be2e69552700debbb10",
+   "fetched": false,
+   "skipped": "weight file not used here (2528 MB)"
+  },
+  "AgentHorse-4B.Q2_K.gguf": {
+   "size": 1914955200,
+   "sha256": "29101ff59d9be6262ab75247abb8508f3b18032f010305486ce5f6a3d4f36b27",
+   "blob": "52228fdd9bfd6892601b5d99bf7b933c147126d8",
+   "fetched": false,
+   "skipped": "weight file not used here (1914 MB)"
+  },
+  "AgentHorse-4B.Q3_K_L.gguf": {
+   "size": 2420800960,
+   "sha256": "4458b1b6ac0678c8f5f12f4558b78e68c4b85d78f6b90a627c73989f42b8eb3a",
+   "blob": "f4b02da343618a34d20ac49f591a1c0e93f7851b",
+   "fetched": false,
+   "skipped": "weight file not used here (2420 MB)"
+  },
+  "AgentHorse-4B.Q3_K_M.gguf": {
+   "size": 2261548480,
+   "sha256": "1468ae5f162fb2e368d7fa39ea0a91caa05f02869af3a828038c01f32062f82e",
+   "blob": "3203614eac07362e4a46e3ff63168eb8e027df8a",
+   "fetched": false,
+   "skipped": "weight file not used here (2261 MB)"
+  },
+  "AgentHorse-4B.Q3_K_S.gguf": {
+   "size": 2069364160,
+   "sha256": "1727f64864f038127192e73059b1b2e7482912139c36ea91b3c810bd27990230",
+   "blob": "01c877436031977c62da5658295620b6da6d9884",
+   "fetched": false,
+   "skipped": "weight file not used here (2069 MB)"
+  },
+  "AgentHorse-4B.Q4_K_M.gguf": {
+   "size": 2708288960,
+   "sha256": "39182c1c76dda8361124544a02a0ae71a48024326ed46e8e0c478b36ecfdc9bb",
+   "blob": "f411d53cb1a33ac7d2d2a81e6d7d20f0a424ffb5",
+   "fetched": false,
+   "skipped": "weight file not used here (2708 MB)"
+  },
+  "AgentHorse-4B.Q4_K_S.gguf": {
+   "size": 2563372480,
+   "sha256": "6b5b3f509da552f144f8b9d58499a2437b009b9eef6296a643a13979b0fde307",
+   "blob": "92160e80bbcf45967fe0b60fc8838cba999ee386",
+   "fetched": false,
+   "skipped": "weight file not used here (2563 MB)"
+  },
+  "AgentHorse-4B.Q5_K_M.gguf": {
+   "size": 3074471360,
+   "sha256": "d914874a614b319a72bf63b211d59aa6c02f8cd7c17d1c9274c87ee198fa5939",
+   "blob": "66c2752583511d072a842b8cb9f6a87098d37641",
+   "fetched": false,
+   "skipped": "weight file not used here (3074 MB)"
+  },
+  "AgentHorse-4B.Q5_K_S.gguf": {
+   "size": 2989520320,
+   "sha256": "c261b0f4932b7d9ce04a1a55a880db39efbc316486e6f66f8a5740d619a65742",
+   "blob": "c7d0542a9998883f7aed93f0751a39ef3d08227c",
+   "fetched": false,
+   "skipped": "weight file not used here (2989 MB)"
+  },
+  "AgentHorse-4B.Q6_K.gguf": {
+   "size": 3463540160,
+   "sha256": "ef75b555f66fca284bd9cebe4ce7abc0f9e766411ea54a2ecafaf5e1c855ccf0",
+   "blob": "da0754d67f78b673d265e17a5b7d27a70f16c595",
+   "fetched": false,
+   "skipped": "weight file not used here (3463 MB)"
+  },
+  "AgentHorse-4B.Q8_0.gguf": {
+   "size": 4481736992,
+   "sha256": "fdc0eaa3a8d4db81cdeda2f6a5f9e1bdc914510304a4c00fdca4ba84f26eb12f",
+   "blob": "b64d4b30659348af5e6f55c46b63e5ebccecd062",
+   "fetched": false,
+   "skipped": "weight file not used here (4481 MB)"
+  },
+  "AgentHorse-4B.f16.gguf": {
+   "size": 8423144192,
+   "sha256": "b6dd0e0a49b9ec4774015919809e486f0cdf97382fe9b1656b69688808d370ec",
+   "blob": "0d0a60b841a9fdc19637eb71c5b8d7a8f3abe8fa",
+   "fetched": false,
+   "skipped": "weight file not used here (8423 MB)"
+  },
+  "README.md": {
+   "size": 3443,
+   "sha256": null,
+   "blob": "2ed7320d8a83423538576cc8f6b42f923eee7b06",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  }
+ },
+ "base_repo_files": {
+  ".gitattributes": {
+   "size": 1779,
+   "sha256": null,
+   "blob": "3a1f765d25dc8cfecbc3cdd489f3c606eb1a5ab9",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "GGUF/AgentHorse-4B-1.0-Q4_K_M.gguf": {
+   "size": 2708288384,
+   "sha256": "d2796b9cb596a4f7c22c61e7c2d6a889323d112bc79ec5ab9cd397b0af737aed",
+   "blob": "eb5dd7c95fe2d720a78c24cd37764e29c65bdd38",
+   "fetched": false,
+   "skipped": "weight file not used here (2708 MB)"
+  },
+  "GGUF/AgentHorse-4B-1.0-bf16.gguf": {
+   "size": 8423143616,
+   "sha256": "1a882450a10ef8d7ef5884e1404db704a17b27371a07cfbdb0ef44a2c2f08b3f",
+   "blob": "e07ec1918b645c5b5be9c7c63015f2f2548ae686",
+   "fetched": false,
+   "skipped": "weight file not used here (8423 MB)"
+  },
+  "GGUF/AgentHorse-4B-1.0-q8_0.gguf": {
+   "size": 4481736416,
+   "sha256": "0a799a8a4f09282c33adf1837abe46d78e72202eb4fc19fbfd79b07295bba7c6",
+   "blob": "e5e17d40ec2113348f3ca03baabf4137f3c62655",
+   "fetched": false,
+   "skipped": "weight file not used here (4481 MB)"
+  },
+  "README.md": {
+   "size": 1209,
+   "sha256": null,
+   "blob": "ace5d02f49409e8056bee4f40c732380ccf666ee",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "chat_template.jinja": {
+   "size": 7756,
+   "sha256": null,
+   "blob": "a585dec894e63da457d9440ec6aa7caa16d20860",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "config.json": {
+   "size": 2270,
+   "sha256": null,
+   "blob": "95e33dcc8d02caeaa5cb8d5c07f1d9ec36c54825",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "mergekit_config.yml": {
+   "size": 443,
+   "sha256": null,
+   "blob": "dcc235d4ddb1d2aeeeb9da7d3c7901fec6e8026f",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "model-00001-of-00002.safetensors": {
+   "size": 4997922776,
+   "sha256": "647f9232e86edd7ea1e3cc5f7fbf55d0ca6e7ef1208b399358d2f0785e2c6219",
+   "blob": "159ca78e2f6e635482c336286a5676e357ac8641",
+   "fetched": false,
+   "skipped": "weight file not used here (4997 MB)"
+  },
+  "model-00002-of-00002.safetensors": {
+   "size": 3412391352,
+   "sha256": "4e29faa790017494c9f723162c39c1170faef3a93c866895291d58dd6fe31a9c",
+   "blob": "a48d5f9b2191d6a33cc6de0369a4751b61f083a6",
+   "fetched": false,
+   "skipped": "weight file not used here (3412 MB)"
+  },
+  "model.safetensors.index.json": {
+   "size": 41989,
+   "sha256": null,
+   "blob": "46a7f9d6e8bdf2429f93086c6346aa59448023ae",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "tokenizer.json": {
+   "size": 19989325,
+   "sha256": "06b9509352d2af50381ab2247e083b80d32d5c0aba91c272ca9ff729b6a0e523",
+   "blob": "5520bfd2dd834ce386c1312c410fa71af56db5ad",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "tokenizer_config.json": {
+   "size": 1124,
+   "sha256": null,
+   "blob": "d1a20cc3a8838d08eca9de8a7b84d510d60a0524",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  }
+ },
+ "found_in": [
+  "manifest coder/agenthorse"
+ ],
+ "match": null,
+ "local_check": null,
+ "unknown": [
+  "license",
+  "card_defaults: the card and generation_config.json state no sampling values"
+ ],
+ "warnings": null,
+ "updated": "2026-10-19",
+ "by": "scripts/model_db.py"
+}

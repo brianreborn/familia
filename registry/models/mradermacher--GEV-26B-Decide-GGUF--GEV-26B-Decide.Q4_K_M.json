@@ -1,0 +1,543 @@
+{
+ "schema": 1,
+ "id": "mradermacher--GEV-26B-Decide-GGUF--GEV-26B-Decide.Q4_K_M",
+ "repo": "mradermacher/GEV-26B-Decide-GGUF",
+ "revision": "6a97ccdaccdbdb0bbbe274f8f92d5771009e314f",
+ "file": "GEV-26B-Decide.Q4_K_M.gguf",
+ "sha256": "f26cb0de214c58f8495468a2ed075af29bc93972120564e220538414cecba726",
+ "bytes": 16796018528,
+ "quant": "Q4_K_M",
+ "arch": "gemma4",
+ "roles": [
+  "decision"
+ ],
+ "license": "apache-2.0",
+ "license_source": "mradermacher/GEV-26B-Decide-GGUF card license",
+ "ctx": 262144,
+ "ctx_source": "GGUF gemma4.context_length",
+ "card_ctx": null,
+ "card_ctx_source": null,
+ "base_model": "autotrust/GEV-26B-Decide",
+ "base_revision": "eea849038e792cd09aa731d59d586f0eaf2c18f6",
+ "card_defaults": {
+  "top-k": 0,
+  "top-p": 1.0
+ },
+ "card_defaults_source": {
+  "top-k": "autotrust/GEV-26B-Decide autotrust/GEV-26B-Decide README.md:L481",
+  "top-p": "autotrust/GEV-26B-Decide autotrust/GEV-26B-Decide README.md:L481"
+ },
+ "card_default_set": "If you call /v1/completions for System 1 yourself, pass",
+ "card_defaults_how": "the card's only recommended set",
+ "card_sampling_modes": {
+  "If you call /v1/completions for System 1 yourself, pass": {
+   "top-k": 0,
+   "top-p": 1.0
+  }
+ },
+ "card_default_mode": null,
+ "card_default_mode_source": null,
+ "card_sampling_sets": [
+  {
+   "label": "If you call /v1/completions for System 1 yourself, pass",
+   "kind": "recommended",
+   "mode": null,
+   "params": {
+    "top-k": 0,
+    "top-p": 1.0
+   },
+   "source": "autotrust/GEV-26B-Decide README.md:L481",
+   "conflicts": [
+    {
+     "param": "top-k",
+     "also": 64,
+     "source": "README.md:L482"
+    },
+    {
+     "param": "top-p",
+     "also": 0.95,
+     "source": "README.md:L482"
+    }
+   ]
+  }
+ ],
+ "card_commands": [
+  {
+   "tool": "hf",
+   "command": "hf download autotrust/GEV-26B-Decide --local-dir GEV-26B-Decide",
+   "source": "autotrust/GEV-26B-Decide README.md:L408"
+  }
+ ],
+ "card_notes": [
+  {
+   "text": "[Outside Knowledge & Reasoning](#outside-knowledge--reasoning)).",
+   "source": "autotrust/GEV-26B-Decide README.md:L153"
+  },
+  {
+   "text": "backbone in Gemma-4 thinking mode) reasons over the question, and the reasoning is folded into the final probabilities.",
+   "source": "autotrust/GEV-26B-Decide README.md:L205"
+  },
+  {
+   "text": "Gemma-4's thinking mode over the same state, question and options. The reasoning length is yours to set, as with the",
+   "source": "autotrust/GEV-26B-Decide README.md:L274"
+  },
+  {
+   "text": "## Context length",
+   "source": "autotrust/GEV-26B-Decide README.md:L371"
+  },
+  {
+   "text": "| `chat_template_kwargs` | passed to the base model's chat template, as in its chat API (Gemma-4 has thinking on/off only, so there is no `reasoning_effort` setting) |",
+   "source": "autotrust/GEV-26B-Decide README.md:L438"
+  }
+ ],
+ "chat_template": {
+  "gguf_sha256": "ae53464bf3be25802b3a5b37def7fd89667067d7577049b3b2d74c4d8de4c6d4",
+  "repo_sha256": "ae53464bf3be25802b3a5b37def7fd89667067d7577049b3b2d74c4d8de4c6d4",
+  "repo_file": "autotrust/GEV-26B-Decide chat_template.jinja",
+  "same": true
+ },
+ "stop": {
+  "eos_token": "<eos>",
+  "eos_token_id": [
+   1,
+   106,
+   50
+  ],
+  "eos_token_id_source": "autotrust/GEV-26B-Decide generation_config.json"
+ },
+ "rope": {
+  "rope.freq_base": 1000000.0,
+  "config": {
+   "full_attention": {
+    "partial_rotary_factor": 0.25,
+    "rope_theta": 1000000.0,
+    "rope_type": "proportional"
+   },
+   "sliding_attention": {
+    "rope_theta": 10000.0,
+    "rope_type": "default"
+   }
+  }
+ },
+ "aux": [
+  {
+   "kind": "mmproj",
+   "file": "GEV-26B-Decide.mmproj-Q8_0.gguf",
+   "size": 806408736,
+   "sha256": "2788394bee1fcd2f5d57c1a62dae939404e94f4e29ab8a32c95b8670d16f06c5",
+   "fetched": false,
+   "source": "mradermacher/GEV-26B-Decide-GGUF repo file"
+  },
+  {
+   "kind": "mmproj",
+   "file": "GEV-26B-Decide.mmproj-f16.gguf",
+   "size": 1193059104,
+   "sha256": "5284f246ea24bdbe3195807fbdb5f1cd4b01e1f2638ad73653b4a4bc80f28e68",
+   "fetched": false,
+   "source": "mradermacher/GEV-26B-Decide-GGUF repo file"
+  }
+ ],
+ "gguf": {
+  "general.architecture": "gemma4",
+  "general.name": "GEV 26B Decide",
+  "general.file_type": 15,
+  "general.quantization_version": 2,
+  "_gguf_version": 3
+ },
+ "snapshot": {
+  "path": "mradermacher--GEV-26B-Decide-GGUF/6a97ccdaccdbdb0bbbe274f8f92d5771009e314f",
+  "fetched_bytes": 6613,
+  "errors": null,
+  "gated": false
+ },
+ "base_snapshot": {
+  "path": "autotrust--GEV-26B-Decide/eea849038e792cd09aa731d59d586f0eaf2c18f6",
+  "fetched_bytes": 38825792,
+  "errors": null,
+  "gated": false
+ },
+ "repo_files": {
+  ".gitattributes": {
+   "size": 2341,
+   "sha256": null,
+   "blob": "e9e18c4615ebdd6c050ef401c76ad17d83937e3c",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "GEV-26B-Decide.IQ4_XS.gguf": {
+   "size": 14063811424,
+   "sha256": "ab7237e6f437f848eeafe36b1e6750d1414449974358b8e8fba7e1a411b4cc5e",
+   "blob": "76d7a5aa86792f38db1b58c313314e1220ae0938",
+   "fetched": false,
+   "skipped": "weight file not used here (14063 MB)"
+  },
+  "GEV-26B-Decide.Q2_K.gguf": {
+   "size": 10582739808,
+   "sha256": "ee68c2304fea0989261db70c92152c872605c90dcabb4f68162ffd65319ecf58",
+   "blob": "0a40aa21d40dac11eb1afd6abc6cf473458af595",
+   "fetched": false,
+   "skipped": "weight file not used here (10582 MB)"
+  },
+  "GEV-26B-Decide.Q3_K_L.gguf": {
+   "size": 13824490848,
+   "sha256": "40fc5bfe3e4735d460ffb2d03927f490c50388d43a74125e11aa723e8c8faee0",
+   "blob": "43e97f3c4a33f47d7352c20ceb1086c87be827b4",
+   "fetched": false,
+   "skipped": "weight file not used here (13824 MB)"
+  },
+  "GEV-26B-Decide.Q3_K_M.gguf": {
+   "size": 13286736224,
+   "sha256": "2fa22bfb7f0813222445e250afc83adf8ab28dac85eee74e5407ac64aa520ab2",
+   "blob": "6ff72fdf24808705b3f443346c2ac8821d787c13",
+   "fetched": false,
+   "skipped": "weight file not used here (13286 MB)"
+  },
+  "GEV-26B-Decide.Q3_K_S.gguf": {
+   "size": 12222412128,
+   "sha256": "0cafc6e4a321c2a6619008e5d555b965161ec9b1ef37914ab996a20688e2125e",
+   "blob": "49c9520f457a5020ab8b10b38c84b1f818a17b7b",
+   "fetched": false,
+   "skipped": "weight file not used here (12222 MB)"
+  },
+  "GEV-26B-Decide.Q4_K_M.gguf": {
+   "size": 16796018528,
+   "sha256": "f26cb0de214c58f8495468a2ed075af29bc93972120564e220538414cecba726",
+   "blob": "d4ff7580adadb8f0269340066e71261873c998fb",
+   "fetched": false,
+   "skipped": "weight file not used here (16796 MB)"
+  },
+  "GEV-26B-Decide.Q4_K_S.gguf": {
+   "size": 15464827744,
+   "sha256": "91fbc2682ce3c24f6dcf58e8943dd4d58cf01136f090e518fac5ad96c5839d57",
+   "blob": "29219551fd1d30b150c5680a037a211a77cf72f6",
+   "fetched": false,
+   "skipped": "weight file not used here (15464 MB)"
+  },
+  "GEV-26B-Decide.Q5_K_M.gguf": {
+   "size": 19132893024,
+   "sha256": "a9624ddd4268bea7fd4363934c881cf3b58705016e91630b62a881061cb431f2",
+   "blob": "045b1ebaf63cde3bef79d8a3e59e70fd08262f3b",
+   "fetched": false,
+   "skipped": "weight file not used here (19132 MB)"
+  },
+  "GEV-26B-Decide.Q5_K_S.gguf": {
+   "size": 17986735968,
+   "sha256": "54a49b6d55127fe87b01fa7e145c74fa0f462519f768509ac2990a616a7f1a96",
+   "blob": "55967d5d92b5c2b7ded2ac48a48578a366e93151",
+   "fetched": false,
+   "skipped": "weight file not used here (17986 MB)"
+  },
+  "GEV-26B-Decide.Q6_K.gguf": {
+   "size": 22638401888,
+   "sha256": "160cb7e70b20211cc9028bba150e22b096d690614a1fb1d3bf83b2d946fd7c18",
+   "blob": "f31690251f0f1ecf4aad15a19c627b3b239718c9",
+   "fetched": false,
+   "skipped": "weight file not used here (22638 MB)"
+  },
+  "GEV-26B-Decide.Q8_0.gguf": {
+   "size": 26859861856,
+   "sha256": "cea7693de01772b73deecf391cc9fd801854e99b3b77546fea92db0fde6003f0",
+   "blob": "22afb805258dc9728dfb58431753159b3e5f7d07",
+   "fetched": false,
+   "skipped": "weight file not used here (26859 MB)"
+  },
+  "GEV-26B-Decide.mmproj-Q8_0.gguf": {
+   "size": 806408736,
+   "sha256": "2788394bee1fcd2f5d57c1a62dae939404e94f4e29ab8a32c95b8670d16f06c5",
+   "blob": "4ba09ec5d8dec0a38f5f29a18a8517fdc4605b1b",
+   "fetched": false,
+   "skipped": "weight file not used here (806 MB)"
+  },
+  "GEV-26B-Decide.mmproj-f16.gguf": {
+   "size": 1193059104,
+   "sha256": "5284f246ea24bdbe3195807fbdb5f1cd4b01e1f2638ad73653b4a4bc80f28e68",
+   "blob": "e8d37a7eb7204a00ebc22db4ba0a343d0566c9a7",
+   "fetched": false,
+   "skipped": "weight file not used here (1193 MB)"
+  },
+  "README.md": {
+   "size": 4272,
+   "sha256": null,
+   "blob": "b5eca68067a8daea7be986039033bdcad5720aec",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  }
+ },
+ "base_repo_files": {
+  ".gitattributes": {
+   "size": 1882,
+   "sha256": null,
+   "blob": "749f313d696a9b2f58212953c76ed35fb2ec2b0d",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "README.md": {
+   "size": 35508,
+   "sha256": null,
+   "blob": "e3ffb1f508e4f74ba9832502d2e80519640f9869",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "adapter/README.md": {
+   "size": 381,
+   "sha256": null,
+   "blob": "19a6ae67a593f59138bbd94476a75461be0ebc62",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "adapter/adapter_config.json": {
+   "size": 1288,
+   "sha256": null,
+   "blob": "83007d52689322cc4d1f4ddf7c394d6322793b71",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "adapter/adapter_model.safetensors": {
+   "size": 148745744,
+   "sha256": "94fb34ad3b58266c304a58d1675ae4a9f02f3be453d08135e185c8079236836e",
+   "blob": "e016d8086afe7cfe775f2da59276ef7f54a0878c",
+   "fetched": false,
+   "skipped": "weight file not used here (148 MB)"
+  },
+  "adapter_vllm/adapter_config.json": {
+   "size": 1316,
+   "sha256": null,
+   "blob": "39a461249be69e599469864145f1e12993490be2",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "adapter_vllm/adapter_model.safetensors": {
+   "size": 92591488,
+   "sha256": "6c20767b1a3fd8717d5cf709a98276666d2c6d7e84e973026a07091343294291",
+   "blob": "b427148c48ce584201544a86de5141dd352a23ab",
+   "fetched": false,
+   "skipped": "weight file not used here (92 MB)"
+  },
+  "adapter_vllm/decision_head.json": {
+   "size": 1546,
+   "sha256": null,
+   "blob": "a231a1bc129a0c57c609586f4901a035196bbbe8",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "calibration.json": {
+   "size": 1005,
+   "sha256": null,
+   "blob": "5eae1ab688528006b3df1c53089ce01e87e93d09",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "calibration_gold.json": {
+   "size": 831,
+   "sha256": null,
+   "blob": "2b92fcacd0cb85933b43cc0bb5ad4ba95acafda5",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "chat_template.jinja": {
+   "size": 18683,
+   "sha256": null,
+   "blob": "4741bf6e4132ba23a5537f9d6e74e9a6d613d7cd",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "config.json": {
+   "size": 3815,
+   "sha256": null,
+   "blob": "f42adcca257bb0865c506947671e7d0af52ac9c4",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "generation_config.json": {
+   "size": 208,
+   "sha256": null,
+   "blob": "e605bb4523b1462ea9d9a3810b9e3ecf7ab7b1f6",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "head.safetensors": {
+   "size": 270584,
+   "sha256": "8ffb37579b962dfb52c3b9684446649635b5a78ca3f7f4210c889421bf5851ad",
+   "blob": "bd31e715d3755689d06313fad4e9960e6795e5bc",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "judge_config.json": {
+   "size": 1502,
+   "sha256": null,
+   "blob": "21278af714fad740e6646cb6488bda11714b3f9e",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "model-00001-of-00002.safetensors": {
+   "size": 49907246508,
+   "sha256": "1127684971bbca40465435a5cad69d67ad603bf5e61c6dfd5561fae4a3bcfdb3",
+   "blob": "2b813216506c6b8266f174ac81c93629b499362e",
+   "fetched": false,
+   "skipped": "weight file not used here (49907 MB)"
+  },
+  "model-00002-of-00002.safetensors": {
+   "size": 1704763408,
+   "sha256": "aab47033e1e8a492ef8e581efae1cf36478d0433567e7729b3c1728bc8970db7",
+   "blob": "43fd225b228774659bcb8948b8ad1b07b10cb53f",
+   "fetched": false,
+   "skipped": "weight file not used here (1704 MB)"
+  },
+  "model.safetensors.index.json": {
+   "size": 103196,
+   "sha256": null,
+   "blob": "889ab10e12aca96c43c9804a041fb1780de1e5ca",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "patches/vllm-gemma4-lm-head-lora.patch": {
+   "size": 4062,
+   "sha256": null,
+   "blob": "1860d911ffd1272f46d128009b3eb1ea83b87702",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "processor_config.json": {
+   "size": 1689,
+   "sha256": null,
+   "blob": "5465974d23e1eca2c46c2809b26c997946ce0d90",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "reports/adaptive_latency_summary.json": {
+   "size": 2511,
+   "sha256": null,
+   "blob": "3b3165e7686ed0b953e2a6df944f0c6982bc459b",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "reports/adaptive_other_areas_sample.json": {
+   "size": 1042,
+   "sha256": null,
+   "blob": "104d207ed241d766490148af699eec303c715fa8",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "reports/adaptive_validation_summary.json": {
+   "size": 1928,
+   "sha256": null,
+   "blob": "31bc01b52643e61042bc3f03ae779461e6322fd8",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "reports/decision_index_adaptive.json": {
+   "size": 2338,
+   "sha256": null,
+   "blob": "885482d94df577462e52376a44fd782007c9485a",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "reports/demos/arm_direct.json": {
+   "size": 23255,
+   "sha256": null,
+   "blob": "b44db500dd09b1bf7ffb229982bd94f904229e08",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "reports/demos/arm_servo.json": {
+   "size": 38002,
+   "sha256": null,
+   "blob": "8335f06ca3b9fab78e534875d079e8affd38aa0e",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "reports/demos/cu_results.json": {
+   "size": 108101,
+   "sha256": null,
+   "blob": "1a17f8bcdb60cc9a805e24de4fd2c4fc6f00629c",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "reports/thinking_games.json": {
+   "size": 2191,
+   "sha256": null,
+   "blob": "8204ee6784803815eb2b876d2555679064489f57",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "serve.sh": {
+   "size": 1583,
+   "sha256": null,
+   "blob": "9189331f030bcdd958d227166b8a58e299ea4968",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "serve_decide.py": {
+   "size": 23030,
+   "sha256": null,
+   "blob": "adf9b4e20fc9e3436ef6c6d731d0e44d32df992e",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "tokenizer.json": {
+   "size": 32169626,
+   "sha256": "cc8d3a0ce36466ccc1278bf987df5f71db1719b9ca6b4118264f45cb627bfe0f",
+   "blob": "1ff9f3e3439a939b971f9919e821bf87e835a503",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "tokenizer_config.json": {
+   "size": 3082,
+   "sha256": null,
+   "blob": "6068e357379d36f823c377e30efb101fa2c67fe4",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "videos/computer_use_shop.mp4": {
+   "size": 102194,
+   "sha256": "28d3bbbcebe0faa1508f7a63908af6c6b712cb1c0a0a66d4a9f42de4330c4ece",
+   "blob": "0e7b1b9b85a87400760f6a96b38b509a1ffd3f83",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "videos/robot_arm_pick_place.mp4": {
+   "size": 77180,
+   "sha256": null,
+   "blob": "a83350454af8d8470759e4401d9cd89649d9ed2c",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "videos/think_connect4.mp4": {
+   "size": 1631058,
+   "sha256": "e275a117a00f8b0e6366e16f2be440397138fd2b9c166694c7d713288b75530f",
+   "blob": "d35fdece0208d042bff3b54723eff28cf27da56c",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "videos/think_minesweeper.mp4": {
+   "size": 1570204,
+   "sha256": "7ae4ff31679bd527178192f5d497059338c532b7cdd23c780a20b83b002e904a",
+   "blob": "f90f33a1093e72e4d3cef9a904189b5c3a6520a3",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "videos/think_sudoku.mp4": {
+   "size": 1337285,
+   "sha256": "39481f244f283f1c6bf895b6099ad2ccb8027e93a8bb7a155d934fcc3964bffc",
+   "blob": "ce76945fa41ce36d42b8b5aac61259e360be2659",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "videos/think_wordle.mp4": {
+   "size": 1283686,
+   "sha256": "d630bc4666e2f1e0a0a2caf4c19d51d086297f15e6c821e077c1a78deef7164b",
+   "blob": "154ae8549e6f1e0a922ebe6db353be71112bf96a",
+   "verified": "lfs-sha256",
+   "fetched": true
+  }
+ },
+ "found_in": [
+  "manifest decision/fallback"
+ ],
+ "match": null,
+ "local_check": null,
+ "unknown": null,
+ "warnings": null,
+ "updated": "2026-10-19",
+ "by": "scripts/model_db.py"
+}

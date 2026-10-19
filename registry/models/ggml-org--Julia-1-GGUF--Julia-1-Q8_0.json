@@ -1,0 +1,440 @@
+{
+ "schema": 1,
+ "id": "ggml-org--Julia-1-GGUF--Julia-1-Q8_0",
+ "repo": "ggml-org/Julia-1-GGUF",
+ "revision": "16fee17949206fbf58da9347daea44d792a81211",
+ "file": "Julia-1-Q8_0.gguf",
+ "sha256": "1ea6a7e87156eeeda88cb7a36a61265b37ba7b993897b7289b99aea5b5e47069",
+ "bytes": 168166496,
+ "quant": "Q8_0",
+ "arch": "modern-bert",
+ "roles": [
+  "decision"
+ ],
+ "license": "apache-2.0",
+ "license_source": "ggml-org/Julia-1-GGUF card license",
+ "ctx": 8192,
+ "ctx_source": "GGUF modern-bert.context_length",
+ "card_ctx": null,
+ "card_ctx_source": null,
+ "base_model": "SupersonicLabs/Julia-1",
+ "base_revision": "a85b127321d580d65176c89ced8273f305745d85",
+ "card_defaults": null,
+ "card_defaults_source": null,
+ "card_default_set": null,
+ "card_defaults_how": "the card and generation_config.json state no sampling values",
+ "card_sampling_modes": null,
+ "card_default_mode": null,
+ "card_default_mode_source": null,
+ "card_sampling_sets": null,
+ "card_commands": null,
+ "card_notes": null,
+ "chat_template": null,
+ "stop": {
+  "eos_token_id": 1,
+  "eos_token_id_source": "GGUF"
+ },
+ "rope": {
+  "rope.freq_base": 160000.0,
+  "rope.scaling.type": "none"
+ },
+ "aux": null,
+ "gguf": {
+  "general.architecture": "modern-bert",
+  "general.name": "Julia-1",
+  "general.file_type": 7,
+  "general.quantization_version": 2,
+  "_gguf_version": 3
+ },
+ "snapshot": {
+  "path": "ggml-org--Julia-1-GGUF/16fee17949206fbf58da9347daea44d792a81211",
+  "fetched_bytes": 52412,
+  "errors": null,
+  "gated": false
+ },
+ "base_snapshot": {
+  "path": "SupersonicLabs--Julia-1/a85b127321d580d65176c89ced8273f305745d85",
+  "fetched_bytes": 35523197,
+  "errors": null,
+  "gated": false
+ },
+ "repo_files": {
+  ".gitattributes": {
+   "size": 1627,
+   "sha256": null,
+   "blob": "27df8623b02238fde64884abfbe8567e6173180f",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  ".src_sha": {
+   "size": 49,
+   "sha256": null,
+   "blob": "bfe81cb700bd1345ef46b7d9255360d857d10e64",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "Julia-1-BF16.gguf": {
+   "size": 303319136,
+   "sha256": "229d167b78fe6362b55a6a1bcaf204cf838bb2b7b872a2fe90686dad7c5d626e",
+   "blob": "3484714e21ef540ad2fd4d4c6e2b4b2229120bdb",
+   "fetched": false,
+   "skipped": "weight file not used here (303 MB)"
+  },
+  "Julia-1-Q8_0.gguf": {
+   "size": 168166496,
+   "sha256": "1ea6a7e87156eeeda88cb7a36a61265b37ba7b993897b7289b99aea5b5e47069",
+   "blob": "a1f2608ed7fd466bf52d31f216b52c1c65103d33",
+   "fetched": false,
+   "skipped": "weight file not used here (168 MB)"
+  },
+  "README.md": {
+   "size": 512,
+   "sha256": null,
+   "blob": "4672aa9b9fabe62e959a395fcb749bd738c4e116",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "convert.log": {
+   "size": 50224,
+   "sha256": null,
+   "blob": "8272df737b113721abf1abdfd6fe330b92db0de9",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  }
+ },
+ "base_repo_files": {
+  ".gitattributes": {
+   "size": 1758,
+   "sha256": null,
+   "blob": "02da5b6f81631caf36a978d663bc7db5bb7481e8",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  ".gitignore": {
+   "size": 77,
+   "sha256": null,
+   "blob": "3e6c5f664a35c4578499d453e896b405bed3af5b",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "README.md": {
+   "size": 13679,
+   "sha256": null,
+   "blob": "4d2a8bce8c5f5bb77f73ec3be0c20c76d974b2ca",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "assets/julia-banner.png": {
+   "size": 933172,
+   "sha256": "6a039468c06177e462c85b944983118e1a5f2a5f3c725b9a7d52659c2af54de0",
+   "blob": "a825e1558f168b2284a03fae9cfd069b87d0ad05",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "assets/supersonic-labs-dark.svg": {
+   "size": 16226,
+   "sha256": "ff3acfbd4c5b41cffc1f7c4be56bf49349d2a60ba3166d14e81cd89bdf26c14e",
+   "blob": "49a96dbe8b5c33c6c5c56e84a67b0f7038f51d19",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "assets/supersonic-labs-light.svg": {
+   "size": 16394,
+   "sha256": "4b17f4411ec052e68d4514afc13f66ea0a5015e6655c9bfa2971156e63e8a16f",
+   "blob": "d107ea0250c7e5c68e5de12ea20506d46baa73d7",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "config.json": {
+   "size": 235,
+   "sha256": null,
+   "blob": "65451445a5e98cd8bdadd59b8f2d7e76c8ceac8b",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "encoder/config.json": {
+   "size": 1936,
+   "sha256": null,
+   "blob": "9a2464972b57dab9e383fcd4075999f7cfa58326",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "inference-policy.json": {
+   "size": 355,
+   "sha256": null,
+   "blob": "a81b31b0677aa6bc5da8075fc268642c249835eb",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "julia/__init__.py": {
+   "size": 178,
+   "sha256": null,
+   "blob": "f782db0b124d1151d1e054c3251f6763a3a792fb",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "julia/cuda.py": {
+   "size": 2309,
+   "sha256": null,
+   "blob": "ca05f5ffb7bd36db53113d7634b0c28b99b8aaa8",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "julia/data.py": {
+   "size": 7163,
+   "sha256": null,
+   "blob": "4e401e470dcea34f7d64ad944c1711becdeedd81",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "julia/inference.py": {
+   "size": 4613,
+   "sha256": null,
+   "blob": "2c723d5728b8ea572b54e895142d6e1c90646f9a",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "julia/model.py": {
+   "size": 7539,
+   "sha256": null,
+   "blob": "78d2d0748aeaa5ee44c3f0735227c72581d04cfc",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "julia/probabilities.py": {
+   "size": 595,
+   "sha256": null,
+   "blob": "68a967e41bd1cc4c3d2f2e8ec5390b4c09b717ff",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "julia/router/.gitignore": {
+   "size": 26,
+   "sha256": null,
+   "blob": "255c2556dd252e4f92c92cedef9c8cb43b657c38",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "julia/router/README.md": {
+   "size": 8209,
+   "sha256": null,
+   "blob": "9bd27781280434eb68a2a37f7385af56de39c4f0",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "julia/router/__init__.py": {
+   "size": 357,
+   "sha256": null,
+   "blob": "45b266c658c621da7da6b9d25b560fd102104d75",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "julia/router/build.py": {
+   "size": 3738,
+   "sha256": null,
+   "blob": "6c8e49d92b260f6ee94e3435398fe2eccd59dbfd",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "julia/router/encoder.py": {
+   "size": 1787,
+   "sha256": null,
+   "blob": "cbb5b5f21fff88fc37e8266edfaef2d2e76fb6df",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "julia/router/engine.py": {
+   "size": 11624,
+   "sha256": null,
+   "blob": "cee0d14b75c2e9baa4c0079de3da89e5ce85ffa9",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "julia/router/native.py": {
+   "size": 7840,
+   "sha256": null,
+   "blob": "096c13d78da258e9d008deb2a5eac8f46f5bd1cd",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "julia/router/native/LAWS.bend": {
+   "size": 1502,
+   "sha256": null,
+   "blob": "cf18389ea6245afd59386762e841d93a0e3ad666",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "julia/router/native/PROOF.bend": {
+   "size": 2351,
+   "sha256": null,
+   "blob": "31987124735e8727707718f9c76391875784e407",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "julia/router/native/bridge.c": {
+   "size": 18808,
+   "sha256": null,
+   "blob": "6783d500a092a39e65c5a5420c487ced77e47daa",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "julia/router/native/router.bend": {
+   "size": 19699,
+   "sha256": null,
+   "blob": "fce0e0254cb30e32a43b719c626d0b302109d554",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "julia/router/router.py": {
+   "size": 8494,
+   "sha256": null,
+   "blob": "b4d51211c56f85d41196798017389b48b6c5a7a7",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "julia/router/specialize.py": {
+   "size": 1951,
+   "sha256": null,
+   "blob": "ab4c421eabb0c8eaad99ed3376bd25030e44675b",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "julia/router/tests/synthetic.py": {
+   "size": 1828,
+   "sha256": null,
+   "blob": "5f2f1f549372986e81f3d1e3c8afa1b59e69f270",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "julia/router/tests/test_engine.py": {
+   "size": 18527,
+   "sha256": null,
+   "blob": "a49b25883e6e35884e3a9f3347ba8ed165efa5a9",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "julia/router/tests/test_router.py": {
+   "size": 4333,
+   "sha256": null,
+   "blob": "5bb84dcbbb935463e9bfe3ebb9e5ee3d816b9432",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "julia/router/transformer.py": {
+   "size": 4254,
+   "sha256": null,
+   "blob": "16f316e0e8e1a9b9a9c2835364629e9a64107961",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "julia/typed.py": {
+   "size": 2415,
+   "sha256": null,
+   "blob": "fbfd88321c97ed8342831dd0c16f5b06b1f98c7a",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "julia_config.json": {
+   "size": 147,
+   "sha256": null,
+   "blob": "1694c3b8280e1b177027f6888f33b2881b0d82e4",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "metrics/accuracy-20260924.json": {
+   "size": 10106,
+   "sha256": null,
+   "blob": "e139539d9b3812bf72e510ac37bf44b87b0360a7",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "metrics/context-8k-smoke.json": {
+   "size": 201,
+   "sha256": null,
+   "blob": "d700da3fe62292999f50aebe629542267de1233f",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "metrics/typed-cpu-20260926.json": {
+   "size": 1310,
+   "sha256": null,
+   "blob": "d6336e97eacc3323cc91c68f51aec514dac11297",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "metrics/validation.json": {
+   "size": 1061,
+   "sha256": null,
+   "blob": "cb7b49c20f2f91f49d3d8d7f32da7bae2bf52c96",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "model.safetensors": {
+   "size": 577189056,
+   "sha256": "df853bf7fe424420011f3d0c47a05d7341aa9eefa7fb9f203ea4aada4ad95b72",
+   "blob": "1f35b2b1161e5511fca7608b01cd76c2329b2875",
+   "fetched": false,
+   "skipped": "weight file not used here (577 MB)"
+  },
+  "provenance.json": {
+   "size": 11773,
+   "sha256": null,
+   "blob": "5914f68628c4a6d0991f691f5e9c3169e1fc0829",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "pyproject.toml": {
+   "size": 619,
+   "sha256": null,
+   "blob": "fcf7b92768b5c6603d231796116627cbbcc376cd",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "scripts/reproduce_typed.py": {
+   "size": 6040,
+   "sha256": null,
+   "blob": "47a05663b882318e4a4ce1ac0987c69542e52ed0",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "tests/test_context.py": {
+   "size": 1041,
+   "sha256": null,
+   "blob": "ab490ac65fc58eccfb5a21db3683e8b5459f9529",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "tests/test_typed_api.py": {
+   "size": 3087,
+   "sha256": null,
+   "blob": "642a08fb93005c91b717a39213cc134c2672d70a",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "tokenizer/tokenizer.json": {
+   "size": 34363188,
+   "sha256": "609d8f4c067cd3950f88594c5a802616cea245823836ef5848ee4fc40aab5b6f",
+   "blob": "56d765858ed38eaabd35cd90759cbb1f89b0baa4",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "tokenizer/tokenizer_config.json": {
+   "size": 652,
+   "sha256": null,
+   "blob": "2004be4e75a72111956ff170e81cb75034bfdf10",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  }
+ },
+ "found_in": [
+  "manifest decision/fallback"
+ ],
+ "match": null,
+ "local_check": null,
+ "unknown": [
+  "card_defaults: the card and generation_config.json state no sampling values"
+ ],
+ "warnings": null,
+ "updated": "2026-10-19",
+ "by": "scripts/model_db.py"
+}

@@ -277,6 +277,7 @@ models:
     arch: llama2c
     trained_ctx: 256
     role: decision
+    db: karpathy--tinyllamas--stories15M
 
   smollm2-135m-q4:
     gguf: 'E:/temp/models/SmolLM2-135M-Instruct.Q4_0.gguf'
@@ -284,42 +285,49 @@ models:
     arch: llama
     trained_ctx: 8192
     role: decision
+    db: QuantFactory--SmolLM2-135M-Instruct-GGUF--SmolLM2-135M-Instruct.Q4_0
   smollm2-135m-q4-miryam:
     gguf: ~/models/SmolLM2-135M-Instruct-Q4_0.gguf
     sha256: bcc3af2849ad6095af57e9b5cd43775256efdc66e306acb529172f92d0c04b03   # measured on miryam 2026-10-10; same file on phone8
     arch: llama
     trained_ctx: 8192
     role: decision
+    db: bartowski--SmolLM2-135M-Instruct-GGUF--SmolLM2-135M-Instruct-Q4_0
   smollm2-135m-q4-phone:
     gguf: ~/familia/models/SmolLM2-135M-Instruct-Q4_0.gguf   # phones; bartowski/SmolLM2-135M-Instruct-GGUF
     sha256: bcc3af2849ad6095af57e9b5cd43775256efdc66e306acb529172f92d0c04b03
     arch: llama
     trained_ctx: 8192
     role: decision
+    db: bartowski--SmolLM2-135M-Instruct-GGUF--SmolLM2-135M-Instruct-Q4_0
   qwen25-05b-q4km-phone:
     gguf: ~/familia/models/Qwen2.5-0.5B-Instruct-Q4_K_M.gguf  # bartowski/Qwen2.5-0.5B-Instruct-GGUF
     sha256: 6eb923e7d26e9cea28811e1a8e852009b21242fb157b26149d3b188f3a8c8653
     arch: qwen2
     trained_ctx: 32768
     role: chat
+    db: bartowski--Qwen2.5-0.5B-Instruct-GGUF--Qwen2.5-0.5B-Instruct-Q4_K_M
   smollm2-135m-q4km:
     gguf: ~/familia/models/SmolLM2-135M-Instruct-Q4_K_M.gguf   # on phone7 (bartowski/SmolLM2-135M-Instruct-GGUF)
     sha256: 2e8040ceae7815abe0dcb3540b9995eaa1fa0d2ca9e797d0a635ae4433c68c2d
     arch: llama
     trained_ctx: 8192
     role: decision
+    db: bartowski--SmolLM2-135M-Instruct-GGUF--SmolLM2-135M-Instruct-Q4_K_M
   qwen35-2b-q4km:
     gguf: ~/.local/share/gguf/models/coder/Qwen3.5-2B-Q4_K_M.gguf
     sha256: aaf42c8b7c3cab2bf3d69c355048d4a0ee9973d48f16c731c0520ee914699223  # qodesh copy (scp from miryam)
     arch: qwen35                 # must match GGUF general.architecture
     trained_ctx: 262144          # must match GGUF qwen35.context_length (checked)
     role: coder
+    db: unsloth--Qwen3.5-2B-GGUF--Qwen3.5-2B-Q4_K_M
   egemma2-q8:
     gguf: ~/.local/share/gguf/models/embed/embeddinggemma-2-Q8_0.gguf
-    sha256: unmeasured
+    sha256: 6f1bd4ac6c5df7444f9cca7ca36cafe6cfa34cd6f49fefb1e0b4be8143aed8bc   # measured on miryam 2026-10-19 (model_db local check = LFS sha256)
     arch: gemma-embedding2       # unknown to b11374
     trained_ctx: 262144          # GGUF gemma-embedding2.context_length
     role: embed
+    db: unsloth--embeddinggemma-2-GGUF--embeddinggemma-2-Q8_0
 
 nodes:
 
@@ -342,6 +350,8 @@ nodes:
     host: qodesh
     runtime: llama-b11540-win-cpu
     ctx: 2048
+    override_reasons:            # model card / model-database deviations (#51)
+      ctx: "15-year-old qodesh (Athlon II X2, 1 thread beside the 8600 GT feeder): decision prompts are short, so 2048 keeps KV and prefill small; the card's 8192 was not measured here"
     threads: 1                   # measured 2026-10-10: 1 thread pinned CPU0 + GPU node on CPU1 = ~30 tok/s combined; -t 2 starves the GPU feeder
     parallel: 1
     kv_type: q8_0
@@ -359,6 +369,8 @@ nodes:
     host: miryam
     runtime: llama-b11541-linux-vulkan
     ctx: 2048
+    override_reasons:            # model card / model-database deviations (#51)
+      ctx: "decision prompts are short; 2048 keeps the Vulkan KV small on the shared-memory HD 620 beside the coder on 7.1 GiB miryam; 8192 not measured"
     parallel: 1
     kv_type: q8_0
     flash_attn: false
@@ -375,6 +387,8 @@ nodes:
     host: phone7
     runtime: termux-llama-cpp-0.6.0
     ctx: 2048
+    override_reasons:            # model card / model-database deviations (#51)
+      ctx: "decision prompts are short; 2048 keeps KV inside phone7's RAM policy (reserve_ram_mib 5120, ~2.3 GiB left); 8192 not measured"
     parallel: 1
     kv_type: q8_0
     flash_attn: true             # pp128 1372 vs 1239 t/s, tg equal (phone8)
@@ -389,6 +403,8 @@ nodes:
     host: phone8
     runtime: termux-llama-cpp-0.6.0
     ctx: 2048
+    override_reasons:            # model card / model-database deviations (#51)
+      ctx: "phone8 measured at 2048 (tg ~31-34 t/s, min MemAvailable 1945 MiB under reserve_ram_mib 5120); the card's 32768 was not measured on the phone"
     parallel: 1
     kv_type: f16
     flash_attn: true
@@ -403,6 +419,8 @@ nodes:
     host: miryam
     runtime: llama-b11374
     ctx: 65536                   # total; per-slot = ctx / parallel
+    override_reasons:            # model card / model-database deviations (#51)
+      ctx: "miryam has 7270 MiB with a 3072 MiB reserve: at 262144 the q8_0 KV is ~1650 MiB and cache_ram must cover a slot's prompt state (~1650 MiB), about 2.4 GiB more than at 65536 (426 MiB KV); 65536 meets hermes min_ctx 64000"
     parallel: 1
     kv_type: q8_0
     flash_attn: true
@@ -433,6 +451,8 @@ nodes:
     host: qodesh
     runtime: llama-b11540-win-cpu
     ctx: 2048
+    override_reasons:            # model card / model-database deviations (#51)
+      ctx: "15-year-old qodesh (Athlon II X2) prefills at ~1.44 t/s (measured, -t 2): 2048 tokens already take ~24 min, so a larger ctx is impractical"
     parallel: 1
     kv_type: q8_0
     flash_attn: false

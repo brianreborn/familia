@@ -1,0 +1,200 @@
+{
+ "schema": 1,
+ "id": "QuantFactory--SmolLM2-135M-Instruct-GGUF--SmolLM2-135M-Instruct.Q4_0",
+ "repo": "QuantFactory/SmolLM2-135M-Instruct-GGUF",
+ "revision": "476854d00ede130660aba430d15f9347ad2e7d0e",
+ "file": "SmolLM2-135M-Instruct.Q4_0.gguf",
+ "sha256": "f68203bfb98b1b1e8c64fac75fab10c4e36acac081609573b4df0fcc19c90dd9",
+ "bytes": 91726912,
+ "quant": "Q4_0",
+ "arch": "llama",
+ "roles": [
+  "decision"
+ ],
+ "license": "apache-2.0",
+ "license_source": "QuantFactory/SmolLM2-135M-Instruct-GGUF card license",
+ "ctx": 8192,
+ "ctx_source": "GGUF llama.context_length",
+ "card_ctx": null,
+ "card_ctx_source": null,
+ "base_model": null,
+ "base_revision": null,
+ "card_defaults": {
+  "temp": 0.2,
+  "top-p": 0.9
+ },
+ "card_defaults_source": {
+  "temp": "QuantFactory/SmolLM2-135M-Instruct-GGUF QuantFactory/SmolLM2-135M-Instruct-GGUF README.md:L61 (code example)",
+  "top-p": "QuantFactory/SmolLM2-135M-Instruct-GGUF QuantFactory/SmolLM2-135M-Instruct-GGUF README.md:L61 (code example)"
+ },
+ "card_default_set": "example: Transformers",
+ "card_defaults_how": "the card's only code example with sampling values",
+ "card_sampling_modes": null,
+ "card_default_mode": null,
+ "card_default_mode_source": null,
+ "card_sampling_sets": [
+  {
+   "label": "Transformers",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 0.2,
+    "top-p": 0.9
+   },
+   "source": "QuantFactory/SmolLM2-135M-Instruct-GGUF README.md:L61"
+  }
+ ],
+ "card_commands": null,
+ "card_notes": null,
+ "chat_template": {
+  "gguf_sha256": "872be49dbb638044ad01b60388f48d469ff2980e5f0dccdc22ec907db54d0788"
+ },
+ "stop": {
+  "eos_token_id": 2,
+  "eos_token_id_source": "GGUF"
+ },
+ "rope": {
+  "rope.freq_base": 100000.0
+ },
+ "aux": null,
+ "gguf": {
+  "general.architecture": "llama",
+  "general.name": "Smollm2 135M 8k Lc100K Mix1 Ep2",
+  "general.file_type": 2,
+  "general.quantization_version": 2,
+  "_gguf_version": 3
+ },
+ "snapshot": {
+  "path": "QuantFactory--SmolLM2-135M-Instruct-GGUF/476854d00ede130660aba430d15f9347ad2e7d0e",
+  "fetched_bytes": 8334,
+  "errors": null,
+  "gated": false
+ },
+ "base_snapshot": null,
+ "repo_files": {
+  ".gitattributes": {
+   "size": 2485,
+   "sha256": null,
+   "blob": "933281ad5808998c62d90131ce36b52caf5c9e87",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "README.md": {
+   "size": 5849,
+   "sha256": null,
+   "blob": "cb8dba1ca53d19b6ab568c4b08db8198b72da05c",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "SmolLM2-135M-Instruct.Q2_K.gguf": {
+   "size": 88201792,
+   "sha256": "55aa88ddac43adce6af0e9be8d6cdff2337a3835cd9b50bbcd7a894eb66dfc75",
+   "blob": "581e630cd38268cfa1ebde316c3d39fdb9186ebc",
+   "fetched": false,
+   "skipped": "weight file not used here (88 MB)"
+  },
+  "SmolLM2-135M-Instruct.Q3_K_L.gguf": {
+   "size": 97532992,
+   "sha256": "d8a6a5c16bda8d3aec864de0cc38222db6fa7903da92119187490e9a7a1d2614",
+   "blob": "ff6566ea813aa8fd8c191a22c408767401c8beb3",
+   "fetched": false,
+   "skipped": "weight file not used here (97 MB)"
+  },
+  "SmolLM2-135M-Instruct.Q3_K_M.gguf": {
+   "size": 93510208,
+   "sha256": "6059a31ab58c4ea18cab94d4a3da3f041f6227a1f8621056515795f796d67efe",
+   "blob": "efd08390f20046e316147fc9799b2d846fc3e6e0",
+   "fetched": false,
+   "skipped": "weight file not used here (93 MB)"
+  },
+  "SmolLM2-135M-Instruct.Q3_K_S.gguf": {
+   "size": 88201792,
+   "sha256": "352142b0127d4e325d99fbd6a9578f940843ec3f9475ce51f023fdfc343afa40",
+   "blob": "feb0ec82f6d5beec588f4d727f2efcfb6ebe10e7",
+   "fetched": false,
+   "skipped": "weight file not used here (88 MB)"
+  },
+  "SmolLM2-135M-Instruct.Q4_0.gguf": {
+   "size": 91726912,
+   "sha256": "f68203bfb98b1b1e8c64fac75fab10c4e36acac081609573b4df0fcc19c90dd9",
+   "blob": "fb984d110a159b41df75e07099652c722369e98b",
+   "fetched": false,
+   "skipped": "weight file not used here (91 MB)"
+  },
+  "SmolLM2-135M-Instruct.Q4_1.gguf": {
+   "size": 98362432,
+   "sha256": "b179c9523d0e6a0f98a330c7562b682750a6f8c8c15e5bc70ea373728110db53",
+   "blob": "985623cdd227669001115eeade2be5dcbd0108dc",
+   "fetched": false,
+   "skipped": "weight file not used here (98 MB)"
+  },
+  "SmolLM2-135M-Instruct.Q4_K_M.gguf": {
+   "size": 105454144,
+   "sha256": "8030f04528538d47bda434f6f0bdf3952c40a58123e4d5e755332f23731a8684",
+   "blob": "87631356704696e38e38332f51ec7a6ff9cd298b",
+   "fetched": false,
+   "skipped": "weight file not used here (105 MB)"
+  },
+  "SmolLM2-135M-Instruct.Q4_K_S.gguf": {
+   "size": 102039616,
+   "sha256": "dbc574efbba3ea85e086cf16b3f0f1d7dc0b50e68645b7034c664dc4255685f2",
+   "blob": "4f41de6fc86fb291c90b4e1bf001a10df31e8003",
+   "fetched": false,
+   "skipped": "weight file not used here (102 MB)"
+  },
+  "SmolLM2-135M-Instruct.Q5_0.gguf": {
+   "size": 104997952,
+   "sha256": "cecbc3e0d5214b3ba48e6c4464cfddc2dbdb1b05aaaee40163a986cb72e1ccfb",
+   "blob": "66d20d5f518e2ec8ff8884f691a01c5ac640eac2",
+   "fetched": false,
+   "skipped": "weight file not used here (104 MB)"
+  },
+  "SmolLM2-135M-Instruct.Q5_1.gguf": {
+   "size": 111633472,
+   "sha256": "5b704b2dee3c9f1c07ffacf5bc9ddf2aaba9b0755b459d61bf56ba1ef4c0bcdf",
+   "blob": "578b17eba31a0aed43987d698bdd488d38847f5c",
+   "fetched": false,
+   "skipped": "weight file not used here (111 MB)"
+  },
+  "SmolLM2-135M-Instruct.Q5_K_M.gguf": {
+   "size": 112103488,
+   "sha256": "46a08322f57f565a021213dec5609b43a00f4f46c62761482003a070afb02ad5",
+   "blob": "6c8fb187a4fb0fbf64ab4ec4d2764e0466a36bea",
+   "fetched": false,
+   "skipped": "weight file not used here (112 MB)"
+  },
+  "SmolLM2-135M-Instruct.Q5_K_S.gguf": {
+   "size": 109974592,
+   "sha256": "5078864bf45b1dafecb7985b54e4d0d82f7d2809bb579c77f5c3d5605bbd1eb5",
+   "blob": "2dae6c9ba1e5c2faff56c252638516d163152372",
+   "fetched": false,
+   "skipped": "weight file not used here (109 MB)"
+  },
+  "SmolLM2-135M-Instruct.Q6_K.gguf": {
+   "size": 138382912,
+   "sha256": "69d21ecb0220c0a5558b7a96645ac94d66ef1764bc221fe886d2e3309022420f",
+   "blob": "7d92e53b2758eec7787c4a898e776926dee29a2d",
+   "fetched": false,
+   "skipped": "weight file not used here (138 MB)"
+  },
+  "SmolLM2-135M-Instruct.Q8_0.gguf": {
+   "size": 144811072,
+   "sha256": "40f7094960b6ede829145d102ca79451b364b27d9d8694d4406e002024cff357",
+   "blob": "de1bd6ecaf51d7dfe86f3504fda4ebb6f3b700c9",
+   "fetched": false,
+   "skipped": "weight file not used here (144 MB)"
+  }
+ },
+ "base_repo_files": null,
+ "found_in": [
+  "graph.yaml models.smollm2-135m-q4"
+ ],
+ "match": "unique filename + size match (sha256 not measured)",
+ "local_check": null,
+ "unknown": [
+  "base_model (not in the card front matter or GGUF metadata)"
+ ],
+ "warnings": null,
+ "updated": "2026-10-19",
+ "by": "scripts/model_db.py"
+}

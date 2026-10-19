@@ -1,0 +1,313 @@
+{
+ "schema": 1,
+ "id": "unsloth--embeddinggemma-2-GGUF--embeddinggemma-2-Q8_0",
+ "repo": "unsloth/embeddinggemma-2-GGUF",
+ "revision": "031f0d4b35536f69ab3509d4893c923264fcf253",
+ "file": "embeddinggemma-2-Q8_0.gguf",
+ "sha256": "6f1bd4ac6c5df7444f9cca7ca36cafe6cfa34cd6f49fefb1e0b4be8143aed8bc",
+ "bytes": 309855520,
+ "quant": "Q8_0",
+ "arch": "gemma-embedding2",
+ "roles": [
+  "embed"
+ ],
+ "license": "apache-2.0",
+ "license_source": "unsloth/embeddinggemma-2-GGUF card license",
+ "ctx": 262144,
+ "ctx_source": "GGUF gemma-embedding2.context_length",
+ "card_ctx": 8192,
+ "card_ctx_source": "google/embeddinggemma-2 README.md:L45",
+ "base_model": "google/embeddinggemma-2",
+ "base_revision": "914f7f89142e33e77833254d9c9b90c3cef7303b",
+ "card_defaults": null,
+ "card_defaults_source": null,
+ "card_default_set": null,
+ "card_defaults_how": "the card and generation_config.json state no sampling values",
+ "card_sampling_modes": null,
+ "card_default_mode": null,
+ "card_default_mode_source": null,
+ "card_sampling_sets": null,
+ "card_commands": null,
+ "card_notes": [
+  {
+   "text": "* **Context length:** 8K token context window, capable of processing minutes of audio or video.",
+   "source": "google/embeddinggemma-2 README.md:L45"
+  },
+  {
+   "text": "* **Context length:** 8K token context window, capable of processing minutes of audio or video.",
+   "source": "unsloth/embeddinggemma-2-GGUF README.md:L64"
+  }
+ ],
+ "chat_template": {
+  "gguf_sha256": "4b852efc0b9960283e735363331e6f325b33bc74bdbaa076f595bc4e9b94d85e",
+  "repo_sha256": "4b852efc0b9960283e735363331e6f325b33bc74bdbaa076f595bc4e9b94d85e",
+  "repo_file": "google/embeddinggemma-2 chat_template.jinja",
+  "same": true
+ },
+ "stop": {
+  "eos_token": "<eos>",
+  "eos_token_id": 1,
+  "eos_token_id_source": "GGUF"
+ },
+ "rope": {
+  "rope.freq_base": 1000000.0,
+  "config": {
+   "full_attention": {
+    "rope_theta": 1000000.0,
+    "rope_type": "default"
+   },
+   "sliding_attention": {
+    "rope_theta": 10000.0,
+    "rope_type": "default"
+   }
+  }
+ },
+ "aux": [
+  {
+   "kind": "mmproj",
+   "file": "mmproj-BF16.gguf",
+   "size": 982074880,
+   "sha256": "995aaa56e88b9b631f651861d659b728a625ccc02a238be37cff56cf11dc0032",
+   "fetched": false,
+   "source": "unsloth/embeddinggemma-2-GGUF repo file"
+  },
+  {
+   "kind": "mmproj",
+   "file": "mmproj-F16.gguf",
+   "size": 980895232,
+   "sha256": "74bf65c860d292a1eebafd7ca85b44532a2528f03017f9204fe1695916d2c66f",
+   "fetched": false,
+   "source": "unsloth/embeddinggemma-2-GGUF repo file"
+  },
+  {
+   "kind": "mmproj",
+   "file": "mmproj-Q8_0.gguf",
+   "size": 554821120,
+   "sha256": "90e7b0238009e2954f856f2081dcf7f35af026b64c765e98f4777053e1754460",
+   "fetched": false,
+   "source": "unsloth/embeddinggemma-2-GGUF repo file"
+  }
+ ],
+ "gguf": {
+  "general.architecture": "gemma-embedding2",
+  "general.name": "Embeddinggemma 2",
+  "general.file_type": 7,
+  "general.quantization_version": 2,
+  "_gguf_version": 3
+ },
+ "snapshot": {
+  "path": "unsloth--embeddinggemma-2-GGUF/031f0d4b35536f69ab3509d4893c923264fcf253",
+  "fetched_bytes": 24946,
+  "errors": null,
+  "gated": false
+ },
+ "base_snapshot": {
+  "path": "google--embeddinggemma-2/914f7f89142e33e77833254d9c9b90c3cef7303b",
+  "fetched_bytes": 36894835,
+  "errors": null,
+  "gated": false
+ },
+ "repo_files": {
+  ".gitattributes": {
+   "size": 2265,
+   "sha256": null,
+   "blob": "7ac86ef3b3ee45f7505ca863f137cccc42083ca2",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "README.md": {
+   "size": 22681,
+   "sha256": null,
+   "blob": "d1cdeff267dfd6051ccb1d81c4ce1e42481c39f2",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "embeddinggemma-2-BF16.gguf": {
+   "size": 557950240,
+   "sha256": "f315cbbb30dd487e44d501c8902abe88808755e43753a96beed1964f0a48aa4f",
+   "blob": "69acd57e65982bfc7046faee4aa7b64112ed3209",
+   "fetched": false,
+   "skipped": "weight file not used here (557 MB)"
+  },
+  "embeddinggemma-2-F16.gguf": {
+   "size": 557950240,
+   "sha256": "0d4350867eddbb94af485501a3d07e9374c47779d88f8a39cd1abd6a8e2d0901",
+   "blob": "ba8b8f2af7dde604bbc620a9b27c1f7487c95564",
+   "fetched": false,
+   "skipped": "weight file not used here (557 MB)"
+  },
+  "embeddinggemma-2-Q8_0.gguf": {
+   "size": 309855520,
+   "sha256": "6f1bd4ac6c5df7444f9cca7ca36cafe6cfa34cd6f49fefb1e0b4be8143aed8bc",
+   "blob": "86adccd2b412f02a584282022194950260a5048b",
+   "fetched": false,
+   "skipped": "weight file not used here (309 MB)"
+  },
+  "embeddinggemma-2-UD-Q4_K_XL.gguf": {
+   "size": 175673856,
+   "sha256": "ea905fd08e8061db77a0031cbb5096d459d7cfd2bdd0ad2ba66e483f16719493",
+   "blob": "58cdfe874def8955c1241e82f202174b3e08aa3b",
+   "fetched": false,
+   "skipped": "weight file not used here (175 MB)"
+  },
+  "embeddinggemma-2-UD-Q5_K_XL.gguf": {
+   "size": 210055680,
+   "sha256": "a9d7a3b7eb421113f05e964e10882676f10fff83811b7876d5bb983db7c7ac41",
+   "blob": "841db7f91e43af0972ec80cbfa457774279b98da",
+   "fetched": false,
+   "skipped": "weight file not used here (210 MB)"
+  },
+  "embeddinggemma-2-UD-Q6_K_XL.gguf": {
+   "size": 248812032,
+   "sha256": "dc84f042bc3ffbe6122b3b38b2fb299d66f5f37b276c9d458db85d4a4f1e6ba3",
+   "blob": "cb9612f48b57ac85114dea31d2c2a4f331dffe23",
+   "fetched": false,
+   "skipped": "weight file not used here (248 MB)"
+  },
+  "mmproj-BF16.gguf": {
+   "size": 982074880,
+   "sha256": "995aaa56e88b9b631f651861d659b728a625ccc02a238be37cff56cf11dc0032",
+   "blob": "3c92e60cae9601b0d4b76ed11c9fccdb845102be",
+   "fetched": false,
+   "skipped": "weight file not used here (982 MB)"
+  },
+  "mmproj-F16.gguf": {
+   "size": 980895232,
+   "sha256": "74bf65c860d292a1eebafd7ca85b44532a2528f03017f9204fe1695916d2c66f",
+   "blob": "2fbbdf8a36a68026050f62d7a0ff44b0144cd3c1",
+   "fetched": false,
+   "skipped": "weight file not used here (980 MB)"
+  },
+  "mmproj-Q8_0.gguf": {
+   "size": 554821120,
+   "sha256": "90e7b0238009e2954f856f2081dcf7f35af026b64c765e98f4777053e1754460",
+   "blob": "60f252cc7fecd0724511510850e7d48272d49108",
+   "fetched": false,
+   "skipped": "weight file not used here (554 MB)"
+  }
+ },
+ "base_repo_files": {
+  ".gitattributes": {
+   "size": 1301,
+   "sha256": null,
+   "blob": "341d702660437460ba92cd99ce60f4d66545521b",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "1_Pooling/config.json": {
+   "size": 90,
+   "sha256": null,
+   "blob": "2730fc1de168630e474c4066987f46d091de2189",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "2_Normalize/config.json": {
+   "size": 97,
+   "sha256": null,
+   "blob": "8babba92405167e8718211dc51f44fb117e423e4",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "README.md": {
+   "size": 21730,
+   "sha256": null,
+   "blob": "960d956ce1d9664b1f67d814bfbbc7160a66c8d1",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "chat_template.jinja": {
+   "size": 1016,
+   "sha256": null,
+   "blob": "8df4ab8961aa08b66b470c5adbdc51374aabb63b",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "config.json": {
+   "size": 4455,
+   "sha256": null,
+   "blob": "dc524b2cbef566d66d8533c67dc68a6a8f5d340a",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "config_sentence_transformers.json": {
+   "size": 1565,
+   "sha256": null,
+   "blob": "ba7dd4d5481cbaf271d5e8d1ad4271c5a45d2fd7",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "model.safetensors": {
+   "size": 1488915288,
+   "sha256": "197a32965d4b1105faf060417baa899e193fb73cd401f42ec9295234d5553d79",
+   "blob": "95b4ef9f6465d3665486f6b374593a8d7d6ae003",
+   "fetched": false,
+   "skipped": "weight file not used here (1488 MB)"
+  },
+  "modules.json": {
+   "size": 413,
+   "sha256": null,
+   "blob": "1ab20c8ab29b8338488b415e5c09af14b742fe3d",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "preprocessor_config.json": {
+   "size": 511,
+   "sha256": null,
+   "blob": "4adff307a29874c969eda7edb5d3f07faaef879d",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "processor_config.json": {
+   "size": 1788,
+   "sha256": null,
+   "blob": "63043a5a2fd2e25a2fc5336fcdaf24e515d12289",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "sentence_bert_config.json": {
+   "size": 747,
+   "sha256": null,
+   "blob": "b3b98f8308641875fca1e4ddbfae5f38996bb54f",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "tokenizer.json": {
+   "size": 32170510,
+   "sha256": "4d777ef5bdc1aa36227abdfb77c3e49e7b9c892d16e1b6bda41c393504828be4",
+   "blob": "8562f6c9ab4b722ecf89bf869e734560e54d3b85",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "tokenizer.model": {
+   "size": 4689013,
+   "sha256": "e594c8a90eb08d8bda498ff4747977dc827ae0c3c56b5c0d41a605a22d02ef03",
+   "blob": "734e2919dcbd7fc5758b79817d3225134ffc9124",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "tokenizer_config.json": {
+   "size": 1599,
+   "sha256": null,
+   "blob": "a9afd12fb3ca2c418fd405320ace85ad46748d03",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  }
+ },
+ "found_in": [
+  "manifest embed/default"
+ ],
+ "match": null,
+ "local_check": {
+  "host": "miryam",
+  "sha256_ok": true,
+  "checked": "2026-10-19"
+ },
+ "unknown": [
+  "card_defaults: the card and generation_config.json state no sampling values"
+ ],
+ "warnings": [
+  "card states context 8192 (google/embeddinggemma-2 README.md:L45) but GGUF gemma-embedding2.context_length is 262144"
+ ],
+ "updated": "2026-10-19",
+ "by": "scripts/model_db.py"
+}

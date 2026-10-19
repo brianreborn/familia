@@ -123,6 +123,7 @@ Everything below is on `main` (all feature branches have been merged; nothing is
 | Side-by-side pinned llama.cpp runtimes | Implemented |
 | RAM safety reserve (`reserve_ram_mib`, memcap scope in `scripts/serve.sh`, earlyoom+zram on miryam) | Implemented, see [docs/ram-safety.md](docs/ram-safety.md) |
 | Measured model/hardware registry (`registry/records.jsonl`, `scripts/registry.py`) | Implemented, see [docs/model-registry.md](docs/model-registry.md) |
+| Model database from the full pinned HF repo (`registry/models/`, `scripts/model_db.py`, `add-model.sh --fetch`); card sampling as launch defaults, overrides need reasons (#51) | Implemented, see [docs/model-database.md](docs/model-database.md); RoPE/stop/template recorded, not yet applied |
 | One-click installers (Windows, desktop Linux/macOS, Termux) + Windows startup | Implemented, see [docs/install.md](docs/install.md), [docs/windows.md](docs/windows.md) |
 | Legacy GPU decision node (GeForce 8600 GT, sm_11 PTX) | Measured; tuning notes in [docs/perf/pgo-followup.md](docs/perf/pgo-followup.md) |
 | Transports PoC (SSH nexus, private BitTorrent tracker), C2C stage 1 `kv_ship` | Opt-in proof of concept (loopback- and cross-host-tested) |
