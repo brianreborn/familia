@@ -12,7 +12,7 @@ hermes-agent with compression off sent ~18–21k-token requests to a 16,384-toke
 A stray `\"` left `android_start.sh` unparseable. Run `sh -n` / shellcheck in CI.
 
 ## L4. Never pack a small host's RAM (2026-10-09)
-miryam (7 GiB) hard-hung when the 64k coder server, an embed test and a compaction self-test ran together. Provisional guidance, not hard limits: `reserve_ram_mib: 3072`, ~2 GiB free after estimates, one heavy process at a time. These stay fuzzy until idle load is characterized and system-level OOM protection is deployed. See `docs/ram-safety.md`.
+miryam (7 GiB) hard-hung when the 64k coder server, an embed test and a compaction self-test ran together. Provisional guidance, not hard limits: `reserve_ram_mib: 3072`, ~2 GiB free after estimates, one heavy process at a time. They stay fuzzy guidance even now that idle load has been sampled and earlyoom, zram and the memcap scope are deployed on miryam (L-memcap). See `docs/ram-safety.md`.
 
 ## L5. SSH passwords
 Use key-only SSH to the phones; the android scripts read addr/user/port from graph.yaml (or ANDROID_HOST/USER/PORT) and never take passwords or disable host-key checking (#18).
@@ -45,11 +45,11 @@ Each tuning round re-learned facts we already had: the A57 Vulkan loader fix, th
 - **No public sub-1-bit checkpoints** from Samsung. "littlebit-qwen3-4b" GGUFs on HF are ordinary Q4/Q5/Q8.
 - `rg PATTERN` with no path in a non-tty shell reads stdin and hangs. Always pass a path.
 
-## L11. A57 sweep: what matters (phone8, llama-cpp 0.6.0, 2026-10-10)
+## L13. A57 sweep: what matters (phone8, llama-cpp 0.6.0, 2026-10-10)
 With Vulkan -ngl 99 on SmolLM2-135M: Q4_0 gives the best tg (102 t/s, against 89 for Q8_0 and 83 for Q4_K_M). Flash-attn raises pp about 11% at equal tg. Threads 1, 2 and 3 are within noise once the GPU holds all layers. Batch and ubatch sizes stay within noise from 128 up (64 is about 15% slower on pp). Partial offload is worse than full: -ngl 24 gives 7 t/s tg, 16 gives 2.8, 8 gives 1.5. -ngl 0 with the Vulkan build loaded collapses to 0.2-0.8 t/s tg, so always use -ngl 99. Four back-to-back runs showed no thermal drift (tg128 80-82 t/s). Qwen2.5-0.5B Q4_K_M fits: tg 31-34 t/s, pp128 508, MemAvailable never below 1.9 GiB.
 
-## L12. DHCP can swap phone addresses
-After a reconnect, phone8 (u0_a414) answered on 192.168.1.7 with phone8's host key, and ssh refused it as a "changed host key". Confirm a device by its known host key plus its Termux user, and connect with HostKeyAlias, never by deleting known_hosts entries. Give the phones DHCP reservations.
+## L14. DHCP can swap phone addresses
+After a reconnect, phone8 answered on phone7's old address with phone8's host key, and ssh refused it as a "changed host key". Confirm a device by its known host key plus its Termux user, and connect with HostKeyAlias, never by deleting known_hosts entries. Give the phones DHCP reservations.
 
 ## L-miryam-perf. On a 2-core laptop, use 2 threads, and the iGPU costs RAM (2026-10-10)
 llama-bench on miryam (i5-7200U, 2C/4T, HD 620), Qwen3.5-2B Q4_K_M, CPU only, fa on, 2 reps, spread shown as +/-:
@@ -124,7 +124,7 @@ A provisional guard killed any run that dropped free RAM below 3.5 GiB. That 3.5
 
 ## L-wifi. The phone "drops" were Wi-Fi switched off, not sleep (2026-10-10)
 - The repeated phone7/phone8 disappearances were caused by Wi-Fi being disabled on the phones, not by Android sleep or Doze. termux-wake-lock is still worth holding during runs, but it doesn't fix a radio that's off.
-- When a phone pings but doesn't answer on port 8022, Termux sshd isn't running (seen on 192.168.1.7 at 16:20 PT). Run `sshd` in Termux. You can't start it remotely.
+- When a phone pings but doesn't answer on its SSH port, Termux sshd isn't running (seen on phone7 at 16:20 PT). Run `sshd` in Termux. You can't start it remotely.
 - Without the Termux:API app, nothing about power can be read on the A57 (Android 16): /sys/class/power_supply, /proc/loadavg and dumpsys are all denied. Install the app from github.com/termux/termux-api/releases, because add-ons must share GitHub Termux's signature.
 
 
