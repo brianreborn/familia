@@ -46,7 +46,7 @@ curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install.sh
 
 That clones familia into `~/familia`, shows the license review, syncs the pinned sub-projects and starts the router. You type `yes` once to acknowledge the voluntary contribution notice (`INSTALL_ACK=yes` for unattended installs); paying is never required. Then open **http://127.0.0.1:9931/?model=chat** (or the URL the launcher prints) and paste the API key from the terminal.
 
-**What now?** Run `./familia` in the checkout. It opens a menu grouped by task (Set up, Skills, Models, Agents, Harness², Test, Hosts, three Advanced groups, Help), and each item shows the command it runs (on Windows, `familia.cmd`). Every user-facing script is in it; [docs/commands.md](docs/commands.md) lists every item and the few scripts left out on purpose, and `./familia-menu.sh --list` prints them all.
+**What now?** Run `./familia` in the checkout. It opens a menu grouped by task (Set up, Skills, Models, Agents, Harness², Test, Hosts, three Advanced groups, Help), and each item shows the command it runs (on Windows, `familia.cmd`). Every user-facing script is in it; [docs/commands.md](docs/commands.md) lists every item and the few scripts left out on purpose, and `./familia-menu.sh --list` prints them all. Type `/word` at any menu prompt to search every group (`n`/`N` for next/previous, like `less`), or run `./familia search WORD`.
 
 Windows, per-graph-node installers, and everything after the first start: **[QUICKSTART.md](QUICKSTART.md)**, then [MANUAL.md](MANUAL.md).
 

@@ -80,5 +80,6 @@ adv.logon-task-remove|Advanced: hosts & benchmarks|Windows: remove the logon tas
 adv.numpy-wheel|Advanced: hosts & benchmarks|Windows: build numpy for CPUs without SSE4 (long; needs MSYS2)||||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\build_numpy_wheel.ps1 -Version {VERSION:numpy version [2.5.3]}
 adv.poudriere|Advanced: hosts & benchmarks|FreeBSD: build the familia package with poudriere (preview)|sh scripts/freebsd/poudriere-build.sh -n|||
 help.quickstart|Help|Read the quick start|PAGER QUICKSTART.md|||more QUICKSTART.md
+help.search|Help|Search every group for a word (in the menu: /word, then n / N)|./familia-menu.sh --search {WORD:word to look for, e.g. model}|||familia.cmd -Search {WORD:word to look for, e.g. model}
 help.cli|Help|Every menu item as a command (same as --list)|./familia-menu.sh --list|||familia.cmd -List
 help.internal|Help|Scripts the menu leaves out on purpose, and why|PAGER scripts/menu-internal.txt|||more scripts\menu-internal.txt

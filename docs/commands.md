@@ -5,6 +5,20 @@ Run any row from the menu, or directly with `./familia-menu.sh --run KEY [ARG...
 `<NAME>` is asked for when you pick the item. "licenses first" means `scripts/licenses.py gate` runs before it ([licenses.md](licenses.md)).
 
 
+## Search
+
+At any menu prompt, type `/` and a word to search every group: item keys, labels, commands and group names, ignoring case. `?word` searches backward (the last match is marked first). `n` goes to the next match and `N` to the previous one, wrapping around, and `/` alone repeats the last search. Pick a result by its number: it runs exactly like picking it from its group, with the same license review, dry-run and prompts for values. Matches are highlighted when the terminal supports it (`NO_COLOR=1` or `FAMILIA_COLOR=never` turns that off).
+
+Without the interactive menu, for scripts or when typing is hard:
+
+```
+./familia search WORD                      # or: ./familia-menu.sh --search WORD
+./familia search WORD --run N [VALUE...]   # run match N (add --dry-run to only print it)
+familia.cmd -Search WORD [-Run N] [-DryRun]
+```
+
+`--search` exits 0 when something matched and 1 when nothing did.
+
 ## Set up
 
 | key | what it does | Linux / Android | Windows |
@@ -132,6 +146,7 @@ Run any row from the menu, or directly with `./familia-menu.sh --run KEY [ARG...
 | key | what it does | Linux / Android | Windows |
 |---|---|---|---|
 | `help.quickstart` | Read the quick start | `more QUICKSTART.md` | `more QUICKSTART.md` |
+| `help.search` | Search every group for a word (in the menu: /word, then n / N) | `./familia-menu.sh --search <WORD>` | `familia.cmd -Search <WORD>` |
 | `help.cli` | Every menu item as a command (same as --list) | `./familia-menu.sh --list` | `familia.cmd -List` |
 | `help.internal` | Scripts the menu leaves out on purpose, and why | `more scripts/menu-internal.txt` | `more scripts\menu-internal.txt` |
 
