@@ -1,0 +1,185 @@
+{
+  "version": 1,
+  "about": "familia skills catalog. green-zkillz (inside brianreborn/green-agentz) is the home for bundled skills; this file is the selection layer. Format: skills/README.md. Survey source: familia #67.",
+  "homes": {
+    "green-zkillz": {
+      "repo": "https://github.com/brianreborn/green-agentz",
+      "commit": "9b9d5ad506cdd60e01ac21cd3f60b5a23b6d4847",
+      "checkout": "green-agentz",
+      "skills_dir": "skills",
+      "license": "BSD-3-Clause",
+      "license_file": "docs/green-zkillz/LICENSE"
+    }
+  },
+  "skills": [
+    {
+      "id": "green-zkillz",
+      "name": "Green-Zkillz pipeline",
+      "description": "Runs the adaptive skill pipeline in order: probe, bootstrap, ingest, format, deploy.",
+      "home": "green-zkillz",
+      "repo": "https://github.com/brianreborn/green-agentz",
+      "commit": "9b9d5ad506cdd60e01ac21cd3f60b5a23b6d4847",
+      "license": "BSD-3-Clause",
+      "license_file": "docs/green-zkillz/LICENSE",
+      "attribution": "Copyright (c) 2026, Brian Reborn. green-zkillz, BSD 3-Clause (docs/green-zkillz/LICENSE in green-agentz).",
+      "path": "skills/green-zkillz",
+      "applies_to": [
+        "hermes"
+      ],
+      "adds_tools": true,
+      "status": "bundled"
+    },
+    {
+      "id": "green-probe",
+      "name": "Green Probe",
+      "description": "Checks the host tier, file-descriptor privileges and identity posture before other green-zkillz skills run.",
+      "home": "green-zkillz",
+      "repo": "https://github.com/brianreborn/green-agentz",
+      "commit": "9b9d5ad506cdd60e01ac21cd3f60b5a23b6d4847",
+      "license": "BSD-3-Clause",
+      "license_file": "docs/green-zkillz/LICENSE",
+      "attribution": "Copyright (c) 2026, Brian Reborn. green-zkillz, BSD 3-Clause (docs/green-zkillz/LICENSE in green-agentz).",
+      "path": "skills/green-probe",
+      "applies_to": [
+        "hermes"
+      ],
+      "adds_tools": true,
+      "status": "bundled"
+    },
+    {
+      "id": "green-bootstrap",
+      "name": "Green Bootstrap",
+      "description": "Writes a Makefile and runtime env files from a green-probe status line; keeps CI logs non-interactive.",
+      "home": "green-zkillz",
+      "repo": "https://github.com/brianreborn/green-agentz",
+      "commit": "9b9d5ad506cdd60e01ac21cd3f60b5a23b6d4847",
+      "license": "BSD-3-Clause",
+      "license_file": "docs/green-zkillz/LICENSE",
+      "attribution": "Copyright (c) 2026, Brian Reborn. green-zkillz, BSD 3-Clause (docs/green-zkillz/LICENSE in green-agentz).",
+      "path": "skills/green-bootstrap",
+      "applies_to": [
+        "hermes"
+      ],
+      "adds_tools": true,
+      "status": "bundled"
+    },
+    {
+      "id": "green-ingest",
+      "name": "Green Ingest",
+      "description": "Indexes a workspace tree or collects prose and code turn by turn, then runs light syntax checks.",
+      "home": "green-zkillz",
+      "repo": "https://github.com/brianreborn/green-agentz",
+      "commit": "9b9d5ad506cdd60e01ac21cd3f60b5a23b6d4847",
+      "license": "BSD-3-Clause",
+      "license_file": "docs/green-zkillz/LICENSE",
+      "attribution": "Copyright (c) 2026, Brian Reborn. green-zkillz, BSD 3-Clause (docs/green-zkillz/LICENSE in green-agentz).",
+      "path": "skills/green-ingest",
+      "applies_to": [
+        "hermes"
+      ],
+      "adds_tools": true,
+      "status": "bundled"
+    },
+    {
+      "id": "green-format",
+      "name": "Green Format",
+      "description": "Normalizes markdown to the green-zkillz style guide and maps sources into MANUSCRIPT.json chapters.",
+      "home": "green-zkillz",
+      "repo": "https://github.com/brianreborn/green-agentz",
+      "commit": "9b9d5ad506cdd60e01ac21cd3f60b5a23b6d4847",
+      "license": "BSD-3-Clause",
+      "license_file": "docs/green-zkillz/LICENSE",
+      "attribution": "Copyright (c) 2026, Brian Reborn. green-zkillz, BSD 3-Clause (docs/green-zkillz/LICENSE in green-agentz).",
+      "path": "skills/green-format",
+      "applies_to": [
+        "hermes"
+      ],
+      "adds_tools": true,
+      "status": "bundled"
+    },
+    {
+      "id": "green-deploy",
+      "name": "Green Deploy",
+      "description": "Publishes green-zkillz artifacts to X, Git, or a flat MANUSCRIPT.md. Only on an explicit request naming the channel.",
+      "home": "green-zkillz",
+      "repo": "https://github.com/brianreborn/green-agentz",
+      "commit": "9b9d5ad506cdd60e01ac21cd3f60b5a23b6d4847",
+      "license": "BSD-3-Clause",
+      "license_file": "docs/green-zkillz/LICENSE",
+      "attribution": "Copyright (c) 2026, Brian Reborn. green-zkillz, BSD 3-Clause (docs/green-zkillz/LICENSE in green-agentz).",
+      "path": "skills/green-deploy",
+      "applies_to": [
+        "hermes"
+      ],
+      "adds_tools": true,
+      "status": "bundled"
+    },
+    {
+      "id": "etioz",
+      "name": "etioz (requirements matrix)",
+      "description": "Turns the artifacts you give it (prose, transcripts, code, mockups) into a Software Requirements Matrix. Design, not implementation.",
+      "home": "green-zkillz",
+      "repo": "https://github.com/brianreborn/green-agentz",
+      "commit": "9b9d5ad506cdd60e01ac21cd3f60b5a23b6d4847",
+      "license": "BSD-3-Clause",
+      "license_file": "docs/green-zkillz/LICENSE",
+      "attribution": "Copyright (c) 2026, Brian Reborn. green-zkillz, BSD 3-Clause (docs/green-zkillz/LICENSE in green-agentz).",
+      "path": "skills/etioz",
+      "applies_to": [
+        "hermes"
+      ],
+      "adds_tools": false,
+      "status": "bundled",
+      "notes": "Pre-bootstrap draft (metadata.status: awaiting-ratification)."
+    },
+    {
+      "id": "artemis-android-skill",
+      "name": "ARTEMIS Android automation",
+      "description": "On-demand Hermes Agent skill for Google ARTEMIS Android automation without a permanent MCP server in context.",
+      "home": "green-zkillz",
+      "repo": "https://github.com/pank-su/artemis-android-skill",
+      "commit": "d73abe6c49d6fc3c09245774ae9f85caf6e108bd",
+      "license": "Apache-2.0",
+      "license_file": "LICENSE",
+      "attribution": "pank-su/artemis-android-skill (Apache-2.0); keep LICENSE and any NOTICE when vendoring.",
+      "path": ".",
+      "applies_to": [
+        "hermes"
+      ],
+      "adds_tools": true,
+      "status": "available",
+      "vendor_plan": "Vendor into green-zkillz at skills/artemis-android-skill with LICENSE and attribution, pinned to the commit above, after license review.",
+      "survey": "https://github.com/brianreborn/familia/issues/67",
+      "notes": "Skill count 1 (SKILL.md + scripts/). Drives an Android device: adds tools."
+    },
+    {
+      "id": "goclaw-skills",
+      "name": "GoClaw skills/ set",
+      "description": "8 SKILL.md folders (anysearch, docx, goclaw, pdf, pptx, skill-creator, workspace-organizing, xlsx) plus _shared, from the GoClaw framework repo.",
+      "home": "green-zkillz",
+      "repo": "https://github.com/nextlevelbuilder/goclaw",
+      "commit": "8b1a4766b5f2a2f5272f0180ee0b4c9aa8362146",
+      "license": "CC-BY-NC-4.0 (repo); per-skill licenses vary",
+      "license_file": "LICENSE",
+      "attribution": "nextlevelbuilder/goclaw; per-skill LICENSE.txt files apply.",
+      "path": "skills",
+      "applies_to": [
+        "hermes"
+      ],
+      "adds_tools": true,
+      "status": "license-blocked",
+      "blocked_reason": "Repo is CC-BY-NC-4.0 (non-commercial) and skills/pdf is Anthropic proprietary (forbids redistribution). Cherry-picking needs a per-file audit first.",
+      "parts": {
+        "anysearch": "unknown (repo CC-BY-NC-4.0)",
+        "docx": "unknown (repo CC-BY-NC-4.0)",
+        "goclaw": "unknown (repo CC-BY-NC-4.0)",
+        "pdf": "Anthropic proprietary (skills/pdf/LICENSE.txt)",
+        "pptx": "unknown (repo CC-BY-NC-4.0)",
+        "skill-creator": "Apache-2.0 (skills/skill-creator/LICENSE.txt)",
+        "workspace-organizing": "unknown (repo CC-BY-NC-4.0)",
+        "xlsx": "unknown (repo CC-BY-NC-4.0)"
+      },
+      "survey": "https://github.com/brianreborn/familia/issues/67"
+    }
+  ]
+}

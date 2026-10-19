@@ -482,7 +482,9 @@ TYPES = {
     "aliases": T({"node": req("ref", ref="nodes"), "gateway": req("ref", ref="gateways")}, check_alias,
                  doc="route name -> exactly one node"),
     "agents": T({"kind": req("enum", choices={"hermes-agent"}), "host": req("ref", ref="hosts"),
-                 "min_ctx": req("int", min=1), "context_length": req("int", min=1), "aliases": req("map")},
+                 "min_ctx": req("int", min=1), "context_length": req("int", min=1), "aliases": req("map"),
+                 # bundled skills (skills/catalog.json, scripts/skills.py, docs/skills.md)
+                 "skills": opt("strlist")},
                 check_agent, doc="agent process"),
     "fleets": T({"repo": req("str"), "agents": req("refs", ref="agents")}, doc="green-agentz agent group"),
     "agencies": T({"repo": req("str"), "labels": req("list"), "assignments": req("map")}, check_agency,
@@ -506,7 +508,8 @@ TYPES = {
                    "requires_operator_confirm": req("bool"),
                    "launch_test_only": req("bool"),
                    "status": req("enum", choices={"planned", "active"}),
-                   "notes": opt("str")},
+                   "notes": opt("str"),
+                   "skills": opt("strlist")},   # never tool-adding skills (scripts/skills.py)
                   check_pentest,
                   doc="authorized testing of the owner's fleet (launch-test only in automation; not attack tooling)"),
     "kv_channels": T({"experimental": req("bool"), "status": req("enum", choices={"planned", "experimental", "active"}),
@@ -523,6 +526,16 @@ TYPES = {
                  check_option, doc="unplaced model option (catalog only; never placed or RAM-counted)"),
 }
 REQUIRED_SECTIONS = ("hosts", "runtimes", "models", "nodes", "gateways", "aliases", "agents")
+
+def check_skills(g, errs):
+    """skills: lists under agents/pentests must name catalog entries; pentests never get tool-adding skills."""
+    if not any(isinstance(a, dict) and "skills" in a for sec in ("agents", "pentests") for a in (g.get(sec) or {}).values()):
+        return
+    try:
+        import skills as _skills
+    except Exception as e:  # noqa: BLE001
+        errs.append(f"skills: cannot load scripts/skills.py to check skills lists ({e})"); return
+    errs.extend(_skills.check_graph_skills(g))
 
 def validate_types(g):
     errs = []
@@ -547,4 +560,5 @@ def validate_types(g):
             if t.experimental and item.get("experimental") is not True:
                 errs.append(f"{sec}.{name}: experimental type; set 'experimental: true' to acknowledge")
             if t.check: t.check(g, name, item, errs)
+    check_skills(g, errs)
     return errs
