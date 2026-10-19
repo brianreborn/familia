@@ -7,6 +7,8 @@
 # help and the man page show. Longest match wins.
 setup|setup.configure
 configure|setup.configure
+sync|raw|PY scripts/sync_pins.py||python scripts\sync_pins.py|bring every pinned part (pins.txt) to its pin, together: [--dry-run] [--check]; fetches only missing pins, never discards local changes
+update|raw|PY scripts/sync_pins.py --update||python scripts\sync_pins.py --update|git pull --ff-only familia itself, then sync the pinned parts: [--dry-run]
 settings|setup.settings
 panel|setup.panel
 install|setup.install-run

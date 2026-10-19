@@ -32,9 +32,24 @@ Configure in a simple window (mouse, keyboard or switch friendly).
 Runs: \fBpython3 scripts/panel.py\fR
 .TP
 \fBsetup\fR
-Get or update the pinned parts (code\-bootstraps, green\-agentz, ...) (licenses first).
+Set up this checkout: sync the pinned parts and the git\-pull hooks (licenses first).
 .br
 Runs: \fBsh scripts/configure.sh\fR
+.TP
+\fBsync\-preview\fR
+Pinned parts: show what is behind pins.txt and would move (no changes).
+.br
+Runs: \fBpython3 scripts/sync_pins.py \-\-dry\-run\fR
+.TP
+\fBsetup sync\fR
+Pinned parts: bring every part to its pin, together (fetches only missing pins) (licenses first).
+.br
+Runs: \fBpython3 scripts/sync_pins.py\fR
+.TP
+\fBsetup update\fR
+Update familia (git pull \-\-ff\-only), then sync the pinned parts (licenses first).
+.br
+Runs: \fBpython3 scripts/sync_pins.py \-\-update\fR
 .TP
 \fBlicenses review\fR
 Review the licenses of everything you have chosen.
@@ -436,6 +451,16 @@ Scripts the menu leaves out on purpose, and why.
 .br
 Runs: \fBmore scripts/menu\-internal.txt\fR
 .SS Pass\-through commands
+.TP
+\fBsync\fR \fIARG\fR...
+bring every pinned part (pins.txt) to its pin, together: [\-\-dry\-run] [\-\-check]; fetches only missing pins, never discards local changes.
+.br
+Runs: \fBpython3 scripts/sync_pins.py\fR \fIARG\fR...
+.TP
+\fBupdate\fR \fIARG\fR...
+git pull \-\-ff\-only familia itself, then sync the pinned parts: [\-\-dry\-run].
+.br
+Runs: \fBpython3 scripts/sync_pins.py \-\-update\fR \fIARG\fR...
 .TP
 \fBinstall\-cli\fR \fIARG\fR...
 put familia on your PATH (2\-line shim, code stays here): [\-\-dry\-run] [\-\-prefix DIR] [\-\-force]; Windows \-WhatIf.

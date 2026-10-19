@@ -8,7 +8,10 @@
 #   empty posix command = Windows only (hidden by familia-menu.sh)
 #   every user-facing script must appear here; internal-only ones are listed in scripts/menu-internal.txt
 setup.panel|Set up|Configure in a simple window (mouse, keyboard or switch friendly)|PY scripts/panel.py|||python scripts\panel.py
-setup.configure|Set up|Get or update the pinned parts (code-bootstraps, green-agentz, ...)|sh scripts/configure.sh|lic||
+setup.configure|Set up|Set up this checkout: sync the pinned parts and the git-pull hooks|sh scripts/configure.sh|lic||
+setup.sync-preview|Set up|Pinned parts: show what is behind pins.txt and would move (no changes)|PY scripts/sync_pins.py --dry-run|||python scripts\sync_pins.py --dry-run
+setup.sync|Set up|Pinned parts: bring every part to its pin, together (fetches only missing pins)|PY scripts/sync_pins.py|lic||python scripts\sync_pins.py
+setup.update|Set up|Update familia (git pull --ff-only), then sync the pinned parts|PY scripts/sync_pins.py --update|lic||python scripts\sync_pins.py --update
 setup.licenses|Set up|Review the licenses of everything you have chosen|PY scripts/licenses.py review|||python scripts\licenses.py review
 setup.settings|Set up|Change launcher settings (port, threads, context) on the terminal|sh scripts/configure.sh --interactive|||
 setup.install|Set up|Install or update this host (llama.cpp runtime, host entry): dry run first|sh INSTALLER --dry-run|||powershell -NoProfile -ExecutionPolicy Bypass -File install\windows\install.ps1 -DryRun

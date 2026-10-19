@@ -37,10 +37,15 @@ familia.cmd -Search WORD [-Run N] [-DryRun]
 
 ## Set up
 
+`./familia sync [--dry-run]` and `./familia update [--dry-run]` are the same as `setup.sync` and `setup.update`. Every script that updates or runs pinned parts already syncs them first; see [MANUAL.md](../MANUAL.md#keeping-the-pinned-parts-in-sync).
+
 | key | what it does | Linux / Android | Windows |
 |---|---|---|---|
 | `setup.panel` | Configure in a simple window (mouse, keyboard or switch friendly) ([panel.md](panel.md)) | `python3 scripts/panel.py` | `python scripts\panel.py` |
-| `setup.configure` | Get or update the pinned parts (code-bootstraps, green-agentz, ...) (licenses first) | `sh scripts/configure.sh` | - |
+| `setup.sync-preview` | Pinned parts: show what is behind pins.txt and would move (no changes) | `python3 scripts/sync_pins.py --dry-run` | `python scripts\sync_pins.py --dry-run` |
+| `setup.sync` | Pinned parts: bring every part to its pin, together (fetches only missing pins) (licenses first) | `python3 scripts/sync_pins.py` | `python scripts\sync_pins.py` |
+| `setup.update` | Update familia (git pull --ff-only), then sync the pinned parts (licenses first) | `python3 scripts/sync_pins.py --update` | `python scripts\sync_pins.py --update` |
+| `setup.configure` | Set up this checkout: sync the pinned parts and the git-pull hooks (licenses first) | `sh scripts/configure.sh` | - |
 | `setup.licenses` | Review the licenses of everything you have chosen | `python3 scripts/licenses.py review` | `python scripts\licenses.py review` |
 | `setup.settings` | Change launcher settings (port, threads, context) on the terminal | `sh scripts/configure.sh --interactive` | - |
 | `setup.install` | Install or update this host (llama.cpp runtime, host entry): dry run first | `sh install/linux/install.sh --dry-run` | `powershell -NoProfile -ExecutionPolicy Bypass -File install\windows\install.ps1 -DryRun` |
