@@ -493,6 +493,14 @@ agents:
     aliases:
       main: coder
       auxiliary: coder           # compaction model; explicit, not inferred
+  hermes-lab:                    # experiments only (self-improve target); no pentest uses it
+    kind: hermes-agent
+    host: miryam
+    min_ctx: 64000
+    context_length: 65536
+    aliases:
+      main: coder
+      auxiliary: coder
 
 fleets:
   green-agentz:
@@ -693,3 +701,26 @@ options:
     sources: ["https://x.com/BrianReborn_alt/status/2106703750262141361"]
     size_note: unknown
     notes: lift JSON/document extraction model; parsing option beside Youtu.
+
+harnesses:
+  # Target harness descriptors (docs/harness2.md). Files only: prompt, guardrails, memory,
+  # skills. There is no field for tools or toolsets, so nothing here can widen them.
+  hermes-lab:
+    kind: files
+    agent: hermes-lab
+    root: ~/.cache/familia/hermes-hermes-lab   # the HERMES_HOME scripts/hermes.sh renders for it
+    prompt: SOUL.md                            # guardrails + memory become sections of SOUL.md
+    skills: skills
+    node: coder                                # editing + evaluation endpoint (loopback)
+
+self_improve:
+  # Harness² (google-research/harness2), opt-in; off = nothing runs and nothing is synced.
+  harness2:
+    experimental: true
+    engine: harness2
+    mode: "off"                  # "off" (quoted: YAML reads bare off as false) | propose (review by hand) | apply (needs consent)
+    targets: [hermes-lab]
+    k: 1
+    recursion: parallel          # parallel = Harness² agg, sequential = seq
+    tasks: coding-v1             # registry/harness2-tasks/coding-v1.json
+    max_tasks: 3

@@ -1,0 +1,91 @@
+{
+ "name": "coding-v1",
+ "version": 1,
+ "description": "Small offline Python function tasks with checkable answers (asserts). evolve = what Harness\u00b2 improves against; holdout = only used to compare base vs proposal, never shown to the editor.",
+ "tasks": [
+  {
+   "id": "merge-intervals",
+   "split": "evolve",
+   "entry": "merge_intervals",
+   "prompt": "Write `merge_intervals(intervals)` that takes a list of [start, end] integer pairs (start <= end, any order) and returns a new list of merged, sorted, non-overlapping [start, end] pairs. Intervals that touch (e.g. [1,2] and [2,3]) are merged.",
+   "tests": "assert merge_intervals([]) == []\nassert merge_intervals([[1,3],[2,6],[8,10],[15,18]]) == [[1,6],[8,10],[15,18]]\nassert merge_intervals([[1,2],[2,3]]) == [[1,3]]\nassert merge_intervals([[5,7],[1,1]]) == [[1,1],[5,7]]\nassert merge_intervals([[1,10],[2,3]]) == [[1,10]]\n"
+  },
+  {
+   "id": "rle-encode",
+   "split": "evolve",
+   "entry": "rle_encode",
+   "prompt": "Write `rle_encode(s)` returning the run-length encoding of string `s` as count followed by character for every run, e.g. 'aaab' -> '3a1b'. The empty string encodes to ''.",
+   "tests": "assert rle_encode('') == ''\nassert rle_encode('aaab') == '3a1b'\nassert rle_encode('abc') == '1a1b1c'\nassert rle_encode('zzzzzzzzzzzz') == '12z'\n"
+  },
+  {
+   "id": "roman-to-int",
+   "split": "evolve",
+   "entry": "roman_to_int",
+   "prompt": "Write `roman_to_int(s)` converting an uppercase Roman numeral (I, V, X, L, C, D, M, using subtractive forms like IV, IX, XL, XC, CD, CM) to an int.",
+   "tests": "assert roman_to_int('III') == 3\nassert roman_to_int('IV') == 4\nassert roman_to_int('LVIII') == 58\nassert roman_to_int('MCMXCIV') == 1994\nassert roman_to_int('MMMCMXCIX') == 3999\n"
+  },
+  {
+   "id": "balanced-brackets",
+   "split": "evolve",
+   "entry": "is_balanced",
+   "prompt": "Write `is_balanced(s)` returning True if every (), [] and {} in string `s` is properly nested and closed. Other characters are ignored.",
+   "tests": "assert is_balanced('') is True\nassert is_balanced('([]{})') is True\nassert is_balanced('(]') is False\nassert is_balanced('((') is False\nassert is_balanced('a(b)c]') is False\nassert is_balanced('{[()()]}x') is True\n"
+  },
+  {
+   "id": "second-largest",
+   "split": "evolve",
+   "entry": "second_largest",
+   "prompt": "Write `second_largest(nums)` returning the second largest DISTINCT value in a list of ints, or None if there is no such value.",
+   "tests": "assert second_largest([]) is None\nassert second_largest([3]) is None\nassert second_largest([2,2,2]) is None\nassert second_largest([1,5,3,5]) == 3\nassert second_largest([-1,-2]) == -2\n"
+  },
+  {
+   "id": "chunk-list",
+   "split": "evolve",
+   "entry": "chunk_list",
+   "prompt": "Write `chunk_list(xs, n)` splitting list `xs` into consecutive chunks of length `n` (the last chunk may be shorter). Raise ValueError if n < 1.",
+   "tests": "assert chunk_list([], 2) == []\nassert chunk_list([1,2,3,4,5], 2) == [[1,2],[3,4],[5]]\nassert chunk_list([1,2], 5) == [[1,2]]\ntry:\n    chunk_list([1], 0)\n    raise SystemExit(1)\nexcept ValueError:\n    pass\n"
+  },
+  {
+   "id": "flatten-depth",
+   "split": "holdout",
+   "entry": "flatten",
+   "prompt": "Write `flatten(xs, depth=None)` flattening nested lists. With depth=None flatten completely; with an int depth flatten only that many levels. Non-list items (including tuples and strings) are kept as-is.",
+   "tests": "assert flatten([]) == []\nassert flatten([1,[2,[3,[4]]]]) == [1,2,3,4]\nassert flatten([1,[2,[3,[4]]]], 1) == [1,2,[3,[4]]]\nassert flatten([(1,2),'ab',[3]]) == [(1,2),'ab',3]\nassert flatten([[1],[2]], 0) == [[1],[2]]\n"
+  },
+  {
+   "id": "word-freq",
+   "split": "holdout",
+   "entry": "top_words",
+   "prompt": "Write `top_words(text, k)` returning the k most frequent words (lowercased, words are runs of letters a-z) as a list of (word, count) tuples sorted by count descending then word ascending.",
+   "tests": "assert top_words('', 3) == []\nassert top_words('a b a', 1) == [('a', 2)]\nassert top_words('The the cat. Cat sat!', 2) == [('cat', 2), ('the', 2)]\nassert top_words('x y z', 5) == [('x',1),('y',1),('z',1)]\n"
+  },
+  {
+   "id": "int-to-base",
+   "split": "holdout",
+   "entry": "to_base",
+   "prompt": "Write `to_base(n, b)` returning the string of integer n written in base b (2 <= b <= 16), digits 0-9 then lowercase a-f, with a leading '-' for negatives. to_base(0, b) is '0'.",
+   "tests": "assert to_base(0, 2) == '0'\nassert to_base(255, 16) == 'ff'\nassert to_base(-10, 2) == '-1010'\nassert to_base(35, 7) == '50'\n"
+  },
+  {
+   "id": "matrix-spiral",
+   "split": "holdout",
+   "entry": "spiral",
+   "prompt": "Write `spiral(m)` returning the elements of a rectangular matrix (list of equal-length lists) in clockwise spiral order starting top-left. An empty matrix gives [].",
+   "tests": "assert spiral([]) == []\nassert spiral([[1]]) == [1]\nassert spiral([[1,2,3],[4,5,6],[7,8,9]]) == [1,2,3,6,9,8,7,4,5]\nassert spiral([[1,2,3,4],[5,6,7,8]]) == [1,2,3,4,8,7,6,5]\nassert spiral([[1],[2],[3]]) == [1,2,3]\n"
+  },
+  {
+   "id": "dedupe-keep-order",
+   "split": "holdout",
+   "entry": "dedupe",
+   "prompt": "Write `dedupe(xs, key=None)` returning the items of xs without duplicates, keeping the first occurrence and the original order. If key is given, two items are duplicates when key(item) is equal.",
+   "tests": "assert dedupe([]) == []\nassert dedupe([3,1,3,2,1]) == [3,1,2]\nassert dedupe(['a','A','b'], key=str.lower) == ['a','b']\nassert dedupe([[1],[1],[2]], key=tuple) == [[1],[2]]\n"
+  },
+  {
+   "id": "parse-duration",
+   "split": "holdout",
+   "entry": "parse_duration",
+   "prompt": "Write `parse_duration(s)` turning strings like '1h30m', '45s', '2h', '1h2m3s' into total seconds (int). Units h, m, s appear at most once each, in that order. Raise ValueError for an empty or malformed string.",
+   "tests": "assert parse_duration('45s') == 45\nassert parse_duration('1h30m') == 5400\nassert parse_duration('1h2m3s') == 3723\ntry:\n    parse_duration('')\n    raise SystemExit(1)\nexcept ValueError:\n    pass\ntry:\n    parse_duration('3x')\n    raise SystemExit(1)\nexcept ValueError:\n    pass\n"
+  }
+ ]
+}

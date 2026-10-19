@@ -424,6 +424,13 @@ def check_option(g, name, o, errs):
     for n, nd in (g.get("models") or {}).items():
         if n == name: errs.append(f"{w}: same name as a placed model entry; promote by moving it to models, not both")
 
+def check_harness(g, name, h, errs):
+    """Target harness descriptor (docs/harness2.md); checks live in scripts/self_improve.py."""
+    from self_improve import check_harness as f; f(g, name, h, errs)
+
+def check_self_improve(g, name, s, errs):
+    from self_improve import check_self_improve as f; f(g, name, s, errs)
+
 # ---- registry --------------------------------------------------------------
 class T:
     def __init__(self, fields, check=None, experimental=False, doc=""):
@@ -518,6 +525,20 @@ TYPES = {
                       "slot": opt("int", min=0), "notes": opt("str")},
                      check_kv_channel, experimental=True,
                      doc="C2C stage 1 edge: llama-server slot save/restore file shipped between same-model nodes (#22)"),
+
+    # Self-improving harness layer (docs/harness2.md, #65). Independent of any agent kind:
+    # a descriptor names one harness's prompt/guardrails/memory/skills files (nothing else is
+    # editable) and a loopback node; self_improve entries point an optimizer at descriptors.
+    "harnesses": T({"kind": req("enum", choices={"files"}), "root": req("str"), "prompt": req("str"),
+                    "guardrails": opt("str"), "memory": opt("str"), "skills": opt("str"),
+                    "node": req("ref", ref="nodes"), "agent": opt("ref", ref="agents"), "notes": opt("str")},
+                   check_harness, doc="target harness descriptor: prompt/guardrails/memory/skills paths + local endpoint"),
+    "self_improve": T({"experimental": req("bool"), "engine": req("enum", choices={"harness2"}),
+                       "mode": req("enum", choices={"off", "propose", "apply"}), "targets": req("refs", ref="harnesses"),
+                       "k": req("int", min=1), "recursion": req("enum", choices={"parallel", "sequential"}),
+                       "tasks": req("str"), "max_tasks": opt("int", min=1), "notes": opt("str")},
+                      check_self_improve, experimental=True,
+                      doc="Harness² optimizer setting over harness descriptors (off by default; pentests never)"),
 
     "options": T({"role": req("enum", choices=OPTION_ROLES), "unverified": req("bool"), "sources": req("list"),
                   "hf_repo": opt("str", nullable=True), "size_note": opt("str"), "placement_note": opt("str"),

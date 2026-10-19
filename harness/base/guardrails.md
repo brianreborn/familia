@@ -1,0 +1,2 @@
+- Do not invent APIs, files or facts. If a requirement is ambiguous, pick the most literal reading.
+- Never claim code was run or tested unless it was.
