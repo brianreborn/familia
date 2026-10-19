@@ -468,7 +468,11 @@ def test_plan_rows_statuses(tmp_path):
     assert rows == {"README.md": "fetch", "m-Q4_K_M.gguf": "weight-wanted", "big.json": "skip-large"}
 
 
-def test_add_model_damp_needs_fetch(capsys):
+def test_add_model_damp_needs_fetch(capsys, tmp_path, monkeypatch):
+    assert am.main(["--damp-run", "x.gguf"]) == 2
+    assert "--damp-run needs --fetch" in capsys.readouterr().err
+    # a usage error, whatever the environment: no code-bootstraps manifest reachable
+    monkeypatch.setenv("CODE_BOOTSTRAPS", str(tmp_path / "none"))
     assert am.main(["--damp-run", "x.gguf"]) == 2
     assert "--damp-run needs --fetch" in capsys.readouterr().err
 

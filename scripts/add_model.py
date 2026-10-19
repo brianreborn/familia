@@ -1332,6 +1332,9 @@ def main(argv=None):
     args = parse_args(argv)
     interactive = sys.stdin.isatty() and sys.stderr.isatty()
     try:
+        # flag combinations are checked before anything touches the environment (manifest, terminal)
+        if args.damp_run and not args.fetch:
+            raise UsageError("--damp-run needs --fetch ORG/NAME[@REV] (a local DIR has nothing to fetch)")
         if not argv:
             if not interactive:
                 raise UsageError("no arguments. Usage: add-model.sh DIR | FILE.gguf | ROLE FILE.gguf | --fetch ORG/NAME (see --help)")
@@ -1345,8 +1348,6 @@ def main(argv=None):
         if env.data is None and not args.dry_run:
             raise UsageError("manifest %s not found (run scripts/configure.sh, or pass --bootstraps/--manifest)" % env.manifest)
         if args.damp_run:
-            if not args.fetch:
-                raise UsageError("--damp-run needs --fetch ORG/NAME[@REV] (a local DIR has nothing to fetch)")
             import model_db
             r = model_db.damp(args.fetch, file=args.file, quant=args.quant, role=args.role,
                               found_in=["add-model.sh --fetch --damp-run"], max_bytes=hf_max(args))
