@@ -58,6 +58,16 @@ def test_missing_sampling_needs_documented_default(tmp_path):
     assert problems == [] and notes == ["sampling: missing, defaults used: llama-bench samples nothing"]
 
 
+def test_cli_meta_accepts_documented_default(tmp_path, capsys):
+    kv = {k: v for k, v in FULL.items() if not k.startswith("general.sampling")}
+    f = _gguf(tmp_path / "m.gguf", kv)
+    assert bg.main(["meta", f]) == 1
+    capsys.readouterr()
+    assert bg.main(["meta", f, "--default", "sampling=llama-bench samples nothing"]) == 0
+    assert "sampling: missing, defaults used: llama-bench samples nothing" in capsys.readouterr().out
+    assert bg.main(["meta", f, "--default", "context_length=4096", "--default", "sampling=x"]) == 0
+
+
 def test_not_gguf(tmp_path):
     p = tmp_path / "x.gguf"
     p.write_bytes(b"nope")

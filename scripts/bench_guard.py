@@ -14,7 +14,9 @@
             host's limit, instead of one fixed number for every model.
   effective the values a run really used, read from its -v load log.
 
-  bench_guard.py meta FILE [--json]
+  bench_guard.py meta FILE [--json] [--default FIELD=TEXT ...]
+            (--default documents the default a run uses for a missing rope / chat_template /
+            sampling field; it is echoed as a note so the log and perf doc carry it)
   bench_guard.py memcap PEAK_MIB [--host-limit MIB]
 Stdlib only. Docs: docs/perf/2026-10-19-tuning-2.md."""
 import json, os, re, struct, sys
@@ -185,7 +187,12 @@ def effective(log):
 def main(argv):
     if len(argv) >= 2 and argv[0] == "meta":
         m = summarize(read_gguf(argv[1]))
-        problems, notes = validate(m)
+        doc = {}
+        for i, a in enumerate(argv):
+            if a == "--default" and i + 1 < len(argv) and "=" in argv[i + 1]:
+                k, v = argv[i + 1].split("=", 1)
+                doc[k] = v
+        problems, notes = validate(m, doc)
         print(json.dumps({"meta": m, "problems": problems, "notes": notes}, indent=1, default=str)
               if "--json" in argv else "\n".join(problems + notes) or "ok")
         return 1 if problems else 0
