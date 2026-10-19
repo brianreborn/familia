@@ -41,9 +41,9 @@ bash tests/test_nexus_localhost.sh               # ssh nexus on localhost (needs
 bash tests/test_bt_loopback.sh                   # private bittorrent loopback
 ```
 
-On Windows set `PYTHONUTF8=1` first. Expected on rc1:
+On Windows set `PYTHONUTF8=1` first. Expected on `main` (counts grow as tests are added):
 
-- Linux: `pytest` 95 passed, 9 skipped (skips need llama-server binaries or network); all three bash tests exit 0.
+- Linux: everything passes except one known pre-existing failure, `tests/test_ram_safety.py::test_overcommit_is_hard_error` (on 2026-10-19: 142 passed, 19 skipped, 1 failed). Skips need llama-server binaries, model files or network. All three bash tests exit 0.
 - Windows without bash: 3 tests fail because they shell out to `bash`
   (`test_android_targets::test_scripts_have_no_hardcoded_targets_or_sshpass`,
   `test_installers::test_host_measure_insert_and_idempotent`, `test_installers::test_installer_shapes`).
@@ -51,6 +51,8 @@ On Windows set `PYTHONUTF8=1` first. Expected on rc1:
 - The validator prints `WARNING: ... no registry record` for nodes that have no measurement yet. That is informational.
 
 ## 3. Try the agent: hermes.sh
+
+Use the harness, not stock `hermes`: `~/.hermes` has compression off and small-context models, and fails with HTTP 400 on long turns ([QUICKSTART.md](QUICKSTART.md#always-run-hermes-through-the-harness)).
 
 ```sh
 scripts/hermes.sh --render-only            # print the hermes-agent config generated from graph.yaml, start nothing
@@ -65,8 +67,8 @@ the validator refuses a mismatch (LESSONS-LEARNED L2).
 
 `gpu-legacy/` runs SmolLM2-135M and llama2.c checkpoints on a 2007-era sm_11 card through the
 CUDA *driver* API and hand-written PTX (`kernels.ptx`, `matvec_sm11.ptx`). No CUDA toolkit or
-MSVC is needed. It needs the NVIDIA 341.x driver (`nvcuda.dll`) and a mingw-w64 gcc (we use
-portable WinLibs gcc at `E:\temp\tools\mingw64`).
+MSVC is needed. It needs the NVIDIA 341.x driver (`nvcuda.dll`) and a mingw-w64 gcc (for example a
+portable WinLibs gcc; the example below assumes it is unpacked at `E:\temp\tools\mingw64`).
 
 ```bat
 cd gpu-legacy
@@ -77,7 +79,7 @@ build-gcc.bat                                   :: llama2.c runner -> out\run_sm
 out\smol_sm11.exe SmolLM2-135M-Instruct.Q4_0.gguf "1,2,3" 32 both   :: cpu | gpu | both (both checks GPU == CPU per token)
 ```
 
-Result on qodesh (Athlon II X2, 8600 GT 256 MiB shared with the desktop): 4.5 â†’ 15.3â€“16.9 tok/s
+Result on qodesh (Athlon II X2, 8600 GT 256 MiB shared with the desktop): 4.5 -> 15.3-16.9 tok/s
 over 2026-10-09/10, matching the CPU on every token. Full story:
 [gpu-legacy/LESSONS-LEARNED.md](gpu-legacy/LESSONS-LEARNED.md), sync model:
 [gpu-legacy/SYNC-AUDIT.md](gpu-legacy/SYNC-AUDIT.md).
@@ -109,11 +111,11 @@ ln -sf /system/lib64/libvulkan.so ~/.vk/libvulkan.so
 ln -sf /system/lib64/libvulkan.so ~/.vk/libvulkan.so.1   # both names are needed
 export LD_LIBRARY_PATH=$HOME/.vk                          # Termux's own loader only sees llvmpipe
 termux-wake-lock                                          # before any long run, or Wi-Fi drops
-sshd                                                      # optional, key auth on port 8022
+sshd                                                      # optional, key auth only
 llama-bench -m SmolLM2-135M-Instruct-Q4_K_M.gguf -ngl 99
 ```
 
-Measured: SmolLM2-135M 66â€“79 tok/s on Vulkan vs ~30 on the CPU. Record `llama-server --version`
+Measured: SmolLM2-135M 66-79 tok/s on Vulkan vs ~30 on the CPU. Record `llama-server --version`
 with every result; two "identical" phones had different Termux llama-cpp versions (L9).
 
 Termux add-ons (Termux:API, Termux:Boot, ...) must be signed with the same key as Termux itself. Our phones run Termux from the latest GitHub build, so Termux:API must come from https://github.com/termux/termux-api/releases (not F-Droid, not Play). The `termux-api` pkg alone is not enough: `termux-battery-status` hangs without the app. Power readings without it use readable `/sys/class/power_supply/*` files only.
@@ -135,7 +137,7 @@ contribute back. The registry never edits `graph.yaml`; it prints snippets. See
 
 ## 7. RAM-safety rules (please follow them when testing)
 
-From [docs/ram-safety.md](docs/ram-safety.md); the validator enforces the first two.
+From [docs/ram-safety.md](docs/ram-safety.md). The validator fails on a clear overcommit and warns on the first two.
 
 1. Every host keeps `reserve_ram_mib` free: 3072 MiB on machines under 12 GiB, otherwise 4096.
 2. On hosts with less than 8 GiB, estimated use must leave at least 2048 MiB free.
@@ -144,7 +146,7 @@ From [docs/ram-safety.md](docs/ram-safety.md); the validator enforces the first 
 4. iGPU memory is system RAM: anything loaded on an integrated GPU counts against the same budget.
 5. Benchmarks and tuning scripts should check free RAM first and stop, not kill other processes.
 
-## 8. Known limitations in rc1
+## 8. Known limitations
 
 - `ssh chat.hf.co` (Qwen3.8-27B) and LittleBit QAT on HF Jobs need Hugging Face credits; neither runs without them.
 - LittleBit conversion needs a user-supplied checkout of SamsungLabs/LittleBit (CC BY-NC 4.0, not vendored).
@@ -163,5 +165,5 @@ From [docs/ram-safety.md](docs/ram-safety.md); the validator enforces the first 
 - **bash:** use Git for Windows' bash, not WSL's `C:\Windows\System32\bash.exe`. Put `C:\Program Files\Git\bin` and `C:\Program Files\Git\usr\bin` on your user PATH.
 - **Python 3.12** from python.org, with `set PYTHONUTF8=1`. The bash tests call `python3`, so either disable the Microsoft Store "App execution aliases" for python3, or add a shim named `python3` that runs `exec python "$@"`.
 - **numpy:** run `pip install --user "$(python scripts/cpu_level.py --numpy-spec)"` (on Windows: `python -m pip install --user (python scripts\cpu_level.py --numpy-spec)`). The choice depends only on the CPU's x86-64 level. Below v2 (no SSSE3/SSE4.1/SSE4.2/POPCNT, e.g. Athlon II X2) you get `numpy<2.4`, because NumPy 2.4.0 raised its wheel baseline to X86_V2 and those wheels crash with 0xc000001d. Everything else, including ARM, gets current numpy. On v0/v1 Windows with Python 3.12 the installer first tries our own numpy 2.5.3 wheel built with `-Dcpu-baseline=none` (release asset; rebuild with `scripts\build_numpy_wheel.ps1`, needs MSYS2 ucrt64 gcc), then falls back to `numpy<2.4`. That wheel is experimental: long double (`np.longdouble`) math can crash it; familia never uses long double. See LESSONS-LEARNED.md.
-- **pytest:** `python -m pytest -q tests`. Expected: 91 passed, 19 skipped.
+- **pytest:** `python -m pytest -q tests`. Expected: everything passes or skips except the known `test_overcommit_is_hard_error` failure and the bash-dependent tests listed in section 2.
 - **bash tests:** `test_nexus_localhost.sh` is Linux-only because it needs sudo/useradd. `test_bt_loopback.sh` needs `aria2c`. `test_with_fleet.sh` needs the graph's model files to be present.
