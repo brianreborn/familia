@@ -1,7 +1,13 @@
 # Heavyweight-model escalation (semi-automatic)
 
 The light node (e.g. `qodesh-smol-cpu`, SmolLM2) handles everything by default.
-When a session looks stuck, the router can swap in a heavier model, then swap back.
+When a session looks stuck, familia can swap in a heavier model, then swap back.
+
+> **Status (2026-10-19):** the graph fields, the decision/consent/handoff CLI and the
+> hermes proxy (`scripts/hermes.sh --escalate`) are implemented and unit-tested
+> against mock servers. The green-roomz router hookup, live swap, reachability
+> probe, richer signals and a live end-to-end run are planned
+> ([#39](https://github.com/brianreborn/familia/issues/39)).
 
 ## Graph fields (per node, optional)
 
@@ -51,6 +57,7 @@ node once the heavy reply lands.
 python scripts/escalate.py decide --node qodesh-smol-cpu --signals s.json [--reachable qodesh,miryam]
 python scripts/escalate.py consent --node qodesh-smol-cpu --target coder
 python scripts/escalate.py handoff --signals s.json
+python scripts/escalate.py accept       # accept the pending suggestion from the proxy
 ```
 
 ## hermes integration (implemented, behind a flag)
@@ -71,7 +78,7 @@ hermes config to point at it, and runs hermes as a child.
   (`ensure_server`), next request goes to the target alias with the compact
   handoff (tools stripped), then the proxy swaps back after one clean reply.
 
-## Remaining / stubbed
+## Remaining / stubbed (planned, #39)
 
 - Cross-host targets bound to 127.0.0.1 (all current nodes, e.g. miryam `coder`)
   are reported unreachable: an ssh tunnel (nexus) is not opened automatically.
