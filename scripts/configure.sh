@@ -3,6 +3,15 @@
 # Pure POSIX /bin/sh. Sets up pinned checkouts, validates environment,
 # and configures graph defaults without conflating lowram with slow CPU.
 set -eu
+case "${1:-}" in -h|--help) cat <<'USAGE'
+configure.sh: Fetch or update the pinned parts listed in pins.txt (code-bootstraps, green-agentz, ...).
+Usage:
+  sh scripts/configure.sh [--dry-run] [-i|--interactive]
+    --dry-run       list the pins and what would be cloned or checked out; change nothing
+    -i, --interactive  then ask for launcher settings (port, threads, context)
+Example: sh scripts/configure.sh --dry-run
+USAGE
+  exit 0 ;; esac
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$ROOT"
@@ -12,10 +21,12 @@ mkdir -p "$CACHE_DIR"
 chmod 700 "$CACHE_DIR" 2>/dev/null || true
 
 INTERACTIVE=0
+DRY=0
 for arg in "$@"; do
   case "$arg" in
     -i|--interactive) INTERACTIVE=1 ;;
     --non-interactive|--batch) INTERACTIVE=0 ;;
+    --dry-run|-n) DRY=1 ;;
   esac
 done
 
@@ -35,6 +46,11 @@ sync_pin() {
   name="$1"
   rev="$2"
   origin="$3"
+  if [ "$DRY" = 1 ]; then
+    cur=$(git -C "$ROOT/$name" rev-parse HEAD 2>/dev/null || echo "not checked out")
+    echo "familia: [dry-run] $name: have $cur, pin $rev ($origin)" >&2
+    return 0
+  fi
 
   target="$ROOT/$name"
   # If target does not exist locally, check if it exists in parent directory (~/green)
@@ -105,6 +121,8 @@ while IFS="$(printf '\t')" read -r col1 col2 col3 col4 || [ -n "$col1" ]; do
       ;;
   esac
 done < "$PINS_FILE"
+
+[ "$DRY" = 1 ] && { echo "familia: [dry-run] nothing changed." >&2; exit 0; }
 
 # 2. Configure defaults: MCP is never disabled on slow CPU or lowram
 ENV_FILE="$CACHE_DIR/familia.env"

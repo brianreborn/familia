@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 # Offline checklist driver — prints commands; does not start long servers unless RUN=1.
 set -euo pipefail
+case "${1:-}" in -h|--help) cat <<'USAGE'
+offline-test-plan.sh: Print the offline test checklist and run the quick parts; RUN=1 also runs live steps.
+Usage:
+  bash scripts/offline-test-plan.sh
+Example: RUN=1 bash scripts/offline-test-plan.sh
+USAGE
+  exit 0 ;; esac
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 echo "== familia offline test plan (see docs/offline-test-plan.md) =="

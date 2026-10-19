@@ -457,6 +457,7 @@ def do_review(items, digest, yes, unknown_ok, as_json):
         print(json.dumps({"selection_sha256": digest, "items": items}, indent=2))
     else:
         render(items, digest)
+    sys.stdout.flush()
     has_unknown = any(i["category"] == "unknown" for i in items)
     if yes:
         if has_unknown and not unknown_ok:

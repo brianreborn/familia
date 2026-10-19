@@ -9,9 +9,11 @@ applies per‑host overrides (if a ``config/host-overrides.yaml`` file
 exists) and any ``--set`` arguments supplied on the command line, then
 writes the resulting graph to ``generated/graph-<host>.yaml``.
 
-The generated file can be fed directly to ``scripts/validate_graph.py``
-or ``scripts/start.sh`` – no manual editing of the original ``graph.yaml``
-is required.
+Check the result with ``scripts/validate_graph.py --graph generated/graph-<host>.yaml``.
+The original ``graph.yaml`` is not edited.
+
+Example:
+  ./scripts/generate_graph.py miryam
 """
 import argparse
 import pathlib
@@ -52,11 +54,15 @@ def parse_set_args(set_args):
     return result
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate a per‑host Familia graph.")
+    parser = argparse.ArgumentParser(description="Write generated/graph-HOST.yaml: graph.yaml plus that host's overrides.",
+                                     epilog="Example: ./scripts/generate_graph.py miryam --set coder=~/models/Qwen3.5-2B-Q4_K_M.gguf")
     parser.add_argument("host", help="Name of the host defined in the graph's hosts section")
     parser.add_argument("--set", dest="set_args", action="append", default=[], help="Override node model: <node>=<model_path>")
     args = parser.parse_args()
 
+    hosts = (load_yaml(BASE_GRAPH).get("hosts") or {}) if BASE_GRAPH.is_file() else {}
+    if hosts and args.host not in hosts:
+        sys.exit(f"generate_graph: no host {args.host!r} in graph.yaml. Hosts: {', '.join(sorted(hosts))}")
     if not BASE_GRAPH.is_file():
         sys.exit(f"Base graph not found at {BASE_GRAPH}")
 

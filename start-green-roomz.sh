@@ -4,6 +4,13 @@
 # This repo-root copy exists so missing-file checks fail with a clear message
 # instead of "No such file", and so local dry-runs do not pretend a room started.
 set -eu
+case "${1:-}" in -h|--help) cat <<'USAGE'
+start-green-roomz.sh: Placeholder: the real green-roomz launcher is deployed onto the phone, not run from here.
+Usage:
+  ./start-green-roomz.sh   (always exits 1 with what to do instead)
+Example: see issue #15 and #21
+USAGE
+  exit 0 ;; esac
 echo "start-green-roomz.sh: not deployed here." >&2
 echo "start-green-roomz.sh: on Android, deploy green-roomz's launcher to /data/local/tmp/start-green-roomz.sh" >&2
 echo "start-green-roomz.sh: pin is in pins.txt (green-roomz); see issue #15 and #21." >&2

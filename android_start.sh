@@ -3,6 +3,13 @@
 #   ./android_start.sh phone7
 # Env overrides: ANDROID_HOST, ANDROID_USER, ANDROID_PORT. Key-only SSH; no passwords.
 set -euo pipefail
+case "${1:-}" in -h|--help) cat <<'USAGE'
+android_start.sh: Start the familia node on one Android phone over key-only SSH (target from graph.yaml).
+Usage:
+  ./android_start.sh PHONE   (env overrides: ANDROID_HOST, ANDROID_USER, ANDROID_PORT)
+Example: ./android_start.sh phone7
+USAGE
+  exit 0 ;; esac
 cd "$(dirname "$0")"
 read -r HOST USER PORT < <(python3 scripts/android_target.py "${1:-}")
 SSH=(ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 -p "$PORT" "$USER@$HOST")

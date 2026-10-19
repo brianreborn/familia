@@ -93,13 +93,18 @@ def parse_extra(kv: str) -> Dict[str, Any]:
     return {k: v_parsed}
 
 def main():
-    parser = argparse.ArgumentParser(description="Programmatic graph.yaml edits")
+    parser = argparse.ArgumentParser(description="Programmatic graph.yaml edits (note: rewrites the file without its comments; see --dry-run)",
+                                     epilog="Example: ./scripts/modify_graph.py --assign-model coder=coder:default --dry-run")
     parser.add_argument("--host", help="If set, edit generated/graph-<host>.yaml instead of base")
     parser.add_argument("--assign-model", help="node=role:pick")
     parser.add_argument("--split-node", help="Node name to duplicate")
     parser.add_argument("--suffix", default="_2", help="Suffix for duplicated node")
     parser.add_argument("--extra", action="append", help="Extra key=value pairs to add to duplicated node")
+    parser.add_argument("--dry-run", action="store_true", help="show the change; write nothing")
     args = parser.parse_args()
+    if not (args.assign_model or args.split_node):
+        parser.print_help()
+        sys.exit("\nmodify_graph: nothing to do. Give --assign-model or --split-node (nothing was written).")
 
     target_path = BASE_GRAPH if not args.host else REPO_ROOT / "generated" / f"graph-{args.host}.yaml"
     graph = load_yaml(target_path)
@@ -119,6 +124,9 @@ def main():
                 extra_dict.update(parse_extra(kv))
         split_node(graph, args.split_node, args.suffix, extra_dict)
 
+    if args.dry_run:
+        print(f"[dry-run] would rewrite {target_path} (comments are not kept); nothing written")
+        return
     dump_yaml(graph, target_path)
     print(f"Graph written to {target_path}")
 

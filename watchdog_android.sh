@@ -2,6 +2,13 @@
 # Watchdog: restart the Android node if it stops answering. Target from graph.yaml (#18):
 #   ./watchdog_android.sh phone7      (env overrides: ANDROID_HOST/USER/PORT, WATCHDOG_INTERVAL)
 set -uo pipefail
+case "${1:-}" in -h|--help) cat <<'USAGE'
+watchdog_android.sh: Restart the Android node whenever it stops answering.
+Usage:
+  ./watchdog_android.sh PHONE   (env: ANDROID_HOST/USER/PORT, WATCHDOG_INTERVAL)
+Example: ./watchdog_android.sh phone7
+USAGE
+  exit 0 ;; esac
 cd "$(dirname "$0")"
 NAME=${1:-}
 INTERVAL=${WATCHDOG_INTERVAL:-60}
