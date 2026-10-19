@@ -4,6 +4,8 @@
 /green-roomz
 /green-agentz
 /green-agency
+/llama-server__*
+/*.sync-tmp
 __pycache__/
 *.pyc
 .pytest_cache/
