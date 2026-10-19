@@ -5,6 +5,10 @@
 #   -n  dry run (print commands, change nothing)
 # Status: PRELIMINARY, untested on a real FreeBSD host (TBD).
 set -eu
+case "${1:-}" in -h|--help)
+  sed -n '2,6p' "$0" | sed 's/^# \{0,1\}//'
+  echo "Example: sh scripts/freebsd/poudriere-build.sh -n"; exit 0 ;;
+esac
 DRY=0 JAIL=151amd64 VER=15.1-RELEASE ARCH=amd64 PORTS=default OVL=familia
 while getopts nj:v:a:p: o; do case $o in
   n) DRY=1;; j) JAIL=$OPTARG;; v) VER=$OPTARG;; a) ARCH=$OPTARG;; p) PORTS=$OPTARG;;

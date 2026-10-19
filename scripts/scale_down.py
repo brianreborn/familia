@@ -22,6 +22,14 @@ node `<name>-<suffix>` is written to a separate graph file (default
 graph.scaled.yaml) with `derived_from:` so validate_graph.py can check it.
 """
 import copy, hashlib, json, os, subprocess, sys, time, urllib.request
+
+USAGE = """usage: scale_down.py [--graph graph.yaml] [--out-graph FILE] [--node NODE] [--dry-run] [--force] [--replace]
+       scale_down.py --node NODE --method littlebit (--from-checkpoint DIR | --train-on hf-jobs|local-cpu-exercise)
+Example: python3 scripts/scale_down.py --dry-run"""
+if __name__ == "__main__" and ("-h" in sys.argv[1:] or "--help" in sys.argv[1:]):
+    print(__doc__.strip() + "\n\n" + USAGE)
+    sys.exit(0)
+
 import yaml
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))

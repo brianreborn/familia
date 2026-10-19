@@ -4,6 +4,12 @@
 # reuses the cache (n_restored == n_saved; B's next completion hits cache).
 # Usage: loopback_test.sh LLAMA_SERVER GGUF [WORKDIR]
 set -eu
+case "${1:-}" in -h|--help|"")
+  sed -n '2,5p' "$0" | sed 's/^# \{0,1\}//'
+  echo "Starts two llama-servers on 127.0.0.1 (ports PA/PB, default 18571/18572) and stops them at the end."
+  echo "Example: sh scripts/c2c/loopback_test.sh ~/.local/bin/llama-server stories15M-q8_0.gguf"
+  [ -n "${1:-}" ] && exit 0; exit 2 ;;
+esac
 BIN=$1; GGUF=$2; W=${3:-$(mktemp -d)}
 HERE=$(cd "$(dirname "$0")" && pwd)
 mkdir -p "$W/a" "$W/b"

@@ -32,6 +32,9 @@ def summarize(text, fields=DEFAULT):
     return out
 
 if __name__ == "__main__":
+    if "-h" in sys.argv[1:] or "--help" in sys.argv[1:]:
+        print(__doc__.strip() + "\nExample: llama-bench -m model.gguf -o csv | python3 scripts/bench_parse.py")
+        sys.exit(0)
     f = DEFAULT
     if "--fields" in sys.argv: f = tuple(sys.argv[sys.argv.index("--fields") + 1].split(","))
     print("\n".join(summarize(sys.stdin.read(), f)))

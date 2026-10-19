@@ -4,6 +4,11 @@
 # is already running; this script itself starts no load.
 # Linux: RAPL package energy over N seconds (if readable). Android: battery
 # current/voltage (instantaneous; only meaningful when unplugged).
+case "${1:-}" in -h|--help)
+  echo "Usage: sh scripts/power_probe.sh [SECONDS]   (default 5; RAPL is sampled over SECONDS)"
+  echo "Prints one JSON power sample. Read-only, never uses sudo, starts no load."
+  echo "Example: sh scripts/power_probe.sh 10"; exit 0 ;;
+esac
 N=${1:-5}
 r=/sys/class/powercap/intel-rapl:0/energy_uj
 if [ -r "$r" ]; then
