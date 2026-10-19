@@ -27,6 +27,9 @@ High-level requirements for the familia topology coordinator: the Linux orchestr
 - **Fail loud (implemented):** `validate_graph.py` rejects a model without an entry or a pinned revision, and a node whose ctx, `sampling` or `card_set` differs from the card without `override_reasons` (each a written reason). Registry records carry `model.db_id` / `model.revision` where the match is unambiguous; the rest have `db_id: null` and a `db_note`.
 - **Old hardware still wins (implemented):** stdlib only, no weights fetched; the 20 current entries' snapshots total about 353 MB.
 
+## Benchmarks and perf runs
+- **Validate parameter metadata before any model run (required, 2026-10-19):** read the GGUF header (architecture, context length, rope, tokenizer, chat template, `general.sampling.*`); a missing field is a CRITICAL error and the model is not run, unless the field and the default used are written in the log and the perf doc. Never fall back silently. Every run records its full command line and the effective values from the load log and the bench output (n_ctx, n_batch, n_ubatch, threads, cache types, flash-attn, load mode, sampling, seed), and every result in `docs/perf/` lists them. Enforced by the perf driver (`gguf_meta.py`, see docs/perf/2026-10-19-tuning-2.md).
+
 ## Android node
 - Launch via `android_start.sh` with host, port and user from the graph / environment and key-based SSH (#18). Fleet helpers `with-fleet.sh` and `scripts/pentest-role.json` are on `main` (fixes #15); pentest role remains launch-test only.
 - `watchdog_android.sh` monitoring (implemented): key-only SSH, target from the graph, runs from its own directory and logs to `watchdog_android.log` there.
