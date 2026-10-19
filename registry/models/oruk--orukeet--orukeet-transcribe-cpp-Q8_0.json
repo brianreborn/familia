@@ -1,0 +1,2705 @@
+{
+ "schema": 2,
+ "id": "oruk--orukeet--orukeet-transcribe-cpp-Q8_0",
+ "repo": "oruk/orukeet",
+ "revision": "b59c13a733fce5cf193230d0fa317ee7f145a108",
+ "file": "orukeet-transcribe-cpp-Q8_0.gguf",
+ "sha256": "cad2f52ac91cad829279422301989687c2cf02e19157352ed25ea501b90dbb7e",
+ "bytes": 739508608,
+ "quant": "Q8_0",
+ "arch": "parakeet",
+ "roles": [],
+ "license": "cc-by-sa-4.0",
+ "license_source": "oruk/orukeet card license",
+ "ctx": null,
+ "ctx_source": null,
+ "card_ctx": null,
+ "card_ctx_source": null,
+ "base_model": "nvidia/parakeet-tdt-0.6b-v3",
+ "base_revision": "541d1f99c6b0c3cd0b11a95167540bb8edefd82b",
+ "card_defaults": null,
+ "card_defaults_source": null,
+ "card_default_set": null,
+ "card_defaults_how": "the card and generation_config.json state no sampling values",
+ "card_sampling_modes": null,
+ "card_default_mode": null,
+ "card_default_mode_source": null,
+ "card_sampling_sets": null,
+ "card_commands": [
+  {
+   "source": "oruk/orukeet README.md:L61-70",
+   "file": "README.md",
+   "lines": [
+    61,
+    70
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "from huggingface_hub import hf_hub_download\nfrom nemo.collections.asr.models import ASRModel\n\ncheckpoint = hf_hub_download(\n    \"oruk/orukeet\", \"orukeet-v0.1.0.nemo\",\n    revision=\"555136b50265a132d4cea0d35560c26fc4f657ab\",\n)\nasr = ASRModel.restore_from(checkpoint)\nasr.eval()\nprint(asr.transcribe([\"recording.wav\"], return_hypotheses=True)[0].text)",
+   "doc": "card",
+   "doc_sha": "b59c13a733fce5cf193230d0fa317ee7f145a108",
+   "scope": "model"
+  },
+  {
+   "source": "oruk/orukeet README.md:L128-130",
+   "file": "README.md",
+   "lines": [
+    128,
+    130
+   ],
+   "lang": "sh",
+   "tool": "pip",
+   "kind": "command",
+   "text": "python -m pip install --upgrade \\\n  https://github.com/Oruk-AI/orukeet/releases/download/v0.1.1/orukeet-0.1.1-py3-none-any.whl\norukeet install --device auto --cache ./orukeet-cache --output installation.json",
+   "doc": "card",
+   "doc_sha": "b59c13a733fce5cf193230d0fa317ee7f145a108",
+   "scope": "model"
+  },
+  {
+   "source": "oruk/orukeet README.md:L134-140",
+   "file": "README.md",
+   "lines": [
+    134,
+    140
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "import json\nfrom pathlib import Path\nfrom orukeet import Orukeet\n\nconfig = json.loads(Path(\"installation.json\").read_text(encoding=\"utf-8-sig\"))\nwith Orukeet(config[\"model\"], config[\"runtime\"], device=config[\"device\"]) as asr:\n    print(asr.transcribe(\"recording.wav\")[\"text\"])",
+   "doc": "card",
+   "doc_sha": "b59c13a733fce5cf193230d0fa317ee7f145a108",
+   "scope": "model"
+  },
+  {
+   "source": "nvidia/parakeet-tdt-0.6b-v3 README.md:L890-895",
+   "file": "README.md",
+   "lines": [
+    890,
+    895
+   ],
+   "lang": "bash",
+   "tool": "hf-download",
+   "kind": "command",
+   "text": "hf download nvidia/parakeet-tdt-0.6b-v3 \\\n  parakeet-tdt-0.6b-v3.q8_0.gguf \\\n  --local-dir models\n\nnemo-speech transcribe audio.wav \\\n  --model models/parakeet-tdt-0.6b-v3.q8_0.gguf",
+   "doc": "base-card",
+   "doc_sha": "541d1f99c6b0c3cd0b11a95167540bb8edefd82b",
+   "scope": "family: models/parakeet-tdt-0.6b-v3.q8_0.gguf"
+  },
+  {
+   "source": "nvidia/parakeet-tdt-0.6b-v3 README.md:L908-908",
+   "file": "README.md",
+   "lines": [
+    908,
+    908
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install -U nemo_toolkit['asr']",
+   "doc": "base-card",
+   "doc_sha": "541d1f99c6b0c3cd0b11a95167540bb8edefd82b",
+   "scope": "model"
+  },
+  {
+   "source": "nvidia/parakeet-tdt-0.6b-v3 README.md:L918-919",
+   "file": "README.md",
+   "lines": [
+    918,
+    919
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "import nemo.collections.asr as nemo_asr\nasr_model = nemo_asr.models.ASRModel.from_pretrained(model_name=\"nvidia/parakeet-tdt-0.6b-v3\")",
+   "doc": "base-card",
+   "doc_sha": "541d1f99c6b0c3cd0b11a95167540bb8edefd82b",
+   "scope": "model"
+  },
+  {
+   "source": "nvidia/parakeet-tdt-0.6b-v3 README.md:L925-925",
+   "file": "README.md",
+   "lines": [
+    925,
+    925
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "wget https://dldata-public.s3.us-east-2.amazonaws.com/2086-149220-0033.wav",
+   "doc": "base-card",
+   "doc_sha": "541d1f99c6b0c3cd0b11a95167540bb8edefd82b",
+   "scope": "model"
+  },
+  {
+   "source": "nvidia/parakeet-tdt-0.6b-v3 README.md:L929-930",
+   "file": "README.md",
+   "lines": [
+    929,
+    930
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "output = asr_model.transcribe(['2086-149220-0033.wav'])\nprint(output[0].text)",
+   "doc": "base-card",
+   "doc_sha": "541d1f99c6b0c3cd0b11a95167540bb8edefd82b",
+   "scope": "model"
+  },
+  {
+   "source": "nvidia/parakeet-tdt-0.6b-v3 README.md:L937-944",
+   "file": "README.md",
+   "lines": [
+    937,
+    944
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "output = asr_model.transcribe(['2086-149220-0033.wav'], timestamps=True)\n# by default, timestamps are enabled for char, word and segment level\nword_timestamps = output[0].timestamp['word'] # word level timestamps for first sample\nsegment_timestamps = output[0].timestamp['segment'] # segment level timestamps\nchar_timestamps = output[0].timestamp['char'] # char level timestamps\n\nfor stamp in segment_timestamps:\n    print(f\"{stamp['start']}s - {stamp['end']}s : {stamp['segment']}\")",
+   "doc": "base-card",
+   "doc_sha": "541d1f99c6b0c3cd0b11a95167540bb8edefd82b",
+   "scope": "model"
+  },
+  {
+   "source": "nvidia/parakeet-tdt-0.6b-v3 README.md:L950-956",
+   "file": "README.md",
+   "lines": [
+    950,
+    956
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "#updating self-attention model of fast-conformer encoder\n#setting attention left and right context sizes to 256\nasr_model.change_attention_model(self_attention_model=\"rel_pos_local_attn\", att_context_size=[256, 256])\n\noutput = asr_model.transcribe(['2086-149220-0033.wav'])\n\nprint(output[0].text)",
+   "doc": "base-card",
+   "doc_sha": "541d1f99c6b0c3cd0b11a95167540bb8edefd82b",
+   "scope": "model"
+  },
+  {
+   "source": "nvidia/parakeet-tdt-0.6b-v3 README.md:L964-974",
+   "file": "README.md",
+   "lines": [
+    964,
+    974
+   ],
+   "lang": "bash",
+   "tool": "python",
+   "kind": "code",
+   "text": "python NeMo/main/examples/asr/asr_chunked_inference/rnnt/speech_to_text_streaming_infer_rnnt.py \\\n    pretrained_name=\"nvidia/parakeet-tdt-0.6b-v3\" \\\n    model_path=null \\\n    audio_dir=\"<optional path to folder of audio files>\" \\\n    dataset_manifest=\"<optional path to manifest>\" \\\n    output_filename=\"<optional output filename>\" \\\n    right_context_secs=2.0 \\\n    chunk_secs=2 \\\n    left_context_secs=10.0 \\\n    batch_size=32 \\\n    clean_groundtruth_text=False",
+   "doc": "base-card",
+   "doc_sha": "541d1f99c6b0c3cd0b11a95167540bb8edefd82b",
+   "scope": "model"
+  },
+  {
+   "source": "nvidia/parakeet-tdt-0.6b-v3 README.md:L986-986",
+   "file": "README.md",
+   "lines": [
+    986,
+    986
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install git+https://github.com/huggingface/transformers",
+   "doc": "base-card",
+   "doc_sha": "541d1f99c6b0c3cd0b11a95167540bb8edefd82b",
+   "scope": "model"
+  },
+  {
+   "source": "nvidia/parakeet-tdt-0.6b-v3 README.md:L993-997",
+   "file": "README.md",
+   "lines": [
+    993,
+    997
+   ],
+   "lang": "python",
+   "tool": "transformers",
+   "kind": "code",
+   "text": "from transformers import pipeline\n\npipe = pipeline(\"automatic-speech-recognition\", model=\"nvidia/parakeet-tdt-0.6b-v3\")\nout = pipe(\"https://huggingface.co/datasets/hf-internal-testing/dummy-audio-samples/resolve/main/bcn_weather.mp3\")\nprint(out)",
+   "doc": "base-card",
+   "doc_sha": "541d1f99c6b0c3cd0b11a95167540bb8edefd82b",
+   "scope": "model"
+  },
+  {
+   "source": "nvidia/parakeet-tdt-0.6b-v3 README.md:L1005-1023",
+   "file": "README.md",
+   "lines": [
+    1005,
+    1023
+   ],
+   "lang": "python",
+   "tool": "transformers",
+   "kind": "code",
+   "text": "from transformers import AutoModelForTDT, AutoProcessor\nfrom datasets import load_dataset, Audio\nimport torch\n\ndevice = \"cuda\" if torch.cuda.is_available() else \"cpu\"\nnum_samples = 3\n\nmodel_id = \"nvidia/parakeet-tdt-0.6b-v3\"\nprocessor = AutoProcessor.from_pretrained(model_id)\nmodel = AutoModelForTDT.from_pretrained(model_id, dtype=\"auto\", device_map=device)\n\nds = load_dataset(\"hf-internal-testing/librispeech_asr_dummy\", \"clean\", split=\"validation\")\nds = ds.cast_column(\"audio\", Audio(sampling_rate=processor.feature_extractor.sampling_rate))\nspeech_samples = [el[\"array\"] for el in ds[\"audio\"][:num_samples]]\n\ninputs = processor(speech_samples, sampling_rate=processor.feature_extractor.sampling_rate)\ninputs.to(model.device, dtype=model.dtype)\noutput = model.generate(**inputs, return_dict_in_generate=True)\nprint(processor.decode(output.sequences, skip_special_tokens=True))",
+   "doc": "base-card",
+   "doc_sha": "541d1f99c6b0c3cd0b11a95167540bb8edefd82b",
+   "scope": "model"
+  },
+  {
+   "source": "nvidia/parakeet-tdt-0.6b-v3 README.md:L1032-1056",
+   "file": "README.md",
+   "lines": [
+    1032,
+    1056
+   ],
+   "lang": "python",
+   "tool": "transformers",
+   "kind": "code",
+   "text": "from datasets import Audio, load_dataset\nfrom transformers import AutoModelForTDT, AutoProcessor\nimport torch\n\ndevice = \"cuda\" if torch.cuda.is_available() else \"cpu\"\nnum_samples = 3\n\nmodel_id = \"nvidia/parakeet-tdt-0.6b-v3\"\nprocessor = AutoProcessor.from_pretrained(model_id)\nmodel = AutoModelForTDT.from_pretrained(model_id, dtype=\"auto\", device_map=device)\n\nds = load_dataset(\"hf-internal-testing/librispeech_asr_dummy\", \"clean\", split=\"validation\")\nds = ds.cast_column(\"audio\", Audio(sampling_rate=processor.feature_extractor.sampling_rate))\nspeech_samples = [el[\"array\"] for el in ds[\"audio\"][:num_samples]]\n\ninputs = processor(speech_samples, sampling_rate=processor.feature_extractor.sampling_rate)\ninputs.to(model.device, dtype=model.dtype)\noutput = model.generate(**inputs, return_dict_in_generate=True)\ndecoded_output, decoded_timestamps = processor.decode(\n    output.sequences,\n    durations=output.durations,\n    skip_special_tokens=True,\n)\nprint(\"Transcription:\", decoded_output)\nprint(\"Timestamped tokens:\", decoded_timestamps)",
+   "doc": "base-card",
+   "doc_sha": "541d1f99c6b0c3cd0b11a95167540bb8edefd82b",
+   "scope": "model"
+  },
+  {
+   "source": "nvidia/parakeet-tdt-0.6b-v3 README.md:L1064-1088",
+   "file": "README.md",
+   "lines": [
+    1064,
+    1088
+   ],
+   "lang": "python",
+   "tool": "transformers",
+   "kind": "code",
+   "text": "from transformers import AutoModelForTDT, AutoProcessor\nfrom datasets import load_dataset, Audio\nimport torch\n\ndevice = \"cuda\" if torch.cuda.is_available() else \"cpu\"\n\nmodel_id = \"nvidia/parakeet-tdt-0.6b-v3\"\nNUM_SAMPLES = 4\n\nprocessor = AutoProcessor.from_pretrained(model_id)\nmodel = AutoModelForTDT.from_pretrained(model_id, dtype=torch.bfloat16, device_map=device)\nmodel.train()\n\nds = load_dataset(\"hf-internal-testing/librispeech_asr_dummy\", \"clean\", split=\"validation\")\nds = ds.cast_column(\"audio\", Audio(sampling_rate=processor.feature_extractor.sampling_rate))\nspeech_samples = [el[\"array\"] for el in ds[\"audio\"][:NUM_SAMPLES]]\ntext_samples = ds[\"text\"][:NUM_SAMPLES]\n\n# passing `text` to the processor will prepare inputs' `labels` key\ninputs = processor(audio=speech_samples, text=text_samples, sampling_rate=processor.feature_extractor.sampling_rate)\ninputs.to(device=model.device, dtype=model.dtype)\n\noutputs = model(**inputs)\nprint(\"Loss:\", outputs.loss.item())\noutputs.loss.backward()",
+   "doc": "base-card",
+   "doc_sha": "541d1f99c6b0c3cd0b11a95167540bb8edefd82b",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/Oruk-AI/orukeet README.md:L68-70",
+   "file": "README.md",
+   "lines": [
+    68,
+    70
+   ],
+   "lang": "sh",
+   "tool": "pip",
+   "kind": "command",
+   "text": "python -m pip install --upgrade \\\n  https://github.com/Oruk-AI/orukeet/releases/download/v0.1.1/orukeet-0.1.1-py3-none-any.whl\norukeet install --device auto --cache ./orukeet-cache --output installation.json",
+   "doc": "github",
+   "doc_sha": "24dedf1f6a3fb85bf7db5a2ab236f5a955f17fa2",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/Oruk-AI/orukeet README.md:L84-90",
+   "file": "README.md",
+   "lines": [
+    84,
+    90
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "import json\nfrom pathlib import Path\nfrom orukeet import Orukeet\n\nconfig = json.loads(Path(\"installation.json\").read_text(encoding=\"utf-8-sig\"))\nwith Orukeet(config[\"model\"], config[\"runtime\"], device=config[\"device\"]) as asr:\n    print(asr.transcribe(\"recording.wav\")[\"text\"])",
+   "doc": "github",
+   "doc_sha": "24dedf1f6a3fb85bf7db5a2ab236f5a955f17fa2",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/Oruk-AI/orukeet README.md:L162-164",
+   "file": "README.md",
+   "lines": [
+    162,
+    164
+   ],
+   "lang": "sh",
+   "tool": "pip",
+   "kind": "command",
+   "text": "python -m pip install \"huggingface-hub>=0.34,<2\"\npython examples/download_onnx.py --cache ./orukeet-cache\ntar -xjf ./orukeet-cache/models/onnx/sherpa-onnx-orukeet-v0.1.0-int8.tar.bz2",
+   "doc": "github",
+   "doc_sha": "24dedf1f6a3fb85bf7db5a2ab236f5a955f17fa2",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA/NeMo-Speech.cpp README.md:L64-64",
+   "file": "README.md",
+   "lines": [
+    64,
+    64
+   ],
+   "lang": "bash",
+   "tool": "curl",
+   "kind": "command",
+   "text": "curl -fsSL https://github.com/NVIDIA/NeMo-Speech.cpp/raw/main/scripts/install.sh | sh",
+   "doc": "github",
+   "doc_sha": "caa3f47c7c75fa2e9e6340272ebad57c1647dd44",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA/NeMo-Speech.cpp README.md:L72-72",
+   "file": "README.md",
+   "lines": [
+    72,
+    72
+   ],
+   "lang": "powershell",
+   "tool": "shell",
+   "kind": "command",
+   "text": "irm https://github.com/NVIDIA/NeMo-Speech.cpp/raw/main/scripts/install.ps1 | iex",
+   "doc": "github",
+   "doc_sha": "caa3f47c7c75fa2e9e6340272ebad57c1647dd44",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA/NeMo-Speech.cpp README.md:L93-93",
+   "file": "README.md",
+   "lines": [
+    93,
+    93
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "nemo-speech transcribe /path/to/audio.wav",
+   "doc": "github",
+   "doc_sha": "caa3f47c7c75fa2e9e6340272ebad57c1647dd44",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA/NeMo-Speech.cpp README.md:L103-103",
+   "file": "README.md",
+   "lines": [
+    103,
+    103
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "nemo-speech transcribe --live",
+   "doc": "github",
+   "doc_sha": "caa3f47c7c75fa2e9e6340272ebad57c1647dd44",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA/NeMo-Speech.cpp README.md:L128-130",
+   "file": "README.md",
+   "lines": [
+    128,
+    130
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "nemo-speech serve \\\n  --asr-model nemotron-3.5 \\\n  --open",
+   "doc": "github",
+   "doc_sha": "caa3f47c7c75fa2e9e6340272ebad57c1647dd44",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA/NeMo-Speech.cpp README.md:L146-147",
+   "file": "README.md",
+   "lines": [
+    146,
+    147
+   ],
+   "lang": "cmake",
+   "tool": "cmake",
+   "kind": "other",
+   "text": "find_package(NeMoSpeech REQUIRED COMPONENTS ASR)\ntarget_link_libraries(my_app PRIVATE NeMoSpeech::ASR)",
+   "doc": "github",
+   "doc_sha": "caa3f47c7c75fa2e9e6340272ebad57c1647dd44",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA/NeMo-Speech.cpp README.md:L161-163",
+   "file": "README.md",
+   "lines": [
+    161,
+    163
+   ],
+   "lang": "bash",
+   "tool": "cmake",
+   "kind": "command",
+   "text": "git submodule update --init llama.cpp third_party/cpp-httplib\nscripts/configure.sh cuda-server\ncmake --build --preset cuda-server",
+   "doc": "github",
+   "doc_sha": "caa3f47c7c75fa2e9e6340272ebad57c1647dd44",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA/NeMo README.md:L83-85",
+   "file": "README.md",
+   "lines": [
+    83,
+    85
+   ],
+   "lang": "bash",
+   "tool": "git",
+   "kind": "command",
+   "text": "git clone https://github.com/NVIDIA-NeMo/Speech.git\ncd Speech\nuv sync --extra all --extra cu13     # CUDA 13.x (recommended) — use --extra cu12 for CUDA 12.x",
+   "doc": "github",
+   "doc_sha": "3e8f7563bb368cfc3c29384c60b18fb0acb023bd",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA/NeMo README.md:L88",
+   "file": "README.md",
+   "lines": [
+    88,
+    88
+   ],
+   "lang": null,
+   "tool": "llama.cpp",
+   "kind": "inline",
+   "text": "--locked --python 3.13",
+   "doc": "github",
+   "doc_sha": "3e8f7563bb368cfc3c29384c60b18fb0acb023bd",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA/NeMo README.md:L98-99",
+   "file": "README.md",
+   "lines": [
+    98,
+    99
+   ],
+   "lang": "bash",
+   "tool": "docker",
+   "kind": "command",
+   "text": "docker pull nvcr.io/nvidia/nemo-speech:26.07.00\ndocker run --rm -it --gpus all -v \"$PWD:/workspace\" nvcr.io/nvidia/nemo-speech:26.07.00 bash",
+   "doc": "github",
+   "doc_sha": "3e8f7563bb368cfc3c29384c60b18fb0acb023bd",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA/NeMo README.md:L105-108",
+   "file": "README.md",
+   "lines": [
+    105,
+    108
+   ],
+   "lang": "bash",
+   "tool": "git",
+   "kind": "command",
+   "text": "git clone https://github.com/NVIDIA-NeMo/Speech.git\ncd Speech\ndocker buildx build -f docker/Dockerfile -t nemo-speech .          # CUDA 13 / H100+ (default)\ndocker run --rm -it --gpus all -v \"$PWD:/workspace\" nemo-speech bash",
+   "doc": "github",
+   "doc_sha": "3e8f7563bb368cfc3c29384c60b18fb0acb023bd",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA/NeMo README.md:L118-118",
+   "file": "README.md",
+   "lines": [
+    118,
+    118
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "uv pip install 'nemo-toolkit[asr,tts]'   # or plain: pip install 'nemo-toolkit[asr,tts]'",
+   "doc": "github",
+   "doc_sha": "3e8f7563bb368cfc3c29384c60b18fb0acb023bd",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA/NeMo README.md:L126-127",
+   "file": "README.md",
+   "lines": [
+    126,
+    127
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install 'nemo-toolkit[asr,tts,cu13]' --extra-index-url https://download.pytorch.org/whl/cu132   # CUDA 13.x\npip install 'nemo-toolkit[asr,tts,cu12]' --extra-index-url https://download.pytorch.org/whl/cu129   # CUDA 12.x",
+   "doc": "github",
+   "doc_sha": "3e8f7563bb368cfc3c29384c60b18fb0acb023bd",
+   "scope": "model"
+  }
+ ],
+ "card_notes": [
+  {
+   "text": "The tables below summarizes the WER (%) using a Transducer decoder with greedy decoding (without an external language model):",
+   "source": "nvidia/parakeet-tdt-0.6b-v3 README.md:L1192"
+  }
+ ],
+ "chat_template": null,
+ "stop": {
+  "eos_token": "<|endoftext|>",
+  "eos_token_id": 3,
+  "eos_token_id_source": "nvidia/parakeet-tdt-0.6b-v3 generation_config.json",
+  "analysis": {
+   "tokens": [],
+   "missing": [],
+   "gguf": {}
+  }
+ },
+ "rope": null,
+ "aux": null,
+ "gguf": {
+  "general.architecture": "parakeet",
+  "general.name": "Orukeet",
+  "general.file_type": 7,
+  "_gguf_version": 3
+ },
+ "snapshot": {
+  "path": "oruk--orukeet/b59c13a733fce5cf193230d0fa317ee7f145a108",
+  "fetched_bytes": 10837190,
+  "errors": null,
+  "gated": false
+ },
+ "base_snapshot": {
+  "path": "nvidia--parakeet-tdt-0.6b-v3/541d1f99c6b0c3cd0b11a95167540bb8edefd82b",
+  "fetched_bytes": 1322899,
+  "errors": null,
+  "gated": false
+ },
+ "repo_files": {
+  ".gitattributes": {
+   "size": 2372,
+   "sha256": null,
+   "blob": "ef3fbd00d4e317c74a3f4cb94c343f8254d12c6e",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "ARTIFACTS.json": {
+   "size": 25066,
+   "sha256": null,
+   "blob": "36a632b7aa4fac08e092a6fbd65fb8d4952f02e2",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "CITATION.bib": {
+   "size": 562,
+   "sha256": null,
+   "blob": "707fc35923cf9b7dc7baae345dd33bfea5c02058",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "CITATION.cff": {
+   "size": 1388,
+   "sha256": null,
+   "blob": "98d360e5cc491ccbfc65cb8125500949cfba5a55",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "LICENSE": {
+   "size": 1094,
+   "sha256": null,
+   "blob": "0067e42971c298904dbe9392fc910515ffd32eea",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "LICENSE-WEIGHTS": {
+   "size": 20137,
+   "sha256": null,
+   "blob": "7d4f96c54aa155a17387e64501c50b6a0469932c",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "NOTICE.md": {
+   "size": 4765,
+   "sha256": null,
+   "blob": "822797b5a6c573c4c19f7a63cb27c424a1ed18d2",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "README.md": {
+   "size": 14368,
+   "sha256": null,
+   "blob": "5e71437cd111c367d730a4d1bc8845878abe7977",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "affiliations/SOURCES.md": {
+   "size": 1262,
+   "sha256": null,
+   "blob": "c9fd6e7c3af7a068fc1ebd238b202b20ca9c412a",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "affiliations/cambridge.png": {
+   "size": 72015,
+   "sha256": null,
+   "blob": "98765813184612f8f43611cd7b27391a8828163c",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "affiliations/hoid.png": {
+   "size": 29339,
+   "sha256": null,
+   "blob": "24c4548a0ba9a3c5cb168db874977aa0709f3f60",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "affiliations/openwhispr.png": {
+   "size": 15637,
+   "sha256": null,
+   "blob": "702cff6f5c32fd1ad3444d86214efe16a95ec983",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "affiliations/oruk.png": {
+   "size": 43762,
+   "sha256": null,
+   "blob": "a64951bedb2b010d0b77c6109a54ea6c44b90dc4",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "affiliations/stanford.png": {
+   "size": 16084,
+   "sha256": null,
+   "blob": "78183da7890b5481b5509ca10ab9b80d84d68e20",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "catalog.json": {
+   "size": 975,
+   "sha256": null,
+   "blob": "aa8810ead85559b962196924bf7776a0d4fb5a12",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "config.json": {
+   "size": 1149,
+   "sha256": null,
+   "blob": "3bd22278226fcf92806562a344056065476376ad",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "coreml/CONSUMER-PARITY-20260924.md": {
+   "size": 7934,
+   "sha256": null,
+   "blob": "451fb20d85a704923bc4d39127728ed747a27b97",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "coreml/NATIVE-SLOVENIAN-DIAGNOSTIC-20260924.md": {
+   "size": 8226,
+   "sha256": null,
+   "blob": "cf474ae0edae7fd5ecc0dcc657af90b7bdb01f98",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "coreml/QUALIFICATION-20260924.md": {
+   "size": 12503,
+   "sha256": null,
+   "blob": "ccd4e2b60cec3c1da8d54999d1d52c08ce90575b",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "coreml/README.md": {
+   "size": 8400,
+   "sha256": null,
+   "blob": "9a58c68865bc72813d17866f0bedad8a06d45b93",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "coreml/SHA256SUMS.txt": {
+   "size": 332,
+   "sha256": null,
+   "blob": "ffdfe0b6b2435bdffbec00a5c644608dc05b84ac",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "coreml/manifest.json": {
+   "size": 3952,
+   "sha256": null,
+   "blob": "5a1b239c391a1baa59890815df91121412e21287",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "coreml/orukeet-r3-coreml-baseline.zip": {
+   "size": 466579851,
+   "sha256": "b2a6efc4ed3280c860f29b3e2e2ea242ade14c6482c94f1c8d3e8551d5edb626",
+   "blob": "d6a7647d3038146bdff4f45da04bff7ff4747d5f",
+   "fetched": false,
+   "skipped": "larger than the limit (466 MB)"
+  },
+  "coreml/orukeet-r3-coreml-greedy.zip": {
+   "size": 466579943,
+   "sha256": "beccdc6f18c4b10527a764f6e3ab12e3e11b969220c0cee175b3bb7eaa94290e",
+   "blob": "19e2a9a2279342638fd7364f4f75eea61eba073e",
+   "fetched": false,
+   "skipped": "larger than the limit (466 MB)"
+  },
+  "coreml/orukeet-r3-coreml-int8sym-encoder-only-experimental-20260920-deflated.zip": {
+   "size": 554985744,
+   "sha256": "24df9ff76f00f86f9ae1fd601cbbcab1d1eac98c7e8107de67444a7858d88b8b",
+   "blob": "5fd148552bb712462233119b080a48889d35ff9b",
+   "fetched": false,
+   "skipped": "larger than the limit (554 MB)"
+  },
+  "docs/benchmark-scores.md": {
+   "size": 9185,
+   "sha256": null,
+   "blob": "e9e5cfc3fd5429c68169dc5c1265c38da12c4966",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "docs/current-checkpoint-benchmarks.md": {
+   "size": 6452,
+   "sha256": null,
+   "blob": "443f469086776bec00148ce906c1c51f1a38f6f1",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "docs/standard-asr-benchmarks.md": {
+   "size": 3031,
+   "sha256": null,
+   "blob": "b830d5040678915ff4e667c8bd18841428b397f0",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "docs/technical-report.md": {
+   "size": 8284,
+   "sha256": null,
+   "blob": "d88e01f77acf524b6cea608165b6db27d1588d29",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "evaluation/standard_asr/README.md": {
+   "size": 421,
+   "sha256": null,
+   "blob": "05562cae3b542c3cc2e9ea1faa934383c2152ce3",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "evidence/domains-r3-20260908/README.md": {
+   "size": 2313,
+   "sha256": null,
+   "blob": "0e309f3c6cb8b0da4f499b80286fcb72f4df348a",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "evidence/domains-r3-20260908/comparison.json": {
+   "size": 41039,
+   "sha256": null,
+   "blob": "17fa5d8f72f96a408d7a1522394d3db032fa0152",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "evidence/domains-r3-20260908/hypotheses-audit.json": {
+   "size": 1468,
+   "sha256": null,
+   "blob": "89f31a99362a51fc40fe8dabf811edc06bd77ab7",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "evidence/domains-r3-20260908/inference-comparison.json": {
+   "size": 39410,
+   "sha256": null,
+   "blob": "8fb277c9f5633d65950a791de20d192891f4b0cd",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "evidence/domains-r3-20260908/launch.json": {
+   "size": 919,
+   "sha256": null,
+   "blob": "3846894df8454d3684bdad3b4f269eff872a17ac",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "evidence/domains-r3-20260908/numeric-evidence.jsonl.gz": {
+   "size": 719000,
+   "sha256": "298f3164c745523f25b2e7df25492dab5b6607c149ea561d44af3720c29236df",
+   "blob": "677a3edeed073bd29e619484faf52dcbdafe3b69",
+   "fetched": true,
+   "verified": "lfs-sha256"
+  },
+  "evidence/domains-r3-20260908/scores.csv": {
+   "size": 6376,
+   "sha256": null,
+   "blob": "f25bb91876f1884ad8b2e5cb14622e04d3f0cc36",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "evidence/domains-r3-20260908/transfer.json": {
+   "size": 803,
+   "sha256": null,
+   "blob": "5aa1542690e0e0c07fd2a4048a379d63d4352793",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "evidence/r3-promotion-20260908/ci/smoke-results-ci-darwin-arm64.json": {
+   "size": 17423,
+   "sha256": null,
+   "blob": "6feef495c5bd45689b29a4b78630659b999068ec",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "evidence/r3-promotion-20260908/ci/smoke-results-ci-linux-x64.json": {
+   "size": 17441,
+   "sha256": null,
+   "blob": "4fc7d9c13388d7d6430c413e3f73d8c2f5061b65",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "evidence/r3-promotion-20260908/ci/smoke-results-ci-win32-x64.json": {
+   "size": 17455,
+   "sha256": null,
+   "blob": "86ca1c9ae8df374dbccc34022fddfb814ed8396c",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "evidence/r3-promotion-20260908/export-environment.json": {
+   "size": 843,
+   "sha256": null,
+   "blob": "e949894211948c7d87e76db02897a0011d3b6a67",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "evidence/r3-promotion-20260908/f16-cpu.json": {
+   "size": 17737,
+   "sha256": null,
+   "blob": "1cc5abd31a5096988d82348e519c37ad2e1f9fb1",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "evidence/r3-promotion-20260908/f16-lineage.json": {
+   "size": 1064,
+   "sha256": null,
+   "blob": "100f34b2671f90d333ef260e5e559f98b312f221",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "evidence/r3-promotion-20260908/f16-metal.json": {
+   "size": 17832,
+   "sha256": null,
+   "blob": "42834d85a5183edf2c342b92b1a6d36202a9aa8b",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "evidence/r3-promotion-20260908/linux-f16-native-fixture.py": {
+   "size": 1912,
+   "sha256": null,
+   "blob": "2df252dab2e3cc1b66f6350663cd2580edef1543",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "evidence/r3-promotion-20260908/linux-f16-native-smoke.json": {
+   "size": 4285,
+   "sha256": null,
+   "blob": "53c6543aef52fc02b4f9d9d7e02ed6d708fb3f35",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "evidence/r3-promotion-20260908/linux-native-fixture.py": {
+   "size": 1909,
+   "sha256": null,
+   "blob": "8ff950eeae809fc9ef3dd1632c17cec371fb0602",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "evidence/r3-promotion-20260908/linux-q8-native-smoke.json": {
+   "size": 4284,
+   "sha256": null,
+   "blob": "18ff352ad7628aefd5f09e86dfd89eb5c3eaa5e2",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "evidence/r3-promotion-20260908/metric-evidence.tar.gz": {
+   "size": 2543488,
+   "sha256": "b88ba374bb5c27bf07915a16903d51e9c268399b6932fca320d7abc116427432",
+   "blob": "93ad7c32cf66fb7b20df8c5674e7e8728f353243",
+   "fetched": true,
+   "verified": "lfs-sha256"
+  },
+  "evidence/r3-promotion-20260908/q8-cpu.json": {
+   "size": 17721,
+   "sha256": null,
+   "blob": "6d462b8bc935e369dc7f4da24730ca8c4e418434",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "evidence/r3-promotion-20260908/q8-lineage.json": {
+   "size": 1064,
+   "sha256": null,
+   "blob": "2a0e63842fe5596122d325d1a5b81be40711f2ec",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "evidence/r3-promotion-20260908/q8-metal.json": {
+   "size": 17824,
+   "sha256": null,
+   "blob": "97746c02f8a8cdd4f256b662fa20bb7529ecdbd1",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "evidence/r3-promotion-20260908/scores.json": {
+   "size": 8223,
+   "sha256": null,
+   "blob": "fc2746fd7669e3800bf6fab3f85f172a05f58282",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "evidence/standard-asr-r3-20260908/README.md": {
+   "size": 2482,
+   "sha256": null,
+   "blob": "27a3949967811d5858d435cacb0429d9fcfe6c00",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "evidence/standard-asr-r3-20260908/comparison.json": {
+   "size": 24978,
+   "sha256": null,
+   "blob": "3f4106d74d2b74c4593350508efa55820a5ab54b",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "evidence/standard-asr-r3-20260908/hypotheses-audit.json": {
+   "size": 1466,
+   "sha256": null,
+   "blob": "3cf2acd67f73b359b8af6972da89ab9f379074e3",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "evidence/standard-asr-r3-20260908/inference-comparison.json": {
+   "size": 23344,
+   "sha256": null,
+   "blob": "aac45c88e56069a563b09d66bb0234fe907836f2",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "evidence/standard-asr-r3-20260908/launch.json": {
+   "size": 793,
+   "sha256": null,
+   "blob": "083b54671f42c2ec4d40234aefd03c089200e946",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "evidence/standard-asr-r3-20260908/numeric-evidence.jsonl.gz": {
+   "size": 1467437,
+   "sha256": "3d1467e56efd6769da1f8cb74eef0c3eac7bf93fa8200c39538963a9d4b080c1",
+   "blob": "abcb1ff28431592c5da94a8928d9d788c3b07ae3",
+   "fetched": true,
+   "verified": "lfs-sha256"
+  },
+  "evidence/standard-asr-r3-20260908/restart.json": {
+   "size": 817,
+   "sha256": null,
+   "blob": "638ffcbea2da331b0a348713574c397a4b469d41",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "evidence/standard-asr-r3-20260908/scores.csv": {
+   "size": 3596,
+   "sha256": null,
+   "blob": "875968787f9c76642a8f26ab41566176be5512c1",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "evidence/standard-asr-r3-20260908/summary.json": {
+   "size": 2718,
+   "sha256": null,
+   "blob": "c4de8f426d8166d5614a6cc538d812d6ba9b10bf",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "evidence/standard-asr-r3-20260908/transfer.json": {
+   "size": 803,
+   "sha256": null,
+   "blob": "f77b5e2967f0dc32b3192939ba56322b4d2f3647",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "generation_config.json": {
+   "size": 264,
+   "sha256": null,
+   "blob": "ee18c24296715cec896e2a86e46eb491eeb8d174",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "kernel-fits.png": {
+   "size": 93530,
+   "sha256": null,
+   "blob": "840b426cace06f97f19badfa5dc2b5e017a7c467",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "model-stages.json": {
+   "size": 20244,
+   "sha256": null,
+   "blob": "746fa840b7027a6f1484057c76332ed44a8a0971",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "model.safetensors": {
+   "size": 2508311120,
+   "sha256": "092cff73445117d4d234c5e4fb37d86ad16a348be3426e10ff38c79d35758569",
+   "blob": "33531caddc5e6788f61f9718255ffe1cfa316aa7",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (2508 MB)"
+  },
+  "onnx/README.md": {
+   "size": 3851,
+   "sha256": null,
+   "blob": "bf3e71b55a3ede314198bbd9bab3b642dbc69625",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "onnx/combined-v0.1.0-int8/LICENSE-CONVERTER.txt": {
+   "size": 1070,
+   "sha256": null,
+   "blob": "5aeacba4582d485ace7ef0d635d7ed3611668889",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "onnx/combined-v0.1.0-int8/LICENSE-PREPROCESSOR.txt": {
+   "size": 18657,
+   "sha256": null,
+   "blob": "da6ab6cc8f333d7e89a99812866df8f24374d47c",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "onnx/combined-v0.1.0-int8/LICENSE-WEIGHTS": {
+   "size": 20137,
+   "sha256": null,
+   "blob": "7d4f96c54aa155a17387e64501c50b6a0469932c",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "onnx/combined-v0.1.0-int8/NOTICE.md": {
+   "size": 5636,
+   "sha256": null,
+   "blob": "c5d5213492743b60a669026acedd23d8d0fcf20d",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "onnx/combined-v0.1.0-int8/README.md": {
+   "size": 3441,
+   "sha256": null,
+   "blob": "1c7268f7d28bec4672be222497e29f4f3d2cab6e",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "onnx/combined-v0.1.0-int8/VOXTYPE-CONVERSION.json": {
+   "size": 1203,
+   "sha256": null,
+   "blob": "9d325def5cddd14e4beb0402cb6e6e55f2aa5936",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "onnx/combined-v0.1.0-int8/bpe.vocab": {
+   "size": 117408,
+   "sha256": null,
+   "blob": "8710c6e0069d3a45e439f2f2cedcd847a6305bb3",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "onnx/combined-v0.1.0-int8/config.json": {
+   "size": 97,
+   "sha256": null,
+   "blob": "02a773005666393de591dfd55230b778da1653d8",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "onnx/combined-v0.1.0-int8/decoder_joint-model.int8.onnx": {
+   "size": 18202844,
+   "sha256": "95d3b1f53f9aadc5ef58e63664a3681a2184ee228b5010e1ef975a1c4ea8318a",
+   "blob": "2ac87f2745c5e17272d7a6bcdce310b956276829",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (18 MB)"
+  },
+  "onnx/combined-v0.1.0-int8/encoder-model.int8.onnx": {
+   "size": 653182378,
+   "sha256": "7b55f2a504a20a8e462899f5befd45f4a1784948d76ed0127902d9cf39405487",
+   "blob": "6072d9f936598261fa539e2107067b966ff3d3d3",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (653 MB)"
+  },
+  "onnx/combined-v0.1.0-int8/import-orukeet-onnx.py": {
+   "size": 10615,
+   "sha256": null,
+   "blob": "debe9ea905a2896171e306e31e68184ffb7031f3",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "onnx/combined-v0.1.0-int8/manifest.json": {
+   "size": 2657,
+   "sha256": null,
+   "blob": "8d7efcd27477d035c02bc609f60c9f17e1dab97c",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "onnx/combined-v0.1.0-int8/nemo128.onnx": {
+   "size": 139764,
+   "sha256": "a9fde1486ebfcc08f328d75ad4610c67835fea58c73ba57e3209a6f6cf019e9f",
+   "blob": "0e84a16fc38fca70b132300a700249e8236fe729",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (0 MB)"
+  },
+  "onnx/combined-v0.1.0-int8/validation/autosubs-comparison-summary.json": {
+   "size": 984,
+   "sha256": null,
+   "blob": "06ae95e449e42262febfd872c12bcaf9f0ebc8c3",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "onnx/combined-v0.1.0-int8/validation/autosubs-comparison.jsonl": {
+   "size": 226077,
+   "sha256": null,
+   "blob": "6b105882a5e9b0a64a5e628977dbd08097558a5b",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "onnx/combined-v0.1.0-int8/validation/meetily-comparison-summary.json": {
+   "size": 990,
+   "sha256": null,
+   "blob": "c8fa79c62eea715aea462ca261fda65ec4ba1b66",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "onnx/combined-v0.1.0-int8/validation/meetily-comparison.jsonl": {
+   "size": 204619,
+   "sha256": null,
+   "blob": "d8e2110fd872f54ab72060d8fe876565ac62ff29",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "onnx/combined-v0.1.0-int8/validation/meetily-shipped-hashes.txt": {
+   "size": 904,
+   "sha256": null,
+   "blob": "cd37b036507176918782e0ef11dbdc8ffd468111",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "onnx/combined-v0.1.0-int8/vocab.txt": {
+   "size": 93939,
+   "sha256": null,
+   "blob": "fc43e1c723e262df60b70e1919614417162d1fe2",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "onnx/manifest.json": {
+   "size": 1867,
+   "sha256": null,
+   "blob": "7bae5777e4a7a92cf43d8293f498c23379dc4485",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "onnx/optimization-receipt.json": {
+   "size": 4561,
+   "sha256": null,
+   "blob": "02ce038394937c2262db316f44a51366ebac2456",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "onnx/sherpa-onnx-orukeet-v0.1.0-int8.tar.bz2": {
+   "size": 486807585,
+   "sha256": "f9191f30178cc9122ce2f023bf9fefafc822028307b0efa4caff645ba3fe8d0a",
+   "blob": "48d3defd22525dae18e5a0bd1ca767ccc65fe62d",
+   "fetched": false,
+   "skipped": "larger than the limit (486 MB)"
+  },
+  "onnx/sherpa-v0.1.0-int8/LICENSE-WEIGHTS": {
+   "size": 20137,
+   "sha256": null,
+   "blob": "7d4f96c54aa155a17387e64501c50b6a0469932c",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "onnx/sherpa-v0.1.0-int8/NOTICE.md": {
+   "size": 5271,
+   "sha256": null,
+   "blob": "090367ee176e4b440f2c1e9a3ee6cec41383b176",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "onnx/sherpa-v0.1.0-int8/bpe.vocab": {
+   "size": 117408,
+   "sha256": null,
+   "blob": "8710c6e0069d3a45e439f2f2cedcd847a6305bb3",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "onnx/sherpa-v0.1.0-int8/decoder.int8.onnx": {
+   "size": 11845332,
+   "sha256": "c185c2afb4c77c94bb1314807ecb3dc1623057a3dc540b83e10301af9bf4cfca",
+   "blob": "c065096f19c12c1e99b23ddf0608073f94dc926f",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (11 MB)"
+  },
+  "onnx/sherpa-v0.1.0-int8/encoder.int8.onnx": {
+   "size": 653182378,
+   "sha256": "7b55f2a504a20a8e462899f5befd45f4a1784948d76ed0127902d9cf39405487",
+   "blob": "6072d9f936598261fa539e2107067b966ff3d3d3",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (653 MB)"
+  },
+  "onnx/sherpa-v0.1.0-int8/joiner.int8.onnx": {
+   "size": 6355335,
+   "sha256": "1a7e90abf7172d926dd7e2edac2a5d5035c24dfb641a15e131d57b6a5f63cdd3",
+   "blob": "d91237b0b2412d00161abf5b214e8f8c44bbfe9c",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (6 MB)"
+  },
+  "onnx/sherpa-v0.1.0-int8/manifest.json": {
+   "size": 1867,
+   "sha256": null,
+   "blob": "7bae5777e4a7a92cf43d8293f498c23379dc4485",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "onnx/sherpa-v0.1.0-int8/tokens.txt": {
+   "size": 93939,
+   "sha256": null,
+   "blob": "fc43e1c723e262df60b70e1919614417162d1fe2",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "oruk-lockup.png": {
+   "size": 41469,
+   "sha256": null,
+   "blob": "77103ae42ccc53471b9442eba7a75e8f41a5a929",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "orukeet-0.1.0-py3-none-any.whl": {
+   "size": 26929,
+   "sha256": null,
+   "blob": "11d4ef35a281f4c9a45769f67ec03d4daf7aca74",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "orukeet-0.1.0.tar.gz": {
+   "size": 31074,
+   "sha256": "65f57199c411bd266dfabf2800957ebf56c65b25de038f6930ce8d89f9c71929",
+   "blob": "6fb37f6767a87b469a3c98d92f30c047695d2f9a",
+   "fetched": true,
+   "verified": "lfs-sha256"
+  },
+  "orukeet-arxiv-source.zip": {
+   "size": 143407,
+   "sha256": "f4ad7770293f282b3e1fdd559a5a417035b799d58281e5bf9a6ab925bae51125",
+   "blob": "d6231edd30928405cf3ba5a9916f94fffa00b2ee",
+   "fetched": true,
+   "verified": "lfs-sha256"
+  },
+  "orukeet-technical-report.pdf": {
+   "size": 275659,
+   "sha256": "401d162a87d4454b0f16998bf3501b9c84da909a7b5be353705528477d2eef62",
+   "blob": "13be9753bbaae1820bcf4b68df0239b7b9655c79",
+   "fetched": true,
+   "verified": "lfs-sha256"
+  },
+  "orukeet-transcribe-cpp-Q8_0.gguf": {
+   "size": 739508608,
+   "sha256": "cad2f52ac91cad829279422301989687c2cf02e19157352ed25ea501b90dbb7e",
+   "blob": "6d280ca105dc3a187b8406ebbb8a85785a6872f0",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (739 MB)"
+  },
+  "orukeet-v0.1.0-f16.gguf": {
+   "size": 1296681088,
+   "sha256": "de53fb8ec251fb07ade15baabe17b00774ae3f1112f8618b062337f90fb49194",
+   "blob": "f6025721375ae4853a88d7891ef01b0d939c61ce",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (1296 MB)"
+  },
+  "orukeet-v0.1.0-q8.gguf": {
+   "size": 714456704,
+   "sha256": "93ce19c6d8244acbfea980eeaf970531d4f216171578ef8e041dcc2d070a45bd",
+   "blob": "c31b87920351307ba9ea863d8a1bb766357d8965",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (714 MB)"
+  },
+  "orukeet-v0.1.0.nemo": {
+   "size": 2509342720,
+   "sha256": "031c8ddab4845aeced904a7cde8e8aa57993b2e344716cf83a545b079c473b56",
+   "blob": "0a63c25ee1b95b06441a1e3e30ab1695acc304f4",
+   "fetched": false,
+   "skipped": "weight file not used here (2509 MB)"
+  },
+  "processor_config.json": {
+   "size": 417,
+   "sha256": null,
+   "blob": "934fa28d7864abea13faea83744d46833a7aebf3",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/README.md": {
+   "size": 3638,
+   "sha256": null,
+   "blob": "06398427abc9d6963f14ddd424f704615290dfbf",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/affiliations/SOURCES.md": {
+   "size": 2203,
+   "sha256": null,
+   "blob": "e9ae533b52d22425220909bc890dcb06d3bb8b23",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/affiliations/cambridge.pdf": {
+   "size": 44738,
+   "sha256": null,
+   "blob": "aaa2eda54764ca7966abba74bcba3f23d0528e2b",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/affiliations/cambridge.svg": {
+   "size": 57691,
+   "sha256": null,
+   "blob": "2234b740994f3470514154dbd60a87f9d820c7e5",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/affiliations/hoid.pdf": {
+   "size": 1978,
+   "sha256": null,
+   "blob": "55f103063c96dfb61655c9e8ec109f4a228d9a1c",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/affiliations/hoid.svg": {
+   "size": 2965,
+   "sha256": null,
+   "blob": "0be02ba44ae4a8cf89bb06b343a92acf295214f0",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/affiliations/openwhispr.pdf": {
+   "size": 1341,
+   "sha256": null,
+   "blob": "b518c8cf9f471c04fbe649a09f099ee269cf4604",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/affiliations/openwhispr.svg": {
+   "size": 1202,
+   "sha256": null,
+   "blob": "e71085968e2d011b382afeb7980faade57dedb31",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/affiliations/stanford.png": {
+   "size": 11528,
+   "sha256": null,
+   "blob": "e0c8914d658718d4212790f6e4774b0c22dd6af6",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/kernel-atlas-caption.md": {
+   "size": 269,
+   "sha256": null,
+   "blob": "053db63cd75a2181daf13b428c8251f9e3277ed1",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/kernel-atlas-preview.png": {
+   "size": 169043,
+   "sha256": "c5a4a3993d51cb7197c50cd82b2fb9fd5103d8dffd6f31b0fe7c5b923230691c",
+   "blob": "a097b296adcc40c19165d86980eba63fae171c44",
+   "fetched": true,
+   "verified": "lfs-sha256"
+  },
+  "report/assets/kernel-atlas.pdf": {
+   "size": 39134,
+   "sha256": null,
+   "blob": "e2d53d4a0b6eb280207b40c6b1e33c1221c33805",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/kernel-atlas.png": {
+   "size": 376772,
+   "sha256": "2b8b24400ac7b9e8b6e4484eb0c6c36cca8f618167141d508a2b6468824888c3",
+   "blob": "be28bb5f5daab746358b9f4b83443906ea863453",
+   "fetched": true,
+   "verified": "lfs-sha256"
+  },
+  "report/assets/kernel-atlas.svg": {
+   "size": 130923,
+   "sha256": null,
+   "blob": "dc50f98b2131b28caab36d56d9fa038843617162",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/kernel-fits-caption.md": {
+   "size": 345,
+   "sha256": null,
+   "blob": "38d9a1230cb1f8e6f0a78cf81873d5f5d960b0df",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/kernel-fits-preview.png": {
+   "size": 48220,
+   "sha256": null,
+   "blob": "0856f19c1253d40718d1cb99c46cc5daae2a59cd",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/kernel-fits.pdf": {
+   "size": 20762,
+   "sha256": null,
+   "blob": "65ababf986447ad082c14b82795591bb6b6f40a5",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/kernel-fits.png": {
+   "size": 93530,
+   "sha256": null,
+   "blob": "840b426cace06f97f19badfa5dc2b5e017a7c467",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/kernel-fits.svg": {
+   "size": 26317,
+   "sha256": null,
+   "blob": "e2132ceeb0fc58e44419bf29321d7c7033f477b5",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/language-deltas-caption.md": {
+   "size": 291,
+   "sha256": null,
+   "blob": "73db86a98938630ed7568ad4cb0c31fd48a4e339",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/language-deltas-preview.png": {
+   "size": 33557,
+   "sha256": null,
+   "blob": "8e33b45d95614c655d26f103d405f532decf7ef1",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/language-deltas.pdf": {
+   "size": 21904,
+   "sha256": null,
+   "blob": "4a0f5e5f619f4ddd21fecf98638647760dc25737",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/language-deltas.png": {
+   "size": 72533,
+   "sha256": null,
+   "blob": "968b7f5586ba8d610920a561f2f3888e6f037e4f",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/language-deltas.svg": {
+   "size": 24593,
+   "sha256": null,
+   "blob": "def38759b9e34f2b33dc81a440e6e08a91eb4b3f",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/model-figures-source.json": {
+   "size": 15764,
+   "sha256": null,
+   "blob": "80a592624431ef885f100e9810a6204ebaab83c1",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/model-figures-visual-review.json": {
+   "size": 1884,
+   "sha256": null,
+   "blob": "292ea29cbefe0e26d9031a6be87c100c3c083ad7",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/oruk-lockup.png": {
+   "size": 41469,
+   "sha256": null,
+   "blob": "77103ae42ccc53471b9442eba7a75e8f41a5a929",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/oruk-lockup.svg": {
+   "size": 3372,
+   "sha256": null,
+   "blob": "3328bd33717518ab807dfc89c1a3fc90b318fc67",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/provenance.json": {
+   "size": 1068,
+   "sha256": null,
+   "blob": "ce487c84cdf9eaa033a3c3aa77667741bc14a7bd",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/recognition-deltas-caption.md": {
+   "size": 485,
+   "sha256": null,
+   "blob": "5d26fecf6ed997dae764d8d12d9f4c5e7c038a08",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/recognition-deltas-preview.png": {
+   "size": 18202,
+   "sha256": null,
+   "blob": "f36c1659de5605b68d3ceb80ff197f63a385072f",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/recognition-deltas.pdf": {
+   "size": 15879,
+   "sha256": null,
+   "blob": "05bd328cc0c4add73e17a569b436b327def14884",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/recognition-deltas.png": {
+   "size": 41222,
+   "sha256": null,
+   "blob": "bec15b7dd1206b84c39224046751222f39207f67",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/recognition-deltas.svg": {
+   "size": 7186,
+   "sha256": null,
+   "blob": "0b7a17cf799412846123ba94e733811c0b61d97a",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/selection-profile-caption.md": {
+   "size": 358,
+   "sha256": null,
+   "blob": "0ec94fb7202385dcc073ebdecb50bdd5eab88a4a",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/selection-profile-preview.png": {
+   "size": 37344,
+   "sha256": null,
+   "blob": "024fcac0a3e678116a7a4cabf5a015aa68f9c437",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/selection-profile.pdf": {
+   "size": 20686,
+   "sha256": null,
+   "blob": "95426388563305e3d2a29132c946216dea433a52",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/selection-profile.png": {
+   "size": 85067,
+   "sha256": null,
+   "blob": "b49d2dd6ada91ba0ad2c4506e13ff944e4bc10e8",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/selection-profile.svg": {
+   "size": 21319,
+   "sha256": null,
+   "blob": "24374c24a10689d32d21de8077d1367b0f1a729e",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/surgery-source.json": {
+   "size": 468,
+   "sha256": null,
+   "blob": "e37b2300acd8122c5e01acff686d77e4a9cb07e7",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/surgery.pdf": {
+   "size": 20609,
+   "sha256": null,
+   "blob": "744817b00e5482fad4d27b449426e4015668decb",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/surgery.png": {
+   "size": 76446,
+   "sha256": null,
+   "blob": "1a44af3ca1bb7b4cf7db1ea7791b0d29f2fe07be",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/surgery.svg": {
+   "size": 18807,
+   "sha256": null,
+   "blob": "f5a1894c2908d5c6d968859372cae65df4a3bb77",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/unseen/unseen-benchmark-captions.md": {
+   "size": 1266,
+   "sha256": null,
+   "blob": "0708893d6348c862c529ceb18377c61e222898de",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/unseen/unseen-english-accents.pdf": {
+   "size": 27214,
+   "sha256": null,
+   "blob": "cff068cdd47647e3739a9a1f7f4608e9c3fd65d7",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/unseen/unseen-english-accents.png": {
+   "size": 141909,
+   "sha256": "c6be28a4ad2ceaa78e578f520aca33c8a6000f8731331443b4910c8f6c3a8069",
+   "blob": "f3c488786e6a9fc340bff02e1b303e55abbf66b5",
+   "fetched": true,
+   "verified": "lfs-sha256"
+  },
+  "report/assets/unseen/unseen-english-accents.svg": {
+   "size": 15908,
+   "sha256": null,
+   "blob": "2e3e2821383428dcaee5daf1acf22d8cb1cb4b15",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/unseen/unseen-english-domains.pdf": {
+   "size": 29405,
+   "sha256": null,
+   "blob": "a0be0493e20d13e8b72358a5509a75d048d55865",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/unseen/unseen-english-domains.png": {
+   "size": 173922,
+   "sha256": "03e2048952df3576b88a45d19add8b835e51a0a4e61d51fcc03c76dd5173272a",
+   "blob": "2b99b4cbbd9d907604d798aa58aef86fec221621",
+   "fetched": true,
+   "verified": "lfs-sha256"
+  },
+  "report/assets/unseen/unseen-english-domains.svg": {
+   "size": 22053,
+   "sha256": null,
+   "blob": "880e8cd590c0ede4d9f62e45a5f7c61119256bd1",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/unseen/unseen-eurospeech.pdf": {
+   "size": 30980,
+   "sha256": null,
+   "blob": "a69fd24d2a81f7f01c224c91e6d7318074438afb",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/unseen/unseen-eurospeech.png": {
+   "size": 206024,
+   "sha256": "a5efb7b9dcb242a5301a5edffde5d6dace4dd03a1319e49c9cd817cc4dd30854",
+   "blob": "78ef0ec342e83c76541145e746dfad180a8acfe3",
+   "fetched": true,
+   "verified": "lfs-sha256"
+  },
+  "report/assets/unseen/unseen-eurospeech.svg": {
+   "size": 27408,
+   "sha256": null,
+   "blob": "7313524d36daff6b4e7b95c371f0f1b4ad5deb5b",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/unseen/unseen-figure-receipt.json": {
+   "size": 3070,
+   "sha256": null,
+   "blob": "dc1de329149dbb2ae55d6ae2b07a88b21e1433c2",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/unseen/unseen-language-coverage.pdf": {
+   "size": 30716,
+   "sha256": null,
+   "blob": "794198d2e65106cf9fa030202f74d7130f6f7760",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/assets/unseen/unseen-language-coverage.png": {
+   "size": 176291,
+   "sha256": "aa66de577f8ebb9997568eda3fccdd9c80f93a0d02c13518abc7405830b1bba7",
+   "blob": "94ef3bdf93789af528b637d772fbbb0457953420",
+   "fetched": true,
+   "verified": "lfs-sha256"
+  },
+  "report/assets/unseen/unseen-language-coverage.svg": {
+   "size": 17941,
+   "sha256": null,
+   "blob": "82d9b6d8ade5f37f8237dde2cef9dcfa6c4626d6",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/benchmark-tables.tex": {
+   "size": 8252,
+   "sha256": null,
+   "blob": "9b757f87d8f08567f8fc5e1fbd7ba48a4612c920",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/benchmark-values.tex": {
+   "size": 1044,
+   "sha256": null,
+   "blob": "db7f2992201340d7039fde7678d8cbf1c8732266",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/build-receipt.json": {
+   "size": 6600,
+   "sha256": null,
+   "blob": "c5b21100a34346bfe98c9c5751fa93885068f093",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/current-benchmark-validation.json": {
+   "size": 8220,
+   "sha256": null,
+   "blob": "296b7f711b431be841e28874dd2ad647c0c942ea",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/current-benchmark-values.tex": {
+   "size": 875,
+   "sha256": null,
+   "blob": "dcf8a4fc8dd676d7dd30c94a82ec8d21dc0e0f19",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/current-domains-table.tex": {
+   "size": 3010,
+   "sha256": null,
+   "blob": "f4f7a5fc8f36343ddfdeca1840599b7e74eabce1",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/current-standard-table.tex": {
+   "size": 2394,
+   "sha256": null,
+   "blob": "b74e53273a11965e69e6688084326d0a3bd729fe",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/evidence.tex": {
+   "size": 361,
+   "sha256": null,
+   "blob": "507e3ba6b07a81c3db6983f49be0137ea3ad4feb",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/make_model_figures.py": {
+   "size": 10202,
+   "sha256": null,
+   "blob": "d77c03ab59c738572cba4c8d4f741fca160a09f0",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/make_surgery_figure.py": {
+   "size": 2426,
+   "sha256": null,
+   "blob": "f5819f7015ae051bd8a1c6051659e4094b3e3b05",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/model.json": {
+   "size": 1098,
+   "sha256": null,
+   "blob": "4473e49bbd01508dfd1f45b8c94416df1e7346b0",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/neurips_2026.sty": {
+   "size": 13704,
+   "sha256": null,
+   "blob": "ba57755282dcb4ed8febc86c24f4e581810bf374",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/paper.tex": {
+   "size": 12026,
+   "sha256": null,
+   "blob": "583593f592b34f9c5a6bda0445e8d360087abd55",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/references.bib": {
+   "size": 2498,
+   "sha256": null,
+   "blob": "1277aa5c86fd19826b767d802b32fa3c0c6f1036",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/standard-benchmark-table.tex": {
+   "size": 2087,
+   "sha256": null,
+   "blob": "1971bee2526a269399753ba880071d82197e1904",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "report/standard-benchmark-values.tex": {
+   "size": 541,
+   "sha256": null,
+   "blob": "7a1bb73dc1bd088c1b105ea5fb15263e600595ff",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "selection-profile.png": {
+   "size": 85067,
+   "sha256": null,
+   "blob": "b49d2dd6ada91ba0ad2c4506e13ff944e4bc10e8",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "team.json": {
+   "size": 3212,
+   "sha256": null,
+   "blob": "f8e6b498a5c0c0b94b3c05e4fd8fe5ca246a8bdd",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "tokenizer.json": {
+   "size": 1159960,
+   "sha256": null,
+   "blob": "7f29e89e5b59f306363b7ac31962409a1b3d28e4",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "tokenizer_config.json": {
+   "size": 258,
+   "sha256": null,
+   "blob": "f621fc736e0a16b674425c357a6482eb5578b825",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "transcribe-cpp/README.md": {
+   "size": 3281,
+   "sha256": null,
+   "blob": "4cf11cccb1ab941a7f6f34b7f0b6242c34bbc65e",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "transcribe-cpp/convert-orukeet.patch": {
+   "size": 1635,
+   "sha256": null,
+   "blob": "279c5305dee07e7babfc0bff80e4fc6ec1b9fa0a",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "transcribe-cpp/manifest.json": {
+   "size": 1015,
+   "sha256": null,
+   "blob": "2a77cdeacf52f8ca861fd696306a8a765afdac53",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "transcribe-cpp/orukeet-Q8_0.gguf": {
+   "size": 739508608,
+   "sha256": "cad2f52ac91cad829279422301989687c2cf02e19157352ed25ea501b90dbb7e",
+   "blob": "6d280ca105dc3a187b8406ebbb8a85785a6872f0",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (739 MB)"
+  },
+  "transcribe-cpp/validation.json": {
+   "size": 5409,
+   "sha256": null,
+   "blob": "922937099bf280a43e3cdde5c03216e4a4bad3e5",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "transcribe.py": {
+   "size": 848,
+   "sha256": null,
+   "blob": "34495dc298081d20a577c0f32e00a75ce2304eff",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "transformers/LICENSE-CONVERTER": {
+   "size": 11418,
+   "sha256": null,
+   "blob": "68b7d66c97d66c58de883ed0c451af2b3183e6f3",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "transformers/README.md": {
+   "size": 3604,
+   "sha256": null,
+   "blob": "811c2c1370963dec4a809450a05bffb4783264fa",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "transformers/convert.py": {
+   "size": 3403,
+   "sha256": null,
+   "blob": "cfb1816dbaa27cd0fca760b86eafcc6eafac10cd",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "transformers/convert_nemo_to_hf.py": {
+   "size": 22789,
+   "sha256": null,
+   "blob": "cff9dfd6e60f17e2907aaa83e7edb001104679dc",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "transformers/manifest.json": {
+   "size": 1388,
+   "sha256": null,
+   "blob": "5a19c44e5c5835e12fb0d0604c4c09728825d68d",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "transformers/qualification.json": {
+   "size": 2056,
+   "sha256": null,
+   "blob": "7a48bbb64abf3a4634c2b9f3dad81360b6808d10",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  }
+ },
+ "base_repo_files": {
+  ".eval_results/open_asr_leaderboard.yaml": {
+   "size": 2130,
+   "sha256": null,
+   "blob": "70f27141a1757f2f027cb755b01556972888c636",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  ".gitattributes": {
+   "size": 1722,
+   "sha256": null,
+   "blob": "dae81d5df3418453c5153e3ba966c7d74c70bb3e",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "README.md": {
+   "size": 42888,
+   "sha256": null,
+   "blob": "50c4a1414566a843f671af136996f343309910dc",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "config.json": {
+   "size": 1153,
+   "sha256": null,
+   "blob": "969c65410a736e4a3922f968b3481b2418aba786",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "generation_config.json": {
+   "size": 289,
+   "sha256": null,
+   "blob": "e368b292e2ad5232aae2a3e45f4761097e5fc216",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "model.safetensors": {
+   "size": 2508311120,
+   "sha256": "3a2026366188c8c68598edbbff92f8d11590a08e0ae2e6775544e7b07d6a5e11",
+   "blob": "2d98cb6ea8e6f7c2dce6d7a88def7404169340a0",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (2508 MB)"
+  },
+  "parakeet-tdt-0.6b-v3.nemo": {
+   "size": 2509332480,
+   "sha256": "3cbdc85877e668ca7b82d0d56770eb1fac76691f55d6b97545e8d61ca588d10d",
+   "blob": "ebab265de3051ef329df5cc4c97da8fdf2e3e4a2",
+   "fetched": false,
+   "skipped": "weight file not used here (2509 MB)"
+  },
+  "parakeet-tdt-0.6b-v3.q8_0.gguf": {
+   "size": 713975456,
+   "sha256": "e3880d0aaaaf2c308ea2c35016b2b895c423eb3fda924c1b463d1c19b7f4d32e",
+   "blob": "2d8802fefcc24a702bbfd1990529505f2d37fc4c",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (713 MB)"
+  },
+  "plots/asr.png": {
+   "size": 114075,
+   "sha256": "43df117825ce8148acce53c1c35cb54e9ecd111b835b171ff903b380429ee105",
+   "blob": "1bb31965917b77fae6a2518e98d45e0bc294e057",
+   "fetched": true,
+   "verified": "lfs-sha256"
+  },
+  "processor_config.json": {
+   "size": 392,
+   "sha256": null,
+   "blob": "7acffca89b7dd12e0ebcd085c7181c91cae6575c",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "tokenizer.json": {
+   "size": 1159960,
+   "sha256": null,
+   "blob": "a10a554cf61e38108756650018d5781ae9675c1d",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "tokenizer_config.json": {
+   "size": 290,
+   "sha256": null,
+   "blob": "8a31c60ee8ce7b81b999061d3a233845cf8bd033",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  }
+ },
+ "found_in": [
+  "familia #55"
+ ],
+ "match": null,
+ "local_check": null,
+ "unknown": [
+  "card_defaults: the card and generation_config.json state no sampling values",
+  "ctx"
+ ],
+ "warnings": null,
+ "updated": "2026-10-19",
+ "by": "scripts/model_db.py",
+ "weights": "absent (damp)",
+ "gguf_meta": {
+  "general.architecture": "parakeet",
+  "general.name": "Orukeet",
+  "general.basename": "parakeet-tdt",
+  "general.version": "v0.1.0",
+  "general.size_label": "0.6B",
+  "general.author": "Oruk",
+  "general.organization": "oruk",
+  "general.license": "cc-by-sa-4.0",
+  "general.license.name": "Creative Commons Attribution-ShareAlike 4.0",
+  "general.license.link": "https://creativecommons.org/licenses/by-sa/4.0/",
+  "general.repo_url": "https://huggingface.co/oruk/orukeet",
+  "general.languages": [
+   "bg",
+   "hr",
+   "cs",
+   "da",
+   "nl",
+   "en",
+   "et",
+   "fi",
+   "fr",
+   "de",
+   "el",
+   "hu",
+   "it",
+   "lv",
+   "lt",
+   "mt",
+   "pl",
+   "pt",
+   "ro",
+   "ru",
+   "sk",
+   "sl",
+   "es",
+   "sv",
+   "uk"
+  ],
+  "stt.variant": "tdt-0.6b-orukeet",
+  "stt.capability.lang_detect": true,
+  "stt.capability.streaming": false,
+  "stt.parakeet.head_kind": "tdt",
+  "tokenizer.ggml.model": "bpe",
+  "tokenizer.ggml.unknown_token_id": 0,
+  "tokenizer.ggml.blank_token_id": 8192,
+  "stt.parakeet.encoder.n_layers": 24,
+  "stt.parakeet.encoder.d_model": 1024,
+  "stt.parakeet.encoder.n_heads": 8,
+  "stt.parakeet.encoder.d_ff": 4096,
+  "stt.parakeet.encoder.conv_kernel": 9,
+  "stt.parakeet.encoder.subsampling_factor": 8,
+  "stt.parakeet.encoder.subsampling_channels": 256,
+  "stt.parakeet.encoder.pos_emb_max_len": 5000,
+  "stt.parakeet.encoder.use_bias": false,
+  "stt.parakeet.encoder.xscaling": false,
+  "stt.parakeet.encoder.att_context_left": -1,
+  "stt.parakeet.encoder.att_context_right": -1,
+  "stt.parakeet.encoder.att_context_style": "regular",
+  "stt.parakeet.encoder.conv_context_left": 4,
+  "stt.parakeet.encoder.conv_context_right": 4,
+  "stt.parakeet.encoder.conv_norm_type": "batch_norm",
+  "stt.parakeet.predictor.hidden": 640,
+  "stt.parakeet.predictor.n_layers": 2,
+  "stt.parakeet.predictor.vocab": 8193,
+  "stt.parakeet.joint.hidden": 640,
+  "stt.parakeet.joint.num_extra_outputs": 5,
+  "stt.parakeet.joint.activation": "relu",
+  "stt.parakeet.tdt.durations": {
+   "array_len": 5
+  },
+  "stt.parakeet.tdt.max_symbols": 10,
+  "stt.frontend.type": "mel",
+  "stt.frontend.num_mels": 128,
+  "stt.frontend.sample_rate": 16000,
+  "stt.frontend.n_fft": 512,
+  "stt.frontend.win_length": 400,
+  "stt.frontend.hop_length": 160,
+  "stt.frontend.window": "hann",
+  "stt.frontend.normalize": "per_feature",
+  "stt.frontend.dither": 9.999999747378752e-06,
+  "stt.frontend.pre_emphasis": 0.9700000286102295,
+  "stt.frontend.f_min": 0.0,
+  "stt.frontend.f_max": 8000.0,
+  "general.file_type": 7,
+  "tokenizer.ggml.tokens": {
+   "array_len": 8193
+  },
+  "tokenizer.ggml.scores": {
+   "array_len": 8193
+  },
+  "tokenizer.ggml.token_type": {
+   "array_len": 8193
+  },
+  "_gguf_version": 3,
+  "_n_tensors": 697
+ },
+ "base_chain": [
+  {
+   "repo": "nvidia/parakeet-tdt-0.6b-v3",
+   "api_id": "nvidia/parakeet-tdt-0.6b-v3",
+   "revision": "541d1f99c6b0c3cd0b11a95167540bb8edefd82b",
+   "via": "card base_model",
+   "card_data": {
+    "license": "cc-by-4.0",
+    "language": [
+     "en",
+     "es",
+     "fr",
+     "de",
+     "bg",
+     "hr",
+     "cs",
+     "da",
+     "nl",
+     "et",
+     "fi",
+     "el",
+     "hu",
+     "it",
+     "lv",
+     "lt",
+     "mt",
+     "pl",
+     "pt",
+     "ro",
+     "sk",
+     "sl",
+     "sv",
+     "ru",
+     "uk"
+    ],
+    "pipeline_tag": "automatic-speech-recognition",
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "automatic-speech-recognition",
+   "safetensors": {
+    "parameters": {
+     "F32": 627057286
+    },
+    "total": 627057286
+   },
+   "license_files": null
+  }
+ ],
+ "github": [
+  {
+   "repo": "Oruk-AI/orukeet",
+   "resolved": "Oruk-AI/orukeet",
+   "sha": "24dedf1f6a3fb85bf7db5a2ab236f5a955f17fa2",
+   "renamed": null,
+   "description": "Orukeet: multilingual ASR with fitted, frozen Gabor kernels and native inference",
+   "license_spdx": "MIT",
+   "files": {
+    "readme": {
+     "path": "README.md",
+     "sha256": "3c28e3be5f4c5f8cf1b83c57d32c8990e8e59b23a0e6bdfa7eae116389899603",
+     "bytes": 13499
+    },
+    "license": {
+     "path": "LICENSE",
+     "sha256": "e7349d7fc331c670e274335beaaa843d6d9bbeeb12691f1f40144c6214459bad",
+     "bytes": 1094
+    }
+   },
+   "extra": null,
+   "snapshot": "github/Oruk-AI--orukeet/24dedf1f6a3fb85bf7db5a2ab236f5a955f17fa2"
+  },
+  {
+   "repo": "NVIDIA/NeMo-Speech.cpp",
+   "resolved": "NVIDIA/NeMo-Speech.cpp",
+   "sha": "caa3f47c7c75fa2e9e6340272ebad57c1647dd44",
+   "renamed": null,
+   "description": "NeMo-Speech.cpp is a lightweight C++ inference runtime for Speech models ",
+   "license_spdx": "Apache-2.0",
+   "files": {
+    "license": {
+     "path": "LICENSE",
+     "sha256": "eaaca34b26b27c7be5a5099a0b9ddf9913f2db0aa96f6d5854435f2916d6fdc3",
+     "bytes": 12238
+    },
+    "readme": {
+     "path": "README.md",
+     "sha256": "54f85f532a1bfe23324ced98b4ad0da675d8e98b4f3d4552644f74be23b1d6b2",
+     "bytes": 9445
+    }
+   },
+   "extra": null,
+   "snapshot": "github/NVIDIA--NeMo-Speech.cpp/caa3f47c7c75fa2e9e6340272ebad57c1647dd44"
+  },
+  {
+   "repo": "NVIDIA/NeMo",
+   "resolved": "NVIDIA-NeMo/Speech",
+   "sha": "3e8f7563bb368cfc3c29384c60b18fb0acb023bd",
+   "renamed": true,
+   "description": "A scalable generative AI framework built for researchers and developers working on Large Language Models, Multimodal, and Speech AI (Automatic Speech Recognition and Text-to-Speech)",
+   "license_spdx": "Apache-2.0",
+   "files": {
+    "readme": {
+     "path": "README.md",
+     "sha256": "f7f63002e9f9fc053094e26f6828687dccdfda41a2e13c13cf2587fcacf556f8",
+     "bytes": 10646
+    },
+    "license": {
+     "path": "LICENSE",
+     "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+     "bytes": 11357
+    }
+   },
+   "extra": null,
+   "snapshot": "github/NVIDIA--NeMo/3e8f7563bb368cfc3c29384c60b18fb0acb023bd"
+  }
+ ],
+ "github_dropped": [
+  {
+   "repo": "OpenWhispr/openwhispr",
+   "why": "owner and name unrelated to the model's Hugging Face repos"
+  },
+  {
+   "repo": "cjpais/transcribe.cpp",
+   "why": "owner and name unrelated to the model's Hugging Face repos"
+  },
+  {
+   "repo": "huggingface/transformers",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "google/sentencepiece",
+   "why": "owner and name unrelated to the model's Hugging Face repos"
+  }
+ ],
+ "descriptor": {
+  "repo_id": {
+   "effective": "oruk/orukeet",
+   "source": "HF API id"
+  },
+  "revision": {
+   "effective": "b59c13a733fce5cf193230d0fa317ee7f145a108",
+   "source": "pinned (manifest / database)"
+  },
+  "file": {
+   "effective": "orukeet-transcribe-cpp-Q8_0.gguf",
+   "source": "HF API siblings"
+  },
+  "bytes": {
+   "effective": 739508608,
+   "source": "HF API LFS size"
+  },
+  "sha256": {
+   "effective": "cad2f52ac91cad829279422301989687c2cf02e19157352ed25ea501b90dbb7e",
+   "source": "HF API LFS oid"
+  },
+  "quant": {
+   "effective": "Q8_0",
+   "source": "file name",
+   "values": [
+    {
+     "value": "Q8_0",
+     "source": "file name"
+    },
+    {
+     "value": "Q8_0",
+     "source": "GGUF general.file_type"
+    }
+   ]
+  },
+  "license": {
+   "effective": "cc-by-sa-4.0",
+   "source": "oruk/orukeet card license",
+   "values": [
+    {
+     "value": "cc-by-sa-4.0",
+     "source": "oruk/orukeet card license"
+    },
+    {
+     "value": "cc-by-4.0",
+     "source": "nvidia/parakeet-tdt-0.6b-v3 card license"
+    },
+    {
+     "value": "cc-by-sa-4.0",
+     "source": "GGUF general.license"
+    }
+   ],
+   "conflict": true
+  },
+  "license_name": {
+   "effective": "Creative Commons Attribution-ShareAlike 4.0",
+   "source": "GGUF general.license.name"
+  },
+  "license_link": {
+   "effective": "https://creativecommons.org/licenses/by-sa/4.0/",
+   "source": "GGUF general.license.link"
+  },
+  "code_license": {
+   "effective": "MIT",
+   "source": "GitHub github.com/Oruk-AI/orukeet license (spdx)",
+   "values": [
+    {
+     "value": "MIT",
+     "source": "GitHub github.com/Oruk-AI/orukeet license (spdx)"
+    },
+    {
+     "value": "Apache-2.0",
+     "source": "GitHub github.com/NVIDIA/NeMo-Speech.cpp license (spdx)"
+    },
+    {
+     "value": "Apache-2.0",
+     "source": "GitHub github.com/NVIDIA/NeMo license (spdx)"
+    }
+   ],
+   "conflict": true
+  },
+  "license_file": {
+   "effective": "github.com/Oruk-AI/orukeet@24dedf1f6a3f/LICENSE",
+   "source": "GitHub github.com/Oruk-AI/orukeet",
+   "values": [
+    {
+     "value": "github.com/Oruk-AI/orukeet@24dedf1f6a3f/LICENSE",
+     "source": "GitHub github.com/Oruk-AI/orukeet"
+    },
+    {
+     "value": "github.com/NVIDIA/NeMo-Speech.cpp@caa3f47c7c75/LICENSE",
+     "source": "GitHub github.com/NVIDIA/NeMo-Speech.cpp"
+    },
+    {
+     "value": "github.com/NVIDIA/NeMo@3e8f7563bb36/LICENSE",
+     "source": "GitHub github.com/NVIDIA/NeMo"
+    },
+    {
+     "value": "oruk/orukeet@b59c13a733fc/LICENSE",
+     "source": "oruk/orukeet repo file"
+    },
+    {
+     "value": "oruk/orukeet@b59c13a733fc/LICENSE-WEIGHTS",
+     "source": "oruk/orukeet repo file"
+    }
+   ]
+  },
+  "base_model_chain": {
+   "effective": "nvidia/parakeet-tdt-0.6b-v3",
+   "source": "card base_model"
+  },
+  "architecture": {
+   "effective": "parakeet",
+   "source": "GGUF general.architecture",
+   "values": [
+    {
+     "value": "parakeet",
+     "source": "GGUF general.architecture"
+    },
+    {
+     "value": "parakeet",
+     "source": "HF API gguf.architecture"
+    }
+   ]
+  },
+  "hf_architectures": {
+   "effective": [
+    "ParakeetForTDT"
+   ],
+   "source": "oruk/orukeet config.json architectures",
+   "values": [
+    {
+     "value": [
+      "ParakeetForTDT"
+     ],
+     "source": "oruk/orukeet config.json architectures"
+    },
+    {
+     "value": [
+      "ParakeetForTDT"
+     ],
+     "source": "nvidia/parakeet-tdt-0.6b-v3 config.json architectures"
+    }
+   ]
+  },
+  "hf_model_type": {
+   "effective": "parakeet_tdt",
+   "source": "oruk/orukeet config.json model_type",
+   "values": [
+    {
+     "value": "parakeet_tdt",
+     "source": "oruk/orukeet config.json model_type"
+    },
+    {
+     "value": "parakeet_tdt",
+     "source": "nvidia/parakeet-tdt-0.6b-v3 config.json model_type"
+    }
+   ]
+  },
+  "parameters": {
+   "effective": 627052166,
+   "source": "HF API gguf.total (oruk/orukeet)",
+   "values": [
+    {
+     "value": 627052166,
+     "source": "HF API gguf.total (oruk/orukeet)"
+    },
+    {
+     "value": 627057286,
+     "source": "HF API safetensors.total (nvidia/parakeet-tdt-0.6b-v3)"
+    }
+   ],
+   "conflict": true
+  },
+  "size_label": {
+   "effective": "0.6B",
+   "source": "GGUF general.size_label"
+  },
+  "pipeline_tag": {
+   "effective": "automatic-speech-recognition",
+   "source": "oruk/orukeet HF API pipeline_tag",
+   "values": [
+    {
+     "value": "automatic-speech-recognition",
+     "source": "oruk/orukeet HF API pipeline_tag"
+    },
+    {
+     "value": "automatic-speech-recognition",
+     "source": "nvidia/parakeet-tdt-0.6b-v3 HF API pipeline_tag"
+    }
+   ]
+  },
+  "languages": {
+   "effective": [
+    "bg",
+    "hr",
+    "cs",
+    "da",
+    "nl",
+    "en",
+    "et",
+    "fi",
+    "fr",
+    "de",
+    "el",
+    "hu",
+    "it",
+    "lv",
+    "lt",
+    "mt",
+    "pl",
+    "pt",
+    "ro",
+    "ru",
+    "sk",
+    "sl",
+    "es",
+    "sv",
+    "uk"
+   ],
+   "source": "oruk/orukeet card language",
+   "values": [
+    {
+     "value": [
+      "bg",
+      "hr",
+      "cs",
+      "da",
+      "nl",
+      "en",
+      "et",
+      "fi",
+      "fr",
+      "de",
+      "el",
+      "hu",
+      "it",
+      "lv",
+      "lt",
+      "mt",
+      "pl",
+      "pt",
+      "ro",
+      "ru",
+      "sk",
+      "sl",
+      "es",
+      "sv",
+      "uk"
+     ],
+     "source": "oruk/orukeet card language"
+    },
+    {
+     "value": [
+      "en",
+      "es",
+      "fr",
+      "de",
+      "bg",
+      "hr",
+      "cs",
+      "da",
+      "nl",
+      "et",
+      "fi",
+      "el",
+      "hu",
+      "it",
+      "lv",
+      "lt",
+      "mt",
+      "pl",
+      "pt",
+      "ro",
+      "sk",
+      "sl",
+      "sv",
+      "ru",
+      "uk"
+     ],
+     "source": "nvidia/parakeet-tdt-0.6b-v3 card language"
+    },
+    {
+     "value": [
+      "bg",
+      "hr",
+      "cs",
+      "da",
+      "nl",
+      "en",
+      "et",
+      "fi",
+      "fr",
+      "de",
+      "el",
+      "hu",
+      "it",
+      "lv",
+      "lt",
+      "mt",
+      "pl",
+      "pt",
+      "ro",
+      "ru",
+      "sk",
+      "sl",
+      "es",
+      "sv",
+      "uk"
+     ],
+     "source": "GGUF general.languages"
+    }
+   ],
+   "conflict": true
+  }
+ },
+ "required_params": {
+  "kind": "raw",
+  "native_ctx": null,
+  "native_ctx_source": null,
+  "yarn": null,
+  "yarn_source": null,
+  "items": []
+ },
+ "blockers": null,
+ "params_problems": null,
+ "params_build": "b11374",
+ "license_info": {
+  "id": "cc-by-sa-4.0",
+  "id_source": "oruk/orukeet card front matter license",
+  "name": "Creative Commons Attribution-ShareAlike 4.0",
+  "summary": "cc-by-sa-4.0",
+  "summary_source": "oruk/orukeet card license",
+  "link": "https://creativecommons.org/licenses/by-sa/4.0/",
+  "link_source": "GGUF general.license.link",
+  "texts": [
+   {
+    "file": "oruk/orukeet@b59c13a733fc/LICENSE",
+    "path": "/home/green/.local/share/gguf/hf-meta/oruk--orukeet/b59c13a733fce5cf193230d0fa317ee7f145a108/LICENSE",
+    "url": "https://huggingface.co/oruk/orukeet/blob/b59c13a733fce5cf193230d0fa317ee7f145a108/LICENSE",
+    "sha256": "e7349d7fc331c670e274335beaaa843d6d9bbeeb12691f1f40144c6214459bad",
+    "bytes": 1094,
+    "what": "model"
+   },
+   {
+    "file": "oruk/orukeet@b59c13a733fc/NOTICE.md",
+    "path": "/home/green/.local/share/gguf/hf-meta/oruk--orukeet/b59c13a733fce5cf193230d0fa317ee7f145a108/NOTICE.md",
+    "url": "https://huggingface.co/oruk/orukeet/blob/b59c13a733fce5cf193230d0fa317ee7f145a108/NOTICE.md",
+    "sha256": "f1cf43822e52f0a2e5aa3c0b1252d34a17d30cd29303a12eb2f0b151e7433132",
+    "bytes": 4765,
+    "what": "model"
+   },
+   {
+    "file": "github.com/Oruk-AI/orukeet@24dedf1f6a3f/LICENSE",
+    "path": "/home/green/.local/share/gguf/hf-meta/github/Oruk-AI--orukeet/24dedf1f6a3fb85bf7db5a2ab236f5a955f17fa2/LICENSE",
+    "url": "https://github.com/Oruk-AI/orukeet/blob/24dedf1f6a3fb85bf7db5a2ab236f5a955f17fa2/LICENSE",
+    "sha256": "e7349d7fc331c670e274335beaaa843d6d9bbeeb12691f1f40144c6214459bad",
+    "bytes": 1094,
+    "what": "code (GitHub Oruk-AI/orukeet, spdx MIT)"
+   },
+   {
+    "file": "github.com/NVIDIA/NeMo-Speech.cpp@caa3f47c7c75/LICENSE",
+    "path": "/home/green/.local/share/gguf/hf-meta/github/NVIDIA--NeMo-Speech.cpp/caa3f47c7c75fa2e9e6340272ebad57c1647dd44/LICENSE",
+    "url": "https://github.com/NVIDIA/NeMo-Speech.cpp/blob/caa3f47c7c75fa2e9e6340272ebad57c1647dd44/LICENSE",
+    "sha256": "eaaca34b26b27c7be5a5099a0b9ddf9913f2db0aa96f6d5854435f2916d6fdc3",
+    "bytes": 12238,
+    "what": "code (GitHub NVIDIA/NeMo-Speech.cpp, spdx Apache-2.0)"
+   },
+   {
+    "file": "github.com/NVIDIA-NeMo/Speech@3e8f7563bb36/LICENSE",
+    "path": "/home/green/.local/share/gguf/hf-meta/github/NVIDIA--NeMo/3e8f7563bb368cfc3c29384c60b18fb0acb023bd/LICENSE",
+    "url": "https://github.com/NVIDIA-NeMo/Speech/blob/3e8f7563bb368cfc3c29384c60b18fb0acb023bd/LICENSE",
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+    "bytes": 11357,
+    "what": "code (GitHub NVIDIA-NeMo/Speech, spdx Apache-2.0)"
+   }
+  ],
+  "obligations": [
+   {
+    "quote": "# Attribution and license scope",
+    "source": "oruk/orukeet NOTICE.md:L1"
+   },
+   {
+    "quote": "commercial use and modification, with attribution and applicable ShareAlike",
+    "source": "oruk/orukeet NOTICE.md:L14"
+   },
+   {
+    "quote": "license and source attribution. The optimized ONNX encoder uses exactly equivalent FP32 arithmetic for 24 quantized depthwise convolutions, with existing runtime operators and unchanged quantized values. Original export and separate optimization receipts are retained in the GitHub repository under `...",
+    "source": "oruk/orukeet NOTICE.md:L30"
+   },
+   {
+    "quote": "[Public license with attribution and conditions reserved](https://github.com/sberdevices/golos/blob/master/license/en_us.pdf).",
+    "source": "oruk/orukeet NOTICE.md:L46"
+   },
+   {
+    "quote": "The [ONNX INT8 archive](https://huggingface.co/oruk/orukeet/resolve/55a984d46f68323301837194ce647c702f55facc/onnx/sherpa-onnx-orukeet-v0.1.0-int8.tar.bz2) uses the standard Parakeet TDT v3 layout: `encoder.int8.onnx`, `decoder.int8.onnx`, `joiner.int8.onnx` and `tokens.txt`. It also includes the BPE...",
+    "source": "oruk/orukeet README.md:L110"
+   },
+   {
+    "quote": "## License and attribution",
+    "source": "oruk/orukeet README.md:L198"
+   },
+   {
+    "quote": "Code: MIT. Weights and fitted kernels: CC BY-SA 4.0, retaining NVIDIA's foundation attribution. Transcript-free metric records: CC BY 4.0. Dataset audio is obtained from its original providers under their terms.",
+    "source": "oruk/orukeet README.md:L200"
+   },
+   {
+    "quote": "[Data provenance](https://github.com/Oruk-AI/orukeet/blob/main/docs/data-and-licenses.md) · [Attribution](NOTICE.md)",
+    "source": "oruk/orukeet README.md:L202"
+   },
+   {
+    "quote": "This model is ready for commercial/non-commercial use.",
+    "source": "nvidia/parakeet-tdt-0.6b-v3 README.md:L796"
+   }
+  ],
+  "gated": false,
+  "unknown": false,
+  "seen": [
+   {
+    "value": "cc-by-sa-4.0",
+    "source": "oruk/orukeet card license"
+   },
+   {
+    "value": "cc-by-4.0",
+    "source": "nvidia/parakeet-tdt-0.6b-v3 card license"
+   },
+   {
+    "value": "cc-by-sa-4.0",
+    "source": "GGUF general.license"
+   }
+  ]
+ },
+ "role_inference": {
+  "role": null,
+  "evidence": [
+   "general +1 (GGUF metadata: general.architecture parakeet (generative))",
+   "no familia role: card pipeline_tag automatic-speech-recognition is not a text-generation model; classify by hand"
+  ]
+ },
+ "repo_bytes": 11836507192
+}

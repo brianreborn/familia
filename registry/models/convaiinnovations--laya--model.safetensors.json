@@ -1,0 +1,1645 @@
+{
+ "schema": 2,
+ "id": "convaiinnovations--laya--model.safetensors",
+ "repo": "convaiinnovations/laya",
+ "revision": "7b928d828b7b0e022f929d9bd2e44165aa270148",
+ "file": "model.safetensors",
+ "sha256": "891102d372688fc2a094dac56a384bc537b87c63f21f9f3dac0be2b7cbc8d86c",
+ "bytes": 842609210,
+ "quant": null,
+ "arch": null,
+ "roles": [
+  "decision"
+ ],
+ "license": "apache-2.0",
+ "license_source": "convaiinnovations/laya card license",
+ "ctx": null,
+ "ctx_source": null,
+ "card_ctx": null,
+ "card_ctx_source": null,
+ "base_model": null,
+ "base_revision": null,
+ "card_defaults": null,
+ "card_defaults_source": null,
+ "card_default_set": null,
+ "card_defaults_how": "the card and generation_config.json state no sampling values",
+ "card_sampling_modes": null,
+ "card_default_mode": null,
+ "card_default_mode_source": null,
+ "card_sampling_sets": null,
+ "card_commands": [
+  {
+   "source": "convaiinnovations/laya README.md:L15-15",
+   "file": "README.md",
+   "lines": [
+    15,
+    15
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install laya",
+   "doc": "card",
+   "doc_sha": "7b928d828b7b0e022f929d9bd2e44165aa270148",
+   "scope": "model"
+  },
+  {
+   "source": "convaiinnovations/laya README.md:L37-55",
+   "file": "README.md",
+   "lines": [
+    37,
+    55
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "from laya import Router\n\nrouter = Router()  # downloads a checkpoint on first use; Router(preload=True) loads all three up front\n\nstate = \"Hi, we were billed twice for March. Please refund the duplicate today or we will cancel our plan.\"\nquestions = {\n    \"department\": {\"type\": \"choice\", \"instructions\": \"Which department should handle this?\",\n                   \"criteria\": {\"billing\": \"invoices, payments, refunds\",\n                                \"technical\": \"bugs, outages, system errors\",\n                                \"other\": \"everything else\"}},\n    \"urgency\": {\"type\": \"score\", \"instructions\": \"How urgent is this?\",\n                \"criteria\": [\"not urgent\", \"soon\", \"blocking\"]},\n    \"churn_risk\": {\"type\": \"noul\", \"instructions\": \"Does the user threaten to cancel or leave?\"},\n}\n\nresult = router.predict(state, questions)\nprint(result[\"answers\"][\"department\"][\"choice\"])  # billing\nprint(result[\"answers\"][\"churn_risk\"][\"noul\"])    # probability the answer is yes\nprint(result[\"routing\"][\"model\"])                 # english",
+   "doc": "card",
+   "doc_sha": "7b928d828b7b0e022f929d9bd2e44165aa270148",
+   "scope": "model"
+  },
+  {
+   "source": "convaiinnovations/laya README.md:L61-66",
+   "file": "README.md",
+   "lines": [
+    61,
+    66
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "for text in [\"मुझसे मार्च में दो बार शुल्क लिया गया, कृपया डुप्लिकेट राशि वापस करें।\",\n             \"La aplicación se cierra cada vez que abro la configuración.\"]:\n    r = router.predict(text, {\"department\": questions[\"department\"]})\n    print(r[\"routing\"][\"model\"], r[\"answers\"][\"department\"][\"choice\"])\n# multilingual billing\n# multilingual technical",
+   "doc": "card",
+   "doc_sha": "7b928d828b7b0e022f929d9bd2e44165aa270148",
+   "scope": "model"
+  },
+  {
+   "source": "convaiinnovations/laya README.md:L108-108",
+   "file": "README.md",
+   "lines": [
+    108,
+    108
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install laya",
+   "doc": "card",
+   "doc_sha": "7b928d828b7b0e022f929d9bd2e44165aa270148",
+   "scope": "model"
+  },
+  {
+   "source": "convaiinnovations/laya README.md:L112-161",
+   "file": "README.md",
+   "lines": [
+    112,
+    161
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "import laya\nfrom laya import Router\n\n# Preload checkpoints into memory for instant sub-35ms routing\nrouter = Router(preload=True)\n\nstate = {\n    \"from\": \"user@acme.com\",\n    \"subject\": \"Duplicate charge on invoice #4411\",\n    \"body\": \"Hi, we were billed twice for March. Please refund the duplicate today or we will cancel our plan.\"\n}\n\nquestions = {\n    \"department\": {\n        \"type\": \"choice\",\n        \"instructions\": \"Which department should handle this request?\",\n        \"criteria\": {\n            \"billing\": \"invoices, payments, refunds\",\n            \"technical\": \"bugs, outages, system errors\",\n            \"sales\": \"pricing, new contracts\",\n            \"other\": \"everything else\"\n        }\n    },\n    \"urgency\": {\n        \"type\": \"score\",\n        \"instructions\": \"How urgent is this request?\",\n        \"criteria\": [\"not urgent\", \"soon\", \"critical deadline or blocking issue\"]\n    },\n    \"churn_risk\": {\n        \"type\": \"noul\",\n        \"instructions\": \"Does the user threaten to cancel or leave?\"\n    },\n    \"refund_requested\": {\n        \"type\": \"noul\",\n        \"instructions\": \"Does the user explicitly request a refund?\"\n    }\n}\n\n# 1. English state -> automatically routed to ModernBERT-large (39.5 ms)\nres_en = router.predict(state, questions)\nprint(\"Department :\", res_en[\"answers\"][\"department\"][\"choice\"])  # -> billing (confidence: 0.94)\nprint(\"Routing    :\", res_en[\"routing\"][\"model\"])                 # -> english\n\n# 2. Hindi state -> automatically routed to mmBERT-base (100+ languages, 32.8 ms)\nres_hi = router.predict({\"body\": \"मुझसे दो बार शुल्क लिया गया, कृपया पैसे वापस करें।\"}, questions)\nprint(\"Department :\", res_hi[\"answers\"][\"department\"][\"choice\"])  # -> billing (confidence: 0.86)\nprint(\"Routing    :\", res_hi[\"routing\"][\"model\"])                 # -> multilingual\n\n# 3. Explicit override when you already know the checkpoint\nres_td = router.predict(state, questions, model=\"typed-decisions\")",
+   "doc": "card",
+   "doc_sha": "7b928d828b7b0e022f929d9bd2e44165aa270148",
+   "scope": "model"
+  },
+  {
+   "source": "convaiinnovations/laya README.md:L167-172",
+   "file": "README.md",
+   "lines": [
+    167,
+    172
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "res_hi[\"routing\"]\n# {\n#   'model': 'multilingual',\n#   'repo': 'convaiinnovations/laya/multilingual',\n#   'reason': 'non-Latin script (devanagari, 100% of letters); the English checkpoint cannot read it'\n# }",
+   "doc": "card",
+   "doc_sha": "7b928d828b7b0e022f929d9bd2e44165aa270148",
+   "scope": "model"
+  },
+  {
+   "source": "convaiinnovations/laya README.md:L196-197",
+   "file": "README.md",
+   "lines": [
+    196,
+    197
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "router.predict(state, questions, lang_guess=\"ro\")              # a code you already know\nrouter = Router(preload=True, lang_guess=my_lid)               # or install one for every request",
+   "doc": "card",
+   "doc_sha": "7b928d828b7b0e022f929d9bd2e44165aa270148",
+   "scope": "model"
+  },
+  {
+   "source": "convaiinnovations/laya README.md:L207-223",
+   "file": "README.md",
+   "lines": [
+    207,
+    223
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "# Every checkpoint resident in memory; language flips cost detection only (<1 ms)\nrouter = Router(preload=True)\nrouter = Router(preload=True, device=\"cuda\")\n\n# Or preload only the specific checkpoints you serve:\nrouter.preload([\"english\", \"multilingual\"])\n\n# If your app already built an agent, attach it to avoid duplicate VRAM:\nrouter.attach(\"english\", existing_agent)\n\n# Manage resident memory (default keeps two hot: english + multilingual, LRU eviction)\nrouter = Router(max_loaded=3)       # all three hot, e.g. with auto_task_detection\nrouter = Router(max_loaded=1)       # memory-constrained host, reloads on every switch\nrouter.unload()                     # free memory\n\nwith Router() as r:                 # releases the models when the block ends\n    r.predict(state, questions)",
+   "doc": "card",
+   "doc_sha": "7b928d828b7b0e022f929d9bd2e44165aa270148",
+   "scope": "model"
+  },
+  {
+   "source": "convaiinnovations/laya README.md:L239-252",
+   "file": "README.md",
+   "lines": [
+    239,
+    252
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "import laya\n\n# 1. Load from the repo root or subfolders (downloads only the requested weights)\nagent = laya.load(\"convaiinnovations/laya\")                           # English root (~808 MB)\nagent_ml = laya.load(\"convaiinnovations/laya\", subfolder=\"multilingual\") # 100+ languages (~647 MB)\nagent_td = laya.load(\"convaiinnovations/laya\", subfolder=\"typed-decisions\")\n\n# 2. Run all questions in ONE single forward pass (~35 ms on GPU)\nresult = agent.predict(state, questions)\nanswers = result[\"answers\"]\n\nprint(\"Department :\", answers[\"department\"][\"choice\"])   # -> billing (confidence: 0.94)\nprint(\"Urgency    :\", answers[\"urgency\"][\"score\"])        # -> 1.84 / 2.0\nprint(\"Churn Risk :\", answers[\"churn_risk\"][\"noul\"])       # -> 0.892 (89.2% probability)",
+   "doc": "card",
+   "doc_sha": "7b928d828b7b0e022f929d9bd2e44165aa270148",
+   "scope": "model"
+  },
+  {
+   "source": "convaiinnovations/laya README.md:L265-266",
+   "file": "README.md",
+   "lines": [
+    265,
+    266
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install \"laya[serve]\"\nLAYA_DEVICE=cuda LAYA_PRELOAD=1 laya-serve        # 0.0.0.0:8000, preloads the checkpoints",
+   "doc": "card",
+   "doc_sha": "7b928d828b7b0e022f929d9bd2e44165aa270148",
+   "scope": "model"
+  },
+  {
+   "source": "convaiinnovations/laya README.md:L270-273",
+   "file": "README.md",
+   "lines": [
+    270,
+    273
+   ],
+   "lang": "bash",
+   "tool": "curl",
+   "kind": "command",
+   "text": "curl -s localhost:8000/v1/systemone -H 'Content-Type: application/json' -d '{\n  \"state\": {\"document\": \"I was charged twice. Please fix this ASAP.\"},\n  \"questions\": {\"billing\": {\"type\": \"noul\", \"instructions\": \"Is this ticket about billing?\"}}\n}'",
+   "doc": "card",
+   "doc_sha": "7b928d828b7b0e022f929d9bd2e44165aa270148",
+   "scope": "model"
+  },
+  {
+   "source": "convaiinnovations/laya README.md:L368-369",
+   "file": "README.md",
+   "lines": [
+    368,
+    369
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "  {\"type\": \"choice\", \"instructions\": \"Is this review positive?\",\n   \"criteria\": {\"A\": \"yes, the review is positive\", \"B\": \"no, the review is negative\"}}",
+   "doc": "card",
+   "doc_sha": "7b928d828b7b0e022f929d9bd2e44165aa270148",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L27-27",
+   "file": "README.md",
+   "lines": [
+    27,
+    27
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "python -m pip install laya",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L53-71",
+   "file": "README.md",
+   "lines": [
+    53,
+    71
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "from laya import Router\n\nrouter = Router()  # downloads a checkpoint on first use; Router(preload=True) loads all three up front\n\nstate = \"Hi, we were billed twice for March. Please refund the duplicate today or we will cancel our plan.\"\nquestions = {\n    \"department\": {\"type\": \"choice\", \"instructions\": \"Which department should handle this?\",\n                   \"criteria\": {\"billing\": \"invoices, payments, refunds\",\n                                \"technical\": \"bugs, outages, system errors\",\n                                \"other\": \"everything else\"}},\n    \"urgency\": {\"type\": \"score\", \"instructions\": \"How urgent is this?\",\n                \"criteria\": [\"not urgent\", \"soon\", \"blocking\"]},\n    \"churn_risk\": {\"type\": \"noul\", \"instructions\": \"Does the user threaten to cancel or leave?\"},\n}\n\nresult = router.predict(state, questions)\nprint(result[\"answers\"][\"department\"][\"choice\"])  # billing\nprint(result[\"answers\"][\"churn_risk\"][\"noul\"])    # probability the answer is yes\nprint(result[\"routing\"][\"model\"])                 # english",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L77-82",
+   "file": "README.md",
+   "lines": [
+    77,
+    82
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "for text in [\"मुझसे मार्च में दो बार शुल्क लिया गया, कृपया डुप्लिकेट राशि वापस करें।\",\n             \"La aplicación se cierra cada vez que abro la configuración.\"]:\n    r = router.predict(text, {\"department\": questions[\"department\"]})\n    print(r[\"routing\"][\"model\"], r[\"answers\"][\"department\"][\"choice\"])\n# multilingual billing\n# multilingual technical",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L159-159",
+   "file": "README.md",
+   "lines": [
+    159,
+    159
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "python -m pip install laya",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L169-171",
+   "file": "README.md",
+   "lines": [
+    169,
+    171
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "python3 -m venv .venv\n.venv/bin/python -m pip install laya\n.venv/bin/python -I -c \"import laya; print(laya.__version__)\"",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L177-179",
+   "file": "README.md",
+   "lines": [
+    177,
+    179
+   ],
+   "lang": "powershell",
+   "tool": "pip",
+   "kind": "command",
+   "text": "py -3.11 -m venv .venv\n.\\.venv\\Scripts\\python.exe -m pip install laya\n.\\.venv\\Scripts\\python.exe -I -c \"import laya; print(laya.__version__)\"",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L189-191",
+   "file": "README.md",
+   "lines": [
+    189,
+    191
+   ],
+   "lang": "powershell",
+   "tool": "pip",
+   "kind": "command",
+   "text": ".\\.venv\\Scripts\\python.exe -m pip install torch --index-url https://download.pytorch.org/whl/xpu\n.\\.venv\\Scripts\\python.exe -m pip install laya\n.\\.venv\\Scripts\\python.exe -c \"import torch; print(torch.xpu.is_available())\"",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L201-202",
+   "file": "README.md",
+   "lines": [
+    201,
+    202
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "# macOS / Linux\n.venv/bin/python -m pip install \"git+https://github.com/NandhaKishorM/laya.git\"",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L206-207",
+   "file": "README.md",
+   "lines": [
+    206,
+    207
+   ],
+   "lang": "powershell",
+   "tool": "pip",
+   "kind": "command",
+   "text": "# Windows PowerShell\n.\\.venv\\Scripts\\python.exe -m pip install \"git+https://github.com/NandhaKishorM/laya.git\"",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L217-218",
+   "file": "README.md",
+   "lines": [
+    217,
+    218
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "uv venv --python 3.12\nuv pip install laya",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L226-227",
+   "file": "README.md",
+   "lines": [
+    226,
+    227
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "uv add laya\nuv run python -I -c \"import laya; print(laya.__version__)\"",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L259-269",
+   "file": "README.md",
+   "lines": [
+    259,
+    269
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "laya \"I was charged twice, please refund\"            # routing decision only; works offline, no download\nlaya \"Refactor this service\" --predict               # full answers (downloads the checkpoint on first use)\nlaya \"Mein Konto wurde zweimal belastet\" --lang de   # force a language instead of detecting it\nlaya \"My payment failed twice\" --lang-guess en        # a soft hint: nudge routing, still fall through to detection\nlaya \"My payment failed twice\" --model ml            # pin a checkpoint: names, aliases and casing all resolve as the SDK resolves them\nlaya \"My payment failed twice\" --preset triage       # answer a ready-made preset (triage, email, guard, moderation, router)\nlaya --batch tickets.txt --predict                   # score a file of requests, one per line, in one batch\ncat tickets.txt | laya --batch - --predict --json    # stdin; one JSON line of answers per request\nlaya \"Where is my card\" --questions intents.json     # answer your own questions, written in a JSON file\nlaya \"Refund my card\" --predict --min-confidence 0.9 # mark an answer the model is unsure of\nlaya                                                 # interactive mode",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L306-307",
+   "file": "README.md",
+   "lines": [
+    306,
+    307
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "agent = laya.load(\"convaiinnovations/laya\", device=\"cpu\")      # or \"cuda\", \"mps\", \"xpu\"\nrouter = Router(preload=True, device=\"mps\")",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L319-319",
+   "file": "README.md",
+   "lines": [
+    319,
+    319
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install \"numpy<2\" \"torch==2.2.2\" \"transformers==4.57.6\" laya",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L338-347",
+   "file": "README.md",
+   "lines": [
+    338,
+    347
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "./setup_laya.sh                                    # venv + pinned deps + checkpoints + verify\n.venv/bin/python verify/laya_smoke_test.py --models ./models            # real weights, device auto -> MPS\n.venv/bin/python verify/laya_smoke_test.py --models ./models --device cpu\n.venv/bin/python verify/numerics_check.py          # RoPE bases, determinism, SDPA vs eager\n.venv/bin/python verify/bench_devices.py           # CPU vs MPS, thread scaling\n.venv/bin/python verify/edge_sweep.py              # edge cases: option budgets, truncation, router lifecycle\n.venv/bin/python verify/checkpoints.py             # weights vs the recorded sha256 hashes\n.venv/bin/python verify/soak_check.py              # drift, RSS and concurrency over 200 calls\n.venv/bin/python tests/test_local_e2e.py ./models             # the repo's own e2e suite\n./examples/run_all.sh                              # all 41 examples, pass/fail",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L367-372",
+   "file": "README.md",
+   "lines": [
+    367,
+    372
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "from laya import Router\n\nrouter = Router(models={\"english\": \"models/laya\",\n                        \"multilingual\": \"models/laya-multilingual\",\n                        \"typed-decisions\": \"models/laya-typed-decisions\"},\n                preload=True)",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L388-389",
+   "file": "README.md",
+   "lines": [
+    388,
+    389
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install \"laya[serve]\"\npython examples/server.py               # http://127.0.0.1:8000",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L399-409",
+   "file": "README.md",
+   "lines": [
+    399,
+    409
+   ],
+   "lang": "bash",
+   "tool": "curl",
+   "kind": "command",
+   "text": "curl -s localhost:8000/predict -H 'content-type: application/json' -d '{\n  \"state\": {\"body\": \"We were billed twice for March. Please refund it today.\"},\n  \"questions\": {\n    \"department\": {\"type\": \"choice\",\n                   \"instructions\": \"Which department should handle this?\",\n                   \"criteria\": {\"billing\": \"invoices, payments, refunds\", \"other\": \"everything else\"}},\n    \"urgency\": {\"type\": \"score\",\n                \"instructions\": \"How urgent is this?\",\n                \"criteria\": [\"not urgent\", \"soon\", \"critical\"]}\n  }\n}' | python -m json.tool",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L451",
+   "file": "README.md",
+   "lines": [
+    451,
+    451
+   ],
+   "lang": null,
+   "tool": "pip",
+   "kind": "inline",
+   "text": "python -m pip install ./sdk/python",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L462-470",
+   "file": "README.md",
+   "lines": [
+    462,
+    470
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "# From this checkout, install and start the Python inference service:\npip install -e '.[serve]'\nLAYA_HOST=127.0.0.1 LAYA_MODELS=english laya-serve\n\n# In another terminal:\ncd sdk/typescript\nnpm ci\nnpm run build\nnode examples/triage.mjs",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L493-501",
+   "file": "README.md",
+   "lines": [
+    493,
+    501
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "from laya import Router\n\nrouter = Router()  # downloads only the selected checkpoint on first use\nresult = router.predict(\n    {\"body\": \"We were billed twice. Please refund the duplicate.\"},\n    {\"billing\": {\"type\": \"noul\", \"instructions\": \"Does the user request a refund?\"}},\n)\nprint(result[\"answers\"][\"billing\"][\"noul\"])  # P(true), a float from 0.0 to 1.0\nprint(result[\"routing\"][\"model\"])            # which checkpoint answered, e.g. 'english'",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L515-565",
+   "file": "README.md",
+   "lines": [
+    515,
+    565
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "from laya import Router\n\n# Preload checkpoints into memory for instant sub-35ms routing\nrouter = Router(preload=True)\n\n# 1. State in any language or schema\nstate = {\n    \"from\": \"user@acme.com\",\n    \"subject\": \"Duplicate charge on invoice #4411\",\n    \"body\": \"Hi, we were billed twice for March. Please refund the duplicate today or we will cancel our plan.\"\n}\n\n# 2. Define your typed questions\nquestions = {\n    \"department\": {\n        \"type\": \"choice\",\n        \"instructions\": \"Which department should handle this request?\",\n        \"criteria\": {\n            \"billing\": \"invoices, payments, refunds\",\n            \"technical\": \"bugs, outages, system errors\",\n            \"sales\": \"pricing, new contracts, plan upgrades\",\n            \"other\": \"everything else\"\n        }\n    },\n    \"urgency\": {\n        \"type\": \"score\",\n        \"instructions\": \"How urgent is this request?\",\n        \"criteria\": [\"not urgent\", \"soon\", \"critical deadline or blocking issue\"]\n    },\n    \"churn_risk\": {\n        \"type\": \"noul\",\n        \"instructions\": \"Does the user threaten to cancel or leave?\"\n    },\n    \"refund_requested\": {\n        \"type\": \"noul\",\n        \"instructions\": \"Does the user explicitly request a refund?\"\n    }\n}\n\n# 3. English state -> automatically routed to laya (ModernBERT-large, 39.5 ms)\nres_en = router.predict(state, questions)\nprint(\"Department :\", res_en[\"answers\"][\"department\"][\"choice\"])  # -> billing (confidence: 0.94)\nprint(\"Routing    :\", res_en[\"routing\"][\"model\"])                 # -> english\n\n# 4. Hindi state -> automatically routed to laya-multilingual (mmBERT-base, 32.8 ms)\nres_hi = router.predict({\"body\": \"मुझसे दो बार शुल्क लिया गया, कृपया पैसे वापस करें।\"}, questions)\nprint(\"Department :\", res_hi[\"answers\"][\"department\"][\"choice\"])  # -> billing (confidence: 0.86)\nprint(\"Routing    :\", res_hi[\"routing\"][\"model\"])                 # -> multilingual\n\n# 5. Explicit override when you want a specific checkpoint\nres_td = router.predict(state, questions, model=\"typed-decisions\")",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L571-580",
+   "file": "README.md",
+   "lines": [
+    571,
+    580
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "res_hi[\"routing\"]\n# {\n#   'model': 'multilingual',\n#   'repo': 'convaiinnovations/laya/multilingual',\n#   'reason': 'non-Latin script (devanagari, 100% of letters); the English checkpoint cannot read it',\n#   'detection': {'script': 'devanagari', 'script_profile': {'devanagari': 1.0},\n#                 'language': None, 'is_english': False, 'language_undecided': True,\n#                 'diacritic_rate': 0.0, 'non_latin_fraction': 1.0, 'mixed_segment': None},\n#   'workflow': None\n# }",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L593-594",
+   "file": "README.md",
+   "lines": [
+    593,
+    594
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "router.route({\"body\": \"Der Kunde wurde zweimal belastet\"}, questions).reason\n# \"Latin script but language looks like 'de', not English\"",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L600-602",
+   "file": "README.md",
+   "lines": [
+    600,
+    602
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "router = Router()                                                   # default=\"multilingual\"\nrouter.route({\"body\": \"Esqueci minha senha\"}).model                 # -> multilingual\nrouter.route({\"body\": \"Please refund the duplicate charge\"}).model  # -> english",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L608-608",
+   "file": "README.md",
+   "lines": [
+    608,
+    608
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "router = Router(default=\"english\")",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L623-630",
+   "file": "README.md",
+   "lines": [
+    623,
+    630
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "requests = [\n    {\"state\": \"Please refund invoice 1\", \"questions\": questions},\n    {\"state\": \"تم خصم المبلغ مرتين\", \"questions\": questions},\n    {\"state\": \"Please refund invoice 2\", \"questions\": questions},\n]\n\nresults = Router(max_loaded=1).predict_batch(requests)\n# results stay in input order while compatible requests are batched by checkpoint",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L643-643",
+   "file": "README.md",
+   "lines": [
+    643,
+    643
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "results = router.predict_batch(requests, batch_size=8, sort_by_length=True)",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L669-682",
+   "file": "README.md",
+   "lines": [
+    669,
+    682
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "# Every checkpoint resident in memory; language flips cost detection only (<1 ms)\nrouter = Router(preload=True)\nrouter = Router(preload=True, device=\"cuda\")     # or \"mps\" (Apple/AMD GPU), \"cpu\" to force\n\n# Or preload only the specific checkpoints you serve:\nrouter.preload([\"english\", \"multilingual\"])\n\n# If your app already built an agent, attach it to avoid duplicate VRAM:\nrouter.attach(\"english\", existing_agent)\n\n# Manage resident memory (default keeps two hot: english + multilingual, LRU eviction)\nrouter = Router(max_loaded=3)       # keep all three hot, e.g. with auto_task_detection\nrouter = Router(max_loaded=1)       # memory-constrained host, reloads on every switch\nrouter.unload()                     # free memory",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L702-706",
+   "file": "README.md",
+   "lines": [
+    702,
+    706
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "from laya.lang import analyse\nanalyse(\"Care este ora in Tokyo?\")\n# {'script': 'latin', 'script_profile': {'latin': 1.0}, 'language': 'en', 'is_english': True,\n#  'language_undecided': False, 'diacritic_rate': 0.0, 'non_latin_fraction': 0.0,\n#  'mixed_segment': None}                                     -> the English checkpoint",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L716-723",
+   "file": "README.md",
+   "lines": [
+    716,
+    723
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "# A code you already know\nrouter.predict(state, questions, lang_guess=\"ro\")\n\n# A callable, e.g. wrapping fastText, CLD3 or a transformer LID\nrouter.predict(state, questions, lang_guess=lambda s: my_lid(s))\n\n# Or install one for every request on a server\nrouter = Router(preload=True, lang_guess=my_lid)",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L741-742",
+   "file": "README.md",
+   "lines": [
+    741,
+    742
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install \"laya[serve]\"          # adds fastapi + uvicorn + python-multipart\nLAYA_DEVICE=cuda LAYA_PRELOAD=1 laya-serve   # binds 0.0.0.0:8000, preloads all 3 checkpoints",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L746-750",
+   "file": "README.md",
+   "lines": [
+    746,
+    750
+   ],
+   "lang": "bash",
+   "tool": "curl",
+   "kind": "command",
+   "text": "curl -s localhost:8000/v1/systemone -H 'content-type: application/json' -d '{\n  \"state\": {\"body\": \"billed twice, refund please or we cancel\"},\n  \"questions\": {\"dept\": {\"type\": \"choice\", \"instructions\": \"which team?\",\n                \"criteria\": {\"billing\": \"refunds\", \"tech\": \"bugs\"}}}\n}'",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L756-763",
+   "file": "README.md",
+   "lines": [
+    756,
+    763
+   ],
+   "lang": "bash",
+   "tool": "curl",
+   "kind": "command",
+   "text": "curl -s localhost:8000/v1/systemone/batch -H 'content-type: application/json' -d '{\n  \"states\": [\n    {\"body\": \"billed twice, refund please\"},\n    {\"body\": \"cannot login, getting 500 error\"}\n  ],\n  \"questions\": {\"dept\": {\"type\": \"choice\", \"instructions\": \"which team?\",\n                \"criteria\": {\"billing\": \"refunds\", \"tech\": \"bugs\"}}}\n}'",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L808-809",
+   "file": "README.md",
+   "lines": [
+    808,
+    809
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "nix run .#laya-serve          # build (prebuilt CUDA torch, no compile) and serve\nnix develop                   # dev shell: torch-bin, transformers, fastapi, pytest",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L815-826",
+   "file": "README.md",
+   "lines": [
+    815,
+    826
+   ],
+   "lang": "nix",
+   "tool": "nix",
+   "kind": "other",
+   "text": "# flake inputs:  laya.url = \"github:<you>/laya\";  # or path:/… on the same host\n{\n  imports = [ laya.nixosModules.default ];\n  services.laya-serve = {\n    enable = true;\n    host = \"0.0.0.0\";           # or bind to the Tailscale/LAN address\n    openFirewall = true;\n    device = \"cuda\";\n    models = [ \"english\" \"multilingual\" \"typed-decisions\" ];\n    # apiKeyFile = config.age.secrets.laya-api-key.path;  # optional bearer auth\n  };\n}",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L840-853",
+   "file": "README.md",
+   "lines": [
+    840,
+    853
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "import laya\n\n# 1. Load a specific checkpoint directly from the hub\nagent = laya.load(\"convaiinnovations/laya\")                           # English root\nagent_ml = laya.load(\"convaiinnovations/laya\", subfolder=\"multilingual\") # 100+ languages\nagent_td = laya.load(\"convaiinnovations/laya\", subfolder=\"typed-decisions\")\n\n# 2. Run all questions in ONE single forward pass (~35 ms on GPU)\nresult = agent.predict(state, questions)\nanswers = result[\"answers\"]\n\nprint(\"Department :\", answers[\"department\"][\"choice\"])   # -> billing (confidence: 0.94)\nprint(\"Urgency    :\", answers[\"urgency\"][\"score\"])        # -> 1.84 / 2.0\nprint(\"Churn Risk :\", answers[\"churn_risk\"][\"noul\"])       # -> 0.892 (89.2% probability)",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L868-877",
+   "file": "README.md",
+   "lines": [
+    868,
+    877
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "states = [{\"body\": t} for t in ticket_texts]           # a list of states\n\nresults = agent.predict_batch(states, questions)       # one forward pass for the whole list\n# results[i] corresponds to states[i], with the same output shape as predict\n\n# Bound peak memory when the list (or the texts) are large — chunk into passes of N:\nresults = agent.predict_batch(states, questions, batch_size=64)\n\n# Reduce padding when input lengths vary; results still follow the original state order:\nresults = agent.predict_batch(states, questions, batch_size=64, sort_by_length=True)",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L911-913",
+   "file": "README.md",
+   "lines": [
+    911,
+    913
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "result = agent.predict_long(state, questions)              # windows the state, one result back\nresult = agent.predict_long(state, questions, window=256)  # smaller window isolates a localized span\nresult = agent.predict_long(state, questions, hooks=[AuditLog()])   # the scan, instrumented",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L953-954",
+   "file": "README.md",
+   "lines": [
+    953,
+    954
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "r = agent.predict_long(state, questions)\nr[\"answers\"][\"refund\"][\"window\"]   # {'index': 13, 'token_start': 4680, 'token_end': 5432, 'count': 14}",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L961-961",
+   "file": "README.md",
+   "lines": [
+    961,
+    961
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "result = router.predict_long(state, questions, model=\"multilingual\")",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L975-976",
+   "file": "README.md",
+   "lines": [
+    975,
+    976
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "agent = laya.load(\"convaiinnovations/laya\", fast=True)   # or: agent.accelerate()\nagent.predict(state, questions)                            # same API, same answers",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L993-994",
+   "file": "README.md",
+   "lines": [
+    993,
+    994
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "agent = laya.load(\"convaiinnovations/laya\", compile=True, compile_warmup=False)\nseconds = agent.warmup()         # manual entry point, also accepts shapes=[(rows, tokens, markers)]",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L1027-1033",
+   "file": "README.md",
+   "lines": [
+    1027,
+    1033
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "dept = answers[\"department\"][\"choice\"]\nconf = answers[\"department\"][\"confidence\"]\n\nif conf >= THRESHOLD:               # refit and validate THRESHOLD on your own held-out data\n    route_automatically(dept)       # above it: act, and sample the decisions you act on\nelse:\n    escalate_to_human_agent(dept, reason=f\"Low confidence ({conf:.2f})\")",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L1045-1051",
+   "file": "README.md",
+   "lines": [
+    1045,
+    1051
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "res = agent.predict(state, questions, min_confidence=0.85)\nans = res[\"answers\"][\"department\"]\n\nif ans.get(\"low_confidence\"):        # answer_confidence < 0.85\n    escalate_to_human_agent(ans[\"choice\"], reason=f\"Low confidence ({ans['answer_confidence']:.2f})\")\nelse:\n    route_automatically(ans[\"choice\"])",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L1059-1063",
+   "file": "README.md",
+   "lines": [
+    1059,
+    1063
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "res = agent.predict(state, questions, min_confidence={\n    \"choice:3-5\": 0.90,     # three-option questions (an NLI shape)\n    \"choice:11+\": 0.98,     # many-option routing (a 20-option intent shape)\n    \"default\":    0.85,     # every bucket this map does not name\n})",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L1087-1087",
+   "file": "README.md",
+   "lines": [
+    1087,
+    1087
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "laya \"Is it the blue one or the green one\" --preset triage --min-confidence 0.9",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L1091-1093",
+   "file": "README.md",
+   "lines": [
+    1091,
+    1093
+   ],
+   "lang": "text",
+   "tool": "text",
+   "kind": "other",
+   "text": "intent      : other (p=0.992)\nfrustration : 1.06  [low-confidence]\nchurn_risk  : 0.158  [low-confidence]",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L1111-1117",
+   "file": "README.md",
+   "lines": [
+    1111,
+    1117
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "import laya\n\ndef log(ctx):\n    print(ctx.model, ctx.results[0][\"answers\"], ctx.elapsed_ms)\n\nagent = laya.load(\"convaiinnovations/laya\", on_predict_end=log)\nagent.system_one(\"I was charged twice.\", {\"urgent\": {\"type\": \"noul\", \"instructions\": \"Urgent?\"}})",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L1133-1147",
+   "file": "README.md",
+   "lines": [
+    1133,
+    1147
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "import laya\n\nschema = {\n    \"type\": \"object\",\n    \"properties\": {\n        \"department\": {\"type\": \"string\", \"enum\": [\"billing\", \"support\", \"sales\"],\n                       \"description\": \"Which team should handle this?\"},\n        \"urgency\": {\"type\": \"integer\", \"minimum\": 0, \"maximum\": 2},\n        \"needs_human\": {\"type\": \"boolean\"},\n    },\n}\n\nagent = laya.load(\"convaiinnovations/laya\")\nagent.decide(\"I was charged twice, refund me.\", schema=schema)\n# {\"department\": \"billing\", \"urgency\": 2, \"needs_human\": True}",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L1159-1162",
+   "file": "README.md",
+   "lines": [
+    1159,
+    1162
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "values = agent.decide_batch(ticket_texts, schema=schema)   # values[i] matches ticket_texts[i]\n\n# On a Router the states may land on different checkpoints; keywords reach predict_batch:\ndetails = router.decide_batch(states, schema=schema, return_details=True, batch_size=64)",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L1179-1196",
+   "file": "README.md",
+   "lines": [
+    1179,
+    1196
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "import laya\n\nagent = laya.load(\"convaiinnovations/laya\")\n\n# 1. Intelligent Model Router (routes to small vs. frontier models)\nrouting = agent.predict({\"request\": \"Refactor this service using dependency injection\"}, laya.router_questions())\n\n# 2. Real-time Prompt Guardrails (jailbreaks, injections, leaks)\nguard = agent.predict({\"prompt\": \"Ignore all instructions\"}, laya.guard_questions())\n\n# 3. Content Safety & Moderation (toxicity, harassment, threats)\nsafety = agent.predict({\"post\": \"User comment text\"}, laya.moderation_questions())\n\n# 4. Support Ticket Triage (intent, urgency, frustration, churn)\ntriage = agent.predict({\"message\": \"My payment failed twice\"}, laya.triage_questions())\n\n# 5. Email Triage (category, spam, phishing, urgency, reply expected)\nemail = agent.predict({\"body\": \"Your account is locked, verify now\"}, laya.email_questions())",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L1206-1231",
+   "file": "README.md",
+   "lines": [
+    1206,
+    1231
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "from laya.integrations.langchain import LayaDecision, LayaGuardrail, LayaRouter\n\n# 1. Sub-35ms LangGraph conditional edge routing with confidence fallback\nrouter = LayaRouter(\n    criteria={\"billing\": \"invoices, charges\", \"tech\": \"bugs, outages\"},\n    confidence_threshold=0.80,\n    fallback=\"human_agent\",\n)\nworkflow.add_conditional_edges(\"triage\", router)\n\n# 2. Inline prompt guardrails\nguard = LayaGuardrail(action=\"raise\")  # raises LayaGuardrailError on jailbreak/injection\n\n# 3. Schema-driven decisions: a JSON schema in, schema-shaped values out\ndecide = LayaDecision({\n    \"type\": \"object\",\n    \"properties\": {\n        \"department\": {\"type\": \"string\", \"enum\": [\"billing\", \"technical\", \"other\"]},\n        \"needs_human\": {\"type\": \"boolean\"},\n    },\n})\ndecide.invoke(\"I was charged twice and the API still 500s for us.\")\n# {'department': 'billing', 'needs_human': False}\n\n# 4. Score a backlog in one batched call, not one forward pass per input\nroutes = router.batch([\"refund my invoice\", \"the app crashes\", \"change my password\"])",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L1260-1271",
+   "file": "README.md",
+   "lines": [
+    1260,
+    1271
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "question = {\n    \"type\": \"noul\",\n    \"instructions\": \"Is this review positive?\",\n    \"criteria\": {\n        \"false\": \"the review is negative\",\n        \"true\": \"the review is positive\",\n    },\n    \"labels\": {\n        \"false\": \"B\",\n        \"true\": \"A\",\n    },\n}",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L1287-1292",
+   "file": "README.md",
+   "lines": [
+    1287,
+    1292
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "question = {\n    \"type\": \"choice\",\n    \"instructions\": \"Which team should handle this?\",\n    \"criteria\": {\"billing\": \"...\", \"technical\": \"...\", \"sales\": \"...\"},\n    \"option_order\": [2, 0, 1],     # slot 0 shows `sales`, slot 1 `billing`, slot 2 `technical`\n}",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L1304-1318",
+   "file": "README.md",
+   "lines": [
+    1304,
+    1318
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "k = len(question[\"criteria\"])\n\n# the k rotations go in as k questions, so they share one forward pass\nrotations = {\n    \"q%d\" % r: dict(question, option_order=[(i + r) % k for i in range(k)])\n    for r in range(k)\n}\nanswers = agent.predict(state, rotations)[\"answers\"]\n\ntotals = {label: 0.0 for label in question[\"criteria\"]}\nfor answer in answers.values():\n    for label, value in answer[\"probabilities\"].items():\n        totals[label] += value / k\n\ndecision = max(totals, key=totals.get)",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L1342-1344",
+   "file": "README.md",
+   "lines": [
+    1342,
+    1344
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "from laya.train import TrainConfig, finetune\n\nfinetune(\"train.jsonl\", \"./laya_base\", \"./laya_parallel\", TrainConfig(option_layout=\"parallel\"))",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L1370-1371",
+   "file": "README.md",
+   "lines": [
+    1370,
+    1371
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install \"laya[mcp]\"\nlaya-mcp-server          # or: python -m laya.mcp.server",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L1384-1391",
+   "file": "README.md",
+   "lines": [
+    1384,
+    1391
+   ],
+   "lang": "json",
+   "tool": "json",
+   "kind": "config",
+   "text": "{\n  \"mcpServers\": {\n    \"laya\": {\n      \"command\": \"laya-mcp-server\",\n      \"env\": { \"LAYA_DEVICE\": \"cpu\" }\n    }\n  }\n}",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L1450-1452",
+   "file": "README.md",
+   "lines": [
+    1450,
+    1452
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "laya-evals validate research/evals/fixture.jsonl\nlaya-evals run data.jsonl --model english --min-accuracy 0.8 --max-ece 0.05 --slice language\nlaya-evals run data.jsonl --baseline baseline.json --tolerance choice_accuracy=0.02 --json report.json",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L1629-1653",
+   "file": "README.md",
+   "lines": [
+    1629,
+    1653
+   ],
+   "lang": "python",
+   "tool": "sentence-transformers",
+   "kind": "code",
+   "text": "import laya\nfrom sentence_transformers import SentenceTransformer  # any local bi-encoder; not a Laya dependency\n\nquestions = {\n    \"intent\": {\n        \"type\": \"choice\",\n        \"instructions\": \"Which banking intent is this?\",\n        \"criteria\": {\n            \"card_arrival\": \"where is my card\",\n            \"transfer_fee\": \"fee charged on a transfer\",\n            # ...the rest of a large label set\n        },\n    }\n}\nencoder = SentenceTransformer(\"BAAI/bge-small-en-v1.5\")\nembed_fn = laya.cached_embed_fn(lambda texts: encoder.encode(list(texts), normalize_embeddings=True))\n\nresult = laya.predict_shortlist(\n    agent,\n    {\"text\": \"I was charged twice for a transfer\"},\n    questions,\n    embed_fn=embed_fn,  # any callable: texts -> (n, dim); see below before using embed_fn_from_agent\n    k=20,\n)\nresult[\"shortlist\"][\"intent\"][\"labels\"]  # the top 20 labels sent to the model",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "family: BAAI/bge-small-en-v1.5"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L1672-1676",
+   "file": "README.md",
+   "lines": [
+    1672,
+    1676
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "text = \"I was charged twice for a transfer\"\ncriteria = questions[\"intent\"][\"criteria\"]\nkept = laya.shortlist_choice(text, criteria, embed_fn, k=20)\nquestion = dict(questions[\"intent\"], criteria={label: criteria[label] for label in kept})\nanswer = agent.predict({\"text\": text}, {\"intent\": question})[\"answers\"][\"intent\"]",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L1685-1687",
+   "file": "README.md",
+   "lines": [
+    1685,
+    1687
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "  {\"type\": \"noul\", \"instructions\": \"Is this review positive?\",\n   \"criteria\": {\"true\": \"the review is positive\", \"false\": \"the review is negative\"},\n   \"labels\": {\"true\": \"A\", \"false\": \"B\"}}",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L1699-1700",
+   "file": "README.md",
+   "lines": [
+    1699,
+    1700
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "  {\"type\": \"choice\", \"instructions\": \"Is this review positive?\",\n   \"criteria\": {\"A\": \"yes, the review is positive\", \"B\": \"no, the review is negative\"}}",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NandhaKishorM/laya README.md:L1744-1746",
+   "file": "README.md",
+   "lines": [
+    1744,
+    1746
+   ],
+   "lang": "bash",
+   "tool": "python",
+   "kind": "code",
+   "text": "python notebooks/laya_finetune_typed_decisions_mps.py \\\n  --micro-batch 1 \\\n  --grad-accum 32",
+   "doc": "github",
+   "doc_sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "scope": "model"
+  }
+ ],
+ "card_notes": null,
+ "chat_template": null,
+ "stop": null,
+ "rope": null,
+ "aux": null,
+ "gguf": null,
+ "snapshot": {
+  "path": "convaiinnovations--laya/7b928d828b7b0e022f929d9bd2e44165aa270148",
+  "fetched_bytes": 43540985,
+  "errors": null,
+  "gated": false
+ },
+ "base_snapshot": null,
+ "repo_files": {
+  ".gitattributes": {
+   "size": 1913,
+   "sha256": null,
+   "blob": "dceb67c98a62aff599412b8884267372c16870bf",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "README.md": {
+   "size": 23187,
+   "sha256": null,
+   "blob": "ac11a565c217959d0cb062748a2f83e05da446a5",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "assets/laya_benchmark.png": {
+   "size": 260892,
+   "sha256": "e01e49f0d842b4616e44c4c9a0feb92a9ae45efeb533f8f838888715dc89c2b9",
+   "blob": "b514d800b01bdc9eeb5df4fa37294fd63262ca64",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "assets/laya_benchmark_common.png": {
+   "size": 278159,
+   "sha256": "183b0b17e8d90e091582e415d9f1da0ef34b40c3db6ccd2c8bbfd2b9232b95a6",
+   "blob": "98b8f335652d8f051f9d7c213c4dd20d22d280ec",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "assets/laya_vs_jev.png": {
+   "size": 216412,
+   "sha256": "5c06517ea7f3e5f3f84873ddaa3cb470f101ad0276f921c58886f8fb12fbe0a8",
+   "blob": "30ec453679622fbc541fe6fb68cf81665d6fcc6d",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "assets/laya_vs_jev_full.png": {
+   "size": 487005,
+   "sha256": "ee47b751d524a0bb65159e026141b4ce70cc83d03b14df8ec68afbc7bcdb95b3",
+   "blob": "2725f4d30d16b2868229a754d1290e23dfdbbfe1",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "assets/logo-lockup-dark.png": {
+   "size": 27666,
+   "sha256": null,
+   "blob": "dd36fd15f0b8e78ab37571146f3342695f476257",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "assets/logo-lockup-dark.svg": {
+   "size": 1590,
+   "sha256": null,
+   "blob": "4c554bff104db984f9e7fbeee6723089b6caadb5",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "assets/logo-lockup.png": {
+   "size": 26761,
+   "sha256": null,
+   "blob": "4eb8314e10129298d87fc8961431fb8bdf455fcc",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "assets/logo-lockup.svg": {
+   "size": 1590,
+   "sha256": null,
+   "blob": "df3c20fd2c2cd346763b2a19847549dc7a15e125",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "assets/logo-mark-ink.png": {
+   "size": 17378,
+   "sha256": null,
+   "blob": "3de0fb5871026c69bfcf6a2171af9878d190c21d",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "assets/logo-mark-ink.svg": {
+   "size": 1320,
+   "sha256": null,
+   "blob": "81a5dc2ea0be5588ff56d1843d257e89a3132f07",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "assets/logo-mark-mono.svg": {
+   "size": 1380,
+   "sha256": null,
+   "blob": "d5ea7429b190610006a5ffd6d1b3957da9f8dad8",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "assets/logo-mark.png": {
+   "size": 17962,
+   "sha256": null,
+   "blob": "c90077fc8eab8c7689ad748aeefa763bfab5f595",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "assets/logo-mark.svg": {
+   "size": 1320,
+   "sha256": null,
+   "blob": "ba86d6a056c48d2ecb28e2ae516d40ceadcdc185",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "config.json": {
+   "size": 160,
+   "sha256": null,
+   "blob": "7b4305a11f6d6936882e99492abe8e34d8ae6e3a",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "email_utils.py": {
+   "size": 3937,
+   "sha256": null,
+   "blob": "7fad36ed6e631fb3fb62c7ad26cc440923efca27",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "encoder/config.json": {
+   "size": 2083,
+   "sha256": null,
+   "blob": "5881ba831f2db5ce0f606bbaa1f2668e1e6cb706",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "eval/benchmark_comparison.png": {
+   "size": 467466,
+   "sha256": "78e4b926bfca3950ff5441d1030a1453515973fbe5d7dd70a1c764a81f0d3d38",
+   "blob": "4beb2735e3f259c78787d082870b70c08f758ebe",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "eval/reliability_eval_in.png": {
+   "size": 65436,
+   "sha256": null,
+   "blob": "ec88017c0d24d9eefaabd7540916dc9b244e06a7",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "eval/reliability_eval_zs.png": {
+   "size": 72014,
+   "sha256": null,
+   "blob": "e17099e08c5c1970de51c4c00db674635c8a28db",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "eval/results.json": {
+   "size": 2976,
+   "sha256": null,
+   "blob": "db4219c92927e0c5d3f44daca3133eb3d179b836",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "eval/results.md": {
+   "size": 1608,
+   "sha256": null,
+   "blob": "99340c1099ebe7139cb33acab5f57735626ce7f2",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "model.safetensors": {
+   "size": 842609210,
+   "sha256": "891102d372688fc2a094dac56a384bc537b87c63f21f9f3dac0be2b7cbc8d86c",
+   "blob": "9bef25a12dcb807627a798837cfbb0ea73c0e38d",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (842 MB)"
+  },
+  "multilingual/encoder/config.json": {
+   "size": 1938,
+   "sha256": null,
+   "blob": "0de0e2d30638873790cf962def52e2acf4db3eef",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "multilingual/model.safetensors": {
+   "size": 643835514,
+   "sha256": "9d628fd971b700382ac6f65920a86f149777b2e748e0c955fb3b19695aa8f204",
+   "blob": "b99c8bea239c53f6f6bce734557dc6c403fa6b3e",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (643 MB)"
+  },
+  "multilingual/rl_agent_config.json": {
+   "size": 472,
+   "sha256": null,
+   "blob": "00e35f88bb731bb9126a914666ab1cdac8a204c8",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "multilingual/tokenizer/tokenizer.json": {
+   "size": 34363188,
+   "sha256": "609d8f4c067cd3950f88594c5a802616cea245823836ef5848ee4fc40aab5b6f",
+   "blob": "56d765858ed38eaabd35cd90759cbb1f89b0baa4",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "multilingual/tokenizer/tokenizer_config.json": {
+   "size": 524,
+   "sha256": null,
+   "blob": "c255ac0c8cb34a37d066cd0dafe313fd769d27ae",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "rl_agent_api.py": {
+   "size": 4732,
+   "sha256": null,
+   "blob": "51b0c3b899d2f6b45c1ffe5a57522f75a686f2bc",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "rl_agent_config.json": {
+   "size": 745,
+   "sha256": null,
+   "blob": "3e4fcbf12cf36164ce18a1398aa9f35f58375ae0",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "rl_common.py": {
+   "size": 19139,
+   "sha256": null,
+   "blob": "d90d564964bcdc77586a257b0acccb5b7b19d6cf",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "tokenizer/tokenizer.json": {
+   "size": 3583228,
+   "sha256": null,
+   "blob": "2f4d8583e507b7466d2490e2d6c045647a822698",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "tokenizer/tokenizer_config.json": {
+   "size": 308,
+   "sha256": null,
+   "blob": "9fd800115c5c92353220aa66addfce67a9135f32",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "typed-decisions/encoder/config.json": {
+   "size": 2084,
+   "sha256": null,
+   "blob": "d4be4829750fb04c0aa8b9897c3ea827f76c0109",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "typed-decisions/model.safetensors": {
+   "size": 842609220,
+   "sha256": "4fa56de72383a9d3efa9cfa78955733c81b9fc8067a587ca4beb82c78107a24e",
+   "blob": "3fb9c9678050815e76d0c847115919d7871ace3e",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (842 MB)"
+  },
+  "typed-decisions/rl_agent_config.json": {
+   "size": 847,
+   "sha256": null,
+   "blob": "5f0e1d5f2366fe8ba2ff330dffaeed53b469e97e",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "typed-decisions/tokenizer/tokenizer.json": {
+   "size": 3583228,
+   "sha256": null,
+   "blob": "2f4d8583e507b7466d2490e2d6c045647a822698",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "typed-decisions/tokenizer/tokenizer_config.json": {
+   "size": 337,
+   "sha256": null,
+   "blob": "ed1ffabc2ce11120754705709569e365e46da71a",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  }
+ },
+ "base_repo_files": null,
+ "found_in": [
+  "familia #53"
+ ],
+ "match": null,
+ "local_check": null,
+ "unknown": [
+  "base_model (not in the card front matter or GGUF metadata)",
+  "card_defaults: the card and generation_config.json state no sampling values",
+  "quant",
+  "ctx"
+ ],
+ "warnings": null,
+ "updated": "2026-10-19",
+ "by": "scripts/model_db.py",
+ "weights": "absent (damp)",
+ "gguf_meta": null,
+ "base_chain": null,
+ "github": [
+  {
+   "repo": "NandhaKishorM/laya",
+   "resolved": "NandhaKishorM/laya",
+   "sha": "ffc142012af63d015fa19f05f29f9c5ff329a2cc",
+   "renamed": null,
+   "description": "Non-autoregressive System 1 decision engine. Typed choice, score and yes/no decisions over any text in a single forward pass, in 100+ languages, with a router that picks the right checkpoint per request.",
+   "license_spdx": "Apache-2.0",
+   "files": {
+    "license": {
+     "path": "LICENSE",
+     "sha256": "a6cba85bc92e0cff7a450b1d873c0eaa2e9fc96bf472df0247a26bec77bf3ff9",
+     "bytes": 10173
+    },
+    "readme": {
+     "path": "README.md",
+     "sha256": "405ecc790b63a9d80da36df2f1e699f097fc4c6823c7ee8f61f0f13373592896",
+     "bytes": 118913
+    }
+   },
+   "extra": null,
+   "snapshot": "github/NandhaKishorM--laya/ffc142012af63d015fa19f05f29f9c5ff329a2cc"
+  }
+ ],
+ "github_dropped": [
+  {
+   "repo": "AbdelStark/jev-benchmarks",
+   "why": "owner and name unrelated to the model's Hugging Face repos"
+  },
+  {
+   "repo": "nibzard/decision-model-benchmark",
+   "why": "owner and name unrelated to the model's Hugging Face repos"
+  }
+ ],
+ "descriptor": {
+  "repo_id": {
+   "effective": "convaiinnovations/laya",
+   "source": "HF API id"
+  },
+  "revision": {
+   "effective": "7b928d828b7b0e022f929d9bd2e44165aa270148",
+   "source": "pinned (manifest / database)"
+  },
+  "file": {
+   "effective": "model.safetensors",
+   "source": "HF API siblings"
+  },
+  "bytes": {
+   "effective": 842609210,
+   "source": "HF API LFS size"
+  },
+  "sha256": {
+   "effective": "891102d372688fc2a094dac56a384bc537b87c63f21f9f3dac0be2b7cbc8d86c",
+   "source": "HF API LFS oid"
+  },
+  "license": {
+   "effective": "apache-2.0",
+   "source": "convaiinnovations/laya card license"
+  },
+  "code_license": {
+   "effective": "Apache-2.0",
+   "source": "GitHub github.com/NandhaKishorM/laya license (spdx)"
+  },
+  "license_file": {
+   "effective": "github.com/NandhaKishorM/laya@ffc142012af6/LICENSE",
+   "source": "GitHub github.com/NandhaKishorM/laya"
+  },
+  "hf_architectures": {
+   "effective": [
+    "LayaTypedDecisions"
+   ],
+   "source": "convaiinnovations/laya config.json architectures"
+  },
+  "hf_model_type": {
+   "effective": "laya",
+   "source": "convaiinnovations/laya config.json model_type"
+  },
+  "ctx_statements": {
+   "effective": {
+    "value": 8192,
+    "quote": "* **High-cardinality label spaces (>20 options at default settings):** On Banking77, Jev scores 0.870 (on 72 labels) while Laya scores 0.425 (on 77 labels at default 256-token head budget). Options share a fixed `head_max_len` budget (192 t"
+   },
+   "source": "convaiinnovations/laya README.md:L330",
+   "values": [
+    {
+     "value": {
+      "value": 8192,
+      "quote": "* **High-cardinality label spaces (>20 options at default settings):** On Banking77, Jev scores 0.870 (on 72 labels) while Laya scores 0.425 (on 77 labels at default 256-token head budget). Options share a fixed `head_max_len` budget (192 t"
+     },
+     "source": "convaiinnovations/laya README.md:L330"
+    },
+    {
+     "value": {
+      "value": 8192,
+      "quote": "* **High-cardinality label spaces (>20 options at default settings):** On Banking77, Jev scores 0.870 (on 72 labels) while Laya scores 0.425 (on 77 labels at default 256-token head budget). This is an architectural token-budget constraint: "
+     },
+     "source": "github.com/NandhaKishorM/laya README.md:L1516"
+    }
+   ]
+  },
+  "pipeline_tag": {
+   "effective": "text-classification",
+   "source": "convaiinnovations/laya HF API pipeline_tag"
+  }
+ },
+ "required_params": {
+  "kind": "raw",
+  "native_ctx": null,
+  "native_ctx_source": null,
+  "yarn": null,
+  "yarn_source": null,
+  "items": []
+ },
+ "blockers": null,
+ "params_problems": null,
+ "params_build": "b11374",
+ "license_info": {
+  "id": "apache-2.0",
+  "id_source": "convaiinnovations/laya card front matter license",
+  "name": null,
+  "summary": "apache-2.0",
+  "summary_source": "convaiinnovations/laya card license",
+  "link": "https://spdx.org/licenses/Apache-2.0.html",
+  "link_source": "SPDX license list (standard text of apache-2.0)",
+  "texts": [
+   {
+    "file": "github.com/NandhaKishorM/laya@ffc142012af6/LICENSE",
+    "path": "/home/green/.local/share/gguf/hf-meta/github/NandhaKishorM--laya/ffc142012af63d015fa19f05f29f9c5ff329a2cc/LICENSE",
+    "url": "https://github.com/NandhaKishorM/laya/blob/ffc142012af63d015fa19f05f29f9c5ff329a2cc/LICENSE",
+    "sha256": "a6cba85bc92e0cff7a450b1d873c0eaa2e9fc96bf472df0247a26bec77bf3ff9",
+    "bytes": 10173,
+    "what": "code (GitHub NandhaKishorM/laya, spdx Apache-2.0)"
+   }
+  ],
+  "obligations": null,
+  "gated": false,
+  "unknown": false,
+  "seen": [
+   {
+    "effective": "apache-2.0",
+    "source": "convaiinnovations/laya card license"
+   }
+  ]
+ },
+ "role_inference": {
+  "role": "decision",
+  "evidence": [
+   "decision +3 (card front matter: pipeline_tag: text-classification)",
+   "decision +5 (card front matter: tags: routing)"
+  ]
+ },
+ "repo_bytes": 2372594929
+}

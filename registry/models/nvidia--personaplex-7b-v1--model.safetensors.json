@@ -1,0 +1,964 @@
+{
+ "schema": 2,
+ "id": "nvidia--personaplex-7b-v1--model.safetensors",
+ "repo": "nvidia/personaplex-7b-v1",
+ "revision": "fdaf4090a61cb315c138a1faee287ffd6c716309",
+ "file": "model.safetensors",
+ "sha256": "db1290db583cdaa6cb4de444ed279e0b586ca2a372b41434b07a7461c8c0e2f4",
+ "bytes": 16742874000,
+ "quant": null,
+ "arch": null,
+ "roles": [],
+ "license": "nvidia-open-model-license (https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-open-model-license/)",
+ "license_source": "nvidia/personaplex-7b-v1 card license",
+ "ctx": null,
+ "ctx_source": null,
+ "card_ctx": null,
+ "card_ctx_source": null,
+ "base_model": "kyutai/moshiko-pytorch-bf16",
+ "base_revision": "2bfc9ae6e89079a5cc7ed2a68436010d91a3d289",
+ "card_defaults": null,
+ "card_defaults_source": null,
+ "card_default_set": null,
+ "card_defaults_how": "the card and generation_config.json state no sampling values",
+ "card_sampling_modes": null,
+ "card_default_mode": null,
+ "card_default_mode_source": null,
+ "card_sampling_sets": null,
+ "card_commands": [
+  {
+   "source": "github.com/NVIDIA/personaplex README.md:L22-26",
+   "file": "README.md",
+   "lines": [
+    22,
+    26
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "# Ubuntu/Debian\nsudo apt install libopus-dev\n\n# Fedora/RHEL\nsudo dnf install opus-devel",
+   "doc": "github",
+   "doc_sha": "3428dfd95309a7f3c84fd93259ded0f810d1ff91",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA/personaplex README.md:L33-33",
+   "file": "README.md",
+   "lines": [
+    33,
+    33
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install moshi/.",
+   "doc": "github",
+   "doc_sha": "3428dfd95309a7f3c84fd93259ded0f810d1ff91",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA/personaplex README.md:L38-38",
+   "file": "README.md",
+   "lines": [
+    38,
+    38
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu130",
+   "doc": "github",
+   "doc_sha": "3428dfd95309a7f3c84fd93259ded0f810d1ff91",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA/personaplex README.md:L46-46",
+   "file": "README.md",
+   "lines": [
+    46,
+    46
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "export HF_TOKEN=<YOUR_HUGGINGFACE_TOKEN>",
+   "doc": "github",
+   "doc_sha": "3428dfd95309a7f3c84fd93259ded0f810d1ff91",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA/personaplex README.md:L53-53",
+   "file": "README.md",
+   "lines": [
+    53,
+    53
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "SSL_DIR=$(mktemp -d); python -m moshi.server --ssl \"$SSL_DIR\"",
+   "doc": "github",
+   "doc_sha": "3428dfd95309a7f3c84fd93259ded0f810d1ff91",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA/personaplex README.md:L58-58",
+   "file": "README.md",
+   "lines": [
+    58,
+    58
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "SSL_DIR=$(mktemp -d); python -m moshi.server --ssl \"$SSL_DIR\" --cpu-offload",
+   "doc": "github",
+   "doc_sha": "3428dfd95309a7f3c84fd93259ded0f810d1ff91",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA/personaplex README.md:L63-63",
+   "file": "README.md",
+   "lines": [
+    63,
+    63
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "Access the Web UI directly at https://11.54.401.33:8998",
+   "doc": "github",
+   "doc_sha": "3428dfd95309a7f3c84fd93259ded0f810d1ff91",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA/personaplex README.md:L74-80",
+   "file": "README.md",
+   "lines": [
+    74,
+    80
+   ],
+   "lang": "bash",
+   "tool": "python",
+   "kind": "code",
+   "text": "HF_TOKEN=<TOKEN> \\\npython -m moshi.offline \\\n  --voice-prompt \"NATF2.pt\" \\\n  --input-wav \"assets/test/input_assistant.wav\" \\\n  --seed 42424242 \\\n  --output-wav \"output.wav\" \\\n  --output-text \"output.json\"",
+   "doc": "github",
+   "doc_sha": "3428dfd95309a7f3c84fd93259ded0f810d1ff91",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA/personaplex README.md:L85-92",
+   "file": "README.md",
+   "lines": [
+    85,
+    92
+   ],
+   "lang": "bash",
+   "tool": "python",
+   "kind": "code",
+   "text": "HF_TOKEN=<TOKEN> \\\npython -m moshi.offline \\\n  --voice-prompt \"NATM1.pt\" \\\n  --text-prompt \"$(cat assets/test/prompt_service.txt)\" \\\n  --input-wav \"assets/test/input_service.wav\" \\\n  --seed 42424242 \\\n  --output-wav \"output.wav\" \\\n  --output-text \"output.json\"",
+   "doc": "github",
+   "doc_sha": "3428dfd95309a7f3c84fd93259ded0f810d1ff91",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA/personaplex README.md:L99-102",
+   "file": "README.md",
+   "lines": [
+    99,
+    102
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "Natural(female): NATF0, NATF1, NATF2, NATF3\nNatural(male):   NATM0, NATM1, NATM2, NATM3\nVariety(female): VARF0, VARF1, VARF2, VARF3, VARF4\nVariety(male):   VARM0, VARM1, VARM2, VARM3, VARM4",
+   "doc": "github",
+   "doc_sha": "3428dfd95309a7f3c84fd93259ded0f810d1ff91",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA/personaplex README.md:L113-113",
+   "file": "README.md",
+   "lines": [
+    113,
+    113
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "You are a wise and friendly teacher. Answer questions or provide advice in a clear and engaging way.",
+   "doc": "github",
+   "doc_sha": "3428dfd95309a7f3c84fd93259ded0f810d1ff91",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA/personaplex README.md:L122-122",
+   "file": "README.md",
+   "lines": [
+    122,
+    122
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "You work for CitySan Services which is a waste management and your name is Ayelen Lucero. Information: Verify customer name Omar Torres. Current schedule: every other week. Upcoming pickup: April 12th. Compost bin service available for $8/month add-on.",
+   "doc": "github",
+   "doc_sha": "3428dfd95309a7f3c84fd93259ded0f810d1ff91",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA/personaplex README.md:L125-125",
+   "file": "README.md",
+   "lines": [
+    125,
+    125
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "You work for Jerusalem Shakshuka which is a restaurant and your name is Owen Foster. Information: There are two shakshuka options: Classic (poached eggs, $9.50) and Spicy (scrambled eggs with jalapenos, $10.25). Sides include warm pita ($2.50) and Israeli salad ($3). No combo offers. Available for drive-through until 9 PM.",
+   "doc": "github",
+   "doc_sha": "3428dfd95309a7f3c84fd93259ded0f810d1ff91",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA/personaplex README.md:L128-128",
+   "file": "README.md",
+   "lines": [
+    128,
+    128
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "You work for AeroRentals Pro which is a drone rental company and your name is Tomaz Novak. Information: AeroRentals Pro has the following availability: PhoenixDrone X ($65/4 hours, $110/8 hours), and the premium SpectraDrone 9 ($95/4 hours, $160/8 hours). Deposit required: $150 for standard models, $300 for premium.",
+   "doc": "github",
+   "doc_sha": "3428dfd95309a7f3c84fd93259ded0f810d1ff91",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA/personaplex README.md:L135-135",
+   "file": "README.md",
+   "lines": [
+    135,
+    135
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "You enjoy having a good conversation.",
+   "doc": "github",
+   "doc_sha": "3428dfd95309a7f3c84fd93259ded0f810d1ff91",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA/personaplex README.md:L138-138",
+   "file": "README.md",
+   "lines": [
+    138,
+    138
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "You enjoy having a good conversation. Have a casual discussion about eating at home versus dining out.",
+   "doc": "github",
+   "doc_sha": "3428dfd95309a7f3c84fd93259ded0f810d1ff91",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA/personaplex README.md:L141-141",
+   "file": "README.md",
+   "lines": [
+    141,
+    141
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "You enjoy having a good conversation. Have an empathetic discussion about the meaning of family amid uncertainty.",
+   "doc": "github",
+   "doc_sha": "3428dfd95309a7f3c84fd93259ded0f810d1ff91",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA/personaplex README.md:L144-144",
+   "file": "README.md",
+   "lines": [
+    144,
+    144
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "You enjoy having a good conversation. Have a reflective conversation about career changes and feeling of home. You have lived in California for 21 years and consider San Francisco your home. You work as a teacher and have traveled a lot. You dislike meetings.",
+   "doc": "github",
+   "doc_sha": "3428dfd95309a7f3c84fd93259ded0f810d1ff91",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA/personaplex README.md:L147-147",
+   "file": "README.md",
+   "lines": [
+    147,
+    147
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "You enjoy having a good conversation. Have a casual conversation about favorite foods and cooking experiences. You are David Green, a former baker now living in Boston. You enjoy cooking diverse international dishes and appreciate many ethnic restaurants.",
+   "doc": "github",
+   "doc_sha": "3428dfd95309a7f3c84fd93259ded0f810d1ff91",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA/personaplex README.md:L156-156",
+   "file": "README.md",
+   "lines": [
+    156,
+    156
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "You enjoy having a good conversation. Have a technical discussion about fixing a reactor core on a spaceship to Mars. You are an astronaut on a Mars mission. Your name is Alex. You are already dealing with a reactor core meltdown on a Mars mission. Several ship systems are failing, and continued instability will lead to catastrophic failure. You explain what is happening and you urgently ask for help thinking through how to stabilize the reactor.",
+   "doc": "github",
+   "doc_sha": "3428dfd95309a7f3c84fd93259ded0f810d1ff91",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/kyutai-labs/moshi README.md:L94-100",
+   "file": "README.md",
+   "lines": [
+    94,
+    100
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install -U moshi      # moshi PyTorch, from PyPI\npip install -U moshi_mlx  # moshi MLX, from PyPI, best with Python 3.12.\n# Or the bleeding edge versions for Moshi and Moshi-MLX.\npip install -U -e \"git+https://git@github.com/kyutai-labs/moshi.git#egg=moshi&subdirectory=moshi\"\npip install -U -e \"git+https://git@github.com/kyutai-labs/moshi.git#egg=moshi_mlx&subdirectory=moshi_mlx\"\n\npip install rustymimi  # mimi, rust implementation with Python bindings from PyPI",
+   "doc": "github",
+   "doc_sha": "e6a55d2722a65870ef52a6c9f6ecfc0e90f38362",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/kyutai-labs/moshi README.md:L123-123",
+   "file": "README.md",
+   "lines": [
+    123,
+    123
+   ],
+   "lang": "bash",
+   "tool": "python",
+   "kind": "code",
+   "text": "python -m moshi.server [--gradio-tunnel] [--hf-repo kyutai/moshika-pytorch-bf16]",
+   "doc": "github",
+   "doc_sha": "e6a55d2722a65870ef52a6c9f6ecfc0e90f38362",
+   "scope": "family: kyutai/moshika-pytorch-bf16"
+  },
+  {
+   "source": "github.com/kyutai-labs/moshi README.md:L144-144",
+   "file": "README.md",
+   "lines": [
+    144,
+    144
+   ],
+   "lang": "bash",
+   "tool": "python",
+   "kind": "code",
+   "text": "python -m moshi.client [--url URL_TO_GRADIO]",
+   "doc": "github",
+   "doc_sha": "e6a55d2722a65870ef52a6c9f6ecfc0e90f38362",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/kyutai-labs/moshi README.md:L156-161",
+   "file": "README.md",
+   "lines": [
+    156,
+    161
+   ],
+   "lang": "bash",
+   "tool": "python",
+   "kind": "code",
+   "text": "python -m moshi_mlx.local -q 4   # weights quantized to 4 bits\npython -m moshi_mlx.local -q 8   # weights quantized to 8 bits\n# And using a different pretrained model:\npython -m moshi_mlx.local -q 4 --hf-repo kyutai/moshika-mlx-q4\npython -m moshi_mlx.local -q 8 --hf-repo kyutai/moshika-mlx-q8\n# be careful to always match the `-q` and `--hf-repo` flag.",
+   "doc": "github",
+   "doc_sha": "e6a55d2722a65870ef52a6c9f6ecfc0e90f38362",
+   "scope": "family: kyutai/moshika-mlx-q4"
+  },
+  {
+   "source": "github.com/kyutai-labs/moshi README.md:L177-177",
+   "file": "README.md",
+   "lines": [
+    177,
+    177
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "cargo run --features cuda --bin moshi-backend -r -- --config moshi-backend/config.json standalone",
+   "doc": "github",
+   "doc_sha": "e6a55d2722a65870ef52a6c9f6ecfc0e90f38362",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/kyutai-labs/moshi README.md:L211-213",
+   "file": "README.md",
+   "lines": [
+    211,
+    213
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "cd client\nnpm install\nnpm run build",
+   "doc": "github",
+   "doc_sha": "e6a55d2722a65870ef52a6c9f6ecfc0e90f38362",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/kyutai-labs/moshi README.md:L222-222",
+   "file": "README.md",
+   "lines": [
+    222,
+    222
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "cargo run --bin moshi-cli -r -- tui --host localhost",
+   "doc": "github",
+   "doc_sha": "e6a55d2722a65870ef52a6c9f6ecfc0e90f38362",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/kyutai-labs/moshi README.md:L228-228",
+   "file": "README.md",
+   "lines": [
+    228,
+    228
+   ],
+   "lang": "bash",
+   "tool": "python",
+   "kind": "code",
+   "text": "python -m moshi.client",
+   "doc": "github",
+   "doc_sha": "e6a55d2722a65870ef52a6c9f6ecfc0e90f38362",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/kyutai-labs/moshi README.md:L236-236",
+   "file": "README.md",
+   "lines": [
+    236,
+    236
+   ],
+   "lang": "bash",
+   "tool": "python",
+   "kind": "code",
+   "text": "python -m moshi.client_gradio --url <moshi-server-url>",
+   "doc": "github",
+   "doc_sha": "e6a55d2722a65870ef52a6c9f6ecfc0e90f38362",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/kyutai-labs/moshi README.md:L244-244",
+   "file": "README.md",
+   "lines": [
+    244,
+    244
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "docker compose up",
+   "doc": "github",
+   "doc_sha": "e6a55d2722a65870ef52a6c9f6ecfc0e90f38362",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/kyutai-labs/moshi README.md:L253-256",
+   "file": "README.md",
+   "lines": [
+    253,
+    256
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "# From the root of the clone of the repo\npip install -e 'moshi[dev]'\npip install -e 'moshi_mlx[dev]'\npre-commit install",
+   "doc": "github",
+   "doc_sha": "e6a55d2722a65870ef52a6c9f6ecfc0e90f38362",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/kyutai-labs/moshi README.md:L261-262",
+   "file": "README.md",
+   "lines": [
+    261,
+    262
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install maturin\nmaturin dev -r -m rust/mimi-pyo3/Cargo.toml",
+   "doc": "github",
+   "doc_sha": "e6a55d2722a65870ef52a6c9f6ecfc0e90f38362",
+   "scope": "model"
+  }
+ ],
+ "card_notes": null,
+ "chat_template": null,
+ "stop": null,
+ "rope": null,
+ "aux": null,
+ "gguf": null,
+ "snapshot": {
+  "path": "nvidia--personaplex-7b-v1/fdaf4090a61cb315c138a1faee287ffd6c716309",
+  "fetched_bytes": 11080,
+  "errors": [
+   "https://huggingface.co/nvidia/personaplex-7b-v1/resolve/fdaf4090a61cb315c138a1faee287ffd6c716309/.gitattributes: HTTP 401 unauthorized (gated or private; set HF_TOKEN) Access to model nvidia/personaplex-7b-v1 is restricted. You must have access to it and be authenticated to access it. Please log in.",
+   "https://huggingface.co/nvidia/personaplex-7b-v1/resolve/fdaf4090a61cb315c138a1faee287ffd6c716309/bias.md: HTTP 401 unauthorized (gated or private; set HF_TOKEN) Access to model nvidia/personaplex-7b-v1 is restricted. You must have access to it and be authenticated to access it. Please log in.",
+   "https://huggingface.co/nvidia/personaplex-7b-v1/resolve/fdaf4090a61cb315c138a1faee287ffd6c716309/config.json: HTTP 401 unauthorized (gated or private; set HF_TOKEN) Access to model nvidia/personaplex-7b-v1 is restricted. You must have access to it and be authenticated to access it. Please log in.",
+   "https://huggingface.co/nvidia/personaplex-7b-v1/resolve/fdaf4090a61cb315c138a1faee287ffd6c716309/dist.tgz: HTTP 401 unauthorized (gated or private; set HF_TOKEN) Access to model nvidia/personaplex-7b-v1 is restricted. You must have access to it and be authenticated to access it. Please log in.",
+   "https://huggingface.co/nvidia/personaplex-7b-v1/resolve/fdaf4090a61cb315c138a1faee287ffd6c716309/explainability.md: HTTP 401 unauthorized (gated or private; set HF_TOKEN) Access to model nvidia/personaplex-7b-v1 is restricted. You must have access to it and be authenticated to access it. Please log in.",
+   "https://huggingface.co/nvidia/personaplex-7b-v1/resolve/fdaf4090a61cb315c138a1faee287ffd6c716309/figures/.DS_Store: HTTP 401 unauthorized (gated or private; set HF_TOKEN) Access to model nvidia/personaplex-7b-v1 is restricted. You must have access to it and be authenticated to access it. Please log in.",
+   "https://huggingface.co/nvidia/personaplex-7b-v1/resolve/fdaf4090a61cb315c138a1faee287ffd6c716309/figures/results_conversation_dynamics.png: HTTP 401 unauthorized (gated or private; set HF_TOKEN) Access to model nvidia/personaplex-7b-v1 is restricted. You must have access to it and be authenticated to access it. Please log in.",
+   "https://huggingface.co/nvidia/personaplex-7b-v1/resolve/fdaf4090a61cb315c138a1faee287ffd6c716309/figures/results_latency.png: HTTP 401 unauthorized (gated or private; set HF_TOKEN) Access to model nvidia/personaplex-7b-v1 is restricted. You must have access to it and be authenticated to access it. Please log in.",
+   "https://huggingface.co/nvidia/personaplex-7b-v1/resolve/fdaf4090a61cb315c138a1faee287ffd6c716309/figures/results_task_adherence.png: HTTP 401 unauthorized (gated or private; set HF_TOKEN) Access to model nvidia/personaplex-7b-v1 is restricted. You must have access to it and be authenticated to access it. Please log in.",
+   "https://huggingface.co/nvidia/personaplex-7b-v1/resolve/fdaf4090a61cb315c138a1faee287ffd6c716309/privacy.md: HTTP 401 unauthorized (gated or private; set HF_TOKEN) Access to model nvidia/personaplex-7b-v1 is restricted. You must have access to it and be authenticated to access it. Please log in.",
+   "https://huggingface.co/nvidia/personaplex-7b-v1/resolve/fdaf4090a61cb315c138a1faee287ffd6c716309/safety.md: HTTP 401 unauthorized (gated or private; set HF_TOKEN) Access to model nvidia/personaplex-7b-v1 is restricted. You must have access to it and be authenticated to access it. Please log in.",
+   "https://huggingface.co/nvidia/personaplex-7b-v1/resolve/fdaf4090a61cb315c138a1faee287ffd6c716309/tokenizer_spm_32k_3.model: HTTP 401 unauthorized (gated or private; set HF_TOKEN) Access to model nvidia/personaplex-7b-v1 is restricted. You must have access to it and be authenticated to access it. Please log in.",
+   "https://huggingface.co/nvidia/personaplex-7b-v1/resolve/fdaf4090a61cb315c138a1faee287ffd6c716309/voices.tgz: HTTP 401 unauthorized (gated or private; set HF_TOKEN) Access to model nvidia/personaplex-7b-v1 is restricted. You must have access to it and be authenticated to access it. Please log in."
+  ],
+  "gated": "auto"
+ },
+ "base_snapshot": {
+  "path": "kyutai--moshiko-pytorch-bf16/2bfc9ae6e89079a5cc7ed2a68436010d91a3d289",
+  "fetched_bytes": 559956,
+  "errors": null,
+  "gated": false
+ },
+ "repo_files": {
+  ".gitattributes": {
+   "size": 1732,
+   "sha256": null,
+   "blob": "87bee6585b23920dca8eb23b1c22a04143375870",
+   "fetched": false,
+   "error": "https://huggingface.co/nvidia/personaplex-7b-v1/resolve/fdaf4090a61cb315c138a1faee287ffd6c716309/.gitattributes: HTTP 401 unauthorized (gated or private; set HF_TOKEN) Access to model nvidia/personaplex-7b-v1 is restricted. You must have access to it and be authenticated to access it. Please log in."
+  },
+  "README.md": {
+   "size": 11080,
+   "sha256": null,
+   "blob": "8f8cc8f2d386db580bcefbc0564796c93f746b7c",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "bias.md": {
+   "size": 593,
+   "sha256": null,
+   "blob": "9baa1e2d459f6b68620a594b35ee895df0e16798",
+   "fetched": false,
+   "error": "https://huggingface.co/nvidia/personaplex-7b-v1/resolve/fdaf4090a61cb315c138a1faee287ffd6c716309/bias.md: HTTP 401 unauthorized (gated or private; set HF_TOKEN) Access to model nvidia/personaplex-7b-v1 is restricted. You must have access to it and be authenticated to access it. Please log in."
+  },
+  "config.json": {
+   "size": 56,
+   "sha256": null,
+   "blob": "ea73fb777e4c52591206739b67254dd0c43bf604",
+   "fetched": false,
+   "error": "https://huggingface.co/nvidia/personaplex-7b-v1/resolve/fdaf4090a61cb315c138a1faee287ffd6c716309/config.json: HTTP 401 unauthorized (gated or private; set HF_TOKEN) Access to model nvidia/personaplex-7b-v1 is restricted. You must have access to it and be authenticated to access it. Please log in."
+  },
+  "dist.tgz": {
+   "size": 598195,
+   "sha256": "8de47fe2477491fac3dca404185d0430c8d39f9e0daf4c90ada5f03fdf830f45",
+   "blob": "c09a4da8ea67e9ec03f4e30c970a6785d60f3c83",
+   "fetched": false,
+   "error": "https://huggingface.co/nvidia/personaplex-7b-v1/resolve/fdaf4090a61cb315c138a1faee287ffd6c716309/dist.tgz: HTTP 401 unauthorized (gated or private; set HF_TOKEN) Access to model nvidia/personaplex-7b-v1 is restricted. You must have access to it and be authenticated to access it. Please log in."
+  },
+  "explainability.md": {
+   "size": 4693,
+   "sha256": null,
+   "blob": "be40081bf17e6e3905bfc068fe1b13b67c4f1e60",
+   "fetched": false,
+   "error": "https://huggingface.co/nvidia/personaplex-7b-v1/resolve/fdaf4090a61cb315c138a1faee287ffd6c716309/explainability.md: HTTP 401 unauthorized (gated or private; set HF_TOKEN) Access to model nvidia/personaplex-7b-v1 is restricted. You must have access to it and be authenticated to access it. Please log in."
+  },
+  "figures/.DS_Store": {
+   "size": 6148,
+   "sha256": null,
+   "blob": "f1fc27da02ee6d7ae4893b4328ea671e10cb099b",
+   "fetched": false,
+   "error": "https://huggingface.co/nvidia/personaplex-7b-v1/resolve/fdaf4090a61cb315c138a1faee287ffd6c716309/figures/.DS_Store: HTTP 401 unauthorized (gated or private; set HF_TOKEN) Access to model nvidia/personaplex-7b-v1 is restricted. You must have access to it and be authenticated to access it. Please log in."
+  },
+  "figures/results_conversation_dynamics.png": {
+   "size": 265915,
+   "sha256": "93cc850f6bd2c0d07c43d40ac2166b6ba20ee585d4c856d09fb4eff706fd0204",
+   "blob": "f6b65d60b50c2e57d14c2314f122351cd58392cd",
+   "fetched": false,
+   "error": "https://huggingface.co/nvidia/personaplex-7b-v1/resolve/fdaf4090a61cb315c138a1faee287ffd6c716309/figures/results_conversation_dynamics.png: HTTP 401 unauthorized (gated or private; set HF_TOKEN) Access to model nvidia/personaplex-7b-v1 is restricted. You must have access to it and be authenticated to access it. Please log in."
+  },
+  "figures/results_latency.png": {
+   "size": 354245,
+   "sha256": "ffaed271517d2355566f1da635d3bbdc02fbee82077f210e8806ff057bb98850",
+   "blob": "8e5fe42c874f812192d2f58ba509ec48cd8abc73",
+   "fetched": false,
+   "error": "https://huggingface.co/nvidia/personaplex-7b-v1/resolve/fdaf4090a61cb315c138a1faee287ffd6c716309/figures/results_latency.png: HTTP 401 unauthorized (gated or private; set HF_TOKEN) Access to model nvidia/personaplex-7b-v1 is restricted. You must have access to it and be authenticated to access it. Please log in."
+  },
+  "figures/results_task_adherence.png": {
+   "size": 254701,
+   "sha256": "5a7e19c9f045fa87b3cb5edec87b5e854901dcb589f00c291cb11fbd5d0adfba",
+   "blob": "9b2b988297689484005e0f1792a806140c723838",
+   "fetched": false,
+   "error": "https://huggingface.co/nvidia/personaplex-7b-v1/resolve/fdaf4090a61cb315c138a1faee287ffd6c716309/figures/results_task_adherence.png: HTTP 401 unauthorized (gated or private; set HF_TOKEN) Access to model nvidia/personaplex-7b-v1 is restricted. You must have access to it and be authenticated to access it. Please log in."
+  },
+  "model.safetensors": {
+   "size": 16742874000,
+   "sha256": "db1290db583cdaa6cb4de444ed279e0b586ca2a372b41434b07a7461c8c0e2f4",
+   "blob": "4965f69d53a1b80a1a0d9481005206669df01527",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (16742 MB)"
+  },
+  "privacy.md": {
+   "size": 2143,
+   "sha256": null,
+   "blob": "301b83e66d9134fbae050852378c1d8a0a32c946",
+   "fetched": false,
+   "error": "https://huggingface.co/nvidia/personaplex-7b-v1/resolve/fdaf4090a61cb315c138a1faee287ffd6c716309/privacy.md: HTTP 401 unauthorized (gated or private; set HF_TOKEN) Access to model nvidia/personaplex-7b-v1 is restricted. You must have access to it and be authenticated to access it. Please log in."
+  },
+  "safety.md": {
+   "size": 860,
+   "sha256": null,
+   "blob": "f74140c4e9508e13c352012b5118526031074d87",
+   "fetched": false,
+   "error": "https://huggingface.co/nvidia/personaplex-7b-v1/resolve/fdaf4090a61cb315c138a1faee287ffd6c716309/safety.md: HTTP 401 unauthorized (gated or private; set HF_TOKEN) Access to model nvidia/personaplex-7b-v1 is restricted. You must have access to it and be authenticated to access it. Please log in."
+  },
+  "tokenizer-e351c8d8-checkpoint125.safetensors": {
+   "size": 384644900,
+   "sha256": "09b782f0629851a271227fb9d36db65c041790365f11bbe5d3d59369cf863f50",
+   "blob": "c8d5e4cd18a5c1ce05bb89d81144a46cf1b9076c",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (384 MB)"
+  },
+  "tokenizer_spm_32k_3.model": {
+   "size": 552778,
+   "sha256": "78d4336533ddc26f9acf7250d7fb83492152196c6ea4212c841df76933f18d2d",
+   "blob": "2183b5c6a6f7745b8bce734f7af30fbd85e7f5ff",
+   "fetched": false,
+   "error": "https://huggingface.co/nvidia/personaplex-7b-v1/resolve/fdaf4090a61cb315c138a1faee287ffd6c716309/tokenizer_spm_32k_3.model: HTTP 401 unauthorized (gated or private; set HF_TOKEN) Access to model nvidia/personaplex-7b-v1 is restricted. You must have access to it and be authenticated to access it. Please log in."
+  },
+  "voices.tgz": {
+   "size": 6095521,
+   "sha256": "8564e9ca7a06ca723b07c3a77c623f0faa5937d04b2647b3a727b06c5ca0b7bb",
+   "blob": "f9288d6ffcf9204bdb89c78793215b4f92704357",
+   "fetched": false,
+   "error": "https://huggingface.co/nvidia/personaplex-7b-v1/resolve/fdaf4090a61cb315c138a1faee287ffd6c716309/voices.tgz: HTTP 401 unauthorized (gated or private; set HF_TOKEN) Access to model nvidia/personaplex-7b-v1 is restricted. You must have access to it and be authenticated to access it. Please log in."
+  }
+ },
+ "base_repo_files": {
+  ".gitattributes": {
+   "size": 1519,
+   "sha256": null,
+   "blob": "a6344aac8c09253b3b630fb776ae94478aa0275b",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "README.md": {
+   "size": 5659,
+   "sha256": null,
+   "blob": "0b45b5f519005a76234eca19f7b08ce3ac6322d3",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "model.safetensors": {
+   "size": 15375500136,
+   "sha256": "5b835c664f3830bf453808cbca9bfbcc9de332c328cc01cbffdfbaba2a8838a7",
+   "blob": "cb8dd66d60e20dc6def68bfd9932ab7e8f7152ff",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (15375 MB)"
+  },
+  "tokenizer-e351c8d8-checkpoint125.safetensors": {
+   "size": 384644900,
+   "sha256": "09b782f0629851a271227fb9d36db65c041790365f11bbe5d3d59369cf863f50",
+   "blob": "c8d5e4cd18a5c1ce05bb89d81144a46cf1b9076c",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (384 MB)"
+  },
+  "tokenizer_spm_32k_3.model": {
+   "size": 552778,
+   "sha256": "78d4336533ddc26f9acf7250d7fb83492152196c6ea4212c841df76933f18d2d",
+   "blob": "2183b5c6a6f7745b8bce734f7af30fbd85e7f5ff",
+   "fetched": true,
+   "verified": "lfs-sha256"
+  }
+ },
+ "found_in": [
+  "familia #55"
+ ],
+ "match": null,
+ "local_check": null,
+ "unknown": [
+  "card_defaults: the card and generation_config.json state no sampling values",
+  "quant",
+  "ctx"
+ ],
+ "warnings": null,
+ "updated": "2026-10-19",
+ "by": "scripts/model_db.py",
+ "weights": "absent (damp)",
+ "gguf_meta": null,
+ "base_chain": [
+  {
+   "repo": "kyutai/moshiko-pytorch-bf16",
+   "api_id": "kyutai/moshiko-pytorch-bf16",
+   "revision": "2bfc9ae6e89079a5cc7ed2a68436010d91a3d289",
+   "via": "card base_model",
+   "card_data": {
+    "license": "cc-by-4.0",
+    "language": [
+     "en"
+    ],
+    "library_name": "moshi"
+   },
+   "pipeline_tag": null,
+   "safetensors": {
+    "parameters": {
+     "BF16": 7687729152
+    },
+    "total": 7687729152
+   },
+   "license_files": null
+  }
+ ],
+ "github": [
+  {
+   "repo": "NVIDIA/personaplex",
+   "resolved": "NVIDIA/personaplex",
+   "sha": "3428dfd95309a7f3c84fd93259ded0f810d1ff91",
+   "renamed": null,
+   "description": "PersonaPlex code.",
+   "license_spdx": "MIT",
+   "files": {
+    "readme": {
+     "path": "README.md",
+     "sha256": "4e8d2598c511473ddfe325409cca15bf8adddc3844e60a52b2607bbaddf7b3a2",
+     "bytes": 8278
+    },
+    "license": {
+     "path": "LICENSE-MIT",
+     "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+     "bytes": 1023
+    }
+   },
+   "extra": null,
+   "snapshot": "github/NVIDIA--personaplex/3428dfd95309a7f3c84fd93259ded0f810d1ff91"
+  },
+  {
+   "repo": "kyutai-labs/moshi",
+   "resolved": "kyutai-labs/moshi",
+   "sha": "e6a55d2722a65870ef52a6c9f6ecfc0e90f38362",
+   "renamed": null,
+   "description": "Moshi is a speech-text foundation model and full-duplex spoken dialogue framework. It uses Mimi, a state-of-the-art streaming neural audio codec.",
+   "license_spdx": "Apache-2.0",
+   "files": {
+    "readme": {
+     "path": "README.md",
+     "sha256": "e429032aab30c9db9fd0c59426727df5e0bd1be2e5bc8c93e6911e30a06415f9",
+     "bytes": 14420
+    },
+    "license": {
+     "path": "LICENSE-APACHE",
+     "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+     "bytes": 11357
+    }
+   },
+   "extra": null,
+   "snapshot": "github/kyutai-labs--moshi/e6a55d2722a65870ef52a6c9f6ecfc0e90f38362"
+  }
+ ],
+ "github_dropped": [
+  {
+   "repo": "huggingface/hub-docs",
+   "why": "Hugging Face tool repo"
+  },
+  {
+   "repo": "allenai/peS2o",
+   "why": "owner and name unrelated to the model's Hugging Face repos"
+  },
+  {
+   "repo": "openai/whisper",
+   "why": "owner and name unrelated to the model's Hugging Face repos"
+  }
+ ],
+ "descriptor": {
+  "repo_id": {
+   "effective": "nvidia/personaplex-7b-v1",
+   "source": "HF API id"
+  },
+  "revision": {
+   "effective": "fdaf4090a61cb315c138a1faee287ffd6c716309",
+   "source": "pinned (manifest / database)"
+  },
+  "file": {
+   "effective": "model.safetensors",
+   "source": "HF API siblings"
+  },
+  "bytes": {
+   "effective": 16742874000,
+   "source": "HF API LFS size"
+  },
+  "sha256": {
+   "effective": "db1290db583cdaa6cb4de444ed279e0b586ca2a372b41434b07a7461c8c0e2f4",
+   "source": "HF API LFS oid"
+  },
+  "license": {
+   "effective": "other",
+   "source": "nvidia/personaplex-7b-v1 card license",
+   "values": [
+    {
+     "value": "other",
+     "source": "nvidia/personaplex-7b-v1 card license"
+    },
+    {
+     "value": "cc-by-4.0",
+     "source": "kyutai/moshiko-pytorch-bf16 card license"
+    }
+   ],
+   "conflict": true
+  },
+  "license_name": {
+   "effective": "nvidia-open-model-license",
+   "source": "nvidia/personaplex-7b-v1 card license_name"
+  },
+  "license_link": {
+   "effective": "https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-open-model-license/",
+   "source": "nvidia/personaplex-7b-v1 card license_link"
+  },
+  "code_license": {
+   "effective": "MIT",
+   "source": "GitHub github.com/NVIDIA/personaplex license (spdx)",
+   "values": [
+    {
+     "value": "MIT",
+     "source": "GitHub github.com/NVIDIA/personaplex license (spdx)"
+    },
+    {
+     "value": "Apache-2.0",
+     "source": "GitHub github.com/kyutai-labs/moshi license (spdx)"
+    }
+   ],
+   "conflict": true
+  },
+  "license_file": {
+   "effective": "github.com/NVIDIA/personaplex@3428dfd95309/LICENSE-MIT",
+   "source": "GitHub github.com/NVIDIA/personaplex",
+   "values": [
+    {
+     "value": "github.com/NVIDIA/personaplex@3428dfd95309/LICENSE-MIT",
+     "source": "GitHub github.com/NVIDIA/personaplex"
+    },
+    {
+     "value": "github.com/kyutai-labs/moshi@e6a55d2722a6/LICENSE-APACHE",
+     "source": "GitHub github.com/kyutai-labs/moshi"
+    }
+   ]
+  },
+  "base_model_chain": {
+   "effective": "kyutai/moshiko-pytorch-bf16",
+   "source": "card base_model"
+  },
+  "parameters": {
+   "effective": 7687729152,
+   "source": "HF API safetensors.total (kyutai/moshiko-pytorch-bf16)"
+  },
+  "pipeline_tag": {
+   "effective": "audio-to-audio",
+   "source": "nvidia/personaplex-7b-v1 HF API pipeline_tag"
+  },
+  "languages": {
+   "effective": [
+    "en"
+   ],
+   "source": "nvidia/personaplex-7b-v1 card language",
+   "values": [
+    {
+     "value": [
+      "en"
+     ],
+     "source": "nvidia/personaplex-7b-v1 card language"
+    },
+    {
+     "value": [
+      "en"
+     ],
+     "source": "kyutai/moshiko-pytorch-bf16 card language"
+    }
+   ]
+  }
+ },
+ "required_params": {
+  "kind": "raw",
+  "native_ctx": null,
+  "native_ctx_source": null,
+  "yarn": null,
+  "yarn_source": null,
+  "items": []
+ },
+ "blockers": null,
+ "params_problems": null,
+ "params_build": "b11374",
+ "license_info": {
+  "id": "nvidia-open-model-license",
+  "id_source": "nvidia/personaplex-7b-v1 card front matter license_name",
+  "name": "nvidia-open-model-license",
+  "summary": "nvidia-open-model-license (https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-open-model-license/)",
+  "summary_source": "nvidia/personaplex-7b-v1 card license",
+  "link": "https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-open-model-license/",
+  "link_source": "nvidia/personaplex-7b-v1 card license_link",
+  "texts": [
+   {
+    "file": "github.com/NVIDIA/personaplex@3428dfd95309/LICENSE-MIT",
+    "path": "/home/green/.local/share/gguf/hf-meta/github/NVIDIA--personaplex/3428dfd95309a7f3c84fd93259ded0f810d1ff91/LICENSE-MIT",
+    "url": "https://github.com/NVIDIA/personaplex/blob/3428dfd95309a7f3c84fd93259ded0f810d1ff91/LICENSE-MIT",
+    "sha256": "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3",
+    "bytes": 1023,
+    "what": "code (GitHub NVIDIA/personaplex, spdx MIT)"
+   },
+   {
+    "file": "github.com/kyutai-labs/moshi@e6a55d2722a6/LICENSE-APACHE",
+    "path": "/home/green/.local/share/gguf/hf-meta/github/kyutai-labs--moshi/e6a55d2722a65870ef52a6c9f6ecfc0e90f38362/LICENSE-APACHE",
+    "url": "https://github.com/kyutai-labs/moshi/blob/e6a55d2722a65870ef52a6c9f6ecfc0e90f38362/LICENSE-APACHE",
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+    "bytes": 11357,
+    "what": "code (GitHub kyutai-labs/moshi, spdx Apache-2.0)"
+   }
+  ],
+  "obligations": [
+   {
+    "quote": "gated repo: Hugging Face asks you to accept its terms before download",
+    "source": "HF API gated"
+   },
+   {
+    "quote": "This model is ready for commercial use.",
+    "source": "nvidia/personaplex-7b-v1 README.md:L60"
+   }
+  ],
+  "gated": true,
+  "unknown": false,
+  "seen": [
+   {
+    "value": "other",
+    "source": "nvidia/personaplex-7b-v1 card license"
+   },
+   {
+    "value": "cc-by-4.0",
+    "source": "kyutai/moshiko-pytorch-bf16 card license"
+   }
+  ]
+ },
+ "role_inference": {
+  "role": null,
+  "evidence": [
+   "no familia role: card pipeline_tag audio-to-audio is not a text-generation model; classify by hand"
+  ]
+ },
+ "repo_bytes": 17135667560
+}

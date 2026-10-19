@@ -1,0 +1,1818 @@
+{
+ "schema": 2,
+ "id": "Takenoko12345678--Qwen3.5-0.8B-Japanese-SFT-v2--model.safetensors",
+ "repo": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2",
+ "revision": "969b0903193cc0028b3bac5d23a7aa21db971233",
+ "file": "model.safetensors",
+ "sha256": "af0b17d3119d70d722634c95f19de22a917aac9ab11a56eec531ec70fb2db79b",
+ "bytes": 1706030528,
+ "quant": null,
+ "arch": null,
+ "roles": [
+  "general"
+ ],
+ "license": "apache-2.0",
+ "license_source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 card license",
+ "ctx": 262144,
+ "ctx_source": "config.json max_position_embeddings",
+ "card_ctx": 262144,
+ "card_ctx_source": "Qwen/Qwen3.5-0.8B README.md:L63",
+ "base_model": "Qwen/Qwen3.5-0.8B",
+ "base_revision": "2fc06364715b967f1860aea9cf38778875588b17",
+ "card_defaults": {
+  "temp": 1.0,
+  "top-p": 1.0,
+  "top-k": 20,
+  "min-p": 0.0,
+  "presence-penalty": 2.0,
+  "repeat-penalty": 1.0
+ },
+ "card_defaults_source": {
+  "temp": "Qwen/Qwen3.5-0.8B Qwen/Qwen3.5-0.8B README.md:L705",
+  "top-p": "Qwen/Qwen3.5-0.8B Qwen/Qwen3.5-0.8B README.md:L705",
+  "top-k": "Qwen/Qwen3.5-0.8B Qwen/Qwen3.5-0.8B README.md:L705",
+  "min-p": "Qwen/Qwen3.5-0.8B Qwen/Qwen3.5-0.8B README.md:L705",
+  "presence-penalty": "Qwen/Qwen3.5-0.8B Qwen/Qwen3.5-0.8B README.md:L705",
+  "repeat-penalty": "Qwen/Qwen3.5-0.8B Qwen/Qwen3.5-0.8B README.md:L705"
+ },
+ "card_default_set": "Non-thinking mode for text tasks",
+ "card_defaults_how": "recommended set for the card's default mode (non-thinking, Qwen/Qwen3.5-0.8B README.md:L585), text/general task set",
+ "card_sampling_modes": {
+  "Non-thinking mode for text tasks": {
+   "temp": 1.0,
+   "top-p": 1.0,
+   "top-k": 20,
+   "min-p": 0.0,
+   "presence-penalty": 2.0,
+   "repeat-penalty": 1.0
+  },
+  "Non-thinking mode for VL tasks": {
+   "temp": 0.7,
+   "top-p": 0.8,
+   "top-k": 20,
+   "min-p": 0.0,
+   "presence-penalty": 1.5,
+   "repeat-penalty": 1.0
+  },
+  "Thinking mode for text tasks": {
+   "temp": 1.0,
+   "top-p": 0.95,
+   "top-k": 20,
+   "min-p": 0.0,
+   "presence-penalty": 1.5,
+   "repeat-penalty": 1.0
+  },
+  "Thinking mode for VL or precise coding (e.g. WebDev) tasks": {
+   "temp": 0.6,
+   "top-p": 0.95,
+   "top-k": 20,
+   "min-p": 0.0,
+   "presence-penalty": 0.0,
+   "repeat-penalty": 1.0
+  }
+ },
+ "card_default_mode": "non-thinking",
+ "card_default_mode_source": "Qwen/Qwen3.5-0.8B README.md:L585",
+ "card_sampling_sets": [
+  {
+   "label": "Experimental settings",
+   "kind": "benchmark",
+   "mode": null,
+   "params": {
+    "top-p": 0.95,
+    "top-k": 20,
+    "presence-penalty": 1.5,
+    "temp": 1.0
+   },
+   "source": "Qwen/Qwen3.5-0.8B README.md:L285"
+  },
+  {
+   "label": "Experimental settings: For the Video benchmarks, we used",
+   "kind": "benchmark",
+   "mode": "non-thinking",
+   "params": {
+    "top-p": 0.95,
+    "top-k": 20,
+    "presence-penalty": 1.5,
+    "temp": 1.0
+   },
+   "source": "Qwen/Qwen3.5-0.8B README.md:L577",
+   "conflicts": [
+    {
+     "param": "temp",
+     "also": 0.6,
+     "source": "README.md:L577"
+    },
+    {
+     "param": "top-p",
+     "also": 0.8,
+     "source": "README.md:L577"
+    },
+    {
+     "param": "temp",
+     "also": 0.7,
+     "source": "README.md:L577"
+    }
+   ]
+  },
+  {
+   "label": "Multi-Token Prediction (MTP) : The following command is recommended for MTP",
+   "kind": "mention",
+   "mode": null,
+   "params": {
+    "top-k": 1
+   },
+   "source": "Qwen/Qwen3.5-0.8B README.md:L630"
+  },
+  {
+   "label": "Non-thinking mode for text tasks",
+   "kind": "recommended",
+   "mode": "non-thinking",
+   "params": {
+    "temp": 1.0,
+    "top-p": 1.0,
+    "top-k": 20,
+    "min-p": 0.0,
+    "presence-penalty": 2.0,
+    "repeat-penalty": 1.0
+   },
+   "source": "Qwen/Qwen3.5-0.8B README.md:L705"
+  },
+  {
+   "label": "Non-thinking mode for VL tasks",
+   "kind": "recommended",
+   "mode": "non-thinking",
+   "params": {
+    "temp": 0.7,
+    "top-p": 0.8,
+    "top-k": 20,
+    "min-p": 0.0,
+    "presence-penalty": 1.5,
+    "repeat-penalty": 1.0
+   },
+   "source": "Qwen/Qwen3.5-0.8B README.md:L706"
+  },
+  {
+   "label": "Thinking mode for text tasks",
+   "kind": "recommended",
+   "mode": "thinking",
+   "params": {
+    "temp": 1.0,
+    "top-p": 0.95,
+    "top-k": 20,
+    "min-p": 0.0,
+    "presence-penalty": 1.5,
+    "repeat-penalty": 1.0
+   },
+   "source": "Qwen/Qwen3.5-0.8B README.md:L707"
+  },
+  {
+   "label": "Thinking mode for VL or precise coding (e.g. WebDev) tasks",
+   "kind": "recommended",
+   "mode": "thinking",
+   "params": {
+    "temp": 0.6,
+    "top-p": 0.95,
+    "top-k": 20,
+    "min-p": 0.0,
+    "presence-penalty": 0.0,
+    "repeat-penalty": 1.0
+   },
+   "source": "Qwen/Qwen3.5-0.8B README.md:L708"
+  },
+  {
+   "label": "Text-Only Input",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 1.0,
+    "top-p": 1.0,
+    "presence-penalty": 2.0,
+    "top-k": 20
+   },
+   "source": "Qwen/Qwen3.5-0.8B README.md:L727"
+  },
+  {
+   "label": "Image Input",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 0.7,
+    "top-p": 0.8,
+    "presence-penalty": 1.5,
+    "top-k": 20
+   },
+   "source": "Qwen/Qwen3.5-0.8B README.md:L766"
+  },
+  {
+   "label": "Video Input",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 0.7,
+    "top-p": 0.8,
+    "presence-penalty": 1.5,
+    "top-k": 20
+   },
+   "source": "Qwen/Qwen3.5-0.8B README.md:L811"
+  },
+  {
+   "label": "For example",
+   "kind": "example",
+   "mode": "thinking",
+   "params": {
+    "temp": 1.0,
+    "top-p": 0.95,
+    "presence-penalty": 1.5,
+    "top-k": 20
+   },
+   "source": "Qwen/Qwen3.5-0.8B README.md:L844"
+  },
+  {
+   "label": "Non-thinking mode for text tasks",
+   "kind": "recommended",
+   "mode": "non-thinking",
+   "params": {
+    "temp": 1.0,
+    "top-p": 1.0,
+    "top-k": 20,
+    "min-p": 0.0,
+    "presence-penalty": 2.0,
+    "repeat-penalty": 1.0
+   },
+   "source": "Qwen/Qwen3.5-0.8B README.md:L932"
+  },
+  {
+   "label": "Non-thinking mode for VL tasks",
+   "kind": "recommended",
+   "mode": "non-thinking",
+   "params": {
+    "temp": 0.7,
+    "top-p": 0.8,
+    "top-k": 20,
+    "min-p": 0.0,
+    "presence-penalty": 1.5,
+    "repeat-penalty": 1.0
+   },
+   "source": "Qwen/Qwen3.5-0.8B README.md:L934"
+  },
+  {
+   "label": "Thinking mode for text tasks",
+   "kind": "recommended",
+   "mode": "thinking",
+   "params": {
+    "temp": 1.0,
+    "top-p": 0.95,
+    "top-k": 20,
+    "min-p": 0.0,
+    "presence-penalty": 1.5,
+    "repeat-penalty": 1.0
+   },
+   "source": "Qwen/Qwen3.5-0.8B README.md:L936"
+  },
+  {
+   "label": "Thinking mode for VL or precise coding (e.g., WebDev) tasks",
+   "kind": "recommended",
+   "mode": "thinking",
+   "params": {
+    "temp": 0.6,
+    "top-p": 0.95,
+    "top-k": 20,
+    "min-p": 0.0,
+    "presence-penalty": 0.0,
+    "repeat-penalty": 1.0
+   },
+   "source": "Qwen/Qwen3.5-0.8B README.md:L938"
+  },
+  {
+   "label": "国会議事堂はどこ？（llama.cpp、",
+   "kind": "mention",
+   "mode": null,
+   "params": {
+    "temp": 0
+   },
+   "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 README.md:L72"
+  },
+  {
+   "label": "同じ質問・同じ設定で、元の Qwen3.5-0.8B・v1 と比べました。評価の仕組みと全データは [Pitcher プロジェクト](https://github.com/atemoyacode-sudo/Pitcher) にあります。",
+   "kind": "mention",
+   "mode": null,
+   "params": {
+    "repeat-penalty": 1.1
+   },
+   "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 README.md:L91"
+  },
+  {
+   "label": "transformers 5 系 （5.17 で確認）を使ってください。重みは元のモデルと同じ形式（画像も扱える構造）ですが、学習・評価はテキストだけで行っています。",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 1.0,
+    "top-k": 20,
+    "top-p": 1.0
+   },
+   "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 README.md:L129"
+  },
+  {
+   "label": "推奨の生成設定",
+   "kind": "recommended",
+   "mode": null,
+   "params": {
+    "temp": 1.0,
+    "top-k": 20,
+    "top-p": 1.0,
+    "presence-penalty": 2.0
+   },
+   "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 README.md:L139"
+  },
+  {
+   "label": "llama.cpp では",
+   "kind": "mention",
+   "mode": null,
+   "params": {
+    "repeat-penalty": 1.1
+   },
+   "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 README.md:L140"
+  },
+  {
+   "label": "事実を答えさせる・選択問題：",
+   "kind": "mention",
+   "mode": null,
+   "params": {
+    "temp": 0
+   },
+   "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 README.md:L141"
+  }
+ ],
+ "card_commands": [
+  {
+   "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 README.md:L119-130",
+   "file": "README.md",
+   "lines": [
+    119,
+    130
+   ],
+   "lang": "python",
+   "tool": "transformers",
+   "kind": "code",
+   "text": "from transformers import AutoModelForImageTextToText, AutoTokenizer\nimport torch\n\nmodel_id = \"Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2\"\ntok = AutoTokenizer.from_pretrained(model_id)\nmodel = AutoModelForImageTextToText.from_pretrained(model_id, dtype=torch.bfloat16, device_map=\"auto\")\n\nmessages = [{\"role\": \"user\", \"content\": \"雨の日の過ごし方を教えて。\"}]\ntext = tok.apply_chat_template(messages, tokenize=False, add_generation_prompt=True, enable_thinking=False)\ninputs = tok(text, return_tensors=\"pt\", add_special_tokens=False).to(model.device)\nout = model.generate(**inputs, max_new_tokens=512, do_sample=True, temperature=1.0, top_k=20, top_p=1.0)\nprint(tok.decode(out[0][inputs[\"input_ids\"].shape[1]:], skip_special_tokens=True))",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-n",
+      "value": "512",
+      "from": "max_new_tokens: 512"
+     },
+     {
+      "flag": "--temp",
+      "value": "1",
+      "from": "temperature: 1.0"
+     },
+     {
+      "flag": "--top-k",
+      "value": "20",
+      "from": "top_k: 20"
+     },
+     {
+      "flag": "--top-p",
+      "value": "1",
+      "from": "top_p: 1.0"
+     },
+     {
+      "flag": "--chat-template-kwargs",
+      "value": "{\"enable_thinking\":false}",
+      "from": "enable_thinking=False"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "card",
+   "doc_sha": "969b0903193cc0028b3bac5d23a7aa21db971233",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-0.8B README.md:L609-609",
+   "file": "README.md",
+   "lines": [
+    609,
+    609
+   ],
+   "lang": "shell",
+   "tool": "pip",
+   "kind": "command",
+   "text": "uv pip install 'git+https://github.com/sgl-project/sglang.git#subdirectory=python&egg=sglang[all]'",
+   "doc": "base-card",
+   "doc_sha": "2fc06364715b967f1860aea9cf38778875588b17",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-0.8B README.md:L618-618",
+   "file": "README.md",
+   "lines": [
+    618,
+    618
+   ],
+   "lang": "shell",
+   "tool": "sglang",
+   "kind": "command",
+   "text": "    python -m sglang.launch_server --model-path Qwen/Qwen3.5-0.8B --port 8000 --tp-size 1 --mem-fraction-static 0.8 --context-length 262144",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-c",
+      "value": "262144",
+      "from": "--context-length 262144"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--model-path Qwen/Qwen3.5-0.8B",
+      "why": "the model is the GGUF file"
+     },
+     {
+      "arg": "--tp-size 1",
+      "why": "multi-GPU tensor parallelism; n/a"
+     },
+     {
+      "arg": "--mem-fraction-static 0.8",
+      "why": "SGLang memory pool fraction; n/a"
+     }
+    ]
+   },
+   "doc": "base-card",
+   "doc_sha": "2fc06364715b967f1860aea9cf38778875588b17",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-0.8B README.md:L624-624",
+   "file": "README.md",
+   "lines": [
+    624,
+    624
+   ],
+   "lang": "shell",
+   "tool": "sglang",
+   "kind": "command",
+   "text": "    python -m sglang.launch_server --model-path Qwen/Qwen3.5-0.8B --port 8000 --tp-size 1 --mem-fraction-static 0.8 --context-length 262144 --tool-call-parser qwen3_coder",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-c",
+      "value": "262144",
+      "from": "--context-length 262144"
+     },
+     {
+      "flag": "--jinja",
+      "value": null,
+      "from": "--tool-call-parser qwen3_coder"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--model-path Qwen/Qwen3.5-0.8B",
+      "why": "the model is the GGUF file"
+     },
+     {
+      "arg": "--tp-size 1",
+      "why": "multi-GPU tensor parallelism; n/a"
+     },
+     {
+      "arg": "--mem-fraction-static 0.8",
+      "why": "SGLang memory pool fraction; n/a"
+     }
+    ]
+   },
+   "doc": "base-card",
+   "doc_sha": "2fc06364715b967f1860aea9cf38778875588b17",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-0.8B README.md:L630-630",
+   "file": "README.md",
+   "lines": [
+    630,
+    630
+   ],
+   "lang": "shell",
+   "tool": "sglang",
+   "kind": "command",
+   "text": "    python -m sglang.launch_server --model-path Qwen/Qwen3.5-0.8B --port 8000 --tp-size 1 --mem-fraction-static 0.8 --context-length 262144 --speculative-algo NEXTN --speculative-num-steps 3 --speculative-eagle-topk 1 --speculative-num-draft-tokens 4",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-c",
+      "value": "262144",
+      "from": "--context-length 262144"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--model-path Qwen/Qwen3.5-0.8B",
+      "why": "the model is the GGUF file"
+     },
+     {
+      "arg": "--tp-size 1",
+      "why": "multi-GPU tensor parallelism; n/a"
+     },
+     {
+      "arg": "--mem-fraction-static 0.8",
+      "why": "SGLang memory pool fraction; n/a"
+     },
+     {
+      "arg": "--speculative-algo NEXTN",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--speculative-num-steps 3",
+      "why": "see --speculative-algorithm"
+     },
+     {
+      "arg": "--speculative-eagle-topk 1",
+      "why": "see --speculative-algorithm"
+     },
+     {
+      "arg": "--speculative-num-draft-tokens 4",
+      "why": "see --speculative-algorithm"
+     }
+    ]
+   },
+   "doc": "base-card",
+   "doc_sha": "2fc06364715b967f1860aea9cf38778875588b17",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-0.8B README.md:L638-638",
+   "file": "README.md",
+   "lines": [
+    638,
+    638
+   ],
+   "lang": "shell",
+   "tool": "pip",
+   "kind": "command",
+   "text": "uv pip install vllm --torch-backend=auto --extra-index-url https://wheels.vllm.ai/nightly",
+   "doc": "base-card",
+   "doc_sha": "2fc06364715b967f1860aea9cf38778875588b17",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-0.8B README.md:L649-649",
+   "file": "README.md",
+   "lines": [
+    649,
+    649
+   ],
+   "lang": "shell",
+   "tool": "vllm",
+   "kind": "command",
+   "text": "    vllm serve Qwen/Qwen3.5-0.8B --port 8000 --tensor-parallel-size 1 --max-model-len 262144 ",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-c",
+      "value": "262144",
+      "from": "--max-model-len 262144"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--tensor-parallel-size 1",
+      "why": "multi-GPU tensor parallelism; n/a (one device per llama-server here)"
+     }
+    ]
+   },
+   "doc": "base-card",
+   "doc_sha": "2fc06364715b967f1860aea9cf38778875588b17",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-0.8B README.md:L655-655",
+   "file": "README.md",
+   "lines": [
+    655,
+    655
+   ],
+   "lang": "shell",
+   "tool": "vllm",
+   "kind": "command",
+   "text": "    vllm serve Qwen/Qwen3.5-0.8B --port 8000 --tensor-parallel-size 1 --max-model-len 262144 --enable-auto-tool-choice --tool-call-parser qwen3_coder ",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-c",
+      "value": "262144",
+      "from": "--max-model-len 262144"
+     },
+     {
+      "flag": "--jinja",
+      "value": null,
+      "from": "--enable-auto-tool-choice"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--tensor-parallel-size 1",
+      "why": "multi-GPU tensor parallelism; n/a (one device per llama-server here)"
+     }
+    ]
+   },
+   "doc": "base-card",
+   "doc_sha": "2fc06364715b967f1860aea9cf38778875588b17",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-0.8B README.md:L661-661",
+   "file": "README.md",
+   "lines": [
+    661,
+    661
+   ],
+   "lang": "shell",
+   "tool": "vllm",
+   "kind": "command",
+   "text": "    vllm serve Qwen/Qwen3.5-0.8B --port 8000 --tensor-parallel-size 1 --max-model-len 262144 --speculative-config '{\"method\":\"qwen3_next_mtp\",\"num_speculative_tokens\":2}'",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-c",
+      "value": "262144",
+      "from": "--max-model-len 262144"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--tensor-parallel-size 1",
+      "why": "multi-GPU tensor parallelism; n/a (one device per llama-server here)"
+     },
+     {
+      "arg": "--speculative-config {\"method\":\"qwen3_next_mtp\",\"num_speculative_tokens\":2}",
+      "why": "MTP / speculative heads of the safetensors checkpoint are not in this GGUF; no llama.cpp equivalent here"
+     }
+    ]
+   },
+   "doc": "base-card",
+   "doc_sha": "2fc06364715b967f1860aea9cf38778875588b17",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-0.8B README.md:L667-667",
+   "file": "README.md",
+   "lines": [
+    667,
+    667
+   ],
+   "lang": "shell",
+   "tool": "vllm",
+   "kind": "command",
+   "text": "    vllm serve Qwen/Qwen3.5-0.8B --port 8000 --tensor-parallel-size 1 --max-model-len 262144 --language-model-only",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-c",
+      "value": "262144",
+      "from": "--max-model-len 262144"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--tensor-parallel-size 1",
+      "why": "multi-GPU tensor parallelism; n/a (one device per llama-server here)"
+     },
+     {
+      "arg": "--language-model-only",
+      "why": "text only: do not pass --mmproj (llama.cpp loads no vision tower without it)"
+     }
+    ]
+   },
+   "doc": "base-card",
+   "doc_sha": "2fc06364715b967f1860aea9cf38778875588b17",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-0.8B README.md:L680-680",
+   "file": "README.md",
+   "lines": [
+    680,
+    680
+   ],
+   "lang": "shell",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install \"transformers[serving] @ git+https://github.com/huggingface/transformers.git@main\"",
+   "doc": "base-card",
+   "doc_sha": "2fc06364715b967f1860aea9cf38778875588b17",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-0.8B README.md:L686-686",
+   "file": "README.md",
+   "lines": [
+    686,
+    686
+   ],
+   "lang": "shell",
+   "tool": "transformers-serve",
+   "kind": "command",
+   "text": "transformers serve --force-model Qwen/Qwen3.5-0.8B --port 8000 --continuous-batching",
+   "translation": {
+    "translated": true,
+    "params": [],
+    "untranslatable": [
+     {
+      "arg": "--force-model Qwen/Qwen3.5-0.8B",
+      "why": "the model is the GGUF file"
+     },
+     {
+      "arg": "--continuous-batching",
+      "why": "llama-server batches continuously by default (--cont-batching)"
+     }
+    ]
+   },
+   "doc": "base-card",
+   "doc_sha": "2fc06364715b967f1860aea9cf38778875588b17",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-0.8B README.md:L696-700",
+   "file": "README.md",
+   "lines": [
+    696,
+    700
+   ],
+   "lang": "shell",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install -U openai\n\n# Set the following accordingly\nexport OPENAI_BASE_URL=\"http://localhost:8000/v1\"\nexport OPENAI_API_KEY=\"EMPTY\"",
+   "doc": "base-card",
+   "doc_sha": "2fc06364715b967f1860aea9cf38778875588b17",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-0.8B README.md:L715-734",
+   "file": "README.md",
+   "lines": [
+    715,
+    734
+   ],
+   "lang": "python",
+   "tool": "openai-client",
+   "kind": "code",
+   "text": "from openai import OpenAI\n# Configured by environment variables\nclient = OpenAI()\n\nmessages = [\n    {\"role\": \"user\", \"content\": \"Give me a short introduction to large language models.\"},\n]\n\nchat_response = client.chat.completions.create(\n    model=\"Qwen/Qwen3.5-0.8B\",\n    messages=messages,\n    max_tokens=32768,\n    temperature=1.0,\n    top_p=1.0,\n    presence_penalty=2.0,\n    extra_body={\n        \"top_k\": 20,\n    }, \n)\nprint(\"Chat response:\", chat_response)",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--top-k",
+      "value": "20",
+      "from": "top_k: 20"
+     },
+     {
+      "flag": "-n",
+      "value": "32768",
+      "from": "max_tokens: 32768"
+     },
+     {
+      "flag": "--temp",
+      "value": "1",
+      "from": "temperature: 1.0"
+     },
+     {
+      "flag": "--top-p",
+      "value": "1",
+      "from": "top_p: 1.0"
+     },
+     {
+      "flag": "--presence-penalty",
+      "value": "2",
+      "from": "presence_penalty: 2.0"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "2fc06364715b967f1860aea9cf38778875588b17",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-0.8B README.md:L740-773",
+   "file": "README.md",
+   "lines": [
+    740,
+    773
+   ],
+   "lang": "python",
+   "tool": "openai-client",
+   "kind": "code",
+   "text": "from openai import OpenAI\n# Configured by environment variables\nclient = OpenAI()\n\nmessages = [\n    {\n        \"role\": \"user\",\n        \"content\": [\n            {\n                \"type\": \"image_url\",\n                \"image_url\": {\n                    \"url\": \"https://qianwen-res.oss-accelerate.aliyuncs.com/Qwen3.5/demo/RealWorld/RealWorld-04.png\"\n                }\n            },\n            {\n                \"type\": \"text\",\n                \"text\": \"Where is this?\"\n            }\n        ]\n    }\n]\n\nchat_response = client.chat.completions.create(\n    model=\"Qwen/Qwen3.5-0.8B\",\n    messages=messages,\n    max_tokens=32768,\n    temperature=0.7,\n    top_p=0.8,\n    presence_penalty=1.5,\n    extra_body={\n        \"top_k\": 20,\n    }, \n)\nprint(\"Chat response:\", chat_response)",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--top-k",
+      "value": "20",
+      "from": "top_k: 20"
+     },
+     {
+      "flag": "-n",
+      "value": "32768",
+      "from": "max_tokens: 32768"
+     },
+     {
+      "flag": "--temp",
+      "value": "0.7",
+      "from": "temperature: 0.7"
+     },
+     {
+      "flag": "--top-p",
+      "value": "0.8",
+      "from": "top_p: 0.8"
+     },
+     {
+      "flag": "--presence-penalty",
+      "value": "1.5",
+      "from": "presence_penalty: 1.5"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "2fc06364715b967f1860aea9cf38778875588b17",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-0.8B README.md:L779-820",
+   "file": "README.md",
+   "lines": [
+    779,
+    820
+   ],
+   "lang": "python",
+   "tool": "openai-client",
+   "kind": "code",
+   "text": "from openai import OpenAI\n# Configured by environment variables\nclient = OpenAI()\n\nmessages = [\n    {\n        \"role\": \"user\",\n        \"content\": [\n            {\n                \"type\": \"video_url\",\n                \"video_url\": {\n                    \"url\": \"https://qianwen-res.oss-accelerate.aliyuncs.com/Qwen3.5/demo/video/N1cdUjctpG8.mp4\"\n                }\n            },\n            {\n                \"type\": \"text\",\n                \"text\": \"Summarize the video content.\"\n            }\n        ]\n    }\n]\n\n# When vLLM is launched with `--media-io-kwargs '{\"video\": {\"num_frames\": -1}}'`,\n# video frame sampling can be configured via `extra_body` (e.g., by setting `fps`).\n# This feature is currently supported only in vLLM.\n#\n# By default, `fps=2` and `do_sample_frames=True`.\n# With `do_sample_frames=True`, you can customize the `fps` value to set your desired video sampling rate.\nchat_response = client.chat.completions.create(\n    model=\"Qwen/Qwen3.5-0.8B\",\n    messages=messages,\n    max_tokens=32768,\n    temperature=0.7,\n    top_p=0.8,\n    presence_penalty=1.5,\n    extra_body={\n        \"top_k\": 20,\n        \"mm_processor_kwargs\": {\"fps\": 2, \"do_sample_frames\": True},\n    }, \n)\n\nprint(\"Chat response:\", chat_response)",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--top-k",
+      "value": "20",
+      "from": "top_k: 20"
+     },
+     {
+      "flag": "-n",
+      "value": "32768",
+      "from": "max_tokens: 32768"
+     },
+     {
+      "flag": "--temp",
+      "value": "0.7",
+      "from": "temperature: 0.7"
+     },
+     {
+      "flag": "--top-p",
+      "value": "0.8",
+      "from": "top_p: 0.8"
+     },
+     {
+      "flag": "--presence-penalty",
+      "value": "1.5",
+      "from": "presence_penalty: 1.5"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "2fc06364715b967f1860aea9cf38778875588b17",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-0.8B README.md:L832-852",
+   "file": "README.md",
+   "lines": [
+    832,
+    852
+   ],
+   "lang": "python",
+   "tool": "openai-client",
+   "kind": "code",
+   "text": "from openai import OpenAI\n# Configured by environment variables\nclient = OpenAI()\n\nmessages = [\n    {\"role\": \"user\", \"content\": \"Type \\\"I love Qwen3.5\\\" backwards\"},\n]\n\nchat_response = client.chat.completions.create(\n    model=\"Qwen/Qwen3.5-0.8B\",\n    messages=messages,\n    max_tokens=81920,\n    temperature=1.0,\n    top_p=0.95,\n    presence_penalty=1.5,\n    extra_body={\n        \"top_k\": 20,\n        \"enable_thinking\": True,\n    }, \n)\nprint(\"Chat response:\", chat_response)",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--top-k",
+      "value": "20",
+      "from": "top_k: 20"
+     },
+     {
+      "flag": "-n",
+      "value": "81920",
+      "from": "max_tokens: 81920"
+     },
+     {
+      "flag": "--temp",
+      "value": "1",
+      "from": "temperature: 1.0"
+     },
+     {
+      "flag": "--top-p",
+      "value": "0.95",
+      "from": "top_p: 0.95"
+     },
+     {
+      "flag": "--presence-penalty",
+      "value": "1.5",
+      "from": "presence_penalty: 1.5"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "2fc06364715b967f1860aea9cf38778875588b17",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-0.8B README.md:L870-915",
+   "file": "README.md",
+   "lines": [
+    870,
+    915
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "import os\nfrom qwen_agent.agents import Assistant\n\n# Define LLM\n# Using OpenAI-compatible API endpoint. The API backend should disable response parsers.\nllm_cfg = {\n    # Use your own model service compatible with OpenAI API by vLLM/SGLang:\n    'model': 'Qwen/Qwen3.5-0.8B',\n    'model_type': 'qwenvl_oai',\n    'model_server': 'http://localhost:8000/v1',  # api_base\n    'api_key': 'EMPTY',\n\n    'generate_cfg': {\n        'use_raw_api': True,  \n        # Pass the parameter of whether to enable thinking mode in this way\n        # 'extra_body': {\n        #    'chat_template_kwargs': {'enable_thinking': True}\n        # },\n    },\n}\n\n# Define Tools\ntools = [\n    {'mcpServers': {  # You can specify the MCP configuration file\n            \"filesystem\": {\n                \"command\": \"npx\",\n                \"args\": [\"-y\", \"@modelcontextprotocol/server-filesystem\", \"/Users/xxxx/Desktop\"]\n            }\n        }\n    }\n]\n\n# Define Agent\nbot = Assistant(llm=llm_cfg, function_list=tools)\n\n# Streaming generation\nmessages = [{'role': 'user', 'content': 'Help me organize my desktop.'}]\nfor responses in bot.run(messages=messages):\n    pass\nprint(responses)\n\n# Streaming generation\nmessages = [{'role': 'user', 'content': 'Develop a dog website and save it on the desktop'}]\nfor responses in bot.run(messages=messages):\n    pass\nprint(responses)",
+   "doc": "base-card",
+   "doc_sha": "2fc06364715b967f1860aea9cf38778875588b17",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-0.8B README.md:L952-952",
+   "file": "README.md",
+   "lines": [
+    952,
+    952
+   ],
+   "lang": "json",
+   "tool": "json",
+   "kind": "config",
+   "text": "    {\"longest_edge\": 469762048, \"shortest_edge\": 4096}",
+   "doc": "base-card",
+   "doc_sha": "2fc06364715b967f1860aea9cf38778875588b17",
+   "scope": "model"
+  }
+ ],
+ "card_notes": [
+  {
+   "text": "- Context Length: 262,144 natively",
+   "source": "Qwen/Qwen3.5-0.8B README.md:L63"
+  },
+  {
+   "text": "<tr><td colspan=\"5\" style=\"padding:8px 12px;font-weight:600;color:#7c3aed;border-bottom:1px solid rgba(124, 58, 237, 0.2);background:rgba(124, 58, 237, 0.1)\">Non-Thinking Mode</td></tr>",
+   "source": "Qwen/Qwen3.5-0.8B README.md:L74"
+  },
+  {
+   "text": "* Experimental settings: top_p=0.95, top_k=20, presence_penalty=1.5, and temperature=1.0 were used.<br>",
+   "source": "Qwen/Qwen3.5-0.8B README.md:L285"
+  },
+  {
+   "text": "* Scores of Qwen3.5 models are reported as Thinking / Non-thinking.<br>",
+   "source": "Qwen/Qwen3.5-0.8B README.md:L575"
+  },
+  {
+   "text": "* Experimental settings: For the Video benchmarks, we used top_p=0.95, top_k=20, presence_penalty=1.5, and temperature=1.0. All other benchmarks adopted the same sampling configuration but with temperature=0.6 under the thinking mode. Under the non-thinking mode, the sampling parameters were set to ",
+   "source": "Qwen/Qwen3.5-0.8B README.md:L577"
+  },
+  {
+   "text": "> Qwen3.5 models support both non-thinking and thinking mode. **Qwen3.5-0.8B operates in non-thinking mode by default**.",
+   "source": "Qwen/Qwen3.5-0.8B README.md:L585"
+  },
+  {
+   "text": "> The model has a default context length of 262,144 tokens.",
+   "source": "Qwen/Qwen3.5-0.8B README.md:L601"
+  },
+  {
+   "text": "- **Standard Version**: The following command can be used to create an API endpoint with maximum context length 262,144 tokens using tensor parallel on 8 GPUs.",
+   "source": "Qwen/Qwen3.5-0.8B README.md:L615"
+  },
+  {
+   "text": "- **Standard Version**: The following command can be used to create an API endpoint with maximum context length 262,144 tokens using tensor parallel on 8 GPUs.",
+   "source": "Qwen/Qwen3.5-0.8B README.md:L646"
+  },
+  {
+   "text": "> - Non-thinking mode for text tasks: `temperature=1.0, top_p=1.00, top_k=20, min_p=0.0, presence_penalty=2.0, repetition_penalty=1.0`",
+   "source": "Qwen/Qwen3.5-0.8B README.md:L705"
+  },
+  {
+   "text": "> - Non-thinking mode for VL tasks: `temperature=0.7, top_p=0.80, top_k=20, min_p=0.0, presence_penalty=1.5, repetition_penalty=1.0`",
+   "source": "Qwen/Qwen3.5-0.8B README.md:L706"
+  },
+  {
+   "text": "> - Thinking mode for text tasks: `temperature=1.0, top_p=0.95, top_k=20, min_p=0.0, presence_penalty=1.5, repetition_penalty=1.0`",
+   "source": "Qwen/Qwen3.5-0.8B README.md:L707"
+  },
+  {
+   "text": "> - Thinking mode for VL or precise coding (e.g. WebDev) tasks : `temperature=0.6, top_p=0.95, top_k=20, min_p=0.0, presence_penalty=0.0, repetition_penalty=1.0`",
+   "source": "Qwen/Qwen3.5-0.8B README.md:L708"
+  },
+  {
+   "text": "#### Thinking Mode",
+   "source": "Qwen/Qwen3.5-0.8B README.md:L823"
+  },
+  {
+   "text": "> Qwen3.5 does not officially support the soft switch of Qwen3, i.e., `/think` and `/nothink`.",
+   "source": "Qwen/Qwen3.5-0.8B README.md:L826"
+  },
+  {
+   "text": "> In thinking mode, we have observed that when using the recommended sampling parameters, Qwen3.5-0.8B is more prone to entering thinking loops compared to other Qwen3.5 models, which may prevent it from terminating generation properly.",
+   "source": "Qwen/Qwen3.5-0.8B README.md:L856"
+  },
+  {
+   "text": "- **Non-thinking mode for text tasks**:",
+   "source": "Qwen/Qwen3.5-0.8B README.md:L931"
+  },
+  {
+   "text": "`temperature=1.0`, `top_p=1.00`, `top_k=20`, `min_p=0.0`, `presence_penalty=2.0`, `repetition_penalty=1.0`",
+   "source": "Qwen/Qwen3.5-0.8B README.md:L932"
+  },
+  {
+   "text": "- **Non-thinking mode for VL tasks**:",
+   "source": "Qwen/Qwen3.5-0.8B README.md:L933"
+  },
+  {
+   "text": "`temperature=0.7`, `top_p=0.80`, `top_k=20`, `min_p=0.0`, `presence_penalty=1.5`, `repetition_penalty=1.0`",
+   "source": "Qwen/Qwen3.5-0.8B README.md:L934"
+  },
+  {
+   "text": "*An unofficial Japanese fine-tune of Qwen3.5-0.8B (v2 of Qwen3.5-0.8B-Japanese-SFT). Adds continued pre-training on 100M tokens of Japanese Wikipedia, casual and multi-turn chat distilled from Qwen3.8-27B, and DPO on the model's own answers scored by Gemma 4 31B. Runaway repetition dropped from 8/59",
+   "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 README.md:L33"
+  },
+  {
+   "text": "**`enable_thinking=False` を必ず指定してください。** このモデルの学習はすべて思考なしで行っています。vLLM（0.30）でも動きます（評価に使用）。",
+   "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 README.md:L135"
+  },
+  {
+   "text": "- 会話：temperature 1.0、top_k 20、top_p 1.0、presence_penalty 2.0（元のモデルの推奨値）",
+   "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 README.md:L139"
+  }
+ ],
+ "chat_template": {
+  "repo_sha256": "a718c4c7c74cb590a4ef4d30e23a88c8f47d7125d62c19f202383ada53f30809",
+  "repo_file": "chat_template.jinja",
+  "repo_chars": 7753,
+  "repo_label": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2"
+ },
+ "stop": {
+  "eos_token": "<|im_end|>",
+  "eos_token_id": 248044,
+  "eos_token_id_source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 generation_config.json",
+  "analysis": {
+   "tokens": [
+    {
+     "id": 248044,
+     "text": "<|endoftext|>",
+     "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 generation_config.json eos_token_id",
+     "eog_by": "llama.cpp built-in EOG text"
+    },
+    {
+     "id": 248046,
+     "text": "<|im_end|>",
+     "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 tokenizer_config.json eos_token",
+     "eog_by": "llama.cpp built-in EOG text"
+    }
+   ],
+   "missing": [],
+   "gguf": {}
+  }
+ },
+ "rope": {
+  "config": {
+   "mrope_interleaved": true,
+   "mrope_section": [
+    11,
+    11,
+    10
+   ],
+   "rope_type": "default",
+   "rope_theta": 10000000,
+   "partial_rotary_factor": 0.25
+  }
+ },
+ "aux": null,
+ "gguf": null,
+ "snapshot": {
+  "path": "Takenoko12345678--Qwen3.5-0.8B-Japanese-SFT-v2/969b0903193cc0028b3bac5d23a7aa21db971233",
+  "fetched_bytes": 30106439,
+  "errors": null,
+  "gated": false
+ },
+ "base_snapshot": {
+  "path": "Qwen--Qwen3.5-0.8B/2fc06364715b967f1860aea9cf38778875588b17",
+  "fetched_bytes": 23037865,
+  "errors": null,
+  "gated": false
+ },
+ "repo_files": {
+  ".gitattributes": {
+   "size": 1570,
+   "sha256": null,
+   "blob": "52373fe24473b1aa44333d318f578ae6bf04b49b",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "LICENSE": {
+   "size": 11358,
+   "sha256": null,
+   "blob": "d645695673349e3947e8e5ae42332d0ac3164cd7",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "README.md": {
+   "size": 15692,
+   "sha256": null,
+   "blob": "33bcc30ffe52beab30e29ca844120380aa46461a",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "chat_template.jinja": {
+   "size": 7753,
+   "sha256": null,
+   "blob": "99b6f5c5fc8943cc61ba1918259837fd2a46ce72",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "config.json": {
+   "size": 2708,
+   "sha256": null,
+   "blob": "2dc2cf8791f3ee3d210e52947548ad160c84a837",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "generation_config.json": {
+   "size": 116,
+   "sha256": null,
+   "blob": "31ec2a53cc9cde720b0a8fbc68b9c4e73ac5a18f",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "merges.txt": {
+   "size": 3353259,
+   "sha256": null,
+   "blob": "a494e019ca1502219fd0128658b979e5f05ae8e8",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "model.safetensors": {
+   "size": 1706030528,
+   "sha256": "af0b17d3119d70d722634c95f19de22a917aac9ab11a56eec531ec70fb2db79b",
+   "blob": "ebdeb7e050caaddc642744e0c49c334295a44fee",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (1706 MB)"
+  },
+  "preprocessor_config.json": {
+   "size": 390,
+   "sha256": null,
+   "blob": "2ea84a437d448ff71b08df68fdd949d5cc4ebb64",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "tokenizer.json": {
+   "size": 19989325,
+   "sha256": "06b9509352d2af50381ab2247e083b80d32d5c0aba91c272ca9ff729b6a0e523",
+   "blob": "5520bfd2dd834ce386c1312c410fa71af56db5ad",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "tokenizer_config.json": {
+   "size": 1124,
+   "sha256": null,
+   "blob": "d1a20cc3a8838d08eca9de8a7b84d510d60a0524",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "video_preprocessor_config.json": {
+   "size": 385,
+   "sha256": null,
+   "blob": "3ba673a5ad7d4d13f54155ecd38b2a94a6dac8fe",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "vocab.json": {
+   "size": 6722759,
+   "sha256": null,
+   "blob": "0aa0ce0658d60ac4a5d609f4eadb0e8e43514176",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  }
+ },
+ "base_repo_files": {
+  ".gitattributes": {
+   "size": 1570,
+   "sha256": null,
+   "blob": "52373fe24473b1aa44333d318f578ae6bf04b49b",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "LICENSE": {
+   "size": 11544,
+   "sha256": null,
+   "blob": "f938136e3adacfd92be087f6e113b5d6d97f678f",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "README.md": {
+   "size": 61705,
+   "sha256": null,
+   "blob": "5824f1761b2b3a55a2141a9a1172a7f92c7c2ad9",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "chat_template.jinja": {
+   "size": 7755,
+   "sha256": null,
+   "blob": "0ef09f214eaa6d9bca297988afc1454b5827b2c7",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "config.json": {
+   "size": 2907,
+   "sha256": null,
+   "blob": "715f0448b9d38103211f0ad88bbb4d6e4f4be8c9",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "merges.txt": {
+   "size": 3353259,
+   "sha256": null,
+   "blob": "a494e019ca1502219fd0128658b979e5f05ae8e8",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "model.safetensors-00001-of-00001.safetensors": {
+   "size": 1746942600,
+   "sha256": "04b1c301231dd422b8860db31311ab2721511346a32cb1e079c4c4e5f1fe4696",
+   "blob": "969da4e6aa85b4e224739020212b7cb0d09cee14",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (1746 MB)"
+  },
+  "model.safetensors.index.json": {
+   "size": 50900,
+   "sha256": null,
+   "blob": "f691cefdb79d73270895ebd6d9594ddcecfc1838",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "preprocessor_config.json": {
+   "size": 390,
+   "sha256": null,
+   "blob": "2ea84a437d448ff71b08df68fdd949d5cc4ebb64",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "tokenizer.json": {
+   "size": 12807982,
+   "sha256": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42",
+   "blob": "a73a846725794819aa6e1c9e97d8dc9671c2006d",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "tokenizer_config.json": {
+   "size": 16709,
+   "sha256": null,
+   "blob": "fae3ce993e07c092ad024dde45e592379fde91bb",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "video_preprocessor_config.json": {
+   "size": 385,
+   "sha256": null,
+   "blob": "3ba673a5ad7d4d13f54155ecd38b2a94a6dac8fe",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "vocab.json": {
+   "size": 6722759,
+   "sha256": null,
+   "blob": "0aa0ce0658d60ac4a5d609f4eadb0e8e43514176",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  }
+ },
+ "found_in": [
+  "familia #54"
+ ],
+ "match": null,
+ "local_check": null,
+ "unknown": [
+  "quant"
+ ],
+ "warnings": null,
+ "updated": "2026-10-19",
+ "by": "scripts/model_db.py",
+ "weights": "absent (damp)",
+ "gguf_meta": null,
+ "base_chain": [
+  {
+   "repo": "Qwen/Qwen3.5-0.8B",
+   "api_id": "Qwen/Qwen3.5-0.8B",
+   "revision": "2fc06364715b967f1860aea9cf38778875588b17",
+   "via": "card base_model",
+   "card_data": {
+    "license": "apache-2.0",
+    "license_link": "https://huggingface.co/Qwen/Qwen3.5-0.8B/blob/main/LICENSE",
+    "base_model": [
+     "Qwen/Qwen3.5-0.8B-Base"
+    ],
+    "pipeline_tag": "image-text-to-text",
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "image-text-to-text",
+   "safetensors": {
+    "parameters": {
+     "F32": 2592,
+     "BF16": 873436192
+    },
+    "total": 873438784
+   },
+   "license_files": [
+    "LICENSE"
+   ]
+  },
+  {
+   "repo": "Qwen/Qwen3.5-0.8B-Base",
+   "api_id": "Qwen/Qwen3.5-0.8B-Base",
+   "revision": "dc7cdfe2ee4154fa7e30f5b51ca41bfa40174e68",
+   "via": "Qwen/Qwen3.5-0.8B card base_model",
+   "card_data": {
+    "license": "apache-2.0",
+    "license_link": "https://huggingface.co/Qwen/Qwen3.5-0.8B-Base/blob/main/LICENSE",
+    "pipeline_tag": "image-text-to-text",
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "image-text-to-text",
+   "safetensors": {
+    "parameters": {
+     "F32": 2592,
+     "BF16": 873436192
+    },
+    "total": 873438784
+   },
+   "license_files": [
+    "LICENSE"
+   ]
+  }
+ ],
+ "github": null,
+ "github_dropped": [
+  {
+   "repo": "atemoyacode-sudo/Pitcher",
+   "why": "owner and name unrelated to the model's Hugging Face repos"
+  },
+  {
+   "repo": "sgl-project/sglang",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "vllm-project/vllm",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "kvcache-ai/ktransformers",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "QwenLM/Qwen-Agent",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "QwenLM/qwen-code",
+   "why": "inference/training tool repo"
+  }
+ ],
+ "descriptor": {
+  "repo_id": {
+   "effective": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2",
+   "source": "HF API id"
+  },
+  "revision": {
+   "effective": "969b0903193cc0028b3bac5d23a7aa21db971233",
+   "source": "pinned (manifest / database)"
+  },
+  "file": {
+   "effective": "model.safetensors",
+   "source": "HF API siblings"
+  },
+  "bytes": {
+   "effective": 1706030528,
+   "source": "HF API LFS size"
+  },
+  "sha256": {
+   "effective": "af0b17d3119d70d722634c95f19de22a917aac9ab11a56eec531ec70fb2db79b",
+   "source": "HF API LFS oid"
+  },
+  "license": {
+   "effective": "apache-2.0",
+   "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 card license",
+   "values": [
+    {
+     "value": "apache-2.0",
+     "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "Qwen/Qwen3.5-0.8B card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "Qwen/Qwen3.5-0.8B-Base card license"
+    }
+   ]
+  },
+  "license_link": {
+   "effective": "https://huggingface.co/Qwen/Qwen3.5-0.8B/blob/main/LICENSE",
+   "source": "Qwen/Qwen3.5-0.8B card license_link",
+   "values": [
+    {
+     "value": "https://huggingface.co/Qwen/Qwen3.5-0.8B/blob/main/LICENSE",
+     "source": "Qwen/Qwen3.5-0.8B card license_link"
+    },
+    {
+     "value": "https://huggingface.co/Qwen/Qwen3.5-0.8B-Base/blob/main/LICENSE",
+     "source": "Qwen/Qwen3.5-0.8B-Base card license_link"
+    }
+   ]
+  },
+  "license_file": {
+   "effective": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2@969b0903193c/LICENSE",
+   "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 repo file",
+   "values": [
+    {
+     "value": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2@969b0903193c/LICENSE",
+     "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 repo file"
+    },
+    {
+     "value": "Qwen/Qwen3.5-0.8B@2fc06364715b/LICENSE",
+     "source": "Qwen/Qwen3.5-0.8B repo file"
+    },
+    {
+     "value": "Qwen/Qwen3.5-0.8B-Base@dc7cdfe2ee41/LICENSE",
+     "source": "Qwen/Qwen3.5-0.8B-Base repo file"
+    }
+   ]
+  },
+  "base_model_chain": {
+   "effective": "Qwen/Qwen3.5-0.8B",
+   "source": "card base_model",
+   "values": [
+    {
+     "value": "Qwen/Qwen3.5-0.8B",
+     "source": "card base_model"
+    },
+    {
+     "value": "Qwen/Qwen3.5-0.8B-Base",
+     "source": "Qwen/Qwen3.5-0.8B card base_model"
+    }
+   ]
+  },
+  "hf_architectures": {
+   "effective": [
+    "Qwen3_5ForConditionalGeneration"
+   ],
+   "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 config.json architectures",
+   "values": [
+    {
+     "value": [
+      "Qwen3_5ForConditionalGeneration"
+     ],
+     "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 config.json architectures"
+    },
+    {
+     "value": [
+      "Qwen3_5ForConditionalGeneration"
+     ],
+     "source": "Qwen/Qwen3.5-0.8B config.json architectures"
+    }
+   ]
+  },
+  "hf_model_type": {
+   "effective": "qwen3_5",
+   "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 config.json model_type",
+   "values": [
+    {
+     "value": "qwen3_5",
+     "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 config.json model_type"
+    },
+    {
+     "value": "qwen3_5",
+     "source": "Qwen/Qwen3.5-0.8B config.json model_type"
+    }
+   ]
+  },
+  "parameters": {
+   "effective": 873438784,
+   "source": "HF API safetensors.total (Qwen/Qwen3.5-0.8B)",
+   "values": [
+    {
+     "value": 873438784,
+     "source": "HF API safetensors.total (Qwen/Qwen3.5-0.8B)"
+    },
+    {
+     "value": 873438784,
+     "source": "HF API safetensors.total (Qwen/Qwen3.5-0.8B-Base)"
+    }
+   ]
+  },
+  "ctx_statements": {
+   "effective": {
+    "value": 262144,
+    "quote": "- Context Length: 262,144 natively"
+   },
+   "source": "Qwen/Qwen3.5-0.8B README.md:L63",
+   "values": [
+    {
+     "value": {
+      "value": 262144,
+      "quote": "- Context Length: 262,144 natively"
+     },
+     "source": "Qwen/Qwen3.5-0.8B README.md:L63"
+    },
+    {
+     "value": {
+      "value": 262144,
+      "quote": "> The model has a default context length of 262,144 tokens."
+     },
+     "source": "Qwen/Qwen3.5-0.8B README.md:L601"
+    },
+    {
+     "value": {
+      "value": 262144,
+      "quote": "- **Standard Version**: The following command can be used to create an API endpoint with maximum context length 262,144 tokens using tensor parallel on 8 GPUs."
+     },
+     "source": "Qwen/Qwen3.5-0.8B README.md:L615"
+    },
+    {
+     "value": {
+      "value": 262144,
+      "quote": "python -m sglang.launch_server --model-path Qwen/Qwen3.5-0.8B --port 8000 --tp-size 1 --mem-fraction-static 0.8 --context-length 262144"
+     },
+     "source": "Qwen/Qwen3.5-0.8B README.md:L618"
+    },
+    {
+     "value": {
+      "value": 262144,
+      "quote": "python -m sglang.launch_server --model-path Qwen/Qwen3.5-0.8B --port 8000 --tp-size 1 --mem-fraction-static 0.8 --context-length 262144 --tool-call-parser qwen3_coder"
+     },
+     "source": "Qwen/Qwen3.5-0.8B README.md:L624"
+    },
+    {
+     "value": {
+      "value": 262144,
+      "quote": "python -m sglang.launch_server --model-path Qwen/Qwen3.5-0.8B --port 8000 --tp-size 1 --mem-fraction-static 0.8 --context-length 262144 --speculative-algo NEXTN --speculative-num-steps 3 --speculative-eagle-topk 1 --speculative-num-draft-to"
+     },
+     "source": "Qwen/Qwen3.5-0.8B README.md:L630"
+    },
+    {
+     "value": {
+      "value": 262144,
+      "quote": "- **Standard Version**: The following command can be used to create an API endpoint with maximum context length 262,144 tokens using tensor parallel on 8 GPUs."
+     },
+     "source": "Qwen/Qwen3.5-0.8B README.md:L646"
+    }
+   ]
+  },
+  "ctx": {
+   "effective": 262144,
+   "source": "card: Qwen/Qwen3.5-0.8B README.md:L63",
+   "values": [
+    {
+     "value": 262144,
+     "source": "card: Qwen/Qwen3.5-0.8B README.md:L63"
+    },
+    {
+     "value": 262144,
+     "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 config.json max_position_embeddings"
+    },
+    {
+     "value": 262144,
+     "source": "Qwen/Qwen3.5-0.8B config.json max_position_embeddings"
+    }
+   ],
+   "precedence": "card statement > config.json > GGUF header > GitHub README"
+  },
+  "pipeline_tag": {
+   "effective": "text-generation",
+   "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 HF API pipeline_tag",
+   "values": [
+    {
+     "value": "text-generation",
+     "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 HF API pipeline_tag"
+    },
+    {
+     "value": "image-text-to-text",
+     "source": "Qwen/Qwen3.5-0.8B HF API pipeline_tag"
+    },
+    {
+     "value": "image-text-to-text",
+     "source": "Qwen/Qwen3.5-0.8B-Base HF API pipeline_tag"
+    }
+   ],
+   "conflict": true
+  },
+  "languages": {
+   "effective": [
+    "ja",
+    "en"
+   ],
+   "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 card language"
+  }
+ },
+ "required_params": {
+  "kind": "raw",
+  "native_ctx": 262144,
+  "native_ctx_source": "card: Qwen/Qwen3.5-0.8B README.md:L63",
+  "yarn": null,
+  "yarn_source": null,
+  "items": [
+   {
+    "class": "RECOMMENDED",
+    "flag": "--temp",
+    "value": "1",
+    "source": "Qwen/Qwen3.5-0.8B Qwen/Qwen3.5-0.8B README.md:L705",
+    "why_required": "the card's recommended sampling (Non-thinking mode for text tasks)"
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--top-p",
+    "value": "1",
+    "source": "Qwen/Qwen3.5-0.8B Qwen/Qwen3.5-0.8B README.md:L705",
+    "why_required": "the card's recommended sampling (Non-thinking mode for text tasks)"
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--top-k",
+    "value": "20",
+    "source": "Qwen/Qwen3.5-0.8B Qwen/Qwen3.5-0.8B README.md:L705",
+    "why_required": "the card's recommended sampling (Non-thinking mode for text tasks)"
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--min-p",
+    "value": "0.0",
+    "source": "Qwen/Qwen3.5-0.8B Qwen/Qwen3.5-0.8B README.md:L705",
+    "why_required": "the card's recommended sampling (Non-thinking mode for text tasks)"
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--presence-penalty",
+    "value": "2",
+    "source": "Qwen/Qwen3.5-0.8B Qwen/Qwen3.5-0.8B README.md:L705",
+    "why_required": "the card's recommended sampling (Non-thinking mode for text tasks)"
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--repeat-penalty",
+    "value": "1",
+    "source": "Qwen/Qwen3.5-0.8B Qwen/Qwen3.5-0.8B README.md:L705",
+    "why_required": "the card's recommended sampling (Non-thinking mode for text tasks)"
+   }
+  ]
+ },
+ "blockers": null,
+ "params_problems": null,
+ "params_build": "b11374",
+ "native_ctx": 262144,
+ "native_ctx_source": "card: Qwen/Qwen3.5-0.8B README.md:L63",
+ "license_info": {
+  "id": "apache-2.0",
+  "id_source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 card front matter license",
+  "name": null,
+  "summary": "apache-2.0",
+  "summary_source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 card license",
+  "link": "https://huggingface.co/Qwen/Qwen3.5-0.8B/blob/main/LICENSE",
+  "link_source": "Qwen/Qwen3.5-0.8B card license_link",
+  "texts": [
+   {
+    "file": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2@969b0903193c/LICENSE",
+    "path": "/home/green/.local/share/gguf/hf-meta/Takenoko12345678--Qwen3.5-0.8B-Japanese-SFT-v2/969b0903193cc0028b3bac5d23a7aa21db971233/LICENSE",
+    "url": "https://huggingface.co/Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2/blob/969b0903193cc0028b3bac5d23a7aa21db971233/LICENSE",
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "bytes": 11358,
+    "what": "model"
+   },
+   {
+    "file": "Qwen/Qwen3.5-0.8B@2fc06364715b/LICENSE",
+    "path": "/home/green/.local/share/gguf/hf-meta/Qwen--Qwen3.5-0.8B/2fc06364715b967f1860aea9cf38778875588b17/LICENSE",
+    "url": "https://huggingface.co/Qwen/Qwen3.5-0.8B/blob/2fc06364715b967f1860aea9cf38778875588b17/LICENSE",
+    "sha256": "bbedc3fda3305820b977265f01b8619d87570a6739de3a5582c3464840f1e57a",
+    "bytes": 11544,
+    "what": "model"
+   }
+  ],
+  "obligations": [
+   {
+    "quote": "(a) You must give any other recipients of the Work or",
+    "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 LICENSE:L95"
+   },
+   {
+    "quote": "(b) You must cause any modified files to carry prominent notices",
+    "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 LICENSE:L98"
+   },
+   {
+    "quote": "(c) You must retain, in the Source form of any Derivative Works",
+    "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 LICENSE:L101"
+   },
+   {
+    "quote": "attribution notices from the Source form of the Work,",
+    "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 LICENSE:L103"
+   },
+   {
+    "quote": "include a readable copy of the attribution notices contained",
+    "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 LICENSE:L109"
+   },
+   {
+    "quote": "within such NOTICE file, excluding those notices that do not",
+    "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 LICENSE:L110"
+   },
+   {
+    "quote": "of the NOTICE file are for informational purposes only and",
+    "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 LICENSE:L117"
+   },
+   {
+    "quote": "do not modify the License. You may add Your own attribution",
+    "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 LICENSE:L118"
+   },
+   {
+    "quote": "(a) You must give any other recipients of the Work or",
+    "source": "Qwen/Qwen3.5-0.8B LICENSE:L95"
+   },
+   {
+    "quote": "(b) You must cause any modified files to carry prominent notices",
+    "source": "Qwen/Qwen3.5-0.8B LICENSE:L98"
+   },
+   {
+    "quote": "(c) You must retain, in the Source form of any Derivative Works",
+    "source": "Qwen/Qwen3.5-0.8B LICENSE:L101"
+   },
+   {
+    "quote": "attribution notices from the Source form of the Work,",
+    "source": "Qwen/Qwen3.5-0.8B LICENSE:L103"
+   },
+   {
+    "quote": "include a readable copy of the attribution notices contained",
+    "source": "Qwen/Qwen3.5-0.8B LICENSE:L109"
+   },
+   {
+    "quote": "within such NOTICE file, excluding those notices that do not",
+    "source": "Qwen/Qwen3.5-0.8B LICENSE:L110"
+   },
+   {
+    "quote": "of the NOTICE file are for informational purposes only and",
+    "source": "Qwen/Qwen3.5-0.8B LICENSE:L117"
+   },
+   {
+    "quote": "do not modify the License. You may add Your own attribution",
+    "source": "Qwen/Qwen3.5-0.8B LICENSE:L118"
+   },
+   {
+    "quote": "- **Efficient Hybrid Architecture**: Gated Delta Networks combined with sparse Mixture-of-Experts deliver high-throughput inference with minimal latency and cost overhead.",
+    "source": "Qwen/Qwen3.5-0.8B README.md:L31"
+   },
+   {
+    "quote": "- Hidden Layout: 6 × (3 × (Gated DeltaNet → FFN) → 1 × (Gated Attention → FFN))",
+    "source": "Qwen/Qwen3.5-0.8B README.md:L51"
+   }
+  ],
+  "gated": false,
+  "unknown": false,
+  "seen": [
+   {
+    "value": "apache-2.0",
+    "source": "Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2 card license"
+   },
+   {
+    "value": "apache-2.0",
+    "source": "Qwen/Qwen3.5-0.8B card license"
+   },
+   {
+    "value": "apache-2.0",
+    "source": "Qwen/Qwen3.5-0.8B-Base card license"
+   }
+  ]
+ },
+ "role_inference": {
+  "role": "general",
+  "evidence": [
+   "general +1 (card front matter: pipeline_tag: text-generation (generic chat model))",
+   "general +1 (config.json: architectures: Qwen3_5ForConditionalGeneration (generative))"
+  ]
+ },
+ "repo_bytes": 1736136967
+}

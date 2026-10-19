@@ -1,0 +1,1500 @@
+{
+ "schema": 2,
+ "id": "dealignai--Bonsai-2-27B-1bit-CRACK-GGUF--Bonsai-2-27B-PTQ1_0-CRACK",
+ "repo": "dealignai/Bonsai-2-27B-1bit-CRACK-GGUF",
+ "revision": "9665897ee63152226ecd64a1036d14292397186f",
+ "file": "Bonsai-2-27B-PTQ1_0-CRACK.gguf",
+ "sha256": "dcca61238e280432c4ce2d4c6c1d61214cbcb8a5d93ed98dea20d8bcef385a42",
+ "bytes": 5946648928,
+ "quant": null,
+ "arch": "qwen35",
+ "roles": [
+  "general"
+ ],
+ "license": "apache-2.0",
+ "license_source": "dealignai/Bonsai-2-27B-1bit-CRACK-GGUF card license",
+ "ctx": 262144,
+ "ctx_source": "GGUF qwen35.context_length",
+ "card_ctx": 268288,
+ "card_ctx_source": "prism-ml/Ternary-Bonsai-2-27B-gguf README.md:L62",
+ "base_model": "prism-ml/Ternary-Bonsai-2-27B-gguf",
+ "base_revision": "b072e1d3b35a0a630cece372c2127528e0994386",
+ "card_defaults": null,
+ "card_defaults_source": null,
+ "card_default_set": null,
+ "card_defaults_how": "ambiguous: 2 recommended sets and no single default",
+ "card_sampling_modes": {
+  "Thinking Mode": {
+   "temp": 1.0,
+   "top-p": 0.95,
+   "top-k": 20,
+   "min-p": 0.05,
+   "presence-penalty": 0.0,
+   "repeat-penalty": 1.0
+  },
+  "Instruct (or non-thinking) mode": {
+   "temp": 0.7,
+   "top-p": 0.8,
+   "top-k": 20,
+   "min-p": 0.0,
+   "presence-penalty": 1.5,
+   "repeat-penalty": 1.0
+  }
+ },
+ "card_default_mode": null,
+ "card_default_mode_source": null,
+ "card_sampling_sets": [
+  {
+   "label": "Thinking Mode",
+   "kind": "recommended",
+   "mode": "thinking",
+   "params": {
+    "temp": 1.0,
+    "top-p": 0.95,
+    "top-k": 20,
+    "min-p": 0.05,
+    "presence-penalty": 0.0,
+    "repeat-penalty": 1.0
+   },
+   "source": "prism-ml/Ternary-Bonsai-2-27B-gguf README.md:L106"
+  },
+  {
+   "label": "Instruct (or non-thinking) mode",
+   "kind": "recommended",
+   "mode": "non-thinking",
+   "params": {
+    "temp": 0.7,
+    "top-p": 0.8,
+    "top-k": 20,
+    "min-p": 0.0,
+    "presence-penalty": 1.5,
+    "repeat-penalty": 1.0
+   },
+   "source": "prism-ml/Ternary-Bonsai-2-27B-gguf README.md:L107"
+  },
+  {
+   "label": "We recommend using the following sets of sampling parameters for generation",
+   "kind": "mention",
+   "mode": null,
+   "params": {
+    "min-p": 0.05
+   },
+   "source": "prism-ml/Ternary-Bonsai-2-27B-gguf README.md:L109"
+  },
+  {
+   "label": "well as",
+   "kind": "mention",
+   "mode": "thinking",
+   "params": {
+    "min-p": 0.0
+   },
+   "source": "prism-ml/Ternary-Bonsai-2-27B-gguf README.md:L110"
+  },
+  {
+   "label": "measured with the same settings, except",
+   "kind": "mention",
+   "mode": null,
+   "params": {
+    "min-p": 0.0
+   },
+   "source": "prism-ml/Ternary-Bonsai-2-27B-gguf README.md:L114"
+  },
+  {
+   "label": "fork",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 1.0,
+    "top-p": 0.95,
+    "top-k": 20,
+    "min-p": 0.05
+   },
+   "source": "prism-ml/Ternary-Bonsai-2-27B-gguf README.md:L161"
+  },
+  {
+   "label": "effort, so a small cap such as 256 tokens ends generation mid-thought, before any answer",
+   "kind": "mention",
+   "mode": null,
+   "params": {
+    "min-p": 0.05
+   },
+   "source": "prism-ml/Ternary-Bonsai-2-27B-gguf README.md:L169"
+  }
+ ],
+ "card_commands": [
+  {
+   "source": "dealignai/Bonsai-2-27B-1bit-CRACK-GGUF README.md:L190-197",
+   "file": "README.md",
+   "lines": [
+    190,
+    197
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "# clone and build the fork (once)\ngit clone https://github.com/PrismML-Eng/llama.cpp\ncd llama.cpp && cmake -B build -DGGML_CUDA=ON && cmake --build build -j$(nproc)\n\n# serve\n./build/bin/llama-server \\\n  -m Bonsai-2-27B-PTQ1_0-CRACK.gguf \\\n  -ngl 99 -c 8192 --host 0.0.0.0 --port 8080",
+   "llama": [
+    {
+     "tool": "llama-server",
+     "raw": "./build/bin/llama-server    -m Bonsai-2-27B-PTQ1_0-CRACK.gguf    -ngl 99 -c 8192 --host 0.0.0.0 --port 8080",
+     "flags": [
+      {
+       "flag": "-m",
+       "canonical": "--model",
+       "value": "Bonsai-2-27B-PTQ1_0-CRACK.gguf",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-ngl",
+       "canonical": "--gpu-layers",
+       "value": "99",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-c",
+       "canonical": "--ctx-size",
+       "value": "8192",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--host",
+       "canonical": "--host",
+       "value": "0.0.0.0",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--port",
+       "canonical": "--port",
+       "value": "8080",
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    }
+   ],
+   "doc": "card",
+   "doc_sha": "9665897ee63152226ecd64a1036d14292397186f",
+   "scope": "family: ./build"
+  },
+  {
+   "source": "dealignai/Bonsai-2-27B-1bit-CRACK-GGUF README.md:L206-211",
+   "file": "README.md",
+   "lines": [
+    206,
+    211
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "# HTTP /v1/chat/completions — same as base\n{\n  \"messages\": [{\"role\": \"user\", \"content\": \"...\"}],\n  \"chat_template_kwargs\": {\"enable_thinking\": true, \"reasoning_effort\": \"xhigh\"}\n}\n# valid reasoning_effort: \"low\" | \"xhigh\" (default) — set enable_thinking:false for no-thinking",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--chat-template-kwargs",
+      "value": "{\"enable_thinking\":true,\"reasoning_effort\":\"xhigh\"}",
+      "from": "chat_template_kwargs: {\"enable_thinking\": true, \"reasoning_effort\": \"xhigh\"}"
+     },
+     {
+      "flag": "--chat-template-kwargs",
+      "value": "{\"enable_thinking\":false}",
+      "from": "enable_thinking:false"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "card",
+   "doc_sha": "9665897ee63152226ecd64a1036d14292397186f",
+   "scope": "model"
+  },
+  {
+   "source": "prism-ml/Ternary-Bonsai-2-27B-gguf README.md:L123-123",
+   "file": "README.md",
+   "lines": [
+    123,
+    123
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "You are a helpful assistant",
+   "doc": "base-card",
+   "doc_sha": "b072e1d3b35a0a630cece372c2127528e0994386",
+   "scope": "model"
+  },
+  {
+   "source": "prism-ml/Ternary-Bonsai-2-27B-gguf README.md:L145-151",
+   "file": "README.md",
+   "lines": [
+    145,
+    151
+   ],
+   "lang": "bash",
+   "tool": "git",
+   "kind": "command",
+   "text": "# prebuilt, pick the archive for your platform\n# https://github.com/PrismML-Eng/llama.cpp/releases/latest\ntar -xzf llama-<tag>-bin-<platform>.tar.gz -C bin --strip-components=1\n\n# or build it\ngit clone https://github.com/PrismML-Eng/llama.cpp && cd llama.cpp\ncmake -B build -DGGML_CUDA=ON && cmake --build build -j    # drop -DGGML_CUDA=ON on macOS, Metal is default",
+   "doc": "base-card",
+   "doc_sha": "b072e1d3b35a0a630cece372c2127528e0994386",
+   "scope": "model"
+  },
+  {
+   "source": "prism-ml/Ternary-Bonsai-2-27B-gguf README.md:L155-155",
+   "file": "README.md",
+   "lines": [
+    155,
+    155
+   ],
+   "lang": "bash",
+   "tool": "hf-download",
+   "kind": "command",
+   "text": "hf download prism-ml/Ternary-Bonsai-2-27B-gguf Ternary-Bonsai-2-27B-PQ2_0.gguf --local-dir .",
+   "doc": "base-card",
+   "doc_sha": "b072e1d3b35a0a630cece372c2127528e0994386",
+   "scope": "model"
+  },
+  {
+   "source": "prism-ml/Ternary-Bonsai-2-27B-gguf README.md:L159-162",
+   "file": "README.md",
+   "lines": [
+    159,
+    162
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "./bin/llama-cli -m Ternary-Bonsai-2-27B-PQ2_0.gguf \\\n    -ngl 99 -fa on -c 32768 \\\n    --temp 1.0 --top-p 0.95 --top-k 20 --min-p 0.05 \\\n    -p \"Explain quantum computing in simple terms.\" -n 16384",
+   "llama": [
+    {
+     "tool": "llama-cli",
+     "raw": "./bin/llama-cli -m Ternary-Bonsai-2-27B-PQ2_0.gguf      -ngl 99 -fa on -c 32768      --temp 1.0 --top-p 0.95 --top-k 20 --min-p 0.05      -p \"Explain quantum computing in simple terms.\" -n 16384",
+     "flags": [
+      {
+       "flag": "-m",
+       "canonical": "--model",
+       "value": "Ternary-Bonsai-2-27B-PQ2_0.gguf",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-ngl",
+       "canonical": "--gpu-layers",
+       "value": "99",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-fa",
+       "canonical": "--flash-attn",
+       "value": "on",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-c",
+       "canonical": "--ctx-size",
+       "value": "32768",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--temp",
+       "canonical": "--temp",
+       "value": "1.0",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--top-p",
+       "canonical": "--top-p",
+       "value": "0.95",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--top-k",
+       "canonical": "--top-k",
+       "value": "20",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--min-p",
+       "canonical": "--min-p",
+       "value": "0.05",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-p",
+       "canonical": "--prompt",
+       "value": "Explain quantum computing in simple terms.",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-n",
+       "canonical": "--predict",
+       "value": "16384",
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    }
+   ],
+   "doc": "base-card",
+   "doc_sha": "b072e1d3b35a0a630cece372c2127528e0994386",
+   "scope": "model"
+  },
+  {
+   "source": "prism-ml/Ternary-Bonsai-2-27B-gguf README.md:L270-270",
+   "file": "README.md",
+   "lines": [
+    270,
+    270
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "D = -log2(1 - score/100) / size_GB",
+   "doc": "base-card",
+   "doc_sha": "b072e1d3b35a0a630cece372c2127528e0994386",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L60-62",
+   "file": "README.md",
+   "lines": [
+    60,
+    62
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "export BONSAI_MODEL=4B    # 2B, 4B, 9B, or 27B\n./setup.sh\n./scripts/start_llama_server.sh",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L94-94",
+   "file": "README.md",
+   "lines": [
+    94,
+    94
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "You are a helpful assistant",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L107-109",
+   "file": "README.md",
+   "lines": [
+    107,
+    109
+   ],
+   "lang": "bash",
+   "tool": "git",
+   "kind": "command",
+   "text": "git clone https://github.com/PrismML-Eng/Bonsai-demo.git\ncd Bonsai-demo\n./setup.sh",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L116-116",
+   "file": "README.md",
+   "lines": [
+    116,
+    116
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "./scripts/start_llama_server.sh",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L122-122",
+   "file": "README.md",
+   "lines": [
+    122,
+    122
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "./scripts/run_llama.sh -p \"What is the capital of France?\"",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L134-137",
+   "file": "README.md",
+   "lines": [
+    134,
+    137
+   ],
+   "lang": "powershell",
+   "tool": "git",
+   "kind": "command",
+   "text": "git clone https://github.com/PrismML-Eng/Bonsai-demo.git\ncd Bonsai-demo\nSet-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass\n.\\setup.ps1",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L143-143",
+   "file": "README.md",
+   "lines": [
+    143,
+    143
+   ],
+   "lang": "powershell",
+   "tool": "shell",
+   "kind": "command",
+   "text": ".\\scripts\\start_llama_server.ps1",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L254-254",
+   "file": "README.md",
+   "lines": [
+    254,
+    254
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "./scripts/run_llama.sh -p \"What is the capital of France?\"",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L265-265",
+   "file": "README.md",
+   "lines": [
+    265,
+    265
+   ],
+   "lang": "powershell",
+   "tool": "shell",
+   "kind": "command",
+   "text": ".\\scripts\\run_llama.ps1 -p \"What is the capital of France?\"",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L271-271",
+   "file": "README.md",
+   "lines": [
+    271,
+    271
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "./scripts/run_mlx.sh -p \"What is the capital of France?\"",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L281-281",
+   "file": "README.md",
+   "lines": [
+    281,
+    281
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "./scripts/start_llama_server.sh    # http://localhost:8080",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L287-287",
+   "file": "README.md",
+   "lines": [
+    287,
+    287
+   ],
+   "lang": "powershell",
+   "tool": "shell",
+   "kind": "command",
+   "text": ".\\scripts\\start_llama_server.ps1",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L299-299",
+   "file": "README.md",
+   "lines": [
+    299,
+    299
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "./scripts/start_llama_server.sh --reasoning-budget 2048",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L305-305",
+   "file": "README.md",
+   "lines": [
+    305,
+    305
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "./scripts/start_llama_server.sh --chat-template-kwargs '{\"reasoning_effort\":\"medium\"}'",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L350-350",
+   "file": "README.md",
+   "lines": [
+    350,
+    350
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "./scripts/start_openwebui.sh",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L364-364",
+   "file": "README.md",
+   "lines": [
+    364,
+    364
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "./scripts/build_mac.sh",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L372-372",
+   "file": "README.md",
+   "lines": [
+    372,
+    372
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "./scripts/build_mac.sh",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L380-380",
+   "file": "README.md",
+   "lines": [
+    380,
+    380
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "./scripts/build_cpu_linux.sh",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L388-388",
+   "file": "README.md",
+   "lines": [
+    388,
+    388
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "./scripts/build_cuda_linux.sh",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L396-401",
+   "file": "README.md",
+   "lines": [
+    396,
+    401
+   ],
+   "lang": "bash",
+   "tool": "git",
+   "kind": "command",
+   "text": "# Install Vulkan SDK first (e.g. sudo apt install libvulkan-dev glslc)\ngit clone -b prism https://github.com/PrismML-Eng/llama.cpp.git\ncd llama.cpp\ncmake -B build -DCMAKE_BUILD_TYPE=Release -DGGML_VULKAN=ON\ncmake --build build -j$(nproc)\n# Binaries in build/bin/",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L407-412",
+   "file": "README.md",
+   "lines": [
+    407,
+    412
+   ],
+   "lang": "bash",
+   "tool": "git",
+   "kind": "command",
+   "text": "# Requires ROCm toolkit (hipcc)\ngit clone -b prism https://github.com/PrismML-Eng/llama.cpp.git\ncd llama.cpp\ncmake -B build -DCMAKE_BUILD_TYPE=Release -DGGML_HIP=ON\ncmake --build build -j$(nproc)\n# Binaries in build/bin/",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L418-418",
+   "file": "README.md",
+   "lines": [
+    418,
+    418
+   ],
+   "lang": "powershell",
+   "tool": "shell",
+   "kind": "command",
+   "text": ".\\scripts\\build_cuda_windows.ps1",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L427-431",
+   "file": "README.md",
+   "lines": [
+    427,
+    431
+   ],
+   "lang": "powershell",
+   "tool": "git",
+   "kind": "command",
+   "text": "git clone -b prism https://github.com/PrismML-Eng/llama.cpp.git\ncd llama.cpp\ncmake -B build -DCMAKE_BUILD_TYPE=Release\ncmake --build build --config Release\n# Binaries in build\\bin\\Release\\",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L468-511",
+   "file": "README.md",
+   "lines": [
+    468,
+    511
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "Bonsai-demo/\n├── README.md                      # Bonsai 2 setup and usage\n├── Bonsai1_README.md               # Earlier binary and ternary models\n├── FAQ.md                          # Troubleshooting\n├── TOOLS.md                        # Tool calling & MCP guide\n├── OPENWEBUI.md                    # Open WebUI agentic demo guide\n├── VISION.md                       # Image input: costs, caps, OCR tips\n├── SPECULATIVE.md                  # Speculative decoding (experimental)\n├── KV-CACHE.md                     # 4-bit KV cache (experimental)\n├── AGENTS.md                       # Agent guide (hardware tuning knobs)\n├── setup.sh                        # macOS/Linux setup\n├── setup.ps1                       # Windows setup\n├── pyproject.toml                  # Python dependencies\n├── scripts/\n│   ├── common.sh                   # Shared helpers + BONSAI_MODEL\n│   ├── download_models.sh          # HuggingFace download\n│   ├── download_binaries.sh        # GitHub release download\n│   ├── run_llama.sh                # llama.cpp (auto-detects Mac/Linux)\n│   ├── run_llama.ps1               # llama.cpp (Windows PowerShell)\n│   ├── run_mlx.sh                  # MLX inference\n│   ├── mlx_generate.py             # MLX Python script\n│   ├── start_llama_server.sh       # llama.cpp server (port 8080)\n│   ├── start_llama_server.ps1      # llama.cpp server (Windows PowerShell)\n│   ├── start_mlx_server.sh         # MLX server (port 8081)\n│   ├── start_openwebui.sh          # Open WebUI + auto-starts backends\n│   ├── openwebui/                  # Open WebUI demo tools + seeding\n│   ├── build_mac.sh                # Build llama.cpp for Mac\n│   ├── build_cpu_linux.sh          # Build llama.cpp for Linux (CPU only)\n│   ├── build_cuda_linux.sh         # Build llama.cpp for Linux CUDA\n│   └── build_cuda_windows.ps1      # Build llama.cpp for Windows CUDA\n├── models/                         # ← downloaded by setup\n│   ├── bonsai2-gguf/\n│   │   └── 27B/                    # Bonsai 2 GGUF + vision projector\n│   └── Ternary-Bonsai-2-27B-mlx-2bit/ # Bonsai 2 MLX (Apple Silicon)\n├── bin/                            # ← downloaded or built by setup\n│   ├── mac/                        # macOS binaries (Metal or CPU)\n│   ├── cuda/                       # CUDA binaries (Linux/Windows)\n│   ├── cpu/                        # CPU-only binaries (Linux/Windows)\n│   ├── vulkan/                     # Vulkan binaries\n│   ├── rocm/                       # ROCm binaries (AMD Linux)\n│   └── hip/                        # HIP binaries (AMD Windows)\n├── mlx/                            # ← cloned by setup (macOS)\n├── .venv/                          # ← created by setup\n└── .venv-vlm/                      # ← native Bonsai 2 MLX environment",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  }
+ ],
+ "card_notes": [
+  {
+   "text": "| Context length    | 262K tokens (inherited from the base model; kept practical on-device by the predominantly linear-attention backbone) |",
+   "source": "prism-ml/Ternary-Bonsai-2-27B-gguf README.md:L62"
+  },
+  {
+   "text": "> - Thinking Mode: `temperature=1.0`, `top_p=0.95`, `top_k=20`, `min_p=0.05`, `presence_penalty=0.0`, `repetition_penalty=1.0`",
+   "source": "prism-ml/Ternary-Bonsai-2-27B-gguf README.md:L106"
+  },
+  {
+   "text": "> - Instruct (or non-thinking) mode: `temperature=0.7`, `top_p=0.80`, `top_k=20`, `min_p=0.0`, `presence_penalty=1.5`, `repetition_penalty=1.0`",
+   "source": "prism-ml/Ternary-Bonsai-2-27B-gguf README.md:L107"
+  },
+  {
+   "text": "well as `min_p=0.0` and followed instructions more reliably, so we recommend it for thinking mode.",
+   "source": "prism-ml/Ternary-Bonsai-2-27B-gguf README.md:L110"
+  },
+  {
+   "text": "### System Prompt",
+   "source": "prism-ml/Ternary-Bonsai-2-27B-gguf README.md:L118"
+  },
+  {
+   "text": "You can use a simple system prompt such as:",
+   "source": "prism-ml/Ternary-Bonsai-2-27B-gguf README.md:L120"
+  },
+  {
+   "text": "This is a reasoning model and it thinks by default. For the server, tool calling, reasoning budgets,",
+   "source": "prism-ml/Ternary-Bonsai-2-27B-gguf README.md:L172"
+  },
+  {
+   "text": "Evaluated with EvalScope + vLLM on NVIDIA H100 under identical infrastructure, decoding, and scoring, in **thinking mode** — where the model's full reasoning is exercised and the sub-4-bit collapse of conventional methods is most visible. 14 benchmarks across six skill categories. Bit-widths are tru",
+   "source": "prism-ml/Ternary-Bonsai-2-27B-gguf README.md:L213"
+  },
+  {
+   "text": "<summary>Expand full per-benchmark results (thinking mode)</summary>",
+   "source": "prism-ml/Ternary-Bonsai-2-27B-gguf README.md:L243"
+  },
+  {
+   "text": "**Proprietary weight-level abliteration** by the dealignai research team. Byte-identical to the base ternary quant everywhere except a small set of tensors that carry the refusal circuit. Drop-in replacement for the ternary base at inference — same tokenizer, same chat template, same reasoning modes",
+   "source": "dealignai/Bonsai-2-27B-1bit-CRACK-GGUF README.md:L48"
+  },
+  {
+   "text": "Same tokenizer, chat template, per-tensor quant policy, vision projector interface,",
+   "source": "dealignai/Bonsai-2-27B-1bit-CRACK-GGUF README.md:L216"
+  }
+ ],
+ "chat_template": {
+  "gguf_sha256": "c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041",
+  "gguf_chars": 8952,
+  "use": "gguf"
+ },
+ "stop": {
+  "eos_token_id": 248046,
+  "eos_token_id_source": "GGUF"
+ },
+ "rope": {
+  "rope.freq_base": 10000000.0
+ },
+ "aux": null,
+ "gguf": {
+  "general.architecture": "qwen35",
+  "general.name": "Hf",
+  "general.file_type": 143,
+  "general.quantization_version": 2,
+  "_gguf_version": 3
+ },
+ "snapshot": {
+  "path": "dealignai--Bonsai-2-27B-1bit-CRACK-GGUF/9665897ee63152226ecd64a1036d14292397186f",
+  "fetched_bytes": 33818,
+  "errors": null,
+  "gated": false
+ },
+ "base_snapshot": {
+  "path": "prism-ml--Ternary-Bonsai-2-27B-gguf/b072e1d3b35a0a630cece372c2127528e0994386",
+  "fetched_bytes": 51575,
+  "errors": null,
+  "gated": false
+ },
+ "repo_files": {
+  ".gitattributes": {
+   "size": 1586,
+   "sha256": null,
+   "blob": "54d2ff15e7407f5d6fe3960508497f5e79234e4b",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "Bonsai-2-27B-PTQ1_0-CRACK.gguf": {
+   "size": 5946648928,
+   "sha256": "dcca61238e280432c4ce2d4c6c1d61214cbcb8a5d93ed98dea20d8bcef385a42",
+   "blob": "aca4d9aefe675e95d8c443de43799d39124a5251",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (5946 MB)"
+  },
+  "LICENSE": {
+   "size": 10174,
+   "sha256": null,
+   "blob": "66a27ec5ff940d3a9652d2948746ebac4c9d0188",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "NOTICE.txt": {
+   "size": 411,
+   "sha256": null,
+   "blob": "275696b5038dd830e97ab15134cac6146322baf9",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "README.md": {
+   "size": 10463,
+   "sha256": null,
+   "blob": "500c791744aaa6c1038b6ae7adf3aaf938621e65",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "dealign_mascot.png": {
+   "size": 11184,
+   "sha256": null,
+   "blob": "da3bf39ad48aeac6a18d0a6928ab0bb8da4d90e9",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  }
+ },
+ "base_repo_files": {
+  ".gitattributes": {
+   "size": 93,
+   "sha256": null,
+   "blob": "4969a793cce09cef78ad84ca3d082af70acd8914",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "KNOWN_ISSUES.md": {
+   "size": 17109,
+   "sha256": null,
+   "blob": "a5041738949cef0eb9f987232b77b4b7bdb6d80d",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "LICENSE": {
+   "size": 10174,
+   "sha256": null,
+   "blob": "66a27ec5ff940d3a9652d2948746ebac4c9d0188",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "NOTICE.txt": {
+   "size": 411,
+   "sha256": null,
+   "blob": "275696b5038dd830e97ab15134cac6146322baf9",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "README.md": {
+   "size": 23273,
+   "sha256": null,
+   "blob": "ae9d1d4095812ed678bd653d1bf093b9e758e89b",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "Ternary-Bonsai-2-27B-F16.gguf": {
+   "size": 53808408928,
+   "sha256": "f6f3b2c9b41956c34b379ec7c301dc936bc38d79b3c24c83388dd7d76000c180",
+   "blob": "6ed901f6df9dcae2058958b3aec54f3620a10b5d",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (53808 MB)"
+  },
+  "Ternary-Bonsai-2-27B-PQ2_0.gguf": {
+   "size": 7206168928,
+   "sha256": "3907dc1658db1f78a9826bf8d5bcb8dc65db0d466388937af57f2294fae62ec1",
+   "blob": "8d0823f96b78839696c57d6ee544160444f956f7",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (7206 MB)"
+  },
+  "Ternary-Bonsai-2-27B-PTQ1_0.gguf": {
+   "size": 5946648928,
+   "sha256": "53107f530aa52eb00912263ab1ee29bd199261c87cd7b4ad4ca1318c1fe33ee3",
+   "blob": "8c9da0522bd62bdda9347ed1855ea024d7e11765",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (5946 MB)"
+  },
+  "Ternary-Bonsai-2-27B-mmproj-BF16.gguf": {
+   "size": 931145856,
+   "sha256": "e287342d92332fa3577ed1d42e921dac9370c08da58ba9337fa450f6cc76cfd7",
+   "blob": "fe3f1d0119708de49e8d3166013238229535fa97",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (931 MB)"
+  },
+  "Ternary-Bonsai-2-27B-mmproj-Q8_0.gguf": {
+   "size": 629246976,
+   "sha256": "6807ede61d570bb86ba34b756a0fa109edc33668604de867c6ea6d8f1d631903",
+   "blob": "19ca9905c6e3ddcd06960506f4d1bf19613ce169",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (629 MB)"
+  },
+  "assets/bonsai-logo.svg": {
+   "size": 515,
+   "sha256": null,
+   "blob": "6e2df3a48b38d3eb980db8772cfd942f8b97a328",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  }
+ },
+ "found_in": [
+  "familia #54"
+ ],
+ "match": null,
+ "local_check": null,
+ "unknown": [
+  "card_defaults: ambiguous: 2 recommended sets and no single default",
+  "quant"
+ ],
+ "warnings": [
+  "card states context 268288 (prism-ml/Ternary-Bonsai-2-27B-gguf README.md:L62) but GGUF qwen35.context_length is 262144"
+ ],
+ "updated": "2026-10-19",
+ "by": "scripts/model_db.py",
+ "weights": "absent (damp)",
+ "gguf_meta": {
+  "general.architecture": "qwen35",
+  "general.type": "model",
+  "general.sampling.top_k": 20,
+  "general.sampling.top_p": 0.949999988079071,
+  "general.sampling.temp": 1.0,
+  "general.name": "Hf",
+  "general.version": "v5",
+  "general.basename": "folded",
+  "general.size_label": "27B",
+  "qwen35.block_count": 64,
+  "qwen35.context_length": 262144,
+  "qwen35.embedding_length": 5120,
+  "qwen35.feed_forward_length": 17408,
+  "qwen35.attention.head_count": 24,
+  "qwen35.attention.head_count_kv": 4,
+  "qwen35.rope.dimension_sections": {
+   "array_len": 4
+  },
+  "qwen35.rope.freq_base": 10000000.0,
+  "qwen35.attention.layer_norm_rms_epsilon": 9.999999974752427e-07,
+  "qwen35.attention.key_length": 256,
+  "qwen35.attention.value_length": 256,
+  "qwen35.ssm.conv_kernel": 4,
+  "qwen35.ssm.state_size": 128,
+  "qwen35.ssm.group_count": 16,
+  "qwen35.ssm.time_step_rank": 48,
+  "qwen35.ssm.inner_size": 6144,
+  "qwen35.full_attention_interval": 4,
+  "qwen35.rope.dimension_count": 64,
+  "prism.hadamard.version": 1,
+  "prism.hadamard.block_size": 1024,
+  "prism.hadamard.transform": "normalized-sylvester-walsh-hadamard",
+  "prism.hadamard.axis": "input-last-dimension",
+  "prism.hadamard.sign_mode": "explicit",
+  "prism.hadamard.weight_names": {
+   "array_len": 401
+  },
+  "prism.hadamard.sign_widths": {
+   "array_len": 3
+  },
+  "prism.hadamard.sign_values": {
+   "array_len": 28672
+  },
+  "prism.hadamard.inverse_weight_names": [
+   "token_embd.weight"
+  ],
+  "prism.hadamard.gdn_v_grouped": true,
+  "tokenizer.ggml.model": "gpt2",
+  "tokenizer.ggml.pre": "qwen35",
+  "tokenizer.ggml.tokens": {
+   "array_len": 248320
+  },
+  "tokenizer.ggml.token_type": {
+   "array_len": 248320
+  },
+  "tokenizer.ggml.merges": {
+   "array_len": 247587
+  },
+  "tokenizer.ggml.eos_token_id": 248046,
+  "tokenizer.ggml.padding_token_id": 248044,
+  "tokenizer.ggml.bos_token_id": 248044,
+  "tokenizer.ggml.add_bos_token": false,
+  "tokenizer.chat_template": {
+   "sha256": "c3cf9e34abf4f9e36c2d72165aa9c132d3e2a725b6c2586aaa3a8af9d7a81041",
+   "chars": 8952
+  },
+  "general.quantization_version": 2,
+  "general.file_type": 143,
+  "_gguf_version": 3,
+  "_n_tensors": 851
+ },
+ "base_chain": [
+  {
+   "repo": "prism-ml/Ternary-Bonsai-2-27B-gguf",
+   "api_id": "prism-ml/Ternary-Bonsai-2-27B-gguf",
+   "revision": "b072e1d3b35a0a630cece372c2127528e0994386",
+   "via": "card base_model",
+   "card_data": {
+    "license": "apache-2.0",
+    "base_model": [
+     "Qwen/Qwen3.8-27B"
+    ],
+    "pipeline_tag": "text-generation",
+    "library_name": "llama.cpp"
+   },
+   "pipeline_tag": "text-generation",
+   "safetensors": null,
+   "license_files": [
+    "LICENSE"
+   ]
+  },
+  {
+   "repo": "Qwen/Qwen3.8-27B",
+   "api_id": "Qwen/Qwen3.8-27B",
+   "revision": "1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0",
+   "via": "prism-ml/Ternary-Bonsai-2-27B-gguf card base_model",
+   "card_data": {
+    "license": "apache-2.0",
+    "pipeline_tag": "image-text-to-text",
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "image-text-to-text",
+   "safetensors": {
+    "parameters": {
+     "BF16": 27781427952
+    },
+    "total": 27781427952
+   },
+   "license_files": [
+    "LICENSE"
+   ]
+  }
+ ],
+ "github": [
+  {
+   "repo": "PrismML-Eng/Bonsai-demo",
+   "resolved": "PrismML-Eng/Bonsai-demo",
+   "sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "renamed": null,
+   "description": "Bonsai Demo",
+   "license_spdx": "Apache-2.0",
+   "files": {
+    "license": {
+     "path": "LICENSE",
+     "sha256": "6d1d968fb225eca367cb7f0b8831ab012a35d92b547e945e17ef8e7b05c3e5cc",
+     "bytes": 10349
+    },
+    "readme": {
+     "path": "README.md",
+     "sha256": "578af9f1b63ea5552ccc6e88d1b4ee576e90dcc2c86b49886e4b041d0e0473e6",
+     "bytes": 25187
+    }
+   },
+   "extra": null,
+   "snapshot": "github/PrismML-Eng--Bonsai-demo/db871ea96bffff5ce5609873c412b75d7cd5ba3c"
+  }
+ ],
+ "github_dropped": [
+  {
+   "repo": "PrismML-Eng/llama.cpp",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "PrismML-Eng/llama.cpp",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "PrismML-Eng/mlx",
+   "why": "owner and name unrelated to the model's Hugging Face repos"
+  },
+  {
+   "repo": "PrismML-Eng/mlx-swift",
+   "why": "owner and name unrelated to the model's Hugging Face repos"
+  }
+ ],
+ "descriptor": {
+  "repo_id": {
+   "effective": "dealignai/Bonsai-2-27B-1bit-CRACK-GGUF",
+   "source": "HF API id"
+  },
+  "revision": {
+   "effective": "9665897ee63152226ecd64a1036d14292397186f",
+   "source": "pinned (manifest / database)"
+  },
+  "file": {
+   "effective": "Bonsai-2-27B-PTQ1_0-CRACK.gguf",
+   "source": "HF API siblings"
+  },
+  "bytes": {
+   "effective": 5946648928,
+   "source": "HF API LFS size"
+  },
+  "sha256": {
+   "effective": "dcca61238e280432c4ce2d4c6c1d61214cbcb8a5d93ed98dea20d8bcef385a42",
+   "source": "HF API LFS oid"
+  },
+  "quant": {
+   "effective": "file_type 143",
+   "source": "GGUF general.file_type"
+  },
+  "license": {
+   "effective": "apache-2.0",
+   "source": "dealignai/Bonsai-2-27B-1bit-CRACK-GGUF card license",
+   "values": [
+    {
+     "value": "apache-2.0",
+     "source": "dealignai/Bonsai-2-27B-1bit-CRACK-GGUF card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "prism-ml/Ternary-Bonsai-2-27B-gguf card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "Qwen/Qwen3.8-27B card license"
+    }
+   ]
+  },
+  "code_license": {
+   "effective": "Apache-2.0",
+   "source": "GitHub github.com/PrismML-Eng/Bonsai-demo license (spdx)"
+  },
+  "license_file": {
+   "effective": "github.com/PrismML-Eng/Bonsai-demo@db871ea96bff/LICENSE",
+   "source": "GitHub github.com/PrismML-Eng/Bonsai-demo",
+   "values": [
+    {
+     "value": "github.com/PrismML-Eng/Bonsai-demo@db871ea96bff/LICENSE",
+     "source": "GitHub github.com/PrismML-Eng/Bonsai-demo"
+    },
+    {
+     "value": "dealignai/Bonsai-2-27B-1bit-CRACK-GGUF@9665897ee631/LICENSE",
+     "source": "dealignai/Bonsai-2-27B-1bit-CRACK-GGUF repo file"
+    },
+    {
+     "value": "prism-ml/Ternary-Bonsai-2-27B-gguf@b072e1d3b35a/LICENSE",
+     "source": "prism-ml/Ternary-Bonsai-2-27B-gguf repo file"
+    },
+    {
+     "value": "Qwen/Qwen3.8-27B@1d4bf0f2ff60/LICENSE",
+     "source": "Qwen/Qwen3.8-27B repo file"
+    }
+   ]
+  },
+  "base_model_chain": {
+   "effective": "prism-ml/Ternary-Bonsai-2-27B-gguf",
+   "source": "card base_model",
+   "values": [
+    {
+     "value": "prism-ml/Ternary-Bonsai-2-27B-gguf",
+     "source": "card base_model"
+    },
+    {
+     "value": "Qwen/Qwen3.8-27B",
+     "source": "prism-ml/Ternary-Bonsai-2-27B-gguf card base_model"
+    }
+   ]
+  },
+  "architecture": {
+   "effective": "qwen35",
+   "source": "GGUF general.architecture",
+   "values": [
+    {
+     "value": "qwen35",
+     "source": "GGUF general.architecture"
+    },
+    {
+     "value": "qwen35",
+     "source": "HF API gguf.architecture"
+    }
+   ]
+  },
+  "parameters": {
+   "effective": 26895998464,
+   "source": "HF API gguf.total (dealignai/Bonsai-2-27B-1bit-CRACK-GGUF)",
+   "values": [
+    {
+     "value": 26895998464,
+     "source": "HF API gguf.total (dealignai/Bonsai-2-27B-1bit-CRACK-GGUF)"
+    },
+    {
+     "value": 27781427952,
+     "source": "HF API safetensors.total (Qwen/Qwen3.8-27B)"
+    }
+   ],
+   "conflict": true
+  },
+  "size_label": {
+   "effective": "27B",
+   "source": "GGUF general.size_label"
+  },
+  "ctx_statements": {
+   "effective": {
+    "value": 268288,
+    "quote": "- **262K-token context** on-device, kept practical by the Qwen3.8-27B hybrid-attention backbone (\\~75% linear attention)"
+   },
+   "source": "prism-ml/Ternary-Bonsai-2-27B-gguf README.md:L43",
+   "values": [
+    {
+     "value": {
+      "value": 268288,
+      "quote": "- **262K-token context** on-device, kept practical by the Qwen3.8-27B hybrid-attention backbone (\\~75% linear attention)"
+     },
+     "source": "prism-ml/Ternary-Bonsai-2-27B-gguf README.md:L43"
+    },
+    {
+     "value": {
+      "value": 268288,
+      "quote": "| Context length    | 262K tokens (inherited from the base model; kept practical on-device by the predominantly linear-attention backbone) |"
+     },
+     "source": "prism-ml/Ternary-Bonsai-2-27B-gguf README.md:L62"
+    },
+    {
+     "value": {
+      "value": 268288,
+      "quote": "- **262K-token context**, kept practical on-device by the hybrid-attention backbone."
+     },
+     "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L44"
+    },
+    {
+     "value": {
+      "value": 8192,
+      "quote": "The launch scripts pick a **default context sized to your machine's RAM**, from 8K on small machines up to 131K for the 27B on machines with more than 71 GB (roughly 0.5 to 8 GiB of KV cache), so memory use stays predictable. Override with "
+     },
+     "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L335"
+    }
+   ]
+  },
+  "ctx": {
+   "effective": 268288,
+   "source": "card: prism-ml/Ternary-Bonsai-2-27B-gguf README.md:L62",
+   "values": [
+    {
+     "value": 268288,
+     "source": "card: prism-ml/Ternary-Bonsai-2-27B-gguf README.md:L62"
+    },
+    {
+     "value": 262144,
+     "source": "GGUF qwen35.context_length"
+    }
+   ],
+   "conflict": true,
+   "precedence": "card statement > config.json > GGUF header > GitHub README"
+  },
+  "pipeline_tag": {
+   "effective": "text-generation",
+   "source": "dealignai/Bonsai-2-27B-1bit-CRACK-GGUF HF API pipeline_tag",
+   "values": [
+    {
+     "value": "text-generation",
+     "source": "dealignai/Bonsai-2-27B-1bit-CRACK-GGUF HF API pipeline_tag"
+    },
+    {
+     "value": "text-generation",
+     "source": "prism-ml/Ternary-Bonsai-2-27B-gguf HF API pipeline_tag"
+    },
+    {
+     "value": "image-text-to-text",
+     "source": "Qwen/Qwen3.8-27B HF API pipeline_tag"
+    }
+   ],
+   "conflict": true
+  }
+ },
+ "required_params": {
+  "kind": "chat",
+  "native_ctx": 268288,
+  "native_ctx_source": "card: prism-ml/Ternary-Bonsai-2-27B-gguf README.md:L62",
+  "yarn": null,
+  "yarn_source": null,
+  "items": [
+   {
+    "class": "REQUIRED",
+    "flag": "--jinja",
+    "value": null,
+    "source": "GGUF tokenizer.chat_template (c3cf9e34abf4)",
+    "why_required": "messages, tool calls and thinking are formatted by the model's chat template; without --jinja llama-server falls back to a built-in approximation"
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--gpu-layers",
+    "value": "99",
+    "source": "prism-ml/Ternary-Bonsai-2-27B-gguf README.md:L159-162",
+    "why_required": "performance / tool option in the card's command"
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--flash-attn",
+    "value": "on",
+    "source": "prism-ml/Ternary-Bonsai-2-27B-gguf README.md:L159-162",
+    "why_required": "performance / tool option in the card's command"
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--temp",
+    "value": "1.0",
+    "source": "prism-ml/Ternary-Bonsai-2-27B-gguf README.md:L159-162",
+    "why_required": "sampling in the card's llama-cli command"
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--top-p",
+    "value": "0.95",
+    "source": "prism-ml/Ternary-Bonsai-2-27B-gguf README.md:L159-162",
+    "why_required": "sampling in the card's llama-cli command"
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--top-k",
+    "value": "20",
+    "source": "prism-ml/Ternary-Bonsai-2-27B-gguf README.md:L159-162",
+    "why_required": "sampling in the card's llama-cli command"
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--min-p",
+    "value": "0.05",
+    "source": "prism-ml/Ternary-Bonsai-2-27B-gguf README.md:L159-162",
+    "why_required": "sampling in the card's llama-cli command"
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--predict",
+    "value": "16384",
+    "source": "prism-ml/Ternary-Bonsai-2-27B-gguf README.md:L159-162",
+    "why_required": "performance / tool option in the card's command"
+   }
+  ]
+ },
+ "blockers": null,
+ "params_problems": null,
+ "params_build": "b11374",
+ "native_ctx": 268288,
+ "native_ctx_source": "card: prism-ml/Ternary-Bonsai-2-27B-gguf README.md:L62",
+ "license_info": {
+  "id": "apache-2.0",
+  "id_source": "dealignai/Bonsai-2-27B-1bit-CRACK-GGUF card front matter license",
+  "name": null,
+  "summary": "apache-2.0",
+  "summary_source": "dealignai/Bonsai-2-27B-1bit-CRACK-GGUF card license",
+  "link": "https://huggingface.co/dealignai/Bonsai-2-27B-1bit-CRACK-GGUF/blob/9665897ee63152226ecd64a1036d14292397186f/LICENSE",
+  "link_source": "license file in the repo",
+  "texts": [
+   {
+    "file": "dealignai/Bonsai-2-27B-1bit-CRACK-GGUF@9665897ee631/LICENSE",
+    "path": "/home/green/.local/share/gguf/hf-meta/dealignai--Bonsai-2-27B-1bit-CRACK-GGUF/9665897ee63152226ecd64a1036d14292397186f/LICENSE",
+    "url": "https://huggingface.co/dealignai/Bonsai-2-27B-1bit-CRACK-GGUF/blob/9665897ee63152226ecd64a1036d14292397186f/LICENSE",
+    "sha256": "69849221bfb90053de2134ef5e6d540287b4b98062326492f1f96f5da685524b",
+    "bytes": 10174,
+    "what": "model"
+   },
+   {
+    "file": "prism-ml/Ternary-Bonsai-2-27B-gguf@b072e1d3b35a/LICENSE",
+    "path": "/home/green/.local/share/gguf/hf-meta/prism-ml--Ternary-Bonsai-2-27B-gguf/b072e1d3b35a0a630cece372c2127528e0994386/LICENSE",
+    "url": "https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-gguf/blob/b072e1d3b35a0a630cece372c2127528e0994386/LICENSE",
+    "sha256": "69849221bfb90053de2134ef5e6d540287b4b98062326492f1f96f5da685524b",
+    "bytes": 10174,
+    "what": "model"
+   },
+   {
+    "file": "github.com/PrismML-Eng/Bonsai-demo@db871ea96bff/LICENSE",
+    "path": "/home/green/.local/share/gguf/hf-meta/github/PrismML-Eng--Bonsai-demo/db871ea96bffff5ce5609873c412b75d7cd5ba3c/LICENSE",
+    "url": "https://github.com/PrismML-Eng/Bonsai-demo/blob/db871ea96bffff5ce5609873c412b75d7cd5ba3c/LICENSE",
+    "sha256": "6d1d968fb225eca367cb7f0b8831ab012a35d92b547e945e17ef8e7b05c3e5cc",
+    "bytes": 10349,
+    "what": "code (GitHub PrismML-Eng/Bonsai-demo, spdx Apache-2.0)"
+   }
+  ],
+  "obligations": [
+   {
+    "quote": "(a) You must give any other recipients of the Work or",
+    "source": "dealignai/Bonsai-2-27B-1bit-CRACK-GGUF LICENSE:L94"
+   },
+   {
+    "quote": "(b) You must cause any modified files to carry prominent notices",
+    "source": "dealignai/Bonsai-2-27B-1bit-CRACK-GGUF LICENSE:L97"
+   },
+   {
+    "quote": "(c) You must retain, in the Source form of any Derivative Works",
+    "source": "dealignai/Bonsai-2-27B-1bit-CRACK-GGUF LICENSE:L100"
+   },
+   {
+    "quote": "attribution notices from the Source form of the Work,",
+    "source": "dealignai/Bonsai-2-27B-1bit-CRACK-GGUF LICENSE:L102"
+   },
+   {
+    "quote": "include a readable copy of the attribution notices contained",
+    "source": "dealignai/Bonsai-2-27B-1bit-CRACK-GGUF LICENSE:L108"
+   },
+   {
+    "quote": "within such NOTICE file, excluding those notices that do not",
+    "source": "dealignai/Bonsai-2-27B-1bit-CRACK-GGUF LICENSE:L109"
+   },
+   {
+    "quote": "of the NOTICE file are for informational purposes only and",
+    "source": "dealignai/Bonsai-2-27B-1bit-CRACK-GGUF LICENSE:L116"
+   },
+   {
+    "quote": "do not modify the License. You may add Your own attribution",
+    "source": "dealignai/Bonsai-2-27B-1bit-CRACK-GGUF LICENSE:L117"
+   },
+   {
+    "quote": "[Bonsai 2 27B](https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-gguf) — PrismML's ternary compression of [Qwen3.8-27B](https://huggingface.co/Qwen/Qwen3.8-27B) — with the refusal circuitry surgically removed at the weight level while capability, vision, reasoning modes (`off`/`low`/`xhigh`), too...",
+    "source": "dealignai/Bonsai-2-27B-1bit-CRACK-GGUF README.md:L46"
+   },
+   {
+    "quote": "| **Architecture** | Hybrid Attention + SSM (GatedDeltaNet), 64 blocks, hidden 5120, vision tower separate |",
+    "source": "dealignai/Bonsai-2-27B-1bit-CRACK-GGUF README.md:L53"
+   },
+   {
+    "quote": "## License & attribution",
+    "source": "dealignai/Bonsai-2-27B-1bit-CRACK-GGUF README.md:L223"
+   },
+   {
+    "quote": "(a) You must give any other recipients of the Work or",
+    "source": "prism-ml/Ternary-Bonsai-2-27B-gguf LICENSE:L94"
+   },
+   {
+    "quote": "(b) You must cause any modified files to carry prominent notices",
+    "source": "prism-ml/Ternary-Bonsai-2-27B-gguf LICENSE:L97"
+   },
+   {
+    "quote": "(c) You must retain, in the Source form of any Derivative Works",
+    "source": "prism-ml/Ternary-Bonsai-2-27B-gguf LICENSE:L100"
+   },
+   {
+    "quote": "attribution notices from the Source form of the Work,",
+    "source": "prism-ml/Ternary-Bonsai-2-27B-gguf LICENSE:L102"
+   },
+   {
+    "quote": "include a readable copy of the attribution notices contained",
+    "source": "prism-ml/Ternary-Bonsai-2-27B-gguf LICENSE:L108"
+   },
+   {
+    "quote": "within such NOTICE file, excluding those notices that do not",
+    "source": "prism-ml/Ternary-Bonsai-2-27B-gguf LICENSE:L109"
+   },
+   {
+    "quote": "of the NOTICE file are for informational purposes only and",
+    "source": "prism-ml/Ternary-Bonsai-2-27B-gguf LICENSE:L116"
+   },
+   {
+    "quote": "do not modify the License. You may add Your own attribution",
+    "source": "prism-ml/Ternary-Bonsai-2-27B-gguf LICENSE:L117"
+   }
+  ],
+  "gated": false,
+  "unknown": false,
+  "seen": [
+   {
+    "value": "apache-2.0",
+    "source": "dealignai/Bonsai-2-27B-1bit-CRACK-GGUF card license"
+   },
+   {
+    "value": "apache-2.0",
+    "source": "prism-ml/Ternary-Bonsai-2-27B-gguf card license"
+   },
+   {
+    "value": "apache-2.0",
+    "source": "Qwen/Qwen3.8-27B card license"
+   }
+  ]
+ },
+ "role_inference": {
+  "role": "general",
+  "evidence": [
+   "general +1 (card front matter: pipeline_tag: text-generation (generic chat model))",
+   "general +1 (GGUF metadata: general.architecture qwen35 (generative))"
+  ]
+ },
+ "repo_bytes": 5946682746
+}

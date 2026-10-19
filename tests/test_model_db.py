@@ -485,3 +485,19 @@ def test_license_info_quotes_obligations(tmp_path):
     assert li["texts"][0]["file"].endswith("/LICENSE") and li["texts"][0]["sha256"]
     q = {x["source"]: x["quote"] for x in li["obligations"]}
     assert q["org/Thing-GGUF LICENSE:L2"].startswith("You must retain") and "org/Thing-GGUF README.md:L6" in q
+
+
+def test_damp_never_downgrades_an_existing_entry(hub, tmp_path, capsys):
+    db = str(tmp_path / "db")
+    model_db.ingest("org/Thing-GGUF", SHA, "Thing-Q4_K_M.gguf", db_dir=db)
+    assert model_db.main(["--db-dir", db, "damp", "org/Thing-GGUF"]) == 0
+    assert "weights" not in model_db.load("org--Thing-GGUF--Thing-Q4_K_M", db)
+
+
+def test_speech_model_gets_no_text_role(tmp_path):
+    d = tmp_path / "s"
+    d.mkdir()
+    (d / "README.md").write_text("---\npipeline_tag: automatic-speech-recognition\n---\n# ASR\n")
+    e = entry(file="asr-Q8_0.gguf", gguf_meta={"general.architecture": "parakeet"})
+    role, ev = model_db.infer_role(e, {"dir": str(d), "card_data": {"pipeline_tag": "automatic-speech-recognition"}})
+    assert role is None and "no familia role" in ev[-1]

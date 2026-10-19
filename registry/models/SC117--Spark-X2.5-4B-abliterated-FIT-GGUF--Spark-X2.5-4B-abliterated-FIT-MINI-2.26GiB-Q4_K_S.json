@@ -1,0 +1,2696 @@
+{
+ "schema": 2,
+ "id": "SC117--Spark-X2.5-4B-abliterated-FIT-GGUF--Spark-X2.5-4B-abliterated-FIT-MINI-2.26GiB-Q4_K_S",
+ "repo": "SC117/Spark-X2.5-4B-abliterated-FIT-GGUF",
+ "revision": "0ab053e15f5343627fb68d1b421d4a7c8fa9fe87",
+ "file": "Spark-X2.5-4B-abliterated-FIT-MINI-2.26GiB-Q4_K_S.gguf",
+ "sha256": "f1780c336d44c6c77fe484c3fda41bf30f4b5d653a4fc591e3f676d33c205173",
+ "bytes": 2426554816,
+ "quant": "Q4_K_S",
+ "arch": "spark2_5",
+ "roles": [
+  "general"
+ ],
+ "license": "apache-2.0",
+ "license_source": "SC117/Spark-X2.5-4B-abliterated-FIT-GGUF card license",
+ "ctx": 1048576,
+ "ctx_source": "GGUF spark2_5.context_length",
+ "card_ctx": 1048576,
+ "card_ctx_source": "XHToken/Spark-X2.5-4B README.md:L156",
+ "base_model": "XHToken/Spark-X2.5-4B",
+ "base_revision": "0bcb35678590218655dff3765b9e61c83b35e9c4",
+ "card_defaults": {
+  "temp": 1.0,
+  "top-p": 0.95,
+  "top-k": -1,
+  "repeat-penalty": 1.0,
+  "presence-penalty": 0
+ },
+ "card_defaults_source": {
+  "temp": "XHToken/Spark-X2.5-4B generation_config.json",
+  "top-p": "XHToken/Spark-X2.5-4B generation_config.json",
+  "top-k": "XHToken/Spark-X2.5-4B generation_config.json",
+  "repeat-penalty": "XHToken/Spark-X2.5-4B generation_config.json",
+  "presence-penalty": "XHToken/Spark-X2.5-4B generation_config.json"
+ },
+ "card_default_set": "generation_config.json",
+ "card_defaults_how": "generation_config.json",
+ "card_sampling_modes": null,
+ "card_default_mode": null,
+ "card_default_mode_source": null,
+ "card_sampling_sets": [
+  {
+   "label": "All evaluations are conducted in thinking mode. The recommended sampling parameters for Spark-X2.5 are",
+   "kind": "benchmark",
+   "mode": "thinking",
+   "params": {
+    "temp": 1.0,
+    "top-p": 0.95,
+    "top-k": -1
+   },
+   "source": "XHToken/Spark-X2.5-4B README.md:L120"
+  },
+  {
+   "label": "Thinking is enabled by default by both the chat template and the Qwen3 reasoning parser. To disable thinking for a specific request, set \"chat template kwargs\":",
+   "kind": "example",
+   "mode": "thinking",
+   "params": {
+    "temp": 1,
+    "top-k": -1,
+    "top-p": 0.95,
+    "repeat-penalty": 1,
+    "presence-penalty": 0,
+    "frequency-penalty": 0
+   },
+   "source": "XHToken/Spark-X2.5-4B README.md:L231"
+  },
+  {
+   "label": "Client",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 1.0,
+    "top-k": -1,
+    "top-p": 0.95
+   },
+   "source": "XHToken/Spark-X2.5-4B README.md:L382"
+  },
+  {
+   "label": "Run Inference",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 0
+   },
+   "source": "XHToken/Spark-X2.5-4B README.md:L419"
+  }
+ ],
+ "card_commands": [
+  {
+   "source": "XHToken/Spark-X2.5-4B README.md:L128-128",
+   "file": "README.md",
+   "lines": [
+    128,
+    128
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "export MODEL_PATH=/absolute/path/to/Spark-X2.5-4B",
+   "doc": "base-card",
+   "doc_sha": "0bcb35678590218655dff3765b9e61c83b35e9c4",
+   "scope": "model"
+  },
+  {
+   "source": "XHToken/Spark-X2.5-4B README.md:L140-140",
+   "file": "README.md",
+   "lines": [
+    140,
+    140
+   ],
+   "lang": "bash",
+   "tool": "docker",
+   "kind": "command",
+   "text": "docker pull lmsysorg/sglang:nightly-dev-cu13-20260827-20621aa1",
+   "doc": "base-card",
+   "doc_sha": "0bcb35678590218655dff3765b9e61c83b35e9c4",
+   "scope": "model"
+  },
+  {
+   "source": "XHToken/Spark-X2.5-4B README.md:L145-151",
+   "file": "README.md",
+   "lines": [
+    145,
+    151
+   ],
+   "lang": "bash",
+   "tool": "docker",
+   "kind": "command",
+   "text": "# A3 daily build\nexport SGLANG_IMAGE=quay.io/ascend/sglang:main-cann9.0.0-a3\n\n# A2 daily build (use this instead on A2 hardware)\nexport SGLANG_IMAGE=quay.io/ascend/sglang:main-cann9.0.0-910b\n\ndocker pull \"$SGLANG_IMAGE\"",
+   "doc": "base-card",
+   "doc_sha": "0bcb35678590218655dff3765b9e61c83b35e9c4",
+   "scope": "model"
+  },
+  {
+   "source": "XHToken/Spark-X2.5-4B README.md:L163-179",
+   "file": "README.md",
+   "lines": [
+    163,
+    179
+   ],
+   "lang": "bash",
+   "tool": "sglang",
+   "kind": "command",
+   "text": "docker run --rm -it \\\n  --gpus '\"device=0\"' \\\n  --ipc=host \\\n  -p 30000:30000 \\\n  -v \"$MODEL_PATH:/root/Spark-X2.5-4B:ro\" \\\n  lmsysorg/sglang:nightly-dev-cu13-20260827-20621aa1 \\\n  python -m sglang.launch_server \\\n    --model-path /root/Spark-X2.5-4B \\\n    --served-model-name spark2.5 \\\n    --tool-call-parser spark25 \\\n    --reasoning-parser qwen3 \\\n    --tp-size 1 \\\n    --mem-fraction-static 0.8 \\\n    --context-length 1048576 \\\n    --chat-template /root/Spark-X2.5-4B/chat_template.jinja \\\n    --host 0.0.0.0 \\\n    --port 30000",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--jinja",
+      "value": null,
+      "from": "--tool-call-parser spark25"
+     },
+     {
+      "flag": "--reasoning-format",
+      "value": "deepseek",
+      "from": "--reasoning-parser qwen3"
+     },
+     {
+      "flag": "-c",
+      "value": "1048576",
+      "from": "--context-length 1048576"
+     },
+     {
+      "flag": "--chat-template-file",
+      "value": "/root/Spark-X2.5-4B/chat_template.jinja",
+      "from": "--chat-template /root/Spark-X2.5-4B/chat_template.jinja"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--rm -it",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--gpus \"device=0\"",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--ipc host",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--model-path /root/Spark-X2.5-4B",
+      "why": "the model is the GGUF file"
+     },
+     {
+      "arg": "--tp-size 1",
+      "why": "multi-GPU tensor parallelism; n/a"
+     },
+     {
+      "arg": "--mem-fraction-static 0.8",
+      "why": "SGLang memory pool fraction; n/a"
+     }
+    ]
+   },
+   "doc": "base-card",
+   "doc_sha": "0bcb35678590218655dff3765b9e61c83b35e9c4",
+   "scope": "model"
+  },
+  {
+   "source": "XHToken/Spark-X2.5-4B README.md:L185-212",
+   "file": "README.md",
+   "lines": [
+    185,
+    212
+   ],
+   "lang": "bash",
+   "tool": "sglang",
+   "kind": "command",
+   "text": "docker run -it --rm -e ASCEND_USE_FIA=1 --network=host --ipc=host --shm-size=16g \\\n    --device=/dev/davinci0 --device=/dev/davinci1 --device=/dev/davinci2 --device=/dev/davinci3 \\\n    --device=/dev/davinci4 --device=/dev/davinci5 --device=/dev/davinci6 --device=/dev/davinci7 \\\n    --device=/dev/davinci8 --device=/dev/davinci9 --device=/dev/davinci10 --device=/dev/davinci11 \\\n    --device=/dev/davinci12 --device=/dev/davinci13 --device=/dev/davinci14 --device=/dev/davinci15 \\\n    --device=/dev/davinci_manager \\\n    --device=/dev/devmm_svm \\\n    --device=/dev/hisi_hdc \\\n    --volume /usr/local/sbin:/usr/local/sbin \\\n    --volume /usr/local/Ascend/driver:/usr/local/Ascend/driver \\\n    --volume /usr/local/Ascend/firmware:/usr/local/Ascend/firmware \\\n    --volume /etc/ascend_install.info:/etc/ascend_install.info \\\n    --volume /var/queue_schedule:/var/queue_schedule \\\n    --volume ~/.cache/:/root/.cache/ \\\n    --volume \"$MODEL_PATH:/root/Spark-X2.5-4B:ro\" \\\n    --entrypoint=python \\\n    \"$SGLANG_IMAGE\" \\\n    -m sglang.launch_server \\\n      --model-path /root/Spark-X2.5-4B \\\n      --served-model-name spark2.5 \\\n      --tool-call-parser spark25 \\\n      --reasoning-parser qwen3 \\\n      --tp-size 1 \\\n      --mem-fraction-static 0.8 \\\n      --context-length 1048576 \\\n      --chat-template /root/Spark-X2.5-4B/chat_template.jinja \\\n      --host 0.0.0.0 \\\n      --port 30000",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--jinja",
+      "value": null,
+      "from": "--tool-call-parser spark25"
+     },
+     {
+      "flag": "--reasoning-format",
+      "value": "deepseek",
+      "from": "--reasoning-parser qwen3"
+     },
+     {
+      "flag": "-c",
+      "value": "1048576",
+      "from": "--context-length 1048576"
+     },
+     {
+      "flag": "--chat-template-file",
+      "value": "/root/Spark-X2.5-4B/chat_template.jinja",
+      "from": "--chat-template /root/Spark-X2.5-4B/chat_template.jinja"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--rm -e",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--network host",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--ipc host",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--shm-size 16g",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--device /dev/davinci0",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--device /dev/davinci1",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--device /dev/davinci2",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--device /dev/davinci3",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--device /dev/davinci4",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--device /dev/davinci5",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--device /dev/davinci6",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--device /dev/davinci7",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--device /dev/davinci8",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--device /dev/davinci9",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--device /dev/davinci10",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--device /dev/davinci11",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--device /dev/davinci12",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--device /dev/davinci13",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--device /dev/davinci14",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--device /dev/davinci15",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--device /dev/davinci_manager",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--device /dev/devmm_svm",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--device /dev/hisi_hdc",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--volume /usr/local/sbin:/usr/local/sbin",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--volume /usr/local/Ascend/driver:/usr/local/Ascend/driver",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--volume /usr/local/Ascend/firmware:/usr/local/Ascend/firmware",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--volume /etc/ascend_install.info:/etc/ascend_install.info",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--volume /var/queue_schedule:/var/queue_schedule",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--volume ~/.cache/:/root/.cache/",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--volume $MODEL_PATH:/root/Spark-X2.5-4B:ro",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--entrypoint python",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--model-path /root/Spark-X2.5-4B",
+      "why": "the model is the GGUF file"
+     },
+     {
+      "arg": "--tp-size 1",
+      "why": "multi-GPU tensor parallelism; n/a"
+     },
+     {
+      "arg": "--mem-fraction-static 0.8",
+      "why": "SGLang memory pool fraction; n/a"
+     }
+    ]
+   },
+   "doc": "base-card",
+   "doc_sha": "0bcb35678590218655dff3765b9e61c83b35e9c4",
+   "scope": "model"
+  },
+  {
+   "source": "XHToken/Spark-X2.5-4B README.md:L220-237",
+   "file": "README.md",
+   "lines": [
+    220,
+    237
+   ],
+   "lang": "bash",
+   "tool": "curl",
+   "kind": "command",
+   "text": "curl -s http://localhost:30000/v1/chat/completions \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"model\": \"spark2.5\",\n    \"messages\": [\n      {\n        \"role\": \"user\",\n        \"content\": \"What is the capital of Anhui Province?\"\n      }\n    ],\n    \"max_tokens\": 131072,\n    \"temperature\": 1,\n    \"top_k\": -1,\n    \"top_p\": 0.95,\n    \"repetition_penalty\": 1,\n    \"presence_penalty\": 0,\n    \"frequency_penalty\": 0\n  }'",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-n",
+      "value": "131072",
+      "from": "max_tokens: 131072"
+     },
+     {
+      "flag": "--temp",
+      "value": "1",
+      "from": "temperature: 1"
+     },
+     {
+      "flag": "--top-k",
+      "value": "-1",
+      "from": "top_k: -1"
+     },
+     {
+      "flag": "--top-p",
+      "value": "0.95",
+      "from": "top_p: 0.95"
+     },
+     {
+      "flag": "--repeat-penalty",
+      "value": "1",
+      "from": "repetition_penalty: 1"
+     },
+     {
+      "flag": "--presence-penalty",
+      "value": "0",
+      "from": "presence_penalty: 0"
+     },
+     {
+      "flag": "--frequency-penalty",
+      "value": "0",
+      "from": "frequency_penalty: 0"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "0bcb35678590218655dff3765b9e61c83b35e9c4",
+   "scope": "model"
+  },
+  {
+   "source": "XHToken/Spark-X2.5-4B README.md:L247-259",
+   "file": "README.md",
+   "lines": [
+    247,
+    259
+   ],
+   "lang": "bash",
+   "tool": "docker",
+   "kind": "command",
+   "text": "docker run --rm --gpus all \\\n  --ipc=host \\\n  -p 30000:30000 \\\n  -v \"$MODEL_PATH:/models/Spark-X2.5-4B:ro\" \\\n  vllm/vllm-openai:latest \\\n  --model /models/Spark-X2.5-4B \\\n  --port 30000 \\\n  --trust-remote-code \\\n  --served-model-name spark25 \\\n  --tensor-parallel-size 1 \\\n  --gpu-memory-utilization 0.7 \\\n  --enable-prefix-caching \\\n  --chat-template /models/Spark-X2.5-4B/chat_template.jinja",
+   "doc": "base-card",
+   "doc_sha": "0bcb35678590218655dff3765b9e61c83b35e9c4",
+   "scope": "model"
+  },
+  {
+   "source": "XHToken/Spark-X2.5-4B README.md:L267-289",
+   "file": "README.md",
+   "lines": [
+    267,
+    289
+   ],
+   "lang": "bash",
+   "tool": "docker",
+   "kind": "command",
+   "text": "export IMAGE=quay.io/ascend/vllm-ascend:nightly-main\ndocker pull \"$IMAGE\"\n\nexport DEVICE=/dev/davinci0\nexport MODEL_CACHE=\"${HOME}/.cache\"\n\nmkdir -p \"$MODEL_CACHE\"\n\ndocker run --rm \\\n    --name vllm-ascend \\\n    --shm-size=1g \\\n    --device \"$DEVICE\" \\\n    --device /dev/davinci_manager \\\n    --device /dev/devmm_svm \\\n    --device /dev/hisi_hdc \\\n    -v /usr/local/dcmi:/usr/local/dcmi \\\n    -v /usr/local/bin/npu-smi:/usr/local/bin/npu-smi \\\n    -v /usr/local/Ascend/driver/lib64/:/usr/local/Ascend/driver/lib64/ \\\n    -v /usr/local/Ascend/driver/version.info:/usr/local/Ascend/driver/version.info \\\n    -v /etc/ascend_install.info:/etc/ascend_install.info \\\n    -v \"$MODEL_CACHE:/root/.cache\" \\\n    -p 8000:8000 \\\n    -it \"$IMAGE\" bash",
+   "doc": "base-card",
+   "doc_sha": "0bcb35678590218655dff3765b9e61c83b35e9c4",
+   "scope": "model"
+  },
+  {
+   "source": "XHToken/Spark-X2.5-4B README.md:L295-319",
+   "file": "README.md",
+   "lines": [
+    295,
+    319
+   ],
+   "lang": "bash",
+   "tool": "docker",
+   "kind": "command",
+   "text": "export IMAGE=quay.io/ascend/vllm-ascend:nightly-main-a3\ndocker pull \"$IMAGE\"\n\nexport DEVICE0=/dev/davinci0\nexport DEVICE1=/dev/davinci1\nexport MODEL_CACHE=\"${HOME}/.cache\"\n\nmkdir -p \"$MODEL_CACHE\"\n\ndocker run --rm \\\n    --name vllm-ascend \\\n    --shm-size=1g \\\n    --device \"$DEVICE0\" \\\n    --device \"$DEVICE1\" \\\n    --device /dev/davinci_manager \\\n    --device /dev/devmm_svm \\\n    --device /dev/hisi_hdc \\\n    -v /usr/local/dcmi:/usr/local/dcmi \\\n    -v /usr/local/bin/npu-smi:/usr/local/bin/npu-smi \\\n    -v /usr/local/Ascend/driver/lib64/:/usr/local/Ascend/driver/lib64/ \\\n    -v /usr/local/Ascend/driver/version.info:/usr/local/Ascend/driver/version.info \\\n    -v /etc/ascend_install.info:/etc/ascend_install.info \\\n    -v \"$MODEL_CACHE:/root/.cache\" \\\n    -p 8000:8000 \\\n    -it \"$IMAGE\" bash",
+   "doc": "base-card",
+   "doc_sha": "0bcb35678590218655dff3765b9e61c83b35e9c4",
+   "scope": "model"
+  },
+  {
+   "source": "XHToken/Spark-X2.5-4B README.md:L325-347",
+   "file": "README.md",
+   "lines": [
+    325,
+    347
+   ],
+   "lang": "bash",
+   "tool": "docker",
+   "kind": "command",
+   "text": "export IMAGE=quay.io/ascend/vllm-ascend:nightly-main-a5\ndocker pull \"$IMAGE\"\n\nexport MODEL_CACHE=\"${HOME}/.cache\"\n\nmkdir -p \"$MODEL_CACHE\"\n\ndocker run --rm \\\n    --name vllm-ascend \\\n    --net=host \\\n    --shm-size=1g \\\n    --device /dev/davinci0 \\\n    --device /dev/davinci_manager \\\n    --device /dev/devmm_svm \\\n    --device /dev/hisi_hdc \\\n    -v /usr/local/dcmi:/usr/local/dcmi \\\n    -v /usr/local/Ascend/driver/tools/hccn_tool:/usr/local/Ascend/driver/tools/hccn_tool \\\n    -v /usr/local/bin/npu-smi:/usr/local/bin/npu-smi \\\n    -v /usr/local/Ascend/driver/lib64/:/usr/local/Ascend/driver/lib64/ \\\n    -v /usr/local/Ascend/driver/version.info:/usr/local/Ascend/driver/version.info \\\n    -v /etc/ascend_install.info:/etc/ascend_install.info \\\n    -v \"$MODEL_CACHE:/root/.cache\" \\\n    -it \"$IMAGE\" bash",
+   "doc": "base-card",
+   "doc_sha": "0bcb35678590218655dff3765b9e61c83b35e9c4",
+   "scope": "model"
+  },
+  {
+   "source": "XHToken/Spark-X2.5-4B README.md:L353-358",
+   "file": "README.md",
+   "lines": [
+    353,
+    358
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install uv\nuv venv ~/spark2_5\nsource ~/spark2_5/bin/activate\ngit clone https://github.com/XHToken/Spark-plugin.git\ncd ./Spark-plugin\nuv pip install .",
+   "doc": "base-card",
+   "doc_sha": "0bcb35678590218655dff3765b9e61c83b35e9c4",
+   "scope": "model"
+  },
+  {
+   "source": "XHToken/Spark-X2.5-4B README.md:L364-371",
+   "file": "README.md",
+   "lines": [
+    364,
+    371
+   ],
+   "lang": "bash",
+   "tool": "vllm",
+   "kind": "command",
+   "text": "vllm serve \"/models/Spark-X2.5-4B\" \\\n --port \"30000\" \\\n --trust-remote-code \\\n --served-model-name spark25 \\\n --tensor-parallel-size 1 \\\n --gpu-memory-utilization 0.7 \\\n --enable-prefix-caching \\\n --chat-template /models/Spark-X2.5-4B/chat_template.jinja",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--chat-template-file",
+      "value": "/models/Spark-X2.5-4B/chat_template.jinja",
+      "from": "--chat-template /models/Spark-X2.5-4B/chat_template.jinja"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--trust-remote-code",
+      "why": "n/a for GGUF"
+     },
+     {
+      "arg": "--tensor-parallel-size 1",
+      "why": "multi-GPU tensor parallelism; n/a (one device per llama-server here)"
+     },
+     {
+      "arg": "--gpu-memory-utilization 0.7",
+      "why": "vLLM memory fraction; n/a"
+     },
+     {
+      "arg": "--enable-prefix-caching",
+      "why": "llama-server caches prompts per slot (--cache-prompt, default on)"
+     }
+    ]
+   },
+   "doc": "base-card",
+   "doc_sha": "0bcb35678590218655dff3765b9e61c83b35e9c4",
+   "scope": "model"
+  },
+  {
+   "source": "XHToken/Spark-X2.5-4B README.md:L377-385",
+   "file": "README.md",
+   "lines": [
+    377,
+    385
+   ],
+   "lang": "bash",
+   "tool": "curl",
+   "kind": "command",
+   "text": "curl -s http://127.0.0.1:30000/v1/chat/completions \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"model\": \"spark25\",\n    \"messages\": [{\"role\": \"user\", \"content\": \"What is the capital of Anhui Province?\"}],\n    \"temperature\": 1.0, \n    \"top_k\": -1,\n    \"top_p\": 0.95\n  }'",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--temp",
+      "value": "1",
+      "from": "temperature: 1.0"
+     },
+     {
+      "flag": "--top-k",
+      "value": "-1",
+      "from": "top_k: -1"
+     },
+     {
+      "flag": "--top-p",
+      "value": "0.95",
+      "from": "top_p: 0.95"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "0bcb35678590218655dff3765b9e61c83b35e9c4",
+   "scope": "model"
+  },
+  {
+   "source": "XHToken/Spark-X2.5-4B README.md:L394-407",
+   "file": "README.md",
+   "lines": [
+    394,
+    407
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "git clone https://github.com/XHToken/Spark-MLX-LLM.git\ncd Spark-MLX-LLM\n\npython3 -m venv .venv\nsource .venv/bin/activate\n\n# Apple silicon\npython -m pip install -e .\n# Linux CPU\npython -m pip install -e '.[cpu]'\n# Linux with CUDA 12\npython -m pip install -e '.[cuda12]' \n# Linux with CUDA 13\npython -m pip install -e '.[cuda13]'",
+   "doc": "base-card",
+   "doc_sha": "0bcb35678590218655dff3765b9e61c83b35e9c4",
+   "scope": "model"
+  },
+  {
+   "source": "XHToken/Spark-X2.5-4B README.md:L413-419",
+   "file": "README.md",
+   "lines": [
+    413,
+    419
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "spark-mlx-generate \\\n  --device gpu \\\n  --dtype bfloat16 \\\n  --model XHToken/Spark-X2.5-4B \\\n  --prompt \"What is the capital of Anhui Province?\" \\\n  --max-tokens 512 \\\n  --temp 0",
+   "doc": "base-card",
+   "doc_sha": "0bcb35678590218655dff3765b9e61c83b35e9c4",
+   "scope": "model"
+  },
+  {
+   "source": "XHToken/Spark-X2.5-4B README.md:L429-429",
+   "file": "README.md",
+   "lines": [
+    429,
+    429
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "llama cli -m /path/to/Spark-X2.5-4B-GGUF",
+   "llama": [
+    {
+     "tool": "llama cli",
+     "raw": "llama cli -m /path/to/Spark-X2.5-4B-GGUF",
+     "flags": [
+      {
+       "flag": "-m",
+       "canonical": "--model",
+       "value": "/path/to/Spark-X2.5-4B-GGUF",
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    }
+   ],
+   "doc": "base-card",
+   "doc_sha": "0bcb35678590218655dff3765b9e61c83b35e9c4",
+   "scope": "model"
+  },
+  {
+   "source": "XHToken/Spark-X2.5-4B README.md:L434-434",
+   "file": "README.md",
+   "lines": [
+    434,
+    434
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "llama serve -m /path/to/Spark-X2.5-4B-GGUF",
+   "llama": [
+    {
+     "tool": "llama serve",
+     "raw": "llama serve -m /path/to/Spark-X2.5-4B-GGUF",
+     "flags": [
+      {
+       "flag": "-m",
+       "canonical": "--model",
+       "value": "/path/to/Spark-X2.5-4B-GGUF",
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    }
+   ],
+   "doc": "base-card",
+   "doc_sha": "0bcb35678590218655dff3765b9e61c83b35e9c4",
+   "scope": "model"
+  },
+  {
+   "source": "XHToken/Spark-X2.5-4B README.md:L445-445",
+   "file": "README.md",
+   "lines": [
+    445,
+    445
+   ],
+   "lang": "bash",
+   "tool": "ollama",
+   "kind": "command",
+   "text": "ollama run SparkLLM/Spark-X2.5-4B",
+   "translation": {
+    "translated": true,
+    "params": [],
+    "untranslatable": [
+     {
+      "arg": "ollama run SparkLLM/Spark-X2.5-4B",
+      "why": "Ollama pulls and runs the model with its own defaults; no flags to translate"
+     }
+    ]
+   },
+   "doc": "base-card",
+   "doc_sha": "0bcb35678590218655dff3765b9e61c83b35e9c4",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/Spark-plugin README.md:L37-37",
+   "file": "README.md",
+   "lines": [
+    37,
+    37
+   ],
+   "lang": "text",
+   "tool": "text",
+   "kind": "other",
+   "text": "sigmoid(g_proj(hidden_states))",
+   "doc": "github",
+   "doc_sha": "3e1040e63a5907e4c748a485d6795d739dcd5bd6",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/Spark-plugin README.md:L70-70",
+   "file": "README.md",
+   "lines": [
+    70,
+    70
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "source .venv/bin/activate",
+   "doc": "github",
+   "doc_sha": "3e1040e63a5907e4c748a485d6795d739dcd5bd6",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/Spark-plugin README.md:L80-81",
+   "file": "README.md",
+   "lines": [
+    80,
+    81
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "# From the vLLM checkout containing this directory.\nuv pip install -e ./Spark-plugin --no-deps",
+   "doc": "github",
+   "doc_sha": "3e1040e63a5907e4c748a485d6795d739dcd5bd6",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/Spark-plugin README.md:L90-90",
+   "file": "README.md",
+   "lines": [
+    90,
+    90
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "uv pip install -U \"openai>=2.25.0\"",
+   "doc": "github",
+   "doc_sha": "3e1040e63a5907e4c748a485d6795d739dcd5bd6",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/Spark-plugin README.md:L97-98",
+   "file": "README.md",
+   "lines": [
+    97,
+    98
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": ".venv/bin/python -c \"from importlib.metadata import entry_points; \\\nprint([(e.name, e.value) for e in entry_points(group='vllm.general_plugins')])\"",
+   "doc": "github",
+   "doc_sha": "3e1040e63a5907e4c748a485d6795d739dcd5bd6",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/Spark-plugin README.md:L104-104",
+   "file": "README.md",
+   "lines": [
+    104,
+    104
+   ],
+   "lang": "text",
+   "tool": "text",
+   "kind": "other",
+   "text": "('spark2_5', 'vllm_spark2_5_plugin:register')",
+   "doc": "github",
+   "doc_sha": "3e1040e63a5907e4c748a485d6795d739dcd5bd6",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/Spark-plugin README.md:L115-120",
+   "file": "README.md",
+   "lines": [
+    115,
+    120
+   ],
+   "lang": "bash",
+   "tool": "vllm",
+   "kind": "command",
+   "text": "vllm serve /path/to/spark2_5-model \\\n  --trust-remote-code \\\n  --enable-auto-tool-choice \\\n  --tool-call-parser spark25 \\\n  --chat-template /path/to/chat_template.jinja \\\n  --served-model-name Spark2_5",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--jinja",
+      "value": null,
+      "from": "--enable-auto-tool-choice"
+     },
+     {
+      "flag": "--chat-template-file",
+      "value": "/path/to/chat_template.jinja",
+      "from": "--chat-template /path/to/chat_template.jinja"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--trust-remote-code",
+      "why": "n/a for GGUF"
+     }
+    ]
+   },
+   "doc": "github",
+   "doc_sha": "3e1040e63a5907e4c748a485d6795d739dcd5bd6",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/Spark-plugin README.md:L133-133",
+   "file": "README.md",
+   "lines": [
+    133,
+    133
+   ],
+   "lang": "text",
+   "tool": "text",
+   "kind": "other",
+   "text": "vllm-spark2_5-plugin: registered Spark2_5ForCausalLM -> ...",
+   "doc": "github",
+   "doc_sha": "3e1040e63a5907e4c748a485d6795d739dcd5bd6",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/Spark-plugin README.md:L141-145",
+   "file": "README.md",
+   "lines": [
+    141,
+    145
+   ],
+   "lang": "bash",
+   "tool": "vllm",
+   "kind": "command",
+   "text": "SPARK2_5_PLUGIN_OVERRIDE=1 vllm serve /path/to/spark2_5-model \\\n  --trust-remote-code \\\n  --enable-auto-tool-choice \\\n  --tool-call-parser spark25 \\\n  --chat-template /path/to/chat_template.jinja",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--jinja",
+      "value": null,
+      "from": "--enable-auto-tool-choice"
+     },
+     {
+      "flag": "--chat-template-file",
+      "value": "/path/to/chat_template.jinja",
+      "from": "--chat-template /path/to/chat_template.jinja"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--trust-remote-code",
+      "why": "n/a for GGUF"
+     }
+    ]
+   },
+   "doc": "github",
+   "doc_sha": "3e1040e63a5907e4c748a485d6795d739dcd5bd6",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/Spark-plugin README.md:L153-156",
+   "file": "README.md",
+   "lines": [
+    153,
+    156
+   ],
+   "lang": "text",
+   "tool": "text",
+   "kind": "prompt-format",
+   "text": "<tool_call>get_weather\n<arg_key>city</arg_key><arg_value>Paris</arg_value>\n<arg_key>days</arg_key><arg_value>3</arg_value>\n</tool_call>",
+   "doc": "github",
+   "doc_sha": "3e1040e63a5907e4c748a485d6795d739dcd5bd6",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/Spark-plugin README.md:L211-211",
+   "file": "README.md",
+   "lines": [
+    211,
+    211
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": ".venv/bin/python -m pytest Spark-plugin/tests/test_smoke.py -q",
+   "doc": "github",
+   "doc_sha": "3e1040e63a5907e4c748a485d6795d739dcd5bd6",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/Spark-plugin README.md:L223-225",
+   "file": "README.md",
+   "lines": [
+    223,
+    225
+   ],
+   "lang": "bash",
+   "tool": "vllm",
+   "kind": "command",
+   "text": "VLLM_PLUGINS=spark2_5 vllm serve /path/to/spark2_5-model \\\n  --tool-call-parser spark25 \\\n  --chat-template /path/to/chat_template.jinja",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--jinja",
+      "value": null,
+      "from": "--tool-call-parser spark25"
+     },
+     {
+      "flag": "--chat-template-file",
+      "value": "/path/to/chat_template.jinja",
+      "from": "--chat-template /path/to/chat_template.jinja"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "github",
+   "doc_sha": "3e1040e63a5907e4c748a485d6795d739dcd5bd6",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/Spark-plugin README.md:L242-242",
+   "file": "README.md",
+   "lines": [
+    242,
+    242
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "uv pip install -U \"openai>=2.25.0\"",
+   "doc": "github",
+   "doc_sha": "3e1040e63a5907e4c748a485d6795d739dcd5bd6",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/Spark-plugin README.md:L251-253",
+   "file": "README.md",
+   "lines": [
+    251,
+    253
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "uv pip install -e ./Spark-plugin --no-deps\n.venv/bin/python -c \"from importlib.metadata import entry_points; \\\nprint([(e.name, e.value) for e in entry_points(group='vllm.general_plugins')])\"",
+   "doc": "github",
+   "doc_sha": "3e1040e63a5907e4c748a485d6795d739dcd5bd6",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/Spark-plugin README.md:L273-281",
+   "file": "README.md",
+   "lines": [
+    273,
+    281
+   ],
+   "lang": "text",
+   "tool": "text",
+   "kind": "other",
+   "text": "Spark-plugin/\n+-- src/vllm_spark2_5_plugin/\n|   +-- __init__.py             # register() and entry-point integration\n|   +-- spark2_5.py               # vendored Spark2_5 model\n|   +-- spark2_5_config.py        # Transformers configuration\n|   +-- spark2_5_tool_parser.py   # Spark2_5 XML/KV parser\n+-- tests/\n|   +-- test_smoke.py           # registration and parser smoke tests\n+-- pyproject.toml",
+   "doc": "github",
+   "doc_sha": "3e1040e63a5907e4c748a485d6795d739dcd5bd6",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/Spark-MLX-LLM README.md:L40-43",
+   "file": "README.md",
+   "lines": [
+    40,
+    43
+   ],
+   "lang": "text",
+   "tool": "text",
+   "kind": "other",
+   "text": "config.json\nmodel*.safetensors\ntokenizer.json\ntokenizer_config.json",
+   "doc": "github",
+   "doc_sha": "de2b4379fa1e2f2e1f99d84c83f0e008f651d86c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/Spark-MLX-LLM README.md:L54-56",
+   "file": "README.md",
+   "lines": [
+    54,
+    56
+   ],
+   "lang": "sh",
+   "tool": "git",
+   "kind": "command",
+   "text": "git clone https://github.com/XHToken/Spark-MLX-LLM.git\ncd Spark-MLX-LLM\npython3 -m venv .venv",
+   "doc": "github",
+   "doc_sha": "de2b4379fa1e2f2e1f99d84c83f0e008f651d86c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/Spark-MLX-LLM README.md:L64-64",
+   "file": "README.md",
+   "lines": [
+    64,
+    64
+   ],
+   "lang": "sh",
+   "tool": "pip",
+   "kind": "command",
+   "text": ".venv/bin/python -m pip install -e '.[test]'",
+   "doc": "github",
+   "doc_sha": "de2b4379fa1e2f2e1f99d84c83f0e008f651d86c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/Spark-MLX-LLM README.md:L70-70",
+   "file": "README.md",
+   "lines": [
+    70,
+    70
+   ],
+   "lang": "sh",
+   "tool": "pip",
+   "kind": "command",
+   "text": ".venv/bin/python -m pip install -e '.[cpu,test]'",
+   "doc": "github",
+   "doc_sha": "de2b4379fa1e2f2e1f99d84c83f0e008f651d86c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/Spark-MLX-LLM README.md:L76-78",
+   "file": "README.md",
+   "lines": [
+    76,
+    78
+   ],
+   "lang": "sh",
+   "tool": "pip",
+   "kind": "command",
+   "text": ".venv/bin/python -m pip install -e '.[cuda12,test]'\n# or\n.venv/bin/python -m pip install -e '.[cuda13,test]'",
+   "doc": "github",
+   "doc_sha": "de2b4379fa1e2f2e1f99d84c83f0e008f651d86c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/Spark-MLX-LLM README.md:L84-84",
+   "file": "README.md",
+   "lines": [
+    84,
+    84
+   ],
+   "lang": "sh",
+   "tool": "shell",
+   "kind": "command",
+   "text": ".venv/bin/python -c 'import mlx.core as mx; print(mx.__version__)'",
+   "doc": "github",
+   "doc_sha": "de2b4379fa1e2f2e1f99d84c83f0e008f651d86c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/Spark-MLX-LLM README.md:L92-99",
+   "file": "README.md",
+   "lines": [
+    92,
+    99
+   ],
+   "lang": "sh",
+   "tool": "shell",
+   "kind": "command",
+   "text": ".venv/bin/spark-mlx-generate \\\n    --device cpu \\\n    --dtype bfloat16 \\\n    --model /path/to/spark2_5 \\\n    --prompt '只输出53乘以42的结果，不要解释。' \\\n    --max-tokens 64 \\\n    --temp 0 \\\n    --seed 1",
+   "doc": "github",
+   "doc_sha": "de2b4379fa1e2f2e1f99d84c83f0e008f651d86c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/Spark-MLX-LLM README.md:L105-105",
+   "file": "README.md",
+   "lines": [
+    105,
+    105
+   ],
+   "lang": "text",
+   "tool": "text",
+   "kind": "other",
+   "text": "53乘以42的结果是2226。",
+   "doc": "github",
+   "doc_sha": "de2b4379fa1e2f2e1f99d84c83f0e008f651d86c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/Spark-MLX-LLM README.md:L111-118",
+   "file": "README.md",
+   "lines": [
+    111,
+    118
+   ],
+   "lang": "sh",
+   "tool": "shell",
+   "kind": "command",
+   "text": "CUDA_VISIBLE_DEVICES=0 .venv/bin/spark-mlx-generate \\\n    --device gpu \\\n    --dtype bfloat16 \\\n    --model /path/to/spark2_5 \\\n    --prompt '只输出53乘以42的结果，不要解释。' \\\n    --max-tokens 64 \\\n    --temp 0 \\\n    --seed 1",
+   "doc": "github",
+   "doc_sha": "de2b4379fa1e2f2e1f99d84c83f0e008f651d86c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/Spark-MLX-LLM README.md:L124-125",
+   "file": "README.md",
+   "lines": [
+    124,
+    125
+   ],
+   "lang": "sh",
+   "tool": "shell",
+   "kind": "command",
+   "text": "CUDA_VISIBLE_DEVICES=0 .venv/bin/python -c \\\n    'import mlx.core as mx; mx.set_default_device(mx.gpu); print(mx.default_device()); print(mx.device_info())'",
+   "doc": "github",
+   "doc_sha": "de2b4379fa1e2f2e1f99d84c83f0e008f651d86c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/Spark-MLX-LLM README.md:L131-134",
+   "file": "README.md",
+   "lines": [
+    131,
+    134
+   ],
+   "lang": "sh",
+   "tool": "shell",
+   "kind": "command",
+   "text": ".venv/bin/spark-mlx-generate \\\n    --model XHToken/your-spark2_5-repository \\\n    --prompt '你好' \\\n    --max-tokens 128",
+   "doc": "github",
+   "doc_sha": "de2b4379fa1e2f2e1f99d84c83f0e008f651d86c",
+   "scope": "family: XHToken/your-spark2_5-repository"
+  },
+  {
+   "source": "github.com/XHToken/Spark-MLX-LLM README.md:L148-152",
+   "file": "README.md",
+   "lines": [
+    148,
+    152
+   ],
+   "lang": "sh",
+   "tool": "shell",
+   "kind": "command",
+   "text": ".venv/bin/spark-mlx-convert \\\n    --hf-path XHToken/Spark-X2.5-1.7B \\\n    --mlx-path ./Spark-X2.5-1.7B-8bit \\\n    --quantize \\\n    --q-bits 8",
+   "doc": "github",
+   "doc_sha": "de2b4379fa1e2f2e1f99d84c83f0e008f651d86c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/Spark-MLX-LLM README.md:L163-164",
+   "file": "README.md",
+   "lines": [
+    163,
+    164
+   ],
+   "lang": "sh",
+   "tool": "shell",
+   "kind": "command",
+   "text": ".venv/bin/spark-mlx-chat \\\n    --model ./Spark-X2.5-1.7B-8bit",
+   "doc": "github",
+   "doc_sha": "de2b4379fa1e2f2e1f99d84c83f0e008f651d86c",
+   "scope": "family: ./Spark-X2.5-1.7B-8bit"
+  },
+  {
+   "source": "github.com/XHToken/Spark-MLX-LLM README.md:L170-173",
+   "file": "README.md",
+   "lines": [
+    170,
+    173
+   ],
+   "lang": "sh",
+   "tool": "shell",
+   "kind": "command",
+   "text": ".venv/bin/spark-mlx-server \\\n    --model ./Spark-X2.5-1.7B-8bit \\\n    --host 127.0.0.1 \\\n    --port 8080",
+   "doc": "github",
+   "doc_sha": "de2b4379fa1e2f2e1f99d84c83f0e008f651d86c",
+   "scope": "family: ./Spark-X2.5-1.7B-8bit"
+  },
+  {
+   "source": "github.com/XHToken/Spark-MLX-LLM README.md:L183-203",
+   "file": "README.md",
+   "lines": [
+    183,
+    203
+   ],
+   "lang": "python",
+   "tool": "mlx",
+   "kind": "code",
+   "text": "from mlx_lm import generate\n\nfrom spark_mlx_llm import load\n\n\nmodel, tokenizer = load(\n    \"/path/to/spark2_5\",\n    dtype=\"bfloat16\",\n)\nprompt = tokenizer.apply_chat_template(\n    [{\"role\": \"user\", \"content\": \"你好\"}],\n    tokenize=False,\n    add_generation_prompt=True,\n)\nresponse = generate(\n    model,\n    tokenizer,\n    prompt=prompt,\n    max_tokens=128,\n)\nprint(response)",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-n",
+      "value": "128",
+      "from": "max_tokens: 128"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "github",
+   "doc_sha": "de2b4379fa1e2f2e1f99d84c83f0e008f651d86c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/Spark-MLX-LLM README.md:L210-230",
+   "file": "README.md",
+   "lines": [
+    210,
+    230
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "assert tokenizer.has_tool_calling\ntool_call = tokenizer.tool_parser(\n    \"set_state\"\n    \"<arg_key>name</arg_key><arg_value>上海</arg_value>\"\n    \"<arg_key>count</arg_key><arg_value>42</arg_value>\",\n    [\n        {\n            \"type\": \"function\",\n            \"function\": {\n                \"name\": \"set_state\",\n                \"parameters\": {\n                    \"type\": \"object\",\n                    \"properties\": {\n                        \"name\": {\"type\": \"string\"},\n                        \"count\": {\"type\": \"integer\"},\n                    },\n                },\n            },\n        }\n    ],\n)",
+   "doc": "github",
+   "doc_sha": "de2b4379fa1e2f2e1f99d84c83f0e008f651d86c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/Spark-MLX-LLM README.md:L236-238",
+   "file": "README.md",
+   "lines": [
+    236,
+    238
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "import mlx.core as mx\n\nmx.set_default_device(mx.gpu)  # or mx.cpu",
+   "doc": "github",
+   "doc_sha": "de2b4379fa1e2f2e1f99d84c83f0e008f651d86c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/Spark-MLX-LLM README.md:L255-257",
+   "file": "README.md",
+   "lines": [
+    255,
+    257
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "queries = mx.contiguous(queries)\nkeys = mx.contiguous(keys)\nvalues = mx.contiguous(values)",
+   "doc": "github",
+   "doc_sha": "de2b4379fa1e2f2e1f99d84c83f0e008f651d86c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/Spark-MLX-LLM README.md:L268-270",
+   "file": "README.md",
+   "lines": [
+    268,
+    270
+   ],
+   "lang": "sh",
+   "tool": "shell",
+   "kind": "command",
+   "text": ".venv/bin/python -m pytest -q\n.venv/bin/python -m ruff check .\n.venv/bin/python -m ruff format --check .",
+   "doc": "github",
+   "doc_sha": "de2b4379fa1e2f2e1f99d84c83f0e008f651d86c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/Spark-MLX-LLM README.md:L276-278",
+   "file": "README.md",
+   "lines": [
+    276,
+    278
+   ],
+   "lang": "sh",
+   "tool": "shell",
+   "kind": "command",
+   "text": "SPARK25_MODEL=/path/to/spark2_5 \\\nSPARK25_DTYPE=bfloat16 \\\n    .venv/bin/python -m pytest tests/test_integration.py -q -m integration",
+   "doc": "github",
+   "doc_sha": "de2b4379fa1e2f2e1f99d84c83f0e008f651d86c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/Spark-MLX-LLM README.md:L284-287",
+   "file": "README.md",
+   "lines": [
+    284,
+    287
+   ],
+   "lang": "sh",
+   "tool": "shell",
+   "kind": "command",
+   "text": "CUDA_VISIBLE_DEVICES=0 \\\nSPARK25_MODEL=/path/to/spark2_5 \\\nSPARK25_DTYPE=bfloat16 \\\n    .venv/bin/python -m pytest -q",
+   "doc": "github",
+   "doc_sha": "de2b4379fa1e2f2e1f99d84c83f0e008f651d86c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/Spark-MLX-LLM README.md:L311-314",
+   "file": "README.md",
+   "lines": [
+    311,
+    314
+   ],
+   "lang": "text",
+   "tool": "text",
+   "kind": "other",
+   "text": "spark_mlx_llm/model.py   Spark2_5 computation graph and cache selection\nspark_mlx_llm/loader.py  Local and Hugging Face checkpoint loading\nspark_mlx_llm/cli.py     Text generation command\ntests/                   Unit and real-checkpoint tests",
+   "doc": "github",
+   "doc_sha": "de2b4379fa1e2f2e1f99d84c83f0e008f651d86c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/LlamaFactory README.md:L478-479",
+   "file": "README.md",
+   "lines": [
+    478,
+    479
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install \"huggingface_hub<1.0.0\"\nhuggingface-cli login",
+   "doc": "github",
+   "doc_sha": "f56888d47dc5681e15b83ddbea01adddf2050adf",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/LlamaFactory README.md:L526-529",
+   "file": "README.md",
+   "lines": [
+    526,
+    529
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "git clone --depth 1 https://github.com/hiyouga/LlamaFactory.git\ncd LlamaFactory\npip install -e .\npip install -r requirements/metrics.txt",
+   "doc": "github",
+   "doc_sha": "f56888d47dc5681e15b83ddbea01adddf2050adf",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/LlamaFactory README.md:L539-539",
+   "file": "README.md",
+   "lines": [
+    539,
+    539
+   ],
+   "lang": "bash",
+   "tool": "docker",
+   "kind": "command",
+   "text": "docker run -it --rm --gpus=all --ipc=host hiyouga/llamafactory:latest",
+   "doc": "github",
+   "doc_sha": "f56888d47dc5681e15b83ddbea01adddf2050adf",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/LlamaFactory README.md:L553-553",
+   "file": "README.md",
+   "lines": [
+    553,
+    553
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "uv run llamafactory-cli webui",
+   "doc": "github",
+   "doc_sha": "f56888d47dc5681e15b83ddbea01adddf2050adf",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/LlamaFactory README.md:L565-567",
+   "file": "README.md",
+   "lines": [
+    565,
+    567
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip uninstall torch torchvision torchaudio\npip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu126\npython -c \"import torch; print(torch.cuda.is_available())\"",
+   "doc": "github",
+   "doc_sha": "f56888d47dc5681e15b83ddbea01adddf2050adf",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/LlamaFactory README.md:L581-581",
+   "file": "README.md",
+   "lines": [
+    581,
+    581
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install bitsandbytes",
+   "doc": "github",
+   "doc_sha": "f56888d47dc5681e15b83ddbea01adddf2050adf",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/LlamaFactory README.md:L587-587",
+   "file": "README.md",
+   "lines": [
+    587,
+    587
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "uv pip install bitsandbytes --no-deps",
+   "doc": "github",
+   "doc_sha": "f56888d47dc5681e15b83ddbea01adddf2050adf",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/LlamaFactory README.md:L596-596",
+   "file": "README.md",
+   "lines": [
+    596,
+    596
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install https://github.com/jllllll/bitsandbytes-windows-webui/releases/download/wheels/bitsandbytes-0.41.2.post2-py3-none-win_amd64.whl",
+   "doc": "github",
+   "doc_sha": "f56888d47dc5681e15b83ddbea01adddf2050adf",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/LlamaFactory README.md:L613-623",
+   "file": "README.md",
+   "lines": [
+    613,
+    623
+   ],
+   "lang": "bash",
+   "tool": "docker",
+   "kind": "command",
+   "text": "# Docker Hub\ndocker pull hiyouga/llamafactory:latest-910b-ubuntu\ndocker pull hiyouga/llamafactory:latest-a3-ubuntu\ndocker pull hiyouga/llamafactory:latest-910b-openeuler\ndocker pull hiyouga/llamafactory:latest-a3-openeuler\n\n# quay.io\ndocker pull quay.io/ascend/llamafactory:latest-910b-ubuntu\ndocker pull quay.io/ascend/llamafactory:latest-a3-ubuntu\ndocker pull quay.io/ascend/llamafactory:latest-910b-openeuler\ndocker pull quay.io/ascend/llamafactory:latest-a3-openeuler",
+   "doc": "github",
+   "doc_sha": "f56888d47dc5681e15b83ddbea01adddf2050adf",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/LlamaFactory README.md:L633-647",
+   "file": "README.md",
+   "lines": [
+    633,
+    647
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "# Install bitsandbytes from source\n# Clone bitsandbytes repo, Ascend NPU backend is currently enabled on multi-backend-refactor branch\ngit clone -b multi-backend-refactor https://github.com/bitsandbytes-foundation/bitsandbytes.git\ncd bitsandbytes/\n\n# Install dependencies\npip install -r requirements-dev.txt\n\n# Install the dependencies for the compilation tools. Note that the commands for this step may vary depending on the operating system. The following are provided for reference\napt-get install -y build-essential cmake\n\n# Compile & install  \ncmake -DCOMPUTE_BACKEND=npu -S .\nmake\npip install .",
+   "doc": "github",
+   "doc_sha": "f56888d47dc5681e15b83ddbea01adddf2050adf",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/LlamaFactory README.md:L653-655",
+   "file": "README.md",
+   "lines": [
+    653,
+    655
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "git clone -b main https://github.com/huggingface/transformers.git\ncd transformers\npip install .",
+   "doc": "github",
+   "doc_sha": "f56888d47dc5681e15b83ddbea01adddf2050adf",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/LlamaFactory README.md:L676-678",
+   "file": "README.md",
+   "lines": [
+    676,
+    678
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "llamafactory-cli train examples/train_lora/qwen3_lora_sft.yaml\nllamafactory-cli chat examples/inference/qwen3_lora_sft.yaml\nllamafactory-cli export examples/merge_lora/qwen3_lora_sft.yaml",
+   "doc": "github",
+   "doc_sha": "f56888d47dc5681e15b83ddbea01adddf2050adf",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/LlamaFactory README.md:L691-691",
+   "file": "README.md",
+   "lines": [
+    691,
+    691
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "llamafactory-cli webui",
+   "doc": "github",
+   "doc_sha": "f56888d47dc5681e15b83ddbea01adddf2050adf",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/LlamaFactory README.md:L699-701",
+   "file": "README.md",
+   "lines": [
+    699,
+    701
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "cd docker/docker-cuda/\ndocker compose up -d\ndocker compose exec llamafactory bash",
+   "doc": "github",
+   "doc_sha": "f56888d47dc5681e15b83ddbea01adddf2050adf",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/LlamaFactory README.md:L707-723",
+   "file": "README.md",
+   "lines": [
+    707,
+    723
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "cd docker/docker-npu/\n\n# A2 with Ubuntu\ndocker compose --profile a2-ubuntu up -d\ndocker compose --profile a2-ubuntu exec llamafactory-a2-ubuntu bash\n\n# A3 with Ubuntu\ndocker compose --profile a3-ubuntu up -d\ndocker compose --profile a3-ubuntu exec llamafactory-a3-ubuntu bash\n\n# A2 with openEuler\ndocker compose --profile a2-openeuler up -d\ndocker compose --profile a2-openeuler exec llamafactory-a2-openeuler bash\n\n# A3 with openEuler\ndocker compose --profile a3-openeuler up -d\ndocker compose --profile a3-openeuler exec llamafactory-a3-openeuler bash",
+   "doc": "github",
+   "doc_sha": "f56888d47dc5681e15b83ddbea01adddf2050adf",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/LlamaFactory README.md:L729-731",
+   "file": "README.md",
+   "lines": [
+    729,
+    731
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "cd docker/docker-rocm/\ndocker compose up -d\ndocker compose exec llamafactory bash",
+   "doc": "github",
+   "doc_sha": "f56888d47dc5681e15b83ddbea01adddf2050adf",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/LlamaFactory README.md:L739-749",
+   "file": "README.md",
+   "lines": [
+    739,
+    749
+   ],
+   "lang": "bash",
+   "tool": "docker",
+   "kind": "command",
+   "text": "docker build -f ./docker/docker-cuda/Dockerfile \\\n    --build-arg PIP_INDEX=https://pypi.org/simple \\\n    -t llamafactory:latest .\n\ndocker run -dit --ipc=host --gpus=all \\\n    -p 7860:7860 \\\n    -p 8000:8000 \\\n    --name llamafactory \\\n    llamafactory:latest\n\ndocker exec -it llamafactory bash",
+   "doc": "github",
+   "doc_sha": "f56888d47dc5681e15b83ddbea01adddf2050adf",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/LlamaFactory README.md:L755-773",
+   "file": "README.md",
+   "lines": [
+    755,
+    773
+   ],
+   "lang": "bash",
+   "tool": "docker",
+   "kind": "command",
+   "text": "docker build -f ./docker/docker-npu/Dockerfile \\\n    --build-arg PIP_INDEX=https://pypi.org/simple \\\n    -t llamafactory:latest .\n\ndocker run -dit --ipc=host \\\n    -v /usr/local/dcmi:/usr/local/dcmi \\\n    -v /usr/local/bin/npu-smi:/usr/local/bin/npu-smi \\\n    -v /usr/local/Ascend/driver:/usr/local/Ascend/driver \\\n    -v /etc/ascend_install.info:/etc/ascend_install.info \\\n    -p 7860:7860 \\\n    -p 8000:8000 \\\n    --device /dev/davinci0 \\\n    --device /dev/davinci_manager \\\n    --device /dev/devmm_svm \\\n    --device /dev/hisi_hdc \\\n    --name llamafactory \\\n    llamafactory:latest\n\ndocker exec -it llamafactory bash",
+   "doc": "github",
+   "doc_sha": "f56888d47dc5681e15b83ddbea01adddf2050adf",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/LlamaFactory README.md:L779-791",
+   "file": "README.md",
+   "lines": [
+    779,
+    791
+   ],
+   "lang": "bash",
+   "tool": "docker",
+   "kind": "command",
+   "text": "docker build -f ./docker/docker-rocm/Dockerfile \\\n    --build-arg PIP_INDEX=https://pypi.org/simple \\\n    -t llamafactory:latest .\n\ndocker run -dit --ipc=host \\\n    -p 7860:7860 \\\n    -p 8000:8000 \\\n    --device /dev/kfd \\\n    --device /dev/dri \\\n    --name llamafactory \\\n    llamafactory:latest\n\ndocker exec -it llamafactory bash",
+   "doc": "github",
+   "doc_sha": "f56888d47dc5681e15b83ddbea01adddf2050adf",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/LlamaFactory README.md:L811-811",
+   "file": "README.md",
+   "lines": [
+    811,
+    811
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "API_PORT=8000 llamafactory-cli api examples/inference/qwen3.yaml infer_backend=vllm vllm_enforce_eager=true",
+   "doc": "github",
+   "doc_sha": "f56888d47dc5681e15b83ddbea01adddf2050adf",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/LlamaFactory README.md:L824-824",
+   "file": "README.md",
+   "lines": [
+    824,
+    824
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "export USE_MODELSCOPE_HUB=1 # `set USE_MODELSCOPE_HUB=1` for Windows",
+   "doc": "github",
+   "doc_sha": "f56888d47dc5681e15b83ddbea01adddf2050adf",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/LlamaFactory README.md:L834-834",
+   "file": "README.md",
+   "lines": [
+    834,
+    834
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "export USE_OPENMIND_HUB=1 # `set USE_OPENMIND_HUB=1` for Windows",
+   "doc": "github",
+   "doc_sha": "f56888d47dc5681e15b83ddbea01adddf2050adf",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/LlamaFactory README.md:L844-845",
+   "file": "README.md",
+   "lines": [
+    844,
+    845
+   ],
+   "lang": "yaml",
+   "tool": "yaml",
+   "kind": "config",
+   "text": "report_to: wandb\nrun_name: test_run # optional",
+   "doc": "github",
+   "doc_sha": "f56888d47dc5681e15b83ddbea01adddf2050adf",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/XHToken/LlamaFactory README.md:L855-856",
+   "file": "README.md",
+   "lines": [
+    855,
+    856
+   ],
+   "lang": "yaml",
+   "tool": "yaml",
+   "kind": "config",
+   "text": "use_swanlab: true\nswanlab_run_name: test_run # optional",
+   "doc": "github",
+   "doc_sha": "f56888d47dc5681e15b83ddbea01adddf2050adf",
+   "scope": "model"
+  }
+ ],
+ "card_notes": [
+  {
+   "text": "- All evaluations are conducted in thinking mode. The recommended sampling parameters for Spark-X2.5 are temperature=1.0, top_p=0.95, and top_k=-1.",
+   "source": "XHToken/Spark-X2.5-4B README.md:L120"
+  },
+  {
+   "text": "The following commands start an OpenAI-compatible API server configured for a maximum context length of 1,048,576 tokens. This setting requires sufficient device memory; reduce `--context-length` when necessary.",
+   "source": "XHToken/Spark-X2.5-4B README.md:L156"
+  },
+  {
+   "text": "Thinking is enabled by default by both the chat template and the Qwen3 reasoning parser. To disable thinking for a specific request, set `\"chat_template_kwargs\": {\"enable_thinking\": false}`.",
+   "source": "XHToken/Spark-X2.5-4B README.md:L217"
+  },
+  {
+   "text": "-ngl 99 -c 8192 -p \"Hello\" -n 256</p><p style=\"margin: 10px 0 0 0;\">The chat template is embedded in every file. Once Spark2_5 support merges, any llama.cpp-based runner (llama-cli, llama-server, LM Studio, KoboldCpp, Jan, …) loads these files directly. This is a dense 4B text model — no MTP head, n",
+   "source": "SC117/Spark-X2.5-4B-abliterated-FIT-GGUF README.md:L59"
+  },
+  {
+   "text": "<div style=\"border: 1px solid #cbd5e1; border-radius: 12px; overflow: hidden; background: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.02);\"><div style=\"background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%); padding: 12px 16px; color: white; font-weight: 700; font-size: 14px; display: flex; a",
+   "source": "SC117/Spark-X2.5-4B-abliterated-FIT-GGUF README.md:L63"
+  }
+ ],
+ "chat_template": {
+  "gguf_sha256": "705345721970da40e6aa56db548a46ecd1d8d94a5418808fa180ac19ee77a9ba",
+  "repo_sha256": "705345721970da40e6aa56db548a46ecd1d8d94a5418808fa180ac19ee77a9ba",
+  "repo_file": "chat_template.jinja",
+  "same": true,
+  "gguf_chars": 4556,
+  "repo_chars": 4556,
+  "repo_label": "XHToken/Spark-X2.5-4B",
+  "use": "gguf"
+ },
+ "stop": {
+  "eos_token": "<｜end▁of▁sentence｜>",
+  "eos_token_id": 1,
+  "eos_token_id_source": "XHToken/Spark-X2.5-4B generation_config.json",
+  "analysis": {
+   "tokens": [
+    {
+     "id": 1,
+     "text": "<｜end▁of▁sentence｜>",
+     "source": "XHToken/Spark-X2.5-4B generation_config.json eos_token_id",
+     "eog_by": "GGUF tokenizer.ggml.eos_token_id"
+    }
+   ],
+   "missing": [],
+   "gguf": {
+    "eos": 1
+   }
+  }
+ },
+ "rope": {
+  "rope.freq_base": 5000000.0,
+  "config": {
+   "full_attention": {
+    "partial_rotary_factor": 0.25,
+    "rope_theta": 5000000
+   },
+   "sliding_attention": {
+    "partial_rotary_factor": 1.0,
+    "rope_theta": 10000
+   }
+  }
+ },
+ "aux": null,
+ "gguf": {
+  "general.architecture": "spark2_5",
+  "general.name": "Spark X2.5 4B Abliterated",
+  "general.file_type": 14,
+  "general.quantization_version": 2,
+  "_gguf_version": 3
+ },
+ "snapshot": {
+  "path": "SC117--Spark-X2.5-4B-abliterated-FIT-GGUF/0ab053e15f5343627fb68d1b421d4a7c8fa9fe87",
+  "fetched_bytes": 386099,
+  "errors": null,
+  "gated": false
+ },
+ "base_snapshot": {
+  "path": "XHToken--Spark-X2.5-4B/0bcb35678590218655dff3765b9e61c83b35e9c4",
+  "fetched_bytes": 15444349,
+  "errors": null,
+  "gated": false
+ },
+ "repo_files": {
+  ".gitattributes": {
+   "size": 2093,
+   "sha256": null,
+   "blob": "e5ba2ebc9cc389dda938f540ddcb4667cac8f18c",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "FIT-TIERS.md": {
+   "size": 1909,
+   "sha256": null,
+   "blob": "47e296d29433405eed2f59da3464cee4a9f5f2e2",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "README.md": {
+   "size": 29450,
+   "sha256": null,
+   "blob": "aa3c858a444b36aed46626830ad68d6f798857ae",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "README.zh-CN.md": {
+   "size": 28223,
+   "sha256": null,
+   "blob": "428ee01ca5a03e04ab6755ffae5f526fa2903546",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "SHA256SUMS.txt": {
+   "size": 592,
+   "sha256": null,
+   "blob": "71ebef46294db642b5305104d8306f8e4d2fddc5",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "Spark-X2.5-4B-abliterated-BF16.gguf": {
+   "size": 8229920896,
+   "sha256": "aa73aeb45870f7ebb9e5d523323b88468a2b3b613918e941bda439d8c1b59d42",
+   "blob": "8895db4136036bca1acdf414a6a2ecbfd4e13313",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (8229 MB)"
+  },
+  "Spark-X2.5-4B-abliterated-FIT-BALANCED-2.68GiB-Q5_K_S.gguf": {
+   "size": 2877626816,
+   "sha256": "bf3c8898dcb0ee03706cf04fb91b5b1d3d2aa7d571590128e65763a7050726bc",
+   "blob": "3fd79b3df490857bd4cfa646fdd1d4f6a7b6316f",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (2877 MB)"
+  },
+  "Spark-X2.5-4B-abliterated-FIT-COMPACT-2.43GiB-Q4_K.gguf": {
+   "size": 2611714496,
+   "sha256": "eb9e935c0e501a1d7a98e17504d7adcc36e07a76c830781652c4019e6eb2ad49",
+   "blob": "9972dc2e3f8feb946739f3abcfd3677cb8c2fb64",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (2611 MB)"
+  },
+  "Spark-X2.5-4B-abliterated-FIT-MINI-2.26GiB-Q4_K_S.gguf": {
+   "size": 2426554816,
+   "sha256": "f1780c336d44c6c77fe484c3fda41bf30f4b5d653a4fc591e3f676d33c205173",
+   "blob": "2af027adf7d0b1a05bd679f5ccec8f527af0aab2",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (2426 MB)"
+  },
+  "Spark-X2.5-4B-abliterated-FIT-QUALITY-3.15GiB-Q6_K.gguf": {
+   "size": 3379173056,
+   "sha256": "249d4ed5b7223bee68341d7b2f7813eca1c4dab2c8aca8be43d207d2475f5d6b",
+   "blob": "4787f35aeda5be797b238752ddd88a925799d7e6",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (3379 MB)"
+  },
+  "assets/fit-gguf-banner.png": {
+   "size": 9330,
+   "sha256": null,
+   "blob": "f34179dfecc0f03a0982c3f30b2f4f8b4f5dea39",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "results/labeled-curves-en.png": {
+   "size": 156143,
+   "sha256": "81024b50e192aa3b692a4721f92e17a304904d6422558b0cf72a41a14be7c59d",
+   "blob": "0370ff16c1d43ae6446ffcbd868e657df0d1559f",
+   "fetched": true,
+   "verified": "lfs-sha256"
+  },
+  "results/labeled-curves-zh.png": {
+   "size": 158359,
+   "sha256": "1ae16809b5621c0fd8fe1dc31cddf027abd07093c4823c04f6658bc6ec019289",
+   "blob": "f1f6d551e545a56b8085dde69ef6075c2f4698b2",
+   "fetched": true,
+   "verified": "lfs-sha256"
+  }
+ },
+ "base_repo_files": {
+  ".gitattributes": {
+   "size": 1793,
+   "sha256": null,
+   "blob": "9bfe29e47ca5817a9ba9012d8c2cd8b1fb69fcc6",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "LICENSE": {
+   "size": 11338,
+   "sha256": null,
+   "blob": "b7456707c547e5df6a88ee0255ad9c422ac52f9b",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "README.md": {
+   "size": 23607,
+   "sha256": null,
+   "blob": "5ede4d44ae8d652eedfdca56e08ac7486e8cc0e7",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "chat_template.jinja": {
+   "size": 4648,
+   "sha256": null,
+   "blob": "6c6617eeee158db844c3b0157a1c38604b395bb4",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "config.json": {
+   "size": 2035,
+   "sha256": null,
+   "blob": "2c6a1864a9dbd661704d7699f17adbc186547687",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "configuration_spark.py": {
+   "size": 4329,
+   "sha256": null,
+   "blob": "cca611a0302679df685ca442d21c2756884aa47e",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "generation_config.json": {
+   "size": 281,
+   "sha256": null,
+   "blob": "d47d113162317c2d4338dd7f0727663b6aa9fb57",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "images/model-benchmark-comparison.svg": {
+   "size": 31544,
+   "sha256": null,
+   "blob": "1dea537ae66225f699ac868e894ce63de6d3c4df",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "images/post_training_pipeline.svg": {
+   "size": 10602,
+   "sha256": null,
+   "blob": "d76949ed578b4c426205c5abd39b41e7258621dc",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "images/spark25-hybrid-architecture-light.png": {
+   "size": 429073,
+   "sha256": "5eddac6baf8e8460cc2a75b96070eff4074428674f3c33665bc2ff9479756bbd",
+   "blob": "ab92ebdb0e530f5cd4aeca9c9ba891bf99c8513c",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "images/xhtoken-wechat.jpg": {
+   "size": 160131,
+   "sha256": "0c3fbd25c987237b383461fdaa96bf6881af615c23ba3baf19e51a7879354ddb",
+   "blob": "d6b44ebbd3ba2e1528a283bbd5f28fe964e49977",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "merges.txt": {
+   "size": 1567883,
+   "sha256": null,
+   "blob": "3f921c3aed6a693e3dcfd15b7171467fcade71b3",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "model-00001-of-00005.safetensors": {
+   "size": 1982449560,
+   "sha256": "cc36bfe9ca2b839df89fd8c0c94f566f6717bd07ae859dfad074b303f90bdf5b",
+   "blob": "252c041df9de07d2010fbc669b3171321275e4d3",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (1982 MB)"
+  },
+  "model-00002-of-00005.safetensors": {
+   "size": 1993132424,
+   "sha256": "d98ea6b9059433181042c1ff9fbec167ae2f0850029787c82520d04a04942952",
+   "blob": "bc118a71c5d51cb804bf32a1674a4b9a10fe35d1",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (1993 MB)"
+  },
+  "model-00003-of-00005.safetensors": {
+   "size": 1993225080,
+   "sha256": "0ba22891378cf0ef3d9bf1f73c3159df3fc3dab8aa6e17679a9ffe7e9d867526",
+   "blob": "d840bd0736815ed6997308e8122d6903e34af2d5",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (1993 MB)"
+  },
+  "model-00004-of-00005.safetensors": {
+   "size": 1993132448,
+   "sha256": "6aae0314fdf8fc3801677c017f296bcb14bc16095286c3bd1e7ce27e0398a113",
+   "blob": "5b096cca64e52e8b2a04fcd78d3b8716912d2556",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (1993 MB)"
+  },
+  "model-00005-of-00005.safetensors": {
+   "size": 262252896,
+   "sha256": "ffe48ea1c2ee668407dd6ded0c02529da9c54580a8c38f6e53cf902b85a1bd95",
+   "blob": "4130924a2ac59a02fee61a6086d45bd749f6a629",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (262 MB)"
+  },
+  "model.safetensors.index.json": {
+   "size": 24133,
+   "sha256": null,
+   "blob": "065dd034896142c54055eec0961b99fd15f304ca",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "modeling_spark.py": {
+   "size": 19418,
+   "sha256": null,
+   "blob": "4e48c7a98111e2a8457970fad0361db3404c154f",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "special_tokens_map.json": {
+   "size": 156,
+   "sha256": null,
+   "blob": "9a77af52dba6347730c06368baa133534a2ac129",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "tokenizer.json": {
+   "size": 10115786,
+   "sha256": "710cce15cf3565674c499f9413997c6e8101f2bdd96245cff8f0311fb501248c",
+   "blob": "59e23a7cec1b1f11068e98f357cd441e8dad4a6e",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "tokenizer_config.json": {
+   "size": 4797,
+   "sha256": null,
+   "blob": "102251cfcc5cd0aa6d2421d84321a45c9476c2cf",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "vocab.json": {
+   "size": 3032795,
+   "sha256": null,
+   "blob": "9cca33b9d8dc48d4fe1ae44743b0b7c1df5bf0c1",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  }
+ },
+ "found_in": [
+  "familia #58"
+ ],
+ "match": null,
+ "local_check": null,
+ "unknown": null,
+ "warnings": null,
+ "updated": "2026-10-19",
+ "by": "scripts/model_db.py",
+ "weights": "absent (damp)",
+ "gguf_meta": {
+  "general.architecture": "spark2_5",
+  "general.type": "model",
+  "general.sampling.top_k": -1,
+  "general.sampling.top_p": 0.949999988079071,
+  "general.sampling.temp": 1.0,
+  "general.sampling.penalty_repeat": 1.0,
+  "general.name": "Spark X2.5 4B Abliterated",
+  "general.finetune": "abliterated",
+  "general.basename": "Spark-X2.5",
+  "general.size_label": "4B",
+  "general.license": "apache-2.0",
+  "general.base_model.count": 1,
+  "general.base_model.0.name": "Spark X2.5 4B Base",
+  "general.base_model.0.organization": "XHToken",
+  "general.base_model.0.repo_url": "https://huggingface.co/XHToken/Spark-X2.5-4B-Base",
+  "general.tags": [
+   "llm",
+   "sparkx2_5",
+   "text-generation"
+  ],
+  "general.languages": [
+   "en",
+   "zh"
+  ],
+  "spark2_5.block_count": 36,
+  "spark2_5.context_length": 1048576,
+  "spark2_5.embedding_length": 2560,
+  "spark2_5.feed_forward_length": 10240,
+  "spark2_5.attention.head_count": 16,
+  "spark2_5.attention.head_count_kv": 4,
+  "spark2_5.rope.freq_base": 5000000.0,
+  "spark2_5.rope.freq_base_swa": 10000.0,
+  "spark2_5.attention.layer_norm_rms_epsilon": 9.999999974752427e-07,
+  "spark2_5.attention.key_length": 256,
+  "spark2_5.attention.value_length": 256,
+  "spark2_5.vocab_size": 131072,
+  "spark2_5.attention.sliding_window": 512,
+  "spark2_5.attention.sliding_window_pattern": {
+   "array_len": 36
+  },
+  "spark2_5.rope.dimension_count": 64,
+  "spark2_5.rope.dimension_count_swa": 256,
+  "tokenizer.ggml.model": "gpt2",
+  "tokenizer.ggml.pre": "spark2_5",
+  "tokenizer.ggml.tokens": {
+   "array_len": 131072
+  },
+  "tokenizer.ggml.token_type": {
+   "array_len": 131072
+  },
+  "tokenizer.ggml.merges": {
+   "array_len": 130716
+  },
+  "tokenizer.ggml.bos_token_id": 0,
+  "tokenizer.ggml.eos_token_id": 1,
+  "tokenizer.ggml.unknown_token_id": 5,
+  "tokenizer.ggml.padding_token_id": 2,
+  "tokenizer.chat_template": {
+   "sha256": "705345721970da40e6aa56db548a46ecd1d8d94a5418808fa180ac19ee77a9ba",
+   "chars": 4556
+  },
+  "general.quantization_version": 2,
+  "general.file_type": 14,
+  "quantize.imatrix.file": "/run/media/s117/OS/FIT-GGUF/experiments/2026-09-06-spark-x25-4tier/spark-imatrix.gguf",
+  "quantize.imatrix.dataset": "/run/media/s117/OS/Models/imatrix-calibration/APEX-imatrix-Small.txt",
+  "quantize.imatrix.entries_count": 216,
+  "quantize.imatrix.chunks_count": 500,
+  "_gguf_version": 3,
+  "_n_tensors": 290
+ },
+ "base_chain": [
+  {
+   "repo": "XHToken/Spark-X2.5-4B",
+   "api_id": "XHToken/Spark-X2.5-4B",
+   "revision": "0bcb35678590218655dff3765b9e61c83b35e9c4",
+   "via": "card base_model",
+   "card_data": {
+    "license": "apache-2.0",
+    "base_model": [
+     "XHToken/Spark-X2.5-4B-Base"
+    ],
+    "pipeline_tag": "text-generation",
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "text-generation",
+   "safetensors": {
+    "parameters": {
+     "BF16": 4112079360
+    },
+    "total": 4112079360
+   },
+   "license_files": [
+    "LICENSE"
+   ]
+  },
+  {
+   "repo": "XHToken/Spark-X2.5-4B-Base",
+   "api_id": "XHToken/Spark-X2.5-4B-Base",
+   "revision": "df0e5accafb1eb049430476439b61f4793a7d2f7",
+   "via": "XHToken/Spark-X2.5-4B card base_model",
+   "card_data": {
+    "license": "apache-2.0",
+    "language": [
+     "en",
+     "zh"
+    ],
+    "pipeline_tag": "text-generation",
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "text-generation",
+   "safetensors": {
+    "parameters": {
+     "BF16": 4112079360
+    },
+    "total": 4112079360
+   },
+   "license_files": [
+    "LICENSE"
+   ]
+  }
+ ],
+ "github": [
+  {
+   "repo": "XHToken/Spark-plugin",
+   "resolved": "XHToken/Spark-plugin",
+   "sha": "3e1040e63a5907e4c748a485d6795d739dcd5bd6",
+   "renamed": null,
+   "description": "Spark-plugin for Spark2.5 model, enables seamless loading and serving Spar2.5 large language model within vLLM framework. Implements custom model plugin to support weights loading, tokenizer and inference runtime without modifying original vLLM source code.",
+   "license_spdx": "Apache-2.0",
+   "files": {
+    "license": {
+     "path": "LICENSE",
+     "sha256": "cc2f8e468cb7bc042c9ceec146612c6235b777b30ea6bdc43924616714be82b9",
+     "bytes": 11345
+    },
+    "readme": {
+     "path": "README.md",
+     "sha256": "4099b316729e41e5fdd455cec816688bdcb0fe4096fce02cca0dbaafab17f44c",
+     "bytes": 9619
+    }
+   },
+   "extra": null,
+   "snapshot": "github/XHToken--Spark-plugin/3e1040e63a5907e4c748a485d6795d739dcd5bd6"
+  },
+  {
+   "repo": "XHToken/Spark-MLX-LLM",
+   "resolved": "XHToken/Spark-MLX-LLM",
+   "sha": "de2b4379fa1e2f2e1f99d84c83f0e008f651d86c",
+   "renamed": null,
+   "description": null,
+   "license_spdx": "Apache-2.0",
+   "files": {
+    "license": {
+     "path": "LICENSE",
+     "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+     "bytes": 11357
+    },
+    "readme": {
+     "path": "README.md",
+     "sha256": "9942bff4ead64f55f1ebf188fef747d4f7b9b637a415fe63d145cb2e98ede9ab",
+     "bytes": 8415
+    }
+   },
+   "extra": null,
+   "snapshot": "github/XHToken--Spark-MLX-LLM/de2b4379fa1e2f2e1f99d84c83f0e008f651d86c"
+  },
+  {
+   "repo": "XHToken/LlamaFactory",
+   "resolved": "XHToken/LlamaFactory",
+   "sha": "f56888d47dc5681e15b83ddbea01adddf2050adf",
+   "renamed": null,
+   "description": "Unified Efficient Fine-Tuning of 100+ LLMs & VLMs (ACL 2024)",
+   "license_spdx": "Apache-2.0",
+   "files": {
+    "license": {
+     "path": "LICENSE",
+     "sha256": "50e6751797c50dedd75ef1b8a0d9e42f5f8472e9fbce91f34718e9f97b0c780a",
+     "bytes": 11324
+    },
+    "readme": {
+     "path": "README.md",
+     "sha256": "197c53f0293f58ac6464d2614ce7bde2645596a0b192588b31df3e68590dd7eb",
+     "bytes": 70227
+    }
+   },
+   "extra": null,
+   "snapshot": "github/XHToken--LlamaFactory/f56888d47dc5681e15b83ddbea01adddf2050adf"
+  }
+ ],
+ "github_dropped": [
+  {
+   "repo": "Scorp1o117/FIT-GGUF",
+   "why": "owner and name unrelated to the model's Hugging Face repos"
+  },
+  {
+   "repo": "ggml-org/llama.cpp",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "ggml-org/llama.cpp",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "ollama/ollama",
+   "why": "inference/training tool repo"
+  }
+ ],
+ "descriptor": {
+  "repo_id": {
+   "effective": "SC117/Spark-X2.5-4B-abliterated-FIT-GGUF",
+   "source": "HF API id"
+  },
+  "revision": {
+   "effective": "0ab053e15f5343627fb68d1b421d4a7c8fa9fe87",
+   "source": "pinned (manifest / database)"
+  },
+  "file": {
+   "effective": "Spark-X2.5-4B-abliterated-FIT-MINI-2.26GiB-Q4_K_S.gguf",
+   "source": "HF API siblings"
+  },
+  "bytes": {
+   "effective": 2426554816,
+   "source": "HF API LFS size"
+  },
+  "sha256": {
+   "effective": "f1780c336d44c6c77fe484c3fda41bf30f4b5d653a4fc591e3f676d33c205173",
+   "source": "HF API LFS oid"
+  },
+  "quant": {
+   "effective": "Q4_K_S",
+   "source": "file name",
+   "values": [
+    {
+     "value": "Q4_K_S",
+     "source": "file name"
+    },
+    {
+     "value": "Q4_K_S",
+     "source": "GGUF general.file_type"
+    }
+   ]
+  },
+  "license": {
+   "effective": "apache-2.0",
+   "source": "SC117/Spark-X2.5-4B-abliterated-FIT-GGUF card license",
+   "values": [
+    {
+     "value": "apache-2.0",
+     "source": "SC117/Spark-X2.5-4B-abliterated-FIT-GGUF card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "XHToken/Spark-X2.5-4B card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "XHToken/Spark-X2.5-4B-Base card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "GGUF general.license"
+    }
+   ]
+  },
+  "code_license": {
+   "effective": "Apache-2.0",
+   "source": "GitHub github.com/XHToken/Spark-plugin license (spdx)",
+   "values": [
+    {
+     "value": "Apache-2.0",
+     "source": "GitHub github.com/XHToken/Spark-plugin license (spdx)"
+    },
+    {
+     "value": "Apache-2.0",
+     "source": "GitHub github.com/XHToken/Spark-MLX-LLM license (spdx)"
+    },
+    {
+     "value": "Apache-2.0",
+     "source": "GitHub github.com/XHToken/LlamaFactory license (spdx)"
+    }
+   ]
+  },
+  "license_file": {
+   "effective": "github.com/XHToken/Spark-plugin@3e1040e63a59/LICENSE",
+   "source": "GitHub github.com/XHToken/Spark-plugin",
+   "values": [
+    {
+     "value": "github.com/XHToken/Spark-plugin@3e1040e63a59/LICENSE",
+     "source": "GitHub github.com/XHToken/Spark-plugin"
+    },
+    {
+     "value": "github.com/XHToken/Spark-MLX-LLM@de2b4379fa1e/LICENSE",
+     "source": "GitHub github.com/XHToken/Spark-MLX-LLM"
+    },
+    {
+     "value": "github.com/XHToken/LlamaFactory@f56888d47dc5/LICENSE",
+     "source": "GitHub github.com/XHToken/LlamaFactory"
+    },
+    {
+     "value": "XHToken/Spark-X2.5-4B@0bcb35678590/LICENSE",
+     "source": "XHToken/Spark-X2.5-4B repo file"
+    },
+    {
+     "value": "XHToken/Spark-X2.5-4B-Base@df0e5accafb1/LICENSE",
+     "source": "XHToken/Spark-X2.5-4B-Base repo file"
+    }
+   ]
+  },
+  "base_model_chain": {
+   "effective": "XHToken/Spark-X2.5-4B",
+   "source": "card base_model",
+   "values": [
+    {
+     "value": "XHToken/Spark-X2.5-4B",
+     "source": "card base_model"
+    },
+    {
+     "value": "XHToken/Spark-X2.5-4B-Base",
+     "source": "XHToken/Spark-X2.5-4B card base_model"
+    }
+   ]
+  },
+  "gguf_base_model": {
+   "effective": {
+    "name": "Spark X2.5 4B Base",
+    "organization": "XHToken",
+    "repo_url": "https://huggingface.co/XHToken/Spark-X2.5-4B-Base"
+   },
+   "source": "GGUF general.base_model.0"
+  },
+  "architecture": {
+   "effective": "spark2_5",
+   "source": "GGUF general.architecture",
+   "values": [
+    {
+     "value": "spark2_5",
+     "source": "GGUF general.architecture"
+    },
+    {
+     "value": "spark2_5",
+     "source": "HF API gguf.architecture"
+    }
+   ]
+  },
+  "hf_architectures": {
+   "effective": [
+    "Spark2_5ForCausalLM"
+   ],
+   "source": "XHToken/Spark-X2.5-4B config.json architectures"
+  },
+  "hf_model_type": {
+   "effective": "spark2_5",
+   "source": "XHToken/Spark-X2.5-4B config.json model_type"
+  },
+  "parameters": {
+   "effective": 4112079360,
+   "source": "HF API gguf.total (SC117/Spark-X2.5-4B-abliterated-FIT-GGUF)",
+   "values": [
+    {
+     "value": 4112079360,
+     "source": "HF API gguf.total (SC117/Spark-X2.5-4B-abliterated-FIT-GGUF)"
+    },
+    {
+     "value": 4112079360,
+     "source": "HF API safetensors.total (XHToken/Spark-X2.5-4B)"
+    },
+    {
+     "value": 4112079360,
+     "source": "HF API safetensors.total (XHToken/Spark-X2.5-4B-Base)"
+    }
+   ]
+  },
+  "size_label": {
+   "effective": "4B",
+   "source": "GGUF general.size_label"
+  },
+  "ctx_statements": {
+   "effective": {
+    "value": 1048576,
+    "quote": "The following commands start an OpenAI-compatible API server configured for a maximum context length of 1,048,576 tokens. This setting requires sufficient device memory; reduce `--context-length` when necessary."
+   },
+   "source": "XHToken/Spark-X2.5-4B README.md:L156",
+   "values": [
+    {
+     "value": {
+      "value": 1048576,
+      "quote": "The following commands start an OpenAI-compatible API server configured for a maximum context length of 1,048,576 tokens. This setting requires sufficient device memory; reduce `--context-length` when necessary."
+     },
+     "source": "XHToken/Spark-X2.5-4B README.md:L156"
+    },
+    {
+     "value": {
+      "value": 1048576,
+      "quote": "--context-length 1048576 \\"
+     },
+     "source": "XHToken/Spark-X2.5-4B README.md:L176"
+    },
+    {
+     "value": {
+      "value": 1048576,
+      "quote": "--context-length 1048576 \\"
+     },
+     "source": "XHToken/Spark-X2.5-4B README.md:L209"
+    }
+   ]
+  },
+  "ctx": {
+   "effective": 1048576,
+   "source": "card: XHToken/Spark-X2.5-4B README.md:L156",
+   "values": [
+    {
+     "value": 1048576,
+     "source": "card: XHToken/Spark-X2.5-4B README.md:L156"
+    },
+    {
+     "value": 1048576,
+     "source": "XHToken/Spark-X2.5-4B config.json max_position_embeddings"
+    },
+    {
+     "value": 1048576,
+     "source": "GGUF spark2_5.context_length"
+    }
+   ],
+   "precedence": "card statement > config.json > GGUF header > GitHub README"
+  },
+  "pipeline_tag": {
+   "effective": "text-generation",
+   "source": "SC117/Spark-X2.5-4B-abliterated-FIT-GGUF HF API pipeline_tag",
+   "values": [
+    {
+     "value": "text-generation",
+     "source": "SC117/Spark-X2.5-4B-abliterated-FIT-GGUF HF API pipeline_tag"
+    },
+    {
+     "value": "text-generation",
+     "source": "XHToken/Spark-X2.5-4B HF API pipeline_tag"
+    },
+    {
+     "value": "text-generation",
+     "source": "XHToken/Spark-X2.5-4B-Base HF API pipeline_tag"
+    }
+   ]
+  },
+  "languages": {
+   "effective": [
+    "en",
+    "zh"
+   ],
+   "source": "SC117/Spark-X2.5-4B-abliterated-FIT-GGUF card language",
+   "values": [
+    {
+     "value": [
+      "en",
+      "zh"
+     ],
+     "source": "SC117/Spark-X2.5-4B-abliterated-FIT-GGUF card language"
+    },
+    {
+     "value": [
+      "en",
+      "zh"
+     ],
+     "source": "XHToken/Spark-X2.5-4B-Base card language"
+    },
+    {
+     "value": [
+      "en",
+      "zh"
+     ],
+     "source": "GGUF general.languages"
+    }
+   ]
+  }
+ },
+ "required_params": {
+  "kind": "chat",
+  "native_ctx": 1048576,
+  "native_ctx_source": "card: XHToken/Spark-X2.5-4B README.md:L156",
+  "yarn": null,
+  "yarn_source": null,
+  "items": [
+   {
+    "class": "REQUIRED",
+    "flag": "--jinja",
+    "value": null,
+    "source": "GGUF tokenizer.chat_template (705345721970)",
+    "why_required": "messages, tool calls and thinking are formatted by the model's chat template; without --jinja llama-server falls back to a built-in approximation",
+    "also": [
+     "XHToken/Spark-X2.5-4B README.md:L163-179",
+     "XHToken/Spark-X2.5-4B README.md:L185-212",
+     "github.com/XHToken/Spark-plugin README.md:L115-120",
+     "github.com/XHToken/Spark-plugin README.md:L141-145",
+     "github.com/XHToken/Spark-plugin README.md:L223-225"
+    ]
+   },
+   {
+    "class": "REQUIRED",
+    "flag": "--reasoning-format",
+    "value": "deepseek",
+    "source": "XHToken/Spark-X2.5-4B README.md:L163-179",
+    "why_required": "translated from --reasoning-parser qwen3: the card serves it with a reasoning parser; llama-server separates <think> with --reasoning-format deepseek (its default)",
+    "translated": true,
+    "also": [
+     "XHToken/Spark-X2.5-4B README.md:L185-212"
+    ]
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--temp",
+    "value": "1",
+    "source": "XHToken/Spark-X2.5-4B generation_config.json",
+    "why_required": "the card's recommended sampling (generation_config.json)"
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--top-p",
+    "value": "0.95",
+    "source": "XHToken/Spark-X2.5-4B generation_config.json",
+    "why_required": "the card's recommended sampling (generation_config.json)"
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--top-k",
+    "value": "-1",
+    "source": "XHToken/Spark-X2.5-4B generation_config.json",
+    "why_required": "the card's recommended sampling (generation_config.json)"
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--repeat-penalty",
+    "value": "1",
+    "source": "XHToken/Spark-X2.5-4B generation_config.json",
+    "why_required": "the card's recommended sampling (generation_config.json)"
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--presence-penalty",
+    "value": "0",
+    "source": "XHToken/Spark-X2.5-4B generation_config.json",
+    "why_required": "the card's recommended sampling (generation_config.json)"
+   }
+  ]
+ },
+ "blockers": null,
+ "params_problems": null,
+ "params_build": "b11374",
+ "native_ctx": 1048576,
+ "native_ctx_source": "card: XHToken/Spark-X2.5-4B README.md:L156",
+ "license_info": {
+  "id": "apache-2.0",
+  "id_source": "SC117/Spark-X2.5-4B-abliterated-FIT-GGUF card front matter license",
+  "name": null,
+  "summary": "apache-2.0",
+  "summary_source": "SC117/Spark-X2.5-4B-abliterated-FIT-GGUF card license",
+  "link": "https://huggingface.co/XHToken/Spark-X2.5-4B/blob/0bcb35678590218655dff3765b9e61c83b35e9c4/LICENSE",
+  "link_source": "license file in the repo",
+  "texts": [
+   {
+    "file": "XHToken/Spark-X2.5-4B@0bcb35678590/LICENSE",
+    "path": "/home/green/.local/share/gguf/hf-meta/XHToken--Spark-X2.5-4B/0bcb35678590218655dff3765b9e61c83b35e9c4/LICENSE",
+    "url": "https://huggingface.co/XHToken/Spark-X2.5-4B/blob/0bcb35678590218655dff3765b9e61c83b35e9c4/LICENSE",
+    "sha256": "525c465ab952779d2d360a9ff36f7f49ae018a23d80302ff839a850a77784c36",
+    "bytes": 11338,
+    "what": "model"
+   },
+   {
+    "file": "github.com/XHToken/Spark-plugin@3e1040e63a59/LICENSE",
+    "path": "/home/green/.local/share/gguf/hf-meta/github/XHToken--Spark-plugin/3e1040e63a5907e4c748a485d6795d739dcd5bd6/LICENSE",
+    "url": "https://github.com/XHToken/Spark-plugin/blob/3e1040e63a5907e4c748a485d6795d739dcd5bd6/LICENSE",
+    "sha256": "cc2f8e468cb7bc042c9ceec146612c6235b777b30ea6bdc43924616714be82b9",
+    "bytes": 11345,
+    "what": "code (GitHub XHToken/Spark-plugin, spdx Apache-2.0)"
+   },
+   {
+    "file": "github.com/XHToken/Spark-MLX-LLM@de2b4379fa1e/LICENSE",
+    "path": "/home/green/.local/share/gguf/hf-meta/github/XHToken--Spark-MLX-LLM/de2b4379fa1e2f2e1f99d84c83f0e008f651d86c/LICENSE",
+    "url": "https://github.com/XHToken/Spark-MLX-LLM/blob/de2b4379fa1e2f2e1f99d84c83f0e008f651d86c/LICENSE",
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+    "bytes": 11357,
+    "what": "code (GitHub XHToken/Spark-MLX-LLM, spdx Apache-2.0)"
+   },
+   {
+    "file": "github.com/XHToken/LlamaFactory@f56888d47dc5/LICENSE",
+    "path": "/home/green/.local/share/gguf/hf-meta/github/XHToken--LlamaFactory/f56888d47dc5681e15b83ddbea01adddf2050adf/LICENSE",
+    "url": "https://github.com/XHToken/LlamaFactory/blob/f56888d47dc5681e15b83ddbea01adddf2050adf/LICENSE",
+    "sha256": "50e6751797c50dedd75ef1b8a0d9e42f5f8472e9fbce91f34718e9f97b0c780a",
+    "bytes": 11324,
+    "what": "code (GitHub XHToken/LlamaFactory, spdx Apache-2.0)"
+   }
+  ],
+  "obligations": [
+   {
+    "quote": "(a) You must give any other recipients of the Work or",
+    "source": "XHToken/Spark-X2.5-4B LICENSE:L95"
+   },
+   {
+    "quote": "(b) You must cause any modified files to carry prominent notices",
+    "source": "XHToken/Spark-X2.5-4B LICENSE:L98"
+   },
+   {
+    "quote": "(c) You must retain, in the Source form of any Derivative Works",
+    "source": "XHToken/Spark-X2.5-4B LICENSE:L101"
+   },
+   {
+    "quote": "attribution notices from the Source form of the Work,",
+    "source": "XHToken/Spark-X2.5-4B LICENSE:L103"
+   },
+   {
+    "quote": "include a readable copy of the attribution notices contained",
+    "source": "XHToken/Spark-X2.5-4B LICENSE:L109"
+   },
+   {
+    "quote": "within such NOTICE file, excluding those notices that do not",
+    "source": "XHToken/Spark-X2.5-4B LICENSE:L110"
+   },
+   {
+    "quote": "of the NOTICE file are for informational purposes only and",
+    "source": "XHToken/Spark-X2.5-4B LICENSE:L117"
+   },
+   {
+    "quote": "do not modify the License. You may add Your own attribution",
+    "source": "XHToken/Spark-X2.5-4B LICENSE:L118"
+   }
+  ],
+  "gated": false,
+  "unknown": false,
+  "seen": [
+   {
+    "value": "apache-2.0",
+    "source": "SC117/Spark-X2.5-4B-abliterated-FIT-GGUF card license"
+   },
+   {
+    "value": "apache-2.0",
+    "source": "XHToken/Spark-X2.5-4B card license"
+   },
+   {
+    "value": "apache-2.0",
+    "source": "XHToken/Spark-X2.5-4B-Base card license"
+   },
+   {
+    "value": "apache-2.0",
+    "source": "GGUF general.license"
+   }
+  ]
+ },
+ "role_inference": {
+  "role": "general",
+  "evidence": [
+   "general +1 (card front matter: pipeline_tag: text-generation (generic chat model))",
+   "general +1 (GGUF metadata: general.architecture spark2_5 (generative))"
+  ]
+ },
+ "repo_bytes": 19525376179
+}

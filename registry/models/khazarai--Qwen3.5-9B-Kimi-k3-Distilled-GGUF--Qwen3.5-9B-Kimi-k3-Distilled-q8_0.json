@@ -1,0 +1,695 @@
+{
+ "schema": 2,
+ "id": "khazarai--Qwen3.5-9B-Kimi-k3-Distilled-GGUF--Qwen3.5-9B-Kimi-k3-Distilled-q8_0",
+ "repo": "khazarai/Qwen3.5-9B-Kimi-k3-Distilled-GGUF",
+ "revision": "25e86f7ac4f6698fb1181774cd461ccf32600302",
+ "file": "Qwen3.5-9B-Kimi-k3-Distilled-q8_0.gguf",
+ "sha256": "5a248603f2f95cc136e771de1f0582535e63f7195824420c7a8a38b306369d12",
+ "bytes": 9527501600,
+ "quant": "Q8_0",
+ "arch": "qwen35",
+ "roles": [
+  "coder"
+ ],
+ "license": "apache-2.0",
+ "license_source": "khazarai/Qwen3.5-9B-Kimi-k3-Distilled-GGUF card license",
+ "ctx": 262144,
+ "ctx_source": "GGUF qwen35.context_length",
+ "card_ctx": null,
+ "card_ctx_source": null,
+ "base_model": "khazarai/Qwen3.5-9B-Kimi-k3-Distilled",
+ "base_revision": "3a8cc8a0406d74c8dbf6daadd5f96bb21168e5c7",
+ "card_defaults": null,
+ "card_defaults_source": null,
+ "card_default_set": null,
+ "card_defaults_how": "the card and generation_config.json state no sampling values",
+ "card_sampling_modes": null,
+ "card_default_mode": null,
+ "card_default_mode_source": null,
+ "card_sampling_sets": null,
+ "card_commands": null,
+ "card_notes": null,
+ "chat_template": {
+  "gguf_sha256": "8452ca85cb1e0ff04304c02f417a53305d5ba17f6eb9d5693343ad8355f985a8",
+  "repo_sha256": "8452ca85cb1e0ff04304c02f417a53305d5ba17f6eb9d5693343ad8355f985a8",
+  "repo_file": "chat_template.jinja",
+  "same": true,
+  "gguf_chars": 7992,
+  "repo_chars": 7992,
+  "repo_label": "khazarai/Qwen3.5-9B-Kimi-k3-Distilled",
+  "use": "gguf"
+ },
+ "stop": {
+  "eos_token": "<|im_end|>",
+  "eos_token_id": [
+   248046,
+   248044
+  ],
+  "eos_token_id_source": "khazarai/Qwen3.5-9B-Kimi-k3-Distilled generation_config.json",
+  "analysis": {
+   "tokens": [
+    {
+     "id": 248046,
+     "text": "<|im_end|>",
+     "source": "khazarai/Qwen3.5-9B-Kimi-k3-Distilled generation_config.json eos_token_id",
+     "eog_by": "GGUF tokenizer.ggml.eos_token_id"
+    },
+    {
+     "id": 248044,
+     "text": "<|endoftext|>",
+     "source": "khazarai/Qwen3.5-9B-Kimi-k3-Distilled generation_config.json eos_token_id",
+     "eog_by": "llama.cpp built-in EOG text"
+    }
+   ],
+   "missing": [],
+   "gguf": {
+    "eos": 248046
+   }
+  }
+ },
+ "rope": {
+  "rope.freq_base": 10000000.0,
+  "config": {
+   "mrope_interleaved": true,
+   "mrope_section": [
+    11,
+    11,
+    10
+   ],
+   "partial_rotary_factor": 0.25,
+   "rope_theta": 10000000,
+   "rope_type": "default"
+  }
+ },
+ "aux": null,
+ "gguf": {
+  "general.architecture": "qwen35",
+  "general.name": "Qwen3.5 9B Kimi K3 Distilled",
+  "general.file_type": 7,
+  "general.quantization_version": 2,
+  "_gguf_version": 3
+ },
+ "snapshot": {
+  "path": "khazarai--Qwen3.5-9B-Kimi-k3-Distilled-GGUF/25e86f7ac4f6698fb1181774cd461ccf32600302",
+  "fetched_bytes": 5974,
+  "errors": null,
+  "gated": false
+ },
+ "base_snapshot": {
+  "path": "khazarai--Qwen3.5-9B-Kimi-k3-Distilled/3a8cc8a0406d74c8dbf6daadd5f96bb21168e5c7",
+  "fetched_bytes": 20102875,
+  "errors": null,
+  "gated": false
+ },
+ "repo_files": {
+  ".gitattributes": {
+   "size": 1831,
+   "sha256": null,
+   "blob": "c7fc8f5eefcc5c5755231ea81049edd628e57532",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "Qwen3.5-9B-Kimi-k3-Distilled-f16.gguf": {
+   "size": 17920697120,
+   "sha256": "1c56e7ba7e902130fccbfb220cec45dd6d1ac419295ef48056761d18a12548e4",
+   "blob": "b4480edd87da326a8e9eabaf653f80ccb5429993",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (17920 MB)"
+  },
+  "Qwen3.5-9B-Kimi-k3-Distilled-q8_0.gguf": {
+   "size": 9527501600,
+   "sha256": "5a248603f2f95cc136e771de1f0582535e63f7195824420c7a8a38b306369d12",
+   "blob": "717f9b4ab4349eef3dabeb639b3b10aee4479455",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (9527 MB)"
+  },
+  "README.md": {
+   "size": 4143,
+   "sha256": null,
+   "blob": "3fd01357b48276f7c3e5f09706a17de4b2d0f34f",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  }
+ },
+ "base_repo_files": {
+  ".gitattributes": {
+   "size": 1570,
+   "sha256": null,
+   "blob": "52373fe24473b1aa44333d318f578ae6bf04b49b",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "README.md": {
+   "size": 4137,
+   "sha256": null,
+   "blob": "55c9b0b2326b053e2a0444928a2e32faa763fabb",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "chat_template.jinja": {
+   "size": 7992,
+   "sha256": null,
+   "blob": "f210a31e5fa2e912432a30e748ac419f72744893",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "config.json": {
+   "size": 3289,
+   "sha256": null,
+   "blob": "7e52bef8b849eba9da1df5c96971996652a66140",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "generation_config.json": {
+   "size": 163,
+   "sha256": null,
+   "blob": "251a2e682af49a5647e86d230bddff92c6976ff1",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "model.safetensors-00001-of-00004.safetensors": {
+   "size": 5276436216,
+   "sha256": "0849c19f2bfd8f1963f05a25d0d82d6a7ac2fe2b43c567135be303f18c0ae7b6",
+   "blob": "048d3780666407ca121edc2296d7cadb17deadc7",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (5276 MB)"
+  },
+  "model.safetensors-00002-of-00004.safetensors": {
+   "size": 5335161512,
+   "sha256": "9e899748bb6a1b2830d3bd87dc263401559395dfa8e0c99a4681930aa87b8a9d",
+   "blob": "b8688401855fb6f9dd47242d8b369fade612f57f",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (5335 MB)"
+  },
+  "model.safetensors-00003-of-00004.safetensors": {
+   "size": 5368717440,
+   "sha256": "6f695b31d859888ba91d70837118af7c8ed3bdd81866f502a2e1a4b72d34542a",
+   "blob": "84c40bde90b289658e3d37be552fb561d9b967a7",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (5368 MB)"
+  },
+  "model.safetensors-00004-of-00004.safetensors": {
+   "size": 3325995712,
+   "sha256": "a0d28a4263cef825d89afff95259a56875fc49bd246e7d1a3c8dc2a5d5ee2fa9",
+   "blob": "2ad8e76a92045775d71079247c19d54266c42c17",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (3325 MB)"
+  },
+  "model.safetensors.index.json": {
+   "size": 79657,
+   "sha256": null,
+   "blob": "e4c1cb7dba5096b43b9d92bc781aba5e3aa8acd8",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "processor_config.json": {
+   "size": 1296,
+   "sha256": null,
+   "blob": "8af8110fe33fb48d1a0aefafb83005347beda96a",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "tokenizer.json": {
+   "size": 19989343,
+   "sha256": "87a7830d63fcf43bf241c3c5242e96e62dd3fdc29224ca26fed8ea333db72de4",
+   "blob": "67741b04f23bfdb46501f748ce27865ec82eccfb",
+   "fetched": true,
+   "verified": "lfs-sha256"
+  },
+  "tokenizer_config.json": {
+   "size": 15428,
+   "sha256": null,
+   "blob": "8df542b269114c3d76f51bd2358d49d993d9cc55",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  }
+ },
+ "found_in": [
+  "familia #57"
+ ],
+ "match": null,
+ "local_check": null,
+ "unknown": [
+  "card_defaults: the card and generation_config.json state no sampling values"
+ ],
+ "warnings": null,
+ "updated": "2026-10-19",
+ "by": "scripts/model_db.py",
+ "weights": "absent (damp)",
+ "gguf_meta": {
+  "general.architecture": "qwen35",
+  "general.type": "model",
+  "general.name": "Qwen3.5 9B Kimi K3 Distilled",
+  "general.finetune": "Kimi-k3-Distilled",
+  "general.basename": "Qwen3.5",
+  "general.size_label": "9B",
+  "qwen35.block_count": 33,
+  "qwen35.context_length": 262144,
+  "qwen35.embedding_length": 4096,
+  "qwen35.feed_forward_length": 12288,
+  "qwen35.attention.head_count": 16,
+  "qwen35.attention.head_count_kv": 4,
+  "qwen35.rope.dimension_sections": {
+   "array_len": 4
+  },
+  "qwen35.rope.freq_base": 10000000.0,
+  "qwen35.attention.layer_norm_rms_epsilon": 9.999999974752427e-07,
+  "qwen35.attention.key_length": 256,
+  "qwen35.attention.value_length": 256,
+  "general.file_type": 7,
+  "qwen35.nextn_predict_layers": 1,
+  "qwen35.ssm.conv_kernel": 4,
+  "qwen35.ssm.state_size": 128,
+  "qwen35.ssm.group_count": 16,
+  "qwen35.ssm.time_step_rank": 32,
+  "qwen35.ssm.inner_size": 4096,
+  "qwen35.attention.recurrent_layers": {
+   "array_len": 33
+  },
+  "qwen35.full_attention_interval": 4,
+  "qwen35.rope.dimension_count": 64,
+  "general.quantization_version": 2,
+  "tokenizer.ggml.model": "gpt2",
+  "tokenizer.ggml.pre": "qwen35",
+  "tokenizer.ggml.tokens": {
+   "array_len": 248320
+  },
+  "tokenizer.ggml.token_type": {
+   "array_len": 248320
+  },
+  "tokenizer.ggml.merges": {
+   "array_len": 247587
+  },
+  "tokenizer.ggml.eos_token_id": 248046,
+  "tokenizer.ggml.padding_token_id": 248055,
+  "tokenizer.chat_template": {
+   "sha256": "8452ca85cb1e0ff04304c02f417a53305d5ba17f6eb9d5693343ad8355f985a8",
+   "chars": 7992
+  },
+  "_gguf_version": 3,
+  "_n_tensors": 427
+ },
+ "base_chain": [
+  {
+   "repo": "khazarai/Qwen3.5-9B-Kimi-k3-Distilled",
+   "api_id": "khazarai/Qwen3.5-9B-Kimi-k3-Distilled",
+   "revision": "3a8cc8a0406d74c8dbf6daadd5f96bb21168e5c7",
+   "via": "card base_model",
+   "card_data": {
+    "license": "apache-2.0",
+    "language": [
+     "en"
+    ],
+    "base_model": "unsloth/Qwen3.5-9B",
+    "pipeline_tag": "image-text-to-text"
+   },
+   "pipeline_tag": "image-text-to-text",
+   "safetensors": {
+    "parameters": {
+     "BF16": 9653100528,
+     "F32": 3840
+    },
+    "total": 9653104368
+   },
+   "license_files": null
+  },
+  {
+   "repo": "unsloth/Qwen3.5-9B",
+   "api_id": "unsloth/Qwen3.5-9B",
+   "revision": "005429cee5cb648998cf2b70eebdd83175989c9a",
+   "via": "khazarai/Qwen3.5-9B-Kimi-k3-Distilled card base_model",
+   "card_data": {
+    "license": "apache-2.0",
+    "license_link": "https://huggingface.co/Qwen/Qwen3.5-9B/blob/main/LICENSE",
+    "base_model": [
+     "Qwen/Qwen3.5-9B"
+    ],
+    "pipeline_tag": "image-text-to-text",
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "image-text-to-text",
+   "safetensors": {
+    "parameters": {
+     "BF16": 9653100528,
+     "F32": 3840
+    },
+    "total": 9653104368
+   },
+   "license_files": [
+    "LICENSE"
+   ]
+  },
+  {
+   "repo": "Qwen/Qwen3.5-9B",
+   "api_id": "Qwen/Qwen3.5-9B",
+   "revision": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+   "via": "unsloth/Qwen3.5-9B card base_model",
+   "card_data": {
+    "license": "apache-2.0",
+    "license_link": "https://huggingface.co/Qwen/Qwen3.5-9B/blob/main/LICENSE",
+    "base_model": [
+     "Qwen/Qwen3.5-9B-Base"
+    ],
+    "pipeline_tag": "image-text-to-text",
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "image-text-to-text",
+   "safetensors": {
+    "parameters": {
+     "BF16": 9653100528,
+     "F32": 3840
+    },
+    "total": 9653104368
+   },
+   "license_files": [
+    "LICENSE"
+   ]
+  },
+  {
+   "repo": "Qwen/Qwen3.5-9B-Base",
+   "api_id": "Qwen/Qwen3.5-9B-Base",
+   "revision": "68c46c4b3498877f3ef123c856ecfde50c39f404",
+   "via": "Qwen/Qwen3.5-9B card base_model",
+   "card_data": {
+    "license": "apache-2.0",
+    "license_link": "https://huggingface.co/Qwen/Qwen3.5-9B-Base/blob/main/LICENSE",
+    "pipeline_tag": "image-text-to-text",
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "image-text-to-text",
+   "safetensors": {
+    "parameters": {
+     "BF16": 9653100528,
+     "F32": 3840
+    },
+    "total": 9653104368
+   },
+   "license_files": [
+    "LICENSE"
+   ]
+  }
+ ],
+ "github": null,
+ "github_dropped": null,
+ "descriptor": {
+  "repo_id": {
+   "effective": "khazarai/Qwen3.5-9B-Kimi-k3-Distilled-GGUF",
+   "source": "HF API id"
+  },
+  "revision": {
+   "effective": "25e86f7ac4f6698fb1181774cd461ccf32600302",
+   "source": "pinned (manifest / database)"
+  },
+  "file": {
+   "effective": "Qwen3.5-9B-Kimi-k3-Distilled-q8_0.gguf",
+   "source": "HF API siblings"
+  },
+  "bytes": {
+   "effective": 9527501600,
+   "source": "HF API LFS size"
+  },
+  "sha256": {
+   "effective": "5a248603f2f95cc136e771de1f0582535e63f7195824420c7a8a38b306369d12",
+   "source": "HF API LFS oid"
+  },
+  "quant": {
+   "effective": "Q8_0",
+   "source": "file name",
+   "values": [
+    {
+     "value": "Q8_0",
+     "source": "file name"
+    },
+    {
+     "value": "Q8_0",
+     "source": "GGUF general.file_type"
+    }
+   ]
+  },
+  "license": {
+   "effective": "apache-2.0",
+   "source": "khazarai/Qwen3.5-9B-Kimi-k3-Distilled-GGUF card license",
+   "values": [
+    {
+     "value": "apache-2.0",
+     "source": "khazarai/Qwen3.5-9B-Kimi-k3-Distilled-GGUF card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "khazarai/Qwen3.5-9B-Kimi-k3-Distilled card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "unsloth/Qwen3.5-9B card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "Qwen/Qwen3.5-9B card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "Qwen/Qwen3.5-9B-Base card license"
+    }
+   ]
+  },
+  "license_link": {
+   "effective": "https://huggingface.co/Qwen/Qwen3.5-9B/blob/main/LICENSE",
+   "source": "unsloth/Qwen3.5-9B card license_link",
+   "values": [
+    {
+     "value": "https://huggingface.co/Qwen/Qwen3.5-9B/blob/main/LICENSE",
+     "source": "unsloth/Qwen3.5-9B card license_link"
+    },
+    {
+     "value": "https://huggingface.co/Qwen/Qwen3.5-9B/blob/main/LICENSE",
+     "source": "Qwen/Qwen3.5-9B card license_link"
+    },
+    {
+     "value": "https://huggingface.co/Qwen/Qwen3.5-9B-Base/blob/main/LICENSE",
+     "source": "Qwen/Qwen3.5-9B-Base card license_link"
+    }
+   ]
+  },
+  "license_file": {
+   "effective": "unsloth/Qwen3.5-9B@005429cee5cb/LICENSE",
+   "source": "unsloth/Qwen3.5-9B repo file",
+   "values": [
+    {
+     "value": "unsloth/Qwen3.5-9B@005429cee5cb/LICENSE",
+     "source": "unsloth/Qwen3.5-9B repo file"
+    },
+    {
+     "value": "Qwen/Qwen3.5-9B@c20223623576/LICENSE",
+     "source": "Qwen/Qwen3.5-9B repo file"
+    },
+    {
+     "value": "Qwen/Qwen3.5-9B-Base@68c46c4b3498/LICENSE",
+     "source": "Qwen/Qwen3.5-9B-Base repo file"
+    }
+   ]
+  },
+  "base_model_chain": {
+   "effective": "khazarai/Qwen3.5-9B-Kimi-k3-Distilled",
+   "source": "card base_model",
+   "values": [
+    {
+     "value": "khazarai/Qwen3.5-9B-Kimi-k3-Distilled",
+     "source": "card base_model"
+    },
+    {
+     "value": "unsloth/Qwen3.5-9B",
+     "source": "khazarai/Qwen3.5-9B-Kimi-k3-Distilled card base_model"
+    },
+    {
+     "value": "Qwen/Qwen3.5-9B",
+     "source": "unsloth/Qwen3.5-9B card base_model"
+    },
+    {
+     "value": "Qwen/Qwen3.5-9B-Base",
+     "source": "Qwen/Qwen3.5-9B card base_model"
+    }
+   ]
+  },
+  "architecture": {
+   "effective": "qwen35",
+   "source": "GGUF general.architecture",
+   "values": [
+    {
+     "value": "qwen35",
+     "source": "GGUF general.architecture"
+    },
+    {
+     "value": "qwen35",
+     "source": "HF API gguf.architecture"
+    }
+   ]
+  },
+  "hf_architectures": {
+   "effective": [
+    "Qwen3_5ForConditionalGeneration"
+   ],
+   "source": "khazarai/Qwen3.5-9B-Kimi-k3-Distilled config.json architectures"
+  },
+  "hf_model_type": {
+   "effective": "qwen3_5",
+   "source": "khazarai/Qwen3.5-9B-Kimi-k3-Distilled config.json model_type"
+  },
+  "parameters": {
+   "effective": 8953803264,
+   "source": "HF API gguf.total (khazarai/Qwen3.5-9B-Kimi-k3-Distilled-GGUF)",
+   "values": [
+    {
+     "value": 8953803264,
+     "source": "HF API gguf.total (khazarai/Qwen3.5-9B-Kimi-k3-Distilled-GGUF)"
+    },
+    {
+     "value": 9653104368,
+     "source": "HF API safetensors.total (khazarai/Qwen3.5-9B-Kimi-k3-Distilled)"
+    },
+    {
+     "value": 9653104368,
+     "source": "HF API safetensors.total (unsloth/Qwen3.5-9B)"
+    },
+    {
+     "value": 9653104368,
+     "source": "HF API safetensors.total (Qwen/Qwen3.5-9B)"
+    },
+    {
+     "value": 9653104368,
+     "source": "HF API safetensors.total (Qwen/Qwen3.5-9B-Base)"
+    }
+   ],
+   "conflict": true
+  },
+  "size_label": {
+   "effective": "9B",
+   "source": "GGUF general.size_label"
+  },
+  "ctx": {
+   "effective": 262144,
+   "source": "khazarai/Qwen3.5-9B-Kimi-k3-Distilled config.json max_position_embeddings",
+   "values": [
+    {
+     "value": 262144,
+     "source": "khazarai/Qwen3.5-9B-Kimi-k3-Distilled config.json max_position_embeddings"
+    },
+    {
+     "value": 262144,
+     "source": "GGUF qwen35.context_length"
+    }
+   ],
+   "precedence": "card statement > config.json > GGUF header > GitHub README"
+  },
+  "pipeline_tag": {
+   "effective": "image-text-to-text",
+   "source": "khazarai/Qwen3.5-9B-Kimi-k3-Distilled-GGUF HF API pipeline_tag",
+   "values": [
+    {
+     "value": "image-text-to-text",
+     "source": "khazarai/Qwen3.5-9B-Kimi-k3-Distilled-GGUF HF API pipeline_tag"
+    },
+    {
+     "value": "image-text-to-text",
+     "source": "khazarai/Qwen3.5-9B-Kimi-k3-Distilled HF API pipeline_tag"
+    },
+    {
+     "value": "image-text-to-text",
+     "source": "unsloth/Qwen3.5-9B HF API pipeline_tag"
+    },
+    {
+     "value": "image-text-to-text",
+     "source": "Qwen/Qwen3.5-9B HF API pipeline_tag"
+    },
+    {
+     "value": "image-text-to-text",
+     "source": "Qwen/Qwen3.5-9B-Base HF API pipeline_tag"
+    }
+   ]
+  },
+  "languages": {
+   "effective": [
+    "en"
+   ],
+   "source": "khazarai/Qwen3.5-9B-Kimi-k3-Distilled-GGUF card language",
+   "values": [
+    {
+     "value": [
+      "en"
+     ],
+     "source": "khazarai/Qwen3.5-9B-Kimi-k3-Distilled-GGUF card language"
+    },
+    {
+     "value": [
+      "en"
+     ],
+     "source": "khazarai/Qwen3.5-9B-Kimi-k3-Distilled card language"
+    }
+   ]
+  }
+ },
+ "required_params": {
+  "kind": "chat",
+  "native_ctx": 262144,
+  "native_ctx_source": "khazarai/Qwen3.5-9B-Kimi-k3-Distilled config.json max_position_embeddings",
+  "yarn": null,
+  "yarn_source": null,
+  "items": [
+   {
+    "class": "REQUIRED",
+    "flag": "--jinja",
+    "value": null,
+    "source": "GGUF tokenizer.chat_template (8452ca85cb1e)",
+    "why_required": "messages, tool calls and thinking are formatted by the model's chat template; without --jinja llama-server falls back to a built-in approximation"
+   }
+  ]
+ },
+ "blockers": null,
+ "params_problems": null,
+ "params_build": "b11374",
+ "native_ctx": 262144,
+ "native_ctx_source": "khazarai/Qwen3.5-9B-Kimi-k3-Distilled config.json max_position_embeddings",
+ "license_info": {
+  "id": "apache-2.0",
+  "id_source": "khazarai/Qwen3.5-9B-Kimi-k3-Distilled-GGUF card front matter license",
+  "name": null,
+  "summary": "apache-2.0",
+  "summary_source": "khazarai/Qwen3.5-9B-Kimi-k3-Distilled-GGUF card license",
+  "link": "https://huggingface.co/Qwen/Qwen3.5-9B/blob/main/LICENSE",
+  "link_source": "unsloth/Qwen3.5-9B card license_link",
+  "texts": null,
+  "obligations": null,
+  "gated": false,
+  "unknown": false,
+  "seen": [
+   {
+    "value": "apache-2.0",
+    "source": "khazarai/Qwen3.5-9B-Kimi-k3-Distilled-GGUF card license"
+   },
+   {
+    "value": "apache-2.0",
+    "source": "khazarai/Qwen3.5-9B-Kimi-k3-Distilled card license"
+   },
+   {
+    "value": "apache-2.0",
+    "source": "unsloth/Qwen3.5-9B card license"
+   },
+   {
+    "value": "apache-2.0",
+    "source": "Qwen/Qwen3.5-9B card license"
+   },
+   {
+    "value": "apache-2.0",
+    "source": "Qwen/Qwen3.5-9B-Base card license"
+   }
+  ]
+ },
+ "role_inference": {
+  "role": "coder",
+  "evidence": [
+   "general +1 (card front matter: pipeline_tag: image-text-to-text (generic chat model))",
+   "coder +5 (card front matter: tags: coding)",
+   "general +1 (GGUF metadata: general.architecture qwen35 (generative))"
+  ]
+ },
+ "repo_bytes": 27448204694
+}

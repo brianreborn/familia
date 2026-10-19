@@ -186,6 +186,8 @@ def test_curated_file_and_registry_entries():
     assert set(cur) <= set(entries)
     for eid, e in entries.items():
         assert e.get("required_params"), eid
+        if str(e.get("weights") or "").startswith("absent"):
+            continue                    # damp-run (survey) entries: classified later, not runnable
         assert not [p for p in e.get("params_problems") or [] if p.startswith(("curated", "chat template:"))], (eid, e.get("params_problems"))
 
 

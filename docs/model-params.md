@@ -759,3 +759,31 @@ Card / GitHub examples (verbatim in the entry's `card_commands`):
 - google/embeddinggemma-2 README.md:L178-182 `python` (model)
 - google/embeddinggemma-2 README.md:L198-200 `sentence-transformers` (model)
 - google/embeddinggemma-2 README.md:L218-222 `python` (model)
+
+## Damp-run entries (metadata only, not runnable)
+
+Recorded by `model_db.py damp` with `weights: absent (damp)`; classify them and run a full fetch before
+their parameters are listed here (`registry/models/<id>.json` has what is known).
+
+- `PrunaAI--Pruna-Qwen-Image-2.1--p_qwen_image_2.1_5step_v0.1.safetensors`
+- `SC117--Spark-X2.5-4B-abliterated-FIT-GGUF--Spark-X2.5-4B-abliterated-FIT-MINI-2.26GiB-Q4_K_S`
+- `Takenoko12345678--Qwen3.5-0.8B-Japanese-SFT-v2--model.safetensors`
+- `XiaomiMiMo--MiMo-V2.6-Pro-RL--model_pp0_ep0_shard0.safetensors`
+- `abenzerps--Qwen-Image-2.1-Uncensored-Quantized--qwen-image-2.1-UC-Q4_K_M`
+- `audio-cpp--Nemotron-3-Diarization-GGUF--nemotron-3-diarization-q8_0`
+- `convaiinnovations--laya--model.safetensors`
+- `convaiinnovations--laya-multilingual--model.safetensors`
+- `dealignai--Bonsai-2-27B-1bit-CRACK-GGUF--Bonsai-2-27B-PTQ1_0-CRACK`
+- `inclusionAI--Ling-3.1-flash--model-00001-of-00054.safetensors`
+- `khazarai--Qwen3.5-9B-Kimi-k3-Distilled-GGUF--Qwen3.5-9B-Kimi-k3-Distilled-q8_0`
+- `nvidia--Nemotron-3-Diarization--Nemotron-3-Diarization.q8_0`
+- `nvidia--personaplex-7b-v1--model.safetensors`
+- `oruk--orukeet--orukeet-transcribe-cpp-Q8_0`
+- `prism-ml--Ternary-Bonsai-2-27B-gguf--Ternary-Bonsai-2-27B-PTQ1_0`
+- `prism-ml--Ternary-Bonsai-2-2B-gguf--Ternary-Bonsai-2-2B-PTQ1_0`
+- `prism-ml--Ternary-Bonsai-2-4B-gguf--Ternary-Bonsai-2-4B-PTQ1_0`
+- `prism-ml--Ternary-Bonsai-2-9B-gguf--Ternary-Bonsai-2-9B-PTQ1_0`
+- `soyaakinohara--Spark-X2.5-4B-Heretic-jp-gguf--Spark-X2.5-4B-Heretic-jp-Q4_K_M`
+- `vllm-sr--d3--model-00001-of-00011.safetensors`
+- `vllm-sr--d3-edge--model-00001-of-00001.safetensors`
+- `vllm-sr--d3-nano--model.safetensors`

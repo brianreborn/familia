@@ -1,0 +1,1183 @@
+{
+ "schema": 2,
+ "id": "abenzerps--Qwen-Image-2.1-Uncensored-Quantized--qwen-image-2.1-UC-Q4_K_M",
+ "repo": "abenzerps/Qwen-Image-2.1-Uncensored-Quantized",
+ "revision": "7959e658915f52274897fb573ffeda49de8dc16b",
+ "file": "qwen-image-2.1-UC-Q4_K_M.gguf",
+ "sha256": "e79c8a009f2ecbdb6c70fd663d9aea9ee304a0d91f347e4169a756b8ad141b41",
+ "bytes": 4604558112,
+ "quant": "Q4_K_M",
+ "arch": "qwen_image21",
+ "roles": [],
+ "license": "qwen-research (no link)",
+ "license_source": "abenzerps/Qwen-Image-2.1-Uncensored-Quantized card license",
+ "ctx": null,
+ "ctx_source": null,
+ "card_ctx": null,
+ "card_ctx_source": null,
+ "base_model": "Qwen/Qwen-Image-2.1",
+ "base_revision": "d26bb61231c349cf6b7896fa83353113880e1ba3",
+ "card_defaults": null,
+ "card_defaults_source": null,
+ "card_default_set": null,
+ "card_defaults_how": "the card and generation_config.json state no sampling values",
+ "card_sampling_modes": null,
+ "card_default_mode": null,
+ "card_default_mode_source": null,
+ "card_sampling_sets": null,
+ "card_commands": [
+  {
+   "source": "abenzerps/Qwen-Image-2.1-Uncensored-Quantized README.md:L81-88",
+   "file": "README.md",
+   "lines": [
+    81,
+    88
+   ],
+   "lang": "text",
+   "tool": "text",
+   "kind": "other",
+   "text": "ComfyUI/\n└── models/\n    ├── diffusion_models/\n    │   └── qwen-image-2.1-UC-Q4_K_M.gguf      # Choose one GGUF quantization (Q4_K_M recommended) or .safetensors\n    ├── text_encoders/\n    │   └── qwen3vl_8b_bf16.safetensors        # Or qwen3vl_8b_int8_convrot.safetensors (recommended for lower memory)\n    └── vae/\n        └── qwen_image_2.1_vae_bf16.safetensors",
+   "doc": "card",
+   "doc_sha": "7959e658915f52274897fb573ffeda49de8dc16b",
+   "scope": "model"
+  },
+  {
+   "source": "abenzerps/Qwen-Image-2.1-Uncensored-Quantized README.md:L95-96",
+   "file": "README.md",
+   "lines": [
+    95,
+    96
+   ],
+   "lang": "bash",
+   "tool": "git",
+   "kind": "command",
+   "text": "   cd ComfyUI/custom_nodes\n   git clone https://github.com/leejet/ComfyUI-GGUF",
+   "doc": "card",
+   "doc_sha": "7959e658915f52274897fb573ffeda49de8dc16b",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen-Image-2.1 README.md:L48-51",
+   "file": "README.md",
+   "lines": [
+    48,
+    51
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install torch>=2.4.0\npip install transformers>=5.17\npip install git+https://github.com/huggingface/diffusers\npip install accelerate pillow",
+   "doc": "base-card",
+   "doc_sha": "d26bb61231c349cf6b7896fa83353113880e1ba3",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen-Image-2.1 README.md:L57-71",
+   "file": "README.md",
+   "lines": [
+    57,
+    71
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "import torch\nfrom diffusers import QwenImage21Pipeline\n\npipe = QwenImage21Pipeline.from_pretrained(\n    \"Qwen/Qwen-Image-2.1\", torch_dtype=torch.bfloat16\n).to(\"cuda\")\n\nimage = pipe(\n    prompt=\"A neon shop sign that reads \\\"QWEN IMAGE 2.1\\\", rainy night, reflections on wet pavement\",\n    width=2048, height=2048,\n    num_inference_steps=40,\n    generator=torch.Generator(\"cuda\").manual_seed(42),\n).images[0]\n\nimage.save(\"t2i_example.png\")",
+   "doc": "base-card",
+   "doc_sha": "d26bb61231c349cf6b7896fa83353113880e1ba3",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen-Image-2.1 README.md:L77-94",
+   "file": "README.md",
+   "lines": [
+    77,
+    94
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "import torch\nfrom PIL import Image\nfrom diffusers import QwenImage21Pipeline\n\npipe = QwenImage21Pipeline.from_pretrained(\n    \"Qwen/Qwen-Image-2.1\", torch_dtype=torch.bfloat16\n).to(\"cuda\")\n\ninput_image = Image.open(\"input.png\")\n\nimage = pipe(\n    prompt=\"Change the background to a sunset beach\",\n    image=input_image,\n    num_inference_steps=40,\n    generator=torch.Generator(\"cuda\").manual_seed(42),\n).images[0]\n\nimage.save(\"edit_example.png\")",
+   "doc": "base-card",
+   "doc_sha": "d26bb61231c349cf6b7896fa83353113880e1ba3",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen-Image-2.1 README.md:L102-109",
+   "file": "README.md",
+   "lines": [
+    102,
+    109
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "image = pipe(\n    prompt=\"This is an RGBA image with transparency. A cute cartoon dragon sticker. The image has alpha channel and the background is transparent.\",\n    width=2048, height=2048,\n    num_inference_steps=40,\n    generator=torch.Generator(\"cuda\").manual_seed(42),\n).images[0]\n\nimage.save(\"transparent_example.png\")",
+   "doc": "base-card",
+   "doc_sha": "d26bb61231c349cf6b7896fa83353113880e1ba3",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen-Image-2.1 README.md:L115-123",
+   "file": "README.md",
+   "lines": [
+    115,
+    123
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "aspect_ratios = {\n    \"1:1\":  (2048, 2048),\n    \"4:3\":  (2400, 1792),\n    \"3:4\":  (1792, 2400),\n    \"3:2\":  (2528, 1696),\n    \"2:3\":  (1696, 2528),\n    \"16:9\": (2752, 1536),\n    \"9:16\": (1536, 2752),\n}",
+   "doc": "base-card",
+   "doc_sha": "d26bb61231c349cf6b7896fa83353113880e1ba3",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen-Image-2.1 README.md:L129-132",
+   "file": "README.md",
+   "lines": [
+    129,
+    132
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "pipe = QwenImage21Pipeline.from_pretrained(\n    \"Qwen/Qwen-Image-2.1\", torch_dtype=torch.bfloat16\n)\npipe.enable_model_cpu_offload()",
+   "doc": "base-card",
+   "doc_sha": "d26bb61231c349cf6b7896fa83353113880e1ba3",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen-Image-2.1 README.md:L51-55",
+   "file": "README.md",
+   "lines": [
+    51,
+    55
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install torch>=2.4.0\npip install transformers>=5.17\npip install git+https://github.com/huggingface/diffusers\npip install accelerate\npip install pillow",
+   "doc": "github",
+   "doc_sha": "ab96caa944157ca28a4f36b695c3047549f48f98",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen-Image-2.1 README.md:L65-100",
+   "file": "README.md",
+   "lines": [
+    65,
+    100
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "import torch\nfrom diffusers.utils import load_image\nfrom diffusers import QwenImage21Pipeline\n\npipe = QwenImage21Pipeline.from_pretrained(\n    \"Qwen/Qwen-Image-2.1-Turbo\", dtype=torch.bfloat16\n).to(\"cuda\")\n\nprompt = \"A vertically oriented educational chemistry study poster fills the frame, designed like a hand-drawn classroom notes page with a clean white background, thick dark navy-blue outer border, and thin inner navy rectangular border lines. The overall aesthetic is colorful, high-contrast, and hand-lettered in a signature Topper style using marker and watercolor effects. At the top left, a small header in black handwriting reads \\\"Topper’s Notes\\\", accented by short decorative navy strokes radiating from it. Centered across the top is the main lesson heading in large stylized black-and-yellow bold lettering: \\\"Science – Chapter 1:\\\" followed below by the much larger title \\\"Chemical Reactions and Equations\\\". The title has energetic yellow highlighter strokes underneath and small sparkle doodles nearby. At the top right, inside a small outlined page-number box, the label reads \\\"Page X\\\". Below the header, a wide rounded rectangle framed in dark navy contains a pink brush-stroke highlight banner with the subheading \\\"IMPORTANT CHEMICAL EQUATION:\\\" in black. Inside the same equation panel, the reaction is written very large as \\\"Fe + CuSO₄ → FeSO₄ + Cu\\\". The symbol \\\"Fe\\\" is highlighted in bright orange with an underline, \\\"CuSO₄\\\" is vivid blue and underlined, \\\"FeSO₄\\\" is bright green and underlined, and \\\"Cu\\\" is metallic bronze and underlined. Beneath the left side of the equation is a lavender rounded label connected by a leader line to the iron component; it says \\\"Reactants\\\" and below it \\\"(before the reaction)\\\", with \\\"Reactants\\\" colored purple and underlined. Beneath the right side is a matching pale-green rounded label connected by a leader line to the products; it says \\\"Products\\\" and below it \\\"(after the reaction)\\\", with \\\"Products\\\" colored green and underlined. Along the lower part of this equation box are stylized ball-and-stick molecule models and atomic orbital drawings: a silver-gray sphere labeled \\\"Fe\\\" sits left of center, another cluster shows gray, red, and white spheres representing sulfate groups around blue and green atoms, and a copper-colored sphere appears near the right. Small atom-and-orbit icons sit along the bottom edge of the panel in blue, green, and brown outline styles. The middle portion is enclosed by a large dashed green rounded rectangle titled \\\"REACTIVITY CONCEPT\\\" in green uppercase letters with decorative rays. On the left side of this section, a stepped vertical reactivity-series ladder is drawn with alternating colored horizontal blocks. From top to bottom it lists \\\"K\\\", \\\"Na\\\", \\\"Ca\\\", \\\"Mg\\\", \\\"Al\\\", \\\"Zn\\\", \\\"Fe\\\" with a green oval callout reading \\\"(More reactive)\\\", then continues downward with \\\"Cu\\\", \\\"Ag\\\", \\\"Hg\\\", \\\"Pt\\\", \\\"Au\\\" with an orange oval callout reading \\\"(Less reactive)\\\". Each step is marked by a dark upward-pointing triangular arrow, showing decreasing reactivity downward. In the central-right area, full body text as follows: \\\"Iron (Fe) is higher in the reactivity series than Copper (Cu). This makes Iron more reactive.\\\" Below this definition is a visual arrow sequence of overlapping circles: orange \\\"Fe\\\" overlaps blue \\\"Cu\\\", followed by a red arrow pointing toward the phrase \\\"→ More displacement ↓ less reactivity\\\". Under it, a prominent statement in dark handwriting reads \\\"More reactive element displaces less reactive element\\\", emphasized with a bright pink marker underline. On the right, a shield-like badge with a navy outline and light interior contains the bold contrasting font label \\\"DISPLACEMENT REACTION\\\". Below the badge, full body text as follows: \\\"A more reactive element displaces a less reactive element from its compound.\\\" The badge includes an internal miniature illustration of circular electron shells and colored particles, reinforcing the chemistry theme. Directly below the reactivity concept box, a smaller rounded rectangular table titled \\\"PROPERTY COMPARISON\\\" compares Iron and Copper. The table has three columns: \\\"IRON (Fe)\\\", \\\"COPPER (Cu)\\\", and a central property column. Row one reads \\\"Reactivity series position\\\" with Iron shown as \\\"Higher (more reactive)\\\" and Copper shown as \\\"Lower (less reactive)\\\". Row two reads \\\"Displaces hydrogen from acids\\\" with Iron marked \\\"Yes\\\" and Copper marked \\\"No\\\". Row three reads \\\"Displaced by other metals\\\" with Iron shown as \\\"Displaced by Zn, Mg, Al, etc.\\\" and Copper shown as \\\"Displaced by Fe, Zn, Mg, etc.\\\". Row four reads \\\"Oxidation tendency\\\" with Iron shown as \\\"Gets oxidized easily\\\" and Copper shown as \\\"Does not get oxidized easily\\\". Row five reads \\\"Useful property\\\" with Iron described as \\\"Used where strength & corrosion resistance needed\\\" and Copper described as \\\"Used where conductivity & corrosion resistance needed\\\". The table uses thin navy grid lines, orange tinting for the iron column, pale blue tinting for the copper column, black condensed handwriting, and green checkmarks next to positive traits and red crosses next to limitations. The lower half introduces a large illustrated experiment section with a cream highlight behind the title \\\"BEFORE/AFTER IRON NAIL EXPERIMENT\\\" in bold dark navy uppercase letters. The section is split visually into a left \\\"Before\\\" state and a right \\\"After\\\" state. On the left, a beaker filled with bright blue solution contains a shiny silver iron nail standing diagonally. The beaker label reads \\\"CuSO₄(aq)\\\" in blue, and the bottom label near the nail reads \\\"Fe(s)\\\". A rounded annotation box beside the beaker says \\\"Initial State: Blue Solution & Silver Nail\\\". Two glass test tubes stand to the right of this beaker: the upper test tube is filled with blue solution and labeled \\\"CuSO₄(aq)\\\", while the lower one contains a pale green liquid. Red and blue directional arrows connect these visual elements to explanations: one red arrow points toward the nail with the text \\\"Copper gets deposited\\\", and one blue arrow points toward the liquid with the text \\\"Solution turns pale green\\\". On the right side of the experiment section, another beaker shows the after state with the iron nail now coated in brown copper deposits. Its solution is faded to a pale greenish-blue, and the beaker label reads \\\"FeSO₄(aq)\\\" in green. A nearby rounded annotation box says \\\"Final State: Pale Green Solution & Brown Coated Nail\\\". To the far right are additional test tubes and ion symbols: a test tube containing blue liquid labeled \\\"CuSO₄(aq)\\\" with the note \\\"Blue colour due to Cu²⁺ ions\\\", and a lower test tube containing pale green liquid labeled \\\"FeSO₄(aq)\\\" with the note \\\"Pale green due to Fe²⁺ ions\\\". Beside them are ion diagrams labeled \\\"Cu²⁺(aq)\\\" and \\\"Fe²⁺(aq)\\\", shown as colored charged particles encircled by simple electron-shell rings; the copper ion uses blue particles and the iron ion uses green particles. Small sparkles, arrows, and dashed guide lines emphasize the transformation from blue copper sulfate solution to pale green iron sulfate solution. Near the bottom, a horizontal summary strip has a blue star icon followed by the heading \\\"SUMMARY\\\". Full body text as follows: \\\"In this reaction, Iron (Fe) displaces Copper (Cu) from Copper Sulphate (CuSO₄) solution to form Iron(II) Sulphate (FeSO₄) solution and Copper (Cu).\\\" To the lower left, a bordered key-points box titled \\\"KEY POINTS\\\" lists three starred bullet statements: \\\"Iron is above copper in the reactivity series.\\\", \\\"Fe displaces Cu from CuSO₄ solution.\\\", and \\\"Result: Blue solution turns pale green; copper metal deposits on iron nail.\\\" At the very bottom, inside the footer border, spaced text reads \\\"CHEMISTRY • CHANGE IS EVERYWHERE • TOPPER’S NOTES\\\", flanked by small leaf-like ornaments and thin horizontal divider lines. The entire page uses dark navy borders and headings, bright highlighter strokes, watercolor shading, realistic glassware illustrations, and playful scientific doodles to present a chemistry lesson clearly and attractively.\"\n\nimage = pipe(\n    prompt=prompt,\n    width=1696,\n    height=2528,\n    use_kv_cache=True,\n    generator=torch.Generator(\"cpu\").manual_seed(42),\n).images[0]\n\nimage.save(\"turbo_t2i.png\")\n\ninput_image = load_image(\n    'https://huggingface.co/Qwen/Qwen-Image-2.1-Turbo/resolve/main/assets/turbo-boat-input.png'\n).convert(\"RGBA\")\n\nedit_prompt = \"Create a photorealistic photograph of the motor yacht from the input sketch, sailing on open sea, captured in full side profile with the camera at water level. Build the vessel with the structure shown in the input sketch: a long low hull; one tall mast stepped forward with a small cross-tree platform near its top; a wheelhouse superstructure with an open bridge wing just behind the mast; a midships deckhouse carrying a row of four rectangular windows with a lifeboat stowed on its roof; a rectangular funnel behind that deckhouse; an aft deckhouse with a row of three rectangular windows and a second lifeboat above it; thin railings along every deck edge; the hull side pierced by one small square window at the bow, an upper line of five round portholes on the raised forward section, and a lower line of nine round portholes along the main hull. Paint the hull black, the superstructures and the mast white, and the funnel yellow. Set the yacht broadside on a calm deep-blue sea with a low gentle swell and a thin white wake trailing from the bow, the straight horizon crossing behind the funnel top, under a clear sky with soft scattered clouds; sunlight from the front left lights the white superstructures and leaves a bright reflection path on the water beside the hull with a soft contact shadow along the waterline; the entire vessel fits inside the frame with open water in the foreground and sky above.\"\n\nedited_image = pipe(\n    prompt=edit_prompt,\n    image=input_image,\n    width=2048,\n    height=2048,\n    use_kv_cache=True,\n    generator=torch.Generator(\"cpu\").manual_seed(43),\n).images[0]\n\nedited_image.save(\"turbo_edit.png\")",
+   "doc": "github",
+   "doc_sha": "ab96caa944157ca28a4f36b695c3047549f48f98",
+   "scope": "family: Qwen/Qwen-Image-2.1-Turbo"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen-Image-2.1 README.md:L110-127",
+   "file": "README.md",
+   "lines": [
+    110,
+    127
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "import torch\nfrom diffusers import QwenImage21Pipeline\n\npipe = QwenImage21Pipeline.from_pretrained(\n    \"Qwen/Qwen-Image-2.1\", torch_dtype=torch.bfloat16\n).to(\"cuda\")\n\nprompt = \"A vertically oriented educational chemistry study poster fills the frame, designed like a hand-drawn classroom notes page with a clean white background, thick dark navy-blue outer border, and thin inner navy rectangular border lines. The overall aesthetic is colorful, high-contrast, and hand-lettered in a signature Topper style using marker and watercolor effects. At the top left, a small header in black handwriting reads \\\"Topper’s Notes\\\", accented by short decorative navy strokes radiating from it. Centered across the top is the main lesson heading in large stylized black-and-yellow bold lettering: \\\"Science – Chapter 1:\\\" followed below by the much larger title \\\"Chemical Reactions and Equations\\\". The title has energetic yellow highlighter strokes underneath and small sparkle doodles nearby. At the top right, inside a small outlined page-number box, the label reads \\\"Page X\\\". Below the header, a wide rounded rectangle framed in dark navy contains a pink brush-stroke highlight banner with the subheading \\\"IMPORTANT CHEMICAL EQUATION:\\\" in black. Inside the same equation panel, the reaction is written very large as \\\"Fe + CuSO₄ → FeSO₄ + Cu\\\". The symbol \\\"Fe\\\" is highlighted in bright orange with an underline, \\\"CuSO₄\\\" is vivid blue and underlined, \\\"FeSO₄\\\" is bright green and underlined, and \\\"Cu\\\" is metallic bronze and underlined. Beneath the left side of the equation is a lavender rounded label connected by a leader line to the iron component; it says \\\"Reactants\\\" and below it \\\"(before the reaction)\\\", with \\\"Reactants\\\" colored purple and underlined. Beneath the right side is a matching pale-green rounded label connected by a leader line to the products; it says \\\"Products\\\" and below it \\\"(after the reaction)\\\", with \\\"Products\\\" colored green and underlined. Along the lower part of this equation box are stylized ball-and-stick molecule models and atomic orbital drawings: a silver-gray sphere labeled \\\"Fe\\\" sits left of center, another cluster shows gray, red, and white spheres representing sulfate groups around blue and green atoms, and a copper-colored sphere appears near the right. Small atom-and-orbit icons sit along the bottom edge of the panel in blue, green, and brown outline styles. The middle portion is enclosed by a large dashed green rounded rectangle titled \\\"REACTIVITY CONCEPT\\\" in green uppercase letters with decorative rays. On the left side of this section, a stepped vertical reactivity-series ladder is drawn with alternating colored horizontal blocks. From top to bottom it lists \\\"K\\\", \\\"Na\\\", \\\"Ca\\\", \\\"Mg\\\", \\\"Al\\\", \\\"Zn\\\", \\\"Fe\\\" with a green oval callout reading \\\"(More reactive)\\\", then continues downward with \\\"Cu\\\", \\\"Ag\\\", \\\"Hg\\\", \\\"Pt\\\", \\\"Au\\\" with an orange oval callout reading \\\"(Less reactive)\\\". Each step is marked by a dark upward-pointing triangular arrow, showing decreasing reactivity downward. In the central-right area, full body text as follows: \\\"Iron (Fe) is higher in the reactivity series than Copper (Cu). This makes Iron more reactive.\\\" Below this definition is a visual arrow sequence of overlapping circles: orange \\\"Fe\\\" overlaps blue \\\"Cu\\\", followed by a red arrow pointing toward the phrase \\\"→ More displacement ↓ less reactivity\\\". Under it, a prominent statement in dark handwriting reads \\\"More reactive element displaces less reactive element\\\", emphasized with a bright pink marker underline. On the right, a shield-like badge with a navy outline and light interior contains the bold contrasting font label \\\"DISPLACEMENT REACTION\\\". Below the badge, full body text as follows: \\\"A more reactive element displaces a less reactive element from its compound.\\\" The badge includes an internal miniature illustration of circular electron shells and colored particles, reinforcing the chemistry theme. Directly below the reactivity concept box, a smaller rounded rectangular table titled \\\"PROPERTY COMPARISON\\\" compares Iron and Copper. The table has three columns: \\\"IRON (Fe)\\\", \\\"COPPER (Cu)\\\", and a central property column. Row one reads \\\"Reactivity series position\\\" with Iron shown as \\\"Higher (more reactive)\\\" and Copper shown as \\\"Lower (less reactive)\\\". Row two reads \\\"Displaces hydrogen from acids\\\" with Iron marked \\\"Yes\\\" and Copper marked \\\"No\\\". Row three reads \\\"Displaced by other metals\\\" with Iron shown as \\\"Displaced by Zn, Mg, Al, etc.\\\" and Copper shown as \\\"Displaced by Fe, Zn, Mg, etc.\\\". Row four reads \\\"Oxidation tendency\\\" with Iron shown as \\\"Gets oxidized easily\\\" and Copper shown as \\\"Does not get oxidized easily\\\". Row five reads \\\"Useful property\\\" with Iron described as \\\"Used where strength & corrosion resistance needed\\\" and Copper described as \\\"Used where conductivity & corrosion resistance needed\\\". The table uses thin navy grid lines, orange tinting for the iron column, pale blue tinting for the copper column, black condensed handwriting, and green checkmarks next to positive traits and red crosses next to limitations. The lower half introduces a large illustrated experiment section with a cream highlight behind the title \\\"BEFORE/AFTER IRON NAIL EXPERIMENT\\\" in bold dark navy uppercase letters. The section is split visually into a left \\\"Before\\\" state and a right \\\"After\\\" state. On the left, a beaker filled with bright blue solution contains a shiny silver iron nail standing diagonally. The beaker label reads \\\"CuSO₄(aq)\\\" in blue, and the bottom label near the nail reads \\\"Fe(s)\\\". A rounded annotation box beside the beaker says \\\"Initial State: Blue Solution & Silver Nail\\\". Two glass test tubes stand to the right of this beaker: the upper test tube is filled with blue solution and labeled \\\"CuSO₄(aq)\\\", while the lower one contains a pale green liquid. Red and blue directional arrows connect these visual elements to explanations: one red arrow points toward the nail with the text \\\"Copper gets deposited\\\", and one blue arrow points toward the liquid with the text \\\"Solution turns pale green\\\". On the right side of the experiment section, another beaker shows the after state with the iron nail now coated in brown copper deposits. Its solution is faded to a pale greenish-blue, and the beaker label reads \\\"FeSO₄(aq)\\\" in green. A nearby rounded annotation box says \\\"Final State: Pale Green Solution & Brown Coated Nail\\\". To the far right are additional test tubes and ion symbols: a test tube containing blue liquid labeled \\\"CuSO₄(aq)\\\" with the note \\\"Blue colour due to Cu²⁺ ions\\\", and a lower test tube containing pale green liquid labeled \\\"FeSO₄(aq)\\\" with the note \\\"Pale green due to Fe²⁺ ions\\\". Beside them are ion diagrams labeled \\\"Cu²⁺(aq)\\\" and \\\"Fe²⁺(aq)\\\", shown as colored charged particles encircled by simple electron-shell rings; the copper ion uses blue particles and the iron ion uses green particles. Small sparkles, arrows, and dashed guide lines emphasize the transformation from blue copper sulfate solution to pale green iron sulfate solution. Near the bottom, a horizontal summary strip has a blue star icon followed by the heading \\\"SUMMARY\\\". Full body text as follows: \\\"In this reaction, Iron (Fe) displaces Copper (Cu) from Copper Sulphate (CuSO₄) solution to form Iron(II) Sulphate (FeSO₄) solution and Copper (Cu).\\\" To the lower left, a bordered key-points box titled \\\"KEY POINTS\\\" lists three starred bullet statements: \\\"Iron is above copper in the reactivity series.\\\", \\\"Fe displaces Cu from CuSO₄ solution.\\\", and \\\"Result: Blue solution turns pale green; copper metal deposits on iron nail.\\\" At the very bottom, inside the footer border, spaced text reads \\\"CHEMISTRY • CHANGE IS EVERYWHERE • TOPPER’S NOTES\\\", flanked by small leaf-like ornaments and thin horizontal divider lines. The entire page uses dark navy borders and headings, bright highlighter strokes, watercolor shading, realistic glassware illustrations, and playful scientific doodles to present a chemistry lesson clearly and attractively.\"\n\nimage = pipe(\n    prompt=prompt,\n    width=1696,\n    height=2528,\n    num_inference_steps=40,\n    generator=torch.Generator(\"cuda\").manual_seed(42),\n).images[0]\n\nimage.save(\"t2i_example.png\")",
+   "doc": "github",
+   "doc_sha": "ab96caa944157ca28a4f36b695c3047549f48f98",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen-Image-2.1 README.md:L133-154",
+   "file": "README.md",
+   "lines": [
+    133,
+    154
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "import torch\nfrom diffusers.utils import load_image\nfrom diffusers import QwenImage21Pipeline\n\npipe = QwenImage21Pipeline.from_pretrained(\n    \"Qwen/Qwen-Image-2.1\", torch_dtype=torch.bfloat16\n).to(\"cuda\")\n\ninput_image = load_image(\n    'https://huggingface.co/Qwen/Qwen-Image-2.1-Turbo/resolve/main/assets/turbo-boat-input.png'\n).convert(\"RGBA\")\n\nedit_prompt = \"Create a photorealistic photograph of the motor yacht from the input sketch, sailing on open sea, captured in full side profile with the camera at water level. Build the vessel with the structure shown in the input sketch: a long low hull; one tall mast stepped forward with a small cross-tree platform near its top; a wheelhouse superstructure with an open bridge wing just behind the mast; a midships deckhouse carrying a row of four rectangular windows with a lifeboat stowed on its roof; a rectangular funnel behind that deckhouse; an aft deckhouse with a row of three rectangular windows and a second lifeboat above it; thin railings along every deck edge; the hull side pierced by one small square window at the bow, an upper line of five round portholes on the raised forward section, and a lower line of nine round portholes along the main hull. Paint the hull black, the superstructures and the mast white, and the funnel yellow. Set the yacht broadside on a calm deep-blue sea with a low gentle swell and a thin white wake trailing from the bow, the straight horizon crossing behind the funnel top, under a clear sky with soft scattered clouds; sunlight from the front left lights the white superstructures and leaves a bright reflection path on the water beside the hull with a soft contact shadow along the waterline; the entire vessel fits inside the frame with open water in the foreground and sky above.\"\n\nimage = pipe(\n    prompt=edit_prompt,\n    image=input_image,\n    num_inference_steps=40,\n    generator=torch.Generator(\"cuda\").manual_seed(43),\n).images[0]\n\nimage.save(\"edit_example.png\")",
+   "doc": "github",
+   "doc_sha": "ab96caa944157ca28a4f36b695c3047549f48f98",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen-Image-2.1 README.md:L162-179",
+   "file": "README.md",
+   "lines": [
+    162,
+    179
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "import torch\nfrom PIL import Image\nfrom diffusers import QwenImage21Pipeline\n\npipe = QwenImage21Pipeline.from_pretrained(\n    \"Qwen/Qwen-Image-2.1\", torch_dtype=torch.bfloat16\n).to(\"cuda\")\n\nimages = [Image.open(f\"ref_{i}.png\") for i in range(3)]\n\nresult = pipe(\n    prompt=\"These three characters are sitting around a campfire in a forest\",\n    image=images,\n    num_inference_steps=40,\n    generator=torch.Generator(\"cuda\").manual_seed(43),\n).images[0]\n\nresult.save(\"multi_ref_example.png\")",
+   "doc": "github",
+   "doc_sha": "ab96caa944157ca28a4f36b695c3047549f48f98",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen-Image-2.1 README.md:L189-202",
+   "file": "README.md",
+   "lines": [
+    189,
+    202
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "import torch\nfrom diffusers import QwenImage21Pipeline\n\npipe = QwenImage21Pipeline.from_pretrained(\n    \"Qwen/Qwen-Image-2.1\", torch_dtype=torch.bfloat16\n).to(\"cuda\")\n\nimage = pipe(\n    prompt=\"This is an RGBA image with transparency. A cute cartoon dragon sticker. The image has alpha channel and the background is transparent.\",\n    num_inference_steps=40,\n    generator=torch.Generator(\"cuda\").manual_seed(42),\n).images[0]\n\nimage.save(\"transparent_example.png\")  # Saved as RGBA when the model generates transparency",
+   "doc": "github",
+   "doc_sha": "ab96caa944157ca28a4f36b695c3047549f48f98",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen-Image-2.1 README.md:L210-227",
+   "file": "README.md",
+   "lines": [
+    210,
+    227
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "aspect_ratios = {\n    \"1:1\":  (2048, 2048),\n    \"4:3\":  (2400, 1792),\n    \"3:4\":  (1792, 2400),\n    \"3:2\":  (2528, 1696),\n    \"2:3\":  (1696, 2528),\n    \"16:9\": (2752, 1536),\n    \"9:16\": (1536, 2752),\n}\n\nwidth, height = aspect_ratios[\"1:1\"]\n\nimage = pipe(\n    prompt=\"A panoramic mountain landscape\",\n    width=width,\n    height=height,\n    num_inference_steps=40,\n).images[0]",
+   "doc": "github",
+   "doc_sha": "ab96caa944157ca28a4f36b695c3047549f48f98",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen-Image-2.1 README.md:L249-255",
+   "file": "README.md",
+   "lines": [
+    249,
+    255
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "prompt_rewrite/\n├── run_transformers.py       # Local inference, batch size 1\n├── run_vllm.py               # vLLM offline batch (recommended at scale)\n├── serve.sh + client.py      # vLLM server + client\n├── pe_core.py                # Task profiles, parsing, output records\n├── requirements.txt\n└── data/                     # Example inputs (t2i + edit with images)",
+   "doc": "github",
+   "doc_sha": "ab96caa944157ca28a4f36b695c3047549f48f98",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen-Image-2.1 README.md:L261-272",
+   "file": "README.md",
+   "lines": [
+    261,
+    272
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "cd prompt_rewrite\npip install -r requirements.txt\n\n# vLLM batch (recommended)\npython run_vllm.py --task t2i \\\n    --ckpt Qwen/Qwen-Image-2.1-PE-T2I \\\n    --input data/t2i_example.jsonl --output out.jsonl\n\n# Or local transformers\npython run_transformers.py --task t2i \\\n    --ckpt Qwen/Qwen-Image-2.1-PE-T2I \\\n    --input data/t2i_example.jsonl --output out.jsonl",
+   "doc": "github",
+   "doc_sha": "ab96caa944157ca28a4f36b695c3047549f48f98",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen-Image-2.1 README.md:L278-281",
+   "file": "README.md",
+   "lines": [
+    278,
+    281
+   ],
+   "lang": "json",
+   "tool": "json",
+   "kind": "config",
+   "text": "{\n  \"rewritten_prompt\": \"<long detailed English prompt>\",\n  \"wh_ratio\": \"16:9\"\n}",
+   "doc": "github",
+   "doc_sha": "ab96caa944157ca28a4f36b695c3047549f48f98",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen-Image-2.1 README.md:L287-289",
+   "file": "README.md",
+   "lines": [
+    287,
+    289
+   ],
+   "lang": "bash",
+   "tool": "python",
+   "kind": "code",
+   "text": "python run_vllm.py --task edit \\\n    --ckpt Qwen/Qwen-Image-2.1-PE-I2I \\\n    --input data/edit_example.jsonl --output out.jsonl",
+   "doc": "github",
+   "doc_sha": "ab96caa944157ca28a4f36b695c3047549f48f98",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen-Image-2.1 README.md:L295-295",
+   "file": "README.md",
+   "lines": [
+    295,
+    295
+   ],
+   "lang": "json",
+   "tool": "json",
+   "kind": "config",
+   "text": "{\"id\": \"abc123\", \"prompt\": \"make the sky sunset\", \"input_images\": [\"images/photo.png\"]}",
+   "doc": "github",
+   "doc_sha": "ab96caa944157ca28a4f36b695c3047549f48f98",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen-Image-2.1 README.md:L301-305",
+   "file": "README.md",
+   "lines": [
+    301,
+    305
+   ],
+   "lang": "json",
+   "tool": "json",
+   "kind": "config",
+   "text": "{\n  \"rewritten_prompt\": \"Replace the daytime sky with a warm sunset ...\",\n  \"wh_ratio\": \"\",\n  \"ratio_follow\": \"<image1>\"\n}",
+   "doc": "github",
+   "doc_sha": "ab96caa944157ca28a4f36b695c3047549f48f98",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen-Image-2.1 README.md:L314-317",
+   "file": "README.md",
+   "lines": [
+    314,
+    317
+   ],
+   "lang": "bash",
+   "tool": "python",
+   "kind": "code",
+   "text": "CKPT=Qwen/Qwen-Image-2.1-PE-T2I bash serve.sh\n# then:\npython client.py --task t2i --model Qwen/Qwen-Image-2.1-PE-T2I \\\n    \"a corgi playing guitar in the rain\"",
+   "doc": "github",
+   "doc_sha": "ab96caa944157ca28a4f36b695c3047549f48f98",
+   "scope": "family: Qwen/Qwen-Image-2.1-PE-T2I"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen-Image-2.1 README.md:L323-349",
+   "file": "README.md",
+   "lines": [
+    323,
+    349
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "import json\nimport torch\nfrom diffusers import QwenImage21Pipeline\n\nWH_RATIO_TO_SIZE = {\n    \"1:1\": (2048, 2048), \"4:3\": (2400, 1792), \"3:4\": (1792, 2400),\n    \"3:2\": (2528, 1696), \"2:3\": (1696, 2528), \"16:9\": (2752, 1536),\n    \"9:16\": (1536, 2752),\n}\n\n# After running the rewriter, read the output\nrewrite = {\"rewritten_prompt\": \"...\", \"wh_ratio\": \"16:9\"}  # from run_vllm.py output\nprompt = rewrite[\"rewritten_prompt\"]\nwidth, height = WH_RATIO_TO_SIZE.get(rewrite[\"wh_ratio\"], (2048, 2048))\n\npipe = QwenImage21Pipeline.from_pretrained(\n    \"Qwen/Qwen-Image-2.1\", torch_dtype=torch.bfloat16\n).to(\"cuda\")\n\nimage = pipe(\n    prompt=prompt,\n    width=width, height=height,\n    num_inference_steps=40,\n    generator=torch.Generator(\"cuda\").manual_seed(42),\n).images[0]\n\nimage.save(\"rewritten_example.png\")",
+   "doc": "github",
+   "doc_sha": "ab96caa944157ca28a4f36b695c3047549f48f98",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen-Image-2.1 README.md:L359-362",
+   "file": "README.md",
+   "lines": [
+    359,
+    362
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "pipe = QwenImage21Pipeline.from_pretrained(\n    \"Qwen/Qwen-Image-2.1\", torch_dtype=torch.bfloat16\n)\npipe.enable_model_cpu_offload()",
+   "doc": "github",
+   "doc_sha": "ab96caa944157ca28a4f36b695c3047549f48f98",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen-Image-2.1 README.md:L376-391",
+   "file": "README.md",
+   "lines": [
+    376,
+    391
+   ],
+   "lang": "bash",
+   "tool": "python",
+   "kind": "code",
+   "text": "# Text-to-image\npython examples/offline_inference/text_to_image/text_to_image.py \\\n  --model Qwen/Qwen-Image-2.1 \\\n  --prompt \"A ceramic teapot on a wooden table\" \\\n  --output qwen21_t2i.png \\\n  --num-inference-steps 40\n\n# Image editing\npython examples/offline_inference/image_to_image/image_edit.py \\\n  --model Qwen/Qwen-Image-2.1 \\\n  --color-format RGBA \\\n  --seed 43 \\\n  --image input.png \\\n  --prompt \"Let this mascot dance under the moon\" \\\n  --output qwen21_edit.png \\\n  --num-inference-steps 40",
+   "doc": "github",
+   "doc_sha": "ab96caa944157ca28a4f36b695c3047549f48f98",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen-Image-2.1 README.md:L397-397",
+   "file": "README.md",
+   "lines": [
+    397,
+    397
+   ],
+   "lang": "bash",
+   "tool": "vllm",
+   "kind": "command",
+   "text": "vllm serve Qwen/Qwen-Image-2.1 --omni --port 8091",
+   "translation": {
+    "translated": true,
+    "params": [],
+    "untranslatable": [
+     {
+      "arg": "--omni",
+      "why": "no llama.cpp mapping known"
+     }
+    ]
+   },
+   "doc": "github",
+   "doc_sha": "ab96caa944157ca28a4f36b695c3047549f48f98",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen-Image-2.1 README.md:L401-409",
+   "file": "README.md",
+   "lines": [
+    401,
+    409
+   ],
+   "lang": "bash",
+   "tool": "curl",
+   "kind": "command",
+   "text": "curl http://localhost:8091/v1/images/generations \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"model\": \"Qwen/Qwen-Image-2.1\",\n    \"prompt\": \"A ceramic teapot on a wooden table\",\n    \"size\": \"1024x1024\",\n    \"num_inference_steps\": 40,\n    \"seed\": 42\n  }'",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--seed",
+      "value": "42",
+      "from": "seed: 42"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "github",
+   "doc_sha": "ab96caa944157ca28a4f36b695c3047549f48f98",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen-Image-2.1 README.md:L415-418",
+   "file": "README.md",
+   "lines": [
+    415,
+    418
+   ],
+   "lang": "bash",
+   "tool": "vllm",
+   "kind": "command",
+   "text": "vllm serve Qwen/Qwen-Image-2.1 --omni \\\n  --port 8091 \\\n  --step-execution \\\n  --max-num-seqs 8",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-np",
+      "value": "8",
+      "from": "--max-num-seqs 8"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--omni",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--step-execution",
+      "why": "no llama.cpp mapping known"
+     }
+    ]
+   },
+   "doc": "github",
+   "doc_sha": "ab96caa944157ca28a4f36b695c3047549f48f98",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/QwenLM/Qwen-Image-2.1 README.md:L430-435",
+   "file": "README.md",
+   "lines": [
+    430,
+    435
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "sglang generate \\\n  --model-path Qwen/Qwen-Image-2.1 \\\n  --prompt \"A capybara reading a book by candlelight\" \\\n  --height 1024 --width 1024 \\\n  --num-inference-steps 40 --guidance-scale 1 \\\n  --seed 42 --save-output",
+   "doc": "github",
+   "doc_sha": "ab96caa944157ca28a4f36b695c3047549f48f98",
+   "scope": "model"
+  }
+ ],
+ "card_notes": null,
+ "chat_template": null,
+ "stop": null,
+ "rope": null,
+ "aux": null,
+ "gguf": {
+  "general.architecture": "qwen_image21",
+  "general.file_type": 15,
+  "general.quantization_version": 2,
+  "_gguf_version": 3
+ },
+ "snapshot": {
+  "path": "abenzerps--Qwen-Image-2.1-Uncensored-Quantized/7959e658915f52274897fb573ffeda49de8dc16b",
+  "fetched_bytes": 282259,
+  "errors": null,
+  "gated": false
+ },
+ "base_snapshot": {
+  "path": "Qwen--Qwen-Image-2.1/d26bb61231c349cf6b7896fa83353113880e1ba3",
+  "fetched_bytes": 19336153,
+  "errors": null,
+  "gated": false
+ },
+ "repo_files": {
+  ".gitattributes": {
+   "size": 2353,
+   "sha256": null,
+   "blob": "ca0c09aa939e92a6bfcc88086f87517d5b580245",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "README.md": {
+   "size": 8511,
+   "sha256": null,
+   "blob": "4657d98ee9365470882e40792eed60a150e4743c",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "SHA256SUMS": {
+   "size": 1774,
+   "sha256": null,
+   "blob": "083ebd8d745c4eae595719f90895888ffd8cf48c",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "assets/Qwen-Image-2.1-Benchmark.png": {
+   "size": 269621,
+   "sha256": "66a1481f7e03491f42ecc0dc2380afdb97e6144759900317be857696e7038ac5",
+   "blob": "14282a74516cc423e0a5f3da7d5d809fe755be45",
+   "fetched": true,
+   "verified": "lfs-sha256"
+  },
+  "qwen-image-2.1-UC-BF16.gguf": {
+   "size": 14230272800,
+   "sha256": "f151c683a8aed4b310777017ebbbe3f2180f1180f7867115171adb7d50b0762a",
+   "blob": "201c1bbc43c0a93ab3fd5a288116ef8329c29b0b",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (14230 MB)"
+  },
+  "qwen-image-2.1-UC-MLX-4bit.safetensors": {
+   "size": 4002363741,
+   "sha256": "7a89c59097586b18a987ce798f6540d9d856243b78aaec784b1d6dded819b72a",
+   "blob": "1d1f4b21c81796950c240580b360fb5eb4c6501c",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (4002 MB)"
+  },
+  "qwen-image-2.1-UC-MLX-6bit.safetensors": {
+   "size": 5781141974,
+   "sha256": "874977a9d1e196ee38220dc0d9bd0be3a583a039bdf07a62b60daadd8577c397",
+   "blob": "e447f3a6c1c18287580036c142f19465ff89f695",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (5781 MB)"
+  },
+  "qwen-image-2.1-UC-MLX-8bit.safetensors": {
+   "size": 7559920348,
+   "sha256": "ed221106d3a61da7d913fcc0d24a77fbe3bd218ff220af3ef04b83484ca79cf2",
+   "blob": "800bb012c6faca448cf3bc4e496a64e7e8bee884",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (7559 MB)"
+  },
+  "qwen-image-2.1-UC-NVFP4.safetensors": {
+   "size": 4197574696,
+   "sha256": "7cdf87660e84aecf740b5b0f65c848549ba8a74d88ac201976931ca4c780d121",
+   "blob": "3189bf88cbb2651c644e5c1b40430c838d47e339",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (4197 MB)"
+  },
+  "qwen-image-2.1-UC-Q4_0.gguf": {
+   "size": 4151573280,
+   "sha256": "13f59f20656efc0aa385d03c1fcac1a9dc2ad6e5ccc0ea9bfe1d6ac636f2c5b9",
+   "blob": "12f102e30011ed86ec36f2780f001a718f621f77",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (4151 MB)"
+  },
+  "qwen-image-2.1-UC-Q4_K_M.gguf": {
+   "size": 4604558112,
+   "sha256": "e79c8a009f2ecbdb6c70fd663d9aea9ee304a0d91f347e4169a756b8ad141b41",
+   "blob": "1578d347dfe82c9d6e1ef9e624bb36e314d4327c",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (4604 MB)"
+  },
+  "qwen-image-2.1-UC-Q5_K_M.gguf": {
+   "size": 5221284640,
+   "sha256": "af0bf278cf16d204fb31c384dc82fd41dca82d976b15fe9305a60c726fd6f821",
+   "blob": "f69c81d32646d8a330c5f4f061e43e73bf3b8714",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (5221 MB)"
+  },
+  "qwen-image-2.1-UC-Q6_K.gguf": {
+   "size": 5876556576,
+   "sha256": "e14bb312109333b3d73b92ad9b9ac8b29b51f2edca1e7b86d1af1981bf1c4ee3",
+   "blob": "c9fc45f10d8e832d285181b10fa62afb8fd5b8f8",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (5876 MB)"
+  },
+  "qwen-image-2.1-UC-Q8_0.gguf": {
+   "size": 7591557920,
+   "sha256": "cde456c72ea3ecebfc1be783300e972711d875e0c5f1bed33d42b66b156affa8",
+   "blob": "1dae02bb354670b96de95c89ff736d4cbb5483a7",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (7591 MB)"
+  },
+  "qwen-image-2.1-UC-fp8.safetensors": {
+   "size": 7116818183,
+   "sha256": "877b77290339986bca8f771aead381c7a5777347c27d252bbaa915f76667ab0b",
+   "blob": "2f28ef5283a844eff8b48256307b771c2b421ffc",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (7116 MB)"
+  },
+  "qwen-image-2.1-UC-int8_convrot.safetensors": {
+   "size": 7256796840,
+   "sha256": "5bc5a6c007eff1e0d4004344a24c4af966b9d2c83d142e613b0d456ccceb19ae",
+   "blob": "f547ac7f03cf78702660327df74b19199cfd097c",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (7256 MB)"
+  },
+  "qwen-image-2.1-uncensored-lora.safetensors": {
+   "size": 33586704,
+   "sha256": "00ee2cb7f00a37b097640c1880ed0d17e368e30599f34bb348fee0e8c2cc4ca1",
+   "blob": "4eb2d31d9532d08581849976c7fa0787a6053e79",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (33 MB)"
+  },
+  "text_encoders/qwen3vl_8b_bf16.safetensors": {
+   "size": 17534334616,
+   "sha256": "68bdc82bc1b66851162ae656225e7e2068166b603db19bd5d5a3b90eb12669a9",
+   "blob": "96913abdb450c149239bf34d67f9e62b0eafce0a",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (17534 MB)"
+  },
+  "text_encoders/qwen3vl_8b_int8_convrot.safetensors": {
+   "size": 9350798360,
+   "sha256": "8bfd0f6e12abf2d2d697ecc888e5e90b0d6741d6708f05799f53afa560452e8f",
+   "blob": "cfd84f4f1f9cd291038fff20fb4f7ff21c43a4b2",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (9350 MB)"
+  },
+  "vae/qwen_image_2.1_vae_bf16.safetensors": {
+   "size": 675509688,
+   "sha256": "bb21f7473051e1ac368515dd3f2e15cd44d7a11748ee8823e1ddca3e4876b7c9",
+   "blob": "20f289c83f9207ca23f61c008a51ee44d68f0504",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (675 MB)"
+  }
+ },
+ "base_repo_files": {
+  ".gitattributes": {
+   "size": 1630,
+   "sha256": null,
+   "blob": "7236eee3e26bfd60df2cd50255284a1c1716274a",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "LICENSE": {
+   "size": 7831,
+   "sha256": null,
+   "blob": "13ae08d5a5828f508cf0e852b1b316c0c0bbb9b3",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "README.md": {
+   "size": 5707,
+   "sha256": null,
+   "blob": "db44574023ab5c2df91d7c5a3e64b59e41f02657",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "assets/qr.png": {
+   "size": 3332800,
+   "sha256": "9b1c6d8996a3560f12060affd070575dd8a3938462b15233c0dc15b2604a9243",
+   "blob": "b1d027acc95b5a780bdede4fccb2bba4815a7f24",
+   "fetched": true,
+   "verified": "lfs-sha256"
+  },
+  "model_index.json": {
+   "size": 447,
+   "sha256": null,
+   "blob": "85d02d05f150cbe24a8fd3542062b565767bbe7b",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "processor/added_tokens.json": {
+   "size": 707,
+   "sha256": null,
+   "blob": "b54f9135e44c1e81047e8d05cb027af8bc039eed",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "processor/chat_template.jinja": {
+   "size": 5292,
+   "sha256": null,
+   "blob": "124386803f142761528f710e77ae483f5f8c4fc4",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "processor/merges.txt": {
+   "size": 1671853,
+   "sha256": null,
+   "blob": "31349551d90c7606f325fe0f11bbb8bd5fa0d7c7",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "processor/preprocessor_config.json": {
+   "size": 782,
+   "sha256": null,
+   "blob": "2fa6553554f69b4e3a6b742a75264ff9dff90ad0",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "processor/special_tokens_map.json": {
+   "size": 613,
+   "sha256": null,
+   "blob": "ac23c0aaa2434523c494330aeb79c58395378103",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "processor/tokenizer.json": {
+   "size": 11422654,
+   "sha256": "aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4",
+   "blob": "cd71f61a15a522601badb3dc960d800d9cb3766c",
+   "fetched": true,
+   "verified": "lfs-sha256"
+  },
+  "processor/tokenizer_config.json": {
+   "size": 5445,
+   "sha256": null,
+   "blob": "fec7f182135c384a08ea2fc9635566ca79c45afc",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "processor/video_preprocessor_config.json": {
+   "size": 817,
+   "sha256": null,
+   "blob": "e32b1d90356f74457edbfca27aa1e121dab7cdc7",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "processor/vocab.json": {
+   "size": 2776833,
+   "sha256": null,
+   "blob": "4783fe10ac3adce15ac8f358ef5462739852c569",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "scheduler/scheduler_config.json": {
+   "size": 485,
+   "sha256": null,
+   "blob": "45cd05b021892b1cafbd16d61ce692637e88bedd",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "text_encoder/config.json": {
+   "size": 1517,
+   "sha256": null,
+   "blob": "581ce4655dde5272e577065dd08b1fda7e97d6e8",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "text_encoder/generation_config.json": {
+   "size": 213,
+   "sha256": null,
+   "blob": "bdb4e0372b04220c80df250f2b3354d1c81c97cb",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "text_encoder/model-00001-of-00004.safetensors": {
+   "size": 4998056552,
+   "sha256": "dde00291b5f7fb92013895310a3da0ddba78674df9f10d505d375243dc01fc6f",
+   "blob": "1138cc4ce99d967e54cdbc9b28cc0f89d898d2df",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (4998 MB)"
+  },
+  "text_encoder/model-00002-of-00004.safetensors": {
+   "size": 4915962464,
+   "sha256": "9047faccc0a6d98496a52d55f27be1c94a9c259d1e283fbea0128d054a948d42",
+   "blob": "d1f034717f74efe3412b09a85837508df460d3ce",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (4915 MB)"
+  },
+  "text_encoder/model-00003-of-00004.safetensors": {
+   "size": 4915962496,
+   "sha256": "8c54187654c0176b73ae73785bf791dc9a14c9df7fb4310083a09d42048cb57e",
+   "blob": "a369d67f72de0730ec13f5c0d4976cc6ef8c1586",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (4915 MB)"
+  },
+  "text_encoder/model-00004-of-00004.safetensors": {
+   "size": 2704357976,
+   "sha256": "5311532aaaeae3259eb6a7b2c600636be1159adf7ded35f53579f7d0e7d43cdd",
+   "blob": "cf023365b5afdb51320865b5723a453e82154064",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (2704 MB)"
+  },
+  "text_encoder/model.safetensors.index.json": {
+   "size": 67795,
+   "sha256": null,
+   "blob": "6d4d74c934b05b8addb0744305eef3674650cd8b",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "transformer/config.json": {
+   "size": 370,
+   "sha256": null,
+   "blob": "706df60672976086089e99f6595037f917d7602e",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "transformer/diffusion_pytorch_model-00001-of-00002.safetensors": {
+   "size": 9968332504,
+   "sha256": "9e6bc2d641e67bf277895ea8777141044a38f3edb7101bc469b2961dd7c36b4b",
+   "blob": "6a7e90b3b727102a38d4a4a396a3c7593302030d",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (9968 MB)"
+  },
+  "transformer/diffusion_pytorch_model-00002-of-00002.safetensors": {
+   "size": 4261951904,
+   "sha256": "3aaf234dcbe128530479735854a346b5e3e66283b7c11db56f836bbd1c13ebaa",
+   "blob": "c1822764e9877e75840cd9d6e01513fa0be99e4f",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (4261 MB)"
+  },
+  "transformer/diffusion_pytorch_model.safetensors.index.json": {
+   "size": 30283,
+   "sha256": null,
+   "blob": "bd64579cfd093a6a4ea8fb492217790018c53c0d",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "vae/config.json": {
+   "size": 2079,
+   "sha256": null,
+   "blob": "ac6fe795d898a5eff16e4527256c2d039f5b0d4b",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "vae/diffusion_pytorch_model.safetensors": {
+   "size": 1350989512,
+   "sha256": "a07a1b7c4ee2966a1b3bdc37de9b4f983d56937e46619f709a80b6e490675417",
+   "blob": "5c78907e022a677ffc002bd10150a1a521e89e8b",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (1350 MB)"
+  }
+ },
+ "found_in": [
+  "familia #56"
+ ],
+ "match": null,
+ "local_check": null,
+ "unknown": [
+  "card_defaults: the card and generation_config.json state no sampling values",
+  "ctx"
+ ],
+ "warnings": null,
+ "updated": "2026-10-19",
+ "by": "scripts/model_db.py",
+ "weights": "absent (damp)",
+ "gguf_meta": {
+  "general.architecture": "qwen_image21",
+  "general.quantization_version": 2,
+  "general.file_type": 15,
+  "_gguf_version": 3,
+  "_n_tensors": 297
+ },
+ "base_chain": [
+  {
+   "repo": "Qwen/Qwen-Image-2.1",
+   "api_id": "Qwen/Qwen-Image-2.1",
+   "revision": "d26bb61231c349cf6b7896fa83353113880e1ba3",
+   "via": "card base_model",
+   "card_data": {
+    "license": "other",
+    "license_name": "qwen-research",
+    "license_link": "LICENSE",
+    "pipeline_tag": "text-to-image"
+   },
+   "pipeline_tag": "text-to-image",
+   "safetensors": {
+    "parameters": {
+     "BF16": 7115124736
+    },
+    "total": 7115124736
+   },
+   "license_files": [
+    "LICENSE"
+   ]
+  }
+ ],
+ "github": [
+  {
+   "repo": "QwenLM/Qwen-Image-2.1",
+   "resolved": "QwenLM/Qwen-Image-2.1",
+   "sha": "ab96caa944157ca28a4f36b695c3047549f48f98",
+   "renamed": null,
+   "description": "Qwen's most powerful open-source image generation model",
+   "license_spdx": "NOASSERTION",
+   "files": {
+    "readme": {
+     "path": "README.md",
+     "sha256": "2e6c584006dff79402808446182e6fe15ce5f279e46c321e07ac90257ed2c07c",
+     "bytes": 44582
+    },
+    "license": {
+     "path": "LICENSE",
+     "sha256": "8dc973f024ff95966bea25866efa443fd16776dcb1001e681e3d467ea572b28d",
+     "bytes": 7831
+    }
+   },
+   "extra": null,
+   "snapshot": "github/QwenLM--Qwen-Image-2.1/ab96caa944157ca28a4f36b695c3047549f48f98"
+  }
+ ],
+ "github_dropped": [
+  {
+   "repo": "comfyanonymous/ComfyUI",
+   "why": "owner and name unrelated to the model's Hugging Face repos"
+  },
+  {
+   "repo": "leejet/ComfyUI-GGUF",
+   "why": "owner and name unrelated to the model's Hugging Face repos"
+  },
+  {
+   "repo": "Comfy-Org/workflow_templates",
+   "why": "owner and name unrelated to the model's Hugging Face repos"
+  },
+  {
+   "repo": "leejet/stable-diffusion.cpp",
+   "why": "owner and name unrelated to the model's Hugging Face repos"
+  },
+  {
+   "repo": "Comfy-Org/comfy-kitchen",
+   "why": "owner and name unrelated to the model's Hugging Face repos"
+  },
+  {
+   "repo": "huggingface/diffusers",
+   "why": "Hugging Face tool repo"
+  }
+ ],
+ "descriptor": {
+  "repo_id": {
+   "effective": "abenzerps/Qwen-Image-2.1-Uncensored-Quantized",
+   "source": "HF API id"
+  },
+  "revision": {
+   "effective": "7959e658915f52274897fb573ffeda49de8dc16b",
+   "source": "pinned (manifest / database)"
+  },
+  "file": {
+   "effective": "qwen-image-2.1-UC-Q4_K_M.gguf",
+   "source": "HF API siblings"
+  },
+  "bytes": {
+   "effective": 4604558112,
+   "source": "HF API LFS size"
+  },
+  "sha256": {
+   "effective": "e79c8a009f2ecbdb6c70fd663d9aea9ee304a0d91f347e4169a756b8ad141b41",
+   "source": "HF API LFS oid"
+  },
+  "quant": {
+   "effective": "Q4_K_M",
+   "source": "file name",
+   "values": [
+    {
+     "value": "Q4_K_M",
+     "source": "file name"
+    },
+    {
+     "value": "Q4_K_M",
+     "source": "GGUF general.file_type"
+    }
+   ]
+  },
+  "license": {
+   "effective": "other",
+   "source": "abenzerps/Qwen-Image-2.1-Uncensored-Quantized card license",
+   "values": [
+    {
+     "value": "other",
+     "source": "abenzerps/Qwen-Image-2.1-Uncensored-Quantized card license"
+    },
+    {
+     "value": "other",
+     "source": "Qwen/Qwen-Image-2.1 card license"
+    }
+   ]
+  },
+  "license_name": {
+   "effective": "qwen-research",
+   "source": "abenzerps/Qwen-Image-2.1-Uncensored-Quantized card license_name",
+   "values": [
+    {
+     "value": "qwen-research",
+     "source": "abenzerps/Qwen-Image-2.1-Uncensored-Quantized card license_name"
+    },
+    {
+     "value": "qwen-research",
+     "source": "Qwen/Qwen-Image-2.1 card license_name"
+    }
+   ]
+  },
+  "license_link": {
+   "effective": "LICENSE",
+   "source": "Qwen/Qwen-Image-2.1 card license_link"
+  },
+  "license_file": {
+   "effective": "github.com/QwenLM/Qwen-Image-2.1@ab96caa94415/LICENSE",
+   "source": "GitHub github.com/QwenLM/Qwen-Image-2.1",
+   "values": [
+    {
+     "value": "github.com/QwenLM/Qwen-Image-2.1@ab96caa94415/LICENSE",
+     "source": "GitHub github.com/QwenLM/Qwen-Image-2.1"
+    },
+    {
+     "value": "Qwen/Qwen-Image-2.1@d26bb61231c3/LICENSE",
+     "source": "Qwen/Qwen-Image-2.1 repo file"
+    }
+   ]
+  },
+  "base_model_chain": {
+   "effective": "Qwen/Qwen-Image-2.1",
+   "source": "card base_model"
+  },
+  "architecture": {
+   "effective": "qwen_image21",
+   "source": "GGUF general.architecture",
+   "values": [
+    {
+     "value": "qwen_image21",
+     "source": "GGUF general.architecture"
+    },
+    {
+     "value": "qwen_image21",
+     "source": "HF API gguf.architecture"
+    }
+   ]
+  },
+  "parameters": {
+   "effective": 7115124736,
+   "source": "HF API gguf.total (abenzerps/Qwen-Image-2.1-Uncensored-Quantized)",
+   "values": [
+    {
+     "value": 7115124736,
+     "source": "HF API gguf.total (abenzerps/Qwen-Image-2.1-Uncensored-Quantized)"
+    },
+    {
+     "value": 7115124736,
+     "source": "HF API safetensors.total (Qwen/Qwen-Image-2.1)"
+    }
+   ]
+  },
+  "pipeline_tag": {
+   "effective": "text-to-image",
+   "source": "abenzerps/Qwen-Image-2.1-Uncensored-Quantized HF API pipeline_tag",
+   "values": [
+    {
+     "value": "text-to-image",
+     "source": "abenzerps/Qwen-Image-2.1-Uncensored-Quantized HF API pipeline_tag"
+    },
+    {
+     "value": "text-to-image",
+     "source": "Qwen/Qwen-Image-2.1 HF API pipeline_tag"
+    }
+   ]
+  }
+ },
+ "required_params": {
+  "kind": "raw",
+  "native_ctx": null,
+  "native_ctx_source": null,
+  "yarn": null,
+  "yarn_source": null,
+  "items": []
+ },
+ "blockers": null,
+ "params_problems": null,
+ "params_build": "b11374",
+ "license_info": {
+  "id": "qwen-research",
+  "id_source": "abenzerps/Qwen-Image-2.1-Uncensored-Quantized card front matter license_name",
+  "name": "qwen-research",
+  "summary": "qwen-research (no link)",
+  "summary_source": "abenzerps/Qwen-Image-2.1-Uncensored-Quantized card license",
+  "link": "https://huggingface.co/abenzerps/Qwen-Image-2.1-Uncensored-Quantized/blob/7959e658915f52274897fb573ffeda49de8dc16b/LICENSE",
+  "link_source": "Qwen/Qwen-Image-2.1 card license_link",
+  "texts": [
+   {
+    "file": "Qwen/Qwen-Image-2.1@d26bb61231c3/LICENSE",
+    "path": "/home/green/.local/share/gguf/hf-meta/Qwen--Qwen-Image-2.1/d26bb61231c349cf6b7896fa83353113880e1ba3/LICENSE",
+    "url": "https://huggingface.co/Qwen/Qwen-Image-2.1/blob/d26bb61231c349cf6b7896fa83353113880e1ba3/LICENSE",
+    "sha256": "8dc973f024ff95966bea25866efa443fd16776dcb1001e681e3d467ea572b28d",
+    "bytes": 7831,
+    "what": "model"
+   },
+   {
+    "file": "github.com/QwenLM/Qwen-Image-2.1@ab96caa94415/LICENSE",
+    "path": "/home/green/.local/share/gguf/hf-meta/github/QwenLM--Qwen-Image-2.1/ab96caa944157ca28a4f36b695c3047549f48f98/LICENSE",
+    "url": "https://github.com/QwenLM/Qwen-Image-2.1/blob/ab96caa944157ca28a4f36b695c3047549f48f98/LICENSE",
+    "sha256": "8dc973f024ff95966bea25866efa443fd16776dcb1001e681e3d467ea572b28d",
+    "bytes": 7831,
+    "what": "code (GitHub QwenLM/Qwen-Image-2.1, spdx NOASSERTION)"
+   }
+  ],
+  "obligations": [
+   {
+    "quote": "i. \"Non-Commercial\" shall mean for research or evaluation purposes only.",
+    "source": "Qwen/Qwen-Image-2.1 LICENSE:L16"
+   },
+   {
+    "quote": "a. You are granted a non-exclusive, worldwide, non-transferable and royalty-free limited license under our intellectual property or other rights owned by us embodied in the Materials to use, reproduce, distribute, copy, create derivative works of, and make modifications to the Materials FOR NON-COMM...",
+    "source": "Qwen/Qwen-Image-2.1 LICENSE:L19"
+   },
+   {
+    "quote": "b. You shall not use the Materials for any commercial purpose without obtaining a separate commercial license from us. If you wish to use the Materials commercially, you shall request a license from us at model-business@notice.qwencloud.com.",
+    "source": "Qwen/Qwen-Image-2.1 LICENSE:L20"
+   },
+   {
+    "quote": "a. You shall give any other recipients of the Materials or derivative works a copy of this Agreement;",
+    "source": "Qwen/Qwen-Image-2.1 LICENSE:L24"
+   },
+   {
+    "quote": "b. You shall cause any modified files to carry prominent notices stating that you changed the files;",
+    "source": "Qwen/Qwen-Image-2.1 LICENSE:L25"
+   },
+   {
+    "quote": "c. You shall retain in all copies of the Materials that you distribute the following attribution notices within a \"Notice\" text file distributed as a part of such copies: \"Qwen is licensed under the Qwen RESEARCH LICENSE AGREEMENT, Copyright (c) 2026 Hangzhou Tongyi Laboratory Technology Co., Ltd. A...",
+    "source": "Qwen/Qwen-Image-2.1 LICENSE:L26"
+   },
+   {
+    "quote": "a. The Materials may be subject to export controls or restrictions in China, the United States or other countries or regions. You shall comply with applicable laws and regulations in your use of the Materials.",
+    "source": "Qwen/Qwen-Image-2.1 LICENSE:L30"
+   },
+   {
+    "quote": "b. If you use the Materials or any outputs or results therefrom to create, train, fine-tune, or improve an AI model that is distributed or made available, you shall prominently display “Built with Qwen” or “Improved using Qwen” in the related product documentation.",
+    "source": "Qwen/Qwen-Image-2.1 LICENSE:L31"
+   }
+  ],
+  "gated": false,
+  "unknown": false,
+  "seen": [
+   {
+    "value": "other",
+    "source": "abenzerps/Qwen-Image-2.1-Uncensored-Quantized card license"
+   },
+   {
+    "value": "other",
+    "source": "Qwen/Qwen-Image-2.1 card license"
+   }
+  ]
+ },
+ "role_inference": {
+  "role": null,
+  "evidence": [
+   "general +1 (GGUF metadata: general.architecture qwen_image21 (generative))",
+   "no familia role: card pipeline_tag text-to-image is not a text-generation model; classify by hand"
+  ]
+ },
+ "repo_bytes": 105184930737
+}

@@ -1,0 +1,924 @@
+{
+ "schema": 2,
+ "id": "nvidia--Nemotron-3-Diarization--Nemotron-3-Diarization.q8_0",
+ "repo": "nvidia/Nemotron-3-Diarization",
+ "revision": "f667ed73aee57d40cc39428eb768b4fd87a0a29e",
+ "file": "Nemotron-3-Diarization.q8_0.gguf",
+ "sha256": "08456d9e22cd9a323c0364d98375f3746d6e68507ebb705cd46438c534c7a3a1",
+ "bytes": 107012128,
+ "quant": "Q8_0",
+ "arch": "sortformer",
+ "roles": [],
+ "license": "openmdw-1.1",
+ "license_source": "nvidia/Nemotron-3-Diarization card license",
+ "ctx": null,
+ "ctx_source": null,
+ "card_ctx": null,
+ "card_ctx_source": null,
+ "base_model": null,
+ "base_revision": null,
+ "card_defaults": null,
+ "card_defaults_source": null,
+ "card_default_set": null,
+ "card_defaults_how": "the card and generation_config.json state no sampling values",
+ "card_sampling_modes": null,
+ "card_default_mode": null,
+ "card_default_mode_source": null,
+ "card_sampling_sets": null,
+ "card_commands": [
+  {
+   "source": "nvidia/Nemotron-3-Diarization README.md:L52-52",
+   "file": "README.md",
+   "lines": [
+    52,
+    52
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "nemo-speech diarize meeting.wav",
+   "doc": "card",
+   "doc_sha": "f667ed73aee57d40cc39428eb768b4fd87a0a29e",
+   "scope": "model"
+  },
+  {
+   "source": "nvidia/Nemotron-3-Diarization README.md:L58-58",
+   "file": "README.md",
+   "lines": [
+    58,
+    58
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "nemo-speech transcribe meeting.wav --diarize --json",
+   "doc": "card",
+   "doc_sha": "f667ed73aee57d40cc39428eb768b4fd87a0a29e",
+   "scope": "model"
+  },
+  {
+   "source": "nvidia/Nemotron-3-Diarization README.md:L69-71",
+   "file": "README.md",
+   "lines": [
+    69,
+    71
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "apt-get update && apt-get install -y libsndfile1 ffmpeg\nuv pip install Cython packaging\nuv pip install 'nemo-toolkit[asr]'",
+   "doc": "card",
+   "doc_sha": "f667ed73aee57d40cc39428eb768b4fd87a0a29e",
+   "scope": "model"
+  },
+  {
+   "source": "nvidia/Nemotron-3-Diarization README.md:L79-92",
+   "file": "README.md",
+   "lines": [
+    79,
+    92
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "from nemo.collections.asr.models import SortformerEncLabelModel\ndiar_model = SortformerEncLabelModel.from_pretrained(\"nvidia/Nemotron-3-Diarization\")\ndiar_model.eval()\n\ndiar_model.sortformer_modules.chunk_len = 340\ndiar_model.sortformer_modules.chunk_right_context = 40\ndiar_model.sortformer_modules.fifo_len = 40\ndiar_model.sortformer_modules.spkcache_update_period = 300\ndiar_model._check_streaming_parameters()\n\npredicted_segments = diar_model.diarize(audio=[\"/path/to/your/audio.wav\"], batch_size=1)\n\nfor segment in predicted_segments[0]:\n    print(segment)",
+   "doc": "card",
+   "doc_sha": "f667ed73aee57d40cc39428eb768b4fd87a0a29e",
+   "scope": "model"
+  },
+  {
+   "source": "nvidia/Nemotron-3-Diarization README.md:L98-107",
+   "file": "README.md",
+   "lines": [
+    98,
+    107
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "from nemo.collections.asr.models import SortformerEncLabelModel\n\n# load model from Hugging Face model card directly (You need a Hugging Face token)\ndiar_model = SortformerEncLabelModel.from_pretrained(\"nvidia/Nemotron-3-Diarization\")\n\n# If you have a downloaded model in \"/path/to/Nemotron-3-Diarization.nemo\", load model from a downloaded file\ndiar_model = SortformerEncLabelModel.restore_from(restore_path=\"/path/to/Nemotron-3-Diarization.nemo\", map_location='cuda', strict=False)\n\n# switch to inference mode\ndiar_model.eval()",
+   "doc": "card",
+   "doc_sha": "f667ed73aee57d40cc39428eb768b4fd87a0a29e",
+   "scope": "model"
+  },
+  {
+   "source": "nvidia/Nemotron-3-Diarization README.md:L113-113",
+   "file": "README.md",
+   "lines": [
+    113,
+    113
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "audio_input=\"/path/to/multispeaker_audio1.wav\"",
+   "doc": "card",
+   "doc_sha": "f667ed73aee57d40cc39428eb768b4fd87a0a29e",
+   "scope": "model"
+  },
+  {
+   "source": "nvidia/Nemotron-3-Diarization README.md:L117-117",
+   "file": "README.md",
+   "lines": [
+    117,
+    117
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "audio_input=[\"/path/to/multispeaker_audio1.wav\", \"/path/to/multispeaker_audio2.wav\"]",
+   "doc": "card",
+   "doc_sha": "f667ed73aee57d40cc39428eb768b4fd87a0a29e",
+   "scope": "model"
+  },
+  {
+   "source": "nvidia/Nemotron-3-Diarization README.md:L121-125",
+   "file": "README.md",
+   "lines": [
+    121,
+    125
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "import numpy as np\naudio_input = np.random.randn(16000 * 10).astype(np.float32)  # 10 sec at 16kHz\n# or a list of arrays\naudio_input = [audio_array1, audio_array2]\ndiar_model.diarize(audio=audio_input, batch_size=2, sample_rate=16000)",
+   "doc": "card",
+   "doc_sha": "f667ed73aee57d40cc39428eb768b4fd87a0a29e",
+   "scope": "model"
+  },
+  {
+   "source": "nvidia/Nemotron-3-Diarization README.md:L132-132",
+   "file": "README.md",
+   "lines": [
+    132,
+    132
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "audio_input=\"/path/to/multispeaker_manifest.json\"",
+   "doc": "card",
+   "doc_sha": "f667ed73aee57d40cc39428eb768b4fd87a0a29e",
+   "scope": "model"
+  },
+  {
+   "source": "nvidia/Nemotron-3-Diarization README.md:L136-137",
+   "file": "README.md",
+   "lines": [
+    136,
+    137
+   ],
+   "lang": "jsonl",
+   "tool": "jsonl",
+   "kind": "other",
+   "text": "{\"audio_filepath\": \"/path/to/multispeaker_audio1.wav\", \"offset\": 0, \"duration\": 600}\n{\"audio_filepath\": \"/path/to/multispeaker_audio2.wav\", \"offset\": 900, \"duration\": 580}",
+   "doc": "card",
+   "doc_sha": "f667ed73aee57d40cc39428eb768b4fd87a0a29e",
+   "scope": "model"
+  },
+  {
+   "source": "nvidia/Nemotron-3-Diarization README.md:L162-167",
+   "file": "README.md",
+   "lines": [
+    162,
+    167
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "diar_model.sortformer_modules.spkcache_len = SPKCACHE_LEN\ndiar_model.sortformer_modules.fifo_len = FIFO_LEN\ndiar_model.sortformer_modules.chunk_len = CHUNK_LEN\ndiar_model.sortformer_modules.chunk_right_context = RIGHT_CONTEXT\ndiar_model.sortformer_modules.spkcache_update_period = UPDATE_PERIOD\ndiar_model._check_streaming_parameters()",
+   "doc": "card",
+   "doc_sha": "f667ed73aee57d40cc39428eb768b4fd87a0a29e",
+   "scope": "model"
+  },
+  {
+   "source": "nvidia/Nemotron-3-Diarization README.md:L174-174",
+   "file": "README.md",
+   "lines": [
+    174,
+    174
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "predicted_segments = diar_model.diarize(audio=audio_input, batch_size=1)",
+   "doc": "card",
+   "doc_sha": "f667ed73aee57d40cc39428eb768b4fd87a0a29e",
+   "scope": "model"
+  },
+  {
+   "source": "nvidia/Nemotron-3-Diarization README.md:L179-179",
+   "file": "README.md",
+   "lines": [
+    179,
+    179
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "predicted_segments, predicted_probs = diar_model.diarize(audio=audio_input, batch_size=1, include_tensor_outputs=True)",
+   "doc": "card",
+   "doc_sha": "f667ed73aee57d40cc39428eb768b4fd87a0a29e",
+   "scope": "model"
+  },
+  {
+   "source": "nvidia/Nemotron-3-Diarization README.md:L184-184",
+   "file": "README.md",
+   "lines": [
+    184,
+    184
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "predicted_segments, predicted_probs = diar_model.diarize(audio=[np_array1, np_array2], batch_size=2, sample_rate=16000)",
+   "doc": "card",
+   "doc_sha": "f667ed73aee57d40cc39428eb768b4fd87a0a29e",
+   "scope": "model"
+  },
+  {
+   "source": "nvidia/Nemotron-3-Diarization README.md:L192-203",
+   "file": "README.md",
+   "lines": [
+    192,
+    203
+   ],
+   "lang": "bash",
+   "tool": "python",
+   "kind": "code",
+   "text": "python ${NEMO_ROOT}/examples/speaker_tasks/diarization/neural_diarizer/e2e_diarize_speech.py \\\n    pretrained_name=\"nvidia/Nemotron-3-Diarization\" \\\n    dataset_manifest=\"/path/to/diarization_manifest.json\" \\\n    batch_size=32 \\\n    collar=0 \\\n    precision=bf16 \\\n    compile_encoder=false \\\n    spkcache_len=264 \\\n    spkcache_update_period=300 \\\n    fifo_len=40 \\\n    chunk_len=340 \\\n    chunk_right_context=40",
+   "doc": "card",
+   "doc_sha": "f667ed73aee57d40cc39428eb768b4fd87a0a29e",
+   "scope": "model"
+  },
+  {
+   "source": "nvidia/Nemotron-3-Diarization README.md:L214-214",
+   "file": "README.md",
+   "lines": [
+    214,
+    214
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install git+https://github.com/huggingface/transformers",
+   "doc": "card",
+   "doc_sha": "f667ed73aee57d40cc39428eb768b4fd87a0a29e",
+   "scope": "model"
+  },
+  {
+   "source": "nvidia/Nemotron-3-Diarization README.md:L223-243",
+   "file": "README.md",
+   "lines": [
+    223,
+    243
+   ],
+   "lang": "python",
+   "tool": "transformers",
+   "kind": "code",
+   "text": "import torch\nfrom transformers import AutoModelForAudioFrameClassification, AutoProcessor\nfrom transformers.audio_utils import load_audio\n\nmodel_id = \"nvidia/Nemotron-3-Diarization\"\nprocessor = AutoProcessor.from_pretrained(model_id)\nmodel = AutoModelForAudioFrameClassification.from_pretrained(model_id, device_map=\"auto\")\n\nsampling_rate = processor.feature_extractor.sampling_rate\naudio = load_audio(\n    \"https://huggingface.co/datasets/hf-internal-testing/dummy-audio-samples/resolve/main/diarization_example.mp3\",\n    sampling_rate=sampling_rate,\n)\ninputs = processor(audio, sampling_rate=sampling_rate).to(model.device, dtype=model.dtype)\n\nwith torch.inference_mode():\n    logits = model(**inputs).logits  # (1, num_frames, 8), one frame every 10 ms\n\nsegments = processor.extract_speaker_dict(logits, inputs.attention_mask)[0]\nfor segment in segments:\n    print(f\"speaker_{segment['Speaker']}: {segment['Start']:.2f}s - {segment['End']:.2f}s\")",
+   "doc": "card",
+   "doc_sha": "f667ed73aee57d40cc39428eb768b4fd87a0a29e",
+   "scope": "model"
+  },
+  {
+   "source": "nvidia/Nemotron-3-Diarization README.md:L266-324",
+   "file": "README.md",
+   "lines": [
+    266,
+    324
+   ],
+   "lang": "python",
+   "tool": "transformers",
+   "kind": "code",
+   "text": "import torch\nfrom transformers import AutoModelForAudioFrameClassification, AutoProcessor\nfrom transformers.audio_utils import load_audio\n\nmodel_id = \"nvidia/Nemotron-3-Diarization\"\nprocessor = AutoProcessor.from_pretrained(model_id)\nmodel = AutoModelForAudioFrameClassification.from_pretrained(model_id, device_map=\"auto\")\nprocessor.set_streaming_mode(\"low_latency\")  # the default, can also be \"very_low_latency\" and \"ultra_low_latency\"\nprint(f\"Streaming latency: {processor.streaming_latency_ms} ms\")\n\nsampling_rate = processor.feature_extractor.sampling_rate\naudio = load_audio(\n    \"https://huggingface.co/datasets/hf-internal-testing/dummy-audio-samples/resolve/main/diarization_example.mp3\",\n    sampling_rate=sampling_rate,\n)\n\n\ndef inputs_generator():\n    \"\"\"Yields the processor outputs of each chunk.\"\"\"\n    yield processor(\n        audio[: processor.num_samples_first_audio_chunk],\n        sampling_rate=sampling_rate,\n        is_streaming=True,\n        is_first_audio_chunk=True,\n    )\n\n    mel_frame_idx = processor.num_mel_frames_per_step\n    start_idx = processor.audio_chunk_start(mel_frame_idx)\n    while (end_idx := start_idx + processor.num_samples_per_audio_chunk) <= audio.shape[0]:\n        yield processor(\n            audio[start_idx:end_idx],\n            sampling_rate=sampling_rate,\n            is_streaming=True,\n            is_first_audio_chunk=False,\n        )\n        mel_frame_idx += processor.num_mel_frames_per_step\n        start_idx = processor.audio_chunk_start(mel_frame_idx)\n\n    # the audio ended: the frames left in the buffer are the last ones of the session\n    yield processor(\n        audio[start_idx:],\n        sampling_rate=sampling_rate,\n        is_streaming=True,\n        is_first_audio_chunk=False,\n        is_last_audio_chunk=True,\n    )\n\n\nspeaker_cache, logits = None, []\nwith torch.inference_mode():\n    for inputs in inputs_generator():\n        inputs = inputs.to(model.device, dtype=model.dtype)\n        # `inputs` carries `num_lookahead_frames` for every chunk but the last, `speaker_cache` links the chunks\n        outputs = model(**inputs, speaker_cache=speaker_cache)\n        logits.append(outputs.logits)  # the chunk's frames, without its look-ahead\n        speaker_cache = outputs.speaker_cache\n\nlogits = torch.cat(logits, dim=1)  # (1, num_frames, 8), one frame every 10 ms\nsegments = processor.extract_speaker_dict(logits)[0]  # [{\"Start\": 0.0, \"End\": 15.43, \"Speaker\": 0}, ...]",
+   "doc": "card",
+   "doc_sha": "f667ed73aee57d40cc39428eb768b4fd87a0a29e",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA/NeMo-Speech.cpp README.md:L64-64",
+   "file": "README.md",
+   "lines": [
+    64,
+    64
+   ],
+   "lang": "bash",
+   "tool": "curl",
+   "kind": "command",
+   "text": "curl -fsSL https://github.com/NVIDIA/NeMo-Speech.cpp/raw/main/scripts/install.sh | sh",
+   "doc": "github",
+   "doc_sha": "caa3f47c7c75fa2e9e6340272ebad57c1647dd44",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA/NeMo-Speech.cpp README.md:L72-72",
+   "file": "README.md",
+   "lines": [
+    72,
+    72
+   ],
+   "lang": "powershell",
+   "tool": "shell",
+   "kind": "command",
+   "text": "irm https://github.com/NVIDIA/NeMo-Speech.cpp/raw/main/scripts/install.ps1 | iex",
+   "doc": "github",
+   "doc_sha": "caa3f47c7c75fa2e9e6340272ebad57c1647dd44",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA/NeMo-Speech.cpp README.md:L93-93",
+   "file": "README.md",
+   "lines": [
+    93,
+    93
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "nemo-speech transcribe /path/to/audio.wav",
+   "doc": "github",
+   "doc_sha": "caa3f47c7c75fa2e9e6340272ebad57c1647dd44",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA/NeMo-Speech.cpp README.md:L103-103",
+   "file": "README.md",
+   "lines": [
+    103,
+    103
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "nemo-speech transcribe --live",
+   "doc": "github",
+   "doc_sha": "caa3f47c7c75fa2e9e6340272ebad57c1647dd44",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA/NeMo-Speech.cpp README.md:L128-130",
+   "file": "README.md",
+   "lines": [
+    128,
+    130
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "nemo-speech serve \\\n  --asr-model nemotron-3.5 \\\n  --open",
+   "doc": "github",
+   "doc_sha": "caa3f47c7c75fa2e9e6340272ebad57c1647dd44",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA/NeMo-Speech.cpp README.md:L146-147",
+   "file": "README.md",
+   "lines": [
+    146,
+    147
+   ],
+   "lang": "cmake",
+   "tool": "cmake",
+   "kind": "other",
+   "text": "find_package(NeMoSpeech REQUIRED COMPONENTS ASR)\ntarget_link_libraries(my_app PRIVATE NeMoSpeech::ASR)",
+   "doc": "github",
+   "doc_sha": "caa3f47c7c75fa2e9e6340272ebad57c1647dd44",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA/NeMo-Speech.cpp README.md:L161-163",
+   "file": "README.md",
+   "lines": [
+    161,
+    163
+   ],
+   "lang": "bash",
+   "tool": "cmake",
+   "kind": "command",
+   "text": "git submodule update --init llama.cpp third_party/cpp-httplib\nscripts/configure.sh cuda-server\ncmake --build --preset cuda-server",
+   "doc": "github",
+   "doc_sha": "caa3f47c7c75fa2e9e6340272ebad57c1647dd44",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA-NeMo/Speech README.md:L83-85",
+   "file": "README.md",
+   "lines": [
+    83,
+    85
+   ],
+   "lang": "bash",
+   "tool": "git",
+   "kind": "command",
+   "text": "git clone https://github.com/NVIDIA-NeMo/Speech.git\ncd Speech\nuv sync --extra all --extra cu13     # CUDA 13.x (recommended) — use --extra cu12 for CUDA 12.x",
+   "doc": "github",
+   "doc_sha": "3e8f7563bb368cfc3c29384c60b18fb0acb023bd",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA-NeMo/Speech README.md:L88",
+   "file": "README.md",
+   "lines": [
+    88,
+    88
+   ],
+   "lang": null,
+   "tool": "llama.cpp",
+   "kind": "inline",
+   "text": "--locked --python 3.13",
+   "doc": "github",
+   "doc_sha": "3e8f7563bb368cfc3c29384c60b18fb0acb023bd",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA-NeMo/Speech README.md:L98-99",
+   "file": "README.md",
+   "lines": [
+    98,
+    99
+   ],
+   "lang": "bash",
+   "tool": "docker",
+   "kind": "command",
+   "text": "docker pull nvcr.io/nvidia/nemo-speech:26.07.00\ndocker run --rm -it --gpus all -v \"$PWD:/workspace\" nvcr.io/nvidia/nemo-speech:26.07.00 bash",
+   "doc": "github",
+   "doc_sha": "3e8f7563bb368cfc3c29384c60b18fb0acb023bd",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA-NeMo/Speech README.md:L105-108",
+   "file": "README.md",
+   "lines": [
+    105,
+    108
+   ],
+   "lang": "bash",
+   "tool": "git",
+   "kind": "command",
+   "text": "git clone https://github.com/NVIDIA-NeMo/Speech.git\ncd Speech\ndocker buildx build -f docker/Dockerfile -t nemo-speech .          # CUDA 13 / H100+ (default)\ndocker run --rm -it --gpus all -v \"$PWD:/workspace\" nemo-speech bash",
+   "doc": "github",
+   "doc_sha": "3e8f7563bb368cfc3c29384c60b18fb0acb023bd",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA-NeMo/Speech README.md:L118-118",
+   "file": "README.md",
+   "lines": [
+    118,
+    118
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "uv pip install 'nemo-toolkit[asr,tts]'   # or plain: pip install 'nemo-toolkit[asr,tts]'",
+   "doc": "github",
+   "doc_sha": "3e8f7563bb368cfc3c29384c60b18fb0acb023bd",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/NVIDIA-NeMo/Speech README.md:L126-127",
+   "file": "README.md",
+   "lines": [
+    126,
+    127
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install 'nemo-toolkit[asr,tts,cu13]' --extra-index-url https://download.pytorch.org/whl/cu132   # CUDA 13.x\npip install 'nemo-toolkit[asr,tts,cu12]' --extra-index-url https://download.pytorch.org/whl/cu129   # CUDA 12.x",
+   "doc": "github",
+   "doc_sha": "3e8f7563bb368cfc3c29384c60b18fb0acb023bd",
+   "scope": "model"
+  }
+ ],
+ "card_notes": null,
+ "chat_template": null,
+ "stop": null,
+ "rope": null,
+ "aux": null,
+ "gguf": {
+  "general.architecture": "sortformer",
+  "general.name": "Nemotron-3-Diarization.q8_0",
+  "general.file_type": 7,
+  "_gguf_version": 3
+ },
+ "snapshot": {
+  "path": "nvidia--Nemotron-3-Diarization/f667ed73aee57d40cc39428eb768b4fd87a0a29e",
+  "fetched_bytes": 7211702,
+  "errors": null,
+  "gated": false
+ },
+ "base_snapshot": null,
+ "repo_files": {
+  ".gitattributes": {
+   "size": 1896,
+   "sha256": null,
+   "blob": "ee93e73362f0b2ee47e8bf1f9dc207678b1b3eeb",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "ASR_INTEGRATION_GUIDE.md": {
+   "size": 16331,
+   "sha256": null,
+   "blob": "6d86ea88c0eebed10bd7c161878d9eaea00a7c2a",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "Nemotron-3-Diarization.nemo": {
+   "size": 198676480,
+   "sha256": "867c53f552998f772e5b5e5c082962ae85ee7ca5669c2bc17d7f615133d4e96d",
+   "blob": "f542ad216e5600f52c15987246f699df698a02f2",
+   "fetched": false,
+   "skipped": "weight file not used here (198 MB)"
+  },
+  "Nemotron-3-Diarization.q8_0.gguf": {
+   "size": 107012128,
+   "sha256": "08456d9e22cd9a323c0364d98375f3746d6e68507ebb705cd46438c534c7a3a1",
+   "blob": "03fe996f050dd23349a56ab53c8005a21957470d",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (107 MB)"
+  },
+  "README.md": {
+   "size": 43239,
+   "sha256": null,
+   "blob": "98045f8a7eda17cb99e48dfca4a7e9401811e6b1",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "bias.md": {
+   "size": 296,
+   "sha256": null,
+   "blob": "d2c93e0076af6c03d471a639da78b61f5c411afa",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "config.json": {
+   "size": 1458,
+   "sha256": null,
+   "blob": "d09665951c8d48abe9c74626cd39fbfd615297fe",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "diarization_evaluation.md": {
+   "size": 6898,
+   "sha256": null,
+   "blob": "36730d2efccf177b817d216920cd1a9d5000962a",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "explainability.md": {
+   "size": 2330,
+   "sha256": null,
+   "blob": "d86d18e42dc517aec857004ee47935ed6562ca65",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "model.safetensors": {
+   "size": 396954592,
+   "sha256": "c074d86335b3b794f8fa5edc25594558f128bdb3914d27806a3a5a2e44963cb6",
+   "blob": "e6354d288eb56c3db0cd7a78774039e8d4967104",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (396 MB)"
+  },
+  "nemotron3_tts_8_open_voices.mp4": {
+   "size": 2453587,
+   "sha256": "292668a8679eb27f039f7afb0ed938165b399762d2cd3ecef017b600e82457e7",
+   "blob": "635277618581de07cff071b537b224a226c8d865",
+   "fetched": true,
+   "verified": "lfs-sha256"
+  },
+  "privacy.md": {
+   "size": 1283,
+   "sha256": null,
+   "blob": "6b55712fc47a40448a6e4900cb7e09f640f98226",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "processor_config.json": {
+   "size": 623,
+   "sha256": null,
+   "blob": "5779fbbbb8401983be84e0b4f09a236ad8227dfe",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "safety.md": {
+   "size": 489,
+   "sha256": null,
+   "blob": "56a2cab67d7fa45dfeb8e3d79e9b034fcb426403",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "streaming_diarization_demo.gif": {
+   "size": 4604955,
+   "sha256": "30eda66150b34e0140a9b92a761362450f8518b575c056211df6208362e2194b",
+   "blob": "e4734c92eb8966e520b926719d536968ad6d5012",
+   "fetched": true,
+   "verified": "lfs-sha256"
+  },
+  "streaming_diarization_demo.png": {
+   "size": 78317,
+   "sha256": "05dd18ddd1068dbfff5195f3a9bd8d8acb2c3002498fe35a9ebad96a45afbe8f",
+   "blob": "908ccb7d28e4457ad8fe3216d3ec51869344ed03",
+   "fetched": true,
+   "verified": "lfs-sha256"
+  }
+ },
+ "base_repo_files": null,
+ "found_in": [
+  "familia #55"
+ ],
+ "match": null,
+ "local_check": null,
+ "unknown": [
+  "base_model (not in the card front matter or GGUF metadata)",
+  "card_defaults: the card and generation_config.json state no sampling values",
+  "ctx"
+ ],
+ "warnings": null,
+ "updated": "2026-10-19",
+ "by": "scripts/model_db.py",
+ "weights": "absent (damp)",
+ "gguf_meta": {
+  "general.architecture": "sortformer",
+  "general.name": "Nemotron-3-Diarization.q8_0",
+  "sortformer.version": "v3",
+  "general.file_type": 7,
+  "sortformer.encoder.d_model": 512,
+  "sortformer.encoder.n_layers": 31,
+  "sortformer.encoder.n_heads": 8,
+  "sortformer.encoder.d_ff": 2048,
+  "sortformer.encoder.conv_kernel_size": 0,
+  "sortformer.encoder.subsampling_factor": 8,
+  "sortformer.encoder.subsampling_conv_channels": 256,
+  "sortformer.encoder.feat_in": 128,
+  "sortformer.encoder.xscaling": false,
+  "sortformer.encoder.use_bias": true,
+  "sortformer.encoder.pos_emb_max_len": 5000,
+  "sortformer.encoder.conv_norm": "batch_norm",
+  "sortformer.encoder.conv_context": "symmetric",
+  "sortformer.encoder.att_context_style": "regular",
+  "sortformer.encoder.type": "transformer_rope",
+  "sortformer.encoder.subsampling_type": "feature_stacking",
+  "sortformer.encoder.qkv_bias": false,
+  "sortformer.encoder.qk_norm": false,
+  "sortformer.encoder.pre_block_norm": true,
+  "sortformer.encoder.rope_base": 10000.0,
+  "sortformer.encoder.rotary_fraction": 1.0,
+  "sortformer.transformer.n_layers": 0,
+  "sortformer.transformer.hidden_size": 192,
+  "sortformer.transformer.inner_size": 0,
+  "sortformer.transformer.n_heads": 0,
+  "sortformer.transformer.pre_ln": true,
+  "sortformer.num_speakers": 8,
+  "sortformer.high_resolution": true,
+  "sortformer.output_subsampling_factor": 1,
+  "sortformer.upsample_factor": 8,
+  "sortformer.learnable_silence": true,
+  "sortformer.preprocessor.sample_rate": 16000,
+  "sortformer.preprocessor.window_size": 0.02500000037252903,
+  "sortformer.preprocessor.window_stride": 0.009999999776482582,
+  "sortformer.preprocessor.n_fft": 512,
+  "sortformer.preprocessor.features": 128,
+  "sortformer.preprocessor.normalize": "NA",
+  "sortformer.preprocessor.preemph": 0.9700000286102295,
+  "sortformer.preprocessor.dither": 9.999999747378752e-06,
+  "sortformer.preprocessor.log_zero_guard": 5.960464477539063e-08,
+  "sortformer.scoring.spkcache_sil_frames_per_spk": 1,
+  "sortformer.scoring.pred_score_threshold": 0.25,
+  "sortformer.scoring.scores_boost_latest": 0.05000000074505806,
+  "sortformer.scoring.sil_threshold": 0.20000000298023224,
+  "sortformer.scoring.strong_boost_rate": 0.75,
+  "sortformer.scoring.weak_boost_rate": 1.5,
+  "sortformer.scoring.min_pos_scores_rate": 0.5,
+  "sortformer.streaming.spkcache_len": 264,
+  "sortformer.streaming.fifo_len": 0,
+  "sortformer.streaming.chunk_len": 264,
+  "sortformer.streaming.spkcache_update_period": 264,
+  "sortformer.streaming.chunk_left_context": 0,
+  "sortformer.streaming.chunk_right_context": 0,
+  "_gguf_version": 3,
+  "_n_tensors": 360
+ },
+ "base_chain": null,
+ "github": [
+  {
+   "repo": "NVIDIA/NeMo-Speech.cpp",
+   "resolved": "NVIDIA/NeMo-Speech.cpp",
+   "sha": "caa3f47c7c75fa2e9e6340272ebad57c1647dd44",
+   "renamed": null,
+   "description": "NeMo-Speech.cpp is a lightweight C++ inference runtime for Speech models ",
+   "license_spdx": "Apache-2.0",
+   "files": {
+    "readme": {
+     "path": "README.md",
+     "sha256": "54f85f532a1bfe23324ced98b4ad0da675d8e98b4f3d4552644f74be23b1d6b2",
+     "bytes": 9445
+    },
+    "license": {
+     "path": "LICENSE",
+     "sha256": "eaaca34b26b27c7be5a5099a0b9ddf9913f2db0aa96f6d5854435f2916d6fdc3",
+     "bytes": 12238
+    }
+   },
+   "extra": null,
+   "snapshot": "github/NVIDIA--NeMo-Speech.cpp/caa3f47c7c75fa2e9e6340272ebad57c1647dd44"
+  },
+  {
+   "repo": "NVIDIA-NeMo/Speech",
+   "resolved": "NVIDIA-NeMo/Speech",
+   "sha": "3e8f7563bb368cfc3c29384c60b18fb0acb023bd",
+   "renamed": null,
+   "description": "A scalable generative AI framework built for researchers and developers working on Large Language Models, Multimodal, and Speech AI (Automatic Speech Recognition and Text-to-Speech)",
+   "license_spdx": "Apache-2.0",
+   "files": {
+    "readme": {
+     "path": "README.md",
+     "sha256": "f7f63002e9f9fc053094e26f6828687dccdfda41a2e13c13cf2587fcacf556f8",
+     "bytes": 10646
+    },
+    "license": {
+     "path": "LICENSE",
+     "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+     "bytes": 11357
+    }
+   },
+   "extra": null,
+   "snapshot": "github/NVIDIA-NeMo--Speech/3e8f7563bb368cfc3c29384c60b18fb0acb023bd"
+  }
+ ],
+ "github_dropped": [
+  {
+   "repo": "huggingface/transformers",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "popcornell/FastMSS",
+   "why": "owner and name unrelated to the model's Hugging Face repos"
+  },
+  {
+   "repo": "nttcslab-sp/diar-forced-alignment",
+   "why": "owner and name unrelated to the model's Hugging Face repos"
+  }
+ ],
+ "descriptor": {
+  "repo_id": {
+   "effective": "nvidia/Nemotron-3-Diarization",
+   "source": "HF API id"
+  },
+  "revision": {
+   "effective": "f667ed73aee57d40cc39428eb768b4fd87a0a29e",
+   "source": "pinned (manifest / database)"
+  },
+  "file": {
+   "effective": "Nemotron-3-Diarization.q8_0.gguf",
+   "source": "HF API siblings"
+  },
+  "bytes": {
+   "effective": 107012128,
+   "source": "HF API LFS size"
+  },
+  "sha256": {
+   "effective": "08456d9e22cd9a323c0364d98375f3746d6e68507ebb705cd46438c534c7a3a1",
+   "source": "HF API LFS oid"
+  },
+  "quant": {
+   "effective": "Q8_0",
+   "source": "file name",
+   "values": [
+    {
+     "value": "Q8_0",
+     "source": "file name"
+    },
+    {
+     "value": "Q8_0",
+     "source": "GGUF general.file_type"
+    }
+   ]
+  },
+  "license": {
+   "effective": "openmdw-1.1",
+   "source": "nvidia/Nemotron-3-Diarization card license"
+  },
+  "code_license": {
+   "effective": "Apache-2.0",
+   "source": "GitHub github.com/NVIDIA/NeMo-Speech.cpp license (spdx)",
+   "values": [
+    {
+     "value": "Apache-2.0",
+     "source": "GitHub github.com/NVIDIA/NeMo-Speech.cpp license (spdx)"
+    },
+    {
+     "value": "Apache-2.0",
+     "source": "GitHub github.com/NVIDIA-NeMo/Speech license (spdx)"
+    }
+   ]
+  },
+  "license_file": {
+   "effective": "github.com/NVIDIA/NeMo-Speech.cpp@caa3f47c7c75/LICENSE",
+   "source": "GitHub github.com/NVIDIA/NeMo-Speech.cpp",
+   "values": [
+    {
+     "value": "github.com/NVIDIA/NeMo-Speech.cpp@caa3f47c7c75/LICENSE",
+     "source": "GitHub github.com/NVIDIA/NeMo-Speech.cpp"
+    },
+    {
+     "value": "github.com/NVIDIA-NeMo/Speech@3e8f7563bb36/LICENSE",
+     "source": "GitHub github.com/NVIDIA-NeMo/Speech"
+    }
+   ]
+  },
+  "architecture": {
+   "effective": "sortformer",
+   "source": "GGUF general.architecture",
+   "values": [
+    {
+     "value": "sortformer",
+     "source": "GGUF general.architecture"
+    },
+    {
+     "value": "sortformer",
+     "source": "HF API gguf.architecture"
+    }
+   ]
+  },
+  "hf_architectures": {
+   "effective": [
+    "Nemotron3DiarizationForAudioFrameClassification"
+   ],
+   "source": "nvidia/Nemotron-3-Diarization config.json architectures"
+  },
+  "hf_model_type": {
+   "effective": "nemotron3_diarization",
+   "source": "nvidia/Nemotron-3-Diarization config.json model_type"
+  },
+  "parameters": {
+   "effective": 99260363,
+   "source": "HF API gguf.total (nvidia/Nemotron-3-Diarization)"
+  },
+  "pipeline_tag": {
+   "effective": "voice-activity-detection",
+   "source": "nvidia/Nemotron-3-Diarization HF API pipeline_tag"
+  }
+ },
+ "required_params": {
+  "kind": "raw",
+  "native_ctx": null,
+  "native_ctx_source": null,
+  "yarn": null,
+  "yarn_source": null,
+  "items": []
+ },
+ "blockers": null,
+ "params_problems": null,
+ "params_build": "b11374",
+ "license_info": {
+  "id": "openmdw-1.1",
+  "id_source": "nvidia/Nemotron-3-Diarization card front matter license",
+  "name": null,
+  "summary": "openmdw-1.1",
+  "summary_source": "nvidia/Nemotron-3-Diarization card license",
+  "link": null,
+  "link_source": null,
+  "texts": [
+   {
+    "file": "github.com/NVIDIA/NeMo-Speech.cpp@caa3f47c7c75/LICENSE",
+    "path": "/home/green/.local/share/gguf/hf-meta/github/NVIDIA--NeMo-Speech.cpp/caa3f47c7c75fa2e9e6340272ebad57c1647dd44/LICENSE",
+    "url": "https://github.com/NVIDIA/NeMo-Speech.cpp/blob/caa3f47c7c75fa2e9e6340272ebad57c1647dd44/LICENSE",
+    "sha256": "eaaca34b26b27c7be5a5099a0b9ddf9913f2db0aa96f6d5854435f2916d6fdc3",
+    "bytes": 12238,
+    "what": "code (GitHub NVIDIA/NeMo-Speech.cpp, spdx Apache-2.0)"
+   },
+   {
+    "file": "github.com/NVIDIA-NeMo/Speech@3e8f7563bb36/LICENSE",
+    "path": "/home/green/.local/share/gguf/hf-meta/github/NVIDIA-NeMo--Speech/3e8f7563bb368cfc3c29384c60b18fb0acb023bd/LICENSE",
+    "url": "https://github.com/NVIDIA-NeMo/Speech/blob/3e8f7563bb368cfc3c29384c60b18fb0acb023bd/LICENSE",
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+    "bytes": 11357,
+    "what": "code (GitHub NVIDIA-NeMo/Speech, spdx Apache-2.0)"
+   }
+  ],
+  "obligations": [
+   {
+    "quote": "**This model is ready for commercial or non-commercial use.**",
+    "source": "nvidia/Nemotron-3-Diarization README.md:L24"
+   }
+  ],
+  "gated": false,
+  "unknown": false,
+  "seen": [
+   {
+    "effective": "openmdw-1.1",
+    "source": "nvidia/Nemotron-3-Diarization card license"
+   }
+  ]
+ },
+ "role_inference": {
+  "role": null,
+  "evidence": [
+   "general +1 (GGUF metadata: general.architecture sortformer (generative))",
+   "no familia role: card pipeline_tag voice-activity-detection is not a text-generation model; classify by hand"
+  ]
+ },
+ "repo_bytes": 709854902
+}

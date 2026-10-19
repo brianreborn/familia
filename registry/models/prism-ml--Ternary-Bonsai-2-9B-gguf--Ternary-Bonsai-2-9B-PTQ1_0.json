@@ -1,0 +1,3225 @@
+{
+ "schema": 2,
+ "id": "prism-ml--Ternary-Bonsai-2-9B-gguf--Ternary-Bonsai-2-9B-PTQ1_0",
+ "repo": "prism-ml/Ternary-Bonsai-2-9B-gguf",
+ "revision": "5b2abb02362efbed46bbe204014b02837778b2c2",
+ "file": "Ternary-Bonsai-2-9B-PTQ1_0.gguf",
+ "sha256": "3561df7ac7d26a71ffa991ac2db740b10841c3a350aa2676ccd3ff5d428b4e8b",
+ "bytes": 1997486976,
+ "quant": null,
+ "arch": "qwen35",
+ "roles": [
+  "general"
+ ],
+ "license": "apache-2.0",
+ "license_source": "prism-ml/Ternary-Bonsai-2-9B-gguf card license",
+ "ctx": 262144,
+ "ctx_source": "GGUF qwen35.context_length",
+ "card_ctx": 262144,
+ "card_ctx_source": "Qwen/Qwen3.5-9B README.md:L64",
+ "base_model": "Qwen/Qwen3.5-9B",
+ "base_revision": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+ "card_defaults": {
+  "temp": 1.0,
+  "top-p": 0.95,
+  "top-k": 20,
+  "min-p": 0.0,
+  "presence-penalty": 1.5,
+  "repeat-penalty": 1.0
+ },
+ "card_defaults_source": {
+  "temp": "Qwen/Qwen3.5-9B Qwen/Qwen3.5-9B README.md:L833",
+  "top-p": "Qwen/Qwen3.5-9B Qwen/Qwen3.5-9B README.md:L833",
+  "top-k": "Qwen/Qwen3.5-9B Qwen/Qwen3.5-9B README.md:L833",
+  "min-p": "Qwen/Qwen3.5-9B Qwen/Qwen3.5-9B README.md:L833",
+  "presence-penalty": "Qwen/Qwen3.5-9B Qwen/Qwen3.5-9B README.md:L833",
+  "repeat-penalty": "Qwen/Qwen3.5-9B Qwen/Qwen3.5-9B README.md:L833"
+ },
+ "card_default_set": "Thinking mode for general tasks",
+ "card_defaults_how": "recommended set for the card's default mode (thinking, Qwen/Qwen3.5-9B README.md:L710), text/general task set",
+ "card_sampling_modes": {
+  "Thinking mode for general tasks": {
+   "temp": 1.0,
+   "top-p": 0.95,
+   "top-k": 20,
+   "min-p": 0.0,
+   "presence-penalty": 1.5,
+   "repeat-penalty": 1.0
+  },
+  "Thinking mode for precise coding tasks (e.g. WebDev": {
+   "temp": 0.6,
+   "top-p": 0.95,
+   "top-k": 20,
+   "min-p": 0.0,
+   "presence-penalty": 0.0,
+   "repeat-penalty": 1.0
+  },
+  "Instruct (or non-thinking) mode for general tasks": {
+   "temp": 0.7,
+   "top-p": 0.8,
+   "top-k": 20,
+   "min-p": 0.0,
+   "presence-penalty": 1.5,
+   "repeat-penalty": 1.0
+  },
+  "Instruct (or non-thinking) mode for reasoning tasks": {
+   "temp": 1.0,
+   "top-p": 1.0,
+   "top-k": 40,
+   "min-p": 0.0,
+   "presence-penalty": 2.0,
+   "repeat-penalty": 1.0
+  }
+ },
+ "card_default_mode": "thinking",
+ "card_default_mode_source": "Qwen/Qwen3.5-9B README.md:L710",
+ "card_sampling_sets": [
+  {
+   "label": "Multi-Token Prediction (MTP) : The following command is recommended for MTP",
+   "kind": "mention",
+   "mode": null,
+   "params": {
+    "top-k": 1
+   },
+   "source": "Qwen/Qwen3.5-9B README.md:L758"
+  },
+  {
+   "label": "Thinking mode for general tasks",
+   "kind": "recommended",
+   "mode": "thinking",
+   "params": {
+    "temp": 1.0,
+    "top-p": 0.95,
+    "top-k": 20,
+    "min-p": 0.0,
+    "presence-penalty": 1.5,
+    "repeat-penalty": 1.0
+   },
+   "source": "Qwen/Qwen3.5-9B README.md:L833"
+  },
+  {
+   "label": "Thinking mode for precise coding tasks (e.g. WebDev",
+   "kind": "recommended",
+   "mode": "thinking",
+   "params": {
+    "temp": 0.6,
+    "top-p": 0.95,
+    "top-k": 20,
+    "min-p": 0.0,
+    "presence-penalty": 0.0,
+    "repeat-penalty": 1.0
+   },
+   "source": "Qwen/Qwen3.5-9B README.md:L834"
+  },
+  {
+   "label": "Instruct (or non-thinking) mode for general tasks",
+   "kind": "recommended",
+   "mode": "non-thinking",
+   "params": {
+    "temp": 0.7,
+    "top-p": 0.8,
+    "top-k": 20,
+    "min-p": 0.0,
+    "presence-penalty": 1.5,
+    "repeat-penalty": 1.0
+   },
+   "source": "Qwen/Qwen3.5-9B README.md:L835"
+  },
+  {
+   "label": "Instruct (or non-thinking) mode for reasoning tasks",
+   "kind": "recommended",
+   "mode": "non-thinking",
+   "params": {
+    "temp": 1.0,
+    "top-p": 0.95,
+    "top-k": 20,
+    "min-p": 0.0,
+    "presence-penalty": 1.5,
+    "repeat-penalty": 1.0
+   },
+   "source": "Qwen/Qwen3.5-9B README.md:L836"
+  },
+  {
+   "label": "Text-Only Input",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 1.0,
+    "top-p": 0.95,
+    "presence-penalty": 1.5,
+    "top-k": 20
+   },
+   "source": "Qwen/Qwen3.5-9B README.md:L855"
+  },
+  {
+   "label": "Image Input",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 1.0,
+    "top-p": 0.95,
+    "presence-penalty": 1.5,
+    "top-k": 20
+   },
+   "source": "Qwen/Qwen3.5-9B README.md:L895"
+  },
+  {
+   "label": "Video Input",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 1.0,
+    "top-p": 0.95,
+    "presence-penalty": 1.5,
+    "top-k": 20
+   },
+   "source": "Qwen/Qwen3.5-9B README.md:L940"
+  },
+  {
+   "label": "For example",
+   "kind": "example",
+   "mode": "non-thinking",
+   "params": {
+    "temp": 0.7,
+    "top-p": 0.8,
+    "presence-penalty": 1.5,
+    "top-k": 20
+   },
+   "source": "Qwen/Qwen3.5-9B README.md:L987"
+  },
+  {
+   "label": "Thinking mode for general tasks",
+   "kind": "recommended",
+   "mode": "thinking",
+   "params": {
+    "temp": 1.0,
+    "top-p": 0.95,
+    "top-k": 20,
+    "min-p": 0.0,
+    "presence-penalty": 1.5,
+    "repeat-penalty": 1.0
+   },
+   "source": "Qwen/Qwen3.5-9B README.md:L1136"
+  },
+  {
+   "label": "Thinking mode for precise coding tasks (e.g., WebDev",
+   "kind": "recommended",
+   "mode": "thinking",
+   "params": {
+    "temp": 0.6,
+    "top-p": 0.95,
+    "top-k": 20,
+    "min-p": 0.0,
+    "presence-penalty": 0.0,
+    "repeat-penalty": 1.0
+   },
+   "source": "Qwen/Qwen3.5-9B README.md:L1138"
+  },
+  {
+   "label": "Instruct (or non-thinking) mode for general tasks",
+   "kind": "recommended",
+   "mode": "non-thinking",
+   "params": {
+    "temp": 0.7,
+    "top-p": 0.8,
+    "top-k": 20,
+    "min-p": 0.0,
+    "presence-penalty": 1.5,
+    "repeat-penalty": 1.0
+   },
+   "source": "Qwen/Qwen3.5-9B README.md:L1140"
+  },
+  {
+   "label": "Instruct (or non-thinking) mode for reasoning tasks",
+   "kind": "recommended",
+   "mode": "non-thinking",
+   "params": {
+    "temp": 1.0,
+    "top-p": 1.0,
+    "top-k": 40,
+    "min-p": 0.0,
+    "presence-penalty": 2.0,
+    "repeat-penalty": 1.0
+   },
+   "source": "Qwen/Qwen3.5-9B README.md:L1142"
+  },
+  {
+   "label": "Thinking mode (default",
+   "kind": "recommended",
+   "mode": "thinking",
+   "params": {
+    "temp": 1.0,
+    "top-p": 0.95,
+    "top-k": 20,
+    "min-p": 0.0,
+    "presence-penalty": 1.0,
+    "repeat-penalty": 1.0
+   },
+   "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L129"
+  },
+  {
+   "label": "Non-thinking mode",
+   "kind": "recommended",
+   "mode": "non-thinking",
+   "params": {
+    "temp": 0.7,
+    "top-p": 0.8,
+    "top-k": 20,
+    "min-p": 0.0,
+    "presence-penalty": 1.5,
+    "repeat-penalty": 1.0
+   },
+   "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L130"
+  },
+  {
+   "label": "Apply the penalties over the last 64 tokens (llama.cpp's default window). Presence penalty has no GGUF metadata key, so pass it on the command line or per reque",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 1.0,
+    "top-p": 0.95,
+    "top-k": 20,
+    "min-p": 0,
+    "presence-penalty": 1.0,
+    "repeat-penalty": 1.0
+   },
+   "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L137"
+  },
+  {
+   "label": "Apply the penalties over the last 64 tokens (llama.cpp's default window). Presence penalty has no GGUF metadata key, so pass it on the command line or per reque",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 0.7,
+    "top-p": 0.8,
+    "top-k": 20,
+    "min-p": 0,
+    "presence-penalty": 1.5,
+    "repeat-penalty": 1.0
+   },
+   "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L142"
+  },
+  {
+   "label": "Avoid greedy decoding",
+   "kind": "mention",
+   "mode": "thinking",
+   "params": {
+    "temp": 0
+   },
+   "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L145"
+  }
+ ],
+ "card_commands": [
+  {
+   "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L78-84",
+   "file": "README.md",
+   "lines": [
+    78,
+    84
+   ],
+   "lang": "bash",
+   "tool": "git",
+   "kind": "command",
+   "text": "# prebuilt: pick the archive for your platform\n# https://github.com/PrismML-Eng/llama.cpp/releases/latest\ntar -xzf llama-<tag>-bin-<platform>.tar.gz -C bin --strip-components=1\n\n# or build it\ngit clone https://github.com/PrismML-Eng/llama.cpp && cd llama.cpp\ncmake -B build -DGGML_CUDA=ON && cmake --build build -j   # drop -DGGML_CUDA=ON on macOS; Metal is the default",
+   "doc": "card",
+   "doc_sha": "5b2abb02362efbed46bbe204014b02837778b2c2",
+   "scope": "model"
+  },
+  {
+   "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L90-91",
+   "file": "README.md",
+   "lines": [
+    90,
+    91
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "./bin/llama-cli -m Ternary-Bonsai-2-9B-PQ2_0.gguf -ngl 99 -fa on \\\n  -p \"Explain in three sentences why the sky is blue.\"",
+   "llama": [
+    {
+     "tool": "llama-cli",
+     "raw": "./bin/llama-cli -m Ternary-Bonsai-2-9B-PQ2_0.gguf -ngl 99 -fa on    -p \"Explain in three sentences why the sky is blue.\"",
+     "flags": [
+      {
+       "flag": "-m",
+       "canonical": "--model",
+       "value": "Ternary-Bonsai-2-9B-PQ2_0.gguf",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-ngl",
+       "canonical": "--gpu-layers",
+       "value": "99",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-fa",
+       "canonical": "--flash-attn",
+       "value": "on",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-p",
+       "canonical": "--prompt",
+       "value": "Explain in three sentences why the sky is blue.",
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    }
+   ],
+   "doc": "card",
+   "doc_sha": "5b2abb02362efbed46bbe204014b02837778b2c2",
+   "scope": "model"
+  },
+  {
+   "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L97-99",
+   "file": "README.md",
+   "lines": [
+    97,
+    99
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "./bin/llama-mtmd-cli -m Ternary-Bonsai-2-9B-PQ2_0.gguf \\\n  --mmproj Ternary-Bonsai-2-9B-mmproj-Q8_0.gguf -ngl 99 \\\n  --image photo.jpg -p \"Describe this image.\"",
+   "llama": [
+    {
+     "tool": "llama-mtmd-cli",
+     "raw": "./bin/llama-mtmd-cli -m Ternary-Bonsai-2-9B-PQ2_0.gguf    --mmproj Ternary-Bonsai-2-9B-mmproj-Q8_0.gguf -ngl 99    --image photo.jpg -p \"Describe this image.\"",
+     "flags": [
+      {
+       "flag": "-m",
+       "canonical": "--model",
+       "value": "Ternary-Bonsai-2-9B-PQ2_0.gguf",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--mmproj",
+       "canonical": "--mmproj",
+       "value": "Ternary-Bonsai-2-9B-mmproj-Q8_0.gguf",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-ngl",
+       "canonical": "--gpu-layers",
+       "value": "99",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--image",
+       "canonical": "--image",
+       "value": "photo.jpg",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-p",
+       "canonical": "--prompt",
+       "value": "Describe this image.",
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    }
+   ],
+   "doc": "card",
+   "doc_sha": "5b2abb02362efbed46bbe204014b02837778b2c2",
+   "scope": "model"
+  },
+  {
+   "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L109-110",
+   "file": "README.md",
+   "lines": [
+    109,
+    110
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "./bin/llama-server -m Ternary-Bonsai-2-9B-PQ2_0.gguf \\\n  --mmproj Ternary-Bonsai-2-9B-mmproj-Q8_0.gguf -ngl 99 -fa on -c 32768 --port 8080",
+   "llama": [
+    {
+     "tool": "llama-server",
+     "raw": "./bin/llama-server -m Ternary-Bonsai-2-9B-PQ2_0.gguf    --mmproj Ternary-Bonsai-2-9B-mmproj-Q8_0.gguf -ngl 99 -fa on -c 32768 --port 8080",
+     "flags": [
+      {
+       "flag": "-m",
+       "canonical": "--model",
+       "value": "Ternary-Bonsai-2-9B-PQ2_0.gguf",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--mmproj",
+       "canonical": "--mmproj",
+       "value": "Ternary-Bonsai-2-9B-mmproj-Q8_0.gguf",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-ngl",
+       "canonical": "--gpu-layers",
+       "value": "99",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-fa",
+       "canonical": "--flash-attn",
+       "value": "on",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-c",
+       "canonical": "--ctx-size",
+       "value": "32768",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--port",
+       "canonical": "--port",
+       "value": "8080",
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    }
+   ],
+   "doc": "card",
+   "doc_sha": "5b2abb02362efbed46bbe204014b02837778b2c2",
+   "scope": "model"
+  },
+  {
+   "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L114-120",
+   "file": "README.md",
+   "lines": [
+    114,
+    120
+   ],
+   "lang": "bash",
+   "tool": "curl",
+   "kind": "command",
+   "text": "curl http://localhost:8080/v1/chat/completions -H \"Content-Type: application/json\" -d '{\n  \"messages\": [{\"role\": \"user\", \"content\": [\n    {\"type\": \"text\", \"text\": \"What is in this image?\"},\n    {\"type\": \"image_url\", \"image_url\": {\"url\": \"https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png\"}}\n  ]}],\n  \"chat_template_kwargs\": {\"enable_thinking\": false}\n}'",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--chat-template-kwargs",
+      "value": "{\"enable_thinking\":false}",
+      "from": "chat_template_kwargs: {\"enable_thinking\": false}"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "card",
+   "doc_sha": "5b2abb02362efbed46bbe204014b02837778b2c2",
+   "scope": "model"
+  },
+  {
+   "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L135-142",
+   "file": "README.md",
+   "lines": [
+    135,
+    142
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "# thinking on\n./bin/llama-server -m Ternary-Bonsai-2-9B-PQ2_0.gguf -ngl 99 -fa on \\\n  --temp 1.0 --top-p 0.95 --top-k 20 --min-p 0 --presence-penalty 1.0 --repeat-penalty 1.0 --repeat-last-n 64\n\n# thinking off: start the server with these values, and send\n# \"chat_template_kwargs\": {\"enable_thinking\": false} with each request\n./bin/llama-server -m Ternary-Bonsai-2-9B-PQ2_0.gguf -ngl 99 -fa on \\\n  --temp 0.7 --top-p 0.8 --top-k 20 --min-p 0 --presence-penalty 1.5 --repeat-penalty 1.0 --repeat-last-n 64",
+   "llama": [
+    {
+     "tool": "llama-server",
+     "raw": "./bin/llama-server -m Ternary-Bonsai-2-9B-PQ2_0.gguf -ngl 99 -fa on    --temp 1.0 --top-p 0.95 --top-k 20 --min-p 0 --presence-penalty 1.0 --repeat-penalty 1.0 --repeat-last-n 64",
+     "flags": [
+      {
+       "flag": "-m",
+       "canonical": "--model",
+       "value": "Ternary-Bonsai-2-9B-PQ2_0.gguf",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-ngl",
+       "canonical": "--gpu-layers",
+       "value": "99",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-fa",
+       "canonical": "--flash-attn",
+       "value": "on",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--temp",
+       "canonical": "--temp",
+       "value": "1.0",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--top-p",
+       "canonical": "--top-p",
+       "value": "0.95",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--top-k",
+       "canonical": "--top-k",
+       "value": "20",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--min-p",
+       "canonical": "--min-p",
+       "value": "0",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--presence-penalty",
+       "canonical": "--presence-penalty",
+       "value": "1.0",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--repeat-penalty",
+       "canonical": "--repeat-penalty",
+       "value": "1.0",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--repeat-last-n",
+       "canonical": "--repeat-last-n",
+       "value": "64",
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    },
+    {
+     "tool": "llama-server",
+     "raw": "./bin/llama-server -m Ternary-Bonsai-2-9B-PQ2_0.gguf -ngl 99 -fa on    --temp 0.7 --top-p 0.8 --top-k 20 --min-p 0 --presence-penalty 1.5 --repeat-penalty 1.0 --repeat-last-n 64",
+     "flags": [
+      {
+       "flag": "-m",
+       "canonical": "--model",
+       "value": "Ternary-Bonsai-2-9B-PQ2_0.gguf",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-ngl",
+       "canonical": "--gpu-layers",
+       "value": "99",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-fa",
+       "canonical": "--flash-attn",
+       "value": "on",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--temp",
+       "canonical": "--temp",
+       "value": "0.7",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--top-p",
+       "canonical": "--top-p",
+       "value": "0.8",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--top-k",
+       "canonical": "--top-k",
+       "value": "20",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--min-p",
+       "canonical": "--min-p",
+       "value": "0",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--presence-penalty",
+       "canonical": "--presence-penalty",
+       "value": "1.5",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--repeat-penalty",
+       "canonical": "--repeat-penalty",
+       "value": "1.0",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--repeat-last-n",
+       "canonical": "--repeat-last-n",
+       "value": "64",
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    }
+   ],
+   "doc": "card",
+   "doc_sha": "5b2abb02362efbed46bbe204014b02837778b2c2",
+   "scope": "model"
+  },
+  {
+   "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L156-156",
+   "file": "README.md",
+   "lines": [
+    156,
+    156
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "You are a helpful assistant",
+   "doc": "card",
+   "doc_sha": "5b2abb02362efbed46bbe204014b02837778b2c2",
+   "scope": "model"
+  },
+  {
+   "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L176-177",
+   "file": "README.md",
+   "lines": [
+    176,
+    177
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "./bin/llama-server -m Ternary-Bonsai-2-9B-PQ2_0-MTP-Q8_0.gguf -ngl 99 -fa on \\\n  --spec-type draft-mtp --spec-draft-n-max 2 --spec-draft-n-min 0 --spec-draft-p-min 0",
+   "llama": [
+    {
+     "tool": "llama-server",
+     "raw": "./bin/llama-server -m Ternary-Bonsai-2-9B-PQ2_0-MTP-Q8_0.gguf -ngl 99 -fa on    --spec-type draft-mtp --spec-draft-n-max 2 --spec-draft-n-min 0 --spec-draft-p-min 0",
+     "flags": [
+      {
+       "flag": "-m",
+       "canonical": "--model",
+       "value": "Ternary-Bonsai-2-9B-PQ2_0-MTP-Q8_0.gguf",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-ngl",
+       "canonical": "--gpu-layers",
+       "value": "99",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-fa",
+       "canonical": "--flash-attn",
+       "value": "on",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--spec-type",
+       "canonical": "--spec-type",
+       "value": "draft-mtp",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--spec-draft-n-max",
+       "canonical": "--spec-draft-n-max",
+       "value": "2",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--spec-draft-n-min",
+       "canonical": "--spec-draft-n-min",
+       "value": "0",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--spec-draft-p-min",
+       "canonical": "--spec-draft-p-min",
+       "value": "0",
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    }
+   ],
+   "doc": "card",
+   "doc_sha": "5b2abb02362efbed46bbe204014b02837778b2c2",
+   "scope": "model"
+  },
+  {
+   "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L180",
+   "file": "README.md",
+   "lines": [
+    180,
+    180
+   ],
+   "lang": null,
+   "tool": "llama.cpp",
+   "kind": "inline",
+   "text": "--cache-type-k q8_0 --cache-type-v q8_0",
+   "doc": "card",
+   "doc_sha": "5b2abb02362efbed46bbe204014b02837778b2c2",
+   "scope": "model"
+  },
+  {
+   "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L185-186",
+   "file": "README.md",
+   "lines": [
+    185,
+    186
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "./bin/llama-server -m Ternary-Bonsai-2-9B-PQ2_0.gguf -md Ternary-Bonsai-2-9B-DFlash2-Q8_0.gguf \\\n  -ngl 99 -ngld 99 --spec-type draft-dflash",
+   "llama": [
+    {
+     "tool": "llama-server",
+     "raw": "./bin/llama-server -m Ternary-Bonsai-2-9B-PQ2_0.gguf -md Ternary-Bonsai-2-9B-DFlash2-Q8_0.gguf    -ngl 99 -ngld 99 --spec-type draft-dflash",
+     "flags": [
+      {
+       "flag": "-m",
+       "canonical": "--model",
+       "value": "Ternary-Bonsai-2-9B-PQ2_0.gguf",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-md",
+       "canonical": "--spec-draft-model",
+       "value": "Ternary-Bonsai-2-9B-DFlash2-Q8_0.gguf",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-ngl",
+       "canonical": "--gpu-layers",
+       "value": "99",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-ngld",
+       "canonical": "--spec-draft-ngl",
+       "value": "99",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--spec-type",
+       "canonical": "--spec-type",
+       "value": "draft-dflash",
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    }
+   ],
+   "doc": "card",
+   "doc_sha": "5b2abb02362efbed46bbe204014b02837778b2c2",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-9B README.md:L737-737",
+   "file": "README.md",
+   "lines": [
+    737,
+    737
+   ],
+   "lang": "shell",
+   "tool": "pip",
+   "kind": "command",
+   "text": "uv pip install 'git+https://github.com/sgl-project/sglang.git#subdirectory=python&egg=sglang[all]'",
+   "doc": "base-card",
+   "doc_sha": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-9B README.md:L746-746",
+   "file": "README.md",
+   "lines": [
+    746,
+    746
+   ],
+   "lang": "shell",
+   "tool": "sglang",
+   "kind": "command",
+   "text": "    python -m sglang.launch_server --model-path Qwen/Qwen3.5-9B --port 8000 --tp-size 1 --mem-fraction-static 0.8 --context-length 262144 --reasoning-parser qwen3",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-c",
+      "value": "262144",
+      "from": "--context-length 262144"
+     },
+     {
+      "flag": "--reasoning-format",
+      "value": "deepseek",
+      "from": "--reasoning-parser qwen3"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--model-path Qwen/Qwen3.5-9B",
+      "why": "the model is the GGUF file"
+     },
+     {
+      "arg": "--tp-size 1",
+      "why": "multi-GPU tensor parallelism; n/a"
+     },
+     {
+      "arg": "--mem-fraction-static 0.8",
+      "why": "SGLang memory pool fraction; n/a"
+     }
+    ]
+   },
+   "doc": "base-card",
+   "doc_sha": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-9B README.md:L752-752",
+   "file": "README.md",
+   "lines": [
+    752,
+    752
+   ],
+   "lang": "shell",
+   "tool": "sglang",
+   "kind": "command",
+   "text": "    python -m sglang.launch_server --model-path Qwen/Qwen3.5-9B --port 8000 --tp-size 1 --mem-fraction-static 0.8 --context-length 262144 --reasoning-parser qwen3 --tool-call-parser qwen3_coder",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-c",
+      "value": "262144",
+      "from": "--context-length 262144"
+     },
+     {
+      "flag": "--reasoning-format",
+      "value": "deepseek",
+      "from": "--reasoning-parser qwen3"
+     },
+     {
+      "flag": "--jinja",
+      "value": null,
+      "from": "--tool-call-parser qwen3_coder"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--model-path Qwen/Qwen3.5-9B",
+      "why": "the model is the GGUF file"
+     },
+     {
+      "arg": "--tp-size 1",
+      "why": "multi-GPU tensor parallelism; n/a"
+     },
+     {
+      "arg": "--mem-fraction-static 0.8",
+      "why": "SGLang memory pool fraction; n/a"
+     }
+    ]
+   },
+   "doc": "base-card",
+   "doc_sha": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-9B README.md:L758-758",
+   "file": "README.md",
+   "lines": [
+    758,
+    758
+   ],
+   "lang": "shell",
+   "tool": "sglang",
+   "kind": "command",
+   "text": "    python -m sglang.launch_server --model-path Qwen/Qwen3.5-9B --port 8000 --tp-size 1 --mem-fraction-static 0.8 --context-length 262144 --reasoning-parser qwen3 --speculative-algo NEXTN --speculative-num-steps 3 --speculative-eagle-topk 1 --speculative-num-draft-tokens 4",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-c",
+      "value": "262144",
+      "from": "--context-length 262144"
+     },
+     {
+      "flag": "--reasoning-format",
+      "value": "deepseek",
+      "from": "--reasoning-parser qwen3"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--model-path Qwen/Qwen3.5-9B",
+      "why": "the model is the GGUF file"
+     },
+     {
+      "arg": "--tp-size 1",
+      "why": "multi-GPU tensor parallelism; n/a"
+     },
+     {
+      "arg": "--mem-fraction-static 0.8",
+      "why": "SGLang memory pool fraction; n/a"
+     },
+     {
+      "arg": "--speculative-algo NEXTN",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--speculative-num-steps 3",
+      "why": "see --speculative-algorithm"
+     },
+     {
+      "arg": "--speculative-eagle-topk 1",
+      "why": "see --speculative-algorithm"
+     },
+     {
+      "arg": "--speculative-num-draft-tokens 4",
+      "why": "see --speculative-algorithm"
+     }
+    ]
+   },
+   "doc": "base-card",
+   "doc_sha": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-9B README.md:L766-766",
+   "file": "README.md",
+   "lines": [
+    766,
+    766
+   ],
+   "lang": "shell",
+   "tool": "pip",
+   "kind": "command",
+   "text": "uv pip install vllm --torch-backend=auto --extra-index-url https://wheels.vllm.ai/nightly",
+   "doc": "base-card",
+   "doc_sha": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-9B README.md:L777-777",
+   "file": "README.md",
+   "lines": [
+    777,
+    777
+   ],
+   "lang": "shell",
+   "tool": "vllm",
+   "kind": "command",
+   "text": "    vllm serve Qwen/Qwen3.5-9B --port 8000 --tensor-parallel-size 1 --max-model-len 262144 --reasoning-parser qwen3 ",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-c",
+      "value": "262144",
+      "from": "--max-model-len 262144"
+     },
+     {
+      "flag": "--reasoning-format",
+      "value": "deepseek",
+      "from": "--reasoning-parser qwen3"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--tensor-parallel-size 1",
+      "why": "multi-GPU tensor parallelism; n/a (one device per llama-server here)"
+     }
+    ]
+   },
+   "doc": "base-card",
+   "doc_sha": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-9B README.md:L783-783",
+   "file": "README.md",
+   "lines": [
+    783,
+    783
+   ],
+   "lang": "shell",
+   "tool": "vllm",
+   "kind": "command",
+   "text": "    vllm serve Qwen/Qwen3.5-9B --port 8000 --tensor-parallel-size 1 --max-model-len 262144 --reasoning-parser qwen3 --enable-auto-tool-choice --tool-call-parser qwen3_coder ",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-c",
+      "value": "262144",
+      "from": "--max-model-len 262144"
+     },
+     {
+      "flag": "--reasoning-format",
+      "value": "deepseek",
+      "from": "--reasoning-parser qwen3"
+     },
+     {
+      "flag": "--jinja",
+      "value": null,
+      "from": "--enable-auto-tool-choice"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--tensor-parallel-size 1",
+      "why": "multi-GPU tensor parallelism; n/a (one device per llama-server here)"
+     }
+    ]
+   },
+   "doc": "base-card",
+   "doc_sha": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-9B README.md:L789-789",
+   "file": "README.md",
+   "lines": [
+    789,
+    789
+   ],
+   "lang": "shell",
+   "tool": "vllm",
+   "kind": "command",
+   "text": "    vllm serve Qwen/Qwen3.5-9B --port 8000 --tensor-parallel-size 1 --max-model-len 262144 --reasoning-parser qwen3 --speculative-config '{\"method\":\"qwen3_next_mtp\",\"num_speculative_tokens\":2}'",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-c",
+      "value": "262144",
+      "from": "--max-model-len 262144"
+     },
+     {
+      "flag": "--reasoning-format",
+      "value": "deepseek",
+      "from": "--reasoning-parser qwen3"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--tensor-parallel-size 1",
+      "why": "multi-GPU tensor parallelism; n/a (one device per llama-server here)"
+     },
+     {
+      "arg": "--speculative-config {\"method\":\"qwen3_next_mtp\",\"num_speculative_tokens\":2}",
+      "why": "MTP / speculative heads of the safetensors checkpoint are not in this GGUF; no llama.cpp equivalent here"
+     }
+    ]
+   },
+   "doc": "base-card",
+   "doc_sha": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-9B README.md:L795-795",
+   "file": "README.md",
+   "lines": [
+    795,
+    795
+   ],
+   "lang": "shell",
+   "tool": "vllm",
+   "kind": "command",
+   "text": "    vllm serve Qwen/Qwen3.5-9B --port 8000 --tensor-parallel-size 1 --max-model-len 262144 --reasoning-parser qwen3 --language-model-only",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-c",
+      "value": "262144",
+      "from": "--max-model-len 262144"
+     },
+     {
+      "flag": "--reasoning-format",
+      "value": "deepseek",
+      "from": "--reasoning-parser qwen3"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--tensor-parallel-size 1",
+      "why": "multi-GPU tensor parallelism; n/a (one device per llama-server here)"
+     },
+     {
+      "arg": "--language-model-only",
+      "why": "text only: do not pass --mmproj (llama.cpp loads no vision tower without it)"
+     }
+    ]
+   },
+   "doc": "base-card",
+   "doc_sha": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-9B README.md:L808-808",
+   "file": "README.md",
+   "lines": [
+    808,
+    808
+   ],
+   "lang": "shell",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install \"transformers[serving] @ git+https://github.com/huggingface/transformers.git@main\"",
+   "doc": "base-card",
+   "doc_sha": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-9B README.md:L814-814",
+   "file": "README.md",
+   "lines": [
+    814,
+    814
+   ],
+   "lang": "shell",
+   "tool": "transformers-serve",
+   "kind": "command",
+   "text": "transformers serve --force-model Qwen/Qwen3.5-9B --port 8000 --continuous-batching",
+   "translation": {
+    "translated": true,
+    "params": [],
+    "untranslatable": [
+     {
+      "arg": "--force-model Qwen/Qwen3.5-9B",
+      "why": "the model is the GGUF file"
+     },
+     {
+      "arg": "--continuous-batching",
+      "why": "llama-server batches continuously by default (--cont-batching)"
+     }
+    ]
+   },
+   "doc": "base-card",
+   "doc_sha": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-9B README.md:L824-828",
+   "file": "README.md",
+   "lines": [
+    824,
+    828
+   ],
+   "lang": "shell",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install -U openai\n\n# Set the following accordingly\nexport OPENAI_BASE_URL=\"http://localhost:8000/v1\"\nexport OPENAI_API_KEY=\"EMPTY\"",
+   "doc": "base-card",
+   "doc_sha": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-9B README.md:L843-862",
+   "file": "README.md",
+   "lines": [
+    843,
+    862
+   ],
+   "lang": "python",
+   "tool": "openai-client",
+   "kind": "code",
+   "text": "from openai import OpenAI\n# Configured by environment variables\nclient = OpenAI()\n\nmessages = [\n    {\"role\": \"user\", \"content\": \"Type \\\"I love Qwen3.5\\\" backwards\"},\n]\n\nchat_response = client.chat.completions.create(\n    model=\"Qwen/Qwen3.5-9B\",\n    messages=messages,\n    max_tokens=81920,\n    temperature=1.0,\n    top_p=0.95,\n    presence_penalty=1.5,\n    extra_body={\n        \"top_k\": 20,\n    }, \n)\nprint(\"Chat response:\", chat_response)",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--top-k",
+      "value": "20",
+      "from": "top_k: 20"
+     },
+     {
+      "flag": "-n",
+      "value": "81920",
+      "from": "max_tokens: 81920"
+     },
+     {
+      "flag": "--temp",
+      "value": "1",
+      "from": "temperature: 1.0"
+     },
+     {
+      "flag": "--top-p",
+      "value": "0.95",
+      "from": "top_p: 0.95"
+     },
+     {
+      "flag": "--presence-penalty",
+      "value": "1.5",
+      "from": "presence_penalty: 1.5"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-9B README.md:L869-902",
+   "file": "README.md",
+   "lines": [
+    869,
+    902
+   ],
+   "lang": "python",
+   "tool": "openai-client",
+   "kind": "code",
+   "text": "from openai import OpenAI\n# Configured by environment variables\nclient = OpenAI()\n\nmessages = [\n    {\n        \"role\": \"user\",\n        \"content\": [\n            {\n                \"type\": \"image_url\",\n                \"image_url\": {\n                    \"url\": \"https://qianwen-res.oss-accelerate.aliyuncs.com/Qwen3.5/demo/CI_Demo/mathv-1327.jpg\"\n                }\n            },\n            {\n                \"type\": \"text\",\n                \"text\": \"The centres of the four illustrated circles are in the corners of the square. The two big circles touch each other and also the two little circles. With which factor do you have to multiply the radii of the little circles to obtain the radius of the big circles?\\nChoices:\\n(A) $\\\\frac{2}{9}$\\n(B) $\\\\sqrt{5}$\\n(C) $0.8 \\\\cdot \\\\pi$\\n(D) 2.5\\n(E) $1+\\\\sqrt{2}$\"\n            }\n        ]\n    }\n]\n\nchat_response = client.chat.completions.create(\n    model=\"Qwen/Qwen3.5-9B\",\n    messages=messages,\n    max_tokens=81920,\n    temperature=1.0,\n    top_p=0.95,\n    presence_penalty=1.5,\n    extra_body={\n        \"top_k\": 20,\n    }, \n)\nprint(\"Chat response:\", chat_response)",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--top-k",
+      "value": "20",
+      "from": "top_k: 20"
+     },
+     {
+      "flag": "-n",
+      "value": "81920",
+      "from": "max_tokens: 81920"
+     },
+     {
+      "flag": "--temp",
+      "value": "1",
+      "from": "temperature: 1.0"
+     },
+     {
+      "flag": "--top-p",
+      "value": "0.95",
+      "from": "top_p: 0.95"
+     },
+     {
+      "flag": "--presence-penalty",
+      "value": "1.5",
+      "from": "presence_penalty: 1.5"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-9B README.md:L908-949",
+   "file": "README.md",
+   "lines": [
+    908,
+    949
+   ],
+   "lang": "python",
+   "tool": "openai-client",
+   "kind": "code",
+   "text": "from openai import OpenAI\n# Configured by environment variables\nclient = OpenAI()\n\nmessages = [\n    {\n        \"role\": \"user\",\n        \"content\": [\n            {\n                \"type\": \"video_url\",\n                \"video_url\": {\n                    \"url\": \"https://qianwen-res.oss-accelerate.aliyuncs.com/Qwen3.5/demo/video/N1cdUjctpG8.mp4\"\n                }\n            },\n            {\n                \"type\": \"text\",\n                \"text\": \"Summarize the video content.\"\n            }\n        ]\n    }\n]\n\n# When vLLM is launched with `--media-io-kwargs '{\"video\": {\"num_frames\": -1}}'`,\n# video frame sampling can be configured via `extra_body` (e.g., by setting `fps`).\n# This feature is currently supported only in vLLM.\n#\n# By default, `fps=2` and `do_sample_frames=True`.\n# With `do_sample_frames=True`, you can customize the `fps` value to set your desired video sampling rate.\nchat_response = client.chat.completions.create(\n    model=\"Qwen/Qwen3.5-9B\",\n    messages=messages,\n    max_tokens=81920,\n    temperature=1.0,\n    top_p=0.95,\n    presence_penalty=1.5,\n    extra_body={\n        \"top_k\": 20,\n        \"mm_processor_kwargs\": {\"fps\": 2, \"do_sample_frames\": True},\n    }, \n)\n\nprint(\"Chat response:\", chat_response)",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--top-k",
+      "value": "20",
+      "from": "top_k: 20"
+     },
+     {
+      "flag": "-n",
+      "value": "81920",
+      "from": "max_tokens: 81920"
+     },
+     {
+      "flag": "--temp",
+      "value": "1",
+      "from": "temperature: 1.0"
+     },
+     {
+      "flag": "--top-p",
+      "value": "0.95",
+      "from": "top_p: 0.95"
+     },
+     {
+      "flag": "--presence-penalty",
+      "value": "1.5",
+      "from": "presence_penalty: 1.5"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-9B README.md:L961-995",
+   "file": "README.md",
+   "lines": [
+    961,
+    995
+   ],
+   "lang": "python",
+   "tool": "openai-client",
+   "kind": "code",
+   "text": "from openai import OpenAI\n# Configured by environment variables\nclient = OpenAI()\n\nmessages = [\n    {\n        \"role\": \"user\",\n        \"content\": [\n            {\n                \"type\": \"image_url\",\n                \"image_url\": {\n                    \"url\": \"https://qianwen-res.oss-accelerate.aliyuncs.com/Qwen3.5/demo/RealWorld/RealWorld-04.png\"\n                }\n            },\n            {\n                \"type\": \"text\",\n                \"text\": \"Where is this?\"\n            }\n        ]\n    }\n]\n\nchat_response = client.chat.completions.create(\n    model=\"Qwen/Qwen3.5-9B\",\n    messages=messages,\n    max_tokens=32768,\n    temperature=0.7,\n    top_p=0.8,\n    presence_penalty=1.5,\n    extra_body={\n        \"top_k\": 20,\n        \"chat_template_kwargs\": {\"enable_thinking\": False},\n    }, \n)\nprint(\"Chat response:\", chat_response)",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--top-k",
+      "value": "20",
+      "from": "top_k: 20"
+     },
+     {
+      "flag": "--chat-template-kwargs",
+      "value": "{\"enable_thinking\":false}",
+      "from": "chat_template_kwargs: {\"enable_thinking\": false}"
+     },
+     {
+      "flag": "-n",
+      "value": "32768",
+      "from": "max_tokens: 32768"
+     },
+     {
+      "flag": "--temp",
+      "value": "0.7",
+      "from": "temperature: 0.7"
+     },
+     {
+      "flag": "--top-p",
+      "value": "0.8",
+      "from": "top_p: 0.8"
+     },
+     {
+      "flag": "--presence-penalty",
+      "value": "1.5",
+      "from": "presence_penalty: 1.5"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-9B README.md:L1012-1076",
+   "file": "README.md",
+   "lines": [
+    1012,
+    1076
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "import os\nfrom qwen_agent.agents import Assistant\n\n# Define LLM\n# Using Alibaba Cloud Model Studio\nllm_cfg = {\n    # Use the OpenAI-compatible model service provided by DashScope:\n    'model': 'Qwen3.5-9B',\n    'model_type': 'qwenvl_oai',\n    'model_server': 'https://dashscope.aliyuncs.com/compatible-mode/v1',\n    'api_key': os.getenv('DASHSCOPE_API_KEY'),\n\n    'generate_cfg': {\n        'use_raw_api': True,\n        # When using Dash Scope OAI API, pass the parameter of whether to enable thinking mode in this way\n        'extra_body': {\n            'enable_thinking': True\n        },\n    },\n}\n\n# Using OpenAI-compatible API endpoint.\n# functionality of the deployment frameworks and let Qwen-Agent automate the related operations.\n#\n# llm_cfg = {\n#     # Use your own model service compatible with OpenAI API by vLLM/SGLang:\n#     'model': 'Qwen/Qwen3.5-9B',\n#     'model_type': 'qwenvl_oai',\n#     'model_server': 'http://localhost:8000/v1',  # api_base\n#     'api_key': 'EMPTY',\n#\n#     'generate_cfg': {\n#         'use_raw_api': True,\n#         # When using vLLM/SGLang OAI API, pass the parameter of whether to enable thinking mode in this way\n#         'extra_body': {\n#             'chat_template_kwargs': {'enable_thinking': True}\n#         },\n#     },\n# }\n\n# Define Tools\ntools = [\n    {'mcpServers': {  # You can specify the MCP configuration file\n            \"filesystem\": {\n                \"command\": \"npx\",\n                \"args\": [\"-y\", \"@modelcontextprotocol/server-filesystem\", \"/Users/xxxx/Desktop\"]\n            }\n        }\n    }\n]\n\n# Define Agent\nbot = Assistant(llm=llm_cfg, function_list=tools)\n\n# Streaming generation\nmessages = [{'role': 'user', 'content': 'Help me organize my desktop.'}]\nfor responses in bot.run(messages=messages):\n    pass\nprint(responses)\n\n# Streaming generation\nmessages = [{'role': 'user', 'content': 'Develop a dog website and save it on the desktop'}]\nfor responses in bot.run(messages=messages):\n    pass\nprint(responses)",
+   "doc": "base-card",
+   "doc_sha": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-9B README.md:L1097-1109",
+   "file": "README.md",
+   "lines": [
+    1097,
+    1109
+   ],
+   "lang": "json",
+   "tool": "json",
+   "kind": "config",
+   "text": "    {\n        \"mrope_interleaved\": true,\n        \"mrope_section\": [\n            11,\n            11,\n            10\n        ],\n        \"rope_type\": \"yarn\",\n        \"rope_theta\": 10000000,\n        \"partial_rotary_factor\": 0.25,\n        \"factor\": 4.0,\n        \"original_max_position_embeddings\": 262144,\n    }",
+   "doc": "base-card",
+   "doc_sha": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-9B README.md:L1116-1116",
+   "file": "README.md",
+   "lines": [
+    1116,
+    1116
+   ],
+   "lang": "shell",
+   "tool": "vllm",
+   "kind": "command",
+   "text": "    VLLM_ALLOW_LONG_MAX_MODEL_LEN=1 vllm serve ... --hf-overrides '{\"text_config\": {\"rope_parameters\": {\"mrope_interleaved\": true, \"mrope_section\": [11, 11, 10], \"rope_type\": \"yarn\", \"rope_theta\": 10000000, \"partial_rotary_factor\": 0.25, \"factor\": 4.0, \"original_max_position_embeddings\": 262144}}}' --max-model-len 1010000  ",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--rope-scaling",
+      "value": "yarn",
+      "from": "--hf-overrides {\"text_config\": {\"rope_parameters\": {\"mrope_interleaved\": true, \"mrope_section\": [11, 11, 10], \"rope_type\": \"yarn\", \"rope_theta\": 10000000, \"partial_rotary_factor\": 0.25, \"factor\": 4.0, \"original_max_position_embeddings\": 262144}}}"
+     },
+     {
+      "flag": "--rope-scale",
+      "value": "4",
+      "from": "--hf-overrides {\"text_config\": {\"rope_parameters\": {\"mrope_interleaved\": true, \"mrope_section\": [11, 11, 10], \"rope_type\": \"yarn\", \"rope_theta\": 10000000, \"partial_rotary_factor\": 0.25, \"factor\": 4.0, \"original_max_position_embeddings\": 262144}}}"
+     },
+     {
+      "flag": "--yarn-orig-ctx",
+      "value": "262144",
+      "from": "--hf-overrides {\"text_config\": {\"rope_parameters\": {\"mrope_interleaved\": true, \"mrope_section\": [11, 11, 10], \"rope_type\": \"yarn\", \"rope_theta\": 10000000, \"partial_rotary_factor\": 0.25, \"factor\": 4.0, \"original_max_position_embeddings\": 262144}}}"
+     },
+     {
+      "flag": "-c",
+      "value": "1010000",
+      "from": "--max-model-len 1010000"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-9B README.md:L1121-1121",
+   "file": "README.md",
+   "lines": [
+    1121,
+    1121
+   ],
+   "lang": "shell",
+   "tool": "sglang",
+   "kind": "command",
+   "text": "    SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN=1 python -m sglang.launch_server ... --json-model-override-args '{\"text_config\": {\"rope_parameters\": {\"mrope_interleaved\": true, \"mrope_section\": [11, 11, 10], \"rope_type\": \"yarn\", \"rope_theta\": 10000000, \"partial_rotary_factor\": 0.25, \"factor\": 4.0, \"original_max_position_embeddings\": 262144}}}' --context-length 1010000",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--rope-scaling",
+      "value": "yarn",
+      "from": "--json-model-override-args {\"text_config\": {\"rope_parameters\": {\"mrope_interleaved\": true, \"mrope_section\": [11, 11, 10], \"rope_type\": \"yarn\", \"rope_theta\": 10000000, \"partial_rotary_factor\": 0.25, \"factor\": 4.0, \"original_max_position_embeddings\": 262144}}}"
+     },
+     {
+      "flag": "--rope-scale",
+      "value": "4",
+      "from": "--json-model-override-args {\"text_config\": {\"rope_parameters\": {\"mrope_interleaved\": true, \"mrope_section\": [11, 11, 10], \"rope_type\": \"yarn\", \"rope_theta\": 10000000, \"partial_rotary_factor\": 0.25, \"factor\": 4.0, \"original_max_position_embeddings\": 262144}}}"
+     },
+     {
+      "flag": "--yarn-orig-ctx",
+      "value": "262144",
+      "from": "--json-model-override-args {\"text_config\": {\"rope_parameters\": {\"mrope_interleaved\": true, \"mrope_section\": [11, 11, 10], \"rope_type\": \"yarn\", \"rope_theta\": 10000000, \"partial_rotary_factor\": 0.25, \"factor\": 4.0, \"original_max_position_embeddings\": 262144}}}"
+     },
+     {
+      "flag": "-c",
+      "value": "1010000",
+      "from": "--context-length 1010000"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+   "scope": "model"
+  },
+  {
+   "source": "Qwen/Qwen3.5-9B README.md:L1155-1155",
+   "file": "README.md",
+   "lines": [
+    1155,
+    1155
+   ],
+   "lang": "json",
+   "tool": "json",
+   "kind": "config",
+   "text": "    {\"longest_edge\": 469762048, \"shortest_edge\": 4096}",
+   "doc": "base-card",
+   "doc_sha": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L60-62",
+   "file": "README.md",
+   "lines": [
+    60,
+    62
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "export BONSAI_MODEL=4B    # 2B, 4B, 9B, or 27B\n./setup.sh\n./scripts/start_llama_server.sh",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L94-94",
+   "file": "README.md",
+   "lines": [
+    94,
+    94
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "You are a helpful assistant",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L107-109",
+   "file": "README.md",
+   "lines": [
+    107,
+    109
+   ],
+   "lang": "bash",
+   "tool": "git",
+   "kind": "command",
+   "text": "git clone https://github.com/PrismML-Eng/Bonsai-demo.git\ncd Bonsai-demo\n./setup.sh",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L116-116",
+   "file": "README.md",
+   "lines": [
+    116,
+    116
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "./scripts/start_llama_server.sh",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L122-122",
+   "file": "README.md",
+   "lines": [
+    122,
+    122
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "./scripts/run_llama.sh -p \"What is the capital of France?\"",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L134-137",
+   "file": "README.md",
+   "lines": [
+    134,
+    137
+   ],
+   "lang": "powershell",
+   "tool": "git",
+   "kind": "command",
+   "text": "git clone https://github.com/PrismML-Eng/Bonsai-demo.git\ncd Bonsai-demo\nSet-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass\n.\\setup.ps1",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L143-143",
+   "file": "README.md",
+   "lines": [
+    143,
+    143
+   ],
+   "lang": "powershell",
+   "tool": "shell",
+   "kind": "command",
+   "text": ".\\scripts\\start_llama_server.ps1",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L254-254",
+   "file": "README.md",
+   "lines": [
+    254,
+    254
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "./scripts/run_llama.sh -p \"What is the capital of France?\"",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L265-265",
+   "file": "README.md",
+   "lines": [
+    265,
+    265
+   ],
+   "lang": "powershell",
+   "tool": "shell",
+   "kind": "command",
+   "text": ".\\scripts\\run_llama.ps1 -p \"What is the capital of France?\"",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L271-271",
+   "file": "README.md",
+   "lines": [
+    271,
+    271
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "./scripts/run_mlx.sh -p \"What is the capital of France?\"",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L281-281",
+   "file": "README.md",
+   "lines": [
+    281,
+    281
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "./scripts/start_llama_server.sh    # http://localhost:8080",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L287-287",
+   "file": "README.md",
+   "lines": [
+    287,
+    287
+   ],
+   "lang": "powershell",
+   "tool": "shell",
+   "kind": "command",
+   "text": ".\\scripts\\start_llama_server.ps1",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L299-299",
+   "file": "README.md",
+   "lines": [
+    299,
+    299
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "./scripts/start_llama_server.sh --reasoning-budget 2048",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L305-305",
+   "file": "README.md",
+   "lines": [
+    305,
+    305
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "./scripts/start_llama_server.sh --chat-template-kwargs '{\"reasoning_effort\":\"medium\"}'",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L350-350",
+   "file": "README.md",
+   "lines": [
+    350,
+    350
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "./scripts/start_openwebui.sh",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L364-364",
+   "file": "README.md",
+   "lines": [
+    364,
+    364
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "./scripts/build_mac.sh",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L372-372",
+   "file": "README.md",
+   "lines": [
+    372,
+    372
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "./scripts/build_mac.sh",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L380-380",
+   "file": "README.md",
+   "lines": [
+    380,
+    380
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "./scripts/build_cpu_linux.sh",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L388-388",
+   "file": "README.md",
+   "lines": [
+    388,
+    388
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "./scripts/build_cuda_linux.sh",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L396-401",
+   "file": "README.md",
+   "lines": [
+    396,
+    401
+   ],
+   "lang": "bash",
+   "tool": "git",
+   "kind": "command",
+   "text": "# Install Vulkan SDK first (e.g. sudo apt install libvulkan-dev glslc)\ngit clone -b prism https://github.com/PrismML-Eng/llama.cpp.git\ncd llama.cpp\ncmake -B build -DCMAKE_BUILD_TYPE=Release -DGGML_VULKAN=ON\ncmake --build build -j$(nproc)\n# Binaries in build/bin/",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L407-412",
+   "file": "README.md",
+   "lines": [
+    407,
+    412
+   ],
+   "lang": "bash",
+   "tool": "git",
+   "kind": "command",
+   "text": "# Requires ROCm toolkit (hipcc)\ngit clone -b prism https://github.com/PrismML-Eng/llama.cpp.git\ncd llama.cpp\ncmake -B build -DCMAKE_BUILD_TYPE=Release -DGGML_HIP=ON\ncmake --build build -j$(nproc)\n# Binaries in build/bin/",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L418-418",
+   "file": "README.md",
+   "lines": [
+    418,
+    418
+   ],
+   "lang": "powershell",
+   "tool": "shell",
+   "kind": "command",
+   "text": ".\\scripts\\build_cuda_windows.ps1",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L427-431",
+   "file": "README.md",
+   "lines": [
+    427,
+    431
+   ],
+   "lang": "powershell",
+   "tool": "git",
+   "kind": "command",
+   "text": "git clone -b prism https://github.com/PrismML-Eng/llama.cpp.git\ncd llama.cpp\ncmake -B build -DCMAKE_BUILD_TYPE=Release\ncmake --build build --config Release\n# Binaries in build\\bin\\Release\\",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L468-511",
+   "file": "README.md",
+   "lines": [
+    468,
+    511
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "Bonsai-demo/\n├── README.md                      # Bonsai 2 setup and usage\n├── Bonsai1_README.md               # Earlier binary and ternary models\n├── FAQ.md                          # Troubleshooting\n├── TOOLS.md                        # Tool calling & MCP guide\n├── OPENWEBUI.md                    # Open WebUI agentic demo guide\n├── VISION.md                       # Image input: costs, caps, OCR tips\n├── SPECULATIVE.md                  # Speculative decoding (experimental)\n├── KV-CACHE.md                     # 4-bit KV cache (experimental)\n├── AGENTS.md                       # Agent guide (hardware tuning knobs)\n├── setup.sh                        # macOS/Linux setup\n├── setup.ps1                       # Windows setup\n├── pyproject.toml                  # Python dependencies\n├── scripts/\n│   ├── common.sh                   # Shared helpers + BONSAI_MODEL\n│   ├── download_models.sh          # HuggingFace download\n│   ├── download_binaries.sh        # GitHub release download\n│   ├── run_llama.sh                # llama.cpp (auto-detects Mac/Linux)\n│   ├── run_llama.ps1               # llama.cpp (Windows PowerShell)\n│   ├── run_mlx.sh                  # MLX inference\n│   ├── mlx_generate.py             # MLX Python script\n│   ├── start_llama_server.sh       # llama.cpp server (port 8080)\n│   ├── start_llama_server.ps1      # llama.cpp server (Windows PowerShell)\n│   ├── start_mlx_server.sh         # MLX server (port 8081)\n│   ├── start_openwebui.sh          # Open WebUI + auto-starts backends\n│   ├── openwebui/                  # Open WebUI demo tools + seeding\n│   ├── build_mac.sh                # Build llama.cpp for Mac\n│   ├── build_cpu_linux.sh          # Build llama.cpp for Linux (CPU only)\n│   ├── build_cuda_linux.sh         # Build llama.cpp for Linux CUDA\n│   └── build_cuda_windows.ps1      # Build llama.cpp for Windows CUDA\n├── models/                         # ← downloaded by setup\n│   ├── bonsai2-gguf/\n│   │   └── 27B/                    # Bonsai 2 GGUF + vision projector\n│   └── Ternary-Bonsai-2-27B-mlx-2bit/ # Bonsai 2 MLX (Apple Silicon)\n├── bin/                            # ← downloaded or built by setup\n│   ├── mac/                        # macOS binaries (Metal or CPU)\n│   ├── cuda/                       # CUDA binaries (Linux/Windows)\n│   ├── cpu/                        # CPU-only binaries (Linux/Windows)\n│   ├── vulkan/                     # Vulkan binaries\n│   ├── rocm/                       # ROCm binaries (AMD Linux)\n│   └── hip/                        # HIP binaries (AMD Windows)\n├── mlx/                            # ← cloned by setup (macOS)\n├── .venv/                          # ← created by setup\n└── .venv-vlm/                      # ← native Bonsai 2 MLX environment",
+   "doc": "github",
+   "doc_sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "scope": "model"
+  }
+ ],
+ "card_notes": [
+  {
+   "text": "- Context Length: 262,144 natively and extensible up to 1,010,000 tokens.",
+   "source": "Qwen/Qwen3.5-9B README.md:L64"
+  },
+  {
+   "text": "> Qwen3.5 models operate in thinking mode by default, generating thinking content signified by `<think>\\n...</think>\\n\\n` before producing the final responses.",
+   "source": "Qwen/Qwen3.5-9B README.md:L710"
+  },
+  {
+   "text": "> To disable thinking content and obtain direct response, refer to the examples [here](#instruct-or-non-thinking-mode).",
+   "source": "Qwen/Qwen3.5-9B README.md:L711"
+  },
+  {
+   "text": "> The model has a default context length of 262,144 tokens.",
+   "source": "Qwen/Qwen3.5-9B README.md:L728"
+  },
+  {
+   "text": "> However, because Qwen3.5 leverages extended context for complex tasks, we advise maintaining a context length of at least 128K tokens to preserve thinking capabilities.",
+   "source": "Qwen/Qwen3.5-9B README.md:L730"
+  },
+  {
+   "text": "- **Standard Version**: The following command can be used to create an API endpoint with maximum context length 262,144 tokens using tensor parallel on 8 GPUs.",
+   "source": "Qwen/Qwen3.5-9B README.md:L743"
+  },
+  {
+   "text": "- **Standard Version**: The following command can be used to create an API endpoint with maximum context length 262,144 tokens using tensor parallel on 8 GPUs.",
+   "source": "Qwen/Qwen3.5-9B README.md:L774"
+  },
+  {
+   "text": "> - Thinking mode for general tasks: `temperature=1.0, top_p=0.95, top_k=20, min_p=0.0, presence_penalty=1.5, repetition_penalty=1.0`",
+   "source": "Qwen/Qwen3.5-9B README.md:L833"
+  },
+  {
+   "text": "> - Thinking mode for precise coding tasks (e.g. WebDev): `temperature=0.6, top_p=0.95, top_k=20, min_p=0.0, presence_penalty=0.0, repetition_penalty=1.0`",
+   "source": "Qwen/Qwen3.5-9B README.md:L834"
+  },
+  {
+   "text": "> - Instruct (or non-thinking) mode for general tasks: `temperature=0.7, top_p=0.8, top_k=20, min_p=0.0, presence_penalty=1.5, repetition_penalty=1.0`",
+   "source": "Qwen/Qwen3.5-9B README.md:L835"
+  },
+  {
+   "text": "> - Instruct (or non-thinking) mode for reasoning tasks: `temperature=1.0, top_p=0.95, top_k=20, min_p=0.0, presence_penalty=1.5, repetition_penalty=1.0`",
+   "source": "Qwen/Qwen3.5-9B README.md:L836"
+  },
+  {
+   "text": "#### Instruct (or Non-Thinking) Mode",
+   "source": "Qwen/Qwen3.5-9B README.md:L952"
+  },
+  {
+   "text": "> Qwen3.5 does not officially support the soft switch of Qwen3, i.e., `/think` and `/nothink`.",
+   "source": "Qwen/Qwen3.5-9B README.md:L955"
+  },
+  {
+   "text": "> If you are using APIs from Alibaba Cloud Model Studio, in addition to changing `model`, please use `\"enable_thinking\": False` instead of `\"chat_template_kwargs\": {\"enable_thinking\": False}`.",
+   "source": "Qwen/Qwen3.5-9B README.md:L999"
+  },
+  {
+   "text": "Qwen3.5 natively supports context lengths of up to 262,144 tokens.",
+   "source": "Qwen/Qwen3.5-9B README.md:L1088"
+  },
+  {
+   "text": "For long-horizon tasks where the total length (including both input and output) exceeds this limit, we recommend using RoPE scaling techniques to handle long texts effectively., e.g., YaRN.",
+   "source": "Qwen/Qwen3.5-9B README.md:L1089"
+  },
+  {
+   "text": "YaRN is currently supported by several inference frameworks, e.g., `transformers`, `vllm`, `ktransformers` and `sglang`.",
+   "source": "Qwen/Qwen3.5-9B README.md:L1091"
+  },
+  {
+   "text": "In general, there are two approaches to enabling YaRN for supported frameworks:",
+   "source": "Qwen/Qwen3.5-9B README.md:L1092"
+  },
+  {
+   "text": "> All the notable open-source frameworks implement static YaRN, which means the scaling factor remains constant regardless of input length, **potentially impacting performance on shorter texts.**",
+   "source": "Qwen/Qwen3.5-9B README.md:L1125"
+  },
+  {
+   "text": "> It is also recommended to modify the `factor` as needed. For example, if the typical context length for your application is 524,288 tokens, it would be better to set `factor` as 2.0.",
+   "source": "Qwen/Qwen3.5-9B README.md:L1127"
+  },
+  {
+   "text": "| Context length | 262,144 tokens (inherited from the base model) |",
+   "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L47"
+  },
+  {
+   "text": "> - Thinking mode (default): `temperature=1.0`, `top_p=0.95`, `top_k=20`, `min_p=0.0`, `presence_penalty=1.0`, `repetition_penalty=1.0`",
+   "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L129"
+  },
+  {
+   "text": "> - Non-thinking mode: `temperature=0.7`, `top_p=0.80`, `top_k=20`, `min_p=0.0`, `presence_penalty=1.5`, `repetition_penalty=1.0`",
+   "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L130"
+  },
+  {
+   "text": "Apply the penalties over the last 64 tokens (llama.cpp's default window). Presence penalty has no GGUF metadata key, so pass it on the command line or per request.",
+   "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L132"
+  },
+  {
+   "text": "Avoid greedy decoding (`temperature=0`) with thinking on; it can get stuck reasoning on some prompts.",
+   "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L145"
+  },
+  {
+   "text": "Give thinking mode room to finish. Even simple prompts can use 3,000+ thinking tokens, so allow at least 8,192 output tokens with thinking on. For short answers, turn thinking off.",
+   "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L149"
+  },
+  {
+   "text": "### System Prompt",
+   "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L151"
+  },
+  {
+   "text": "You can use a simple system prompt such as:",
+   "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L153"
+  }
+ ],
+ "chat_template": {
+  "gguf_sha256": "a4aee8afcf2e0711942cf848899be66016f8d14a889ff9ede07bca099c28f715",
+  "repo_sha256": "a4aee8afcf2e0711942cf848899be66016f8d14a889ff9ede07bca099c28f715",
+  "repo_file": "chat_template.jinja",
+  "same": true,
+  "gguf_chars": 7756,
+  "repo_chars": 7756,
+  "repo_label": "Qwen/Qwen3.5-9B",
+  "use": "gguf"
+ },
+ "stop": {
+  "eos_token": "<|im_end|>",
+  "eos_token_id": 248046,
+  "eos_token_id_source": "GGUF",
+  "analysis": {
+   "tokens": [
+    {
+     "id": 248046,
+     "text": "<|im_end|>",
+     "source": "Qwen/Qwen3.5-9B tokenizer_config.json eos_token",
+     "eog_by": "GGUF tokenizer.ggml.eos_token_id"
+    }
+   ],
+   "missing": [],
+   "gguf": {
+    "eos": 248046
+   }
+  }
+ },
+ "rope": {
+  "rope.freq_base": 10000000.0,
+  "config": {
+   "mrope_interleaved": true,
+   "mrope_section": [
+    11,
+    11,
+    10
+   ],
+   "rope_type": "default",
+   "rope_theta": 10000000,
+   "partial_rotary_factor": 0.25
+  }
+ },
+ "aux": [
+  {
+   "kind": "mtp",
+   "file": "Ternary-Bonsai-2-9B-PQ2_0-MTP-Q8_0.gguf",
+   "size": 2675410720,
+   "sha256": "c79fcdfaf6b7bf47089b50dadcfd11f9ce7d3e96adf3bbefde7912e5ef69e22b",
+   "fetched": false,
+   "source": "prism-ml/Ternary-Bonsai-2-9B-gguf repo file"
+  },
+  {
+   "kind": "mmproj",
+   "file": "Ternary-Bonsai-2-9B-mmproj-BF16.gguf",
+   "size": 921704864,
+   "sha256": "3e6d1a8bf1266eda94c52221a7d1d8f302524c7ea0d62bee088b36d6a3a0ef79",
+   "fetched": false,
+   "source": "prism-ml/Ternary-Bonsai-2-9B-gguf repo file"
+  },
+  {
+   "kind": "mmproj",
+   "file": "Ternary-Bonsai-2-9B-mmproj-Q8_0.gguf",
+   "size": 624229664,
+   "sha256": "e0cb6f6988cea323ef798cd77d019bbb819af75582f034eaab0e7232314953db",
+   "fetched": false,
+   "source": "prism-ml/Ternary-Bonsai-2-9B-gguf repo file"
+  },
+  {
+   "kind": "draft",
+   "ref": "Ternary-Bonsai-2-9B-DFlash2-Q8_0.gguf",
+   "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L185"
+  }
+ ],
+ "gguf": {
+  "general.architecture": "qwen35",
+  "general.name": "Ternary-Bonsai-2-9B",
+  "general.file_type": 143,
+  "general.quantization_version": 2,
+  "_gguf_version": 3
+ },
+ "snapshot": {
+  "path": "prism-ml--Ternary-Bonsai-2-9B-gguf/5b2abb02362efbed46bbe204014b02837778b2c2",
+  "fetched_bytes": 23794,
+  "errors": null,
+  "gated": false
+ },
+ "base_snapshot": {
+  "path": "Qwen--Qwen3.5-9B/c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+  "fetched_bytes": 23082781,
+  "errors": null,
+  "gated": false
+ },
+ "repo_files": {
+  ".gitattributes": {
+   "size": 2016,
+   "sha256": null,
+   "blob": "cb09d43b456f645075603e193d1a8cedc8909538",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "LICENSE": {
+   "size": 10174,
+   "sha256": null,
+   "blob": "66a27ec5ff940d3a9652d2948746ebac4c9d0188",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "NOTICE.txt": {
+   "size": 599,
+   "sha256": null,
+   "blob": "c0ed70c6a5ed3789e102e3e20217492934d4ebc4",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "README.md": {
+   "size": 9061,
+   "sha256": null,
+   "blob": "1f5c2d3708ca6950d374c644b32fa5267c9d7b27",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "SHA256SUMS": {
+   "size": 707,
+   "sha256": null,
+   "blob": "0d3c539967ae64a9f284b45389cb65c6f956d253",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "Ternary-Bonsai-2-9B-DFlash2-Q8_0.gguf": {
+   "size": 1574233856,
+   "sha256": "95149abdd584f7a69ea5ead38790d5481454428d2c1616527ff0d45422a762b4",
+   "blob": "411b328c4035df134b4cc6da47a5569168a12130",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (1574 MB)"
+  },
+  "Ternary-Bonsai-2-9B-PQ2_0-MTP-Q8_0.gguf": {
+   "size": 2675410720,
+   "sha256": "c79fcdfaf6b7bf47089b50dadcfd11f9ce7d3e96adf3bbefde7912e5ef69e22b",
+   "blob": "198482292f6063c956f741901710ab3f917f10eb",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (2675 MB)"
+  },
+  "Ternary-Bonsai-2-9B-PQ2_0.gguf": {
+   "size": 2416851840,
+   "sha256": "7a89ab48f5038c704480f60781f9b8d4035351f5f6beb7d11fad80001fde23f9",
+   "blob": "6e2380145c4ecd436908699f90fec8a386988185",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (2416 MB)"
+  },
+  "Ternary-Bonsai-2-9B-PTQ1_0.gguf": {
+   "size": 1997486976,
+   "sha256": "3561df7ac7d26a71ffa991ac2db740b10841c3a350aa2676ccd3ff5d428b4e8b",
+   "blob": "8cbb83e5d57fac5039b402ad5597ee51c9849cf6",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (1997 MB)"
+  },
+  "Ternary-Bonsai-2-9B-Q2_0.gguf": {
+   "size": 2556640128,
+   "sha256": "1f884aa56aacd2bbbb2e4b7abaead2b1102b74a9c75a23fc33dab916813a384d",
+   "blob": "1cf7990bb2c5cd59dc24778bf569318ea22e54fb",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (2556 MB)"
+  },
+  "Ternary-Bonsai-2-9B-mmproj-BF16.gguf": {
+   "size": 921704864,
+   "sha256": "3e6d1a8bf1266eda94c52221a7d1d8f302524c7ea0d62bee088b36d6a3a0ef79",
+   "blob": "5d2c90b7a76c5ce9f3de4c49569697caeb8b0b3b",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (921 MB)"
+  },
+  "Ternary-Bonsai-2-9B-mmproj-Q8_0.gguf": {
+   "size": 624229664,
+   "sha256": "e0cb6f6988cea323ef798cd77d019bbb819af75582f034eaab0e7232314953db",
+   "blob": "f7e8bc888c8cc7a019cda87c94568c80c39a5864",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (624 MB)"
+  },
+  "USAGE.md": {
+   "size": 1237,
+   "sha256": null,
+   "blob": "0fc4b355f2c1da8f00fa38bc585315a469f2cf95",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  }
+ },
+ "base_repo_files": {
+  ".gitattributes": {
+   "size": 1570,
+   "sha256": null,
+   "blob": "52373fe24473b1aa44333d318f578ae6bf04b49b",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "LICENSE": {
+   "size": 11544,
+   "sha256": null,
+   "blob": "f938136e3adacfd92be087f6e113b5d6d97f678f",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "README.md": {
+   "size": 77643,
+   "sha256": null,
+   "blob": "0f3972cb2c995a86bde9ac92440da530fe2b2c68",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "chat_template.jinja": {
+   "size": 7756,
+   "sha256": null,
+   "blob": "a585dec894e63da457d9440ec6aa7caa16d20860",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "config.json": {
+   "size": 3126,
+   "sha256": null,
+   "blob": "273ce437e01baf96a07cd9eb3d5f48bac8d7c657",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "merges.txt": {
+   "size": 3353259,
+   "sha256": null,
+   "blob": "a494e019ca1502219fd0128658b979e5f05ae8e8",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "model.safetensors-00001-of-00004.safetensors": {
+   "size": 5276436216,
+   "sha256": "db6f444b43d318c92f360a13a25561a6a65b10c0631b8ed305a426dbaa6c380e",
+   "blob": "dfcd6f97b641f0447db5697eca1f4e227c84449c",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (5276 MB)"
+  },
+  "model.safetensors-00002-of-00004.safetensors": {
+   "size": 5335161512,
+   "sha256": "31c7d7e2dd5d207840b31cc59083c8f4c4718959149e0358c0364052bb9a0330",
+   "blob": "645b45d883adaee57a4dbbf75577fa634d20c6b5",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (5335 MB)"
+  },
+  "model.safetensors-00003-of-00004.safetensors": {
+   "size": 5368717440,
+   "sha256": "7ec36ba3a4176a44c3c0876ad80c56a2f70c84bf008d82e9501df642f17dadec",
+   "blob": "20f21fdc49bdca8f021badede1ec436d8241f1e2",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (5368 MB)"
+  },
+  "model.safetensors-00004-of-00004.safetensors": {
+   "size": 3325995712,
+   "sha256": "b62b0c4cd7e44edee103ee8f4fe225f246d5e768e07bfd5f25b63a8aa1fdd0c6",
+   "blob": "5a0f71d358bf91155d46e610dc32db45989a1a5f",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (3325 MB)"
+  },
+  "model.safetensors.index.json": {
+   "size": 79657,
+   "sha256": null,
+   "blob": "e4c1cb7dba5096b43b9d92bc781aba5e3aa8acd8",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "preprocessor_config.json": {
+   "size": 390,
+   "sha256": null,
+   "blob": "2ea84a437d448ff71b08df68fdd949d5cc4ebb64",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "tokenizer.json": {
+   "size": 12807982,
+   "sha256": "5f9e4d4901a92b997e463c1f46055088b6cca5ca61a6522d1b9f64c4bb81cb42",
+   "blob": "a73a846725794819aa6e1c9e97d8dc9671c2006d",
+   "fetched": true,
+   "verified": "lfs-sha256"
+  },
+  "tokenizer_config.json": {
+   "size": 16710,
+   "sha256": null,
+   "blob": "eda48d3e75a8e59a8479ee4ec8b37f76e711d9c1",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "video_preprocessor_config.json": {
+   "size": 385,
+   "sha256": null,
+   "blob": "3ba673a5ad7d4d13f54155ecd38b2a94a6dac8fe",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "vocab.json": {
+   "size": 6722759,
+   "sha256": null,
+   "blob": "0aa0ce0658d60ac4a5d609f4eadb0e8e43514176",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  }
+ },
+ "found_in": [
+  "familia #54"
+ ],
+ "match": null,
+ "local_check": null,
+ "unknown": [
+  "quant"
+ ],
+ "warnings": null,
+ "updated": "2026-10-19",
+ "by": "scripts/model_db.py",
+ "weights": "absent (damp)",
+ "gguf_meta": {
+  "general.architecture": "qwen35",
+  "general.type": "model",
+  "general.sampling.min_p": 0.0,
+  "general.name": "Ternary-Bonsai-2-9B",
+  "general.size_label": "9B",
+  "qwen35.block_count": 32,
+  "qwen35.context_length": 262144,
+  "qwen35.embedding_length": 4096,
+  "qwen35.feed_forward_length": 12288,
+  "qwen35.attention.head_count": 16,
+  "qwen35.attention.head_count_kv": 4,
+  "qwen35.rope.dimension_sections": {
+   "array_len": 4
+  },
+  "qwen35.rope.freq_base": 10000000.0,
+  "qwen35.attention.layer_norm_rms_epsilon": 9.999999974752427e-07,
+  "qwen35.attention.key_length": 256,
+  "qwen35.attention.value_length": 256,
+  "qwen35.ssm.conv_kernel": 4,
+  "qwen35.ssm.state_size": 128,
+  "qwen35.ssm.group_count": 16,
+  "qwen35.ssm.time_step_rank": 32,
+  "qwen35.ssm.inner_size": 4096,
+  "qwen35.full_attention_interval": 4,
+  "qwen35.rope.dimension_count": 64,
+  "prism.hadamard.version": 1,
+  "prism.hadamard.block_size": 4096,
+  "prism.hadamard.transform": "normalized-sylvester-walsh-hadamard",
+  "prism.hadamard.axis": "input-last-dimension",
+  "prism.hadamard.sign_mode": "explicit",
+  "prism.hadamard.weight_names": {
+   "array_len": 201
+  },
+  "prism.hadamard.sign_widths": {
+   "array_len": 2
+  },
+  "prism.hadamard.sign_values": {
+   "array_len": 16384
+  },
+  "prism.hadamard.inverse_weight_names": [
+   "token_embd.weight"
+  ],
+  "prism.hadamard.gdn_v_grouped": true,
+  "tokenizer.ggml.model": "gpt2",
+  "tokenizer.ggml.pre": "qwen35",
+  "tokenizer.ggml.tokens": {
+   "array_len": 248320
+  },
+  "tokenizer.ggml.token_type": {
+   "array_len": 248320
+  },
+  "tokenizer.ggml.merges": {
+   "array_len": 247587
+  },
+  "tokenizer.ggml.eos_token_id": 248046,
+  "tokenizer.ggml.padding_token_id": 248044,
+  "tokenizer.ggml.add_bos_token": false,
+  "tokenizer.chat_template": {
+   "sha256": "a4aee8afcf2e0711942cf848899be66016f8d14a889ff9ede07bca099c28f715",
+   "chars": 7756
+  },
+  "general.quantization_version": 2,
+  "general.file_type": 143,
+  "tokenizer.ggml.bos_token_id": 248044,
+  "general.sampling.temp": 1.0,
+  "general.sampling.top_p": 0.949999988079071,
+  "general.sampling.top_k": 20,
+  "general.sampling.penalty_repeat": 1.0,
+  "_gguf_version": 3,
+  "_n_tensors": 427
+ },
+ "base_chain": [
+  {
+   "repo": "Qwen/Qwen3.5-9B",
+   "api_id": "Qwen/Qwen3.5-9B",
+   "revision": "c202236235762e1c871ad0ccb60c8ee5ba337b9a",
+   "via": "card base_model",
+   "card_data": {
+    "license": "apache-2.0",
+    "license_link": "https://huggingface.co/Qwen/Qwen3.5-9B/blob/main/LICENSE",
+    "base_model": [
+     "Qwen/Qwen3.5-9B-Base"
+    ],
+    "pipeline_tag": "image-text-to-text",
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "image-text-to-text",
+   "safetensors": {
+    "parameters": {
+     "BF16": 9653100528,
+     "F32": 3840
+    },
+    "total": 9653104368
+   },
+   "license_files": [
+    "LICENSE"
+   ]
+  },
+  {
+   "repo": "Qwen/Qwen3.5-9B-Base",
+   "api_id": "Qwen/Qwen3.5-9B-Base",
+   "revision": "68c46c4b3498877f3ef123c856ecfde50c39f404",
+   "via": "Qwen/Qwen3.5-9B card base_model",
+   "card_data": {
+    "license": "apache-2.0",
+    "license_link": "https://huggingface.co/Qwen/Qwen3.5-9B-Base/blob/main/LICENSE",
+    "pipeline_tag": "image-text-to-text",
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "image-text-to-text",
+   "safetensors": {
+    "parameters": {
+     "BF16": 9653100528,
+     "F32": 3840
+    },
+    "total": 9653104368
+   },
+   "license_files": [
+    "LICENSE"
+   ]
+  }
+ ],
+ "github": [
+  {
+   "repo": "PrismML-Eng/Bonsai-demo",
+   "resolved": "PrismML-Eng/Bonsai-demo",
+   "sha": "db871ea96bffff5ce5609873c412b75d7cd5ba3c",
+   "renamed": null,
+   "description": "Bonsai Demo",
+   "license_spdx": "Apache-2.0",
+   "files": {
+    "license": {
+     "path": "LICENSE",
+     "sha256": "6d1d968fb225eca367cb7f0b8831ab012a35d92b547e945e17ef8e7b05c3e5cc",
+     "bytes": 10349
+    },
+    "readme": {
+     "path": "README.md",
+     "sha256": "578af9f1b63ea5552ccc6e88d1b4ee576e90dcc2c86b49886e4b041d0e0473e6",
+     "bytes": 25187
+    }
+   },
+   "extra": null,
+   "snapshot": "github/PrismML-Eng--Bonsai-demo/db871ea96bffff5ce5609873c412b75d7cd5ba3c"
+  }
+ ],
+ "github_dropped": [
+  {
+   "repo": "PrismML-Eng/llama.cpp",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "sgl-project/sglang",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "vllm-project/vllm",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "kvcache-ai/ktransformers",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "QwenLM/Qwen-Agent",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "QwenLM/qwen-code",
+   "why": "inference/training tool repo"
+  }
+ ],
+ "descriptor": {
+  "repo_id": {
+   "effective": "prism-ml/Ternary-Bonsai-2-9B-gguf",
+   "source": "HF API id"
+  },
+  "revision": {
+   "effective": "5b2abb02362efbed46bbe204014b02837778b2c2",
+   "source": "pinned (manifest / database)"
+  },
+  "file": {
+   "effective": "Ternary-Bonsai-2-9B-PTQ1_0.gguf",
+   "source": "HF API siblings"
+  },
+  "bytes": {
+   "effective": 1997486976,
+   "source": "HF API LFS size"
+  },
+  "sha256": {
+   "effective": "3561df7ac7d26a71ffa991ac2db740b10841c3a350aa2676ccd3ff5d428b4e8b",
+   "source": "HF API LFS oid"
+  },
+  "quant": {
+   "effective": "file_type 143",
+   "source": "GGUF general.file_type"
+  },
+  "license": {
+   "effective": "apache-2.0",
+   "source": "prism-ml/Ternary-Bonsai-2-9B-gguf card license",
+   "values": [
+    {
+     "value": "apache-2.0",
+     "source": "prism-ml/Ternary-Bonsai-2-9B-gguf card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "Qwen/Qwen3.5-9B card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "Qwen/Qwen3.5-9B-Base card license"
+    }
+   ]
+  },
+  "license_link": {
+   "effective": "https://huggingface.co/Qwen/Qwen3.5-9B/blob/main/LICENSE",
+   "source": "Qwen/Qwen3.5-9B card license_link",
+   "values": [
+    {
+     "value": "https://huggingface.co/Qwen/Qwen3.5-9B/blob/main/LICENSE",
+     "source": "Qwen/Qwen3.5-9B card license_link"
+    },
+    {
+     "value": "https://huggingface.co/Qwen/Qwen3.5-9B-Base/blob/main/LICENSE",
+     "source": "Qwen/Qwen3.5-9B-Base card license_link"
+    }
+   ]
+  },
+  "code_license": {
+   "effective": "Apache-2.0",
+   "source": "GitHub github.com/PrismML-Eng/Bonsai-demo license (spdx)"
+  },
+  "license_file": {
+   "effective": "github.com/PrismML-Eng/Bonsai-demo@db871ea96bff/LICENSE",
+   "source": "GitHub github.com/PrismML-Eng/Bonsai-demo",
+   "values": [
+    {
+     "value": "github.com/PrismML-Eng/Bonsai-demo@db871ea96bff/LICENSE",
+     "source": "GitHub github.com/PrismML-Eng/Bonsai-demo"
+    },
+    {
+     "value": "prism-ml/Ternary-Bonsai-2-9B-gguf@5b2abb02362e/LICENSE",
+     "source": "prism-ml/Ternary-Bonsai-2-9B-gguf repo file"
+    },
+    {
+     "value": "Qwen/Qwen3.5-9B@c20223623576/LICENSE",
+     "source": "Qwen/Qwen3.5-9B repo file"
+    },
+    {
+     "value": "Qwen/Qwen3.5-9B-Base@68c46c4b3498/LICENSE",
+     "source": "Qwen/Qwen3.5-9B-Base repo file"
+    }
+   ]
+  },
+  "base_model_chain": {
+   "effective": "Qwen/Qwen3.5-9B",
+   "source": "card base_model",
+   "values": [
+    {
+     "value": "Qwen/Qwen3.5-9B",
+     "source": "card base_model"
+    },
+    {
+     "value": "Qwen/Qwen3.5-9B-Base",
+     "source": "Qwen/Qwen3.5-9B card base_model"
+    }
+   ]
+  },
+  "architecture": {
+   "effective": "qwen35",
+   "source": "GGUF general.architecture",
+   "values": [
+    {
+     "value": "qwen35",
+     "source": "GGUF general.architecture"
+    },
+    {
+     "value": "dflash",
+     "source": "HF API gguf.architecture"
+    }
+   ],
+   "conflict": true
+  },
+  "hf_architectures": {
+   "effective": [
+    "Qwen3_5ForConditionalGeneration"
+   ],
+   "source": "Qwen/Qwen3.5-9B config.json architectures"
+  },
+  "hf_model_type": {
+   "effective": "qwen3_5",
+   "source": "Qwen/Qwen3.5-9B config.json model_type"
+  },
+  "parameters": {
+   "effective": 1470621184,
+   "source": "HF API gguf.total (prism-ml/Ternary-Bonsai-2-9B-gguf)",
+   "values": [
+    {
+     "value": 1470621184,
+     "source": "HF API gguf.total (prism-ml/Ternary-Bonsai-2-9B-gguf)"
+    },
+    {
+     "value": 9653104368,
+     "source": "HF API safetensors.total (Qwen/Qwen3.5-9B)"
+    },
+    {
+     "value": 9653104368,
+     "source": "HF API safetensors.total (Qwen/Qwen3.5-9B-Base)"
+    }
+   ],
+   "conflict": true
+  },
+  "size_label": {
+   "effective": "9B",
+   "source": "GGUF general.size_label"
+  },
+  "ctx_statements": {
+   "effective": {
+    "value": 268288,
+    "quote": "- **262K-token context**, inherited from the Qwen3.5-9B hybrid-attention backbone (24 linear-attention and 8 full-attention layers)."
+   },
+   "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L38",
+   "values": [
+    {
+     "value": {
+      "value": 268288,
+      "quote": "- **262K-token context**, inherited from the Qwen3.5-9B hybrid-attention backbone (24 linear-attention and 8 full-attention layers)."
+     },
+     "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L38"
+    },
+    {
+     "value": {
+      "value": 262144,
+      "quote": "| Context length | 262,144 tokens (inherited from the base model) |"
+     },
+     "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L47"
+    },
+    {
+     "value": {
+      "value": 262144,
+      "quote": "- Context Length: 262,144 natively and extensible up to 1,010,000 tokens."
+     },
+     "source": "Qwen/Qwen3.5-9B README.md:L64"
+    },
+    {
+     "value": {
+      "value": 262144,
+      "quote": "> The model has a default context length of 262,144 tokens."
+     },
+     "source": "Qwen/Qwen3.5-9B README.md:L728"
+    },
+    {
+     "value": {
+      "value": 131072,
+      "quote": "> However, because Qwen3.5 leverages extended context for complex tasks, we advise maintaining a context length of at least 128K tokens to preserve thinking capabilities."
+     },
+     "source": "Qwen/Qwen3.5-9B README.md:L730"
+    },
+    {
+     "value": {
+      "value": 262144,
+      "quote": "- **Standard Version**: The following command can be used to create an API endpoint with maximum context length 262,144 tokens using tensor parallel on 8 GPUs."
+     },
+     "source": "Qwen/Qwen3.5-9B README.md:L743"
+    },
+    {
+     "value": {
+      "value": 262144,
+      "quote": "python -m sglang.launch_server --model-path Qwen/Qwen3.5-9B --port 8000 --tp-size 1 --mem-fraction-static 0.8 --context-length 262144 --reasoning-parser qwen3"
+     },
+     "source": "Qwen/Qwen3.5-9B README.md:L746"
+    },
+    {
+     "value": {
+      "value": 262144,
+      "quote": "python -m sglang.launch_server --model-path Qwen/Qwen3.5-9B --port 8000 --tp-size 1 --mem-fraction-static 0.8 --context-length 262144 --reasoning-parser qwen3 --tool-call-parser qwen3_coder"
+     },
+     "source": "Qwen/Qwen3.5-9B README.md:L752"
+    },
+    {
+     "value": {
+      "value": 262144,
+      "quote": "python -m sglang.launch_server --model-path Qwen/Qwen3.5-9B --port 8000 --tp-size 1 --mem-fraction-static 0.8 --context-length 262144 --reasoning-parser qwen3 --speculative-algo NEXTN --speculative-num-steps 3 --speculative-eagle-topk 1 --s"
+     },
+     "source": "Qwen/Qwen3.5-9B README.md:L758"
+    },
+    {
+     "value": {
+      "value": 262144,
+      "quote": "- **Standard Version**: The following command can be used to create an API endpoint with maximum context length 262,144 tokens using tensor parallel on 8 GPUs."
+     },
+     "source": "Qwen/Qwen3.5-9B README.md:L774"
+    },
+    {
+     "value": {
+      "value": 262144,
+      "quote": "Qwen3.5 natively supports context lengths of up to 262,144 tokens."
+     },
+     "source": "Qwen/Qwen3.5-9B README.md:L1088"
+    },
+    {
+     "value": {
+      "value": 1010000,
+      "quote": "SGLANG_ALLOW_OVERWRITE_LONGER_CONTEXT_LEN=1 python -m sglang.launch_server ... --json-model-override-args '{\"text_config\": {\"rope_parameters\": {\"mrope_interleaved\": true, \"mrope_section\": [11, 11, 10], \"rope_type\": \"yarn\", \"rope_theta\": 100"
+     },
+     "source": "Qwen/Qwen3.5-9B README.md:L1121"
+    },
+    {
+     "value": {
+      "value": 524288,
+      "quote": "> It is also recommended to modify the `factor` as needed. For example, if the typical context length for your application is 524,288 tokens, it would be better to set `factor` as 2.0."
+     },
+     "source": "Qwen/Qwen3.5-9B README.md:L1127"
+    },
+    {
+     "value": {
+      "value": 268288,
+      "quote": "- **262K-token context**, kept practical on-device by the hybrid-attention backbone."
+     },
+     "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L44"
+    },
+    {
+     "value": {
+      "value": 8192,
+      "quote": "The launch scripts pick a **default context sized to your machine's RAM**, from 8K on small machines up to 131K for the 27B on machines with more than 71 GB (roughly 0.5 to 8 GiB of KV cache), so memory use stays predictable. Override with "
+     },
+     "source": "github.com/PrismML-Eng/Bonsai-demo README.md:L335"
+    }
+   ]
+  },
+  "ctx": {
+   "effective": 262144,
+   "source": "card: Qwen/Qwen3.5-9B README.md:L64",
+   "values": [
+    {
+     "value": 262144,
+     "source": "card: Qwen/Qwen3.5-9B README.md:L64"
+    },
+    {
+     "value": 262144,
+     "source": "Qwen/Qwen3.5-9B config.json max_position_embeddings"
+    },
+    {
+     "value": 262144,
+     "source": "GGUF qwen35.context_length"
+    }
+   ],
+   "precedence": "card statement > config.json > GGUF header > GitHub README"
+  },
+  "rope_yarn": {
+   "effective": {
+    "type": "yarn",
+    "factor": 4.0,
+    "original_ctx": 262144
+   },
+   "source": "Qwen/Qwen3.5-9B README.md (rope_scaling JSON)"
+  },
+  "pipeline_tag": {
+   "effective": "image-text-to-text",
+   "source": "prism-ml/Ternary-Bonsai-2-9B-gguf HF API pipeline_tag",
+   "values": [
+    {
+     "value": "image-text-to-text",
+     "source": "prism-ml/Ternary-Bonsai-2-9B-gguf HF API pipeline_tag"
+    },
+    {
+     "value": "image-text-to-text",
+     "source": "Qwen/Qwen3.5-9B HF API pipeline_tag"
+    },
+    {
+     "value": "image-text-to-text",
+     "source": "Qwen/Qwen3.5-9B-Base HF API pipeline_tag"
+    }
+   ]
+  }
+ },
+ "required_params": {
+  "kind": "chat",
+  "native_ctx": 262144,
+  "native_ctx_source": "card: Qwen/Qwen3.5-9B README.md:L64",
+  "yarn": {
+   "type": "yarn",
+   "factor": 4.0,
+   "original_ctx": 262144
+  },
+  "yarn_source": "Qwen/Qwen3.5-9B README.md (rope_scaling JSON)",
+  "items": [
+   {
+    "class": "REQUIRED",
+    "flag": "--jinja",
+    "value": null,
+    "source": "GGUF tokenizer.chat_template (a4aee8afcf2e)",
+    "why_required": "messages, tool calls and thinking are formatted by the model's chat template; without --jinja llama-server falls back to a built-in approximation",
+    "also": [
+     "Qwen/Qwen3.5-9B README.md:L752-752",
+     "Qwen/Qwen3.5-9B README.md:L783-783"
+    ]
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--gpu-layers",
+    "value": "99",
+    "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L90-91",
+    "why_required": "performance / tool option in the card's command",
+    "also": [
+     "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L109-110",
+     "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L135-142",
+     "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L176-177",
+     "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L185-186",
+     "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L97-99"
+    ]
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--flash-attn",
+    "value": "on",
+    "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L90-91",
+    "why_required": "performance / tool option in the card's command",
+    "also": [
+     "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L109-110",
+     "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L135-142",
+     "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L176-177"
+    ]
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--mmproj",
+    "value": "Ternary-Bonsai-2-9B-mmproj-Q8_0.gguf",
+    "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L97-99",
+    "why_required": "performance / tool option in the card's command",
+    "also": [
+     "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L109-110"
+    ]
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--image",
+    "value": "photo.jpg",
+    "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L97-99",
+    "why_required": "performance / tool option in the card's command"
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--temp",
+    "value": "1.0",
+    "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L135-142",
+    "why_required": "sampling in the card's llama-server command",
+    "also": [
+     "Qwen/Qwen3.5-9B Qwen/Qwen3.5-9B README.md:L833"
+    ],
+    "conflicts": [
+     {
+      "value": "1",
+      "source": "Qwen/Qwen3.5-9B Qwen/Qwen3.5-9B README.md:L833"
+     }
+    ]
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--top-p",
+    "value": "0.95",
+    "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L135-142",
+    "why_required": "sampling in the card's llama-server command",
+    "also": [
+     "Qwen/Qwen3.5-9B Qwen/Qwen3.5-9B README.md:L833"
+    ]
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--top-k",
+    "value": "20",
+    "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L135-142",
+    "why_required": "sampling in the card's llama-server command",
+    "also": [
+     "Qwen/Qwen3.5-9B Qwen/Qwen3.5-9B README.md:L833"
+    ]
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--min-p",
+    "value": "0",
+    "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L135-142",
+    "why_required": "sampling in the card's llama-server command",
+    "also": [
+     "Qwen/Qwen3.5-9B Qwen/Qwen3.5-9B README.md:L833"
+    ],
+    "conflicts": [
+     {
+      "value": "0.0",
+      "source": "Qwen/Qwen3.5-9B Qwen/Qwen3.5-9B README.md:L833"
+     }
+    ]
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--presence-penalty",
+    "value": "1.0",
+    "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L135-142",
+    "why_required": "sampling in the card's llama-server command",
+    "also": [
+     "Qwen/Qwen3.5-9B Qwen/Qwen3.5-9B README.md:L833"
+    ],
+    "conflicts": [
+     {
+      "value": "1.5",
+      "source": "Qwen/Qwen3.5-9B Qwen/Qwen3.5-9B README.md:L833"
+     }
+    ]
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--repeat-penalty",
+    "value": "1.0",
+    "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L135-142",
+    "why_required": "sampling in the card's llama-server command",
+    "also": [
+     "Qwen/Qwen3.5-9B Qwen/Qwen3.5-9B README.md:L833"
+    ],
+    "conflicts": [
+     {
+      "value": "1",
+      "source": "Qwen/Qwen3.5-9B Qwen/Qwen3.5-9B README.md:L833"
+     }
+    ]
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--repeat-last-n",
+    "value": "64",
+    "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L135-142",
+    "why_required": "sampling in the card's llama-server command"
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--spec-type",
+    "value": "draft-mtp",
+    "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L176-177",
+    "why_required": "performance / tool option in the card's command",
+    "also": [
+     "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L185-186"
+    ],
+    "conflicts": [
+     {
+      "value": "draft-dflash",
+      "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L185-186"
+     }
+    ]
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--spec-draft-n-max",
+    "value": "2",
+    "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L176-177",
+    "why_required": "performance / tool option in the card's command"
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--spec-draft-n-min",
+    "value": "0",
+    "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L176-177",
+    "why_required": "performance / tool option in the card's command"
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--spec-draft-p-min",
+    "value": "0",
+    "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L176-177",
+    "why_required": "performance / tool option in the card's command"
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--spec-draft-model",
+    "value": "Ternary-Bonsai-2-9B-DFlash2-Q8_0.gguf",
+    "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L185-186",
+    "why_required": "performance / tool option in the card's command"
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--spec-draft-ngl",
+    "value": "99",
+    "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L185-186",
+    "why_required": "performance / tool option in the card's command"
+   },
+   {
+    "class": "REQUIRED",
+    "flag": "--reasoning-format",
+    "value": "deepseek",
+    "source": "Qwen/Qwen3.5-9B README.md:L746-746",
+    "why_required": "translated from --reasoning-parser qwen3: the card serves it with a reasoning parser; llama-server separates <think> with --reasoning-format deepseek (its default)",
+    "translated": true,
+    "also": [
+     "Qwen/Qwen3.5-9B README.md:L752-752",
+     "Qwen/Qwen3.5-9B README.md:L758-758",
+     "Qwen/Qwen3.5-9B README.md:L777-777",
+     "Qwen/Qwen3.5-9B README.md:L783-783",
+     "Qwen/Qwen3.5-9B README.md:L789-789",
+     "Qwen/Qwen3.5-9B README.md:L795-795"
+    ]
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--chat-template-kwargs",
+    "value": "{\"enable_thinking\":false}",
+    "source": "prism-ml/Ternary-Bonsai-2-9B-gguf README.md:L114-120",
+    "why_required": "every example on the card passes chat_template_kwargs {\"enable_thinking\":false}",
+    "translated": true,
+    "also": [
+     "Qwen/Qwen3.5-9B README.md:L961-995"
+    ]
+   }
+  ]
+ },
+ "blockers": null,
+ "params_problems": null,
+ "params_build": "b11374",
+ "native_ctx": 262144,
+ "native_ctx_source": "card: Qwen/Qwen3.5-9B README.md:L64",
+ "license_info": {
+  "id": "apache-2.0",
+  "id_source": "prism-ml/Ternary-Bonsai-2-9B-gguf card front matter license",
+  "name": null,
+  "summary": "apache-2.0",
+  "summary_source": "prism-ml/Ternary-Bonsai-2-9B-gguf card license",
+  "link": "https://huggingface.co/Qwen/Qwen3.5-9B/blob/main/LICENSE",
+  "link_source": "Qwen/Qwen3.5-9B card license_link",
+  "texts": [
+   {
+    "file": "prism-ml/Ternary-Bonsai-2-9B-gguf@5b2abb02362e/LICENSE",
+    "path": "/home/green/.local/share/gguf/hf-meta/prism-ml--Ternary-Bonsai-2-9B-gguf/5b2abb02362efbed46bbe204014b02837778b2c2/LICENSE",
+    "url": "https://huggingface.co/prism-ml/Ternary-Bonsai-2-9B-gguf/blob/5b2abb02362efbed46bbe204014b02837778b2c2/LICENSE",
+    "sha256": "69849221bfb90053de2134ef5e6d540287b4b98062326492f1f96f5da685524b",
+    "bytes": 10174,
+    "what": "model"
+   },
+   {
+    "file": "Qwen/Qwen3.5-9B@c20223623576/LICENSE",
+    "path": "/home/green/.local/share/gguf/hf-meta/Qwen--Qwen3.5-9B/c202236235762e1c871ad0ccb60c8ee5ba337b9a/LICENSE",
+    "url": "https://huggingface.co/Qwen/Qwen3.5-9B/blob/c202236235762e1c871ad0ccb60c8ee5ba337b9a/LICENSE",
+    "sha256": "bbedc3fda3305820b977265f01b8619d87570a6739de3a5582c3464840f1e57a",
+    "bytes": 11544,
+    "what": "model"
+   },
+   {
+    "file": "github.com/PrismML-Eng/Bonsai-demo@db871ea96bff/LICENSE",
+    "path": "/home/green/.local/share/gguf/hf-meta/github/PrismML-Eng--Bonsai-demo/db871ea96bffff5ce5609873c412b75d7cd5ba3c/LICENSE",
+    "url": "https://github.com/PrismML-Eng/Bonsai-demo/blob/db871ea96bffff5ce5609873c412b75d7cd5ba3c/LICENSE",
+    "sha256": "6d1d968fb225eca367cb7f0b8831ab012a35d92b547e945e17ef8e7b05c3e5cc",
+    "bytes": 10349,
+    "what": "code (GitHub PrismML-Eng/Bonsai-demo, spdx Apache-2.0)"
+   }
+  ],
+  "obligations": [
+   {
+    "quote": "(a) You must give any other recipients of the Work or",
+    "source": "prism-ml/Ternary-Bonsai-2-9B-gguf LICENSE:L94"
+   },
+   {
+    "quote": "(b) You must cause any modified files to carry prominent notices",
+    "source": "prism-ml/Ternary-Bonsai-2-9B-gguf LICENSE:L97"
+   },
+   {
+    "quote": "(c) You must retain, in the Source form of any Derivative Works",
+    "source": "prism-ml/Ternary-Bonsai-2-9B-gguf LICENSE:L100"
+   },
+   {
+    "quote": "attribution notices from the Source form of the Work,",
+    "source": "prism-ml/Ternary-Bonsai-2-9B-gguf LICENSE:L102"
+   },
+   {
+    "quote": "include a readable copy of the attribution notices contained",
+    "source": "prism-ml/Ternary-Bonsai-2-9B-gguf LICENSE:L108"
+   },
+   {
+    "quote": "within such NOTICE file, excluding those notices that do not",
+    "source": "prism-ml/Ternary-Bonsai-2-9B-gguf LICENSE:L109"
+   },
+   {
+    "quote": "of the NOTICE file are for informational purposes only and",
+    "source": "prism-ml/Ternary-Bonsai-2-9B-gguf LICENSE:L116"
+   },
+   {
+    "quote": "do not modify the License. You may add Your own attribution",
+    "source": "prism-ml/Ternary-Bonsai-2-9B-gguf LICENSE:L117"
+   },
+   {
+    "quote": "(a) You must give any other recipients of the Work or",
+    "source": "Qwen/Qwen3.5-9B LICENSE:L95"
+   },
+   {
+    "quote": "(b) You must cause any modified files to carry prominent notices",
+    "source": "Qwen/Qwen3.5-9B LICENSE:L98"
+   },
+   {
+    "quote": "(c) You must retain, in the Source form of any Derivative Works",
+    "source": "Qwen/Qwen3.5-9B LICENSE:L101"
+   },
+   {
+    "quote": "attribution notices from the Source form of the Work,",
+    "source": "Qwen/Qwen3.5-9B LICENSE:L103"
+   },
+   {
+    "quote": "include a readable copy of the attribution notices contained",
+    "source": "Qwen/Qwen3.5-9B LICENSE:L109"
+   },
+   {
+    "quote": "within such NOTICE file, excluding those notices that do not",
+    "source": "Qwen/Qwen3.5-9B LICENSE:L110"
+   },
+   {
+    "quote": "of the NOTICE file are for informational purposes only and",
+    "source": "Qwen/Qwen3.5-9B LICENSE:L117"
+   },
+   {
+    "quote": "do not modify the License. You may add Your own attribution",
+    "source": "Qwen/Qwen3.5-9B LICENSE:L118"
+   },
+   {
+    "quote": "- **Efficient Hybrid Architecture**: Gated Delta Networks combined with sparse Mixture-of-Experts deliver high-throughput inference with minimal latency and cost overhead.",
+    "source": "Qwen/Qwen3.5-9B README.md:L29"
+   },
+   {
+    "quote": "- Hidden Layout: 8 × (3 × (Gated DeltaNet → FFN) → 1 × (Gated Attention → FFN))",
+    "source": "Qwen/Qwen3.5-9B README.md:L52"
+   }
+  ],
+  "gated": false,
+  "unknown": false,
+  "seen": [
+   {
+    "value": "apache-2.0",
+    "source": "prism-ml/Ternary-Bonsai-2-9B-gguf card license"
+   },
+   {
+    "value": "apache-2.0",
+    "source": "Qwen/Qwen3.5-9B card license"
+   },
+   {
+    "value": "apache-2.0",
+    "source": "Qwen/Qwen3.5-9B-Base card license"
+   }
+  ]
+ },
+ "role_inference": {
+  "role": "general",
+  "evidence": [
+   "general +1 (card front matter: pipeline_tag: image-text-to-text (generic chat model))",
+   "general +1 (GGUF metadata: general.architecture qwen35 (generative))"
+  ]
+ },
+ "repo_bytes": 12766581842
+}
