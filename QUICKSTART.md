@@ -103,9 +103,10 @@ Model database rules (full pinned HF repo, card settings as launch defaults): [d
 ## 6. Test
 
 ```sh
-python3 -m pip install --user pyyaml pytest
-python3 -m pytest -q tests
+sh scripts/run-tests.sh          # installs pytest into .cache/pylib once; no sudo
 ```
+
+PyYAML is still needed for the graph checks (`python3 -m pip install --user pyyaml`). One failure is known: `test_overcommit_is_hard_error`.
 
 Expected results per platform, the bash smoke tests, and how to report back: [TESTING.md](TESTING.md).
 

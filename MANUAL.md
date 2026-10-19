@@ -78,7 +78,7 @@ python3 scripts/validate_graph.py --verify-sha # also hash the GGUFs
 
 ### Adding a model
 
-`./scripts/add-model.sh` takes a Hugging Face snapshot directory, a lone GGUF, or explicit flags (`--repo`, `--file`, `--card`, `--aux KIND=PATH`, ...), infers the role when you don't give one, and writes the code-bootstraps-llama.cpp manifest and preset. Examples are in [QUICKSTART.md](QUICKSTART.md#4-add-a-model); `--help` lists every flag. After adding, put the model into `graph.yaml` if a graph node should serve it.
+`./scripts/add-model.sh` takes a Hugging Face snapshot directory, a lone GGUF, or explicit flags (`--repo`, `--file`, `--card`, `--aux KIND=PATH`, ...), infers the role when you don't give one, and writes the code-bootstraps-llama.cpp manifest and preset. Examples are in [QUICKSTART.md](QUICKSTART.md#5-add-a-model); `--help` lists every flag. After adding, put the model into `graph.yaml` if a graph node should serve it.
 
 ### The model database
 
