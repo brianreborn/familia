@@ -66,7 +66,7 @@ Each entry gives the finding, the numbers behind it, and what we do now. Times a
 
 ## 13. Spin-then-block waits
 - Host polls for the 4-request serve run: **4.1M -> 10.4k** (inflight 1) and **2.3M -> 7.9k** (inflight 2), with no change in tok/s (8.52-8.58). The worker no longer burns a core while it waits.
-- Coder alongside (CPU0): 90.8 alone / 102.4 with the decision server / 95.5 with stories15M (desktop load varies ±10%).
+- Coder alongside (CPU0): 90.8 alone / 102.4 with the decision server / 95.5 with stories15M (desktop load varies Â±10%).
 
 ## 14. Bench harness bugs (fixed)
 - stories15M text compare: PowerShell turns native stderr into ErrorRecords, which the old filter didn't remove. It now compares stdout strings only, and before vs after is identical.

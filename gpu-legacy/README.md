@@ -25,7 +25,7 @@ Only 56–91 MiB of the 256 MiB VRAM is free, because the card also drives the d
 ## Quant + batch (2026-10-10)
 
 See [BENCH-QUANT.md](BENCH-QUANT.md). Pipelined `sm11_matvec_batch`: 1.24x (N=3) to 1.39x (N=8) vs synced singles when W is resident.
-Concurrency: [bench-concurrency/SUMMARY.md](bench-concurrency/SUMMARY.md) � concurrent CPU+GPU combined 91.6 t/s > max-alone 80.7.
+Concurrency: [bench-concurrency/SUMMARY.md](bench-concurrency/SUMMARY.md) — concurrent CPU+GPU combined 91.6 t/s > max-alone 80.7.
 
 ## Decision model (#24)
 
