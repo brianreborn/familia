@@ -31,8 +31,25 @@ scripts/littlebit/lbformat.py|LittleBit file format library
 scripts/panel_familia.py|familia's pages for the settings panel; loaded by scripts/panel.py, which the menu runs
 scripts/familia_cli.py|engine behind ./familia: subcommand names, help, man page, completion (run as familia help / familia completion)
 scripts/with-host-lock|wrapper: flock ~/.local/state/familia/big.lock around one live/big job per host
-scripts/dogfood/dispatch.py
-scripts/dogfood/loop.sh
-scripts/dogfood/pytest_vs_baseline.sh
+scripts/dogfood/dispatch.py|dogfood loop internals: picks the next issue for the local fix loop (run via scripts/dogfood/loop.sh)
+scripts/dogfood/loop.sh|dogfood fix loop driver, run by the operator on a dev node, not an end-user task
+scripts/dogfood/pytest_vs_baseline.sh|dogfood loop internals: compares a candidate fix's pytest results to the baseline
 scripts/terminal_rsi.py|Terminal-RSI self-improvement round for a harness target (#88); proposals only, review with scripts/harness2.py
 scripts/perf/spec_bench.py|draft/n-gram speculative decoding bench, lossless check, one host (#91)
+scripts/launch_matrix.py|dev launch matrix: every engine x local model through bench_guard, classifies launch failures vs crashes
+scripts/launch_status.py|library + CLI for launch status protocol v1 and fleet memory admission budget; called by launchers
+scripts/measure_prompt.py|dev measurement of fixed-prompt size for hermes / Harness2 (#89, #85)
+scripts/perf/bench_capped.sh|perf helper: one capped llama-bench run, called by sweep drivers
+scripts/perf/bonsai_check.sh|perf/dev check for Ternary-Bonsai-2 models (#93); needs the PrismML llama.cpp fork
+scripts/perf/centos_sweep_driver.sh|operator's unattended sweep driver for one dev host, not an end-user task
+scripts/perf/harness_driver.sh|perf comparison of plain llama.cpp vs hermes vs Harness2 on one server
+scripts/perf/validate_layer_stream.sh|dev validation of layer streaming vs plan_placement predictions (#90)
+scripts/plan_placement.py|dev predictor ranking placements from measured links (#90); not yet user-facing
+scripts/probe_links.py|dev link probe that feeds plan_placement.py (#90); not yet user-facing
+scripts/rerun_all.sh|operator rerun of results invalidated by the memcg cap bug (#95); one-off
+scripts/tune/centos-memory.sh|root-only OS memory-killer tuning, run once by the operator with sudo; not a menu action
+scripts/tune/linux-memory.sh|root-only OS memory-killer tuning, run once by the operator with sudo; not a menu action
+scripts/watchdog/display-watchdog.sh|root watchdog run by a system timer, never interactively
+scripts/watchdog/install-kill-watch.sh|operator installer for the kill-watch user unit
+scripts/watchdog/kill-watch.sh|long-running journal follower started by its systemd user unit
+scripts/watchdog/mem-snapshot.sh|helper called by kill-watch.sh
