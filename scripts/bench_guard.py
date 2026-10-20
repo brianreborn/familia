@@ -19,6 +19,7 @@
   bench_guard.py meta FILE [--json] [--default FIELD=TEXT ...]
             (--default documents the default a run uses for a missing rope / chat_template /
             sampling field; it is echoed as a note so the log and perf doc carry it)
+  bench_guard.py label FILE      (name + version + quant from the header; never a hash)
   bench_guard.py memcap PEAK_MIB [--host-limit MIB]
 Stdlib only. Docs: docs/perf/2026-10-19-tuning-2.md."""
 import json
@@ -82,6 +83,33 @@ def summarize(kv):
 
 REQUIRED = ("architecture", "context_length", "tokenizer_model")
 DOCUMENTABLE = ("rope", "chat_template", "sampling")
+
+
+_HEX = re.compile(r"^[0-9a-f]{32,64}$")
+
+
+def model_label(path, kv=None):
+    """Human label for a weight file: '<general.name> [<general.version>] <quant>' from the GGUF header,
+    quant from the filename (else general.file_type); falls back to the filename stem. Never a hash."""
+    import add_model as am
+    base = os.path.basename(path)
+    stem = base[:-5] if base.endswith(".gguf") else base
+    if kv is None:
+        try:
+            kv = read_gguf(path)
+        except (OSError, ValueError, struct.error):
+            kv = {}
+    name = kv.get("general.name")
+    if not isinstance(name, str) or not name.strip() or _HEX.match(name.strip().lower()):
+        name = None if _HEX.match(stem.lower()) else stem
+    ver = kv.get("general.version")
+    quant = am.quant_of(base) or (am.FTYPES.get(kv.get("general.file_type")) if isinstance(kv.get("general.file_type"), int) else None)
+    parts = [name or "unknown-model"]
+    if isinstance(ver, str) and ver.strip() and ver.strip() not in parts[0]:
+        parts.append(ver.strip())
+    if quant and quant.lower() not in parts[0].lower():
+        parts.append(quant)
+    return " ".join(parts)
 
 
 def validate(meta, documented_missing=None):
@@ -302,6 +330,9 @@ def main(argv):
         print(json.dumps({"meta": m, "problems": problems, "notes": notes}, indent=1, default=str)
               if "--json" in argv else "\n".join(problems + notes) or "ok")
         return 1 if problems else 0
+    if len(argv) >= 2 and argv[0] == "label":
+        print(model_label(argv[1]))
+        return 0
     if len(argv) >= 2 and argv[0] == "memcap":
         lim = int(argv[argv.index("--host-limit") + 1]) if "--host-limit" in argv else None
         c = mem_cap_mib(float(argv[1]), host_limit_mib=lim)

@@ -120,3 +120,13 @@ def test_graph_load_mode_reaches_server_args():
     g["nodes"]["coder"]["load_mode"] = "bogus"
     errs, _ = vg.validate(g, check_files=False)
     assert any("load_mode" in e for e in errs), errs
+
+
+def test_model_label_is_name_and_quant_never_hash(tmp_path):
+    f = _gguf(tmp_path / "Qwen3.5-9B-Q4_K_M.gguf", dict(FULL, **{"general.name": "Qwen3.5-9B", "general.file_type": 15}))
+    assert bg.model_label(f) == "Qwen3.5-9B Q4_K_M"
+    h = "03b74727a860a56338e042c4420bb3f04b2fec5734175f4cb9fa853daf52b7e8"
+    f2 = _gguf(tmp_path / (h + ".gguf"), dict(FULL, **{"general.name": "Gpt Oss 20b", "general.file_type": 15}))
+    assert h not in bg.model_label(f2) and bg.model_label(f2).startswith("Gpt Oss 20b")
+    f3 = _gguf(tmp_path / "LFM2.5-8B-A1B-Q4_0.gguf", {"general.architecture": "lfm2"})
+    assert bg.model_label(f3) == "LFM2.5-8B-A1B-Q4_0"

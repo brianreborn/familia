@@ -13,7 +13,7 @@ for x in json.load(sys.stdin):
   echo "$2"
 }
 sweep(){ m=$1; tag=$2
-  log "== $tag $(du -h $m|cut -f1)"
+  lab=$(python3 $F/scripts/bench_guard.py label $m); log "== $tag [$lab] $(du -h $m|cut -f1)"
   ~/perf/bench.sh $m 16384 $tag-t -t 2,4 -p 512 -n 64 -r 1 -lm none >> $R 2>&1
   ~/perf/bench.sh $m 16384 $tag-ub -t 4 -p 512 -n 0 -ub 128,512 -r 1 -lm none,mmap >> $R 2>&1
   ~/perf/bench.sh $m 16384 $tag-d16k -t 4 -p 0 -n 32 -d 16384 -ctk f16,q8_0 -ctv f16,q8_0 -fa 1 -r 1 -lm none >> $R 2>&1
