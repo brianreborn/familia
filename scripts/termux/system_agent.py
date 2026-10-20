@@ -103,7 +103,7 @@ def shizuku_state(sh):
             return "stopped-after-reboot", None
         return "stopped", None
     m = re.search(r"uid=(\d+)", out or "")
-    return ("running", int(m.group(1))) if m or sh.dry else ("stopped", None)
+    return ("running", int(m.group(1))) if m else (("unknown", None) if sh.dry else ("stopped", None))
 
 
 def packages(sh):

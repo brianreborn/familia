@@ -220,3 +220,15 @@ def test_monitor_shows_shizuku_state(tmp_path, monkeypatch):
     assert st["shizuku"] == "stopped-after-reboot" and "boot_id" not in st
     line = monitor.system_agents_line(st)
     assert "STOPPED after reboot" in line and "gemini" in line
+
+
+def test_shizuku_state_dry_run_no_match_does_not_crash():
+    class Sh:
+        dry, rish = True, None
+        def run(self, *a, **k):
+            return ""
+    sh = Sh()
+    for name in ("run", "out", "check", "sh"):
+        setattr(sh, name, lambda *a, **k: "")
+    st, uid = ad.shizuku_state(sh)
+    assert st == "unknown" and uid is None
