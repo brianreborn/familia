@@ -143,3 +143,34 @@ Resizable BAR and an open UEFI ReBAR driver. Coherence would be by software
 ownership, with the IOMMU at most carrying hints. It starts only after the
 link model above shows where a faster host-to-VRAM path would pay off, and
 only on a host whose loss would not matter.
+
+## Layer streaming (AirLLM-style, #90)
+
+`plan_placement.py` now has two streaming placements for models that do not fit:
+
+- **layer-stream** (weights > free VRAM): each layer is copied host->VRAM once per token into
+  one of two VRAM slots and read there. A layer that does not fit twice in VRAM is split into
+  tensor-sized pieces (`units`). Per token: `max(bytes/pcie_h2d, 2*bytes/vram_copy) + units*20 us`
+  (H2D on the copy engine overlaps the device read on the other stream).
+- **disk-stream** (`--ram-budget` < model): the uncached part is re-read from disk each token at
+  the measured `disk_read` rate.
+
+`gpu-legacy/layer_stream.c` (driver API only, runs on 340.108; no kernels) measures the transport
+bound of layer-stream; `scripts/perf/validate_layer_stream.sh LINKS MODEL...` compares it with
+the planner. centos10-bigram, 8600 GT (233 MiB free), 2026-10-19, 3 tokens each:
+
+| model file | units x MiB | predicted tok/s | measured tok/s | error |
+|---|---|---|---|---|
+| Qwen3.5-2B-Q4_K_M.gguf | 24 x 50.9 | 2.565 | 2.515 | +2.0% |
+| Qwen3.5-9B-Q4_K_M.gguf | 64 x 84.65 | 0.579 | 0.570 | +1.7% |
+| gpt-oss-20b-MXFP4.gguf (dense read, active-frac 1.0) | 144 x 80.2 | 0.271 | 0.267 | +1.5% |
+
+disk-stream, one point before the headroom-cap policy (4ae6e13) banned small cgroup caps:
+Qwen3.5-2B-Q4_K_M, prism-b10787 llama-bench `-t 4 -p 0 -n 16 -r 1 -lm mmap`, 1 GiB cap,
+disk_read 0.181 GB/s: predicted 0.481, measured 0.416 tok/s (+15.6%). Not re-measured; it is
+predicted only from now on.
+
+Verdict: on this box layer streaming is PCIe-bound (3.3 GB/s) and is 3-10x slower than CPU decode
+from RAM (19.5 GB/s read stream), so the planner only picks it when the weights do not fit in RAM.
+It is the right mode for VRAM-only hosts, and for MoE with `--active-frac` (only active experts
+streamed). The measurement covers transport, not G84 compute (no sm_11 matmul kernels yet).

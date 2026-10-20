@@ -1,7 +1,7 @@
 #!/bin/sh
 # bench.sh MODEL CAP_MIB TAG [llama-bench args...]  -- nice 19, cgroup MemoryMax, bench_guard first
 M=$1; CAP=$2; TAG=$3; shift 3
-F=~/repositories/familia; B=$F/code-bootstraps-llama.cpp/build-linux-x86_64/bin
+F=${FAMILIA:-~/repositories/familia}; B=${LLAMA_BIN:-$F/code-bootstraps-llama.cpp/build-linux-x86_64/bin}
 L=~/perf/logs; mkdir -p $L
 python3 $F/scripts/bench_guard.py meta $M --default "sampling=llama-bench is greedy-free (no sampling; pp/tg timing only)" --default "chat_template=none used by llama-bench" > $L/$TAG.meta 2>&1 || { echo "GUARD-FAIL $TAG"; cat $L/$TAG.meta; exit 3; }
 python3 $F/scripts/bench_guard.py meta $M --json > $L/$TAG.meta.json
