@@ -4,7 +4,7 @@
 # replayed to the same server, so tools are never executed. Output: ~/perf/harness.md
 M=$1; T=${2:-4}; F=~/repositories/familia; B=$F/code-bootstraps-llama.cpp/build-linux-x86_64/bin; O=~/perf/harness.md; P=18099
 python3 $F/scripts/bench_guard.py meta $M --default "sampling=temp 0 (harness timing)" > /dev/null || { echo "GUARD-FAIL $M" >> $O; exit 3; }
-systemd-run --user --scope -q -p MemoryMax=16G -p MemorySwapMax=0 $B/llama-server -m $M -t $T -c 32768 --port $P -lm none --jinja > ~/perf/harness-server.log 2>&1 &
+systemd-run --user --scope -q -p MemoryHigh=$(( $(awk "/MemAvailable/{print int(\$2/1024)}" /proc/meminfo) - 1536 ))M $B/llama-server -m $M -t $T -c 32768 --port $P -lm none --jinja > ~/perf/harness-server.log 2>&1 &
 for i in $(seq 120); do curl -sf localhost:$P/health >/dev/null && break; sleep 2; done
 q(){ python3 - "$1" "$2" <<'PY'
 import json,sys,time,urllib.request
