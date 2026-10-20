@@ -1,6 +1,6 @@
 # Investigation: models for the CentOS Stream 10 big-RAM host
 
-Status: **open, nothing measured on the host yet.** Tracking issue: [#70](https://github.com/brianreborn/familia/issues/70).
+Status: **host measured 2026-10-19; see section 7 (supersedes the RAM tiers below).** Tracking issue: [#70](https://github.com/brianreborn/familia/issues/70).
 Written 2026-10-19 (PT). Every speed below is an **estimate** unless it has a link to a measurement.
 Method follows the fleet rule: coarse binary search first (1 rep, short inputs), more resolution only
 when candidates land within noise. Records must say `coarse binary search` in `note`.
@@ -133,3 +133,21 @@ Metadata only so far: card/config/tokenizer/license snapshots of the shortlist w
 4. Pass bars for "works": tg and time-to-first-token targets per role.
 5. Which custom licenses are acceptable (LFM, OpenMDW, Tencent HY)?
 6. Should this host take the graph's coder/general roles from miryam (whose 7 GiB caps it at 2B-class), with miryam/phones keeping decision and embed?
+
+## 7. Measured 2026-10-19 (PT) — corrections
+
+Real host: i5-4570 4C/4T (AVX2, no AVX-512), **23 GiB RAM** (not 64+), 4 GiB swap, ~31-42 GB free disk,
+8600 GT now on 340.108 (nouveau blacklisted). Host memcpy 9.8 GB/s (19.5 r+w), i.e. the dual-channel DDR3 tier.
+So the 80B/120B/122B rows and Qwen3.6-35B-A3B at Q4 are out; the 35B fits only at UD-Q3_K_S (14.3 GiB).
+
+| model | file | best tg t/s | params | pp t/s | RSS |
+|---|---|---|---|---|---|
+| Qwen3.5-2B | Q4_K_M | 11.75 | -t 2 -lm none | 60.1 (-t 4) | 1.9 GiB |
+| LFM2.5-1.2B | Q4_K_M | 23.0 | -t 2 -lm none | 95.5 (-t 4) | 1.3 GiB |
+| gpt-oss-20b | MXFP4 | 7.88 | -t 4 -lm none | 21.8 (-ub 512) | 11.5 GiB |
+
+Concurrent coder(-t2, cores 0-1) + general(-t1) + Laya(-t1): 6.1 / 10.8 tg, 42.8 pp; 2.7 GiB total.
+Remaining larger models (Qwen3.5-9B, LFM2.5-8B-A1B, LFM2.5-24B-A2B, Qwen3.6-35B-A3B UD-Q3_K_S, gemma-4-26B-A4B)
+are run by `scripts/perf/centos_sweep_driver.sh`; licenses are not gated for dev benchmarking (end-user acceptance is separate).
+Proposed roles (owner decides): coder + general move here from miryam (1.7-1.8x faster); a MoE general once the sweep picks one.
+Summaries: `scripts/perf/summary.py`. Topology links: `registry/links/centos10-bigram.jsonl`.

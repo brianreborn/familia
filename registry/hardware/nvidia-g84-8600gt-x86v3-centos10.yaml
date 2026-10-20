@@ -1,28 +1,33 @@
 # Shareable hardware profile. No hostnames, IPs, usernames or keys.
-# STATUS: partial. Only the facts below were verified; everything null is UNKNOWN until
-# the read-only probe in docs/perf/centos-bigram-models.md (Phase 0) runs on the host.
+# STATUS: measured on the host 2026-10-19 (PT). Remaining nulls are unknown.
 id: nvidia-g84-8600gt-x86v3-centos10
 identity:
-  device_model: desktop with GeForce 8600 GT, large system RAM (exact model unknown)
-  soc: null                       # CPU model unknown - not yet probed
-  cpu_match: []                   # fill from lscpu "Model name" after Phase 0
+  device_model: Dell desktop (i5-4570) with GeForce 8600 GT
+  soc: Intel Core i5-4570 (Haswell, 4C/4T, 3.2 GHz max)
+  cpu_match: ["i5-4570"]
   cpu_isa:
-    x86_64_level: ">= v3 (inferred)"
+    x86_64_level: v3
     inferred_from: "CentOS Stream 10 x86_64 is built for x86-64-v3 and does not boot below it (https://centos.org/centos10/); v3 = AVX, AVX2, FMA, F16C, BMI1/2, LZCNT, MOVBE"
-    avx512: null                  # unknown
-    measured: false
+    avx512: false
+    measured: true
   gpu: NVIDIA GeForce 8600 GT (G84, compute capability 1.1, 256 MiB; cuDeviceTotalMem reports 255 MB)
   gpu_driver: "340.108 legacy, DKMS-patched for kernel 6.12 (https://github.com/brianreborn/nvidia-340.108-updated)"
   os: linux (CentOS Stream 10, kernel 6.12)
-  ram_mib: null                   # "a lot" per the owner; size, type and channel count unknown
-  runtime_tested: []
+  ram_mib: 23672                  # 23 GiB MemTotal, 4 GiB swap; memcpy 9.8 GB/s (19.5 GB/s r+w), DDR type/channels unknown (needs dmidecode)
+  runtime_tested: [code-bootstraps-llama.cpp eb09633 CPU native AVX2]
+  disk: "/home 73 GB, ~31-42 GB free; / ~45 GB free"
 known_good_setup:
   - "Display: GDM is Wayland-only on EL10 and native Xorg is gone; Weston 14 with --backend=drm --renderer=pixman as a user systemd service works (LESSONS-LEARNED.md L-nvidia340)."
   - "CUDA driver API works on the legacy stack: cuInit(0)=0, one device, CC 1.1 (LESSONS-LEARNED.md L-nvidia340). No stock llama.cpp backend supports sm_11; only familia gpu-legacy (hand-written PTX) can use it."
-best_settings: {}                  # nothing measured yet
+best_settings:
+  qwen35-2b-q4km: {threads: 2, load_mode: none, tg: 11.75, pp_t4: 60.1}
+  lfm25-1.2b-q4km: {threads: 2, load_mode: none, tg: 23.0, pp_t4: 95.5}
+  gpt-oss-20b-mxfp4: {threads: 4, load_mode: none, tg: 7.88, pp: 21.8, rss_mib: 11757}
+  gpu_links: "registry/links/centos10-bigram.jsonl: PCIe 1.x-class 3.3 GB/s each way, VRAM copy 15.3 GB/s, 1 copy engine, no H2D/D2H overlap, 10 us per small copy"
 gotchas:
   - "The open nvidia.ko (615 series) logs a GSP 'not supported' warning for G84; harmless, the legacy DKMS module drives the card."
   - "EGL/GBM unavailable without Mesa DRI, so no hardware GL compositor."
+  - "nouveau grabbed the card at boot and the 340 module could not probe it; fixed 2026-10-19 with /etc/modprobe.d/blacklist-nouveau.conf + rd.driver.blacklist=nouveau + dracut -f (nvidia-smi 340.108 OK; display falls back to low-res)."
   - "Treat the GPU as a decision-model side unit at most (256 MiB); every LLM role on this host is CPU + RAM bound."
 power:
   gpu_board_w: {value: 47, source: "https://www.techpowerup.com/gpu-specs/geforce-8600-gt.c198 (max board power)"}
