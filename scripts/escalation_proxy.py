@@ -133,6 +133,50 @@ def make_handler(esc, log=sys.stderr):
             req = urllib.request.Request(target, data=raw, method=method, headers={"Content-Type": "application/json"})
             try: r = urllib.request.urlopen(req, timeout=3600)
             except Exception as e:
+                # Upstream failed. Try to escalate/fallback.
+                note = esc.after_reply(ok=False)
+                if note:
+                    # A swap was triggered (e.g., back to light or next target).
+                    # Update URL to the new target and retry.
+                    url, alias = esc.upstream()
+                    target = url.rsplit("/v1", 1)[0] + self.path
+                    req = urllib.request.Request(target, data=raw, method=method, headers={"Content-Type": "application/json"})
+                    try:
+                        r = urllib.request.urlopen(req, timeout=3600)
+                        stream = body is not None and body.get("stream")
+                        self.send_response(r.status)
+                        for k, v in r.headers.items():
+                            if k.lower() not in ("content-length", "transfer-encoding", "connection"): self.send_header(k, v)
+                        self.end_headers()
+                        if body is None:
+                            self.wfile.write(r.read()); return
+                        text, data = [], b""
+                        if stream:
+                            for line in r:
+                                if line.strip() == b"data: [DONE]": break
+                                self.wfile.write(line); self.wfile.flush()
+                                if line.startswith(b"data: "):
+                                    try: text.append(json.loads(line[6:])["choices"][0]["delta"].get("content") or "")
+                                    except Exception: pass
+                        else:
+                            j = json.load(r); m = j["choices"][0]["message"]; text.append(m.get("content") or "")
+                        esc.sig.observe_reply("".join(text))
+                        # If we swapped back, we might want to print a note here too, but the initial note is enough.
+                        if stream:
+                            if note:
+                                ch = {"choices": [{"index": 0, "delta": {"content": "\n\n" + note}, "finish_reason": None}]}
+                                self.wfile.write(b"data: " + json.dumps(ch).encode() + b"\n\n")
+                            self.wfile.write(b"data: [DONE]\n\n")
+                        else:
+                            if note: m["content"] = (m.get("content") or "") + "\n\n" + note
+                            self.wfile.write(json.dumps(j).encode())
+                        return
+                    except Exception as e2:
+                        # Retry also failed.
+                        self.send_response(502); self.end_headers(); self.wfile.write(str(e2).encode())
+                        if body is not None: esc.sig.failures += 1
+                        return
+                # No swap possible (e.g., all targets down or manual suggest).
                 self.send_response(502); self.end_headers(); self.wfile.write(str(e).encode())
                 if body is not None: esc.sig.failures += 1
                 return
