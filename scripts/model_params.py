@@ -654,7 +654,11 @@ def analyze(inp):
     # ---- statements
     stm = {d["label"] + " " + d["file"]: card_statements(inp["docs"][d["label"]][d["file"]], d["file"], d["label"])
            for d in inp.get("doc_meta", []) if (inp["docs"].get(d["label"]) or {}).get(d["file"]) is not None}
-    inp["_stm"] = {k: v for k, v in stm.items() if not k.startswith("github.com/")}
+    inp["_stm"] = {
+        d["label"] + " " + d["file"]: card_statements(inp["docs"][d["label"]][d["file"]], d["file"], d["label"])
+        for d in inp.get("doc_meta", [])
+        if d.get("kind") != "github" and (inp["docs"].get(d["label"]) or {}).get(d["file"]) is not None
+    }
     cfgs = inp.get("configs") or {}
     # ---- descriptor
     desc = descriptor(inp, meta, cfgs, stm, problems)
