@@ -1,0 +1,90 @@
+# familia config search space (v1, 2026-10-19). Machine-readable companion to config-search-plan.md.
+# No addresses, logins, ports or keys: hosts are referenced by graph.yaml key only.
+# Models are labelled by name + version + quant, never by hash. Every weight file lists its exact params.
+version: 1
+protocol:
+  launcher: scripts/launch_matrix.py      # every launch goes through bench_guard check/meta/flags
+  status_classes: [OK, BAD_PARAMS, OOM, MISSING_RUNTIME, ENGINE_BUG, MODEL_FILE, TIMEOUT]
+  record_required: [host, engine, model_name, model_version, quant, weight_file, params, status, why, note]
+  note_must_contain: "coarse binary search"
+  memcg_caps: forbidden                   # no systemd-run MemoryMax / per-launch cgroup caps (LESSONS L-memcg, #95)
+  invalid_prior_results: "any result gathered under per-launch memcg caps (2026-10-19 tuning-2, hermes-prompt) is invalid; rerun via scripts/rerun_all.sh"
+  licenses: not_gated                     # never skip a model for license reasons in dev benchmarking
+
+hosts:
+  centos10-bigram:                        # the desktop
+    cpu: Intel Core i5-4570 (Haswell 4C/4T, AVX2/FMA/F16C, no AVX-512)
+    threads: 4
+    ram_mib: 23672
+    reserve_ram_mib: 6144
+    gpu: {model: GeForce 8600 GT (G84, CC 1.1, 256 MiB), driver: legacy 340.108, path: gpu-legacy sm11 only,
+          graph_backend_status: unsupported, note: "graph.yaml says nouveau owns the card; centos-bigram-models.md says 340.108 cuInit ok. Probe first."}
+  miryam:                                 # the laptop
+    cpu: Intel Core i5-7200U (2C/4T)
+    threads: 4
+    ram_mib: 7270
+    reserve_ram_mib: 3072
+    gpu: {model: Intel HD 620, backend: vulkan, note: "measured slower than CPU"}
+  phone8:                                 # the Android phone (phone7 is the identical twin)
+    cpu: 8-core ARMv8 (3x A520 + 5x A720), Termux cpuset = 3 threads
+    threads: 3
+    ram_mib: 7430
+    reserve_ram_mib: 5120
+    gpu: {model: Samsung Xclipse 550, backend: vulkan, status: verified}
+
+weight_files:                             # name / version / quant / exact params per file
+  - {name: SmolLM2-135M-Instruct, version: v1 (bartowski GGUF), quant: Q4_0, hosts: [miryam, phone8, centos10-bigram],
+     params: {ctx: 2048, kv: q8_0, fa: [0, 1], ngl: [0, 99]}}
+  - {name: Qwen2.5-0.5B-Instruct, version: "2.5", quant: Q4_K_M, hosts: [phone8, miryam], params: {ctx: [2048, 4096], kv: q8_0}}
+  - {name: Qwen3-0.6B, version: "3", quant: Q8_0, hosts: [all], role: draft, params: {ctx: 4096}}
+  - {name: LFM2.5-350M, version: "2.5", quant: Q4_K_M, hosts: [all], role: draft}
+  - {name: LFM2.5-1.2B-Instruct, version: "2.5", quant: Q4_K_M, hosts: [all],
+     params: {centos_best: "-t 2 -lm none (tg 23.0)", ctx: [4096, 16384]}}
+  - {name: Qwen3.5-2B, version: "3.5", quant: Q4_K_M, hosts: [miryam, centos10-bigram], role: coder,
+     params: {ctx: 65536, parallel: 1, kv: q8_0, fa: 1, miryam: "-t 3 -lm none --slot-save", centos_best: "-t 2 -lm none (tg 11.75)"}}
+  - {name: Qwen3.5-9B, version: "3.5", quant: [Q4_K_M, Q5_K_M], hosts: [centos10-bigram]}
+  - {name: LFM2.5-8B-A1B, version: "2.5", quant: [Q4_K_M, Q8_0], hosts: [centos10-bigram]}
+  - {name: LFM2.5-24B-A2B, version: "2.5", quant: Q4_K_M, hosts: [centos10-bigram]}
+  - {name: gemma-4-26B-A4B, version: "4", quant: Q4_K_M, hosts: [centos10-bigram]}
+  - {name: gpt-oss-20b, version: "1", quant: MXFP4, hosts: [centos10-bigram], params: {centos_best: "-t 4 -lm none (tg 7.88)", ub: 512}}
+  - {name: Qwen3.6-35B-A3B, version: "3.6", quant: UD-Q3_K_S, hosts: [centos10-bigram], note: "14.3 GiB; only quant that fits"}
+  - {name: Laya, version: "1", quant: GGUF as registered, hosts: [centos10-bigram], params: {b: 2048, ub: 1024, fa: 1}}
+  - {name: stories15M, version: llama2.c, quant: FP32, hosts: [centos10-bigram], role: legacy-gpu decision unit}
+
+dimensions:
+  threads: {centos10-bigram: [1, 2, 3, 4], miryam: [2, 3, 4], phone8: [1, 2, 3]}
+  batch_ubatch: [[512, 128], [2048, 512], [2048, 1024]]   # encoders need ub >= prompt
+  ctx: [2048, 8192, 32768, 65536]                          # hermes needs >= 64000 per slot
+  load_mode: [mmap, none, mlock]                           # -lm; mlock only where RAM >> model
+  flash_attn: [0, 1]                                       # quantized V requires 1
+  kv_type: [f16, q8_0]
+  speculative:                                             # issue #91 vs ngram (#82)
+    - {mode: none}
+    - {mode: ngram-simple}
+    - {mode: draft-simple, target: Qwen3.5-2B Q4_K_M, draft: Qwen3-0.6B Q8_0, n_max: [4, 8, 16]}
+    - {mode: draft-simple, target: Qwen3.5-9B Q4_K_M, draft: Qwen3-0.6B Q8_0, n_max: [4, 8, 16]}
+    - {mode: draft-simple, target: LFM2.5-8B-A1B Q4_K_M, draft: LFM2.5-350M Q4_K_M, n_max: [4, 8]}
+    - {mode: draft-simple, target: LFM2.5-1.2B Q4_K_M, draft: LFM2.5-350M Q4_K_M, n_max: [4, 8], hosts: [phone8, miryam]}
+    - {mode: draft-simple, target: Qwen2.5-0.5B Q4_K_M, draft: SmolLM2-135M Q4_0, n_max: [4, 8], hosts: [phone8], note: "vocab mismatch expected -> BAD_PARAMS is a valid result"}
+  gpu_offload:
+    predictor: "scripts/plan_placement.py registry/links/<host>.jsonl MODEL.gguf [--active-frac F]"
+    centos10-bigram: [cpu, gpu-legacy-sm11]      # only if predictor says weights fit VRAM
+    miryam: [cpu, vulkan-ngl-99]
+    phone8: [cpu, vulkan-ngl-99]
+  concurrency_sets:
+    centos10-bigram: [[coder], [coder, general], [coder, general, Laya], [general-moe, draft]]
+    miryam: [[coder], [coder, decision]]
+    phone8: [[decision], [general]]
+  harness: [plain-llama-server, hermes-single, hermes-graph, harness2]
+
+objectives:
+  maximize: [tg_tps, quality]
+  minimize: [ttft_s, peak_rss_mib]
+  constraint: "MemAvailable after launch >= host reserve_ram_mib"
+  quality_suite: {from: familia-routing PLAN.md, sets: [smoke-5, GSM8K-100, HumanEval+-50, BFCL-simple-50, MT-Bench-10],
+                  judge: strongest local node, labelled as such}
+
+method:
+  order: [prune_with_predictor, coarse_binary_search_per_dim, cross_dims_on_frontier, quality_on_top_k, concurrency_on_top_3, harness_on_winner]
+  prune_rule: "drop configs predicted < 0.5x best predicted tg or over RAM budget; keep at least one per model"
+  reps: {coarse: 1, refine: 3, refine_when: "top candidates within 10%"}
