@@ -5,7 +5,7 @@
 # serve.sh then refuses to start. An embedding node must carry --embeddings and --pooling.
 # The licenses of the graph selection must be accepted first (scripts/licenses.py gate).
 # Memory cap (docs/ram-safety.md): FAMILIA_MEMCAP=1 wraps the server in a
-# `systemd-run --user --scope` with MemoryHigh/MemoryMax and sets oom_score_adj 800,
+# `systemd-run --user --scope` with a headroom MemoryMax (swap allowed) and sets oom_score_adj 800,
 # so on memory pressure the model dies, not the desktop. Default: on for miryam, off elsewhere.
 # Override the limits with FAMILIA_MEMHIGH / FAMILIA_MEMMAX (systemd sizes, e.g. 2200M).
 # Without the memory cap, a launch with GPU layers (-ngl > 0) that fails with a Vulkan error
@@ -57,7 +57,9 @@ case "$bin" in */*)
 esac
 # Launch guard: refuse params bench_guard flags (removed flags, ctx > train, encoder ubatch,
 # quantized V without FA, GPU layers on a legacy GPU). FAMILIA_GUARD=0 skips it.
-if [ "${FAMILIA_GUARD:-1}" != 0 ]; then
+if [ "${FAMILIA_GUARD:-1}" != 0 ] && [ ! -f "$here/scripts/bench_guard.py" ]; then
+  say "warning: scripts/bench_guard.py missing; launch guard skipped"
+elif [ "${FAMILIA_GUARD:-1}" != 0 ]; then
   # shellcheck disable=SC2086
   if ! python3 "$here/scripts/bench_guard.py" check -- ${args#* } "$@"; then
     say "launch guard refused node $node (see familia-guard lines above); fix the params in graph.yaml; not starting"
@@ -78,8 +80,11 @@ case " $args " in *" -ngl 0 "*)
 esac
 # shellcheck disable=SC2086
 if [ "$FAMILIA_MEMCAP" = 1 ] && command -v systemd-run >/dev/null 2>&1; then
+  # Hard cap from headroom (MemAvailable - 1.5 GiB, bench_guard.headroom_cap_mib), swap allowed;
+  # no fixed 2600M / MemorySwapMax=0 any more (premature kills, P0 #95).
+  [ -n "${FAMILIA_MEMMAX:-}" ] || FAMILIA_MEMMAX="$(python3 -c 'import sys; sys.path.insert(0, sys.argv[1]); import bench_guard as b; print("%dM" % b.headroom_cap_mib())' "$here/scripts" 2>/dev/null || echo infinity)"
   exec systemd-run --user --scope --quiet --unit="familia-$node-$$" \
-    -p MemoryHigh="${FAMILIA_MEMHIGH:-2200M}" -p MemoryMax="${FAMILIA_MEMMAX:-2600M}" -p MemorySwapMax=0 \
+    ${FAMILIA_MEMHIGH:+-p MemoryHigh="$FAMILIA_MEMHIGH"} -p MemoryMax="$FAMILIA_MEMMAX" \
     -- sh -c 'echo 800 > /proc/self/oom_score_adj; exec "$@"' sh $args "$@"
 fi
 ngl="$(printf '%s\n' "$args" | sed -n -E 's/.*[[:space:]]-ngl[[:space:]]+([0-9]+).*/\1/p')"

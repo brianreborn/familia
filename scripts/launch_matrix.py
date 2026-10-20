@@ -86,6 +86,26 @@ def oom_log(since):
     return out
 
 
+def mem_avail_mib():
+    try:
+        return [int(l.split()[1]) for l in open("/proc/meminfo") if l.startswith("MemAvailable")][0] // 1024
+    except Exception:
+        return None
+
+
+def killer(rc, capkill, log):
+    """Which mechanism ended the process: matrix-cap, earlyoom, kernel-oom, systemd-oomd,
+    cgroup-memmax, external-sigterm/sigkill, or None (not a kill)."""
+    if capkill:
+        return "matrix-headroom"
+    for name, rx in (("earlyoom", r"earlyoom.*(sending|kill|SIG)"), ("systemd-oomd", r"systemd-oomd.*(Killed|kill)"),
+                     ("cgroup-memmax", r"memory cgroup out of memory|oom-kill:.*oom_memcg=/user"),
+                     ("kernel-oom", r"Out of memory: Killed process|oom-kill:")):
+        if re.search(rx, log or "", re.I):
+            return name
+    return {-9: "external-sigkill", 137: "external-sigkill", -15: "external-sigterm"}.get(rc)
+
+
 def run(cmd, cap_mib, timeout, ready, env=None):
     """Start cmd; ready(proc) -> True when healthy. Returns dict(rc, text, capkill, peak, secs)."""
     t0 = time.time()
@@ -94,14 +114,19 @@ def run(cmd, cap_mib, timeout, ready, env=None):
         p = subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT, env=env, start_new_session=True)
     except FileNotFoundError as e:
         return {"rc": 127, "text": str(e), "capkill": False, "peak": 0, "secs": 0}
-    peak, capkill, ok = 0, False, False
+    peak, capkill, ok, last_rss, last_avail, warned = 0, False, False, 0, None, False
     while time.time() - t0 < timeout:
         if p.poll() is not None:
             ok = p.returncode == 0
             break
-        peak = max(peak, rss_mib(p.pid))
-        if cap_mib and peak > cap_mib:
-            capkill = True
+        last_rss, last_avail = rss_mib(p.pid), mem_avail_mib()
+        peak = max(peak, last_rss)
+        if cap_mib and peak > cap_mib and not warned:
+            warned = True  # above the measured-peak estimate: warn only (#95)
+            print("WARN rss %d MiB > peak cap %d MiB: %s" % (peak, cap_mib, os.path.basename(cmd[0])), file=sys.stderr, flush=True)
+        hard = bg.headroom_cap_mib()
+        if hard and last_rss and mem_avail_mib() is not None and mem_avail_mib() < 1536 and last_rss > 256:
+            capkill = True  # host headroom exhausted (MemAvailable < 1.5 GiB reserve)
             os.killpg(p.pid, signal.SIGKILL)
             break
         if ready(p):
@@ -119,7 +144,8 @@ def run(cmd, cap_mib, timeout, ready, env=None):
     log.seek(0)
     text = log.read()[-6000:]
     return {"rc": rc, "text": text, "capkill": capkill, "peak": peak, "secs": round(time.time() - t0, 1),
-            "oom": oom_log(t0) if rc in (-9, 137) else ""}
+            "oom": oom_log(t0) if rc in (-9, 137, -15) or capkill else "",
+            "rss_at_death_mib": last_rss, "memavail_at_death_mib": last_avail, "memavail_after_mib": mem_avail_mib()}
 
 
 def http_ok(url, body=None):
@@ -158,7 +184,7 @@ def one(engine, model, a, host_limit, legacy, dry):
         meta = bg.summarize(bg.read_gguf(model))
     except Exception as e:
         return dict(rec, cls="MODEL_FILE", why=str(e)[:120], args=[])
-    ctx = 4096
+    ctx = min(4096, int(meta.get("context_length") or 4096))
     args = ["-m", model, "-c", str(ctx), "-t", str(a.threads), "-ngl", "0", "-lm", "none"]
     if bg.is_encoder(meta):
         args += ["--embeddings", "--pooling", "last", "-ub", "2048", "-b", "2048"]
@@ -193,6 +219,11 @@ def one(engine, model, a, host_limit, legacy, dry):
             ready = lambda p: http_ok("http://127.0.0.1:%d/health" % P) and chat(P, sysmsg)
         r = run([b] + args + ["--host", "127.0.0.1", "--port", str(P), "--jinja"], cap, a.timeout, ready, env)
     rec.update(rc=r["rc"], peak_mib=r["peak"], secs=r["secs"])
+    k = killer(r["rc"], r["capkill"], r.get("oom"))
+    if k:
+        rec.update(killer=k, rss_at_death_mib=r["rss_at_death_mib"], memavail_at_death_mib=r["memavail_at_death_mib"],
+                   memavail_after_mib=r["memavail_after_mib"], premature=bool(r["memavail_at_death_mib"] and
+                   r["memavail_at_death_mib"] > 1024))  # killed while >1 GiB was still available
     rec["cls"] = "TIMEOUT" if r["rc"] == "TIMEOUT" else classify(r["rc"], r["text"], r["capkill"], r.get("oom"))
     if rec["cls"] != "OK":
         rec["why"] = (r["text"].strip().splitlines() or [""])[-1][:160]
@@ -222,6 +253,8 @@ def replay(h, a, models, host_limit, dry):
         r = run([b, "-m", m] + (h[k] if k == "orig" else fixed_args), cap, a.timeout * 3, lambda p: False,
                 dict(os.environ, GGML_VK_VISIBLE_DEVICES=""))
         res[k] = classify(r["rc"], r["text"], r["capkill"], r.get("oom"))
+        if killer(r["rc"], r["capkill"], r.get("oom")):
+            res[k + "_kill"] = "%s rss=%s avail=%s" % (killer(r["rc"], r["capkill"], r.get("oom")), r["rss_at_death_mib"], r["memavail_at_death_mib"])
     bad = res.get("orig") != "OK" or res.get("orig_guard", "OK") != "OK" or h.get("cap_mib")
     verdict = ("ONLY_BAD_PARAMS" if bad and res.get("fixed") == "OK" else
                "NOT_REPRODUCED" if not bad else "STILL_FAILS:" + str(res.get("fixed")))
@@ -257,7 +290,8 @@ def main(argv=None):
                 recs.append(r); f.write(json.dumps(r) + "\n"); f.flush()
                 counts[r["cls"]] = counts.get(r["cls"], 0) + 1
                 if r["cls"] not in ("OK",):
-                    print("FAIL %s %s %s: %s" % (e, r["model"], r["cls"], r.get("why", "")), flush=True)
+                    print("FAIL %s %s %s: %s%s" % (e, r["model"], r["cls"], r.get("why", ""), " [killer=%s rss=%s avail=%s premature=%s]" % (
+                        r["killer"], r["rss_at_death_mib"], r["memavail_at_death_mib"], r["premature"]) if r.get("killer") else ""), flush=True)
         reps = [] if a.no_replay else [replay(h, a, models, a.host_limit_mib, a.dry_run) for h in HISTORY]
         for r in reps:
             f.write(json.dumps(dict(r, kind="replay")) + "\n")

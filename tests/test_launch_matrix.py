@@ -58,3 +58,11 @@ def test_matrix_dry_run(tmp_path):
                   "--host-limit-mib", "100000"])
     lines = out.read_text().splitlines()
     assert rc == 0 and len([l for l in lines if '"replay"' not in l]) == len(lm.ENGINES)
+
+
+def test_killer_attribution():
+    assert lm.killer(-9, True, "") == "matrix-headroom"
+    assert lm.killer(-9, False, "earlyoom[1]: sending SIGKILL to process 42") == "earlyoom"
+    assert lm.killer(-9, False, "Out of memory: Killed process 42 (llama-server)") == "kernel-oom"
+    assert lm.killer(-9, False, "systemd-oomd[1]: Killed /user.slice/x") == "systemd-oomd"
+    assert lm.killer(0, False, "") is None
