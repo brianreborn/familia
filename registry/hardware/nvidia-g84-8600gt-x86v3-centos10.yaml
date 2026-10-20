@@ -23,7 +23,7 @@ best_settings:
   qwen35-2b-q4km: {threads: 2, load_mode: none, tg: 11.75, pp_t4: 60.1}
   lfm25-1.2b-q4km: {threads: 2, load_mode: none, tg: 23.0, pp_t4: 95.5}
   gpt-oss-20b-mxfp4: {threads: 4, load_mode: none, tg: 7.88, pp: 21.8, rss_mib: 11757}
-  gpu_links: "registry/links/centos10-bigram.jsonl: PCIe 1.x-class 3.3 GB/s each way, VRAM copy 15.3 GB/s, 1 copy engine, no H2D/D2H overlap, 10 us per small copy"
+  gpu_links: "PCIe 1.x-class 3.3 GB/s each way, VRAM copy 15.3 GB/s, 1 copy engine, no H2D/D2H overlap, 10 us per small copy"
 gotchas:
   - "The open nvidia.ko (615 series) logs a GSP 'not supported' warning for G84; harmless, the legacy DKMS module drives the card."
   - "EGL/GBM unavailable without Mesa DRI, so no hardware GL compositor."
