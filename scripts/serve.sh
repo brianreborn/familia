@@ -62,8 +62,9 @@ if [ "${FAMILIA_GUARD:-1}" != 0 ] && [ ! -f "$here/scripts/bench_guard.py" ]; th
 elif [ "${FAMILIA_GUARD:-1}" != 0 ]; then
   # shellcheck disable=SC2086
   if ! python3 "$here/scripts/bench_guard.py" check -- ${args#* } "$@"; then
+    gr=$?
     say "launch guard refused node $node (see familia-guard lines above); fix the params in graph.yaml; not starting"
-    exit 1
+    exit "$gr"
   fi
 fi
 # Embedders need --embeddings and --pooling (REQUIRED, #51). grep -e: the pattern starts with "-".
@@ -80,9 +81,17 @@ case " $args " in *" -ngl 0 "*)
 esac
 # shellcheck disable=SC2086
 if [ "$FAMILIA_MEMCAP" = 1 ] && command -v systemd-run >/dev/null 2>&1; then
-  # Hard cap from headroom (MemAvailable - 1.5 GiB, bench_guard.headroom_cap_mib), swap allowed;
+  # Hard cap = admission reservation, swap allowed;
   # no fixed 2600M / MemorySwapMax=0 any more (premature kills, P0 #95).
-  [ -n "${FAMILIA_MEMMAX:-}" ] || FAMILIA_MEMMAX="$(python3 -c 'import sys; sys.path.insert(0, sys.argv[1]); import bench_guard as b; print("%dM" % b.headroom_cap_mib())' "$here/scripts" 2>/dev/null || echo infinity)"
+  # Cap = this launch's own admission reservation (estimated peak), never global headroom:
+  # independent headroom caps overcommit (27 GiB of caps on a 23 GiB box, #95).
+  [ -n "${FAMILIA_MEMMAX:-}" ] || FAMILIA_MEMMAX="$(python3 -c 'import os, sys; print("%dM" % (os.path.getsize(sys.argv[1]) / 2**20 * 1.15 + 768))' "$model" 2>/dev/null || echo 4096M)"
+  # Fleet-wide admission: reserve the cap before launch so concurrent launches compose (#95).
+  # The reservation is keyed to this shell's pid, which exec keeps for the server.
+  if ! python3 "$here/scripts/launch_status.py" admit --mib "${FAMILIA_MEMMAX%M}" --pid $$ --tag "$node"; then
+    python3 "$here/scripts/launch_status.py" emit LF_OOM_CAP --engine serve --model "$model" --evidence "admission refused for node $node"
+    exit 69
+  fi
   exec systemd-run --user --scope --quiet --unit="familia-$node-$$" \
     ${FAMILIA_MEMHIGH:+-p MemoryHigh="$FAMILIA_MEMHIGH"} -p MemoryMax="$FAMILIA_MEMMAX" \
     -- sh -c 'echo 800 > /proc/self/oom_score_adj; exec "$@"' sh $args "$@"

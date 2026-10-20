@@ -36,7 +36,7 @@ def test_check_cli_refuses_with_message(tmp_path):
     m = tmp_path / "enc.gguf"; _gguf(str(m), "bert", causal=False)
     r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "bench_guard.py"), "check", "--",
                         "-m", str(m), "-ub", "64", "-p", "1024"], capture_output=True, text=True)
-    assert r.returncode == 3 and "refusing launch" in r.stderr
+    assert r.returncode == 64 and "FAMILIA-LAUNCH" in r.stderr and "refusing launch" in r.stderr
 
 
 def test_classify():
@@ -66,3 +66,38 @@ def test_killer_attribution():
     assert lm.killer(-9, False, "Out of memory: Killed process 42 (llama-server)") == "kernel-oom"
     assert lm.killer(-9, False, "systemd-oomd[1]: Killed /user.slice/x") == "systemd-oomd"
     assert lm.killer(0, False, "") is None
+
+
+def test_protocol_codes_distinct_and_mapping():
+    import launch_status as ls
+    codes = [c for k, (st, c) in ls.CODES.items() if not k.startswith("OK")]
+    assert len(codes) == len(set(codes))
+    assert ls.from_matrix_class("BAD_PARAMS", False, 1) == "LF_BAD_PARAMS"
+    assert ls.from_matrix_class("ENGINE_BUG", True, -6, None, "GGML_ASSERT") == "CR_ASSERT"
+    assert ls.from_matrix_class("OOM", True, -9, "earlyoom") == "KL_EARLYOOM"
+    r = ls.record("CR_OOM_MEMCG", "llama-server", "m.gguf", rc=-9)
+    assert r["v"] == 1 and r["status"] == "CRASHED" and r["phase"] == "run"
+
+
+def test_admission_budget_composes(tmp_path, monkeypatch):
+    import launch_status as ls
+    monkeypatch.setattr(ls, "LEDGER", str(tmp_path / "led.json"))
+    monkeypatch.setattr(ls, "_rss", lambda pid: 0)  # live, nothing resident yet
+    assert ls.admit(3000, 101, avail=6000, total=24000)[0]          # 6000-1536 = 4464 free
+    assert not ls.admit(3000, 102, avail=6000, total=24000)[0]      # first launch still owns 3000 outstanding
+    ls.release(101)
+    assert ls.admit(3000, 102, avail=6000, total=24000)[0]
+    monkeypatch.setattr(ls, "_rss", lambda pid: 99999)  # fully resident: only the MemTotal sum binds
+    assert ls.admit(17000, 103, avail=99999, total=23000)[0]
+    assert not ls.admit(10000, 104, avail=99999, total=23000)[0]    # 17+10 GiB > 23-1.5 GiB
+
+
+def test_matrix_records_carry_protocol(tmp_path):
+    _gguf(str(tmp_path / "m.gguf"))
+    b = tmp_path / "bin"; b.mkdir()
+    out = tmp_path / "o.jsonl"
+    lm.main(["--dry-run", "--no-replay", "--bin-dir", str(b), "--models", str(tmp_path), "--out", str(out), "--host-limit-mib", "100000"])
+    import json
+    recs = [json.loads(l) for l in out.read_text().splitlines()]
+    assert all(r["status"]["v"] == 1 for r in recs)
+    assert any(r["status"]["code"] == "LF_MISSING_RUNTIME" for r in recs)

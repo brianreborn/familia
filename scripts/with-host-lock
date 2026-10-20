@@ -1,6 +1,18 @@
-#!/bin/bash
-# Mutex for live model / big jobs on this host. Usage: scripts/with-host-lock <cmd...>
-set -euo pipefail
-LOCK=${FAMILIA_HOST_LOCK:-$HOME/.local/state/familia/big.lock}
-mkdir -p "$(dirname "$LOCK")"
-exec flock "$LOCK" "$@"
+#!/bin/sh
+# with-host-lock [--big|--small] [--mib N] [--tag T] -- CMD...   (#95 admission layer)
+# Default (and --big, or --mib > 4096) = big job: waits wait on the per-host
+# mutex ~/.local/state/familia/big.lock. With --mib, the run also reserves N MiB in the fleet
+# memory budget (launch_status.py admit; LF_OOM_CAP exit 69 if it does not fit) for its lifetime.
+here=$(cd "$(dirname "$0")" && pwd); big=1; mib=; tag=job
+while [ $# -gt 0 ]; do case $1 in --big) big=1;; --small) big=0;; --mib) mib=$2; shift;; --tag) tag=$2; shift;; --) shift; break;; *) break;; esac; shift; done
+[ -n "$mib" ] && [ "$mib" -gt 4096 ] && big=1
+d=$(dirname "${FAMILIA_HOST_LOCK:-$HOME/.local/state/familia/big.lock}"); mkdir -p "$d"
+if [ $big = 1 ]; then
+  exec 9>"${FAMILIA_HOST_LOCK:-$d/big.lock}"
+  flock -n 9 || { echo "with-host-lock: waiting for big-job lock ($tag)" >&2; flock 9; }
+fi
+if [ -n "$mib" ]; then
+  python3 "$here/launch_status.py" admit --mib "$mib" --pid $$ --tag "$tag" || exit 69
+  trap 'python3 "$here/launch_status.py" release --pid $$' EXIT INT TERM
+fi
+"$@"

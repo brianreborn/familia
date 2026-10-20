@@ -276,11 +276,16 @@ def check_main(argv):
             meta = summarize(read_gguf(model))
         except Exception as e:  # unreadable / not GGUF
             print("familia-guard: MODEL_FILE: %s: %s; not starting" % (model, e), file=sys.stderr)
-            return 3
+            return 66  # launch_status LF_MODEL_FILE
     problems, _ = preflight(args, meta, prompt, legacy, build)
     for p in problems:
         print("familia-guard: refusing launch: %s" % p, file=sys.stderr)
-    return 3 if problems else 0
+    if problems:
+        import launch_status as ls
+        code = "LF_MODEL_FILE" if problems[0].startswith("MODEL_FILE") else "LF_BAD_PARAMS"
+        ls.emit(ls.record(code, "guard", model or "", {"args": args}, evidence="; ".join(problems)))
+        return ls.exit_code(code)
+    return 0
 
 
 def main(argv):

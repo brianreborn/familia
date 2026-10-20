@@ -15,6 +15,18 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 import bench_guard as bg  # noqa: E402
+import launch_status as ls  # noqa: E402
+
+LIVE = set()  # pgids of launched children, killed if the matrix itself is stopped
+
+
+def _cleanup(*_):
+    for g in list(LIVE):
+        try:
+            os.killpg(g, signal.SIGKILL)
+        except OSError:
+            pass
+    sys.exit(91)
 
 ENGINES = ["llama-server", "llama-cli", "hermes-single", "hermes-graph", "harness2", "serve"]
 # Past launch crashes (familia-private logs, 2026-10-09..19). orig = what ran, fixed = corrected.
@@ -113,7 +125,13 @@ def run(cmd, cap_mib, timeout, ready, env=None):
     try:
         p = subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT, env=env, start_new_session=True)
     except FileNotFoundError as e:
-        return {"rc": 127, "text": str(e), "capkill": False, "peak": 0, "secs": 0}
+        return {"rc": 127, "text": str(e), "capkill": False, "peak": 0, "secs": 0, "ready": False}
+    LIVE.add(p.pid)
+    if cap_mib:
+        okad, why = ls.admit(cap_mib, p.pid, os.path.basename(cmd[0]))
+        if not okad:
+            os.killpg(p.pid, signal.SIGKILL); p.wait(); LIVE.discard(p.pid)
+            return {"rc": "ADMISSION", "text": why, "capkill": False, "peak": 0, "secs": 0, "ready": False}
     peak, capkill, ok, last_rss, last_avail, warned = 0, False, False, 0, None, False
     while time.time() - t0 < timeout:
         if p.poll() is not None:
@@ -133,6 +151,7 @@ def run(cmd, cap_mib, timeout, ready, env=None):
             ok = True
             break
         time.sleep(0.5)
+    t_ready = round(time.time() - t0, 1) if ok else None
     rc = p.poll()
     if rc is None:
         os.killpg(p.pid, signal.SIGTERM)
@@ -141,11 +160,13 @@ def run(cmd, cap_mib, timeout, ready, env=None):
         except subprocess.TimeoutExpired:
             os.killpg(p.pid, signal.SIGKILL); p.wait()
         rc = None if ok else "TIMEOUT"
+    LIVE.discard(p.pid)
+    ls.release(p.pid)
     log.seek(0)
     text = log.read()[-6000:]
     return {"rc": rc, "text": text, "capkill": capkill, "peak": peak, "secs": round(time.time() - t0, 1),
             "oom": oom_log(t0) if rc in (-9, 137, -15) or capkill else "",
-            "rss_at_death_mib": last_rss, "memavail_at_death_mib": last_avail, "memavail_after_mib": mem_avail_mib()}
+            "rss_at_death_mib": last_rss, "memavail_at_death_mib": last_avail, "memavail_after_mib": mem_avail_mib(), "ready": ok, "t_ready_s": t_ready}
 
 
 def http_ok(url, body=None):
@@ -208,7 +229,9 @@ def one(engine, model, a, host_limit, legacy, dry):
     if engine == "harness2":
         r = run([sys.executable, os.path.join(HERE, "harness2.py"), "status"], None, 60, lambda p: False, env)
     elif engine == "llama-cli":
-        cmd = [b] + args + ["-p", "hi", "-n", "4", "-no-cnv", "--temp", "0"]
+        if bg.is_encoder(meta):
+            return dict(rec, cls="SKIP", why="encoder: llama-cli has no embedding mode (served by llama-server)")
+        cmd = [b] + args + ["-p", "hi", "-n", "4", "-st", "--temp", "0"]  # b11374: -no-cnv removed, -st single turn
         r = run(cmd, cap, a.timeout, lambda p: False, env)
     else:
         P = port()
@@ -224,9 +247,14 @@ def one(engine, model, a, host_limit, legacy, dry):
         rec.update(killer=k, rss_at_death_mib=r["rss_at_death_mib"], memavail_at_death_mib=r["memavail_at_death_mib"],
                    memavail_after_mib=r["memavail_after_mib"], premature=bool(r["memavail_at_death_mib"] and
                    r["memavail_at_death_mib"] > 1024))  # killed while >1 GiB was still available
+    if r["rc"] == "ADMISSION":
+        return dict(rec, cls="OOM", why="admission refused: " + r["text"], status=ls.record("LF_OOM_CAP", engine, rec["model"], {"args": args}, evidence=r["text"]))
     rec["cls"] = "TIMEOUT" if r["rc"] == "TIMEOUT" else classify(r["rc"], r["text"], r["capkill"], r.get("oom"))
     if rec["cls"] != "OK":
         rec["why"] = (r["text"].strip().splitlines() or [""])[-1][:160]
+    code = ls.from_matrix_class(rec["cls"], r.get("ready"), r["rc"] if isinstance(r["rc"], int) else None, k, r["text"])
+    rec["status"] = ls.record(code, engine, rec["model"], {"args": args, "cap_mib": cap}, r["rc"] if isinstance(r["rc"], int) else None,
+                              -r["rc"] if isinstance(r["rc"], int) and r["rc"] < 0 else None, r["text"][-400:] if code[:2] != "OK" else "", r.get("t_ready_s"))
     return rec
 
 
@@ -249,8 +277,11 @@ def replay(h, a, models, host_limit, dry):
         if dry or not os.access(b, os.X_OK):
             res[k] = ("OK" if res[k + "_guard"].startswith("BAD_PARAMS(") else res[k + "_guard"]) if dry else "MISSING_RUNTIME(llama-bench)"
             continue
-        cap = h.get("cap_mib") if k == "orig" else cap_for(m, 8192, host_limit)
-        r = run([b, "-m", m] + (h[k] if k == "orig" else fixed_args), cap, a.timeout * 3, lambda p: False,
+        if k == "orig":  # never re-run crash params: no intentional crashes or OOM kills (user rule)
+            res[k] = res[k + "_guard"] if res[k + "_guard"] != "OK" else ("OOM(recorded)" if h.get("cap_mib") else "OK")
+            continue
+        cap = cap_for(m, 8192, host_limit)
+        r = run([b, "-m", m] + fixed_args, cap, a.timeout * 3, lambda p: False,
                 dict(os.environ, GGML_VK_VISIBLE_DEVICES=""))
         res[k] = classify(r["rc"], r["text"], r["capkill"], r.get("oom"))
         if killer(r["rc"], r["capkill"], r.get("oom")):
@@ -274,6 +305,8 @@ def main(argv=None):
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--no-replay", action="store_true")
     a = ap.parse_args(argv)
+    signal.signal(signal.SIGTERM, _cleanup)
+    signal.signal(signal.SIGINT, _cleanup)
     if a.host_limit_mib is None:
         try:
             avail = [int(l.split()[1]) for l in open("/proc/meminfo") if l.startswith("MemAvailable")][0] // 1024
@@ -287,9 +320,10 @@ def main(argv=None):
         for e in a.engines.split(","):
             for m in models:
                 r = one(e, m, a, a.host_limit_mib, a.legacy_gpu, a.dry_run)
+                r.setdefault("status", ls.record(ls.from_matrix_class(r["cls"], r["cls"] == "OK", None), e, r["model"], {"args": r.get("args", [])}, evidence=r.get("why", "")))
                 recs.append(r); f.write(json.dumps(r) + "\n"); f.flush()
                 counts[r["cls"]] = counts.get(r["cls"], 0) + 1
-                if r["cls"] not in ("OK",):
+                if r["cls"] not in ("OK", "SKIP"):
                     print("FAIL %s %s %s: %s%s" % (e, r["model"], r["cls"], r.get("why", ""), " [killer=%s rss=%s avail=%s premature=%s]" % (
                         r["killer"], r["rss_at_death_mib"], r["memavail_at_death_mib"], r["premature"]) if r.get("killer") else ""), flush=True)
         reps = [] if a.no_replay else [replay(h, a, models, a.host_limit_mib, a.dry_run) for h in HISTORY]
@@ -297,7 +331,7 @@ def main(argv=None):
             f.write(json.dumps(dict(r, kind="replay")) + "\n")
             print("REPLAY %(id)s: %(verdict)s" % r, flush=True)
     print("MATRIX %d launches: %s" % (len(recs), " ".join("%s=%d" % kv for kv in sorted(counts.items()))))
-    return 0 if set(counts) <= {"OK"} else 1
+    return 0 if set(counts) <= {"OK", "SKIP"} else 1
 
 
 if __name__ == "__main__":
