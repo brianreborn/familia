@@ -167,6 +167,34 @@ def mem_cap_mib(mmap_peak_mib, margin_frac=0.15, min_margin_mib=256, host_limit_
     return cap
 
 
+def headroom_cap_mib(reserve_mib=1536, meminfo="/proc/meminfo"):
+    """Hard cap from headroom, not peak: MemAvailable minus a reserve (default 1.5 GiB).
+    The peak-based mem_cap_mib() is only a soft warning / MemoryHigh hint."""
+    for l in open(meminfo):
+        if l.startswith("MemAvailable"):
+            return max(256, int(l.split()[1]) // 1024 - int(reserve_mib))
+    return None
+
+
+def threads_in_use(ps_out=None):
+    """Sum of -t/--threads across running llama-* processes (fleet thread budget: sum <= cores)."""
+    import subprocess
+    if ps_out is None:
+        ps_out = subprocess.run(["ps", "-eo", "args"], capture_output=True, text=True).stdout
+    tot = 0
+    for line in ps_out.splitlines():
+        a = line.split()
+        if not a or "llama-" not in a[0].rsplit("/", 1)[-1]:
+            continue
+        for i, x in enumerate(a[:-1]):
+            if x in ("-t", "--threads"):
+                try:
+                    tot += max(int(v) for v in a[i + 1].split(","))
+                except ValueError:
+                    pass
+    return tot
+
+
 _EFF = {
     "n_ctx": r"llama_context: n_ctx\s*=\s*(\d+)", "n_batch": r"llama_context: n_batch\s*=\s*(\d+)",
     "n_ubatch": r"llama_context: n_ubatch\s*=\s*(\d+)", "causal_attn": r"llama_context: causal_attn\s*=\s*(\d+)",
