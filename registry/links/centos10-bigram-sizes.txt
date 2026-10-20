@@ -1,0 +1,6 @@
+1 MiB pcie_h2d pinned 3.188;1 MiB pcie_d2h pinned 3.243;1 MiB pcie_h2d pageable 2.493;1 MiB pcie_d2h pageable 2.348;1 MiB vram_copy dtod(rea 14.678;1 MiB overlap 0.998;
+4 MiB pcie_h2d pinned 3.267;4 MiB pcie_d2h pinned 3.296;4 MiB pcie_h2d pageable 3.005;4 MiB pcie_d2h pageable 2.972;4 MiB vram_copy dtod(rea 15.181;4 MiB overlap 0.999;
+16 MiB pcie_h2d pinned 3.282;16 MiB pcie_d2h pinned 3.312;16 MiB pcie_h2d pageable 3.177;16 MiB pcie_d2h pageable 3.163;16 MiB vram_copy dtod(rea 15.271;16 MiB overlap 1.0;
+64 MiB pcie_h2d pinned 3.294;64 MiB pcie_d2h pinned 3.322;64 MiB pcie_h2d pageable 3.215;64 MiB pcie_d2h pageable 3.165;64 MiB vram_copy dtod(rea 15.313;64 MiB overlap 1.0;
+Alloc(&b, n) = 2
+
