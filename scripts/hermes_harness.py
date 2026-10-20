@@ -40,7 +40,10 @@ OWNED = {"model", "auxiliary", "compression", "custom_providers", "providers", "
 # Lean prompt profile (#85): the toolsets a coding agent on a small or old node needs. Long
 # guidance stays reachable through the skills tools (skills_list / skill_view load on demand).
 LEAN_TOOLSETS = ("terminal", "file", "todo", "clarify", "skills")
-LEAN_RAM_MIB = 8192   # same line as the small-host floor in docs/ram-safety.md
+LEAN_RAM_MIB = 8192
+# hermes re-probes the environment per session; this line changed between two launches minutes
+# apart ("(no pip module)", pip=missing appear or not), so the cached prefix stops before it (#85).
+UNSTABLE_LINES = ("Python toolchain:",)   # same line as the small-host floor in docs/ram-safety.md
 AUX_TASKS = ["web_extract", "compression", "skills_hub", "approval", "mcp", "title_generation",
              "memory_query_rewrite", "tts_audio_tags", "triage_specifier", "kanban_decomposer",
              "profile_describer", "goal_judge", "curator", "monitor"]
@@ -219,7 +222,7 @@ def warm_prompt(g, name, n, home):
     base = f"http://{bind(n)}:{n['port']}"
     try:
         d = hermes_prefix(home)
-        text = prompt_cache.stable_prefix(base, d["system"], d["tools"], d.get("volatile", ""))
+        text = prompt_cache.stable_prefix(base, d["system"], d["tools"], d.get("volatile", ""), unstable=UNSTABLE_LINES)
         return prompt_cache.warm(base, prompt_cache.prefix_tokens(base, text), tag=name)[0]
     except Exception as e:
         print(f"hermes.sh: prompt cache skipped ({e})", file=sys.stderr)

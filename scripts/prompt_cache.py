@@ -25,14 +25,15 @@ def _post(base, path, body, timeout):
 SPLIT = "\u2063FAMILIA_SPLIT\u2063"
 
 
-def stable_prefix(base, system, tools, volatile="", timeout=120):
-    """Rendered prompt text before the first user turn, cut where `volatile` starts."""
+def stable_prefix(base, system, tools, volatile="", timeout=120, unstable=()):
+    """Rendered prompt text before the first user turn, cut where `volatile` starts or at the
+    first line starting with any `unstable` marker (text the agent re-probes per session)."""
     p = _post(base, "/apply-template", {"messages": [{"role": "system", "content": system},
                                                      {"role": "user", "content": SPLIT}], "tools": tools}, timeout)["prompt"]
     p = p[:p.index(SPLIT)]
-    if volatile and volatile in p:
-        p = p[:p.index(volatile)]
-    return p
+    cuts = [p.index(volatile)] if volatile and volatile in p else []
+    cuts += [i + 1 for i in (p.find("\n" + m) for m in unstable) if i >= 0]  # keep the newline
+    return p[:min(cuts)] if cuts else p
 
 
 def prefix_tokens(base, text, timeout=120):

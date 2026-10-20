@@ -103,3 +103,10 @@ def test_slot_save_path_in_server_args(tmp_path, monkeypatch):
     g = vg.load(os.path.join(ROOT, "graph.yaml"))
     a = vg.server_args(g, "coder")
     assert a[a.index("--slot-save-path") + 1] == os.path.join(str(tmp_path), ".cache/familia/slots/coder")
+
+
+def test_unstable_line_cuts_prefix(monkeypatch):
+    p = "<tools>T</tools>A\nPython toolchain: x\nB VOL<|im_start|>user\n" + pc.SPLIT
+    monkeypatch.setattr(pc, "_post", lambda *a: {"prompt": p})
+    assert pc.stable_prefix("x", "s", [], "VOL", unstable=("Python toolchain:",)) == "<tools>T</tools>A\n"
+    assert pc.stable_prefix("x", "s", [], "VOL") == "<tools>T</tools>A\nPython toolchain: x\nB "
