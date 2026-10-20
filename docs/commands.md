@@ -243,3 +243,4 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/watchdog/install-kill-watch.sh` | operator installer for the kill-watch user unit |
 | `scripts/watchdog/kill-watch.sh` | long-running journal follower started by its systemd user unit |
 | `scripts/watchdog/mem-snapshot.sh` | helper called by kill-watch.sh |
+| `scripts/dogfood/install-loop-unit.sh` | operator installer for the dogfood loop systemd user unit (#112) |
