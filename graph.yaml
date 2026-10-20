@@ -104,6 +104,27 @@ hosts:
         compute_capability: null
         driver: null
         measured: false
+  centos10-bigram:
+    kind: desktop
+    # Facts measured 2026-10-19 on the host (registered Grok Bot machine). Address and login live only in
+    # the private ~/.config/familia/monitor.json / ~/.ssh/config, never here.
+    # Hardware profile: registry/hosts.yaml -> nvidia-g84-8600gt-x86v3-centos10. No node is placed here yet:
+    # which roles move is the owner's call (docs/perf/centos-bigram-models.md section 7).
+    measured: true
+    os: linux                    # CentOS Stream 10, kernel 6.12
+    cpu: Intel Core i5-4570      # Haswell, 4C/4T, 3.2 GHz max, AVX2/FMA/F16C, no AVX-512
+    threads: 4
+    ram_mib: 23672               # 23 GiB MemTotal; swap 4 GiB
+    reserve_ram_mib: 6144        # desktop session (KDE/Firefox) + Grok Bot + safety margin
+    gpus:
+      - vendor: nvidia
+        model: GeForce 8600 GT (G84, CC 1.1, 256 MiB)
+        vram_mib: 256
+        backend: none            # nouveau owns the card at boot; legacy 340.108 nvidia.ko cannot probe it
+        backend_status: unsupported
+        compute_capability: "1.1"
+        driver: nouveau (nvidia 340.108 built for 6.12.0-275 but not bound)
+        measured: true
   phone7:
     kind: phone
     measured: true               # measured 2026-10-09 ~22:50 PT over key-only SSH from qodesh
