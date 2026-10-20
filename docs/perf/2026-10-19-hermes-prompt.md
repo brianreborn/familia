@@ -1,3 +1,5 @@
+> **invalidated: memcg cap bug, rerun pending** (#95). Results gathered under per-launch cgroup caps of 1 GiB / peak+15% with swap 0; rerun via scripts/rerun_all.sh.
+
 # hermes fixed prompt on small nodes (#85), 2026-10-19
 
 miryam coder: Qwen3.5-2B Q4_K_M, exact `validate_graph.py --args coder` (`-t 3 -lm none -c 65536 -ctk/-ctv q8_0 -fa on`), nice 19 / ionice idle, RSS watchdog 3500 MiB, `GGML_VK_VISIBLE_DEVICES=` as serve.sh sets it.
