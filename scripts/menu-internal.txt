@@ -31,3 +31,6 @@ scripts/littlebit/lbformat.py|LittleBit file format library
 scripts/panel_familia.py|familia's pages for the settings panel; loaded by scripts/panel.py, which the menu runs
 scripts/familia_cli.py|engine behind ./familia: subcommand names, help, man page, completion (run as familia help / familia completion)
 scripts/with-host-lock|wrapper: flock ~/.local/state/familia/big.lock around one live/big job per host
+scripts/dogfood/dispatch.py
+scripts/dogfood/loop.sh
+scripts/dogfood/pytest_vs_baseline.sh

@@ -1,0 +1,30 @@
+- id: t1-retry-tests
+  issue: "pytest coverage for scripts/"
+  goal: "Add tests/test_retry_wrapper.py with pytest unit tests for the pure functions in scripts/retry_wrapper.py (import via sys.path insert of the scripts dir). No network, no real processes."
+  files: [scripts/retry_wrapper.py, tests/test_retry_wrapper.py]
+  accept: "pytest -q tests/test_retry_wrapper.py"
+- id: t2-llama-flags-tests
+  issue: "pytest coverage for scripts/"
+  goal: "Add tests/test_llama_flags.py with pytest unit tests for the pure functions in scripts/llama_flags.py (import via sys.path insert of the scripts dir). Do not change llama_flags.py."
+  files: [scripts/llama_flags.py, tests/test_llama_flags.py]
+  accept: "pytest -q tests/test_llama_flags.py"
+- id: t3-validate-positional
+  issue: "#74"
+  goal: "validate_graph.py must accept a positional graph path (e.g. `validate_graph.py graph.yaml`) as equivalent to --graph PATH. Keep all existing flags working."
+  files: [scripts/validate_graph.py]
+  accept: "python3 scripts/validate_graph.py --no-files graph.yaml && python3 scripts/validate_graph.py --no-files --graph graph.yaml"
+- id: t4-ramsafety-xlinks
+  issue: "LESSONS-LEARNED cross-links"
+  goal: "In docs/ram-safety.md add a short 'See also' section linking ../LESSONS-LEARNED.md and naming the lessons about per-launch hard memory caps, MemorySwapMax=0, and the fleet thread budget. Docs only; no IPs or usernames."
+  files: [docs/ram-safety.md]
+  accept: "grep -q 'LESSONS-LEARNED.md' docs/ram-safety.md && ! grep -Eq '[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+' docs/ram-safety.md"
+- id: t5-menu-items
+  issue: "#103"
+  goal: "tests/test_menu.py fails because user-facing scripts are missing from scripts/menu-items.txt or scripts/menu-internal.txt. Add the missing entries in the existing format so the test passes."
+  files: [scripts/menu-items.txt, scripts/menu-internal.txt, tests/test_menu.py]
+  accept: "pytest -q tests/test_menu.py"
+- id: t6-escalation-negation
+  issue: "#102"
+  goal: "The escalation phrase trigger treats negated requests (e.g. 'do not escalate', \"don't escalate\") as escalation requests. Make negated phrases not trigger, and add a pytest case for it."
+  files: [scripts/escalation_proxy.py, tests/test_escalation_proxy.py]
+  accept: "pytest -q tests/test_escalation_proxy.py"
