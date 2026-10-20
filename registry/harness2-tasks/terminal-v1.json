@@ -1,0 +1,28 @@
+{
+ "name": "terminal-v1",
+ "version": 1,
+ "kind": "terminal",
+ "description": "Offline one-command shell tasks (coreutils/awk/sed/sort only) over a small fixture directory; checked by exact stdout. Used by scripts/terminal_rsi.py (#88). evolve = trajectories are collected and self-rewritten; holdout = only for base vs refined comparison, never shown to the model's rewrite step.",
+ "fixture": {
+  "data.txt": "alpha\nbeta\ngamma\ndelta\nepsilon\n",
+  "words.txt": "pear apple pear\nfig apple kiwi\n",
+  "sales.csv": "item,qty,price\nbolt,4,0.5\nnut,10,0.1\ngear,2,3\n",
+  "app.log": "INFO start\nERROR disk full\nWARN slow\nERROR disk full\nINFO stop\n",
+  "logs/a.log": "x\n", "logs/b.log": "yy\n", "logs/c.txt": "zzz\n",
+  "conf.ini": "name=foo\nmode=foo-fast\nport=foo\n"
+ },
+ "tasks": [
+  {"id": "t-lines", "split": "evolve", "prompt": "Print only the number of lines in data.txt (just the number).", "expect": "5"},
+  {"id": "t-uniqwords", "split": "evolve", "prompt": "Print the distinct words of words.txt, one per line, sorted alphabetically.", "expect": "apple\nfig\nkiwi\npear"},
+  {"id": "t-errcount", "split": "evolve", "prompt": "Print how many lines of app.log contain ERROR (just the number).", "expect": "2"},
+  {"id": "t-third", "split": "evolve", "prompt": "Print the third line of data.txt.", "expect": "gamma"},
+  {"id": "t-logs", "split": "evolve", "prompt": "List the names (without directory) of the .log files in the logs directory, sorted, one per line.", "expect": "a.log\nb.log"},
+  {"id": "t-replace", "split": "evolve", "prompt": "Print conf.ini with every occurrence of foo replaced by bar (do not modify the file).", "expect": "name=bar\nmode=bar-fast\nport=bar"},
+  {"id": "h-sumqty", "split": "holdout", "prompt": "Print the sum of the qty column of sales.csv (skip the header; just the number).", "expect": "16"},
+  {"id": "h-lastline", "split": "holdout", "prompt": "Print the last line of app.log.", "expect": "INFO stop"},
+  {"id": "h-countword", "split": "holdout", "prompt": "Print how many times the word apple appears in words.txt (just the number).", "expect": "2"},
+  {"id": "h-uniqerr", "split": "holdout", "prompt": "Print the distinct lines of app.log that start with ERROR, sorted, one per line.", "expect": "ERROR disk full"},
+  {"id": "h-revsort", "split": "holdout", "prompt": "Print the lines of data.txt sorted in reverse alphabetical order.", "expect": "gamma\nepsilon\ndelta\nbeta\nalpha"},
+  {"id": "h-txtcount", "split": "holdout", "prompt": "Print how many files in the logs directory end in .txt (just the number).", "expect": "1"}
+ ]
+}

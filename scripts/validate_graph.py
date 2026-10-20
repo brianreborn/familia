@@ -178,7 +178,7 @@ def validate(graph, check_files=True):
         totals[n["host"]] = totals.get(n["host"], 0.0) + os.path.getsize(path) / 2**20 + (kv or 0) + 256 + n["cache_ram_mib"]
     for sn, sp in (graph.get("speculative") or {}).items():
         t = graph["nodes"][sp["target"]]
-        if t["status"] == "planned" or sp["mode"] != "draft" or sp["target"] not in metas: continue
+        if "planned" in (t["status"], sp.get("status")) or sp["mode"] != "draft" or sp["target"] not in metas: continue  # planned speculation loads nothing
         d = models[sp["draft"]]; dp = os.path.expanduser(d["gguf"])
         if not os.path.isfile(dp): errs.append(f"speculative.{sn}: draft file not found: {dp}"); continue
         dmeta = gguf_meta(dp)

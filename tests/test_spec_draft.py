@@ -1,0 +1,31 @@
+import os, subprocess, sys
+HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(HERE, "scripts"))
+import yaml, bench_guard as BG
+from graph_types import validate_types
+
+G = yaml.safe_load(open(os.path.join(HERE, "graph.yaml")))
+
+def test_draft_pairing_declared_and_typed():
+    sp = G["speculative"]["coder-draft"]
+    assert sp["mode"] == "draft" and sp["draft"] in G["models"] and sp["target"] in G["nodes"]
+    assert not [e for e in validate_types(G) if "coder-draft" in e]
+
+def test_draft_args_pass_bench_guard():
+    a = ["llama-server", "-m", "t.gguf", "-md", "d.gguf", "--spec-type", "draft-simple", "--spec-draft-n-max", "8",
+         "--spec-draft-n-min", "0", "--spec-draft-p-min", "0.75", "-ngld", "0"]
+    out = BG.modern_args(a, "b11374"); assert out == a   # every flag exists in b11374
+    out = BG.modern_args(["llama-server", "-m", "t", "-md", "d", "--draft-max", "8"])  # unknown build: legacy spelling rewritten
+    assert "--spec-draft-n-max" in out and "draft-simple" in out
+
+def test_served_args_include_draft_when_enabled(tmp_path):
+    g = yaml.safe_load(open(os.path.join(HERE, "graph.yaml")))
+    import validate_graph as VG
+    for s in g["speculative"].values(): s["status"] = "planned"
+    g["speculative"]["coder-draft"]["status"] = "experimental"
+    if not os.path.isfile(os.path.expanduser(g["models"][g["nodes"]["coder"]["model"]]["gguf"])):
+        import pytest; pytest.skip("coder weights not on this host")
+    p = tmp_path / "g.yaml"; yaml.safe_dump(g, open(p, "w"))
+    out = subprocess.run([sys.executable, os.path.join(HERE, "scripts", "validate_graph.py"), "--graph", str(p), "--args", "coder"], capture_output=True, text=True)
+    assert out.returncode == 0, out.stderr[-500:]
+    assert "-md " in out.stdout and "--spec-type draft-simple" in out.stdout and "--spec-draft-n-max" in out.stdout
