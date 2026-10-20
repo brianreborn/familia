@@ -183,3 +183,14 @@ for CentOS Stream 10.
   "EGL does not support gbm platform" until proper Mesa DRI is installed. The pixman
   fallback requires zero GPU support and is sufficient for a functional desktop when
   performance is not needed.
+
+## L-memcg (2026-10-19): Memory caps and the OOM killer: what not to do
+
+- **Don't set hard per-launch cgroup limits (`systemd-run -p MemoryMax`) from a measured peak +15%.** On a 23 GiB box with ~12 GiB available, the kernel memcg OOM killer killed engines using only ~65 MB, every minute. Evidence: `Memory cgroup out of memory ... CONSTRAINT_MEMCG` inside our own `run-*.scope`; systemd-oomd and earlyoom were inactive.
+- **Don't use `MemorySwapMax=0` by default;** it removes the swap safety net.
+- **Prefer headroom-based soft limits** (`MemoryHigh`, MemAvailable minus a reserve) and clean reclamation: unload the idle/lowest-priority model via API before any kill.
+- **Before blaming RAM, read the kill line:** memcg constraint vs global OOM vs oomd/earlyoom tell different stories.
+- **Don't oversubscribe CPU:** concurrent jobs whose summed `-t` exceeded the core count (load 15 on 4 cores) slowed launches and confused health checks. Use a fleet-wide thread budget.
+- **Kill/watch scripts must be tested:** gawk reserves `log` as a builtin; a watcher that dies silently records nothing.
+- **Unvalidated tight caps produce phantom "crashes"** indistinguishable from engine bugs. Classify every death (bad params / memcg cap / OOM / engine bug) before fixing.
+- **Validated work isn't done until pushed and verified on origin/main.**
