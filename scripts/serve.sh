@@ -55,6 +55,15 @@ case "$bin" in */*)
     exit 1
   fi ;;
 esac
+# Launch guard: refuse params bench_guard flags (removed flags, ctx > train, encoder ubatch,
+# quantized V without FA, GPU layers on a legacy GPU). FAMILIA_GUARD=0 skips it.
+if [ "${FAMILIA_GUARD:-1}" != 0 ]; then
+  # shellcheck disable=SC2086
+  if ! python3 "$here/scripts/bench_guard.py" check -- ${args#* } "$@"; then
+    say "launch guard refused node $node (see familia-guard lines above); fix the params in graph.yaml; not starting"
+    exit 1
+  fi
+fi
 # Embedders need --embeddings and --pooling (REQUIRED, #51). grep -e: the pattern starts with "-".
 if printf '%s\n' "$args" | grep -q -E -e '(^|[[:space:]])--embeddings?([[:space:]]|$)'; then
   if ! printf '%s\n' "$args" | grep -q -E -e '(^|[[:space:]])--pooling[[:space:]]'; then

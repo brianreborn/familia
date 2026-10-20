@@ -12,6 +12,8 @@
             n_ubatch >= the prompt length (and n_batch >= n_ubatch), else llama.cpp aborts.
   memcap    a per-run RSS cap from the measured mmap peak plus a margin, clamped to the
             host's limit, instead of one fixed number for every model.
+  check     launch guard: refuse removed flags, ctx > train, encoder ubatch < prompt,
+            quantized V without FA, -ngl > 0 on a legacy GPU, unreadable GGUF (exit 3).
   effective the values a run really used, read from its -v load log.
 
   bench_guard.py meta FILE [--json] [--default FIELD=TEXT ...]
@@ -19,7 +21,8 @@
             sampling field; it is echoed as a note so the log and perf doc carry it)
   bench_guard.py memcap PEAK_MIB [--host-limit MIB]
 Stdlib only. Docs: docs/perf/2026-10-19-tuning-2.md."""
-import json, os, re, struct, sys
+import json
+import os, re, struct, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -184,7 +187,77 @@ def effective(log):
     return out
 
 
+def _argval(args, *names):
+    for i, a in enumerate(args):
+        if a in names and i + 1 < len(args):
+            return str(args[i + 1])
+    return None
+
+
+def preflight(args, meta=None, prompt_tokens=None, legacy_gpu=False, build=None):
+    """Launch-time param check. (problems, args): problems are 'BAD_PARAMS: ...' or
+    'MODEL_FILE: ...' strings; a launcher must refuse to start when there are any.
+    args comes back rewritten to the current flag spellings."""
+    problems = []
+    try:
+        args = modern_args([str(a) for a in args], build)
+    except ValueError as e:
+        problems.append("BAD_PARAMS: %s" % e)
+    if meta is not None:
+        for k in REQUIRED:
+            if meta.get(k) in (None, ""):
+                problems.append("MODEL_FILE: %s missing from GGUF header" % k)
+        ctx, train = _argval(args, "-c", "--ctx-size"), meta.get("context_length")
+        if ctx and train and int(ctx) > int(train) and not _argval(args, "--rope-scaling", "--rope-scale", "--yarn-orig-ctx"):
+            problems.append("BAD_PARAMS: -c %s > trained context %s without rope scaling" % (ctx, train))
+        if is_encoder(meta):
+            ub = int(_argval(args, "-ub", "--ubatch-size") or 512)
+            need = prompt_tokens or int(_argval(args, "-p", "--n-prompt") or 0)
+            if need > ub:
+                problems.append("BAD_PARAMS: encoder model needs -ub >= prompt (%d > %d); llama.cpp aborts (GGML_ASSERT)" % (need, ub))
+    ctv, fa = _argval(args, "-ctv", "--cache-type-v"), _argval(args, "-fa", "--flash-attn")
+    if ctv and ctv not in ("f16", "f32", "bf16") and fa in ("off", "0", "false"):
+        problems.append("BAD_PARAMS: quantized V cache (-ctv %s) needs flash attention, got -fa %s" % (ctv, fa))
+    ngl = _argval(args, "-ngl", "--n-gpu-layers", "--gpu-layers")
+    if legacy_gpu and ngl not in (None, "0"):
+        problems.append("BAD_PARAMS: -ngl %s on a legacy GPU (no supported llama.cpp backend); use -ngl 0" % ngl)
+    return problems, args
+
+
+def check_main(argv):
+    """bench_guard.py check [--model F] [--prompt N] [--legacy-gpu] [--build B] -- ARGS..."""
+    model = prompt = build = None
+    legacy = os.environ.get("FAMILIA_LEGACY_GPU") == "1"
+    if "--" in argv:
+        opts, args = argv[:argv.index("--")], argv[argv.index("--") + 1:]
+    else:
+        opts, args = [], argv
+    i = 0
+    while i < len(opts):
+        o = opts[i]
+        if o == "--legacy-gpu":
+            legacy = True
+        elif o in ("--model", "--prompt", "--build") and i + 1 < len(opts):
+            v = opts[i + 1]; i += 1
+            model, prompt, build = (v, prompt, build) if o == "--model" else (model, int(v), build) if o == "--prompt" else (model, prompt, v)
+        i += 1
+    model = model or _argval(args, "-m", "--model")
+    meta = None
+    if model:
+        try:
+            meta = summarize(read_gguf(model))
+        except Exception as e:  # unreadable / not GGUF
+            print("familia-guard: MODEL_FILE: %s: %s; not starting" % (model, e), file=sys.stderr)
+            return 3
+    problems, _ = preflight(args, meta, prompt, legacy, build)
+    for p in problems:
+        print("familia-guard: refusing launch: %s" % p, file=sys.stderr)
+    return 3 if problems else 0
+
+
 def main(argv):
+    if argv and argv[0] == "check":
+        return check_main(argv[1:])
     if len(argv) >= 2 and argv[0] == "meta":
         m = summarize(read_gguf(argv[1]))
         doc = {}
