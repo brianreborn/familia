@@ -4,6 +4,7 @@
 #  - systemd-oomd: user@.service ManagedOOMMemoryPressureLimit=90% (default 50%)
 #  - earlyoom (if installed): -m 3,2 -s 5,3 (keeps llama-* prefer list)
 #  - sysctl: vm.swappiness=60 (zram-friendly), vm.min_free_kbytes=131072, vm.overcommit_memory=0
+#  - journald Storage=persistent (kill lines survive user@ restarts/reboots)
 #  - zram (ZRAM=1, needs zram-generator): zram0 = 50% RAM, zstd
 set -e
 B=/var/lib/familia-tune; OD=/etc/systemd/system/user@.service.d/90-familia-oomd.conf
@@ -19,9 +20,11 @@ apply)
   if [ "${ZRAM:-0}" = 1 ] && [ -d /usr/lib/systemd/zram-generator.conf.d -o -x /usr/lib/systemd/system-generators/zram-generator ]; then
     mkdir -p "$(dirname "$ZR")"; printf '[zram0]\nzram-size = ram / 2\ncompression-algorithm = zstd\nswap-priority = 100\n' > "$ZR"
     systemctl daemon-reload; systemctl restart systemd-zram-setup@zram0 || true; fi
-  systemctl daemon-reload; systemctl try-restart systemd-oomd; echo applied;;
+  mkdir -p /etc/systemd/journald.conf.d /var/log/journal; printf '[Journal]\nStorage=persistent\n' > /etc/systemd/journald.conf.d/90-familia.conf
+  systemctl restart systemd-journald; journalctl --flush
+  systemctl daemon-reload; systemctl try-restart systemd-oomd 2>/dev/null || true; echo applied;;
 revert)
-  rm -f "$OD" "$SC" "$ZR"; [ -f "$B/earlyoom" ] && cp -p "$B/earlyoom" "$EO" && systemctl try-restart earlyoom
-  systemctl daemon-reload; systemctl try-restart systemd-oomd; echo "reverted (sysctls reset at reboot)";;
+  rm -f "$OD" "$SC" "$ZR" /etc/systemd/journald.conf.d/90-familia.conf; systemctl restart systemd-journald; [ -f "$B/earlyoom" ] && cp -p "$B/earlyoom" "$EO" && systemctl try-restart earlyoom
+  systemctl daemon-reload; systemctl try-restart systemd-oomd 2>/dev/null || true; echo "reverted (sysctls reset at reboot)";;
 *) systemctl show user@1000.service -p ManagedOOMMemoryPressureLimit; sysctl vm.swappiness vm.min_free_kbytes; swapon --show; grep -s ARGS "$EO";;
 esac
