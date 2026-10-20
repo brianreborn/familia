@@ -215,3 +215,8 @@ heavier node on another host. The executor can stay small.
   its own asserts.
 - RRSI-style regularization (#66): cost-aware acceptance, a noise-adjusted floor, a leakage
   critic beyond the term match. Terminal-RSI policy refinement (#68). Both are design-only.
+
+## See also
+
+- [Harness slimming](harness-slimming.md) (#89)
+- [Official Hermes plugins](hermes-plugins.md) (#92)

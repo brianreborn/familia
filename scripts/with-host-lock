@@ -1,0 +1,6 @@
+#!/bin/bash
+# Mutex for live model / big jobs on this host. Usage: scripts/with-host-lock <cmd...>
+set -euo pipefail
+LOCK=${FAMILIA_HOST_LOCK:-$HOME/.local/state/familia/big.lock}
+mkdir -p "$(dirname "$LOCK")"
+exec flock "$LOCK" "$@"

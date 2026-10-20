@@ -497,7 +497,9 @@ TYPES = {
                  "prompt_profile": opt("enum", choices={"auto", "lean", "full"}),  # #85
                  "min_ctx": req("int", min=1), "context_length": req("int", min=1), "aliases": req("map"),
                  # bundled skills (skills/catalog.json, scripts/skills.py, docs/skills.md)
-                 "skills": opt("strlist")},
+                 "skills": opt("strlist"),
+                 # portable Hermes plugins under ~/.hermes/plugins (docs/hermes-plugins.md, #92)
+                 "plugins": opt("strlist")},
                 check_agent, doc="agent process"),
     "fleets": T({"repo": req("str"), "agents": req("refs", ref="agents")}, doc="green-agentz agent group"),
     "agencies": T({"repo": req("str"), "labels": req("list"), "assignments": req("map")}, check_agency,

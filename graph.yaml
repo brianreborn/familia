@@ -729,6 +729,7 @@ harnesses:
   # Target harness descriptors (docs/harness2.md). Files only: prompt, guardrails, memory,
   # skills. There is no field for tools or toolsets, so nothing here can widen them.
   hermes-lab:
+    # plugins: [rea]   # #92: symlink from ~/.hermes/plugins into rendered HERMES_HOME
     kind: files
     agent: hermes-lab
     root: ~/.cache/familia/hermes-hermes-lab   # the HERMES_HOME scripts/hermes.sh renders for it

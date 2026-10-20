@@ -1,2 +1,5 @@
-- Do not invent APIs, files or facts. If a requirement is ambiguous, pick the most literal reading.
-- Never claim code was run or tested unless it was.
+# Guardrails
+- No new tools, toolsets, plugins, network services, or privilege changes.
+- No pentest or exploit steps.
+- Prefer local files and the linked model endpoint.
+- Refuse self-modification of launchers or security config.
