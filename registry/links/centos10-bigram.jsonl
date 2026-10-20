@@ -1,0 +1,11 @@
+{"link": "host_ram", "how": "memcpy", "bytes": 268435456, "reps": 6, "sec": 0.165001, "GBps": 9.761, "GBps_rw": 19.522, "host": "centos10-bigram", "time": "2026-10-19T17:27:43-0700"}
+{"device": "GeForce 8600 GT", "vram_total": 268238848, "vram_free": 244889344, "async_engines": 1, "gpu_overlap": 1, "host": "centos10-bigram", "time": "2026-10-19T17:27:43-0700"}
+{"link": "pcie_h2d", "how": "pinned", "bytes": 33554432, "reps": 8, "sec": 0.081593, "GBps": 3.29, "us_per_op": 10199.09, "host": "centos10-bigram", "time": "2026-10-19T17:27:43-0700"}
+{"link": "pcie_d2h", "how": "pinned", "bytes": 33554432, "reps": 8, "sec": 0.080864, "GBps": 3.32, "us_per_op": 10108.05, "host": "centos10-bigram", "time": "2026-10-19T17:27:43-0700"}
+{"link": "pcie_h2d", "how": "pageable", "bytes": 33554432, "reps": 8, "sec": 0.08348, "GBps": 3.216, "us_per_op": 10434.95, "host": "centos10-bigram", "time": "2026-10-19T17:27:43-0700"}
+{"link": "pcie_d2h", "how": "pageable", "bytes": 33554432, "reps": 8, "sec": 0.083261, "GBps": 3.224, "us_per_op": 10407.57, "host": "centos10-bigram", "time": "2026-10-19T17:27:43-0700"}
+{"link": "vram_copy", "how": "dtod(read+write=2x bytes)", "bytes": 67108864, "reps": 32, "sec": 0.140381, "GBps": 15.298, "us_per_op": 4386.89, "host": "centos10-bigram", "time": "2026-10-19T17:27:43-0700"}
+{"link": "pcie_h2d", "how": "latency_4B", "bytes": 4, "reps": 1000, "sec": 0.010551, "GBps": 0.0, "us_per_op": 10.55, "host": "centos10-bigram", "time": "2026-10-19T17:27:43-0700"}
+{"link": "pcie_d2h", "how": "latency_4B", "bytes": 4, "reps": 1000, "sec": 0.010014, "GBps": 0.0, "us_per_op": 10.01, "host": "centos10-bigram", "time": "2026-10-19T17:27:43-0700"}
+{"link": "sync", "how": "ctx_sync_empty", "bytes": 0, "reps": 1000, "sec": 0.000901, "GBps": 0.0, "us_per_op": 0.9, "host": "centos10-bigram", "time": "2026-10-19T17:27:43-0700"}
+{"link": "copy_engine", "how": "h2d+d2h two streams vs one", "bytes": 67108864, "reps": 8, "parallel_s": 0.163247, "serial_s": 0.163232, "overlap_ratio": 1.0, "host": "centos10-bigram", "time": "2026-10-19T17:27:43-0700"}
