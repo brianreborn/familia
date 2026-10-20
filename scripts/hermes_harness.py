@@ -29,6 +29,7 @@ import yaml
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 import validate_graph as vg  # noqa: E402
+import oom_adj  # noqa: E402
 
 HERMES_BIN = os.environ.get("HERMES_BIN", "/snap/bin/hermes-agent")
 HERMES_PY = "/snap/hermes-agent/current/bin/python3"
@@ -229,7 +230,8 @@ def ensure_server(g, name, n, timeout=900):
         logd = os.path.expanduser("~/.cache/familia/logs"); os.makedirs(logd, exist_ok=True)
         log = open(os.path.join(logd, f"{name}.log"), "ab")
         print(f"hermes.sh: starting node {name}: {' '.join(args)}", file=sys.stderr)
-        subprocess.Popen(args, stdout=log, stderr=log, stdin=subprocess.DEVNULL, start_new_session=True, env=vg.server_env(g, name))
+        subprocess.Popen(args, stdout=log, stderr=log, stdin=subprocess.DEVNULL, start_new_session=True, env=vg.server_env(g, name),
+                         preexec_fn=oom_adj.preexec())
         t0 = time.time()
         while (p := props(n)) is None or "default_generation_settings" not in p:
             if time.time() - t0 > timeout: die(f"node {name} did not come up on port {n['port']}")

@@ -31,6 +31,7 @@ import yaml
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 import self_improve as SI  # noqa: E402
+import oom_adj  # noqa: E402
 
 def die(msg, code=1): print(f"harness2: {msg}", file=sys.stderr); sys.exit(code)
 
@@ -71,7 +72,7 @@ def start_node(g, node, yes=False):
     args = vg.server_args(g, node)
     try:
         p = subprocess.Popen(args, stdout=log, stderr=log, stdin=subprocess.DEVNULL,
-                             start_new_session=True, env=vg.server_env(g, node))
+                             start_new_session=True, env=vg.server_env(g, node), preexec_fn=oom_adj.preexec())
     except FileNotFoundError:
         die(f"runtime binary not found: {args[0]} (run scripts/configure.sh, or start the node yourself)")
     print(f"harness2: started node {node} (pid {p.pid}); it is stopped when propose ends", file=sys.stderr)

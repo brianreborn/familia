@@ -94,7 +94,7 @@ if [ "$FAMILIA_MEMCAP" = 1 ] && command -v systemd-run >/dev/null 2>&1; then
   fi
   exec systemd-run --user --scope --quiet --unit="familia-$node-$$" \
     ${FAMILIA_MEMHIGH:+-p MemoryHigh="$FAMILIA_MEMHIGH"} -p MemoryMax="$FAMILIA_MEMMAX" \
-    -- sh -c 'echo 800 > /proc/self/oom_score_adj; exec "$@"' sh $args "$@"
+    -- sh -c 'echo ${FAMILIA_OOM_ADJ:-800} > /proc/self/oom_score_adj; exec "$@"' sh $args "$@"
 fi
 ngl="$(printf '%s\n' "$args" | sed -n -E 's/.*[[:space:]]-ngl[[:space:]]+([0-9]+).*/\1/p')"
 logdir="${FAMILIA_LOG_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/familia/logs}"

@@ -1,0 +1,5 @@
+#!/bin/sh
+# oom-adj N CMD...  -- exec CMD with oom_score_adj N (clamped 500..1000; unprivileged raise, #112)
+n=${1:-900}; shift; [ "$n" -lt 500 ] && n=500; [ "$n" -gt 1000 ] && n=1000
+echo "$n" > /proc/self/oom_score_adj 2>/dev/null || true
+exec "$@"

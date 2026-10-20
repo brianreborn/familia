@@ -109,3 +109,12 @@ echo -e "ALGO=zstd\nPERCENT=25\nPRIORITY=100" | sudo tee /etc/default/zramswap
 sudo systemctl restart zramswap
 cat /proc/swaps
 ```
+
+## Kill order and protected processes (#112)
+- Launch children (serve.sh, bench_capped.sh, launch_matrix.py, hermes/Harness² node launches) get
+  `oom_score_adj` 500..1000 (default 800 serve, 900 others; `FAMILIA_OOM_ADJ`/`OOM_ADJ`), unprivileged.
+- `sudo sh scripts/tune/linux-memory.sh apply` adds earlyoom `--avoid` (grok-bot connector, dogfood
+  `loop.sh`/`dispatch.py`, `kill-watch.sh`) and `--prefer ^(llama-.*|llama)$`; `revert` restores the backup.
+- `scripts/dogfood/install-loop-unit.sh` and `scripts/watchdog/install-kill-watch.sh` install user
+  units with `Restart=always`. kill-watch tags kills of protected processes `P0-PROTECTED` and copies
+  them to `protected-kills.log`. Tested only on recorded fixtures (tests/fixtures/oom112).

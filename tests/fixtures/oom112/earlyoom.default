@@ -1,0 +1,2 @@
+# defaults
+EARLYOOM_ARGS="-r 3600 -m 10 -s 10 --prefer old"

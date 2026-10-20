@@ -16,6 +16,7 @@ ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 import bench_guard as bg  # noqa: E402
 import launch_status as ls  # noqa: E402
+import oom_adj  # noqa: E402
 
 LIVE = set()  # pgids of launched children, killed if the matrix itself is stopped
 
@@ -123,7 +124,8 @@ def run(cmd, cap_mib, timeout, ready, env=None):
     t0 = time.time()
     log = tempfile.TemporaryFile("w+")
     try:
-        p = subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT, env=env, start_new_session=True)
+        p = subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT, env=env, start_new_session=True,
+                             preexec_fn=oom_adj.preexec())
     except FileNotFoundError as e:
         return {"rc": 127, "text": str(e), "capkill": False, "peak": 0, "secs": 0, "ready": False}
     LIVE.add(p.pid)
