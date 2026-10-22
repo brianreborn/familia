@@ -493,12 +493,12 @@ Runs: \fBmore scripts/menu\-internal.txt\fR
 .SS Pass\-through commands
 .TP
 \fBsync\fR \fIARG\fR...
-bring every pinned part (pins.txt) to its pin, together: [\-\-dry\-run] [\-\-check]; fetches only missing pins, never discards local changes.
+bring every pinned part to its pin: [\-\-dry\-run] [\-\-check], or update familia and sync a branch: \-\-branch BRANCH.
 .br
 Runs: \fBpython3 scripts/sync_pins.py\fR \fIARG\fR...
 .TP
 \fBupdate\fR \fIARG\fR...
-git pull \-\-ff\-only familia itself, then sync the pinned parts: [\-\-dry\-run].
+git pull \-\-ff\-only familia itself, then sync the pinned parts: [\-\-dry\-run] [\-\-branch BRANCH].
 .br
 Runs: \fBpython3 scripts/sync_pins.py \-\-update\fR \fIARG\fR...
 .TP

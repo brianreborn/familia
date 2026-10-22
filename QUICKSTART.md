@@ -26,9 +26,10 @@ Already have a checkout? Update familia and bring every pinned sub-project to it
 ```sh
 ./familia update          # git pull --ff-only, then sync; add --dry-run to only look
 ./familia sync --dry-run  # what is behind pins.txt and would move
+./familia sync --branch feat/llama.cpp-0.7.0  # fast-forward to a branch, then sync its pins
 ```
 
-On Windows: `python scripts\sync_pins.py --update` (or `--dry-run`). You rarely need to do this by hand: the installers, `configure.sh`, `start.sh`, `serve.sh`, `with-fleet.sh`, the panel and the tests all sync first, and after `configure.sh` a `git pull` of familia syncs too. Adding or fetching a model does not.
+The branch form updates familia itself from `origin/BRANCH` without switching branches, then syncs all projects to that branch's `pins.txt`; it refuses non-fast-forward updates. Use `--dry-run` to preview. On Windows, use `python scripts\sync_pins.py --branch feat/llama.cpp-0.7.0`. You rarely need the default sync by hand: the installers, `configure.sh`, `start.sh`, `serve.sh`, `with-fleet.sh`, the panel and the tests all sync first, and after `configure.sh` a `git pull` of familia syncs too. Adding or fetching a model does not.
 
 ### Licenses come first
 

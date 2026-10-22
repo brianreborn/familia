@@ -161,7 +161,7 @@ def test_git_pull_of_familia_syncs_through_the_hook_and_update(tmp_path):
     pins(up, [("a", a1, a)])
     g(up, "add", ".")
     g(up, "commit", "-q", "-m", "pins a1")
-    g(tmp_path, "clone", "-q", str(up), "mine")
+    g(tmp_path, "clone", "-q", "--branch", "main", str(up), "mine")
     mine = tmp_path / "mine"
     assert sync(mine).returncode == 0 and g(mine / "a", "rev-parse", "HEAD") == a1
     assert sync(mine, "--install-hooks").returncode == 0
@@ -177,6 +177,40 @@ def test_git_pull_of_familia_syncs_through_the_hook_and_update(tmp_path):
     r = sync(mine, "--update")
     assert r.returncode == 0, r.stderr
     assert g(mine / "a", "rev-parse", "HEAD") == a3, "familia update = pull, then sync"
+
+
+def test_branch_option_fast_forwards_familia_then_syncs_its_pins(tmp_path):
+    a, a1, a2 = upstream(tmp_path, "a")
+    up = tmp_path / "up" / "familia"
+    (up / "scripts").mkdir(parents=True)
+    shutil.copy(SYNC, up / "scripts" / "sync_pins.py")
+    g(up.parent, "init", "-q", "-b", "main", "familia")
+    pins(up, [("a", a1, a)])
+    g(up, "add", ".")
+    g(up, "commit", "-q", "-m", "main pins")
+    g(up, "checkout", "-q", "-b", "feature")
+    pins(up, [("a", a2, a)])
+    g(up, "commit", "-q", "-am", "feature pins")
+    g(tmp_path, "clone", "-q", "--branch", "main", str(up), "mine")
+    mine = tmp_path / "mine"
+
+    dry = sync(mine, "--branch", "feature", "--dry-run")
+    assert dry.returncode == 0, dry.stderr
+    assert "pull --ff-only origin feature" in dry.stdout
+    assert g(mine, "branch", "--show-current") == "main"
+
+    r = sync(mine, "--branch", "feature")
+    assert r.returncode == 0, r.stderr
+    assert g(mine, "branch", "--show-current") == "main"
+    assert g(mine, "rev-parse", "HEAD") == g(up, "rev-parse", "HEAD")
+    assert g(mine / "a", "rev-parse", "HEAD") == a2
+
+
+def test_branch_option_rejects_invalid_names(tmp_path, fam):
+    g(fam, "init", "-q")
+    r = sync(fam, "--branch", "-bad")
+    assert r.returncode == 2
+    assert "invalid branch name" in r.stderr
 
 
 def test_foreign_hook_is_left_alone(tmp_path, fam):
