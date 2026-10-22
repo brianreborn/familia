@@ -19,7 +19,7 @@ python3 -m pytest tests
 
 ```mermaid
 graph TD
-  host["hosts: kind desktop|laptop|phone|vm|unknown, measured, os, cpu, threads, ram_mib, gpus[], reserve_ram_mib, reported, windows"]
+  host["hosts: kind desktop|laptop|phone|vm|unknown, measured, os, cpu, threads, ram_mib, gpus[]|null, reserve_ram_mib, reported, windows"]
   gpu["gpus[]: vendor, model, vram_mib, backend cuda|vulkan|sycl|metal|opencl|rocm|none, backend_status verified|tbd|unsupported, compute_capability, driver, measured"]
   transport["transports: kind local|ssh|nfs|rsync|bittorrent|zfs, from, to"]
   runtime["runtimes: kind llama-server|drex-dlm, build, commit, bin, hosts, supported_archs, backends, spec_types"]
@@ -73,7 +73,7 @@ graph TD
 
 | Type | Rules |
 |---|---|
-| host | `gpus` is required on every host (`[]` when unknown). `measured: true` requires os, cpu, threads, ram_mib, gpus, reserve_ram_mib. `measured: false` must not carry numeric facts and cannot host active nodes; numbers someone else reported go in `reported:` with a `source`. `os: windows` requires a `windows` block: repo_path, models_path, runtime_path, startup (scheduled-task, start.bat, service, manual, or tbd), wake. Standing RAM rule: never aim for high utilization; miryam reserve is 3072 (`docs/ram-safety.md`). |
+| host | `gpus` is required on every host: `null` means inventory unknown, `[]` means measured and no GPUs, and a list records detected GPUs. GPU offload is rejected while inventory is `null`. `measured: true` requires os, cpu, threads, ram_mib, gpus, reserve_ram_mib; `gpus: null` is allowed when CPU/RAM facts are measured but GPU inventory is not. `measured: false` must not carry numeric facts and cannot host active nodes; numbers someone else reported go in `reported:` with a `source`. FreeBSD is a valid host OS; `angel` is the FreeBSD test host, with placement disabled until measured. `os: windows` requires a `windows` block: repo_path, models_path, runtime_path, startup (scheduled-task, start.bat, service, manual, or tbd), wake. Standing RAM rule: never aim for high utilization; miryam reserve is 3072 (`docs/ram-safety.md`). |
 | gpu | Every GPU entry needs vendor, model, vram_mib, backend, backend_status and measured. If `measured: false`, vram_mib must be null and backend_status can't be `verified`. A measured GPU must give vram_mib, using 0 for a shared-memory iGPU. `kind: unknown` is only allowed while unmeasured. |
 | transport | `local` must have from == to; every other kind must link two different hosts. |
 | runtime | `commit` must be a git sha, since a branch name isn't a pin. `supported_archs` lists only archs verified to load on that build. `backends` lists what the build was compiled with and must include cpu. `spec_types` lists the `--spec-type` values the build accepts. Several builds can be deployed side by side; `--check-runtimes` runs each `bin --version` and checks the commit. |
@@ -139,8 +139,9 @@ From `graph.yaml` on 2026-10-19. Addresses, users and ports live in the graph, n
 |---|---|---|---|---|---|
 | miryam | linux | Intel HD 620 (shared RAM) | vulkan | verified (slower than the CPU for decode, LESSONS-LEARNED L10) | yes |
 | qodesh | windows 10 | GeForce 8600 GT, 256 MiB, CC 1.1, driver 341.92 | cuda-sm11-ptx (hand-written PTX, `gpu-legacy/`) | verified | yes |
-| shalom | ? | unknown (`gpus: []`) | | | no (host unmeasured) |
+| shalom | ? | unknown (`gpus: null`) | | | no (host unmeasured) |
 | godslove | freebsd-15 | Ironlake / NVS | none | unsupported (green-roomz #5) | no |
+| angel | freebsd | unknown (`gpus: null`) | cpu (llama.cpp 0.7.0 via build-linux.sh) | test target; host unmeasured | no |
 | phone7, phone8 | android 16 (Galaxy A57) | Samsung Xclipse 550, shared RAM, Vulkan 1.4.304 (driver 25.4.7) | vulkan (OpenCL blocked) | verified | yes |
 
 qodesh is worth having for its 16 GB of RAM: it can hold bigger CPU-only models than miryam. `nodes.qodesh-resident` (Qwen3.5-2B on the non-AVX b11540 CPU build) is `active` but marked `selection: fallback`: user-selectable, about 0.91 tok/s (coarse binary search), while SmolLM2 stays the qodesh default. The phone nodes stay `planned` while the phones are out of range ([#46](https://github.com/brianreborn/familia/issues/46)).

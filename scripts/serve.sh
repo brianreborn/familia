@@ -18,9 +18,22 @@ case "${1:-}" in
 esac
 node="$1"; shift
 here="$(cd "$(dirname "$0")/.." && pwd)"
-if ! args="$(python3 "$here/scripts/validate_graph.py" --graph "$here/graph.yaml" --args "$node")"; then
-  say "validate_graph.py --args $node failed (see above); not starting"
-  exit 1
+if [ -n "${FAMILIA_HOST:-}" ]; then
+  # The host name comes from graph selection, not arbitrary shell text.
+  case "$FAMILIA_HOST" in *[!A-Za-z0-9._-]*)
+    say "invalid FAMILIA_HOST=$FAMILIA_HOST"
+    exit 2
+    ;;
+  esac
+  if ! args="$(python3 "$here/scripts/validate_graph.py" --graph "$here/graph.yaml" --host "$FAMILIA_HOST" --args "$node")"; then
+    say "validate_graph.py --args $node failed for host $FAMILIA_HOST (see above); not starting"
+    exit 1
+  fi
+else
+  if ! args="$(python3 "$here/scripts/validate_graph.py" --graph "$here/graph.yaml" --args "$node")"; then
+    say "validate_graph.py --args $node failed (see above); not starting"
+    exit 1
+  fi
 fi
 # Licenses first (docs/licenses.md): the graph selection's licenses must be accepted before any
 # model starts. scripts/licenses.py gate asks on a terminal; FAMILIA_ACCEPT_LICENSES=yes accepts.

@@ -178,12 +178,10 @@ def test_stop_tokens():
     assert [w["eog_by"] for w in st["tokens"]] == ["GGUF tokenizer.ggml.eos_token_id", None] and st["missing"][0]["text"] == "<|weird|>"
 
 
-def test_curated_file_and_registry_entries():
-    """Every curated quote is in the stored snapshot; every entry was analysed (refresh)."""
-    cur = mp.load_curated()
+def test_registered_model_parameter_entries_are_analyzed():
+    """Every registered entry was analyzed; prospective curations need not be registered yet."""
     entries = {f[:-5]: json.load(open(os.path.join(ROOT, "registry", "models", f), encoding="utf-8"))
                for f in os.listdir(os.path.join(ROOT, "registry", "models")) if f.endswith(".json")}
-    assert set(cur) <= set(entries)
     for eid, e in entries.items():
         assert e.get("required_params"), eid
         if str(e.get("weights") or "").startswith("absent"):

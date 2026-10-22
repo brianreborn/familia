@@ -20,12 +20,9 @@ def test_draft_args_pass_bench_guard():
 
 def test_served_args_include_draft_when_enabled(tmp_path):
     g = yaml.safe_load(open(os.path.join(HERE, "graph.yaml")))
-    import validate_graph as VG
     for s in g["speculative"].values(): s["status"] = "planned"
     g["speculative"]["coder-draft"]["status"] = "experimental"
-    if not os.path.isfile(os.path.expanduser(g["models"][g["nodes"]["coder"]["model"]]["gguf"])):
-        import pytest; pytest.skip("coder weights not on this host")
     p = tmp_path / "g.yaml"; yaml.safe_dump(g, open(p, "w"))
-    out = subprocess.run([sys.executable, os.path.join(HERE, "scripts", "validate_graph.py"), "--graph", str(p), "--args", "coder"], capture_output=True, text=True)
+    out = subprocess.run([sys.executable, os.path.join(HERE, "scripts", "validate_graph.py"), "--graph", str(p), "--no-files", "--args", "coder"], capture_output=True, text=True)
     assert out.returncode == 0, out.stderr[-500:]
     assert "-md " in out.stdout and "--spec-type draft-simple" in out.stdout and "--spec-draft-n-max" in out.stdout

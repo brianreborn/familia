@@ -1,8 +1,8 @@
 # name <tab> revision <tab> origin <tab> role
 # Revisions are the commits present when this file was written. They are pins, not submodules.
-code-bootstraps-llama.cpp	eb09633446dc2f937cb6008aea7d186054330498	https://github.com/brianreborn/code-bootstraps-llama.cpp.git	models and the agent
+code-bootstraps-llama.cpp	8bb30033b028efcb137652f1fdd2864e76d4aa51	https://github.com/brianreborn/code-bootstraps-llama.cpp.git	models and the agent
 agent-reach	a19a171fa980a0785849596492e0af4db800c82f	https://github.com/Panniantong/Agent-Reach.git	reach tools; not vendored
-green-roomz	ceeef5069c393fa3802701855a51bf9b6e1115a8	https://github.com/brianreborn/green-roomz.git	alias gateway
+green-roomz	b2a8eacba79e849cb41229c66f507874080f4453	https://github.com/brianreborn/green-roomz.git	alias gateway
 green-agentz	9b9d5ad506cdd60e01ac21cd3f60b5a23b6d4847	https://github.com/brianreborn/green-agentz.git	fleet
 green-agency	6a4e0d7a64646310485615ae5ecf917fbbf36aed	https://github.com/brianreborn/green-agency.git	retired; do not treat as the fleet
 llama-server__nace-ai__edlm	edlm	https://github.com/nace-ai/llama.cpp.git	runtime: drex-dlm diffusion engine

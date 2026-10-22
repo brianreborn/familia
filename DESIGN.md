@@ -138,8 +138,8 @@ Windows uses the same order. `SeLockMemoryPrivilege` is granted to the user for 
 
 On Android / Termux and remote machines, interactive terminal shells can be closed or reclaimed by the OS. Processes can run detached:
 
-- `DETACH_MODE` option (`foreground`, `nohup`, `tmux`, `screen`).
-- In `tmux` or `screen` mode, `start.sh` allocates a named detached session (`familia-server`).
+- `DETACH_MODE` option (`foreground`, `nohup`, `tmux`, `screen`, `screen-attached`).
+- In `tmux` or `screen` mode, `start.sh` allocates a named detached graph-supervisor session (`familia-server`); it owns only processes it launched from the local graph selection.
 - In `nohup` mode, file descriptors are detached from the controlling TTY, streaming stdout/stderr to `.cache/server.log`.
 - On Termux, `termux-wake-lock` is held unconditionally so the daemon remains scheduled when backgrounded or detached.
 

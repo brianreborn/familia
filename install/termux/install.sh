@@ -10,7 +10,8 @@
 #        --yes (accept the license review; summary still printed)  --accept-unknown
 #        --no-runtime  --force-host  --no-wakelock
 #        --no-path (do not write the $PREFIX/bin/familia shim; scripts/install-cli.sh)
-#   --name defaults to <model>-<last IPv4 octet> (or <model>-<boot_id prefix>), unique per phone.
+#   --name defaults to <model>-<last IPv4 octet> (or <model>-<boot_id prefix>), unique per phone;
+#          interactive installs prompt with that value as the default.
 # Example: sh install/termux/install.sh --dry-run
 set -eu
 
@@ -86,6 +87,11 @@ if [ -z "$NAME" ]; then
   SID=$(short_id || true)
   [ -n "$MODEL" ] || MODEL=$(uname -n 2>/dev/null | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9\n' '-' | sed 's/-*$//')
   [ -n "$MODEL" ] && NAME="$MODEL${SID:+-$SID}"
+  if [ -n "$NAME" ] && [ -t 0 ]; then
+    printf 'Host name for graph.yaml [%s]: ' "$NAME" >&2
+    IFS= read -r ANSWER || ANSWER=""
+    [ -z "$ANSWER" ] || NAME=$ANSWER
+  fi
 fi
 [ -n "$NAME" ] || die "could not determine host name; pass --name (e.g. a57, note9, pixel8)"
 say "host $NAME, prefix $PREFIX_DIR"

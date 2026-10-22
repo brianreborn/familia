@@ -6,6 +6,7 @@
 # Flags: --dry-run  print every action, change nothing
 #        --uninstall remove what this script installed (models dir kept unless --purge)
 #        --name NAME host name for graph.yaml (default: short hostname, lowercased)
+#                     interactive installs prompt with this hostname as the default
 #        --build bNNNN llama.cpp release tag (default b11539, familia's verified build;
 #                     'latest' = newest bNNNN release that has this platform's asset)
 #        --no-runtime  skip the llama.cpp download     --systemd  install a systemd --user unit
@@ -81,7 +82,14 @@ case "$OS/$ARCH" in
   Darwin/x86_64) ASSET_RE='bin-macos-x64\.(tar\.gz|zip)$' ;;
   *) die "unsupported platform $OS/$ARCH (Termux: use install/termux/install.sh)" ;;
 esac
-[ -n "$NAME" ] || NAME=$(hostname 2>/dev/null | cut -d. -f1 | tr '[:upper:]' '[:lower:]')
+[ -n "$NAME" ] || {
+  NAME=$(hostname 2>/dev/null | cut -d. -f1 | tr '[:upper:]' '[:lower:]')
+  if [ -n "$NAME" ] && [ -t 0 ]; then
+    printf 'Host name for graph.yaml [%s]: ' "$NAME" >&2
+    IFS= read -r ANSWER || ANSWER=""
+    [ -z "$ANSWER" ] || NAME=$ANSWER
+  fi
+}
 [ -n "$NAME" ] || die "could not determine host name; pass --name"
 
 say "prefix $PREFIX, host $NAME, platform $OS/$ARCH"
