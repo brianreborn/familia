@@ -204,7 +204,9 @@ class Pages:
         added = [x for x in new if x not in cur]
         changes = ["Switch on %s for %s (license %s)" % (x, agent, by_id[x]["license"]) for x in added]
         changes += ["Switch off %s for %s" % (x, agent) for x in cur if x not in new]
-        out = {"changes": changes, "errors": [], "files": [skills.graph_path(), licenses.ACCEPT_FILE],
+        items, _ = licenses.selection(skills.graph_path(), add_skills=added)
+        out = {"changes": changes, "errors": [],
+               "files": [skills.graph_path(), *licenses.acceptance_files(items)],
                "what": "skills for %s: %s" % (agent, "; ".join(changes)),
                "notes": "<p>Saved as <code>%s.%s.skills: [%s]</code> in graph.yaml; its comments are kept. "
                         "Restart the agent (<code>scripts/hermes.sh</code>) to load them.</p>"
@@ -263,10 +265,11 @@ class Pages:
             return {"changes": [], "errors": []}
         return {"changes": ["Record that you accept the %d licenses of this selection (hash %s)"
                             % (len({i['license'] for i in items}), digest[:16])],
-                "errors": [], "files": [licenses.ACCEPT_FILE], "confirm": self._license_confirms(items),
+                "errors": [], "files": licenses.acceptance_files(items),
+                "confirm": self._license_confirms(items),
                 "what": "accepted licenses (hash %s)" % digest[:16],
-                "notes": "<p>Stored in <code>.cache/familia/license-acceptance.json</code>, the same file "
-                         "<code>scripts/licenses.py</code> uses. You are asked again only if the selection changes.</p>"}
+                "notes": "<p>Each license is stored separately under the familia accepted-licenses state directory. "
+                         "You are asked again only when license/version evidence changes.</p>"}
 
     def _licenses_apply(self, form):
         items, digest = licenses.selection(skills.graph_path())

@@ -50,6 +50,20 @@ through Termux. Run the Python suite where supported; platform checks also cover
 host measurement, and runtime build/launch paths. Results on one platform do not imply validation
 on the others.
 
+### Acceptance for substantial features and model configurations
+
+The Python suite is necessary, but it is not a substitute for end-to-end task-suite evidence.
+Substantial feature changes need a real integrated-path test with representative inputs. A new
+or materially changed model configuration stays planned/experimental until it passes a fixed
+role-appropriate task suite against a baseline using the same tasks. Define pass criteria before
+the run and record the exact model/runtime, configuration and prompt/template hashes, suite
+revision, seed, host/platform, per-task results, aggregate, and known limitations. Use each
+platform the feature claims to support where relevant; the initial targets are Ubuntu, Windows,
+FreeBSD, and Samsung Android/Termux. If an appropriate maintained suite is unavailable, add a
+small fixed representative suite before promotion and document its limits. This hard requirement
+is tracked in [#119](https://github.com/brianreborn/familia/issues/119); the durable runner and
+suite coverage are still to be built. Pentest tests remain launch-test-only.
+
 - Windows without bash: 3 tests fail because they shell out to `bash`
   (`test_android_targets::test_scripts_have_no_hardcoded_targets_or_sshpass`,
   `test_installers::test_host_measure_insert_and_idempotent`, `test_installers::test_installer_shapes`).

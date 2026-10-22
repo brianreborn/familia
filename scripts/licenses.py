@@ -185,18 +185,25 @@ def manifest_candidates():
 
 
 def item(kind, ident, used_for, lic, text=None, link=None, notes=None, extra_text=(), source=None):
+    import license_acceptance
+
     lic = canon(lic)
     cat, flags = classify(lic)
+    extra_text = tuple(extra_text or ())
+    extra_excerpts = excerpts([text] + list(extra_text)) if cat != "permissive" else None
     if text is None and cat != "unknown" and source != "declared":
         flags = flags + ["no local copy of the text"]
     it = {"kind": kind, "id": ident, "used_for": used_for, "license": lic or "unknown",
           "category": cat, "flags": flags, "text": text, "link": link, "source": source}
+    it["version"] = it["license"]
+    it["evidence_sha256"] = license_acceptance.evidence_sha256(
+        text, extra_text, source, link, extra_excerpts
+    )
     if notes:
         it["notes"] = notes
     if cat != "permissive":
-        ex = excerpts([text] + list(extra_text))
-        if ex:
-            it["excerpts"] = ex
+        if extra_excerpts:
+            it["excerpts"] = extra_excerpts
     return it
 
 
@@ -433,24 +440,23 @@ def render(items, digest, out=sys.stdout):
 
 
 def accepted(digest, items):
-    a = load_json(ACCEPT_FILE) or {}
-    if a.get("selection_sha256") != digest:
-        return False
-    if any(i["category"] == "unknown" for i in items) and not a.get("accepted_unknown"):
-        return False
-    return True
+    del digest  # acceptance is per exact license fingerprint, not per current graph selection
+    import license_acceptance
+    directory = license_acceptance.accepted_dir(ACCEPT_FILE)
+    return all(license_acceptance.is_accepted(i, directory) for i in items)
+
+
+def acceptance_files(items):
+    import license_acceptance
+    return license_acceptance.files_for(items, license_acceptance.accepted_dir(ACCEPT_FILE))
 
 
 def record(digest, items, unknown_ok, how):
-    os.makedirs(os.path.dirname(ACCEPT_FILE), exist_ok=True)
-    data = {"selection_sha256": digest, "accepted_at": datetime.datetime.now().astimezone().isoformat(timespec="seconds"),
-            "how": how, "accepted_unknown": bool(unknown_ok),
-            "licenses": sorted({i["license"] for i in items}),
-            "items": [{k: i[k] for k in ("kind", "id", "license", "category")} for i in items]}
-    tmp = ACCEPT_FILE + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as fh:
-        json.dump(data, fh, indent=2)
-    os.replace(tmp, ACCEPT_FILE)
+    del digest
+    import license_acceptance
+    directory = license_acceptance.accepted_dir(ACCEPT_FILE)
+    for license_item in items:
+        license_acceptance.record(license_item, how, unknown_ok, directory)
 
 
 def env_yes(name):

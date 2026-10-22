@@ -203,8 +203,11 @@ def test_add_model_fetch_end_to_end(hub, tmp_path, monkeypatch, capsys):
     assert "license of org--Thing-GGUF--Thing-Q4_K_M" in capsys.readouterr().err
     assert not os.path.isfile(tmp_path / "meta" / "org--Thing-GGUF" / SHA / "Thing-Q4_K_M.gguf")
     rc = am.main(args + ["--accept-licenses"])
+    accepted_output = capsys.readouterr()
     assert rc == 0
-    assert json.load(open(tmp_path / "acc.json"))["models"]["org--Thing-GGUF--Thing-Q4_K_M"]["license"] == "apache-2.0"
+    assert "stored in " in accepted_output.err and "accepted-licenses" in accepted_output.err
+    records = list(tmp_path.rglob("*.md"))
+    assert records and any('"license": "apache-2.0"' in record.read_text() for record in records)
     m = json.loads((boot / "config" / "models-manifest.json").read_text())
     c = next(c for c in m["candidates"] if c["file"] == "Thing-Q4_K_M.gguf")
     assert c["repo"] == "org/Thing-GGUF" and c["revision"] == SHA and c["sha256"] == hashlib.sha256(hub.gguf).hexdigest()

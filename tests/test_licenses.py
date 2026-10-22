@@ -77,18 +77,23 @@ def test_unknown_blocks_until_explicit(tmp_path):
     assert not (tmp_path / "acc.json").exists()
     r = run(tmp_path, "review", "--yes", "--accept-unknown")
     assert r.returncode == 0 and "Licenses for your current familia selection" in r.stdout
-    acc = json.loads((tmp_path / "acc.json").read_text())
-    assert acc["accepted_unknown"] and len(acc["selection_sha256"]) == 64
+    assert not (tmp_path / "acc.json").exists()
+    records = list(tmp_path.rglob("*.md"))
+    assert records and any('"license": "unknown"' in record.read_text() for record in records)
     assert run(tmp_path, "check").returncode == 0
     assert run(tmp_path, "gate").returncode == 0
 
 
-def test_change_reasks(tmp_path):
+def test_graph_selection_change_reuses_accepted_license(tmp_path):
     assert run(tmp_path, "review", "--yes", "--accept-unknown").returncode == 0
     assert run(tmp_path, "check").returncode == 0
     assert run(tmp_path, "check", "--add-skill", "artemis-android-skill").returncode == 1
+    import licenses
+    _, before_digest = licenses.selection(str(tmp_path / "graph.yaml"))
     (tmp_path / "graph.yaml").write_text(GRAPH.replace("[etioz]", "[etioz, green-probe]"))
-    assert run(tmp_path, "check").returncode == 1
+    _, after_digest = licenses.selection(str(tmp_path / "graph.yaml"))
+    assert after_digest != before_digest
+    assert run(tmp_path, "check").returncode == 0
 
 
 def test_env_yes_and_json(tmp_path):

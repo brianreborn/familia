@@ -101,7 +101,9 @@ def test_skills_preview_writes_nothing_then_save_and_undo(env):
     assert len(after.splitlines()) == len(before.splitlines()) + 1
     import licenses
     items, digest = licenses.selection(str(g))
-    assert licenses.accepted(digest, items) and json.loads(acc.read_text())["how"] == "panel"
+    records = list(acc.parent.rglob("*.md"))
+    assert licenses.accepted(digest, items) and records
+    assert all('"accepted_by": "panel"' in record.read_text() for record in records)
     # The terminal tool agrees with what the panel recorded.
     r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "licenses.py"), "check", "--quiet"],
                        env=dict(os.environ), capture_output=True, text=True)
@@ -157,7 +159,9 @@ def test_licenses_page_attention_first_and_accept(env):
         confirm["accept_unknown"] = "1"
     s, h = post(panel, app, "/p/licenses/save", digest=digest, do="save", **confirm)
     assert s == 200 and licenses.accepted(digest, items)
-    assert json.loads(acc.read_text())["selection_sha256"] == digest
+    assert not acc.exists()
+    records = list(acc.parent.rglob("*.md"))
+    assert records and all(record.is_file() for record in records)
 
 
 def test_hermes_page_builds_command_and_starts_nothing(env, monkeypatch):

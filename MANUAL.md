@@ -109,7 +109,9 @@ License acceptance: every DB entry carries `license_info` with:
 - the license file(s), with path, URL and sha256, and a link
 - obligations quoted from the card or license, each with `file:line`
 
-Unknown stays unknown. A full fetch prints this and needs `--accept-licenses`/`--yes` or an interactive yes before it downloads weights. Acceptance is recorded per model and license digest in `.cache/familia/model-license-acceptance.json`, so a changed license is asked again. Launching (`serve.sh`, `hermes_harness.py`) is gated by `scripts/licenses.py gate --graph`. See [docs/licenses.md](docs/licenses.md).
+Acceptance is stored as separate per-license records under familia's accepted-licenses state directory; the legacy aggregate paths described below are obsolete.
+
+Unknown stays unknown. A full fetch prints this and needs `--accept-licenses`/`--yes` or an interactive yes before it downloads weights. Consent is recorded in individual Markdown files under familia's accepted-licenses state directory, keyed to the license identifier and legal-text evidence. Launching (`serve.sh`, `hermes_harness.py`) is gated by `scripts/licenses.py gate --graph`. See [docs/licenses.md](docs/licenses.md).
 
 ### The model database
 
