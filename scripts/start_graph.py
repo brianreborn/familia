@@ -171,6 +171,15 @@ def graph_proxy_manifest(host, gateway, aliases):
     }
 
 
+def _report_remote_topology(remote_nodes, remote_gateways, omitted_aliases):
+    for name, remote_host in remote_nodes:
+        print(f"familia-graph: remote node {name} on {remote_host}; not starting or connecting without consent")
+    for gateway_name, remote_host in remote_gateways:
+        print(f"familia-graph: remote gateway {gateway_name} on {remote_host}; not starting or connecting")
+    for alias, node_name, remote_host in omitted_aliases:
+        print(f"familia-graph: route {alias} -> {node_name} omitted ({remote_host}); no remote connection")
+
+
 def _check_port_available(host, port, label):
     if not port_available(host, port):
         raise StartupError(f"{label} port {port} is already occupied; nothing was started")
@@ -267,12 +276,7 @@ def run(args=None):
             raise StartupError("graph validation failed:\n  " + "\n  ".join(errors))
         if options.dry_run:
             plans = validate_local_nodes(graph, host, nodes, check_files=False)
-            for name, remote_host in remote_nodes:
-                print(f"familia-graph: remote node {name} on {remote_host}; not starting or connecting without consent")
-            for gateway_name, remote_host in remote_gateways:
-                print(f"familia-graph: remote gateway {gateway_name} on {remote_host}; not starting or connecting")
-            for alias, node_name, remote_host in omitted_aliases:
-                print(f"familia-graph: route {alias} -> {node_name} omitted ({remote_host}); no remote connection")
+            _report_remote_topology(remote_nodes, remote_gateways, omitted_aliases)
             print(f"familia-graph: host {host}; active local nodes: {', '.join(n for n, _ in plans) or 'none'}")
             for gateway_name, gateway, aliases in gateways:
                 print(f"familia-graph: gateway {gateway_name} on 127.0.0.1:{gateway['port']}; aliases: {', '.join(aliases)}")
@@ -284,12 +288,7 @@ def run(args=None):
             print(f"familia-graph: no active local topology on {host}; nothing started")
             return 0
 
-        for name, remote_host in remote_nodes:
-            print(f"familia-graph: remote node {name} on {remote_host}; not starting or connecting without consent")
-        for gateway_name, remote_host in remote_gateways:
-            print(f"familia-graph: remote gateway {gateway_name} on {remote_host}; not starting or connecting")
-        for alias, node_name, remote_host in omitted_aliases:
-            print(f"familia-graph: route {alias} -> {node_name} omitted ({remote_host}); no remote connection")
+        _report_remote_topology(remote_nodes, remote_gateways, omitted_aliases)
 
         launch_env = _run_gate_and_sync(ROOT, options.yes)
         plans = validate_local_nodes(graph, host, nodes, check_files=True)
