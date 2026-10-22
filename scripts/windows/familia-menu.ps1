@@ -357,21 +357,38 @@ while ($true) {
   $sr = SearchKey $c; if ($sr -eq 'quit') { exit 0 }; if ($sr -eq 'done') { continue }
   if (-not ($c -match '^\d+$') -or [int]$c -lt 1 -or [int]$c -gt $groups.Count) { Write-Host "'$c' isn't one of the choices. Type a number, /word to search, or q."; continue }
   $g = $groups[[int]$c - 1]
+  $gi = @(); foreach ($i in $items) { if ($i.Group -eq $g) { $gi += $i } }
+  $pageSize = 7; $page = 0
+  $pages = [math]::Ceiling($gi.Count / [double]$pageSize)
   while ($true) {
-    $gi = @(); foreach ($i in $items) { if ($i.Group -eq $g) { $gi += $i } }
     Write-Host ''; Write-Host "${g}: $($groupDesc[$g])"
-    for ($n = 0; $n -lt $gi.Count; $n++) {
-      $note = ''; if (-not (NeedOk $gi[$n].Need)) { $note = ' (not available yet)' }
-      Write-Host ('  {0}) {1}{2}' -f ($n + 1), $gi[$n].Label, $note)
-      Write-Host ('       runs: {0}' -f (Shown $gi[$n].Cmd))
+    $start = $page * $pageSize
+    $end = [math]::Min($start + $pageSize, $gi.Count)
+    if ($pages -gt 1) { Write-Host ('  Page {0} of {1} (items {2}-{3} of {4})' -f ($page + 1), $pages, ($start + 1), $end, $gi.Count) }
+    for ($idx = $start; $idx -lt $end; $idx++) {
+      $note = ''; if (-not (NeedOk $gi[$idx].Need)) { $note = ' (not available yet)' }
+      Write-Host ('  {0}) {1}{2}' -f ($idx - $start + 1), $gi[$idx].Label, $note)
+      Write-Host ('       runs: {0}' -f (Shown $gi[$idx].Cmd))
+    }
+    if ($pages -gt 1) {
+      if ($page -gt 0) { Write-Host '  <) Previous page' }
+      if ($page -lt ($pages - 1)) { Write-Host '  >) Next page' }
     }
     Write-Host '  b) Back      /word search every group (n/N next/previous match)'
-    $c = Read-Host "Choose 1-$($gi.Count), /search or b"
+    if ($pages -gt 1) { $c = Read-Host "Choose 1-$($end - $start), </> page, /search or b" }
+    else { $c = Read-Host "Choose 1-$($gi.Count), /search or b" }
     if ($c -eq $null -or $c -eq 'b' -or $c -eq '') { break }
     if ($c -eq 'q') { exit 0 }
+    if ($c -eq '>' -or $c -eq 'next') { if ($page -lt ($pages - 1)) { $page++ }; continue }
+    if ($c -eq '<' -or $c -eq 'prev') { if ($page -gt 0) { $page-- }; continue }
     $sr = SearchKey $c; if ($sr -eq 'quit') { exit 0 }; if ($sr -eq 'done') { continue }
-    if (-not ($c -match '^\d+$') -or [int]$c -lt 1 -or [int]$c -gt $gi.Count) { Write-Host "'$c' isn't one of the choices. Type a number, /word to search, or b."; continue }
-    $rc = RunItem $gi[[int]$c - 1].Key @() $true
+    if (-not ($c -match '^\d+$') -or [int]$c -lt 1 -or [int]$c -gt ($end - $start)) {
+      if ($pages -gt 1) { Write-Host "'$c' isn't one of the choices. Type a number, </> page, /word to search, or b." }
+      else { Write-Host "'$c' isn't one of the choices. Type a number, /word to search, or b." }
+      continue
+    }
+    $selected = $start + [int]$c - 1
+    $rc = RunItem $gi[$selected].Key @() $true
     if ($rc) { Write-Host "(that step exited with status $rc)" }
   }
 }

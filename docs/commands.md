@@ -56,8 +56,8 @@ The interactive menu and `--list` show these paths before the command groups. Fo
 |---|---|---|---|
 | `setup.panel` | Configure in a simple window (mouse, keyboard or switch friendly) ([panel.md](panel.md)) | `python3 scripts/panel.py` | `python scripts\panel.py` |
 | `setup.sync-preview` | Pinned parts: show what is behind pins.txt and would move (no changes) | `python3 scripts/sync_pins.py --dry-run` | `python scripts\sync_pins.py --dry-run` |
-| `setup.sync` | Pinned parts: bring every part to its pin, together (fetches only missing pins) (licenses first) | `python3 scripts/sync_pins.py` | `python scripts\sync_pins.py` |
-| `setup.update` | Update familia (git pull --ff-only), then sync the pinned parts (licenses first) | `python3 scripts/sync_pins.py --update` | `python scripts\sync_pins.py --update` |
+| `setup.sync` | Pinned parts: bring every part to its pin, together; `--branch BRANCH` fast-forwards familia to that branch then syncs its pins (licenses first) | `python3 scripts/sync_pins.py [--branch BRANCH]` | `python scripts\sync_pins.py [--branch BRANCH]` |
+| `setup.update` | Update familia (git pull --ff-only, optionally `--branch BRANCH`), then sync pinned parts (licenses first) | `python3 scripts/sync_pins.py --update [--branch BRANCH]` | `python scripts\sync_pins.py --update [--branch BRANCH]` |
 | `setup.configure` | Set up this checkout: sync the pinned parts and the git-pull hooks (licenses first) | `sh scripts/configure.sh` | - |
 | `setup.licenses` | Review the licenses of everything you have chosen | `python3 scripts/licenses.py review` | `python scripts\licenses.py review` |
 | `setup.settings` | Change launcher settings (port, threads, context) on the terminal | `sh scripts/configure.sh --interactive` | - |

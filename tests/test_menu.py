@@ -207,6 +207,17 @@ def test_piped_choices():
     assert "isn't one of the choices" in r.stdout
 
 
+def test_long_group_is_paged_instead_of_showing_a_wall_of_items():
+    r = menu("--pipe", "--dry-run", inp="1\n>\n<\nb\nq\n")
+    assert r.returncode == 0, r.stderr
+    assert "Page 1 of 3 (items 1-7 of 15)" in r.stdout
+    assert "Page 2 of 3 (items 8-14 of 15)" in r.stdout
+    first = r.stdout.split("Page 1 of 3", 1)[1].split("Page 2 of 3", 1)[0]
+    assert len(re.findall(r"^  \d+\) ", first, re.M)) == 7
+    assert ">) Next page" in first
+    assert "<) Previous page" in r.stdout.split("Page 2 of 3", 1)[1]
+
+
 def test_license_gate_blocks_without_terminal(tmp_path):
     r = menu("--run", "hosts.start", FAMILIA_LICENSE_ACCEPT_FILE=str(tmp_path / "a.json"))
     assert r.returncode != 0 and "licenses" in r.stderr.lower()

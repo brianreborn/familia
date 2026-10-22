@@ -43,7 +43,12 @@ bash tests/test_bt_loopback.sh                   # private bittorrent loopback
 
 On Windows set `PYTHONUTF8=1` first. Test counts vary with optional tools and local model files;
 pytest reports unavailable prerequisites as skips. On Linux, the full suite passed on
-2026-10-22 (651 passed, 23 skipped). Skips need llama-server binaries, model files, or network.
+2026-10-22 (654 passed, 24 skipped). Skips need llama-server binaries, model files, or network.
+
+Initial cross-platform coverage targets are Ubuntu, Windows 10/11, FreeBSD, and Samsung Android
+through Termux. Run the Python suite where supported; platform checks also cover the native menu,
+host measurement, and runtime build/launch paths. Results on one platform do not imply validation
+on the others.
 
 - Windows without bash: 3 tests fail because they shell out to `bash`
   (`test_android_targets::test_scripts_have_no_hardcoded_targets_or_sshpass`,

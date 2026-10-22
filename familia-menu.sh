@@ -308,7 +308,7 @@ search_key() {  # handle /x ?x n N typed at any menu prompt; returns 0 handled (
 }
 
 menu() {
-  local gs g n choice items key first=1
+  local gs g n choice items key first=1 page page_size=7 pages start end idx
   while true; do
     say ""
     if [ "$first" = 1 ]; then workflow_paths; first=0; fi
@@ -326,24 +326,51 @@ EOF2
       say "'$choice' isn't one of the choices. Type a number from 1 to $n, /word to search, or q."; continue
     fi
     g=${gs[$((choice-1))]}
-    while true; do
-      say ""; say "$g: $(group_desc "$g")"
-      items=(); n=0
-      while IFS='|' read -r key grp label cmd gate need wcmd; do
-        [ "$grp" = "$g" ] || continue
-        items+=("$key"); n=$((n+1))
-        local note=""; need_ok "$need" || note=" (not available yet)"
-        printf '  %d) %s%s\n       runs: %s\n' "$n" "$label" "$note" "$(shown "$cmd")"
-      done <<EOF2
+    local all_keys=() all_labels=() all_cmds=() all_needs=()
+    while IFS='|' read -r key grp label cmd gate need wcmd; do
+      [ "$grp" = "$g" ] || continue
+      all_keys+=("$key"); all_labels+=("$label"); all_cmds+=("$cmd"); all_needs+=("$need")
+    done <<EOF2
 $ITEMS
 EOF2
+    page=0
+    pages=$(( (${#all_keys[@]} + page_size - 1) / page_size ))
+    while true; do
+      say ""; say "$g: $(group_desc "$g")"
+      start=$((page * page_size))
+      end=$((start + page_size))
+      [ "$end" -gt "${#all_keys[@]}" ] && end=${#all_keys[@]}
+      [ "$pages" -gt 1 ] && say "  Page $((page+1)) of $pages (items $((start+1))-$end of ${#all_keys[@]})"
+      items=(); n=0
+      for ((idx=start; idx<end; idx++)); do
+        items+=("${all_keys[$idx]}"); n=$((n+1))
+        local note=""; need_ok "${all_needs[$idx]}" || note=" (not available yet)"
+        printf '  %d) %s%s\n       runs: %s\n' "$n" "${all_labels[$idx]}" "$note" "$(shown "${all_cmds[$idx]}")"
+      done
+      if [ "$pages" -gt 1 ]; then
+        [ "$page" -gt 0 ] && say "  <) Previous page"
+        [ "$page" -lt "$((pages-1))" ] && say "  >) Next page"
+      fi
       say "  b) Back      /word search every group (n/N next/previous match)"
-      read_line "Choose 1-$n, /search or b: " choice || return 0
+      if [ "$pages" -gt 1 ]; then
+        read_line "Choose 1-$n, </> page, /search or b: " choice || return 0
+      else
+        read_line "Choose 1-$n, /search or b: " choice || return 0
+      fi
       case "$choice" in b|B|back|"") break ;; q|Q) return 0 ;; esac
+      case "$choice" in
+        '>'|next) if [ "$page" -lt "$((pages-1))" ]; then page=$((page+1)); fi; continue ;;
+        '<'|prev) if [ "$page" -gt 0 ]; then page=$((page-1)); fi; continue ;;
+      esac
       local rc=0; search_key "$choice" || rc=$?
       case $rc in 0) continue ;; 3) return 0 ;; esac
       if ! [[ $choice =~ ^[0-9]+$ ]] || [ "$choice" -lt 1 ] || [ "$choice" -gt "$n" ]; then
-        say "'$choice' isn't one of the choices. Type a number from 1 to $n, /word to search, or b."; continue
+        if [ "$pages" -gt 1 ]; then
+          say "'$choice' isn't one of the choices. Type a number from 1 to $n, </> page, /word to search, or b."
+        else
+          say "'$choice' isn't one of the choices. Type a number from 1 to $n, /word to search, or b."
+        fi
+        continue
       fi
       run_item "${items[$((choice-1))]}" || say "(that step exited with status $?)"
       [ "$PIPE" = 1 ] || read_line "Press Enter to go back to the menu..." choice || return 0
