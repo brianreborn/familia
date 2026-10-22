@@ -83,126 +83,20 @@ hosts:
       autostart: false           # opt-in; flip with startup: scheduled-task after running install-task.ps1 -Install
       avx_required: false        # official win-cpu-x64 build ran on the non-AVX Athlon II X2 (2026-10-09)
       wake: tbd
-  shalom:
-    kind: unknown
-    measured: false
-    gpus: []                     # unknown; nothing recorded
-  godslove:
-    kind: laptop
-    measured: false              # reported, not measured: excluded from placement
-    os: freebsd-15
-    cpu: Intel Core i7-620M
-    reported:
-      source: brianreborn/green-roomz#5
-      ram_mib: 8192
-    gpus:
-      - vendor: intel
-        model: Ironlake HD / NVS (per green-roomz #5; exact model unknown)
-        vram_mib: null
-        backend: none            # #5: "No Vulkan/CUDA - CPU"
-        backend_status: unsupported
-        compute_capability: null
-        driver: null
-        measured: false
-  centos10-bigram:
-    kind: desktop
-    # Facts measured 2026-10-19 on the host (registered Grok Bot machine). Address and login live only in
-    # the private ~/.config/familia/monitor.json / ~/.ssh/config, never here.
-    # Hardware profile: registry/hosts.yaml -> nvidia-g84-8600gt-x86v3-centos10. No node is placed here yet:
-    # which roles move is the owner's call (docs/perf/centos-bigram-models.md section 7).
-    measured: true
-    os: linux                    # CentOS Stream 10, kernel 6.12
-    cpu: Intel Core i5-4570      # Haswell, 4C/4T, 3.2 GHz max, AVX2/FMA/F16C, no AVX-512
-    threads: 4
-    ram_mib: 23672               # 23 GiB MemTotal; swap 4 GiB
-    reserve_ram_mib: 6144        # desktop session (KDE/Firefox) + Grok Bot + safety margin
-    gpus:
-      - vendor: nvidia
-        model: GeForce 8600 GT (G84, CC 1.1, 256 MiB)
-        vram_mib: 256
-        backend: none            # nouveau owns the card at boot; legacy 340.108 nvidia.ko cannot probe it
-        backend_status: unsupported
-        compute_capability: "1.1"
-        driver: nouveau (nvidia 340.108 built for 6.12.0-275 but not bound)
-        measured: true
-  phone7:
-    kind: phone
-    measured: true               # measured 2026-10-09 ~22:50 PT over key-only SSH from qodesh
-    addr: 192.168.1.7            # Termux sshd, key-only
-    user: u0_a439
-    port: 8022
-    os: android-16
-    cpu: 8 cores, ARMv8 (3x part 0xd80 Cortex-A520, 5x part 0xd81 Cortex-A720)
-    threads: 3                   # nproc inside Termux = 3 (8 cores in /proc/cpuinfo; cpuset-limited)
-    ram_mib: 7430                # MemTotal 7608348 kB
-    reserve_ram_mib: 5120        # policy, not measured: Android + apps; MemAvailable was 2598 MiB at measurement. See docs/ram-safety.md
-    notes: >-
-      Samsung Galaxy A57 (SM-A576U, a57xsq); SoC Samsung Exynos s5e8865 (ro.board.platform erd8865). SSH key-only u0_a439@192.168.1.7:8022.
-      Termux, aarch64. $HOME: 224G, 86G used, 138G free. Termux pkgs: git, python, llama-cpp 0.5.0 (+opencl, vulkan backends), ollama 0.31.1 (+vulkan), rsync, python-torch/numpy/scipy, mesa-vulkan-icd-swrast.
-      Two physical A57s on the LAN (distinct boot_id, same build fingerprint).
-    gpus:
-      - vendor: samsung
-        model: Samsung Xclipse 550   # vulkaninfo deviceName, INTEGRATED_GPU
-        vram_mib: 0              # shared-memory iGPU; Vulkan heap0 6.83 GiB device-local (shared), heap1 64 MiB
-        backend: vulkan          # Vulkan 1.4.304, conformance 1.4.1.1; fp16, int8, 16-bit storage; subgroup 64
-        backend_status: verified # 2026-10-10 ~00:45 PT: SmolLM2-135M Q4_K_M -ngl 99, pp64 823-1106 t/s, tg32 66-78 t/s (CPU 3t: 42.7 / 30.5); output correct (#34)
-        compute_capability: null
-        driver: Samsung Proprietary (SPAL) 25.4.7, git 702e7fd271
-        measured: true           # needs LD_LIBRARY_PATH dir with libvulkan.so + libvulkan.so.1 -> /system/lib64/libvulkan.so; vulkaninfo via /system/lib64/libvulkan.so, 2026-10-09 PT. Termux's own loader only sees llvmpipe.
-        notes: >-
-          OpenCL unusable from Termux: the vendor libSGPUOpenCL.so is blocked by the Android
-          linker namespace (missing android.hardware.graphics.mapper@4.0-impl-sgr.so), so clinfo reports 0 platforms.
-  phone8:
-    kind: phone
-    measured: true               # measured 2026-10-09 ~22:50 PT over key-only SSH from qodesh
-    addr: 192.168.1.8            # Termux sshd, key-only
-    user: u0_a414
-    port: 8022
-    os: android-16
-    cpu: 8 cores, ARMv8 (3x part 0xd80 Cortex-A520, 5x part 0xd81 Cortex-A720)
-    threads: 3                   # nproc inside Termux = 3 (8 cores in /proc/cpuinfo; cpuset-limited)
-    ram_mib: 7430                # MemTotal 7608348 kB
-    reserve_ram_mib: 5120        # policy, not measured: Android + apps; MemAvailable was 2127 MiB at measurement. See docs/ram-safety.md
-    notes: >-
-      Samsung Galaxy A57 (SM-A576U, a57xsq); SoC Samsung Exynos s5e8865 (ro.board.platform erd8865). SSH key-only u0_a414@192.168.1.8:8022.
-      Termux, aarch64. $HOME: 224G, 50G used, 173G free. Termux pkgs: git, python only (no llama-cpp, no rsync).
-      Two physical A57s on the LAN (distinct boot_id, same build fingerprint).
-        2026-10-10: host key SHA256:r7Bm/uv3...fXc; anchor SmolLM2 Q4_0 ngl99 fa on = pp128 1476, tg64 100; sustained 5 min ~-12%; keep f16 KV.
-    gpus:
-      - vendor: samsung
-        model: Samsung Xclipse 550   # vulkaninfo deviceName, INTEGRATED_GPU
-        vram_mib: 0              # shared-memory iGPU; Vulkan heap0 6.83 GiB device-local (shared), heap1 64 MiB
-        backend: vulkan          # Vulkan 1.4.304, conformance 1.4.1.1; fp16, int8, 16-bit storage; subgroup 64
-        backend_status: verified # 2026-10-10 08:40 PT: SmolLM2-135M Q4_K_M -ngl 99 -t 3, pp128 1403 +/- 3, tg64 79.1 +/- 0.3 t/s; output correct (Termux llama-cpp 0.6.0)
-        compute_capability: null
-        driver: Samsung Proprietary (SPAL) 25.4.7, git 702e7fd271
-        measured: true           # vulkaninfo via /system/lib64/libvulkan.so, 2026-10-09 PT. Termux's own loader only sees llvmpipe.
-        notes: >-
-          OpenCL unusable from Termux: the vendor libSGPUOpenCL.so is blocked by the Android
-          linker namespace (missing android.hardware.graphics.mapper@4.0-impl-sgr.so), so clinfo reports 0 platforms.
-
-transports:
-  miryam-local: {kind: local, from: miryam, to: miryam}
-
-meshes:
-  # Transport PoC (#5, #22). Phones: Termux sshd on :8022, key-only.
-  lan-nexus:
-    type: ssh                     # scripts/nexus/nexus.py
-    hub: miryam
-    root: ~/.familia/nexus        # peers/ + artifacts/<sha256>/ on the hub
-    identity: ~/.ssh/id_ed25519
-    host_key_policy: accept-new
-    members: [miryam, qodesh, phone7, phone8]
-  lan-bt:
-    type: bittorrent              # scripts/bt/; keys are magnet:<xt>:<path> (REQ-REPO-02)
-    tracker: miryam
-    bind: 192.168.1.9             # LAN only; must match hosts.miryam.addr
-    port: 6969
-    private: true
-    client: aria2c
-    members: [miryam, phone7, phone8]
 
 runtimes:
+  llama-b11669:
+    kind: llama-server
+    build: b11669
+    # Official ggml-org release llama-b11669-bin-ubuntu-vulkan-x64.tar.gz
+    # (release tag b11669, commit 620d2225cc436ab0b001e3200e590e3b286ef9ab)
+    commit: 620d2225cc436ab0b001e3200e590e3b286ef9ab
+    bin: code-bootstraps-llama.cpp/bin/llama-b11669-linux-x64-vulkan/llama-server
+    hosts: [miryam]
+    supported_archs: [llama, qwen35, gemma-embedding2]
+    backends: [cpu, vulkan]
+    spec_types: [draft-simple, ngram-simple, ngram-map-k, ngram-map-k4v, ngram-mod, ngram-cache]
+
   llama-b11374:
     kind: llama-server
     build: b11374
@@ -211,9 +105,9 @@ runtimes:
     hosts: [miryam]
     # Only archs verified to load on this build.
     supported_archs: [qwen35]
-    backends: [cpu, vulkan]      # vulkan build; cpu always available
-    # --spec-type values accepted by this build's --help (verified on box CPU build b11374).
+    backends: [cpu, vulkan]
     spec_types: [draft-simple, ngram-simple, ngram-map-k, ngram-map-k4v, ngram-mod, ngram-cache]
+
   llama-b11539:
     kind: llama-server
     build: b11539
@@ -226,7 +120,6 @@ runtimes:
     supported_archs: [gemma-embedding2]
     backends: [cpu, vulkan]
     spec_types: [draft-simple, ngram-simple, ngram-map-k, ngram-map-k4v, ngram-mod, ngram-cache]
-
 
   sm11-legacy-qodesh:
     kind: sm11-legacy
@@ -281,174 +174,15 @@ runtimes:
     spec_types: []
     quants: [littlebit]          # the only runtime that may load .lbit.gguf files
 
-models:
-  # LittleBit example (opt-in; produced by scale_down.py --method littlebit, docs/littlebit.md):
-  # tiny-lb:
-  #   gguf: ~/.local/share/gguf/models/tiny/stories15M-lb1.0.lbit.gguf
-  #   sha256: unmeasured
-  #   arch: llama
-  #   trained_ctx: 256
-  #   role: decision
-  #   quant: littlebit           # must match the file's familia.quant marker (validator checks both ways)
-  # ...served by a node with runtime: lbref
-
-  stories15m-fp32:
-    gguf: 'E:/temp/gpu-legacy/stories15M.bin'   # llama2.c checkpoint (not GGUF)
-    sha256: cd590644d963867a2b6e5a1107f51fad663c41d79c149fbecbbb1f95fa81f49a
-    arch: llama2c
-    trained_ctx: 256
-    role: decision
-    db: karpathy--tinyllamas--stories15M
-
-  smollm2-135m-q4:
-    gguf: 'E:/temp/models/SmolLM2-135M-Instruct.Q4_0.gguf'
-    sha256: unmeasured
-    arch: llama
-    trained_ctx: 8192
-    role: decision
-    db: QuantFactory--SmolLM2-135M-Instruct-GGUF--SmolLM2-135M-Instruct.Q4_0
-  smollm2-135m-q4-miryam:
-    gguf: ~/models/SmolLM2-135M-Instruct-Q4_0.gguf
-    sha256: bcc3af2849ad6095af57e9b5cd43775256efdc66e306acb529172f92d0c04b03   # measured on miryam 2026-10-10; same file on phone8
-    arch: llama
-    trained_ctx: 8192
-    role: decision
-    db: bartowski--SmolLM2-135M-Instruct-GGUF--SmolLM2-135M-Instruct-Q4_0
-  smollm2-135m-q4-phone:
-    gguf: ~/familia/models/SmolLM2-135M-Instruct-Q4_0.gguf   # phones; bartowski/SmolLM2-135M-Instruct-GGUF
-    sha256: bcc3af2849ad6095af57e9b5cd43775256efdc66e306acb529172f92d0c04b03
-    arch: llama
-    trained_ctx: 8192
-    role: decision
-    db: bartowski--SmolLM2-135M-Instruct-GGUF--SmolLM2-135M-Instruct-Q4_0
-  qwen25-05b-q4km-phone:
-    gguf: ~/familia/models/Qwen2.5-0.5B-Instruct-Q4_K_M.gguf  # bartowski/Qwen2.5-0.5B-Instruct-GGUF
-    sha256: 6eb923e7d26e9cea28811e1a8e852009b21242fb157b26149d3b188f3a8c8653
-    arch: qwen2
-    trained_ctx: 32768
-    role: chat
-    db: bartowski--Qwen2.5-0.5B-Instruct-GGUF--Qwen2.5-0.5B-Instruct-Q4_K_M
-  smollm2-135m-q4km:
-    gguf: ~/familia/models/SmolLM2-135M-Instruct-Q4_K_M.gguf   # on phone7 (bartowski/SmolLM2-135M-Instruct-GGUF)
-    sha256: 2e8040ceae7815abe0dcb3540b9995eaa1fa0d2ca9e797d0a635ae4433c68c2d
-    arch: llama
-    trained_ctx: 8192
-    role: decision
-    db: bartowski--SmolLM2-135M-Instruct-GGUF--SmolLM2-135M-Instruct-Q4_K_M
-  qwen35-2b-q4km:
-    gguf: ~/.local/share/gguf/models/coder/Qwen3.5-2B-Q4_K_M.gguf
-    sha256: aaf42c8b7c3cab2bf3d69c355048d4a0ee9973d48f16c731c0520ee914699223  # qodesh copy (scp from miryam)
-    arch: qwen35                 # must match GGUF general.architecture
-    trained_ctx: 262144          # must match GGUF qwen35.context_length (checked)
-    role: coder
-    db: unsloth--Qwen3.5-2B-GGUF--Qwen3.5-2B-Q4_K_M
-  qwen35-08b-q4km:
-    gguf: ~/.local/share/gguf/models/draft/Qwen3.5-0.8B-Q4_K_M.gguf
-    sha256: bd258782e35f7f458f8aced1adc053e6e92e89bc735ba3be89d38a06121dc517  # unsloth/Qwen3.5-0.8B-GGUF@6ab4614
-    arch: qwen35
-    trained_ctx: 262144
-    role: coder                  # used as the draft of coder-draft (no separate draft role)
-    db: unsloth--Qwen3.5-0.8B-GGUF--Qwen3.5-0.8B-Q4_K_M
-  egemma2-q8:
-    gguf: ~/.local/share/gguf/models/embed/embeddinggemma-2-Q8_0.gguf
-    sha256: 6f1bd4ac6c5df7444f9cca7ca36cafe6cfa34cd6f49fefb1e0b4be8143aed8bc   # measured on miryam 2026-10-19 (model_db local check = LFS sha256)
-    arch: gemma-embedding2       # unknown to b11374
-    trained_ctx: 262144          # GGUF gemma-embedding2.context_length
-    role: embed
-    db: unsloth--embeddinggemma-2-GGUF--embeddinggemma-2-Q8_0
-
 nodes:
-
-  qodesh-gpu-decision:
-    model: stories15m-fp32
-    host: qodesh
-    runtime: sm11-legacy-qodesh
-    ctx: 256
-    parallel: 1
-    kv_type: f32
-    flash_attn: false
-    offload: {backend: cuda-sm11-ptx, ngl: 99, split: none, main_gpu: 0}
-    bind: 127.0.0.1
-    port: 18100
-    cache_ram_mib: 64
-    status: active
-
-  qodesh-smol-cpu:
-    model: smollm2-135m-q4
-    host: qodesh
-    runtime: llama-b11540-win-cpu
-    ctx: 2048
-    override_reasons:            # model card / model-database deviations (#51)
-      ctx: "15-year-old qodesh (Athlon II X2, 1 thread beside the 8600 GT feeder): decision prompts are short, so 2048 keeps KV and prefill small; the card's 8192 was not measured here"
-    threads: 1                   # measured 2026-10-10: 1 thread pinned CPU0 + GPU node on CPU1 = ~30 tok/s combined; -t 2 starves the GPU feeder
-    parallel: 1
-    kv_type: q8_0
-    flash_attn: false
-    offload: {backend: cpu, ngl: 0, split: none, main_gpu: 0}
-    bind: 127.0.0.1
-    port: 18101
-    cache_ram_mib: 256
-    status: planned
-    escalates_to: [coder, qodesh-resident]   # docs/escalation.md: fastest measured first (miryam coder 17.4 t/s vs 0.91 here)
-    escalation: {mode: suggest}              # coder crosses host: needs first-time consent
-
-  miryam-gpu-decision:
-    model: smollm2-135m-q4-miryam
-    host: miryam
-    runtime: llama-b11541-linux-vulkan
-    ctx: 2048
-    override_reasons:            # model card / model-database deviations (#51)
-      ctx: "decision prompts are short; 2048 keeps the Vulkan KV small on the shared-memory HD 620 beside the coder on 7.1 GiB miryam; 8192 not measured"
-    parallel: 1
-    kv_type: q8_0
-    flash_attn: false
-    offload: {backend: vulkan, ngl: 99, split: none, main_gpu: 0}   # HD 620 verified; slower than CPU, frees CPU for the coder
-    bind: 127.0.0.1
-    port: 18111
-    cache_ram_mib: 64
-    status: planned
-    escalates_to: [coder]                    # same host; docs/escalation.md
-    escalation: {mode: suggest}
-
-  phone7-decision:
-    model: smollm2-135m-q4-phone    # Q4_0 fastest tg on Xclipse 550 (102 vs 83 Q4_K_M vs 89 Q8_0 t/s, phone8 2026-10-10)
-    host: phone7
-    runtime: termux-llama-cpp-0.6.0
-    ctx: 2048
-    override_reasons:            # model card / model-database deviations (#51)
-      ctx: "decision prompts are short; 2048 keeps KV inside phone7's RAM policy (reserve_ram_mib 5120, ~2.3 GiB left); 8192 not measured"
-    parallel: 1
-    kv_type: q8_0
-    flash_attn: true             # pp128 1372 vs 1239 t/s, tg equal (phone8)
-    offload: {backend: vulkan, ngl: 99, split: none, main_gpu: 0}   # Xclipse 550, verified
-    bind: 127.0.0.1
-    port: 18110
-    cache_ram_mib: 64            # tiny; phone7 reserve_ram_mib 5120 leaves ~2.3 GiB
-    status: planned              # launch via familia-start once the node is wired into the fleet
-
-  phone8-general:
-    model: qwen25-05b-q4km-phone
-    host: phone8
-    runtime: termux-llama-cpp-0.6.0
-    ctx: 2048
-    override_reasons:            # model card / model-database deviations (#51)
-      ctx: "phone8 measured at 2048 (tg ~31-34 t/s, min MemAvailable 1945 MiB under reserve_ram_mib 5120); the card's 32768 was not measured on the phone"
-    parallel: 1
-    kv_type: f16
-    flash_attn: true
-    offload: {backend: vulkan, ngl: 99, split: none, main_gpu: 0}   # tg64 33.9 / tg128 30.8, pp128 508 t/s; CPU ngl 0 unusable (0.3 t/s)
-    bind: 127.0.0.1
-    port: 18112
-    cache_ram_mib: 128           # min MemAvailable 1945 MiB during the run; reserve 5120
-    status: planned
   coder:
     status: active
     model: qwen35-2b-q4km
     host: miryam
-    runtime: llama-b11374
+    runtime: llama-b11669
     ctx: 65536                   # total; per-slot = ctx / parallel
     override_reasons:            # model card / model-database deviations (#51)
-      ctx: "miryam has 7270 MiB with a 3072 MiB reserve: at 262144 the q8_0 KV is ~1650 MiB and cache_ram must cover a slot's prompt state (~1650 MiB), about 2.4 GiB more than at 65536 (426 MiB KV); 65536 meets hermes min_ctx 64000"
+      ctx: "miryam has 7270 MiB with a 3072 MiB reserve: at 262144 the q8_0 KV is ~1650 MiB and cache_ram must cover a slot's prompt state (~1650 MiB), about 2.4 GiB more than at 65536 (426 MiB K[..."
     parallel: 1
     kv_type: q8_0
     flash_attn: true
@@ -459,11 +193,12 @@ nodes:
     bind: 127.0.0.1
     port: 9941
     cache_ram_mib: 1024          # >= per-slot prompt state (validator checks)
+
   embed:
     status: active
     model: egemma2-q8
     host: miryam
-    runtime: llama-b11539        # b11374 fails: unknown model architecture 'gemma-embedding2'
+    runtime: llama-b11669        # b11374 fails: unknown model architecture 'gemma-embedding2'
     ctx: 8192
     parallel: 1
     kv_type: f16
@@ -473,297 +208,3 @@ nodes:
     port: 9951
     embeddings: true
     cache_ram_mib: 0             # embedding servers keep no prompt cache
-  qodesh-resident:
-    # Pencilled in: green-roomz's resident 0.5B chat path on qodesh (#18).
-    # Planned nodes are schema-checked only; no placement, file or RAM checks.
-    status: active
-    model: qwen35-2b-q4km        # placeholder until a 0.5B model entry exists
-    host: qodesh
-    runtime: llama-b11540-win-cpu
-    ctx: 2048
-    override_reasons:            # model card / model-database deviations (#51)
-      ctx: "15-year-old qodesh (Athlon II X2) prefills at ~1.44 t/s (measured, -t 2): 2048 tokens already take ~24 min, so a larger ctx is impractical"
-    parallel: 1
-    kv_type: q8_0
-    flash_attn: false
-    offload: {backend: cpu, ngl: 0, split: none, main_gpu: 0}
-    bind: 127.0.0.1
-    port: 9941
-    cache_ram_mib: 64
-    threads: 2
-    selection: fallback          # user-selectable; SmolLM2 stays qodesh default (Brian 2026-10-10)
-    note: "slower fallback: measured 0.91 tg / 1.44 pp t/s at -t 2 (0.69/1.06 at -t 1), coarse; use threads 2"
-
-speculative:
-  coder-draft:                   # #91: draft-model speculation (same qwen35 vocab; validator checks)
-    experimental: true
-    status: planned              # enable with status: experimental (and set coder-ngram planned: one active per target);
-                                 # measured results: docs/perf/2026-10-19-spec-draft.md
-    mode: draft
-    target: coder
-    spec_type: draft-simple
-    draft: qwen35-08b-q4km
-    draft_max: 8
-    draft_min: 0
-    p_min: 0.75
-    draft_ngl: 0
-  # Pencilled in. Draft is loaded inside the target's llama-server (-md).
-  coder-ngram:
-    experimental: true
-    status: active               # miryam real-edit test 2026-10-10: 2.2x decode (8.3 -> 18.2 t/s)
-    mode: ngram
-    target: coder
-    spec_type: ngram-simple      # model-free lookup decoding; no extra weights. miryam 2026-10-10, -t 2, repeat-code
-                                 # prompt: 17.4 t/s vs 8.7 none (ngram-mod 16.3). Real hermes-style full-file edits: 17.9-18.4 vs 8.2-8.4 (2.2x).
-
-gateways:
-  roomz:
-    kind: green-roomz
-    host: miryam
-    port: 9931
-
-aliases:
-  coder: {node: coder, gateway: roomz}
-  embed: {node: embed, gateway: roomz}
-
-agents:
-  hermes:
-    kind: hermes-agent
-    host: miryam
-    min_ctx: 64000               # hermes-agent MINIMUM_CONTEXT_LENGTH
-    context_length: 65536        # must equal main alias per-slot ctx
-    aliases:
-      main: coder
-      auxiliary: coder           # compaction model; explicit, not inferred
-  hermes-lab:                    # experiments only (self-improve target); no pentest uses it
-    kind: hermes-agent
-    host: miryam
-    min_ctx: 64000
-    context_length: 65536
-    aliases:
-      main: coder
-      auxiliary: coder
-
-fleets:
-  green-agentz:
-    repo: brianreborn/green-agentz
-    agents: [hermes]
-
-agencies:
-  familia-issues:
-    repo: brianreborn/familia
-    labels: [bug, config-graph]
-    assignments:
-      config-graph: hermes
-
-pentests:
-  # Pencilled in. Authorized testing of the owner's fleet only — not attack tooling.
-  # Automation is launch-test only (validate → start → healthcheck → stop). Never live
-  # scans, exploits, or network probes in tests. See docs/pentest-models.md and #15.
-  # Model options from survey (unplaced): see options.dolphin3-cyber-8b.
-  android-fleet:
-    name: Android fleet authorized testing
-    node: coder                   # placeholder until a role:pentest model is placed
-    agent: hermes
-    scope:
-      allow: []                   # empty = nothing allowed; required non-empty to go active
-      deny: []
-    tools:
-      allow: []                   # explicit tool names only; no wildcards
-    report_to: familia-issues
-    requires_operator_confirm: true
-    launch_test_only: true
-    status: planned
-    notes: >-
-      Ties to android_start.sh --role pentest and missing scripts/pentest-role.json (#15).
-      Activate only after a pentest-role model is placed, scope.allow lists owned hosts/CIDRs,
-      and tools.allow is an explicit allowlist. Operator confirm required.
-
-kv_channels:
-  # C2C stage 1 (#22). Pencilled in: a second coder node does not exist yet.
-  # scripts/c2c/kv_ship.py re-checks live: GGUF sha256, /props build_info, n_ctx per slot, kv types.
-  coder-self:
-    experimental: true
-    status: planned
-    from: coder
-    to: qodesh-resident          # placeholder peer: runtime and ctx differ today, so this cannot go active as-is
-    via: nexus
-    notes: Placeholder to exercise the type. See docs/c2c-stage1.md.
-
-options:
-  # Unplaced model options (catalog only). Placement ignores this section; promote an
-  # option by adding a real models: entry with a measured sha256. Everything below is
-  # UNVERIFIED: names and claims come from reposts as summarized in #20.
-  dolphin3-cyber-8b:
-    role: pentest
-    unverified: true
-    sources: ["BrianReborn_alt RT 2026-09-20"]
-    size_note: ~3.2 GB Q2_K (from post)
-    placement_note: Launch-test only (see pentests). qodesh by RAM.
-    candidate_hosts: [qodesh]
-  # ---- #24 decision models; gpu_candidate = considered for the always-on 8600 GT role (256 MB)
-  k2-type-0.9b:
-    role: decision
-    unverified: true
-    sources: ["https://x.com/BrianReborn_alt/status/2106354389611094041"]
-    size_note: 0.9B params; ~0.5 GB at Q4 (estimate, not measured) - needs <=~200 MB slice or heavy quant for 256 MB VRAM
-    gpu_candidate: true
-    gpu_host: qodesh
-    placement_note: Best fit for 8600 GT always-on role per #20; partial offload (some layers on GPU) likely.
-    candidate_hosts: [qodesh, miryam]
-  drex-1.5:
-    role: decision
-    unverified: true
-    sources: ["https://x.com/BrianReborn_alt/status/2108691502864163123"]
-    hf_repo: nace-ai/drex-v1.5
-    size_note: "HF API 2026-10-09: Qwen3_5ForCausalLM, 8.95B params (bf16 ~17.9 GB); nace-ai/drex-v1.5-Q8_0 9.53 GB; mradermacher/drex-v1.5-GGUF Q4_K_M 5.63 GB, Q4_K_S 5.35 GB, Q2_K 3.83 GB"
-    gpu_candidate: false
-    placement_note: "Not a 256 MB GPU fit (9B). CPU only: Q4_K_M fits qodesh's ~9.6 GiB budget (<=60% of 16 GiB, 4 GiB reserve); does not fit miryam (4.1 GiB budget minus the coder). 128k ctx claimed."
-  drex-1.1:
-    role: decision
-    unverified: true
-    sources: ["https://x.com/BrianReborn_alt/status/2107800181316141401"]
-    size_note: unknown
-    gpu_candidate: true
-    gpu_host: qodesh
-    runtime_note: Diffusion LM; llama.cpp-compatible per post (drex-dlm runtime kind exists, unpinned).
-    notes: "Possibly nace-ai/drex-dlm (EfficientDLM, 8.19B params, cc-by-nc-4.0) - link to Drex 1.1 not confirmed. At 8B it is not a 256 MB GPU fit either."
-  glide:
-    role: decision
-    unverified: true
-    sources: ["https://x.com/BrianReborn_alt/status/2107815038589567062"]
-    size_note: unknown
-    gpu_candidate: true
-    gpu_host: qodesh
-    notes: Decision Index winner per post.
-  cloudflare-clef:
-    role: decision
-    unverified: true
-    sources: ["https://x.com/BrianReborn_alt/status/2106238504938377271"]
-    size_note: unknown
-    gpu_candidate: true
-    gpu_host: qodesh
-    notes: On HF per post; repo id not resolved.
-  gev-26b-decide:
-    role: decision
-    unverified: true
-    sources: ["https://x.com/BrianReborn_alt/status/2107731560246215067", "https://x.com/BrianReborn_alt/status/2106259773931024477"]
-    size_note: 26B params - far too big for 256 MB VRAM; ~15 GB at Q4 (estimate) exceeds every host's free RAM
-    gpu_candidate: false
-    placement_note: Catalog only.
-  # ---- #25 on-device speech
-  whistle-stt:
-    role: stt
-    unverified: true
-    sources: ["https://x.com/BrianReborn_alt/status/2108691766589415772", "https://x.com/BrianReborn_alt/status/2106699237761392838"]
-    hf_repo: Cactus-Compute/whistle
-    size_note: "whistle.cact 16.9 MB (HF API); checkpoints/whistle.safetensors 220.6 MB; apache-2.0"
-    runtime_note: Cactus runtime (.cact, library cactus-needle); not llama-server. Needs an stt node kind before placement.
-    placement_note: Phones and qodesh first (#25).
-    candidate_hosts: [phone7, phone8, qodesh]
-  paradee-tts:
-    role: tts
-    unverified: true
-    sources: ["https://x.com/BrianReborn_alt/status/2108070180769407307"]
-    hf_repo: sahilmahendrakar/Paradee-8M-v1.0
-    size_note: "8M params; onnx/paradee_int8.onnx 9.0 MB, paradee.onnx 37.0 MB (HF API); apache-2.0. Repo is the most likely match for the RT, not confirmed from the post."
-    runtime_note: ONNX Runtime (CoreML port FluidInference/paradee-8m-coreml); not llama-server. Needs a tts node kind before placement.
-    placement_note: Phones and qodesh first (#25).
-    candidate_hosts: [phone7, phone8, qodesh]
-  # ---- #26 coder candidate
-  qwen35-9b-coder:
-    role: coder
-    unverified: true
-    sources: ["https://x.com/BrianReborn_alt/status/2108600815808336061"]
-    size_note: 9B params; ~5.5 GB at Q4_K_M + KV (estimate, not measured)
-    placement_note: qodesh only by RAM (16 GB, ~11.5 GB free). miryam (7 GB, 3 GB reserve) cannot fit it.
-    candidate_hosts: [qodesh]
-    notes: Kimi-k3 distill claim from post; HF repo, quants and license unresolved.
-  # ---- docs/models-catalog.md additions (RT'd, bucket 2; all unverified)
-  youtu-parsing-omni:
-    role: vision
-    unverified: true
-    hf_repo: tencent/Youtu-Parsing-Omni
-    sources: ["https://x.com/BrianReborn_alt/status/2108756031493025930"]
-    size_note: "~5B params, bf16 safetensors ~10.7 GB (rev 01f7e3e, per feat/youtu-parsing-omni-option)"
-    runtime_note: "youtu_vita custom code; transformers trust_remote_code or vLLM + Tencent plugin. No llama.cpp/GGUF support."
-    placement_note: "bf16 exceeds qodesh's ~9.6 GiB budget and miryam's. Needs a non-llama runtime and a quantized build."
-  voice-clone-1.7b:
-    role: tts
-    unverified: true
-    sources: ["https://x.com/BrianReborn_alt/status/2108533834400850249"]
-    size_note: "1.7B params (from post); file size unknown"
-    runtime_note: Model name, repo and runtime not given in the RT text.
-  tencent-translate-440mb:
-    role: chat
-    unverified: true
-    sources: ["https://x.com/BrianReborn_alt/status/2105728713950437842"]
-    size_note: "~440 MB, 33 languages (from post)"
-    notes: On-device translation. Repo id not resolved.
-  index-translate:
-    role: chat
-    unverified: true
-    sources: ["https://x.com/BrianReborn_alt/status/2105389175872847935"]
-    size_note: unknown (Qwen3.5-based family per post)
-    notes: Bilibili Index-Translate MT family. Repo id not resolved.
-  decision-2.0:
-    role: decision
-    unverified: true
-    sources: ["https://x.com/BrianReborn_alt/status/2106237127449362760"]
-    size_note: "0.6B-27B family (from post); only the 0.6B could approach the 256 MB GPU slice, and only heavily quantized"
-    gpu_candidate: true
-    gpu_host: qodesh
-  kev-1.0:
-    role: decision
-    unverified: true
-    sources: ["https://x.com/BrianReborn_alt/status/2106235881904599179"]
-    size_note: unknown
-    notes: Kev 1.0 decision model family. Repo id not resolved.
-  jev-cpu-decision:
-    role: decision
-    unverified: true
-    sources: ["https://x.com/BrianReborn_alt/status/2106949194913366275"]
-    size_note: unknown
-    notes: Jev-style decision model that runs on CPU (per post).
-  jp-decision-gguf:
-    role: decision
-    unverified: true
-    sources: ["https://x.com/BrianReborn_alt/status/2106236190940950767"]
-    size_note: unknown
-    notes: Japanese decision/chat GGUF plus training data.
-  qwen35-0.8b-jp:
-    role: chat
-    unverified: true
-    sources: ["https://x.com/BrianReborn_alt/status/2106236078533550141"]
-    size_note: "0.8B params (from post); file size unknown"
-    notes: Japanese fine-tune; tiny local option. Arch qwen35 is in the pinned llama.cpp build (qwen35-2b-q4km runs today).
-  lift-extract:
-    role: vision
-    unverified: true
-    sources: ["https://x.com/BrianReborn_alt/status/2106703750262141361"]
-    size_note: unknown
-    notes: lift JSON/document extraction model; parsing option beside Youtu.
-
-harnesses:
-  # Target harness descriptors (docs/harness2.md). Files only: prompt, guardrails, memory,
-  # skills. There is no field for tools or toolsets, so nothing here can widen them.
-  hermes-lab:
-    # plugins: [rea]   # #92: symlink from ~/.hermes/plugins into rendered HERMES_HOME
-    kind: files
-    agent: hermes-lab
-    root: ~/.cache/familia/hermes-hermes-lab   # the HERMES_HOME scripts/hermes.sh renders for it
-    prompt: SOUL.md                            # guardrails + memory become sections of SOUL.md
-    skills: skills
-    node: coder                                # editing + evaluation endpoint (loopback)
-
-self_improve:
-  # Harness² (google-research/harness2), opt-in; off = nothing runs and nothing is synced.
-  harness2:
-    experimental: true
-    engine: harness2
-    mode: "off"                  # "off" (quoted: YAML reads bare off as false) | propose (review by hand) | apply (needs consent)
-    targets: [hermes-lab]
-    k: 1
-    recursion: parallel          # parallel = Harness² agg, sequential = seq
-    tasks: coding-v1             # registry/harness2-tasks/coding-v1.json
-    max_tasks: 3
