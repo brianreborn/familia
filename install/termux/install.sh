@@ -9,6 +9,7 @@
 # Flags: --dry-run  --uninstall [--purge]  --name NAME  --sshd (install+start openssh)
 #        --yes (accept the license review; summary still printed)  --accept-unknown
 #        --no-runtime  --force-host  --no-wakelock
+#        --branch BRANCH  select the familia branch (default: checkout branch, else main)
 #        --no-path (do not write the $PREFIX/bin/familia shim; scripts/install-cli.sh)
 #   --name defaults to <model>-<last IPv4 octet> (or <model>-<boot_id prefix>), unique per phone;
 #          interactive installs prompt with that value as the default.
@@ -39,6 +40,7 @@ run() { if [ "$DRY" = 1 ]; then say "[dry-run] $*"; else "$@"; fi; }
 while [ $# -gt 0 ]; do
   case "$1" in
     --dry-run|-n) DRY=1 ;;
+    --branch) shift; [ -n "${1:-}" ] || die "--branch needs a branch name"; BRANCH=$1; SELECT_BRANCH=1 ;;
     --uninstall) UNINSTALL=1 ;;
     --purge) PURGE=1 ;;
     --name) shift; NAME=${1:-} ;;
@@ -54,6 +56,8 @@ while [ $# -gt 0 ]; do
   esac
   shift
 done
+
+git check-ref-format --branch "$BRANCH" >/dev/null 2>&1 || die "invalid branch name: $BRANCH"
 
 if [ -z "${TERMUX_VERSION:-}" ] && [ ! -d /data/data/com.termux ]; then
   [ "$DRY" = 1 ] || die "not running inside Termux (use install/linux/install.sh on desktop Linux)"

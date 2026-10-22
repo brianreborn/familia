@@ -74,13 +74,26 @@ def test_installer_shapes():
     assert 'git -C "$SOURCE_ROOT" branch --show-current' in lin
     assert 'git -C "$PREFIX/repo" pull --ff-only' in lin
     assert '--set-upstream-to="origin/$BRANCH"' in lin
+    assert '--branch) shift; [ -n "${1:-}" ] || die "--branch needs a branch name"; BRANCH=$1; SELECT_BRANCH=1 ;;' in lin
+    assert "FreeBSD is source-build-only" in lin
     assert not re.search(r"\b[0-9a-f]{64}\b", lin)  # no hardcoded hashes
     termux = open(os.path.join(ROOT, "install/termux/install.sh")).read()
     assert 'git -C "$SOURCE_ROOT" branch --show-current' in termux
     assert '--set-upstream-to="origin/$BRANCH"' in termux
+    assert '--branch) shift; [ -n "${1:-}" ] || die "--branch needs a branch name"; BRANCH=$1; SELECT_BRANCH=1 ;;' in termux
     ps = open(os.path.join(ROOT, "install/windows/install.ps1")).read()
     assert "SupportsShouldProcess" in ps and "Get-FileHash" in ps and "refusing unverified" in ps
     assert "branch --show-current" in ps and "--set-upstream-to=origin/$Branch" in ps
     assert "-Uninstall" in ps or "$Uninstall" in ps
     assert not re.search(r"\b[0-9a-f]{64}\b", ps)
     assert not re.search(r"-Verb\s+RunAs|RunAs", ps)  # never elevates
+
+def test_linux_installer_accepts_branch_and_dry_runs_clone(tmp_path):
+    env = dict(os.environ, FAMILIA_PREFIX=str(tmp_path / "prefix"),
+               FAMILIA_BIN_DIR=str(tmp_path / "bin"))
+    r = subprocess.run(["sh", os.path.join(ROOT, "install/linux/install.sh"),
+                        "--dry-run", "--no-runtime", "--name", "testhost",
+                        "--branch", "feat/llama.cpp-0.7.0"],
+                       cwd=ROOT, env=env, capture_output=True, text=True, timeout=30)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "[dry-run] git clone -q --branch feat/llama.cpp-0.7.0" in r.stderr

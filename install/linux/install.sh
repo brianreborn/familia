@@ -10,6 +10,7 @@
 #        --build bNNNN llama.cpp release tag (default b11539, familia's verified build;
 #                     'latest' = newest bNNNN release that has this platform's asset)
 #        --no-runtime  skip the llama.cpp download     --systemd  install a systemd --user unit
+#        --branch BRANCH  select the familia branch (default: checkout branch, else main)
 #        --force-host  replace an existing hosts.NAME block
 #        --yes         accept the license review without a prompt (summary still printed)
 #        --accept-unknown  also accept components whose license could not be found
@@ -42,6 +43,7 @@ run() { if [ "$DRY" = 1 ]; then say "[dry-run] $*"; else "$@"; fi; }
 while [ $# -gt 0 ]; do
   case "$1" in
     --dry-run|-n) DRY=1 ;;
+    --branch) shift; [ -n "${1:-}" ] || die "--branch needs a branch name"; BRANCH=$1; SELECT_BRANCH=1 ;;
     --uninstall) UNINSTALL=1 ;;
     --purge) PURGE=1 ;;
     --name) shift; NAME=${1:-} ;;
@@ -57,6 +59,8 @@ while [ $# -gt 0 ]; do
   esac
   shift
 done
+
+git check-ref-format --branch "$BRANCH" >/dev/null 2>&1 || die "invalid branch name: $BRANCH"
 
 [ "$(id -u)" = 0 ] && die "do not run as root; this installer is user-space only"
 UNIT="$HOME/.config/systemd/user/familia-node.service"
@@ -89,6 +93,7 @@ case "$OS/$ARCH" in
   Linux/aarch64) ASSET_RE='bin-ubuntu-arm64\.(tar\.gz|zip)$' ;;
   Darwin/arm64) ASSET_RE='bin-macos-arm64\.(tar\.gz|zip)$' ;;
   Darwin/x86_64) ASSET_RE='bin-macos-x64\.(tar\.gz|zip)$' ;;
+  FreeBSD/amd64) die "FreeBSD is source-build-only; install no packages. Run ./familia sync --branch $BRANCH, then build from code-bootstraps-llama.cpp with BUILD_DIR=build-freebsd GPU=off scripts/build-linux.sh" ;;
   *) die "unsupported platform $OS/$ARCH (Termux: use install/termux/install.sh)" ;;
 esac
 [ -n "$NAME" ] || {
