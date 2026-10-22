@@ -88,6 +88,8 @@ def test_pass_through_commands():
     assert fam("--dry-run", "licenses", "check").stdout.strip() == "[dry-run] python3 scripts/licenses.py check"
     r = fam("skills", "list")
     assert r.returncode == 0 and "green-zkillz" in r.stdout
+    r = fam("FAMILIA_SYNC=0", "setup.sync-preview", "--license-gate", "off")
+    assert r.returncode == 0 and "skipped (FAMILIA_SYNC=0)" in r.stderr
 
 
 def test_same_license_gate_as_the_menu(tmp_path):

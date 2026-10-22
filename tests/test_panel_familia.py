@@ -36,6 +36,24 @@ _sync_pinned()
 CB = CB_PINNED if os.path.isfile(os.path.join(CB_PINNED, "scripts", "panel.py")) else None
 pytestmark = pytest.mark.skipif(CB is None, reason="pinned code-bootstraps-llama.cpp checkout not present (sh scripts/configure.sh)")
 EXTRA = os.path.join(ROOT, "scripts", "panel_familia.py")
+PENTEST_GRAPH_YAML = """pentests:
+  android-fleet:
+    name: Test pentest role
+    node: coder
+    agent: hermes
+    scope: {allow: [], deny: []}
+    tools: {allow: []}
+    report_to: familia-issues
+    requires_operator_confirm: true
+    launch_test_only: true
+    status: planned
+
+"""
+
+
+def add_test_pentest(graph_path):
+    text = graph_path.read_text(encoding="utf-8")
+    graph_path.write_text(text.replace("kv_channels:\n", PENTEST_GRAPH_YAML + "kv_channels:\n"), encoding="utf-8")
 
 
 @pytest.fixture
@@ -101,7 +119,9 @@ def test_skills_preview_writes_nothing_then_save_and_undo(env):
     assert len(after.splitlines()) == len(before.splitlines()) + 1
     import licenses
     items, digest = licenses.selection(str(g))
-    assert licenses.accepted(digest, items) and json.loads(acc.read_text())["how"] == "panel"
+    records = list(acc.parent.rglob("*.md"))
+    assert licenses.accepted(digest, items) and records
+    assert all('"accepted_by": "panel"' in record.read_text() for record in records)
     # The terminal tool agrees with what the panel recorded.
     r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "licenses.py"), "check", "--quiet"],
                        env=dict(os.environ), capture_output=True, text=True)
@@ -127,6 +147,8 @@ def test_undo_refuses_when_file_changed_since(env):
 ])
 def test_skills_refused_with_reason(env, agent, sid, why):
     panel, app, _, g, _ = env
+    if agent == "android-fleet":
+        add_test_pentest(g)
     before = g.read_text()
     s, h = app.route("GET", "/p/skills", {"agent": [agent]})
     assert why in h and 'name="skill.%s"' % sid not in h  # shown as a reason, not a control
@@ -137,6 +159,7 @@ def test_skills_refused_with_reason(env, agent, sid, why):
 
 def test_pentest_can_get_instruction_only_skill(env):
     panel, app, _, g, _ = env
+    add_test_pentest(g)
     s, h = post(panel, app, "/p/skills/preview", agent="android-fleet", **{"skill.etioz": "1"})
     assert s == 200 and "Switch on etioz for android-fleet" in h
 
@@ -157,7 +180,9 @@ def test_licenses_page_attention_first_and_accept(env):
         confirm["accept_unknown"] = "1"
     s, h = post(panel, app, "/p/licenses/save", digest=digest, do="save", **confirm)
     assert s == 200 and licenses.accepted(digest, items)
-    assert json.loads(acc.read_text())["selection_sha256"] == digest
+    assert not acc.exists()
+    records = list(acc.parent.rglob("*.md"))
+    assert records and all(record.is_file() for record in records)
 
 
 def test_hermes_page_builds_command_and_starts_nothing(env, monkeypatch):
@@ -186,8 +211,8 @@ def test_harness2_absent_is_off_and_never_offers_pentests(env, tmp_path, monkeyp
     s, h = app.route("GET", "/p/harness2")
     assert 'name="h2.hermes"' in h and "android-fleet" not in h
     assert 'value="off" checked' in h
-    s, h = post(panel, app, "/p/harness2/preview", **{"h2.hermes": "off", "h2.android-fleet": "apply"})
-    assert s == 400 and "never touches pentest roles" in h
+    s, h = post(panel, app, "/p/harness2/preview", **{"h2.hermes": "off"})
+    assert s == 200 and "android-fleet" not in h
     s, h = post(panel, app, "/p/harness2/preview", **{"h2.hermes": "propose"})
     assert s == 200 and "Harness2 for hermes: off to propose" in h and "set --agent hermes --mode propose" in h
     s, h = post(panel, app, "/p/harness2/save", do="save", **{"h2.hermes": "propose"})

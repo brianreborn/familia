@@ -10,6 +10,7 @@
 #        --build bNNNN llama.cpp release tag (default b11539, familia's verified build;
 #                     'latest' = newest bNNNN release that has this platform's asset)
 #        --no-runtime  skip the llama.cpp download     --systemd  install a systemd --user unit
+#        --branch BRANCH  select the familia branch (default: checkout branch, else main)
 #        --force-host  replace an existing hosts.NAME block
 #        --yes         accept the license review without a prompt (summary still printed)
 #        --accept-unknown  also accept components whose license could not be found
@@ -22,7 +23,16 @@ set -eu
 PREFIX=${FAMILIA_PREFIX:-$HOME/.local/share/familia}
 BIN_DIR=${FAMILIA_BIN_DIR:-${XDG_BIN_HOME:-$HOME/.local/bin}}
 REPO_URL=${FAMILIA_REPO_URL:-https://github.com/brianreborn/familia.git}
-BRANCH=${FAMILIA_BRANCH:-main}
+SOURCE_BRANCH=""
+if [ -f "$0" ]; then
+  SOURCE_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." 2>/dev/null && pwd || true)
+  if [ -n "$SOURCE_ROOT" ] && git -C "$SOURCE_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    SOURCE_BRANCH=$(git -C "$SOURCE_ROOT" branch --show-current 2>/dev/null || true)
+  fi
+fi
+BRANCH=${FAMILIA_BRANCH:-${SOURCE_BRANCH:-main}}
+SELECT_BRANCH=0
+{ [ -n "${FAMILIA_BRANCH:-}" ] || [ -n "$SOURCE_BRANCH" ]; } && SELECT_BRANCH=1
 API=${FAMILIA_LLAMA_API:-https://api.github.com/repos/ggml-org/llama.cpp/releases}
 DRY=0; UNINSTALL=0; PURGE=0; NAME=""; BUILD=${FAMILIA_LLAMA_BUILD:-b11539}; RUNTIME=1; SYSTEMD=0; FORCE_HOST=""; NOPATH=0
 
@@ -33,6 +43,7 @@ run() { if [ "$DRY" = 1 ]; then say "[dry-run] $*"; else "$@"; fi; }
 while [ $# -gt 0 ]; do
   case "$1" in
     --dry-run|-n) DRY=1 ;;
+    --branch) shift; [ -n "${1:-}" ] || die "--branch needs a branch name"; BRANCH=$1; SELECT_BRANCH=1 ;;
     --uninstall) UNINSTALL=1 ;;
     --purge) PURGE=1 ;;
     --name) shift; NAME=${1:-} ;;
@@ -48,6 +59,8 @@ while [ $# -gt 0 ]; do
   esac
   shift
 done
+
+git check-ref-format --branch "$BRANCH" >/dev/null 2>&1 || die "invalid branch name: $BRANCH"
 
 [ "$(id -u)" = 0 ] && die "do not run as root; this installer is user-space only"
 UNIT="$HOME/.config/systemd/user/familia-node.service"
@@ -80,6 +93,7 @@ case "$OS/$ARCH" in
   Linux/aarch64) ASSET_RE='bin-ubuntu-arm64\.(tar\.gz|zip)$' ;;
   Darwin/arm64) ASSET_RE='bin-macos-arm64\.(tar\.gz|zip)$' ;;
   Darwin/x86_64) ASSET_RE='bin-macos-x64\.(tar\.gz|zip)$' ;;
+  FreeBSD/amd64) die "FreeBSD is source-build-only; install no packages. Run ./familia sync --branch $BRANCH, then build from code-bootstraps-llama.cpp with BUILD_DIR=build-freebsd GPU=off scripts/build-linux.sh" ;;
   *) die "unsupported platform $OS/$ARCH (Termux: use install/termux/install.sh)" ;;
 esac
 [ -n "$NAME" ] || {
@@ -97,7 +111,24 @@ run mkdir -p "$PREFIX/models" "$PREFIX/runtime" "$BIN_DIR"
 
 # 1. repo (idempotent: clone once, then fast-forward only)
 if [ -d "$PREFIX/repo/.git" ]; then
-  run git -C "$PREFIX/repo" pull --ff-only -q || say "warning: repo not fast-forwardable; left as is"
+  if [ "$SELECT_BRANCH" = 1 ]; then
+    if [ "$DRY" = 1 ]; then
+      say "[dry-run] would switch $PREFIX/repo to track origin/$BRANCH and fast-forward only"
+    else
+      git -C "$PREFIX/repo" fetch -q origin "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH" ||
+        die "could not fetch origin/$BRANCH"
+      if git -C "$PREFIX/repo" show-ref --verify --quiet "refs/heads/$BRANCH"; then
+        run git -C "$PREFIX/repo" switch "$BRANCH"
+      else
+        run git -C "$PREFIX/repo" switch --track -c "$BRANCH" "origin/$BRANCH"
+      fi
+      run git -C "$PREFIX/repo" branch --set-upstream-to="origin/$BRANCH" "$BRANCH"
+      run git -C "$PREFIX/repo" merge --ff-only "origin/$BRANCH" ||
+        die "repo branch $BRANCH could not be fast-forwarded; local changes were preserved"
+    fi
+  else
+    run git -C "$PREFIX/repo" pull --ff-only -q || say "warning: repo not fast-forwardable; left as is"
+  fi
 else
   run git clone -q --branch "$BRANCH" "$REPO_URL" "$PREFIX/repo"
 fi

@@ -24,11 +24,11 @@ def test_gate_drops_bad_lessons():
     assert SI.gate(base, R.with_lessons(base, ["count with wc -l on data.txt"]), R.leak_terms(TS))
     assert not SI.gate(base, R.with_lessons(base, ["Redirect a file into wc -l to print only the count."]), R.leak_terms(TS))
 
-def test_pentest_refused():
+def test_pentest_agent_refused_but_model_role_allowed():
     g = {"harnesses": {"x": {"node": "n", "agent": "red"}}, "nodes": {"n": {"model": "m"}}, "models": {"m": {}}, "pentests": {"p": {"agent": "red"}}}
-    with pytest.raises(SystemExit): R.refuse_pentest(g, "x")
+    with pytest.raises(SystemExit): R.refuse_pentest_agent(g, "x")
     g["pentests"] = {}; g["models"]["m"]["role"] = "pentest"
-    with pytest.raises(SystemExit): R.refuse_pentest(g, "x")
+    R.refuse_pentest_agent(g, "x")
 
 def test_loop_with_fake_model(tmp_path, monkeypatch):
     # fake model: solves holdout only once the memory holds a lesson, so a round must show a gain

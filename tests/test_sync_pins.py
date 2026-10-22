@@ -196,14 +196,18 @@ def test_branch_option_fast_forwards_familia_then_syncs_its_pins(tmp_path):
 
     dry = sync(mine, "--branch", "feature", "--dry-run")
     assert dry.returncode == 0, dry.stderr
-    assert "pull --ff-only origin feature" in dry.stdout
+    assert "switch this checkout to track it" in dry.stdout
     assert g(mine, "branch", "--show-current") == "main"
 
     r = sync(mine, "--branch", "feature")
     assert r.returncode == 0, r.stderr
-    assert g(mine, "branch", "--show-current") == "main"
+    assert g(mine, "branch", "--show-current") == "feature"
+    assert g(mine, "rev-parse", "--abbrev-ref", "@{upstream}") == "origin/feature"
     assert g(mine, "rev-parse", "HEAD") == g(up, "rev-parse", "HEAD")
     assert g(mine / "a", "rev-parse", "HEAD") == a2
+    r = sync(mine, "--update")
+    assert r.returncode == 0, r.stderr
+    assert g(mine, "branch", "--show-current") == "feature"
 
 
 def test_branch_option_rejects_invalid_names(tmp_path, fam):

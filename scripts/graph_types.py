@@ -550,7 +550,7 @@ TYPES = {
                        "k": req("int", min=1), "recursion": req("enum", choices={"parallel", "sequential"}),
                        "tasks": req("str"), "max_tasks": opt("int", min=1), "notes": opt("str")},
                       check_self_improve, experimental=True,
-                      doc="Harness² optimizer setting over harness descriptors (off by default; pentests never)"),
+                      doc="Harness² optimizer setting over harness descriptors (off by default; pentest agents excluded)"),
 
     # Phone system agents (#80, docs/system-agents.md): Bixby / Gemini reached through Shizuku
     # (no root). Off by default: absent or status off. Pentest roles never get them.

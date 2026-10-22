@@ -15,7 +15,7 @@ Harness² engine adapter, scripts/harness2.py the review CLI, and any launcher (
 included) may call `harness2.py sync` as a subprocess; nothing requires the others.
 
 Safety (enforced here, not configurable):
-  * a target used by a pentest agent, or served by a role:pentest model, cannot be enabled;
+  * a target used by a pentest agent cannot be enabled;
   * descriptors name prompt/guardrails/memory/skills only; there is no field for tools,
     toolsets, plugins, scripts or sub-agents, so a proposal cannot reach them;
   * every proposal passes `gate()`: editable files only, no tool/permission widening text,
@@ -65,12 +65,9 @@ def check_self_improve(g, name, s, errs):
     for t in s.get("targets") or []:
         h = (g.get("harnesses") or {}).get(t) if isinstance(t, str) else None
         if not isinstance(h, dict): continue
-        n = (g.get("nodes") or {}).get(h.get("node")) if isinstance(h.get("node"), str) else None
-        if isinstance(n, dict) and ((g.get("models") or {}).get(n.get("model")) or {}).get("role") == "pentest":
-            errs.append(f"{w}: target {t!r} node {h['node']!r} serves a role:pentest model; pentest models never self-improve")
         if h.get("agent") in pa:
             errs.append(f"{w}: target {t!r} is agent {h['agent']!r}, which a pentest uses; "
-                        "pentest roles never self-improve (declare a separate agent for experiments)")
+                        "agents used by pentest configurations cannot self-improve")
     if isinstance(s.get("tasks"), str) and not os.path.isfile(os.path.join(TASKS_DIR, s["tasks"] + ".json")):
         errs.append(f"{w}.tasks: no task set registry/harness2-tasks/{s['tasks']}.json")
 

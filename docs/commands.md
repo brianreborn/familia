@@ -15,10 +15,11 @@ Every row is also a command: `./familia COMMAND [VALUE...] [ARG...]` (Windows: `
 ./familia --dry-run serve coder        # print the command (and the license step), run nothing
 ./familia monitor --once HOST          # anything after the values goes to the script
 ./familia skills enable green-probe    # pass-through: any skills.py / licenses.py / harness2.py / registry.py command
+./familia FOO=bar BAR=x model fetch org/name --quant Q4_K_M
 eval "$(./familia completion bash)"    # tab completion in bash
 ```
 
-Names come from `scripts/cli-commands.txt` (natural names such as `model add`, `host measure`). Every row also gets automatic ones: its key (`models.explain`), `GROUP NAME` (`models explain`), and the short name when it is unique (`explain`), so a new row in `scripts/menu-items.txt` is a command and is in `familia help` and the man page at once. After adding a row, regenerate the man page: `python3 scripts/familia_cli.py man --write` (`tests/test_cli.py` checks it is current). Options for familia itself go before the command (`--dry-run`, `--yes`, `--pipe`); after the command everything goes to the script, so `./familia install --dry-run` is the installer's own preview. A value that has no default and is not given is asked for on a terminal; without one the command stops with exit status 2 and says which value it needs.
+Names come from `scripts/cli-commands.txt` (natural names such as `model add`, `host measure`). Every row also gets automatic ones: its key (`models.explain`), `GROUP NAME` (`models explain`), and the short name when it is unique (`explain`), so a new row in `scripts/menu-items.txt` is a command and is in `familia help` and the man page at once. After adding a row, regenerate the man page: `python3 scripts/familia_cli.py man --write` (`tests/test_cli.py` checks it is current). Leading `NAME=value` assignments are exported for the selected command. Options for familia itself go before the command (`--dry-run`, `--yes`, `--pipe`); after the command everything goes to the script, so `./familia install --dry-run` is the installer's own preview and `./familia install --branch BRANCH` selects its familia checkout branch. On FreeBSD, the runtime installer is intentionally unsupported; use `./familia sync --branch BRANCH` and the source-build instructions below. At a numbered menu item prompt, enter `NAME=value 6 --baz` to set an environment variable and pass remaining arguments to that item. A value that has no default and is not given is asked for on a terminal; without one the command stops with exit status 2 and says which value it needs.
 
 
 ## Search
@@ -46,7 +47,7 @@ The interactive menu and `--list` show these paths before the command groups. Fo
 | Add and launch a model | `models.fetch-preview` -> `models.fetch` -> add its node to `graph.yaml` -> `models.check` -> `hosts.serve <NODE>` |
 | Run Hermes on the graph coder | `models.check` -> `agents.hermes` (license-gated) |
 
-**Not done yet:** the FreeBSD llama.cpp 0.7.0 build and model-load smoke test on `angel` have not been run, and `angel` is still unmeasured. After this checkout is available there, run `BUILD_DIR=build-freebsd GPU=off scripts/build-linux.sh` from `code-bootstraps-llama.cpp`, verify `build-freebsd/bin/llama-server --version`, measure the host, then re-check `graph.yaml`. The unmeasured host cannot host graph nodes.
+**Not done yet:** the FreeBSD llama.cpp 0.7.0 build and model-load smoke test on `angel` have not been run, and `angel` is still unmeasured. FreeBSD currently has no package-based setup here: do not run `familia install` or install packages; build the pinned llama.cpp checkout from source using the already available toolchain. From `code-bootstraps-llama.cpp`, run `BUILD_DIR=build-freebsd GPU=off scripts/build-linux.sh`, then verify `build-freebsd/bin/llama-server --version`. Measure the host and re-check `graph.yaml` afterward; the unmeasured host cannot host graph nodes.
 
 ## Set up
 
@@ -56,13 +57,13 @@ The interactive menu and `--list` show these paths before the command groups. Fo
 |---|---|---|---|
 | `setup.panel` | Configure in a simple window (mouse, keyboard or switch friendly) ([panel.md](panel.md)) | `python3 scripts/panel.py` | `python scripts\panel.py` |
 | `setup.sync-preview` | Pinned parts: show what is behind pins.txt and would move (no changes) | `python3 scripts/sync_pins.py --dry-run` | `python scripts\sync_pins.py --dry-run` |
-| `setup.sync` | Pinned parts: bring every part to its pin, together; `--branch BRANCH` fast-forwards familia to that branch then syncs its pins (licenses first) | `python3 scripts/sync_pins.py [--branch BRANCH]` | `python scripts\sync_pins.py [--branch BRANCH]` |
-| `setup.update` | Update familia (git pull --ff-only, optionally `--branch BRANCH`), then sync pinned parts (licenses first) | `python3 scripts/sync_pins.py --update [--branch BRANCH]` | `python scripts\sync_pins.py --update [--branch BRANCH]` |
+| `setup.sync` | Pinned parts: bring every part to its pin, together; `--branch BRANCH` switches to and tracks that branch, then syncs its pins (licenses first) | `python3 scripts/sync_pins.py [--branch BRANCH]` | `python scripts\sync_pins.py [--branch BRANCH]` |
+| `setup.update` | Update familia on its tracked branch (or switch/track `--branch BRANCH`), then sync pinned parts (licenses first) | `python3 scripts/sync_pins.py --update [--branch BRANCH]` | `python scripts\sync_pins.py --update [--branch BRANCH]` |
 | `setup.configure` | Set up this checkout: sync the pinned parts and the git-pull hooks (licenses first) | `sh scripts/configure.sh` | - |
 | `setup.licenses` | Review the licenses of everything you have chosen | `python3 scripts/licenses.py review` | `python scripts\licenses.py review` |
 | `setup.settings` | Change launcher settings (port, threads, context) on the terminal | `sh scripts/configure.sh --interactive` | - |
-| `setup.install` | Install or update this host (llama.cpp runtime, host entry): dry run first | `sh install/linux/install.sh --dry-run` | `powershell -NoProfile -ExecutionPolicy Bypass -File install\windows\install.ps1 -DryRun` |
-| `setup.install-run` | Install or update this host for real (asks you to accept licenses) | `sh install/linux/install.sh` | `powershell -NoProfile -ExecutionPolicy Bypass -File install\windows\install.ps1` |
+| `setup.install` | Install or update this host (llama.cpp runtime, host entry): dry run first | `sh install/linux/install.sh --dry-run [--branch BRANCH]` | `powershell -NoProfile -ExecutionPolicy Bypass -File install\windows\install.ps1 -DryRun [-Branch BRANCH]` |
+| `setup.install-run` | Install or update this host for real (asks you to accept licenses) | `sh install/linux/install.sh [--branch BRANCH]` | `powershell -NoProfile -ExecutionPolicy Bypass -File install\windows\install.ps1 [-Branch BRANCH]` |
 | `setup.install-cli` | Put familia on your PATH (~/.local/bin/familia shim): preview, writes nothing ([install.md](install.md#familia-on-your-path)) | `sh scripts/install-cli.sh --dry-run` | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-cli.ps1 -WhatIf` |
 | `setup.install-cli-run` | Put familia on your PATH for real (2-line shim; the code stays in this checkout) | `sh scripts/install-cli.sh` | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-cli.ps1` |
 | `setup.path-add` | Add ~/.local/bin to PATH in ~/.profile (shows the marked block, asks first) | `sh scripts/install-cli.sh path --add` | - |

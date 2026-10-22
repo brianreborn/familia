@@ -15,9 +15,23 @@ from graph_types import validate_types  # noqa: E402
 
 GRAPH = yaml.safe_load(open(os.path.join(ROOT, "graph.yaml")))
 
+def _pentest():
+    return {
+        "name": "Authorized test fixture",
+        "node": "coder",
+        "agent": "hermes",
+        "scope": {"allow": [], "deny": []},
+        "tools": {"allow": []},
+        "report_to": "familia-issues",
+        "requires_operator_confirm": True,
+        "launch_test_only": True,
+        "status": "planned",
+    }
+
 
 def graph(mode="propose", agent="hermes-lab", root=None, **h):
     g = copy.deepcopy(GRAPH)
+    g["pentests"] = {"test-only": _pentest()}
     g["harnesses"]["hermes-lab"].update(agent=agent, **h)
     if agent is None: del g["harnesses"]["hermes-lab"]["agent"]
     if root: g["harnesses"]["hermes-lab"]["root"] = str(root)
@@ -39,9 +53,9 @@ def test_pentest_agent_cannot_be_enabled():
     assert any("pentest" in e and "hermes" in e for e in errs), errs
     assert not [e for e in validate_types(graph(mode="off", agent="hermes")) if "pentest" in e]
 
-def test_pentest_model_and_remote_node_rejected():
+def test_pentest_model_is_allowed_but_remote_node_is_rejected():
     g = graph(); g["models"][g["nodes"]["coder"]["model"]]["role"] = "pentest"
-    assert any("role:pentest" in e for e in validate_types(g))
+    assert not [e for e in validate_types(g) if "role:pentest" in e]
     g = graph(); g["nodes"]["coder"]["bind"] = "0.0.0.0"
     assert any("loopback" in e for e in validate_types(g))
 
@@ -283,9 +297,10 @@ def test_set_round_trip_keeps_file(tmp_path):
     assert r.returncode == 0 and gp.read_text() == orig
 
 def test_set_refuses_pentest_agent(tmp_path):
-    gp = tmp_path / "graph.yaml"; shutil.copy(os.path.join(ROOT, "graph.yaml"), gp); orig = gp.read_text()
+    g = copy.deepcopy(GRAPH); g["pentests"] = {"test-only": _pentest()}
+    gp = write_graph(tmp_path, g); orig = open(gp).read()
     r = h2(str(gp), "set", "--agent", "hermes", "--mode", "propose", "--yes")
-    assert r.returncode == 1 and "pentest" in r.stderr and gp.read_text() == orig
+    assert r.returncode == 1 and "pentest" in r.stderr and open(gp).read() == orig
 
 def test_set_declares_descriptor_for_any_hermes_agent(tmp_path):
     g = copy.deepcopy(GRAPH); g["agents"]["lab2"] = copy.deepcopy(g["agents"]["hermes-lab"])

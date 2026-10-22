@@ -48,10 +48,7 @@ are quoted lines, not legal advice. Read the full text.
 
 ## When you are asked
 
-Your acceptance goes in `.cache/familia/license-acceptance.json`, together
-with a hash of the selection and its licenses. You are asked again only when
-that hash changes, for example when you add a model, enable a skill, or a pin
-moves.
+Consent is stored as one uniquely named Markdown file per license/version and legal-text evidence in the familia accepted-licenses state directory. The default is `~/.local/state/familia/accepted-licenses` on POSIX or `%LOCALAPPDATA%\familia\accepted-licenses` on Windows; `XDG_STATE_HOME` and `FAMILIA_ACCEPTED_LICENSES_DIR` can override it. Legacy aggregate acceptance files do not count as consent to terms whose exact evidence was not recorded. You are asked again only when license/version evidence changes; adding an item with already-accepted terms does not require another acceptance.
 
 The gate runs before `familia-menu.sh` install, start and fetch actions, in
 `install.sh`, `start.sh` and `with-fleet.sh`, in the Windows entry points, and

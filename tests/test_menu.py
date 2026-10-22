@@ -207,6 +207,32 @@ def test_piped_choices():
     assert "isn't one of the choices" in r.stdout
 
 
+def test_menu_choice_accepts_environment_assignments_and_forwarded_arguments():
+    r = subprocess.run(["bash", MENU, "--pipe"], cwd=ROOT, capture_output=True, text=True, env=env(),
+                       input="1\nFAMILIA_SYNC=0 3 --license-gate off\nb\nq\n", timeout=60)
+    assert r.returncode == 0, r.stderr
+    assert "Running: python3 scripts/sync_pins.py --dry-run --license-gate off" in r.stdout
+    assert "skipped (FAMILIA_SYNC=0)" in r.stderr
+
+
+def test_search_choice_accepts_environment_assignments_and_forwarded_arguments():
+    r = menu("--pipe", inp="1\n/sync\nFAMILIA_SYNC=0 3 --license-gate off\nb\nq\n")
+    assert r.returncode == 0, r.stderr
+    assert "Running: python3 scripts/sync_pins.py --license-gate off" in r.stdout
+    assert "skipped (FAMILIA_SYNC=0)" in r.stderr
+
+
+def test_long_group_is_paged_instead_of_showing_a_wall_of_items():
+    r = menu("--pipe", "--dry-run", inp="1\n>\n<\nb\nq\n")
+    assert r.returncode == 0, r.stderr
+    assert "Page 1 of 3 (items 1-7 of 15)" in r.stdout
+    assert "Page 2 of 3 (items 8-14 of 15)" in r.stdout
+    first = r.stdout.split("Page 1 of 3", 1)[1].split("Page 2 of 3", 1)[0]
+    assert len(re.findall(r"^  \d+\) ", first, re.M)) == 7
+    assert ">) Next page" in first
+    assert "<) Previous page" in r.stdout.split("Page 2 of 3", 1)[1]
+
+
 def test_license_gate_blocks_without_terminal(tmp_path):
     r = menu("--run", "hosts.start", FAMILIA_LICENSE_ACCEPT_FILE=str(tmp_path / "a.json"))
     assert r.returncode != 0 and "licenses" in r.stderr.lower()

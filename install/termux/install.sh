@@ -9,6 +9,7 @@
 # Flags: --dry-run  --uninstall [--purge]  --name NAME  --sshd (install+start openssh)
 #        --yes (accept the license review; summary still printed)  --accept-unknown
 #        --no-runtime  --force-host  --no-wakelock
+#        --branch BRANCH  select the familia branch (default: checkout branch, else main)
 #        --no-path (do not write the $PREFIX/bin/familia shim; scripts/install-cli.sh)
 #   --name defaults to <model>-<last IPv4 octet> (or <model>-<boot_id prefix>), unique per phone;
 #          interactive installs prompt with that value as the default.
@@ -17,7 +18,16 @@ set -eu
 
 PREFIX_DIR=${FAMILIA_PREFIX:-$HOME/familia}
 REPO_URL=${FAMILIA_REPO_URL:-https://github.com/brianreborn/familia.git}
-BRANCH=${FAMILIA_BRANCH:-main}
+SOURCE_BRANCH=""
+if [ -f "$0" ]; then
+  SOURCE_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." 2>/dev/null && pwd || true)
+  if [ -n "$SOURCE_ROOT" ] && git -C "$SOURCE_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    SOURCE_BRANCH=$(git -C "$SOURCE_ROOT" branch --show-current 2>/dev/null || true)
+  fi
+fi
+BRANCH=${FAMILIA_BRANCH:-${SOURCE_BRANCH:-main}}
+SELECT_BRANCH=0
+{ [ -n "${FAMILIA_BRANCH:-}" ] || [ -n "$SOURCE_BRANCH" ]; } && SELECT_BRANCH=1
 # Phones: Android + apps leave only ~2-2.6 GiB free on a 7.4 GiB A57 (docs/ram-safety.md); policy, not measured.
 RESERVE_MIB=${FAMILIA_RESERVE_MIB:-5120}
 RAW_URL=${FAMILIA_RAW_URL:-https://raw.githubusercontent.com/brianreborn/familia}
@@ -30,6 +40,7 @@ run() { if [ "$DRY" = 1 ]; then say "[dry-run] $*"; else "$@"; fi; }
 while [ $# -gt 0 ]; do
   case "$1" in
     --dry-run|-n) DRY=1 ;;
+    --branch) shift; [ -n "${1:-}" ] || die "--branch needs a branch name"; BRANCH=$1; SELECT_BRANCH=1 ;;
     --uninstall) UNINSTALL=1 ;;
     --purge) PURGE=1 ;;
     --name) shift; NAME=${1:-} ;;
@@ -45,6 +56,8 @@ while [ $# -gt 0 ]; do
   esac
   shift
 done
+
+git check-ref-format --branch "$BRANCH" >/dev/null 2>&1 || die "invalid branch name: $BRANCH"
 
 if [ -z "${TERMUX_VERSION:-}" ] && [ ! -d /data/data/com.termux ]; then
   [ "$DRY" = 1 ] || die "not running inside Termux (use install/linux/install.sh on desktop Linux)"
@@ -108,7 +121,24 @@ else
 fi
 
 if [ -d "$PREFIX_DIR/repo/.git" ]; then
-  run git -C "$PREFIX_DIR/repo" pull --ff-only -q || say "warning: repo not fast-forwardable; left as is"
+  if [ "$SELECT_BRANCH" = 1 ]; then
+    if [ "$DRY" = 1 ]; then
+      say "[dry-run] would switch $PREFIX_DIR/repo to track origin/$BRANCH and fast-forward only"
+    else
+      git -C "$PREFIX_DIR/repo" fetch -q origin "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH" ||
+        die "could not fetch origin/$BRANCH"
+      if git -C "$PREFIX_DIR/repo" show-ref --verify --quiet "refs/heads/$BRANCH"; then
+        run git -C "$PREFIX_DIR/repo" switch "$BRANCH"
+      else
+        run git -C "$PREFIX_DIR/repo" switch --track -c "$BRANCH" "origin/$BRANCH"
+      fi
+      run git -C "$PREFIX_DIR/repo" branch --set-upstream-to="origin/$BRANCH" "$BRANCH"
+      run git -C "$PREFIX_DIR/repo" merge --ff-only "origin/$BRANCH" ||
+        die "repo branch $BRANCH could not be fast-forwarded; local changes were preserved"
+    fi
+  else
+    run git -C "$PREFIX_DIR/repo" pull --ff-only -q || say "warning: repo not fast-forwardable; left as is"
+  fi
 else
   run git clone -q --branch "$BRANCH" "$REPO_URL" "$PREFIX_DIR/repo"
 fi

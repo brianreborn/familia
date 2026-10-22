@@ -137,10 +137,20 @@ def test_windows_menu_has_the_same_search():
     for needle in ("[string]$Search", "function SearchUi", "function FindMatches", "-ceq 'N'",
                    "/word search every group", "-Search TEXT" if "-Search TEXT" in s else "-Search"):
         assert needle in s, needle
+    assert "$pageSize = 7" in s and "</> page" in s
     assert "&&" not in s
 
 
 PWSH = shutil.which("pwsh")
+
+
+@pytest.mark.skipif(not PWSH, reason="PowerShell (pwsh) is not installed")
+def test_windows_long_group_is_paged():
+    r = subprocess.run([PWSH, "-NoProfile", "-File", PS1, "-Pipe", "-DryRun"], cwd=ROOT, capture_output=True,
+                       text=True, env=env(), input="1\n>\n<\nb\nq\n", timeout=180)
+    assert r.returncode == 0, r.stderr
+    assert "Page 1 of 3 (items 1-7 of 15)" in r.stdout
+    assert "Page 2 of 3 (items 8-14 of 15)" in r.stdout
 
 
 @pytest.mark.skipif(not PWSH, reason="PowerShell (pwsh) is not installed")

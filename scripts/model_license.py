@@ -2,6 +2,8 @@
 """model_license.py: show a model's license and get it accepted before its weights are
 downloaded or it is launched (familia #51, docs/licenses.md).
 
+Model and graph license acceptance share per-license records in familia's state directory.
+
   scripts/model_license.py show  ID...                 print the license summary (records nothing)
   scripts/model_license.py check ID...                 exit 0 when every ID's license is accepted
   scripts/model_license.py gate  ID... [--accept-licenses|--yes] [--dry-run]
@@ -13,14 +15,11 @@ that oblige or limit, quoted with file:line. An unknown license is never guessed
 Graph selections (serve.sh, hermes) use scripts/licenses.py gate, which covers every model of
 graph.yaml. A model that is not in the graph yet (add-model.sh --fetch, damp runs) is gated
 here, per model.
-TODO(#51 licenses): switch to `scripts/licenses.py check --models IDS` once licenses.py has
---models; until then acceptance of single models is stored in
-.cache/familia/model-license-acceptance.json (licenses.py owns license-acceptance.json).
 
 --accept-licenses / --yes, or FAMILIA_ACCEPT_LICENSES=yes, accepts without a prompt (the summary
 is still printed). --dry-run only prints. Exit: 0 accepted, 1 not accepted, 2 usage / no
 terminal to ask on."""
-import datetime, hashlib, json, os, subprocess, sys
+import hashlib, json, os, subprocess, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
@@ -78,20 +77,55 @@ def summary(e, out=None):
         w("  gated:   accept the terms on Hugging Face as well\n")
 
 
+def _acceptance_item(e):
+    import hashlib
+    import json
+
+    info = info_of(e)
+    texts = info.get("texts") or []
+    evidence = sorted(
+        str(text["sha256"]) if text.get("sha256") else json.dumps(text, sort_keys=True)
+        for text in texts
+    )
+    evidence_source = evidence or [
+        str(info.get("summary_source") or info.get("link_source") or e.get("license_source") or ""),
+        str(info.get("summary") or ""),
+    ]
+    evidence_sha256 = hashlib.sha256(
+        json.dumps(evidence_source, sort_keys=True).encode()
+    ).hexdigest()
+    license_id = str(info.get("id") or e.get("license") or "unknown")
+    unknown = bool(info.get("unknown")) or license_id.lower() == "unknown"
+    return {
+        "kind": "model",
+        "id": str(e.get("id") or e.get("repo") or "unknown-model"),
+        "license": license_id,
+        "version": str(info.get("version") or license_id),
+        "evidence_sha256": evidence_sha256,
+        "category": "unknown" if unknown else "licensed",
+        "source": str(info.get("summary_source") or info.get("link_source") or e.get("license_source") or ""),
+        "link": str(info.get("link") or e.get("license_source") or ""),
+    }
+
+
 def accepted(e):
-    a = _load(ACCEPT_FILE) or {}
-    return (a.get("models") or {}).get(e["id"], {}).get("digest") == digest(e)
+    import license_acceptance
+    return license_acceptance.is_accepted(
+        _acceptance_item(e), license_acceptance.accepted_dir(ACCEPT_FILE)
+    )
 
 
 def record(e, how):
-    a = _load(ACCEPT_FILE) or {}
-    a.setdefault("models", {})[e["id"]] = {"digest": digest(e), "license": info_of(e).get("id"), "how": how,
-                                           "accepted_at": datetime.datetime.now().astimezone().isoformat(timespec="seconds")}
-    os.makedirs(os.path.dirname(ACCEPT_FILE), exist_ok=True)
-    tmp = ACCEPT_FILE + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(a, f, indent=2, sort_keys=True)
-    os.replace(tmp, ACCEPT_FILE)
+    global ACCEPT_FILE
+    import license_acceptance
+    directory = license_acceptance.accepted_dir(ACCEPT_FILE)
+    license_acceptance.record(
+        _acceptance_item(e),
+        how,
+        unknown_ok=True,
+        directory=directory,
+    )
+    ACCEPT_FILE = str(directory)
 
 
 def env_yes():

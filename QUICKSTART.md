@@ -26,10 +26,10 @@ Already have a checkout? Update familia and bring every pinned sub-project to it
 ```sh
 ./familia update          # git pull --ff-only, then sync; add --dry-run to only look
 ./familia sync --dry-run  # what is behind pins.txt and would move
-./familia sync --branch feat/llama.cpp-0.7.0  # fast-forward to a branch, then sync its pins
+./familia sync --branch feat/llama.cpp-0.7.0  # switch to and track the branch, then sync its pins
 ```
 
-The branch form updates familia itself from `origin/BRANCH` without switching branches, then syncs all projects to that branch's `pins.txt`; it refuses non-fast-forward updates. Use `--dry-run` to preview. On Windows, use `python scripts\sync_pins.py --branch feat/llama.cpp-0.7.0`. You rarely need the default sync by hand: the installers, `configure.sh`, `start.sh`, `serve.sh`, `with-fleet.sh`, the panel and the tests all sync first, and after `configure.sh` a `git pull` of familia syncs too. Adding or fetching a model does not.
+The branch form fetches `origin/BRANCH`, switches this checkout to that branch (creating a local tracking branch if needed), fast-forwards only, and syncs all projects to its `pins.txt`. Later updates and installer runs stay on that tracked branch; use `--branch main` when you explicitly want to switch back. Use `--dry-run` to preview. On Windows, use `python scripts\sync_pins.py --branch feat/llama.cpp-0.7.0`. You rarely need the default sync by hand: the installers, `configure.sh`, `start.sh`, `serve.sh`, `with-fleet.sh`, the panel and the tests all sync first, and after `configure.sh` a `git pull` of familia syncs too. Adding or fetching a model does not.
 
 ### Licenses come first
 
@@ -72,7 +72,7 @@ On Windows use `python` instead of `python3` and set `$env:PYTHONUTF8 = '1'` fir
 
 `DETACH_MODE=screen-attached ./start.sh --host miryam` keeps the graph supervisor in the visible `familia-server` screen session with 10,000 lines of scrollback. Use `Ctrl-A`, then `D` to detach and `screen -r familia-server` to resume. Other modes are opt-in; foreground is the default. See [MANUAL.md](MANUAL.md#backgrounding-and-detaching).
 
-The FreeBSD graph host `angel` is currently unmeasured and has no active nodes. `./start.sh --dry-run --host angel` reports this without starting or contacting anything. Run the separate FreeBSD llama.cpp build/version test first; graph serving requires measured host facts and explicit active-node placement.
+The FreeBSD graph host `angel` is currently unmeasured and has no active nodes. `./start.sh --dry-run --host angel` reports this without starting or contacting anything. FreeBSD currently uses a source build only—install no packages and do not run `familia install`. Run the pinned llama.cpp build/version test from `code-bootstraps-llama.cpp` with `BUILD_DIR=build-freebsd GPU=off scripts/build-linux.sh`; graph serving requires measured host facts and explicit active-node placement.
 
 ### Always run hermes through the harness
 

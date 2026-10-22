@@ -2,6 +2,19 @@
 
 Per-user installers for each supported non-server platform. None needs admin or
 root. FreeBSD and other server-oriented systems use the manual steps in MANUAL.md.
+On the FreeBSD test host `angel`, install no packages: build the pinned llama.cpp
+checkout from source. The Linux/macOS one-click installer and prebuilt release
+assets do not provide a FreeBSD runtime.
+
+When an installer is run from a familia checkout, it uses that checkout's current
+branch for the installed repo and keeps it tracking `origin/<branch>`. Set
+`FAMILIA_BRANCH` or pass `--branch BRANCH` (`-Branch BRANCH` on Windows) to choose
+a branch explicitly. Running a downloaded installer without a git checkout defaults
+a new install to `main`, but an existing install stays on its current tracked branch.
+The bootstrap `install.sh` likewise updates an existing checkout from its configured
+upstream; it does not force `main`. On FreeBSD, do not run the runtime installer:
+select/sync the desired familia branch with `./familia sync --branch BRANCH`, then
+build the pinned llama.cpp checkout from source as described above.
 
 | Platform | One click | Installs to |
 |---|---|---|
@@ -68,6 +81,7 @@ Every installer ends by putting `familia` on your PATH for your user only (no ro
 | Uninstall (keeps models) | `--uninstall` | `--uninstall` | `-Uninstall` |
 | Remove everything | `--uninstall --purge` | `--uninstall --purge` | `-Uninstall -Purge` |
 | Host name | `--name` | `--name` | `-Name` |
+| Familia branch | `--branch BRANCH` | `--branch BRANCH` | `-Branch BRANCH` |
 | Skip runtime | `--no-runtime` | `--no-runtime` | `-NoRuntime` |
 | Don't put `familia` on PATH | `--no-path` | `--no-path` | `-NoPath` |
 

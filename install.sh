@@ -8,11 +8,12 @@ set -eu
 case "${1:-}" in -h|--help) cat <<'USAGE'
 install.sh: Install familia into ~/familia (or $INSTALL_PREFIX), sync the pinned parts, then start it.
 Usage:
-  sh install.sh [--dry-run] [--yes] [--no-start] [--no-path]
+  sh install.sh [--dry-run] [--yes] [--no-start] [--no-path] [--branch BRANCH]
     --dry-run   say what would happen; change nothing
     --yes       non-interactive: acknowledge the notice and accept licenses (the summary is still printed)
     --no-start  stop after setup (same as INSTALL_NO_START=1)
     --no-path   do not put `familia` on PATH (default: 2-line shim ~/.local/bin/familia; scripts/install-cli.sh)
+    --branch    choose a branch for a new checkout or switch an existing checkout to track it
 Example: curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install.sh | sh -s -- --yes --no-start
 USAGE
   exit 0 ;; esac
@@ -23,9 +24,11 @@ REPO_URL=${FAMILIA_REPO_URL:-${FEELD_REPO_URL:-https://github.com/brianreborn/fa
 die() { echo "install.sh: $*" >&2; exit 1; }
 
 DRY=0
+BRANCH=${FAMILIA_BRANCH:-}
 while [ $# -gt 0 ]; do
   case "$1" in
     --dry-run|-n) DRY=1 ;;
+    --branch) [ $# -ge 2 ] || die "--branch needs a branch name"; shift; BRANCH=$1 ;;
     --yes|-y) INSTALL_ACK=yes; FAMILIA_ACCEPT_LICENSES=yes; export INSTALL_ACK FAMILIA_ACCEPT_LICENSES ;;
     --accept-unknown) FAMILIA_ACCEPT_UNKNOWN_LICENSES=yes; export FAMILIA_ACCEPT_UNKNOWN_LICENSES ;;
     --no-start) INSTALL_NO_START=1 ;;
@@ -35,7 +38,7 @@ while [ $# -gt 0 ]; do
   shift
 done
 if [ "$DRY" = 1 ]; then
-  echo "install.sh: [dry-run] would clone or update $REPO_URL in $PREFIX" >&2
+  echo "install.sh: [dry-run] would clone or update $REPO_URL in $PREFIX${BRANCH:+ on branch $BRANCH}" >&2
   echo "install.sh: [dry-run] would show the license review (scripts/licenses.py gate)" >&2
   echo "install.sh: [dry-run] would run sh $PREFIX/scripts/configure.sh (syncs every pin in pins.txt together; scripts/sync_pins.py)" >&2
   [ "${INSTALL_NO_PATH:-0}" = 1 ] || echo "install.sh: [dry-run] would put familia on PATH: sh $PREFIX/scripts/install-cli.sh" >&2
@@ -44,6 +47,9 @@ if [ "$DRY" = 1 ]; then
 fi
 
 command -v git >/dev/null 2>&1 || die "git is required. Install it (Debian/Ubuntu: sudo apt install git; Termux: pkg install git), then run this again."
+if [ -n "$BRANCH" ]; then
+  git check-ref-format --branch "$BRANCH" >/dev/null 2>&1 || die "invalid branch name: $BRANCH"
+fi
 
 # The second click. Paying is not required. The notice is not optional.
 # INSTALL_ACK=yes is the non-interactive answer.
@@ -68,10 +74,27 @@ ack_notice
 
 if [ ! -d "$PREFIX/.git" ]; then
   echo "install.sh: checking out FAMILIA into $PREFIX..." >&2
-  git clone "$REPO_URL" "$PREFIX"
+  if [ -n "$BRANCH" ]; then git clone --branch "$BRANCH" "$REPO_URL" "$PREFIX"
+  else git clone "$REPO_URL" "$PREFIX"; fi
 else
   echo "install.sh: updating FAMILIA at $PREFIX..." >&2
-  git -C "$PREFIX" pull origin main || true
+  if [ -n "$BRANCH" ]; then
+    git -C "$PREFIX" fetch origin "+refs/heads/$BRANCH:refs/remotes/origin/$BRANCH" ||
+      die "could not fetch origin/$BRANCH"
+    if git -C "$PREFIX" show-ref --verify --quiet "refs/heads/$BRANCH"; then
+      git -C "$PREFIX" switch "$BRANCH" || die "could not switch to $BRANCH; check for local changes"
+    else
+      git -C "$PREFIX" switch --track -c "$BRANCH" "origin/$BRANCH" ||
+        die "could not switch to $BRANCH; check for local changes"
+    fi
+    git -C "$PREFIX" branch --set-upstream-to="origin/$BRANCH" "$BRANCH" ||
+      die "could not set $BRANCH to track origin/$BRANCH"
+    git -C "$PREFIX" merge --ff-only "origin/$BRANCH" ||
+      die "could not fast-forward $BRANCH; local changes were preserved"
+  else
+    git -C "$PREFIX" pull --ff-only ||
+      die "could not fast-forward the current branch from its configured upstream; local changes were preserved"
+  fi
 fi
 
 # Licenses before anything is fetched or run (docs/licenses.md).

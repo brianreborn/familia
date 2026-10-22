@@ -51,23 +51,43 @@ def test_graph_checks():
 def test_graph_types_runs_skills_check():
     import familia_yaml
     g = familia_yaml.load(os.path.join(ROOT, "graph.yaml"))
-    g["pentests"]["android-fleet"]["skills"] = ["green-deploy"]
+    g["pentests"] = {"android-fleet": {"agent": "hermes", "skills": ["green-deploy"],
+                                       "tools": {"allow": []}}}
     errs = " ".join(graph_types.validate_types(g))
     assert "tool-adding" in errs
 
 
-def env(tmp_path):
+PENTEST_GRAPH_YAML = """pentests:
+  android-fleet:
+    name: Test pentest role
+    node: coder
+    agent: hermes
+    scope: {allow: [], deny: []}
+    tools: {allow: []}
+    report_to: familia-issues
+    requires_operator_confirm: true
+    launch_test_only: true
+    status: planned
+
+"""
+
+
+def env(tmp_path, pentest=False):
     g = tmp_path / "graph.yaml"
     if not g.exists():
-        g.write_text(open(os.path.join(ROOT, "graph.yaml"), encoding="utf-8").read())
+        text = open(os.path.join(ROOT, "graph.yaml"), encoding="utf-8").read()
+        g.write_text(text)
+    if pentest and "pentests:" not in g.read_text():
+        text = g.read_text()
+        g.write_text(text.replace("kv_channels:\n", PENTEST_GRAPH_YAML + "kv_channels:\n"))
     e = dict(os.environ, FAMILIA_GRAPH=str(g), FAMILIA_LICENSE_ACCEPT_FILE=str(tmp_path / "acc.json"), FAMILIA_NO_TTY="1")
     for k in ("FAMILIA_ACCEPT_LICENSES", "FAMILIA_ACCEPT_UNKNOWN_LICENSES", "FAMILIA_MENU_PIPE"):
         e.pop(k, None)
     return e, g
 
 
-def run(tmp_path, *args, inp=None, extra=None):
-    e, g = env(tmp_path)
+def run(tmp_path, *args, inp=None, extra=None, pentest=False):
+    e, g = env(tmp_path, pentest=pentest)
     e.update(extra or {})
     return subprocess.run([sys.executable, SCRIPT, *args], capture_output=True, text=True, env=e,
                           input=inp, stdin=None if inp is not None else subprocess.DEVNULL), g
@@ -82,11 +102,12 @@ def test_cli_enable_flow(tmp_path):
     assert r.returncode == 1 and "license-blocked" in r.stderr and g.read_text() == before
     r, g = run(tmp_path, "enable", "artemis-android-skill")
     assert r.returncode == 1 and "not vendored" in r.stderr
-    r, g = run(tmp_path, "enable", "etioz", "--agent", "android-fleet", "--dry-run")
+    r, g = run(tmp_path, "enable", "etioz", "--agent", "android-fleet", "--dry-run", pentest=True)
     assert r.returncode == 0
-    r, g = run(tmp_path, "enable", "green-probe", "--agent", "android-fleet")
+    r, g = run(tmp_path, "enable", "green-probe", "--agent", "android-fleet", pentest=True)
     assert r.returncode == 1 and "pentest" in r.stderr
     # licenses: no terminal -> refuse and leave the graph alone
+    before = g.read_text()
     r, g = run(tmp_path, "enable", "etioz")
     assert r.returncode in (2, 3) and g.read_text() == before
     r, g = run(tmp_path, "enable", "etioz", "--yes", extra={"FAMILIA_ACCEPT_UNKNOWN_LICENSES": "yes"})

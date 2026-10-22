@@ -23,7 +23,7 @@ How to run and look after a familia setup day to day. Install and first start ar
 - All or nothing. Nothing moves if any part has uncommitted changes, a HEAD on no branch, or a pin that can't be fetched; the message says what to do. A failed checkout puts back the parts already moved. Nothing is reset, cleaned or force-pushed.
 - When a part was cloned or moved, its licenses are checked again (`scripts/licenses.py gate`), so you are asked only when they changed. Tests only warn.
 - `--dry-run` shows what would move and uses no network; `--check` exits 1 when something is behind; `./familia update` is `git pull --ff-only` of familia and then a sync with the new `pins.txt`.
-- To test a familia development branch without manually checking it out, run `./familia sync --branch BRANCH` (or `python3 scripts/sync_pins.py --branch BRANCH`). It fast-forwards the current familia branch from `origin/BRANCH`, then syncs every project to the revisions in that branch's `pins.txt`. It never switches branches, and refuses non-fast-forward updates. Preview first with `./familia sync --branch BRANCH --dry-run`.
+- To test a familia development branch, run `./familia sync --branch BRANCH` (or `python3 scripts/sync_pins.py --branch BRANCH`). It fetches `origin/BRANCH`, switches this checkout to that branch (creating a local tracking branch if needed), fast-forwards only, then syncs every project to the revisions in that branch's `pins.txt`. Later updates and installer runs remain on the tracked branch. Use `--branch main` to explicitly switch back. Preview first with `./familia sync --branch BRANCH --dry-run`.
 
 Called automatically by: `install.sh`, `install/linux`, `install/termux` and `install/windows` installers, `scripts/configure.sh`, `start.sh`, `scripts/serve.sh`, `with-fleet.sh` (live launches; `--launch-test` only notes drift), `scripts/panel.py`, `scripts/run-tests.sh`, `scripts/windows/start.bat`, and the `post-merge` / `post-rewrite` / `post-checkout` hooks `configure.sh` installs (an existing hook of yours is left alone). Not by `add-model` or model fetches. `FAMILIA_SYNC=0` skips it (it says so).
 
@@ -50,7 +50,7 @@ There is no visual graph editor and no natural-language configuration (see [Futu
 
 `start.sh` validates the graph, starts every active supported node assigned to the selected local host, waits for each node's health endpoint, and then starts the declared Green-Roomz graph proxy for local aliases. The current `miryam` graph exposes `coder` and `embed` at `http://127.0.0.1:9931`; query `GET /v1/models` for the available routes. Remote nodes and gateways are reported but never started or contacted without consent. Unsupported active runtime kinds or missing local artifacts fail before any process starts.
 
-`angel` is still unmeasured and has no active nodes. The FreeBSD llama.cpp build/version smoke test can be run independently, but graph serving there requires measured host facts and an explicit node placement.
+`angel` is still unmeasured and has no active nodes. FreeBSD currently uses a source build only: install no packages and do not run `familia install`. Build the pinned llama.cpp checkout from `code-bootstraps-llama.cpp` with `BUILD_DIR=build-freebsd GPU=off scripts/build-linux.sh`, then verify `build-freebsd/bin/llama-server --version`. Graph serving there requires measured host facts and an explicit node placement.
 
 The former standalone code-bootstraps UI/router is still available explicitly as `./start.sh --bootstrap`; that mode does not use `graph.yaml`.
 
@@ -84,7 +84,7 @@ python3 scripts/validate_graph.py --args coder  # print those arguments without 
 
 ## 3. The graph
 
-[`graph.yaml`](graph.yaml) declares hosts, runtimes, models, nodes, aliases, agents and pentest roles. Nothing is picked for you: a model runs only when a `models:` entry and a `nodes:` entry say so, and `scripts/validate_graph.py` refuses a graph that doesn't fit the measured host.
+[`graph.yaml`](graph.yaml) declares hosts, runtimes, models, nodes, aliases, agents and optional pentest roles (none are declared by default). Nothing is picked for you: a model runs only when a `models:` entry and a `nodes:` entry say so, and `scripts/validate_graph.py` refuses a graph that doesn't fit the measured host.
 
 ```sh
 python3 scripts/validate_graph.py              # full check on this host
@@ -109,7 +109,9 @@ License acceptance: every DB entry carries `license_info` with:
 - the license file(s), with path, URL and sha256, and a link
 - obligations quoted from the card or license, each with `file:line`
 
-Unknown stays unknown. A full fetch prints this and needs `--accept-licenses`/`--yes` or an interactive yes before it downloads weights. Acceptance is recorded per model and license digest in `.cache/familia/model-license-acceptance.json`, so a changed license is asked again. Launching (`serve.sh`, `hermes_harness.py`) is gated by `scripts/licenses.py gate --graph`. See [docs/licenses.md](docs/licenses.md).
+Acceptance is stored as separate per-license records under familia's accepted-licenses state directory; the legacy aggregate paths described below are obsolete.
+
+Unknown stays unknown. A full fetch prints this and needs `--accept-licenses`/`--yes` or an interactive yes before it downloads weights. Consent is recorded in individual Markdown files under familia's accepted-licenses state directory, keyed to the license identifier and legal-text evidence. Launching (`serve.sh`, `hermes_harness.py`) is gated by `scripts/licenses.py gate --graph`. See [docs/licenses.md](docs/licenses.md).
 
 ### The model database
 
@@ -141,7 +143,7 @@ Skills are chosen per agent with `scripts/skills.py`, or with the menu (Skills, 
 
 ### Self-improving harnesses (optional)
 
-`harnesses:` descriptors name an agent's prompt, guardrails, memory and skills files. `self_improve:` settings point Harness² at them (`mode: "off" | propose | apply`, off in the repo). `scripts/harness2.py` proposes, shows, accepts and reverts changes to those files. It never launches an agent and doesn't need hermes. hermes picks up the accepted version only when the graph enables it for that agent. Pentest agents and models never self-improve. Details: [docs/harness2.md](docs/harness2.md).
+`harnesses:` descriptors name an agent's prompt, guardrails, memory and skills files. `self_improve:` settings point Harness² at them (`mode: "off" | propose | apply`, off in the repo). `scripts/harness2.py` proposes, shows, accepts and reverts changes to those files. It never launches an agent and doesn't need hermes. hermes picks up the accepted version only when the graph enables it for that agent. Any model role may be used; agents explicitly assigned to pentest configurations remain excluded. Details: [docs/harness2.md](docs/harness2.md).
 
 ```sh
 scripts/harness2.py status

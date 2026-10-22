@@ -41,9 +41,29 @@ bash tests/test_nexus_localhost.sh               # ssh nexus on localhost (needs
 bash tests/test_bt_loopback.sh                   # private bittorrent loopback
 ```
 
-On Windows set `PYTHONUTF8=1` first. Expected on `main` (counts grow as tests are added):
+On Windows set `PYTHONUTF8=1` first. Test counts vary with optional tools and local model files;
+pytest reports unavailable prerequisites as skips. On Linux, the full suite passed on
+2026-10-22 (654 passed, 24 skipped). Skips need llama-server binaries, model files, or network.
 
-- Linux: everything passes except one known pre-existing failure, `tests/test_ram_safety.py::test_overcommit_is_hard_error` (on 2026-10-19: 142 passed, 19 skipped, 1 failed). Skips need llama-server binaries, model files or network. All three bash tests exit 0.
+Initial cross-platform coverage targets are Ubuntu, Windows 10/11, FreeBSD, and Samsung Android
+through Termux. Run the Python suite where supported; platform checks also cover the native menu,
+host measurement, and runtime build/launch paths. Results on one platform do not imply validation
+on the others.
+
+### Acceptance for substantial features and model configurations
+
+The Python suite is necessary, but it is not a substitute for end-to-end task-suite evidence.
+Substantial feature changes need a real integrated-path test with representative inputs. A new
+or materially changed model configuration stays planned/experimental until it passes a fixed
+role-appropriate task suite against a baseline using the same tasks. Define pass criteria before
+the run and record the exact model/runtime, configuration and prompt/template hashes, suite
+revision, seed, host/platform, per-task results, aggregate, and known limitations. Use each
+platform the feature claims to support where relevant; the initial targets are Ubuntu, Windows,
+FreeBSD, and Samsung Android/Termux. If an appropriate maintained suite is unavailable, add a
+small fixed representative suite before promotion and document its limits. This hard requirement
+is tracked in [#119](https://github.com/brianreborn/familia/issues/119); the durable runner and
+suite coverage are still to be built. Pentest tests remain launch-test-only.
+
 - Windows without bash: 3 tests fail because they shell out to `bash`
   (`test_android_targets::test_scripts_have_no_hardcoded_targets_or_sshpass`,
   `test_installers::test_host_measure_insert_and_idempotent`, `test_installers::test_installer_shapes`).

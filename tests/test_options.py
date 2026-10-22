@@ -20,7 +20,7 @@ def test_decision_gpu_candidates():
 
 def test_option_checks():
     x = g(); x["options"]["glide"]["unverified"] = False; has(x, "needs hf_repo")
-    x = g(); x["options"]["dolphin3-cyber-8b"]["gpu_candidate"] = True; has(x, "only for role decision")
+    x = g(); x["options"]["qwen35-9b-coder"]["gpu_candidate"] = True; has(x, "only for role decision")
     x = g(); del x["options"]["glide"]["gpu_host"]; has(x, "needs gpu_host")
     x = g(); x["options"]["glide"]["candidate_hosts"] = ["nowhere"]; has(x, "no such host")
     x = g(); x["options"]["qwen35-2b-q4km"] = copy.deepcopy(x["options"]["glide"]); has(x, "same name as a placed model")

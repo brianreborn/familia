@@ -34,7 +34,7 @@ param(
   [string]$Name = ($env:COMPUTERNAME).ToLower(),
   [string]$Build = 'b11539',
   [string]$RepoUrl = 'https://github.com/brianreborn/familia.git',
-  [string]$Branch = 'main',
+  [string]$Branch = $env:FAMILIA_BRANCH,
   [string]$ModelsPath,
   [switch]$NoRuntime,
   [switch]$ForceHost,
@@ -78,8 +78,33 @@ foreach ($d in @($Prefix, $runtimeRoot, $ModelsPath)) {
 
 # 1. repo
 $git = Get-Command git -ErrorAction SilentlyContinue
+$selectBranch = -not [string]::IsNullOrWhiteSpace($Branch)
+if (-not $selectBranch) {
+  $sourceRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+  if ($git -and (Test-Path (Join-Path $sourceRoot '.git'))) {
+    $sourceBranch = (& git -C $sourceRoot branch --show-current 2>$null).Trim()
+    if ($LASTEXITCODE -eq 0 -and $sourceBranch) { $Branch = $sourceBranch; $selectBranch = $true }
+  }
+}
+if (-not $Branch) { $Branch = 'main' }
 if (Test-Path (Join-Path $repo '.git')) {
-  if ($PSCmdlet.ShouldProcess($repo, 'git pull --ff-only')) { & git -C $repo pull --ff-only -q; if ($LASTEXITCODE) { Say 'warning: repo not fast-forwardable; left as is' } }
+  if ($selectBranch) {
+    if ($PSCmdlet.ShouldProcess($repo, "switch to track origin/$Branch and fast-forward only")) {
+      & git -C $repo fetch -q origin "+refs/heads/${Branch}:refs/remotes/origin/${Branch}"
+      if ($LASTEXITCODE) { throw "could not fetch origin/$Branch" }
+      & git -C $repo show-ref --verify --quiet "refs/heads/$Branch"
+      if ($LASTEXITCODE -eq 0) { & git -C $repo switch $Branch }
+      else { & git -C $repo switch --track -c $Branch "origin/$Branch" }
+      if ($LASTEXITCODE) { throw "could not switch to $Branch; check for local changes or branch conflicts" }
+      & git -C $repo branch "--set-upstream-to=origin/$Branch" $Branch
+      if ($LASTEXITCODE) { throw "could not set $Branch to track origin/$Branch" }
+      & git -C $repo merge --ff-only "origin/$Branch"
+      if ($LASTEXITCODE) { throw "repo branch $Branch could not be fast-forwarded; local changes were preserved" }
+    }
+  } elseif ($PSCmdlet.ShouldProcess($repo, 'git pull --ff-only')) {
+    & git -C $repo pull --ff-only -q
+    if ($LASTEXITCODE) { Say 'warning: repo not fast-forwardable; left as is' }
+  }
 } elseif (-not (Test-Path $repo)) {
   if ($git) {
     if ($PSCmdlet.ShouldProcess($repo, "git clone $RepoUrl ($Branch)")) { & git clone -q --branch $Branch $RepoUrl $repo; if ($LASTEXITCODE) { throw 'git clone failed' } }
