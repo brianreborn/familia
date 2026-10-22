@@ -4,7 +4,7 @@
 
 ## Implemented today
 
-`graph.yaml` declares `hosts` (measured RAM, CPU, GPUs, `reserve_ram_mib`), `runtimes` (llama.cpp builds side by side, with the architectures each was load-tested on), `models` (GGUF, sha256, arch, trained context, model-database entry), `nodes` (model servers: host, runtime, context, slots, KV type, offload, port, prompt cache, `selection: default|fallback`, card sampling, `escalates_to`), plus `aliases`, `agents`, `pentests`, `meshes`, `speculative` and `options` (catalog-only models).
+`graph.yaml` declares `hosts` (measured RAM, CPU, GPUs, `reserve_ram_mib`), `runtimes` (llama.cpp builds side by side, with the architectures each was load-tested on), `models` (GGUF, sha256, arch, trained context, model-database entry), `nodes` (model servers: host, runtime, context, slots, KV type, offload, port, prompt cache, `selection: default|fallback`, card sampling, `escalates_to`), plus `aliases`, `agents`, optional `pentests` (none by default), `meshes`, `speculative` and `options` (catalog-only models).
 
 ```sh
 python3 scripts/validate_graph.py                 # exit 0 if valid, else one line per problem

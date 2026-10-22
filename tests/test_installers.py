@@ -71,9 +71,16 @@ def test_installer_shapes():
         assert subprocess.run(["sh", "-n", os.path.join(ROOT, p)]).returncode == 0
     lin = open(os.path.join(ROOT, "install/linux/install.sh")).read()
     assert "digest" in lin and "sha256 mismatch" in lin and "refusing unverified" in lin
+    assert 'git -C "$SOURCE_ROOT" branch --show-current' in lin
+    assert 'git -C "$PREFIX/repo" pull --ff-only' in lin
+    assert '--set-upstream-to="origin/$BRANCH"' in lin
     assert not re.search(r"\b[0-9a-f]{64}\b", lin)  # no hardcoded hashes
+    termux = open(os.path.join(ROOT, "install/termux/install.sh")).read()
+    assert 'git -C "$SOURCE_ROOT" branch --show-current' in termux
+    assert '--set-upstream-to="origin/$BRANCH"' in termux
     ps = open(os.path.join(ROOT, "install/windows/install.ps1")).read()
     assert "SupportsShouldProcess" in ps and "Get-FileHash" in ps and "refusing unverified" in ps
+    assert "branch --show-current" in ps and "--set-upstream-to=origin/$Branch" in ps
     assert "-Uninstall" in ps or "$Uninstall" in ps
     assert not re.search(r"\b[0-9a-f]{64}\b", ps)
     assert not re.search(r"-Verb\s+RunAs|RunAs", ps)  # never elevates

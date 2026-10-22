@@ -8,7 +8,7 @@ Adding or fetching a model does not call it.
 Usage:
   scripts/sync_pins.py [--dry-run] [--auto] [--quiet] [--license-gate enforce|warn|off]
   scripts/sync_pins.py --update [--branch BRANCH] [--dry-run]
-  scripts/sync_pins.py --branch BRANCH        fast-forward familia to BRANCH, then sync
+  scripts/sync_pins.py --branch BRANCH        switch/track origin/BRANCH, then sync
   scripts/sync_pins.py --check             exit 0 if every part is at its pin, 1 if not; changes nothing
   scripts/sync_pins.py --install-hooks     sync after every `git pull` of familia itself
 Options:
@@ -18,7 +18,7 @@ Options:
   --quiet, -q      print only problems
   --license-gate   after a part was cloned or moved: enforce (default) runs scripts/licenses.py
                    gate when the licenses changed; warn only says so; off skips it
-  --branch BRANCH  fast-forward familia from origin/BRANCH before syncing that revision's pins.txt
+  --branch BRANCH  fetch and switch to origin/BRANCH (tracking it) before syncing its pins.txt
   --root DIR       familia checkout to sync (default: the one this script is in)
 Example:
   scripts/sync_pins.py --dry-run
@@ -342,20 +342,45 @@ def install_hooks(root):
 
 
 def do_update(root, rest, dry, branch=None):
-    """Update familia itself (fast-forward only, never forced), then sync with the new pins.txt."""
+    """Update familia itself (fast-forward only), then sync with the selected branch's pins.txt."""
     if branch and git(root, "check-ref-format", "--branch", branch).returncode:
         say("invalid branch name %r" % branch)
         return 2
-    pull = ["pull", "--ff-only"] + (["origin", branch] if branch else [])
     if dry:
-        print("familia update: dry run; would run: git -C %s %s, then sync the pins"
-              % (root, " ".join(pull)))
+        if branch:
+            print("familia update: dry run; would fetch origin/%s, switch this checkout to track it, "
+                  "fast-forward only, then sync the pins" % branch)
+        else:
+            print("familia update: dry run; would run: git -C %s pull --ff-only, then sync the pins" % root)
         print("familia update: the pins as they are now (pins.txt can change with the pull):")
         return main(rest)
     before = git(root, "rev-parse", "HEAD").stdout.strip()
-    r = subprocess.run(["git", "-C", root] + pull, env=GIT_ENV)
+    if branch:
+        r = subprocess.run(["git", "-C", root, "fetch", "origin",
+                            "+refs/heads/%s:refs/remotes/origin/%s" % (branch, branch)], env=GIT_ENV)
+        if r.returncode:
+            say("could not fetch origin/%s; nothing was synced. See: git -C %s status" % (branch, root))
+            return 1
+        exists = git(root, "show-ref", "--verify", "--quiet", "refs/heads/" + branch).returncode == 0
+        if exists:
+            r = subprocess.run(["git", "-C", root, "switch", branch], env=GIT_ENV)
+        else:
+            r = subprocess.run(["git", "-C", root, "switch", "--track", "-c", branch,
+                                "origin/" + branch], env=GIT_ENV)
+        if r.returncode:
+            say("could not switch to %s (check for local changes or branch conflicts); nothing was synced. "
+                "See: git -C %s status" % (branch, root))
+            return 1
+        r = subprocess.run(["git", "-C", root, "branch", "--set-upstream-to=origin/" + branch, branch],
+                           env=GIT_ENV)
+        if r.returncode:
+            say("could not set %s to track origin/%s; nothing was synced" % (branch, branch))
+            return 1
+        r = subprocess.run(["git", "-C", root, "merge", "--ff-only", "origin/" + branch], env=GIT_ENV)
+    else:
+        r = subprocess.run(["git", "-C", root, "pull", "--ff-only"], env=GIT_ENV)
     if r.returncode:
-        say("git pull --ff-only of familia failed (branch missing, local commits or changes?); nothing was synced. "
+        say("git update failed (local commits or changes may prevent a fast-forward); nothing was synced. "
             "See: git -C %s status" % root)
         return 1
     after = git(root, "rev-parse", "HEAD").stdout.strip()

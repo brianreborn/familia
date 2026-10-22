@@ -98,7 +98,7 @@ Unknown sections and unknown fields are errors, so a typo can't quietly do nothi
 `memory` and `skills` are optional relative paths under `root`) and the loopback `node` that
 edits and evaluates it. `agent` is optional. `self_improve.<name>` is an experimental Harness²
 setting over descriptors. When its mode is not `"off"`, validation rejects targets whose agent
-any pentest uses, and targets whose node serves a `role: pentest` model. It also requires
+any pentest uses. It permits any model role and requires
 `registry/harness2-tasks/<tasks>.json` to exist. Write `mode: "off"` quoted: YAML reads a bare
 `off` as false. See [harness2.md](harness2.md).
 

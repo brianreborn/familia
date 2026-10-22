@@ -207,6 +207,21 @@ def test_piped_choices():
     assert "isn't one of the choices" in r.stdout
 
 
+def test_menu_choice_accepts_environment_assignments_and_forwarded_arguments():
+    r = subprocess.run(["bash", MENU, "--pipe"], cwd=ROOT, capture_output=True, text=True, env=env(),
+                       input="1\nFAMILIA_SYNC=0 3 --license-gate off\nb\nq\n", timeout=60)
+    assert r.returncode == 0, r.stderr
+    assert "Running: python3 scripts/sync_pins.py --dry-run --license-gate off" in r.stdout
+    assert "skipped (FAMILIA_SYNC=0)" in r.stderr
+
+
+def test_search_choice_accepts_environment_assignments_and_forwarded_arguments():
+    r = menu("--pipe", inp="1\n/sync\nFAMILIA_SYNC=0 3 --license-gate off\nb\nq\n")
+    assert r.returncode == 0, r.stderr
+    assert "Running: python3 scripts/sync_pins.py --license-gate off" in r.stdout
+    assert "skipped (FAMILIA_SYNC=0)" in r.stderr
+
+
 def test_long_group_is_paged_instead_of_showing_a_wall_of_items():
     r = menu("--pipe", "--dry-run", inp="1\n>\n<\nb\nq\n")
     assert r.returncode == 0, r.stderr

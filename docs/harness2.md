@@ -121,11 +121,10 @@ created.
 
 These rules are fixed, not settings.
 
-- **Pentests never self-improve.** A `self_improve` entry that is not `"off"` fails validation
-  if a target's `agent` is used by any `pentests.*` entry, or if its node serves a
-  `role: pentest` model. That is why the repo uses `hermes-lab`, not `hermes`. The `hermes`
-  agent is the pentest placeholder's agent. A `self_improve` entry that is `"off"` is inert,
-  so declaring one never trips a check.
+- **Pentest agents are excluded.** A `self_improve` entry that is not `"off"` fails validation
+  if a target's `agent` is used by any `pentests.*` entry. The model role does not restrict
+  improvement; all model types can be used when an improvement subsystem is engaged. A
+  `self_improve` entry that is `"off"` is inert, so declaring one never trips a check.
 - **Files only.** A descriptor has fields only for prompt, guardrails, memory and skills.
   Validation rejects unknown fields such as `tools`. Harness²'s tool descriptions are shown to
   the editor but frozen. Scripts, plugins and sub-agents in a proposal reject the whole

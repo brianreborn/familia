@@ -17,7 +17,7 @@ round produces a Harness² proposal in the same store scripts/harness2.py review
   4. evaluate base vs refined on holdout at temperature 0; recurse from the refined tree.
 
 Safety (inherited, not configurable): proposals only (accept/apply stays
-`harness2.py accept`, consent-gated); pentest agents/models refused; endpoint loopback
+`harness2.py accept`, consent-gated); agents used by pentests refused; endpoint loopback
 only; nothing here adds tools, toolsets or scope: the evaluator runs the command, the
 agent's own tool configuration is never read or written.
 
@@ -122,11 +122,10 @@ def round_(chat, ts, tree, k, temp, leaks, log):
     log(f"  rollouts {sum(x['ok'] for x in traj)}/{len(traj)} ok, lessons +{len(lessons)} (rejected {len(rejected)}), memory {len(keep)}")
     return with_lessons(tree, keep), {"trajectories": traj, "lessons": lessons, "rejected": rejected}
 
-def refuse_pentest(g, tname):
+def refuse_pentest_agent(g, tname):
     h = (g.get("harnesses") or {}).get(tname) or {}
-    n = (g.get("nodes") or {}).get(h.get("node")) or {}
-    if h.get("agent") in SI.pentest_agents(g) or ((g.get("models") or {}).get(n.get("model")) or {}).get("role") == "pentest":
-        raise SystemExit(f"terminal_rsi: target {tname} is a pentest agent/model; pentest roles never self-improve")
+    if h.get("agent") in SI.pentest_agents(g):
+        raise SystemExit(f"terminal_rsi: target {tname} is used by a pentest; pentest agents never self-improve")
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
@@ -136,7 +135,7 @@ def main(argv=None):
     ap.add_argument("--root-override"); ap.add_argument("--state-root"); ap.add_argument("--json")
     a = ap.parse_args(argv)
     import yaml
-    g = yaml.safe_load(open(a.graph)); refuse_pentest(g, a.target)
+    g = yaml.safe_load(open(a.graph)); refuse_pentest_agent(g, a.target)
     if a.k > 4: raise SystemExit("terminal_rsi: k > 4")
     t = SI.target(g, a.target, a.root_override); st = SI.State(t, a.state_root); st.init()
     ts = load_tasks(a.tasks); leaks = leak_terms(ts); chat = make_chat(a.endpoint or t.endpoint)

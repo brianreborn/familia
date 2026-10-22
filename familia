@@ -4,6 +4,7 @@
 # Usage:
 #   ./familia                        the menu
 #   ./familia COMMAND [VALUE...] [ARG...]   e.g. familia serve coder, familia model fetch ORG/NAME Q4_K_M
+#   ./familia FOO=value COMMAND [ARG...]    set environment for one command
 #   ./familia help [COMMAND]         every command, or what one runs (also: COMMAND --help)
 #   ./familia --dry-run COMMAND ...  print the exact command, run nothing
 #   ./familia search WORD [--run N]  find a command; also: list, run KEY, menu, help --man
@@ -12,6 +13,17 @@
 # The commands come from scripts/menu-items.txt and scripts/cli-commands.txt; man ./man/familia.1
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+while [ $# -gt 0 ]; do
+  case "$1" in
+    *=*)
+      name=${1%%=*}
+      case "$name" in ''|[!A-Za-z_]*|*[!A-Za-z0-9_]*) break ;; esac
+      export "$1"
+      shift
+      ;;
+    *) break ;;
+  esac
+done
 [ $# -gt 0 ] || exec bash "$ROOT/familia-menu.sh"
 case "$1" in /?*) w=${1#/}; shift; set -- search "$w" "$@" ;; esac
 exec bash "$ROOT/familia-menu.sh" --cli "$@"

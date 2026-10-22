@@ -194,3 +194,10 @@ for CentOS Stream 10.
 - **Kill/watch scripts must be tested:** gawk reserves `log` as a builtin; a watcher that dies silently records nothing.
 - **Unvalidated tight caps produce phantom "crashes"** indistinguishable from engine bugs. Classify every death (bad params / memcg cap / OOM / engine bug) before fixing.
 - **Validated work isn't done until pushed and verified on origin/main.**
+
+## L-model-neutral-improvement. Improvement eligibility is not a model role
+
+Do not disable an improvement subsystem just because the selected model has a particular
+role. If the user engages the subsystem, it should be available across model types; model
+selection is a separate choice. Keep opt-in, consent and target-specific safety checks at
+the subsystem boundary rather than using model metadata as a proxy for user intent.

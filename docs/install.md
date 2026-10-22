@@ -2,6 +2,15 @@
 
 Per-user installers for each supported non-server platform. None needs admin or
 root. FreeBSD and other server-oriented systems use the manual steps in MANUAL.md.
+On the FreeBSD test host `angel`, install no packages: build the pinned llama.cpp
+checkout from source. The Linux/macOS one-click installer and prebuilt release
+assets do not provide a FreeBSD runtime.
+
+When an installer is run from a familia checkout, it uses that checkout's current
+branch for the installed repo and keeps it tracking `origin/<branch>`. Set
+`FAMILIA_BRANCH` to choose a branch explicitly. Running the installer from a
+downloaded script without a git checkout defaults a new install to `main`, but
+an existing install stays on its current tracked branch.
 
 | Platform | One click | Installs to |
 |---|---|---|

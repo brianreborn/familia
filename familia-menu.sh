@@ -13,6 +13,8 @@
 #   ./familia-menu.sh --pipe          read menu choices from a pipe (for scripts and tests)
 #   ./familia-menu.sh --search TEXT   print every item matching TEXT (key, label, command, group)
 #   ./familia-menu.sh --search TEXT --run N [ARG...]   run match number N
+#   familia FOO=value COMMAND [ARG...]                 set environment for one command
+#   At a menu choice, enter FOO=value N [ARG...]        set environment and pass args to the chosen item
 # In the menu, at any level: /word searches every group, ?word searches backward,
 # n / N go to the next / previous match, and / alone repeats the last search.
 # Examples:
@@ -24,6 +26,10 @@ set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 cd "$ROOT"
 PY=${PYTHON:-python3}
+while [ $# -gt 0 ] && [[ $1 =~ ^[A-Za-z_][A-Za-z0-9_]*= ]]; do
+  export "$1"
+  shift
+done
 
 ITEMS_FILE="$ROOT/scripts/menu-items.txt"
 [ -f "$ITEMS_FILE" ] || { echo "familia-menu: $ITEMS_FILE is missing; restore it with: git checkout scripts/menu-items.txt" >&2; exit 1; }
@@ -124,6 +130,35 @@ read_line() {  # read_line PROMPT VAR ; returns 1 on EOF
   printf '%s' "$__p" >&2
   IFS= read -r __v || { [ -n "$__v" ] || return 1; }
   printf -v "$2" '%s' "$__v"
+}
+
+MENU_CHOICE=""
+MENU_ARGS=()
+PENDING_ARGS=()
+parse_menu_input() {  # parse leading NAME=value tokens, a numeric choice, then forwarded args
+  local raw=$1 i=0
+  local -a words=()
+  MENU_ARGS=()
+  read -r -a words <<<"$raw"
+  while [ "$i" -lt "${#words[@]}" ] && [[ ${words[$i]} =~ ^[A-Za-z_][A-Za-z0-9_]*= ]]; do
+    export "${words[$i]}"
+    i=$((i+1))
+  done
+  if [ "$i" -gt 0 ]; then
+    if [ "$i" -lt "${#words[@]}" ]; then
+      MENU_CHOICE=${words[$i]}
+      i=$((i+1))
+      MENU_ARGS=("${words[@]:$i}")
+    else
+      MENU_CHOICE=""
+    fi
+  elif [ "${#words[@]}" -gt 1 ] && [[ ${words[0]} =~ ^[0-9]+$ ]]; then
+    MENU_CHOICE=${words[$i]}
+    i=$((i+1))
+    MENU_ARGS=("${words[@]:$i}")
+  else
+    MENU_CHOICE=$raw
+  fi
 }
 
 can_prompt() { [ -t 0 ] && [ "${FAMILIA_NO_TTY:-}" != 1 ]; }
@@ -258,6 +293,7 @@ print_matches() {  # print_matches TEXT ; returns 1 when nothing matches
 }
 search_ui() {  # search_ui OP TEXT ; OP is / ? n N. Returns 3 to quit the menu.
   local op=$1 t=$2 choice k i
+  local -a item_args=()
   case "$op" in
     /|\?)
       [ -n "$t" ] || t=$LAST_SEARCH
@@ -283,6 +319,7 @@ search_ui() {  # search_ui OP TEXT ; OP is / ? n N. Returns 3 to quit the menu.
   esac
   while true; do
     read_line "Choose 1-${#SK[@]} to run, n/N next/previous match, /word to search again, b back: " choice || return 3
+    parse_menu_input "$choice"; choice=$MENU_CHOICE
     case "$choice" in
       b|B|back|"") return 0 ;;
       q|Q) return 3 ;;
@@ -293,7 +330,9 @@ search_ui() {  # search_ui OP TEXT ; OP is / ? n N. Returns 3 to quit the menu.
       say "'$choice' isn't one of the choices. Type a number from 1 to ${#SK[@]}, n, N, /word or b."; continue
     fi
     SCUR=$((choice-1))
-    run_item "${SK[$SCUR]}" || say "(that step exited with status $?)"
+    item_args=("${PENDING_ARGS[@]}" "${MENU_ARGS[@]}")
+    PENDING_ARGS=()
+    run_item "${SK[$SCUR]}" "${item_args[@]}" || say "(that step exited with status $?)"
     [ "$PIPE" = 1 ] || read_line "Press Enter to go back to the menu..." choice || return 3
     return 0
   done
@@ -319,6 +358,8 @@ $(groups)
 EOF2
     say "  q) Quit      /word search every group (n/N next/previous match)"
     read_line "Choose 1-$n, /search or q: " choice || { say ""; return 0; }
+    parse_menu_input "$choice"; choice=$MENU_CHOICE
+    [ -n "$choice" ] || continue
     case "$choice" in q|Q|quit|exit) return 0 ;; esac
     local rc=0; search_key "$choice" || rc=$?
     case $rc in 0) continue ;; 3) return 0 ;; esac
@@ -326,6 +367,7 @@ EOF2
       say "'$choice' isn't one of the choices. Type a number from 1 to $n, /word to search, or q."; continue
     fi
     g=${gs[$((choice-1))]}
+    PENDING_ARGS=("${MENU_ARGS[@]}")
     local all_keys=() all_labels=() all_cmds=() all_needs=()
     while IFS='|' read -r key grp label cmd gate need wcmd; do
       [ "$grp" = "$g" ] || continue
@@ -357,6 +399,8 @@ EOF2
       else
         read_line "Choose 1-$n, /search or b: " choice || return 0
       fi
+      parse_menu_input "$choice"; choice=$MENU_CHOICE
+      [ -n "$choice" ] || continue
       case "$choice" in b|B|back|"") break ;; q|Q) return 0 ;; esac
       case "$choice" in
         '>'|next) if [ "$page" -lt "$((pages-1))" ]; then page=$((page+1)); fi; continue ;;
@@ -372,7 +416,9 @@ EOF2
         fi
         continue
       fi
-      run_item "${items[$((choice-1))]}" || say "(that step exited with status $?)"
+      local -a item_args=("${PENDING_ARGS[@]}" "${MENU_ARGS[@]}")
+      PENDING_ARGS=()
+      run_item "${items[$((choice-1))]}" "${item_args[@]}" || say "(that step exited with status $?)"
       [ "$PIPE" = 1 ] || read_line "Press Enter to go back to the menu..." choice || return 0
     done
   done
@@ -427,6 +473,10 @@ cli_search() {  # cli_search WORD [--run N ARG...]
   return $rc
 }
 cli_main() {
+  while [ $# -gt 0 ] && [[ $1 =~ ^[A-Za-z_][A-Za-z0-9_]*= ]]; do
+    export "$1"
+    shift
+  done
   while [ $# -gt 0 ]; do  # options before the command belong to familia itself
     case "$1" in
       --dry-run|-n) DRY=1 ;;

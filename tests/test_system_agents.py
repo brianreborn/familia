@@ -65,9 +65,11 @@ def test_unknown_field_rejected():
 
 def test_pentests_never_get_system_agents():
     g = graph()
-    if not g.get("pentests"):
-        return
-    pn, p = next(iter(g["pentests"].items()))
+    pn = "test"
+    p = {"agent": "hermes", "node": "coder", "name": "test", "status": "planned",
+         "scope": {"allow": [], "deny": []}, "tools": {"allow": []},
+         "report_to": "familia-issues", "requires_operator_confirm": True, "launch_test_only": True}
+    g["pentests"] = {pn: p}
     g["system_agents"] = {"gem": entry(agents=[p["agent"]])}
     p["tools"] = {"allow": ["gem"]}
     e = validate_types(g)
