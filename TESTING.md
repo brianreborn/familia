@@ -41,9 +41,10 @@ bash tests/test_nexus_localhost.sh               # ssh nexus on localhost (needs
 bash tests/test_bt_loopback.sh                   # private bittorrent loopback
 ```
 
-On Windows set `PYTHONUTF8=1` first. Expected on `main` (counts grow as tests are added):
+On Windows set `PYTHONUTF8=1` first. Test counts vary with optional tools and local model files;
+pytest reports unavailable prerequisites as skips. On Linux, the full suite passed on
+2026-10-22 (651 passed, 23 skipped). Skips need llama-server binaries, model files, or network.
 
-- Linux: everything passes except one known pre-existing failure, `tests/test_ram_safety.py::test_overcommit_is_hard_error` (on 2026-10-19: 142 passed, 19 skipped, 1 failed). Skips need llama-server binaries, model files or network. All three bash tests exit 0.
 - Windows without bash: 3 tests fail because they shell out to `bash`
   (`test_android_targets::test_scripts_have_no_hardcoded_targets_or_sshpass`,
   `test_installers::test_host_measure_insert_and_idempotent`, `test_installers::test_installer_shapes`).
