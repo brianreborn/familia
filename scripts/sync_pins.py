@@ -7,7 +7,8 @@ Adding or fetching a model does not call it.
 
 Usage:
   scripts/sync_pins.py [--dry-run] [--auto] [--quiet] [--license-gate enforce|warn|off]
-  scripts/sync_pins.py --update [--dry-run]   git pull --ff-only familia itself, then sync
+  scripts/sync_pins.py --update [--branch BRANCH] [--dry-run]
+  scripts/sync_pins.py --branch BRANCH        fast-forward familia to BRANCH, then sync
   scripts/sync_pins.py --check             exit 0 if every part is at its pin, 1 if not; changes nothing
   scripts/sync_pins.py --install-hooks     sync after every `git pull` of familia itself
 Options:
@@ -17,6 +18,7 @@ Options:
   --quiet, -q      print only problems
   --license-gate   after a part was cloned or moved: enforce (default) runs scripts/licenses.py
                    gate when the licenses changed; warn only says so; off skips it
+  --branch BRANCH  fast-forward familia from origin/BRANCH before syncing that revision's pins.txt
   --root DIR       familia checkout to sync (default: the one this script is in)
 Example:
   scripts/sync_pins.py --dry-run
@@ -339,16 +341,21 @@ def install_hooks(root):
     return rc
 
 
-def do_update(root, rest, dry):
+def do_update(root, rest, dry, branch=None):
     """Update familia itself (fast-forward only, never forced), then sync with the new pins.txt."""
+    if branch and git(root, "check-ref-format", "--branch", branch).returncode:
+        say("invalid branch name %r" % branch)
+        return 2
+    pull = ["pull", "--ff-only"] + (["origin", branch] if branch else [])
     if dry:
-        print("familia update: dry run; would run: git -C %s pull --ff-only, then sync the pins" % root)
+        print("familia update: dry run; would run: git -C %s %s, then sync the pins"
+              % (root, " ".join(pull)))
         print("familia update: the pins as they are now (pins.txt can change with the pull):")
         return main(rest)
     before = git(root, "rev-parse", "HEAD").stdout.strip()
-    r = subprocess.run(["git", "-C", root, "pull", "--ff-only"], env=GIT_ENV)
+    r = subprocess.run(["git", "-C", root] + pull, env=GIT_ENV)
     if r.returncode:
-        say("git pull --ff-only of familia failed (local commits or changes?); nothing was synced. "
+        say("git pull --ff-only of familia failed (branch missing, local commits or changes?); nothing was synced. "
             "See: git -C %s status" % root)
         return 1
     after = git(root, "rev-parse", "HEAD").stdout.strip()
@@ -364,6 +371,7 @@ def do_update(root, rest, dry):
 def main(argv):
     root = os.path.dirname(HERE)
     dry = auto = quiet = hooks = check = update = False
+    branch = None
     gate = "enforce"
     i = 0
     while i < len(argv):
@@ -383,6 +391,9 @@ def main(argv):
             check = True
         elif a == "--update":
             update = True
+        elif a == "--branch" and i + 1 < len(argv):
+            i += 1
+            branch = argv[i]
         elif a in ("--license-gate", "--root") and i + 1 < len(argv):
             i += 1
             if a == "--root":
@@ -402,8 +413,17 @@ def main(argv):
         return 2
     if hooks:
         return install_hooks(root)
-    if update:
-        return do_update(root, [a for a in argv if a != "--update"], dry)
+    if update or branch is not None:
+        rest = []
+        i = 0
+        while i < len(argv):
+            if argv[i] == "--branch":
+                i += 2
+                continue
+            if argv[i] != "--update":
+                rest.append(argv[i])
+            i += 1
+        return do_update(root, rest, dry, branch)
     if os.environ.get("FAMILIA_SYNC", "1") == "0":
         say("skipped (FAMILIA_SYNC=0); the pinned parts may be behind pins.txt")
         return 0
