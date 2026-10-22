@@ -86,7 +86,7 @@ hosts:
   shalom:
     kind: unknown
     measured: false
-    gpus: []                     # unknown; nothing recorded
+    gpus: null                   # inventory unknown; nothing recorded
   godslove:
     kind: laptop
     measured: false              # reported, not measured: excluded from placement
@@ -104,6 +104,11 @@ hosts:
         compute_capability: null
         driver: null
         measured: false
+  angel:
+    kind: desktop                # user-confirmed; hardware facts remain unmeasured
+    measured: false              # test host; measure before placing active nodes
+    os: freebsd                  # FreeBSD version and hardware have not been measured
+    gpus: null                   # inventory unknown; measure before GPU offload
   centos10-bigram:
     kind: desktop
     # Facts measured 2026-10-19 on the host (registered Grok Bot machine). Address and login live only in
@@ -225,6 +230,27 @@ runtimes:
     hosts: [miryam]
     supported_archs: [gemma-embedding2]
     backends: [cpu, vulkan]
+    spec_types: [draft-simple, ngram-simple, ngram-map-k, ngram-map-k4v, ngram-mod, ngram-cache]
+
+  llama-b11669:
+    kind: llama-server
+    build: b11669 (llama.cpp 0.7.0)
+    commit: 620d2225cc436ab0b001e3200e590e3b286ef9ab
+    bin: code-bootstraps-llama.cpp/bin/llama-b11669-linux-x64-vulkan/llama-server
+    hosts: [miryam]
+    # Preserve every model architecture supported by the existing llama.cpp runtimes.
+    supported_archs: [qwen35, gemma-embedding2, llama, lfm2, qwen2, gemma2, gemma3]
+    backends: [cpu, vulkan]
+    spec_types: [draft-simple, ngram-simple, ngram-map-k, ngram-map-k4v, ngram-mod, ngram-cache]
+
+  llama-b11669-freebsd:
+    kind: llama-server
+    build: b11669 (llama.cpp 0.7.0, native FreeBSD CPU build via build-linux.sh)
+    commit: 620d2225cc436ab0b001e3200e590e3b286ef9ab
+    bin: code-bootstraps-llama.cpp/build-freebsd/bin/llama-server
+    hosts: [angel]
+    supported_archs: [qwen35, gemma-embedding2, llama, lfm2, qwen2, gemma2, gemma3]
+    backends: [cpu]
     spec_types: [draft-simple, ngram-simple, ngram-map-k, ngram-map-k4v, ngram-mod, ngram-cache]
 
 
@@ -445,7 +471,7 @@ nodes:
     status: active
     model: qwen35-2b-q4km
     host: miryam
-    runtime: llama-b11374
+    runtime: llama-b11669
     ctx: 65536                   # total; per-slot = ctx / parallel
     override_reasons:            # model card / model-database deviations (#51)
       ctx: "miryam has 7270 MiB with a 3072 MiB reserve: at 262144 the q8_0 KV is ~1650 MiB and cache_ram must cover a slot's prompt state (~1650 MiB), about 2.4 GiB more than at 65536 (426 MiB KV); 65536 meets hermes min_ctx 64000"
@@ -463,7 +489,7 @@ nodes:
     status: active
     model: egemma2-q8
     host: miryam
-    runtime: llama-b11539        # b11374 fails: unknown model architecture 'gemma-embedding2'
+    runtime: llama-b11669
     ctx: 8192
     parallel: 1
     kv_type: f16

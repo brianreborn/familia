@@ -5,24 +5,34 @@ Only values read from the running system are written as measured. Fields that
 cannot be read are omitted (never guessed). An existing host block is replaced
 only with --force; otherwise it is left alone and the measurement printed.
 Stdlib only. Usage:
-  host_measure.py --name NAME [--graph graph.yaml] [--kind laptop|desktop|phone]
+  host_measure.py --name NAME [--graph graph.yaml] [--kind desktop|laptop|phone|vm]
                   [--reserve-mib N] [--dry-run] [--force]
+An explicit --kind is required when the graph has no known kind for this host.
 """
-import argparse, datetime, os, platform, re, subprocess, sys
+import argparse, os, platform, re, subprocess, sys
+
+
+def _sysctl(name):
+    try:
+        return subprocess.check_output(["sysctl", "-n", name], text=True, stderr=subprocess.DEVNULL).strip()
+    except (OSError, subprocess.CalledProcessError):
+        return None
 
 def _meminfo_mib():
-    try:
-        with open("/proc/meminfo") as f:
-            for line in f:
-                if line.startswith("MemTotal:"):
-                    return int(line.split()[1]) // 1024
-    except OSError:
-        pass
-    if sys.platform == "darwin":
+    if sys.platform.startswith("linux"):
         try:
-            return int(subprocess.check_output(["sysctl", "-n", "hw.memsize"])) // 1048576
-        except Exception:
-            pass
+            with open("/proc/meminfo") as f:
+                for line in f:
+                    if line.startswith("MemTotal:"):
+                        return int(line.split()[1]) // 1024
+        except (OSError, ValueError, IndexError):
+            return None
+    if sys.platform.startswith("freebsd"):
+        value = _sysctl("hw.physmem")
+        return int(value) // 1048576 if value and value.isdigit() else None
+    if sys.platform == "darwin":
+        value = _sysctl("hw.memsize")
+        return int(value) // 1048576 if value and value.isdigit() else None
     if sys.platform == "win32":
         try:
             import ctypes
@@ -37,54 +47,47 @@ def _meminfo_mib():
     return None
 
 def _cpu():
-    try:
-        with open("/proc/cpuinfo") as f:
-            txt = f.read()
-        for key in ("model name", "Hardware", "Processor"):
-            m = re.search(r"^%s\s*:\s*(.+)$" % key, txt, re.M)
-            if m:
-                return m.group(1).strip()
-    except OSError:
-        pass
-    if sys.platform == "darwin":
+    if sys.platform.startswith("linux"):
         try:
-            return subprocess.check_output(["sysctl", "-n", "machdep.cpu.brand_string"], text=True).strip()
-        except Exception:
-            pass
+            with open("/proc/cpuinfo") as f:
+                txt = f.read()
+            for key in ("model name", "Hardware", "Processor"):
+                m = re.search(r"^%s\s*:\s*(.+)$" % key, txt, re.M)
+                if m:
+                    return m.group(1).strip()
+        except OSError:
+            return None
+    if sys.platform.startswith("freebsd"):
+        return _sysctl("hw.model")
+    if sys.platform == "darwin":
+        return _sysctl("machdep.cpu.brand_string")
     return platform.processor() or None
 
 def _os():
     if os.environ.get("TERMUX_VERSION") or os.path.isdir("/data/data/com.termux"):
         return "android"
+    if sys.platform.startswith("freebsd"):
+        return "freebsd"
     return {"darwin": "macos", "win32": "windows"}.get(sys.platform, "linux" if sys.platform.startswith("linux") else sys.platform)
 
-def _flags():
-    try:
-        with open("/proc/cpuinfo") as f:
-            m = re.search(r"^(flags|Features)\s*:\s*(.+)$", f.read(), re.M)
-        if m:
-            fl = set(m.group(2).split())
-            return sorted(fl & {"avx", "avx2", "avx512f", "f16c", "fma", "sse4_2", "asimd", "asimddp", "i8mm", "sve"})
-    except OSError:
-        pass
-    return None
-
 def measure(kind, reserve):
-    stamp = datetime.datetime.now().astimezone().strftime("%Y-%m-%d %H:%M %Z")
-    out = [("kind", kind), ("measured", "true"), ("measured_at", "'%s'" % stamp),
-           ("measured_by", "install/host_measure.py"), ("os", _os())]
+    if kind not in {"desktop", "laptop", "phone", "vm"}:
+        raise ValueError("kind must be desktop, laptop, phone, or vm; unknown hosts need an explicit kind")
+    out = [("kind", kind), ("measured", "true"), ("os", _os())]
     cpu = _cpu()
-    if cpu:
-        out.append(("cpu", "'%s'" % cpu.replace("'", "''")))
-    out.append(("threads", str(os.cpu_count())))
+    if not cpu:
+        raise ValueError("could not measure CPU model on this host")
+    out.append(("cpu", "'%s'" % cpu.replace("'", "''")))
+    threads = os.cpu_count()
+    if not threads:
+        raise ValueError("could not measure logical CPU count on this host")
+    out.append(("threads", str(threads)))
     ram = _meminfo_mib()
-    if ram:
-        out.append(("ram_mib", str(ram)))
-    fl = _flags()
-    if fl is not None:
-        out.append(("cpu_flags", "[%s]" % ", ".join(fl)))
+    if not ram:
+        raise ValueError("could not measure physical RAM on this host")
+    out.append(("ram_mib", str(ram)))
     out.append(("reserve_ram_mib", "%d                # policy (installer default), not measured; see docs/ram-safety.md" % reserve))
-    out.append(("gpus", "[]                     # not probed by installer; add after measuring"))
+    out.append(("gpus", "null                   # inventory unknown; measure GPUs before GPU offload"))
     return out
 
 def render(name, fields):
@@ -110,6 +113,27 @@ def upsert(text, name, block, force):
         sect = body + block + sect[len(body):]
     return text[:start] + sect + text[end:]
 
+def existing_kind(text, name):
+    m = re.search(r"^hosts:\s*\n", text, re.M)
+    if not m:
+        return None
+    end_m = re.search(r"^\S", text[m.end():], re.M)
+    section = text[m.end():m.end() + end_m.start()] if end_m else text[m.end():]
+    lines = section.splitlines()
+    header = re.compile(r"^  %s:\s*(?:#.*)?$" % re.escape(name))
+    kind = re.compile(r"^    kind:\s*([A-Za-z0-9_-]+)\s*(?:#.*)?$")
+    for i, line in enumerate(lines):
+        if not header.match(line):
+            continue
+        for field in lines[i + 1:]:
+            if re.match(r"^  \S", field):
+                break
+            match = kind.match(field)
+            if match:
+                return match.group(1)
+        return None
+    return None
+
 def default_reserve(ram):
     # docs/ram-safety.md: small hosts keep >= 3 GiB free; never aim for high RAM.
     if not ram:
@@ -120,17 +144,24 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--name", required=True)
     ap.add_argument("--graph", default=os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "graph.yaml"))
-    ap.add_argument("--kind", default="laptop")
+    ap.add_argument("--kind", choices=("desktop", "laptop", "phone", "vm"))
     ap.add_argument("--reserve-mib", type=int)
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--force", action="store_true")
     a = ap.parse_args()
     if not re.fullmatch(r"[a-z0-9][a-z0-9_-]*", a.name):
         raise SystemExit("host_measure: name must match [a-z0-9][a-z0-9_-]*")
-    reserve = a.reserve_mib if a.reserve_mib is not None else default_reserve(_meminfo_mib())
-    block = render(a.name, measure(a.kind, reserve))
     with open(a.graph) as f:
         text = f.read()
+    old_kind = existing_kind(text, a.name)
+    if (old_kind is None or old_kind == "unknown") and a.kind is None:
+        raise SystemExit("host_measure: host kind is unknown; identify it and specify --kind")
+    kind = a.kind or old_kind
+    reserve = a.reserve_mib if a.reserve_mib is not None else default_reserve(_meminfo_mib())
+    try:
+        block = render(a.name, measure(kind, reserve))
+    except ValueError as error:
+        raise SystemExit(f"host_measure: {error}") from error
     new = upsert(text, a.name, block, a.force)
     sys.stdout.write(block)
     if new is None:

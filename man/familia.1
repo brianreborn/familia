@@ -252,8 +252,13 @@ One snapshot of every host, then exit.
 .br
 Runs: \fBsh familia\-monitor \-\-once\fR
 .TP
+\fBstart\-preview\fR
+Preview graph startup on this host (no services or remote connections).
+.br
+Runs: \fBpython3 scripts/start_graph.py \-\-dry\-run\fR
+.TP
 \fBstart\fR
-Start the model server on this machine (licenses first).
+Start the model server on this machine from graph.yaml (licenses first).
 .br
 Runs: \fBsh start.sh\fR
 .TP
@@ -262,15 +267,15 @@ Start one graph node's model server (exact launch parameters from the graph) (li
 .br
 Runs: \fBsh scripts/serve.sh <NODE>\fR
 .TP
-\fBhost measure preview\fR \fI<HOST>\fR
-Measure this machine for graph.yaml (dry run).
+\fBhost measure preview\fR \fI<HOST>\fR \fI<KIND>\fR
+Preview this machine's measured facts (identify unknown host kind).
 .br
-Runs: \fBpython3 scripts/host_measure.py \-\-name <HOST> \-\-dry\-run\fR
+Runs: \fBpython3 scripts/host_measure.py \-\-name <HOST> \-\-kind <KIND> \-\-dry\-run\fR
 .TP
-\fBhost measure\fR \fI<HOST>\fR
-Measure this machine and write it into graph.yaml.
+\fBhost measure\fR \fI<HOST>\fR \fI<KIND>\fR
+Measure and write this host (identify kind; GPU inventory stays unknown until measured).
 .br
-Runs: \fBpython3 scripts/host_measure.py \-\-name <HOST>\fR
+Runs: \fBpython3 scripts/host_measure.py \-\-name <HOST> \-\-kind <KIND> \-\-force\fR
 .TP
 \fBgraph generate\fR \fI<HOST>\fR
 Write a per\-host graph to generated/graph\-HOST.yaml.

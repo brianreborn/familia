@@ -84,9 +84,26 @@ group_desc() {
   esac
 }
 
+workflow_paths() {
+  say "ACTIONABLE PATHS (prerequisites still apply; follow one goal at a time):"
+  say "  New checkout: setup.licenses -> setup.configure -> setup.install (preview) ->"
+  say "                setup.install-run -> hosts.start"
+  say "  Existing graph node: models.check -> hosts.serve <NODE>"
+  say "  Add a model: models.fetch-preview -> models.fetch -> add its node to graph.yaml ->"
+  say "               models.check -> hosts.serve <NODE>"
+  say "  Hermes: models.check -> agents.hermes (license-gated)"
+  say "NOT DONE YET - FreeBSD llama.cpp 0.7.0 on angel: neither a FreeBSD build nor a"
+  say "model-load smoke test has been run; angel is still unmeasured and cannot host graph nodes."
+  say "After this checkout is available on angel, from code-bootstraps-llama.cpp:"
+  say "  BUILD_DIR=build-freebsd GPU=off scripts/build-linux.sh"
+  say "Then verify build-freebsd/bin/llama-server --version, measure angel, and re-check graph.yaml."
+  say ""
+}
+
 list_items() {
   local g
   say "familia menu items. Run one with: ./familia-menu.sh --run KEY [ARG...]"
+  workflow_paths
   while IFS= read -r g; do
     say ""
     say "$g: $(group_desc "$g")"
@@ -110,10 +127,11 @@ read_line() {  # read_line PROMPT VAR ; returns 1 on EOF
 }
 
 can_prompt() { [ -t 0 ] && [ "${FAMILIA_NO_TTY:-}" != 1 ]; }
+short_hostname() { hostname 2>/dev/null | cut -d. -f1 | tr '[:upper:]' '[:lower:]'; }
 
 fill() {  # fill CMD ARGS... -> CMD with {NAME:prompt} filled from ARGS (as the --flag before it, else in order); rest appended
   local cmd=$1; shift
-  local args=("$@") out="" rest before ph i j n=0 val
+  local args=("$@") out="" rest before ph i j n=0 val host_default
   local -a names=() prompts=() defs=() flags=() vals=() got=() pre=()
   rest=$cmd
   while [[ $rest == *"{"*"}"* ]]; do  # pass 1: placeholders, and the flag written just before each
@@ -135,6 +153,15 @@ fill() {  # fill CMD ARGS... -> CMD with {NAME:prompt} filled from ARGS (as the 
     args=(${args[@]+"${args[@]}"})
   done
   for ((j=0; j<n; j++)); do  # pass 3: leading plain values in order, then defaults or prompts
+    if [ "${defs[$j]}" = hostname ]; then
+      host_default=$(short_hostname)
+      defs[$j]=$host_default
+      if [ -n "$host_default" ]; then
+        prompts[$j]=${prompts[$j]//\[hostname\]/[$host_default]}
+      else
+        prompts[$j]=${prompts[$j]// \[hostname\]/}
+      fi
+    fi
     [ "${got[$j]}" = 1 ] && continue
     if [ ${#args[@]} -gt 0 ] && [[ ${args[0]} != -* ]]; then
       vals[$j]=${args[0]}; args=("${args[@]:1}")
@@ -281,9 +308,10 @@ search_key() {  # handle /x ?x n N typed at any menu prompt; returns 0 handled (
 }
 
 menu() {
-  local gs g n choice items key
+  local gs g n choice items key first=1
   while true; do
     say ""
+    if [ "$first" = 1 ]; then workflow_paths; first=0; fi
     say "familia: what do you want to do?"
     gs=(); n=0
     while IFS= read -r g; do gs+=("$g"); n=$((n+1)); printf '  %2d) %-36s %s\n' "$n" "$g" "$(group_desc "$g")"; done <<EOF2

@@ -15,6 +15,23 @@ def has(graph, frag):
 def test_baseline_valid():
     assert errs(g()) == []
 
+def test_llama_070_runtime_preserves_existing_model_architectures():
+    runtime = BASE["runtimes"]["llama-b11669"]
+    previous_archs = {
+        arch
+        for name, spec in BASE["runtimes"].items()
+        if name.startswith("llama-b") and name not in {"llama-b11669", "llama-b11669-freebsd"}
+        for arch in spec["supported_archs"]
+    }
+    assert runtime["build"] == "b11669 (llama.cpp 0.7.0)"
+    assert previous_archs <= set(runtime["supported_archs"])
+    assert BASE["nodes"]["coder"]["runtime"] == "llama-b11669"
+    assert BASE["nodes"]["embed"]["runtime"] == "llama-b11669"
+    freebsd = BASE["runtimes"]["llama-b11669-freebsd"]
+    assert freebsd["hosts"] == ["angel"]
+    assert freebsd["backends"] == ["cpu"]
+    assert previous_archs <= set(freebsd["supported_archs"])
+
 def test_version_required():
     x = g(); x["version"] = 1; has(x, "version: expected 2")
 
@@ -34,6 +51,7 @@ def test_enums():
 
 def test_measured_host_needs_facts_and_unmeasured_excluded():
     x = g(); del x["hosts"]["miryam"]["ram_mib"]; has(x, "measured host missing required 'ram_mib'")
+    x = g(); x["hosts"]["miryam"]["gpus"] = None; assert errs(x) == []
     x = g(); x["hosts"]["godslove"]["ram_mib"] = 6000; has(x, "measured is false")
     x = g(); x["runtimes"]["llama-b11374"]["hosts"].append("godslove"); x["nodes"]["coder"]["host"] = "godslove"
     has(x, "not measured; unmeasured hosts are excluded")
@@ -49,13 +67,15 @@ def test_arch_not_supported_catches_gemma_embedding2():
     x = g()
     x["models"]["egemma2"] = {"gguf": "/x.gguf", "sha256": "unmeasured", "arch": "gemma-embedding2", "trained_ctx": 8192, "role": "embed"}
     x["nodes"]["embed"] = dict(x["nodes"]["coder"], model="egemma2", ctx=8192, port=9942)
+    x["nodes"]["embed"]["runtime"] = "llama-b11374"
     has(x, "arch 'gemma-embedding2' not in runtime 'llama-b11374'")
 
 def test_sha_format():
     x = g(); x["models"]["qwen35-2b-q4km"]["sha256"] = "abc"; has(x, "64 lowercase hex")
 
 def test_runtime_not_on_host_and_port_clash():
-    x = g(); x["runtimes"]["llama-b11374"]["hosts"] = ["godslove"]; has(x, "not installed on host 'miryam'")
+    x = g(); runtime = x["nodes"]["coder"]["runtime"]; x["runtimes"][runtime]["hosts"] = ["godslove"]
+    has(x, "not installed on host 'miryam'")
     x = g(); x["nodes"]["c2"] = dict(x["nodes"]["coder"]); has(x, "port 9941 on host 'miryam' also used")
 
 def test_ctx_rules():
@@ -86,7 +106,10 @@ def test_gpu_fields():
     x = g(); x["hosts"]["miryam"]["gpus"][0]["backend"] = "directx"; has(x, "not one of")
     x = g(); del x["hosts"]["shalom"]["gpus"]; has(x, "missing required 'gpus'")
     x = g(); x["hosts"]["miryam"]["gpus"][0]["vram_mib"] = None; has(x, "measured GPU needs vram_mib")
-    for h in BASE["hosts"].values(): assert isinstance(h["gpus"], list)
+    for h in BASE["hosts"].values(): assert isinstance(h["gpus"], list) or h["gpus"] is None
+    x = g(); x["hosts"]["miryam"]["gpus"] = None
+    x["nodes"]["coder"]["offload"].update(backend="vulkan", ngl=1)
+    has(x, "GPU inventory on host 'miryam' is unknown")
 
 def test_windows_host_block():
     x = g(); del x["hosts"]["qodesh"]["windows"]; has(x, "os windows requires a 'windows' block")
@@ -118,7 +141,8 @@ def test_speculative_draft():
     x = g(); d = spec_draft(); del d["draft_max"]; x["speculative"]["d"] = d; has(x, "requires 'draft_max'")
     x = g(); x["speculative"]["d"] = spec_draft(draft="qwen35-2b-q4km"); has(x, "draft model is the target")
     x = g(); x["speculative"]["d"] = spec_draft(experimental=False); has(x, "experimental type")
-    x = g(); x["runtimes"]["llama-b11374"]["spec_types"] = []; x["speculative"]["d"] = spec_draft(); has(x, "does not list spec_type")
+    x = g(); runtime = x["nodes"]["coder"]["runtime"]; x["runtimes"][runtime]["spec_types"] = []
+    x["speculative"]["d"] = spec_draft(); has(x, "does not list spec_type")
 
 def test_speculative_ngram():
     x = g(); x["speculative"]["coder-ngram"]["spec_type"] = "draft-simple"; has(x, "needs an ngram-* spec_type")
@@ -126,7 +150,8 @@ def test_speculative_ngram():
 
 def test_speculative_vocab_mismatch_and_ram():
     # egemma2 (gemma4 tokenizer) cannot draft for qwen35 (gpt2 tokenizer): file-level check
-    x = g(); x["_path"] = os.path.join(ROOT, "graph.yaml"); x["speculative"]["d"] = spec_draft()
+    x = g(); x["_path"] = os.path.join(ROOT, "graph.yaml")
+    x["speculative"]["d"] = spec_draft(status="experimental")
     if not os.path.isfile(os.path.expanduser(BASE["models"]["egemma2-q8"]["gguf"])): pytest.skip("GGUFs not on this machine")
     e, tot = validate_graph.validate(x); assert any("tokenizer/vocab mismatch" in m for m in e), e
     _, base = validate_graph.validate(g()); assert tot["miryam"] > base["miryam"] + 290  # draft weights counted
@@ -323,6 +348,14 @@ def test_qodesh_sm11_decision_accepted():
     assert x["models"]["stories15m-fp32"]["role"] == "decision"
     assert x["runtimes"]["sm11-legacy-qodesh"]["kind"] == "sm11-legacy"
     assert errs(x) == []
+
+def test_host_scoped_validation_skips_remote_artifacts_and_ram():
+    errs, totals = validate_graph.validate(g(), check_files=True, host="angel")
+    assert errs == []
+    assert totals == {}
+
+def test_validate_graph_host_option_requires_declared_host():
+    assert validate_graph.parse_argv(["--host", "miryam"])["host"] == "miryam"
 
 def test_qodesh_plain_cuda_still_rejected():
     x = g()

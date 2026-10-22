@@ -52,10 +52,11 @@ test.registry|Test & benchmark|Benchmark records: best measured model per host a
 test.registry-summary|Test & benchmark|Summary of every benchmark record|PY scripts/registry.py summarize|||python scripts\registry.py summarize
 hosts.monitor|Hosts|Monitor hosts over SSH (read-only console; --once for one snapshot)|sh familia-monitor|||python scripts\monitor.py
 hosts.monitor-once|Hosts|One snapshot of every host, then exit|sh familia-monitor --once|||python scripts\monitor.py --once
-hosts.start|Hosts|Start the model server on this machine|sh start.sh|lic||scripts\windows\start.bat
+hosts.start-preview|Hosts|Preview graph startup on this host (no services or remote connections)|PY scripts/start_graph.py --dry-run|||python scripts\start_graph.py --dry-run
+hosts.start|Hosts|Start the model server on this machine from graph.yaml|sh start.sh|lic||scripts\windows\start.bat
 hosts.serve|Hosts|Start one graph node's model server (exact launch parameters from the graph)|sh scripts/serve.sh {NODE:node name, e.g. coder}|lic||
-hosts.measure|Hosts|Measure this machine for graph.yaml (dry run)|PY scripts/host_measure.py --name {HOST:host name} --dry-run|||
-hosts.measure-write|Hosts|Measure this machine and write it into graph.yaml|PY scripts/host_measure.py --name {HOST:host name}|||python scripts\host_measure.py --name {HOST:host name}
+hosts.measure|Hosts|Preview this machine's measured facts (identify unknown host kind)|PY scripts/host_measure.py --name {HOST:local graph host [hostname]} --kind {KIND:desktop, laptop, phone or vm} --dry-run|||
+hosts.measure-write|Hosts|Measure and write this host (identify kind; GPU inventory stays unknown until measured)|PY scripts/host_measure.py --name {HOST:local graph host [hostname]} --kind {KIND:desktop, laptop, phone or vm} --force|||python scripts\host_measure.py --name {HOST:local graph host [hostname]} --kind {KIND:desktop, laptop, phone or vm} --force
 hosts.generate|Hosts|Write a per-host graph to generated/graph-HOST.yaml|PY scripts/generate_graph.py {HOST:host name}|||python scripts\generate_graph.py {HOST:host name}
 hosts.android|Hosts|Start the node on an Android phone over SSH|bash android_start.sh {HOST:phone host, e.g. phone7}|lic||
 hosts.phones|Hosts|Start every phone listed in graph.yaml|bash android_multi_start.sh|lic||

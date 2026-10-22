@@ -210,7 +210,11 @@ def check_offload(name, n, h, r, errs):
     if r is not None and be not in (r.get("backends") or []):
         errs.append(f"{w}: backend {be!r} not in runtime {n.get('runtime')!r} backends {r.get('backends')}")
     if ngl == 0 or n.get("status") == "planned": return
-    gpus = (h or {}).get("gpus") or []
+    declared_gpus = (h or {}).get("gpus")
+    if declared_gpus is None:
+        errs.append(f"{w}: GPU inventory on host {n.get('host')!r} is unknown; measure it before enabling offload")
+        return
+    gpus = declared_gpus
     if mg >= len(gpus): errs.append(f"{w}: main_gpu {mg} but host {n.get('host')!r} declares {len(gpus)} GPU(s)"); return
     gp = gpus[mg]
     if gp.get("backend") != be: errs.append(f"{w}: backend {be!r} but GPU {mg} backend is {gp.get('backend')!r}")
@@ -442,7 +446,7 @@ class T:
 TYPES = {
     "hosts": T({"kind": req("enum", choices={"desktop", "laptop", "phone", "vm", "unknown"}),
                 "measured": req("bool"), "os": opt("str"), "cpu": opt("str"), "threads": opt("int", min=1),
-                "ram_mib": opt("int", min=1), "gpus": req("gpus"),
+                "ram_mib": opt("int", min=1), "gpus": req("gpus", nullable=True),
                 "reserve_ram_mib": opt("int", min=0), "notes": opt("str"), "reported": opt("any"),
                 "windows": opt("any"),
                 # reachability for meshes (transport PoC, #22); key-only, never a password

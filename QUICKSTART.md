@@ -63,12 +63,15 @@ On Windows use `python` instead of `python3` and set `$env:PYTHONUTF8 = '1'` fir
 
 | Goal | Command |
 |---|---|
-| The web UI and router (code-bootstraps-llama.cpp) | `./start.sh`, then open http://127.0.0.1:9931/?model=chat and paste the API key printed in the terminal |
+| Active local graph topology (POSIX) | `./start.sh` (or `./start.sh --host miryam`); current gateway aliases are listed at `http://127.0.0.1:9931/v1/models` |
+| Legacy standalone bootstrap UI/router | `./start.sh --bootstrap`, then open http://127.0.0.1:9931/?model=chat and paste its API key |
 | One graph node's llama-server (Linux) | `sh scripts/serve.sh coder` |
 | One node on Windows | `$env:FAMILIA_MODEL = 'your-model.gguf'; .\scripts\windows\start.bat` |
 | hermes-agent against the graph | `scripts/hermes.sh` |
 
-`DETACH_MODE=nohup|tmux|screen ./start.sh` keeps the router running after the terminal closes; see [MANUAL.md](MANUAL.md#backgrounding-and-detaching).
+`DETACH_MODE=screen-attached ./start.sh --host miryam` keeps the graph supervisor in the visible `familia-server` screen session with 10,000 lines of scrollback. Use `Ctrl-A`, then `D` to detach and `screen -r familia-server` to resume. Other modes are opt-in; foreground is the default. See [MANUAL.md](MANUAL.md#backgrounding-and-detaching).
+
+The FreeBSD graph host `angel` is currently unmeasured and has no active nodes. `./start.sh --dry-run --host angel` reports this without starting or contacting anything. Run the separate FreeBSD llama.cpp build/version test first; graph serving requires measured host facts and explicit active-node placement.
 
 ### Always run hermes through the harness
 

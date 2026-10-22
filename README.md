@@ -10,6 +10,8 @@ familia is a **topology coordinator**. It doesn't replace your inference server 
 
 > **Status:** pre-release (`v0.1.0-rc2`). Linux is the tested platform. **Want to help test? Start with [TESTING.md](TESTING.md).** See [Platform status](#platform-status) and [Known issues](docs/known-issues.md).
 
+**Projects familia coordinates:** [code-bootstraps-llama.cpp](https://github.com/brianreborn/code-bootstraps-llama.cpp) provides model serving and bootstrap tooling; [green-roomz](https://github.com/brianreborn/green-roomz) provides the alias gateway; [green-agentz](https://github.com/brianreborn/green-agentz) provides the agent fleet; [Agent-Reach](https://github.com/Panniantong/Agent-Reach) provides optional reach tools; and [nace-ai/llama.cpp](https://github.com/nace-ai/llama.cpp/tree/edlm) is the experimental DReX-DLM runtime. Their repositories and licenses remain independent; familia's [`pins.txt`](pins.txt) keeps the selected revisions together. [green-agency](https://github.com/brianreborn/green-agency) is retired and retained only for historical specifications.
+
 ---
 
 ## Skills: why familia wins hearts, minds and computers
@@ -44,7 +46,7 @@ improve small-model results yet. Details are in [docs/skills.md](docs/skills.md)
 curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install.sh | sh
 ```
 
-That clones familia into `~/familia`, shows the license review, syncs the pinned sub-projects and starts the router. You type `yes` once to acknowledge the voluntary contribution notice (`INSTALL_ACK=yes` for unattended installs); paying is never required. Then open **http://127.0.0.1:9931/?model=chat** (or the URL the launcher prints) and paste the API key from the terminal.
+That clones familia into `~/familia`, shows the license review, syncs the pinned sub-projects and starts the active local topology declared in `graph.yaml`. You type `yes` once to acknowledge the voluntary contribution notice (`INSTALL_ACK=yes` for unattended installs); paying is never required. The graph gateway is loopback-only at **http://127.0.0.1:9931**; use `GET /v1/models` to see the local aliases.
 
 **What now?** Run `./familia` in the checkout. It opens a menu grouped by task (Set up, Skills, Models, Agents, Harness², Test, Hosts, three Advanced groups, Help), and each item shows the command it runs (on Windows, `familia.cmd`). Every user-facing script is in it; [docs/commands.md](docs/commands.md) lists every item and the few scripts left out on purpose, and `./familia-menu.sh --list` prints them all. Type `/word` at any menu prompt to search every group (`n`/`N` for next/previous, like `less`), or run `./familia search WORD`. Every item is also a command: `./familia help` lists them (`./familia skills list`, `./familia model params coder`, `./familia --dry-run serve coder`), and `man ./man/familia.1` is the manual.
 
@@ -58,7 +60,7 @@ familia is a **graph**. Nodes have named *hooks*, and hooks connect in pairs. Da
 
 ```
                ┌───────────────── you ─────────────────┐
-               │   web UI :9931   ·   agents / TUIs     │
+               │   OpenAI API :9931 · agents / TUIs     │
                └───────────┬───────────────────────────┘
                            │  route names: chat · coder · route · translate · …
                 ┌──────────▼──────────┐
@@ -79,7 +81,7 @@ familia is a **graph**. Nodes have named *hooks*, and hooks connect in pairs. Da
 - **Transports**: `local`, `ssh`, `nfs`, `rsync`, `bittorrent`, `zfs` are the declared edge kinds. Only two have code, as an opt-in proof of concept: an SSH nexus and a private BitTorrent tracker (`meshes:` in the graph, [docs/transport-poc.md](docs/transport-poc.md)). The rest are names only.
 - **Route names** are single English words for the job: `chat` (front door), `coder` (handoff target), `route` (small resident dispatcher), `translate`. Specialist routes (`vision`, `transcribe`, `speak`, `draw`, `embed`, `rerank`, `safety`, `guard`) exist only when they are declared and their pinned weights are on disk. A file appearing on disk doesn't create a route by itself.
 - **The user owns every edge.** An environment variable, a command-line flag, or a saved setting always wins. The system may *suggest* an edge, and it never opens one on its own.
-- **Configuration is a declarative graph.** [`graph.yaml`](graph.yaml) declares every model node and agent explicitly; [`scripts/validate_graph.py`](scripts/validate_graph.py) checks it against the measured host and fails loudly instead of quietly picking another model or inflating context. See [docs/configuration-graph.md](docs/configuration-graph.md). `start.sh` does not read the graph yet. Today the graph is used by `scripts/serve.sh NODE` and `scripts/hermes.sh`, both of which launch `llama-server` with the exact arguments `validate_graph.py --args NODE` prints.
+- **Configuration drives startup.** [`graph.yaml`](graph.yaml) declares model nodes, aliases and gateways; [`scripts/validate_graph.py`](scripts/validate_graph.py) checks model/runtime facts and placement. `start.sh` starts active nodes assigned to the exact local graph host, waits for their health endpoints, then starts the declared loopback Green-Roomz graph proxy for local aliases. Remote nodes and gateways are reported but never started or contacted without consent. Use `--host NAME` when the local hostname is not an exact graph-host key. See [docs/configuration-graph.md](docs/configuration-graph.md).
 
 For the full design (transaction blocks, `/local` and `/remote`, snapshots as cache coherence, least privilege), read [DESIGN.md](DESIGN.md).
 
@@ -92,7 +94,7 @@ The sub-projects keep their own repositories and licenses. familia pins each one
 | Pin (`pins.txt`) | Role | Repository |
 |---|---|---|
 | `code-bootstraps-llama.cpp` | Models and the agent: `llama-server` router, model fetch/verify, `/local`, `/remote`, installers, settings panel | [brianreborn/code-bootstraps-llama.cpp](https://github.com/brianreborn/code-bootstraps-llama.cpp) |
-| `green-roomz` | Alias gateway: one stable name in front of each backend | [brianreborn/green-roomz](https://github.com/brianreborn/green-roomz) |
+| `green-roomz` | Alias gateway, including familia's graph-proxy mode for local declared routes | [brianreborn/green-roomz](https://github.com/brianreborn/green-roomz) |
 | `green-agentz` | Agent fleet (green-brainz, green-fleetz, green-zkillz) | [brianreborn/green-agentz](https://github.com/brianreborn/green-agentz) |
 | `green-agency` | **Retired.** Kept for historical specs; not the fleet | [brianreborn/green-agency](https://github.com/brianreborn/green-agency) |
 | `agent-reach` | External reach tools, pinned and not vendored | [Panniantong/Agent-Reach](https://github.com/Panniantong/Agent-Reach) |
@@ -110,8 +112,10 @@ Shell environment variables always take precedence over saved settings.
 
 - **Settings panel (simple window):** `./familia panel` opens http://127.0.0.1:9932/ in your browser. It works with a mouse, a keyboard alone, a single switch or a screen reader (big buttons, short pages, no time limits, no JavaScript). It covers skills, license acceptance, the hermes mode, Harness2, a read-only view of each model's launch parameters, and the launcher settings. Every change is previewed before it is saved and can be undone. It listens on this computer only; from elsewhere use `ssh -L 9932:127.0.0.1:9932 HOST`. Details: [docs/panel.md](docs/panel.md).
 - **Settings in the terminal:** `sh scripts/configure.sh -i`. Without `-i` it only syncs pins.
-- **Common variables:** `PORT`, `PROFILE` (`lowram` | `moderate` | `default`), `CTX`, `CODER_CTX`, `MODELS_MAX`, `TOOLS`. These are handed to the model server. See the [code-bootstraps-llama.cpp README](https://github.com/brianreborn/code-bootstraps-llama.cpp#readme) for the full list.
-- **Detaching:** `DETACH_MODE=foreground|nohup|tmux|screen ./start.sh`. On Termux the default switches to tmux, then screen, then nohup, so the server survives when the terminal closes, and a wake lock is taken when `termux-wake-lock` is installed. tmux and screen sessions are named `familia-server`. nohup logs go to `.cache/server.log`.
+- **Standalone bootstrap UI:** use `./start.sh --bootstrap` to explicitly run the legacy code-bootstraps-llama.cpp router. Its `PORT`, `PROFILE`, `CTX`, `CODER_CTX`, `MODELS_MAX`, and `TOOLS` settings do not configure graph nodes.
+- **Session control:** `DETACH_MODE=foreground|nohup|tmux|screen|screen-attached ./start.sh`. Foreground is the default, including on Termux; Termux takes a wake lock when `termux-wake-lock` is installed but does not silently background the graph. Screen sessions are named `familia-server`; `screen-attached` starts attached with 10,000 lines of scrollback (`Ctrl-A`, then `[` to review history; `Ctrl-A`, then `D` to detach; `screen -r familia-server` to resume). nohup logs go to `.cache/graph.log`.
+
+**FreeBSD note:** `angel` remains unmeasured and has no active graph nodes, so `./start.sh --dry-run --host angel` reports that nothing is eligible to start. The pinned llama.cpp FreeBSD build/version test is separate; measure the host and explicitly place nodes before expecting graph startup there.
 
 ---
 

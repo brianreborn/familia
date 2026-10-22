@@ -70,6 +70,11 @@ function Shown($c) { return ($c -replace '\{([A-Z]+):[^}]*\}', '<$1>') }
 function InputRedirected { try { return [Console]::IsInputRedirected } catch { return $false } }
 
 function CanPrompt { return (-not (InputRedirected)) -and $env:FAMILIA_NO_TTY -ne '1' }
+function ShortHostname {
+  $name = $env:COMPUTERNAME
+  if (-not $name) { $name = [System.Net.Dns]::GetHostName() }
+  return (($name -split '\.')[0]).ToLowerInvariant()
+}
 function Quote($v) { if ($v -eq '' -or $v -match '[\s&|<>^"]') { return '"' + $v + '"' }; return $v }
 $script:Me = 'familia-menu'; $script:CliHint = ''
 # Fill CMD VALS: {NAME:prompt [default]} from VALS (as the --flag written before it, else in order),
@@ -92,6 +97,11 @@ function Fill($cmd, $vals, $interactive) {
   foreach ($m in $ph) {
     $name = $m.Groups[1].Value; $prompt = $m.Groups[2].Value; $def = ''
     if ($prompt -match '\[([^\]]*)\]') { $def = $matches[1] }
+    if ($def -eq 'hostname') {
+      $def = ShortHostname
+      if ($def) { $prompt = $prompt -replace '\[hostname\]', "[$def]" }
+      else { $prompt = $prompt -replace ' \[hostname\]', '' }
+    }
     if ($got.ContainsKey($m.Index)) { $v = $got[$m.Index] }
     elseif ($rest.Count -gt 0 -and -not $rest[0].StartsWith('-')) { $v = $rest[0]; $rest.RemoveAt(0) }
     elseif ($interactive -or (-not $def -and (CanPrompt))) { $v = Read-Host "  $prompt" }
@@ -210,8 +220,25 @@ function SearchKey($c) {  # '/x' '?x' 'n' 'N' at any menu prompt: 'quit', 'done'
   return 'done'
 }
 
+function ShowWorkflowPaths {
+  Write-Host 'ACTIONABLE PATHS (prerequisites still apply; follow one goal at a time):'
+  Write-Host '  New checkout: setup.licenses -> setup.configure -> setup.install (preview) ->'
+  Write-Host '                setup.install-run -> hosts.start'
+  Write-Host '  Existing graph node: models.check -> hosts.serve <NODE>'
+  Write-Host '  Add a model: models.fetch-preview -> models.fetch -> add its node to graph.yaml ->'
+  Write-Host '               models.check -> hosts.serve <NODE>'
+  Write-Host '  Hermes: models.check -> agents.hermes (license-gated)'
+  Write-Host 'NOT DONE YET - FreeBSD llama.cpp 0.7.0 on angel: neither a FreeBSD build nor a'
+  Write-Host 'model-load smoke test has been run; angel is still unmeasured and cannot host graph nodes.'
+  Write-Host 'After this checkout is available on angel, from code-bootstraps-llama.cpp:'
+  Write-Host '  BUILD_DIR=build-freebsd GPU=off scripts/build-linux.sh'
+  Write-Host 'Then verify build-freebsd/bin/llama-server --version, measure angel, and re-check graph.yaml.'
+  Write-Host ''
+}
+
 function ListItems {
   Write-Host 'familia menu items (Windows). Run one with: familia.cmd -Run KEY [ARG...]'
+  ShowWorkflowPaths
   foreach ($g in $groups) {
     Write-Host ''; Write-Host "${g}: $($groupDesc[$g])"
     foreach ($i in $items) {
@@ -318,8 +345,11 @@ if ((InputRedirected) -and -not $Pipe) {
   Write-Host 'familia-menu: no console input, so no interactive menu. Run an item with -Run KEY, or pipe choices with -Pipe.'
   exit 2
 }
+$showPaths = $true
 while ($true) {
-  Write-Host ''; Write-Host 'familia: what do you want to do?'
+  Write-Host ''
+  if ($showPaths) { ShowWorkflowPaths; $showPaths = $false }
+  Write-Host 'familia: what do you want to do?'
   for ($n = 0; $n -lt $groups.Count; $n++) { Write-Host ('  {0}) {1,-36} {2}' -f ($n + 1), $groups[$n], $groupDesc[$groups[$n]]) }
   Write-Host '  q) Quit      /word search every group (n/N next/previous match)'
   $c = Read-Host "Choose 1-$($groups.Count), /search or q"

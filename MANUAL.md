@@ -29,8 +29,8 @@ Called automatically by: `install.sh`, `install/linux`, `install/termux` and `in
 Saved settings live in `code-bootstraps-llama.cpp/.cache/panel.env`. An environment variable always overrides a saved setting:
 
 ```sh
-PORT=8080 ./start.sh
-PROFILE=lowram ./start.sh        # lowram | moderate | default
+PORT=8080 ./start.sh --bootstrap
+PROFILE=lowram ./start.sh --bootstrap  # lowram | moderate | default
 ```
 
 Other common variables: `CTX`, `CODER_CTX`, `MODELS_MAX`, `TOOLS`, `CACHE_RAM`. The full list is in the [code-bootstraps-llama.cpp README](https://github.com/brianreborn/code-bootstraps-llama.cpp#readme). The prompt cache size follows the profile (lowram 768, moderate 1024, default 2048 MiB, never more than a quarter of free RAM) unless `CACHE_RAM` sets it.
@@ -39,25 +39,32 @@ There is no visual graph editor and no natural-language configuration (see [Futu
 
 ## 2. Starting and stopping
 
-### The router and web UI
+### The graph topology
 
 ```sh
-./start.sh
+./start.sh                         # exact local hostname match
+./start.sh --host miryam           # explicit graph host selection
+./start.sh --dry-run --host angel  # show the FreeBSD host's current graph placement
 ```
 
-It serves http://127.0.0.1:9931/?model=chat. On first load, paste the API key printed in the terminal. `start.sh` does not read `graph.yaml` yet.
+`start.sh` validates the graph, starts every active supported node assigned to the selected local host, waits for each node's health endpoint, and then starts the declared Green-Roomz graph proxy for local aliases. The current `miryam` graph exposes `coder` and `embed` at `http://127.0.0.1:9931`; query `GET /v1/models` for the available routes. Remote nodes and gateways are reported but never started or contacted without consent. Unsupported active runtime kinds or missing local artifacts fail before any process starts.
+
+`angel` is still unmeasured and has no active nodes. The FreeBSD llama.cpp build/version smoke test can be run independently, but graph serving there requires measured host facts and an explicit node placement.
+
+The former standalone code-bootstraps UI/router is still available explicitly as `./start.sh --bootstrap`; that mode does not use `graph.yaml`.
 
 ### Backgrounding and detaching
 
 `start.sh` reads `DETACH_MODE` from the environment (it is not a panel setting):
 
 ```sh
-DETACH_MODE=nohup ./start.sh     # foreground (default) | nohup | tmux | screen
+DETACH_MODE=screen-attached ./start.sh
 ```
 
-- `nohup` logs to `.cache/server.log`.
-- `tmux` and `screen` start a detached session named `familia-server`.
-- On Termux, if `DETACH_MODE` is left at `foreground`, `start.sh` picks tmux, then screen, then nohup, and takes `termux-wake-lock` when it is installed.
+- `nohup` graph startup logs to `.cache/graph.log`.
+- `tmux` and `screen` start detached sessions named `familia-server`.
+- `screen-attached` starts the same named graph-supervisor session attached, with 10,000 lines of scrollback. Detach with `Ctrl-A`, then `D`; resume with `screen -r familia-server`. In screen, `Ctrl-A`, then `[` enters scrollback mode.
+- Foreground is the default. Termux still takes `termux-wake-lock` when installed, but does not silently background the graph.
 
 ### One graph node
 

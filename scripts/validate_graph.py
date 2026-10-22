@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Validate familia graph.yaml against GGUF metadata, hardware and agent needs.
 
-usage: validate_graph.py [--graph FILE] [--no-files] [--verify-sha] [--check-runtimes]
+usage: validate_graph.py [--graph FILE] [--host HOST] [--no-files] [--verify-sha] [--check-runtimes]
                          [--args NODE | --explain NODE] [-h|--help]
 
 Exit 0 when valid, 1 with one line per problem otherwise (2 for a usage error).
@@ -10,6 +10,7 @@ Exit 0 when valid, 1 with one line per problem otherwise (2 for a usage error).
                  docs/model-params.md); exits 1 when a REQUIRED one cannot be met.
 --explain NODE   the same, one parameter per line with its class and source, plus the
                  client-side requirements (prompt prefixes, endpoints, stop strings).
+--host HOST      scope local artifact, runtime, and RAM checks to this declared graph host.
 --no-files       skip GGUF/RAM checks (schema only); --verify-sha hashes GGUFs.
 --check-runtimes check that runtime binaries are executable.
 Never guesses or inflates. Schema: scripts/graph_types.py, docs/graph-types.md.
@@ -89,7 +90,7 @@ def load(path):
 
 WARNINGS = []  # margin-only RAM guidance from the last validate() call
 
-def validate(graph, check_files=True):
+def validate(graph, check_files=True, host=None):
     del WARNINGS[:]
     """Typed schema check, then GGUF/RAM checks. Returns (errors, {host: est MiB})."""
     errs = validate_types(graph)
@@ -110,7 +111,7 @@ def validate(graph, check_files=True):
     hosts, models, totals = graph["hosts"], graph["models"], {}
     base = os.path.dirname(os.path.abspath(graph.get("_path", "graph.yaml")))
     for rn, r in graph["runtimes"].items():
-        if "bin" in r and "--check-runtimes" in sys.argv:
+        if "bin" in r and "--check-runtimes" in sys.argv and (host is None or host in r.get("hosts", [])):
             b = os.path.join(base, os.path.expanduser(r["bin"]))
             if not os.access(b, os.X_OK): errs.append(f"runtimes.{rn}: binary not executable: {b}"); continue
             import subprocess
@@ -119,6 +120,7 @@ def validate(graph, check_files=True):
     metas = {}
     for name, n in graph["nodes"].items():
         if n["status"] == "planned": continue
+        if host is not None and n["host"] != host: continue
         m = models[n["model"]]
         rt = graph["runtimes"].get(n["runtime"]) or {}
         # sm11-legacy / llama2.c .bin checkpoints are not GGUF
@@ -164,7 +166,11 @@ def validate(graph, check_files=True):
         layers = meta.get(f"{arch}.block_count")
         ngl = n["offload"]["ngl"]
         if ngl and isinstance(layers, int):
-            gp = hosts[n["host"]]["gpus"][n["offload"]["main_gpu"]]
+            gpus = hosts[n["host"]].get("gpus")
+            gpu_index = n["offload"]["main_gpu"]
+            if not isinstance(gpus, list) or gpu_index >= len(gpus):
+                continue
+            gp = gpus[gpu_index]
             frac = min(ngl, layers + 1) / (layers + 1)
             need = frac * (os.path.getsize(path) / 2**20 + (kv or 0)) + n["offload"].get("vram_reserve_mib", 0)
             if isinstance(gp.get("vram_mib"), int) and need > gp["vram_mib"]:
@@ -304,11 +310,11 @@ USAGE = __doc__.split("\n\n")[1]
 
 def parse_argv(argv):
     """-> dict of options; SystemExit(2) on an unknown flag or a missing value."""
-    o = {"graph": "graph.yaml", "no_files": False, "verify_sha": False, "check_runtimes": False, "args": None, "explain": None}
+    o = {"graph": "graph.yaml", "host": None, "no_files": False, "verify_sha": False, "check_runtimes": False, "args": None, "explain": None}
     it = iter(argv)
     for x in it:
         if x in ("-h", "--help"): print(__doc__.strip()); raise SystemExit(0)
-        elif x in ("--graph", "--args", "--explain"):
+        elif x in ("--graph", "--host", "--args", "--explain"):
             v = next(it, None)
             if v is None or v.startswith("-"): print(f"validate_graph.py: {x} needs a value\n{USAGE}", file=sys.stderr); raise SystemExit(2)
             o[x[2:]] = v
@@ -322,7 +328,9 @@ def main(argv):
     try: graph = load(path); graph["_path"] = path
     except yaml.YAMLError as e:
         print(f"graph: ERROR: {e}", file=sys.stderr); return 1
-    errs, totals = validate(graph, check_files=not o["no_files"])
+    if o["host"] and o["host"] not in graph.get("hosts", {}):
+        print(f"graph: ERROR: no host {o['host']!r}", file=sys.stderr); return 1
+    errs, totals = validate(graph, check_files=not o["no_files"], host=o["host"])
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     from transport_graph import validate_transports
     errs += validate_transports(graph)  # meshes: (ssh nexus / bittorrent), #22
@@ -332,6 +340,9 @@ def main(argv):
     for k in ("args", "explain"):
         if o[k] and o[k] not in graph["nodes"]:
             print(f"graph: ERROR: no node {o[k]!r}", file=sys.stderr); return 1
+    if o["args"] and o["host"] and graph["nodes"][o["args"]]["host"] != o["host"]:
+        print(f"graph: ERROR: node {o['args']!r} is on host {graph['nodes'][o['args']]['host']!r}, not {o['host']!r}", file=sys.stderr)
+        return 1
     if o["args"]:
         print(" ".join(server_args(graph, o["args"]))); return 0
     if o["explain"]:

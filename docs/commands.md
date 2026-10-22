@@ -35,6 +35,19 @@ familia.cmd -Search WORD [-Run N] [-DryRun]
 
 `--search` exits 0 when something matched and 1 when nothing did.
 
+## Recommended paths
+
+The interactive menu and `--list` show these paths before the command groups. Follow the route for your goal; the listed commands still need their usual inputs, installed dependencies, and license acceptance.
+
+| goal | path |
+|---|---|
+| Set up a new checkout and start its local server | `setup.licenses` -> `setup.configure` -> `setup.install` (preview) -> `setup.install-run` -> `hosts.start` |
+| Start a graph node | `models.check` -> `hosts.serve <NODE>` |
+| Add and launch a model | `models.fetch-preview` -> `models.fetch` -> add its node to `graph.yaml` -> `models.check` -> `hosts.serve <NODE>` |
+| Run Hermes on the graph coder | `models.check` -> `agents.hermes` (license-gated) |
+
+**Not done yet:** the FreeBSD llama.cpp 0.7.0 build and model-load smoke test on `angel` have not been run, and `angel` is still unmeasured. After this checkout is available there, run `BUILD_DIR=build-freebsd GPU=off scripts/build-linux.sh` from `code-bootstraps-llama.cpp`, verify `build-freebsd/bin/llama-server --version`, measure the host, then re-check `graph.yaml`. The unmeasured host cannot host graph nodes.
+
 ## Set up
 
 `./familia sync [--dry-run]` and `./familia update [--dry-run]` are the same as `setup.sync` and `setup.update`. Every script that updates or runs pinned parts already syncs them first; see [MANUAL.md](../MANUAL.md#keeping-the-pinned-parts-in-sync).
@@ -116,10 +129,11 @@ familia.cmd -Search WORD [-Run N] [-DryRun]
 |---|---|---|---|
 | `hosts.monitor` | Monitor hosts over SSH (read-only console; --once for one snapshot) | `sh familia-monitor` | `python scripts\monitor.py` |
 | `hosts.monitor-once` | One snapshot of every host, then exit | `sh familia-monitor --once` | `python scripts\monitor.py --once` |
-| `hosts.start` | Start the model server on this machine (licenses first) | `sh start.sh` | `scripts\windows\start.bat` |
+| `hosts.start-preview` | Preview graph startup on this host (no services or remote connections) | `python3 scripts/start_graph.py --dry-run` | `python scripts\start_graph.py --dry-run` |
+| `hosts.start` | Start active supported graph nodes on this POSIX host and the declared local alias gateway (licenses first; remote nodes are report-only) | `sh start.sh [--host NAME]` | `scripts\windows\start.bat` (legacy standalone launcher) |
 | `hosts.serve` | Start one graph node's model server (exact launch parameters from the graph) (licenses first) | `sh scripts/serve.sh <NODE>` | - |
-| `hosts.measure` | Measure this machine for graph.yaml (dry run) | `python3 scripts/host_measure.py --name <HOST> --dry-run` | - |
-| `hosts.measure-write` | Measure this machine and write it into graph.yaml | `python3 scripts/host_measure.py --name <HOST>` | `python scripts\host_measure.py --name <HOST>` |
+| `hosts.measure` | Measure this machine for graph.yaml (dry run; menu defaults its host name to the local hostname; identify unknown host kind with `--kind`) | `python3 scripts/host_measure.py --name <HOST> --kind <desktop|laptop|phone|vm> --dry-run` | - |
+| `hosts.measure-write` | Measure this machine and write it into graph.yaml (menu defaults its host name to the local hostname; identify unknown host kind with `--kind`) | `python3 scripts/host_measure.py --name <HOST> --kind <desktop|laptop|phone|vm> --force` | `python scripts\host_measure.py --name <HOST> --kind <desktop|laptop|phone|vm> --force` |
 | `hosts.generate` | Write a per-host graph to generated/graph-HOST.yaml | `python3 scripts/generate_graph.py <HOST>` | `python scripts\generate_graph.py <HOST>` |
 | `hosts.android` | Start the node on an Android phone over SSH (licenses first) | `bash android_start.sh <HOST>` | - |
 | `hosts.phones` | Start every phone listed in graph.yaml (licenses first) | `bash android_multi_start.sh` | - |

@@ -1,6 +1,11 @@
 import os, re, subprocess, sys, shutil, yaml
+from types import SimpleNamespace
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HM = os.path.join(ROOT, "scripts", "host_measure.py")
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
+import host_measure
+from graph_types import validate_types
+import validate_graph
 
 def _run(*a):
     return subprocess.run([sys.executable, HM, *a], capture_output=True, text=True)
@@ -8,23 +13,53 @@ def _run(*a):
 def test_host_measure_insert_and_idempotent(tmp_path):
     g = tmp_path / "graph.yaml"; shutil.copy(os.path.join(ROOT, "graph.yaml"), g)
     before = yaml.safe_load(open(g))
-    assert _run("--name", "newhost", "--graph", str(g)).returncode == 0
+    assert _run("--name", "newhost", "--graph", str(g), "--kind", "laptop").returncode == 0
     after = yaml.safe_load(open(g))
     h = after["hosts"]["newhost"]
     assert h["measured"] is True and h["ram_mib"] > 0 and h["reserve_ram_mib"] >= 3072
     assert {k: v for k, v in after.items() if k != "hosts"} == {k: v for k, v in before.items() if k != "hosts"}
     snap = g.read_text()
-    assert _run("--name", "newhost", "--graph", str(g)).returncode == 0
+    assert _run("--name", "newhost", "--graph", str(g), "--kind", "laptop").returncode == 0
     assert g.read_text() == snap  # existing host untouched without --force
 
 def test_host_measure_dry_run_and_force(tmp_path):
     g = tmp_path / "graph.yaml"; shutil.copy(os.path.join(ROOT, "graph.yaml"), g)
     snap = g.read_text()
-    assert _run("--name", "x1", "--graph", str(g), "--dry-run").returncode == 0
+    assert _run("--name", "x1", "--graph", str(g), "--kind", "laptop", "--dry-run").returncode == 0
     assert g.read_text() == snap
     assert _run("--name", "shalom", "--graph", str(g), "--force", "--kind", "phone").returncode == 0
     d = yaml.safe_load(open(g))["hosts"]
     assert d["shalom"]["measured"] is True and set(d) == set(yaml.safe_load(snap)["hosts"])
+
+def test_host_measure_freebsd_sysctl_facts_are_graph_schema_compatible(tmp_path, monkeypatch):
+    monkeypatch.setattr(host_measure, "sys", SimpleNamespace(platform="freebsd14"))
+    monkeypatch.setattr(host_measure.os, "cpu_count", lambda: 4)
+
+    def check_output(command, **kwargs):
+        return {"hw.physmem": "8589934592", "hw.model": "FreeBSD Test CPU"}[command[-1]]
+
+    monkeypatch.setattr(host_measure.subprocess, "check_output", check_output)
+    fields = host_measure.measure("laptop", 3072)
+    measured = yaml.safe_load(host_measure.render("angel", fields))["angel"]
+    assert measured["os"] == "freebsd"
+    assert measured["cpu"] == "FreeBSD Test CPU"
+    assert measured["threads"] == 4
+    assert measured["ram_mib"] == 8192
+
+    text = open(os.path.join(ROOT, "graph.yaml")).read()
+    updated = host_measure.upsert(text, "angel", host_measure.render("angel", fields), True)
+    graph_path = tmp_path / "graph.yaml"
+    graph_path.write_text(updated)
+    candidate = validate_graph.load(str(graph_path))
+    assert validate_types(candidate) == []
+
+def test_existing_unknown_host_kind_requires_explicit_choice():
+    text = open(os.path.join(ROOT, "graph.yaml")).read()
+    assert host_measure.existing_kind(text, "angel") == "desktop"
+    assert host_measure.existing_kind(text, "shalom") == "unknown"
+    result = _run("--name", "shalom", "--graph", os.path.join(ROOT, "graph.yaml"), "--dry-run")
+    assert result.returncode != 0
+    assert "specify --kind" in result.stderr
 
 def test_bad_name(tmp_path):
     assert _run("--name", "Bad Name", "--graph", os.path.join(ROOT, "graph.yaml"), "--dry-run").returncode != 0

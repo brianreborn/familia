@@ -3,26 +3,86 @@
 # Pure POSIX /bin/sh.
 set -eu
 case "${1:-}" in -h|--help) cat <<'USAGE'
-start.sh: Start the familia model server on this machine (backend: code-bootstraps-llama.cpp/start.sh).
+start.sh: Start the active local topology declared in graph.yaml.
 Usage:
-  sh start.sh [--dry-run] [--yes] [backend args...]
-    --dry-run  print what would start; start nothing
-    --yes      accept the license review without a prompt (summary still printed)
-    DETACH_MODE=foreground|nohup|tmux|screen picks how it runs; the log is .cache/server.log
-Example: DETACH_MODE=nohup sh start.sh
+  sh start.sh [--host NAME] [--dry-run] [--yes]
+    --host NAME  select a declared graph host (default: exact local hostname match)
+    --dry-run    print the local graph plan; start nothing
+    --yes        accept the license review without a prompt (summary still printed)
+  sh start.sh --bootstrap [backend args...]
+    Explicitly start the legacy standalone code-bootstraps-llama.cpp UI/router.
+    DETACH_MODE=foreground|nohup|tmux|screen|screen-attached picks how it runs.
+    screen-attached uses the named screen session familia-server with 10000 scrollback lines.
+Example: DETACH_MODE=screen-attached sh start.sh --host miryam
 USAGE
   exit 0 ;; esac
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 cd "$ROOT"
+say() { printf '%s\n' "familia: $*" >&2; }
+
+if [ "${1:-}" != "--bootstrap" ]; then
+  GRAPH_START="$ROOT/scripts/start_graph.py"
+  case "${PREFIX:-}" in
+    *com.termux*) command -v termux-wake-lock >/dev/null 2>&1 && termux-wake-lock >/dev/null 2>&1 && say "wake-lock acquired" || true ;;
+  esac
+  case "${1:-}" in
+    --dry-run|-n) exec python3 "$GRAPH_START" "$@" ;;
+  esac
+  DETACH_MODE="${DETACH_MODE:-foreground}"
+  LOG_FILE="${LOG_FILE:-$ROOT/.cache/graph.log}"
+  mkdir -p "$(dirname "$LOG_FILE")"
+  _run_graph_detached() {
+    nohup python3 "$GRAPH_START" "$@" >> "$LOG_FILE" 2>&1 &
+    disown $! 2>/dev/null || true
+    say "graph supervisor PID: $! (log $LOG_FILE)"
+  }
+  case "$DETACH_MODE" in
+    tmux)
+      if command -v tmux >/dev/null 2>&1; then
+        say "launching graph topology in tmux session familia-server (log $LOG_FILE)"
+        exec tmux new-session -d -s familia-server "python3 '$GRAPH_START' $*"
+      fi
+      say "tmux requested but not found; falling back to nohup"
+      _run_graph_detached "$@"
+      ;;
+    screen)
+      if command -v screen >/dev/null 2>&1; then
+        say "launching graph topology in screen session familia-server (10000 lines of scrollback; log $LOG_FILE)"
+        exec screen -h 10000 -dmS familia-server python3 "$GRAPH_START" "$@"
+      fi
+      say "screen requested but not found; falling back to nohup"
+      _run_graph_detached "$@"
+      ;;
+    screen-attached)
+      if command -v screen >/dev/null 2>&1; then
+        say "launching attached graph topology in screen session familia-server (10000 lines of scrollback; detach with Ctrl-A then D; reattach with screen -r familia-server)"
+        exec screen -h 10000 -S familia-server python3 "$GRAPH_START" "$@"
+      fi
+      say "screen-attached requested but screen is not installed; install screen or choose DETACH_MODE=foreground"
+      exit 1
+      ;;
+    nohup)
+      say "launching graph topology detached with nohup (logging to $LOG_FILE)"
+      _run_graph_detached "$@"
+      ;;
+    foreground|"")
+      exec python3 "$GRAPH_START" "$@"
+      ;;
+    *)
+      say "unknown DETACH_MODE=$DETACH_MODE (foreground|nohup|tmux|screen|screen-attached)"
+      exit 1
+      ;;
+  esac
+  exit 0
+fi
+shift
 
 DRY=0
 case "${1:-}" in
   --dry-run|-n) DRY=1; shift ;;
   --yes|-y) export FAMILIA_ACCEPT_LICENSES=yes; shift ;;
 esac
-
-say() { printf '%s\n' "familia: $*" >&2; }
 
 # Detect Termux (Android)
 TERMUX=0
@@ -66,20 +126,9 @@ if [ ! -f "$BACKEND_START" ]; then
 fi
 
 
-# DETACH_MODE support: tmux > screen > nohup > foreground (default).
-# On Termux, auto-detect the best available detach method unless overridden.
+# DETACH_MODE support. Foreground is the default on every platform; callers opt in
+# to detaching so that Android does not silently move the server into the background.
 DETACH_MODE="${DETACH_MODE:-foreground}"
-if [ "$TERMUX" = 1 ] && [ "$DETACH_MODE" = "foreground" ]; then
-  # Default to nohup on Android so the server survives terminal close (#7).
-  if command -v tmux >/dev/null 2>&1; then
-    DETACH_MODE=tmux
-  elif command -v screen >/dev/null 2>&1; then
-    DETACH_MODE=screen
-  else
-    DETACH_MODE=nohup
-  fi
-  say "Termux detected, auto-selected DETACH_MODE=$DETACH_MODE"
-fi
 
 # One detach, one log (code-bootstraps-llama.cpp #18 / familia start):
 # when we detach here, the backend must run in the foreground and share LOG_FILE.
@@ -108,11 +157,20 @@ case "$DETACH_MODE" in
     ;;
   screen)
     if command -v screen >/dev/null 2>&1; then
-      say "launching detached inside screen session familia-server (log $LOG_FILE)"
-      exec screen -dmS familia-server         env FAMILIA_DETACHED=1 DETACH_MODE=foreground LOG_FILE="$LOG_FILE" sh "$BACKEND_START" "$@"
+      say "launching detached inside screen session familia-server (10000 lines of scrollback; log $LOG_FILE)"
+      exec screen -h 10000 -dmS familia-server env FAMILIA_DETACHED=1 DETACH_MODE=foreground LOG_FILE="$LOG_FILE" sh "$BACKEND_START" "$@"
     else
       say "screen requested but not found; falling back to nohup"
       _run_backend_detached "$@"
+    fi
+    ;;
+  screen-attached)
+    if command -v screen >/dev/null 2>&1; then
+      say "launching attached inside screen session familia-server (10000 lines of scrollback; detach with Ctrl-A then D; reattach with screen -r familia-server)"
+      exec screen -h 10000 -S familia-server env FAMILIA_DETACHED=1 DETACH_MODE=foreground LOG_FILE="$LOG_FILE" sh "$BACKEND_START" "$@"
+    else
+      say "screen-attached requested but screen is not installed; install screen or choose DETACH_MODE=foreground"
+      exit 1
     fi
     ;;
   nohup)
@@ -123,7 +181,7 @@ case "$DETACH_MODE" in
     exec sh "$BACKEND_START" "$@"
     ;;
   *)
-    say "unknown DETACH_MODE=$DETACH_MODE (foreground|nohup|tmux|screen)"
+    say "unknown DETACH_MODE=$DETACH_MODE (foreground|nohup|tmux|screen|screen-attached)"
     exit 1
     ;;
 esac
