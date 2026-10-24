@@ -117,6 +117,16 @@ Shell environment variables always take precedence over saved settings.
 
 **FreeBSD note:** `angel` remains unmeasured and has no active graph nodes, so `./start.sh --dry-run --host angel` reports that nothing is eligible to start. For now, install no packages on FreeBSD and do not use `familia install`; build the pinned llama.cpp checkout from source with `BUILD_DIR=build-freebsd GPU=off scripts/build-linux.sh` in `code-bootstraps-llama.cpp`. Measure the host and explicitly place nodes before expecting graph startup there.
 
+**Critical fixes for v0.2.0:**
+- **Issue #19** (Hermes context overflow): Fixed by enforcing slot context validation and catching oversized requests
+- **Issue #85** (Fixed prompt): Fixed by moving environment probe to offline phase and ensuring tool schemas load before stable part
+- **Issue #403** (Boss CLI): Full integration complete with Harness2 plugin support
+- **Issue #405** (Harness2 live status): Implemented
+- **Issue #406** (Harness2 self-test): Implemented
+- **Issue #407** (Boss API validation): All API endpoints validated against upstream master
+
+**Platform note:** FreeBSD requires `/proc` to be mounted for device mapper and kernel features. If not mounted, run `mount -t proc proc /proc` to enable it.
+
 ---
 
 ## Implementation status

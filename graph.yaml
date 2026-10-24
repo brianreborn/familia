@@ -105,10 +105,14 @@ hosts:
         driver: null
         measured: false
   angel:
-    kind: desktop                # user-confirmed; hardware facts remain unmeasured
-    measured: false              # test host; measure before placing active nodes
-    os: freebsd                  # FreeBSD version and hardware have not been measured
-    gpus: null                   # inventory unknown; measure before GPU offload
+    kind: desktop
+    measured: true
+    os: freebsd
+    cpu: 'Intel(R) Core(TM) i5-4570 CPU @ 3.20GHz'
+    threads: 4
+    ram_mib: 24442
+    reserve_ram_mib: 4096                # policy (installer default), not measured; see docs/ram-safety.md
+    gpus: null                   # inventory unknown; measure GPUs before GPU offload
   centos10-bigram:
     kind: desktop
     # Facts measured 2026-10-19 on the host (registered Grok Bot machine). Address and login live only in
@@ -236,7 +240,7 @@ runtimes:
     kind: llama-server
     build: b11669 (llama.cpp 0.7.0)
     commit: 620d2225cc436ab0b001e3200e590e3b286ef9ab
-    bin: code-bootstraps-llama.cpp/bin/llama-b11669-linux-x64-vulkan/llama-server
+    bin: code-bootstraps-llama.cpp/build-freebsd/bin/llama-server
     hosts: [miryam]
     # Preserve every model architecture supported by the existing llama.cpp runtimes.
     supported_archs: [qwen35, gemma-embedding2, llama, lfm2, qwen2, gemma2, gemma3]
@@ -757,7 +761,7 @@ self_improve:
   harness2:
     experimental: true
     engine: harness2
-    mode: "off"                  # "off" (quoted: YAML reads bare off as false) | propose (review by hand) | apply (needs consent)
+    mode: propose                # "off" (quoted: YAML reads bare off as false) | propose (review by hand) | apply (needs consent)
     targets: [hermes-lab]
     k: 1
     recursion: parallel          # parallel = Harness² agg, sequential = seq

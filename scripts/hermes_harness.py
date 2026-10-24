@@ -32,8 +32,8 @@ import validate_graph as vg  # noqa: E402
 import oom_adj  # noqa: E402
 
 HERMES_BIN = os.environ.get("HERMES_BIN", "/snap/bin/hermes-agent")
-HERMES_PY = "/snap/hermes-agent/current/bin/python3"
-HERMES_SP = "/snap/hermes-agent/current/lib/python3.12/site-packages"
+HERMES_PY = os.environ.get("HERMES_PY", "/snap/hermes-agent/current/bin/python3")
+HERMES_SP = os.environ.get("HERMES_SP", "/snap/hermes-agent/current/lib/python3.12/site-packages")
 USER_HOME = os.path.expanduser("~/.hermes")
 SECRET_RE = re.compile(r"(api_?key|token|secret|password|passwd|auth|cookie|credential)", re.I)
 # Sections the harness owns; never inherited from the user's config.
