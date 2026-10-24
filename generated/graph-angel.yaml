@@ -1,0 +1,877 @@
+version: 2
+hosts:
+  miryam:
+    kind: laptop
+    measured: true
+    addr: 192.168.1.9
+    user: rcs
+    port: 22
+    os: linux
+    cpu: Intel Core i5-7200U
+    threads: 4
+    ram_mib: 7270
+    reserve_ram_mib: 3072
+    gpus:
+    - vendor: intel
+      model: Intel HD Graphics 620 (KBL GT2, integrated)
+      vram_mib: 0
+      backend: vulkan
+      backend_status: verified
+      driver: Mesa 26.0.8 Intel Vulkan
+      compute_capability: null
+      measured: true
+      notes: 'SmolLM2-135M Q4_0: CPU -t2 pp64 430.4 / tg32 101.4 t/s; Vulkan -ngl
+        99 pp64 320.0 / tg32 46.2 t/s (the iGPU is slower than the CPU for this model).
+        Concurrency 2026-10-10 08:40 PT with llama-b11541: CPU stand-in coder LFM2.5-1.2B
+        Q4_K_M -t3 alone pp128 43.5 / tg64 13.9, Vulkan SmolLM2 Q4_0 -t1 alone pp128
+        325.8 / tg64 45.8; together CPU pp128 26.9 / tg64 14.7, Vulkan pp128 134.4
+        / tg64 16.9; min MemAvailable 3160 MiB. Real coder (Qwen3.5-2B, 64k ctx) not
+        run: would leave under 3 GiB free.'
+  qodesh:
+    kind: desktop
+    measured: true
+    addr: 192.168.1.2
+    user: brian
+    port: 22
+    os: windows
+    cpu: AMD Athlon II X2 B24 (2 cores / 2 threads)
+    threads: 2
+    ram_mib: 16379
+    reserve_ram_mib: 4096
+    notes: 'Windows 10 Home 10.0.19045 x64. Value is 16 GB RAM (bigger CPU models
+      than miryam) but slow: ~3.0 tok/s CPU on 0.5B Q4 per green-roomz #4 (measured
+      there, not by familia). nvidia driver 341.92 present; sm11 PTX shim on E:\temp\gpu-legacy
+      (not on PATH). Drives: C: 4.6 GiB free, E: 35.4 GiB free (models go on E:).'
+    gpus:
+    - vendor: nvidia
+      model: GeForce 8600 GT
+      vram_mib: 256
+      backend: cuda-sm11-ptx
+      backend_status: verified
+      compute_capability: '1.1'
+      driver: 9.18.13.4192 (341.92, last Tesla-arch driver)
+      measured: true
+      notes: 'Verified 2026-10-10 PT via familia gpu-legacy (feat/qodesh-legacy-gpu).
+        Fast path (full residency 57/57 MiB, OMP=2, unpinned): stories15M FP32 full-forward
+        34.3 tok/s alone; concurrent with CPU SmolLM2-135M Q4_0 33.3 tok/s GPU + 11.5
+        tok/s CPU (~3% contention). Prior 17 t/s was OMP=1+pinned + 4/57 MiB resident.
+        Catalog (#24): K2-Horizon-0.9B Q4 ~605 MiB too large; SmolLM2-135M Q4_0 87.4
+        MiB fits ~100 MiB budget GGUF via ggml-sm11 (2026-10-10): SmolLM2 Q4_0 4.5
+        tok/s GPU, 56 MiB resident (Q8_0 output stays CPU under 16 MiB VRAM margin);
+        concurrent 4.5 GPU + 10.6 CPU. Backend cuda-sm11-ptx only.'
+    windows:
+      repo_path: TBD
+      models_path: E:\temp\familia\models
+      runtime_path: TBD
+      startup: start.bat
+      start_script: scripts\windows\start.bat
+      task_name: familia-llama-server
+      autostart: false
+      avx_required: false
+      wake: tbd
+  shalom:
+    kind: unknown
+    measured: false
+    gpus: null
+  godslove:
+    kind: laptop
+    measured: false
+    os: freebsd-15
+    cpu: Intel Core i7-620M
+    reported:
+      source: brianreborn/green-roomz#5
+      ram_mib: 8192
+    gpus:
+    - vendor: intel
+      model: Ironlake HD / NVS (per green-roomz
+      vram_mib: null
+      backend: none
+      backend_status: unsupported
+      compute_capability: null
+      driver: null
+      measured: false
+  angel:
+    kind: desktop
+    measured: true
+    os: freebsd
+    cpu: Intel(R) Core(TM) i5-4570 CPU @ 3.20GHz
+    threads: 4
+    ram_mib: 24442
+    reserve_ram_mib: 4096
+    gpus: null
+  centos10-bigram:
+    kind: desktop
+    measured: true
+    os: linux
+    cpu: Intel Core i5-4570
+    threads: 4
+    ram_mib: 23672
+    reserve_ram_mib: 6144
+    gpus:
+    - vendor: nvidia
+      model: GeForce 8600 GT (G84, CC 1.1, 256 MiB)
+      vram_mib: 256
+      backend: none
+      backend_status: unsupported
+      compute_capability: '1.1'
+      driver: nouveau (nvidia 340.108 built for 6.12.0-275 but not bound)
+      measured: true
+  phone7:
+    kind: phone
+    measured: true
+    addr: 192.168.1.7
+    user: u0_a439
+    port: 8022
+    os: android-16
+    cpu: 8 cores, ARMv8 (3x part 0xd80 Cortex-A520, 5x part 0xd81 Cortex-A720)
+    threads: 3
+    ram_mib: 7430
+    reserve_ram_mib: 5120
+    notes: 'Samsung Galaxy A57 (SM-A576U, a57xsq); SoC Samsung Exynos s5e8865 (ro.board.platform
+      erd8865). SSH key-only u0_a439@192.168.1.7:8022. Termux, aarch64. $HOME: 224G,
+      86G used, 138G free. Termux pkgs: git, python, llama-cpp 0.5.0 (+opencl, vulkan
+      backends), ollama 0.31.1 (+vulkan), rsync, python-torch/numpy/scipy, mesa-vulkan-icd-swrast.
+      Two physical A57s on the LAN (distinct boot_id, same build fingerprint).'
+    gpus:
+    - vendor: samsung
+      model: Samsung Xclipse 550
+      vram_mib: 0
+      backend: vulkan
+      backend_status: verified
+      compute_capability: null
+      driver: Samsung Proprietary (SPAL) 25.4.7, git 702e7fd271
+      measured: true
+      notes: 'OpenCL unusable from Termux: the vendor libSGPUOpenCL.so is blocked
+        by the Android linker namespace (missing android.hardware.graphics.mapper@4.0-impl-sgr.so),
+        so clinfo reports 0 platforms.'
+  phone8:
+    kind: phone
+    measured: true
+    addr: 192.168.1.8
+    user: u0_a414
+    port: 8022
+    os: android-16
+    cpu: 8 cores, ARMv8 (3x part 0xd80 Cortex-A520, 5x part 0xd81 Cortex-A720)
+    threads: 3
+    ram_mib: 7430
+    reserve_ram_mib: 5120
+    notes: "Samsung Galaxy A57 (SM-A576U, a57xsq); SoC Samsung Exynos s5e8865 (ro.board.platform\
+      \ erd8865). SSH key-only u0_a414@192.168.1.8:8022. Termux, aarch64. $HOME: 224G,\
+      \ 50G used, 173G free. Termux pkgs: git, python only (no llama-cpp, no rsync).\
+      \ Two physical A57s on the LAN (distinct boot_id, same build fingerprint).\n\
+      \  2026-10-10: host key SHA256:r7Bm/uv3...fXc; anchor SmolLM2 Q4_0 ngl99 fa\
+      \ on = pp128 1476, tg64 100; sustained 5 min ~-12%; keep f16 KV."
+    gpus:
+    - vendor: samsung
+      model: Samsung Xclipse 550
+      vram_mib: 0
+      backend: vulkan
+      backend_status: verified
+      compute_capability: null
+      driver: Samsung Proprietary (SPAL) 25.4.7, git 702e7fd271
+      measured: true
+      notes: 'OpenCL unusable from Termux: the vendor libSGPUOpenCL.so is blocked
+        by the Android linker namespace (missing android.hardware.graphics.mapper@4.0-impl-sgr.so),
+        so clinfo reports 0 platforms.'
+transports:
+  miryam-local:
+    kind: local
+    from: miryam
+    to: miryam
+meshes:
+  lan-nexus:
+    type: ssh
+    hub: miryam
+    root: ~/.familia/nexus
+    identity: ~/.ssh/id_ed25519
+    host_key_policy: accept-new
+    members:
+    - miryam
+    - qodesh
+    - phone7
+    - phone8
+  lan-bt:
+    type: bittorrent
+    tracker: miryam
+    bind: 192.168.1.9
+    port: 6969
+    private: true
+    client: aria2c
+    members:
+    - miryam
+    - phone7
+    - phone8
+runtimes:
+  llama-b11374:
+    kind: llama-server
+    build: b11374
+    commit: b92761a515ea31e852e7fbc1fad5f874b46f3718
+    bin: code-bootstraps-llama.cpp/bin/llama-b11374-linux-x64-vulkan/llama-server
+    hosts:
+    - miryam
+    supported_archs:
+    - qwen35
+    backends:
+    - cpu
+    - vulkan
+    spec_types:
+    - draft-simple
+    - ngram-simple
+    - ngram-map-k
+    - ngram-map-k4v
+    - ngram-mod
+    - ngram-cache
+  llama-b11539:
+    kind: llama-server
+    build: b11539
+    commit: 10a60cf30
+    bin: code-bootstraps-llama.cpp/bin/llama-b11539-linux-x64-vulkan/llama-server
+    hosts:
+    - miryam
+    supported_archs:
+    - gemma-embedding2
+    backends:
+    - cpu
+    - vulkan
+    spec_types:
+    - draft-simple
+    - ngram-simple
+    - ngram-map-k
+    - ngram-map-k4v
+    - ngram-mod
+    - ngram-cache
+  llama-b11669:
+    kind: llama-server
+    build: b11669 (llama.cpp 0.7.0)
+    commit: 620d2225cc436ab0b001e3200e590e3b286ef9ab
+    bin: code-bootstraps-llama.cpp/build-freebsd/bin/llama-server
+    hosts:
+    - miryam
+    supported_archs:
+    - qwen35
+    - gemma-embedding2
+    - llama
+    - lfm2
+    - qwen2
+    - gemma2
+    - gemma3
+    backends:
+    - cpu
+    - vulkan
+    spec_types:
+    - draft-simple
+    - ngram-simple
+    - ngram-map-k
+    - ngram-map-k4v
+    - ngram-mod
+    - ngram-cache
+  llama-b11669-freebsd:
+    kind: llama-server
+    build: b11669 (llama.cpp 0.7.0, native FreeBSD CPU build via build-linux.sh)
+    commit: 620d2225cc436ab0b001e3200e590e3b286ef9ab
+    bin: code-bootstraps-llama.cpp/build-freebsd/bin/llama-server
+    hosts:
+    - angel
+    supported_archs:
+    - qwen35
+    - gemma-embedding2
+    - llama
+    - lfm2
+    - qwen2
+    - gemma2
+    - gemma3
+    backends:
+    - cpu
+    spec_types:
+    - draft-simple
+    - ngram-simple
+    - ngram-map-k
+    - ngram-map-k4v
+    - ngram-mod
+    - ngram-cache
+  sm11-legacy-qodesh:
+    kind: sm11-legacy
+    build: gpu-legacy run_sm11 + kernels.ptx (CUDA driver API, sm_11)
+    commit: 7dc2b734db35e6bbbe8da3dcef4fb12eb55f865a
+    hosts:
+    - qodesh
+    supported_archs:
+    - llama2c
+    backends:
+    - cpu
+    - cuda-sm11-ptx
+    spec_types: []
+    bin: gpu-legacy/out/run_sm11.exe
+  termux-llama-cpp-0.6.0:
+    kind: llama-server
+    build: Termux llama-cpp 0.5.0 + llama-cpp-backend-vulkan (pkg)
+    commit: pkg:llama-cpp=0.6.0
+    bin: llama-server
+    hosts:
+    - phone7
+    - phone8
+    supported_archs:
+    - llama
+    - qwen2
+    backends:
+    - cpu
+    - vulkan
+    spec_types: []
+  llama-b11541-linux-vulkan:
+    kind: llama-server
+    build: b11541 ubuntu-vulkan-x64 (prebuilt)
+    commit: f2918cabb
+    bin: ~/repositories/llama-vulkan-b11541/llama-b11541/llama-server
+    hosts:
+    - miryam
+    supported_archs:
+    - llama
+    - lfm2
+    backends:
+    - cpu
+    - vulkan
+    spec_types: []
+  llama-b11540-win-cpu:
+    kind: llama-server
+    build: b11540 win-cpu-x64
+    commit: 1e6f04a75
+    hosts:
+    - qodesh
+    supported_archs:
+    - llama
+    - qwen2
+    - gemma2
+    - gemma3
+    - qwen35
+    backends:
+    - cpu
+    spec_types: []
+    bin: E:/temp/llama-cpu/llama-server.exe
+  lbref:
+    kind: reference
+    build: scripts/littlebit/lbref.py (familia, numpy)
+    commit: lbref-v1
+    bin: scripts/littlebit/lbref.py
+    hosts:
+    - miryam
+    - qodesh
+    supported_archs:
+    - llama
+    backends:
+    - cpu
+    spec_types: []
+    quants:
+    - littlebit
+models:
+  stories15m-fp32:
+    gguf: E:/temp/gpu-legacy/stories15M.bin
+    sha256: cd590644d963867a2b6e5a1107f51fad663c41d79c149fbecbbb1f95fa81f49a
+    arch: llama2c
+    trained_ctx: 256
+    role: decision
+    db: karpathy--tinyllamas--stories15M
+  smollm2-135m-q4:
+    gguf: E:/temp/models/SmolLM2-135M-Instruct.Q4_0.gguf
+    sha256: unmeasured
+    arch: llama
+    trained_ctx: 8192
+    role: decision
+    db: QuantFactory--SmolLM2-135M-Instruct-GGUF--SmolLM2-135M-Instruct.Q4_0
+  smollm2-135m-q4-miryam:
+    gguf: ~/models/SmolLM2-135M-Instruct-Q4_0.gguf
+    sha256: bcc3af2849ad6095af57e9b5cd43775256efdc66e306acb529172f92d0c04b03
+    arch: llama
+    trained_ctx: 8192
+    role: decision
+    db: bartowski--SmolLM2-135M-Instruct-GGUF--SmolLM2-135M-Instruct-Q4_0
+  smollm2-135m-q4-phone:
+    gguf: ~/familia/models/SmolLM2-135M-Instruct-Q4_0.gguf
+    sha256: bcc3af2849ad6095af57e9b5cd43775256efdc66e306acb529172f92d0c04b03
+    arch: llama
+    trained_ctx: 8192
+    role: decision
+    db: bartowski--SmolLM2-135M-Instruct-GGUF--SmolLM2-135M-Instruct-Q4_0
+  qwen25-05b-q4km-phone:
+    gguf: ~/familia/models/Qwen2.5-0.5B-Instruct-Q4_K_M.gguf
+    sha256: 6eb923e7d26e9cea28811e1a8e852009b21242fb157b26149d3b188f3a8c8653
+    arch: qwen2
+    trained_ctx: 32768
+    role: chat
+    db: bartowski--Qwen2.5-0.5B-Instruct-GGUF--Qwen2.5-0.5B-Instruct-Q4_K_M
+  smollm2-135m-q4km:
+    gguf: ~/familia/models/SmolLM2-135M-Instruct-Q4_K_M.gguf
+    sha256: 2e8040ceae7815abe0dcb3540b9995eaa1fa0d2ca9e797d0a635ae4433c68c2d
+    arch: llama
+    trained_ctx: 8192
+    role: decision
+    db: bartowski--SmolLM2-135M-Instruct-GGUF--SmolLM2-135M-Instruct-Q4_K_M
+  qwen35-2b-q4km:
+    gguf: ~/.local/share/gguf/models/coder/Qwen3.5-2B-Q4_K_M.gguf
+    sha256: aaf42c8b7c3cab2bf3d69c355048d4a0ee9973d48f16c731c0520ee914699223
+    arch: qwen35
+    trained_ctx: 262144
+    role: coder
+    db: unsloth--Qwen3.5-2B-GGUF--Qwen3.5-2B-Q4_K_M
+  qwen35-08b-q4km:
+    gguf: ~/.local/share/gguf/models/draft/Qwen3.5-0.8B-Q4_K_M.gguf
+    sha256: bd258782e35f7f458f8aced1adc053e6e92e89bc735ba3be89d38a06121dc517
+    arch: qwen35
+    trained_ctx: 262144
+    role: coder
+    db: unsloth--Qwen3.5-0.8B-GGUF--Qwen3.5-0.8B-Q4_K_M
+  egemma2-q8:
+    gguf: ~/.local/share/gguf/models/embed/embeddinggemma-2-Q8_0.gguf
+    sha256: 6f1bd4ac6c5df7444f9cca7ca36cafe6cfa34cd6f49fefb1e0b4be8143aed8bc
+    arch: gemma-embedding2
+    trained_ctx: 262144
+    role: embed
+    db: unsloth--embeddinggemma-2-GGUF--embeddinggemma-2-Q8_0
+nodes:
+  qodesh-gpu-decision:
+    model: stories15m-fp32
+    host: qodesh
+    runtime: sm11-legacy-qodesh
+    ctx: 256
+    parallel: 1
+    kv_type: f32
+    flash_attn: false
+    offload:
+      backend: cuda-sm11-ptx
+      ngl: 99
+      split: none
+      main_gpu: 0
+    bind: 127.0.0.1
+    port: 18100
+    cache_ram_mib: 64
+    status: active
+  qodesh-smol-cpu:
+    model: smollm2-135m-q4
+    host: qodesh
+    runtime: llama-b11540-win-cpu
+    ctx: 2048
+    override_reasons:
+      ctx: '15-year-old qodesh (Athlon II X2, 1 thread beside the 8600 GT feeder):
+        decision prompts are short, so 2048 keeps KV and prefill small; the card''s
+        8192 was not measured here'
+    threads: 1
+    parallel: 1
+    kv_type: q8_0
+    flash_attn: false
+    offload:
+      backend: cpu
+      ngl: 0
+      split: none
+      main_gpu: 0
+    bind: 127.0.0.1
+    port: 18101
+    cache_ram_mib: 256
+    status: planned
+    escalates_to:
+    - coder
+    - qodesh-resident
+    escalation:
+      mode: suggest
+  miryam-gpu-decision:
+    model: smollm2-135m-q4-miryam
+    host: miryam
+    runtime: llama-b11541-linux-vulkan
+    ctx: 2048
+    override_reasons:
+      ctx: decision prompts are short; 2048 keeps the Vulkan KV small on the shared-memory
+        HD 620 beside the coder on 7.1 GiB miryam; 8192 not measured
+    parallel: 1
+    kv_type: q8_0
+    flash_attn: false
+    offload:
+      backend: vulkan
+      ngl: 99
+      split: none
+      main_gpu: 0
+    bind: 127.0.0.1
+    port: 18111
+    cache_ram_mib: 64
+    status: planned
+    escalates_to:
+    - coder
+    escalation:
+      mode: suggest
+  phone7-decision:
+    model: smollm2-135m-q4-phone
+    host: phone7
+    runtime: termux-llama-cpp-0.6.0
+    ctx: 2048
+    override_reasons:
+      ctx: decision prompts are short; 2048 keeps KV inside phone7's RAM policy (reserve_ram_mib
+        5120, ~2.3 GiB left); 8192 not measured
+    parallel: 1
+    kv_type: q8_0
+    flash_attn: true
+    offload:
+      backend: vulkan
+      ngl: 99
+      split: none
+      main_gpu: 0
+    bind: 127.0.0.1
+    port: 18110
+    cache_ram_mib: 64
+    status: planned
+  phone8-general:
+    model: qwen25-05b-q4km-phone
+    host: phone8
+    runtime: termux-llama-cpp-0.6.0
+    ctx: 2048
+    override_reasons:
+      ctx: phone8 measured at 2048 (tg ~31-34 t/s, min MemAvailable 1945 MiB under
+        reserve_ram_mib 5120); the card's 32768 was not measured on the phone
+    parallel: 1
+    kv_type: f16
+    flash_attn: true
+    offload:
+      backend: vulkan
+      ngl: 99
+      split: none
+      main_gpu: 0
+    bind: 127.0.0.1
+    port: 18112
+    cache_ram_mib: 128
+    status: planned
+  coder:
+    status: active
+    model: qwen35-2b-q4km
+    host: miryam
+    runtime: llama-b11669
+    ctx: 65536
+    override_reasons:
+      ctx: 'miryam has 7270 MiB with a 3072 MiB reserve: at 262144 the q8_0 KV is
+        ~1650 MiB and cache_ram must cover a slot''s prompt state (~1650 MiB), about
+        2.4 GiB more than at 65536 (426 MiB KV); 65536 meets hermes min_ctx 64000'
+    parallel: 1
+    kv_type: q8_0
+    flash_attn: true
+    offload:
+      backend: cpu
+      ngl: 0
+      split: none
+      main_gpu: 0
+    threads: 3
+    slot_save: true
+    load_mode: none
+    bind: 127.0.0.1
+    port: 9941
+    cache_ram_mib: 1024
+  embed:
+    status: active
+    model: egemma2-q8
+    host: miryam
+    runtime: llama-b11669
+    ctx: 8192
+    parallel: 1
+    kv_type: f16
+    flash_attn: false
+    offload:
+      backend: cpu
+      ngl: 0
+      split: none
+      main_gpu: 0
+    bind: 127.0.0.1
+    port: 9951
+    embeddings: true
+    cache_ram_mib: 0
+  qodesh-resident:
+    status: active
+    model: qwen35-2b-q4km
+    host: qodesh
+    runtime: llama-b11540-win-cpu
+    ctx: 2048
+    override_reasons:
+      ctx: '15-year-old qodesh (Athlon II X2) prefills at ~1.44 t/s (measured, -t
+        2): 2048 tokens already take ~24 min, so a larger ctx is impractical'
+    parallel: 1
+    kv_type: q8_0
+    flash_attn: false
+    offload:
+      backend: cpu
+      ngl: 0
+      split: none
+      main_gpu: 0
+    bind: 127.0.0.1
+    port: 9941
+    cache_ram_mib: 64
+    threads: 2
+    selection: fallback
+    note: 'slower fallback: measured 0.91 tg / 1.44 pp t/s at -t 2 (0.69/1.06 at -t
+      1), coarse; use threads 2'
+speculative:
+  coder-draft:
+    experimental: true
+    status: planned
+    mode: draft
+    target: coder
+    spec_type: draft-simple
+    draft: qwen35-08b-q4km
+    draft_max: 8
+    draft_min: 0
+    p_min: 0.75
+    draft_ngl: 0
+  coder-ngram:
+    experimental: true
+    status: active
+    mode: ngram
+    target: coder
+    spec_type: ngram-simple
+gateways:
+  roomz:
+    kind: green-roomz
+    host: miryam
+    port: 9931
+aliases:
+  coder:
+    node: coder
+    gateway: roomz
+  embed:
+    node: embed
+    gateway: roomz
+agents:
+  hermes:
+    kind: hermes-agent
+    host: miryam
+    min_ctx: 64000
+    context_length: 65536
+    aliases:
+      main: coder
+      auxiliary: coder
+  hermes-lab:
+    kind: hermes-agent
+    host: miryam
+    min_ctx: 64000
+    context_length: 65536
+    aliases:
+      main: coder
+      auxiliary: coder
+fleets:
+  green-agentz:
+    repo: brianreborn/green-agentz
+    agents:
+    - hermes
+agencies:
+  familia-issues:
+    repo: brianreborn/familia
+    labels:
+    - bug
+    - config-graph
+    assignments:
+      config-graph: hermes
+kv_channels:
+  coder-self:
+    experimental: true
+    status: planned
+    from: coder
+    to: qodesh-resident
+    via: nexus
+    notes: Placeholder to exercise the type. See docs/c2c-stage1.md.
+options:
+  k2-type-0.9b:
+    role: decision
+    unverified: true
+    sources:
+    - https://x.com/BrianReborn_alt/status/2106354389611094041
+    size_note: 0.9B params; ~0.5 GB at Q4 (estimate, not measured) - needs <=~200
+      MB slice or heavy quant for 256 MB VRAM
+    gpu_candidate: true
+    gpu_host: qodesh
+    placement_note: Best fit for 8600 GT always-on role per
+    candidate_hosts:
+    - qodesh
+    - miryam
+  drex-1.5:
+    role: decision
+    unverified: true
+    sources:
+    - https://x.com/BrianReborn_alt/status/2108691502864163123
+    hf_repo: nace-ai/drex-v1.5
+    size_note: 'HF API 2026-10-09: Qwen3_5ForCausalLM, 8.95B params (bf16 ~17.9 GB);
+      nace-ai/drex-v1.5-Q8_0 9.53 GB; mradermacher/drex-v1.5-GGUF Q4_K_M 5.63 GB,
+      Q4_K_S 5.35 GB, Q2_K 3.83 GB'
+    gpu_candidate: false
+    placement_note: 'Not a 256 MB GPU fit (9B). CPU only: Q4_K_M fits qodesh''s ~9.6
+      GiB budget (<=60% of 16 GiB, 4 GiB reserve); does not fit miryam (4.1 GiB budget
+      minus the coder). 128k ctx claimed.'
+  drex-1.1:
+    role: decision
+    unverified: true
+    sources:
+    - https://x.com/BrianReborn_alt/status/2107800181316141401
+    size_note: unknown
+    gpu_candidate: true
+    gpu_host: qodesh
+    runtime_note: Diffusion LM; llama.cpp-compatible per post (drex-dlm runtime kind
+      exists, unpinned).
+    notes: Possibly nace-ai/drex-dlm (EfficientDLM, 8.19B params, cc-by-nc-4.0) -
+      link to Drex 1.1 not confirmed. At 8B it is not a 256 MB GPU fit either.
+  glide:
+    role: decision
+    unverified: true
+    sources:
+    - https://x.com/BrianReborn_alt/status/2107815038589567062
+    size_note: unknown
+    gpu_candidate: true
+    gpu_host: qodesh
+    notes: Decision Index winner per post.
+  cloudflare-clef:
+    role: decision
+    unverified: true
+    sources:
+    - https://x.com/BrianReborn_alt/status/2106238504938377271
+    size_note: unknown
+    gpu_candidate: true
+    gpu_host: qodesh
+    notes: On HF per post; repo id not resolved.
+  gev-26b-decide:
+    role: decision
+    unverified: true
+    sources:
+    - https://x.com/BrianReborn_alt/status/2107731560246215067
+    - https://x.com/BrianReborn_alt/status/2106259773931024477
+    size_note: 26B params - far too big for 256 MB VRAM; ~15 GB at Q4 (estimate) exceeds
+      every host's free RAM
+    gpu_candidate: false
+    placement_note: Catalog only.
+  whistle-stt:
+    role: stt
+    unverified: true
+    sources:
+    - https://x.com/BrianReborn_alt/status/2108691766589415772
+    - https://x.com/BrianReborn_alt/status/2106699237761392838
+    hf_repo: Cactus-Compute/whistle
+    size_note: whistle.cact 16.9 MB (HF API); checkpoints/whistle.safetensors 220.6
+      MB; apache-2.0
+    runtime_note: Cactus runtime (.cact, library cactus-needle); not llama-server.
+      Needs an stt node kind before placement.
+    placement_note: Phones and qodesh first (#25).
+    candidate_hosts:
+    - phone7
+    - phone8
+    - qodesh
+  paradee-tts:
+    role: tts
+    unverified: true
+    sources:
+    - https://x.com/BrianReborn_alt/status/2108070180769407307
+    hf_repo: sahilmahendrakar/Paradee-8M-v1.0
+    size_note: 8M params; onnx/paradee_int8.onnx 9.0 MB, paradee.onnx 37.0 MB (HF
+      API); apache-2.0. Repo is the most likely match for the RT, not confirmed from
+      the post.
+    runtime_note: ONNX Runtime (CoreML port FluidInference/paradee-8m-coreml); not
+      llama-server. Needs a tts node kind before placement.
+    placement_note: Phones and qodesh first (#25).
+    candidate_hosts:
+    - phone7
+    - phone8
+    - qodesh
+  qwen35-9b-coder:
+    role: coder
+    unverified: true
+    sources:
+    - https://x.com/BrianReborn_alt/status/2108600815808336061
+    size_note: 9B params; ~5.5 GB at Q4_K_M + KV (estimate, not measured)
+    placement_note: qodesh only by RAM (16 GB, ~11.5 GB free). miryam (7 GB, 3 GB
+      reserve) cannot fit it.
+    candidate_hosts:
+    - qodesh
+    notes: Kimi-k3 distill claim from post; HF repo, quants and license unresolved.
+  youtu-parsing-omni:
+    role: vision
+    unverified: true
+    hf_repo: tencent/Youtu-Parsing-Omni
+    sources:
+    - https://x.com/BrianReborn_alt/status/2108756031493025930
+    size_note: ~5B params, bf16 safetensors ~10.7 GB (rev 01f7e3e, per feat/youtu-parsing-omni-option)
+    runtime_note: youtu_vita custom code; transformers trust_remote_code or vLLM +
+      Tencent plugin. No llama.cpp/GGUF support.
+    placement_note: bf16 exceeds qodesh's ~9.6 GiB budget and miryam's. Needs a non-llama
+      runtime and a quantized build.
+  voice-clone-1.7b:
+    role: tts
+    unverified: true
+    sources:
+    - https://x.com/BrianReborn_alt/status/2108533834400850249
+    size_note: 1.7B params (from post); file size unknown
+    runtime_note: Model name, repo and runtime not given in the RT text.
+  tencent-translate-440mb:
+    role: chat
+    unverified: true
+    sources:
+    - https://x.com/BrianReborn_alt/status/2105728713950437842
+    size_note: ~440 MB, 33 languages (from post)
+    notes: On-device translation. Repo id not resolved.
+  index-translate:
+    role: chat
+    unverified: true
+    sources:
+    - https://x.com/BrianReborn_alt/status/2105389175872847935
+    size_note: unknown (Qwen3.5-based family per post)
+    notes: Bilibili Index-Translate MT family. Repo id not resolved.
+  decision-2.0:
+    role: decision
+    unverified: true
+    sources:
+    - https://x.com/BrianReborn_alt/status/2106237127449362760
+    size_note: 0.6B-27B family (from post); only the 0.6B could approach the 256 MB
+      GPU slice, and only heavily quantized
+    gpu_candidate: true
+    gpu_host: qodesh
+  kev-1.0:
+    role: decision
+    unverified: true
+    sources:
+    - https://x.com/BrianReborn_alt/status/2106235881904599179
+    size_note: unknown
+    notes: Kev 1.0 decision model family. Repo id not resolved.
+  jev-cpu-decision:
+    role: decision
+    unverified: true
+    sources:
+    - https://x.com/BrianReborn_alt/status/2106949194913366275
+    size_note: unknown
+    notes: Jev-style decision model that runs on CPU (per post).
+  jp-decision-gguf:
+    role: decision
+    unverified: true
+    sources:
+    - https://x.com/BrianReborn_alt/status/2106236190940950767
+    size_note: unknown
+    notes: Japanese decision/chat GGUF plus training data.
+  qwen35-0.8b-jp:
+    role: chat
+    unverified: true
+    sources:
+    - https://x.com/BrianReborn_alt/status/2106236078533550141
+    size_note: 0.8B params (from post); file size unknown
+    notes: Japanese fine-tune; tiny local option. Arch qwen35 is in the pinned llama.cpp
+      build (qwen35-2b-q4km runs today).
+  lift-extract:
+    role: vision
+    unverified: true
+    sources:
+    - https://x.com/BrianReborn_alt/status/2106703750262141361
+    size_note: unknown
+    notes: lift JSON/document extraction model; parsing option beside Youtu.
+harnesses:
+  hermes-lab:
+    kind: files
+    agent: hermes-lab
+    root: ~/.cache/familia/hermes-hermes-lab
+    prompt: SOUL.md
+    skills: skills
+    node: coder
+self_improve:
+  harness2:
+    experimental: true
+    engine: harness2
+    mode: propose
+    targets:
+    - hermes-lab
+    k: 1
+    recursion: parallel
+    tasks: coding-v1
+    max_tasks: 3

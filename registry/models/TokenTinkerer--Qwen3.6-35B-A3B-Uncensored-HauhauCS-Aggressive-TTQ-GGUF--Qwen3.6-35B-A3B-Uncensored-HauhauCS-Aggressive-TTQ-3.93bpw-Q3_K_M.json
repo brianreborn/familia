@@ -1,0 +1,1285 @@
+{
+ "schema": 2,
+ "id": "TokenTinkerer--Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF--Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-3.93bpw-Q3_K_M",
+ "repo": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF",
+ "revision": "ecddbd888f35d017429154bea68dfcdce5b4ee90",
+ "file": "Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-3.93bpw-Q3_K_M.gguf",
+ "sha256": "77e45d6c1d0a56be5d5e6a1bdfb2b91cd85a81ffdb638932a5726b593b21cc1b",
+ "bytes": 17021759616,
+ "quant": "Q3_K_M",
+ "arch": "qwen35moe",
+ "roles": [
+  "general"
+ ],
+ "license": "apache-2.0",
+ "license_source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF card license",
+ "ctx": 262144,
+ "ctx_source": "GGUF qwen35moe.context_length",
+ "card_ctx": null,
+ "card_ctx_source": null,
+ "base_model": "HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive",
+ "base_revision": "f12a584fecbeb5f20001130d8ecd66c9327ae685",
+ "card_defaults": null,
+ "card_defaults_source": null,
+ "card_default_set": null,
+ "card_defaults_how": "ambiguous: 4 recommended sets and no single default",
+ "card_sampling_modes": {
+  "General": {
+   "temp": 0.7,
+   "top-p": 0.8,
+   "top-k": 20,
+   "min-p": 0,
+   "presence-penalty": 1.5
+  },
+  "Coding/precise tasks": {
+   "temp": 0.6,
+   "top-p": 0.95,
+   "top-k": 20,
+   "min-p": 0,
+   "presence-penalty": 0
+  },
+  "Reasoning tasks": {
+   "temp": 1.0,
+   "top-p": 1.0,
+   "top-k": 40,
+   "min-p": 0,
+   "presence-penalty": 2.0
+  }
+ },
+ "card_default_mode": null,
+ "card_default_mode_source": null,
+ "card_sampling_sets": [
+  {
+   "label": "General",
+   "kind": "recommended",
+   "mode": null,
+   "params": {
+    "temp": 1.0,
+    "top-p": 0.95,
+    "top-k": 20,
+    "min-p": 0,
+    "presence-penalty": 1.5
+   },
+   "source": "HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive README.md:L84"
+  },
+  {
+   "label": "Coding/precise tasks",
+   "kind": "recommended",
+   "mode": null,
+   "params": {
+    "temp": 0.6,
+    "top-p": 0.95,
+    "top-k": 20,
+    "min-p": 0,
+    "presence-penalty": 0
+   },
+   "source": "HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive README.md:L85"
+  },
+  {
+   "label": "General",
+   "kind": "recommended",
+   "mode": null,
+   "params": {
+    "temp": 0.7,
+    "top-p": 0.8,
+    "top-k": 20,
+    "min-p": 0,
+    "presence-penalty": 1.5
+   },
+   "source": "HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive README.md:L88"
+  },
+  {
+   "label": "Reasoning tasks",
+   "kind": "recommended",
+   "mode": null,
+   "params": {
+    "temp": 1.0,
+    "top-p": 1.0,
+    "top-k": 40,
+    "min-p": 0,
+    "presence-penalty": 2.0
+   },
+   "source": "HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive README.md:L89"
+  },
+  {
+   "label": "What this set is served with",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 0.6,
+    "top-p": 0.95,
+    "top-k": 20,
+    "min-p": 0
+   },
+   "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L148"
+  },
+  {
+   "label": "precise coding tasks",
+   "kind": "recommended",
+   "mode": null,
+   "params": {
+    "temp": 0.6,
+    "top-p": 0.95,
+    "top-k": 20,
+    "min-p": 0.0,
+    "presence-penalty": 0.0,
+    "repeat-penalty": 1.0
+   },
+   "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L152"
+  },
+  {
+   "label": "For comparison, their card suggests two other presets",
+   "kind": "recommended",
+   "mode": null,
+   "params": {
+    "temp": 1.0,
+    "presence-penalty": 1.5
+   },
+   "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L156"
+  },
+  {
+   "label": "thinking mode on general tasks (hotter, more variety), and",
+   "kind": "recommended",
+   "mode": "thinking",
+   "params": {
+    "temp": 0.7,
+    "top-p": 0.8
+   },
+   "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L157"
+  },
+  {
+   "label": "all-CPU-expert config used for the speed column, and not the",
+   "kind": "mention",
+   "mode": null,
+   "params": {
+    "temp": 0.6
+   },
+   "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L349"
+  },
+  {
+   "label": "greedy , while the serving recipe samples at",
+   "kind": "mention",
+   "mode": null,
+   "params": {
+    "temp": 0.6
+   },
+   "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L386"
+  }
+ ],
+ "card_commands": [
+  {
+   "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L62",
+   "file": "README.md",
+   "lines": [
+    62,
+    62
+   ],
+   "lang": null,
+   "tool": "llama.cpp",
+   "kind": "inline",
+   "text": "-p 512 -n 128 -r 5",
+   "doc": "card",
+   "doc_sha": "ecddbd888f35d017429154bea68dfcdce5b4ee90",
+   "scope": "model"
+  },
+  {
+   "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L122-124",
+   "file": "README.md",
+   "lines": [
+    122,
+    124
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "llama-server -m TTQ-3.93bpw-Q3_K_M.gguf \\\n  -c 32768 -ngl 99 -fa on --jinja \\\n  -ctk q8_0 -ctv q8_0",
+   "llama": [
+    {
+     "tool": "llama-server",
+     "raw": "llama-server -m TTQ-3.93bpw-Q3_K_M.gguf    -c 32768 -ngl 99 -fa on --jinja    -ctk q8_0 -ctv q8_0",
+     "flags": [
+      {
+       "flag": "-m",
+       "canonical": "--model",
+       "value": "TTQ-3.93bpw-Q3_K_M.gguf",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-c",
+       "canonical": "--ctx-size",
+       "value": "32768",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-ngl",
+       "canonical": "--gpu-layers",
+       "value": "99",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-fa",
+       "canonical": "--flash-attn",
+       "value": "on",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--jinja",
+       "canonical": "--jinja",
+       "value": null,
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-ctk",
+       "canonical": "--cache-type-k",
+       "value": "q8_0",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-ctv",
+       "canonical": "--cache-type-v",
+       "value": "q8_0",
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    }
+   ],
+   "doc": "card",
+   "doc_sha": "ecddbd888f35d017429154bea68dfcdce5b4ee90",
+   "scope": "model"
+  },
+  {
+   "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L148-148",
+   "file": "README.md",
+   "lines": [
+    148,
+    148
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "--temp 0.6  --top-p 0.95  --top-k 20  --min-p 0",
+   "doc": "card",
+   "doc_sha": "ecddbd888f35d017429154bea68dfcdce5b4ee90",
+   "scope": "model"
+  },
+  {
+   "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L183-187",
+   "file": "README.md",
+   "lines": [
+    183,
+    187
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "llama-server -m TTQ-3.93bpw-Q3_K_M.gguf \\\n  -c 32768 -ngl 99 -fa on --jinja \\\n  -md Qwen3.6-35B-A3B-MTP-ONLY-Q4_K_M-shared.gguf \\\n  -ngld 999 -ctkd q8_0 -ctvd q8_0 \\\n  --spec-type draft-mtp --spec-draft-n-max 2",
+   "llama": [
+    {
+     "tool": "llama-server",
+     "raw": "llama-server -m TTQ-3.93bpw-Q3_K_M.gguf    -c 32768 -ngl 99 -fa on --jinja    -md Qwen3.6-35B-A3B-MTP-ONLY-Q4_K_M-shared.gguf    -ngld 999 -ctkd q8_0 -ctvd q8_0    --spec-type draft-mtp --spec-draft-n-max 2",
+     "flags": [
+      {
+       "flag": "-m",
+       "canonical": "--model",
+       "value": "TTQ-3.93bpw-Q3_K_M.gguf",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-c",
+       "canonical": "--ctx-size",
+       "value": "32768",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-ngl",
+       "canonical": "--gpu-layers",
+       "value": "99",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-fa",
+       "canonical": "--flash-attn",
+       "value": "on",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--jinja",
+       "canonical": "--jinja",
+       "value": null,
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-md",
+       "canonical": "--spec-draft-model",
+       "value": "Qwen3.6-35B-A3B-MTP-ONLY-Q4_K_M-shared.gguf",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-ngld",
+       "canonical": "--spec-draft-ngl",
+       "value": "999",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-ctkd",
+       "canonical": "--spec-draft-type-k",
+       "value": "q8_0",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-ctvd",
+       "canonical": "--spec-draft-type-v",
+       "value": "q8_0",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--spec-type",
+       "canonical": "--spec-type",
+       "value": "draft-mtp",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--spec-draft-n-max",
+       "canonical": "--spec-draft-n-max",
+       "value": "2",
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    }
+   ],
+   "doc": "card",
+   "doc_sha": "ecddbd888f35d017429154bea68dfcdce5b4ee90",
+   "scope": "model"
+  },
+  {
+   "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L216",
+   "file": "README.md",
+   "lines": [
+    216,
+    216
+   ],
+   "lang": null,
+   "tool": "llama.cpp",
+   "kind": "inline",
+   "text": "llama-bench -ngl 999 -ncmoe 40 -t 6 -p 512 -n 128 -r 5",
+   "llama": [
+    {
+     "tool": "llama-bench",
+     "raw": "llama-bench -ngl 999 -ncmoe 40 -t 6 -p 512 -n 128 -r 5",
+     "flags": [
+      {
+       "flag": "-ngl",
+       "canonical": "--gpu-layers",
+       "value": "999",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-ncmoe",
+       "canonical": "--n-cpu-moe",
+       "value": "40",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-t",
+       "canonical": "--threads",
+       "value": "6",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-p",
+       "canonical": "--prompt",
+       "value": "512",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-n",
+       "canonical": "--predict",
+       "value": "128",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-r",
+       "canonical": "--reverse-prompt",
+       "value": "5",
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    }
+   ],
+   "doc": "card",
+   "doc_sha": "ecddbd888f35d017429154bea68dfcdce5b4ee90",
+   "scope": "model"
+  },
+  {
+   "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L297",
+   "file": "README.md",
+   "lines": [
+    297,
+    297
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "inline",
+   "text": "llama-perplexity --kl-divergence",
+   "doc": "card",
+   "doc_sha": "ecddbd888f35d017429154bea68dfcdce5b4ee90",
+   "scope": "model"
+  },
+  {
+   "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L298",
+   "file": "README.md",
+   "lines": [
+    298,
+    298
+   ],
+   "lang": null,
+   "tool": "llama.cpp",
+   "kind": "inline",
+   "text": "-ngl 999 -ncmoe 40 -t 6 --no-warmup",
+   "doc": "card",
+   "doc_sha": "ecddbd888f35d017429154bea68dfcdce5b4ee90",
+   "scope": "model"
+  },
+  {
+   "source": "HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive README.md:L101-103",
+   "file": "README.md",
+   "lines": [
+    101,
+    103
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "llama-cli -m Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-Q4_K_P.gguf \\\n  --mmproj mmproj-Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-f16.gguf \\\n  --jinja -c 131072 -ngl 99",
+   "llama": [
+    {
+     "tool": "llama-cli",
+     "raw": "llama-cli -m Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-Q4_K_P.gguf    --mmproj mmproj-Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-f16.gguf    --jinja -c 131072 -ngl 99",
+     "flags": [
+      {
+       "flag": "-m",
+       "canonical": "--model",
+       "value": "Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-Q4_K_P.gguf",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--mmproj",
+       "canonical": "--mmproj",
+       "value": "mmproj-Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-f16.gguf",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--jinja",
+       "canonical": "--jinja",
+       "value": null,
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-c",
+       "canonical": "--ctx-size",
+       "value": "131072",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-ngl",
+       "canonical": "--gpu-layers",
+       "value": "99",
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    }
+   ],
+   "doc": "base-card",
+   "doc_sha": "f12a584fecbeb5f20001130d8ecd66c9327ae685",
+   "scope": "model"
+  }
+ ],
+ "card_notes": [
+  {
+   "text": "**Thinking mode (default):**",
+   "source": "HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive README.md:L83"
+  },
+  {
+   "text": "- General: `temperature=1.0, top_p=0.95, top_k=20, min_p=0, presence_penalty=1.5`",
+   "source": "HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive README.md:L84"
+  },
+  {
+   "text": "- Coding/precise tasks: `temperature=0.6, top_p=0.95, top_k=20, min_p=0, presence_penalty=0`",
+   "source": "HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive README.md:L85"
+  },
+  {
+   "text": "**Non-thinking mode:**",
+   "source": "HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive README.md:L87"
+  },
+  {
+   "text": "- General: `temperature=0.7, top_p=0.8, top_k=20, min_p=0, presence_penalty=1.5`",
+   "source": "HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive README.md:L88"
+  },
+  {
+   "text": "- Reasoning tasks: `temperature=1.0, top_p=1.0, top_k=40, min_p=0, presence_penalty=2.0`",
+   "source": "HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive README.md:L89"
+  },
+  {
+   "text": "- Use `--jinja` flag with llama.cpp for proper chat template handling",
+   "source": "HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive README.md:L93"
+  },
+  {
+   "text": "`--jinja` makes llama.cpp apply the chat template **embedded in the file** (Qwen's official one) —",
+   "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L127"
+  },
+  {
+   "text": "That is **Qwen's own recommended sampling, verbatim.** Their card lists, for *thinking mode on",
+   "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L151"
+  },
+  {
+   "text": "precise coding tasks*: `temperature=0.6, top_p=0.95, top_k=20, min_p=0.0, presence_penalty=0.0,",
+   "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L152"
+  },
+  {
+   "text": "For comparison, their card suggests two other presets: `temperature=1.0, presence_penalty=1.5` for",
+   "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L156"
+  },
+  {
+   "text": "thinking mode on general tasks (hotter, more variety), and `temperature=0.7, top_p=0.80` for",
+   "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L157"
+  },
+  {
+   "text": "non-thinking mode. Swap to either if it suits your use; these quants are not tuned to a sampler.",
+   "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L158"
+  },
+  {
+   "text": "- **Chat template:** every file embeds **Qwen's official template** at `tokenizer.chat_template`",
+   "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L279"
+  },
+  {
+   "text": "with `--chat-template-file`.",
+   "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L284"
+  }
+ ],
+ "chat_template": {
+  "gguf_sha256": "e84f32a23fdda27689f868aa4a1a5621f41133e51a48d7f3efcbea2839574259",
+  "gguf_chars": 7764,
+  "use": "gguf"
+ },
+ "stop": {
+  "eos_token_id": 248046,
+  "eos_token_id_source": "GGUF"
+ },
+ "rope": {
+  "rope.freq_base": 10000000.0
+ },
+ "aux": [
+  {
+   "kind": "mtp",
+   "file": "Qwen3.6-35B-A3B-MTP-ONLY-Q4_K_M-shared.gguf",
+   "size": 557655776,
+   "sha256": "70c377fa0d30a6caca4c06e17ac32fa1692b7f840a527ef0fb825c2742443835",
+   "fetched": false,
+   "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF repo file"
+  },
+  {
+   "kind": "mmproj",
+   "ref": "mmproj-Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-f16.gguf",
+   "source": "HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive README.md:L101"
+  }
+ ],
+ "gguf": {
+  "general.architecture": "qwen35moe",
+  "general.name": "Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive",
+  "general.file_type": 12,
+  "general.quantization_version": 2,
+  "_gguf_version": 3
+ },
+ "snapshot": {
+  "path": "TokenTinkerer--Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF/ecddbd888f35d017429154bea68dfcdce5b4ee90",
+  "fetched_bytes": 28313,
+  "errors": null,
+  "gated": false
+ },
+ "base_snapshot": {
+  "path": "HauhauCS--Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive/f12a584fecbeb5f20001130d8ecd66c9327ae685",
+  "fetched_bytes": 9030,
+  "errors": null,
+  "gated": false
+ },
+ "repo_files": {
+  ".gitattributes": {
+   "size": 2668,
+   "sha256": null,
+   "blob": "40bc95c484f93771263b902dae1c8a26b5de6b66",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "Qwen3.6-35B-A3B-MTP-ONLY-Q4_K_M-shared.gguf": {
+   "size": 557655776,
+   "sha256": "70c377fa0d30a6caca4c06e17ac32fa1692b7f840a527ef0fb825c2742443835",
+   "blob": "3fcee6bfd9c2eb9f5bb292a9d19cbd62c58dc2a2",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (557 MB)"
+  },
+  "Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-3.33bpw-IQ3_XXS.gguf": {
+   "size": 14451765376,
+   "sha256": "c1e4dc98016f7f11be7ec595cc1273f576570fcdc86876706e21f6ec44c8137a",
+   "blob": "cc3c6f476822923835b48b0adcde2afad051ed54",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (14451 MB)"
+  },
+  "Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-3.51bpw-IQ3_XS.gguf": {
+   "size": 15206740096,
+   "sha256": "694d3e29c0a856e2e7496bed0f042db29b6966e244e3061b286a1b1357d68b86",
+   "blob": "60d60be4eeb0c7c7e5013179c6759de2228bedb3",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (15206 MB)"
+  },
+  "Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-3.67bpw-Q3_K_S.gguf": {
+   "size": 15931240640,
+   "sha256": "2e06a49e4983890d65b5f066096c2629fa741516aedeadb129a4a12e1179559c",
+   "blob": "af4a0f897267c55fcf243885cf005a8c844f6d7b",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (15931 MB)"
+  },
+  "Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-3.93bpw-Q3_K_M.gguf": {
+   "size": 17021759616,
+   "sha256": "77e45d6c1d0a56be5d5e6a1bdfb2b91cd85a81ffdb638932a5726b593b21cc1b",
+   "blob": "94830e451bb145e3bbdedd7afedff57ea81df11e",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (17021 MB)"
+  },
+  "Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-4.18bpw-IQ4_XS.gguf": {
+   "size": 18142752896,
+   "sha256": "5419af0687d23ff6aff51d6ea0018f3b43d980fe1f7667e231ff58208fc08edd",
+   "blob": "4fccf10b25cb411c606c0482c7cf9e5e360864cc",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (18142 MB)"
+  },
+  "Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-4.51bpw-IQ4_NL.gguf": {
+   "size": 19541506176,
+   "sha256": "b2a969dcf7ae6833d272ce5a2c769ef38a334ce31e34e1cac177070f0801cc87",
+   "blob": "c699468982253dbd8f718972cf94d5d76b2946d6",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (19541 MB)"
+  },
+  "Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-4.90bpw-Q4_K_M.gguf": {
+   "size": 21219227776,
+   "sha256": "a761d83251604ed629729097f5036550d62c03c0fda9d7890fe74aa7b198a9fb",
+   "blob": "604211c239c730bbfd89da046ab99f2f86af5360",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (21219 MB)"
+  },
+  "Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-5.59bpw-Q5_K_S.gguf": {
+   "size": 24202786944,
+   "sha256": "f5f2f4752b5f541967cf4dd010b35c252148cd97798bbb82282b782943caecf3",
+   "blob": "a9b1e525c7370b73c01c7f3f0f6702078d4b34b5",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (24202 MB)"
+  },
+  "Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-6.06bpw-Q5_K_M.gguf": {
+   "size": 26249607296,
+   "sha256": "0f3120f22ff5ce2f75a9d607c661a434993244a26730f8593b6f7b47a4d7ba00",
+   "blob": "46a6623e61c148c3ba7e0711867dbbe7289d8737",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (26249 MB)"
+  },
+  "Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-6.72bpw-Q6_K.gguf": {
+   "size": 29101734016,
+   "sha256": "bcd7e6059c19a22fbac624808c4cdd67a10e52bc7dff990b0b1f291a1fe6bec9",
+   "blob": "a0a3d8fa1d2042f92f31858e06b863f85bfa7660",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (29101 MB)"
+  },
+  "README.md": {
+   "size": 25645,
+   "sha256": null,
+   "blob": "86e5d33b1e3421faad5715629eefe461b9928ac1",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  }
+ },
+ "base_repo_files": {
+  ".gitattributes": {
+   "size": 2661,
+   "sha256": null,
+   "blob": "22edbf132e6d815d9d1980db54938148bd992d44",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-IQ2_M.gguf": {
+   "size": 11659235456,
+   "sha256": "ba3a1d47a604f17ef74d913f9a9d9a2b456acc6925e7b168bfa2e6527246011c",
+   "blob": "2f87f846848f81eb13fa9e61d0d9a047df8ea7b0",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (11659 MB)"
+  },
+  "Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-IQ3_M.gguf": {
+   "size": 15440519296,
+   "sha256": "4dd9a27c68bd778ede351a553680a1a6e4ec62e5d383b549892860ea337be0c0",
+   "blob": "9f98a5b605ffbb3aeabdae7dab61d869bf1e50fa",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (15440 MB)"
+  },
+  "Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-IQ4_NL.gguf": {
+   "size": 19779278976,
+   "sha256": "b228c988c624dffe0b57235a395fa79562d4362fed545820f9b7d78908f337e6",
+   "blob": "5a25ec854063e6fe9b4052c288e5049a3c81743b",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (19779 MB)"
+  },
+  "Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-IQ4_XS.gguf": {
+   "size": 18728777856,
+   "sha256": "c26708a77a26d6c0416502832a200de4135e91af8279b5e93c67fe4e4e081aae",
+   "blob": "1048c4867e7f4b3f7a6fe8c2d7e4caaee9e1c54a",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (18728 MB)"
+  },
+  "Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-Q2_K_P.gguf": {
+   "size": 14981265536,
+   "sha256": "5a97f38db0ffb455bbcba7a7c7b8e82d1e42740ddd30893ac1ad57a2df5e94a4",
+   "blob": "75bfb5307572ef04ea851f98cf793b4325da15e8",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (14981 MB)"
+  },
+  "Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-Q3_K_P.gguf": {
+   "size": 19023337600,
+   "sha256": "18508f37fc7787f260df7ac1a3934b15dd9496d050b2d4b864241b493588fe95",
+   "blob": "e4155d35aca0f6287772cfede29b2a15b9d289fc",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (19023 MB)"
+  },
+  "Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-Q4_K_M.gguf": {
+   "size": 21166758016,
+   "sha256": "bbef58c37ce88820be9d98b6437f1cf4bac890c947bd55fc7b68e22098574231",
+   "blob": "2a5b9eae0ddbf593d6076545e68ea29b6eb79003",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (21166 MB)"
+  },
+  "Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-Q4_K_P.gguf": {
+   "size": 23424536704,
+   "sha256": "8d344a4336d8ea7da0cbfc12792d1471e568be7abe8930c52260698bfd01d731",
+   "blob": "55ac26a598cd7ba34c3b95fcb709fc70fbd3c74d",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (23424 MB)"
+  },
+  "Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-Q5_K_P.gguf": {
+   "size": 28027394176,
+   "sha256": "2a3b72ab458f99028b65cce7ef6a9d6e4c79aa4318296d1b01bac9923d6a3b12",
+   "blob": "d8e065c4a545255b76724023a0160d1cb2f66db5",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (28027 MB)"
+  },
+  "Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-Q6_K_P.gguf": {
+   "size": 30649317504,
+   "sha256": "90281d33e0790d6da2f125aa3f4352f429d8cc2ce2b32caafd78896397756fc3",
+   "blob": "d757d4f26cb1d989c2b4614dbb4a5ea950e29027",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (30649 MB)"
+  },
+  "Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-Q8_K_P.gguf": {
+   "size": 43605014656,
+   "sha256": "d5efc2a1fc3f595893128550cf8b7e792774be6c0409c4d2e4729d2b5bb51173",
+   "blob": "92bac98cc708bbb65eef6832d4177cca13774c63",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (43605 MB)"
+  },
+  "README.md": {
+   "size": 6369,
+   "sha256": null,
+   "blob": "515b53ec63c688c2088a7f13c9c7a62ec4f8ae26",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "mmproj-Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-f16.gguf": {
+   "size": 899283072,
+   "sha256": "c8e702344a81f8c226a914aa980ed6e1f604bce9374f1fed8e65c896908af414",
+   "blob": "2b3a855d012ea814f53b88a7bcc7a0a0904a67fd",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (899 MB)"
+  }
+ },
+ "found_in": [
+  "add-model.sh --fetch"
+ ],
+ "match": null,
+ "local_check": {
+  "host": "angel",
+  "sha256_ok": true,
+  "checked": "2026-10-23"
+ },
+ "unknown": [
+  "card_defaults: ambiguous: 4 recommended sets and no single default"
+ ],
+ "warnings": null,
+ "updated": "2026-10-23",
+ "by": "scripts/model_db.py",
+ "gguf_meta": {
+  "general.architecture": "qwen35moe",
+  "general.type": "model",
+  "general.sampling.top_k": 20,
+  "general.sampling.top_p": 0.949999988079071,
+  "general.sampling.temp": 1.0,
+  "general.name": "Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive",
+  "general.finetune": "3Ref",
+  "general.basename": "KL0.0764",
+  "qwen35moe.block_count": 40,
+  "qwen35moe.context_length": 262144,
+  "qwen35moe.embedding_length": 2048,
+  "qwen35moe.attention.head_count": 16,
+  "qwen35moe.attention.head_count_kv": 2,
+  "qwen35moe.rope.dimension_sections": {
+   "array_len": 4
+  },
+  "qwen35moe.rope.freq_base": 10000000.0,
+  "qwen35moe.attention.layer_norm_rms_epsilon": 9.999999974752427e-07,
+  "qwen35moe.expert_count": 256,
+  "qwen35moe.expert_used_count": 8,
+  "qwen35moe.attention.key_length": 256,
+  "qwen35moe.attention.value_length": 256,
+  "qwen35moe.expert_feed_forward_length": 512,
+  "qwen35moe.expert_shared_feed_forward_length": 512,
+  "qwen35moe.ssm.conv_kernel": 4,
+  "qwen35moe.ssm.state_size": 128,
+  "qwen35moe.ssm.group_count": 16,
+  "qwen35moe.ssm.time_step_rank": 32,
+  "qwen35moe.ssm.inner_size": 4096,
+  "qwen35moe.full_attention_interval": 4,
+  "qwen35moe.rope.dimension_count": 64,
+  "tokenizer.ggml.model": "gpt2",
+  "tokenizer.ggml.pre": "qwen35",
+  "tokenizer.ggml.tokens": {
+   "array_len": 248320
+  },
+  "tokenizer.ggml.token_type": {
+   "array_len": 248320
+  },
+  "tokenizer.ggml.merges": {
+   "array_len": 247587
+  },
+  "tokenizer.ggml.eos_token_id": 248046,
+  "tokenizer.ggml.padding_token_id": 248044,
+  "tokenizer.ggml.bos_token_id": 248044,
+  "tokenizer.chat_template": {
+   "sha256": "e84f32a23fdda27689f868aa4a1a5621f41133e51a48d7f3efcbea2839574259",
+   "chars": 7764
+  },
+  "general.size_label": "35B-A3B",
+  "general.quantization_version": 2,
+  "general.file_type": 12,
+  "quantize.imatrix.file": "C:\\LLM models\\Qwen_Qwen3.6-35B-A3B-imatrix.gguf",
+  "quantize.imatrix.dataset": "/training_dir/calibration_datav5.txt",
+  "quantize.imatrix.entries_count": 510,
+  "quantize.imatrix.chunks_count": 802,
+  "_gguf_version": 3,
+  "_n_tensors": 733
+ },
+ "base_chain": [
+  {
+   "repo": "HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive",
+   "api_id": "HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive",
+   "revision": "f12a584fecbeb5f20001130d8ecd66c9327ae685",
+   "via": "card base_model",
+   "card_data": {
+    "license": "apache-2.0",
+    "language": [
+     "en",
+     "zh",
+     "multilingual"
+    ],
+    "base_model": "Qwen/Qwen3.6-35B-A3B",
+    "pipeline_tag": "image-text-to-text"
+   },
+   "pipeline_tag": "image-text-to-text",
+   "safetensors": null,
+   "license_files": null
+  },
+  {
+   "repo": "Qwen/Qwen3.6-35B-A3B",
+   "api_id": "Qwen/Qwen3.6-35B-A3B",
+   "revision": "995ad96eacd98c81ed38be0c5b274b04031597b0",
+   "via": "HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive card base_model",
+   "card_data": {
+    "license": "apache-2.0",
+    "license_link": "https://huggingface.co/Qwen/Qwen3.6-35B-A3B/blob/main/LICENSE",
+    "pipeline_tag": "image-text-to-text",
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "image-text-to-text",
+   "safetensors": {
+    "parameters": {
+     "BF16": 35951822704
+    },
+    "total": 35951822704
+   },
+   "license_files": [
+    "LICENSE"
+   ]
+  }
+ ],
+ "github": null,
+ "github_dropped": null,
+ "descriptor": {
+  "repo_id": {
+   "effective": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF",
+   "source": "HF API id"
+  },
+  "revision": {
+   "effective": "ecddbd888f35d017429154bea68dfcdce5b4ee90",
+   "source": "pinned (manifest / database)"
+  },
+  "file": {
+   "effective": "Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-3.93bpw-Q3_K_M.gguf",
+   "source": "HF API siblings"
+  },
+  "bytes": {
+   "effective": 17021759616,
+   "source": "HF API LFS size"
+  },
+  "sha256": {
+   "effective": "77e45d6c1d0a56be5d5e6a1bdfb2b91cd85a81ffdb638932a5726b593b21cc1b",
+   "source": "HF API LFS oid"
+  },
+  "quant": {
+   "effective": "Q3_K_M",
+   "source": "file name",
+   "values": [
+    {
+     "value": "Q3_K_M",
+     "source": "file name"
+    },
+    {
+     "value": "Q3_K_M",
+     "source": "GGUF general.file_type"
+    }
+   ]
+  },
+  "license": {
+   "effective": "apache-2.0",
+   "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF card license",
+   "values": [
+    {
+     "value": "apache-2.0",
+     "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "Qwen/Qwen3.6-35B-A3B card license"
+    }
+   ]
+  },
+  "license_link": {
+   "effective": "https://huggingface.co/Qwen/Qwen3.6-35B-A3B/blob/main/LICENSE",
+   "source": "Qwen/Qwen3.6-35B-A3B card license_link"
+  },
+  "license_file": {
+   "effective": "Qwen/Qwen3.6-35B-A3B@995ad96eacd9/LICENSE",
+   "source": "Qwen/Qwen3.6-35B-A3B repo file"
+  },
+  "base_model_chain": {
+   "effective": "HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive",
+   "source": "card base_model",
+   "values": [
+    {
+     "value": "HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive",
+     "source": "card base_model"
+    },
+    {
+     "value": "Qwen/Qwen3.6-35B-A3B",
+     "source": "HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive card base_model"
+    }
+   ]
+  },
+  "architecture": {
+   "effective": "qwen35moe",
+   "source": "GGUF general.architecture",
+   "values": [
+    {
+     "value": "qwen35moe",
+     "source": "GGUF general.architecture"
+    },
+    {
+     "value": "qwen35moe",
+     "source": "HF API gguf.architecture"
+    }
+   ]
+  },
+  "parameters": {
+   "effective": 34660610688,
+   "source": "HF API gguf.total (TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF)",
+   "values": [
+    {
+     "value": 34660610688,
+     "source": "HF API gguf.total (TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF)"
+    },
+    {
+     "value": 35951822704,
+     "source": "HF API safetensors.total (Qwen/Qwen3.6-35B-A3B)"
+    }
+   ],
+   "conflict": true
+  },
+  "size_label": {
+   "effective": "35B-A3B",
+   "source": "GGUF general.size_label"
+  },
+  "ctx": {
+   "effective": 262144,
+   "source": "GGUF qwen35moe.context_length",
+   "precedence": "card statement > config.json > GGUF header > GitHub README"
+  },
+  "pipeline_tag": {
+   "effective": "text-generation",
+   "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF HF API pipeline_tag",
+   "values": [
+    {
+     "value": "text-generation",
+     "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF HF API pipeline_tag"
+    },
+    {
+     "value": "image-text-to-text",
+     "source": "HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive HF API pipeline_tag"
+    },
+    {
+     "value": "image-text-to-text",
+     "source": "Qwen/Qwen3.6-35B-A3B HF API pipeline_tag"
+    }
+   ],
+   "conflict": true
+  },
+  "languages": {
+   "effective": [
+    "en",
+    "zh"
+   ],
+   "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF card language",
+   "values": [
+    {
+     "value": [
+      "en",
+      "zh"
+     ],
+     "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF card language"
+    },
+    {
+     "value": [
+      "en",
+      "zh",
+      "multilingual"
+     ],
+     "source": "HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive card language"
+    }
+   ],
+   "conflict": true
+  }
+ },
+ "required_params": {
+  "kind": "chat",
+  "native_ctx": 262144,
+  "native_ctx_source": "GGUF qwen35moe.context_length",
+  "yarn": null,
+  "yarn_source": null,
+  "items": [
+   {
+    "class": "REQUIRED",
+    "flag": "--jinja",
+    "value": null,
+    "source": "GGUF tokenizer.chat_template (e84f32a23fdd)",
+    "why_required": "messages, tool calls and thinking are formatted by the model's chat template; without --jinja llama-server falls back to a built-in approximation",
+    "also": [
+     "HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive README.md:L101-103",
+     "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L122-124",
+     "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L183-187"
+    ]
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--gpu-layers",
+    "value": "99",
+    "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L122-124",
+    "why_required": "performance / tool option in the card's command",
+    "also": [
+     "HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive README.md:L101-103",
+     "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L183-187",
+     "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L216"
+    ],
+    "conflicts": [
+     {
+      "value": "999",
+      "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L216"
+     }
+    ]
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--flash-attn",
+    "value": "on",
+    "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L122-124",
+    "why_required": "performance / tool option in the card's command",
+    "also": [
+     "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L183-187"
+    ]
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--cache-type-k",
+    "value": "q8_0",
+    "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L122-124",
+    "why_required": "performance / tool option in the card's command"
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--cache-type-v",
+    "value": "q8_0",
+    "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L122-124",
+    "why_required": "performance / tool option in the card's command"
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--spec-draft-model",
+    "value": "Qwen3.6-35B-A3B-MTP-ONLY-Q4_K_M-shared.gguf",
+    "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L183-187",
+    "why_required": "performance / tool option in the card's command"
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--spec-draft-ngl",
+    "value": "999",
+    "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L183-187",
+    "why_required": "performance / tool option in the card's command"
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--spec-draft-type-k",
+    "value": "q8_0",
+    "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L183-187",
+    "why_required": "performance / tool option in the card's command"
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--spec-draft-type-v",
+    "value": "q8_0",
+    "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L183-187",
+    "why_required": "performance / tool option in the card's command"
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--spec-type",
+    "value": "draft-mtp",
+    "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L183-187",
+    "why_required": "performance / tool option in the card's command"
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--spec-draft-n-max",
+    "value": "2",
+    "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L183-187",
+    "why_required": "performance / tool option in the card's command"
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--n-cpu-moe",
+    "value": "40",
+    "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L216",
+    "why_required": "performance / tool option in the card's command"
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--threads",
+    "value": "6",
+    "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L216",
+    "why_required": "performance / tool option in the card's command"
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--predict",
+    "value": "128",
+    "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L216",
+    "why_required": "performance / tool option in the card's command"
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--reverse-prompt",
+    "value": "5",
+    "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF README.md:L216",
+    "why_required": "performance / tool option in the card's command"
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--mmproj",
+    "value": "mmproj-Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-f16.gguf",
+    "source": "HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive README.md:L101-103",
+    "why_required": "performance / tool option in the card's command"
+   }
+  ]
+ },
+ "blockers": null,
+ "params_problems": null,
+ "params_build": "b11374",
+ "native_ctx": 262144,
+ "native_ctx_source": "GGUF qwen35moe.context_length",
+ "license_info": {
+  "id": "apache-2.0",
+  "id_source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF card front matter license",
+  "name": null,
+  "summary": "apache-2.0",
+  "summary_source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF card license",
+  "link": "https://huggingface.co/Qwen/Qwen3.6-35B-A3B/blob/main/LICENSE",
+  "link_source": "Qwen/Qwen3.6-35B-A3B card license_link",
+  "texts": null,
+  "obligations": null,
+  "gated": false,
+  "unknown": false,
+  "seen": [
+   {
+    "value": "apache-2.0",
+    "source": "TokenTinkerer/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF card license"
+   },
+   {
+    "value": "apache-2.0",
+    "source": "HauhauCS/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive card license"
+   },
+   {
+    "value": "apache-2.0",
+    "source": "Qwen/Qwen3.6-35B-A3B card license"
+   }
+  ]
+ }
+}
