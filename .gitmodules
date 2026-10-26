@@ -1,0 +1,3 @@
+[submodule "code-bootstraps-llama.cpp"]
+	path = code-bootstraps-llama.cpp
+	url = https://github.com/brianreborn/code-bootstraps-llama.cpp
