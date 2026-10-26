@@ -1,0 +1,106 @@
+<!--
+# FAMILIA Logo - Morning Glory + Marian Theme
+## Design Vision & Notes
+
+### The Core Metaphor:
+Morning glory vines are climbing plants that reach upward and outward, connecting to whatever they touch.
+They bloom each morning with trumpet-shaped flowers in blues and purples—then close by afternoon.
+This mirrors familia: a living network that grows organically, connects machines and models, and is alive with activity.
+
+### What You're Seeing:
+
+1. **Two Winding Vines** (blue-purple gradient)
+   - These represent the graph topology—the connections between your agents, models, and machines
+   - They don't go straight; they curve and reach, like real vines seeking light
+   - The gradient from blue to purple suggests depth and growth
+
+2. **Three Morning Glory Flowers** (pink/purple with golden centers)
+   - Each flower is a "node" in your graph—a model, an agent, a machine
+   - The trumpet shape is the classic morning glory silhouette
+   - Golden centers represent the "spark" or intelligence within each node
+
+3. **8-Pointed Marian Star** (above the text, blue with gold center)
+   - Traditional symbol of Mary in Christian art—the "Stella Maris" (Star of the Sea)
+   - Represents guidance, protection, and the "mother" aspect of familia
+   - The 8 points symbolize the directions of growth—outward in all directions
+   - Gold center ties it to the flowers' centers
+
+4. **The Name "familia"**
+   - Clean, bold text anchors the design
+   - The tagline "your models · your machines · one graph" explains what it is
+
+### Why Morning Glory + Marian?
+- Morning glories are humble, everyday flowers—familia is for everyday use
+- They bloom fresh each day—your graph is always alive and growing
+- The Marian star adds a layer of care and guidance—like a mother watching over her children (your agents/models)
+
+### The Feeling:
+It should feel organic, warm, and alive—not corporate or sterile.
+Like something that grows in your garden but also has purpose and structure.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 400" width="800" height="400">
+  <defs>
+    <!-- Morning glory gradient -->
+    <linearGradient id="vineGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4A90D9;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#7B68EE;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#9370DB;stop-opacity:1" />
+    </linearGradient>
+    <!-- Flower gradient -->
+    <radialGradient id="flowerGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#FF69B4;stop-opacity:1" />
+      <stop offset="70%" style="stop-color:#DA70D6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#BA55D3;stop-opacity:1" />
+    </radialGradient>
+    <!-- Marian blue -->
+    <linearGradient id="marianBlue" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#4169E1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1E3A8A;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="800" height="400" rx="20" fill="#FAF6EE"/>
+  
+  <!-- Morning glory vines winding -->
+  <path d="M50,350 C100,300 150,280 200,250 S300,200 350,180 S450,150 500,120 S600,80 700,60" 
+        fill="none" stroke="url(#vineGrad)" stroke-width="8" stroke-linecap="round"/>
+  <path d="M100,380 C150,340 200,320 250,290 S350,240 400,220 S500,190 550,160 S650,120 750,100" 
+        fill="none" stroke="url(#vineGrad)" stroke-width="6" stroke-linecap="round"/>
+  
+  <!-- Morning glory flowers -->
+  <g transform="translate(200,250)">
+    <ellipse cx="0" cy="0" rx="25" ry="30" fill="url(#flowerGrad)" opacity="0.9"/>
+    <path d="M-15,-20 Q0,-35 15,-20 Q20,0 0,10 Q-20,0 -15,-20" fill="#FF69B4"/>
+    <circle cx="0" cy="-5" r="8" fill="#FFD700"/>
+  </g>
+  <g transform="translate(400,220)">
+    <ellipse cx="0" cy="0" rx="20" ry="25" fill="url(#flowerGrad)" opacity="0.8"/>
+    <path d="M-12,-18 Q0,-30 12,-18 Q15,0 0,8 Q-15,0 -12,-18" fill="#DA70D6"/>
+    <circle cx="0" cy="-3" r="6" fill="#FFD700"/>
+  </g>
+  <g transform="translate(600,120)">
+    <ellipse cx="0" cy="0" rx="22" ry="28" fill="url(#flowerGrad)" opacity="0.85"/>
+    <path d="M-13,-19 Q0,-32 13,-19 Q17,0 0,9 Q-17,0 -13,-19" fill="#BA55D3"/>
+    <circle cx="0" cy="-4" r="7" fill="#FFD700"/>
+  </g>
+  
+  <!-- Marian star (traditional 8-pointed star) -->
+  <g transform="translate(400,100)">
+    <polygon points="0,0 0,-30 4.592201188381077,-11.08655439013544" fill="#4169E1" opacity="0.7"/>
+    <polygon points="0,0 21.213203435596423,-21.213203435596427 11.08655439013544,-4.592201188381078" fill="#4169E1" opacity="0.7"/>
+    <polygon points="0,0 30,-1.83697019872103e-15 11.08655439013544,4.592201188381077" fill="#4169E1" opacity="0.7"/>
+    <polygon points="0,0 21.213203435596427,21.213203435596423 4.592201188381079,11.08655439013544" fill="#4169E1" opacity="0.7"/>
+    <polygon points="0,0 3.67394039744206e-15,30 -4.592201188381076,11.086554390135442" fill="#4169E1" opacity="0.7"/>
+    <polygon points="0,0 -21.213203435596423,21.21320343559643 -11.086554390135438,4.592201188381084" fill="#4169E1" opacity="0.7"/>
+    <polygon points="0,0 -30,5.510910596163089e-15 -11.08655439013544,-4.59220118838108" fill="#4169E1" opacity="0.7"/>
+    <polygon points="0,0 -21.21320343559643,-21.21320343559642 -4.592201188381084,-11.086554390135438" fill="#4169E1" opacity="0.7"/>
+    <circle cx="0" cy="0" r="8" fill="#FFD700"/>
+  </g>
+  
+  <!-- Text -->
+  <text x="400" y="370" font-family="Inter, 'Noto Sans', sans-serif" font-size="48" font-weight="700" 
+        text-anchor="middle" fill="#1E2A44">familia</text>
+  <text x="400" y="395" font-family="Inter, 'Noto Sans', sans-serif" font-size="16" font-weight="500" 
+        text-anchor="middle" fill="#5B6478">your models · your machines · one graph</text>
+</svg>

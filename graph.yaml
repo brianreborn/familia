@@ -386,6 +386,14 @@ models:
     trained_ctx: 262144          # GGUF gemma-embedding2.context_length
     role: embed
     db: unsloth--embeddinggemma-2-GGUF--embeddinggemma-2-Q8_0
+  qwen36-35b-a3b-q3km:
+    gguf: ~/.local/share/gguf/models/general/Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-3.93bpw-Q3_K_M.gguf
+    sha256: 77e45d6c1d0a56be5d5e6a1bdfb2b91cd85a81ffdb638932a5726b593b21cc1b
+    arch: qwen35moe              # qwen35 variant with MoE (256 experts, 8 used)
+    trained_ctx: 262144          # GGUF qwen35moe.context_length
+    role: chat                # uncensored, aggressive; good for general chat/reasoning
+    db: TokenTinkerer--Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF--Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-3.93bpw-Q3_K_M
+    notes: "Shipped tested 2026-10-24: local sha256 verified on angel; MTP draft model available but not fetched"
 
 nodes:
 
@@ -554,6 +562,7 @@ gateways:
 
 aliases:
   coder: {node: coder, gateway: roomz}
+  general: {node: coder, gateway: roomz}
   embed: {node: embed, gateway: roomz}
 
 agents:

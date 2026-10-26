@@ -467,7 +467,7 @@ TYPES = {
                  "role": req("enum", choices={"chat", "coder", "decision", "reasoning", "embed", "vision", "diffusion", "pentest"}),
                  "derived_from": opt("any"),
                  # model database entry (registry/models/<db>.json, docs/model-database.md, #51)
-                 "db": opt("str"),
+                 "db": opt("str"), "notes": opt("str"),
                  "quant": opt("enum", choices={"littlebit"})}, doc="weights file"),  # derived_from: written by scripts/scale_down.py
     "nodes": T({"model": req("ref", ref="models"), "host": req("ref", ref="hosts"), "runtime": req("ref", ref="runtimes"),
                 "ctx": req("int", min=1), "parallel": req("int", min=1),
