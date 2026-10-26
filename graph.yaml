@@ -574,6 +574,7 @@ agents:
     aliases:
       main: coder
       auxiliary: coder           # compaction model; explicit, not inferred
+    skills: [green-zkillz, green-probe, green-bootstrap, green-ingest, green-format, green-deploy, etioz]
   hermes-lab:                    # experiments only (self-improve target)
     kind: hermes-agent
     host: miryam
@@ -764,6 +765,13 @@ harnesses:
     prompt: SOUL.md                            # guardrails + memory become sections of SOUL.md
     skills: skills
     node: coder                                # editing + evaluation endpoint (loopback)
+  hermes:
+    kind: files
+    agent: hermes
+    root: ~/.cache/familia/hermes-hermes
+    prompt: SOUL.md
+    skills: skills
+    node: coder
 
 self_improve:
   # Harness² (google-research/harness2), opt-in; off = nothing runs and nothing is synced.
@@ -775,4 +783,13 @@ self_improve:
     k: 1
     recursion: parallel          # parallel = Harness² agg, sequential = seq
     tasks: coding-v1             # registry/harness2-tasks/coding-v1.json
+    max_tasks: 3
+  harness2-hermes:
+    experimental: true
+    engine: harness2
+    mode: propose
+    targets: [hermes]
+    k: 1
+    recursion: parallel
+    tasks: coding-v1
     max_tasks: 3

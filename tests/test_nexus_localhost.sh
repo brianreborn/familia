@@ -3,7 +3,11 @@
 # Needs sudo (creates users nxhub, nxa, nxb). Never touches the system sshd.
 set -euo pipefail
 here=$(cd "$(dirname "$0")/.." && pwd); w=/tmp/nexus-test; sudo rm -rf $w; mkdir -p $w; chmod 755 $w
-for u in nxhub nxa nxb; do id $u >/dev/null 2>&1 || sudo useradd -m -s /bin/bash $u; sudo usermod -p '*' $u; done  # '*': unlocked but no password exists
+if which useradd; then
+  for u in nxhub nxa nxb; do id $u >/dev/null 2>&1 || sudo useradd -m -s /bin/bash $u; sudo usermod -p '*' $u; done  # '*': unlocked but no password exists
+else
+  for u in nxhub nxa nxb; do id $u >/dev/null 2>&1 || sudo pw useradd $u -m -s `which bash`; done  # '*': unlocked but no password exists
+fi
 ssh-keygen -q -t ed25519 -N '' -f $w/hostkey
 cat > $w/sshd_config <<C
 Port 2222
