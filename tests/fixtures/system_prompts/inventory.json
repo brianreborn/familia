@@ -1,0 +1,18 @@
+{
+  "fixtures": [
+    {
+      "id": "qwen-with-system",
+      "template": "qwen_with_system.jinja",
+      "system_role": "supported",
+      "source": "fixture:qwen_with_system.jinja",
+      "notes": "Qwen-style ChatML; system message rendered once at head"
+    },
+    {
+      "id": "legacy-no-system",
+      "template": "no_system_role.jinja",
+      "system_role": "unsupported",
+      "source": "fixture:no_system_role.jinja",
+      "notes": "Ignores system role; frontend must not assume engine applies it"
+    }
+  ]
+}

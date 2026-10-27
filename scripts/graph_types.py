@@ -601,7 +601,7 @@ TYPES = {
                   "hf_repo": opt("str", nullable=True), "size_note": opt("str"), "placement_note": opt("str"),
                   "candidate_hosts": opt("strlist"), "gpu_candidate": opt("bool"), "gpu_host": opt("str"),
                   "runtime_note": opt("str"), "notes": opt("str"),
-                  # registry/models/<db>.json pointer (#51); same field as models.db
+                  # registry/models/<db>.json pointer (#51); same field as models.db (#136/#140)
                   "db": opt("str")},
                  check_option, doc="unplaced model option (catalog only; never placed or RAM-counted)"),
 }

@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Validate familia graph.yaml against GGUF metadata, hardware and agent needs.
 
-usage: validate_graph.py [--graph FILE] [--host HOST] [--no-files] [--verify-sha] [--check-runtimes]
-                         [--check-swap] [--args NODE | --explain NODE] [-h|--help]
+usage: validate_graph.py [GRAPH.yaml] [--graph FILE] [--host HOST] [--no-files] [--verify-sha]
+                         [--check-runtimes] [--check-swap] [--args NODE | --explain NODE] [-h|--help]
+
+Example: validate_graph.py graph.yaml --no-files
 
 Exit 0 when valid, 1 with one line per problem otherwise (2 for a usage error).
 --args NODE      print the llama-server arguments for that node: graph settings plus every
@@ -470,8 +472,14 @@ def server_args(graph, name):
 USAGE = __doc__.split("\n\n")[1]
 
 def parse_argv(argv):
-    """-> dict of options; SystemExit(2) on an unknown flag or a missing value."""
+    """-> dict of options; SystemExit(2) on an unknown flag or a missing value.
+
+    A single positional *.yaml / *.yml path is accepted as --graph (with a one-line
+    deprecation note) so older callers (with-fleet.sh, installers) keep working (#74).
+    """
     o = {"graph": "graph.yaml", "host": None, "no_files": False, "verify_sha": False, "check_runtimes": False, "check_swap": False, "args": None, "explain": None}
+    graph_set = False
+    positional = None
     it = iter(argv)
     for x in it:
         if x in ("-h", "--help"): print(__doc__.strip()); raise SystemExit(0)
@@ -479,8 +487,18 @@ def parse_argv(argv):
             v = next(it, None)
             if v is None or v.startswith("-"): print(f"validate_graph.py: {x} needs a value\n{USAGE}", file=sys.stderr); raise SystemExit(2)
             o[x[2:]] = v
+            if x == "--graph":
+                graph_set = True
         elif x in ("--no-files", "--verify-sha", "--check-runtimes", "--check-swap"): o[x[2:].replace("-", "_")] = True
+        elif not x.startswith("-") and positional is None and (x.endswith(".yaml") or x.endswith(".yml")):
+            positional = x
         else: print(f"validate_graph.py: unknown argument {x!r}\n{USAGE}", file=sys.stderr); raise SystemExit(2)
+    if positional is not None:
+        if graph_set and o["graph"] != positional:
+            print("validate_graph.py: both --graph and a positional path were given; using --graph %s" % o["graph"], file=sys.stderr)
+        elif not graph_set:
+            o["graph"] = positional
+            print("validate_graph.py: note: positional graph path is deprecated; prefer --graph %s" % positional, file=sys.stderr)
     return o
 
 def main(argv):

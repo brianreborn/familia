@@ -12,7 +12,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import escalation as E, registry
 
 def main(argv=None):
-    p = argparse.ArgumentParser(); p.add_argument("cmd", choices=["decide", "consent", "handoff", "accept"])
+    p = argparse.ArgumentParser(
+        description="Escalation helpers (docs/escalation.md).",
+        epilog="Example: escalate.py decide --node coder --signals signals.json",
+    ); p.add_argument("cmd", choices=["decide", "consent", "handoff", "accept"])
     p.add_argument("--node"); p.add_argument("--target"); p.add_argument("--signals")
     p.add_argument("--graph", default=os.path.join(E.ROOT, "graph.yaml")); p.add_argument("--reachable")
     p.add_argument("--consent-file", default=E.CONSENT)

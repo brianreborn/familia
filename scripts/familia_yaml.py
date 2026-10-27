@@ -184,3 +184,115 @@ def set_node_list(text, section, name, key, values):
         last -= 1
     lines.insert(last, rendered)
     return "\n".join(lines)
+
+
+def set_node_scalar(text, section, name, key, value):
+    """Set section.name.key to a scalar, editing only that line (or adding it).
+
+    Returns the new text. Raises KeyError when section.name is not in the file.
+    Comments on other lines are preserved. A trailing comment on the edited line
+    is kept when the key already existed.
+    """
+    if isinstance(value, bool):
+        rendered_val = "true" if value else "false"
+    elif value is None:
+        rendered_val = "null"
+    elif isinstance(value, (int, float)):
+        rendered_val = str(value)
+    else:
+        s = str(value)
+        if (
+            s == ""
+            or any(c in s for c in ":#{}[]&*!|>'\"%@`")
+            or s.strip() != s
+            or s.lower() in ("true", "false", "null", "yes", "no")
+        ):
+            rendered_val = '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
+        else:
+            rendered_val = s
+    lines = text.split("\n")
+    sec_i = next((i for i, l in enumerate(lines) if re.match(rf"^{re.escape(section)}:\s*(#.*)?$", l)), None)
+    if sec_i is None:
+        raise KeyError(f"{section} section not found")
+    node_i = node_ind = None
+    for i in range(sec_i + 1, len(lines)):
+        l = lines[i]
+        if l and not l[0].isspace() and not l.startswith("#"):
+            break
+        m = re.match(rf"^(\s+){re.escape(name)}:\s*(#.*)?$", l)
+        if m:
+            node_i, node_ind = i, len(m.group(1))
+            break
+    if node_i is None:
+        raise KeyError(f"{section}.{name} not found")
+    end, child_ind = node_i + 1, None
+    while end < len(lines):
+        l = lines[end]
+        if l.strip() and not l.lstrip().startswith("#"):
+            ind = len(l) - len(l.lstrip(" "))
+            if ind <= node_ind:
+                break
+            child_ind = child_ind or ind
+        end += 1
+    child_ind = child_ind or node_ind + 2
+    rendered = " " * child_ind + f"{key}: {rendered_val}"
+    for i in range(node_i + 1, end):
+        if re.match(rf"^\s{{{child_ind}}}{re.escape(key)}:", lines[i]):
+            m = re.search(r":\s*[^#]*?(#.*)$", lines[i])
+            comment = ("  " + m.group(1)) if m else ""
+            lines[i] = rendered + comment
+            return "\n".join(lines)
+    last = end
+    while last > node_i + 1 and not lines[last - 1].strip():
+        last -= 1
+    lines.insert(last, rendered)
+    return "\n".join(lines)
+
+
+def duplicate_node_block(text, section, name, new_name, extra=None):
+    """Duplicate section.name as section.new_name by copying its raw YAML lines.
+
+    Comments inside the copied block are kept. ``extra`` is an optional mapping of
+    scalar fields overwritten (or appended) on the new node via set_node_scalar.
+    """
+    lines = text.split("\n")
+    sec_i = next((i for i, l in enumerate(lines) if re.match(rf"^{re.escape(section)}:\s*(#.*)?$", l)), None)
+    if sec_i is None:
+        raise KeyError(f"{section} section not found")
+    node_i = node_ind = None
+    for i in range(sec_i + 1, len(lines)):
+        l = lines[i]
+        if l and not l[0].isspace() and not l.startswith("#"):
+            break
+        m = re.match(rf"^(\s+){re.escape(name)}:\s*(#.*)?$", l)
+        if m:
+            node_i, node_ind = i, len(m.group(1))
+            break
+    if node_i is None:
+        raise KeyError(f"{section}.{name} not found")
+    for i in range(sec_i + 1, len(lines)):
+        l = lines[i]
+        if l and not l[0].isspace() and not l.startswith("#"):
+            break
+        if re.match(rf"^(\s+){re.escape(new_name)}:\s*(#.*)?$", l):
+            raise KeyError(f"{section}.{new_name} already exists")
+    end = node_i + 1
+    while end < len(lines):
+        l = lines[end]
+        if l.strip() and not l.lstrip().startswith("#"):
+            ind = len(l) - len(l.lstrip(" "))
+            if ind <= node_ind:
+                break
+        end += 1
+    block = lines[node_i:end]
+    hdr = block[0]
+    m = re.match(rf"^(\s+){re.escape(name)}:(\s*)(#.*)?$", hdr)
+    if not m:
+        raise KeyError(f"could not parse header for {section}.{name}")
+    comment = m.group(3) or ""
+    block = [f"{m.group(1)}{new_name}:{m.group(2)}{comment}"] + block[1:]
+    out = lines[:end] + block + lines[end:]
+    text2 = "\n".join(out)
+    for k, v in (extra or {}).items():
+        text2 = set_node_scalar(text2, section, new_name, k, v)
+    return text2

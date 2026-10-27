@@ -177,7 +177,11 @@ def graph_warnings(graph, recs=None):
     return w
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="Example: registry.py suggest --host miryam --role coder",
+    )
     sp = ap.add_subparsers(dest="cmd", required=True)
     a = sp.add_parser("add"); a.add_argument("file")
     q = sp.add_parser("query"); q.add_argument("--host"); q.add_argument("--model"); q.add_argument("--backend")

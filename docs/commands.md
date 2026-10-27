@@ -157,7 +157,7 @@ The interactive menu and `--list` show these paths before the command groups. Fo
 |---|---|---|---|
 | `adv.args` | validate_graph: the llama-server arguments for one node | `python3 scripts/validate_graph.py --graph graph.yaml --args <NODE>` | `python scripts\validate_graph.py --graph graph.yaml --args <NODE>` |
 | `adv.verify` | validate_graph: also verify model sha256 and runtimes (slow) | `python3 scripts/validate_graph.py --graph graph.yaml --verify-sha --check-runtimes` | `python scripts\validate_graph.py --graph graph.yaml --verify-sha --check-runtimes` |
-| `adv.graph-edit` | modify_graph: assign a model to a node (preview; a real run drops graph.yaml comments) | `python3 scripts/modify_graph.py --assign-model <ASSIGN> --dry-run` | `python scripts\modify_graph.py --assign-model <ASSIGN> --dry-run` |
+| `adv.graph-edit` | modify_graph: assign a model to a node (preview; comment-safe in-place write) | `python3 scripts/modify_graph.py --assign-model <ASSIGN> --dry-run` | `python scripts\modify_graph.py --assign-model <ASSIGN> --dry-run` |
 | `adv.db-list` | Model database: list entries | `python3 scripts/model_db.py list` | `python scripts\model_db.py list` |
 | `adv.db-show` | Model database: show one entry | `python3 scripts/model_db.py show <ID>` | `python scripts\model_db.py show <ID>` |
 | `adv.db-damp` | Model database: add a repo without weights (preview) | `python3 scripts/model_db.py damp <REPO> --dry-run` | `python scripts\model_db.py damp <REPO> --dry-run` |
