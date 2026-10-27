@@ -623,7 +623,7 @@ nodes:
     offload: {backend: cpu, ngl: 0, split: none, main_gpu: 0}
     bind: 127.0.0.1
     port: 18200
-    cache_ram_mib: 512
+    cache_ram_mib: 3584         # >= per-slot KV ~3536 MiB at ctx 32768 q8_0 (validator)
     load_mode: mmap              # SSD-friendly for 18.7 GiB weights
     status: active
     card_set: "Agentic and tool-use tasks"

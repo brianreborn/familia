@@ -11,7 +11,7 @@ No new silicon. Goal: run **one** Nanbeige4.3-33B Q4_K_M (~18.7 GiB) node on ang
 | Usable for llama | ~20346 |
 | Weights Q4_K_M | ~19149 (18.7 GiB) |
 | KV @ ctx 32768, q8_0, parallel 1 | hundreds–low thousands (measure on activate) |
-| `cache_ram_mib` (graph) | 512 |
+| `cache_ram_mib` (graph) | >= per-slot KV (angel-coder: 3584 at ctx 32768 q8_0) |
 
 Weights alone nearly fill usable RAM → **mmap load + measured swap/spill required before `status: active`.**
 

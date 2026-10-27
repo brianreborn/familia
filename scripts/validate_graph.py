@@ -185,7 +185,18 @@ def validate(graph, check_files=True, host=None):
         if n.get("embeddings"): state = None  # embedding servers keep no prompt cache
         if state is not None and n["cache_ram_mib"] < state:
             errs.append(f"nodes.{name}: cache_ram_mib {n['cache_ram_mib']} < estimated per-slot prompt state {state:.0f} MiB (prompt cache would always be skipped)")
-        totals[n["host"]] = totals.get(n["host"], 0.0) + os.path.getsize(path) / 2**20 + (kv or 0) + 256 + n["cache_ram_mib"]
+        weight_mib = os.path.getsize(path) / 2**20
+        # Software VVRAM (docs/vvram-ssd/LAYER.md): mmap + swap_budget means weights are
+        # file/swap-backed; counting the full GGUF as RAM hard-fails Nanbeige on 24 GiB hosts.
+        # Still charge KV + cache_ram + overhead; warn so operators keep swap measured.
+        if n.get("load_mode") == "mmap" and n.get("swap_budget_mib"):
+            WARNINGS.append(
+                f"nodes.{name}: load_mode mmap + swap_budget_mib {n['swap_budget_mib']}: "
+                f"GGUF {weight_mib:.0f} MiB omitted from hard RAM total (file/swap-backed); "
+                f"charged KV+cache+overhead only"
+            )
+            weight_mib = 0.0
+        totals[n["host"]] = totals.get(n["host"], 0.0) + weight_mib + (kv or 0) + 256 + n["cache_ram_mib"]
     for sn, sp in (graph.get("speculative") or {}).items():
         t = graph["nodes"][sp["target"]]
         if "planned" in (t["status"], sp.get("status")) or sp["mode"] != "draft" or sp["target"] not in metas: continue  # planned speculation loads nothing
