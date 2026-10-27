@@ -57,5 +57,9 @@ struct nvso_softc {
 
 /* Lookup helpers (nvso.c); backends may call under sc->lock. */
 struct nvso_domain *nvso_domain_lookup(struct nvso_softc *sc, uint32_t id);
+/* Backends (nvso_ssd.c / nvso_gpu.c) */
+int nvso_ssd_queue_export(struct nvso_softc *, struct nvssd_queue_export_req *);
+int nvso_gpu_dma_post(struct nvso_softc *, struct nvgpu_dma_post_req *);
+
 
 #endif /* _NVSO_VAR_H_ */
