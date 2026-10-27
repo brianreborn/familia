@@ -47,5 +47,5 @@ scripts/hermes.sh --model angel-coder --render-only
 # or: python3 scripts/validate_graph.py --host angel
 ```
 
-**min_ctx gap:** `agents.hermes.min_ctx` is 64000 (matches upstream `MINIMUM_CONTEXT_LENGTH`). `angel-coder` is ctx 32768 — launch/`--model angel-coder` without `--render-only` refuses until ctx is raised (RAM/swap check) or a dedicated angel agent with an honest floor exists. Do not lower `min_ctx` blindly.
+**min_ctx:** `agents.hermes.min_ctx` is 64000 (upstream `MINIMUM_CONTEXT_LENGTH`). `angel-coder` is ctx **65536** (Brian #125: mmap + spill + `swap_budget_mib` 24576; accept heavier SSD spill). Do not lower `min_ctx`. Live `--check-swap` / activate still on angel SSH.
 

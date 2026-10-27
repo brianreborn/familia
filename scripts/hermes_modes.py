@@ -101,8 +101,8 @@ def eligible(g, floor):
 def single_agent(g, agent, node, *, enforce_min_ctx=True):
     """-> (graph copy with a synthetic agent '<agent>@<node>', its name). Exits on refusal.
 
-    enforce_min_ctx=False (--render-only): warn when below min_ctx so angel can smoke-render
-    without box GGUFs / without raising angel-coder.ctx yet. Launch still enforces the floor
+    enforce_min_ctx=False (--render-only): warn when below min_ctx so a host can smoke-render
+    without meeting the floor yet. Launch still enforces the floor
     (hermes-agent MINIMUM_CONTEXT_LENGTH is 64_000 as of upstream).
     """
     a = (g.get("agents") or {}).get(agent) or usage_err(f"agent {agent!r} not in graph")
