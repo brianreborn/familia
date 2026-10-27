@@ -22,3 +22,7 @@ gpu-legacy/*.log
 *.cubin
 *.gguf
 *.safetensors
+
+# Milestone AppImage build outputs (rebuild with scripts/build_appimage.sh)
+dist/*.AppImage
+dist/*.AppDir.tar.gz

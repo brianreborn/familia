@@ -436,7 +436,7 @@ def choose_card_defaults(scans, gens):
             continue
         modes = _modes_from(rec)
         pick = rec
-        how = "the card's only recommended set"
+        how = "the card's only recommended set" if len(pick) == 1 else "among %d recommended sets" % len(pick)
         dm = [x for x in pick if sc.get("default_mode") and x.get("mode") == sc["default_mode"]]
         if len(pick) > 1 and dm:
             pick = dm
@@ -444,11 +444,11 @@ def choose_card_defaults(scans, gens):
         if len(pick) > 1:
             tx = [x for x in pick if re.search(r"(?i)\btext\b|\bgeneral\b", x["label"])]
             if len(tx) == 1:
-                pick, how = tx, how + ", text/general task set"
+                pick, how = tx, "text/general task set among recommended"
         if len(pick) > 1:
             soft = _soft_prefer_card_sets(pick)
             if soft:
-                pick, how = soft, how + ", soft-prefer chat/reasoning/general"
+                pick, how = soft, "soft-prefer chat/reasoning/general among recommended"
         if len(pick) > 1:      # the repo's generation_config.json is the default the card's authors ship
             for glabel, gen in gens:
                 gp = gen_config_params(gen)

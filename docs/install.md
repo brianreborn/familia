@@ -20,10 +20,15 @@ build the pinned llama.cpp checkout from source as described above.
 |---|---|---|
 | Windows 10/11 | double-click `install\windows\install.bat` (or `powershell -ExecutionPolicy Bypass -File install\windows\install.ps1`) | `%LOCALAPPDATA%\familia`; models on `E:\temp\familia\models` when `E:\temp` exists |
 | Desktop Linux (Ubuntu/Debian…) and macOS | `curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install/linux/install.sh \| sh` | `~/.local/share/familia`, launcher `~/.local/bin/familia-start` |
+| Desktop Linux **AppImage** (milestone) | download `familia-*-x86_64.AppImage`, double-click (see [appimage.md](./appimage.md)) | writable checkout `~/.local/share/familia/appimage-checkout`; panel on :9932 |
 | Android (Termux from F-Droid/GitHub) | `curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install/termux/install.sh \| sh` | `~/familia`, launcher `$PREFIX/bin/familia-start` |
 
 macOS uses the Linux script (README lists macOS as supported); it has been
 syntax-checked but **not run on a Mac**.
+
+## AppImage (Linux milestone)
+
+Prefer the **AppImage** for single-click installs that should not require a terminal: download the `.AppImage` from the release, double-click, and the settings panel opens. Build with `./scripts/build_appimage.sh`. Details: [appimage.md](./appimage.md). Shell installers below remain valid.
 
 ## OS packages (Linux)
 

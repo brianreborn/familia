@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=familia
+GenericName=Local LLM graph
+Comment=familia — local model graph, panel, and menu (no cloud required)
+Exec=familia
+Icon=familia
+Terminal=false
+Categories=Development;Utility;Science;
+Keywords=llm;llama;gguf;local-ai;familia;
+StartupNotify=true
+X-AppImage-Version=milestone

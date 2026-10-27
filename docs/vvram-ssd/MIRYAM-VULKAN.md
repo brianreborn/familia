@@ -1,19 +1,18 @@
-# miryam Vulkan unstick (2026-10-26 PT probe)
+# miryam Vulkan unstick (2026-10-26 PT)
 
-MachineId `509c2b46-f11b-42c4-9f89-b2f43b827730` (connected).
+MachineId `509c2b46-f11b-42c4-9f89-b2f43b827730`.
 
 ## Present
 - `/dev/dri/card1` + `renderD128`
-- Intel ICD: `/usr/share/vulkan/icd.d/intel_icd.json` → `libvulkan_intel.so` (API 1.4.335)
-- Also haswell-era `intel_hasvk_icd.json`
-- RAM ~7.1 GiB, ~1.4 GiB available at probe (busy desktop)
+- Intel ICD: `/usr/share/vulkan/icd.d/intel_icd.json`
+- **SmolLM2-135M-Instruct-Q4_0.gguf** at `~/models/` (sha `bcc3af2849ad6095af57e9b5cd43775256efdc66e306acb529172f92d0c04b03`, fetched 2026-10-26 ~21:00 PT)
+- RAM ~7.1 GiB; often ~1.3–1.5 GiB available + swap in use — keep loads light
 
-## Missing (blocks `miryam-gpu-decision` -ngl 99 hang)
-- **No `SmolLM2-135M*.gguf`** under `~/.local/share/gguf/models/` or `code-bootstraps-llama.cpp/models/` (only hf-meta + registry JSON). Decision symlink is `Laya-Q8_0.gguf`, not SmolLM.
-- **No vulkan `llama-server` tree** under `code-bootstraps-llama.cpp/bin/` (empty/absent). Only found `/home/green/llama-server__nace-ai__edlm/build/bin/llama-server` (edlm fork — not the graph vulkan runtime).
+## Missing (blocks `miryam-gpu-decision` -ngl 99)
+- **No vulkan `llama-server`** at `~/repositories/llama-vulkan-b11541/llama-b11541/llama-server` (graph `runtimes.llama-b11541-linux-vulkan`).
+- edlm fork `~/llama-server__nace-ai__edlm/build/bin/llama-server` is not the graph vulkan runtime.
 
-## Next (when fetching)
-1. Restore `llama-b11374-linux-x64-vulkan` or `llama-b11539-linux-x64-vulkan` per graph `runtimes`.
-2. Fetch SmolLM2-135M Q4_0/Q4_K_M into path for `models.smollm2-135m-q4-miryam`.
-3. Short smoke: `-ngl 99` vs CPU (expect Vulkan slower on HD 620 historically — still hang for coverage).
-4. `vulkaninfo` may need packages; ICD file readable without sudo. If `vulkan-tools` needs sudo — blocker noted, do not stall angel/nvso work.
+## Next
+1. Restore `llama-b11541` ubuntu-vulkan-x64 under the repositories path above.
+2. CPU smoke first; Vulkan `-ngl 99` only when MemAvailable ≳ 3 GiB.
+3. `vulkaninfo` may need `vulkan-tools` (apt mirror flaky on box; on miryam install when convenient).

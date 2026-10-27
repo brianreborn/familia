@@ -1,0 +1,56 @@
+#!/bin/sh
+# familia AppImage entry. Double-click → settings panel in the browser.
+# Terminal: FAMILIA_MODE=menu ./familia-*.AppImage   or   ./familia-*.AppImage --cli …
+set -eu
+HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+ROOT="$HERE/usr/share/familia"
+export PATH="$HERE/usr/bin:${PATH:-}"
+export FAMILIA_APPIMAGE=1
+export FAMILIA_APPDIR="$HERE"
+
+if [ ! -x "$ROOT/familia" ]; then
+  printf '%s\n' "familia AppImage: missing $ROOT/familia (corrupt AppImage?)" >&2
+  exit 1
+fi
+
+WRITABLE="${FAMILIA_HOME:-$HOME/.local/share/familia/appimage-checkout}"
+if [ "${FAMILIA_APPIMAGE_RO:-0}" != 1 ]; then
+  if [ ! -e "$WRITABLE/familia" ]; then
+    mkdir -p "$(dirname -- "$WRITABLE")"
+    if command -v rsync >/dev/null 2>&1; then
+      rsync -a "$ROOT/" "$WRITABLE/"
+    else
+      rm -rf "$WRITABLE"
+      cp -a "$ROOT" "$WRITABLE"
+    fi
+  fi
+  ROOT="$WRITABLE"
+fi
+
+cd "$ROOT"
+MODE=${FAMILIA_MODE:-panel}
+case "${1:-}" in
+  --cli) shift; MODE=cli ;;
+  --menu) shift; MODE=menu ;;
+  --panel) shift; MODE=panel ;;
+  --help|-h)
+    cat <<'H'
+familia AppImage
+  (double-click / no args)  open the settings panel in your browser
+  --panel                   same
+  --menu                    interactive terminal menu
+  --cli COMMAND …           run a familia CLI command
+  FAMILIA_MODE=menu|panel|cli
+  FAMILIA_APPIMAGE_RO=1     run from the read-only AppDir (no writable checkout)
+  FAMILIA_HOME=DIR          writable checkout path (default ~/.local/share/familia/appimage-checkout)
+H
+    exit 0
+    ;;
+esac
+
+case "$MODE" in
+  panel) exec "$ROOT/familia" panel "$@" ;;
+  menu)  exec "$ROOT/familia" "$@" ;;
+  cli)   exec "$ROOT/familia" "$@" ;;
+  *) printf '%s\n' "familia AppImage: unknown FAMILIA_MODE=$MODE" >&2; exit 2 ;;
+esac
