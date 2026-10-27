@@ -1,19 +1,29 @@
 #!/bin/sh
-# Autonomous dogfood loop: familia nodes draft fixes for open familia issues.
-# Order: P0 (#95) -> priority-1 -> rest. One issue per iteration, harness alternates.
+# Autonomous dogfood loop: familia nodes draft fixes via REAL hermes / Harness² (#110).
+# Order: P0 (#95) -> priority-1 -> rest. One issue per iteration.
+# Harness rotates: hermes (single) -> hermes-graph -> harness2.
 # Lands on main ONLY if acceptance passes and full pytest has no failures beyond the
 # origin/main baseline. Never closes issues, never force-pushes, never touches
-# pentest/security/ssh/keys/sudoers paths. Server launches hold the per-host big.lock.
-# Usage: loop.sh [--once]   (state in ~/.local/state/familia/dogfood/)
+# pentest/security/ssh/keys/sudoers paths. Live model runs hold per-host big.lock.
+# Usage: loop.sh [--once] [--smoke]   (state in ~/.local/state/familia/dogfood/)
 set -u
 REPO="${FAMILIA_REPO:-$HOME/familia-dogfood}"
 ST="$HOME/.local/state/familia"; D="$ST/dogfood"; mkdir -p "$D"
-GIVEUP="$ST/dogfood-giveup.jsonl"; GIT="git -c user.name=Brian\ Fundakowski\ Feldman -c user.email=brianisbornagain@gmail.com"
+GIVEUP="$ST/dogfood-giveup.jsonl"
+GIT="git -c user.name=Brian\ Fundakowski\ Feldman -c user.email=brianisbornagain@gmail.com"
+SMOKE_FLAG=""
+[ "${1:-}" = --smoke ] && { SMOKE_FLAG=--smoke; shift; }
+[ "${2:-}" = --smoke ] && SMOKE_FLAG=--smoke
+export FAMILIA_SYNC=0
 [ -d "$REPO/.git" ] || git clone -q https://github.com/brianreborn/familia "$REPO"
 while :; do
   cd "$REPO" && git fetch -q origin && git checkout -q --detach origin/main
   n=$(cat "$D/iter" 2>/dev/null || echo 0); echo $((n+1)) > "$D/iter"
-  h=$( [ $((n % 2)) = 0 ] && echo hermes || echo harness2 )
+  case $((n % 3)) in
+    0) h=hermes ;;
+    1) h=hermes-graph ;;
+    *) h=harness2 ;;
+  esac
   python3 - "$D" > "$D/task.yaml" <<'PY' || { sleep 600; continue; }
 import json,subprocess,sys,re,os,yaml
 d=sys.argv[1]; tried=set(open(d+"/tried").read().split()) if os.path.exists(d+"/tried") else set()
@@ -27,15 +37,18 @@ if not c: open(d+"/tried","w").close(); sys.exit(1)
 i=c[0]; open(d+"/tried","a").write(f"{i['number']}\n")
 files=[f for f in dict.fromkeys(re.findall(r"[\w./-]+\.(?:py|sh|md|txt|yaml)",i["body"]+i["title"])) if os.path.isfile(f) and not bad.search(f) and not f.startswith("roles/")][:3]
 if not files: files=["TESTING.md"]
-t=re.sub(r"\D","",i["title"])
 yaml.safe_dump([{"id":f"i{i['number']}","issue":f"#{i['number']}","goal":(i["title"]+"\n"+i["body"])[:3000],"files":files,"accept":"sh scripts/dogfood/pytest_vs_baseline.sh"}],sys.stdout)
 PY
   id=$(sed -n 's/^  id: //p;s/^- id: //p' "$D/task.yaml" | head -1); num=${id#i}
-  python3 scripts/dogfood/dispatch.py "$D/task.yaml" --harness "$h" --out "$D/runs" --max-wait 7200 >> "$D/loop.log" 2>&1
+  python3 scripts/dogfood/dispatch.py "$D/task.yaml" --harness "$h" --out "$D/runs" --max-wait 7200 $SMOKE_FLAG >> "$D/loop.log" 2>&1
   r=$(grep "\"id\": \"$id\"" "$D/runs/results.jsonl" | tail -1)
   wt=/tmp/dogfood-wt-$id; ok=0; why=""
   if [ -z "$r" ]; then why="no result"
   elif ! echo "$r" | grep -q '"accept_rc": 0'; then why="acceptance/pytest failed or no change"
+  elif echo "$r" | grep -q '"smoke": true'; then why="smoke only (no live land)"
+  elif [ "$h" = harness2 ]; then
+    # Real H2 loop succeeded; harness proposals are not issue patches — do not push to main.
+    ok=0; why="harness2 propose ok (tracked in dogfood-daily; no issue patch to land)"
   elif (cd "$wt" && git diff --cached --name-only | grep -Eiq 'pentest|ssh|secur|key|sudo|roles/'); then why="touched forbidden path"
   else ok=1; fi
   model=$(echo "$r" | python3 -c 'import json,sys;print(json.load(sys.stdin).get("model","?"))' 2>/dev/null)

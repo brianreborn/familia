@@ -256,7 +256,7 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/littlebit/lbformat.py` | LittleBit file format library |
 | `scripts/familia_cli.py` | engine behind ./familia: subcommand names, help, man page, completion (run as familia help / familia completion) |
 | `scripts/with-host-lock` | wrapper: flock ~/.local/state/familia/big.lock around one live/big job per host |
-| `scripts/dogfood/dispatch.py` | dogfood loop internals: picks the next issue for the local fix loop (run via scripts/dogfood/loop.sh) |
+| `scripts/dogfood/dispatch.py` | dogfood: real hermes single/graph + Harness² propose (#110); `--smoke` = render-only/dry-run (via loop.sh) |
 | `scripts/dogfood/loop.sh` | dogfood fix loop driver, run by the operator on a dev node, not an end-user task |
 | `scripts/dogfood/pytest_vs_baseline.sh` | dogfood loop internals: compares a candidate fix's pytest results to the baseline |
 | `scripts/terminal_rsi.py` | Terminal-RSI self-improvement round for a harness target (#88); proposals only, review with scripts/harness2.py |
