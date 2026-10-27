@@ -1,6 +1,6 @@
 # G84-BRIDGE — Implementation plan (FreeBSD-first nvso + gpu-legacy)
 
-Status: **scaffolding + design sketches landed** ([HVVRAM-ARCHITECTURE.md](./HVVRAM-ARCHITECTURE.md), [FIRMWARE-PLAN.md](./FIRMWARE-PLAN.md), [DESCRIPTOR-FORMAT.md](./DESCRIPTOR-FORMAT.md)). Soft domains in progress; **custom FW still required** for Stage 2+.
+Status: **soft domain path implemented** (`familia/gpu-legacy/nvso/`, ABI 2). In-kernel domain_create / map / gate / irq_attach + soft queue_export / dma_post return 0 (bookkeeping only). **Real SSD/GPU DMA still later** — see [HVVRAM-ARCHITECTURE.md](./HVVRAM-ARCHITECTURE.md), [FIRMWARE-PLAN.md](./FIRMWARE-PLAN.md), [DESCRIPTOR-FORMAT.md](./DESCRIPTOR-FORMAT.md). Software Nanbeige path is [LAYER.md](./LAYER.md) and does not block on this.
 
 Prior status line: scaffolding landed in-repo (`familia/gpu-legacy/nvso/`). Live compile/test waits for angel SSH / qodesh online. Software Nanbeige path is [LAYER.md](./LAYER.md) and does not block on this.
 
@@ -57,7 +57,7 @@ make -C . depend all           # builds nvso.ko stub + nvsoctl
 ./tools/nvsoctl -n             # dry-run: print ioctl numbers; no /dev/nvso → exit 2
 ```
 
-Expect: stub driver attaches as `nvso0` if `nvso_load` enabled; all ioctls return `ENXIO` or `EOPNOTSUPP` until SSD/GPU backends filled.
+Expect: soft driver attaches as `nvso0`; domain/map/gate/irq + soft export/post return 0. Hardware SSD/GPU DMA is still not present.
 
 ### qodesh (Windows, G84) — Worker only when connected
 

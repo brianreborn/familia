@@ -3,7 +3,9 @@
  * Copyright (c) 2026 familia / green-roomz R&D
  *
  * Shared ABI for nvso(4) — Independent SO Domains + SSD DMA (research).
- * Stub only: does not imply working G84 SO domains or open SandForce FW.
+ * Soft HVVRAM domain bookkeeping (ABI 2): create/map/gate/irq + soft
+ * queue_export/dma_post succeed in-kernel without real G84/SandForce DMA.
+ * Does NOT imply working hardware SO domains or open SandForce FW.
  */
 #ifndef _NVSO_H_
 #define _NVSO_H_
@@ -15,10 +17,15 @@
 extern "C" {
 #endif
 
-#define NVSO_ABI_VERSION        1
+#define NVSO_ABI_VERSION        2
 #define NVSO_NAME_MAX           32
 #define NVSO_MAX_DOMAINS        32
 #define NVSO_MAX_DMA_DESCS      256
+#define NVSO_MAX_MAPS_PER_DOM   64
+
+/* Soft-path capability / result bits (documentation + nvsoctl). */
+#define NVSO_CAP_SOFT_DOMAINS   0x0001u  /* in-kernel domain table */
+#define NVSO_POST_SOFT          0x0001u  /* dma_post: accepted soft-only */
 
 /* Domain flags (nvso_map / create) */
 #define NVSO_DOM_PRIVATE        0x0001u
@@ -96,7 +103,7 @@ struct nvgpu_dma_post_req {
         uint32_t ndesc;
         uint64_t desc_user_ptr;  /* pointer to nvgpu_dma_desc[ndesc] in user VA */
         uint32_t status;
-        uint32_t pad;
+        uint32_t soft_flags;     /* out: NVSO_POST_SOFT when soft path */
 };
 
 struct nvso_domain_gate_req {

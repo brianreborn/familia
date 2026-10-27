@@ -5,7 +5,7 @@
 .Os
 .Sh NAME
 .Nm nvso
-.Nd research driver for SO domains and SSD DMA (stub)
+.Nd research driver for soft SO domains and SSD DMA bookkeeping
 .Sh SYNOPSIS
 .Cd device nvso
 .Sh DESCRIPTION
@@ -18,12 +18,16 @@ ranges (including NVM-backed regions), exporting SSD queue geometry, and
 posting GPU DMA descriptor lists.
 .Pp
 This is a
-.Em research stub .
+.Em research
+driver with a
+.Em soft
+HVVRAM domain path (ABI 2): domain create/map/gate/irq and soft queue
+export / DMA post succeed as in-kernel bookkeeping only.
 Stock NVIDIA G84 silicon does not implement independent SO clock domains
 as described in the design thread; open SandForce firmware is not included.
-Ioctls currently return
-.Er EOPNOTSUPP
-once the module is loaded.
+Real SSD/GPU DMA is
+.Em not
+implemented.
 .Sh IOCTLS
 Defined in
 .In nvso_ioctl.h
@@ -70,6 +74,6 @@ stub first appeared in the familia
 .Pa gpu-legacy/nvso
 tree (2026-10-26).
 .Sh BUGS
-No hardware backends; loading on production hosts is for ABI bring-up only.
+Soft bookkeeping only; no hardware SSD/GPU DMA. Loading is for ABI bring-up only.
 .Sh AUTHORS
 familia / green-roomz R&D

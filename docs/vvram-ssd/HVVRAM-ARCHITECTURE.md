@@ -1,7 +1,7 @@
 # HVVRAM architecture — staged design sketch
 
-**Status:** design complete as sketch; only Stages 0–1 are shippable code today.  
-**Not claimed:** working custom SSD firmware, G84 independent SO domains, or zero-copy GPU↔SSD DMA.
+**Status:** Stages 0–1 shippable — Stage 1 soft domains implemented in `gpu-legacy/nvso` (ABI 2).  
+**Not claimed / does not work yet:** hardware HVVRAM, custom SSD firmware, G84 independent SO domains, or zero-copy GPU↔SSD DMA.
 
 ## One picture
 
@@ -57,7 +57,7 @@
 
 | Host | Stages | Notes |
 |------|--------|-------|
-| angel / Uriel | 0 (now), 1 (in progress), 2 (FW lab) | FreeBSD coordinator; 192.168.4.25 |
+| angel / Uriel | 0 (now), 1 (soft ABI 2 in-tree), 2 (FW lab) | FreeBSD coordinator; 192.168.4.25 |
 | qodesh | 3 bridge experiments only | G84 + gpu-legacy; sole Worker |
 | miryam | Stage 0 adjacent (Vulkan iGPU) | Not HVVRAM |
 | box | Stage 0 dogfood / docs / userspace build | No DRI |
@@ -73,7 +73,7 @@ Docs: [G84-BRIDGE.md](./G84-BRIDGE.md), [FIRMWARE-PLAN.md](./FIRMWARE-PLAN.md), 
 | Stage | Done when |
 |-------|-----------|
 | 0 | angel-coder loads Nanbeige via mmap; swap+spill measured (BENCH) |
-| 1 | `kldload nvso`; `nvsoctl` create→map→gate round-trip returns 0 soft |
+| 1 | `kldload nvso`; `nvsoctl` create→map→gate (+ soft export/post) returns 0 soft — **code landed ABI 2**; angel kmod compile is the remaining host gate |
 | 2 | Lab FW exposes ≥1 SQ/CQ pair + LBA window; `nvssd_queue_export` binds real geom |
 | 3 | One posted peer DMA completes without bounce; counters in BENCH |
 | 4 | Emulated or research SO domain isolation metrics published |

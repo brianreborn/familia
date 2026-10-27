@@ -4,7 +4,7 @@
 
 ## Wire layout (userspace / copyin)
 
-From `include/nvso.h` (ABI v1+):
+From `include/nvso.h` (ABI 2):
 
 ```c
 struct nvgpu_dma_desc {
@@ -25,7 +25,7 @@ struct nvgpu_dma_post_req {
     uint32_t ndesc;            /* 1..NVSO_MAX_DMA_DESCS */
     uint64_t desc_user_ptr;    /* user VA of desc[ndesc] */
     uint32_t status;           /* out */
-    uint32_t pad;
+    uint32_t soft_flags;       /* out: NVSO_POST_SOFT when soft path */
 };
 ```
 
@@ -85,3 +85,13 @@ No IOMMU map, no SSD doorbell — that is Stage 2–3.
 ## Bench hooks
 
 Record per post: domain_id, ndesc, sum(len), dir histogram, soft vs hard, latency_us (ioctl). See [BENCH.md](./BENCH.md).
+
+## Soft path behavior (ABI 2 — implemented)
+
+1. Validate `domain_id` exists.
+2. Cap `ndesc` ≤ `NVSO_MAX_DMA_DESCS`.
+3. `copyin` descriptor array; reject unknown `dir`.
+4. Sum `len` into `sc->dma_sum`; increment `post_count`.
+5. Return `0` with `status=0`, `soft_flags=NVSO_POST_SOFT`.
+
+No CDC flush, no G84 pushbuffer, no SSD doorbell. Hardware post remains Stage 3.

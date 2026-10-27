@@ -61,7 +61,7 @@ FTL **outside** the exported window may still exist for wear-leveling of other r
 ## Bring-up order
 
 1. **Document + geom structs** (this file + nvso headers) — now.
-2. **Soft export** — `nvssd_queue_export` stores geom without talking to hardware (Stage 1).
+2. **Soft export** — `nvssd_queue_export` stores geom without talking to hardware (Stage 1) — **done in ABI 2**.
 3. **UART/identify stub FW** on donor — prints geom; no flash write yet.
 4. **Read-only LBA window** — host DMA read path; BENCH counters.
 5. **Write path + wear policy** outside HVVRAM window.

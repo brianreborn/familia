@@ -49,8 +49,8 @@ SSD export and GPU DMA backends live in
 .Pa nvso_ssd.c
 and
 .Pa nvso_gpu.c .
-Until open firmware and peer-DMA paths exist, all methods return
-.Er EOPNOTSUPP .
+ABI 2 soft path: domain create/map/gate/irq and soft queue export / DMA post
+return 0 (bookkeeping only). Real SSD/GPU DMA is not implemented.
 .Sh RETURN VALUES
 .Rv -std
 .Sh SEE ALSO
