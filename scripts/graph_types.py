@@ -195,6 +195,29 @@ def check_node(g, name, n, errs):
         if other < name and "planned" not in (o.get("status"), n.get("status")) and o.get("host") == n.get("host") and o.get("port") == n.get("port"):
             errs.append(f"nodes.{name}: port {n.get('port')} on host {n.get('host')!r} also used by node {other!r}")
 
+    st = n.get("server_tools")
+    if st is not None:
+        w = f"nodes.{name}.server_tools"
+        if st == "all":
+            pass
+        elif isinstance(st, list) and st and all(isinstance(x, str) and x for x in st):
+            for t in st:
+                if t == "all":
+                    errs.append(f"{w}: use server_tools: all (scalar), not inside a list")
+                elif t not in SERVER_TOOL_NAMES:
+                    errs.append(f"{w}: unknown tool {t!r}; known: {list(SERVER_TOOL_NAMES)} or all")
+        else:
+            errs.append(f"{w}: expected 'all' or non-empty list of tool names {list(SERVER_TOOL_NAMES)}")
+        bind = n.get("bind") or ""
+        if bind not in ("127.0.0.1", "::1", "localhost") and not str(bind).startswith("127."):
+            errs.append(f"{w}: only allowed when bind is loopback (got {bind!r}); llama.cpp --tools is host-exec")
+
+# llama-server built-in tools (--tools); llama-ui /tools is 403 without these (M0 tools regression).
+SERVER_TOOL_NAMES = (
+    "read_file", "file_glob_search", "grep_search",
+    "exec_shell_command", "write_file", "edit_file", "get_info",
+)
+
 SPLIT_MODES = {"none", "layer", "row", "tensor"}  # llama-server -sm (b11374/b11539 --help)
 
 def check_offload(name, n, h, r, errs):
@@ -493,7 +516,9 @@ TYPES = {
                 # model-card launch defaults (#51, docs/model-database.md): card_set picks one of the
                 # card's recommended sampling sets; sampling overrides single values; every value that
                 # contradicts the card (ctx, sampling keys, a non-default card_set) needs override_reasons.<key>
-                "card_set": opt("str"), "sampling": opt("map"), "override_reasons": opt("map")},
+                "card_set": opt("str"), "sampling": opt("map"), "override_reasons": opt("map"),
+                # llama-server --tools (llama-ui Server Tools / agentic); "all" or list of SERVER_TOOL_NAMES
+                "server_tools": opt("any")},
                check_node, doc="model instance on host+runtime"),
     "speculative": T({"experimental": req("bool"), "status": req("enum", choices={"planned", "experimental", "active"}),
                       "mode": req("enum", choices={"draft", "ngram"}), "target": req("ref", ref="nodes"),

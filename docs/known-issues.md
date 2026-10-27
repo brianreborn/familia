@@ -21,3 +21,13 @@
 
 - **One known test failure**
   - `tests/test_ram_safety.py::test_overcommit_is_hard_error` fails on hosts that have the coder and embed model files, because the test graph trips an earlier reserve error first.
+- **angel Nanbeige / llama-ui showed no Server Tools (M0)**
+  - **Cause:** `llama-server` started without `--tools`. `/tools` returns HTTP 403
+    `feature_disabled`; llama-ui then shows an empty tools panel. Template still has
+    `chat_template_caps.supports_tools=true`. `/v1/models` `capabilities:["completion"]`
+    and default `chat_format: Content-only` are normal without an active tools request —
+    not the regression by themselves.
+  - **Fix:** set `nodes.<name>.server_tools: all` (or a tool-name list) on loopback-bound
+    nodes; `validate_graph`/`serve.sh` emit `--tools …`. `angel-coder` has this. Restart
+    the node (DETACH_MODE=screen-attached) after changing the graph.
+

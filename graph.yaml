@@ -637,6 +637,10 @@ nodes:
     load_mode: mmap              # SSD-friendly for 18.7 GiB weights
     status: active
     card_set: "Agentic and tool-use tasks"
+    # llama-ui Server Tools: without --tools, /tools returns 403 feature_disabled and the
+    # UI shows no tools (capabilities stay completion-only; default chat_format Content-only).
+    # Loopback-only (check_node). Restores agentic dogfood for Nanbeige on angel.
+    server_tools: all
     override_reasons:
       ctx: 'dealignai README llama-server example uses -c 32768; full 524288 exceeds angel 24442 MiB - 4096 reserve with 18.7 GiB weights'
       card_set: 'coder/agentic role: base-card Agentic and tool-use (temp 1.0 top_p 0.95); distinct from angel-chat soft default'

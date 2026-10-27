@@ -163,6 +163,25 @@ def test_server_args_spec_flags():
     assert "--draft-max" not in a  # removed upstream
     assert "--embeddings" in validate_graph.server_args(g(), "embed")
 
+
+def test_server_tools_args_and_loopback():
+    """angel-coder-style server_tools emits --tools; non-loopback bind is rejected."""
+    import graph_types
+    x = g()
+    x["nodes"]["coder"]["server_tools"] = "all"
+    x["nodes"]["coder"]["bind"] = "127.0.0.1"
+    assert errs(x) == []
+    a = validate_graph.server_args(x, "coder")
+    assert a[a.index("--tools") + 1] == "all"
+    x["nodes"]["coder"]["server_tools"] = ["read_file", "get_info"]
+    assert errs(x) == []
+    a = validate_graph.server_args(x, "coder")
+    assert a[a.index("--tools") + 1] == "read_file,get_info"
+    x["nodes"]["coder"]["server_tools"] = "all"
+    x["nodes"]["coder"]["bind"] = "0.0.0.0"
+    has(x, "only allowed when bind is loopback")
+    x = g(); x["nodes"]["coder"]["server_tools"] = ["nope"]; has(x, "unknown tool")
+
 def test_alias_exactly_one_node():
     x = g(); x["aliases"]["coder"]["node"] = ["coder"]; has(x, "expected a nodes name")
     x = g(); x["aliases"]["coder"]["node"] = "auto"; has(x, "no such nodes entry 'auto'")

@@ -426,6 +426,12 @@ def server_args(graph, name):
     names = sorted(al for al, x in graph["aliases"].items() if x["node"] == name)
     if names: a += ["--alias", names[0]]
     a += ["--cache-ram", str(n["cache_ram_mib"])]
+    # llama-ui Server Tools: /tools is feature_disabled (403) unless --tools is set at launch.
+    st = n.get("server_tools")
+    if st == "all":
+        a += ["--tools", "all"]
+    elif isinstance(st, list) and st:
+        a += ["--tools", ",".join(st)]
     # Model parameters (#51): REQUIRED + RECOMMENDED from the model database (cards, configs,
     # GGUF), node.sampling / override_reasons applied. A REQUIRED one that cannot be met is fatal.
     import model_db
