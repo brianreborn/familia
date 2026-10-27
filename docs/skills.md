@@ -31,9 +31,8 @@ scripts/skills.py vendor artemis-android-skill --dry-run   # plan only
 
 - A `license-blocked` skill can't be enabled. The message tells you why.
 - An `available` skill can't be enabled until it is vendored into
-  green-zkillz, because there are no files to load before that. Vendoring
-  itself is still manual and waits on license review (familia #67). This is
-  a decision, not a gap: available skills stay refused until vendored.
+  green-zkillz, because there are no files to load before that. Artemis is
+  now `vendored` (green-agentz #18); GoClaw remains license-blocked (#67).
 - etioz is listed as `bundled` even though its own status is still
   awaiting-ratification. It adds no tools.
 - A pentest role never gets a skill with `adds_tools: true` in its own
@@ -44,8 +43,9 @@ scripts/skills.py vendor artemis-android-skill --dry-run   # plan only
 ## Status
 
 Seeded with the seven green-zkillz skills (bundled, BSD-3-Clause) and the
-familia #67 survey: `artemis-android-skill` (Apache-2.0, available) and the
-GoClaw `skills/` set (license-blocked). hermes does not yet load the enabled
-skills on its own; `scripts/skills.py paths` prints their folders, and the
-tracking issue is [familia #72](https://github.com/brianreborn/familia/issues/72). The plan for vendoring
-survey skills into green-zkillz is [green-agentz #17](https://github.com/brianreborn/green-agentz/issues/17).
+familia #67 survey: `artemis-android-skill` (Apache-2.0, **vendored** into
+green-zkillz via [green-agentz #18](https://github.com/brianreborn/green-agentz/pull/18))
+and the GoClaw `skills/` set (license-blocked; not vendored). hermes loads
+enabled skills via `scripts/hermes_modes.py` (`link_skills` → `skills.py paths`);
+[familia #72](https://github.com/brianreborn/familia/issues/72) is closed.
+Further survey vendors: [green-agentz #17](https://github.com/brianreborn/green-agentz/issues/17).

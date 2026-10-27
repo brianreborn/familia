@@ -36,10 +36,12 @@ linked issue is working on it. **candidate** = an `options:` entry only.
 | smollm2-135m-q4 | decision | llama | SmolLM2-135M-Instruct Q4_0, 87 MiB | qodesh CPU b11540 (`qodesh-smol-cpu`, default) | qodesh | in graph | — |
 | smollm2-135m-q4-miryam, -phone, -q4km | decision | llama | SmolLM2-135M-Instruct Q4_0 / Q4_K_M | Vulkan builds | miryam iGPU, phones | in graph (planned nodes) | — |
 | qwen25-05b-q4km-phone | chat | qwen2 | Qwen2.5-0.5B-Instruct Q4_K_M | Termux llama-cpp + Vulkan | phone8 | in graph (planned node) | — |
-| qwen35-9b-coder | coder | qwen35 (claimed) | 9B; Q4_K_M ~5.5 GB (estimate) | llama-server | qodesh only | planned #26 | [RT](https://x.com/BrianReborn_alt/status/2108600815808336061) |
+| qwen35-9b-coder | coder | qwen35 | khazarai Q8_0 9.53 GB (apache-2.0); Q4 estimate ~5.5 GB | llama-server | qodesh only | planned #26 (options+db) | [RT](https://x.com/BrianReborn_alt/status/2108600815808336061) · [HF](https://huggingface.co/khazarai/Qwen3.5-9B-Kimi-k3-Distilled-GGUF) |
 | drex-1.5 | decision | Qwen3_5ForCausalLM | 8.95B; [Q8_0](https://huggingface.co/nace-ai/drex-v1.5-Q8_0) 9.53 GB; [Q4_K_M](https://huggingface.co/mradermacher/drex-v1.5-GGUF) 5.63 GB; Q2_K 3.83 GB; extra `head.pt` | llama-server (qwen35) + decision head support unverified | qodesh CPU (Q4); **not** the 256 MB GPU | planned #24 | [RT](https://x.com/BrianReborn_alt/status/2108691502864163123) · [HF](https://huggingface.co/nace-ai/drex-v1.5) |
 | drex-1.1 | decision | diffusion LM | unknown (maybe [nace-ai/drex-dlm](https://huggingface.co/nace-ai/drex-dlm), 8.19B, cc-by-nc-4.0, not confirmed) | drex-dlm / `llama-server__nace-ai__edlm` pin | qodesh CPU if 8B | candidate | [RT](https://x.com/BrianReborn_alt/status/2107800181316141401) |
 | k2-type-0.9b | decision | unknown | 0.9B; ~0.5 GB Q4 (estimate) | unknown | qodesh GPU (heavy quant), miryam | planned #24 | [RT](https://x.com/BrianReborn_alt/status/2106354389611094041) |
+| laya-q8 | decision | unknown | Laya-Q8_0 ~429 MiB (apache-2.0) | llama-server | miryam/qodesh | candidate (options+db) | #53/#78 · [HF](https://huggingface.co/ggml-org/Laya-GGUF) |
+| lfm25-350m-q4km | decision | lfm2 | LFM2.5-350M Q4_K_M ~219 MiB (lfm1.0) | llama-server | phones/miryam/qodesh | candidate (options+db; license gate) | #78 · [HF](https://huggingface.co/LiquidAI/LFM2.5-350M-GGUF) |
 | glide | decision | unknown | unknown | unknown | unknown | candidate | [RT](https://x.com/BrianReborn_alt/status/2107815038589567062) |
 | cloudflare-clef | decision | unknown | unknown | unknown | unknown | candidate | [RT](https://x.com/BrianReborn_alt/status/2106238504938377271) |
 | gev-26b-decide | decision | unknown | 26B; ~15 GB Q4 (estimate) | unknown | none | candidate (catalog only) | [RT](https://x.com/BrianReborn_alt/status/2107731560246215067) |
@@ -47,7 +49,7 @@ linked issue is working on it. **candidate** = an `options:` entry only.
 | kev-1.0 | decision | unknown | unknown | unknown | unknown | candidate | [RT](https://x.com/BrianReborn_alt/status/2106235881904599179) |
 | jev-cpu-decision | decision | unknown | unknown | CPU (per post) | unknown | candidate | [RT](https://x.com/BrianReborn_alt/status/2106949194913366275) |
 | jp-decision-gguf | decision | unknown | unknown (GGUF) | llama-server | unknown | candidate | [RT](https://x.com/BrianReborn_alt/status/2106236190940950767) |
-| qwen35-0.8b-jp | chat | qwen35 | 0.8B (file unknown) | llama-server pinned build | miryam/phones likely | candidate | [RT](https://x.com/BrianReborn_alt/status/2106236078533550141) |
+| qwen35-0.8b-jp | chat | qwen35 | Takenoko Q4_K_M ~505 MiB (apache-2.0) | llama-server pinned build | miryam/phones/qodesh | candidate (options+db) | [RT](https://x.com/BrianReborn_alt/status/2106236078533550141) · [HF](https://huggingface.co/Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2-GGUF) |
 | tencent-translate-440mb | chat (MT) | unknown | ~440 MB (post) | unknown | phones likely | candidate | [RT](https://x.com/BrianReborn_alt/status/2105728713950437842) |
 | index-translate | chat (MT) | Qwen3.5-based (post) | unknown | unknown | unknown | candidate | [RT](https://x.com/BrianReborn_alt/status/2105389175872847935) |
 | dolphin3-cyber-8b | pentest | unknown | ~3.2 GB Q2_K (post) | llama-server | qodesh | candidate (docs/pentest-models.md) | RT 2026-09-20 |
