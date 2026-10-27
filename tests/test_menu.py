@@ -51,7 +51,8 @@ def need_ok(spec):
 
 
 def script_of(cmd):
-    toks = [t for t in shlex.split(re.sub(r"\{[A-Z]+:[^}]*\}", "X", cmd)) if t not in ("PY", "sh", "bash", "PAGER")]
+    toks = [t for t in shlex.split(re.sub(r"\{[A-Z]+:[^}]*\}", "X", cmd))
+            if t not in ("PY", "sh", "bash", "PAGER", "env") and not re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", t)]
     t = toks[0].replace("INSTALLER", "install/linux/install.sh")
     return t
 

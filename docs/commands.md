@@ -106,6 +106,8 @@ The interactive menu and `--list` show these paths before the command groups. Fo
 | `agents.hermes-render` | Write the hermes config only; start nothing | `scripts/hermes.sh --render-only` | - |
 | `agents.fleet-test` | Launch-test a role: validate, would-start, stop | `sh with-fleet.sh --role <ROLE> --launch-test` | - |
 | `agents.fleet` | Launch a role from graph.yaml (pentest roles are only launch-tested) (licenses first) | `sh with-fleet.sh --role <ROLE>` | - |
+| `agents.pentest-launch-test` | Pentest fleet: launch-test only (validate → would-start → stop) | `sh with-fleet.sh --role fleet --launch-test` | - |
+| `agents.pentest-start` | Pentest fleet: operator-confirmed model start (owned scope; no live scans) (licenses first) | `env FAMILIA_OPERATOR_CONFIRM=yes sh with-fleet.sh --role fleet --operator-start` | - |
 
 ## Self-improving harness (Harness2)
 
@@ -259,3 +261,7 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/watchdog/kill-watch.sh` | long-running journal follower started by its systemd user unit |
 | `scripts/watchdog/mem-snapshot.sh` | helper called by kill-watch.sh |
 | `scripts/dogfood/install-loop-unit.sh` | operator installer for the dogfood loop systemd user unit (#112) |
+| `build-automation.sh` | Legacy llama.cpp v0.7.0 patch/build helper (not menu) | — | — |
+| `install/linux/deps.sh` | Installer OS-deps helper (called by install.sh) | — | — |
+| `scripts/build_appimage.sh` | Operator AppImage packaging (not menu) | — | — |
+| `scripts/perf/box_multi_size_smoke.py` | Perf/dev multi-size smoke (not menu) | — | — |
