@@ -84,7 +84,7 @@ On Windows use `python` instead of `python3` and set `$env:PYTHONUTF8 = '1'` fir
 | One node on Windows | `$env:FAMILIA_MODEL = 'your-model.gguf'; .\scripts\windows\start.bat` |
 | hermes-agent against the graph | `scripts/hermes.sh` |
 
-`DETACH_MODE=screen-attached ./start.sh --host miryam` keeps the graph supervisor in the visible `familia-server` screen session with 10,000 lines of scrollback. Use `Ctrl-A`, then `D` to detach and `screen -r familia-server` to resume. Other modes are opt-in; foreground is the default. See [MANUAL.md](MANUAL.md#backgrounding-and-detaching).
+`./start.sh --host miryam` defaults to `DETACH_MODE=screen-attached`: visible `familia-server` screen session with 10,000 lines of scrollback. Use `Ctrl-A`, then `D` to detach and `screen -r familia-server` to resume. Other modes (`screen`, `tmux`, `nohup`, `foreground`) are opt-in. See [MANUAL.md](MANUAL.md#backgrounding-and-detaching).
 
 The FreeBSD graph host `angel` is **measured** (`hosts.angel.measured: true`, ~24 GiB RAM) and **`angel-coder` is active** (Nanbeige4.3-33B Q4_K_M; `angel-chat` stays `planned` — do not co-start). `./start.sh --dry-run --host angel` reports this without starting or contacting anything. FreeBSD currently uses a source build only—install no packages and do not run `familia install`. Run the pinned llama.cpp build/version test from `code-bootstraps-llama.cpp` with `BUILD_DIR=build-freebsd GPU=off scripts/build-linux.sh`; graph serving requires measured host facts and explicit active-node placement. Before flipping `angel-coder` / `angel-chat` to `active`, measure SSD swap (≈24 GiB target) and create `~/.cache/familia/spill/angel-*` — see `docs/vvram-ssd/README.md` and install-notes `vvram-ssd/LAYER.md`. Do not co-activate both on 24 GiB.
 

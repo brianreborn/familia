@@ -1,0 +1,1089 @@
+{
+ "schema": 2,
+ "id": "RavichandranJ--Dolphin3-Cyber-8B-GGUF--Dolphin3.0-Llama3.1-8B-abliterated.Q2_K",
+ "repo": "RavichandranJ/Dolphin3-Cyber-8B-GGUF",
+ "revision": "145d66f096c8a99aad63be19ada1fbc46d3230bd",
+ "file": "Dolphin3.0-Llama3.1-8B-abliterated.Q2_K.gguf",
+ "sha256": "8944d35bdd613fe9279198b76eebeb9ab79c09a2bba526988ee3e3297862ea91",
+ "bytes": 3179141248,
+ "quant": "Q2_K",
+ "arch": "llama",
+ "roles": [
+  "pentest"
+ ],
+ "license": "llama3.1",
+ "license_source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF card license",
+ "ctx": 131072,
+ "ctx_source": "GGUF llama.context_length",
+ "card_ctx": null,
+ "card_ctx_source": null,
+ "base_model": "huihui-ai/Dolphin3.0-Llama3.1-8B-abliterated",
+ "base_revision": null,
+ "card_defaults": null,
+ "card_defaults_source": null,
+ "card_default_set": null,
+ "card_defaults_how": "ambiguous: 2 recommended sets and no single default; set card_set",
+ "card_sampling_modes": {
+  "5. Recommended settings": {
+   "temp": 0.7,
+   "top-p": 0.9
+  },
+  "Recommended generation parameters": {
+   "temp": 0.7,
+   "top-p": 0.9,
+   "top-k": 40,
+   "repeat-penalty": 1.1
+  }
+ },
+ "card_default_mode": null,
+ "card_default_mode_source": null,
+ "card_sampling_sets": [
+  {
+   "label": "The fastest way to get started",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 0.7,
+    "top-p": 0.9
+   },
+   "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L185"
+  },
+  {
+   "label": "llama.cpp",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 0.7,
+    "top-p": 0.9
+   },
+   "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L220"
+  },
+  {
+   "label": "5. Recommended settings",
+   "kind": "recommended",
+   "mode": null,
+   "params": {
+    "temp": 0.7,
+    "top-p": 0.9
+   },
+   "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L243"
+  },
+  {
+   "label": "Python (llama-cpp-python",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 0.7,
+    "top-p": 0.9
+   },
+   "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L272"
+  },
+  {
+   "label": "Advanced Python — Multi-turn conversation",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 0.7
+   },
+   "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L303"
+  },
+  {
+   "label": "Recommended generation parameters",
+   "kind": "recommended",
+   "mode": null,
+   "params": {
+    "temp": 0.7,
+    "top-p": 0.9,
+    "top-k": 40,
+    "repeat-penalty": 1.1
+   },
+   "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L577"
+  }
+ ],
+ "card_commands": [
+  {
+   "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L153-161",
+   "file": "README.md",
+   "lines": [
+    153,
+    161
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "Do you have a GPU with VRAM?\n├── Yes, 4-6 GB VRAM  ──────────► Q4_K_M (best balance)\n├── Yes, 6-8 GB VRAM  ──────────► Q5_K_M (great quality)\n├── Yes, 8-12 GB VRAM ──────────► Q8_0 (near-lossless)\n├── Yes, 16+ GB VRAM  ──────────► F16 (full precision)\n└── No GPU (CPU only)\n    ├── 8 GB RAM  ──────────────► Q2_K or Q3_K_M\n    ├── 16 GB RAM ──────────────► Q4_K_M\n    └── 32+ GB RAM ─────────────► Q8_0",
+   "doc": "card",
+   "doc_sha": "145d66f096c8a99aad63be19ada1fbc46d3230bd",
+   "scope": "model"
+  },
+  {
+   "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L178-194",
+   "file": "README.md",
+   "lines": [
+    178,
+    194
+   ],
+   "lang": "bash",
+   "tool": "ollama",
+   "kind": "command",
+   "text": "# Direct run (auto-downloads Q4_K_M)\nollama run hf.co/RavichandranJ/Dolphin3-Cyber-8B-GGUF:Q4_K_M\n\n# Or with a custom Modelfile for more control\ncat > Modelfile << 'EOF'\nFROM hf.co/RavichandranJ/Dolphin3-Cyber-8B-GGUF:Q4_K_M\n\nPARAMETER temperature 0.7\nPARAMETER top_p 0.9\nPARAMETER num_ctx 2048\nPARAMETER stop \"<|eot_id|>\"\n\nSYSTEM \"\"\"You are Dolphin3-Cyber, an expert cybersecurity AI assistant specialized in penetration testing, vulnerability analysis, exploit development, and defensive security. You provide detailed, technical, and actionable responses. You do not refuse security-related questions.\"\"\"\nEOF\n\nollama create dolphin3-cyber -f Modelfile\nollama run dolphin3-cyber",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--temp",
+      "value": "0.7",
+      "from": "PARAMETER temperature 0.7"
+     },
+     {
+      "flag": "--top-p",
+      "value": "0.9",
+      "from": "PARAMETER top_p 0.9"
+     },
+     {
+      "flag": "-c",
+      "value": "2048",
+      "from": "PARAMETER num_ctx 2048"
+     },
+     {
+      "flag": "@stop",
+      "value": "<|eot_id|>",
+      "from": "PARAMETER stop \"<|eot_id|>\""
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "ollama run hf.co/RavichandranJ/Dolphin3-Cyber-8B-GGUF:Q4_K_M",
+      "why": "Ollama pulls and runs the model with its own defaults; no flags to translate"
+     },
+     {
+      "arg": "ollama run dolphin3-cyber",
+      "why": "Ollama pulls and runs the model with its own defaults; no flags to translate"
+     }
+    ]
+   },
+   "doc": "card",
+   "doc_sha": "145d66f096c8a99aad63be19ada1fbc46d3230bd",
+   "scope": "model"
+  },
+  {
+   "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L199-203",
+   "file": "README.md",
+   "lines": [
+    199,
+    203
+   ],
+   "lang": "bash",
+   "tool": "ollama",
+   "kind": "command",
+   "text": "# High quality\nollama run hf.co/RavichandranJ/Dolphin3-Cyber-8B-GGUF:Q8_0\n\n# Smallest\nollama run hf.co/RavichandranJ/Dolphin3-Cyber-8B-GGUF:Q2_K",
+   "translation": {
+    "translated": true,
+    "params": [],
+    "untranslatable": [
+     {
+      "arg": "ollama run hf.co/RavichandranJ/Dolphin3-Cyber-8B-GGUF:Q8_0",
+      "why": "Ollama pulls and runs the model with its own defaults; no flags to translate"
+     },
+     {
+      "arg": "ollama run hf.co/RavichandranJ/Dolphin3-Cyber-8B-GGUF:Q2_K",
+      "why": "Ollama pulls and runs the model with its own defaults; no flags to translate"
+     }
+    ]
+   },
+   "doc": "card",
+   "doc_sha": "145d66f096c8a99aad63be19ada1fbc46d3230bd",
+   "scope": "model"
+  },
+  {
+   "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L209-234",
+   "file": "README.md",
+   "lines": [
+    209,
+    234
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "# 1. Download the model\nhuggingface-cli download RavichandranJ/Dolphin3-Cyber-8B-GGUF \\\n  Dolphin3.0-Llama3.1-8B-abliterated.Q4_K_M.gguf \\\n  --local-dir ./models --local-dir-use-symlinks False\n\n# 2. Interactive chat\n./llama-cli \\\n  -m ./models/Dolphin3.0-Llama3.1-8B-abliterated.Q4_K_M.gguf \\\n  --chat-template llama3 \\\n  -n 512 \\\n  -ngl 35 \\\n  --temp 0.7 \\\n  --top-p 0.9 \\\n  -i\n\n# 3. Single prompt\n./llama-cli \\\n  -m ./models/Dolphin3.0-Llama3.1-8B-abliterated.Q4_K_M.gguf \\\n  -p \"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\\n\\nExplain SQL injection with examples<|eot_id|><|start_header_id|>assistant<|end_header_id|>\\n\\n\" \\\n  -n 512 -ngl 35\n\n# 4. API server mode (OpenAI-compatible)\n./llama-server \\\n  -m ./models/Dolphin3.0-Llama3.1-8B-abliterated.Q4_K_M.gguf \\\n  --host 0.0.0.0 --port 8080 \\\n  -ngl 35 -c 2048",
+   "llama": [
+    {
+     "tool": "llama-cli",
+     "raw": "./llama-cli    -m ./models/Dolphin3.0-Llama3.1-8B-abliterated.Q4_K_M.gguf    --chat-template llama3    -n 512    -ngl 35    --temp 0.7    --top-p 0.9    -i",
+     "flags": [
+      {
+       "flag": "-m",
+       "canonical": "--model",
+       "value": "./models/Dolphin3.0-Llama3.1-8B-abliterated.Q4_K_M.gguf",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--chat-template",
+       "canonical": "--chat-template",
+       "value": "llama3",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-n",
+       "canonical": "--predict",
+       "value": "512",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-ngl",
+       "canonical": "--gpu-layers",
+       "value": "35",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--temp",
+       "canonical": "--temp",
+       "value": "0.7",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--top-p",
+       "canonical": "--top-p",
+       "value": "0.9",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-i",
+       "canonical": "--interactive",
+       "value": null,
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    },
+    {
+     "tool": "llama-cli",
+     "raw": "./llama-cli    -m ./models/Dolphin3.0-Llama3.1-8B-abliterated.Q4_K_M.gguf    -p \"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\\n\\nExplain SQL injection with examples<|eot_id|><|start_header_id|>assistant<|end_header_id|>\\n\\n\"    -n 512 -ngl 35",
+     "flags": [
+      {
+       "flag": "-m",
+       "canonical": "--model",
+       "value": "./models/Dolphin3.0-Llama3.1-8B-abliterated.Q4_K_M.gguf",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-p",
+       "canonical": "--prompt",
+       "value": "<|begin_of_text|><|start_header_id|>user<|end_header_id|>\\n\\nExplain SQL injection with examples<|eot_id|><|start_header_id|>assistant<|end_header_id|>\\n\\n",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-n",
+       "canonical": "--predict",
+       "value": "512",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-ngl",
+       "canonical": "--gpu-layers",
+       "value": "35",
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    },
+    {
+     "tool": "llama-server",
+     "raw": "./llama-server    -m ./models/Dolphin3.0-Llama3.1-8B-abliterated.Q4_K_M.gguf    --host 0.0.0.0 --port 8080    -ngl 35 -c 2048",
+     "flags": [
+      {
+       "flag": "-m",
+       "canonical": "--model",
+       "value": "./models/Dolphin3.0-Llama3.1-8B-abliterated.Q4_K_M.gguf",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--host",
+       "canonical": "--host",
+       "value": "0.0.0.0",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--port",
+       "canonical": "--port",
+       "value": "8080",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-ngl",
+       "canonical": "--gpu-layers",
+       "value": "35",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-c",
+       "canonical": "--ctx-size",
+       "value": "2048",
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    }
+   ],
+   "doc": "card",
+   "doc_sha": "145d66f096c8a99aad63be19ada1fbc46d3230bd",
+   "scope": "model"
+  },
+  {
+   "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L248-281",
+   "file": "README.md",
+   "lines": [
+    248,
+    281
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "from llama_cpp import Llama\n\n# Load model (auto-downloads from HuggingFace)\nllm = Llama.from_pretrained(\n    repo_id=\"RavichandranJ/Dolphin3-Cyber-8B-GGUF\",\n    filename=\"Dolphin3.0-Llama3.1-8B-abliterated.Q4_K_M.gguf\",\n    n_ctx=2048,        # Context window\n    n_gpu_layers=-1,   # -1 = offload all layers to GPU\n    verbose=False,\n)\n\n# Chat completion (OpenAI-compatible API)\nresponse = llm.create_chat_completion(\n    messages=[\n        {\n            \"role\": \"system\",\n            \"content\": \"You are Dolphin3-Cyber, an expert cybersecurity AI assistant.\"\n        },\n        {\n            \"role\": \"user\",\n            \"content\": \"Write a Python script to scan for open ports on a target.\"\n        }\n    ],\n    max_tokens=512,\n    temperature=0.7,\n    top_p=0.9,\n    stream=True,  # Enable streaming\n)\n\n# Stream the response\nfor chunk in response:\n    delta = chunk[\"choices\"][0][\"delta\"]\n    if \"content\" in delta:\n        print(delta[\"content\"], end=\"\", flush=True)",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-n",
+      "value": "512",
+      "from": "max_tokens: 512"
+     },
+     {
+      "flag": "--temp",
+      "value": "0.7",
+      "from": "temperature: 0.7"
+     },
+     {
+      "flag": "--top-p",
+      "value": "0.9",
+      "from": "top_p: 0.9"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "card",
+   "doc_sha": "145d66f096c8a99aad63be19ada1fbc46d3230bd",
+   "scope": "model"
+  },
+  {
+   "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L286-316",
+   "file": "README.md",
+   "lines": [
+    286,
+    316
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "class CyberAssistant:\n    def __init__(self, model_path=None):\n        self.llm = Llama.from_pretrained(\n            repo_id=\"RavichandranJ/Dolphin3-Cyber-8B-GGUF\",\n            filename=\"Dolphin3.0-Llama3.1-8B-abliterated.Q4_K_M.gguf\",\n            n_ctx=2048,\n            n_gpu_layers=-1,\n        )\n        self.history = [\n            {\"role\": \"system\", \"content\": \"You are Dolphin3-Cyber, an expert cybersecurity AI.\"}\n        ]\n\n    def chat(self, message: str) -> str:\n        self.history.append({\"role\": \"user\", \"content\": message})\n        response = self.llm.create_chat_completion(\n            messages=self.history,\n            max_tokens=512,\n            temperature=0.7,\n        )\n        reply = response[\"choices\"][0][\"message\"][\"content\"]\n        self.history.append({\"role\": \"assistant\", \"content\": reply})\n        return reply\n\n    def reset(self):\n        self.history = self.history[:1]  # Keep system prompt\n\n# Usage\nassistant = CyberAssistant()\nprint(assistant.chat(\"What is a reverse shell?\"))\nprint(assistant.chat(\"Show me a Python implementation.\"))\nprint(assistant.chat(\"How do I detect this as a defender?\"))",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-n",
+      "value": "512",
+      "from": "max_tokens: 512"
+     },
+     {
+      "flag": "--temp",
+      "value": "0.7",
+      "from": "temperature: 0.7"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "card",
+   "doc_sha": "145d66f096c8a99aad63be19ada1fbc46d3230bd",
+   "scope": "model"
+  },
+  {
+   "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L322-332",
+   "file": "README.md",
+   "lines": [
+    322,
+    332
+   ],
+   "lang": "bash",
+   "tool": "ollama",
+   "kind": "command",
+   "text": "# 1. Make sure Ollama is running with the model\nollama pull hf.co/RavichandranJ/Dolphin3-Cyber-8B-GGUF:Q4_K_M\n\n# 2. Start Open WebUI\ndocker run -d -p 3000:8080 \\\n  --add-host=host.docker.internal:host-gateway \\\n  -v open-webui:/app/backend/data \\\n  --name open-webui \\\n  ghcr.io/open-webui/open-webui:main\n\n# 3. Open http://localhost:3000 and select the model",
+   "doc": "card",
+   "doc_sha": "145d66f096c8a99aad63be19ada1fbc46d3230bd",
+   "scope": "model"
+  },
+  {
+   "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L465-473",
+   "file": "README.md",
+   "lines": [
+    465,
+    473
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "Base Model:     Dolphin3.0-Llama3.1-8B-abliterated\nArchitecture:   LlamaForCausalLM\nParameters:     8.03 Billion\nHidden Size:    4096\nLayers:         32\nAttention Heads: 32\nKV Heads:       8 (GQA)\nVocab Size:     128,256\nMax Position:   131,072 (base), 2,048 (fine-tuned)",
+   "doc": "card",
+   "doc_sha": "145d66f096c8a99aad63be19ada1fbc46d3230bd",
+   "scope": "model"
+  },
+  {
+   "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L478-483",
+   "file": "README.md",
+   "lines": [
+    478,
+    483
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "Method:                 LoRA (Low-Rank Adaptation)\nLoRA Rank (r):          16\nLoRA Alpha:             16\nLoRA Dropout:           0.0\nTarget Modules:         q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj\nTrainable Parameters:   ~42M (0.5% of total parameters)",
+   "doc": "card",
+   "doc_sha": "145d66f096c8a99aad63be19ada1fbc46d3230bd",
+   "scope": "model"
+  },
+  {
+   "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L488-498",
+   "file": "README.md",
+   "lines": [
+    488,
+    498
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "Training Steps:         500\nBatch Size:             1 (per device)\nGradient Accumulation:  8 steps\nEffective Batch Size:   8\nLearning Rate:          2e-4\nLR Scheduler:           Cosine\nWarmup Steps:           30\nOptimizer:              AdamW 8-bit\nPrecision:              FP16\nMax Sequence Length:     2,048 tokens\nSeed:                   42",
+   "doc": "card",
+   "doc_sha": "145d66f096c8a99aad63be19ada1fbc46d3230bd",
+   "scope": "model"
+  },
+  {
+   "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L503-507",
+   "file": "README.md",
+   "lines": [
+    503,
+    507
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "Framework:              Unsloth (2x faster training)\nGPU:                    NVIDIA Tesla T4 (Kaggle)\nTraining Time:          ~2-3 hours\nVRAM Usage:             ~14 GB\nQuantization:           4-bit (QLoRA) during training",
+   "doc": "card",
+   "doc_sha": "145d66f096c8a99aad63be19ada1fbc46d3230bd",
+   "scope": "model"
+  },
+  {
+   "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L515-542",
+   "file": "README.md",
+   "lines": [
+    515,
+    542
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "┌─────────────────────────────────────────────────┐\n│              Dolphin3-Cyber-8B                   │\n├─────────────────────────────────────────────────┤\n│                                                  │\n│  ┌───────────────────────────────────────────┐  │\n│  │         Llama 3.1 8B Backbone              │  │\n│  │  ┌─────────────────────────────────────┐  │  │\n│  │  │  32 Transformer Layers               │  │  │\n│  │  │  ┌────────────────────────────────┐  │  │  │\n│  │  │  │  Multi-Head Attention (GQA)    │  │  │  │\n│  │  │  │  Q: 32 heads  K/V: 8 heads     │  │  │  │\n│  │  │  │  + LoRA adapters (r=16)        │  │  │  │\n│  │  │  └────────────────────────────────┘  │  │  │\n│  │  │  ┌────────────────────────────────┐  │  │  │\n│  │  │  │  SwiGLU FFN                    │  │  │  │\n│  │  │  │  gate_proj + up_proj + down_proj│  │  │  │\n│  │  │  │  + LoRA adapters (r=16)        │  │  │  │\n│  │  │  └────────────────────────────────┘  │  │  │\n│  │  │  RMSNorm + RoPE Embeddings          │  │  │\n│  │  └─────────────────────────────────────┘  │  │\n│  └───────────────────────────────────────────┘  │\n│                                                  │\n│  Tokenizer: Llama 3.1 (128K vocab, BPE)         │\n│  Context:   2,048 tokens (fine-tuned)            │\n│  Abliteration: Refusal vectors removed           │\n│  Cybersecurity: LoRA fine-tuned on security data │\n│                                                  │\n└─────────────────────────────────────────────────┘",
+   "doc": "card",
+   "doc_sha": "145d66f096c8a99aad63be19ada1fbc46d3230bd",
+   "scope": "model"
+  },
+  {
+   "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L552-557",
+   "file": "README.md",
+   "lines": [
+    552,
+    557
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "prompt-format",
+   "text": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a cybersecurity expert assistant.<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nHow does a SQL injection attack work?<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n",
+   "doc": "card",
+   "doc_sha": "145d66f096c8a99aad63be19ada1fbc46d3230bd",
+   "scope": "model"
+  },
+  {
+   "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L562-571",
+   "file": "README.md",
+   "lines": [
+    562,
+    571
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "prompt-format",
+   "text": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a cybersecurity expert.<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nWhat is XSS?<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\nCross-Site Scripting (XSS) is...<|eot_id|><|start_header_id|>user<|end_header_id|>\n\nShow me an example.<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n",
+   "doc": "card",
+   "doc_sha": "145d66f096c8a99aad63be19ada1fbc46d3230bd",
+   "scope": "model"
+  },
+  {
+   "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L576-583",
+   "file": "README.md",
+   "lines": [
+    576,
+    583
+   ],
+   "lang": "json",
+   "tool": "json",
+   "kind": "config",
+   "text": "{\n  \"temperature\": 0.7,\n  \"top_p\": 0.9,\n  \"top_k\": 40,\n  \"max_tokens\": 512,\n  \"repeat_penalty\": 1.1,\n  \"stop\": [\"<|eot_id|>\"]\n}",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--temp",
+      "value": "0.7",
+      "from": "temperature: 0.7"
+     },
+     {
+      "flag": "--top-p",
+      "value": "0.9",
+      "from": "top_p: 0.9"
+     },
+     {
+      "flag": "--top-k",
+      "value": "40",
+      "from": "top_k: 40"
+     },
+     {
+      "flag": "-n",
+      "value": "512",
+      "from": "max_tokens: 512"
+     },
+     {
+      "flag": "--repeat-penalty",
+      "value": "1.1",
+      "from": "repeat_penalty: 1.1"
+     },
+     {
+      "flag": "@stop",
+      "value": "[\"<|eot_id|>\"]",
+      "from": "stop: [\"<|eot_id|>\"]"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "card",
+   "doc_sha": "145d66f096c8a99aad63be19ada1fbc46d3230bd",
+   "scope": "model"
+  }
+ ],
+ "card_notes": [
+  {
+   "text": "- 🐬 **Dolphin3 Chat Format** — Natural conversational interface with the Llama 3.1 chat template for multi-turn security discussions.",
+   "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L124"
+  },
+  {
+   "text": "> 📏 **RAM estimates** include model size + KV cache for 2048 context length.",
+   "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L146"
+  },
+  {
+   "text": "3. Configure context length to 2048",
+   "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L339"
+  },
+  {
+   "text": "This model uses the **Llama 3.1 chat template**:",
+   "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L549"
+  },
+  {
+   "text": "2. **Context Length** — Fine-tuned with 2,048 token context. Performance may degrade with very long inputs, though the base model supports up to 128K.",
+   "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L665"
+  }
+ ],
+ "chat_template": {
+  "gguf_sha256": "58c1a1f04baa7adaeaba1f90267c3d57d9396f0c1f0129bdde9e76d3c6784af7",
+  "gguf_chars": 291,
+  "use": "gguf"
+ },
+ "stop": {
+  "eos_token_id": 128256,
+  "eos_token_id_source": "GGUF"
+ },
+ "rope": {
+  "rope.freq_base": 500000.0,
+  "config": {
+   "factor": 8.0,
+   "high_freq_factor": 4.0,
+   "low_freq_factor": 1.0,
+   "original_max_position_embeddings": 8192,
+   "rope_type": "llama3"
+  }
+ },
+ "aux": null,
+ "gguf": {
+  "general.architecture": "llama",
+  "general.name": "Unsloth_Gguf_K4W9Cplt",
+  "general.file_type": 10,
+  "general.quantization_version": 2,
+  "_gguf_version": 3
+ },
+ "snapshot": {
+  "path": "RavichandranJ--Dolphin3-Cyber-8B-GGUF/145d66f096c8a99aad63be19ada1fbc46d3230bd",
+  "fetched_bytes": 31177,
+  "errors": null,
+  "gated": false
+ },
+ "base_snapshot": null,
+ "repo_files": {
+  ".gitattributes": {
+   "size": 2419,
+   "sha256": null,
+   "blob": "ff9653e320dfbe94ca0f6d27f61e65e9cbfc95bc",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "Dolphin3.0-Llama3.1-8B-abliterated.F16.gguf": {
+   "size": 16068924352,
+   "sha256": "fa9c07ec89a8ed2f8a4ace6bda4f50349be3650640766cc312239cf3a1549dc6",
+   "blob": "3eb6d104a7701772a3cc2b1b15b2e32206f87913",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (16068 MB)"
+  },
+  "Dolphin3.0-Llama3.1-8B-abliterated.Q2_K.gguf": {
+   "size": 3179141248,
+   "sha256": "8944d35bdd613fe9279198b76eebeb9ab79c09a2bba526988ee3e3297862ea91",
+   "blob": "1380a52782e85e014b786b01f24e51d7ade50485",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (3179 MB)"
+  },
+  "Dolphin3.0-Llama3.1-8B-abliterated.Q3_K_M.gguf": {
+   "size": 4018928576,
+   "sha256": "027677f39c2ed02d132f7394a6ce042a9cf2933955251d6c9e698cf6da690bef",
+   "blob": "e33902cb906766fda113e7f440954af4d7df65ad",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (4018 MB)"
+  },
+  "Dolphin3.0-Llama3.1-8B-abliterated.Q4_0.gguf": {
+   "size": 4661223424,
+   "sha256": "5e74ab7969be512725decdaf3ad554e5315128a466d91d22235328d2c0734887",
+   "blob": "f7ba3d442159af72d50249472a933f64178636c4",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (4661 MB)"
+  },
+  "Dolphin3.0-Llama3.1-8B-abliterated.Q4_K_M.gguf": {
+   "size": 4920745984,
+   "sha256": "73da18db1557e19e8ec2d6c1e8ef08e182c735d72f3bd526f6940f4fec96c1cb",
+   "blob": "15afb1954c89496f8dfcfb3dd81fd1a666021aee",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (4920 MB)"
+  },
+  "Dolphin3.0-Llama3.1-8B-abliterated.Q4_K_S.gguf": {
+   "size": 4692680704,
+   "sha256": "87478ae177009d8b14b6d1eac63aae9df936c1161f835b9d50598d5c62133fbd",
+   "blob": "4d86d831a7631eba63ea01b0fc31ba0fb4c8a6b8",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (4692 MB)"
+  },
+  "Dolphin3.0-Llama3.1-8B-abliterated.Q5_0.gguf": {
+   "size": 5599306752,
+   "sha256": "68a3f20148661255f5638b57e9f92375c497c6dcb4f5cbe086626e2170038139",
+   "blob": "c44c31d0f7bd2984be1fcaae56305b001431af19",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (5599 MB)"
+  },
+  "Dolphin3.0-Llama3.1-8B-abliterated.Q5_K_M.gguf": {
+   "size": 5733000192,
+   "sha256": "45789d22175a1c631c2351fb068f31627120902d123ce7fb4f74b5a834a36567",
+   "blob": "6484e9ba955957a25811a494949885f81f0b5a5a",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (5733 MB)"
+  },
+  "Dolphin3.0-Llama3.1-8B-abliterated.Q5_K_S.gguf": {
+   "size": 5599306752,
+   "sha256": "5aae2df70d69583375d3fd0ffe3dcbb82072d63c96017b5093f8167ef89f9c86",
+   "blob": "12a61277c32ca20a6ef7f7c9226a7bbf6d29b759",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (5599 MB)"
+  },
+  "Dolphin3.0-Llama3.1-8B-abliterated.Q6_K.gguf": {
+   "size": 6596020288,
+   "sha256": "d66c496206173f790c2ac80cddff91da185645ff2d390cd37f3fbbc7b81e2992",
+   "blob": "c7c4b84a11a047cb568b755fa4ddcec82573d6e2",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (6596 MB)"
+  },
+  "Dolphin3.0-Llama3.1-8B-abliterated.Q8_0.gguf": {
+   "size": 8540788672,
+   "sha256": "fe10b8371a33a0a31dd1f9597dcd6f8c76fd47cd38411a0fe7c9e45ea29b484e",
+   "blob": "20ceb90771a204159214d85a7a4c316972083259",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (8540 MB)"
+  },
+  "README.md": {
+   "size": 27753,
+   "sha256": null,
+   "blob": "93814125205e90e056ff095efa86f690099942b8",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "config.json": {
+   "size": 1005,
+   "sha256": null,
+   "blob": "44d2600aafa62cd86be5e9811dd8810f1d77826b",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  }
+ },
+ "base_repo_files": null,
+ "found_in": [
+  "add-model.sh --fetch --damp-run"
+ ],
+ "match": null,
+ "local_check": null,
+ "unknown": [
+  "card_defaults: ambiguous: 2 recommended sets and no single default; set card_set"
+ ],
+ "warnings": [
+  "base model huihui-ai/Dolphin3.0-Llama3.1-8B-abliterated: https://huggingface.co/api/models/huihui-ai/Dolphin3.0-Llama3.1-8B-abliterated/revision/main: HTTP 401 unauthorized (gated or private; set HF_TOKEN) {\"error\":\"Invalid username or password.\"}"
+ ],
+ "updated": "2026-10-27",
+ "by": "scripts/model_db.py",
+ "weights": "absent (damp)",
+ "gguf_meta": {
+  "general.architecture": "llama",
+  "general.type": "model",
+  "general.name": "Unsloth_Gguf_K4W9Cplt",
+  "general.quantized_by": "Unsloth",
+  "general.size_label": "8.0B",
+  "general.repo_url": "https://huggingface.co/unsloth",
+  "general.tags": [
+   "unsloth",
+   "llama.cpp"
+  ],
+  "llama.block_count": 32,
+  "llama.context_length": 131072,
+  "llama.embedding_length": 4096,
+  "llama.feed_forward_length": 14336,
+  "llama.attention.head_count": 32,
+  "llama.attention.head_count_kv": 8,
+  "llama.rope.freq_base": 500000.0,
+  "llama.attention.layer_norm_rms_epsilon": 9.999999747378752e-06,
+  "llama.attention.key_length": 128,
+  "llama.attention.value_length": 128,
+  "llama.vocab_size": 128258,
+  "llama.rope.dimension_count": 128,
+  "tokenizer.ggml.model": "gpt2",
+  "tokenizer.ggml.pre": "llama-bpe",
+  "tokenizer.ggml.tokens": {
+   "array_len": 128258
+  },
+  "tokenizer.ggml.token_type": {
+   "array_len": 128258
+  },
+  "tokenizer.ggml.merges": {
+   "array_len": 280147
+  },
+  "tokenizer.ggml.bos_token_id": 128000,
+  "tokenizer.ggml.eos_token_id": 128256,
+  "tokenizer.ggml.padding_token_id": 128001,
+  "tokenizer.ggml.add_bos_token": true,
+  "tokenizer.ggml.add_sep_token": false,
+  "tokenizer.chat_template": {
+   "sha256": "58c1a1f04baa7adaeaba1f90267c3d57d9396f0c1f0129bdde9e76d3c6784af7",
+   "chars": 291
+  },
+  "general.quantization_version": 2,
+  "general.file_type": 10,
+  "_gguf_version": 3,
+  "_n_tensors": 292
+ },
+ "base_chain": [
+  {
+   "repo": "huihui-ai/Dolphin3.0-Llama3.1-8B-abliterated",
+   "via": "card base_model",
+   "error": "https://huggingface.co/api/models/huihui-ai/Dolphin3.0-Llama3.1-8B-abliterated/revision/main: HTTP 401 unauthorized (gated or private; set HF_TOKEN) {\"error\":\"Invalid username or password.\"}"
+  }
+ ],
+ "github": null,
+ "github_dropped": [
+  {
+   "repo": "unslothai/unsloth",
+   "why": "inference/training tool repo"
+  }
+ ],
+ "descriptor": {
+  "repo_id": {
+   "effective": "RavichandranJ/Dolphin3-Cyber-8B-GGUF",
+   "source": "HF API id"
+  },
+  "revision": {
+   "effective": "145d66f096c8a99aad63be19ada1fbc46d3230bd",
+   "source": "pinned (manifest / database)"
+  },
+  "file": {
+   "effective": "Dolphin3.0-Llama3.1-8B-abliterated.Q2_K.gguf",
+   "source": "HF API siblings"
+  },
+  "bytes": {
+   "effective": 3179141248,
+   "source": "HF API LFS size"
+  },
+  "sha256": {
+   "effective": "8944d35bdd613fe9279198b76eebeb9ab79c09a2bba526988ee3e3297862ea91",
+   "source": "HF API LFS oid"
+  },
+  "quant": {
+   "effective": "Q2_K",
+   "source": "file name",
+   "values": [
+    {
+     "value": "Q2_K",
+     "source": "file name"
+    },
+    {
+     "value": "Q2_K",
+     "source": "GGUF general.file_type"
+    }
+   ]
+  },
+  "license": {
+   "effective": "llama3.1",
+   "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF card license"
+  },
+  "base_model_chain": {
+   "effective": "huihui-ai/Dolphin3.0-Llama3.1-8B-abliterated",
+   "source": "card base_model"
+  },
+  "architecture": {
+   "effective": "llama",
+   "source": "GGUF general.architecture",
+   "values": [
+    {
+     "value": "llama",
+     "source": "GGUF general.architecture"
+    },
+    {
+     "value": "llama",
+     "source": "HF API gguf.architecture"
+    }
+   ]
+  },
+  "hf_architectures": {
+   "effective": [
+    "LlamaForCausalLM"
+   ],
+   "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF config.json architectures"
+  },
+  "hf_model_type": {
+   "effective": "llama",
+   "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF config.json model_type"
+  },
+  "parameters": {
+   "effective": 8030277696,
+   "source": "HF API gguf.total (RavichandranJ/Dolphin3-Cyber-8B-GGUF)"
+  },
+  "size_label": {
+   "effective": "8.0B",
+   "source": "GGUF general.size_label"
+  },
+  "ctx_statements": {
+   "effective": {
+    "value": 2048,
+    "quote": "3. Configure context length to 2048"
+   },
+   "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L339",
+   "values": [
+    {
+     "value": {
+      "value": 2048,
+      "quote": "3. Configure context length to 2048"
+     },
+     "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L339"
+    },
+    {
+     "value": {
+      "value": 2048,
+      "quote": "Max Sequence Length:     2,048 tokens"
+     },
+     "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L497"
+    },
+    {
+     "value": {
+      "value": 2048,
+      "quote": "│  Context:   2,048 tokens (fine-tuned)            │"
+     },
+     "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L538"
+    },
+    {
+     "value": {
+      "value": 2048,
+      "quote": "2. **Context Length** — Fine-tuned with 2,048 token context. Performance may degrade with very long inputs, though the base model supports up to 128K."
+     },
+     "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L665"
+    },
+    {
+     "value": {
+      "value": 2048,
+      "quote": "2. **Context Length** — Fine-tuned with 2,048 token context. Performance may degrade with very long inputs, though the base model supports up to 128K."
+     },
+     "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L665"
+    }
+   ]
+  },
+  "ctx": {
+   "effective": 131072,
+   "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF config.json max_position_embeddings",
+   "values": [
+    {
+     "value": 131072,
+     "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF config.json max_position_embeddings"
+    },
+    {
+     "value": 131072,
+     "source": "GGUF llama.context_length"
+    }
+   ],
+   "precedence": "card statement > config.json > GGUF header > GitHub README"
+  },
+  "pipeline_tag": {
+   "effective": "text-generation",
+   "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF HF API pipeline_tag"
+  },
+  "languages": {
+   "effective": [
+    "en"
+   ],
+   "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF card language"
+  }
+ },
+ "required_params": {
+  "kind": "chat",
+  "native_ctx": 131072,
+  "native_ctx_source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF config.json max_position_embeddings",
+  "yarn": null,
+  "yarn_source": null,
+  "items": [
+   {
+    "class": "REQUIRED",
+    "flag": "--jinja",
+    "value": null,
+    "source": "GGUF tokenizer.chat_template (58c1a1f04baa)",
+    "why_required": "messages, tool calls and thinking are formatted by the model's chat template; without --jinja llama-server falls back to a built-in approximation"
+   },
+   {
+    "class": "REQUIRED",
+    "flag": "--chat-template",
+    "value": "llama3",
+    "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L209-234",
+    "why_required": "the card's llama-cli command sets it"
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--predict",
+    "value": "512",
+    "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L209-234",
+    "why_required": "performance / tool option in the card's command"
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--gpu-layers",
+    "value": "35",
+    "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L209-234",
+    "why_required": "performance / tool option in the card's command"
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--temp",
+    "value": "0.7",
+    "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L209-234",
+    "why_required": "sampling in the card's llama-cli command",
+    "also": [
+     "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L178-194",
+     "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L248-281",
+     "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L286-316",
+     "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L576-583"
+    ]
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--top-p",
+    "value": "0.9",
+    "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L209-234",
+    "why_required": "sampling in the card's llama-cli command",
+    "also": [
+     "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L178-194",
+     "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L248-281",
+     "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L576-583"
+    ]
+   },
+   {
+    "class": "REQUIRED",
+    "flag": "@stop",
+    "value": "<|eot_id|>",
+    "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L178-194",
+    "why_required": "client/server stop strings from the card's example",
+    "translated": true,
+    "client": true
+   },
+   {
+    "class": "REQUIRED",
+    "flag": "@stop",
+    "value": "[\"<|eot_id|>\"]",
+    "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L576-583",
+    "why_required": "client/server stop strings from the card's example",
+    "translated": true,
+    "client": true
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--top-k",
+    "value": "40",
+    "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L576-583",
+    "why_required": "translated from the card's example (top_k: 40); the card's sampling set does not name it",
+    "translated": true
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--repeat-penalty",
+    "value": "1.1",
+    "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF README.md:L576-583",
+    "why_required": "translated from the card's example (repeat_penalty: 1.1); the card's sampling set does not name it",
+    "translated": true
+   }
+  ]
+ },
+ "blockers": null,
+ "params_problems": null,
+ "params_build": "b11374",
+ "native_ctx": 131072,
+ "native_ctx_source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF config.json max_position_embeddings",
+ "license_info": {
+  "id": "llama3.1",
+  "id_source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF card front matter license",
+  "name": null,
+  "summary": "llama3.1",
+  "summary_source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF card license",
+  "link": null,
+  "link_source": null,
+  "texts": null,
+  "obligations": null,
+  "gated": false,
+  "unknown": false,
+  "seen": [
+   {
+    "effective": "llama3.1",
+    "source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF card license"
+   }
+  ]
+ },
+ "repo_bytes": 69610098121
+}

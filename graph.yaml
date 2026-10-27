@@ -432,6 +432,16 @@ models:
     db: dealignai--Nanbeige4.3-33B-UNCENSORED-GGUF--Nanbeige4.3-33B-UNCENSORED-Q4_K_M
     notes: "Prize on angel (FreeBSD). damp-run on box 2026-10-26; weights stay on angel. Dual coder+chat via card_set. Needs measured SSD swap/spill before activate (vvram-ssd/LAYER.md)."
 
+
+  dolphin3-cyber-8b-q2k:
+    gguf: ~/.local/share/gguf/models/pentest/Dolphin3.0-Llama3.1-8B-abliterated.Q2_K.gguf
+    sha256: unmeasured          # measure after: scripts/add-model.sh --fetch RavichandranJ/Dolphin3-Cyber-8B-GGUF --quant Q2_K --role pentest
+    arch: llama
+    trained_ctx: 131072         # Llama-3.1-8B family; node ctx stays RAM-bounded
+    role: pentest
+    db: RavichandranJ--Dolphin3-Cyber-8B-GGUF--Dolphin3.0-Llama3.1-8B-abliterated.Q2_K
+    notes: "Official pentest-role weight (docs/pentest-models.md). Q2_K ~3.0 GiB. Fetch before activating miryam-pentest."
+
 nodes:
 
   qodesh-gpu-decision:
@@ -665,6 +675,29 @@ nodes:
       SSD/VVRAM: same mmap + spill_path + swap_budget_mib as angel-coder (vvram-ssd/LAYER.md).
 
 
+
+  miryam-pentest:
+    model: dolphin3-cyber-8b-q2k
+    host: miryam
+    runtime: llama-b11669
+    ctx: 8192
+    parallel: 1
+    kv_type: q8_0
+    flash_attn: true
+    threads: 2
+    offload: {backend: cpu, ngl: 0, split: none, main_gpu: 0}
+    bind: 127.0.0.1
+    port: 18202
+    cache_ram_mib: 1024
+    status: planned              # flip active after GGUF present + sha measured
+    card_set: "5. Recommended settings"
+    override_reasons:
+      ctx: "8B Q2_K advisory node; 8192 keeps KV small beside coder:9941 on miryam"
+      card_set: "card has two sampling sets and no soft default; pick Recommended settings for authorized-fleet advisory"
+    note: >-
+      Authorized-fleet pentest model server only. Start via: sh with-fleet.sh --role fleet --operator-start
+      (or menu agents.pentest-start). tools.allow stays empty until the operator expands it explicitly.
+
 speculative:
   coder-draft:                   # #91: draft-model speculation (same qwen35 vocab; validator checks)
     experimental: true
@@ -695,6 +728,26 @@ speculative:
     spec_type: ngram-simple
 
 
+
+pentests:
+  fleet:
+    name: fleet
+    node: miryam-pentest
+    agent: pentest-ops
+    scope:
+      allow: [miryam, angel, qodesh, shalom, godslove, phone7, phone8, box, centos10-bigram]
+      deny: []
+    tools:
+      allow: []                 # double-disable with launch_test_only; expand only with operator edit
+    report_to: familia-issues
+    requires_operator_confirm: true
+    launch_test_only: true
+    status: planned             # flip active after weights + measured sha; keep launch_test_only
+    notes: >-
+      Official authorized-fleet pentest entry. Automation: sh with-fleet.sh --role fleet --launch-test.
+      Operator model start (no live scans): sh with-fleet.sh --role fleet --operator-start
+      after FAMILIA_OPERATOR_CONFIRM=yes. Never enables network/exec tools while tools.allow is empty.
+
 gateways:
   roomz:
     kind: green-roomz
@@ -704,6 +757,7 @@ gateways:
 
 aliases:
   coder: {node: coder, gateway: roomz}
+  pentest: {node: miryam-pentest, gateway: roomz}
   general: {node: coder, gateway: roomz}
   embed: {node: embed, gateway: roomz}
 
@@ -726,6 +780,16 @@ agents:
     aliases:
       main: coder
       auxiliary: coder
+
+  pentest-ops:
+    kind: hermes-agent
+    host: miryam
+    prompt_profile: lean
+    min_ctx: 8192
+    context_length: 8192
+    aliases:
+      main: pentest
+      auxiliary: pentest
 
 fleets:
   green-agentz:

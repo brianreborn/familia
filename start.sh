@@ -11,9 +11,9 @@ Usage:
     --yes        accept the license review without a prompt (summary still printed)
   sh start.sh --bootstrap [backend args...]
     Explicitly start the legacy standalone code-bootstraps-llama.cpp UI/router.
-    DETACH_MODE=foreground|nohup|tmux|screen|screen-attached picks how it runs.
-    screen-attached uses the named screen session familia-server with 10000 scrollback lines.
-Example: DETACH_MODE=screen-attached sh start.sh --host miryam
+    DETACH_MODE=screen-attached|screen|tmux|nohup|foreground picks how it runs.
+    Default is screen-attached: named session familia-server, 10000 scrollback, reattach with screen -r.
+Example: DETACH_MODE=foreground sh start.sh --host miryam
 USAGE
   exit 0 ;; esac
 
@@ -29,7 +29,7 @@ if [ "${1:-}" != "--bootstrap" ]; then
   case "${1:-}" in
     --dry-run|-n) exec python3 "$GRAPH_START" "$@" ;;
   esac
-  DETACH_MODE="${DETACH_MODE:-foreground}"
+  DETACH_MODE="${DETACH_MODE:-screen-attached}"
   LOG_FILE="${LOG_FILE:-$ROOT/.cache/graph.log}"
   mkdir -p "$(dirname "$LOG_FILE")"
   _run_graph_detached() {
@@ -59,8 +59,8 @@ if [ "${1:-}" != "--bootstrap" ]; then
         say "launching attached graph topology in screen session familia-server (10000 lines of scrollback; detach with Ctrl-A then D; reattach with screen -r familia-server)"
         exec screen -h 10000 -S familia-server python3 "$GRAPH_START" "$@"
       fi
-      say "screen-attached requested but screen is not installed; install screen or choose DETACH_MODE=foreground"
-      exit 1
+      say "screen-attached default but screen is not installed; falling back to foreground (install screen for reattachable sessions)"
+      exec python3 "$GRAPH_START" "$@"
       ;;
     nohup)
       say "launching graph topology detached with nohup (logging to $LOG_FILE)"
@@ -97,7 +97,7 @@ fi
 if [ "$DRY" = 1 ]; then
   say "[dry-run] would check licenses (python3 scripts/licenses.py gate), then sync the pinned parts (scripts/sync_pins.py) and run the backend start.sh $*"
   python3 "$ROOT/scripts/sync_pins.py" --dry-run || true
-  say "[dry-run] DETACH_MODE=${DETACH_MODE:-foreground}, log ${LOG_FILE:-$ROOT/.cache/server.log}"
+  say "[dry-run] DETACH_MODE=${DETACH_MODE:-screen-attached}, log ${LOG_FILE:-$ROOT/.cache/server.log}"
   exit 0
 fi
 if command -v python3 >/dev/null 2>&1; then
@@ -126,9 +126,9 @@ if [ ! -f "$BACKEND_START" ]; then
 fi
 
 
-# DETACH_MODE support. Foreground is the default on every platform; callers opt in
-# to detaching so that Android does not silently move the server into the background.
-DETACH_MODE="${DETACH_MODE:-foreground}"
+# DETACH_MODE support. screen-attached is the default (attached + reattachable via
+# screen -r familia-server). Override with DETACH_MODE=foreground|nohup|tmux|screen.
+DETACH_MODE="${DETACH_MODE:-screen-attached}"
 
 # One detach, one log (code-bootstraps-llama.cpp #18 / familia start):
 # when we detach here, the backend must run in the foreground and share LOG_FILE.
@@ -169,8 +169,8 @@ case "$DETACH_MODE" in
       say "launching attached inside screen session familia-server (10000 lines of scrollback; detach with Ctrl-A then D; reattach with screen -r familia-server)"
       exec screen -h 10000 -S familia-server env FAMILIA_DETACHED=1 DETACH_MODE=foreground LOG_FILE="$LOG_FILE" sh "$BACKEND_START" "$@"
     else
-      say "screen-attached requested but screen is not installed; install screen or choose DETACH_MODE=foreground"
-      exit 1
+      say "screen-attached default but screen is not installed; falling back to foreground (install screen for reattachable sessions)"
+      exec sh "$BACKEND_START" "$@"
     fi
     ;;
   nohup)

@@ -59,7 +59,7 @@ The former standalone code-bootstraps UI/router is still available explicitly as
 
 ### Backgrounding and detaching
 
-`start.sh` reads `DETACH_MODE` from the environment (it is not a panel setting):
+`start.sh` reads `DETACH_MODE` from the environment (default `screen-attached`; also a panel setting in the bootstrap UI):
 
 ```sh
 DETACH_MODE=screen-attached ./start.sh
