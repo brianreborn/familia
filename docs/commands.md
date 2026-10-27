@@ -157,7 +157,7 @@ Default front door is the gum home (`./familia`). This catalog is **fallback onl
 |---|---|---|---|
 | `adv.args` | validate_graph: the llama-server arguments for one node | `python3 scripts/validate_graph.py --graph graph.yaml --args <NODE>` | `python scripts\validate_graph.py --graph graph.yaml --args <NODE>` |
 | `adv.verify` | validate_graph: also verify model sha256 and runtimes (slow) | `python3 scripts/validate_graph.py --graph graph.yaml --verify-sha --check-runtimes` | `python scripts\validate_graph.py --graph graph.yaml --verify-sha --check-runtimes` |
-| `adv.graph-edit` | modify_graph: assign a model to a node (rewrites graph.yaml) | `python3 scripts/modify_graph.py --assign-model <ASSIGN>` | `python scripts\modify_graph.py --assign-model <ASSIGN>` |
+| `adv.graph-edit` | modify_graph: assign a models: key to a type-named node | `python3 scripts/modify_graph.py --host angel --assign-model coder=nanbeige43-33b-q4km` | `python scripts\modify_graph.py --host angel --assign-model coder=nanbeige43-33b-q4km` |
 | `adv.db-list` | Model database: list entries | `python3 scripts/model_db.py list` | `python scripts\model_db.py list` |
 | `adv.db-show` | Model database: show one entry | `python3 scripts/model_db.py show <ID>` | `python scripts\model_db.py show <ID>` |
 | `adv.db-damp` | Model database: add a repo without weights (damp) | `python3 scripts/model_db.py damp <REPO>` | `python scripts\model_db.py damp <REPO>` |

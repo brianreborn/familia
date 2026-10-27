@@ -215,3 +215,23 @@ M0 empty llama-ui Server Tools was fixed in `15d67b1` by setting `angel-coder.se
 - **Symptom:** llama-ui Server Tools panel empty; `GET /tools` → 403 `feature_disabled`. `/v1/models` staying `capabilities:["completion"]` is normal and is not the check.
 - **Why:** llama.cpp enables server tools only at process start. Graph YAML does not hot-patch a live or crashed server.
 - **Prevent:** always start via `DETACH_MODE=screen-attached` + `start.sh` / `serve.sh` against **live** `graph.yaml` (not a stale `generated/graph-angel.yaml`). After every restart, confirm `ps` argv contains `--tools` and `GET http://127.0.0.1:<port>/tools` returns 200. Regenerate host graphs after schema changes. Do not hand-build llama-server argv without copying `validate_graph.py --args <node>` output.
+
+## L-node-type. Node type implies capability; placement is host: (2026-10-27)
+
+Early fleet `graph.yaml` used **host-prefixed unique node ids** (`angel-coder`,
+`box-coder`, `miryam-pentest`, `qodesh-smol-cpu`, …). That was a fundamental design
+error: the node **type/role** (coder, chat, embed, decision, pentest) should imply
+what the node has; **placement** is the `host:` field (plus bind/port), not the key.
+
+Schema today still uses a unique-key map, so one fleet file cannot hold two `coder`
+entries. The operator path is **private topologies**:
+`python3 scripts/generate_graph.py HOST` → `generated/graph-HOST.yaml` with
+type-named nodes only (`coder`, `chat`, …) for that host. `start.sh --host HOST`
+prefers that private graph (pass `--fleet` for the transitional fleet file).
+`modify_graph.py --host HOST --assign-model coder=<models-key>` assigns by type
+and syncs the matching fleet key when present.
+
+Do not invent new host-prefixed node names. Prefer `role:` on nodes and private
+graphs. Full fleet reshape (type+host identity without fake unique names) is the
+follow-on schema change.
+

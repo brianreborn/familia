@@ -1,38 +1,39 @@
 #!/usr/bin/env python3
-"""generate_graph.py – Dynamically build a per‑host graph.
+"""generate_graph.py – Build a per-host graph (private topology by default).
 
 Usage:
-  ./scripts/generate_graph.py <host> [--set <node>=<model_path> ...]
+  ./scripts/generate_graph.py <host> [--set <node>=<model_key> ...]
+  ./scripts/generate_graph.py <host> --fleet-merge   # legacy: full fleet dump + overrides
 
-The script reads the canonical ``graph.yaml`` at the repository root,
-applies per‑host overrides (if a ``config/host-overrides.yaml`` file
-exists) and any ``--set`` arguments supplied on the command line, then
-writes the resulting graph to ``generated/graph-<host>.yaml``.
+Default (--private): only nodes with host=<host>, renamed to type/role keys
+(coder, chat, embed, …). Placement stays on node.host. This is the design law:
+type implies capability; no angel-coder-style fake unique names in the operator
+graph. Fleet graph.yaml may still use transitional host-prefixed keys until the
+fleet map is reshaped.
 
-Check the result with ``scripts/validate_graph.py --graph generated/graph-<host>.yaml``.
-The original ``graph.yaml`` is not edited.
-
-Example:
-  ./scripts/generate_graph.py miryam
+Writes generated/graph-<host>.yaml (comments from fleet graph are not preserved;
+edit graph.yaml then regenerate).
 """
 import argparse
 import pathlib
 import sys
 import yaml
 
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+from node_role import private_topology, resolve_model_assign  # noqa: E402
+
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 BASE_GRAPH = REPO_ROOT / "graph.yaml"
 OVERrides_FILE = REPO_ROOT / "config" / "host-overrides.yaml"
 OUTPUT_DIR = REPO_ROOT / "generated"
 
+
 def load_yaml(path: pathlib.Path):
     with path.open("r", encoding="utf-8") as f:
         return yaml.safe_load(f) or {}
 
+
 def merge_dict(base: dict, overrides: dict):
-    """Recursively merge ``overrides`` into ``base``.
-    Lists are replaced entirely; scalar values are overwritten.
-    """
     for k, v in overrides.items():
         if isinstance(v, dict) and isinstance(base.get(k), dict):
             merge_dict(base[k], v)
@@ -40,25 +41,50 @@ def merge_dict(base: dict, overrides: dict):
             base[k] = v
     return base
 
-def parse_set_args(set_args):
-    """Parse ``node=model_path`` strings into a nested dict.
-    Example: "coder=~/models/Qwen3.5-2B.gguf" → {"nodes": {"coder": {"model": "~/models/..."}}}
-    """
+
+def parse_set_args(set_args, graph):
+    """Parse node=model_key (models: keys only)."""
     result = {}
     for item in set_args:
         if "=" not in item:
             raise ValueError(f"Invalid --set argument: {item!r}")
-        node, model_path = item.split("=", 1)
-        # Build nested dict structure
-        result.setdefault("nodes", {})[node] = {"model": model_path}
+        node, model = item.split("=", 1)
+        model = resolve_model_assign(graph, model)
+        result.setdefault("nodes", {})[node] = {"model": model}
     return result
 
+
 def main():
-    parser = argparse.ArgumentParser(description="Write generated/graph-HOST.yaml: graph.yaml plus that host's overrides.",
-                                     epilog="Example: ./scripts/generate_graph.py miryam --set coder=~/models/Qwen3.5-2B-Q4_K_M.gguf")
+    parser = argparse.ArgumentParser(
+        description="Write generated/graph-HOST.yaml (private type-named topology by default).",
+        epilog="Example: ./scripts/generate_graph.py angel",
+    )
     parser.add_argument("host", help="Name of the host defined in the graph's hosts section")
-    parser.add_argument("--set", dest="set_args", action="append", default=[], help="Override node model: <node>=<model_path>")
+    parser.add_argument(
+        "--set",
+        dest="set_args",
+        action="append",
+        default=[],
+        help="Override node model on the output graph: <node>=<models-key>",
+    )
+    parser.add_argument(
+        "--fleet-merge",
+        action="store_true",
+        help="Legacy: copy full fleet graph + overrides (keeps host-prefixed keys)",
+    )
+    parser.add_argument(
+        "--private",
+        action="store_true",
+        default=True,
+        help="Private topology (default): type-named nodes for this host only",
+    )
+    parser.add_argument(
+        "--no-private",
+        action="store_true",
+        help="Disable private topology (same as --fleet-merge)",
+    )
     args = parser.parse_args()
+    private = not (args.fleet_merge or args.no_private)
 
     hosts = (load_yaml(BASE_GRAPH).get("hosts") or {}) if BASE_GRAPH.is_file() else {}
     if hosts and args.host not in hosts:
@@ -67,23 +93,53 @@ def main():
         sys.exit(f"Base graph not found at {BASE_GRAPH}")
 
     base = load_yaml(BASE_GRAPH)
-    # Apply host‑specific overrides if present
     if OVERrides_FILE.is_file():
         all_overrides = load_yaml(OVERrides_FILE)
         host_overrides = all_overrides.get(args.host, {})
         if host_overrides:
             base = merge_dict(base, host_overrides)
 
-    # Apply command‑line overrides
+    rename = {}
+    if private:
+        try:
+            from node_role import infer_role, host_prefixes  # noqa: F401
+            # Capture rename for the banner
+            local = {
+                n: d for n, d in (base.get("nodes") or {}).items()
+                if isinstance(d, dict) and d.get("host") == args.host
+            }
+            for old, node in local.items():
+                rename[old] = infer_role(old, node, base)
+            base = private_topology(base, args.host)
+        except ValueError as e:
+            sys.exit(f"generate_graph: {e}")
+
     if args.set_args:
-        cli_overrides = parse_set_args(args.set_args)
+        try:
+            cli_overrides = parse_set_args(args.set_args, base)
+        except ValueError as e:
+            sys.exit(f"generate_graph: {e}")
         base = merge_dict(base, cli_overrides)
 
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     out_path = OUTPUT_DIR / f"graph-{args.host}.yaml"
+    # Never persist internal bookkeeping keys
+    base.pop("_familia_private", None)
     with out_path.open("w", encoding="utf-8") as f:
+        f.write("# Generated by scripts/generate_graph.py — do not hand-edit.\n")
+        f.write(f"# host: {args.host}  private: {str(private).lower()}\n")
+        if rename:
+            f.write("# renamed: " + ", ".join(f"{a}->{b}" for a, b in sorted(rename.items())) + "\n")
+        f.write("# Source of truth: graph.yaml (regenerate after edits).\n")
         yaml.safe_dump(base, f, sort_keys=False)
-    print(f"Generated graph for host '{args.host}' → {out_path}")
+    mode = "private type-named" if private else "fleet-merge"
+    print(f"Generated {mode} graph for host '{args.host}' → {out_path}")
+    if rename:
+        print("Renamed:", ", ".join(f"{a}→{b}" for a, b in sorted(rename.items())))
+    print("Nodes:", ", ".join(f"{n} (model={(base.get('nodes') or {}).get(n, {}).get('model')}, "
+                              f"status={(base.get('nodes') or {}).get(n, {}).get('status')})"
+                              for n in (base.get("nodes") or {})))
+
 
 if __name__ == "__main__":
     main()
