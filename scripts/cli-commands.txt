@@ -10,7 +10,11 @@ configure|setup.configure
 sync|raw|PY scripts/sync_pins.py||python scripts\sync_pins.py|bring every pinned part to its pin: [--dry-run] [--check], or update familia and sync a branch: --branch BRANCH
 update|raw|PY scripts/sync_pins.py --update||python scripts\sync_pins.py --update|git pull --ff-only familia itself, then sync the pinned parts: [--dry-run] [--branch BRANCH]
 settings|setup.settings
-panel|setup.panel
+# panel GUI retired (Hermes Wiring delete lane); terminal settings only
+panel|setup.settings
+first-time|setup.first-time
+sync-goal|setup.sync-goal
+remove-path|setup.remove-path
 install|setup.install-run
 install preview|setup.install
 uninstall preview|adv.uninstall

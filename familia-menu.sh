@@ -76,8 +76,9 @@ groups() { printf '%s\n' "$ITEMS" | awk -F'|' '!seen[$2]++ {print $2}'; }
 
 group_desc() {
   case "$1" in
-    "Set up") echo "get the parts, settings, licenses, install" ;;
+    "Set up") echo "first-time, update, licenses, settings" ;;
     "Skills") echo "pick the skills your agents use (green-zkillz)" ;;
+    "Reach tools (Agent-Reach)") echo "opt agents into Agent-Reach web tools" ;;
     "Models") echo "add models, check the graph, see launch parameters" ;;
     "Agents (hermes)") echo "run hermes on one model or the whole graph" ;;
     "Self-improving harness (Harness2)") echo "opt-in; attach to any agent, review every change" ;;
@@ -85,15 +86,15 @@ group_desc() {
     "Hosts") echo "start servers, measure machines, phones" ;;
     "Advanced: models & graph") echo "model database, launch arguments, graph edits, scale-down" ;;
     "Advanced: agents") echo "skill folders, hermes self-test and escalation" ;;
-    "Advanced: hosts & benchmarks") echo "benchmark records, power, CPU level, uninstall, FreeBSD" ;;
+    "Advanced: hosts & benchmarks") echo "low-level setup, benchmarks, power, uninstall, FreeBSD" ;;
     "Help") echo "quick start, search, the full command list, what the menu leaves out" ;;
   esac
 }
 
 workflow_paths() {
-  say "ACTIONABLE PATHS (prerequisites still apply; follow one goal at a time):"
-  say "  New checkout: setup.deps -> setup.licenses -> setup.configure -> setup.install (preview) ->"
-  say "                setup.install-run -> hosts.start"
+  say "GOALS (pick one; Set up group has the same first-time path as a single choice):"
+  say "  New checkout: setup.first-time  (deps -> licenses -> configure -> install -> PATH)"
+  say "                then hosts.start"
   say "  Existing graph node: models.check -> hosts.serve <NODE>"
   say "  Add a model: models.fetch-preview -> models.fetch -> add its node to graph.yaml ->"
   say "               models.check -> hosts.serve <NODE>"

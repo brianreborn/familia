@@ -9,9 +9,9 @@ import pytest
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MENU = os.path.join(ROOT, "familia-menu.sh")
 ITEMS_FILE = os.path.join(ROOT, "scripts", "menu-items.txt")
-GROUPS = ["Set up", "Skills", "Models", "Agents (hermes)", "Self-improving harness (Harness2)",
-          "Test & benchmark", "Hosts", "Advanced: models & graph", "Advanced: agents",
-          "Advanced: hosts & benchmarks", "Help"]
+GROUPS = ["Set up", "Skills", "Reach tools (Agent-Reach)", "Models", "Agents (hermes)",
+          "Self-improving harness (Harness2)", "Test & benchmark", "Hosts",
+          "Advanced: models & graph", "Advanced: agents", "Advanced: hosts & benchmarks", "Help"]
 INTERNAL_FILE = os.path.join(ROOT, "scripts", "menu-internal.txt")
 # --help works but has no usage/example line yet; owned by another job (familia #74).
 HELP_NO_EXAMPLE = {"scripts/serve.sh"}
@@ -197,7 +197,7 @@ def test_internal_list_is_current():
 def test_no_tty_prints_and_exits_2():
     r = menu()
     assert r.returncode == 2
-    assert "ACTIONABLE PATHS" in r.stdout and "NOT DONE YET" in r.stdout
+    assert "GOALS" in r.stdout and "NOT DONE YET" in r.stdout
     assert "skills.menu" in r.stdout and "runs: python3 scripts/skills.py menu" in r.stdout
     assert "no terminal" in r.stderr
 
@@ -206,7 +206,7 @@ def test_guided_paths_are_visible_in_interactive_menu_and_list():
     for args, inp in ((("--pipe",), "q\n"), (("--list",), None)):
         r = menu(*args, inp=inp)
         assert r.returncode == 0, r.stderr
-        assert "New checkout: setup.deps -> setup.licenses -> setup.configure" in r.stdout
+        assert "New checkout: setup.first-time" in r.stdout
         assert "Existing graph node: models.check -> hosts.serve <NODE>" in r.stdout
         assert "Add a model: models.fetch-preview -> models.fetch" in r.stdout
         assert "NOT DONE YET - FreeBSD llama.cpp 0.7.0 on angel" in r.stdout
@@ -223,25 +223,28 @@ def test_piped_choices():
 
 
 def test_menu_choice_accepts_environment_assignments_and_forwarded_arguments():
+    # sync-preview lives under Advanced after the Set up goal rewrite; reach it via search.
     r = subprocess.run(["bash", MENU, "--pipe"], cwd=ROOT, capture_output=True, text=True, env=env(),
-                       input="1\nFAMILIA_SYNC=0 3 --license-gate off\nb\nq\n", timeout=60)
+                       input="/sync-preview\nFAMILIA_SYNC=0 1 --license-gate off\nb\nq\n", timeout=60)
     assert r.returncode == 0, r.stderr
     assert "Running: python3 scripts/sync_pins.py --dry-run --license-gate off" in r.stdout
     assert "skipped (FAMILIA_SYNC=0)" in r.stderr
 
 
 def test_search_choice_accepts_environment_assignments_and_forwarded_arguments():
-    r = menu("--pipe", inp="1\n/sync\nFAMILIA_SYNC=0 3 --license-gate off\nb\nq\n")
+    # Prefer setup.sync-preview (no license gate) so the forwarded args reach the command.
+    r = menu("--pipe", inp="1\n/sync-preview\nFAMILIA_SYNC=0 1 --license-gate off\nb\nq\n")
     assert r.returncode == 0, r.stderr
-    assert "Running: python3 scripts/sync_pins.py --license-gate off" in r.stdout
+    assert "Running: python3 scripts/sync_pins.py --dry-run --license-gate off" in r.stdout
     assert "skipped (FAMILIA_SYNC=0)" in r.stderr
 
 
 def test_long_group_is_paged_instead_of_showing_a_wall_of_items():
-    r = menu("--pipe", "--dry-run", inp="1\n>\n<\nb\nq\n")
+    # Hosts has 20 items after hostname pin (page_size 7). Set up is ~8 goals (one page).
+    r = menu("--pipe", "--dry-run", inp="8\n>\n<\nb\nq\n")
     assert r.returncode == 0, r.stderr
-    assert "Page 1 of 3 (items 1-7 of 17)" in r.stdout
-    assert "Page 2 of 3 (items 8-14 of 17)" in r.stdout
+    assert "Page 1 of 3 (items 1-7 of 20)" in r.stdout
+    assert "Page 2 of 3 (items 8-14 of 20)" in r.stdout
     first = r.stdout.split("Page 1 of 3", 1)[1].split("Page 2 of 3", 1)[0]
     assert len(re.findall(r"^  \d+\) ", first, re.M)) == 7
     assert ">) Next page" in first
@@ -286,3 +289,19 @@ def test_commands_doc_lists_every_item():
     doc = open(os.path.join(ROOT, "docs", "commands.md"), encoding="utf-8").read()
     missing = [i["key"] for i in items() if f"`{i['key']}`" not in doc] + [p for p in internal() if f"`{p}`" not in doc]
     assert not missing, "add to docs/commands.md: " + ", ".join(missing)
+
+
+def test_setup_first_time_goal_dry_runs():
+    r = menu("--run", "setup.first-time", "--dry-run")
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.startswith("[dry-run]")
+    assert "setup_goals.sh first-time" in r.stdout
+
+
+def test_setup_panel_retired_from_menu():
+    keys = {it["key"] for it in items()}
+    assert "setup.panel" not in keys
+    assert "setup.first-time" in keys and "setup.sync-goal" in keys and "setup.remove-path" in keys
+    setup = [it for it in items() if it["group"] == "Set up" and it["cmd"]]
+    assert len(setup) <= 8
+    assert all("panel.py" not in it["cmd"] for it in items() if it["cmd"])

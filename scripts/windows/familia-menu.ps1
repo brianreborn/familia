@@ -48,11 +48,11 @@ foreach ($line in (Get-Content $itemsFile)) {
   $items += New-Object PSObject -Property @{ Key = $f[0]; Group = $f[1]; Label = $f[2]; Gate = $f[4]; Need = $f[5]; Cmd = $f[6] }
 }
 $groupDesc = @{
-  'Set up' = 'licenses, settings, install'; 'Skills' = 'pick the skills your agents use (green-zkillz)';
+  'Set up' = 'first-time, update, licenses, settings'; 'Skills' = 'pick the skills your agents use (green-zkillz)';
   'Models' = 'add models, check the graph, see launch parameters'; 'Self-improving harness (Harness2)' = 'opt-in; review every change';
   'Agents (hermes)' = 'run hermes on one model or the whole graph'; 'Test & benchmark' = 'benchmark records'; 'Hosts' = 'start this node, measure, monitor';
   'Advanced: models & graph' = 'model database, launch arguments, graph edits'; 'Advanced: agents' = 'skill folders, escalation';
-  'Advanced: hosts & benchmarks' = 'benchmark records, CPU level, uninstall, logon task'; 'Help' = 'quick start, search, the full command list, what the menu leaves out'
+  'Advanced: hosts & benchmarks' = 'low-level setup, benchmarks, CPU level, uninstall, logon task'; 'Reach tools (Agent-Reach)' = 'opt agents into Agent-Reach web tools'; 'Help' = 'quick start, search, the full command list, what the menu leaves out'
 }
 $groups = @(); foreach ($i in $items) { if (-not ($groups -contains $i.Group)) { $groups += $i.Group } }
 
@@ -229,9 +229,9 @@ function SearchKey($c) {  # '/x' '?x' 'n' 'N' at any menu prompt: 'quit', 'done'
 }
 
 function ShowWorkflowPaths {
-  Write-Host 'ACTIONABLE PATHS (prerequisites still apply; follow one goal at a time):'
-  Write-Host '  New checkout: setup.licenses -> setup.configure -> setup.install (preview) ->'
-  Write-Host '                setup.install-run -> hosts.start'
+  Write-Host 'GOALS (pick one; Set up group has the same first-time path as a single choice):'
+  Write-Host '  New checkout: setup.first-time  (deps -> licenses -> configure -> install -> PATH)'
+  Write-Host '                then hosts.start'
   Write-Host '  Existing graph node: models.check -> hosts.serve <NODE>'
   Write-Host '  Add a model: models.fetch-preview -> models.fetch -> add its node to graph.yaml ->'
   Write-Host '               models.check -> hosts.serve <NODE>'

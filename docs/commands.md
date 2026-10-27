@@ -42,7 +42,7 @@ The interactive menu and `--list` show these paths before the command groups. Fo
 
 | goal | path |
 |---|---|
-| Set up a new checkout and start its local server | `setup.deps` -> `setup.licenses` -> `setup.configure` -> `setup.install` (preview) -> `setup.install-run` -> `hosts.start` |
+| Set up a new checkout and start its local server | `setup.first-time` (deps → licenses → configure → install → PATH) then `hosts.start` |
 | Start a graph node | `models.check` -> `hosts.serve <NODE>` |
 | Add and launch a model | `models.fetch-preview` -> `models.fetch` -> add its node to `graph.yaml` -> `models.check` -> `hosts.serve <NODE>` |
 | Run Hermes on the graph coder | `models.check` -> `agents.hermes` (license-gated) |
@@ -51,28 +51,35 @@ The interactive menu and `--list` show these paths before the command groups. Fo
 
 ## Set up
 
-`./familia sync [--dry-run]` and `./familia update [--dry-run]` are the same as `setup.sync` and `setup.update`. Every script that updates or runs pinned parts already syncs them first; see [MANUAL.md](../MANUAL.md#keeping-the-pinned-parts-in-sync).
+Goal choices (interactive menu). Low-level peers live under **Advanced: hosts & benchmarks** and remain reachable as `familia KEY` / `--run KEY`. `./familia sync` and `./familia update` still map to `setup.sync` / `setup.update`. The settings panel GUI (`setup.panel` / `scripts/panel.py`) is retired — use `setup.settings` (terminal). See [MANUAL.md](../MANUAL.md#keeping-the-pinned-parts-in-sync).
 
 | key | what it does | Linux / Android | Windows |
 |---|---|---|---|
-| `setup.panel` | Configure in a simple window (mouse, keyboard or switch friendly) ([panel.md](panel.md)) | `python3 scripts/panel.py` | `python scripts\panel.py` |
-| `setup.sync-preview` | Pinned parts: show what is behind pins.txt and would move (no changes) | `python3 scripts/sync_pins.py --dry-run` | `python scripts\sync_pins.py --dry-run` |
-| `setup.sync` | Pinned parts: bring every part to its pin, together; `--branch BRANCH` switches to and tracks that branch, then syncs its pins (licenses first) | `python3 scripts/sync_pins.py [--branch BRANCH]` | `python scripts\sync_pins.py [--branch BRANCH]` |
-| `setup.update` | Update familia on its tracked branch (or switch/track `--branch BRANCH`), then sync pinned parts (licenses first) | `python3 scripts/sync_pins.py --update [--branch BRANCH]` | `python scripts\sync_pins.py --update [--branch BRANCH]` |
-| `setup.configure` | Set up this checkout: sync the pinned parts and the git-pull hooks (licenses first) | `sh scripts/configure.sh` | - |
-| `setup.licenses` | Review the licenses of everything you have chosen | `python3 scripts/licenses.py review` | `python scripts\licenses.py review` |
-| `setup.settings` | Change launcher settings (port, threads, context) on the terminal | `sh scripts/configure.sh --interactive` | - |
-| `setup.deps` | Install local OS packages this host needs (safe-mode bootstrap; see [safe-mode-bootstrap.md](safe-mode-bootstrap.md)) | `sh install/deps.sh --install` | `powershell -NoProfile -ExecutionPolicy Bypass -File install\windows\deps.ps1 -Install` |
-| `setup.safe-build` | Show pinned safe-mode build-helper GGUF (Laya) and how to reach it ([safe-mode-bootstrap.md](safe-mode-bootstrap.md)) | `sh scripts/safe-build-help.sh` | (see docs) |
-| `setup.install` | Install or update this host (llama.cpp runtime, host entry): dry run first | `sh install/linux/install.sh --dry-run [--branch BRANCH]` | `powershell -NoProfile -ExecutionPolicy Bypass -File install\windows\install.ps1 -DryRun [-Branch BRANCH]` |
-| `setup.install-run` | Install or update this host for real (asks you to accept licenses) | `sh install/linux/install.sh [--branch BRANCH]` | `powershell -NoProfile -ExecutionPolicy Bypass -File install\windows\install.ps1 [-Branch BRANCH]` |
-| `setup.install-cli` | Put familia on your PATH (~/.local/bin/familia shim): preview, writes nothing ([install.md](install.md#familia-on-your-path)) | `sh scripts/install-cli.sh --dry-run` | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-cli.ps1 -WhatIf` |
-| `setup.install-cli-run` | Put familia on your PATH for real (2-line shim; the code stays in this checkout) | `sh scripts/install-cli.sh` | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-cli.ps1` |
-| `setup.path-add` | Add ~/.local/bin to PATH in ~/.profile (shows the marked block, asks first) | `sh scripts/install-cli.sh path --add` | - |
-| `setup.path-remove` | Remove familia's PATH block from ~/.profile (only that block) | `sh scripts/install-cli.sh path --remove` | - |
-| `setup.cli-status` | Show where familia is installed on PATH and what was recorded | `sh scripts/install-cli.sh status` | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-cli.ps1 -Status` |
-| `setup.uninstall-cli` | Take familia off your PATH: remove exactly the recorded files (preview, then asks) | `sh scripts/install-cli.sh uninstall` | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-cli.ps1 -Uninstall -WhatIf` |
-| `setup.logon-task` | Windows: start the model server at logon (preview; drop -WhatIf to register) | Windows only | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-task.ps1 -Install -Model <MODEL> -WhatIf` |
+| `setup.first-time` | First-time setup on this machine (deps → licenses → configure → install → PATH) | `sh scripts/setup_goals.sh first-time` | `powershell ... scripts\windows\setup-goals.ps1 -Goal first-time` |
+| `setup.update` | Update this checkout (git pull --ff-only, then sync pins; licenses first) | `python3 scripts/sync_pins.py --update [--branch BRANCH]` | `python scripts\sync_pins.py --update [--branch BRANCH]` |
+| `setup.licenses` | Review / accept licenses | `python3 scripts/licenses.py review` | `python scripts\licenses.py review` |
+| `setup.settings` | Change launcher settings on the terminal (never the deleted panel) | `sh scripts/configure.sh --interactive` | - |
+| `setup.sync-goal` | Sync pinned parts only (asks preview vs apply) | `sh scripts/setup_goals.sh sync-pins` | `powershell ... setup-goals.ps1 -Goal sync-pins` |
+| `setup.safe-build` | Safe-mode / offline build help ([safe-mode-bootstrap.md](safe-mode-bootstrap.md)) | `sh scripts/safe-build-help.sh` | (see docs) |
+| `setup.logon-task` | Windows: start the model server at logon (preview; drop -WhatIf to register) | Windows only | `powershell ... install-task.ps1 -Install -Model <MODEL> -WhatIf` |
+| `setup.remove-path` | Remove familia from PATH (danger; preview then confirm) | `sh scripts/setup_goals.sh remove-path` | `powershell ... setup-goals.ps1 -Goal remove-path` |
+
+### Set up — low-level (Advanced: hosts & benchmarks)
+
+| key | what it does | Linux / Android | Windows |
+|---|---|---|---|
+| `setup.configure` | Sync pinned parts and git-pull hooks (licenses first) | `sh scripts/configure.sh` | - |
+| `setup.sync-preview` | Pinned parts preview (no changes) | `python3 scripts/sync_pins.py --dry-run` | `python scripts\sync_pins.py --dry-run` |
+| `setup.sync` | Bring every pinned part to its pin | `python3 scripts/sync_pins.py [--branch BRANCH]` | `python scripts\sync_pins.py [--branch BRANCH]` |
+| `setup.deps` | Install local OS packages this host needs | `sh install/deps.sh --install` | `powershell ... install\windows\deps.ps1 -Install` |
+| `setup.install` | Install or update this host (dry run) | `sh install/linux/install.sh --dry-run` | `powershell ... install.ps1 -DryRun` |
+| `setup.install-run` | Install or update this host for real | `sh install/linux/install.sh` | `powershell ... install.ps1` |
+| `setup.install-cli` | Put familia on PATH (preview) | `sh scripts/install-cli.sh --dry-run` | `powershell ... install-cli.ps1 -WhatIf` |
+| `setup.install-cli-run` | Put familia on PATH for real | `sh scripts/install-cli.sh` | `powershell ... install-cli.ps1` |
+| `setup.path-add` | Add ~/.local/bin to PATH in ~/.profile | `sh scripts/install-cli.sh path --add` | - |
+| `setup.path-remove` | Remove familia PATH block from ~/.profile | `sh scripts/install-cli.sh path --remove` | - |
+| `setup.cli-status` | Show where familia is on PATH | `sh scripts/install-cli.sh status` | `powershell ... install-cli.ps1 -Status` |
+| `setup.uninstall-cli` | Take familia off PATH (preview, then asks) | `sh scripts/install-cli.sh uninstall` | `powershell ... install-cli.ps1 -Uninstall -WhatIf` |
 
 ## Skills
 
@@ -130,6 +137,7 @@ Docs: [agent-reach.md](agent-reach.md).
 | `harness2.status` | Show which agents have Harness2 and in which mode | `python3 scripts/harness2.py status` | `python scripts\harness2.py status` |
 | `harness2.set` | Choose target agent and mode (off / propose / apply) (licenses first) | `python3 scripts/harness2.py set --agent <AGENT> --mode <MODE>` | `python scripts\harness2.py set --agent <AGENT> --mode <MODE>` |
 | `harness2.review` | Review proposals: list, accept or revert | `python3 scripts/harness2.py review` | `python scripts\harness2.py review` |
+| `harness2.terminal-rsi` | Terminal-RSI round for a harness target (proposals only; review with harness2.review) | `python3 scripts/terminal_rsi.py --target <TARGET>` | `python scripts\terminal_rsi.py --target <TARGET>` |
 
 ## Test & benchmark
 
@@ -236,7 +244,10 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/bench_parse.py` | filter for llama-bench output (pipe llama-bench -o csv into it); nothing to do on its own |
 | `scripts/bench_guard.py` | library for perf/bench drivers: GGUF metadata validation, current llama.cpp flag spellings, encoder ubatch rule, per-run memory cap (`meta FILE`, `memcap PEAK_MIB`) |
 | `scripts/prompt_cache.py` | library: prefill an agent's fixed prompt prefix once, save it with llama-server slot save, restore it on later starts (#85); used by hermes.sh |
-| `scripts/panel_familia.py` | familia's pages for the settings panel; loaded by scripts/panel.py, which the menu runs |
+| `scripts/panel_familia.py` | familia pages for the retired settings panel GUI; not launched from the menu |
+| `scripts/panel.py` | retired settings panel GUI entry point; use `setup.settings` (terminal) instead |
+| `scripts/system_prompt_check.py` | offline system-prompt path checks (#115); developer/CI helper, not an end-user menu action |
+| `scripts/familia_agent_reach.py` | thin wrapper / library around Agent-Reach; menu uses scripts/agent_reach.py |
 | `scripts/retry_wrapper.py` | library for agent model calls; its main is only a self-demo |
 | `scripts/isolated/hfchat.py` | adapter that graph nodes of kind isolated_remote call; not run by hand |
 | `scripts/c2c/kv_ship.py` | step of the C2C loopback test (Advanced menu), needs two running servers |
@@ -258,6 +269,7 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/dogfood/loop.sh` | dogfood fix loop driver, run by the operator on a dev node, not an end-user task |
 | `scripts/dogfood/pytest_vs_baseline.sh` | dogfood loop internals: compares a candidate fix's pytest results to the baseline |
 | `scripts/terminal_rsi.py` | Terminal-RSI self-improvement round for a harness target (#88); proposals only, review with scripts/harness2.py |
+| `scripts/self_improve_attach.py` | shared Harness² / Terminal-RSI attach hook called by hermes.sh and start_graph.py; not a standalone menu action |
 | `scripts/perf/spec_bench.py` | draft/n-gram speculative decoding bench, lossless check, one host (#91) |
 | `scripts/launch_matrix.py` | dev launch matrix: every engine x local model through bench_guard, classifies launch failures vs crashes |
 | `scripts/launch_status.py` | library + CLI for launch status protocol v1 and fleet memory admission budget; called by launchers |
