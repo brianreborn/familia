@@ -34,10 +34,10 @@ scripts/with-host-lock|wrapper: flock ~/.local/state/familia/big.lock around one
 scripts/dogfood/dispatch.py|dogfood loop internals: picks the next issue for the local fix loop (run via scripts/dogfood/loop.sh)
 scripts/dogfood/loop.sh|dogfood fix loop driver, run by the operator on a dev node, not an end-user task
 scripts/dogfood/pytest_vs_baseline.sh|dogfood loop internals: compares a candidate fix's pytest results to the baseline
-scripts/terminal_rsi.py|Terminal-RSI self-improvement round for a harness target (#88); proposals only, review with scripts/harness2.py
 scripts/perf/spec_bench.py|draft/n-gram speculative decoding bench, lossless check, one host (#91)
 scripts/launch_matrix.py|dev launch matrix: every engine x local model through bench_guard, classifies launch failures vs crashes
 scripts/launch_status.py|library + CLI for launch status protocol v1 and fleet memory admission budget; called by launchers
+scripts/self_improve_attach.py|shared Harness² / Terminal-RSI attach hook called by hermes.sh and start_graph.py; not a standalone menu action
 scripts/measure_prompt.py|dev measurement of fixed-prompt size for hermes / Harness2 (#89, #85)
 scripts/perf/bench_capped.sh|perf helper: one capped llama-bench run, called by sweep drivers
 scripts/perf/bonsai_check.sh|perf/dev check for Ternary-Bonsai-2 models (#93); needs the PrismML llama.cpp fork

@@ -12,9 +12,10 @@ SINGLE-MODEL mode (--mode single --model NODE, or just --model NODE): hermes aga
 
 Self-improving harness (optional, docs/harness2.md): when graph.yaml has a harnesses.<T>
 descriptor with agent: <this agent> and a self_improve entry with mode != "off" targeting it
-(or with --self-improve), the launcher runs `scripts/harness2.py sync` as a subprocess before
-starting hermes so the accepted harness version is in place. Nothing is imported from it;
-if it is absent, hermes starts unchanged. Harness² itself never needs hermes.
+(or with --self-improve), the launcher runs `scripts/self_improve_attach.py` (shared with
+graph start / llama UI) so the accepted harness version is in place. Nothing is imported from
+Harness² itself; if the attach hook or harness2.py is absent, hermes starts unchanged.
+Harness² / Terminal-RSI never need hermes — and any non-pentest agent can use them.
 
 Enabled skills (agents.<agent>.skills, scripts/skills.py, docs/skills.md) are linked into
 HERMES_HOME/skills/<id> in both modes (`scripts/skills.py paths`); existing entries are kept.
@@ -141,17 +142,37 @@ def self_improve_targets(g, agent):
 
 
 def pickup(g, o, agent, into=None):
-    tool = os.path.join(ROOT, "scripts", "harness2.py")
-    for t, on in self_improve_targets(g, agent):
-        if not (on or o["self_improve"]): continue
-        if not os.path.isfile(tool):
-            print(f"hermes.sh: self-improve target {t} declared but scripts/harness2.py is absent; starting without it", file=sys.stderr); continue
-        cmd = [sys.executable, tool, "--graph", o["graph"], "sync", "--target", t] + (["--into", into] if into else [])
-        r = subprocess.run(cmd, capture_output=True, text=True)
-        msg = (r.stdout + r.stderr).strip()
-        print(f"hermes.sh: self-improve ({t}): {msg if r.returncode == 0 else 'sync failed, starting without it: ' + msg}", file=sys.stderr)
-    if o["self_improve"] and not self_improve_targets(g, agent):
-        sys.exit(f"hermes.sh: --self-improve: no harnesses.* entry has agent: {agent} (docs/harness2.md)")
+    """Put accepted harness versions in place via the shared attach hook (docs/harness2.md).
+
+    Subprocess only: hermes must not import self_improve / harness2_local (tests/test_harness2.py).
+    """
+    tool = os.path.join(ROOT, "scripts", "self_improve_attach.py")
+    if not os.path.isfile(tool):
+        if o["self_improve"]:
+            sys.exit(f"hermes.sh: --self-improve: scripts/self_improve_attach.py is absent")
+        # Fall back to the old direct harness2 sync if the shared hook is missing but harness2 is present.
+        h2 = os.path.join(ROOT, "scripts", "harness2.py")
+        for t, on in self_improve_targets(g, agent):
+            if not (on or o["self_improve"]): continue
+            if not os.path.isfile(h2):
+                print(f"hermes.sh: self-improve target {t} declared but scripts/harness2.py is absent; starting without it", file=sys.stderr); continue
+            cmd = [sys.executable, h2, "--graph", o["graph"], "sync", "--target", t] + (["--into", into] if into else [])
+            r = subprocess.run(cmd, capture_output=True, text=True)
+            msg = (r.stdout + r.stderr).strip()
+            print(f"hermes.sh: self-improve ({t}): {msg if r.returncode == 0 else 'sync failed, starting without it: ' + msg}", file=sys.stderr)
+        if o["self_improve"] and not self_improve_targets(g, agent):
+            sys.exit(f"hermes.sh: --self-improve: no harnesses.* entry has agent: {agent} (docs/harness2.md)")
+        return
+    cmd = [sys.executable, tool, "--graph", o["graph"], "--agent", agent,
+           "--log-prefix", "hermes.sh: self-improve"]
+    if o["self_improve"]:
+        cmd.append("--force")
+    if into:
+        cmd += ["--into", into]
+    r = subprocess.run(cmd)
+    if r.returncode != 0:
+        # Pentest refuse / --force with no harness: block the launch (same as before).
+        sys.exit(r.returncode)
 
 
 def link_skills(raw, agent, home):
