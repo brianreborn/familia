@@ -31,8 +31,12 @@ class StartupError(RuntimeError):
 
 def select_host(graph, requested=None, environ=None, hostname=None):
     env = os.environ if environ is None else environ
-    raw = requested or env.get("FAMILIA_HOST") or (hostname or socket.gethostname())
-    candidate = raw.strip().split(".", 1)[0]
+    try:
+        from hostname_pin import resolve_candidate
+        candidate = resolve_candidate(requested=requested, environ=env, hostname=hostname)
+    except ImportError:
+        raw = requested or env.get("FAMILIA_HOST") or (hostname or socket.gethostname())
+        candidate = raw.strip().split(".", 1)[0]
     hosts = graph.get("hosts", {}) or {}
     if candidate in hosts:
         return candidate
@@ -51,7 +55,8 @@ def select_host(graph, requested=None, environ=None, hostname=None):
     known = ", ".join(sorted(hosts))
     raise StartupError(
         f"local host {candidate!r} is not declared in graph.yaml; "
-        f"use --host NAME or FAMILIA_HOST=NAME (declared: {known}). "
+        f"use --host NAME or FAMILIA_HOST=NAME or "
+        f"`python3 scripts/hostname_pin.py set NAME` (declared: {known}). "
         f"Or add this OS hostname under hosts.<name>.local_names after measuring. "
         f"Next step: measure this machine into the graph with "
         f"`python3 scripts/host_measure.py --name NAME --kind desktop|laptop|phone|vm` "

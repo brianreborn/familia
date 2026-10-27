@@ -163,6 +163,13 @@ parse_menu_input() {  # parse leading NAME=value tokens, a numeric choice, then 
 
 can_prompt() { [ -t 0 ] && [ "${FAMILIA_NO_TTY:-}" != 1 ]; }
 short_hostname() { hostname 2>/dev/null | cut -d. -f1 | tr '[:upper:]' '[:lower:]'; }
+pinned_or_short_hostname() {
+  if command -v python3 >/dev/null 2>&1; then
+    p=$(python3 "$ROOT/scripts/hostname_pin.py" resolve 2>/dev/null) || p=
+    [ -n "$p" ] && { printf '%s\n' "$p"; return; }
+  fi
+  short_hostname
+}
 
 fill() {  # fill CMD ARGS... -> CMD with {NAME:prompt} filled from ARGS (as the --flag before it, else in order); rest appended
   local cmd=$1; shift
@@ -189,7 +196,7 @@ fill() {  # fill CMD ARGS... -> CMD with {NAME:prompt} filled from ARGS (as the 
   done
   for ((j=0; j<n; j++)); do  # pass 3: leading plain values in order, then defaults or prompts
     if [ "${defs[$j]}" = hostname ]; then
-      host_default=$(short_hostname)
+      host_default=$(pinned_or_short_hostname)
       defs[$j]=$host_default
       if [ -n "$host_default" ]; then
         prompts[$j]=${prompts[$j]//\[hostname\]/[$host_default]}

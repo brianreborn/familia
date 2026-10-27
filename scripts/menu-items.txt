@@ -67,6 +67,8 @@ hosts.start|Hosts|Start the model server on this machine from graph.yaml|sh star
 hosts.serve|Hosts|Start one graph node's model server (exact launch parameters from the graph)|sh scripts/serve.sh {NODE:node name, e.g. coder}|lic||
 hosts.measure|Hosts|Preview this machine's measured facts (identify unknown host kind)|PY scripts/host_measure.py --name {HOST:local graph host [hostname]} --kind {KIND:desktop, laptop, phone or vm} --dry-run|||
 hosts.measure-write|Hosts|Measure and write this host (identify kind; GPU inventory stays unknown until measured)|PY scripts/host_measure.py --name {HOST:local graph host [hostname]} --kind {KIND:desktop, laptop, phone or vm} --force|||python scripts\host_measure.py --name {HOST:local graph host [hostname]} --kind {KIND:desktop, laptop, phone or vm} --force
+hosts.pin|Hosts|Pin this machine's graph host name (menus/start auto-use it)|PY scripts/hostname_pin.py set {HOST:local graph host [hostname]}|||python scripts\hostname_pin.py set {HOST:local graph host [hostname]}
+hosts.pin-show|Hosts|Show pinned graph host (or empty)|PY scripts/hostname_pin.py get|||python scripts\hostname_pin.py get
 hosts.generate|Hosts|Write a per-host graph to generated/graph-HOST.yaml|PY scripts/generate_graph.py {HOST:host name}|||python scripts\generate_graph.py {HOST:host name}
 hosts.android|Hosts|Start the node on an Android phone over SSH|bash android_start.sh {HOST:phone host, e.g. phone7}|lic||
 hosts.phones|Hosts|Start every phone listed in graph.yaml|bash android_multi_start.sh|lic||

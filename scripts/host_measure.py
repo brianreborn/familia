@@ -74,8 +74,18 @@ def measure(kind, reserve):
     if kind not in {"desktop", "laptop", "phone", "vm"}:
         raise ValueError("kind must be desktop, laptop, phone, or vm; unknown hosts need an explicit kind")
     short = socket.gethostname().split(".", 1)[0]
+    # Termux / many Android images: OS hostname is useless and collides.
+    if short.lower() == "localhost":
+        local_names_val = "[]                  # omit localhost (collides); use hostname_pin / --name"
+        print(
+            "host_measure: warning: OS hostname is localhost; "
+            "omitting from local_names (use hostname_pin / --name)",
+            file=sys.stderr,
+        )
+    else:
+        local_names_val = "[%s]             # OS hostname(s) that resolve to this graph host" % short
     out = [("kind", kind), ("measured", "true"), ("os", _os()),
-           ("local_names", "[%s]             # OS hostname(s) that resolve to this graph host" % short)]
+           ("local_names", local_names_val)]
     cpu = _cpu()
     if not cpu:
         raise ValueError("could not measure CPU model on this host")
@@ -177,6 +187,15 @@ def main():
         f.write(new)
     os.replace(tmp, a.graph)
     print("host_measure: wrote hosts.%s to %s" % (a.name, a.graph), file=sys.stderr)
+    try:
+        _scripts = os.path.dirname(os.path.abspath(__file__))
+        if _scripts not in sys.path:
+            sys.path.insert(0, _scripts)
+        from hostname_pin import write_pin
+        write_pin(a.name)
+        print("host_measure: pinned local graph host %s" % a.name, file=sys.stderr)
+    except Exception as e:
+        print("host_measure: warning: could not write hostname pin (%s)" % e, file=sys.stderr)
     return 0
 
 if __name__ == "__main__":

@@ -75,6 +75,14 @@ function ShortHostname {
   if (-not $name) { $name = [System.Net.Dns]::GetHostName() }
   return (($name -split '\.')[0]).ToLowerInvariant()
 }
+function PinnedOrShortHostname {
+  $pinPy = Join-Path $root "scripts\hostname_pin.py"
+  if (Test-Path $pinPy) {
+    $p = & python $pinPy resolve 2>$null
+    if ($LASTEXITCODE -eq 0 -and $p) { return ($p | Select-Object -First 1).Trim() }
+  }
+  return ShortHostname
+}
 function Quote($v) { if ($v -eq '' -or $v -match '[\s&|<>^"]') { return '"' + $v + '"' }; return $v }
 $script:Me = 'familia-menu'; $script:CliHint = ''
 # Fill CMD VALS: {NAME:prompt [default]} from VALS (as the --flag written before it, else in order),
@@ -98,7 +106,7 @@ function Fill($cmd, $vals, $interactive) {
     $name = $m.Groups[1].Value; $prompt = $m.Groups[2].Value; $def = ''
     if ($prompt -match '\[([^\]]*)\]') { $def = $matches[1] }
     if ($def -eq 'hostname') {
-      $def = ShortHostname
+      $def = PinnedOrShortHostname
       if ($def) { $prompt = $prompt -replace '\[hostname\]', "[$def]" }
       else { $prompt = $prompt -replace ' \[hostname\]', '' }
     }

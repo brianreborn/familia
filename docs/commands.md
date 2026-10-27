@@ -149,8 +149,10 @@ Docs: [agent-reach.md](agent-reach.md).
 | `hosts.start-preview` | Preview graph startup on this host (no services or remote connections) | `python3 scripts/start_graph.py --dry-run` | `python scripts\start_graph.py --dry-run` |
 | `hosts.start` | Start active supported graph nodes on this POSIX host and the declared local alias gateway (licenses first; remote nodes are report-only) | `sh start.sh [--host NAME]` | `scripts\windows\start.bat` (legacy standalone launcher) |
 | `hosts.serve` | Start one graph node's model server (exact launch parameters from the graph) (licenses first) | `sh scripts/serve.sh <NODE>` | - |
-| `hosts.measure` | Measure this machine for graph.yaml (dry run; menu defaults its host name to the local hostname; identify unknown host kind with `--kind`) | `python3 scripts/host_measure.py --name <HOST> --kind <desktop|laptop|phone|vm> --dry-run` | - |
-| `hosts.measure-write` | Measure this machine and write it into graph.yaml (menu defaults its host name to the local hostname; identify unknown host kind with `--kind`) | `python3 scripts/host_measure.py --name <HOST> --kind <desktop|laptop|phone|vm> --force` | `python scripts\host_measure.py --name <HOST> --kind <desktop|laptop|phone|vm> --force` |
+| `hosts.measure` | Measure this machine for graph.yaml (dry run; menu defaults its host name to the pin or local hostname; identify unknown host kind with `--kind`) | `python3 scripts/host_measure.py --name <HOST> --kind <desktop|laptop|phone|vm> --dry-run` | - |
+| `hosts.measure-write` | Measure this machine and write it into graph.yaml (menu defaults its host name to the pin or local hostname; identify unknown host kind with `--kind`) | `python3 scripts/host_measure.py --name <HOST> --kind <desktop|laptop|phone|vm> --force` | `python scripts\host_measure.py --name <HOST> --kind <desktop|laptop|phone|vm> --force` |
+| `hosts.pin` | Pin this machine's graph host name (menus/start auto-use it) | `python3 scripts/hostname_pin.py set <HOST>` | `python scripts\hostname_pin.py set <HOST>` |
+| `hosts.pin-show` | Show pinned graph host (or empty) | `python3 scripts/hostname_pin.py get` | `python scripts\hostname_pin.py get` |
 | `hosts.generate` | Write a per-host graph to generated/graph-HOST.yaml | `python3 scripts/generate_graph.py <HOST>` | `python scripts\generate_graph.py <HOST>` |
 | `hosts.android` | Start the node on an Android phone over SSH (licenses first) | `bash android_start.sh <HOST>` | - |
 | `hosts.phones` | Start every phone listed in graph.yaml (licenses first) | `bash android_multi_start.sh` | - |

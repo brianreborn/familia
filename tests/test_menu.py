@@ -95,12 +95,26 @@ def test_item_has_real_command_and_dry_runs(it):
         assert "&&" not in it["win"], "Windows commands must not use &&"
 
 
-def test_local_host_measure_menu_uses_short_hostname_as_default():
+def test_local_host_measure_menu_uses_short_hostname_as_default(tmp_path):
+    # Isolate pin state so an existing machine pin cannot change the default.
+    state = tmp_path / "state"
+    state.mkdir()
     hostname = subprocess.check_output(["hostname"], text=True).strip().split(".", 1)[0].lower()
-    r = menu("--pipe", "--dry-run", inp="7\n6\n\nlaptop\nq\n")
+    r = menu("--pipe", "--dry-run", inp="8\n6\n\nlaptop\nq\n", XDG_STATE_HOME=str(state))
     assert r.returncode == 0, (r.stdout, r.stderr)
     assert f"local graph host [{hostname}]" in r.stderr
     assert f"--name {hostname}" in r.stdout
+
+
+def test_local_host_measure_menu_prefers_hostname_pin(tmp_path):
+    state = tmp_path / "state"
+    fam = state / "familia"
+    fam.mkdir(parents=True)
+    (fam / "hostname").write_text("phone7\n", encoding="utf-8")
+    r = menu("--pipe", "--dry-run", inp="8\n6\n\nlaptop\nq\n", XDG_STATE_HOME=str(state))
+    assert r.returncode == 0, (r.stdout, r.stderr)
+    assert "local graph host [phone7]" in r.stderr
+    assert "--name phone7" in r.stdout
 
 
 SCRIPTS = sorted({script_of(i["cmd"]) for i in items() if i["cmd"] and need_ok(i["need"])} - {"QUICKSTART.md", "./familia-menu.sh", "scripts/menu-internal.txt"}

@@ -225,6 +225,11 @@ if (Test-Path $graph) {
   if ($new -and $PSCmdlet.ShouldProcess($graph, "write hosts.$Name")) {
     [IO.File]::WriteAllText($graph, $new, (New-Object Text.UTF8Encoding $false))
     Say "wrote hosts.$Name"
+    $pinPy = Join-Path $repo 'scripts\hostname_pin.py'
+    if (Test-Path $pinPy) {
+      & python $pinPy set $Name
+      if ($LASTEXITCODE) { Say 'warning: could not write hostname pin' }
+    }
   }
   $py = Get-Command python -ErrorAction SilentlyContinue
   if ($py) {

@@ -226,6 +226,9 @@ else
   MFLAGS=""; [ "$DRY" = 1 ] && MFLAGS=--dry-run
   KIND=laptop; [ -d /sys/class/power_supply/BAT0 ] || KIND=desktop
   python3 "$REPO/scripts/host_measure.py" --name "$NAME" --kind "$KIND" --graph "$REPO/graph.yaml" $MFLAGS $FORCE_HOST
+  if [ "$DRY" != 1 ]; then
+    python3 "$REPO/scripts/hostname_pin.py" set "$NAME" || say "warning: could not write hostname pin"
+  fi
   # numpy (LittleBit runtime): the spec depends only on the x86-64 level (scripts/cpu_level.py).
   # pre-v2 x86 tries our cpu-baseline=none wheel first when one matches this Python, then numpy<2.4.
   NPCANDS=$(python3 "$REPO/scripts/cpu_level.py" --numpy-candidates 2>/dev/null || echo numpy)

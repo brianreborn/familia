@@ -294,7 +294,11 @@ def load_graph(path, check_files=True, host=None):
 
 def local_graph_host(g):
     """Graph host id for this machine via hosts.*.local_names / hostname, or None."""
-    here = __import__("socket").gethostname().split(".")[0]
+    try:
+        from hostname_pin import resolve_candidate
+        here = resolve_candidate()
+    except ImportError:
+        here = __import__("socket").gethostname().split(".")[0]
     hosts = g.get("hosts") or {}
     if here in hosts:
         return here

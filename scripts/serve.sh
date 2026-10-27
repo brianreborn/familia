@@ -51,7 +51,10 @@ if [ -f "$here/scripts/sync_pins.py" ]; then
   FAMILIA_SYNC_DONE="$here"; export FAMILIA_SYNC_DONE
 fi
 if [ -z "${FAMILIA_MEMCAP:-}" ]; then
-  case "$(hostname)" in miryam*) FAMILIA_MEMCAP=1 ;; *) FAMILIA_MEMCAP=0 ;; esac
+  _fh="${FAMILIA_HOST:-}"
+  [ -n "$_fh" ] || _fh="$(python3 "$here/scripts/hostname_pin.py" resolve 2>/dev/null || true)"
+  [ -n "$_fh" ] || _fh="$(hostname 2>/dev/null | cut -d. -f1)"
+  case "$_fh" in miryam*) FAMILIA_MEMCAP=1 ;; *) FAMILIA_MEMCAP=0 ;; esac
 fi
 # The model file must exist: never start a node without its model.
 model="$(printf '%s\n' "$args" | sed -n -E 's/.*[[:space:]]-m[[:space:]]+([^[:space:]]+).*/\1/p')"
