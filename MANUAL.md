@@ -13,7 +13,7 @@ How to run and look after a familia setup day to day. Install and first start ar
 
 - `sh scripts/configure.sh` checks out every sub-project in [`pins.txt`](pins.txt) at its pinned revision (through `scripts/sync_pins.py`, below) and installs the git hooks that sync again after each `git pull`. It is non-interactive and safe to re-run.
 - `sh scripts/configure.sh -i` also asks for settings in the terminal.
-- `./familia panel` (or `python3 scripts/panel.py`) starts the settings panel at http://127.0.0.1:9932 and opens it in your browser. It is the code-bootstraps-llama.cpp panel with familia's pages added (skills, licenses, hermes, Harness2, models); it needs `configure.sh` to have run first. See [docs/panel.md](docs/panel.md).
+
 
 ### Keeping the pinned parts in sync
 
@@ -28,7 +28,7 @@ They are pins, not git submodules. A leftover `.gitmodules` / gitlink (mode `160
 - `--dry-run` shows what would move and uses no network; `--check` exits 1 when something is behind; `./familia update` is `git pull --ff-only` of familia and then a sync with the new `pins.txt`.
 - To test a familia development branch, run `./familia sync --branch BRANCH` (or `python3 scripts/sync_pins.py --branch BRANCH`). It fetches `origin/BRANCH`, switches this checkout to that branch (creating a local tracking branch if needed), fast-forwards only, then syncs every project to the revisions in that branch's `pins.txt`. Later updates and installer runs remain on the tracked branch. Use `--branch main` to explicitly switch back. Preview first with `./familia sync --branch BRANCH --dry-run`.
 
-Called automatically by: `install.sh`, `install/linux`, `install/termux` and `install/windows` installers, `scripts/configure.sh`, `start.sh`, `scripts/serve.sh`, `with-fleet.sh` (live launches; `--launch-test` only notes drift), `scripts/panel.py`, `scripts/run-tests.sh`, `scripts/windows/start.bat`, and the `post-merge` / `post-rewrite` / `post-checkout` hooks `configure.sh` installs (an existing hook of yours is left alone). Not by `add-model` or model fetches. `FAMILIA_SYNC=0` skips it (it says so).
+Called automatically by: `install.sh`, `install/linux`, `install/termux` and `install/windows` installers, `scripts/configure.sh`, `start.sh`, `scripts/serve.sh`, `with-fleet.sh` (live launches; `--launch-test` only notes drift), `scripts/run-tests.sh`, `scripts/windows/start.bat`, and the `post-merge` / `post-rewrite` / `post-checkout` hooks `configure.sh` installs (an existing hook of yours is left alone). Not by `add-model` or model fetches. `FAMILIA_SYNC=0` skips it (it says so).
 
 Saved settings live in `code-bootstraps-llama.cpp/.cache/panel.env`. An environment variable always overrides a saved setting:
 
@@ -59,7 +59,7 @@ The former standalone code-bootstraps UI/router is still available explicitly as
 
 ### Backgrounding and detaching
 
-`start.sh` reads `DETACH_MODE` from the environment (default `screen-attached`; also a panel setting in the bootstrap UI):
+`start.sh` reads `DETACH_MODE` from the environment (default `screen-attached`; also configurable via launcher settings / panel.env):
 
 ```sh
 DETACH_MODE=screen-attached ./start.sh

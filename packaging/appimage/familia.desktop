@@ -2,7 +2,7 @@
 Type=Application
 Name=familia
 GenericName=Local LLM graph
-Comment=familia — local model graph, panel, and menu (no cloud required)
+Comment=familia — local model graph and menu (no cloud required)
 Exec=familia
 Icon=familia
 Terminal=false

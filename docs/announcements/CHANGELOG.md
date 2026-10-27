@@ -22,6 +22,9 @@ Landed on `main` after `v0.1.0-rc2`.
 - Vulkan builds no longer allocate ~1.8 GB of unused shared memory on `-ngl 0` nodes: `scripts/serve.sh` and the hermes harness export an empty `GGML_VK_VISIBLE_DEVICES`. (#40 tracks live verification.)
 - Prompt cache sized per profile in the pinned code-bootstraps-llama.cpp (#16 there). (#41 tracks live verification.)
 
+### Removed
+- Settings panel application (`scripts/panel.py`, `scripts/panel_familia.py`, `docs/panel.md`, FreeBSD `familia-panel`, AppImage panel default). Use terminal `familia settings` / `setup.settings`. `familia panel` remains an alias to settings.
+
 ### Documentation
 - README, QUICKSTART, MANUAL rewritten as one entry path; configuration-graph and graph-types describe schema v2 on `main`; LAN addresses removed from public docs.
 

@@ -61,7 +61,7 @@ ENV_FILE="$CACHE_DIR/familia.env"
 
 # Delegate interactive settings if requested
 if [ "$INTERACTIVE" = 1 ] && [ -f "$ROOT/code-bootstraps-llama.cpp/scripts/configure.sh" ]; then
-  echo "familia: running interactive settings panel..." >&2
+  echo "familia: running interactive launcher settings..." >&2
   sh "$ROOT/code-bootstraps-llama.cpp/scripts/configure.sh" || true
 fi
 

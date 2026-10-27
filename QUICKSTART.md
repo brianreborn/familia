@@ -8,7 +8,7 @@ Everything below runs from the root of a familia checkout unless it says otherwi
 
 **Legacy catalog (fallback only):** `./familia menu` / `./familia --legacy-menu` / `FAMILIA_LEGACY_MENU=1 ./familia` opens the old `familia-menu.sh` item list. Prefer the gum home. Every legacy item is still a CLI command (`./familia help`, `./familia skills list`, `./familia --dry-run model params coder` prints a command without running it). Search: `./familia search WORD`. Details: [docs/commands.md](docs/commands.md).
 
-**Settings:** terminal only — `./familia settings` (the browser panel GUI is retired). See [docs/panel.md](docs/panel.md) for history.
+**Settings:** terminal only — `./familia settings`.
 
 
 ## What you actually need
@@ -45,7 +45,7 @@ Already have a checkout? Update familia and bring every pinned sub-project to it
 ./familia sync --branch feat/llama.cpp-0.7.0  # switch to and track the branch, then sync its pins
 ```
 
-The branch form fetches `origin/BRANCH`, switches this checkout to that branch (creating a local tracking branch if needed), fast-forwards only, and syncs all projects to its `pins.txt`. Later updates and installer runs stay on that tracked branch; use `--branch main` when you explicitly want to switch back. Use `--dry-run` to preview. On Windows, use `python scripts\sync_pins.py --branch feat/llama.cpp-0.7.0`. You rarely need the default sync by hand: the installers, `configure.sh`, `start.sh`, `serve.sh`, `with-fleet.sh`, the panel and the tests all sync first, and after `configure.sh` a `git pull` of familia syncs too. Adding or fetching a model does not.
+The branch form fetches `origin/BRANCH`, switches this checkout to that branch (creating a local tracking branch if needed), fast-forwards only, and syncs all projects to its `pins.txt`. Later updates and installer runs stay on that tracked branch; use `--branch main` when you explicitly want to switch back. Use `--dry-run` to preview. On Windows, use `python scripts\sync_pins.py --branch feat/llama.cpp-0.7.0`. You rarely need the default sync by hand: the installers, `configure.sh`, `start.sh`, `serve.sh`, `with-fleet.sh` and the tests all sync first, and after `configure.sh` a `git pull` of familia syncs too. Adding or fetching a model does not.
 
 ### Licenses come first
 

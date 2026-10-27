@@ -100,7 +100,7 @@ The sub-projects keep their own repositories and licenses. familia pins each one
 
 | Pin (`pins.txt`) | Role | Repository |
 |---|---|---|
-| `code-bootstraps-llama.cpp` | Models and the agent: `llama-server` router, model fetch/verify, `/local`, `/remote`, installers, settings panel | [brianreborn/code-bootstraps-llama.cpp](https://github.com/brianreborn/code-bootstraps-llama.cpp) |
+| `code-bootstraps-llama.cpp` | Models and the agent: `llama-server` router, model fetch/verify, `/local`, `/remote`, installers, launcher settings | [brianreborn/code-bootstraps-llama.cpp](https://github.com/brianreborn/code-bootstraps-llama.cpp) |
 | `green-roomz` | Alias gateway, including familia's graph-proxy mode for local declared routes | [brianreborn/green-roomz](https://github.com/brianreborn/green-roomz) |
 | `green-agentz` | Agent fleet (green-brainz, green-fleetz, green-zkillz) | [brianreborn/green-agentz](https://github.com/brianreborn/green-agentz) |
 | `green-agency` | **Retired.** Kept for historical specs; not the fleet | [brianreborn/green-agency](https://github.com/brianreborn/green-agency) |
@@ -117,7 +117,7 @@ Alternative engine builds follow the `<executable>__<author>__<branch>` naming s
 
 Shell environment variables always take precedence over saved settings.
 
-- **Settings panel (simple window):** `./familia panel` opens http://127.0.0.1:9932/ in your browser. It works with a mouse, a keyboard alone, a single switch or a screen reader (big buttons, short pages, no time limits, no JavaScript). It covers skills, license acceptance, the hermes mode, Harness2, a read-only view of each model's launch parameters, and the launcher settings. Every change is previewed before it is saved and can be undone. It listens on this computer only; from elsewhere use `ssh -L 9932:127.0.0.1:9932 HOST`. Details: [docs/panel.md](docs/panel.md).
+
 - **Settings in the terminal:** `sh scripts/configure.sh -i`. Without `-i` it only syncs pins.
 - **Standalone bootstrap UI:** use `./start.sh --bootstrap` to run the pinned code-bootstraps-llama.cpp router (safe-mode build path; decision/route = Laya). Its `PORT`, `PROFILE`, `CTX`, `CODER_CTX`, `MODELS_MAX`, and `TOOLS` settings do not configure graph nodes. See [docs/safe-mode-bootstrap.md](docs/safe-mode-bootstrap.md).
 - **Session control:** `DETACH_MODE=screen-attached|screen|tmux|nohup|foreground ./start.sh`. `screen-attached` is the default (reattach with `screen -r familia-server`); Termux takes a wake lock when `termux-wake-lock` is installed but does not silently background the graph. Screen sessions are named `familia-server`; `screen-attached` starts attached with 10,000 lines of scrollback (`Ctrl-A`, then `[` to review history; `Ctrl-A`, then `D` to detach; `screen -r familia-server` to resume). nohup logs go to `.cache/graph.log`.

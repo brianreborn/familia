@@ -44,7 +44,7 @@ VULKAN_RUN_DEPENDS=	${LOCALBASE}/lib/libvulkan.so:graphics/vulkan-loader
 
 LIBEXEC_TOP=	android_multi_start.sh android_start.sh install.sh \
 		start-green-roomz.sh start.sh watchdog_android.sh with-fleet.sh
-WRAPPERS=	familia-start familia-configure familia-validate familia-panel
+WRAPPERS=	familia-start familia-configure familia-validate
 
 do-install:
 	@${MKDIR} ${STAGEDIR}${PREFIX}/libexec/familia/scripts

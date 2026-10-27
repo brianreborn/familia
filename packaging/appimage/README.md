@@ -1,9 +1,9 @@
-# packaging/appimage
+# familia AppImage packaging bits
 
 | File | Role |
-|------|------|
-| `AppRun` | Entry: panel by default; `--menu` / `--cli` for terminal |
-| `familia.desktop` | FreeDesktop launcher + categories |
-| Icon | `assets/logo/familia-arbol-mark.png` (copied as `familia.png` at build) |
+|---|---|
+| `AppRun` | Entry: terminal menu by default; `--cli` for a one-shot command |
+| `familia.desktop` | Desktop entry for AppImage tooling |
+| `familia.svg` | Icon |
 
-Build: `./scripts/build_appimage.sh` → `dist/*.AppImage`. Docs: `docs/appimage.md`.
+Build with `./scripts/build_appimage.sh` from a familia checkout. See [docs/appimage.md](../../docs/appimage.md).

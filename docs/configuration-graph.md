@@ -21,7 +21,7 @@ What the validator checks now (full list in [graph-types.md](graph-types.md#rule
 - each model has a model-database entry pinned to a revision, and a node's context and sampling match the model card unless `override_reasons` explains why ([model-database.md](model-database.md), #51);
 - **RAM:** estimated use (weights + KV + 256 MiB overhead + `cache_ram_mib`) above `ram_mib` fails. Estimated use plus `reserve_ram_mib` above `ram_mib`, or less than 2 GiB free on a host under 8 GiB, is a warning. See [ram-safety.md](ram-safety.md).
 
-Consumers: [`scripts/serve.sh`](../scripts/serve.sh) and [`scripts/hermes.sh`](../scripts/hermes.sh) launch `llama-server` from `--args`, and hermes.sh refuses to start hermes-agent unless the graph validates. `start.sh` and the settings panel do **not** read the graph yet.
+Consumers: [`scripts/serve.sh`](../scripts/serve.sh) and [`scripts/hermes.sh`](../scripts/hermes.sh) launch `llama-server` from `--args`, and hermes.sh refuses to start hermes-agent unless the graph validates. `start.sh` does **not** read the graph yet.
 
 ## Why
 
@@ -130,7 +130,7 @@ familia: graph check failed
 | `CTX`, `CODER_CTX`, `GENERAL_CTX`, `PARALLEL`, `MODELS_MAX` | Become properties of model nodes. The environment variables still override, and the override is validated and reported. **TBD:** deprecation timeline. |
 | `ENGINE_<ROUTE>` | Becomes the engine property of that route's model node. |
 | Specialist auto-activation on file presence | Replaced by declaration plus presence. |
-| `--pick`, `--step-up` (model fetch helpers in code-bootstraps-llama.cpp) | Remain download helpers. Downloading a file doesn't change the graph. **TBD:** whether the panel offers "add to graph" after a download. |
+| `--pick`, `--step-up` (model fetch helpers in code-bootstraps-llama.cpp) | Remain download helpers. Downloading a file doesn't change the graph. **TBD:** whether a future host-management UI offers "add to graph" after a download. |
 
 ## Editing the graph
 
@@ -142,7 +142,7 @@ Edit `graph.yaml` by hand, or use `scripts/generate_graph.py HOST` / `scripts/mo
 - Refining the memory estimator (today: weights + KV + 256 MiB + cache). The safety margin is decided: see ram-safety.md.
 - Whether validation reruns on a schedule, only on change, or on every start (it reruns at least on every start and every change).
 - How external agents other than hermes-agent report their context budget.
-- Migration: how an existing `panel.env` becomes a first graph without silently baking in today's auto-picked values. (Proposal: generate a draft declaration, show it, and require the user to accept it.)
+- Migration: how an existing launcher `panel.env` becomes a first graph without silently baking in today's auto-picked values. (Proposal: generate a draft declaration, show it, and require the user to accept it.)
 
 ## See also
 

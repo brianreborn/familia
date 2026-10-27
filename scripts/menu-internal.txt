@@ -28,8 +28,6 @@ scripts/littlebit/check_ref.py|LittleBit developer check against upstream PyTorc
 scripts/littlebit/hfllama.py|LittleBit developer helper (needs transformers)
 scripts/littlebit/produce_tiny.py|LittleBit pipeline exercise only (docs/littlebit.md)
 scripts/littlebit/lbformat.py|LittleBit file format library
-scripts/panel_familia.py|familia pages for the retired settings panel GUI (Hermes Wiring delete lane); not launched from the menu
-scripts/panel.py|retired settings panel GUI entry point (Hermes Wiring delete lane); use setup.settings (terminal) instead
 scripts/familia_cli.py|engine behind ./familia: subcommand names, help, man page, completion (run as familia help / familia completion)
 scripts/with-host-lock|wrapper: flock ~/.local/state/familia/big.lock around one live/big job per host
 scripts/dogfood/dispatch.py|dogfood loop internals: picks the next issue for the local fix loop (run via scripts/dogfood/loop.sh)
