@@ -7,8 +7,9 @@
    ctx, compression on, context_engine enabled, every auxiliary task on the
    local node (no cloud fallback). Only non-secret settings are copied from
    ~/.hermes/config.yaml; ~/.hermes is only read, never written.
-3. Starts the node's llama-server from `validate_graph.py --args` if it is not
-   up, and waits until /props reports the expected n_ctx.
+3. Requires the node's llama-server already up (DETACH_MODE=screen-attached /
+   scripts/serve.sh). Checks /props n_ctx and, when graph has server_tools,
+   that /tools is not feature_disabled. Never daemon-spawns llama-server.
 4. Execs hermes-agent (resolved: snap, FreeBSD ports, or HERMES_BIN) with that HERMES_HOME.
 --escalate [--light NODE] puts a localhost escalation proxy (scripts/escalation_proxy.py,
 docs/escalation.md) between hermes and the node; hermes then runs as a child, not exec.
@@ -23,7 +24,7 @@ gate: prompts on a terminal; --accept-licenses / --yes or FAMILIA_ACCEPT_LICENSE
 Arguments for hermes-agent itself go after "--"; anything else unknown is an error (exit 2),
 so a typo never renders a config and starts a server.
 """
-import copy, glob, json, os, re, shutil, subprocess, sys, time, urllib.request
+import copy, glob, json, os, re, shutil, subprocess, sys, time, urllib.error, urllib.request
 import yaml
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -448,6 +449,36 @@ def props(n):
         return None
 
 
+def tools_live(n, timeout=5):
+    """True when llama-server Server Tools are enabled (GET /tools not 403/feature_disabled).
+
+    Graph `server_tools` only affects argv at launch; a crash/restart without `--tools`
+    still answers /props with the right n_ctx. Refuse to adopt that process (L-server-tools).
+    """
+    url = f"http://{bind(n)}:{n['port']}/tools"
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as r:
+            body = r.read(512).decode("utf-8", "replace")
+            if "feature_disabled" in body:
+                return False
+            return 200 <= getattr(r, "status", 200) < 400
+    except urllib.error.HTTPError as e:
+        try:
+            body = e.read(512).decode("utf-8", "replace")
+        except Exception:
+            body = ""
+        if e.code == 403 or "feature_disabled" in body:
+            return False
+        return False
+    except Exception:
+        return False
+
+
+def _wants_server_tools(n):
+    st = n.get("server_tools")
+    return st == "all" or (isinstance(st, list) and bool(st))
+
+
 ACCEPT_LICENSES = False   # --accept-licenses / --yes
 
 
@@ -470,24 +501,32 @@ def license_gate(g):
 
 
 def ensure_server(g, name, n, timeout=900):
+    """Adopt a live node only — never daemon-spawn llama-server (non-screen forbidden).
+
+    timeout is kept for API compatibility; cold start wait was removed with auto-spawn.
+    """
     want = n["ctx"] // n["parallel"]
     p = props(n)
     if p is None:
-        license_gate(g)
-        args = vg.server_args(g, name)
-        logd = os.path.expanduser("~/.cache/familia/logs"); os.makedirs(logd, exist_ok=True)
-        log = open(os.path.join(logd, f"{name}.log"), "ab")
-        print(f"hermes.sh: starting node {name}: {' '.join(args)}", file=sys.stderr)
-        subprocess.Popen(args, stdout=log, stderr=log, stdin=subprocess.DEVNULL, start_new_session=True, env=vg.server_env(g, name),
-                         preexec_fn=oom_adj.preexec())
-        t0 = time.time()
-        while (p := props(n)) is None or "default_generation_settings" not in p:
-            if time.time() - t0 > timeout: die(f"node {name} did not come up on port {n['port']}")
-            time.sleep(3)
+        die(
+            f"node {name} is not up on {bind(n)}:{n['port']}. "
+            f"Start it under DETACH_MODE=screen-attached "
+            f"(e.g. DETACH_MODE=screen-attached sh scripts/serve.sh {name} "
+            f"or DETACH_MODE=screen-attached ./start.sh --host <graph-host>). "
+            f"hermes_harness will not daemon-spawn llama-server."
+        )
     got = (p.get("default_generation_settings") or {}).get("n_ctx")
     if got != want:
         die(f"node {name} on port {n['port']} reports n_ctx {got}, graph expects per-slot {want}; "
             "something else is on that port or it was started with other args")
+    if _wants_server_tools(n) and not tools_live(n):
+        die(
+            f"node {name} on port {n['port']} is up but Server Tools are disabled "
+            f"(/tools 403 feature_disabled or unreachable). "
+            f"Graph has server_tools={n.get('server_tools')!r}; restart via "
+            f"DETACH_MODE=screen-attached so validate_graph emits --tools … "
+            f"(L-server-tools / known-issues M0)."
+        )
     return got
 
 

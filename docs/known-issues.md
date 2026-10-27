@@ -34,4 +34,6 @@
     without `--tools` (hand-start, or stale `generated/graph-*.yaml`) empties the panel again
     even though `graph.yaml` still has `server_tools: all`. Verify live argv + `GET /tools`,
     not only the graph field. See LESSONS-LEARNED `L-server-tools`.
+  - **Harness:** `hermes_harness.ensure_server` will not daemon-spawn a missing node and will
+    refuse to adopt a live port when `server_tools` is set but `/tools` is feature_disabled.
 
