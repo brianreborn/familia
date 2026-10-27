@@ -7,8 +7,9 @@
 set -e
 
 # Configuration
-PATCH_FILE="/home/green/familia/code-bootstraps-llama.cpp/llama.cpp-v0.7.0-pthread_create.patch"
-BUILD_DIR="/home/green/familia/build"
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+PATCH_FILE="$ROOT/code-bootstraps-llama.cpp/llama.cpp-v0.7.0-pthread_create.patch"
+BUILD_DIR="$ROOT/build"
 
 # Verify patch file exists
 if [ ! -f "$PATCH_FILE" ]; then

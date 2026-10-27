@@ -54,3 +54,7 @@ scripts/watchdog/install-kill-watch.sh|operator installer for the kill-watch use
 scripts/watchdog/kill-watch.sh|long-running journal follower started by its systemd user unit
 scripts/watchdog/mem-snapshot.sh|helper called by kill-watch.sh
 scripts/dogfood/install-loop-unit.sh|operator installer for the dogfood loop systemd user unit (#112)
+build-automation.sh|legacy one-off llama.cpp v0.7.0 patch/build helper for a green host; not an end-user task
+install/linux/deps.sh|installer dependency helper called by install/linux/install.sh; not a separate menu action
+scripts/build_appimage.sh|operator AppImage packaging for milestones; not an end-user menu task
+scripts/perf/box_multi_size_smoke.py|perf/dev smoke hitting decision+coder ports; run by operators on a box, not menu
