@@ -74,3 +74,41 @@ def test_ensure_server_ctx_mismatch(monkeypatch):
     monkeypatch.setattr(hh, "props", lambda n: {"default_generation_settings": {"n_ctx": 8192}})
     with pytest.raises(SystemExit):
         hh.ensure_server({}, "angel-coder", _node(server_tools="all"))
+
+
+def test_warm_prompt_skips_low_mem(monkeypatch):
+    monkeypatch.setenv("FAMILIA_WARM_MIN_AVAIL_MIB", "4096")
+    monkeypatch.setattr(hh, "mem_available_mib", lambda: 1000)
+    called = []
+    monkeypatch.setattr(hh, "hermes_prefix", lambda home: called.append("prefix") or {})
+    assert hh.warm_prompt({}, "angel-coder", _node(slot_save=True), "/tmp") is None
+    assert called == []
+
+
+def test_warm_prompt_passes_timeout(monkeypatch):
+    monkeypatch.delenv("FAMILIA_WARM_MIN_AVAIL_MIB", raising=False)
+    monkeypatch.setenv("FAMILIA_WARM_TIMEOUT", "123")
+    monkeypatch.setattr(hh, "mem_available_mib", lambda: 99999)
+    monkeypatch.setattr(hh, "hermes_prefix", lambda home: {"system": "s", "tools": [], "volatile": ""})
+    import prompt_cache as pc
+    seen = {}
+
+    def fake_stable(*a, **k):
+        return "PREFIX"
+
+    def fake_tokens(*a, **k):
+        return [1, 2, 3]
+
+    def fake_warm(base, tokens, tag="", slot=0, timeout=7200, log=None):
+        seen["timeout"] = timeout
+        seen["tag"] = tag
+        return ("restored", 0.1)
+
+    monkeypatch.setattr(pc, "stable_prefix", fake_stable)
+    monkeypatch.setattr(pc, "prefix_tokens", fake_tokens)
+    monkeypatch.setattr(pc, "warm", fake_warm)
+    # warm_prompt imports prompt_cache inside — patch sys.modules path used after import
+    import importlib
+    monkeypatch.setitem(sys.modules, "prompt_cache", pc)
+    assert hh.warm_prompt({}, "angel-coder", _node(slot_save=True), "/tmp") == "restored"
+    assert seen["timeout"] == 123

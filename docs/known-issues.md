@@ -3,6 +3,9 @@
 - **hermes fails with HTTP 400 or "below the 64K minimum"**
   - **Cause:** running stock `hermes` with `~/.hermes`. That config has compression off and points at models with small contexts (for example an 8,192-token `general` server), so a long turn overflows the slot and nothing compacts it (seen again 2026-10-18; first in [#19](https://github.com/brianreborn/familia/issues/19)).
   - **Fix:** run `scripts/hermes.sh`. It renders its own config with `context_length` equal to the node's per-slot context (65,536 on `coder`) and compression on. See [QUICKSTART.md](../QUICKSTART.md#always-run-hermes-through-the-harness).
+  - **Warm gate:** `warm_prompt` skips when MemAvailable is below `FAMILIA_WARM_MIN_AVAIL_MIB`
+    (default 2048) and caps prefill at `FAMILIA_WARM_TIMEOUT` (default 600s) so angel 64K
+    mmap+spill cannot hang sole-worker hosts in a multi-hour cache build.
 
 - **Vulkan build stalls under the memory cap with `-ngl 0`**
   - **Cause:** Vulkan llama.cpp builds allocate about 1.8 GB of shared-memory host buffers even with no GPU layers.

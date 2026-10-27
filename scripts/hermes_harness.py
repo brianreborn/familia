@@ -556,17 +556,57 @@ def hermes_prefix(home):
     return json.loads(r.stdout)
 
 
+def mem_available_mib():
+    """Best-effort free RAM in MiB (Linux MemAvailable; FreeBSD free pages). None if unknown."""
+    try:
+        with open("/proc/meminfo") as f:
+            for line in f:
+                if line.startswith("MemAvailable:"):
+                    return int(line.split()[1]) // 1024
+    except Exception:
+        pass
+    try:
+        r = subprocess.run(
+            ["sysctl", "-n", "vm.stats.vm.v_free_count", "hw.pagesize"],
+            capture_output=True, text=True, timeout=5,
+        )
+        if r.returncode == 0:
+            parts = [p for p in r.stdout.split() if p.strip()]
+            if len(parts) >= 2:
+                return (int(parts[0]) * int(parts[1])) // (1024 * 1024)
+    except Exception:
+        pass
+    return None
+
+
 def warm_prompt(g, name, n, home):
     """Nodes with slot_save: restore the fixed prompt prefix from disk, or prefill and save it once
-    (scripts/prompt_cache.py, #85). Best effort: any failure only means a slower first turn."""
+    (scripts/prompt_cache.py, #85). Best effort: any failure only means a slower first turn.
+
+    Under low MemAvailable (default floor 2048 MiB, FAMILIA_WARM_MIN_AVAIL_MIB) skip entirely so
+    angel 64K mmap+spill cannot hang the sole-worker host in a multi-hour prefill. Prefill timeout
+    defaults to 600s (FAMILIA_WARM_TIMEOUT); restore path stays short inside prompt_cache.warm.
+    """
     if not (n.get("slot_save") or n.get("spill_path")):
+        return None
+    min_avail = int(os.environ.get("FAMILIA_WARM_MIN_AVAIL_MIB", "2048"))
+    avail = mem_available_mib()
+    if avail is not None and avail < min_avail:
+        print(
+            f"hermes.sh: prompt cache skipped (MemAvailable {avail} MiB < {min_avail}; "
+            f"avoid 64K mmap/swap hang)",
+            file=sys.stderr,
+        )
         return None
     import prompt_cache
     base = f"http://{bind(n)}:{n['port']}"
+    warm_timeout = int(os.environ.get("FAMILIA_WARM_TIMEOUT", "600"))
     try:
         d = hermes_prefix(home)
         text = prompt_cache.stable_prefix(base, d["system"], d["tools"], d.get("volatile", ""), unstable=UNSTABLE_LINES)
-        return prompt_cache.warm(base, prompt_cache.prefix_tokens(base, text), tag=name)[0]
+        return prompt_cache.warm(
+            base, prompt_cache.prefix_tokens(base, text), tag=name, timeout=warm_timeout,
+        )[0]
     except Exception as e:
         print(f"hermes.sh: prompt cache skipped ({e})", file=sys.stderr)
         return None
