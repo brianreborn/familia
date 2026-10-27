@@ -28,6 +28,27 @@ def test_triggers():
     assert E.stuck_reasons({"tags": ["multi-file"]}, t)
     assert E.stuck_reasons({"elapsed_s": 601}, t) and not E.stuck_reasons({"elapsed_s": 10}, t)
 
+def test_phrase_word_boundary_and_negation():
+    t = E.DEFAULT_TRIGGERS
+    # Positive: still trigger
+    assert E.stuck_reasons({"user_messages": ["please escalate"]}, t)
+    assert E.stuck_reasons({"user_messages": ["try harder"]}, t)
+    assert E.stuck_reasons({"user_messages": ["please TRY HARDER"]}, t)
+    # Negated: must not fire from phrases alone
+    assert not E.stuck_reasons({"user_messages": ["do not escalate, just answer"]}, t)
+    assert not E.stuck_reasons({"user_messages": ["don't escalate"]}, t)
+    assert not E.stuck_reasons({"user_messages": ["dont escalate"]}, t)
+    assert not E.stuck_reasons({"user_messages": ["never escalate"]}, t)
+    assert not E.stuck_reasons({"user_messages": ["do not try harder"]}, t)
+    # Substring that is not a whole-word phrase must not fire
+    assert not E.stuck_reasons({"user_messages": ["deescalate the situation"]}, t)
+
+def test_decide_ignores_negated_escalate_phrase():
+    # Phrases alone with negation → none; positive phrase → suggest (cross-host)
+    assert E.decide(g(), "light", {"user_messages": ["do not escalate, just answer"]}, RECS, {})["decision"] == "none"
+    d = E.decide(g(), "light", {"user_messages": ["please escalate"]}, RECS, {})
+    assert d["decision"] == "suggest" and "escalate" in d["reasons"][0]
+
 def test_eta_ranking_prefers_fastest():
     r = E.rank(g(), "light", RECS)
     assert [x["node"] for x in r] == ["far", "near"] and r[0]["crosses_host"] and not r[1]["crosses_host"]

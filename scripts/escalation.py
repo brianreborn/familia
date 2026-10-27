@@ -74,6 +74,25 @@ def _sim(a, b):
     if not ta and not tb: return 1.0
     return len(ta & tb) / len(ta | tb)
 
+
+# Negation immediately before a phrase match (short window). Word-boundary
+# phrase hits only; "do not escalate" must not fire on phrase "escalate".
+_NEG_BEFORE = re.compile(r"(?i)\b(?:do\s+not|don'?t|dont|never|no)\s*$")
+
+def _phrase_hit(message, phrases):
+    """First phrase that matches on word boundaries and is not negated."""
+    for p in phrases:
+        words = re.findall(r"\w+", p.lower())
+        if not words:
+            continue
+        pat = re.compile(r"\b" + r"\s+".join(re.escape(w) for w in words) + r"\b", re.IGNORECASE)
+        for m in pat.finditer(message):
+            window = message[max(0, m.start() - 24):m.start()]
+            if _NEG_BEFORE.search(window):
+                continue
+            return p
+    return None
+
 def stuck_reasons(sig, trig):
     """sig keys (all optional): outputs [str], failures int, user_messages [str],
     tags [str], elapsed_s num. Returns list of human-readable reasons."""
@@ -87,8 +106,8 @@ def stuck_reasons(sig, trig):
     if trig["failure_retries"] and (sig.get("failures") or 0) >= trig["failure_retries"]:
         why.append(f"{sig['failures']} failed tool calls/tests (>= {trig['failure_retries']})")
     for m in sig.get("user_messages") or []:
-        hit = [p for p in trig["phrases"] if p.lower() in m.lower()]
-        if hit: why.append(f"user asked: {hit[0]!r}"); break
+        hit = _phrase_hit(m, trig["phrases"])
+        if hit: why.append(f"user asked: {hit!r}"); break
     tags = set(sig.get("tags") or []) & set(trig["tags"])
     if tags: why.append(f"task tagged {sorted(tags)}")
     if trig["time_budget_s"] and (sig.get("elapsed_s") or 0) > trig["time_budget_s"]:
