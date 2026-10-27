@@ -22,6 +22,8 @@ def test_host_selection_requires_an_exact_declared_graph_host():
     assert start_graph.select_host(g, requested="angel", environ={"FAMILIA_HOST": "miryam"}) == "angel"
     with pytest.raises(start_graph.StartupError, match="not declared"):
         start_graph.select_host(g, environ={}, hostname="codespace")
+    # OS hostname can differ from the graph key via hosts.*.local_names
+    assert start_graph.select_host(g, environ={}, hostname="grok-bot-vm-414232872") == "box"
 
 
 def test_local_topology_starts_only_local_active_nodes_and_routes():
@@ -34,6 +36,7 @@ def test_local_topology_starts_only_local_active_nodes_and_routes():
     assert gateway["port"] == 9931
     assert aliases == {
         "coder": {"kind": "chat", "url": "http://127.0.0.1:9941"},
+        "general": {"kind": "chat", "url": "http://127.0.0.1:9941"},
         "embed": {"kind": "embedding", "url": "http://127.0.0.1:9951"},
     }
     assert omitted == []

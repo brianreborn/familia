@@ -135,7 +135,9 @@ def validate(graph, check_files=True, host=None):
         try: meta = gguf_meta(path)
         except Exception as e: errs.append(f"nodes.{name}: cannot read GGUF: {e}"); continue
         arch = meta.get("general.architecture")
-        if arch != m["arch"]: errs.append(f"models.{n['model']}: GGUF architecture is {arch!r}, graph says {m['arch']!r}")
+        _ARCH_ALIAS = {"llama": "nanbeige", "nanbeige": "llama"}
+        if arch != m["arch"] and _ARCH_ALIAS.get(arch) != m["arch"] and _ARCH_ALIAS.get(m["arch"]) != arch:
+            errs.append(f"models.{n['model']}: GGUF architecture is {arch!r}, graph says {m['arch']!r}")
         fq, mq = meta.get("familia.quant"), m.get("quant")  # LittleBit (docs/littlebit.md)
         if fq == "littlebit" and mq != "littlebit": errs.append(f"models.{n['model']}: model is a LittleBit file (familia.quant=littlebit); model must declare quant: littlebit")
         if mq == "littlebit" and fq != "littlebit": errs.append(f"models.{n['model']}: quant: littlebit but {path} has no familia.quant=littlebit marker")

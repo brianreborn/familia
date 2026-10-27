@@ -240,6 +240,11 @@ def test_choose_card_defaults_rules():
            "default_mode": None}
     d, src, label, modes, how = am.choose_card_defaults([("", two)], [])
     assert d is None and len(modes) == 2                                  # ambiguous: node must choose
+    dual = {"sets": [sset("Agentic and tool-use tasks", {"temp": 1.0, "top-p": 0.95}),
+                     sset("Reasoning and chat tasks", {"temp": 0.6, "top-p": 0.95})],
+            "default_mode": None}
+    d, src, label, modes, how = am.choose_card_defaults([("", dual)], [])
+    assert d == {"temp": 0.6, "top-p": 0.95} and "soft-prefer" in how and len(modes) == 2
     d, *_ = am.choose_card_defaults([("", two)], [("", {"temperature": 0.7, "top_p": 0.8})])
     assert d == {"temp": 0.7, "top-p": 0.8}                               # generation_config breaks the tie
     two["default_mode"] = "thinking"

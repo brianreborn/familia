@@ -53,7 +53,7 @@ There is no visual graph editor and no natural-language configuration (see [Futu
 
 `start.sh` validates the graph, starts every active supported node assigned to the selected local host, waits for each node's health endpoint, and then starts the declared Green-Roomz graph proxy for local aliases. The current `miryam` graph exposes `coder` and `embed` at `http://127.0.0.1:9931`; query `GET /v1/models` for the available routes. Remote nodes and gateways are reported but never started or contacted without consent. Unsupported active runtime kinds or missing local artifacts fail before any process starts.
 
-`angel` is still unmeasured and has no active nodes. FreeBSD currently uses a source build only: install no packages and do not run `familia install`. Build the pinned llama.cpp checkout from `code-bootstraps-llama.cpp` with `BUILD_DIR=build-freebsd GPU=off scripts/build-linux.sh`, then verify `build-freebsd/bin/llama-server --version`. Graph serving there requires measured host facts and an explicit node placement.
+`angel` is measured (`measured: true`, ~24 GiB) but has no **active** nodes yet (planned Nanbeige placements await path verification on the host). FreeBSD currently uses a source build only: install no packages and do not run `familia install`. Build the pinned llama.cpp checkout from `code-bootstraps-llama.cpp` with `BUILD_DIR=build-freebsd GPU=off scripts/build-linux.sh`, then verify `build-freebsd/bin/llama-server --version`. Graph serving there requires measured host facts and an explicit node placement.
 
 The former standalone code-bootstraps UI/router is still available explicitly as `./start.sh --bootstrap`; that mode does not use `graph.yaml`.
 

@@ -73,7 +73,9 @@ def _os():
 def measure(kind, reserve):
     if kind not in {"desktop", "laptop", "phone", "vm"}:
         raise ValueError("kind must be desktop, laptop, phone, or vm; unknown hosts need an explicit kind")
-    out = [("kind", kind), ("measured", "true"), ("os", _os())]
+    short = socket.gethostname().split(".", 1)[0]
+    out = [("kind", kind), ("measured", "true"), ("os", _os()),
+           ("local_names", "[%s]             # OS hostname(s) that resolve to this graph host" % short)]
     cpu = _cpu()
     if not cpu:
         raise ValueError("could not measure CPU model on this host")

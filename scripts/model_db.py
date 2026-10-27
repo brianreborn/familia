@@ -972,8 +972,15 @@ def node_card(entry, node):
     if entry.get("card_defaults"):
         return dict(entry["card_defaults"]), entry.get("card_default_set"), "card default"
     if len(modes) > 1:
-        raise ValueError("the card recommends %d sampling sets and none is the default (%s); set card_set"
-                         % (len(modes), "; ".join(modes)))
+        labels = "; ".join(modes)
+        example = next(iter(modes))
+        raise ValueError(
+            "the card recommends %d sampling sets and none is the default (%s); "
+            "set node card_set to one label (example: card_set: %r) and "
+            "override_reasons.card_set explaining the choice; "
+            "or re-run add-model with --card-set %r --apply-card-defaults"
+            % (len(modes), labels, example, example)
+        )
     return {}, None, "card states no sampling values"
 
 

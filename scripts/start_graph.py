@@ -26,15 +26,33 @@ class StartupError(RuntimeError):
 
 def select_host(graph, requested=None, environ=None, hostname=None):
     env = os.environ if environ is None else environ
-    candidate = requested or env.get("FAMILIA_HOST") or (hostname or socket.gethostname()).split(".", 1)[0]
-    candidate = candidate.strip()
-    if candidate not in graph.get("hosts", {}):
-        known = ", ".join(sorted(graph.get("hosts", {})))
+    raw = requested or env.get("FAMILIA_HOST") or (hostname or socket.gethostname())
+    candidate = raw.strip().split(".", 1)[0]
+    hosts = graph.get("hosts", {}) or {}
+    if candidate in hosts:
+        return candidate
+    # OS hostname may differ from the graph key (e.g. grok-bot-vm-* -> box)
+    matches = [
+        name for name, h in hosts.items()
+        if isinstance(h, dict) and candidate in (h.get("local_names") or [])
+    ]
+    if len(matches) == 1:
+        return matches[0]
+    if len(matches) > 1:
         raise StartupError(
-            f"local host {candidate!r} is not declared in graph.yaml; "
-            f"use --host NAME or FAMILIA_HOST=NAME (declared: {known})"
+            f"OS hostname {candidate!r} matches multiple graph hosts via local_names "
+            f"({', '.join(sorted(matches))}); set --host or FAMILIA_HOST to one of them"
         )
-    return candidate
+    known = ", ".join(sorted(hosts))
+    raise StartupError(
+        f"local host {candidate!r} is not declared in graph.yaml; "
+        f"use --host NAME or FAMILIA_HOST=NAME (declared: {known}). "
+        f"Or add this OS hostname under hosts.<name>.local_names after measuring. "
+        f"Next step: measure this machine into the graph with "
+        f"`python3 scripts/host_measure.py --name NAME --kind desktop|laptop|phone|vm` "
+        f"(or run install/linux/install.sh, which measures for you). "
+        f"Top-level curl|install.sh alone does not measure the host."
+    )
 
 
 def local_topology(graph, host):
@@ -141,7 +159,12 @@ def validate_local_nodes(graph, host, nodes, *, check_files):
             if model_path and not model_path.is_absolute():
                 model_path = ROOT / model_path
             if model_path and not model_path.is_file():
-                raise StartupError(f"model for node {name} is missing: {model_arg}")
+                raise StartupError(
+                    f"model for node {name} is missing: {model_arg}. "
+                    f"Next step: place the GGUF at that path, or fetch with "
+                    f"`python3 scripts/add_model.py --fetch ORG/NAME --file FILE.gguf --accept-licenses` "
+                    f"then symlink/copy into the graph model path."
+                )
             if os.environ.get("FAMILIA_GUARD", "1") != "0":
                 guard = SCRIPTS / "bench_guard.py"
                 checked = subprocess.run(

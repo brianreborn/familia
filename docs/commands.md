@@ -47,7 +47,7 @@ The interactive menu and `--list` show these paths before the command groups. Fo
 | Add and launch a model | `models.fetch-preview` -> `models.fetch` -> add its node to `graph.yaml` -> `models.check` -> `hosts.serve <NODE>` |
 | Run Hermes on the graph coder | `models.check` -> `agents.hermes` (license-gated) |
 
-**Not done yet:** the FreeBSD llama.cpp 0.7.0 build and model-load smoke test on `angel` have not been run, and `angel` is still unmeasured. FreeBSD currently has no package-based setup here: do not run `familia install` or install packages; build the pinned llama.cpp checkout from source using the already available toolchain. From `code-bootstraps-llama.cpp`, run `BUILD_DIR=build-freebsd GPU=off scripts/build-linux.sh`, then verify `build-freebsd/bin/llama-server --version`. Measure the host and re-check `graph.yaml` afterward; the unmeasured host cannot host graph nodes.
+**Not done yet:** the FreeBSD llama.cpp 0.7.0 build and model-load smoke test on `angel` have not been run, and `angel` is measured in `graph.yaml` but still has no active nodes. FreeBSD currently has no package-based setup here: do not run `familia install` or install packages; build the pinned llama.cpp checkout from source using the already available toolchain. From `code-bootstraps-llama.cpp`, run `BUILD_DIR=build-freebsd GPU=off scripts/build-linux.sh`, then verify `build-freebsd/bin/llama-server --version`. Planned Nanbeige nodes need the GGUF on disk before `status: active`.
 
 ## Set up
 

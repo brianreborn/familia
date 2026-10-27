@@ -1,0 +1,1178 @@
+{
+ "schema": 2,
+ "id": "dealignai--Nanbeige4.3-33B-UNCENSORED-GGUF--Nanbeige4.3-33B-UNCENSORED-Q4_K_M",
+ "repo": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF",
+ "revision": "48e83e05611ef35d343ae5232f0078d85ff516e3",
+ "file": "Nanbeige4.3-33B-UNCENSORED-Q4_K_M.gguf",
+ "sha256": "1136ce66f4be1676a78936a936df012f148236475fb8424c5dea7cd85e165264",
+ "bytes": 20051495968,
+ "quant": "Q4_K_M",
+ "arch": "llama",
+ "roles": [
+  "coder",
+  "chat"
+ ],
+ "license": "dealignai-community-model-license-v0.3 (LICENSE.md)",
+ "license_source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF card license",
+ "ctx": 524288,
+ "ctx_source": "GGUF llama.context_length",
+ "card_ctx": null,
+ "card_ctx_source": null,
+ "base_model": "Nanbeige/Nanbeige4.3-33B",
+ "base_revision": "c1093c501cc6460427c0ac634db7223d0450c0ee",
+ "card_defaults": {
+  "temp": 0.6,
+  "top-p": 0.95
+ },
+ "card_defaults_source": {
+  "temp": "Nanbeige/Nanbeige4.3-33B README.md sampling table: Reasoning and chat tasks",
+  "top-p": "Nanbeige/Nanbeige4.3-33B README.md sampling table: Reasoning and chat tasks"
+ },
+ "card_default_set": "Reasoning and chat tasks",
+ "card_defaults_how": "soft-prefer chat/reasoning from Nanbeige/Nanbeige4.3-33B README sampling table over dealignai coding example",
+ "card_sampling_modes": {
+  "Agentic and tool-use tasks": {
+   "temp": 1.0,
+   "top-p": 0.95
+  },
+  "Reasoning and chat tasks": {
+   "temp": 0.6,
+   "top-p": 0.95
+  },
+  "Agentic/coding greedy (dealignai example)": {
+   "temp": 0.0,
+   "top-p": 1.0
+  }
+ },
+ "card_default_mode": null,
+ "card_default_mode_source": null,
+ "card_sampling_sets": [
+  {
+   "label": "Agentic and tool-use tasks",
+   "kind": "recommended",
+   "mode": null,
+   "params": {
+    "temp": 1.0,
+    "top-p": 0.95
+   },
+   "source": "Nanbeige/Nanbeige4.3-33B README.md sampling table"
+  },
+  {
+   "label": "Reasoning and chat tasks",
+   "kind": "recommended",
+   "mode": null,
+   "params": {
+    "temp": 0.6,
+    "top-p": 0.95
+   },
+   "source": "Nanbeige/Nanbeige4.3-33B README.md sampling table"
+  },
+  {
+   "label": "Agentic/coding greedy (dealignai example)",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 0.0,
+    "top-p": 1.0
+   },
+   "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF README.md:L226"
+  }
+ ],
+ "card_commands": [
+  {
+   "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF README.md:L199-201",
+   "file": "README.md",
+   "lines": [
+    199,
+    201
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "./llama-server -m Nanbeige4.3-33B-UNCENSORED-Q4_K_M.gguf \\\n  --host 127.0.0.1 --port 8080 \\\n  -c 32768 -ngl 999 --jinja --parallel 4",
+   "llama": [
+    {
+     "tool": "llama-server",
+     "raw": "./llama-server -m Nanbeige4.3-33B-UNCENSORED-Q4_K_M.gguf    --host 127.0.0.1 --port 8080    -c 32768 -ngl 999 --jinja --parallel 4",
+     "flags": [
+      {
+       "flag": "-m",
+       "canonical": "--model",
+       "value": "Nanbeige4.3-33B-UNCENSORED-Q4_K_M.gguf",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--host",
+       "canonical": "--host",
+       "value": "127.0.0.1",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--port",
+       "canonical": "--port",
+       "value": "8080",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-c",
+       "canonical": "--ctx-size",
+       "value": "32768",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-ngl",
+       "canonical": "--gpu-layers",
+       "value": "999",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--jinja",
+       "canonical": "--jinja",
+       "value": null,
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--parallel",
+       "canonical": "--parallel",
+       "value": "4",
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    }
+   ],
+   "doc": "card",
+   "doc_sha": "48e83e05611ef35d343ae5232f0078d85ff516e3",
+   "scope": "model"
+  },
+  {
+   "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF README.md:L207-210",
+   "file": "README.md",
+   "lines": [
+    207,
+    210
+   ],
+   "lang": "bash",
+   "tool": "curl",
+   "kind": "command",
+   "text": "curl -s http://127.0.0.1:8080/v1/chat/completions \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"model\":\"nb43\",\"messages\":[{\"role\":\"user\",\"content\":\"your request\"}],\n       \"chat_template_kwargs\":{\"enable_thinking\":true},\"max_tokens\":4000}'",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--chat-template-kwargs",
+      "value": "{\"enable_thinking\":true}",
+      "from": "chat_template_kwargs: {\"enable_thinking\": true}"
+     },
+     {
+      "flag": "-n",
+      "value": "4000",
+      "from": "max_tokens: 4000"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "card",
+   "doc_sha": "48e83e05611ef35d343ae5232f0078d85ff516e3",
+   "scope": "model"
+  },
+  {
+   "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF README.md:L226-226",
+   "file": "README.md",
+   "lines": [
+    226,
+    226
+   ],
+   "lang": "json",
+   "tool": "json",
+   "kind": "config",
+   "text": "{\"temperature\": 0.0, \"top_p\": 1.0, \"max_tokens\": 4000, \"chat_template_kwargs\": {\"enable_thinking\": true}}",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--temp",
+      "value": "0.0",
+      "from": "temperature: 0.0"
+     },
+     {
+      "flag": "--top-p",
+      "value": "1",
+      "from": "top_p: 1.0"
+     },
+     {
+      "flag": "-n",
+      "value": "4000",
+      "from": "max_tokens: 4000"
+     },
+     {
+      "flag": "--chat-template-kwargs",
+      "value": "{\"enable_thinking\":true}",
+      "from": "chat_template_kwargs: {\"enable_thinking\": true}"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "card",
+   "doc_sha": "48e83e05611ef35d343ae5232f0078d85ff516e3",
+   "scope": "model"
+  },
+  {
+   "source": "Nanbeige/Nanbeige4.3-33B README.md:L111-134",
+   "file": "README.md",
+   "lines": [
+    111,
+    134
+   ],
+   "lang": "python",
+   "tool": "transformers",
+   "kind": "code",
+   "text": "from transformers import AutoModelForCausalLM, AutoTokenizer\n\nmodel_id = 'Nanbeige/Nanbeige4.3-33B'\ntokenizer = AutoTokenizer.from_pretrained(\n  model_id,\n  use_fast=False,\n  trust_remote_code=True\n)\nmodel = AutoModelForCausalLM.from_pretrained(\n  model_id,\n  torch_dtype='auto',\n  device_map='auto',\n  trust_remote_code=True\n)\n\nmessages = [{'role': 'user', 'content': 'Which number is bigger, 9.11 or 9.8?'}]\ninputs = tokenizer.apply_chat_template(\n  messages,\n  add_generation_prompt=True,\n  return_tensors='pt'\n).to(model.device)\noutput_ids = model.generate(inputs, max_new_tokens=1024)\nresponse = tokenizer.decode(output_ids[0][inputs.shape[-1]:], skip_special_tokens=True)\nprint(response)",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-n",
+      "value": "1024",
+      "from": "max_new_tokens: 1024"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "c1093c501cc6460427c0ac634db7223d0450c0ee",
+   "scope": "model"
+  },
+  {
+   "source": "Nanbeige/Nanbeige4.3-33B README.md:L140-148",
+   "file": "README.md",
+   "lines": [
+    140,
+    148
+   ],
+   "lang": "bash",
+   "tool": "sglang",
+   "kind": "command",
+   "text": "MODEL_PATH=/path/to/your/Nanbeige4.3-33B\npython -m sglang.launch_server \\\n  --model-path ${MODEL_PATH} \\\n  --host 0.0.0.0 \\\n  --port 8000 \\\n  --tp-size 4 \\\n  --mem-fraction-static 0.8 \\\n  --reasoning-parser qwen3 \\\n  --tool-call-parser qwen3_coder",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--reasoning-format",
+      "value": "deepseek",
+      "from": "--reasoning-parser qwen3"
+     },
+     {
+      "flag": "--jinja",
+      "value": null,
+      "from": "--tool-call-parser qwen3_coder"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--model-path ${MODEL_PATH}",
+      "why": "the model is the GGUF file"
+     },
+     {
+      "arg": "--tp-size 4",
+      "why": "multi-GPU tensor parallelism; n/a"
+     },
+     {
+      "arg": "--mem-fraction-static 0.8",
+      "why": "SGLang memory pool fraction; n/a"
+     }
+    ]
+   },
+   "doc": "base-card",
+   "doc_sha": "c1093c501cc6460427c0ac634db7223d0450c0ee",
+   "scope": "model"
+  },
+  {
+   "source": "Nanbeige/Nanbeige4.3-33B README.md:L154-162",
+   "file": "README.md",
+   "lines": [
+    154,
+    162
+   ],
+   "lang": "bash",
+   "tool": "vllm",
+   "kind": "command",
+   "text": "MODEL_PATH=/path/to/your/Nanbeige4.3-33B\nvllm serve ${MODEL_PATH} \\\n  --host 0.0.0.0 \\\n  --port 8000 \\\n  --tensor-parallel-size 4 \\\n  --gpu-memory-utilization 0.8 \\\n  --enable-auto-tool-choice \\\n  --reasoning-parser qwen3 \\\n  --tool-call-parser qwen3_coder",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--jinja",
+      "value": null,
+      "from": "--enable-auto-tool-choice"
+     },
+     {
+      "flag": "--reasoning-format",
+      "value": "deepseek",
+      "from": "--reasoning-parser qwen3"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--tensor-parallel-size 4",
+      "why": "multi-GPU tensor parallelism; n/a (one device per llama-server here)"
+     },
+     {
+      "arg": "--gpu-memory-utilization 0.8",
+      "why": "vLLM memory fraction; n/a"
+     }
+    ]
+   },
+   "doc": "base-card",
+   "doc_sha": "c1093c501cc6460427c0ac634db7223d0450c0ee",
+   "scope": "model"
+  }
+ ],
+ "card_notes": [
+  {
+   "text": "<sup>1</sup> Nanbeige4.3-33B is evaluated with <code>preserve_thinking=true</code> in the chat template.<br>",
+   "source": "Nanbeige/Nanbeige4.3-33B README.md:L64"
+  },
+  {
+   "text": "The tokenizer provides a configurable chat template for reasoning and tool-use scenarios:",
+   "source": "Nanbeige/Nanbeige4.3-33B README.md:L90"
+  },
+  {
+   "text": "- `enable_thinking` controls whether the model generates reasoning for the current response. It is enabled by default; set it to `False` for non-thinking mode.",
+   "source": "Nanbeige/Nanbeige4.3-33B README.md:L92"
+  },
+  {
+   "text": "The model supports a context length of up to 524,288 tokens (512K).",
+   "source": "Nanbeige/Nanbeige4.3-33B README.md:L96"
+  },
+  {
+   "text": "> **UNCENSORED** = refusal-removed GGUF build of **[Nanbeige/Nanbeige4.3-33B](https://huggingface.co/Nanbeige/Nanbeige4.3-33B)**. Three quants in one place: **Q6_K (25.3 GB)**, **Q4_K_M (18.7 GB)**, **IQ2_XXS (8.7 GB)**. All ship with a fresh matching importance matrix (imatrix) over 1M tokens of mi",
+   "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF README.md:L43"
+  },
+  {
+   "text": "Enable thinking mode via `chat_template_kwargs`:",
+   "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF README.md:L204"
+  },
+  {
+   "text": "- Thinking: binary on/off via `chat_template_kwargs`",
+   "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF README.md:L218"
+  }
+ ],
+ "chat_template": {
+  "gguf_sha256": "f2b1e2a1be25d277e8c903a2aa4d69ca5fd8a0fcb37d4792088e72426df5b91c",
+  "repo_sha256": "f2b1e2a1be25d277e8c903a2aa4d69ca5fd8a0fcb37d4792088e72426df5b91c",
+  "repo_file": "tokenizer_config.json:chat_template",
+  "same": true,
+  "gguf_chars": 8003,
+  "repo_chars": 8003,
+  "repo_label": "Nanbeige/Nanbeige4.3-33B",
+  "use": "gguf"
+ },
+ "stop": {
+  "eos_token": "<|im_end|>",
+  "eos_token_id": 166101,
+  "eos_token_id_source": "Nanbeige/Nanbeige4.3-33B generation_config.json",
+  "analysis": {
+   "tokens": [
+    {
+     "id": 166101,
+     "text": "<|im_end|>",
+     "source": "Nanbeige/Nanbeige4.3-33B generation_config.json eos_token_id",
+     "eog_by": "GGUF tokenizer.ggml.eos_token_id"
+    }
+   ],
+   "missing": [],
+   "gguf": {
+    "eos": 166101
+   }
+  }
+ },
+ "rope": {
+  "rope.freq_base": 120000000.0
+ },
+ "aux": null,
+ "gguf": {
+  "general.architecture": "llama",
+  "general.name": "Nb43 Crack v2 Hf",
+  "general.file_type": 15,
+  "general.quantization_version": 2,
+  "_gguf_version": 3
+ },
+ "snapshot": {
+  "path": "dealignai--Nanbeige4.3-33B-UNCENSORED-GGUF/48e83e05611ef35d343ae5232f0078d85ff516e3",
+  "fetched_bytes": 48829,
+  "errors": null,
+  "gated": false
+ },
+ "base_snapshot": {
+  "path": "Nanbeige--Nanbeige4.3-33B/c1093c501cc6460427c0ac634db7223d0450c0ee",
+  "fetched_bytes": 22057827,
+  "errors": null,
+  "gated": false
+ },
+ "repo_files": {
+  ".gitattributes": {
+   "size": 1743,
+   "sha256": null,
+   "blob": "f29643942e74fc7aae424c7649a3cad1233a9be4",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "LICENSE.md": {
+   "size": 22765,
+   "sha256": null,
+   "blob": "4a97d346373db2d4ee8cd018304ea8ddb51748b9",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "Nanbeige4.3-33B-UNCENSORED-IQ2_XXS.gguf": {
+   "size": 9326390304,
+   "sha256": "ef7bcb2b97d475ee0a42badf65db74c5a44133adb7d4f9b988759cbe1e9d02fa",
+   "blob": "f6c370dc66f8a52d46870ecfab38e66020a96f02",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (9326 MB)"
+  },
+  "Nanbeige4.3-33B-UNCENSORED-Q4_K_M.gguf": {
+   "size": 20051495968,
+   "sha256": "1136ce66f4be1676a78936a936df012f148236475fb8424c5dea7cd85e165264",
+   "blob": "e202e55eef5f39124cf2176f429172aedc34ab33",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (20051 MB)"
+  },
+  "Nanbeige4.3-33B-UNCENSORED-Q6_K.gguf": {
+   "size": 27174308896,
+   "sha256": "e6e432a2e498e0197fa913eff5e48ae9ad840617b3bb1f0954cc739a33b0e4e8",
+   "blob": "daef1a1b3602dbc3c2a5d330614c9269f166d67c",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (27174 MB)"
+  },
+  "README.md": {
+   "size": 13137,
+   "sha256": null,
+   "blob": "f34a8a855c6ac7529956d260196bb0cf2e8609ef",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "dealign_mascot.png": {
+   "size": 11184,
+   "sha256": null,
+   "blob": "da3bf39ad48aeac6a18d0a6928ab0bb8da4d90e9",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  }
+ },
+ "base_repo_files": {
+  ".gitattributes": {
+   "size": 1699,
+   "sha256": null,
+   "blob": "ffcf59baea062e44de8e842f3c5d600895ece23b",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "README.md": {
+   "size": 8884,
+   "sha256": null,
+   "blob": "b85cb82077cb4d81836597644756610d8cb328b8",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "added_tokens.json": {
+   "size": 174,
+   "sha256": null,
+   "blob": "8805f6dd0517ef0a74400d304c63bf176b3e28ed",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "config.json": {
+   "size": 883,
+   "sha256": null,
+   "blob": "adee1d1b766ca3dbaa104d07ba1a28b6a84fef85",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "figures/nanbeige43-benchmarks.png": {
+   "size": 137165,
+   "sha256": "cb98ba304c3e3d5a8432683241fd89157ff560b2ce9682a3f1b96ea6e022fd48",
+   "blob": "9c1c3468ec8cc0a4081bb423990c38c1497158fa",
+   "fetched": true,
+   "verified": "lfs-sha256"
+  },
+  "figures/nbg.png": {
+   "size": 15639,
+   "sha256": null,
+   "blob": "3466c5a7576bf8a142a80596cb73707fbc523d6c",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "figures/occupation.png": {
+   "size": 609476,
+   "sha256": "90dce956d37e02f01d4150717eeb9167cd078255588091bd05128b7bdaf94aaf",
+   "blob": "5aaef0707c78688b2fa3fd7696c3693eab33cc78",
+   "fetched": true,
+   "verified": "lfs-sha256"
+  },
+  "generation_config.json": {
+   "size": 164,
+   "sha256": null,
+   "blob": "a46c6565c7ccaca981a8d5f069da850827d6962b",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "model-00001-of-00014.safetensors": {
+   "size": 4051757592,
+   "sha256": "a70e695f1a8c9686158e791829e603833840e7a8ce7ece884eff6aeca561f9b2",
+   "blob": "9ce940fa409bb41cd6a9cbee4cca7f8f684417a5",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (4051 MB)"
+  },
+  "model-00002-of-00014.safetensors": {
+   "size": 4961951064,
+   "sha256": "36599c909e677a50cffd7715376a2e6eeb40097296e2bb1103cd6316ffe8af52",
+   "blob": "c4eff89b134b5d90274a29a759633a871355c75b",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (4961 MB)"
+  },
+  "model-00003-of-00014.safetensors": {
+   "size": 4947270864,
+   "sha256": "228267c30873849f69149f09faf35f9e956bf5a50ddd0820ee33b5cd326eb66d",
+   "blob": "e51ee484c9d651cb6bed2d38657bc4e82ae58e23",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (4947 MB)"
+  },
+  "model-00004-of-00014.safetensors": {
+   "size": 4873856544,
+   "sha256": "e5654a03d7e9bfddfee1b8b051864d5b61a3f1aae282c1c5deed2117a9a8f94e",
+   "blob": "8036fd4c64e1d0f45f549219d4885b10d5beab52",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (4873 MB)"
+  },
+  "model-00005-of-00014.safetensors": {
+   "size": 4690428272,
+   "sha256": "055ef50375b8ce6342d5beaf971f59c67fbb1f358047511c0781564b7fcaf541",
+   "blob": "3995fe69d135f26d029216ca22d058ddf3446da9",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (4690 MB)"
+  },
+  "model-00006-of-00014.safetensors": {
+   "size": 4793130400,
+   "sha256": "5d0fb320fd4161bb901f7869f67d2e3459a2c2699040818b6349c6021bfe3ddb",
+   "blob": "4e65226f696958a986ecdb5e56fc0c7873f944ff",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (4793 MB)"
+  },
+  "model-00007-of-00014.safetensors": {
+   "size": 4727128376,
+   "sha256": "8b2203d94427d8b5e64805ccec17c14b1ca3f12baffb542ed396424e03c474df",
+   "blob": "56021b749573707d680583252bd7dbea51de82cd",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (4727 MB)"
+  },
+  "model-00008-of-00014.safetensors": {
+   "size": 4998767864,
+   "sha256": "4e7b957640e52ee183ebe0f8f1f23d65c94075dd0aff0b22176e3f44abb3102b",
+   "blob": "ced8e0803b50eb89b2bfaa3ccce8a0d208684c20",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (4998 MB)"
+  },
+  "model-00009-of-00014.safetensors": {
+   "size": 4954597256,
+   "sha256": "5e90fe70ad8f88bf5ccd9ca3a3f38b384960689d26a05f45d1b135afba6a749e",
+   "blob": "15f95cb61f767b75844f4745e6a2340ee0e8fe75",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (4954 MB)"
+  },
+  "model-00010-of-00014.safetensors": {
+   "size": 4793131024,
+   "sha256": "19bb937ef55014945b7ac20b0b0ca039c75756679da28b6bc949bf6cdfd92b1e",
+   "blob": "af520cc41376ad44e10897f15f7d89d91ea79ee5",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (4793 MB)"
+  },
+  "model-00011-of-00014.safetensors": {
+   "size": 4895919880,
+   "sha256": "09909f3730fe888a83518c88e67b44d6d1aa45a2ffd411ddefe767f510e6e72f",
+   "blob": "cfed86d75160873f459e0830a9f96f57ebcdc589",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (4895 MB)"
+  },
+  "model-00012-of-00014.safetensors": {
+   "size": 4727056152,
+   "sha256": "2cdb2749eb589bf5e89290d457609d0461169e115bfa9549b0755f5b48dd716c",
+   "blob": "8bcc48c2bfe8e6315a53d31cff065e4a63b22b57",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (4727 MB)"
+  },
+  "model-00013-of-00014.safetensors": {
+   "size": 4984073248,
+   "sha256": "a1babb6d7bef3d4a31f071e590ec58fc96ac084584b8d55f632d9a44b2647df5",
+   "blob": "1b8f6f409723210fdfd2697093e9c31881d71a00",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (4984 MB)"
+  },
+  "model-00014-of-00014.safetensors": {
+   "size": 3838940632,
+   "sha256": "b23adaf4c6e6d62e7e93a76bdcb55dbd5a47f6870a5713200e6627b6b291ebdc",
+   "blob": "729fde9d193286777c8923fa5cad19c0f016678b",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (3838 MB)"
+  },
+  "model.safetensors.index.json": {
+   "size": 38810,
+   "sha256": null,
+   "blob": "c45ed46c3ca5a40fa8f6fcfd76d48429b5e8d430",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "special_tokens_map.json": {
+   "size": 623,
+   "sha256": null,
+   "blob": "fb83292a14c95f398736acae643c48c152b9eb71",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "tokenizer.json": {
+   "size": 18450979,
+   "sha256": "1d858a0fc007f22af6ae18bfa1ae52d30e398aa9cd1ea06e7777176869346a3f",
+   "blob": "39a8c90df827f163105c35c11c00b0936f2f437c",
+   "fetched": true,
+   "verified": "lfs-sha256"
+  },
+  "tokenizer.model": {
+   "size": 2782298,
+   "sha256": "fb41d04798b714520a9b075727b0226538b7330254299062742c50ec8374bc36",
+   "blob": "5dc56ceef972dd0a233ce8c8100316ac1bdc089e",
+   "fetched": true,
+   "verified": "lfs-sha256"
+  },
+  "tokenizer_config.json": {
+   "size": 11033,
+   "sha256": null,
+   "blob": "00946f0ef9517230d7db61f70b4ae1212936f30c",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  }
+ },
+ "found_in": [
+  "add-model.sh --fetch --damp-run"
+ ],
+ "match": null,
+ "local_check": null,
+ "unknown": null,
+ "warnings": null,
+ "updated": "2026-10-26",
+ "by": "scripts/model_db.py",
+ "weights": "absent (damp)",
+ "gguf_meta": {
+  "general.architecture": "llama",
+  "general.type": "model",
+  "general.name": "Nb43 Crack v2 Hf",
+  "general.size_label": "33B",
+  "general.license": "apache-2.0",
+  "general.base_model.count": 1,
+  "general.base_model.0.name": "Nanbeige4.3 33B Base",
+  "general.base_model.0.organization": "Nanbeige",
+  "general.base_model.0.repo_url": "https://huggingface.co/Nanbeige/Nanbeige4.3-33B-Base",
+  "general.tags": [
+   "llm",
+   "nanbeige",
+   "text-generation"
+  ],
+  "general.languages": [
+   "en",
+   "zh"
+  ],
+  "llama.block_count": 52,
+  "llama.context_length": 524288,
+  "llama.embedding_length": 7168,
+  "llama.feed_forward_length": 22016,
+  "llama.attention.head_count": 56,
+  "llama.attention.head_count_kv": 8,
+  "llama.rope.freq_base": 120000000.0,
+  "llama.attention.layer_norm_rms_epsilon": 9.999999747378752e-06,
+  "llama.attention.key_length": 128,
+  "llama.attention.value_length": 128,
+  "llama.vocab_size": 166912,
+  "llama.rope.dimension_count": 128,
+  "tokenizer.ggml.add_space_prefix": true,
+  "tokenizer.ggml.model": "llama",
+  "tokenizer.ggml.pre": "default",
+  "tokenizer.ggml.tokens": {
+   "array_len": 166912
+  },
+  "tokenizer.ggml.scores": {
+   "array_len": 166912
+  },
+  "tokenizer.ggml.token_type": {
+   "array_len": 166912
+  },
+  "tokenizer.ggml.bos_token_id": 166100,
+  "tokenizer.ggml.eos_token_id": 166101,
+  "tokenizer.ggml.unknown_token_id": 0,
+  "tokenizer.ggml.padding_token_id": 0,
+  "tokenizer.ggml.add_bos_token": true,
+  "tokenizer.ggml.add_sep_token": false,
+  "tokenizer.ggml.add_eos_token": false,
+  "tokenizer.chat_template": {
+   "sha256": "f2b1e2a1be25d277e8c903a2aa4d69ca5fd8a0fcb37d4792088e72426df5b91c",
+   "chars": 8003
+  },
+  "tokenizer.ggml.clean_spaces": false,
+  "tokenizer.ggml.metaspace.prepend_scheme": "first",
+  "general.quantization_version": 2,
+  "general.file_type": 15,
+  "quantize.imatrix.file": "/opt/nanbeige43-gguf/v2-imatrix.gguf",
+  "quantize.imatrix.dataset": "/workspace/nanbeige43-33b-gguf/calibration-v2/selected-token-ids.txt",
+  "quantize.imatrix.entries_count": 365,
+  "quantize.imatrix.chunks_count": 512,
+  "_gguf_version": 3,
+  "_n_tensors": 471
+ },
+ "base_chain": [
+  {
+   "repo": "Nanbeige/Nanbeige4.3-33B",
+   "api_id": "Nanbeige/Nanbeige4.3-33B",
+   "revision": "c1093c501cc6460427c0ac634db7223d0450c0ee",
+   "via": "card base_model",
+   "card_data": {
+    "license": "apache-2.0",
+    "language": [
+     "en",
+     "zh"
+    ],
+    "base_model": [
+     "Nanbeige/Nanbeige4.3-33B-Base"
+    ],
+    "pipeline_tag": "text-generation",
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "text-generation",
+   "safetensors": {
+    "parameters": {
+     "BF16": 33118977024
+    },
+    "total": 33118977024
+   },
+   "license_files": null
+  },
+  {
+   "repo": "Nanbeige/Nanbeige4.3-33B-Base",
+   "api_id": "Nanbeige/Nanbeige4.3-33B-Base",
+   "revision": "e061adde974ffea8cd3586ae43d08ac640afe56e",
+   "via": "Nanbeige/Nanbeige4.3-33B card base_model",
+   "card_data": {
+    "license": "apache-2.0",
+    "language": [
+     "en",
+     "zh"
+    ],
+    "pipeline_tag": "text-generation",
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "text-generation",
+   "safetensors": {
+    "parameters": {
+     "BF16": 33118977024
+    },
+    "total": 33118977024
+   },
+   "license_files": null
+  }
+ ],
+ "github": null,
+ "github_dropped": null,
+ "descriptor": {
+  "repo_id": {
+   "effective": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF",
+   "source": "HF API id"
+  },
+  "revision": {
+   "effective": "48e83e05611ef35d343ae5232f0078d85ff516e3",
+   "source": "pinned (manifest / database)"
+  },
+  "file": {
+   "effective": "Nanbeige4.3-33B-UNCENSORED-Q4_K_M.gguf",
+   "source": "HF API siblings"
+  },
+  "bytes": {
+   "effective": 20051495968,
+   "source": "HF API LFS size"
+  },
+  "sha256": {
+   "effective": "1136ce66f4be1676a78936a936df012f148236475fb8424c5dea7cd85e165264",
+   "source": "HF API LFS oid"
+  },
+  "quant": {
+   "effective": "Q4_K_M",
+   "source": "file name",
+   "values": [
+    {
+     "value": "Q4_K_M",
+     "source": "file name"
+    },
+    {
+     "value": "Q4_K_M",
+     "source": "GGUF general.file_type"
+    }
+   ]
+  },
+  "license": {
+   "effective": "other",
+   "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF card license",
+   "values": [
+    {
+     "value": "other",
+     "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "Nanbeige/Nanbeige4.3-33B card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "Nanbeige/Nanbeige4.3-33B-Base card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "GGUF general.license"
+    }
+   ],
+   "conflict": true
+  },
+  "license_name": {
+   "effective": "dealignai-community-model-license-v0.3",
+   "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF card license_name"
+  },
+  "license_link": {
+   "effective": "LICENSE.md",
+   "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF card license_link"
+  },
+  "license_file": {
+   "effective": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF@48e83e05611e/LICENSE.md",
+   "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF repo file"
+  },
+  "base_model_chain": {
+   "effective": "Nanbeige/Nanbeige4.3-33B",
+   "source": "card base_model",
+   "values": [
+    {
+     "value": "Nanbeige/Nanbeige4.3-33B",
+     "source": "card base_model"
+    },
+    {
+     "value": "Nanbeige/Nanbeige4.3-33B-Base",
+     "source": "Nanbeige/Nanbeige4.3-33B card base_model"
+    }
+   ]
+  },
+  "gguf_base_model": {
+   "effective": {
+    "name": "Nanbeige4.3 33B Base",
+    "organization": "Nanbeige",
+    "repo_url": "https://huggingface.co/Nanbeige/Nanbeige4.3-33B-Base"
+   },
+   "source": "GGUF general.base_model.0"
+  },
+  "architecture": {
+   "effective": "llama",
+   "source": "GGUF general.architecture",
+   "values": [
+    {
+     "value": "llama",
+     "source": "GGUF general.architecture"
+    },
+    {
+     "value": "llama",
+     "source": "HF API gguf.architecture"
+    }
+   ]
+  },
+  "hf_architectures": {
+   "effective": [
+    "LlamaForCausalLM"
+   ],
+   "source": "Nanbeige/Nanbeige4.3-33B config.json architectures"
+  },
+  "hf_model_type": {
+   "effective": "llama",
+   "source": "Nanbeige/Nanbeige4.3-33B config.json model_type"
+  },
+  "parameters": {
+   "effective": 33118977024,
+   "source": "HF API gguf.total (dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF)",
+   "values": [
+    {
+     "value": 33118977024,
+     "source": "HF API gguf.total (dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF)"
+    },
+    {
+     "value": 33118977024,
+     "source": "HF API safetensors.total (Nanbeige/Nanbeige4.3-33B)"
+    },
+    {
+     "value": 33118977024,
+     "source": "HF API safetensors.total (Nanbeige/Nanbeige4.3-33B-Base)"
+    }
+   ]
+  },
+  "size_label": {
+   "effective": "33B",
+   "source": "GGUF general.size_label"
+  },
+  "ctx_statements": {
+   "effective": {
+    "value": 524288,
+    "quote": "- Context: 512K (model-advertised)"
+   },
+   "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF README.md:L217",
+   "values": [
+    {
+     "value": {
+      "value": 524288,
+      "quote": "- Context: 512K (model-advertised)"
+     },
+     "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF README.md:L217"
+    },
+    {
+     "value": {
+      "value": 524288,
+      "quote": "The model supports a context length of up to 524,288 tokens (512K)."
+     },
+     "source": "Nanbeige/Nanbeige4.3-33B README.md:L96"
+    }
+   ]
+  },
+  "ctx": {
+   "effective": 524288,
+   "source": "Nanbeige/Nanbeige4.3-33B config.json max_position_embeddings",
+   "values": [
+    {
+     "value": 524288,
+     "source": "Nanbeige/Nanbeige4.3-33B config.json max_position_embeddings"
+    },
+    {
+     "value": 524288,
+     "source": "GGUF llama.context_length"
+    }
+   ],
+   "precedence": "card statement > config.json > GGUF header > GitHub README"
+  },
+  "pipeline_tag": {
+   "effective": "text-generation",
+   "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF HF API pipeline_tag",
+   "values": [
+    {
+     "value": "text-generation",
+     "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF HF API pipeline_tag"
+    },
+    {
+     "value": "text-generation",
+     "source": "Nanbeige/Nanbeige4.3-33B HF API pipeline_tag"
+    },
+    {
+     "value": "text-generation",
+     "source": "Nanbeige/Nanbeige4.3-33B-Base HF API pipeline_tag"
+    }
+   ]
+  },
+  "languages": {
+   "effective": [
+    "en",
+    "zh"
+   ],
+   "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF card language",
+   "values": [
+    {
+     "value": [
+      "en",
+      "zh"
+     ],
+     "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF card language"
+    },
+    {
+     "value": [
+      "en",
+      "zh"
+     ],
+     "source": "Nanbeige/Nanbeige4.3-33B card language"
+    },
+    {
+     "value": [
+      "en",
+      "zh"
+     ],
+     "source": "Nanbeige/Nanbeige4.3-33B-Base card language"
+    },
+    {
+     "value": [
+      "en",
+      "zh"
+     ],
+     "source": "GGUF general.languages"
+    }
+   ]
+  }
+ },
+ "required_params": {
+  "kind": "chat",
+  "native_ctx": 524288,
+  "native_ctx_source": "Nanbeige/Nanbeige4.3-33B config.json max_position_embeddings",
+  "yarn": null,
+  "yarn_source": null,
+  "items": [
+   {
+    "class": "REQUIRED",
+    "flag": "--jinja",
+    "value": null,
+    "source": "GGUF tokenizer.chat_template (f2b1e2a1be25)",
+    "why_required": "messages, tool calls and thinking are formatted by the model's chat template; without --jinja llama-server falls back to a built-in approximation",
+    "also": [
+     "Nanbeige/Nanbeige4.3-33B README.md:L140-148",
+     "Nanbeige/Nanbeige4.3-33B README.md:L154-162",
+     "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF README.md:L199-201"
+    ]
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--gpu-layers",
+    "value": "999",
+    "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF README.md:L199-201",
+    "why_required": "performance / tool option in the card's command"
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--parallel",
+    "value": "4",
+    "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF README.md:L199-201",
+    "why_required": "performance / tool option in the card's command"
+   },
+   {
+    "class": "REQUIRED",
+    "flag": "--reasoning-format",
+    "value": "deepseek",
+    "source": "Nanbeige/Nanbeige4.3-33B README.md:L140-148",
+    "why_required": "translated from --reasoning-parser qwen3: the card serves it with a reasoning parser; llama-server separates <think> with --reasoning-format deepseek (its default)",
+    "translated": true,
+    "also": [
+     "Nanbeige/Nanbeige4.3-33B README.md:L154-162"
+    ]
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--chat-template-kwargs",
+    "value": "{\"enable_thinking\":true}",
+    "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF README.md:L207-210",
+    "why_required": "every example on the card passes chat_template_kwargs {\"enable_thinking\":true}",
+    "translated": true,
+    "also": [
+     "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF README.md:L226-226"
+    ]
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--temp",
+    "value": "0.0",
+    "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF README.md:L226 (code example)",
+    "why_required": "the card's recommended sampling (example: For agentic and coding workflows (tool-calling, iterative code tasks), use low-temperature greedy or near-greedy)"
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--top-p",
+    "value": "1",
+    "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF README.md:L226 (code example)",
+    "why_required": "the card's recommended sampling (example: For agentic and coding workflows (tool-calling, iterative code tasks), use low-temperature greedy or near-greedy)"
+   }
+  ]
+ },
+ "blockers": null,
+ "params_problems": null,
+ "params_build": "b11374",
+ "native_ctx": 524288,
+ "native_ctx_source": "Nanbeige/Nanbeige4.3-33B config.json max_position_embeddings",
+ "license_info": {
+  "id": "dealignai-community-model-license-v0.3",
+  "id_source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF card front matter license_name",
+  "name": "dealignai-community-model-license-v0.3",
+  "summary": "dealignai-community-model-license-v0.3 (LICENSE.md)",
+  "summary_source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF card license",
+  "link": "https://huggingface.co/dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF/blob/48e83e05611ef35d343ae5232f0078d85ff516e3/LICENSE.md",
+  "link_source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF card license_link",
+  "texts": [
+   {
+    "file": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF@48e83e05611e/LICENSE.md",
+    "path": "/home/box/.local/share/gguf/hf-meta/dealignai--Nanbeige4.3-33B-UNCENSORED-GGUF/48e83e05611ef35d343ae5232f0078d85ff516e3/LICENSE.md",
+    "url": "https://huggingface.co/dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF/blob/48e83e05611ef35d343ae5232f0078d85ff516e3/LICENSE.md",
+    "sha256": "c5c3e56eb7127a0676a6d6637ee23c72015f6e53af4bb66f066458494f458095",
+    "bytes": 22765,
+    "what": "model"
+   }
+  ],
+  "obligations": [
+   {
+    "quote": "2. Preserve applicable copyright, permission and attribution notices, and identify DealignAI as the source of the DealignAI Contributions with a link to the original release.",
+    "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF LICENSE.md:L58"
+   },
+   {
+    "quote": "Publishing downloadable weights does not waive the hosting reservation. Attribution must not suggest endorsement by Licensor, DealignAI or Nanbeige Technology Co., Ltd.",
+    "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF LICENSE.md:L64"
+   },
+   {
+    "quote": "You must comply with the Apache License 2.0 in addition to this License. In particular, Apache 2.0 requires:",
+    "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF LICENSE.md:L70"
+   },
+   {
+    "quote": "- Preservation of the Apache 2.0 copyright, patent, trademark and attribution notices in copies and substantial portions.",
+    "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF LICENSE.md:L72"
+   },
+   {
+    "quote": "- Preservation of any NOTICE file content supplied with the upstream, where applicable.",
+    "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF LICENSE.md:L75"
+   },
+   {
+    "quote": "Apache 2.0 permits commercial use of the Upstream Materials. **Your right to operate a Hosted Model Service with respect to the DealignAI Contributions is nevertheless reserved by Section 3 of this License and is not granted by Apache 2.0.**",
+    "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF LICENSE.md:L77"
+   },
+   {
+    "quote": "No trademark rights are granted beyond the limited use needed for required attribution and accurate identification of origin. No endorsement is implied.",
+    "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF LICENSE.md:L89"
+   },
+   {
+    "quote": "(a) You must give any other recipients of the Work or",
+    "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF LICENSE.md:L229"
+   },
+   {
+    "quote": "(All multi-turn responses verified compliant on manual content check. Earlier grader false-positives on dense structured output \u2014 a word-uniqueness heuristic firing on numbered lists \u2014 were investigated and found to be non-loops.)",
+    "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF README.md:L153"
+   }
+  ],
+  "gated": false,
+  "unknown": false,
+  "seen": [
+   {
+    "value": "other",
+    "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF card license"
+   },
+   {
+    "value": "apache-2.0",
+    "source": "Nanbeige/Nanbeige4.3-33B card license"
+   },
+   {
+    "value": "apache-2.0",
+    "source": "Nanbeige/Nanbeige4.3-33B-Base card license"
+   },
+   {
+    "value": "apache-2.0",
+    "source": "GGUF general.license"
+   }
+  ]
+ },
+ "repo_bytes": 56552243997,
+ "notes": "Q4_K_M \u224818.7 GiB; trained_ctx 524288; GGUF arch=llama (llama.cpp also lists nanbeige). Weights on angel only (damp on box). License dealignai-community-model-license-v0.3 + Apache-2.0 upstream. Hosted inference reserved by dealignai license \u00a73."
+}

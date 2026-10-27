@@ -168,9 +168,15 @@ def check_node(g, name, n, errs):
         errs.append(f"nodes.{name}: host {n['host']!r} is not measured; unmeasured hosts are excluded from placement")
     if r is not None and not planned and n.get("host") not in (r.get("hosts") or []):
         errs.append(f"nodes.{name}: runtime {n['runtime']!r} is not installed on host {n.get('host')!r} (runtime hosts: {r.get('hosts')})")
-    if r is not None and m is not None and not planned and m.get("arch") not in (r.get("supported_archs") or []):
-        errs.append(f"nodes.{name}: model {n['model']!r} arch {m.get('arch')!r} not in runtime {n['runtime']!r} "
-                    f"(build {r.get('build')}) supported_archs {r.get('supported_archs')}; upgrade the runtime pin, do not drop the model")
+    if r is not None and m is not None and not planned:
+        arch = m.get("arch")
+        supported = list(r.get("supported_archs") or [])
+        # llama.cpp flag tables list both; Nanbeige GGUFs report general.architecture=llama
+        aliases = {"llama": "nanbeige", "nanbeige": "llama"}
+        ok = arch in supported or aliases.get(arch) in supported
+        if not ok:
+            errs.append(f"nodes.{name}: model {n['model']!r} arch {arch!r} not in runtime {n['runtime']!r} "
+                        f"(build {r.get('build')}) supported_archs {supported}; upgrade the runtime pin, do not drop the model")
     if r is not None and m is not None:
         mq, rq = m.get("quant"), r.get("quants")
         if mq and mq not in (rq or []):
@@ -449,6 +455,8 @@ TYPES = {
                 "ram_mib": opt("int", min=1), "gpus": req("gpus", nullable=True),
                 "reserve_ram_mib": opt("int", min=0), "notes": opt("str"), "reported": opt("any"),
                 "windows": opt("any"),
+                # OS hostnames that map to this graph host (select_host / start.sh); not DNS
+                "local_names": opt("strlist"),
                 # reachability for meshes (transport PoC, #22); key-only, never a password
                 "addr": opt("str"), "user": opt("str"), "port": opt("int", min=1)}, check_host, doc="physical/virtual machine"),
     "transports": T({"kind": req("enum", choices={"local", "ssh", "nfs", "rsync", "bittorrent", "zfs"}),

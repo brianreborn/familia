@@ -189,6 +189,16 @@ hosts:
         notes: >-
           OpenCL unusable from Termux: the vendor libSGPUOpenCL.so is blocked by the Android
           linker namespace (missing android.hardware.graphics.mapper@4.0-impl-sgr.so), so clinfo reports 0 platforms.
+  box:
+    kind: vm
+    measured: true
+    local_names: [grok-bot-vm-414232872]  # OS hostname → graph host id
+    os: linux
+    cpu: 'Intel(R) Xeon(R) Processor'
+    threads: 8
+    ram_mib: 16002
+    reserve_ram_mib: 4096                # policy (installer default), not measured; see docs/ram-safety.md
+    gpus: null                   # inventory unknown; measure GPUs before GPU offload
 
 transports:
   miryam-local: {kind: local, from: miryam, to: miryam}
@@ -243,7 +253,7 @@ runtimes:
     bin: code-bootstraps-llama.cpp/build-freebsd/bin/llama-server
     hosts: [miryam]
     # Preserve every model architecture supported by the existing llama.cpp runtimes.
-    supported_archs: [qwen35, gemma-embedding2, llama, lfm2, qwen2, gemma2, gemma3]
+    supported_archs: [qwen35, gemma-embedding2, llama, lfm2, qwen2, gemma2, gemma3, nanbeige]
     backends: [cpu, vulkan]
     spec_types: [draft-simple, ngram-simple, ngram-map-k, ngram-map-k4v, ngram-mod, ngram-cache]
 
@@ -253,7 +263,7 @@ runtimes:
     commit: 620d2225cc436ab0b001e3200e590e3b286ef9ab
     bin: code-bootstraps-llama.cpp/build-freebsd/bin/llama-server
     hosts: [angel]
-    supported_archs: [qwen35, gemma-embedding2, llama, lfm2, qwen2, gemma2, gemma3]
+    supported_archs: [qwen35, gemma-embedding2, llama, lfm2, qwen2, gemma2, gemma3, nanbeige]
     backends: [cpu]
     spec_types: [draft-simple, ngram-simple, ngram-map-k, ngram-map-k4v, ngram-mod, ngram-cache]
 
@@ -310,6 +320,17 @@ runtimes:
     backends: [cpu]
     spec_types: []
     quants: [littlebit]          # the only runtime that may load .lbit.gguf files
+
+
+  llama-b11374-box-cpu:
+    kind: llama-server
+    build: b11374 linux-x64-cpu (prebuilt; dogfood box)
+    commit: b92761a515ea31e852e7fbc1fad5f874b46f3718
+    bin: /workspace/code-bootstraps-llama.cpp/bin/llama-b11374-linux-x64-cpu/llama-server
+    hosts: [box]
+    supported_archs: [llama, qwen2, qwen35, gemma2, gemma3, gemma-embedding2, modern-bert, lfm2, nanbeige]
+    backends: [cpu]
+    spec_types: [draft-simple, ngram-simple, ngram-map-k, ngram-map-k4v, ngram-mod, ngram-cache]
 
 models:
   # LittleBit example (opt-in; produced by scale_down.py --method littlebit, docs/littlebit.md):
@@ -394,6 +415,16 @@ models:
     role: chat                # uncensored, aggressive; good for general chat/reasoning
     db: TokenTinkerer--Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF--Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-3.93bpw-Q3_K_M
     notes: "Shipped tested 2026-10-24: local sha256 verified on angel; MTP draft model available but not fetched"
+
+
+  nanbeige43-33b-q4km:
+    gguf: ~/.local/share/gguf/models/general/Nanbeige4.3-33B-UNCENSORED-Q4_K_M.gguf   # on angel; dealignai Q4_K_M ≈18.7 GiB
+    sha256: 1136ce66f4be1676a78936a936df012f148236475fb8424c5dea7cd85e165264
+    arch: llama                  # GGUF general.architecture; llama.cpp also knows nanbeige (aliased in validator)
+    trained_ctx: 524288
+    role: coder                  # also used for chat via angel-chat card_set; roles in db: coder+chat
+    db: dealignai--Nanbeige4.3-33B-UNCENSORED-GGUF--Nanbeige4.3-33B-UNCENSORED-Q4_K_M
+    notes: "Prize on angel (FreeBSD). damp-run on box 2026-10-26; weights stay on angel. Dual coder+chat via card_set."
 
 nodes:
 
@@ -532,6 +563,90 @@ nodes:
     selection: fallback          # user-selectable; SmolLM2 stays qodesh default (Brian 2026-10-10)
     note: "slower fallback: measured 0.91 tg / 1.44 pp t/s at -t 2 (0.69/1.06 at -t 1), coarse; use threads 2"
 
+
+  # --- dogfood box multi-size topology (2026-10-26): tiny decision + mid coder.
+  # Prize large model is Nanbeige4.3-33B on angel (angel-coder / angel-chat), not on box.
+  box-decision:
+    model: smollm2-135m-q4-miryam
+    host: box
+    runtime: llama-b11374-box-cpu
+    ctx: 2048
+    parallel: 1
+    kv_type: q8_0
+    flash_attn: false
+    threads: 2
+    offload: {backend: cpu, ngl: 0, split: none, main_gpu: 0}
+    bind: 127.0.0.1
+    port: 18120
+    cache_ram_mib: 64
+    load_mode: mmap
+    status: active
+    override_reasons:
+      ctx: 'decision prompts are short; 2048 keeps KV small beside box-coder on 16 GiB'
+
+  box-coder:
+    model: qwen35-2b-q4km
+    host: box
+    runtime: llama-b11374-box-cpu
+    ctx: 8192
+    parallel: 1
+    kv_type: q8_0
+    flash_attn: true
+    threads: 4
+    offload: {backend: cpu, ngl: 0, split: none, main_gpu: 0}
+    bind: 127.0.0.1
+    port: 18121
+    cache_ram_mib: 256
+    load_mode: none
+    status: active
+    override_reasons:
+      ctx: 'box dogfood mid-size coder; 8192 fits with SmolLM decision co-resident under 16 GiB - 4 GiB reserve; full 262144 not measured here'
+
+  # angel Nanbeige4.3-33B Q4_K_M — planned until GGUF path verified on angel and RAM/ctx measured.
+  # One weight file; two role views (distinct card_set). Activate one at a time on 24 GiB (+swap).
+  # Speculative: prefer ngram (no extra weights) or a small draft later; see speculative.angel-nanbeige-ngram.
+  angel-coder:
+    model: nanbeige43-33b-q4km
+    host: angel
+    runtime: llama-b11669-freebsd
+    ctx: 32768                   # card example; 512K trained but RAM-limited on 24 GiB
+    parallel: 1
+    kv_type: q8_0
+    flash_attn: true
+    threads: 2                   # few threads (Brian); angel has 4 cores
+    offload: {backend: cpu, ngl: 0, split: none, main_gpu: 0}
+    bind: 127.0.0.1
+    port: 18200
+    cache_ram_mib: 512
+    load_mode: mmap              # SSD-friendly for 18.7 GiB weights
+    status: planned
+    card_set: "Agentic and tool-use tasks"
+    override_reasons:
+      ctx: 'dealignai README llama-server example uses -c 32768; full 524288 exceeds angel 24442 MiB - 4096 reserve with 18.7 GiB weights'
+      card_set: 'coder/agentic role: base-card Agentic and tool-use (temp 1.0 top_p 0.95); distinct from angel-chat soft default'
+    note: 'threads: 2 (few) on 4-core angel; do not co-start with angel-chat on 24 GiB'
+
+  angel-chat:
+    model: nanbeige43-33b-q4km
+    host: angel
+    runtime: llama-b11669-freebsd
+    ctx: 32768
+    parallel: 1
+    kv_type: q8_0
+    flash_attn: true
+    threads: 2
+    offload: {backend: cpu, ngl: 0, split: none, main_gpu: 0}
+    bind: 127.0.0.1
+    port: 18201
+    cache_ram_mib: 512
+    load_mode: mmap
+    status: planned
+    card_set: "Reasoning and chat tasks"
+    override_reasons:
+      ctx: 'same RAM budget as angel-coder; heavy ctx relative to host, not full 512K'
+      card_set: 'chat/reasoning role: base-card Reasoning and chat (temp 0.6 top_p 0.95); soft default; distinct from angel-coder'
+    note: 'card_set is soft default (Reasoning and chat); do not co-start with angel-coder on 24 GiB'
+
 speculative:
   coder-draft:                   # #91: draft-model speculation (same qwen35 vocab; validator checks)
     experimental: true
@@ -554,16 +669,26 @@ speculative:
     spec_type: ngram-simple      # model-free lookup decoding; no extra weights. miryam 2026-10-10, -t 2, repeat-code
                                  # prompt: 17.4 t/s vs 8.7 none (ngram-mod 16.3). Real hermes-style full-file edits: 17.9-18.4 vs 8.2-8.4 (2.2x).
 
+  angel-nanbeige-ngram:
+    experimental: true
+    status: planned              # enable when angel-coder is active; no extra weights
+    mode: ngram
+    target: angel-coder
+    spec_type: ngram-simple
+
+
 gateways:
   roomz:
     kind: green-roomz
     host: miryam
     port: 9931
 
+
 aliases:
   coder: {node: coder, gateway: roomz}
   general: {node: coder, gateway: roomz}
   embed: {node: embed, gateway: roomz}
+
 
 agents:
   hermes:

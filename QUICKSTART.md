@@ -8,6 +8,20 @@ Everything below runs from the root of a familia checkout unless it says otherwi
 
 **Prefer a window?** Run `./familia panel` (Windows: `python scripts\panel.py`). It opens a settings page in your browser that works with a mouse, a keyboard alone, a single switch or a screen reader: skills, licenses, hermes mode, Harness2, model launch parameters and launcher settings. You see every change before it is saved, and you can undo it. See [docs/panel.md](docs/panel.md).
 
+
+## What you actually need
+
+Do these in order. Skipping a step is the usual reason start fails on a new machine.
+
+1. **Install / sync pins** — from a checkout: `./familia sync` (or `python3 scripts/sync_pins.py`). Or use an installer (table below).
+2. **Accept licenses** — `python3 scripts/licenses.py review` (or `--yes` / `INSTALL_ACK=yes` for unattended). Nothing starts until this is done.
+3. **Measure THIS host into `graph.yaml`** — `python3 scripts/host_measure.py --name NAME --kind desktop|laptop|phone|vm`. The host must appear under `hosts:` with `measured: true`. **`curl …/install.sh | sh` alone does not measure the host.** The graph-node installer (`install/linux/install.sh`) does.
+4. **Place or select a node/model for this host** — an active `nodes.*` entry whose `host` is the name you measured, pointing at a GGUF that exists on disk. The graph never invents a default model. If the model card has several sampling modes, set `card_set` (and `override_reasons.card_set`) on the node, or `python3 scripts/add_model.py … --card-set LABEL --apply-card-defaults`.
+5. **Validate** — `python3 scripts/validate_graph.py --no-files`, then `python3 scripts/validate_graph.py` once the GGUF files are present.
+6. **Start / bench** — `./start.sh` (or `./start.sh --host NAME`), or a perf script under `scripts/perf/` once a runtime binary and model exist.
+
+If start says the host is not declared, run step 3. If it says a model file is missing, fetch or copy the GGUF to the path in `models.*.gguf` (see `python3 scripts/add_model.py --fetch … --accept-licenses`).
+
 ## 1. Install
 
 Pick one. All of them are per-user (no root or admin).
@@ -72,7 +86,7 @@ On Windows use `python` instead of `python3` and set `$env:PYTHONUTF8 = '1'` fir
 
 `DETACH_MODE=screen-attached ./start.sh --host miryam` keeps the graph supervisor in the visible `familia-server` screen session with 10,000 lines of scrollback. Use `Ctrl-A`, then `D` to detach and `screen -r familia-server` to resume. Other modes are opt-in; foreground is the default. See [MANUAL.md](MANUAL.md#backgrounding-and-detaching).
 
-The FreeBSD graph host `angel` is currently unmeasured and has no active nodes. `./start.sh --dry-run --host angel` reports this without starting or contacting anything. FreeBSD currently uses a source build only—install no packages and do not run `familia install`. Run the pinned llama.cpp build/version test from `code-bootstraps-llama.cpp` with `BUILD_DIR=build-freebsd GPU=off scripts/build-linux.sh`; graph serving requires measured host facts and explicit active-node placement.
+The FreeBSD graph host `angel` is **measured** (`hosts.angel.measured: true`, ~24 GiB RAM) but has **no active nodes** yet (Nanbeige4.3-33B Q4_K_M nodes are `status: planned`). `./start.sh --dry-run --host angel` reports this without starting or contacting anything. FreeBSD currently uses a source build only—install no packages and do not run `familia install`. Run the pinned llama.cpp build/version test from `code-bootstraps-llama.cpp` with `BUILD_DIR=build-freebsd GPU=off scripts/build-linux.sh`; graph serving requires measured host facts and explicit active-node placement.
 
 ### Always run hermes through the harness
 

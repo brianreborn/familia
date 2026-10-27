@@ -221,7 +221,7 @@ DEFAULT_MODE_RE = re.compile(r"(?i)(?:operates?|runs?|works?) in (non-thinking|t
                              r"by default,? [^.]{0,40}?has (thinking) capabilities enabled")
 RECOMMEND_RE = re.compile(r"(?i)recommend|suggest|best practice|generation (?:parameters|settings)|sampling (?:parameters|settings)|"
                           r"推奨|おすすめ|推荐|建议")
-CTX_RE = re.compile(r"(?i)context (?:length|window)\W{0,6}(?:full\s+|of\s+|up to\s+)?(\d[\d,]*(?:\.\d+)?)\s*([km])?\b")
+CTX_RE = re.compile(r"(?i)context (?:length|window)\W{0,40}?(?:full\s+|of\s+|up to\s+)*(\d[\d,]*(?:\.\d+)?)\s*([km])?\b")
 
 
 def _clean_label(t):
@@ -240,6 +240,74 @@ def _card_ctx(lines, first_line, src):
             if v >= 256:
                 return int(v), "%s:L%d" % (src, first_line + i)
     return None, None
+
+
+
+def _split_md_row(line):
+    s = line.strip().strip("|")
+    return [c.strip() for c in s.split("|")] if line.strip().startswith("|") else None
+
+
+def _header_param_cols(cells):
+    """Map column index -> familia param name for a markdown table header row."""
+    out = {}
+    for i, c in enumerate(cells):
+        key = _norm_param(re.sub(r"[*`_]", "", c))
+        if key:
+            out[i] = key
+    return out
+
+
+def _scan_sampling_tables(lines, first_line, src):
+    """Recommended sets from markdown tables whose header names Temperature / Top_p / etc.
+    Scenario column (first non-param text col) becomes the set label. Skips separator rows."""
+    sets = []
+    i = 0
+    while i < len(lines):
+        cells = _split_md_row(lines[i])
+        if not cells:
+            i += 1
+            continue
+        cols = _header_param_cols(cells)
+        if len(cols) < 2:
+            i += 1
+            continue
+        # require a following separator |---|
+        if i + 1 >= len(lines) or not re.match(r"^\s*\|?\s*:?-{3,}", lines[i + 1]):
+            i += 1
+            continue
+        label_cols = [j for j in range(len(cells)) if j not in cols]
+        j = i + 2
+        while j < len(lines):
+            row = _split_md_row(lines[j])
+            if not row:
+                break
+            if re.match(r"^\s*:?-{3,}", row[0] if row else ""):
+                j += 1
+                continue
+            params = {}
+            ok = True
+            for ci, pname in cols.items():
+                if ci >= len(row):
+                    ok = False
+                    break
+                raw = re.sub(r"[`$*,]", "", row[ci]).strip()
+                if not re.fullmatch(r"-?\d+(?:\.\d+)?", raw):
+                    ok = False
+                    break
+                params[pname] = _num(raw)
+            if ok and len(params) >= 2:
+                label_bits = [row[k] for k in label_cols if k < len(row) and re.search(r"[A-Za-z]", row[k] or "")]
+                label = _clean_label(" ".join(label_bits)) or "table row"
+                ctx = " ".join([label] + [lines[i]])
+                sets.append({
+                    "label": label, "kind": "recommended",
+                    "mode": _mode_of(label) or _mode_of(ctx),
+                    "params": params, "source": "%s:L%d" % (src, first_line + j),
+                })
+            j += 1
+        i = j
+    return sets
 
 
 def scan_card_body(body, first_line, src="README.md"):
@@ -303,6 +371,10 @@ def scan_card_body(body, first_line, src="README.md"):
     for x in sets:   # one value in passing ("temperature 0" in an example answer) is not a recommended set
         if x["kind"] == "recommended" and len(x["params"]) < 2:
             x["kind"] = "mention"
+    for x in _scan_sampling_tables(lines, first_line, src):
+        key = json.dumps(x["params"], sort_keys=True)
+        if not any(json.dumps(y["params"], sort_keys=True) == key and y["label"] == x["label"] for y in sets):
+            sets.append(x)
     ctx, ctx_src = _card_ctx(lines, first_line, src)
     dm, dm_src = None, None
     for i, line in enumerate(lines):
@@ -330,14 +402,29 @@ def gen_config_params(gen):
     return out
 
 
+def _soft_prefer_card_sets(pick):
+    """When several recommended sets remain, soft-prefer the chat/reasoning/general one.
+    Agentic/coding sets stay available via card_set — they must not also match soft-prefer
+    or dual cards (Nanbeige agentic + chat) stay ambiguous."""
+    soft = [x for x in pick if re.search(
+        r"(?i)\btext\b|\bgeneral\b|\bchat\b|\breasoning\b|\bconversational\b",
+        x["label"])]
+    return soft if len(soft) == 1 else None
+
+
 def choose_card_defaults(scans, gens):
     """scans: [(label, scan)] strongest card first (base model card, then the GGUF repo
     card); gens: [(label, generation_config dict)]. Returns
     (defaults, sources, default_set_label, modes, how) without inventing values:
       1. the card's recommended sets: one set -> it; several -> those of the mode the
-         card calls the default, then the text/general one of those; still several -> none
+         card calls the default, then text/general/chat/reasoning soft prefer;
+         still several -> none (modes still returned so nodes can set card_set)
       2. else generation_config.json sampling values
-      3. else a single distinct code-example set (flagged as an example)."""
+      3. else code-example sets: one -> it; several -> soft-prefer chat/conversational
+         over coding-only greedy examples (base card ranks before GGUF card via scan order)."""
+    def _modes_from(sets):
+        return {x["label"]: dict(x["params"]) for x in sets if x.get("params")}
+
     for label, sc in scans:
         rec, seen = [], set()
         for x in sc["sets"]:      # cards often repeat their table further down: keep the first
@@ -347,7 +434,7 @@ def choose_card_defaults(scans, gens):
                 rec.append(x)
         if not rec:
             continue
-        modes = {x["label"]: x["params"] for x in rec}
+        modes = _modes_from(rec)
         pick = rec
         how = "the card's only recommended set"
         dm = [x for x in pick if sc.get("default_mode") and x.get("mode") == sc["default_mode"]]
@@ -358,6 +445,10 @@ def choose_card_defaults(scans, gens):
             tx = [x for x in pick if re.search(r"(?i)\btext\b|\bgeneral\b", x["label"])]
             if len(tx) == 1:
                 pick, how = tx, how + ", text/general task set"
+        if len(pick) > 1:
+            soft = _soft_prefer_card_sets(pick)
+            if soft:
+                pick, how = soft, how + ", soft-prefer chat/reasoning/general"
         if len(pick) > 1:      # the repo's generation_config.json is the default the card's authors ship
             for glabel, gen in gens:
                 gp = gen_config_params(gen)
@@ -368,18 +459,27 @@ def choose_card_defaults(scans, gens):
         if len(pick) == 1:
             x = pick[0]
             return dict(x["params"]), {k: "%s %s" % (label, x["source"]) for k in x["params"]}, x["label"], modes, how
-        return None, {}, None, modes, "ambiguous: %d recommended sets and no single default" % len(rec)
+        return None, {}, None, modes, "ambiguous: %d recommended sets and no single default; set card_set" % len(rec)
     for label, gen in gens:
         gp = gen_config_params(gen)
         if gp:
             return gp, {k: "%s generation_config.json" % label for k in gp}, "generation_config.json", None, "generation_config.json"
     for label, sc in scans:
-        ex = [x for x in sc["sets"] if x["kind"] == "example" and x["params"]]
+        ex = [x for x in sc["sets"] if x["kind"] in ("example", "mention") and x["params"]]
+        if not ex:
+            continue
+        modes = _modes_from(ex)
         uniq = {json.dumps(x["params"], sort_keys=True): x for x in ex}
-        if len(uniq) == 1:
-            x = next(iter(uniq.values()))
-            return dict(x["params"]), {k: "%s %s (code example)" % (label, x["source"]) for k in x["params"]}, \
-                "example: " + x["label"], None, "the card's only code example with sampling values"
+        pick = list(uniq.values())
+        how = "the card's only code example with sampling values"
+        if len(pick) > 1:
+            soft = _soft_prefer_card_sets(pick)
+            if soft:
+                pick, how = soft, "soft-prefer chat/conversational example over coding-only"
+        if len(pick) == 1:
+            x = pick[0]
+            return dict(x["params"]), {k: "%s %s (%s)" % (label, x["source"], x["kind"]) for k in x["params"]}, \
+                ("%s: " % x["kind"]) + x["label"], modes, how
     return None, {}, None, None, "the card and generation_config.json state no sampling values"
 
 
