@@ -857,6 +857,27 @@ options:
     gpu_host: qodesh
     runtime_note: Diffusion LM; llama.cpp-compatible per post (drex-dlm runtime kind exists, unpinned).
     notes: "Possibly nace-ai/drex-dlm (EfficientDLM, 8.19B params, cc-by-nc-4.0) - link to Drex 1.1 not confirmed. At 8B it is not a 256 MB GPU fit either."
+  laya-q8:
+    role: decision
+    unverified: true
+    sources: ["https://github.com/brianreborn/familia/issues/53", "https://github.com/brianreborn/familia/issues/78"]
+    hf_repo: ggml-org/Laya-GGUF
+    db: ggml-org--Laya-GGUF--Laya-Q8_0
+    size_note: "Laya-Q8_0.gguf 449397600 bytes (~429 MiB); apache-2.0; miryam local_check sha256_ok 2026-10-19"
+    gpu_candidate: false
+    placement_note: "CPU decision/chat candidate; fits miryam/qodesh RAM. No node yet."
+    candidate_hosts: [miryam, qodesh]
+  lfm25-350m-q4km:
+    role: decision
+    unverified: true
+    sources: ["https://github.com/brianreborn/familia/issues/78"]
+    hf_repo: LiquidAI/LFM2.5-350M-GGUF
+    db: LiquidAI--LFM2.5-350M-GGUF--LFM2.5-350M-Q4_K_M
+    size_note: "LFM2.5-350M-Q4_K_M.gguf 229312224 bytes (~219 MiB); license lfm1.0 (read LICENSE before enable)"
+    gpu_candidate: true
+    gpu_host: qodesh
+    placement_note: "Small enough for always-on consideration; license gate required (lfm1.0). No node yet."
+    candidate_hosts: [qodesh, miryam, phone7, phone8]
   glide:
     role: decision
     unverified: true
@@ -877,9 +898,11 @@ options:
     role: decision
     unverified: true
     sources: ["https://x.com/BrianReborn_alt/status/2107731560246215067", "https://x.com/BrianReborn_alt/status/2106259773931024477"]
-    size_note: 26B params - far too big for 256 MB VRAM; ~15 GB at Q4 (estimate) exceeds every host's free RAM
+    hf_repo: mradermacher/GEV-26B-Decide-GGUF
+    db: mradermacher--GEV-26B-Decide-GGUF--GEV-26B-Decide.Q4_K_M
+    size_note: "Q4_K_M in registry (damp); ~15 GB class — exceeds every host's free RAM"
     gpu_candidate: false
-    placement_note: Catalog only.
+    placement_note: Catalog only (no host fits).
   # ---- #25 on-device speech
   whistle-stt:
     role: stt
@@ -904,10 +927,12 @@ options:
     role: coder
     unverified: true
     sources: ["https://x.com/BrianReborn_alt/status/2108600815808336061"]
-    size_note: 9B params; ~5.5 GB at Q4_K_M + KV (estimate, not measured)
-    placement_note: qodesh only by RAM (16 GB, ~11.5 GB free). miryam (7 GB, 3 GB reserve) cannot fit it.
+    hf_repo: khazarai/Qwen3.5-9B-Kimi-k3-Distilled-GGUF
+    db: khazarai--Qwen3.5-9B-Kimi-k3-Distilled-GGUF--Qwen3.5-9B-Kimi-k3-Distilled-q8_0
+    size_note: "Q8_0 main 9.53 GB (registry damp); apache-2.0; Q4 not in that damp pick — too big for phones/miryam"
+    placement_note: qodesh only by RAM (16 GB, ~11.5 GB free). miryam (7 GB, 3 GB reserve) cannot fit it. No node yet (weights absent).
     candidate_hosts: [qodesh]
-    notes: Kimi-k3 distill claim from post; HF repo, quants and license unresolved.
+    notes: Kimi-k3 distill; HF + license resolved via #78 damp-run. Still planned #26 for placement/measurement.
   # ---- docs/models-catalog.md additions (RT'd, bucket 2; all unverified)
   youtu-parsing-omni:
     role: vision
@@ -964,7 +989,11 @@ options:
     role: chat
     unverified: true
     sources: ["https://x.com/BrianReborn_alt/status/2106236078533550141"]
-    size_note: "0.8B params (from post); file size unknown"
+    hf_repo: Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2-GGUF
+    db: Takenoko12345678--Qwen3.5-0.8B-Japanese-SFT-v2-GGUF--Qwen3.5-0.8B-Japanese-SFT-v2-Q4_K_M
+    size_note: "Q4_K_M 529296736 bytes (~505 MiB); apache-2.0; registry damp entry present"
+    placement_note: "Fits miryam/phones/qodesh as a small chat option; no node yet (weights not on hosts)."
+    candidate_hosts: [miryam, phone7, phone8, qodesh]
     notes: Japanese fine-tune; tiny local option. Arch qwen35 is in the pinned llama.cpp build (qwen35-2b-q4km runs today).
   lift-extract:
     role: vision
