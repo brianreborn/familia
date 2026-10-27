@@ -101,7 +101,10 @@ if [ "$FAMILIA_MEMCAP" = 1 ] && command -v systemd-run >/dev/null 2>&1; then
   # no fixed 2600M / MemorySwapMax=0 any more (premature kills, P0 #95).
   # Cap = this launch's own admission reservation (estimated peak), never global headroom:
   # independent headroom caps overcommit (27 GiB of caps on a 23 GiB box, #95).
-  [ -n "${FAMILIA_MEMMAX:-}" ] || FAMILIA_MEMMAX="$(python3 -c 'import os, sys; print("%dM" % (os.path.getsize(sys.argv[1]) / 2**20 * 1.15 + 768))' "$model" 2>/dev/null || echo 4096M)"
+  # mmap+swap_budget: admit KV+cache+working-set, not full GGUF (docs/vvram-ssd/LAYER.md).
+  if [ -z "${FAMILIA_MEMMAX:-}" ]; then
+    FAMILIA_MEMMAX="$(python3 -c 'import sys; sys.path.insert(0, sys.argv[1]+"/scripts"); import validate_graph as vg; g=vg.load(sys.argv[1]+"/graph.yaml"); print("%dM" % vg.admit_peak_mib(g, sys.argv[2]))' "$here" "$node" 2>/dev/null || python3 -c 'import os, sys; print("%dM" % (os.path.getsize(sys.argv[1]) / 2**20 * 1.15 + 768))' "$model" 2>/dev/null || echo 4096M)"
+  fi
   # Fleet-wide admission: reserve the cap before launch so concurrent launches compose (#95).
   # The reservation is keyed to this shell's pid, which exec keeps for the server.
   if ! python3 "$here/scripts/launch_status.py" admit --mib "${FAMILIA_MEMMAX%M}" --pid $$ --tag "$node"; then

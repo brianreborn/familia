@@ -16,7 +16,7 @@ CODES = {
     "OK_READY": ("READY", 0), "OK_EXIT": ("EXITED_OK", 0),
     "LF_BAD_PARAMS": ("LAUNCH_FAILED", 64), "LF_MISSING_RUNTIME": ("LAUNCH_FAILED", 65),
     "LF_MODEL_FILE": ("LAUNCH_FAILED", 66), "LF_TIMEOUT": ("LAUNCH_FAILED", 67),
-    "LF_PORT": ("LAUNCH_FAILED", 68), "LF_OOM_CAP": ("LAUNCH_FAILED", 69), "LF_ENGINE": ("LAUNCH_FAILED", 70), "LF_TOKENIZER": ("LAUNCH_FAILED", 71),
+    "LF_PORT": ("LAUNCH_FAILED", 68), "LF_OOM_CAP": ("LAUNCH_FAILED", 69), "LF_ENGINE": ("LAUNCH_FAILED", 70), "LF_TOKENIZER": ("LAUNCH_FAILED", 71), "LF_NEED_SPILL": ("LAUNCH_FAILED", 72),
     "CR_SIGNAL": ("CRASHED", 80), "CR_ASSERT": ("CRASHED", 81),
     "CR_OOM_KERNEL": ("CRASHED", 82), "CR_OOM_MEMCG": ("CRASHED", 83), "CR_EXIT": ("CRASHED", 84),
     "KL_WATCHDOG": ("KILLED", 90), "KL_USER": ("KILLED", 91), "KL_OOMD": ("KILLED", 92), "KL_EARLYOOM": ("KILLED", 93),
@@ -139,9 +139,13 @@ def main(argv):
     cmd, a = argv[0], argv[1:]
     g = lambda k, d=None: a[a.index(k) + 1] if k in a else d
     if cmd == "emit":
-        rec = record(a[1], g("--engine", ""), g("--model", ""), json.loads(g("--params", "{}")),
+        # argv after "emit" is: CODE [--engine E] [--model M] ...
+        if not a or a[0].startswith("-"):
+            print("launch_status.py emit: need CODE (e.g. LF_OOM_CAP)", file=sys.stderr); return 2
+        code = a[0]
+        rec = record(code, g("--engine", ""), g("--model", ""), json.loads(g("--params", "{}")),
                      int(g("--rc")) if g("--rc") else None, None, g("--evidence", ""))
-        emit(rec); return exit_code(a[1])
+        emit(rec); return exit_code(code)
     if cmd == "admit":
         ok, why = admit(int(g("--mib")), int(g("--pid", os.getppid())), g("--tag", ""))
         print(("familia-admission: " + why), file=sys.stderr)

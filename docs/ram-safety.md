@@ -124,3 +124,7 @@ cat /proc/swaps
 On angel-class hosts (lots of swap / software VVRAM), RAM overcommit and undersized
 `cache_ram_mib` are **warnings**, not start-blockers. Android (`kind: phone` /
 `os: android*`) stays strict — no big swap assumption there.
+
+## mmap + SSD spill hosts (angel-class)
+
+When `load_mode: mmap` and `swap_budget_mib` are set, **keep `reserve_ram_mib`** (do not cut it to make Nanbeige “fit”). Admission uses `admit_peak_mib` (KV + cache + working set), not the full GGUF. See `docs/vvram-ssd/LAYER.md` coherent 64K policy.

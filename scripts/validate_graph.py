@@ -265,6 +265,7 @@ def validate(graph, check_files=True, host=None):
             WARNINGS.append(
                 f"hosts.{h}: estimated free after nodes {free_after:.0f} MiB < 2048 MiB provisional floor "
                 f"on host with ram_mib {ram} < 8192 (guidance; see docs/ram-safety.md)")
+    errs += check_vvram_policy(graph, metas=metas)
     return errs, totals
 
 # Vulkan llama.cpp builds allocate ~1.83 GB of Vulkan host buffers in shmem even with -ngl 0
@@ -310,6 +311,18 @@ def slot_save_dir(n, name):
     """Directory for llama-server --slot-save-path: node.spill_path or ~/.cache/familia/slots/<node>."""
     raw = n.get("spill_path") or f"~/.cache/familia/slots/{name}"
     return os.path.expanduser(raw)
+
+def vvram_spill_configured(n):
+    import ctx_vvram
+    return ctx_vvram.vvram_spill_configured(n)
+
+def admit_peak_mib(graph, name):
+    import ctx_vvram
+    return ctx_vvram.admit_peak_mib(graph, name, gguf_meta=gguf_meta, kv_mib=kv_mib)
+
+def check_vvram_policy(graph, metas=None):
+    import ctx_vvram
+    return ctx_vvram.check_vvram_policy(graph, metas=metas, gguf_meta=gguf_meta, kv_mib=kv_mib)
 
 def host_swap_total_mib():
     """Total swap MiB on this machine, or None if unknown. FreeBSD swapinfo -k; Linux /proc/swaps."""
@@ -380,32 +393,6 @@ def check_swap_budgets(graph, host=None):
             errs.append(
                 f"host {h!r}: swap total {have} MiB < swap_budget_mib {budget} "
                 f"(nodes: {', '.join(names)}; see docs/vvram-ssd/LAYER.md)"
-            )
-    return errs
-
-    have = host_swap_total_mib()
-    if have is None:
-        errs.append("--check-swap: could not read host swap (swapinfo /proc/swaps)")
-        return errs
-    for h, (budget, names) in need.items():
-        if have < budget:
-            errs.append(
-                f"host {h!r}: swap total {have} MiB < swap_budget_mib {budget} "
-                f"(nodes: {', '.join(names)}; see docs/vvram-ssd/LAYER.md)"
-            )
-    return errs
-
-    have = host_swap_total_mib()
-    if have is None:
-        errs.append("--check-swap: could not read host swap (swapinfo /proc/swaps)")
-        return errs
-    nodes_by = need.pop("_nodes", {})
-    for h, budget in need.items():
-        if have < budget:
-            names = ", ".join(nodes_by.get(h, []))
-            errs.append(
-                f"host {h!r}: swap total {have} MiB < swap_budget_mib {budget} "
-                f"(nodes: {names}; see docs/vvram-ssd/LAYER.md)"
             )
     return errs
 

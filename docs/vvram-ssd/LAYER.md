@@ -75,6 +75,20 @@ slot_save: true                                  # or just set spill_path (eithe
 - `validate_graph.py --check-swap [--host angel]`: fail if host swap total MiB < any active node's `swap_budget_mib`.
 - Docs: this directory + `ANGEL-OPERATOR.md`.
 
+
+## Coherent 64K / RAM policy (fleet)
+
+Hermes `MINIMUM_CONTEXT_LENGTH` is **64000**. Nodes that serve hermes must set `ctx >= 64000` (miryam `coder` and angel `angel-coder` use **65536**).
+
+| Situation | Required path | Launch outcome |
+|-----------|---------------|----------------|
+| Estimated weights+KV+cache+256 ≤ `ram_mib − reserve_ram_mib` | RAM-fit: `load_mode: none` (or mmap) is fine; `spill_path`/`slot_save` optional for prompt cache | READY when server healthy |
+| Estimate exceeds usable RAM | Software VVRAM: **`load_mode: mmap` + (`spill_path` or `slot_save`) + `swap_budget_mib`**, then `validate_graph --check-swap` on that host | Else validate ERROR / `LAUNCH_FAILED` `LF_NEED_SPILL` — never silent OOM |
+
+`scripts/ctx_vvram.py` (via `validate_graph.check_vvram_policy`) enforces the table. `admit_peak_mib` (used by `serve.sh` memcap) charges mmap+swap_budget nodes **KV + cache_ram + 1536 MiB working set**, not the full GGUF, so angel’s Nanbeige does not starve the fleet ledger. **`reserve_ram_mib` stays** (OS + companions); do not lower it to “make room” for mmap spill — spill goes to SSD swap/slot files instead.
+
+Labels stay model+quant (never a hash). Status lines follow `docs/protocol/launch-status.md`.
+
 ## What NOT to claim
 
 - This layer is **not** zero-copy GPU↔SSD DMA.

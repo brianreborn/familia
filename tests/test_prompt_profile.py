@@ -101,6 +101,8 @@ def test_slot_save_path_in_server_args(tmp_path, monkeypatch):
     import validate_graph as vg
     monkeypatch.setenv("HOME", str(tmp_path))
     g = vg.load(os.path.join(ROOT, "graph.yaml"))
+    # Default slots dir when spill_path unset; coder now has spill_path — strip it for this check.
+    g["nodes"]["coder"].pop("spill_path", None)
     a = vg.server_args(g, "coder")
     assert a[a.index("--slot-save-path") + 1] == os.path.join(str(tmp_path), ".cache/familia/slots/coder")
 
