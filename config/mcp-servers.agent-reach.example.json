@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "agent-reach": {
+      "command": "python3",
+      "args": ["-m", "agent_reach.integrations.mcp_server"],
+      "cwd": "@FAMILIA_ROOT@/agent-reach",
+      "timeout_ms": 30000
+    }
+  }
+}

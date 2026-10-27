@@ -84,6 +84,18 @@ The interactive menu and `--list` show these paths before the command groups. Fo
 | `skills.vendor` | Show the plan to bring a survey skill into green-zkillz (no changes) | `python3 scripts/skills.py vendor <SKILL> --dry-run` | `python scripts\skills.py vendor <SKILL> --dry-run` |
 | `skills.validate` | Check the skills catalog and the skills in graph.yaml | `python3 scripts/skills.py validate` | `python scripts\skills.py validate` |
 
+## Reach tools (Agent-Reach)
+
+| Key | What it does | POSIX | Windows |
+|---|---|---|---|
+| `reach.status` | Agent-Reach: pin checkout, CLI, which agents are opted in | `python3 scripts/agent_reach.py status` | `python scripts\agent_reach.py status` |
+| `reach.enable` | Opt an agent into Agent-Reach (writes `reaches:` in graph.yaml) (licenses first) | `python3 scripts/agent_reach.py enable --agent <AGENT>` | `python scripts\agent_reach.py enable --agent <AGENT>` |
+| `reach.disable` | Remove an agent from Agent-Reach | `python3 scripts/agent_reach.py disable --agent <AGENT>` | `python scripts\agent_reach.py disable --agent <AGENT>` |
+| `reach.link` | Link Agent-Reach skill + CLI wrapper into an agent's HERMES_HOME | `python3 scripts/agent_reach.py link --agent <AGENT>` | `python scripts\agent_reach.py link --agent <AGENT>` |
+| `reach.mcp` | Print mcpServers JSON for llama UI / code-bootstraps | `python3 scripts/agent_reach.py mcp-example` | `python scripts\agent_reach.py mcp-example` |
+
+Docs: [agent-reach.md](agent-reach.md).
+
 ## Models
 
 | key | what it does | Linux / Android | Windows |

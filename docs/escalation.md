@@ -91,7 +91,7 @@ for them.
   same-host suggestions automatically.
 - `auto` (or accepted): local target started via `validate_graph.py` args
   (`ensure_server`), next request goes to the target alias with the compact
-  handoff (tools stripped), then the proxy swaps back after one clean reply.
+  handoff (tools kept, #106), then the proxy swaps back after one clean reply.
 
 ## Remaining / stubbed (planned, #39)
 

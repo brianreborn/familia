@@ -321,6 +321,16 @@ def check_agency(g, name, a, errs):
     if isinstance(a.get("repo"), str) and not re.match(r"^[\w.-]+/[\w.-]+$", a["repo"]):
         errs.append(f"agencies.{name}.repo: expected owner/name, got {a['repo']!r}")
 
+def check_reach(g, name, r, errs):
+    """Agent-Reach (and future reach bundles): repo owner/name, agents non-empty."""
+    repo = r.get("repo")
+    if not isinstance(repo, str) or "/" not in repo or repo.count("/") != 1:
+        errs.append(f"reaches.{name}: repo must look like owner/name, got {repo!r}")
+    agents = r.get("agents")
+    if not isinstance(agents, list) or not agents:
+        errs.append(f"reaches.{name}: agents must be a non-empty list")
+
+
 def check_council(g, name, c, errs):
     m = len(c.get("agents") or [])
     if c.get("mode") == "quorum":
@@ -549,7 +559,7 @@ TYPES = {
     "stores": T({"experimental": req("bool"), "kind": req("enum", choices={"fs", "sqlite", "git"}),
                  "host": req("ref", ref="hosts"), "path": req("str")}, experimental=True, doc="persistent state"),
     "reaches": T({"experimental": req("bool"), "repo": req("str"), "agents": req("refs", ref="agents")},
-                 experimental=True, doc="agent-reach tool bundle"),
+                 check_reach, experimental=True, doc="agent-reach tool bundle"),
     "councils": T({"experimental": req("bool"), "mode": req("enum", choices={"quorum", "cascade"}),
                    "agents": req("refs", ref="agents"), "quorum": opt("int")}, check_council, experimental=True,
                   doc="multi-agent decision (quorum N-of-M or ordered cascade)"),

@@ -281,3 +281,24 @@ def test_default_session_lock_serializes_mutations(monkeypatch, tmp_path):
     # Escalator state machine remains coherent (on light or heavy, never half-swapped).
     assert esc.current in ("light", "heavy")
     srv.shutdown()
+
+
+def test_handoff_keeps_tools(monkeypatch, tmp_path):
+    """#106: heavy handoff must keep tools so agent sessions can finish tool turns."""
+    monkeypatch.setattr(EP, "STATE", str(tmp_path)); monkeypatch.setattr(EP, "PENDING", str(tmp_path / "p.json"))
+    monkeypatch.setenv("FAMILIA_ESCALATE", "auto")
+    seen = []; g = graph(mock("light", seen), mock("heavy", seen), "auto")
+    esc = EP.Escalator(g, "light", [], "h", consent={}); srv = EP.serve(esc); p = srv.server_address[1]
+    tools = [{"type": "function", "function": {"name": "shell", "parameters": {"type": "object"}}}]
+    msgs = [{"role": "system", "content": "s"}, {"role": "user", "content": "fix it"}]
+    post(p, msgs); post(p, msgs); post(p, msgs)  # escalate
+    body = {"model": "x", "messages": msgs + [{"role": "user", "content": "go"}], "tools": tools, "tool_choice": "auto"}
+    urllib.request.urlopen(urllib.request.Request(
+        f"http://127.0.0.1:{p}/v1/chat/completions",
+        data=json.dumps(body).encode(), headers={"Content-Type": "application/json"}))
+    heavy = [s for s in seen if s[0] == "heavy"]
+    assert heavy, "expected a heavy request"
+    last = heavy[-1][1]
+    assert "tools" in last and last["tools"] == tools
+    assert last.get("tool_choice") == "auto"
+    srv.shutdown()
