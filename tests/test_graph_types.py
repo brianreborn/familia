@@ -248,7 +248,7 @@ def _pentest(**kw):
     d = {
         "name": "Android fleet authorized testing",
         "node": "coder",
-        "agent": "hermes",
+        "agent": "pentest-ops",
         "scope": {"allow": [], "deny": []},
         "tools": {"allow": []},
         "report_to": "familia-issues",
@@ -260,18 +260,30 @@ def _pentest(**kw):
     return d
 
 def test_pentest_baseline_planned():
-    """Pentest config is opt-in; default graphs contain no pentest entries."""
-    assert "pentests" not in BASE
+    """Fleet ships a planned guardian entry; seatbelts on by default."""
+    assert "fleet" in BASE.get("pentests", {})
+    assert BASE["pentests"]["fleet"]["status"] == "planned"
+    assert BASE["pentests"]["fleet"]["launch_test_only"] is True
+    assert BASE["pentests"]["fleet"]["tools"]["allow"] == []
+    assert BASE["nodes"]["miryam-pentest"]["role"] == "guardian"
     x = g()
-    x["pentests"] = {"android-fleet": _pentest()}
+    x["pentests"]["android-fleet"] = _pentest()
     assert x["pentests"]["android-fleet"]["status"] == "planned"
-    assert x["pentests"]["android-fleet"]["launch_test_only"] is True
     assert errs(x) == []
 
 def test_pentest_launch_test_only_required():
+    """Seatbelts: missing field errors; false needs confirm + non-empty allow."""
+    x = g(); x["pentests"] = {"android-fleet": _pentest()}
+    del x["pentests"]["android-fleet"]["launch_test_only"]
+    has(x, "launch_test_only required")
     x = g(); x["pentests"] = {"android-fleet": _pentest()}
     x["pentests"]["android-fleet"]["launch_test_only"] = False
-    has(x, "launch_test_only must be true")
+    has(x, "non-empty scope.allow")
+    x = g(); x["pentests"] = {"android-fleet": _pentest()}
+    x["pentests"]["android-fleet"]["launch_test_only"] = False
+    x["pentests"]["android-fleet"]["scope"] = {"allow": ["miryam"], "deny": []}
+    x["pentests"]["android-fleet"]["requires_operator_confirm"] = True
+    assert errs(x) == []
 
 def test_pentest_no_tool_wildcards():
     x = g(); x["pentests"] = {"android-fleet": _pentest()}
@@ -321,7 +333,7 @@ def test_pentest_active_requires_scope_confirm_and_role():
     x["pentests"]["android-fleet"]["status"] = "active"
     x["pentests"]["android-fleet"]["scope"] = {"allow": ["miryam"], "deny": []}
     # coder node uses role coder, not pentest
-    has(x, "expected role pentest")
+    has(x, "expected role pentest or guardian")
 
 def test_pentest_active_with_pentest_role_model():
     x = g()

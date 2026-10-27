@@ -23,7 +23,7 @@ graph TD
   gpu["gpus[]: vendor, model, vram_mib, backend cuda|vulkan|sycl|metal|opencl|rocm|none, backend_status verified|tbd|unsupported, compute_capability, driver, measured"]
   transport["transports: kind local|ssh|nfs|rsync|bittorrent|zfs, from, to"]
   runtime["runtimes: kind llama-server|drex-dlm, build, commit, bin, hosts, supported_archs, backends, spec_types"]
-  model["models: gguf, sha256, arch, trained_ctx, role chat|coder|reasoning|embed|vision|diffusion|pentest, db (model database entry)"]
+  model["models: gguf, sha256, arch, trained_ctx, role chat|coder|reasoning|embed|vision|diffusion|pentest|guardian, db (model database entry)"]
   node["nodes: model, host, runtime, ctx, parallel, kv_type, flash_attn, offload {backend, ngl, split, main_gpu}, bind, port, cache_ram_mib, status active|planned, embeddings, selection default|fallback, card_set, sampling, override_reasons, note"]
   spec["speculative (pencilled in): status planned|experimental|active, mode draft|ngram, target, draft, draft_max, draft_min, p_min, spec_type"]:::exp
   gateway["gateways: kind green-roomz, host, port"]
@@ -88,7 +88,7 @@ graph TD
 | agency | `repo` is owner/name, and assignments map labels from `labels` to existing agents. |
 | room, swarm, store, reach, council | Experimental. They need `experimental: true`. Council `quorum` needs 1 <= quorum <= len(agents). `cascade` runs agents in list order and takes no quorum. Reach `repo` is `owner/name`; `agents` is a non-empty list (Agent-Reach: [docs/agent-reach.md](agent-reach.md)). |
 
-| pentest | Legitimate, operator-authorized testing of the owner's fleet — not attack tooling. `scope.allow` / `scope.deny` are lists of graph host names, CIDRs/IPs, or http(s)/ssh URLs (empty allow = nothing allowed). `tools.allow` is an explicit tool-name list with no wildcards. Network/exec tools (nmap, shell, ssh, curl, …) require a non-empty `scope.allow`. `status: active` requires non-empty `scope.allow`, `requires_operator_confirm: true`, and a node whose model has `role: pentest`. `launch_test_only: true` is required: automation may only validate → start → healthcheck → stop; never live scans, exploits, or network probes in tests. See `docs/pentest-models.md`. |
+| pentest / guardian | First-class **guardian/defender** node flavor (schema section still `pentests`). Owned-fleet advisory — seatbelts on by default, not a barricade. `scope.allow` / `scope.deny` are graph host names, CIDRs/IPs, or http(s)/ssh URLs (empty allow = default-deny appliances). Prefer fleet names **angel**, **galaxy1**, **galaxy2**. `tools.allow` is an explicit name list (no wildcards); empty by default. Network/exec tools need non-empty `scope.allow`. `status: active` needs non-empty allow, `requires_operator_confirm: true`, and model role `pentest` or `guardian`. `launch_test_only: true` is the default seatbelt (automation validate → would-start → stop); operator may widen only with confirm + allowlist (schema-enforced). See `docs/guardian-nodes.md`. |
 
 Unknown sections and unknown fields are errors, so a typo can't quietly do nothing.
 
@@ -146,9 +146,9 @@ From `graph.yaml` on 2026-10-19. Addresses, users and ports live in the graph, n
 
 qodesh is worth having for its 16 GB of RAM: it can hold bigger CPU-only models than miryam. `nodes.qodesh-resident` (Qwen3.5-2B on the non-AVX b11540 CPU build) is `active` but marked `selection: fallback`: user-selectable, about 0.91 tok/s (coarse binary search), while SmolLM2 stays the qodesh default. The phone nodes stay `planned` while the phones are out of range ([#46](https://github.com/brianreborn/familia/issues/46)).
 
-## Pentest (authorized fleet testing)
+## Guardian / pentest (authorized fleet testing)
 
-`pentests` is a top-level type for **operator-authorized testing of systems the
+Public name: **guardian** (defender synonym). `pentests` is the schema section for **operator-authorized testing of systems the
 owner controls**. It replaces the old LESSONS-LEARNED advice to hide the role as
 metadata on a generic task node. `android_start.sh` and `with-fleet.sh` still pass
 `--role pentest`; with-fleet.sh resolves it against `pentests.*` and honours

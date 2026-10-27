@@ -26,7 +26,10 @@ def test_private_angel_type_names_only():
     g = _fleet()
     priv = nr.private_topology(g, "angel")
     nodes = priv["nodes"]
-    assert set(nodes) == {"coder", "chat"}
+    assert set(nodes) == {"coder", "chat", "guardian"}
+    assert nodes["guardian"]["host"] == "angel"
+    assert nodes["guardian"]["role"] == "guardian"
+    assert nodes["guardian"]["status"] == "planned"
     assert nodes["coder"]["host"] == "angel"
     assert nodes["coder"]["model"] == "nanbeige43-33b-q4km"
     assert nodes["coder"]["status"] == "active"
@@ -58,7 +61,7 @@ def test_generate_graph_cli_angel(tmp_path=None):
     assert "angel-coder→coder" in r.stdout or "angel-coder->coder" in r.stdout or "→coder" in r.stdout
     out = os.path.join(ROOT, "generated", "graph-angel.yaml")
     g = familia_yaml.loads(open(out, encoding="utf-8").read())
-    assert set(g["nodes"]) == {"coder", "chat"}
+    assert set(g["nodes"]) == {"coder", "chat", "guardian"}
 
 
 def test_modify_graph_host_list_and_bad_model():
@@ -87,3 +90,17 @@ def test_modify_graph_host_list_and_bad_model():
     )
     assert bad.returncode != 0
     assert "unknown models" in bad.stderr or "unknown models" in bad.stdout
+
+
+def test_infer_role_guardian_from_pentest_model():
+    g = _fleet()
+    assert nr.infer_role("miryam-pentest", g["nodes"]["miryam-pentest"], g) == "guardian"
+    assert nr.prefer_public_role("pentest") == "guardian"
+
+
+def test_private_miryam_includes_guardian():
+    g = _fleet()
+    priv = nr.private_topology(g, "miryam")
+    assert "guardian" in priv["nodes"]
+    assert priv["nodes"]["guardian"]["role"] == "guardian"
+    assert "guardian" in (priv.get("aliases") or {})

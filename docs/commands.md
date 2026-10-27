@@ -107,9 +107,11 @@ Default front door is the gum home (`./familia`). This catalog is **fallback onl
 | `agents.hermes` | Hermes on the graph coder node (64K context) | `scripts/hermes.sh` | — |
 | `agents.hermes-render` | Write the hermes config only; start nothing | `scripts/hermes.sh --render-only` | — |
 | `agents.fleet-test` | Launch-test a role: validate, would-start, stop | `sh with-fleet.sh --role <ROLE> --launch-test` | — |
-| `agents.fleet` | Launch a role from graph.yaml (pentest roles are only launch-tested) | `sh with-fleet.sh --role <ROLE>` | — |
-| `agents.pentest-launch-test` | Pentest fleet: launch-test only (validate → would-start → stop) | `sh with-fleet.sh --role fleet --launch-test` | — |
-| `agents.pentest-start` | Pentest fleet: operator-confirmed model start (owned scope; no live scans) | `env FAMILIA_OPERATOR_CONFIRM=yes sh with-fleet.sh --role fleet --operator-start` | — |
+| `agents.fleet` | Launch a role from graph.yaml (guardian/defender: seatbelts on by default) | `sh with-fleet.sh --role <ROLE>` | — |
+| `agents.guardian-launch-test` | Guardian/defender: launch-test (seatbelts on) | `sh with-fleet.sh --role guardian --launch-test` | — |
+| `agents.guardian-start` | Guardian/defender: operator-confirmed model start (tools empty) | `env FAMILIA_OPERATOR_CONFIRM=yes sh with-fleet.sh --role guardian --operator-start` | — |
+| `agents.pentest-launch-test` | Legacy id → guardian launch-test | `sh with-fleet.sh --role guardian --launch-test` | — |
+| `agents.pentest-start` | Legacy id → guardian operator-start | `env FAMILIA_OPERATOR_CONFIRM=yes sh with-fleet.sh --role guardian --operator-start` | — |
 
 ### Self-improving harness (Harness2)
 

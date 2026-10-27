@@ -37,9 +37,11 @@ agents.hermes-graph|Agents (hermes)|Hermes: full graph|scripts/hermes.sh --graph
 agents.hermes|Agents (hermes)|Hermes on the graph coder node (64K context)|scripts/hermes.sh|lic||
 agents.hermes-render|Agents (hermes)|Write the hermes config only; start nothing|scripts/hermes.sh --render-only|||
 agents.fleet-test|Agents (hermes)|Launch-test a role: validate, would-start, stop|sh with-fleet.sh --role {ROLE:role name, e.g. hermes} --launch-test|||
-agents.fleet|Agents (hermes)|Launch a role from graph.yaml (pentest roles are only launch-tested)|sh with-fleet.sh --role {ROLE:role name, e.g. hermes}|lic||
-agents.pentest-launch-test|Agents (hermes)|Pentest fleet: launch-test only (validate → would-start → stop)|sh with-fleet.sh --role fleet --launch-test|||
-agents.pentest-start|Agents (hermes)|Pentest fleet: operator-confirmed model start (owned scope; no live scans)|env FAMILIA_OPERATOR_CONFIRM=yes sh with-fleet.sh --role fleet --operator-start|lic||
+agents.fleet|Agents (hermes)|Launch a role from graph.yaml (guardian/defender: seatbelts on by default)|sh with-fleet.sh --role {ROLE:role name, e.g. hermes or guardian}|lic||
+agents.guardian-launch-test|Agents (hermes)|Guardian/defender node: launch-test (seatbelts on; validate → would-start → stop)|sh with-fleet.sh --role guardian --launch-test|||
+agents.guardian-start|Agents (hermes)|Guardian/defender: operator-confirmed model start (owned scope; tools empty)|env FAMILIA_OPERATOR_CONFIRM=yes sh with-fleet.sh --role guardian --operator-start|lic||
+agents.pentest-launch-test|Agents (hermes)|Legacy id → guardian launch-test|sh with-fleet.sh --role guardian --launch-test|||
+agents.pentest-start|Agents (hermes)|Legacy id → guardian operator-start|env FAMILIA_OPERATOR_CONFIRM=yes sh with-fleet.sh --role guardian --operator-start|lic||
 harness2.status|Self-improving harness (Harness2)|Show which agents have Harness2 and in which mode|PY scripts/harness2.py status||file:scripts/harness2.py|python scripts\harness2.py status
 harness2.set|Self-improving harness (Harness2)|Set Harness² mode for any agent (hermes, llama UI, or other; off / propose / apply)|PY scripts/harness2.py set --agent {AGENT:agent name} --mode {MODE:off, propose or apply}|lic|file:scripts/harness2.py|python scripts\harness2.py set --agent {AGENT:agent name} --mode {MODE:off, propose or apply}
 harness2.review|Self-improving harness (Harness2)|Review proposals: list, accept or revert|PY scripts/harness2.py review||file:scripts/harness2.py|python scripts\harness2.py review

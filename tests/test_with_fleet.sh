@@ -16,9 +16,12 @@ fi
 # pentest launch-test only (uses roles.pentest stub)
 out=$(sh "$ROOT/with-fleet.sh" --role pentest --manifest "$ROOT/scripts/pentest-role.json" 2>&1) || rc=$?
 rc=${rc-0}
-printf '%s\n' "$out" | grep -q 'LAUNCH TEST ONLY' && ok "pentest launch-test only" || bad "no launch-test marker: $out"
+printf '%s\n' "$out" | grep -qE 'LAUNCH TEST' && ok "guardian/pentest launch-test" || bad "no launch-test marker: $out"
 printf '%s\n' "$out" | grep -q 'launch-test PASS' && ok "pentest launch-test PASS" || bad "no PASS"
 [ "$rc" = 0 ] || bad "pentest launch-test rc=$rc"
+out=$(sh "$ROOT/with-fleet.sh" --role guardian --launch-test 2>&1) || rc=$?
+printf '%s\n' "$out" | grep -qE 'LAUNCH TEST' && ok "guardian alias launch-test" || bad "guardian: $out"
+[ "${rc:-0}" = 0 ] || bad "guardian launch-test rc=$rc"
 
 # start-green-roomz guard
 if sh "$ROOT/start-green-roomz.sh" 2>"$ROOT/.cache/sgr.err"; then

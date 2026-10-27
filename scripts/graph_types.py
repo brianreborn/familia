@@ -175,6 +175,9 @@ def check_node(g, name, n, errs):
         allowed = (
             (n.get("role") in ("chat", "general") and m.get("role") == "coder")
             or (n.get("role") == "general" and m.get("role") == "chat")
+            # guardian/defender is the public node flavor; catalog weights may still say pentest
+            or (n.get("role") in ("guardian", "defender") and m.get("role") in ("pentest", "guardian"))
+            or (n.get("role") == "pentest" and m.get("role") == "guardian")
         )
         if not allowed:
             errs.append(
@@ -376,11 +379,21 @@ def _scope_target_ok(s, hosts):
     return s.startswith(("http://", "https://", "ssh://"))
 
 def check_pentest(g, name, p, errs):
-    """Operator-authorized testing of owned systems. Launch-test only in automation."""
+    """Guardian/defender node: operator-authorized owned-fleet testing. Seatbelts by default."""
     w = f"pentests.{name}"
-    if p.get("launch_test_only") is not True:
-        errs.append(f"{w}: launch_test_only must be true "
-                    "(validate/start/healthcheck/stop only; never live scans or exploits in tests)")
+    # Seatbelt default: launch_test_only true (automation dual-disable). Operator may
+    # widen to false only with confirm + non-empty owned scope — never a silent open gate.
+    if "launch_test_only" not in p:
+        errs.append(f"{w}: launch_test_only required (default seatbelt: true)")
+    elif p.get("launch_test_only") is not True:
+        if p.get("requires_operator_confirm") is not True:
+            errs.append(f"{w}: launch_test_only false needs requires_operator_confirm: true "
+                        "(seatbelt widen is operator-gated)")
+        scope0 = p.get("scope") if isinstance(p.get("scope"), dict) else {}
+        allow0 = scope0.get("allow") if isinstance(scope0.get("allow"), list) else []
+        if not allow0:
+            errs.append(f"{w}: launch_test_only false needs non-empty scope.allow "
+                        "(owned-fleet allowlist; default-deny appliances)")
     scope = p.get("scope")
     if not isinstance(scope, dict):
         errs.append(f"{w}.scope: expected mapping with allow and deny")
@@ -438,9 +451,9 @@ def check_pentest(g, name, p, errs):
         node = lookup(g, "nodes", p.get("node"))
         if node is not None:
             m = lookup(g, "models", node.get("model"))
-            if m is not None and m.get("role") != "pentest":
-                errs.append(f"{w}: active pentest node {p.get('node')!r} model role is "
-                            f"{m.get('role')!r}; expected role pentest")
+            if m is not None and m.get("role") not in ("pentest", "guardian"):
+                errs.append(f"{w}: active guardian/pentest node {p.get('node')!r} model role is "
+                            f"{m.get('role')!r}; expected role pentest or guardian")
 
 def check_kv_channel(g, name, c, errs):
     """C2C stage 1 (#22): slot KV file shipped between same-model nodes. Both ends must match
@@ -461,7 +474,7 @@ def check_kv_channel(g, name, c, errs):
     if slot_ctx(a) != slot_ctx(b): errs.append(f"{w}: per-slot ctx differs ({slot_ctx(a)} vs {slot_ctx(b)})")
     if a.get("kv_type") != b.get("kv_type"): errs.append(f"{w}: kv_type differs ({a.get('kv_type')} vs {b.get('kv_type')})")
 
-OPTION_ROLES = {"chat", "coder", "reasoning", "embed", "vision", "diffusion", "pentest", "decision", "stt", "tts"}
+OPTION_ROLES = {"chat", "coder", "reasoning", "embed", "vision", "diffusion", "pentest", "guardian", "decision", "stt", "tts"}
 GPU_CANDIDATE_HOSTS = {"qodesh"}  # 8600 GT always-on role (feat/qodesh-legacy-gpu)
 
 def check_option(g, name, o, errs):
@@ -517,7 +530,7 @@ TYPES = {
                    "backends": req("list"), "spec_types": req("strlist"), "bin": opt("str"),
                    "quants": opt("strlist")}, check_runtime, doc="inference engine build"),
     "models": T({"gguf": req("str"), "sha256": req("sha"), "arch": req("str"), "trained_ctx": req("int", min=1),
-                 "role": req("enum", choices={"chat", "coder", "decision", "reasoning", "embed", "vision", "diffusion", "pentest"}),
+                 "role": req("enum", choices={"chat", "coder", "decision", "reasoning", "embed", "vision", "diffusion", "pentest", "guardian"}),
                  "derived_from": opt("any"),
                  # model database entry (registry/models/<db>.json, docs/model-database.md, #51)
                  "db": opt("str"), "notes": opt("str"),
@@ -543,7 +556,7 @@ TYPES = {
                 "server_tools": opt("any"),
                 # type/role the node provides (coder|chat|embed|…). Design law: type implies
                 # capability; placement is host:. Prefer type-named keys in private host graphs.
-                "role": opt("enum", choices={"chat", "coder", "decision", "reasoning", "embed", "vision", "diffusion", "pentest", "general"})},
+                "role": opt("enum", choices={"chat", "coder", "decision", "reasoning", "embed", "vision", "diffusion", "pentest", "guardian", "general"})},
                check_node, doc="model instance on host+runtime"),
     "speculative": T({"experimental": req("bool"), "status": req("enum", choices={"planned", "experimental", "active"}),
                       "mode": req("enum", choices={"draft", "ngram"}), "target": req("ref", ref="nodes"),

@@ -12,12 +12,13 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 # Matches models.role enum in graph_types (+ general as phone/chat stand-in).
 NODE_ROLES = frozenset(
-    {"chat", "coder", "decision", "reasoning", "embed", "vision", "diffusion", "pentest", "general"}
+    {"chat", "coder", "decision", "reasoning", "embed", "vision", "diffusion", "pentest", "guardian", "general"}
 )
 
 # Hostnames / aliases that appear as prefixes in transitional fleet keys.
 _DEFAULT_HOST_PREFIXES = (
-    "angel", "miryam", "qodesh", "box", "phone7", "phone8", "godslove", "shalom", "centos10",
+    "angel", "gabriel", "miryam", "qodesh", "box", "galaxy1", "galaxy2",
+    "phone7", "phone8", "godslove", "shalom", "centos10",
 )
 
 
@@ -28,11 +29,18 @@ def host_prefixes(graph: dict) -> Tuple[str, ...]:
     return tuple(sorted(hosts + extra, key=len, reverse=True))
 
 
+def prefer_public_role(role: str) -> str:
+    """Map legacy model/node role names to public type names (seatbelts naming)."""
+    if role == "pentest":
+        return "guardian"  # guardian/defender node flavor; pentest remains model-catalog synonym
+    return role
+
+
 def infer_role(name: str, node: dict, graph: dict) -> str:
-    """Return the type/role for a node (coder, chat, …)."""
+    """Return the type/role for a node (coder, chat, guardian, …)."""
     explicit = node.get("role")
     if isinstance(explicit, str) and explicit.strip():
-        return explicit.strip()
+        return prefer_public_role(explicit.strip())
     model_key = node.get("model")
     models = graph.get("models") or {}
     if isinstance(model_key, str) and model_key in models:
@@ -44,7 +52,11 @@ def infer_role(name: str, node: dict, graph: dict) -> str:
                 return "chat"
             if name.endswith("-general") or name == "general":
                 return "general"
-            return mr.strip()
+            if name.endswith("-guardian") or name.endswith("-defender") or name == "guardian":
+                return "guardian"
+            if name.endswith("-pentest") or name == "pentest":
+                return "guardian"
+            return prefer_public_role(mr.strip())
     # Strip host- prefix from transitional fleet keys
     for h in host_prefixes(graph):
         for sep in ("-", "_"):
@@ -56,12 +68,12 @@ def infer_role(name: str, node: dict, graph: dict) -> str:
                     if rest == role or rest.endswith("-" + role) or rest.endswith("_" + role):
                         return role
                 if rest in NODE_ROLES:
-                    return rest
+                    return prefer_public_role(rest)
                 # qodesh-smol-cpu / qodesh-resident: not pure roles — keep rest
                 return rest
     if name in NODE_ROLES:
-        return name
-    return name
+        return prefer_public_role(name)
+    return prefer_public_role(name) if name == "pentest" else name
 
 
 def is_host_prefixed(name: str, graph: dict) -> bool:

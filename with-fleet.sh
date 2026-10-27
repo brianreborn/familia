@@ -1,8 +1,8 @@
 #!/bin/sh
 # Thin fleet launcher (issue #15). Validates graph.yaml, resolves --role against
 # the graph (agents.*, pentests.*, or roles.*), and launches that role.
-# Pentest roles are launch-test only: validate → would-start → stop. Never live
-# scans, exploits, or network probes.
+# Guardian/defender (pentest) roles: seatbelts on by default — launch-test path
+# validates → would-start → stop. Tools stay dual-disabled until the operator widens.
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 cd "$ROOT"
@@ -21,18 +21,23 @@ while [ $# -gt 0 ]; do
     --operator-start) OPERATOR_START=1; shift ;;
     --yes|-y) export FAMILIA_ACCEPT_LICENSES=yes; shift ;;
     -h|--help)
-      echo "with-fleet.sh: validate graph.yaml, resolve a role, and launch it (pentest roles: launch-test only)."
+      echo "with-fleet.sh: validate graph.yaml, resolve a role, and launch it (guardian/defender: seatbelts on by default)."
       echo "Usage: sh with-fleet.sh --role NAME [--manifest FILE] [--launch-test|--dry-run] [--operator-start] [--yes]"
       echo "  --launch-test, --dry-run  validate and show what would start; start nothing"
-      echo "  --operator-start         pentest only: after confirm, start the model node (no live scans/tools)"
+      echo "  --operator-start         guardian only: after confirm, start the model node (tools still empty)"
       echo "  --yes                     accept the license review without a prompt (summary still printed)"
       echo "Example: sh with-fleet.sh --role hermes --launch-test"
-      echo "Example: FAMILIA_OPERATOR_CONFIRM=yes sh with-fleet.sh --role fleet --operator-start"
+      echo "Example: FAMILIA_OPERATOR_CONFIRM=yes sh with-fleet.sh --role guardian --operator-start"
       exit 0 ;;
     *) echo "with-fleet.sh: unknown arg: $1" >&2; exit 2 ;;
   esac
 done
 [ -n "$ROLE" ] || { echo "with-fleet.sh: --role is required. Example: sh with-fleet.sh --role hermes --launch-test (see --help)" >&2; exit 2; }
+
+# Guardian/defender is the public name for the owned-fleet pentest node flavor.
+case "$ROLE" in
+  guardian|defender|pentest) ROLE=fleet ;;
+esac
 
 GRAPH=${GRAPH:-$ROOT/graph.yaml}
 [ -f "$GRAPH" ] || { echo "with-fleet.sh: graph not found: $GRAPH" >&2; exit 1; }
@@ -99,11 +104,21 @@ print(n.get("host") or "")
 PY
 )
   if [ -n "$NODE_HOST" ]; then
-    echo "with-fleet.sh: validating artifacts for host $NODE_HOST (node $node)" >&2
-    python3 "$ROOT/scripts/validate_graph.py" --graph "$GRAPH" --host "$NODE_HOST" || {
-      echo "with-fleet.sh: host-scoped validation failed; refusing to launch" >&2
-      exit 1
-    }
+    # Launch-test seatbelt: schema + host scope without requiring sibling hosts' GGUFs
+    # (e.g. angel Nanbeige absent on Ubuntu laptop must not barricade guardian smoke).
+    if [ "$LAUNCH_TEST" = 1 ] || [ "$launch_only" = 1 ]; then
+      echo "with-fleet.sh: launch-test artifact check for host $NODE_HOST (node $node; --no-files)" >&2
+      python3 "$ROOT/scripts/validate_graph.py" --graph "$GRAPH" --host "$NODE_HOST" --no-files || {
+        echo "with-fleet.sh: host-scoped schema validation failed; refusing launch-test" >&2
+        exit 1
+      }
+    else
+      echo "with-fleet.sh: validating artifacts for host $NODE_HOST (node $node)" >&2
+      python3 "$ROOT/scripts/validate_graph.py" --graph "$GRAPH" --host "$NODE_HOST" || {
+        echo "with-fleet.sh: host-scoped validation failed; refusing to launch" >&2
+        exit 1
+      }
+    fi
   fi
 fi
 
@@ -118,8 +133,8 @@ if [ "$OPERATOR_START" = 1 ]; then
   fi
   CONFIRM=${FAMILIA_OPERATOR_CONFIRM:-}
   if [ "$CONFIRM" != "yes" ] && [ "$CONFIRM" != "YES" ]; then
-    echo "with-fleet.sh: operator confirm required for pentest start." >&2
-    echo "with-fleet.sh: owned-fleet scope only; starts the model node, never live scans/exploits." >&2
+    echo "with-fleet.sh: operator confirm required for guardian start." >&2
+    echo "with-fleet.sh: owned-fleet scope only; starts the model node; tools.allow stays empty (seatbelt)." >&2
     echo "with-fleet.sh: re-run with FAMILIA_OPERATOR_CONFIRM=yes" >&2
     exit 2
   fi
@@ -145,8 +160,9 @@ PY
   ntools=$(printf '%s' "$CHECK" | cut -f4)
   [ -n "$onode" ] || { echo "with-fleet.sh: pentests.$name has no node" >&2; exit 1; }
   if [ "$ostatus" != "active" ]; then
-    echo "with-fleet.sh: node/pentest still planned (status=$ostatus) — fetch weights, measure sha, set active, retry" >&2
+    echo "with-fleet.sh: guardian node still planned (status=$ostatus) — fetch weights, measure sha, set active, retry" >&2
     echo "with-fleet.sh: fetch: scripts/add-model.sh --fetch RavichandranJ/Dolphin3-Cyber-8B-GGUF --quant Q2_K --role pentest --accept-licenses" >&2
+    echo "with-fleet.sh: documented LAUNCH_FAILED fix: weights absent (LF_MODEL_FILE); see docs/guardian-nodes.md" >&2
     exit 1
   fi
   if [ "$ntools" != "0" ]; then
@@ -156,7 +172,7 @@ PY
   fi
   python3 "$ROOT/scripts/licenses.py" gate || {
     rc=$?; echo "with-fleet.sh: licenses not accepted; nothing started" >&2; exit $rc; }
-  echo "with-fleet.sh: OPERATOR START — model node only ($onode); owned-fleet scope; tools.allow empty; no scans" >&2
+  echo "with-fleet.sh: OPERATOR START — guardian model node only ($onode); owned-fleet; tools.allow empty (seatbelt)" >&2
   export DETACH_MODE="${DETACH_MODE:-screen-attached}"
   exec sh "$ROOT/scripts/serve.sh" "$onode"
 fi
@@ -182,7 +198,7 @@ PY
 fi
 
 if [ "$launch_only" = 1 ] || [ "$LAUNCH_TEST" = 1 ]; then
-  echo "with-fleet.sh: LAUNCH TEST ONLY — validate ok; not starting live tools/scans" >&2
+  echo "with-fleet.sh: LAUNCH TEST (guardian seatbelts on) — validate ok; not starting tools/scans" >&2
   if [ -n "$node" ]; then
     echo "with-fleet.sh: would start node '$node' (args only, no exec):" >&2
     python3 "$ROOT/scripts/validate_graph.py" --graph "$GRAPH" --args "$node" 2>/dev/null || \
