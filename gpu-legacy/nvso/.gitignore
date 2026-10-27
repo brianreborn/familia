@@ -1,0 +1,3 @@
+tools/nvsoctl
+*.o
+*.ko

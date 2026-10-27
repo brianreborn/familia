@@ -113,6 +113,11 @@ hosts:
     ram_mib: 24442
     reserve_ram_mib: 4096                # policy (installer default), not measured; see docs/ram-safety.md
     gpus: null                   # inventory unknown; measure GPUs before GPU offload
+    notes: >-
+      Nanbeige4.3-33B Q4_K_M (~18.7 GiB) planned on this host. Before activate: measure SSD swap
+      (target ~24 GiB familia swap or proven RSS) + mkdir ~/.cache/familia/spill/angel-{coder,chat}.
+      Software VVRAM: load_mode mmap (see install-notes/vvram-ssd/LAYER.md). FreeBSD nvso scaffold
+      in gpu-legacy/nvso (stubs; not required for Nanbeige). Do not co-start angel-coder and angel-chat.
   centos10-bigram:
     kind: desktop
     # Facts measured 2026-10-19 on the host (registered Grok Bot machine). Address and login live only in
@@ -424,7 +429,7 @@ models:
     trained_ctx: 524288
     role: coder                  # also used for chat via angel-chat card_set; roles in db: coder+chat
     db: dealignai--Nanbeige4.3-33B-UNCENSORED-GGUF--Nanbeige4.3-33B-UNCENSORED-Q4_K_M
-    notes: "Prize on angel (FreeBSD). damp-run on box 2026-10-26; weights stay on angel. Dual coder+chat via card_set."
+    notes: "Prize on angel (FreeBSD). damp-run on box 2026-10-26; weights stay on angel. Dual coder+chat via card_set. Needs measured SSD swap/spill before activate (vvram-ssd/LAYER.md)."
 
 nodes:
 
@@ -624,7 +629,12 @@ nodes:
     override_reasons:
       ctx: 'dealignai README llama-server example uses -c 32768; full 524288 exceeds angel 24442 MiB - 4096 reserve with 18.7 GiB weights'
       card_set: 'coder/agentic role: base-card Agentic and tool-use (temp 1.0 top_p 0.95); distinct from angel-chat soft default'
-    note: 'threads: 2 (few) on 4-core angel; do not co-start with angel-chat on 24 GiB'
+    slot_save: false             # set true when spill dir ready; --slot-save-path ~/.cache/familia/spill/angel-coder
+    note: >-
+      threads:2 on 4-core angel; do not co-start with angel-chat on 24 GiB.
+      SSD/VVRAM: load_mode mmap; proposed spill_path=~/.cache/familia/spill/angel-coder;
+      swap_budget_mib=24576 (ops gate — see vvram-ssd/LAYER.md). Activate only after swapinfo OK.
+
 
   angel-chat:
     model: nanbeige43-33b-q4km
@@ -644,7 +654,11 @@ nodes:
     card_set: "Reasoning and chat tasks"
     override_reasons:
       ctx: 'same RAM budget as angel-coder; heavy ctx relative to host, not full 512K'
-    note: 'card_set is soft default (Reasoning and chat); do not co-start with angel-coder on 24 GiB'
+    slot_save: false             # set true when spill dir ready; --slot-save-path ~/.cache/familia/spill/angel-chat
+    note: >-
+      card_set soft default (Reasoning and chat); do not co-start with angel-coder on 24 GiB.
+      SSD/VVRAM: same mmap + spill/swap gate as angel-coder (vvram-ssd/LAYER.md).
+
 
 speculative:
   coder-draft:                   # #91: draft-model speculation (same qwen35 vocab; validator checks)

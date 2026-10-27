@@ -31,3 +31,7 @@ Concurrency: [bench-concurrency/SUMMARY.md](bench-concurrency/SUMMARY.md) — co
 
 See [DECISION-MODEL.md](DECISION-MODEL.md) and [bench-decision/SUMMARY.md](bench-decision/SUMMARY.md).
 
+
+## nvso (FreeBSD research scaffold)
+
+See [nvso/README.md](nvso/README.md) and `docs/vvram-ssd/` — SO-domain + SSD DMA ioctl stubs; not used by stock sm11 path.

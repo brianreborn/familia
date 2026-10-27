@@ -1,0 +1,59 @@
+.\" Copyright (c) 2026 familia / green-roomz R&D
+.\" SPDX-License-Identifier: BSD-2-Clause
+.Dd October 26, 2026
+.Dt NVSO 9
+.Os
+.Sh NAME
+.Nm nvso_domain_create ,
+.Nm nvso_map ,
+.Nm nvssd_queue_export ,
+.Nm nvgpu_dma_post ,
+.Nm nvso_domain_gate ,
+.Nm nvso_irq_attach
+.Nd kernel methods for nvso(4) (research)
+.Sh SYNOPSIS
+.In sys/nvso_if.h
+.Ft int
+.Fn nvso_domain_create "struct nvso_softc *sc" "struct nvso_domain_create_req *req"
+.Ft int
+.Fn nvso_map "struct nvso_softc *sc" "struct nvso_map_req *req"
+.Ft int
+.Fn nvssd_queue_export "struct nvso_softc *sc" "struct nvssd_queue_export_req *req"
+.Ft int
+.Fn nvgpu_dma_post "struct nvso_softc *sc" "struct nvgpu_dma_post_req *req"
+.Ft int
+.Fn nvso_domain_gate "struct nvso_softc *sc" "struct nvso_domain_gate_req *req"
+.Ft int
+.Fn nvso_irq_attach "struct nvso_softc *sc" "struct nvso_irq_attach_req *req"
+.Sh DESCRIPTION
+These methods implement the kernel side of the
+.Xr nvso 4
+ioctl ABI.
+They are dispatched from
+.Fn nvso_ioctl
+via
+.Vt struct nvso_methods .
+.Pp
+.Em Rigorous aliases
+(ioctl constant ↔ method):
+.Bl -column "NVSSD_QUEUE_EXPORT" "nvssd_queue_export"
+.It Dv NVSO_DOMAIN_CREATE Ta Fn nvso_domain_create
+.It Dv NVSO_MAP Ta Fn nvso_map
+.It Dv NVSSD_QUEUE_EXPORT Ta Fn nvssd_queue_export
+.It Dv NVGPU_DMA_POST Ta Fn nvgpu_dma_post
+.It Dv NVSO_DOMAIN_GATE Ta Fn nvso_domain_gate
+.It Dv NVSO_IRQ_ATTACH Ta Fn nvso_irq_attach
+.El
+.Pp
+SSD export and GPU DMA backends live in
+.Pa nvso_ssd.c
+and
+.Pa nvso_gpu.c .
+Until open firmware and peer-DMA paths exist, all methods return
+.Er EOPNOTSUPP .
+.Sh RETURN VALUES
+.Rv -std
+.Sh SEE ALSO
+.Xr nvso 4
+.Sh AUTHORS
+familia / green-roomz R&D

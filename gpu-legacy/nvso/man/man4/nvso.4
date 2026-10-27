@@ -1,0 +1,75 @@
+.\" Copyright (c) 2026 familia / green-roomz R&D
+.\" SPDX-License-Identifier: BSD-2-Clause
+.Dd October 26, 2026
+.Dt NVSO 4
+.Os
+.Sh NAME
+.Nm nvso
+.Nd research driver for SO domains and SSD DMA (stub)
+.Sh SYNOPSIS
+.Cd device nvso
+.Sh DESCRIPTION
+The
+.Nm
+driver exposes a character device
+.Pa /dev/nvso0
+and an ioctl ABI for creating isolated compute domains, mapping address
+ranges (including NVM-backed regions), exporting SSD queue geometry, and
+posting GPU DMA descriptor lists.
+.Pp
+This is a
+.Em research stub .
+Stock NVIDIA G84 silicon does not implement independent SO clock domains
+as described in the design thread; open SandForce firmware is not included.
+Ioctls currently return
+.Er EOPNOTSUPP
+once the module is loaded.
+.Sh IOCTLS
+Defined in
+.In nvso_ioctl.h
+(group
+.Ql N ) :
+.Bl -tag -width "NVSSD_QUEUE_EXPORTXX"
+.It Dv NVSO_DOMAIN_CREATE
+Create a domain.
+Userspace name alias:
+.Fn nvso_domain_create .
+.It Dv NVSO_MAP
+Map a VA range into a domain.
+Alias:
+.Fn nvso_map .
+.It Dv NVSSD_QUEUE_EXPORT
+Export raw SSD queue geometry into a domain.
+Alias:
+.Fn nvssd_queue_export .
+.It Dv NVGPU_DMA_POST
+Post a DMA descriptor array (GPU/SSD/peer).
+Alias:
+.Fn nvgpu_dma_post .
+.It Dv NVSO_DOMAIN_GATE
+Power-gate or ungate a domain.
+Alias:
+.Fn nvso_domain_gate .
+.It Dv NVSO_IRQ_ATTACH
+Attach a domain-local notification.
+Alias:
+.Fn nvso_irq_attach .
+.El
+.Sh FILES
+.Bl -tag -width "/dev/nvso0"
+.It Pa /dev/nvso0
+Control device node.
+.El
+.Sh SEE ALSO
+.Xr nvso 9 ,
+.Xr ioctl 2
+.Sh HISTORY
+The
+.Nm
+stub first appeared in the familia
+.Pa gpu-legacy/nvso
+tree (2026-10-26).
+.Sh BUGS
+No hardware backends; loading on production hosts is for ABI bring-up only.
+.Sh AUTHORS
+familia / green-roomz R&D

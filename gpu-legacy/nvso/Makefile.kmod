@@ -1,0 +1,8 @@
+# FreeBSD only — build on angel:
+#   make -f Makefile.kmod
+#   sudo kldload ./nvso.ko   # ABI bring-up only
+KMOD=   nvso
+SRCS=   nvso.c nvso_ssd.c nvso_gpu.c
+.PATH:  ${.CURDIR}/sys
+CFLAGS+= -I${.CURDIR}/include -I${.CURDIR}/sys
+.include <bsd.kmod.mk>
