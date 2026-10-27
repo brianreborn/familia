@@ -1,0 +1,16 @@
+host,valid,invalid_reason,model,quant,backend,ngl,threads,load_mode,fa,test,tok_s,params,source,measured_at,note
+miryam,True,,SmolLM2-135M-Instruct,Q4_0,CPU,0,1,none,-1,pp256,166.35,-t 1 -lm none -ngl 0 -p 256 -n 64 -r 1,perf/valid-2026-10-27/miryam-smollm2-smoke.jsonl,2026-10-27T11:45:50-07:00,coarse binary search; short smoke; no MemoryMax
+miryam,True,,SmolLM2-135M-Instruct,Q4_0,CPU,0,1,none,-1,tg64,62.59,-t 1 -lm none -ngl 0 -p 256 -n 64 -r 1,perf/valid-2026-10-27/miryam-smollm2-smoke.jsonl,2026-10-27T11:45:50-07:00,coarse binary search; short smoke; no MemoryMax
+miryam,True,,SmolLM2-135M-Instruct,Q4_0,CPU,0,2,none,-1,pp256,222.15,-t 2 -lm none -ngl 0 -p 256 -n 64 -r 1,perf/valid-2026-10-27/miryam-smollm2-smoke.jsonl,2026-10-27T11:45:50-07:00,coarse binary search; short smoke; no MemoryMax
+miryam,True,,SmolLM2-135M-Instruct,Q4_0,CPU,0,2,none,-1,tg64,85.71,-t 2 -lm none -ngl 0 -p 256 -n 64 -r 1,perf/valid-2026-10-27/miryam-smollm2-smoke.jsonl,2026-10-27T11:45:50-07:00,coarse binary search; short smoke; no MemoryMax
+miryam,True,,SmolLM2-135M-Instruct,Q4_0,CPU,0,3,none,-1,pp256,291.14,-t 3 -lm none -ngl 0 -p 256 -n 64 -r 1,perf/valid-2026-10-27/miryam-smollm2-smoke.jsonl,2026-10-27T11:45:50-07:00,coarse binary search; short smoke; no MemoryMax
+miryam,True,,SmolLM2-135M-Instruct,Q4_0,CPU,0,3,none,-1,tg64,54.91,-t 3 -lm none -ngl 0 -p 256 -n 64 -r 1,perf/valid-2026-10-27/miryam-smollm2-smoke.jsonl,2026-10-27T11:45:50-07:00,coarse binary search; short smoke; no MemoryMax
+phone8,True,,SmolLM2-135M-Instruct,Q4_0,Vulkan,99,3,,1,pp128,1476.25,-t 3 -ngl 99 -fa 1 Vulkan,docs/perf/phone8-2026-10-10-anchor.log,2026-10-10,committed phone8 anchor; Termux Vulkan
+phone8,True,,SmolLM2-135M-Instruct,Q4_0,Vulkan,99,3,,1,tg64,100.06,-t 3 -ngl 99 -fa 1 Vulkan,docs/perf/phone8-2026-10-10-anchor.log,2026-10-10,committed phone8 anchor; Termux Vulkan
+miryam,False,memcg_cap_L-memcg,Qwen3.5-2B,Q4_K_M,CPU,0,3,,,tg128,6.68,-t 3,familia-perf.log BEST; MemoryMax=3500M,2026-10-19,INVALID per L-memcg; shown for old-vs-new chart only
+miryam,False,memcg_cap_L-memcg,LFM2.5-1.2B,Q4_K_M,CPU,0,2,,,tg128,12.95,-t 2,familia-perf.log BEST; MemoryMax=3500M,2026-10-19,INVALID per L-memcg; shown for old-vs-new chart only
+miryam,False,memcg_cap_L-memcg,Qwen3.5-2B,Q4_K_M,CPU,0,3,,,tg128,7.22,-t 3,familia-perf-2 warm threads=3; MemoryMax=3500M,2026-10-19,INVALID per L-memcg; shown for old-vs-new chart only
+miryam,False,memcg_cap_L-memcg,LFM2.5-1.2B,Q4_K_M,CPU,0,2,,,tg128,13.28,-t 2,familia-perf-2 warm lm=none; MemoryMax=3500M,2026-10-19,INVALID per L-memcg; shown for old-vs-new chart only
+centos10-bigram,False,memcg_cap_L-memcg,Qwen3.5-2B,Q4_K_M,CPU,0,2,,,tg,11.75,-t 2,docs/perf/centos-bigram-models.md §7; memcg era,2026-10-19,INVALID per L-memcg; shown for old-vs-new chart only
+centos10-bigram,False,memcg_cap_L-memcg,LFM2.5-1.2B,Q4_K_M,CPU,0,2,,,tg,23.0,-t 2,docs/perf/centos-bigram-models.md §7; memcg era,2026-10-19,INVALID per L-memcg; shown for old-vs-new chart only
+centos10-bigram,False,memcg_cap_L-memcg,gpt-oss-20b,MXFP4,CPU,0,4,,,tg,7.88,-t 4,docs/perf/centos-bigram-models.md §7; memcg era,2026-10-19,INVALID per L-memcg; shown for old-vs-new chart only
