@@ -50,6 +50,7 @@ HISTORY = [
 
 PAT = [  # (class, regex on stderr/log)
     ("BAD_PARAMS", r"invalid parameter for argument|unknown argument|error: invalid argument|quantized V cache .*flash|n_ubatch >= n_tokens|exceeds the trained|failed to parse"),
+    ("TOKENIZER", r"failed to load (vocab|tokenizer)|tokenizer.*(?:fail|missing|mismatch)|vocab.*(?:fail|missing|mismatch)|failed to load chat template|error loading chat template|jinja.*(?:error|fail)|BOS token|EOS token.*not found"),
     ("MODEL_FILE", r"unknown model architecture|invalid magic|failed to read magic|tensor '.*' data is not within|wrong number of tensors|gguf_init_from_file.*failed|unsupported .*architecture"),
     ("OOM", r"failed to allocate|out of memory|cannot allocate memory|std::bad_alloc|ErrorOutOfDeviceMemory"),
     ("MISSING_RUNTIME", r"No such file or directory|not found|cannot open shared object|error while loading shared libraries"),
@@ -201,12 +202,39 @@ def cap_for(model, ctx, host_limit):
     return bg.mem_cap_mib(mib + 64 + ctx / 1024 * 64, host_limit_mib=host_limit)
 
 
+def thinking_level_of(args, meta=None, registry_mode=None):
+    """Thinking/reasoning level applied for this launch (#109). Prefer explicit
+    --chat-template-kwargs / --reasoning*; else registry card_default_mode; else documented default."""
+    args = [str(a) for a in (args or [])]
+    for i, a in enumerate(args[:-1]):
+        if a in ("--chat-template-kwargs",):
+            return "chat-template-kwargs %s" % args[i + 1]
+        if a in ("--reasoning", "--reasoning-budget", "--reasoning-format"):
+            return "%s %s" % (a, args[i + 1])
+    if registry_mode:
+        return "registry:%s" % registry_mode
+    return "default (unset; launcher/client documented default)"
+
+
+def tokenizer_ok(meta):
+    """True when GGUF header carries a usable tokenizer (#109)."""
+    if not meta:
+        return False
+    if meta.get("tokenizer_model") in (None, ""):
+        return False
+    vs = meta.get("vocab_size")
+    if vs is not None and int(vs) == 0:
+        return False
+    return True
+
+
 def one(engine, model, a, host_limit, legacy, dry):
-    rec = {"engine": engine, "model": os.path.basename(model)}
+    rec = {"engine": engine, "model": os.path.basename(model), "label": bg.model_label(model)}
     try:
         meta = bg.summarize(bg.read_gguf(model))
     except Exception as e:
-        return dict(rec, cls="MODEL_FILE", why=str(e)[:120], args=[])
+        return dict(rec, cls="MODEL_FILE", why=str(e)[:120], args=[], tokenizer_ok=False,
+                    thinking_level="default (unset; launcher/client documented default)")
     ctx = min(4096, int(meta.get("context_length") or 4096))
     args = ["-m", model, "-c", str(ctx), "-t", str(a.threads), "-ngl", "0", "-lm", "none"]
     if bg.is_encoder(meta):
@@ -214,7 +242,11 @@ def one(engine, model, a, host_limit, legacy, dry):
     probs, args = bg.preflight(args, meta, legacy_gpu=legacy)
     docd = {k: "llama.cpp defaults (launch smoke test, 4 tokens)" for k in bg.DOCUMENTABLE}
     _, notes = bg.validate(meta, docd)
-    rec.update(args=args[2:], notes=notes)
+    tok_ok = tokenizer_ok(meta)
+    think = thinking_level_of(args)
+    rec.update(args=args[2:], notes=notes, tokenizer_ok=tok_ok, thinking_level=think)
+    if not tok_ok and not any(p.startswith("TOKENIZER") for p in probs):
+        probs = ["TOKENIZER: tokenizer_model missing from GGUF header"] + list(probs)
     binname = "llama-cli" if engine == "llama-cli" else "llama-server"
     b = os.path.join(a.bin_dir, binname)
     if probs:

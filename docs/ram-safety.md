@@ -49,7 +49,7 @@ high RAM utilization.
 
 | layer | status |
 |---|---|
-| `scripts/serve.sh` memcap (systemd-run --user scope, MemoryHigh 2200M / MemoryMax 2600M / MemorySwapMax 0, oom_score_adj 800) | **deployed** (no root). Default on for miryam; set `FAMILIA_MEMCAP=0/1` to override. Verified with a SmolLM2 test server: scope showed MemoryMax=629145600 (600M test cap), oom_score_adj=800 |
+| `scripts/serve.sh` memcap (systemd-run --user scope, MemoryMax = admission reservation / estimated peak, swap allowed, oom_score_adj 800) | **deployed** (no root; #95). Default on for miryam; set `FAMILIA_MEMCAP=0/1` to override. Fixed 2600M / MemorySwapMax=0 removed (premature CONSTRAINT_MEMCG kills). |
 | earlyoom (args below) | **deployed** 2026-10-10 13:40 PT by the user's sudo paste. `active`; the running process shows `-m 8,4 -s 10,5 -r 60 --prefer (^\|/)(llama-server\|llama-bench\|llama-cli)$ --avoid (^\|/)(gnome-shell\|Xwayland\|sshd\|systemd\|grok-bot)$ -n`. Verified from `ps`, because the login user isn't in the adm group and can't read its journal |
 | zram-tools (zstd, 25%, prio 100) | **deployed**: `/dev/zram0` is 1.8 GiB, zstd, priority 100. The old 16 MiB sda3 swap stays at priority -1 |
 | systemd-oomd | **not configured by us** (Ubuntu default, active). It only watches the `user@*.service` cgroups, killing at 50% memory pressure sustained for 20 s, and swap above 90%. earlyoom acts first, on low free memory, and only targets llama-*. Coexistence looks OK: they trigger on different signals, and earlyoom normally fires earlier. The risk is that oomd may pick a whole desktop app cgroup under sustained pressure. Our memcapped scope is the most likely large candidate, which is what we want. |

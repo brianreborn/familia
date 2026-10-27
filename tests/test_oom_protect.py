@@ -20,10 +20,16 @@ def test_child_gets_adj():
 
 
 def test_launchers_wired():
-    for f in ("launch_matrix.py", "harness2.py", "hermes_harness.py"):
+    for f in ("launch_matrix.py", "harness2.py"):
         assert "preexec_fn=oom_adj.preexec()" in open(os.path.join(R, "scripts", f)).read(), f
+    # hermes no longer Popen's llama-server (#957cd32); still marks hermes child + self (#112)
+    hh = open(os.path.join(R, "scripts", "hermes_harness.py")).read()
+    assert "preexec_fn=oom_adj.preexec()" in hh or "oom_adj.set_self()" in hh
+    assert "preexec_fn=oom_adj.preexec()" in hh  # escalate path still spawns hermes as child
     assert "scripts/oom-adj" in open(os.path.join(R, "scripts", "perf", "bench_capped.sh")).read()
     assert "oom_score_adj" in open(os.path.join(R, "scripts", "serve.sh")).read()
+    assert "MemorySwapMax=0" not in open(os.path.join(R, "scripts", "perf", "spec_bench.py")).read()
+    assert "oom-adj" in open(os.path.join(R, "scripts", "perf", "spec_bench.py")).read()
 
 
 def test_kill_watch_flags_protected(tmp_path):
