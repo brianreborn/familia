@@ -2,8 +2,10 @@
 # Launch hermes-agent from the familia graph. Two modes (scripts/hermes_modes.py):
 #   graph (default)        the agent's aliases + escalation proxy where declared
 #   single --model NODE    one node, its own HERMES_HOME, no router (64K floor enforced)
+# Frontend client: --client cli|desktop|webapp (docs/hermes-clients.md).
 # `hermes.sh harness2 ...` is the Harness² review CLI (scripts/harness2.py); it launches nothing.
-# Usage: scripts/hermes.sh [--mode graph|single] [--model NODE] [--agent NAME] [--self-improve]
+# Usage: scripts/hermes.sh [--mode graph|single] [--model NODE] [--client cli|desktop|webapp]
+#                          [--agent NAME] [--self-improve]
 #                          [--render-only] [--selftest-compaction] [--escalate ...] [-- hermes args...]
 set -euo pipefail
 cd "$(dirname "$0")/.."

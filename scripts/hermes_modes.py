@@ -24,12 +24,14 @@ Licenses of the graph selection are accepted before a node starts (scripts/licen
 --accept-licenses / --yes accepts).
 
 usage: hermes.sh [--graph-mode | --model NODE | --mode graph|single] [--agent NAME] [--graph FILE]
-                 [--self-improve] [--accept-licenses|--yes]
+                 [--client cli|desktop|webapp] [--self-improve] [--accept-licenses|--yes]
                  [--render-only | --selftest-compaction | --escalate [--light NODE] [--no-swap-back] | --no-escalate]
                  [-h|--help] [-- HERMES-ARGS...]
   --graph-mode is the same as --mode graph (the default); --graph FILE only picks which graph.yaml.
+  --client selects the frontend surface (cli default; desktop = Hermes Desktop; webapp = desktop-in-browser).
 example: scripts/hermes.sh --model coder --render-only
-       scripts/hermes.sh --model angel-coder --render-only   # FreeBSD angel smoke (host-scoped files)
+       scripts/hermes.sh --model angel-coder --client desktop --yes
+       scripts/hermes.sh --model angel-coder --client webapp --yes
        hermes.sh harness2 COMMAND ...    Harness² review CLI (scripts/harness2.py); launches nothing
 """
 import copy, os, socket, subprocess, sys
@@ -49,7 +51,7 @@ def usage_err(msg):
 def parse(argv):
     o = {"mode": None, "model": None, "agent": "hermes", "graph": os.path.join(ROOT, "graph.yaml"),
          "action": "run", "light": None, "swap_back": True, "escalate": None, "self_improve": False,
-         "accept": False, "rest": [], "seen": []}
+         "accept": False, "client": "cli", "rest": [], "seen": []}
     it = iter(argv)
     def val(x):
         v = next(it, None)
@@ -67,6 +69,10 @@ def parse(argv):
         elif x == "--model": o["model"] = val(x)
         elif x == "--agent": o["agent"] = val(x)
         elif x == "--graph": o["graph"] = val(x)
+        elif x == "--client":
+            o["client"] = val(x)
+            if o["client"] not in ("cli", "desktop", "webapp"):
+                usage_err(f"--client must be cli, desktop, or webapp, got {o['client']!r}")
         elif x == "--self-improve": o["self_improve"] = True
         elif x == "--render-only": o["action"] = "render"
         elif x == "--selftest-compaction": o["action"] = "selftest"
@@ -87,6 +93,8 @@ def parse(argv):
         usage_err("--escalate cannot combine with --render-only or --selftest-compaction")
     if (o["light"] or not o["swap_back"]) and o["escalate"] is not True:
         usage_err("--light and --no-swap-back need --escalate")
+    if o["action"] != "run" and o["client"] != "cli":
+        usage_err("--client only applies to a live launch (not --render-only / --selftest-compaction)")
     return o
 
 
@@ -204,7 +212,7 @@ def main(argv):
     if o["mode"] == "graph":
         raw = yaml.safe_load(open(o["graph"])); raw["_path"] = o["graph"]
         a = (raw.get("agents") or {}).get(agent)
-        fwd = ["--agent", agent, "--graph", o["graph"]] + (["--accept-licenses"] if o["accept"] else [])
+        fwd = ["--agent", agent, "--graph", o["graph"], "--client", o["client"]] + (["--accept-licenses"] if o["accept"] else [])
         if o["action"] == "render": fwd.append("--render-only")
         elif o["action"] == "selftest": fwd.append("--selftest-compaction")
         if a and o["action"] == "run" and o["escalate"] is None:
@@ -216,7 +224,7 @@ def main(argv):
             fwd.append("--escalate")
             if o["light"]: fwd += ["--light", o["light"]]
             if not o["swap_back"]: fwd.append("--no-swap-back")
-        print(f"hermes.sh: mode=graph agent={agent} escalation={'proxy' if o['escalate'] else 'off'}", file=sys.stderr)
+        print(f"hermes.sh: mode=graph agent={agent} client={o['client']} escalation={'proxy' if o['escalate'] else 'off'}", file=sys.stderr)
         if a:
             pickup(raw, o, agent)
             link_skills(raw, agent, os.path.expanduser(f"~/.cache/familia/hermes-{agent}"))
@@ -235,7 +243,7 @@ def main(argv):
                       host=None if o["action"] == "render" else scope)
     g2, name = single_agent(g, agent, node, enforce_min_ctx=(o["action"] != "render"))
     home = os.path.expanduser(f"~/.cache/familia/hermes-{name}")
-    print(f"hermes.sh: mode=single agent={agent} node={node} ctx={g2['agents'][name]['context_length']} router=none compression=on", file=sys.stderr)
+    print(f"hermes.sh: mode=single agent={agent} node={node} client={o['client']} ctx={g2['agents'][name]['context_length']} router=none compression=on", file=sys.stderr)
     pickup(g, o, agent, into=home)
     link_skills(g, agent, home)
     if o["action"] == "selftest":
@@ -247,10 +255,11 @@ def main(argv):
     hh.ensure_hermes()
     hh.ensure_server(g2, nname, n)
     hh.warm_prompt(g2, nname, n, home)
+    argv = hh.prepare_client_launch(home, o["client"], o["rest"])
     launch_env = hh.hermes_child_env({"HERMES_HOME": home})
     os.environ.clear()
     os.environ.update(launch_env)
-    os.execv(hh.HERMES_BIN, [hh.HERMES_BIN] + o["rest"])
+    os.execv(hh.HERMES_BIN, [hh.HERMES_BIN] + argv)
 
 
 if __name__ == "__main__":

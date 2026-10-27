@@ -40,3 +40,8 @@ Stages `packaging/appimage/` (`AppRun`, `.desktop`, logo), bundles the repo (exc
 | Milestone release asset alongside `.sh` installers | A replacement for angel’s source-built FreeBSD runtime |
 
 See also: [install.md](./install.md), [QUICKSTART.md](../QUICKSTART.md).
+
+## Not Hermes Desktop
+
+This AppImage packages **familia**, not the upstream Hermes Desktop Electron app.
+Client launch paths for Hermes Desktop / webapp: [hermes-clients.md](hermes-clients.md).
