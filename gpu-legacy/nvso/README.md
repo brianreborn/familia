@@ -60,3 +60,14 @@ Use mmap + swap + spill — see LAYER.md. That path does **not** require `nvso.k
 ## Bridge
 
 `nvso_gpu.c` is the eventual peer of `gpu-legacy` sm11 descriptor posting on qodesh; see G84-BRIDGE.md.
+
+## Angel kmod notes
+
+`Makefile.kmod` lists `device_if.h` `bus_if.h` in `SRCS` so `bsd.kmod.mk` generates them.
+Without those entries, compile fails with:
+
+```
+sys/bus.h: fatal error: 'device_if.h' file not found
+```
+
+Kernel sources (`/usr/src/sys`) and `bsd.kmod.mk` are required on the build host.
