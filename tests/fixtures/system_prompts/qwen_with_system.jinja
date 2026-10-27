@@ -1,0 +1,10 @@
+{%- if messages[0]['role'] == 'system' %}
+{{- '<|im_start|>system\n' + messages[0]['content'] + '<|im_end|>\n' }}
+{%- set loop_messages = messages[1:] %}
+{%- else %}
+{%- set loop_messages = messages %}
+{%- endif %}
+{%- for message in loop_messages %}
+{{- '<|im_start|>' + message['role'] + '\n' + message['content'] + '<|im_end|>\n' }}
+{%- endfor %}
+{{- '<|im_start|>assistant\n' }}

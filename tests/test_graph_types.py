@@ -430,3 +430,31 @@ def test_server_env_hides_vulkan_when_cpu_only():
     assert validate_graph.server_env(x, name, {"GGML_VK_VISIBLE_DEVICES": "1"})["GGML_VK_VISIBLE_DEVICES"] == "1"
     x["nodes"][name]["offload"]["ngl"] = 5
     assert "GGML_VK_VISIBLE_DEVICES" not in validate_graph.server_env(x, name, {})
+
+
+def test_validate_graph_positional_yaml_path(tmp_path, capsys):
+    """#74: a bare GRAPH.yaml path is accepted as --graph (with a deprecation note)."""
+    gpath = tmp_path / "tiny.yaml"
+    # Minimal valid-enough file: parse_argv only; full validate needs a real graph.
+    assert validate_graph.parse_argv([str(gpath)])["graph"] == str(gpath)
+    assert validate_graph.parse_argv(["--graph", str(gpath), "--no-files"])["graph"] == str(gpath)
+    # Explicit --graph wins over a different positional
+    o = validate_graph.parse_argv(["other.yaml", "--graph", str(gpath)])
+    assert o["graph"] == str(gpath)
+
+
+def test_options_may_carry_db_field():
+    """#136/#74: options.*.db is a catalog pointer (same key as models.*.db)."""
+    x = g()
+    # Pick an existing options entry if any; otherwise inject one.
+    opts = x.setdefault("options", {})
+    name = next(iter(opts), None)
+    if name is None:
+        opts["toy-opt"] = {
+            "role": "decision", "unverified": True, "sources": ["test"],
+            "db": "example--toy--Q4_0",
+        }
+        name = "toy-opt"
+    else:
+        opts[name]["db"] = "example--toy--Q4_0"
+    assert errs(x) == []
