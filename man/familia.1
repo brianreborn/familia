@@ -61,6 +61,11 @@ Change launcher settings (port, threads, context) on the terminal.
 .br
 Runs: \fBsh scripts/configure.sh \-\-interactive\fR
 .TP
+\fBdeps\fR
+Install local OS packages this host needs (git, python, pytest, getconf, build tools).
+.br
+Runs: \fBsh install/deps.sh \-\-install\fR
+.TP
 \fBinstall preview\fR
 Install or update this host (llama.cpp runtime, host entry): dry run first.
 .br
@@ -203,6 +208,16 @@ Runs: \fBsh with\-fleet.sh \-\-role <ROLE> \-\-launch\-test\fR
 Launch a role from graph.yaml (pentest roles are only launch\-tested) (licenses first).
 .br
 Runs: \fBsh with\-fleet.sh \-\-role <ROLE>\fR
+.TP
+\fBpentest\-launch\-test\fR
+Pentest fleet: launch\-test only (validate → would\-start → stop).
+.br
+Runs: \fBsh with\-fleet.sh \-\-role fleet \-\-launch\-test\fR
+.TP
+\fBpentest\-start\fR
+Pentest fleet: operator\-confirmed model start (owned scope; no live scans) (licenses first).
+.br
+Runs: \fBenv FAMILIA_OPERATOR_CONFIRM=yes sh with\-fleet.sh \-\-role fleet \-\-operator\-start\fR
 .SS Self\-improving harness (Harness2)
 .TP
 \fBharness2 status\fR

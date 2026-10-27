@@ -42,7 +42,7 @@ The interactive menu and `--list` show these paths before the command groups. Fo
 
 | goal | path |
 |---|---|
-| Set up a new checkout and start its local server | `setup.licenses` -> `setup.configure` -> `setup.install` (preview) -> `setup.install-run` -> `hosts.start` |
+| Set up a new checkout and start its local server | `setup.deps` -> `setup.licenses` -> `setup.configure` -> `setup.install` (preview) -> `setup.install-run` -> `hosts.start` |
 | Start a graph node | `models.check` -> `hosts.serve <NODE>` |
 | Add and launch a model | `models.fetch-preview` -> `models.fetch` -> add its node to `graph.yaml` -> `models.check` -> `hosts.serve <NODE>` |
 | Run Hermes on the graph coder | `models.check` -> `agents.hermes` (license-gated) |
@@ -62,6 +62,7 @@ The interactive menu and `--list` show these paths before the command groups. Fo
 | `setup.configure` | Set up this checkout: sync the pinned parts and the git-pull hooks (licenses first) | `sh scripts/configure.sh` | - |
 | `setup.licenses` | Review the licenses of everything you have chosen | `python3 scripts/licenses.py review` | `python scripts\licenses.py review` |
 | `setup.settings` | Change launcher settings (port, threads, context) on the terminal | `sh scripts/configure.sh --interactive` | - |
+| `setup.deps` | Install local OS packages this host needs (safe-mode bootstrap; see [safe-mode-bootstrap.md](safe-mode-bootstrap.md)) | `sh install/deps.sh --install` | `powershell -NoProfile -ExecutionPolicy Bypass -File install\windows\deps.ps1 -Install` |
 | `setup.install` | Install or update this host (llama.cpp runtime, host entry): dry run first | `sh install/linux/install.sh --dry-run [--branch BRANCH]` | `powershell -NoProfile -ExecutionPolicy Bypass -File install\windows\install.ps1 -DryRun [-Branch BRANCH]` |
 | `setup.install-run` | Install or update this host for real (asks you to accept licenses) | `sh install/linux/install.sh [--branch BRANCH]` | `powershell -NoProfile -ExecutionPolicy Bypass -File install\windows\install.ps1 [-Branch BRANCH]` |
 | `setup.install-cli` | Put familia on your PATH (~/.local/bin/familia shim): preview, writes nothing ([install.md](install.md#familia-on-your-path)) | `sh scripts/install-cli.sh --dry-run` | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-cli.ps1 -WhatIf` |
@@ -262,6 +263,10 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/watchdog/mem-snapshot.sh` | helper called by kill-watch.sh |
 | `scripts/dogfood/install-loop-unit.sh` | operator installer for the dogfood loop systemd user unit (#112) |
 | `build-automation.sh` | Legacy llama.cpp v0.7.0 patch/build helper (not menu) | — | — |
-| `install/linux/deps.sh` | Installer OS-deps helper (called by install.sh) | — | — |
+| `install/deps.sh` | Unified OS-deps dispatcher (safe-mode bootstrap; [safe-mode-bootstrap.md](safe-mode-bootstrap.md)) | — | — |
+| `install/linux/deps.sh` | Linux/macOS OS-deps helper (apt/dnf/pacman/zypper/brew); called via `install/deps.sh` | — | — |
+| `install/termux/deps.sh` | Termux OS-deps helper (`getconf`, pytest, …) | — | — |
+| `install/freebsd/deps.sh` | FreeBSD OS-deps helper (opt-in `pkg install`) | — | — |
+| `install/windows/deps.ps1` | Windows deps check + winget/choco hints | — | `install\windows\deps.ps1` |
 | `scripts/build_appimage.sh` | Operator AppImage packaging (not menu) | — | — |
 | `scripts/perf/box_multi_size_smoke.py` | Perf/dev multi-size smoke (not menu) | — | — |

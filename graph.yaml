@@ -135,11 +135,14 @@ hosts:
       - vendor: nvidia
         model: GeForce 8600 GT (G84, CC 1.1, 256 MiB)
         vram_mib: 256
-        backend: none            # nouveau owns the card at boot; legacy 340.108 nvidia.ko cannot probe it
-        backend_status: unsupported
+        backend: cuda-sm11-ptx   # #113: operator runs legacy NVIDIA 340; was stale none/nouveau
+        backend_status: tbd      # bind/verify before ngl>0; same family as qodesh sm11-legacy
         compute_capability: "1.1"
-        driver: nouveau (nvidia 340.108 built for 6.12.0-275 but not bound)
+        driver: nvidia 340.108 (operator; confirm lsmod — nouveau must not own the device)
         measured: true
+        notes: >-
+          Brian 2026-10-20 (#113): graph had unsupported/nouveau; host actually runs 340.
+          Placement may consider GPU offload candidates; offload still needs backend_status verified.
   phone7:
     kind: phone
     measured: true               # measured 2026-10-09 ~22:50 PT over key-only SSH from qodesh
@@ -764,6 +767,10 @@ aliases:
   pentest: {node: miryam-pentest, gateway: roomz}
   general: {node: coder, gateway: roomz}
   embed: {node: embed, gateway: roomz}
+  # safe-build: tiny always-on *build helper* (docs/safe-mode-bootstrap.md).
+  # Home of the safe-mode AI is pinned code-bootstraps-llama.cpp (route / light chat),
+  # not a Hermes-class coder. Points at SmolLM decision-size until a dedicated node exists.
+  safe-build: {node: miryam-gpu-decision, gateway: roomz}  # SmolLM decision-size; planned node OK
 
 
 agents:

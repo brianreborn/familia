@@ -77,12 +77,24 @@ if [ "$UNINSTALL" = 1 ]; then
   say "uninstalled"; exit 0
 fi
 
-PKGS="git python"
+# Default Termux packages (Brian 2026-10-27): getconf + pytest were missing on phones.
+# Full list / --profile build: sh install/deps.sh or install/termux/deps.sh
+PKGS="git python getconf"
 [ "$RUNTIME" = 1 ] && PKGS="$PKGS llama-cpp"
 [ "$SSHD" = 1 ] && PKGS="$PKGS openssh"
 # shellcheck disable=SC2086 # word list
 run pkg install -y $PKGS
 run pip install --quiet pyyaml || say "warning: pyyaml not installed; graph validation skipped"
+# pytest: prefer Termux python-pytest when the index has it; else pip (scripts/run-tests.sh also vendors into .cache/pylib).
+if [ "$DRY" = 1 ]; then
+  say "[dry-run] would ensure pytest (pkg python-pytest or pip install pytest)"
+elif python -m pytest --version >/dev/null 2>&1 || command -v pytest >/dev/null 2>&1; then
+  :
+elif pkg search python-pytest 2>/dev/null | grep -q '^python-pytest'; then
+  run pkg install -y python-pytest || run pip install --quiet pytest || say "warning: pytest not installed"
+else
+  run pip install --quiet pytest || say "warning: pytest not installed (pip); tests can still use scripts/run-tests.sh"
+fi
 
 if [ "$WAKE" = 1 ]; then
   if command -v termux-wake-lock >/dev/null 2>&1; then run termux-wake-lock

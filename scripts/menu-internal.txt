@@ -55,6 +55,8 @@ scripts/watchdog/kill-watch.sh|long-running journal follower started by its syst
 scripts/watchdog/mem-snapshot.sh|helper called by kill-watch.sh
 scripts/dogfood/install-loop-unit.sh|operator installer for the dogfood loop systemd user unit (#112)
 build-automation.sh|legacy one-off llama.cpp v0.7.0 patch/build helper for a green host; not an end-user task
-install/linux/deps.sh|installer dependency helper called by install/linux/install.sh; not a separate menu action
+install/linux/deps.sh|Linux/macOS helper behind install/deps.sh; not a separate menu action
+install/termux/deps.sh|Termux helper behind install/deps.sh; Termux install.sh also installs default PKGS
+install/freebsd/deps.sh|FreeBSD helper behind install/deps.sh (opt-in pkg); not a separate menu action
 scripts/build_appimage.sh|operator AppImage packaging for milestones; not an end-user menu task
 scripts/perf/box_multi_size_smoke.py|perf/dev smoke hitting decision+coder ports; run by operators on a box, not menu

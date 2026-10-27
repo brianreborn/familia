@@ -83,9 +83,33 @@ if [ "$UNINSTALL" = 1 ]; then
   say "uninstalled"; exit 0
 fi
 
-for c in git curl python3; do command -v "$c" >/dev/null 2>&1 || die "$c is required (see: sh install/linux/deps.sh --install)"; done
-command -v tar >/dev/null 2>&1 || [ "$RUNTIME" = 0 ] || die "tar is required (or pass --no-runtime)"
-python3 -c 'import yaml' 2>/dev/null || say "warning: python3-yaml missing; graph validation will be skipped"
+# Prefer the unified dispatcher when this checkout has it (safe-mode bootstrap).
+DEPS_SH=""
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+[ -f "$SCRIPT_DIR/../deps.sh" ] && DEPS_SH="$SCRIPT_DIR/../deps.sh"
+[ -z "$DEPS_SH" ] && [ -f "$SCRIPT_DIR/deps.sh" ] && DEPS_SH="$SCRIPT_DIR/deps.sh"
+need_tools=0
+for c in git curl python3; do command -v "$c" >/dev/null 2>&1 || need_tools=1; done
+command -v tar >/dev/null 2>&1 || [ "$RUNTIME" = 0 ] || need_tools=1
+if [ "$need_tools" = 1 ]; then
+  if [ -n "$DEPS_SH" ]; then
+    say "missing tools; running sh install/deps.sh --install (see docs/safe-mode-bootstrap.md)"
+    if [ "$DRY" = 1 ]; then
+      say "[dry-run] would run: sh $DEPS_SH --install${FAMILIA_ACCEPT_LICENSES:+ --yes}"
+    else
+      if [ "${FAMILIA_ACCEPT_LICENSES:-}" = yes ]; then
+        sh "$DEPS_SH" --install --yes || die "deps install failed; fix packages then re-run"
+      else
+        sh "$DEPS_SH" --install || die "deps install failed or declined; see: sh install/deps.sh --help"
+      fi
+    fi
+  else
+    for c in git curl python3; do command -v "$c" >/dev/null 2>&1 || die "$c is required (see: sh install/linux/deps.sh --install)"; done
+  fi
+fi
+for c in git curl python3; do command -v "$c" >/dev/null 2>&1 || die "$c is required (see: sh install/deps.sh --install)"; done
+command -v tar >/dev/null 2>&1 || [ "$RUNTIME" = 0 ] || die "tar is required (or pass --no-runtime / sh install/deps.sh --install)"
+python3 -c 'import yaml' 2>/dev/null || say "warning: python3-yaml missing; graph validation will be skipped (sh install/deps.sh --install)"
 
 OS=$(uname -s); ARCH=$(uname -m)
 case "$OS/$ARCH" in

@@ -46,7 +46,7 @@ if [ "$DRY" = 1 ]; then
   exit 0
 fi
 
-command -v git >/dev/null 2>&1 || die "git is required. Install it (Debian/Ubuntu: sudo apt install git; Termux: pkg install git), then run this again."
+command -v git >/dev/null 2>&1 || die "git is required. Install it then re-run (Linux: sudo apt install git; Termux: pkg install git; after checkout: sh install/deps.sh --install). See docs/safe-mode-bootstrap.md."
 if [ -n "$BRANCH" ]; then
   git check-ref-format --branch "$BRANCH" >/dev/null 2>&1 || die "invalid branch name: $BRANCH"
 fi
@@ -97,8 +97,24 @@ else
   fi
 fi
 
+# Local packages first (safe-mode bootstrap): help the user install what this host needs
+# before configure/sync. Home of the build-helper AI: pinned code-bootstraps-llama.cpp.
+if [ -f "$PREFIX/install/deps.sh" ]; then
+  if ! command -v python3 >/dev/null 2>&1 || ! command -v curl >/dev/null 2>&1; then
+    echo "install.sh: missing tools; running install/deps.sh --install…" >&2
+    if [ "${INSTALL_ACK:-}" = yes ] || [ "${FAMILIA_ACCEPT_LICENSES:-}" = yes ]; then
+      sh "$PREFIX/install/deps.sh" --install --yes || die "deps install failed; see docs/safe-mode-bootstrap.md"
+    else
+      sh "$PREFIX/install/deps.sh" --install || die "deps install failed or declined; see: sh $PREFIX/install/deps.sh --help"
+    fi
+  else
+    # Non-fatal check: print present/missing; do not stop a working host.
+    sh "$PREFIX/install/deps.sh" >/dev/null 2>&1 || true
+  fi
+fi
+
 # Licenses before anything is fetched or run (docs/licenses.md).
-command -v python3 >/dev/null 2>&1 || die "python3 is required (Debian/Ubuntu: sudo apt install python3; Termux: pkg install python)."
+command -v python3 >/dev/null 2>&1 || die "python3 is required (Debian/Ubuntu: sudo apt install python3; Termux: pkg install python; or: sh $PREFIX/install/deps.sh --install)."
 python3 "$PREFIX/scripts/licenses.py" gate || die "licenses not accepted; stopped before fetching anything. Review: python3 $PREFIX/scripts/licenses.py review (or re-run with --yes, plus --accept-unknown for unknown licenses)"
 
 # Run configuration shell (syncs every pin in pins.txt together).

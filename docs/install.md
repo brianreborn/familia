@@ -2,8 +2,10 @@
 
 Per-user installers for each supported non-server platform. None needs admin or
 root. FreeBSD and other server-oriented systems use the manual steps in MANUAL.md.
-On the FreeBSD test host `angel`, install no packages: build the pinned llama.cpp
-checkout from source. The Linux/macOS one-click installer and prebuilt release
+On the FreeBSD test host `angel`, the one-click runtime installer is unsupported;
+build the pinned llama.cpp from **code-bootstraps-llama.cpp** source. Use
+`sh install/freebsd/deps.sh` (opt-in `--install`) for an honest pkg list (git,
+python, cmake, …). `getconf` is in the FreeBSD base. Prebuilt Linux/macOS release
 assets do not provide a FreeBSD runtime.
 
 When an installer is run from a familia checkout, it uses that checkout's current
@@ -30,16 +32,28 @@ syntax-checked but **not run on a Mac**.
 
 Prefer the **AppImage** for single-click installs that should not require a terminal: download the `.AppImage` from the release, double-click, and the settings panel opens. Build with `./scripts/build_appimage.sh`. Details: [appimage.md](./appimage.md). Shell installers below remain valid.
 
-## OS packages (Linux)
+## OS packages (every platform)
 
-Before the one-click installer, or when it stops on a missing tool, run:
+**Safe-mode priority:** help the user install local packages and **build** before anything fancy. See [safe-mode-bootstrap.md](safe-mode-bootstrap.md). The build-helper AI lives in the pinned **code-bootstraps-llama.cpp**; familia dispatches into it.
 
 ```
-sh install/linux/deps.sh            # list present / missing
-sh install/linux/deps.sh --install  # install missing (apt/dnf/pacman/zypper/brew)
+sh install/deps.sh                       # detect platform; list present / missing
+sh install/deps.sh --install             # install missing (asks)
+sh install/deps.sh --yes --install --profile build   # also cmake/ninja/compilers
 ```
 
-Required: `git`, `curl`, `python3`, `tar`. Also `python3-yaml` (PyYAML) for graph validation, and `unzip` when a release asset is a zip. The top-level bootstrap `install.sh` (clones into `~/familia`, configure + start) is separate from `install/linux/install.sh` (one-click graph-node under `~/.local/share/familia`).
+Menu: `setup.deps`. Platform helpers:
+
+| Platform | Script |
+|---|---|
+| Linux / macOS | `install/linux/deps.sh` (apt/dnf/pacman/zypper/brew) |
+| Termux | `install/termux/deps.sh` (`getconf`, `pytest`, …; wired into `install/termux/install.sh`) |
+| FreeBSD | `install/freebsd/deps.sh` (honest pkg list; opt-in `--install`) |
+| Windows | `install/windows/deps.ps1` (winget/choco hints; few apt-like packages) |
+
+Base profile: `git`, `curl`, `python3`/`python`, `tar`, `unzip`, PyYAML, **pytest**. Build profile adds cmake/ninja/a C++ toolchain for code-bootstraps source builds. `getconf` is base/glibc on Linux/macOS/FreeBSD; on Termux it is the **`getconf`** package.
+
+The top-level bootstrap `install.sh` (clones into `~/familia`, configure + start) is separate from `install/linux/install.sh` (one-click graph-node under `~/.local/share/familia`). Both call the deps helper when tools are missing.
 
 ## What every installer does
 
