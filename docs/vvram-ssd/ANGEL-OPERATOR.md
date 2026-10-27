@@ -1,6 +1,6 @@
 # Angel / Uriel operator path — Nanbeige multi-node (not limp mode)
 
-**Coordinator:** FreeBSD host `angel` (aka **Uriel**; SSH `Host angel gabriel` → `192.168.1.3`).  
+**Coordinator:** FreeBSD host `angel` (aka **Uriel**; SSH `Host angel gabriel` → `192.168.4.25`).  
 After `98633d5`: `angel-coder` **active**, `angel-chat` **planned**, weights present, `local_names` include uriel.
 
 ## Prefer the graph, not limp mode
