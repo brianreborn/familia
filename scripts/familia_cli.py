@@ -266,7 +266,7 @@ def man_page():
           "familia search license",
           ".fi",
           ".SH SEE ALSO",
-          "QUICKSTART.md, MANUAL.md, docs/commands.md, docs/licenses.md, docs/skills.md, docs/harness2.md, docs/monitoring.md, docs/panel.md",
+          "QUICKSTART.md, MANUAL.md, docs/commands.md, docs/licenses.md, docs/skills.md, docs/harness2.md, docs/monitoring.md",
           ".br", "https://github.com/brianreborn/familia"]
     return "\n".join(o) + "\n"
 

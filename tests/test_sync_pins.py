@@ -262,7 +262,7 @@ def read(rel):
 
 
 CALLERS = ["scripts/configure.sh", "scripts/run-tests.sh", "start.sh", "scripts/serve.sh", "with-fleet.sh",
-           "scripts/panel.py", "install/linux/install.sh", "install/termux/install.sh",
+           "install/linux/install.sh", "install/termux/install.sh",
            "install/windows/install.ps1", "scripts/windows/start.bat", "scripts/cli-commands.txt"]
 
 

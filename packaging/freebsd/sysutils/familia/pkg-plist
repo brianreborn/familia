@@ -8,7 +8,6 @@
 %%PORTDOCS%%%%DOCSDIR%%/ram-safety.md
 %%PORTEXAMPLES%%%%EXAMPLESDIR%%/graph.yaml
 bin/familia-configure
-bin/familia-panel
 bin/familia-start
 bin/familia-validate
 libexec/familia/android_multi_start.sh
@@ -19,7 +18,6 @@ libexec/familia/pins.txt
 libexec/familia/scripts/configure.sh
 libexec/familia/scripts/hermes.sh
 libexec/familia/scripts/hermes_harness.py
-libexec/familia/scripts/panel.py
 libexec/familia/scripts/pentest-role.json
 libexec/familia/scripts/retry_wrapper.py
 libexec/familia/scripts/validate_graph.py

@@ -231,7 +231,7 @@ def owner_of(g, sec, agent):
 
 def refusal(s, sec, owner):
     """Why skill s cannot be switched on for owner (sec is 'agents' or 'pentests'), or None.
-    The one rule set for the terminal menu and the settings panel (scripts/panel_familia.py)."""
+    The one rule set for the terminal skills menu (scripts/skills.py)."""
     if s["status"] == "license-blocked":
         return f"{s['id']} is license-blocked and can't be enabled: {s.get('blocked_reason')}"
     if s["status"] == "available":

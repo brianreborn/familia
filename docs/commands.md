@@ -60,7 +60,7 @@ Default front door is the gum home (`./familia`). This catalog is **fallback onl
 | `setup.first-time` | First-time setup on this machine (deps → licenses → install → PATH) | `sh scripts/setup_goals.sh first-time` | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\setup-goals.ps1 -Goal first-time` |
 | `setup.update` | Update this checkout (git pull --ff-only, then sync pins) | `python3 scripts/sync_pins.py --update` | `python scripts\sync_pins.py --update` |
 | `setup.licenses` | Review / accept licenses | `python3 scripts/licenses.py review` | `python scripts\licenses.py review` |
-| `setup.settings` | Change launcher settings (terminal; never the deleted panel) | `sh scripts/configure.sh --interactive` | — |
+| `setup.settings` | Change launcher settings (terminal) | `sh scripts/configure.sh --interactive` | — |
 | `setup.sync-goal` | Sync pinned parts only (asks preview vs apply) | `sh scripts/setup_goals.sh sync-pins` | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\setup-goals.ps1 -Goal sync-pins` |
 | `setup.safe-build` | Safe-mode / offline build help | `sh scripts/safe-build-help.sh` | `powershell -NoProfile -Command "Write-Host (Get-Content -Raw docs\safe-mode-bootstrap.md)"` |
 | `setup.logon-task` | Windows: start the model server at logon (registers the task) | — | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-task.ps1 -Install -Model <MODEL>` |
@@ -237,8 +237,6 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/bench_parse.py` | filter for llama-bench output (pipe llama-bench -o csv into it); nothing to do on its own |
 | `scripts/bench_guard.py` | library for perf/bench drivers: GGUF metadata validation, current llama.cpp flag spellings, encoder ubatch rule, per-run memory cap (`meta FILE`, `memcap PEAK_MIB`) |
 | `scripts/prompt_cache.py` | library: prefill an agent's fixed prompt prefix once, save it with llama-server slot save, restore it on later starts (#85); used by hermes.sh |
-| `scripts/panel_familia.py` | familia pages for the retired settings panel GUI; not launched from the menu |
-| `scripts/panel.py` | retired settings panel GUI entry point; use `setup.settings` (terminal) instead |
 | `scripts/system_prompt_check.py` | offline system-prompt path checks (#115); developer/CI helper, not an end-user menu action |
 | `scripts/familia_agent_reach.py` | thin wrapper / library around Agent-Reach; menu uses scripts/agent_reach.py |
 | `scripts/retry_wrapper.py` | library for agent model calls; its main is only a self-demo |

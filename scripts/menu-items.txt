@@ -10,7 +10,7 @@
 setup.first-time|Set up|First-time setup on this machine (deps → licenses → install → PATH)|sh scripts/setup_goals.sh first-time|||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\setup-goals.ps1 -Goal first-time
 setup.update|Set up|Update this checkout (git pull --ff-only, then sync pins)|PY scripts/sync_pins.py --update|lic||python scripts\sync_pins.py --update
 setup.licenses|Set up|Review / accept licenses|PY scripts/licenses.py review|||python scripts\licenses.py review
-setup.settings|Set up|Change launcher settings (terminal; never the deleted panel)|sh scripts/configure.sh --interactive|||
+setup.settings|Set up|Change launcher settings (terminal)|sh scripts/configure.sh --interactive|||
 setup.sync-goal|Set up|Sync pinned parts only (asks preview vs apply)|sh scripts/setup_goals.sh sync-pins|lic||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\setup-goals.ps1 -Goal sync-pins
 setup.safe-build|Set up|Safe-mode / offline build help|sh scripts/safe-build-help.sh|||powershell -NoProfile -Command "Write-Host (Get-Content -Raw docs\safe-mode-bootstrap.md)"
 setup.logon-task|Set up|Windows: start the model server at logon (registers the task)||||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-task.ps1 -Install -Model {MODEL:model file name, e.g. qwen2.5-0.5b-instruct-q4_0.gguf}
