@@ -226,7 +226,9 @@ def main(argv):
     hh.ensure_hermes()
     hh.ensure_server(g2, nname, n)
     hh.warm_prompt(g2, nname, n, home)
-    os.environ["HERMES_HOME"] = home
+    launch_env = hh.hermes_child_env({"HERMES_HOME": home})
+    os.environ.clear()
+    os.environ.update(launch_env)
     os.execv(hh.HERMES_BIN, [hh.HERMES_BIN] + o["rest"])
 
 

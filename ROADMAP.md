@@ -60,11 +60,18 @@ This roadmap covers the development of v0.2.0, focusing on:
 - Used hermes snap environment for tool schema retrieval
 - Fixed pip detection timing issue
 - Ensured tool schemas loaded before stable part
+- Prompt-cache cut keeps `UNSTABLE_LINES = ("Python toolchain:",)` as defense in depth
+
+**Follow-up (#96):** per-host cache for the probe line via
+`scripts/hermes_env_probe_cache/` (PYTHONPATH sitecustomize overlay). First
+successful result stored under `~/.cache/familia/hermes-env-probe/<hostname>`
+(or `$XDG_CACHE_HOME/familia/...`); refresh with `FAMILIA_HERMES_ENV_PROBE_REFRESH=1`.
 
 **Testing:**
 - Verified tool schemas loaded correctly
 - Confirmed no mid-prompt tool lines in logs
 - Tested on FreeBSD with lean profile
+- Unit tests: `tests/test_hermes_env_probe_cache.py`
 
 ---
 
