@@ -113,6 +113,7 @@ hosts:
     ram_mib: 24442
     reserve_ram_mib: 4096                # policy (installer default), not measured; see docs/ram-safety.md
     gpus: null                   # inventory unknown; measure GPUs before GPU offload
+    local_names: [uriel, Uriel, angel.local, uriel.local]
     notes: >-
       Nanbeige4.3-33B Q4_K_M (~18.7 GiB) active via angel-coder (angel-chat stays planned; do not co-start). Before activate: measure SSD swap
       (target ~24 GiB familia swap or proven RSS) + mkdir ~/.cache/familia/spill/angel-{coder,chat}.

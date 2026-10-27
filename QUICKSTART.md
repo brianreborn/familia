@@ -86,7 +86,7 @@ On Windows use `python` instead of `python3` and set `$env:PYTHONUTF8 = '1'` fir
 
 `DETACH_MODE=screen-attached ./start.sh --host miryam` keeps the graph supervisor in the visible `familia-server` screen session with 10,000 lines of scrollback. Use `Ctrl-A`, then `D` to detach and `screen -r familia-server` to resume. Other modes are opt-in; foreground is the default. See [MANUAL.md](MANUAL.md#backgrounding-and-detaching).
 
-The FreeBSD graph host `angel` is **measured** (`hosts.angel.measured: true`, ~24 GiB RAM) but has **no active nodes** yet (Nanbeige4.3-33B Q4_K_M nodes are `status: planned`). `./start.sh --dry-run --host angel` reports this without starting or contacting anything. FreeBSD currently uses a source build only—install no packages and do not run `familia install`. Run the pinned llama.cpp build/version test from `code-bootstraps-llama.cpp` with `BUILD_DIR=build-freebsd GPU=off scripts/build-linux.sh`; graph serving requires measured host facts and explicit active-node placement. Before flipping `angel-coder` / `angel-chat` to `active`, measure SSD swap (≈24 GiB target) and create `~/.cache/familia/spill/angel-*` — see `docs/vvram-ssd/README.md` and install-notes `vvram-ssd/LAYER.md`. Do not co-activate both on 24 GiB.
+The FreeBSD graph host `angel` is **measured** (`hosts.angel.measured: true`, ~24 GiB RAM) and **`angel-coder` is active** (Nanbeige4.3-33B Q4_K_M; `angel-chat` stays `planned` — do not co-start). `./start.sh --dry-run --host angel` reports this without starting or contacting anything. FreeBSD currently uses a source build only—install no packages and do not run `familia install`. Run the pinned llama.cpp build/version test from `code-bootstraps-llama.cpp` with `BUILD_DIR=build-freebsd GPU=off scripts/build-linux.sh`; graph serving requires measured host facts and explicit active-node placement. Before flipping `angel-coder` / `angel-chat` to `active`, measure SSD swap (≈24 GiB target) and create `~/.cache/familia/spill/angel-*` — see `docs/vvram-ssd/README.md` and install-notes `vvram-ssd/LAYER.md`. Do not co-activate both on 24 GiB.
 
 ### Always run hermes through the harness
 
@@ -97,7 +97,7 @@ It has two modes:
 - **Graph mode**, the default and the same behaviour as before. hermes uses its agent's
   `main` and `auxiliary` aliases from `graph.yaml`. The escalation proxy comes on by itself
   only when the main node declares `escalates_to` (none does today).
-- **Single-model mode**, `--model NODE`. hermes uses that one node, with its own
+- **Single-model mode** (limp / last resort), `--model NODE`. Prefer the multi-node graph; hermes uses that one node, with its own
   `~/.cache/familia/hermes-<agent>@<node>`, `context_length` set to the node's per-slot
   context, compression on, auxiliary tasks on the same node, and no aliases or proxy. Nodes
   under the agent's `min_ctx` (hermes needs 64,000 tokens) are refused, with a list of the
