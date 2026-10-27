@@ -205,3 +205,5 @@ the subsystem boundary rather than using model metadata as a proxy for user inte
 ## L-screen. Always start servers in screen so we can attach (2026-10-27)
 Agents and automation must **never** start llama-server / familia graph servers in non-screen mode (`foreground`, `nohup`, bare background). Use `DETACH_MODE=screen` or `DETACH_MODE=screen-attached` so the operator can attach (`screen -r familia-server`). Attaching is critical for ops on angel/Uriel and other desktop hosts. Operator-driven starts in Konsole should prefer `screen-attached`.
 
+## L-start-timeout. Do not wall-clock-fail slow model loads (2026-10-27)
+`familia-graph` used to abort with “did not become ready within 240 seconds” while Nanbeige mmap-loaded under nightly I/O. Node ready-wait now defaults to **unlimited** (`FAMILIA_START_TIMEOUT=0`); it only fails if the child exits. Set a positive value only when you want a hard cap.

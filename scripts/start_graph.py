@@ -251,8 +251,12 @@ def _write_proxy_manifest(host, gateway_name, gateway, aliases):
 
 
 def _wait_ready(child, url, label, timeout):
-    deadline = time.monotonic() + timeout
-    while time.monotonic() < deadline:
+    # timeout <= 0: wait until healthy or the child exits (no wall-clock fail).
+    # Large GGUF mmap loads under heavy nightly I/O can exceed any fixed budget.
+    deadline = None if timeout <= 0 else (time.monotonic() + timeout)
+    last_note = 0.0
+    started = time.monotonic()
+    while deadline is None or time.monotonic() < deadline:
         if child.poll() is not None:
             raise StartupError(f"{label} exited during startup with status {child.returncode}")
         try:
@@ -261,6 +265,14 @@ def _wait_ready(child, url, label, timeout):
                     return
         except (OSError, urllib.error.URLError):
             pass
+        now = time.monotonic()
+        if now - last_note >= 60:
+            print(
+                f"familia-graph: still waiting for {label} ({now - started:.0f}s; "
+                f"FAMILIA_START_TIMEOUT={'unlimited' if deadline is None else f'{timeout:g}s'})",
+                file=sys.stderr,
+            )
+            last_note = now
         time.sleep(0.5)
     raise StartupError(f"{label} did not become ready within {timeout:g} seconds")
 
@@ -343,7 +355,7 @@ def run(args=None):
                 children.append((child, label))
                 print(f"familia-graph: starting {label}", file=sys.stderr)
                 _wait_ready(child, f"http://127.0.0.1:{graph['nodes'][name]['port']}/health",
-                            label, float(os.environ.get("FAMILIA_START_TIMEOUT", "240")))
+                            label, float(os.environ.get("FAMILIA_START_TIMEOUT", "0")))
                 print(f"familia-graph: {label} ready")
 
             for gateway_name, gateway, aliases in gateways:
