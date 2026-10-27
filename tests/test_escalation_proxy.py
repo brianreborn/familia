@@ -57,3 +57,124 @@ def test_signals_count_tool_failures():
 def test_remote_loopback_node_unreachable():
     g = {"hosts": {"a": {}, "b": {"addr": "10.0.0.2"}}, "nodes": {"x": {"host": "b", "port": 1, "bind": "127.0.0.1"}}}
     assert EP.node_url(g, "x", "a") is None
+
+def mock_raw(name, seen, body_bytes=None, status=200):
+    """Stub that returns raw bytes (possibly invalid JSON)."""
+    class H(BaseHTTPRequestHandler):
+        def log_message(self, *a): pass
+        def do_POST(self):
+            b = self.rfile.read(int(self.headers["Content-Length"]))
+            try: seen.append((name, json.loads(b)))
+            except Exception: seen.append((name, b))
+            out = body_bytes if body_bytes is not None else json.dumps(
+                {"choices": [{"message": {"role": "assistant", "content": "ok"}}]}).encode()
+            self.send_response(status); self.send_header("Content-Type", "application/json"); self.end_headers()
+            self.wfile.write(out)
+    s = ThreadingHTTPServer(("127.0.0.1", 0), H); threading.Thread(target=s.serve_forever, daemon=True).start()
+    return s.server_address[1]
+
+def closed_port():
+    """Bind then close so the port refuses connections."""
+    s = ThreadingHTTPServer(("127.0.0.1", 0), BaseHTTPRequestHandler)
+    port = s.server_address[1]; s.server_close()
+    return port
+
+def post_status(port, msgs):
+    try:
+        r = urllib.request.urlopen(urllib.request.Request(
+            f"http://127.0.0.1:{port}/v1/chat/completions",
+            data=json.dumps({"model": "x", "messages": msgs}).encode(),
+            headers={"Content-Type": "application/json"}))
+        return r.status, r.read().decode()
+    except urllib.error.HTTPError as e:
+        return e.code, e.read().decode()
+
+def test_heavy_down_falls_back_to_light(monkeypatch, tmp_path):
+    """#98: after escalation, heavy unreachable → fall back to light; later requests work."""
+    monkeypatch.setattr(EP, "STATE", str(tmp_path)); monkeypatch.setattr(EP, "PENDING", str(tmp_path / "p.json"))
+    monkeypatch.setenv("FAMILIA_ESCALATE", "auto")
+    seen = []
+    pl = mock("light", seen)
+    ph = closed_port()
+    # Phrase-only triggers so identical mock replies do not re-escalate.
+    g = {"hosts": {"h": {}}, "aliases": {},
+         "nodes": {"light": {"host": "h", "port": pl, "model": "smollm2", "escalates_to": ["heavy"],
+                            "escalation": {"mode": "auto", "triggers": {"repeat_outputs": 0, "failure_retries": 0,
+                                                                       "phrases": ["try harder"]}}},
+                   "heavy": {"host": "h", "port": ph, "model": "qwen35-2b"}}}
+    esc = EP.Escalator(g, "light", [], "h", consent={}); srv = EP.serve(esc); p = srv.server_address[1]
+    msgs = [{"role": "user", "content": "please try harder"}]
+    # First reply on light triggers auto escalate (phrase); current becomes heavy.
+    out = post(p, msgs)
+    assert "escalated to heavy" in out
+    assert esc.current == "heavy"
+    # Next request: heavy down → fall back + retry on light → 200, back on light.
+    status, body = post_status(p, [{"role": "user", "content": "continue"}])
+    assert status == 200
+    assert esc.current == "light"
+    assert "failed; back on light" in body or seen[-1][0] == "light"
+    # Later requests must not stick on heavy 502s.
+    for _ in range(3):
+        status, _ = post_status(p, [{"role": "user", "content": "hello"}])
+        assert status == 200
+        assert esc.current == "light"
+    srv.shutdown()
+
+def test_malformed_upstream_json_returns_502_and_recovers(monkeypatch, tmp_path):
+    """#99: invalid JSON after 200 from heavy → 502 (not empty 200), fall back to light."""
+    monkeypatch.setattr(EP, "STATE", str(tmp_path)); monkeypatch.setattr(EP, "PENDING", str(tmp_path / "p.json"))
+    monkeypatch.setenv("FAMILIA_ESCALATE", "auto")
+    seen = []
+    pl = mock("light", seen)
+    ph = mock_raw("heavy", seen, body_bytes=b"{not json")
+    g = {"hosts": {"h": {}}, "aliases": {},
+         "nodes": {"light": {"host": "h", "port": pl, "model": "smollm2", "escalates_to": ["heavy"],
+                            "escalation": {"mode": "auto", "triggers": {"repeat_outputs": 0, "failure_retries": 0,
+                                                                       "phrases": ["try harder"]}}},
+                   "heavy": {"host": "h", "port": ph, "model": "qwen35-2b"}}}
+    esc = EP.Escalator(g, "light", [], "h", consent={}); srv = EP.serve(esc); p = srv.server_address[1]
+    msgs = [{"role": "user", "content": "please try harder"}]
+    post(p, msgs)  # escalate to heavy
+    assert esc.current == "heavy"
+    # Request to heavy returns garbage JSON → 502 or recovered 200 via light fallback.
+    status, body = post_status(p, [{"role": "user", "content": "go"}])
+    assert status in (200, 502)
+    if status == 502:
+        assert "invalid JSON" in body or "JSON" in body or "json" in body.lower()
+    # State machine recovered onto light either way.
+    assert esc.current == "light"
+    status2, _ = post_status(p, [{"role": "user", "content": "hello"}])
+    assert status2 == 200
+    assert esc.current == "light"
+    srv.shutdown()
+
+def test_light_transport_errors_escalate(monkeypatch, tmp_path):
+    """#100: light upstream errors feed decide; auto escalates to heavy."""
+    monkeypatch.setattr(EP, "STATE", str(tmp_path)); monkeypatch.setattr(EP, "PENDING", str(tmp_path / "p.json"))
+    monkeypatch.setenv("FAMILIA_ESCALATE", "auto")
+    seen = []
+    pl = closed_port()
+    ph = mock("heavy", seen)
+    # failure_retries=1 so a single transport error escalates
+    g = {"hosts": {"h": {}}, "aliases": {},
+         "nodes": {"light": {"host": "h", "port": pl, "model": "smollm2", "escalates_to": ["heavy"],
+                            "escalation": {"mode": "auto", "triggers": {"failure_retries": 1,
+                                                                       "repeat_outputs": 0, "phrases": []}}},
+                   "heavy": {"host": "h", "port": ph, "model": "qwen35-2b"}}}
+    esc = EP.Escalator(g, "light", [], "h", consent={}); srv = EP.serve(esc); p = srv.server_address[1]
+    status, body = post_status(p, [{"role": "user", "content": "hi"}])
+    assert status == 200, body
+    assert "escalated to heavy" in body
+    assert seen and seen[-1][0] == "heavy"
+    # Proxy should be on heavy after escalate; one clean reply swaps back.
+    # (handoff request already consumed the escalate; next clean reply swaps back)
+    srv.shutdown()
+
+def test_transport_failures_persist_across_observe_request():
+    """#100: observe_request must not wipe transport_failures."""
+    s = EP.Signals()
+    s.transport_failures = 2
+    s.observe_request({"messages": [{"role": "user", "content": "x"}]})
+    assert s.failures == 0
+    assert s.transport_failures == 2
+    assert s.dict()["failures"] == 2

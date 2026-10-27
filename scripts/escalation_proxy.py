@@ -35,18 +35,23 @@ def alias_for(g, name):
 class Signals:
     def __init__(self): self.reset()
     def reset(self):
-        self.outputs, self.failures, self.user_messages, self.t0 = [], 0, [], time.time()
+        # failures = tool-result failures (recomputed each request).
+        # transport_failures = upstream/HTTP errors (persist across observe_request).
+        self.outputs, self.failures, self.transport_failures = [], 0, 0
+        self.user_messages, self.t0 = [], time.time()
     def observe_request(self, body):
         msgs = body.get("messages") or []
         users = [m for m in msgs if m.get("role") == "user"]
         if users: self.user_messages = [_text(users[-1])]
-        # count failed tool results since the last user turn
+        # count failed tool results since the last user turn (does not clear transport_failures)
         last_u = max((i for i, m in enumerate(msgs) if m.get("role") == "user"), default=-1)
         self.failures = sum(1 for m in msgs[last_u + 1:] if m.get("role") == "tool" and FAIL_RE.search(_text(m)))
     def observe_reply(self, text):
         if text: self.outputs.append(text); self.outputs = self.outputs[-10:]
     def dict(self):
-        return {"outputs": self.outputs, "failures": self.failures, "user_messages": self.user_messages,
+        return {"outputs": self.outputs,
+                "failures": self.failures + self.transport_failures,
+                "user_messages": self.user_messages,
                 "elapsed_s": round(time.time() - self.t0)}
 
 def _text(m):
@@ -69,6 +74,12 @@ class Escalator:
     def after_reply(self, ok):
         """Returns a user-visible note or None."""
         if self.current != self.light:
+            if not ok:
+                # Heavy (or non-light) upstream failed: fall back so we do not stick forever (#98).
+                failed = self.current
+                self.current, self.handoff_next = self.light, False
+                self.sig.reset()
+                return f"[familia] {failed} failed; back on {self.light}"
             if ok and self.swap_back:
                 self.current = self.light; self.sig.reset(); return f"[familia] escalation done; back on {self.light}"
             return None
@@ -121,6 +132,78 @@ class Escalator:
 def make_handler(esc, log=sys.stderr):
     class H(BaseHTTPRequestHandler):
         def log_message(self, *a): pass
+
+        def _copy_headers(self, r):
+            for k, v in r.headers.items():
+                if k.lower() not in ("content-length", "transfer-encoding", "connection"):
+                    self.send_header(k, v)
+
+        def _record_transport_fail(self, body):
+            if body is not None:
+                esc.sig.transport_failures += 1
+
+        def _502(self, msg):
+            self.send_response(502); self.end_headers(); self.wfile.write(str(msg).encode())
+
+        def _write_chat(self, r, body, note, method, raw):
+            """Relay a successful chat/completions upstream response; run after_reply(ok=True)."""
+            stream = body is not None and body.get("stream")
+            if body is None:
+                self.send_response(r.status); self._copy_headers(r); self.end_headers()
+                self.wfile.write(r.read()); return
+            text = []
+            if stream:
+                self.send_response(r.status); self._copy_headers(r); self.end_headers()
+                for line in r:
+                    if line.strip() == b"data: [DONE]": break
+                    self.wfile.write(line); self.wfile.flush()
+                    if line.startswith(b"data: "):
+                        try: text.append(json.loads(line[6:])["choices"][0]["delta"].get("content") or "")
+                        except Exception: pass
+                esc.sig.observe_reply("".join(text))
+                esc.sig.transport_failures = 0
+                done = esc.after_reply(ok=True)
+                if done: print(done, file=log, flush=True); note = note or done
+                if note:
+                    ch = {"choices": [{"index": 0, "delta": {"content": "\n\n" + note}, "finish_reason": None}]}
+                    self.wfile.write(b"data: " + json.dumps(ch).encode() + b"\n\n")
+                self.wfile.write(b"data: [DONE]\n\n")
+                return
+            # Non-stream: parse BEFORE sending headers (#99).
+            try:
+                j = json.load(r); m = j["choices"][0]["message"]; text.append(m.get("content") or "")
+            except Exception as e:
+                self._record_transport_fail(body)
+                fb = esc.after_reply(ok=False)
+                if fb and self._retry_once(body, method, raw, fb):
+                    return
+                self._502(f"upstream returned invalid JSON: {e}")
+                return
+            esc.sig.observe_reply("".join(text))
+            esc.sig.transport_failures = 0
+            done = esc.after_reply(ok=True)
+            if done: print(done, file=log, flush=True); note = note or done
+            self.send_response(r.status); self._copy_headers(r); self.end_headers()
+            if note: m["content"] = (m.get("content") or "") + "\n\n" + note
+            self.wfile.write(json.dumps(j).encode())
+
+        def _retry_once(self, body, method, raw, note):
+            url, _alias = esc.upstream()
+            target = url.rsplit("/v1", 1)[0] + self.path
+            req = urllib.request.Request(target, data=raw, method=method, headers={"Content-Type": "application/json"})
+            try:
+                r = urllib.request.urlopen(req, timeout=3600)
+            except Exception as e2:
+                # Retry failed too. Fall back again so heavy does not stick (#98); do not recurse.
+                self._record_transport_fail(body)
+                note2 = esc.after_reply(ok=False)
+                msg = str(e2)
+                if note2: msg = f"{msg}\n{note2}"
+                self._502(msg)
+                return True
+            self._write_chat(r, body, note, method, raw)
+            return True
+
         def _fwd(self, method):
             esc.check_accept()
             n = int(self.headers.get("Content-Length") or 0)
@@ -131,83 +214,18 @@ def make_handler(esc, log=sys.stderr):
                 url, body = esc.rewrite(json.loads(raw)); raw = json.dumps(body).encode()
             target = url.rsplit("/v1", 1)[0] + self.path
             req = urllib.request.Request(target, data=raw, method=method, headers={"Content-Type": "application/json"})
-            try: r = urllib.request.urlopen(req, timeout=3600)
+            try:
+                r = urllib.request.urlopen(req, timeout=3600)
             except Exception as e:
-                # Upstream failed. Try to escalate/fallback.
+                # Count transport error BEFORE decide (#100), then escalate/fallback (#98).
+                self._record_transport_fail(body)
                 note = esc.after_reply(ok=False)
-                if note:
-                    # A swap was triggered (e.g., back to light or next target).
-                    # Update URL to the new target and retry.
-                    url, alias = esc.upstream()
-                    target = url.rsplit("/v1", 1)[0] + self.path
-                    req = urllib.request.Request(target, data=raw, method=method, headers={"Content-Type": "application/json"})
-                    try:
-                        r = urllib.request.urlopen(req, timeout=3600)
-                        stream = body is not None and body.get("stream")
-                        self.send_response(r.status)
-                        for k, v in r.headers.items():
-                            if k.lower() not in ("content-length", "transfer-encoding", "connection"): self.send_header(k, v)
-                        self.end_headers()
-                        if body is None:
-                            self.wfile.write(r.read()); return
-                        text, data = [], b""
-                        if stream:
-                            for line in r:
-                                if line.strip() == b"data: [DONE]": break
-                                self.wfile.write(line); self.wfile.flush()
-                                if line.startswith(b"data: "):
-                                    try: text.append(json.loads(line[6:])["choices"][0]["delta"].get("content") or "")
-                                    except Exception: pass
-                        else:
-                            j = json.load(r); m = j["choices"][0]["message"]; text.append(m.get("content") or "")
-                        esc.sig.observe_reply("".join(text))
-                        # If we swapped back, we might want to print a note here too, but the initial note is enough.
-                        if stream:
-                            if note:
-                                ch = {"choices": [{"index": 0, "delta": {"content": "\n\n" + note}, "finish_reason": None}]}
-                                self.wfile.write(b"data: " + json.dumps(ch).encode() + b"\n\n")
-                            self.wfile.write(b"data: [DONE]\n\n")
-                        else:
-                            if note: m["content"] = (m.get("content") or "") + "\n\n" + note
-                            self.wfile.write(json.dumps(j).encode())
-                        return
-                    except Exception as e2:
-                        # Retry also failed.
-                        self.send_response(502); self.end_headers(); self.wfile.write(str(e2).encode())
-                        if body is not None: esc.sig.failures += 1
-                        return
-                # No swap possible (e.g., all targets down or manual suggest).
-                self.send_response(502); self.end_headers(); self.wfile.write(str(e).encode())
-                if body is not None: esc.sig.failures += 1
+                if note and self._retry_once(body, method, raw, note):
+                    return
+                self._502(e)
                 return
-            stream = body is not None and body.get("stream")
-            self.send_response(r.status)
-            for k, v in r.headers.items():
-                if k.lower() not in ("content-length", "transfer-encoding", "connection"): self.send_header(k, v)
-            self.end_headers()
-            if body is None:
-                self.wfile.write(r.read()); return
-            text, data = [], b""
-            if stream:
-                for line in r:
-                    if line.strip() == b"data: [DONE]": break
-                    self.wfile.write(line); self.wfile.flush()
-                    if line.startswith(b"data: "):
-                        try: text.append(json.loads(line[6:])["choices"][0]["delta"].get("content") or "")
-                        except Exception: pass
-            else:
-                j = json.load(r); m = j["choices"][0]["message"]; text.append(m.get("content") or "")
-            esc.sig.observe_reply("".join(text))
-            note = esc.after_reply(ok=True)
-            if note: print(note, file=log, flush=True)
-            if stream:
-                if note:
-                    ch = {"choices": [{"index": 0, "delta": {"content": "\n\n" + note}, "finish_reason": None}]}
-                    self.wfile.write(b"data: " + json.dumps(ch).encode() + b"\n\n")
-                self.wfile.write(b"data: [DONE]\n\n")
-            else:
-                if note: m["content"] = (m.get("content") or "") + "\n\n" + note
-                self.wfile.write(json.dumps(j).encode())
+            self._write_chat(r, body, None, method, raw)
+
         def do_POST(self): self._fwd("POST")
         def do_GET(self): self._fwd("GET")
     return H
