@@ -1,6 +1,8 @@
 # G84-BRIDGE — Implementation plan (FreeBSD-first nvso + gpu-legacy)
 
-Status: **scaffolding landed in-repo** (`familia/gpu-legacy/nvso/`). Live compile/test waits for angel SSH / qodesh online. Software Nanbeige path is [LAYER.md](./LAYER.md) and does not block on this.
+Status: **scaffolding + design sketches landed** ([HVVRAM-ARCHITECTURE.md](./HVVRAM-ARCHITECTURE.md), [FIRMWARE-PLAN.md](./FIRMWARE-PLAN.md), [DESCRIPTOR-FORMAT.md](./DESCRIPTOR-FORMAT.md)). Soft domains in progress; **custom FW still required** for Stage 2+.
+
+Prior status line: scaffolding landed in-repo (`familia/gpu-legacy/nvso/`). Live compile/test waits for angel SSH / qodesh online. Software Nanbeige path is [LAYER.md](./LAYER.md) and does not block on this.
 
 ## Goal chain
 

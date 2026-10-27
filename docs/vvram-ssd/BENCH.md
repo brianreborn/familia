@@ -31,11 +31,12 @@ Protocol:
 4. Concurrent optional: tiny decision elsewhere — not second Nanbeige.
 5. Tear down; capture swap delta + dmesg OOM.
 
-## nvso stub (angel)
+## nvso / soft HVVRAM (angel)
 
-1. `nvsoctl -n` → print ABI version + ioctl numbers (no device OK).
-2. After `kldload`: open `/dev/nvso0`, `NVSO_DOMAIN_CREATE` → expect `EOPNOTSUPP` until implemented; latency of ioctl path (us).
-3. When SSD export exists: measure queue export + map; compare bounce vs claimed zero-copy (DMA counters).
+1. `nvsoctl -n` → ABI + ioctl numbers (no device OK).
+2. After `kldload`: `nvsoctl` create→map→gate soft round-trip (expect status 0 soft); record ioctl latency_us.
+3. Soft `NVGPU_DMA_POST`: desc counts only — not zero-copy proof.
+4. When **custom FW** exists ([FIRMWARE-PLAN.md](./FIRMWARE-PLAN.md)): queue export + map; compare bounce vs peer DMA counters.
 
 ## Crosstalk / isolation
 

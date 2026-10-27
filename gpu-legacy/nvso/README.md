@@ -1,7 +1,9 @@
 # nvso — FreeBSD-first SO domain + SSD DMA scaffold
 
 Research ABI for the Grok design thread (G84 independent SO domains + zero-copy SSD DMA).
-**Stub only.** Does not claim working SO domains on stock G84 or open SandForce FW.
+**Stage 1 soft domains in progress; Stages 2–4 still need custom FW + silicon.** Does not claim working SO domains on stock G84 or open SandForce FW.
+
+Design sketches: `docs/vvram-ssd/HVVRAM-ARCHITECTURE.md`, `FIRMWARE-PLAN.md`, `DESCRIPTOR-FORMAT.md`.
 
 Design notes: `/workspace/familia-install-notes/vvram-ssd/` (INGEST, LAYER, G84-BRIDGE, BENCH).
 

@@ -4,6 +4,9 @@ Source: https://x.com/grok/status/2113981636370899059 (2026-10-24 PT)
 Thread dump: [THREAD-SOURCE.md](./THREAD-SOURCE.md)  
 In-repo scaffold: `familia/gpu-legacy/nvso/`  
 Ship-today software layer: [LAYER.md](./LAYER.md)  
+Stage map: [HVVRAM-ARCHITECTURE.md](./HVVRAM-ARCHITECTURE.md)  
+Custom FW (still required): [FIRMWARE-PLAN.md](./FIRMWARE-PLAN.md)  
+DMA descriptors: [DESCRIPTOR-FORMAT.md](./DESCRIPTOR-FORMAT.md)  
 Bridge + compile plan: [G84-BRIDGE.md](./G84-BRIDGE.md)  
 Bench method: [BENCH.md](./BENCH.md)
 
@@ -32,7 +35,7 @@ Bench method: [BENCH.md](./BENCH.md)
 
 ## What we claim vs what we do not
 
-**Claim now:** software SSD-as-working-set for 33B on 24 GiB (mmap + swap + optional spill dir); FreeBSD-first **API surface** and man pages for `nvso_*`; bridge plan from `gpu-legacy` sm11.
+**Claim now:** software SSD-as-working-set for 33B on 24 GiB (mmap + swap + spill); FreeBSD-first **API surface** + design sketches for soft domains / custom FW / DMA descs; bridge plan from `gpu-legacy` sm11.
 
 **Do not claim:** stock G84 has independent SO domains, open SandForce FW on angel’s SSD, or working zero-copy GPU↔SSD DMA. Those need silicon/FW/OS work tracked in G84-BRIDGE.
 
