@@ -1,8 +1,9 @@
 # Self-improving harnesses (Harness²)
 
 > **Status: experimental, off by default** ([#65](https://github.com/brianreborn/familia/issues/65)).
-> Research follow-ups: RRSI regularization ([#66](https://github.com/brianreborn/familia/issues/66)),
-> Terminal-RSI ([#68](https://github.com/brianreborn/familia/issues/68)). Both are design-only.
+> Terminal-RSI rounds are implemented in `scripts/terminal_rsi.py` ([#88](https://github.com/brianreborn/familia/issues/88));
+> further policy refinement remains design-only ([#68](https://github.com/brianreborn/familia/issues/68)).
+> RRSI regularization ([#66](https://github.com/brianreborn/familia/issues/66)) and live benchmark matrix ([#87](https://github.com/brianreborn/familia/issues/87)) are deferred.
 
 [Harness²](https://github.com/google-research/harness2) (Google Research, Apache-2.0) improves
 an agent's *harness*: its system prompt, guardrails, memory and skills. It runs the agent on
@@ -14,12 +15,13 @@ writes down what it learned. familia uses it as a **separate settings layer**:
 - **hermes does not need it.** `scripts/hermes.sh` works the same when Harness² is absent or off.
 - **It does not need hermes.** Proposing, accepting and reverting only read and write the
   target's files and call a local model endpoint.
-- **You can combine them.** When the graph turns it on for an agent, `hermes.sh` puts the
-  accepted harness version in place before it starts (see [Using it with hermes](#using-it-with-hermes)).
+- **You can combine them.** When the graph turns it on for an agent, any launcher that starts
+  that agent — `hermes.sh`, graph `start.sh` / `start_graph.py` (llama UI path), or another
+  harness — puts the accepted version in place first (see [Attach from any launcher](#attach-from-any-launcher)).
 
 Neither side imports the other. The boundary is one *target descriptor* (prompt, guardrails,
-memory and skills paths plus an endpoint), and hermes reaches Harness² only by running
-`scripts/harness2.py sync` as a subprocess.
+memory and skills paths plus an endpoint). Launchers reach Harness² only through
+`scripts/self_improve_attach.py`, which runs `scripts/harness2.py sync` as a subprocess.
 
 There is no Harness² launcher. `scripts/harness2.py` reviews changes and never starts an agent.
 
@@ -146,24 +148,30 @@ These rules are fixed, not settings.
   (about 0.6 MB) into the state directory. Nothing is pip-installed. Upstream asks for Python
   3.12 or 3.13. The core library ran on miryam's Python 3.14.4.
 
-## Using it with hermes
+## Attach from any launcher
 
-`hermes.sh` picks Harness² up only when the graph has a `harnesses.<T>` with
-`agent: <the agent being launched>` and a `self_improve` entry with mode not `"off"` that targets
-it. `--self-improve` forces the pickup for one launch even while the mode is `"off"`. The
-pickup runs `scripts/harness2.py sync --target T` before hermes starts.
+Improvers are independent of which UI starts the agent. `scripts/self_improve_attach.py` is the
+shared hook:
 
-- **Graph mode** (`hermes.sh --agent hermes-lab`): the descriptor root *is* that agent's
-  HERMES_HOME, so `accept` and `revert` already wrote `SOUL.md` and `skills/`. The sync is a
-  consistency check.
-- **Single-model mode** (`hermes.sh --agent hermes-lab --model coder`): HERMES_HOME is
-  `~/.cache/familia/hermes-hermes-lab@coder`, and the sync writes the current version there
-  (`--into`).
-- If `scripts/harness2.py` is missing, hermes starts anyway and prints a note. If a sync fails,
-  it prints the error and starts with the files as they are.
+- **hermes.sh** — when `harnesses.<T>` has `agent: <this agent>` and a `self_improve` entry with
+  mode not `"off"` targets it (or with `--self-improve`). Graph mode syncs into the descriptor
+  root; single-model mode syncs with `--into` the per-node HERMES_HOME.
+- **Graph start / llama UI** — `start.sh` → `scripts/start_graph.py` calls the same hook for
+  every harness whose mode is on, before local model servers and the green-roomz gateway come up.
+- **CLI** — `python3 scripts/self_improve_attach.py --agent NAME` or `--target T` (add `--force`
+  to sync while mode is off).
+
+Rules shared by every path: idempotent; no-op when mode is off (unless forced); pentest-linked
+agents are refused; if `harness2.py` is missing or a sync fails, the launcher prints a note and
+continues with the files as they are.
+
+`scripts/harness2.py set --agent NAME --mode propose|apply|off` works for any non-pentest agent
+that has (or can get) a `harnesses.*` descriptor — not only hermes. Terminal-RSI rounds
+(`scripts/terminal_rsi.py --target T`, menu `harness2.terminal-rsi`) write proposals into the
+same store; accept them with `harness2.py accept` / menu `harness2.review`.
 
 hermes injects `SOUL.md` as its system prompt. Guardrails and memory become sections of it,
-because hermes has no separate files for them. To run hermes without accepted changes, revert
+because hermes has no separate files for them. To run without accepted changes, revert
 (`harness2.py revert --target hermes-lab --to 0000`).
 
 ## Without hermes
@@ -213,7 +221,9 @@ heavier node on another host. The executor can stay small.
 - Harness²'s own judge and reporting (`harness2.core.judge`) are not used. familia scores with
   its own asserts.
 - RRSI-style regularization (#66): cost-aware acceptance, a noise-adjusted floor, a leakage
-  critic beyond the term match. Terminal-RSI policy refinement (#68). Both are design-only.
+  critic beyond the term match — design-only.
+- Terminal-RSI (#88) rounds are implemented (`scripts/terminal_rsi.py`); further policy
+  refinement (#68) and the live benchmark matrix (#87) are deferred.
 
 ## See also
 

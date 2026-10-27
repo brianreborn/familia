@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Start the active graph topology assigned to this host, without remote operations."""
+"""Start the active graph topology assigned to this host, without remote operations.
+
+Before local model servers (and the llama UI / green-roomz gateway) come up, syncs any
+Harness² / Terminal-RSI accepted harness versions whose self_improve mode is on
+(scripts/self_improve_attach.py; docs/harness2.md). Sync failure warns and continues.
+"""
 import argparse
 import json
 import os
@@ -326,6 +331,14 @@ def run(args=None):
         _report_remote_topology(remote_nodes, remote_gateways, omitted_aliases)
 
         launch_env = _run_gate_and_sync(ROOT, options.yes)
+        # Harness² / Terminal-RSI: put accepted versions in place for any agent whose
+        # self_improve mode is on, before model servers / llama UI come up (docs/harness2.md).
+        try:
+            import self_improve_attach as SIA
+            SIA.attach(graph, str(graph_path), log_prefix="familia-graph: self-improve")
+        except SystemExit as e:
+            # Pentest refuse only; other sync issues warn+continue inside attach.
+            raise StartupError(str(e)) from e
         plans = validate_local_nodes(graph, host, nodes, check_files=True)
         for name, _ in plans:
             node = graph["nodes"][name]
