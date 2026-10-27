@@ -10,8 +10,12 @@
 #ifndef _NVSO_H_
 #define _NVSO_H_
 
+#ifdef _KERNEL
+#include <sys/types.h>
+#else
 #include <stdint.h>
 #include <sys/types.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
