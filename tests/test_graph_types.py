@@ -49,6 +49,32 @@ def test_enums():
     x = g(); x["models"]["qwen35-2b-q4km"]["role"] = "magic"; has(x, "not one of")
     x = g(); x["transports"]["miryam-local"]["kind"] = "ftp"; has(x, "not one of")
 
+
+
+def test_host_kind_vm_obsolete_fail_loud():
+    x = g(); x["hosts"]["miryam"]["kind"] = "vm"
+    has(x, "obsolete")
+
+
+def test_host_kind_accepts_form_factors_and_dedicated():
+    for kind in ("desktop", "phone", "tablet", "notebook", "laptop", "1U", "2U", "3U",
+                 "console", "appliance", "drone", "watch"):
+        x = g(); x["hosts"]["miryam"]["kind"] = kind
+        # may still have other errs from unrelated graph state — kind itself must not complain
+        bad = [e for e in errs(x) if "hosts.miryam.kind" in e]
+        assert bad == [], (kind, bad)
+
+
+def test_box_archetypes_shapes_cover_all_kinds():
+    import sys, os
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
+    import box_archetypes as ba
+    assert ba.HOST_KINDS == set(ba.DEFAULT_SHAPES)
+    assert "vm" not in ba.HOST_KINDS
+    phone = ba.shape_for("phone")
+    assert "decision" in phone["roles"] and phone["reserve_ram_mib"] >= 3072
+    assert ba.shape_for("1U")["notes"]
+
 def test_measured_host_needs_facts_and_unmeasured_excluded():
     x = g(); del x["hosts"]["miryam"]["ram_mib"]; has(x, "measured host missing required 'ram_mib'")
     x = g(); x["hosts"]["miryam"]["gpus"] = None; assert errs(x) == []

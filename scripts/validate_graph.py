@@ -190,7 +190,7 @@ def validate(graph, check_files=True, host=None):
                 f"nodes.{name}: cache_ram_mib {n['cache_ram_mib']} < estimated per-slot prompt state "
                 f"{state:.0f} MiB (prompt cache would always be skipped)"
             )
-            # Phones stay strict (no big swap). Swap-rich desktops/laptops/VMs: advisory only.
+            # Phones stay strict (no big swap). Swap-rich desktops/laptops/servers: advisory only.
             hk = (hosts.get(n["host"]) or {}).get("kind")
             hos = str((hosts.get(n["host"]) or {}).get("os") or "").lower()
             androidish = hk == "phone" or hos.startswith("android")
@@ -242,7 +242,7 @@ def validate(graph, check_files=True, host=None):
 
     for h, total in totals.items():
         # RAM safety (docs/ram-safety.md). Android phones stay hard-fail on overcommit.
-        # Swap-rich desktops/laptops/VMs (angel-class): overcommit and tight margins are
+        # Swap-rich desktops/laptops/servers (angel-class): overcommit and tight margins are
         # advisory — software VVRAM / large swap is the intended path.
         ram = hosts[h]["ram_mib"]
         reserve = hosts[h].get("reserve_ram_mib") or 0

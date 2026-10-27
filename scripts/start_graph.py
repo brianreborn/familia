@@ -59,7 +59,7 @@ def select_host(graph, requested=None, environ=None, hostname=None):
         f"`python3 scripts/hostname_pin.py set NAME` (declared: {known}). "
         f"Or add this OS hostname under hosts.<name>.local_names after measuring. "
         f"Next step: measure this machine into the graph with "
-        f"`python3 scripts/host_measure.py --name NAME --kind desktop|laptop|phone|vm` "
+        f"`python3 scripts/host_measure.py --name NAME --kind desktop|laptop|phone|tablet|notebook|1U|2U|3U|console|appliance|drone|watch` "
         f"(or run install/linux/install.sh, which measures for you). "
         f"Top-level curl|install.sh alone does not measure the host."
     )

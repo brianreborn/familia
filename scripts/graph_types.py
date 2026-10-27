@@ -7,6 +7,7 @@ See docs/graph-types.md.
 """
 import ipaddress
 import re
+from box_archetypes import HOST_KINDS, OBSOLETE_HOST_KINDS  # noqa: E402
 
 # ---- field specs -----------------------------------------------------------
 class F:
@@ -19,6 +20,7 @@ def req(kind, **kw): return F(kind, **kw)
 def opt(kind, **kw): return F(kind, optional=True, **kw)
 
 SHA_RE = re.compile(r"^[0-9a-f]{64}$")
+
 
 def check_field(g, sec, name, key, spec, val, errs):
     where = f"{sec}.{name}.{key}"
@@ -34,7 +36,10 @@ def check_field(g, sec, name, key, spec, val, errs):
     elif k == "bool":
         if not isinstance(val, bool): errs.append(f"{where}: expected true/false, got {val!r}")
     elif k == "enum":
-        if val not in spec.choices: errs.append(f"{where}: {val!r} not one of {sorted(spec.choices)}")
+        if sec == "hosts" and key == "kind" and val in OBSOLETE_HOST_KINDS:
+            errs.append(f"{where}: {val!r} {OBSOLETE_HOST_KINDS[val]}")
+        elif val not in spec.choices:
+            errs.append(f"{where}: {val!r} not one of {sorted(spec.choices)}")
     elif k == "sha":
         if val != "unmeasured" and not (isinstance(val, str) and SHA_RE.match(val)):
             errs.append(f"{where}: expected 64 lowercase hex chars or the literal 'unmeasured', got {val!r}")
@@ -508,7 +513,7 @@ class T:
         self.fields, self.check, self.experimental, self.doc = fields, check, experimental, doc
 
 TYPES = {
-    "hosts": T({"kind": req("enum", choices={"desktop", "laptop", "phone", "vm", "unknown"}),
+    "hosts": T({"kind": req("enum", choices=HOST_KINDS),
                 "measured": req("bool"), "os": opt("str"), "cpu": opt("str"), "threads": opt("int", min=1),
                 "ram_mib": opt("int", min=1), "gpus": req("gpus", nullable=True),
                 "reserve_ram_mib": opt("int", min=0), "notes": opt("str"), "reported": opt("any"),
@@ -516,7 +521,8 @@ TYPES = {
                 # OS hostnames that map to this graph host (select_host / start.sh); not DNS
                 "local_names": opt("strlist"),
                 # reachability for meshes (transport PoC, #22); key-only, never a password
-                "addr": opt("str"), "user": opt("str"), "port": opt("int", min=1)}, check_host, doc="physical/virtual machine"),
+                "addr": opt("str"), "user": opt("str"), "port": opt("int", min=1)}, check_host,
+               doc="physical/dedicated form-factor box (see box_archetypes.HOST_KINDS); not virtualization"),
     "transports": T({"kind": req("enum", choices={"local", "ssh", "nfs", "rsync", "bittorrent", "zfs"}),
                      "from": req("ref", ref="hosts"), "to": req("ref", ref="hosts")}, check_transport, doc="host-to-host link"),
     # Multi-member transports (ssh nexus hub, private bittorrent swarm). Point-to-point

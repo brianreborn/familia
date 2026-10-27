@@ -19,7 +19,7 @@ python3 -m pytest tests
 
 ```mermaid
 graph TD
-  host["hosts: kind desktop|laptop|phone|vm|unknown, measured, os, cpu, threads, ram_mib, gpus[]|null, reserve_ram_mib, reported, windows"]
+  host["hosts: kind desktop|phone|tablet|notebook|laptop|1U|2U|3U|console|appliance|drone|watch|unknown, measured, os, cpu, threads, ram_mib, gpus[]|null, reserve_ram_mib, reported, windows"]
   gpu["gpus[]: vendor, model, vram_mib, backend cuda|vulkan|sycl|metal|opencl|rocm|none, backend_status verified|tbd|unsupported, compute_capability, driver, measured"]
   transport["transports: kind local|ssh|nfs|rsync|bittorrent|zfs, from, to"]
   runtime["runtimes: kind llama-server|drex-dlm, build, commit, bin, hosts, supported_archs, backends, spec_types"]
@@ -68,6 +68,32 @@ graph TD
   pentest -->|reports to| agency
   classDef exp stroke-dasharray: 5 5
 ```
+
+
+## Box / platform archetypes (host kind)
+
+Host `kind` is a **physical or dedicated form factor**, never virtualization.
+Canonical enum: `scripts/box_archetypes.py` → `HOST_KINDS`.
+
+| kind | meaning | default shape roles (starter) | reserve hint |
+|---|---|---|---|
+| desktop | tower / desk PC | coder, chat, embed, guardian | 4096 |
+| laptop | portable PC (e.g. miryam) | coder, chat, embed | 3072 |
+| notebook | thin portable PC | coder, chat, embed | 3072 |
+| phone | handset (galaxy1/2) | decision, general, chat | 5120 |
+| tablet | large handheld | decision, chat, general | 4096 |
+| watch | wearable | decision | 768 |
+| 1U | small rack server | coder, chat, embed, guardian | 6144 |
+| 2U | medium rack server | + reasoning | 8192 |
+| 3U | large rack server | + vision | 12288 |
+| console | living-room / game console | chat, decision, vision | 4096 |
+| appliance | NAS / lab / filter gadget | decision, guardian | 2048 |
+| drone | air/edge vehicle | decision | 1024 |
+| unknown | transitional only | (none) | 3072 |
+
+`vm` is **obsolete** and fails validation loudly. Remap former VM-labelled hosts to a form factor (the Grok Bot `box` host is `desktop`).
+
+`scripts/generate_graph.py` reads `hosts.<name>.kind`, applies that kind's default shape (role order + header comments), then applies `config/host-overrides.yaml` and `--set` overrides. Missing shape roles are listed in the generated file as not-yet-placed — they are not invented as fake nodes.
 
 ## Rules the validator enforces
 
@@ -125,7 +151,7 @@ Wrap a field in `opt(...)` only when leaving it out has a defined meaning, not
 to supply a default.
 
 To **refine** an existing type, such as a new model role, host kind, or
-transport kind, add the value to that field's `choices`, add any rules for it
+transport kind, add the value to `scripts/box_archetypes.HOST_KINDS` / `DEFAULT_SHAPES` (host kinds) or that field's `choices`, add any rules for it
 to the type's checker, and add a test in `tests/test_graph_types.py`. To
 promote an experimental type, set `experimental=False`, drop its
 `experimental` field, and write its real cross-checks. Add the new type to

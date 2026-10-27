@@ -235,3 +235,13 @@ Do not invent new host-prefixed node names. Prefer `role:` on nodes and private
 graphs. Full fleet reshape (type+host identity without fake unique names) is the
 follow-on schema change.
 
+
+## L-box-archetypes. Form factor, not virtualization (2026-10-27)
+
+Box/platform `hosts.*.kind` values are physical or dedicated form factors
+(`desktop`, `phone`, `tablet`, `notebook`, `laptop`, `1U`/`2U`/`3U`, `console`,
+`appliance`, `drone`, `watch`). They are **not** hypervisors — `vm` is obsolete
+and fails loud. Each kind has a default graph shape in
+`scripts/box_archetypes.py` (starter roles, reserve hint, transports); 
+`generate_graph.py` applies that shape then overrides. 1U=small / 2U=medium /
+3U=large server. Do not invent rack units for tower/desktop hosts.

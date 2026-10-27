@@ -2,6 +2,14 @@
 # host: angel  private: true
 # renamed: angel-chat->chat, angel-coder->coder, angel-guardian->guardian
 # Source of truth: graph.yaml (regenerate after edits).
+# platform kind: desktop
+# default shape roles: coder, chat, embed, guardian
+# reserve_ram_mib hint: 4096
+# transports: local, ssh
+# offload_prefer: auto  ctx_bias: medium  parallel_bias: 2
+# shape notes: Tower/desktop (angel, qodesh, centos-class): full assistant stack; guardian seatbelts on (launch-test, empty tools allow) until widened.
+# overrides: graph.yaml nodes for host=angel, config/host-overrides.yaml, generate_graph --set
+# shape roles not yet placed on this host (add in graph.yaml or --set): embed
 version: 2
 hosts:
   miryam:
@@ -208,7 +216,7 @@ hosts:
     notes: 'Samsung Galaxy A57 Termux (fleet name galaxy2). SSH via ProxyJump angel.
       Legacy measured key: phone8. Prefer galaxy2 in new docs/scope allowlists.'
   box:
-    kind: vm
+    kind: desktop
     measured: true
     local_names:
     - grok-bot-vm-414232872
@@ -218,6 +226,9 @@ hosts:
     ram_mib: 16002
     reserve_ram_mib: 4096
     gpus: null
+    notes: Grok Bot / Cursor agent Linux environment. Former kind was vm; archetypes
+      are physical/dedicated form factors only (docs/graph-types.md). Classed desktop
+      (multi-core workstation-class RAM), not a rack unit.
 transports:
   miryam-local:
     kind: local

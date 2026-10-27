@@ -5,7 +5,7 @@ Only values read from the running system are written as measured. Fields that
 cannot be read are omitted (never guessed). An existing host block is replaced
 only with --force; otherwise it is left alone and the measurement printed.
 Stdlib only. Usage:
-  host_measure.py --name NAME [--graph graph.yaml] [--kind desktop|laptop|phone|vm]
+  host_measure.py --name NAME [--graph graph.yaml] [--kind desktop|laptop|phone|tablet|notebook|1U|2U|3U|console|appliance|drone|watch]
                   [--reserve-mib N] [--dry-run] [--force]
 An explicit --kind is required when the graph has no known kind for this host.
 """
@@ -71,8 +71,16 @@ def _os():
     return {"darwin": "macos", "win32": "windows"}.get(sys.platform, "linux" if sys.platform.startswith("linux") else sys.platform)
 
 def measure(kind, reserve):
-    if kind not in {"desktop", "laptop", "phone", "vm"}:
-        raise ValueError("kind must be desktop, laptop, phone, or vm; unknown hosts need an explicit kind")
+    from box_archetypes import MEASURABLE_HOST_KINDS, OBSOLETE_HOST_KINDS, shape_for
+    if kind in OBSOLETE_HOST_KINDS:
+        raise ValueError(OBSOLETE_HOST_KINDS[kind])
+    if kind not in MEASURABLE_HOST_KINDS:
+        raise ValueError(
+            "kind must be one of %s; unknown hosts need an explicit kind"
+            % sorted(MEASURABLE_HOST_KINDS)
+        )
+    # Prefer shape reserve when caller used installer default path — reserve arg still wins.
+    _ = shape_for(kind)  # document coupling; reserve already chosen by caller
     short = socket.gethostname().split(".", 1)[0]
     # Termux / many Android images: OS hostname is useless and collides.
     if short.lower() == "localhost":
@@ -156,7 +164,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--name", required=True)
     ap.add_argument("--graph", default=os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "graph.yaml"))
-    ap.add_argument("--kind", choices=("desktop", "laptop", "phone", "vm"))
+    from box_archetypes import MEASURABLE_HOST_KINDS, OBSOLETE_HOST_KINDS, shape_for
+    ap.add_argument("--kind", choices=sorted(MEASURABLE_HOST_KINDS))
     ap.add_argument("--reserve-mib", type=int)
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--force", action="store_true")
@@ -169,7 +178,17 @@ def main():
     if (old_kind is None or old_kind == "unknown") and a.kind is None:
         raise SystemExit("host_measure: host kind is unknown; identify it and specify --kind")
     kind = a.kind or old_kind
-    reserve = a.reserve_mib if a.reserve_mib is not None else default_reserve(_meminfo_mib())
+    if kind in OBSOLETE_HOST_KINDS:
+        raise SystemExit("host_measure: " + OBSOLETE_HOST_KINDS[kind])
+    if a.reserve_mib is not None:
+        reserve = a.reserve_mib
+    else:
+        shape_reserve = shape_for(kind).get("reserve_ram_mib")
+        measured = _meminfo_mib()
+        # Use shape hint when present; still floor via default_reserve for tiny hosts.
+        reserve = max(default_reserve(measured), int(shape_reserve or 0)) if shape_reserve else default_reserve(measured)
+        if measured and measured < 12288 and kind in ("laptop", "notebook", "phone", "tablet", "watch", "drone"):
+            reserve = default_reserve(measured)  # small hosts keep ram-safety floor, not server shape
     try:
         block = render(a.name, measure(kind, reserve))
     except ValueError as error:

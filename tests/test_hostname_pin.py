@@ -54,7 +54,7 @@ def test_select_host_uses_pin_when_os_hostname_unknown(pin_env, monkeypatch):
     g = {
         "hosts": {
             "phone7": {"kind": "phone", "local_names": []},
-            "box": {"kind": "vm", "local_names": ["grok-bot-vm-x"]},
+            "box": {"kind": "desktop", "local_names": ["grok-bot-vm-x"]},
         }
     }
     assert start_graph.select_host(g, environ=pin_env, hostname="localhost") == "phone7"
