@@ -2,7 +2,7 @@
 """Validate familia graph.yaml against GGUF metadata, hardware and agent needs.
 
 usage: validate_graph.py [--graph FILE] [--host HOST] [--no-files] [--verify-sha] [--check-runtimes]
-                         [--args NODE | --explain NODE] [-h|--help]
+                         [--check-swap] [--args NODE | --explain NODE] [-h|--help]
 
 Exit 0 when valid, 1 with one line per problem otherwise (2 for a usage error).
 --args NODE      print the llama-server arguments for that node: graph settings plus every
@@ -13,6 +13,8 @@ Exit 0 when valid, 1 with one line per problem otherwise (2 for a usage error).
 --host HOST      scope local artifact, runtime, and RAM checks to this declared graph host.
 --no-files       skip GGUF/RAM checks (schema only); --verify-sha hashes GGUFs.
 --check-runtimes check that runtime binaries are executable.
+--check-swap     for active nodes with swap_budget_mib (scoped by --host when set), fail if
+                 host swap total MiB is below the budget (SSD/VVRAM ops gate; docs/vvram-ssd/LAYER.md).
 Never guesses or inflates. Schema: scripts/graph_types.py, docs/graph-types.md.
 """
 import hashlib, json, os, struct, sys
@@ -254,6 +256,110 @@ def explain(graph, name):
     out += [f"  ERROR {x}" for x in errs] + [f"  note: {x}" for x in notes]
     return out
 
+
+def slot_save_dir(n, name):
+    """Directory for llama-server --slot-save-path: node.spill_path or ~/.cache/familia/slots/<node>."""
+    raw = n.get("spill_path") or f"~/.cache/familia/slots/{name}"
+    return os.path.expanduser(raw)
+
+def host_swap_total_mib():
+    """Total swap MiB on this machine, or None if unknown. FreeBSD swapinfo -k; Linux /proc/swaps."""
+    try:
+        if os.path.exists("/proc/swaps"):
+            total_kib = 0
+            with open("/proc/swaps") as f:
+                next(f, None)
+                for line in f:
+                    parts = line.split()
+                    if len(parts) >= 3 and parts[2].isdigit():
+                        total_kib += int(parts[2])
+            return total_kib // 1024
+        import subprocess
+        r = subprocess.run(["swapinfo", "-k"], capture_output=True, text=True, timeout=5)
+        if r.returncode != 0:
+            return None
+        total = 0
+        for line in r.stdout.splitlines():
+            parts = line.split()
+            if len(parts) >= 2 and parts[0] != "Device" and parts[1].isdigit():
+                total += int(parts[1])
+        return total // 1024 if total else 0
+    except Exception:
+        return None
+
+def check_swap_budgets(graph, host=None):
+    """Errors when an active local node's swap_budget_mib exceeds *this* machine's swap.
+
+    Host-local only: budgets for other graph hosts are ignored here (run on angel for angel).
+    If --host names a different host than the OS/local_names match, that scope is skipped.
+    """
+    errs = []
+    try:
+        from start_graph import select_host, StartupError
+        local = select_host(graph)
+    except Exception:
+        local = None
+    scope = host if host is not None else local
+    if scope is None:
+        errs.append("--check-swap: cannot resolve local graph host (set --host or hosts.*.local_names)")
+        return errs
+    if local is not None and scope != local:
+        # Measuring this box's swap against angel's budget would false-fail.
+        WARNINGS.append(
+            f"--check-swap skipped: this machine is graph host {local!r}, not {scope!r}; "
+            f"run validate_graph --check-swap on {scope}"
+        )
+        return errs
+    need = {}  # host -> (budget, [node names])
+    for name, n in (graph.get("nodes") or {}).items():
+        if n.get("status") != "active" or n.get("host") != scope:
+            continue
+        b = n.get("swap_budget_mib")
+        if b is None:
+            continue
+        h = n.get("host")
+        budget, names = need.get(h, (0, []))
+        need[h] = (max(budget, int(b)), names + [name])
+    if not need:
+        return errs
+    have = host_swap_total_mib()
+    if have is None:
+        errs.append("--check-swap: could not read host swap (swapinfo /proc/swaps)")
+        return errs
+    for h, (budget, names) in need.items():
+        if have < budget:
+            errs.append(
+                f"host {h!r}: swap total {have} MiB < swap_budget_mib {budget} "
+                f"(nodes: {', '.join(names)}; see docs/vvram-ssd/LAYER.md)"
+            )
+    return errs
+
+    have = host_swap_total_mib()
+    if have is None:
+        errs.append("--check-swap: could not read host swap (swapinfo /proc/swaps)")
+        return errs
+    for h, (budget, names) in need.items():
+        if have < budget:
+            errs.append(
+                f"host {h!r}: swap total {have} MiB < swap_budget_mib {budget} "
+                f"(nodes: {', '.join(names)}; see docs/vvram-ssd/LAYER.md)"
+            )
+    return errs
+
+    have = host_swap_total_mib()
+    if have is None:
+        errs.append("--check-swap: could not read host swap (swapinfo /proc/swaps)")
+        return errs
+    nodes_by = need.pop("_nodes", {})
+    for h, budget in need.items():
+        if have < budget:
+            names = ", ".join(nodes_by.get(h, []))
+            errs.append(
+                f"host {h!r}: swap total {have} MiB < swap_budget_mib {budget} "
+                f"(nodes: {names}; see docs/vvram-ssd/LAYER.md)"
+            )
+    return errs
+
 def server_args(graph, name):
     n = graph["nodes"][name]
     kind = (graph["runtimes"].get(n["runtime"]) or {}).get("kind", "llama-server")
@@ -267,9 +373,9 @@ def server_args(graph, name):
     if n["flash_attn"]: a += ["-fa", "on"]
     if n.get("threads"): a += ["-t", str(n["threads"])]
     if n.get("load_mode"): a += ["-lm", n["load_mode"]]
-    if n.get("slot_save"):  # prompt prefix saved/restored across restarts (scripts/prompt_cache.py, #85)
-        d = os.path.expanduser(f"~/.cache/familia/slots/{name}"); os.makedirs(d, exist_ok=True)
-        a += ["--slot-save-path", d]   # none: no mmap, ~-0.5 GiB RSS on repacked weights (docs/perf/2026-10-19-tuning-2.md)
+    if n.get("slot_save") or n.get("spill_path"):  # #85 + SSD/VVRAM spill (docs/vvram-ssd/LAYER.md)
+        d = slot_save_dir(n, name); os.makedirs(d, exist_ok=True)
+        a += ["--slot-save-path", d]
     names = sorted(al for al, x in graph["aliases"].items() if x["node"] == name)
     if names: a += ["--alias", names[0]]
     a += ["--cache-ram", str(n["cache_ram_mib"])]
@@ -312,7 +418,7 @@ USAGE = __doc__.split("\n\n")[1]
 
 def parse_argv(argv):
     """-> dict of options; SystemExit(2) on an unknown flag or a missing value."""
-    o = {"graph": "graph.yaml", "host": None, "no_files": False, "verify_sha": False, "check_runtimes": False, "args": None, "explain": None}
+    o = {"graph": "graph.yaml", "host": None, "no_files": False, "verify_sha": False, "check_runtimes": False, "check_swap": False, "args": None, "explain": None}
     it = iter(argv)
     for x in it:
         if x in ("-h", "--help"): print(__doc__.strip()); raise SystemExit(0)
@@ -320,7 +426,7 @@ def parse_argv(argv):
             v = next(it, None)
             if v is None or v.startswith("-"): print(f"validate_graph.py: {x} needs a value\n{USAGE}", file=sys.stderr); raise SystemExit(2)
             o[x[2:]] = v
-        elif x in ("--no-files", "--verify-sha", "--check-runtimes"): o[x[2:].replace("-", "_")] = True
+        elif x in ("--no-files", "--verify-sha", "--check-runtimes", "--check-swap"): o[x[2:].replace("-", "_")] = True
         else: print(f"validate_graph.py: unknown argument {x!r}\n{USAGE}", file=sys.stderr); raise SystemExit(2)
     return o
 
@@ -336,6 +442,8 @@ def main(argv):
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     from transport_graph import validate_transports
     errs += validate_transports(graph)  # meshes: (ssh nexus / bittorrent), #22
+    if o["check_swap"]:
+        errs += check_swap_budgets(graph, host=o["host"])
     for w in WARNINGS: print(f"graph: WARNING: {w}", file=sys.stderr)
     for e in errs: print(f"graph: ERROR: {e}", file=sys.stderr)
     if errs: return 1

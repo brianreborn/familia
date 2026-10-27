@@ -60,24 +60,20 @@ mkdir -p ~/.cache/familia/spill/angel-coder
 
 See `/workspace/familia-install-notes/swap-box.md` and `docs/ram-safety.md`: zram first, then lower-prio SSD swapfile. Box has **0 swap** today (needs root).
 
-## Proposed schema (not wired — document only)
+## Schema (wired)
 
-Optional node fields (would need `graph_types.py` + `validate_graph.py` + serve argv):
+Node fields in `graph_types.py` / `graph.yaml`:
 
 ```yaml
-spill_path: ~/.cache/familia/spill/angel-coder   # --slot-save-path or future kv spill
-swap_budget_mib: 24576                           # ops gate: refuse activate if swapinfo free < budget
-cache_type_v: q8_0                               # if split K/V types become first-class
+spill_path: ~/.cache/familia/spill/angel-coder   # → llama-server --slot-save-path
+swap_budget_mib: 24576                           # ops gate: validate_graph --check-swap
+slot_save: true                                  # or just set spill_path (either enables argv)
+# cache_type_v: q8_0                             # not first-class yet; kv_type applies to K+V
 ```
 
-Until then: encode path + budget in `note` / host `notes`; keep `load_mode: mmap` + `slot_save` when ready.
-
-### Patch proposal (small)
-
-1. `scripts/graph_types.py` nodes: `spill_path: opt("str")`, `swap_budget_mib: opt("int", min=0)`.
-2. `validate_graph.py`: if `swap_budget_mib` set and `--check-swap` (host-local only), warn/fail when swap total < budget.
-3. serve argv: if `spill_path` or `slot_save`, pass `--slot-save-path` expanded path.
-4. Docs: `docs/vvram-ssd/README.md` points here.
+- `server_args`: `spill_path` or `slot_save` → `--slot-save-path` (spill_path wins over `~/.cache/familia/slots/<node>`).
+- `validate_graph.py --check-swap [--host angel]`: fail if host swap total MiB < any active node's `swap_budget_mib`.
+- Docs: this directory + `ANGEL-OPERATOR.md`.
 
 ## What NOT to claim
 
@@ -90,6 +86,6 @@ Until then: encode path + budget in `note` / host `notes`; keep `load_mode: mmap
 
 1. Verify GGUF path + sha256 (`nanbeige43-33b-q4km`).
 2. `swapinfo` shows ≥ ~20–24 GiB usable swap on SSD (or measured smaller with proven RSS).
-3. Spill dir exists; optionally `slot_save: true`.
+3. Spill dir exists (`mkdir -p` spill_path); `slot_save: true` or spill_path set.
 4. Activate **one** of `angel-coder` / `angel-chat`.
 5. Smoke with `enable_thinking` appropriate to card; record pp/tg + RSS + swap in registry.

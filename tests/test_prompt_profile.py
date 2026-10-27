@@ -110,3 +110,12 @@ def test_unstable_line_cuts_prefix(monkeypatch):
     monkeypatch.setattr(pc, "_post", lambda *a: {"prompt": p})
     assert pc.stable_prefix("x", "s", [], "VOL", unstable=("Python toolchain:",)) == "<tools>T</tools>A\n"
     assert pc.stable_prefix("x", "s", [], "VOL") == "<tools>T</tools>A\nPython toolchain: x\nB "
+
+def test_spill_path_in_server_args(tmp_path, monkeypatch):
+    import validate_graph as vg
+    monkeypatch.setenv("HOME", str(tmp_path))
+    g = vg.load(os.path.join(ROOT, "graph.yaml"))
+    a = vg.server_args(g, "angel-coder")
+    want = os.path.join(str(tmp_path), ".cache/familia/spill/angel-coder")
+    assert a[a.index("--slot-save-path") + 1] == want
+

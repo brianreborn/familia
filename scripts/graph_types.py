@@ -484,7 +484,9 @@ TYPES = {
                 "cache_ram_mib": req("int", min=0), "status": req("enum", choices={"active", "planned"}),
                 "embeddings": opt("bool"), "threads": opt("int", min=1), "scale_down": opt("any"),
                 "load_mode": opt("enum", choices={"auto", "mmap", "none"}),
-                "slot_save": opt("bool"),  # --slot-save-path ~/.cache/familia/slots/<node> (#85)  # llama.cpp -lm (b11374+)
+                "slot_save": opt("bool"),  # --slot-save-path (~/.cache/familia/slots/<node> or spill_path) (#85)
+                "spill_path": opt("str"),  # SSD VVRAM spill dir → --slot-save-path (docs/vvram-ssd/LAYER.md)
+                "swap_budget_mib": opt("int", min=0),  # ops gate with validate_graph --check-swap
                 "selection": opt("enum", choices={"default", "fallback"}), "note": opt("str"),
                 # heavyweight escalation (docs/escalation.md); checked in escalation.check_node_escalation
                 "escalates_to": opt("list"), "escalation": opt("any"),

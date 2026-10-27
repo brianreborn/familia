@@ -271,7 +271,7 @@ def hermes_prefix(home):
 def warm_prompt(g, name, n, home):
     """Nodes with slot_save: restore the fixed prompt prefix from disk, or prefill and save it once
     (scripts/prompt_cache.py, #85). Best effort: any failure only means a slower first turn."""
-    if not n.get("slot_save"):
+    if not (n.get("slot_save") or n.get("spill_path")):
         return None
     import prompt_cache
     base = f"http://{bind(n)}:{n['port']}"

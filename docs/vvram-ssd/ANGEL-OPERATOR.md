@@ -14,6 +14,7 @@ git fetch origin main && git pull --ff-only origin main
 ./familia sync   # or: python3 scripts/sync_pins.py --auto
 python3 scripts/validate_graph.py --no-files
 python3 scripts/validate_graph.py --host angel
+python3 scripts/validate_graph.py --host angel --check-swap  # needs ≥ swap_budget_mib
 mkdir -p ~/.cache/familia/spill/angel-coder
 swapinfo -k   # ~24 GiB familia swap or proven RSS headroom
 ./start.sh --host angel --yes
