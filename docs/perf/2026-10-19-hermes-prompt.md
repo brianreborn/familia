@@ -20,7 +20,7 @@ miryam coder: Qwen3.5-2B Q4_K_M, exact `validate_graph.py --args coder` (`-t 3 -
 
 The two modes differ by 4 tokens (the model line).
 - The Qwen template puts `<tools>` before the system text.
-- The only per-session text is the date/model line at the end, plus one bug: hermes' "Python toolchain:" environment-probe line inside the stable part changed between two launches minutes apart (pip detection). It ends up mid-prompt, after the tools.
+- The only per-session text is the date/model line at the end, plus one bug: hermes' "Python toolchain:" environment-probe line inside the stable part changed between two launches minutes apart (pip detection). It ends up mid-prompt, after the tools. Mitigated by cutting the cached prefix before that line (`UNSTABLE_LINES`); proper fix is the per-host probe cache in `scripts/hermes_env_probe_cache/` (#96).
 
 ## Changes
 

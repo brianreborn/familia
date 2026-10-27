@@ -231,9 +231,13 @@ LEAN_RAM_MIB = 8192
 # plugins (e.g. REA) still work when the graph opts them in (#92).
 LEAN_AUX_DROP = ("web_extract", "tts_audio_tags", "triage_specifier", "kanban_decomposer",
                  "profile_describer", "goal_judge", "curator", "monitor", "title_generation")
-# hermes re-probes the environment per session; this line changed between two launches minutes
-# apart ("(no pip module)", pip=missing appear or not), so the cached prefix stops before it (#85).
+# Belt-and-suspenders for #85 prompt cache: upstream env_probe is process-lifetime only and
+# pip detection can still flap across launches (cache miss / old installs without the overlay).
+# Proper fix is the per-host cache in scripts/hermes_env_probe_cache/ (#96); keep cutting the
+# stable prefix before this marker until that cache is proven on angel.
 UNSTABLE_LINES = ("Python toolchain:",)   # same line as the small-host floor in docs/ram-safety.md
+# Overlay dir prepended to PYTHONPATH for hermes-agent / HERMES_PY children (sitecustomize).
+ENV_PROBE_CACHE_OVERLAY = os.path.join(ROOT, "scripts", "hermes_env_probe_cache")
 AUX_TASKS = ["web_extract", "compression", "skills_hub", "approval", "mcp", "title_generation",
              "memory_query_rewrite", "tts_audio_tags", "triage_specifier", "kanban_decomposer",
              "profile_describer", "goal_judge", "curator", "monitor"]
@@ -241,6 +245,25 @@ AUX_TASKS = ["web_extract", "compression", "skills_hub", "approval", "mcp", "tit
 
 def die(msg):
     print(f"hermes.sh: {msg}", file=sys.stderr); sys.exit(1)
+
+
+
+def hermes_child_env(extra=None, environ=None):
+    """Env for hermes-agent / HERMES_PY children: #96 host-cache overlay on PYTHONPATH.
+
+    Prepends scripts/hermes_env_probe_cache so sitecustomize wraps tools.env_probe across
+    process launches. HERMES_SP still works (children insert it on sys.path themselves).
+    Force a fresh probe with FAMILIA_HERMES_ENV_PROBE_REFRESH=1.
+    """
+    env = dict(os.environ if environ is None else environ)
+    if extra:
+        env.update(extra)
+    overlay = ENV_PROBE_CACHE_OVERLAY
+    if os.path.isdir(overlay):
+        parts = [p for p in (env.get("PYTHONPATH") or "").split(os.pathsep) if p]
+        if overlay not in parts:
+            env["PYTHONPATH"] = os.pathsep.join([overlay] + parts)
+    return env
 
 
 def strip_secrets(v):
@@ -456,7 +479,7 @@ def hermes_prefix(home):
     """The system prompt + tool schemas hermes will send, built offline by hermes itself. A snap
     hermes is asked inside its own snap environment (outside it, fewer tools are detected);
     non-snap uses HERMES_PY + HERMES_SP from resolve_hermes()."""
-    env = dict(os.environ, HERMES_HOME=home, HERMES_SP=HERMES_SP, FAMILIA_PREFIX_CHILD=PREFIX_CHILD)
+    env = hermes_child_env({"HERMES_HOME": home, "HERMES_SP": HERMES_SP, "FAMILIA_PREFIX_CHILD": PREFIX_CHILD})
     if HERMES_BIN.startswith("/snap/bin/"):
         cmd = ["snap", "run", "--shell", os.path.basename(HERMES_BIN), "-c", '"$SNAP/bin/python3" -c "$FAMILIA_PREFIX_CHILD"']
     else:
@@ -523,7 +546,7 @@ def selftest(g, agent):
              {"role": "assistant", "content": "Will do."}]
     # Tail budget scales with the window; a tiny target_ratio keeps it below the transcript.
     spec = {"alias": alias, "base": base, "ctx": ctx, "target_ratio": 0.02, "messages": msgs}
-    env = dict(os.environ, HERMES_HOME=home, HERMES_SP=HERMES_SP)
+    env = hermes_child_env({"HERMES_HOME": home, "HERMES_SP": HERMES_SP})
     t0 = time.time()
     r = subprocess.run([HERMES_PY, "-c", SELFTEST_CHILD], input=json.dumps(spec), capture_output=True,
                        text=True, env=env, timeout=7200)
@@ -558,7 +581,7 @@ def run_escalating(g, agent, light, swap_back, rest):
     home, _, _, _ = render(g, agent, base_override=base)
     warm_prompt(g, light, g["nodes"][light], home)
     print(f"hermes.sh: escalation proxy {base} light={light} targets={g['nodes'][light].get('escalates_to')}", file=sys.stderr)
-    return subprocess.call([HERMES_BIN] + rest, env=dict(os.environ, HERMES_HOME=home))
+    return subprocess.call([HERMES_BIN] + rest, env=hermes_child_env({"HERMES_HOME": home}))
 
 
 USAGE = __doc__.split("usage: ", 1)[1].strip()
@@ -616,7 +639,9 @@ def main(argv):
         return run_escalating(g, agent, light or name, swap_back, rest)
     ensure_server(g, name, n)
     warm_prompt(g, name, n, home)
-    os.environ["HERMES_HOME"] = home
+    launch_env = hermes_child_env({"HERMES_HOME": home})
+    os.environ.clear()
+    os.environ.update(launch_env)
     os.execv(HERMES_BIN, [HERMES_BIN] + rest)
 
 
