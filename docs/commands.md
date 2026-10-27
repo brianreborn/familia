@@ -127,6 +127,7 @@ Default front door is the gum home (`./familia`). This catalog is **fallback onl
 | Key | Label | POSIX | Windows |
 |---|---|---|---|
 | `test.unit` | Run the unit tests (installs pytest into .cache/pylib once) | `sh scripts/run-tests.sh` | — |
+| `ops.offline-improve` | Offline perf loop when fleet peers unreachable | `python3 scripts/offline_improve.py --loop` | — |
 | `test.offline` | Offline test plan (prints live steps; RUN=1 to run them) | `bash scripts/offline-test-plan.sh` | — |
 | `test.registry` | Benchmark records: best measured model per host and role | `python3 scripts/registry.py suggest --host <HOST> --role <ROLE>` | `python scripts\registry.py suggest --host <HOST> --role <ROLE>` |
 | `test.registry-summary` | Summary of every benchmark record | `python3 scripts/registry.py summarize` | `python scripts\registry.py summarize` |

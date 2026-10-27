@@ -199,6 +199,54 @@ def private_topology(graph: dict, host: str) -> dict:
         k: v for k, v in (g.get("pentests") or {}).items()
         if isinstance(v, dict) and v.get("node") in local_keys
     }
+    # Pentests / harnesses may reference agents hosted elsewhere in the fleet
+    # (e.g. pentest-ops on miryam). Keep those agent descriptors so private
+    # graphs still validate (ref=agents). Remap aliases onto local type names.
+    needed = set()
+    for block in (g.get("pentests") or {}).values():
+        if isinstance(block, dict) and isinstance(block.get("agent"), str):
+            needed.add(block["agent"])
+    for block in (g.get("harnesses") or {}).values():
+        if isinstance(block, dict) and isinstance(block.get("agent"), str):
+            needed.add(block["agent"])
+    for aname in sorted(needed):
+        if aname in agents:
+            continue
+        src = agents_in.get(aname)
+        if not isinstance(src, dict):
+            # Drop dangling refs rather than leave an unsatisfiable graph
+            for sec in ("pentests", "harnesses"):
+                for k, v in list((g.get(sec) or {}).items()):
+                    if isinstance(v, dict) and v.get("agent") == aname:
+                        if sec == "pentests":
+                            del g["pentests"][k]
+                        else:
+                            v = dict(v)
+                            v.pop("agent", None)
+                            g["harnesses"][k] = v
+            continue
+        cloned = copy.deepcopy(src)
+        cloned["host"] = host
+        amap = cloned.get("aliases") or {}
+        if isinstance(amap, dict) and aliases_out:
+            remapped = {}
+            for ak, al in amap.items():
+                if al in aliases_out:
+                    remapped[ak] = al
+                elif prefer_public_role(str(al)) in aliases_out:
+                    remapped[ak] = prefer_public_role(str(al))
+                elif "guardian" in aliases_out and ak in ("main", "auxiliary"):
+                    remapped[ak] = "guardian"
+                elif "coder" in aliases_out and ak in ("main", "auxiliary"):
+                    remapped[ak] = "coder"
+            if not remapped:
+                pref = "guardian" if "guardian" in aliases_out else (
+                    "coder" if "coder" in aliases_out else next(iter(aliases_out))
+                )
+                remapped = {"main": pref, "auxiliary": pref}
+            cloned["aliases"] = remapped
+        agents[aname] = cloned
+    g["agents"] = agents
     g["kv_channels"] = {
         k: v for k, v in (g.get("kv_channels") or {}).items()
         if isinstance(v, dict) and v.get("from") in local_keys and v.get("to") in local_keys

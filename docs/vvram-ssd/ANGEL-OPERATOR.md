@@ -62,3 +62,16 @@ scripts/hermes.sh --model coder --render-only   # private type name after genera
 ```
 
 **min_ctx:** `agents.hermes.min_ctx` is 64000. Angel `coder` ctx is **65536** (Brian #125).
+
+## Offline useful
+
+If angel loses fleet SSH peers, keep it busy with the offline improve loop
+([offline-improve.md](../offline-improve.md)):
+
+```sh
+python3 scripts/offline_improve.py --host angel --loop
+```
+
+Does not start Nanbeige; benches a small GGUF + host RAM, persists under
+`~/.local/state/familia/offline-improve/angel/`, retries reconnect with backoff.
+

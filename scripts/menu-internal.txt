@@ -72,3 +72,4 @@ scripts/pilot_hud.sh|Charm/ANSI mecha pilot HUD helpers sourced by familia_home 
 scripts/prefetch-first-models.sh|background first-try model fetch kicked by gum home / setup / proto_chat; not a menu item
 scripts/windows/install-gum.ps1|Windows install helper for gum.exe into %LOCALAPPDATA%\Programs\familia\bin; called by install.ps1
 scripts/windows/prefetch-first-models.ps1|Windows Start-Job wrapper for prefetch-first-models; kicked by familia-home / setup-goals
+scripts/offline_improve.py|on-host offline perf loop when fleet peers unreachable (docs/offline-improve.md); Continuity gum: optional setup.goals hook later — do not collide Continuity-owned rows
