@@ -25,6 +25,20 @@ One development tree. Each major project is a subdirectory checkout, left intact
 
 The top directory is only the graph: node types, the transaction block, `/local`, `/remote`, and the two-click installer. It pulls a piece by naming a hook, not by copying source into a neighbor. green-fleetz stays the swarm until it has a reason to be its own checkout.
 
+## Safe-mode bootstrap (build helper)
+
+The original goal still lives in **`code-bootstraps-llama.cpp`**: a tiny local AI
+that helps install packages and **build** software on every platform. Familia
+grew more layers around that component; it does not invent a parallel stack.
+
+- **Pinned GGUF (decision/route):** `Laya-Q8_0.gguf` in the code-bootstraps
+  models manifest (`pick=default`, role `decision` / alias `route`).
+- **Familia dispatch:** `install/deps.sh` + menu `setup.deps` / `setup.safe-build`;
+  graph alias `safe-build` → SmolLM2-135M chat face (`miryam-gpu-decision`) because
+  Laya is `/v1/systemone` only; prompt in `harness/safe-build/systemprompt.md`.
+- **Doc:** [docs/safe-mode-bootstrap.md](docs/safe-mode-bootstrap.md).
+
+
 ## Route names
 
 A name a person or an agent types is one English word for the job. `coder` stays. No vendor, no parameter count, no `-agent`, no `-speculator`. The directory `models/<name>/` is that same word. A GGUF filename and a draft model are not route names.

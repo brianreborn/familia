@@ -226,8 +226,8 @@ def test_search_choice_accepts_environment_assignments_and_forwarded_arguments()
 def test_long_group_is_paged_instead_of_showing_a_wall_of_items():
     r = menu("--pipe", "--dry-run", inp="1\n>\n<\nb\nq\n")
     assert r.returncode == 0, r.stderr
-    assert "Page 1 of 3 (items 1-7 of 16)" in r.stdout
-    assert "Page 2 of 3 (items 8-14 of 16)" in r.stdout
+    assert "Page 1 of 3 (items 1-7 of 17)" in r.stdout
+    assert "Page 2 of 3 (items 8-14 of 17)" in r.stdout
     first = r.stdout.split("Page 1 of 3", 1)[1].split("Page 2 of 3", 1)[0]
     assert len(re.findall(r"^  \d+\) ", first, re.M)) == 7
     assert ">) Next page" in first

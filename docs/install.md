@@ -34,7 +34,7 @@ Prefer the **AppImage** for single-click installs that should not require a term
 
 ## OS packages (every platform)
 
-**Safe-mode priority:** help the user install local packages and **build** before anything fancy. See [safe-mode-bootstrap.md](safe-mode-bootstrap.md). The build-helper AI lives in the pinned **code-bootstraps-llama.cpp**; familia dispatches into it.
+**Safe-mode priority:** help the user install local packages and **build** before anything fancy. See [safe-mode-bootstrap.md](safe-mode-bootstrap.md). The build-helper AI lives in the pinned **code-bootstraps-llama.cpp** (decision/route GGUF **`Laya-Q8_0.gguf`**; graph alias `safe-build` = SmolLM chat face); familia dispatches into it.
 
 ```
 sh install/deps.sh                       # detect platform; list present / missing
