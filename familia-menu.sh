@@ -92,7 +92,7 @@ group_desc() {
 
 workflow_paths() {
   say "ACTIONABLE PATHS (prerequisites still apply; follow one goal at a time):"
-  say "  New checkout: setup.licenses -> setup.configure -> setup.install (preview) ->"
+  say "  New checkout: setup.deps -> setup.licenses -> setup.configure -> setup.install (preview) ->"
   say "                setup.install-run -> hosts.start"
   say "  Existing graph node: models.check -> hosts.serve <NODE>"
   say "  Add a model: models.fetch-preview -> models.fetch -> add its node to graph.yaml ->"

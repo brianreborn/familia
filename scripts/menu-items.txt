@@ -14,6 +14,7 @@ setup.sync|Set up|Pinned parts: bring every part to its pin, together (fetches o
 setup.update|Set up|Update familia (git pull --ff-only), then sync the pinned parts|PY scripts/sync_pins.py --update|lic||python scripts\sync_pins.py --update
 setup.licenses|Set up|Review the licenses of everything you have chosen|PY scripts/licenses.py review|||python scripts\licenses.py review
 setup.settings|Set up|Change launcher settings (port, threads, context) on the terminal|sh scripts/configure.sh --interactive|||
+setup.deps|Set up|Install local OS packages this host needs (git, python, pytest, getconf, build tools)|sh install/deps.sh --install|||powershell -NoProfile -ExecutionPolicy Bypass -File install\windows\deps.ps1 -Install
 setup.install|Set up|Install or update this host (llama.cpp runtime, host entry): dry run first|sh INSTALLER --dry-run|||powershell -NoProfile -ExecutionPolicy Bypass -File install\windows\install.ps1 -DryRun
 setup.install-run|Set up|Install or update this host for real (asks you to accept licenses)|sh INSTALLER|||powershell -NoProfile -ExecutionPolicy Bypass -File install\windows\install.ps1
 setup.install-cli|Set up|Put familia on your PATH (~/.local/bin/familia shim): preview, writes nothing|sh scripts/install-cli.sh --dry-run|||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-cli.ps1 -WhatIf

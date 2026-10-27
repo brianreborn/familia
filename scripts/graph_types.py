@@ -69,7 +69,7 @@ def lookup(g, sec, key):
     return (g.get(sec) or {}).get(key) if isinstance(key, str) else None
 
 HOST_FACTS = ("os", "cpu", "threads", "ram_mib", "gpus", "reserve_ram_mib")
-GPU_BACKENDS = {"cuda", "cuda-sm11-ptx", "vulkan", "sycl", "metal", "opencl", "rocm", "none"}
+GPU_BACKENDS = {"cuda", "cuda-sm11-ptx", "vulkan", "sycl", "metal", "opencl", "rocm", "auto", "none"}  # auto=prefer GPU when measured; none only if truly unusable
 GPU_KEYS = {"vendor", "model", "vram_mib", "backend", "backend_status", "compute_capability", "driver", "measured", "notes"}
 GPU_REQUIRED = ("vendor", "model", "vram_mib", "backend", "backend_status", "measured")
 WINDOWS_KEYS = ("repo_path", "models_path", "runtime_path", "startup", "wake")
@@ -150,8 +150,8 @@ def check_runtime(g, name, r, errs):
             errs.append(f"runtimes.{name}: commit {c!r} is not a git sha (a branch name is not a pin)")
     b = r.get("backends")
     if isinstance(b, list):
-        bad = [x for x in b if x not in GPU_BACKENDS | {"cpu"}]
-        if bad: errs.append(f"runtimes.{name}.backends: unknown {bad} (allowed: cpu + {sorted(GPU_BACKENDS - {'none'})})")
+        bad = [x for x in b if x not in (GPU_BACKENDS | {"cpu"}) - {"none", "auto"}]
+        if bad: errs.append(f"runtimes.{name}.backends: unknown {bad} (allowed: cpu + {sorted(GPU_BACKENDS - {'none', 'auto'})})")
         if "cpu" not in b: errs.append(f"runtimes.{name}.backends: must include cpu")
     st = r.get("spec_types")
     if isinstance(st, list):
@@ -229,7 +229,7 @@ def check_offload(name, n, h, r, errs):
     for k in o:
         if k not in ("backend", "ngl", "split", "main_gpu", "vram_reserve_mib"): errs.append(f"{w}: unknown field {k!r}")
     be, ngl, mg = o.get("backend"), o.get("ngl"), o.get("main_gpu")
-    if be not in GPU_BACKENDS | {"cpu"} or be == "none": errs.append(f"{w}.backend: {be!r} must be cpu or one of {sorted(GPU_BACKENDS - {'none'})}")
+    if be not in GPU_BACKENDS | {"cpu"} or be in ("none", "auto"): errs.append(f"{w}.backend: {be!r} must be cpu or one of {sorted(GPU_BACKENDS - {'none', 'auto'})}")
     if o.get("split") not in SPLIT_MODES: errs.append(f"{w}.split: {o.get('split')!r} not one of {sorted(SPLIT_MODES)}")
     if not isinstance(ngl, int) or isinstance(ngl, bool) or ngl < 0: errs.append(f"{w}.ngl: expected integer >= 0"); return
     if not isinstance(mg, int) or isinstance(mg, bool) or mg < 0: errs.append(f"{w}.main_gpu: expected integer >= 0"); return
