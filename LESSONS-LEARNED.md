@@ -207,3 +207,11 @@ Agents and automation must **never** start llama-server / familia graph servers 
 
 ## L-start-timeout. Do not wall-clock-fail slow model loads (2026-10-27)
 `familia-graph` used to abort with “did not become ready within 240 seconds” while Nanbeige mmap-loaded under nightly I/O. Node ready-wait now defaults to **unlimited** (`FAMILIA_START_TIMEOUT=0`); it only fails if the child exits. Set a positive value only when you want a hard cap.
+
+## L-server-tools. `--tools` is launch-only; git fix ≠ live argv (2026-10-27)
+
+M0 empty llama-ui Server Tools was fixed in `15d67b1` by setting `angel-coder.server_tools: all` so `validate_graph --args` / `serve.sh` emit `--tools all`. **It came back after that commit** whenever angel-coder exited and the replacement process was started without that flag (crash + emergency hand-start, starting from a stale `generated/graph-*.yaml` that predates `server_tools` / omits `angel-coder`, or judging “fixed” from graph.yaml while the running argv still lacked `--tools`).
+
+- **Symptom:** llama-ui Server Tools panel empty; `GET /tools` → 403 `feature_disabled`. `/v1/models` staying `capabilities:["completion"]` is normal and is not the check.
+- **Why:** llama.cpp enables server tools only at process start. Graph YAML does not hot-patch a live or crashed server.
+- **Prevent:** always start via `DETACH_MODE=screen-attached` + `start.sh` / `serve.sh` against **live** `graph.yaml` (not a stale `generated/graph-angel.yaml`). After every restart, confirm `ps` argv contains `--tools` and `GET http://127.0.0.1:<port>/tools` returns 200. Regenerate host graphs after schema changes. Do not hand-build llama-server argv without copying `validate_graph.py --args <node>` output.

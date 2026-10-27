@@ -9,7 +9,7 @@ Stdlib only. Usage:
                   [--reserve-mib N] [--dry-run] [--force]
 An explicit --kind is required when the graph has no known kind for this host.
 """
-import argparse, os, platform, re, subprocess, sys
+import argparse, os, platform, re, socket, subprocess, sys
 
 
 def _sysctl(name):

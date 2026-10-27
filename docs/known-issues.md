@@ -30,4 +30,8 @@
   - **Fix:** set `nodes.<name>.server_tools: all` (or a tool-name list) on loopback-bound
     nodes; `validate_graph`/`serve.sh` emit `--tools …`. `angel-coder` has this. Restart
     the node (DETACH_MODE=screen-attached) after changing the graph.
+  - **Recurrence (2026-10-27):** `--tools` is launch-only. After a crash/restart, an argv
+    without `--tools` (hand-start, or stale `generated/graph-*.yaml`) empties the panel again
+    even though `graph.yaml` still has `server_tools: all`. Verify live argv + `GET /tools`,
+    not only the graph field. See LESSONS-LEARNED `L-server-tools`.
 
