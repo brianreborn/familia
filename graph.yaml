@@ -767,10 +767,11 @@ aliases:
   pentest: {node: miryam-pentest, gateway: roomz}
   general: {node: coder, gateway: roomz}
   embed: {node: embed, gateway: roomz}
-  # safe-build: tiny always-on *build helper* (docs/safe-mode-bootstrap.md).
-  # Home of the safe-mode AI is pinned code-bootstraps-llama.cpp (route / light chat),
-  # not a Hermes-class coder. Points at SmolLM decision-size until a dedicated node exists.
-  safe-build: {node: miryam-gpu-decision, gateway: roomz}  # SmolLM decision-size; planned node OK
+  # safe-build: tiny *build helper* (docs/safe-mode-bootstrap.md, harness/safe-build/).
+  # code-bootstraps pin (decision/route): Laya-Q8_0.gguf (ggml-org/Laya-GGUF; /v1/systemone).
+  # Chat face: SmolLM2-135M decision-size — Laya cannot chat about deps/builds.
+  # Optional follow-up: dedicated always-on CPU node (planned → active).
+  safe-build: {node: miryam-gpu-decision, gateway: roomz}  # SmolLM chat stand-in; planned OK
 
 
 agents:

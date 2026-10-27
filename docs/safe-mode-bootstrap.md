@@ -27,20 +27,46 @@ sh install/deps.sh --install       # install missing (asks)
 sh install/deps.sh --yes --install --profile build   # also cmake/ninja/compilers
 ```
 
-Menu: **`setup.deps`** (“Install local OS packages this host needs”).
+Menu: **`setup.deps`** (“Install local OS packages this host needs”),
+**`setup.safe-build`** (show the pinned build-helper GGUF and how to reach it).
+
+## Pinned build-helper GGUF (code-bootstraps)
+
+| Field | Value |
+|---|---|
+| Role in code-bootstraps | **`decision`** (router alias **`route`**) |
+| File | **`Laya-Q8_0.gguf`** |
+| HF | [`ggml-org/Laya-GGUF`](https://huggingface.co/ggml-org/Laya-GGUF) @ `da4b4753d62197659d8c90103cd4c43bef9afea6` |
+| Size / quant | ~449 MB, Q8_0 |
+| sha256 | `c06528c5746d3bb8baa72a27938be95abbfd0b226f8471e8a9e365ed0bb066d2` |
+| Manifest | `code-bootstraps-llama.cpp/config/models-manifest.json` (`pick=default`, `role=decision`) |
+| Endpoint | `POST /v1/systemone` (not chat) |
+
+This is already the **default** decision model in the pinned component — no new
+download. Familia does not re-host the weights; it syncs the pin via `pins.txt`
+and dispatches (`./start.sh --bootstrap`, deps helpers, graph alias).
+
+### Chat face for build help (familia graph)
+
+Laya evaluates the whole prompt in one batch for **routing**; it cannot hold a
+deps/build conversation. For that, graph alias **`safe-build`** points at the
+existing SmolLM2-135M decision-size node **`miryam-gpu-decision`**
+(`SmolLM2-135M-Instruct.Q4_0`, role `decision`) — same size class, already
+verified on miryam/phones. System text:
+[`harness/safe-build/systemprompt.md`](../harness/safe-build/systemprompt.md).
+
+When using code-bootstraps alone (`./start.sh` / `--bootstrap`), light **chat**
+is the `general` role (default `LFM2.5-1.2B-Instruct-Q4_K_M`; weakest devices
+may use `--fallback` → `LFM2.5-350M-Q4_K_M`). Do not activate a Hermes-class
+coder for safe-mode.
 
 ## What “safe-mode model” means
 
-- **Always-on, small, CPU-friendly** — same size class as the existing SmolLM2-135M
-  **decision** nodes (`box-decision`, phone/qodesh decision cards) and
-  code-bootstraps’ **route** / light **chat** models.
+- **Always-on, small, CPU-friendly** — decision/route size (Laya) or SmolLM-scale
+  chat for Q&A; never a full coding agent.
 - Helps **install packages, configure toolchains, and build** (llama.cpp, local
-  tools). It does **not** need to be a strong coder.
+  tools).
 - Non-goals: full Hermes-class coding agent, fleet orchestration, pentest roles.
-
-The graph stub for a dedicated `safe-build` alias is noted next to `aliases:` in
-`graph.yaml` (points at the decision-size pattern / code-bootstraps route). Do not
-activate a heavy model for this role.
 
 ## Termux packages (phones)
 
@@ -67,13 +93,16 @@ labels, not `-ngl` targets. See `docs/graph-types.md` and centos10-bigram (#113)
 - `install/linux/install.sh` calls the dispatcher before dying on missing tools.
 - Termux installer installs the expanded PKGS by default.
 
-## What’s left (model itself)
+## Path today
 
-1. Pin / document which code-bootstraps GGUF is the safe-mode build helper (route or
-   smallest chat).
-2. Optional always-on `safe-build` node (planned → active) on weak hosts, CPU only.
-3. Prompt / system text: “help the user install packages and build; do not pretend
-   to be a full coding agent.”
-4. Cross-link from code-bootstraps README back to this doc when the pin moves.
+1. **`setup.deps`** / `sh install/deps.sh --install [--profile build]`
+2. **`setup.safe-build`** — print the Laya pin + SmolLM chat-face notes
+3. Build / serve from the pin: `./start.sh --bootstrap` (code-bootstraps router)
+   or graph gateway alias **`safe-build`** once `miryam-gpu-decision` is active
 
-Until then: **`setup.deps` + code-bootstraps `./start.sh`** is the safe-mode path.
+## Still optional (follow-up)
+
+1. Always-on dedicated `safe-build` **CPU** node (planned → active) on weak hosts —
+   beyond the alias stub → `miryam-gpu-decision`.
+2. Cross-link from the **code-bootstraps** README back here if/when the decision
+   default GGUF moves off Laya.
