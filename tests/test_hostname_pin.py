@@ -58,3 +58,25 @@ def test_select_host_uses_pin_when_os_hostname_unknown(pin_env, monkeypatch):
         }
     }
     assert start_graph.select_host(g, environ=pin_env, hostname="localhost") == "phone7"
+
+
+def test_select_host_ignores_stale_pin_when_os_hostname_matches(pin_env, monkeypatch):
+    """Pin says shalom but OS hostname is miryam → use miryam (not empty shalom topology)."""
+    hostname_pin.write_pin("shalom", environ=pin_env)
+    monkeypatch.setenv("XDG_STATE_HOME", pin_env["XDG_STATE_HOME"])
+    monkeypatch.delenv("FAMILIA_HOST", raising=False)
+    g = {
+        "hosts": {
+            "shalom": {"kind": "unknown", "local_names": ["shalom.local"]},
+            "miryam": {"kind": "laptop", "local_names": ["miryam"]},
+            "angel": {"kind": "desktop", "local_names": ["gabriel", "angel"]},
+        }
+    }
+    assert start_graph.select_host(g, environ=pin_env, hostname="miryam") == "miryam"
+    assert start_graph.select_host(g, environ=pin_env, hostname="angel") == "angel"
+    # Explicit pin still wins when OS does not match any host
+    assert start_graph.select_host(g, environ=pin_env, hostname="localhost") == "shalom"
+    # FAMILIA_HOST / --host still beat OS
+    env = dict(pin_env, FAMILIA_HOST="shalom")
+    assert start_graph.select_host(g, environ=env, hostname="miryam") == "shalom"
+    assert start_graph.select_host(g, requested="shalom", environ=pin_env, hostname="miryam") == "shalom"

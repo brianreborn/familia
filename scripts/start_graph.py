@@ -29,15 +29,66 @@ class StartupError(RuntimeError):
     pass
 
 
+def _os_host_matches(graph, hostname):
+    """Unique graph host id for this OS hostname, or None if ambiguous/unknown."""
+    if not hostname:
+        return None
+    short = hostname.strip().split(".", 1)[0]
+    hosts = graph.get("hosts", {}) or {}
+    if short in hosts:
+        return short
+    matches = [
+        name for name, h in hosts.items()
+        if isinstance(h, dict) and short in (h.get("local_names") or [])
+    ]
+    if len(matches) == 1:
+        return matches[0]
+    return None
+
+
+def _pin_claims_hostname(graph, pin, hostname):
+    """True if hosts.<pin> is this machine (key or local_names)."""
+    if not pin or not hostname:
+        return False
+    short = hostname.strip().split(".", 1)[0]
+    hosts = graph.get("hosts", {}) or {}
+    h = hosts.get(pin)
+    if not isinstance(h, dict):
+        return False
+    if pin == short:
+        return True
+    return short in (h.get("local_names") or [])
+
+
 def select_host(graph, requested=None, environ=None, hostname=None):
     env = os.environ if environ is None else environ
+    os_name = hostname if hostname is not None else socket.gethostname()
     try:
-        from hostname_pin import resolve_candidate
-        candidate = resolve_candidate(requested=requested, environ=env, hostname=hostname)
+        from hostname_pin import resolve_candidate, read_pin
+        candidate = resolve_candidate(requested=requested, environ=env, hostname=os_name)
+        pinned = None if (requested or env.get("FAMILIA_HOST")) else read_pin(env)
     except ImportError:
-        raw = requested or env.get("FAMILIA_HOST") or (hostname or socket.gethostname())
+        raw = requested or env.get("FAMILIA_HOST") or os_name
         candidate = raw.strip().split(".", 1)[0]
+        pinned = None
     hosts = graph.get("hosts", {}) or {}
+    # Stale pin must not steal identity: if OS hostname uniquely maps to another
+    # declared host, prefer that over a pin that does not claim this machine.
+    os_id = _os_host_matches(graph, os_name)
+    if (
+        pinned
+        and os_id
+        and pinned != os_id
+        and not _pin_claims_hostname(graph, pinned, os_name)
+        and not requested
+        and not env.get("FAMILIA_HOST")
+    ):
+        print(
+            f"familia-graph: ignoring hostname pin {pinned!r} "
+            f"(OS hostname {os_name!r} is graph host {os_id!r})",
+            file=sys.stderr,
+        )
+        candidate = os_id
     if candidate in hosts:
         return candidate
     # OS hostname may differ from the graph key (e.g. grok-bot-vm-* -> box)
