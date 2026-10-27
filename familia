@@ -1,18 +1,17 @@
 #!/bin/sh
-# familia: the front door. With no arguments it opens the menu; with a command it runs that
-# step directly, exactly as the menu would (same license review, same prompts for values).
-# Usage:
-#   ./familia                        the menu
-#   ./familia COMMAND [VALUE...] [ARG...]   e.g. familia serve coder, familia model fetch ORG/NAME Q4_K_M
-#   ./familia FOO=value COMMAND [ARG...]    set environment for one command
-#   ./familia help [COMMAND]         every command, or what one runs (also: COMMAND --help)
-#   ./familia --dry-run COMMAND ...  print the exact command, run nothing
-#   ./familia search WORD [--run N]  find a command; also: list, run KEY, menu, help --man
-# Examples: ./familia skills enable green-probe --dry-run
-#           ./familia hermes --model coder
-# The commands come from scripts/menu-items.txt and scripts/cli-commands.txt; man ./man/familia.1
+# familia: the front door.
+#   ./familia                         Charm/gum home (Talk to the protomodel first)
+#   ./familia --legacy-menu | menu    old familia-menu.sh catalog (fallback only)
+#   FAMILIA_LEGACY_MENU=1 ./familia   same legacy catalog
+#   ./familia COMMAND [VALUE...]      CLI (same as before; scripts/cli-commands.txt)
+#   ./familia --dry-run COMMAND ...   print the exact command, run nothing
+#   ./familia help [COMMAND]          every command, or what one runs
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# Charm gum often lives in ~/.local/bin on this box
+PATH="${HOME:-}/.local/bin:${PATH:-}"
+export PATH
+
 while [ $# -gt 0 ]; do
   case "$1" in
     *=*)
@@ -24,6 +23,33 @@ while [ $# -gt 0 ]; do
     *) break ;;
   esac
 done
-[ $# -gt 0 ] || exec bash "$ROOT/familia-menu.sh"
-case "$1" in /?*) w=${1#/}; shift; set -- search "$w" "$@" ;; esac
+
+# No args → new gum home (unless legacy env override)
+if [ $# -eq 0 ]; then
+  if [ "${FAMILIA_LEGACY_MENU:-}" = 1 ]; then
+    exec bash "$ROOT/familia-menu.sh"
+  fi
+  exec sh "$ROOT/scripts/familia_home.sh"
+fi
+
+# Explicit legacy / home switches before CLI resolve
+case "$1" in
+  --legacy-menu)
+    shift
+    exec bash "$ROOT/familia-menu.sh" "$@"
+    ;;
+  --home)
+    shift
+    exec sh "$ROOT/scripts/familia_home.sh" "$@"
+    ;;
+  menu)
+    # keep `familia menu` as the documented legacy entry (also handled in --cli)
+    shift
+    exec bash "$ROOT/familia-menu.sh" "$@"
+    ;;
+  /?*)
+    w=${1#/}; shift; set -- search "$w" "$@"
+    ;;
+esac
+
 exec bash "$ROOT/familia-menu.sh" --cli "$@"

@@ -26,90 +26,40 @@ Commands marked (licenses first) run \fBscripts/licenses.py gate\fR before anyth
 .SH COMMANDS
 .SS Set up
 .TP
-\fBpanel\fR
-Configure in a simple window (mouse, keyboard or switch friendly).
+\fBfirst\-time\fR
+First\-time setup on this machine (deps → licenses → install → PATH).
 .br
-Runs: \fBpython3 scripts/panel.py\fR
-.TP
-\fBsetup\fR
-Set up this checkout: sync the pinned parts and the git\-pull hooks (licenses first).
-.br
-Runs: \fBsh scripts/configure.sh\fR
-.TP
-\fBsync\-preview\fR
-Pinned parts: show what is behind pins.txt and would move (no changes).
-.br
-Runs: \fBpython3 scripts/sync_pins.py \-\-dry\-run\fR
-.TP
-\fBsetup sync\fR
-Pinned parts: bring every part to its pin, together (fetches only missing pins) (licenses first).
-.br
-Runs: \fBpython3 scripts/sync_pins.py\fR
+Runs: \fBsh scripts/setup_goals.sh first\-time\fR
 .TP
 \fBsetup update\fR
-Update familia (git pull \-\-ff\-only), then sync the pinned parts (licenses first).
+Update this checkout (git pull \-\-ff\-only, then sync pins) (licenses first).
 .br
 Runs: \fBpython3 scripts/sync_pins.py \-\-update\fR
 .TP
 \fBlicenses review\fR
-Review the licenses of everything you have chosen.
+Review / accept licenses.
 .br
 Runs: \fBpython3 scripts/licenses.py review\fR
 .TP
 \fBsettings\fR
-Change launcher settings (port, threads, context) on the terminal.
+Change launcher settings (terminal; never the deleted panel).
 .br
 Runs: \fBsh scripts/configure.sh \-\-interactive\fR
 .TP
-\fBdeps\fR
-Install local OS packages this host needs (git, python, pytest, getconf, build tools).
+\fBsync\-goal\fR
+Sync pinned parts only (asks preview vs apply) (licenses first).
 .br
-Runs: \fBsh install/deps.sh \-\-install\fR
+Runs: \fBsh scripts/setup_goals.sh sync\-pins\fR
 .TP
 \fBsafe\-build\fR
-Safe\-mode build helper: show pinned Laya GGUF + how to get deps/build help.
+Safe\-mode / offline build help.
 .br
 Runs: \fBsh scripts/safe\-build\-help.sh\fR
 .TP
-\fBinstall preview\fR
-Install or update this host (llama.cpp runtime, host entry): dry run first.
+\fBremove\-path\fR
+Remove familia from PATH (danger; ).
 .br
-Runs: \fBsh install/linux/install.sh \-\-dry\-run\fR
-.TP
-\fBinstall\fR
-Install or update this host for real (asks you to accept licenses).
-.br
-Runs: \fBsh install/linux/install.sh\fR
-.TP
-\fBsetup install\-cli\fR
-Put familia on your PATH (~/.local/bin/familia shim): preview, writes nothing.
-.br
-Runs: \fBsh scripts/install\-cli.sh \-\-dry\-run\fR
-.TP
-\fBinstall\-cli\-run\fR
-Put familia on your PATH for real (2\-line shim; the code stays in this checkout).
-.br
-Runs: \fBsh scripts/install\-cli.sh\fR
-.TP
-\fBpath\-add\fR
-Add ~/.local/bin to PATH in ~/.profile (shows the marked block, asks first).
-.br
-Runs: \fBsh scripts/install\-cli.sh path \-\-add\fR
-.TP
-\fBpath\-remove\fR
-Remove familia's PATH block from ~/.profile (only that block).
-.br
-Runs: \fBsh scripts/install\-cli.sh path \-\-remove\fR
-.TP
-\fBcli\-status\fR
-Show where familia is installed on PATH and what was recorded.
-.br
-Runs: \fBsh scripts/install\-cli.sh status\fR
-.TP
-\fBsetup uninstall\-cli\fR
-Take familia off your PATH: remove exactly the recorded files (preview, then asks).
-.br
-Runs: \fBsh scripts/install\-cli.sh uninstall\fR
+Runs: \fBsh scripts/setup_goals.sh remove\-path\fR
 .SS Skills
 .TP
 \fBskills menu\fR \fI<AGENT>\fR
@@ -128,30 +78,46 @@ Show one skill: license, where it lives, what it adds.
 Runs: \fBpython3 scripts/skills.py show <SKILL>\fR
 .TP
 \fBskills vendor\fR \fI<SKILL>\fR
-Show the plan to bring a survey skill into green\-zkillz (no changes).
+Bring a survey skill into green\-zkillz.
 .br
-Runs: \fBpython3 scripts/skills.py vendor <SKILL> \-\-dry\-run\fR
+Runs: \fBpython3 scripts/skills.py vendor <SKILL>\fR
 .TP
 \fBskills validate\fR
 Check the skills catalog and the skills in graph.yaml.
 .br
 Runs: \fBpython3 scripts/skills.py validate\fR
+.SS Reach tools (Agent\-Reach)
+.TP
+\fBreach status\fR
+Agent\-Reach: pin checkout, CLI, which agents are opted in.
+.br
+Runs: \fBpython3 scripts/agent_reach.py status\fR
+.TP
+\fBenable\fR \fI<AGENT>\fR
+Opt an agent into Agent\-Reach (writes reaches: in graph.yaml) (licenses first).
+.br
+Runs: \fBpython3 scripts/agent_reach.py enable \-\-agent <AGENT>\fR
+.TP
+\fBdisable\fR \fI<AGENT>\fR
+Remove an agent from Agent\-Reach.
+.br
+Runs: \fBpython3 scripts/agent_reach.py disable \-\-agent <AGENT>\fR
+.TP
+\fBlink\fR \fI<AGENT>\fR
+Link Agent\-Reach skill + CLI wrapper into an agent's HERMES_HOME.
+.br
+Runs: \fBpython3 scripts/agent_reach.py link \-\-agent <AGENT>\fR
+.TP
+\fBmcp\fR
+Print mcpServers JSON for llama UI / code\-bootstraps.
+.br
+Runs: \fBpython3 scripts/agent_reach.py mcp\-example\fR
 .SS Models
 .TP
-\fBmodel add preview\fR \fI<PATH>\fR
-Add a model from a Hugging Face folder or a .gguf (dry run).
-.br
-Runs: \fBscripts/add\-model.sh <PATH> \-\-dry\-run\fR
-.TP
 \fBmodel add\fR \fI<PATH>\fR
-Add a model from a folder or .gguf for real (writes manifest and preset).
+Add a model from a Hugging Face folder or a .gguf.
 .br
 Runs: \fBscripts/add\-model.sh <PATH>\fR
-.TP
-\fBmodel fetch preview\fR \fI<REPO>\fR \fI<QUANT>\fR
-Download a model from Hugging Face: preview (no download).
-.br
-Runs: \fBscripts/add\-model.sh \-\-fetch <REPO> \-\-quant <QUANT> \-\-dry\-run\fR
 .TP
 \fBmodel fetch\fR \fI<REPO>\fR \fI<QUANT>\fR
 Download and add a model from Hugging Face (asks you to accept its license).
@@ -231,7 +197,7 @@ Show which agents have Harness2 and in which mode.
 Runs: \fBpython3 scripts/harness2.py status\fR
 .TP
 \fBharness2 set\fR \fI<AGENT>\fR \fI<MODE>\fR
-Choose target agent and mode (off / propose / apply) (licenses first).
+Set Harness² mode for any agent (hermes, llama UI, or other; off / propose / apply) (licenses first).
 .br
 Runs: \fBpython3 scripts/harness2.py set \-\-agent <AGENT> \-\-mode <MODE>\fR
 .TP
@@ -239,6 +205,11 @@ Runs: \fBpython3 scripts/harness2.py set \-\-agent <AGENT> \-\-mode <MODE>\fR
 Review proposals: list, accept or revert.
 .br
 Runs: \fBpython3 scripts/harness2.py review\fR
+.TP
+\fBterminal\-rsi\fR \fI<TARGET>\fR
+Terminal\-RSI round for a harness target (proposals only; review with harness2.review) (licenses first).
+.br
+Runs: \fBpython3 scripts/terminal_rsi.py \-\-target <TARGET>\fR
 .SS Test & benchmark
 .TP
 \fBtest\fR
@@ -272,11 +243,6 @@ One snapshot of every host, then exit.
 .br
 Runs: \fBsh familia\-monitor \-\-once\fR
 .TP
-\fBstart\-preview\fR
-Preview graph startup on this host (no services or remote connections).
-.br
-Runs: \fBpython3 scripts/start_graph.py \-\-dry\-run\fR
-.TP
 \fBstart\fR
 Start the model server on this machine from graph.yaml (licenses first).
 .br
@@ -287,15 +253,20 @@ Start one graph node's model server (exact launch parameters from the graph) (li
 .br
 Runs: \fBsh scripts/serve.sh <NODE>\fR
 .TP
-\fBhost measure preview\fR \fI<HOST>\fR \fI<KIND>\fR
-Preview this machine's measured facts (identify unknown host kind).
-.br
-Runs: \fBpython3 scripts/host_measure.py \-\-name <HOST> \-\-kind <KIND> \-\-dry\-run\fR
-.TP
 \fBhost measure\fR \fI<HOST>\fR \fI<KIND>\fR
 Measure and write this host (identify kind; GPU inventory stays unknown until measured).
 .br
 Runs: \fBpython3 scripts/host_measure.py \-\-name <HOST> \-\-kind <KIND> \-\-force\fR
+.TP
+\fBpin\fR \fI<HOST>\fR
+Pin this machine's graph host name (menus/start auto\-use it).
+.br
+Runs: \fBpython3 scripts/hostname_pin.py set <HOST>\fR
+.TP
+\fBpin\-show\fR
+Show pinned graph host (or empty).
+.br
+Runs: \fBpython3 scripts/hostname_pin.py get\fR
 .TP
 \fBgraph generate\fR \fI<HOST>\fR
 Write a per\-host graph to generated/graph\-HOST.yaml.
@@ -337,11 +308,6 @@ On this phone: bring Gemini or Bixby to the front (sends nothing).
 .br
 Runs: \fBpython3 scripts/termux/system_agent.py open \-\-provider <PROVIDER>\fR
 .TP
-\fBphone agent ask preview\fR \fI<TEXT>\fR
-On this phone: ask Gemini, preview only (shows the commands, sends nothing).
-.br
-Runs: \fBpython3 scripts/termux/system_agent.py ask \-\-provider gemini \-\-text <TEXT> \-\-dry\-run\fR
-.TP
 \fBphone agent ask\fR \fI<TEXT>\fR
 On this phone: ask Gemini (CLOUD: your text goes to Google; asks first) (licenses first).
 .br
@@ -364,9 +330,9 @@ validate_graph: also verify model sha256 and runtimes (slow).
 Runs: \fBpython3 scripts/validate_graph.py \-\-graph graph.yaml \-\-verify\-sha \-\-check\-runtimes\fR
 .TP
 \fBgraph edit\fR \fI<ASSIGN>\fR
-modify_graph: assign a model to a node (preview; a real run drops graph.yaml comments).
+modify_graph: assign a model to a node (rewrites graph.yaml).
 .br
-Runs: \fBpython3 scripts/modify_graph.py \-\-assign\-model <ASSIGN> \-\-dry\-run\fR
+Runs: \fBpython3 scripts/modify_graph.py \-\-assign\-model <ASSIGN>\fR
 .TP
 \fBmodel db list\fR
 Model database: list entries.
@@ -379,14 +345,14 @@ Model database: show one entry.
 Runs: \fBpython3 scripts/model_db.py show <ID>\fR
 .TP
 \fBmodel db damp\fR \fI<REPO>\fR
-Model database: add a repo without weights (preview).
+Model database: add a repo without weights (damp).
 .br
-Runs: \fBpython3 scripts/model_db.py damp <REPO> \-\-dry\-run\fR
+Runs: \fBpython3 scripts/model_db.py damp <REPO>\fR
 .TP
 \fBmodel db backfill\fR
-Model database: backfill entries for models in the manifest (preview).
+Model database: backfill entries for models in the manifest.
 .br
-Runs: \fBpython3 scripts/model_db.py backfill \-\-dry\-run\fR
+Runs: \fBpython3 scripts/model_db.py backfill\fR
 .TP
 \fBmodel flags\fR \fI<BUILD>\fR \fI<FLAG>\fR
 llama_flags: does a pinned llama.cpp build have a flag?.
@@ -394,9 +360,9 @@ llama_flags: does a pinned llama.cpp build have a flag?.
 Runs: \fBpython3 scripts/llama_flags.py show <BUILD> <FLAG>\fR
 .TP
 \fBmodel scale\-down\fR
-Scale\-down (opt\-in smaller models): preview.
+Scale\-down (opt\-in smaller models) — apply.
 .br
-Runs: \fBpython3 scripts/scale_down.py \-\-dry\-run\fR
+Runs: \fBpython3 scripts/scale_down.py\fR
 .TP
 \fBlicenses json\fR
 All licenses as JSON (records nothing).
@@ -475,15 +441,66 @@ C2C test: move a KV cache between two local servers.
 .br
 Runs: \fBsh scripts/c2c/loopback_test.sh <SERVER> <GGUF>\fR
 .TP
-\fBuninstall preview\fR
-Uninstall from this host: preview (models are kept).
+\fBuninstall\fR
+Uninstall from this host (models are kept).
 .br
-Runs: \fBsh install/linux/install.sh \-\-uninstall \-\-dry\-run\fR
+Runs: \fBsh install/linux/install.sh \-\-uninstall\fR
 .TP
 \fBpoudriere\fR
-FreeBSD: build the familia package with poudriere (preview).
+FreeBSD: build the familia package with poudriere.
 .br
-Runs: \fBsh scripts/freebsd/poudriere\-build.sh \-n\fR
+Runs: \fBsh scripts/freebsd/poudriere\-build.sh\fR
+.TP
+\fBsetup\fR
+Low\-level: set up this checkout (sync pins + git\-pull hooks) (licenses first).
+.br
+Runs: \fBsh scripts/configure.sh\fR
+.TP
+\fBsetup sync\fR
+Low\-level: bring every pinned part to its pin (licenses first).
+.br
+Runs: \fBpython3 scripts/sync_pins.py\fR
+.TP
+\fBdeps\fR
+Low\-level: install local OS packages this host needs.
+.br
+Runs: \fBsh install/deps.sh \-\-install\fR
+.TP
+\fBinstall\fR
+Low\-level: install or update this host for real.
+.br
+Runs: \fBsh install/linux/install.sh\fR
+.TP
+\fBsetup install\-cli\fR
+Low\-level: put familia on PATH for real.
+.br
+Runs: \fBsh scripts/install\-cli.sh\fR
+.TP
+\fBpath\-add\fR
+Low\-level: add ~/.local/bin to PATH in ~/.profile.
+.br
+Runs: \fBsh scripts/install\-cli.sh path \-\-add\fR
+.TP
+\fBpath\-remove\fR
+Low\-level: remove familia PATH block from ~/.profile.
+.br
+Runs: \fBsh scripts/install\-cli.sh path \-\-remove\fR
+.TP
+\fBcli\-status\fR
+Low\-level: show where familia is on PATH.
+.br
+Runs: \fBsh scripts/install\-cli.sh status\fR
+.TP
+\fBsetup uninstall\-cli\fR
+Low\-level: take familia off PATH (asks first).
+.br
+Runs: \fBsh scripts/install\-cli.sh uninstall\fR
+.SS ★ Required checks (must\-run)
+.TP
+\fBrequired\fR
+★ Run ALL three critical bash smokes for real (fleet + nexus + bt).
+.br
+Runs: \fBsh scripts/required_checks.sh\fR
 .SS Help
 .TP
 \fBquickstart\fR
@@ -566,6 +583,21 @@ Runs: \fBpython3 scripts/harness2.py\fR \fIARG\fR...
 any registry.py command: add, query, summarize, suggest, match, power, lint.
 .br
 Runs: \fBpython3 scripts/registry.py\fR \fIARG\fR...
+.TP
+\fBhome\fR \fIARG\fR...
+.
+.br
+Runs: \fBsh scripts/familia_home.sh\fR \fIARG\fR...
+.TP
+\fBproto\-chat\fR \fIARG\fR...
+.
+.br
+Runs: \fBsh scripts/proto_chat.sh\fR \fIARG\fR...
+.TP
+\fBrequired\-checks\fR \fIARG\fR...
+.
+.br
+Runs: \fBsh scripts/required_checks.sh\fR \fIARG\fR...
 .SS Built\-in commands
 .TP
 \fBhelp\fR [\fICOMMAND\fR]

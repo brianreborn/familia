@@ -11,7 +11,8 @@ MENU = os.path.join(ROOT, "familia-menu.sh")
 ITEMS_FILE = os.path.join(ROOT, "scripts", "menu-items.txt")
 GROUPS = ["Set up", "Skills", "Reach tools (Agent-Reach)", "Models", "Agents (hermes)",
           "Self-improving harness (Harness2)", "Test & benchmark", "Hosts",
-          "Advanced: models & graph", "Advanced: agents", "Advanced: hosts & benchmarks", "Help"]
+          "Advanced: models & graph", "Advanced: agents", "Advanced: hosts & benchmarks",
+          "★ Required checks (must-run)", "Help"]
 INTERNAL_FILE = os.path.join(ROOT, "scripts", "menu-internal.txt")
 # --help works but has no usage/example line yet; owned by another job (familia #74).
 HELP_NO_EXAMPLE = {"scripts/serve.sh"}
@@ -100,7 +101,7 @@ def test_local_host_measure_menu_uses_short_hostname_as_default(tmp_path):
     state = tmp_path / "state"
     state.mkdir()
     hostname = subprocess.check_output(["hostname"], text=True).strip().split(".", 1)[0].lower()
-    r = menu("--pipe", "--dry-run", inp="8\n6\n\nlaptop\nq\n", XDG_STATE_HOME=str(state))
+    r = menu("--pipe", "--dry-run", inp="8\n5\n\nlaptop\nq\n", XDG_STATE_HOME=str(state))
     assert r.returncode == 0, (r.stdout, r.stderr)
     assert f"local graph host [{hostname}]" in r.stderr
     assert f"--name {hostname}" in r.stdout
@@ -111,7 +112,7 @@ def test_local_host_measure_menu_prefers_hostname_pin(tmp_path):
     fam = state / "familia"
     fam.mkdir(parents=True)
     (fam / "hostname").write_text("phone7\n", encoding="utf-8")
-    r = menu("--pipe", "--dry-run", inp="8\n6\n\nlaptop\nq\n", XDG_STATE_HOME=str(state))
+    r = menu("--pipe", "--dry-run", inp="8\n5\n\nlaptop\nq\n", XDG_STATE_HOME=str(state))
     assert r.returncode == 0, (r.stdout, r.stderr)
     assert "local graph host [phone7]" in r.stderr
     assert "--name phone7" in r.stdout
@@ -208,7 +209,7 @@ def test_guided_paths_are_visible_in_interactive_menu_and_list():
         assert r.returncode == 0, r.stderr
         assert "New checkout: setup.first-time" in r.stdout
         assert "Existing graph node: models.check -> hosts.serve <NODE>" in r.stdout
-        assert "Add a model: models.fetch-preview -> models.fetch" in r.stdout
+        assert "Add a model: models.fetch ->" in r.stdout
         assert "NOT DONE YET - FreeBSD llama.cpp 0.7.0 on angel" in r.stdout
         assert "angel is still unmeasured" in r.stdout
 
@@ -223,28 +224,26 @@ def test_piped_choices():
 
 
 def test_menu_choice_accepts_environment_assignments_and_forwarded_arguments():
-    # sync-preview lives under Advanced after the Set up goal rewrite; reach it via search.
-    r = subprocess.run(["bash", MENU, "--pipe"], cwd=ROOT, capture_output=True, text=True, env=env(),
-                       input="/sync-preview\nFAMILIA_SYNC=0 1 --license-gate off\nb\nq\n", timeout=60)
+    # Preview twins retired. Exercise NAME=value on a search pick (no license gate).
+    r = menu("--pipe", inp="/skills.list\nFAMILIA_TEST_ENV=1 1\nb\nq\n")
     assert r.returncode == 0, r.stderr
-    assert "Running: python3 scripts/sync_pins.py --dry-run --license-gate off" in r.stdout
-    assert "skipped (FAMILIA_SYNC=0)" in r.stderr
+    assert "Running: python3 scripts/skills.py list" in r.stdout
+    assert "green-probe" in r.stdout
 
 
 def test_search_choice_accepts_environment_assignments_and_forwarded_arguments():
-    # Prefer setup.sync-preview (no license gate) so the forwarded args reach the command.
-    r = menu("--pipe", inp="1\n/sync-preview\nFAMILIA_SYNC=0 1 --license-gate off\nb\nq\n")
+    # From Set up group, search into Models cards and forward the REPO value.
+    r = menu("--pipe", inp="1\n/models.cards\nFAMILIA_TEST_ENV=1 1 org/name\nb\nq\n")
     assert r.returncode == 0, r.stderr
-    assert "Running: python3 scripts/sync_pins.py --dry-run --license-gate off" in r.stdout
-    assert "skipped (FAMILIA_SYNC=0)" in r.stderr
+    assert "Running: python3 scripts/hf_fetch.py org/name --damp-run" in r.stdout
 
 
 def test_long_group_is_paged_instead_of_showing_a_wall_of_items():
-    # Hosts has 20 items after hostname pin (page_size 7). Set up is ~8 goals (one page).
+    # Hosts has 17 items after preview-twin retirement (page_size 7). Set up is ~7 goals (one page).
     r = menu("--pipe", "--dry-run", inp="8\n>\n<\nb\nq\n")
     assert r.returncode == 0, r.stderr
-    assert "Page 1 of 3 (items 1-7 of 20)" in r.stdout
-    assert "Page 2 of 3 (items 8-14 of 20)" in r.stdout
+    assert "Page 1 of 3 (items 1-7 of 17)" in r.stdout
+    assert "Page 2 of 3 (items 8-14 of 17)" in r.stdout
     first = r.stdout.split("Page 1 of 3", 1)[1].split("Page 2 of 3", 1)[0]
     assert len(re.findall(r"^  \d+\) ", first, re.M)) == 7
     assert ">) Next page" in first
@@ -305,3 +304,50 @@ def test_setup_panel_retired_from_menu():
     setup = [it for it in items() if it["group"] == "Set up" and it["cmd"]]
     assert len(setup) <= 8
     assert all("panel.py" not in it["cmd"] for it in items() if it["cmd"])
+
+
+def test_familia_home_list_goals():
+    home = os.path.join(ROOT, "scripts", "familia_home.sh")
+    r = subprocess.run(["sh", home, "--list-goals"], cwd=ROOT, capture_output=True, text=True, env=env())
+    assert r.returncode == 0, r.stderr
+    out = r.stdout
+    for goal in ("Talk to the protomodel", "Find more models", "Search my X / Twitter posts",
+                 "Install / first-time setup", "Required checks", "Legacy menu"):
+        assert goal in out, goal
+    r2 = subprocess.run(["sh", os.path.join(ROOT, "familia")], cwd=ROOT, capture_output=True, text=True,
+                        env=env(FAMILIA_NO_TTY="1"))
+    assert r2.returncode == 0, r2.stderr
+    assert "Talk to the protomodel" in r2.stdout
+
+
+def test_familia_legacy_menu_flag():
+    r = subprocess.run(["sh", os.path.join(ROOT, "familia"), "--legacy-menu", "--list"],
+                       cwd=ROOT, capture_output=True, text=True, env=env())
+    assert r.returncode == 0, r.stderr
+    assert "setup.first-time" in r.stdout
+    assert "test.required" in r.stdout
+
+
+def test_menu_catalog_has_no_baked_dry_run():
+    """Items must run for real; dry-run is only the familia-menu.sh --dry-run MODE."""
+    banned = ("--dry-run", "-DryRun", "-WhatIf")
+    bad = []
+    for it in items():
+        for col in (it["cmd"], it["win"]):
+            toks = col.split()
+            for b in banned:
+                if b in toks:
+                    bad.append(f"{it['key']}: {b} in {col}")
+    assert not bad, "baked dry-run still in catalog:\n" + "\n".join(bad)
+    keys = {it["key"] for it in items()}
+    for twin in ("models.fetch-preview", "hosts.start-preview", "hosts.phone-agent-ask-preview",
+                 "setup.sync-preview", "models.add-apply", "setup.install-run", "setup.install-cli-run"):
+        assert twin not in keys, twin
+    assert "test.required" in keys
+    assert "test.fleet" not in keys  # folded into test.required / required_checks.sh
+
+
+def test_proto_chat_help():
+    r = subprocess.run(["sh", os.path.join(ROOT, "scripts", "proto_chat.sh"), "--help"],
+                       cwd=ROOT, capture_output=True, text=True, env=env())
+    assert r.returncode == 0 and "protomodel" in r.stdout.lower()

@@ -13,21 +13,19 @@ setup.licenses|Set up|Review / accept licenses|PY scripts/licenses.py review|||p
 setup.settings|Set up|Change launcher settings (terminal; never the deleted panel)|sh scripts/configure.sh --interactive|||
 setup.sync-goal|Set up|Sync pinned parts only (asks preview vs apply)|sh scripts/setup_goals.sh sync-pins|lic||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\setup-goals.ps1 -Goal sync-pins
 setup.safe-build|Set up|Safe-mode / offline build help|sh scripts/safe-build-help.sh|||powershell -NoProfile -Command "Write-Host (Get-Content -Raw docs\safe-mode-bootstrap.md)"
-setup.logon-task|Set up|Windows: start the model server at logon (preview; drop -WhatIf to register)||||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-task.ps1 -Install -Model {MODEL:model file name, e.g. qwen2.5-0.5b-instruct-q4_0.gguf} -WhatIf
-setup.remove-path|Set up|Remove familia from PATH (danger; preview then confirm)|sh scripts/setup_goals.sh remove-path|||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\setup-goals.ps1 -Goal remove-path
+setup.logon-task|Set up|Windows: start the model server at logon (registers the task)||||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-task.ps1 -Install -Model {MODEL:model file name, e.g. qwen2.5-0.5b-instruct-q4_0.gguf}
+setup.remove-path|Set up|Remove familia from PATH (danger; )|sh scripts/setup_goals.sh remove-path|||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\setup-goals.ps1 -Goal remove-path
 skills.menu|Skills|Bundled skills: switch skills on/off for an agent (license-checked)|PY scripts/skills.py menu --agent {AGENT:agent name [hermes]}|||python scripts\skills.py menu --agent {AGENT:agent name [hermes]}
 skills.list|Skills|List every skill with its license and status|PY scripts/skills.py list|||python scripts\skills.py list
 skills.show|Skills|Show one skill: license, where it lives, what it adds|PY scripts/skills.py show {SKILL:skill id, e.g. green-probe}|||python scripts\skills.py show {SKILL:skill id, e.g. green-probe}
-skills.vendor|Skills|Show the plan to bring a survey skill into green-zkillz (no changes)|PY scripts/skills.py vendor {SKILL:skill id} --dry-run|||python scripts\skills.py vendor {SKILL:skill id} --dry-run
+skills.vendor|Skills|Bring a survey skill into green-zkillz|PY scripts/skills.py vendor {SKILL:skill id}|||python scripts\skills.py vendor {SKILL:skill id}
 skills.validate|Skills|Check the skills catalog and the skills in graph.yaml|PY scripts/skills.py validate|||python scripts\skills.py validate
 reach.status|Reach tools (Agent-Reach)|Agent-Reach: pin checkout, CLI, which agents are opted in|PY scripts/agent_reach.py status|||python scripts\agent_reach.py status
 reach.enable|Reach tools (Agent-Reach)|Opt an agent into Agent-Reach (writes reaches: in graph.yaml)|PY scripts/agent_reach.py enable --agent {AGENT:agent name [hermes]}|lic||python scripts\agent_reach.py enable --agent {AGENT:agent name [hermes]}
 reach.disable|Reach tools (Agent-Reach)|Remove an agent from Agent-Reach|PY scripts/agent_reach.py disable --agent {AGENT:agent name [hermes]}|||python scripts\agent_reach.py disable --agent {AGENT:agent name [hermes]}
 reach.link|Reach tools (Agent-Reach)|Link Agent-Reach skill + CLI wrapper into an agent's HERMES_HOME|PY scripts/agent_reach.py link --agent {AGENT:agent name [hermes]}|||python scripts\agent_reach.py link --agent {AGENT:agent name [hermes]}
 reach.mcp|Reach tools (Agent-Reach)|Print mcpServers JSON for llama UI / code-bootstraps|PY scripts/agent_reach.py mcp-example|||python scripts\agent_reach.py mcp-example
-models.add|Models|Add a model from a Hugging Face folder or a .gguf (dry run)|scripts/add-model.sh {PATH:model folder or .gguf file} --dry-run|||python scripts\add_model.py {PATH:model folder or .gguf file} --dry-run
-models.add-apply|Models|Add a model from a folder or .gguf for real (writes manifest and preset)|scripts/add-model.sh {PATH:model folder or .gguf file}|||python scripts\add_model.py {PATH:model folder or .gguf file}
-models.fetch-preview|Models|Download a model from Hugging Face: preview (no download)|scripts/add-model.sh --fetch {REPO:Hugging Face repo ORG/NAME[@REV]} --quant {QUANT:quant [Q4_K_M]} --dry-run|||python scripts\add_model.py --fetch {REPO:Hugging Face repo ORG/NAME[@REV]} --quant {QUANT:quant [Q4_K_M]} --dry-run
+models.add|Models|Add a model from a Hugging Face folder or a .gguf|scripts/add-model.sh {PATH:model folder or .gguf file}|||python scripts\add_model.py {PATH:model folder or .gguf file}
 models.fetch|Models|Download and add a model from Hugging Face (asks you to accept its license)|scripts/add-model.sh --fetch {REPO:Hugging Face repo ORG/NAME[@REV]} --quant {QUANT:quant [Q4_K_M]}|||python scripts\add_model.py --fetch {REPO:Hugging Face repo ORG/NAME[@REV]} --quant {QUANT:quant [Q4_K_M]}
 models.cards|Models|Fetch only a model's card, config and license (no weights)|PY scripts/hf_fetch.py {REPO:Hugging Face repo ORG/NAME[@REV]} --damp-run|||python scripts\hf_fetch.py {REPO:Hugging Face repo ORG/NAME[@REV]} --damp-run
 models.license|Models|Show one model's license and what it obliges you to|PY scripts/model_license.py show {ID:model database id (see Advanced: model database list)}|||python scripts\model_license.py show {ID:model database id (see Advanced: model database list)}
@@ -52,10 +50,8 @@ test.registry|Test & benchmark|Benchmark records: best measured model per host a
 test.registry-summary|Test & benchmark|Summary of every benchmark record|PY scripts/registry.py summarize|||python scripts\registry.py summarize
 hosts.monitor|Hosts|Monitor hosts over SSH (read-only console; --once for one snapshot)|sh familia-monitor|||python scripts\monitor.py
 hosts.monitor-once|Hosts|One snapshot of every host, then exit|sh familia-monitor --once|||python scripts\monitor.py --once
-hosts.start-preview|Hosts|Preview graph startup on this host (no services or remote connections)|PY scripts/start_graph.py --dry-run|||python scripts\start_graph.py --dry-run
 hosts.start|Hosts|Start the model server on this machine from graph.yaml|sh start.sh|lic||scripts\windows\start.bat
 hosts.serve|Hosts|Start one graph node's model server (exact launch parameters from the graph)|sh scripts/serve.sh {NODE:node name, e.g. coder}|lic||
-hosts.measure|Hosts|Preview this machine's measured facts (identify unknown host kind)|PY scripts/host_measure.py --name {HOST:local graph host [hostname]} --kind {KIND:desktop, laptop, phone or vm} --dry-run|||
 hosts.measure-write|Hosts|Measure and write this host (identify kind; GPU inventory stays unknown until measured)|PY scripts/host_measure.py --name {HOST:local graph host [hostname]} --kind {KIND:desktop, laptop, phone or vm} --force|||python scripts\host_measure.py --name {HOST:local graph host [hostname]} --kind {KIND:desktop, laptop, phone or vm} --force
 hosts.pin|Hosts|Pin this machine's graph host name (menus/start auto-use it)|PY scripts/hostname_pin.py set {HOST:local graph host [hostname]}|||python scripts\hostname_pin.py set {HOST:local graph host [hostname]}
 hosts.pin-show|Hosts|Show pinned graph host (or empty)|PY scripts/hostname_pin.py get|||python scripts\hostname_pin.py get
@@ -67,18 +63,17 @@ hosts.phone-agents|Hosts|Phone assistants (Bixby, Gemini): which are set up and 
 hosts.phone-agents-licenses|Hosts|Phone assistants: Shizuku license and the terms each assistant brings|PY scripts/system_agents.py licenses|||python scripts\system_agents.py licenses
 hosts.phone-agent-probe|Hosts|On this phone (Termux): is Shizuku running, which assistants are installed|PY scripts/termux/system_agent.py probe|||
 hosts.phone-agent-open|Hosts|On this phone: bring Gemini or Bixby to the front (sends nothing)|PY scripts/termux/system_agent.py open --provider {PROVIDER:gemini or bixby}|||
-hosts.phone-agent-ask-preview|Hosts|On this phone: ask Gemini, preview only (shows the commands, sends nothing)|PY scripts/termux/system_agent.py ask --provider gemini --text {TEXT:what to ask} --dry-run|||
 hosts.phone-agent-ask|Hosts|On this phone: ask Gemini (CLOUD: your text goes to Google; asks first)|PY scripts/termux/system_agent.py ask --provider gemini --text {TEXT:what to ask}|lic||
 hosts.phone-agent-consent|Hosts|On this phone: allow or withdraw cloud calls to an assistant|PY scripts/termux/system_agent.py consent --provider {PROVIDER:gemini or bixby} {CHOICE:--grant, --revoke or --show}|||
 adv.args|Advanced: models & graph|validate_graph: the llama-server arguments for one node|PY scripts/validate_graph.py --graph graph.yaml --args {NODE:node name, e.g. coder}|||python scripts\validate_graph.py --graph graph.yaml --args {NODE:node name, e.g. coder}
 adv.verify|Advanced: models & graph|validate_graph: also verify model sha256 and runtimes (slow)|PY scripts/validate_graph.py --graph graph.yaml --verify-sha --check-runtimes|||python scripts\validate_graph.py --graph graph.yaml --verify-sha --check-runtimes
-adv.graph-edit|Advanced: models & graph|modify_graph: assign a model to a node (preview; a real run drops graph.yaml comments)|PY scripts/modify_graph.py --assign-model {ASSIGN:node=role:pick, e.g. coder=coder:default} --dry-run|||python scripts\modify_graph.py --assign-model {ASSIGN:node=role:pick, e.g. coder=coder:default} --dry-run
+adv.graph-edit|Advanced: models & graph|modify_graph: assign a model to a node (rewrites graph.yaml)|PY scripts/modify_graph.py --assign-model {ASSIGN:node=role:pick, e.g. coder=coder:default}|||python scripts\modify_graph.py --assign-model {ASSIGN:node=role:pick, e.g. coder=coder:default}
 adv.db-list|Advanced: models & graph|Model database: list entries|PY scripts/model_db.py list|||python scripts\model_db.py list
 adv.db-show|Advanced: models & graph|Model database: show one entry|PY scripts/model_db.py show {ID:model database id}|||python scripts\model_db.py show {ID:model database id}
-adv.db-damp|Advanced: models & graph|Model database: add a repo without weights (preview)|PY scripts/model_db.py damp {REPO:Hugging Face repo ORG/NAME[@REV]} --dry-run|||python scripts\model_db.py damp {REPO:Hugging Face repo ORG/NAME[@REV]} --dry-run
-adv.db-backfill|Advanced: models & graph|Model database: backfill entries for models in the manifest (preview)|PY scripts/model_db.py backfill --dry-run|||python scripts\model_db.py backfill --dry-run
+adv.db-damp|Advanced: models & graph|Model database: add a repo without weights (damp)|PY scripts/model_db.py damp {REPO:Hugging Face repo ORG/NAME[@REV]}|||python scripts\model_db.py damp {REPO:Hugging Face repo ORG/NAME[@REV]}
+adv.db-backfill|Advanced: models & graph|Model database: backfill entries for models in the manifest|PY scripts/model_db.py backfill|||python scripts\model_db.py backfill
 adv.llama-flags|Advanced: models & graph|llama_flags: does a pinned llama.cpp build have a flag?|PY scripts/llama_flags.py show {BUILD:build name, e.g. b11374} {FLAG:flag, e.g. --jinja}|||python scripts\llama_flags.py show {BUILD:build name, e.g. b11374} {FLAG:flag, e.g. --jinja}
-adv.scale-down|Advanced: models & graph|Scale-down (opt-in smaller models): preview|PY scripts/scale_down.py --dry-run|||python scripts\scale_down.py --dry-run
+adv.scale-down|Advanced: models & graph|Scale-down (opt-in smaller models) — apply|PY scripts/scale_down.py|||python scripts\scale_down.py
 adv.licenses-json|Advanced: models & graph|All licenses as JSON (records nothing)|PY scripts/licenses.py list --json|||python scripts\licenses.py list --json
 adv.skills-paths|Advanced: agents|Folders of the skills enabled for an agent|PY scripts/skills.py paths --agent {AGENT:agent name [hermes]}|||python scripts\skills.py paths --agent {AGENT:agent name [hermes]}
 adv.hermes-selftest|Advanced: agents|Hermes: check that context compaction keeps facts|scripts/hermes.sh --selftest-compaction|lic||
@@ -94,22 +89,20 @@ adv.cpu-level|Advanced: hosts & benchmarks|This CPU's x86-64 level and the numpy
 adv.phone-target|Advanced: hosts & benchmarks|Phones in graph.yaml and how they are reached|PY scripts/android_target.py --list|||python scripts\android_target.py --list
 adv.monitor-deaths|Advanced: hosts & benchmarks|Monitor: alert on crashed or killed model servers|sh familia-monitor --watch-deaths|||python scripts\monitor.py --watch-deaths
 adv.c2c-loopback|Advanced: hosts & benchmarks|C2C test: move a KV cache between two local servers|sh scripts/c2c/loopback_test.sh {SERVER:path to llama-server} {GGUF:small .gguf model}|||
-adv.uninstall|Advanced: hosts & benchmarks|Uninstall from this host: preview (models are kept)|sh INSTALLER --uninstall --dry-run|||powershell -NoProfile -ExecutionPolicy Bypass -File install\windows\install.ps1 -Uninstall -DryRun
+adv.uninstall|Advanced: hosts & benchmarks|Uninstall from this host (models are kept)|sh INSTALLER --uninstall|||powershell -NoProfile -ExecutionPolicy Bypass -File install\windows\install.ps1 -Uninstall
 adv.logon-task-remove|Advanced: hosts & benchmarks|Windows: remove the logon task||||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-task.ps1 -Uninstall
 adv.numpy-wheel|Advanced: hosts & benchmarks|Windows: build numpy for CPUs without SSE4 (long; needs MSYS2)||||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\build_numpy_wheel.ps1 -Version {VERSION:numpy version [2.5.3]}
-adv.poudriere|Advanced: hosts & benchmarks|FreeBSD: build the familia package with poudriere (preview)|sh scripts/freebsd/poudriere-build.sh -n|||
+adv.poudriere|Advanced: hosts & benchmarks|FreeBSD: build the familia package with poudriere|sh scripts/freebsd/poudriere-build.sh|||
 setup.configure|Advanced: hosts & benchmarks|Low-level: set up this checkout (sync pins + git-pull hooks)|sh scripts/configure.sh|lic||
-setup.sync-preview|Advanced: hosts & benchmarks|Low-level: pinned parts preview (no changes)|PY scripts/sync_pins.py --dry-run|||python scripts\sync_pins.py --dry-run
 setup.sync|Advanced: hosts & benchmarks|Low-level: bring every pinned part to its pin|PY scripts/sync_pins.py|lic||python scripts\sync_pins.py
 setup.deps|Advanced: hosts & benchmarks|Low-level: install local OS packages this host needs|sh install/deps.sh --install|||powershell -NoProfile -ExecutionPolicy Bypass -File install\windows\deps.ps1 -Install
-setup.install|Advanced: hosts & benchmarks|Low-level: install or update this host (dry run)|sh INSTALLER --dry-run|||powershell -NoProfile -ExecutionPolicy Bypass -File install\windows\install.ps1 -DryRun
-setup.install-run|Advanced: hosts & benchmarks|Low-level: install or update this host for real|sh INSTALLER|||powershell -NoProfile -ExecutionPolicy Bypass -File install\windows\install.ps1
-setup.install-cli|Advanced: hosts & benchmarks|Low-level: put familia on PATH (preview)|sh scripts/install-cli.sh --dry-run|||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-cli.ps1 -WhatIf
-setup.install-cli-run|Advanced: hosts & benchmarks|Low-level: put familia on PATH for real|sh scripts/install-cli.sh|||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-cli.ps1
+setup.install|Advanced: hosts & benchmarks|Low-level: install or update this host for real|sh INSTALLER|||powershell -NoProfile -ExecutionPolicy Bypass -File install\windows\install.ps1
+setup.install-cli|Advanced: hosts & benchmarks|Low-level: put familia on PATH for real|sh scripts/install-cli.sh|||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-cli.ps1
 setup.path-add|Advanced: hosts & benchmarks|Low-level: add ~/.local/bin to PATH in ~/.profile|sh scripts/install-cli.sh path --add|||
 setup.path-remove|Advanced: hosts & benchmarks|Low-level: remove familia PATH block from ~/.profile|sh scripts/install-cli.sh path --remove|||
 setup.cli-status|Advanced: hosts & benchmarks|Low-level: show where familia is on PATH|sh scripts/install-cli.sh status|||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-cli.ps1 -Status
-setup.uninstall-cli|Advanced: hosts & benchmarks|Low-level: take familia off PATH (preview, then asks)|sh scripts/install-cli.sh uninstall|||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-cli.ps1 -Uninstall -WhatIf
+setup.uninstall-cli|Advanced: hosts & benchmarks|Low-level: take familia off PATH (asks first)|sh scripts/install-cli.sh uninstall|||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-cli.ps1 -Uninstall
+test.required|★ Required checks (must-run)|★ Run ALL three critical bash smokes for real (fleet + nexus + bt)|sh scripts/required_checks.sh|||
 help.quickstart|Help|Read the quick start|PAGER QUICKSTART.md|||more QUICKSTART.md
 help.search|Help|Search every group for a word (in the menu: /word, then n / N)|./familia-menu.sh --search {WORD:word to look for, e.g. model}|||familia.cmd -Search {WORD:word to look for, e.g. model}
 help.cli|Help|Every menu item as a command (same as --list)|./familia-menu.sh --list|||familia.cmd -List

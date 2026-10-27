@@ -4,9 +4,11 @@ The shortest path from nothing to a running, validated setup. Read [README.md](R
 
 Everything below runs from the root of a familia checkout unless it says otherwise.
 
-**The easy way:** run `./familia` (on Windows, `familia.cmd`). It opens a menu grouped by task, and every item shows the exact command it runs, so you pick up the commands below as you go. `./familia-menu.sh --list` prints every item ([docs/commands.md](docs/commands.md) has the same list as a table), and every item is also a command: `./familia help` lists them, e.g. `./familia skills list` or `./familia --dry-run model params coder` (prints the command, runs nothing). Type `/` and a word at any prompt to search every group (`n`/`N` next/previous), or run `./familia search WORD`. Without a terminal it prints the list and exits instead of waiting.
+**The easy way — Talk to the protomodel:** run `./familia` (Windows: `familia.cmd`). That opens the Charm/gum home. The first goal is **Talk to the protomodel**: a tiny local chat that helps with install/build and with exploring larger models to fetch next (and searching your X/Twitter posts when Agent-Reach is linked). Other home goals: Find more models, Search my X / Twitter posts, Install / first-time setup (traditional tools only — no model gate), ★ Required checks (must-run), and Legacy menu.
 
-**Prefer a window?** Run `./familia panel` (Windows: `python scripts\panel.py`). It opens a settings page in your browser that works with a mouse, a keyboard alone, a single switch or a screen reader: skills, licenses, hermes mode, Harness2, model launch parameters and launcher settings. You see every change before it is saved, and you can undo it. See [docs/panel.md](docs/panel.md).
+**Legacy catalog (fallback only):** `./familia menu` / `./familia --legacy-menu` / `FAMILIA_LEGACY_MENU=1 ./familia` opens the old `familia-menu.sh` item list. Prefer the gum home. Every legacy item is still a CLI command (`./familia help`, `./familia skills list`, `./familia --dry-run model params coder` prints a command without running it). Search: `./familia search WORD`. Details: [docs/commands.md](docs/commands.md).
+
+**Settings:** terminal only — `./familia settings` (the browser panel GUI is retired). See [docs/panel.md](docs/panel.md) for history.
 
 
 ## What you actually need

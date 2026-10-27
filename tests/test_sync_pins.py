@@ -273,7 +273,7 @@ def test_every_updating_or_running_script_syncs(rel):
 
 def test_menu_has_sync_and_update():
     items = read("scripts/menu-items.txt")
-    for key in ("setup.sync-preview|", "setup.sync|", "setup.update|"):
+    for key in ("setup.sync|", "setup.update|", "setup.sync-goal|"):
         assert key in items
 
 

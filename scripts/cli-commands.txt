@@ -15,9 +15,7 @@ panel|setup.settings
 first-time|setup.first-time
 sync-goal|setup.sync-goal
 remove-path|setup.remove-path
-install|setup.install-run
-install preview|setup.install
-uninstall preview|adv.uninstall
+install|setup.install
 install-cli|raw|sh scripts/install-cli.sh||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-cli.ps1|put familia on your PATH (2-line shim, code stays here): [--dry-run] [--prefix DIR] [--force]; Windows -WhatIf
 uninstall-cli|raw|sh scripts/install-cli.sh uninstall||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-cli.ps1 -Uninstall|take familia off your PATH: removes exactly the recorded files (--dry-run previews, --yes skips the question)
 path|raw|sh scripts/install-cli.sh path|||path --add / --remove: the marked familia block in ~/.profile (asks first; --dry-run, --yes)
@@ -34,10 +32,8 @@ skills vendor|skills.vendor
 skills validate|skills.validate
 skills paths|adv.skills-paths
 skills|raw|PY scripts/skills.py||python scripts\skills.py|any skills.py command: list, show, enable, disable, menu, vendor, paths, validate
-model add|models.add-apply
-model add preview|models.add
+model add|models.add
 model fetch|models.fetch
-model fetch preview|models.fetch-preview
 model cards|models.cards
 model license|models.license
 model check|models.check
@@ -87,7 +83,6 @@ monitor|hosts.monitor
 start|hosts.start
 serve|hosts.serve
 host measure|hosts.measure-write
-host measure preview|hosts.measure
 host power|adv.power-probe
 host cpu|adv.cpu-level
 phone start|hosts.android
@@ -103,6 +98,8 @@ phone agents|hosts.phone-agents
 phone agents licenses|hosts.phone-agents-licenses
 phone agent probe|hosts.phone-agent-probe
 phone agent open|hosts.phone-agent-open
-phone agent ask preview|hosts.phone-agent-ask-preview
 phone agent ask|hosts.phone-agent-ask
 phone agent consent|hosts.phone-agent-consent
+home|raw|sh scripts/familia_home.sh||||Charm/gum front door (Talk to the protomodel first)
+proto-chat|raw|sh scripts/proto_chat.sh||||interactive protomodel REPL
+required-checks|raw|sh scripts/required_checks.sh||||★ must-run: fleet + nexus + bt bash smokes

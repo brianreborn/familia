@@ -63,3 +63,9 @@ scripts/build_appimage.sh|operator AppImage packaging for milestones; not an end
 scripts/perf/box_multi_size_smoke.py|perf/dev smoke hitting decision+coder ports; run by operators on a box, not menu
 scripts/familia_agent_reach.py|thin wrapper / library around Agent-Reach; menu uses scripts/agent_reach.py
 scripts/system_prompt_check.py|offline system-prompt path checks (#115); developer/CI helper, not an end-user menu action
+scripts/familia_home.sh|Charm/gum front door (./familia); not a legacy catalog row
+scripts/proto_chat.sh|protomodel REPL from gum home "Talk to the protomodel"
+scripts/find_models.sh|guided fetch from gum home "Find more models"
+scripts/search_x.sh|X/Twitter search from gum home via Agent-Reach
+scripts/windows/familia-home.ps1|Windows mirror of familia_home.sh
+scripts/start_graph.py|graph dry-run helper; preview twin retired — use hosts.start / start.sh

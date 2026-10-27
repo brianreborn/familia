@@ -92,13 +92,15 @@ group_desc() {
 }
 
 workflow_paths() {
+  say "LEGACY CATALOG (fallback). Prefer: ./familia  → Talk to the protomodel."
   say "GOALS (pick one; Set up group has the same first-time path as a single choice):"
   say "  New checkout: setup.first-time  (deps -> licenses -> configure -> install -> PATH)"
-  say "                then hosts.start"
+  say "                then ./familia → Talk to the protomodel  (or hosts.start)"
   say "  Existing graph node: models.check -> hosts.serve <NODE>"
-  say "  Add a model: models.fetch-preview -> models.fetch -> add its node to graph.yaml ->"
+  say "  Add a model: models.fetch -> add its node to graph.yaml ->"
   say "               models.check -> hosts.serve <NODE>"
   say "  Hermes: models.check -> agents.hermes (license-gated)"
+  say "  ★ Required checks: test.required  (fleet + nexus + bt; must-run)"
   say "NOT DONE YET - FreeBSD llama.cpp 0.7.0 on angel: neither a FreeBSD build nor a"
   say "model-load smoke test has been run; angel is still unmeasured and cannot host graph nodes."
   say "After this checkout is available on angel, from code-bootstraps-llama.cpp:"

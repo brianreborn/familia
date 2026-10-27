@@ -3,7 +3,7 @@
 # Usage: sh scripts/setup_goals.sh <goal> [--dry-run] [--yes]
 # Goals: first-time | sync-pins | remove-path
 # Each goal leads to a real next action (preview then confirm where destructive).
-# Charm/gum presentation is a later pass — this script is content/structure only.
+# Called from the gum home (Install / first-time setup) and legacy menu.
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$ROOT"
@@ -20,8 +20,8 @@ usage() {
 Usage: sh scripts/setup_goals.sh <goal> [--dry-run] [--yes]
 
 Goals (each ends with a real next action):
-  first-time   deps → licenses → configure → install preview → confirm →
-               install → offer PATH → print next: Hosts → start (hosts.start)
+  first-time   deps → licenses → configure → confirm → install for real →
+               offer PATH → print next: Talk to the protomodel (./familia)
   sync-pins    ask preview vs apply → sync_pins --dry-run or sync_pins
   remove-path  danger: uninstall-cli preview, then confirm remove from PATH
 
@@ -94,21 +94,18 @@ goal_first_time() {
   run_step "Install OS packages this host needs" sh "$ROOT/install/deps.sh" --install
   run_step "Review licenses" "$PY" "$ROOT/scripts/licenses.py" review
   run_step "Configure checkout (pins + git-pull hooks)" sh "$ROOT/scripts/configure.sh"
-  run_step "Install preview (dry-run)" sh "$(installer)" --dry-run
   if [ "$DRY" = 1 ]; then
-    say "[dry-run] would ask: Apply install?"
+    say "[dry-run] would ask: Apply install on this host?"
     say "[dry-run] would run: sh $(installer)"
     say "[dry-run] would offer: Put familia on PATH?"
-    say "[dry-run] next: Hosts → start (hosts.start) or: ./familia-menu.sh --run hosts.start"
+    say "[dry-run] next: Talk to the protomodel (./familia) or hosts.start"
     return 0
   fi
-  if confirm "Apply install on this host?"; then
+  if confirm "Apply install on this host for real?"; then
     run_step "Install for real" sh "$(installer)"
   else
-    say "Skipped install. You can run setup.install / setup.install-run later."
+    say "Skipped install. You can run setup.install later, or Advanced → install."
   fi
-  say "PATH preview:"
-  sh "$ROOT/scripts/install-cli.sh" --dry-run || true
   if confirm "Put familia on your PATH (shim in ~/.local/bin)?"; then
     run_step "Install familia CLI shim" sh "$ROOT/scripts/install-cli.sh"
     if confirm "Also add ~/.local/bin to PATH in ~/.profile?"; then
@@ -119,10 +116,8 @@ goal_first_time() {
   fi
   say ""
   say "First-time setup finished."
-  say "Next: Hosts → start a server on this machine"
-  say "  menu: Hosts → Start the model server..."
-  say "  or:   ./familia-menu.sh --run hosts.start"
-  say "  or:   ./familia start"
+  say "Next: Talk to the protomodel — run ./familia and pick that goal"
+  say "  or start a server: ./familia start   /   ./familia-menu.sh --run hosts.start"
 }
 
 goal_sync_pins() {
