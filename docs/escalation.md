@@ -75,6 +75,12 @@ launch has not changed. `--no-escalate` turns the proxy off. **Single-model mode
 ([harness2.md](harness2.md)) never change escalation settings. A descriptor has no field
 for them.
 
+- **Sessions / concurrency (#101):** the proxy is a `ThreadingHTTPServer`. Each
+  session has its own `Escalator` (signals, current node, pending, handoff) behind
+  an RLock. Send `X-Familia-Session: <id>` (preferred) or an `Authorization: Bearer`
+  token so concurrent clients do not share state. Requests with neither header share
+  the `default` session and are serialized by that session's lock — hermes does not
+  send a session id today, so multi-session isolation needs the header.
 - Signals come from the traffic: assistant replies (repeat detection), `tool`
   messages since the last user turn matching error/traceback/failed/exit code N,
   the last user message (phrases), elapsed time, upstream errors.
