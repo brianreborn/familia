@@ -600,7 +600,9 @@ TYPES = {
     "options": T({"role": req("enum", choices=OPTION_ROLES), "unverified": req("bool"), "sources": req("list"),
                   "hf_repo": opt("str", nullable=True), "size_note": opt("str"), "placement_note": opt("str"),
                   "candidate_hosts": opt("strlist"), "gpu_candidate": opt("bool"), "gpu_host": opt("str"),
-                  "runtime_note": opt("str"), "notes": opt("str")},
+                  "runtime_note": opt("str"), "notes": opt("str"),
+                  # registry/models/<db>.json pointer (#51); same field as models.db
+                  "db": opt("str")},
                  check_option, doc="unplaced model option (catalog only; never placed or RAM-counted)"),
 }
 REQUIRED_SECTIONS = ("hosts", "runtimes", "models", "nodes", "gateways", "aliases", "agents")
