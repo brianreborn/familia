@@ -327,7 +327,7 @@ def test_pentest_active_with_pentest_role_model():
     x = g()
     x["pentests"] = {"android-fleet": _pentest()}
     x["models"]["cyber"] = dict(x["models"]["qwen35-2b-q4km"], role="pentest")
-    x["nodes"]["pentest-node"] = dict(x["nodes"]["coder"], model="cyber", port=9961, status="planned")
+    x["nodes"]["pentest-node"] = dict(x["nodes"]["coder"], model="cyber", port=9961, status="planned", role="pentest")
     x["pentests"]["android-fleet"].update({
         "node": "pentest-node",
         "status": "active",
@@ -347,7 +347,12 @@ def test_pentest_required_fields_and_refs():
     has(x, "no such nodes entry 'ghost'")
 
 def test_model_role_pentest_allowed():
-    x = g(); x["models"]["qwen35-2b-q4km"]["role"] = "pentest"; assert errs(x) == []
+    x = g(); x["models"]["qwen35-2b-q4km"]["role"] = "pentest"
+    # node.role must follow models.role when both are set (L-node-type)
+    for _n, nd in (x.get("nodes") or {}).items():
+        if isinstance(nd, dict) and nd.get("model") == "qwen35-2b-q4km":
+            nd["role"] = "pentest"
+    assert errs(x) == []
 
 
 def test_ram_safety_reserve_and_small_host_floor():

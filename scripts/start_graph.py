@@ -308,6 +308,11 @@ def run(args=None):
     parser.add_argument("--host", help="declared graph host; defaults to an exact local hostname match")
     parser.add_argument("--dry-run", action="store_true", help="validate and show the local plan without starting services")
     parser.add_argument("--yes", action="store_true", help="accept the graph's reviewed licenses")
+    parser.add_argument(
+        "--fleet",
+        action="store_true",
+        help="force fleet graph.yaml (skip generated/graph-HOST.yaml private topology)",
+    )
     options = parser.parse_args(args)
     graph_path = options.graph.expanduser().resolve()
     os.chdir(ROOT)
@@ -315,6 +320,22 @@ def run(args=None):
         graph = graph_validator.load(str(graph_path))
         graph["_path"] = str(graph_path)
         host = select_host(graph, options.host)
+        fleet_default = (ROOT / "graph.yaml").resolve()
+        priv = (ROOT / "generated" / f"graph-{host}.yaml").resolve()
+        if (
+            not options.fleet
+            and graph_path == fleet_default
+            and priv.is_file()
+            and priv != graph_path
+        ):
+            print(
+                f"familia-graph: using private topology {priv} (type-named nodes); "
+                f"pass --fleet for fleet graph.yaml",
+                file=sys.stderr,
+            )
+            graph_path = priv
+            graph = graph_validator.load(str(graph_path))
+            graph["_path"] = str(graph_path)
         nodes, remote_nodes, gateways, omitted_aliases, remote_gateways = local_topology(graph, host)
         errors, _ = graph_validator.validate(graph, check_files=False)
         if errors:

@@ -168,6 +168,18 @@ def check_node(g, name, n, errs):
         errs.append(f"nodes.{name}: host {n['host']!r} is not measured; unmeasured hosts are excluded from placement")
     if r is not None and not planned and n.get("host") not in (r.get("hosts") or []):
         errs.append(f"nodes.{name}: runtime {n['runtime']!r} is not installed on host {n.get('host')!r} (runtime hosts: {r.get('hosts')})")
+    # Design law: optional node.role should match models[model].role (chat view of a
+    # coder-weight may set role: chat explicitly — allowed when roles differ).
+    if n.get("role") and m is not None and m.get("role") and n.get("role") != m.get("role"):
+        # chat/general views of coder weights are intentional (angel-chat / phone general)
+        allowed = (
+            (n.get("role") in ("chat", "general") and m.get("role") == "coder")
+            or (n.get("role") == "general" and m.get("role") == "chat")
+        )
+        if not allowed:
+            errs.append(
+                f"nodes.{name}: role {n['role']!r} != models.{n.get('model')}.role {m.get('role')!r}"
+            )
     if r is not None and m is not None and not planned:
         arch = m.get("arch")
         supported = list(r.get("supported_archs") or [])
@@ -528,7 +540,10 @@ TYPES = {
                 # contradicts the card (ctx, sampling keys, a non-default card_set) needs override_reasons.<key>
                 "card_set": opt("str"), "sampling": opt("map"), "override_reasons": opt("map"),
                 # llama-server --tools (llama-ui Server Tools / agentic); "all" or list of SERVER_TOOL_NAMES
-                "server_tools": opt("any")},
+                "server_tools": opt("any"),
+                # type/role the node provides (coder|chat|embed|…). Design law: type implies
+                # capability; placement is host:. Prefer type-named keys in private host graphs.
+                "role": opt("enum", choices={"chat", "coder", "decision", "reasoning", "embed", "vision", "diffusion", "pentest", "general"})},
                check_node, doc="model instance on host+runtime"),
     "speculative": T({"experimental": req("bool"), "status": req("enum", choices={"planned", "experimental", "active"}),
                       "mode": req("enum", choices={"draft", "ngram"}), "target": req("ref", ref="nodes"),

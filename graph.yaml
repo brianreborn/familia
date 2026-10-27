@@ -449,6 +449,7 @@ nodes:
 
   qodesh-gpu-decision:
     model: stories15m-fp32
+    role: decision
     host: qodesh
     runtime: sm11-legacy-qodesh
     ctx: 256
@@ -463,6 +464,7 @@ nodes:
 
   qodesh-smol-cpu:
     model: smollm2-135m-q4
+    role: decision
     host: qodesh
     runtime: llama-b11540-win-cpu
     ctx: 2048
@@ -482,6 +484,7 @@ nodes:
 
   miryam-gpu-decision:
     model: smollm2-135m-q4-miryam
+    role: decision
     host: miryam
     runtime: llama-b11541-linux-vulkan
     ctx: 2048
@@ -500,6 +503,7 @@ nodes:
 
   phone7-decision:
     model: smollm2-135m-q4-phone    # Q4_0 fastest tg on Xclipse 550 (102 vs 83 Q4_K_M vs 89 Q8_0 t/s, phone8 2026-10-10)
+    role: decision
     host: phone7
     runtime: termux-llama-cpp-0.6.0
     ctx: 2048
@@ -516,6 +520,7 @@ nodes:
 
   phone8-general:
     model: qwen25-05b-q4km-phone
+    role: general
     host: phone8
     runtime: termux-llama-cpp-0.6.0
     ctx: 2048
@@ -532,6 +537,7 @@ nodes:
   coder:
     status: active
     model: qwen35-2b-q4km
+    role: coder
     host: miryam
     runtime: llama-b11669
     ctx: 65536                   # total; per-slot = ctx / parallel
@@ -550,6 +556,7 @@ nodes:
   embed:
     status: active
     model: egemma2-q8
+    role: embed
     host: miryam
     runtime: llama-b11669
     ctx: 8192
@@ -566,6 +573,7 @@ nodes:
     # Planned nodes are schema-checked only; no placement, file or RAM checks.
     status: active
     model: qwen35-2b-q4km        # placeholder until a 0.5B model entry exists
+    role: coder
     host: qodesh
     runtime: llama-b11540-win-cpu
     ctx: 2048
@@ -587,6 +595,7 @@ nodes:
   # Prize large model is Nanbeige4.3-33B on angel (angel-coder / angel-chat), not on box.
   box-decision:
     model: smollm2-135m-q4-miryam
+    role: decision
     host: box
     runtime: llama-b11374-box-cpu
     ctx: 2048
@@ -605,6 +614,7 @@ nodes:
 
   box-coder:
     model: qwen35-2b-q4km
+    role: coder
     host: box
     runtime: llama-b11374-box-cpu
     ctx: 8192
@@ -626,6 +636,7 @@ nodes:
   # Speculative: prefer ngram (no extra weights) or a small draft later; see speculative.angel-nanbeige-ngram.
   angel-coder:
     model: nanbeige43-33b-q4km
+    role: coder
     host: angel
     runtime: llama-b11669-freebsd
     ctx: 65536                   # Hermes min_ctx 64000; Brian #125 accept mmap/SSD spill (trained 512K)
@@ -658,6 +669,7 @@ nodes:
 
   angel-chat:
     model: nanbeige43-33b-q4km
+    role: chat
     host: angel
     runtime: llama-b11669-freebsd
     ctx: 32768
@@ -685,6 +697,7 @@ nodes:
 
   miryam-pentest:
     model: dolphin3-cyber-8b-q2k
+    role: pentest
     host: miryam
     runtime: llama-b11669
     ctx: 8192
