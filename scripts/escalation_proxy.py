@@ -164,7 +164,9 @@ class Escalator:
             problem = turns[-1]["content"] if turns else ""
             h = E.handoff(turns, problem)
             body["messages"] = sysm + [{"role": "user", "content": json.dumps(h)}]
-            body.pop("tools", None); body.pop("tool_choice", None)
+            # #106: keep tools / tool_choice so the heavy model can finish tool-using
+            # turns (hermes agent sessions). Swap-back still follows the first
+            # successful heavy reply (after_reply).
             self.handoff_next = False
         return url, body
 

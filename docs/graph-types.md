@@ -86,7 +86,7 @@ graph TD
 | agent | Roles `main` and `auxiliary` are both required, each mapped to exactly one alias. Every role's per-slot ctx must be >= min_ctx, and `context_length` must equal the main alias's per-slot ctx. |
 | fleet | Every listed agent must exist. |
 | agency | `repo` is owner/name, and assignments map labels from `labels` to existing agents. |
-| room, swarm, store, reach, council | Experimental. They need `experimental: true`. Council `quorum` needs 1 <= quorum <= len(agents). `cascade` runs agents in list order and takes no quorum. |
+| room, swarm, store, reach, council | Experimental. They need `experimental: true`. Council `quorum` needs 1 <= quorum <= len(agents). `cascade` runs agents in list order and takes no quorum. Reach `repo` is `owner/name`; `agents` is a non-empty list (Agent-Reach: [docs/agent-reach.md](agent-reach.md)). |
 
 | pentest | Legitimate, operator-authorized testing of the owner's fleet — not attack tooling. `scope.allow` / `scope.deny` are lists of graph host names, CIDRs/IPs, or http(s)/ssh URLs (empty allow = nothing allowed). `tools.allow` is an explicit tool-name list with no wildcards. Network/exec tools (nmap, shell, ssh, curl, …) require a non-empty `scope.allow`. `status: active` requires non-empty `scope.allow`, `requires_operator_confirm: true`, and a node whose model has `role: pentest`. `launch_test_only: true` is required: automation may only validate → start → healthcheck → stop; never live scans, exploits, or network probes in tests. See `docs/pentest-models.md`. |
 
