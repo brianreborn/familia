@@ -237,11 +237,6 @@ def validate_local_nodes(graph, host, nodes, *, check_files):
                 if checked.returncode:
                     details = (checked.stdout + checked.stderr).strip()
                     raise StartupError(f"launch guard refused node {name}:\n{details}")
-        if not port_available(node["bind"], node["port"]):
-            raise StartupError(
-                f"node {name} port {node['port']} is already occupied; "
-                "nothing was started and familia will not stop an unrelated process"
-            )
         plans.append((name, argv))
     return plans
 
