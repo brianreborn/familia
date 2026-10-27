@@ -10,6 +10,14 @@ elapsed time), calls escalation.decide() after each reply, and:
   auto    -> swaps immediately.
 On swap the next request goes to the target node with a compact handoff instead
 of the full history; after one clean reply it swaps back (swap_back=True).
+
+Thread safety (#101): ThreadingHTTPServer runs one handler per request. Each
+Escalator holds an RLock covering its request path so concurrent requests on the
+same session cannot corrupt current/pending/handoff_next/signals. Distinct
+clients are isolated when they send X-Familia-Session (preferred) or a Bearer
+token; requests with neither share the "default" session (serialized by that
+session's lock). True multi-session isolation needs one of those headers —
+hermes does not send a session id today.
 """
 import json, os, re, sys, threading, time, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -20,6 +28,8 @@ STATE = os.path.join(E.ROOT, ".cache", "familia")
 PENDING = os.path.join(STATE, "escalation-pending.json")
 ACCEPT = os.path.join(STATE, "escalation-accept.json")
 FAIL_RE = re.compile(r"(error|traceback|failed|exception|exit code [1-9]|FAILED)", re.I)
+DEFAULT_SESSION = "default"
+SESSION_HEADER = "X-Familia-Session"
 
 def node_url(g, name, local_host):
     """Base URL for a node. Remote nodes need a non-loopback bind (else None: needs a tunnel)."""
@@ -31,6 +41,24 @@ def node_url(g, name, local_host):
 
 def alias_for(g, name):
     return next((a for a, x in (g.get("aliases") or {}).items() if x["node"] == name), name)
+
+def session_id_from(headers):
+    """Stable session key for per-client Escalator isolation (#101)."""
+    s = (headers.get(SESSION_HEADER) or "").strip()
+    if s:
+        return s
+    auth = (headers.get("Authorization") or "").strip()
+    if auth.lower().startswith("bearer "):
+        tok = auth[7:].strip()
+        if tok:
+            return "bearer:" + tok
+    return DEFAULT_SESSION
+
+def _pending_path(session_id):
+    if not session_id or session_id == DEFAULT_SESSION:
+        return PENDING
+    safe = re.sub(r"[^A-Za-z0-9._-]+", "_", session_id)[:80]
+    return os.path.join(STATE, f"escalation-pending-{safe}.json")
 
 class Signals:
     def __init__(self): self.reset()
@@ -60,13 +88,21 @@ def _text(m):
     return c or ""
 
 class Escalator:
-    """State machine: light node <-> target. Pure logic; HTTP lives in Proxy."""
-    def __init__(self, g, light, recs, local_host, ensure=None, consent=None, swap_back=True, reachable=None):
+    """State machine: light node <-> target. Pure logic; HTTP lives in Proxy.
+
+    ``lock`` (RLock) must be held for the whole request path that mutates this
+    instance (rewrite / observe / after_reply / swap). Concurrent clients on the
+    same session serialize; different sessions use different Escalators (#101).
+    """
+    def __init__(self, g, light, recs, local_host, ensure=None, consent=None, swap_back=True, reachable=None,
+                 session_id=DEFAULT_SESSION):
         self.g, self.light, self.recs, self.local_host = g, light, recs, local_host
         self.ensure = ensure or (lambda name: True)
         self.consent, self.swap_back, self.reachable = consent, swap_back, reachable
         self.current, self.pending, self.handoff_next, self.sig = light, None, False, Signals()
         self.auto_env = os.environ.get("FAMILIA_ESCALATE") == "auto"
+        self.session_id = session_id or DEFAULT_SESSION
+        self.lock = threading.RLock()
 
     def upstream(self):
         return node_url(self.g, self.current, self.local_host), alias_for(self.g, self.current)
@@ -89,12 +125,15 @@ class Escalator:
         if d["decision"] == "auto" or (self.auto_env and not d["needs_consent"]) or self._accepted(d):
             return self.swap(d)
         self.pending = d
-        os.makedirs(STATE, exist_ok=True); json.dump(d, open(PENDING, "w"), indent=2)
+        path = _pending_path(self.session_id)
+        os.makedirs(STATE, exist_ok=True); json.dump(d, open(path, "w"), indent=2)
         return f"[familia] {d['prompt']} Accept: python3 scripts/escalate.py accept"
 
     def _accepted(self, d):
         try: a = json.load(open(ACCEPT))
         except Exception: return False
+        # Optional session key on accept file; absent means default session only.
+        if a.get("session", DEFAULT_SESSION) != self.session_id: return False
         if a.get("target") != d["target"]: return False
         os.remove(ACCEPT)
         if d["crosses_host"]: E.record_consent(self.light, d["target"])  # first yes = consent
@@ -110,7 +149,7 @@ class Escalator:
         if self.g["nodes"][t]["host"] == self.local_host and not self.ensure(t):
             return f"[familia] could not start {t}; staying on {self.light}"
         self.current, self.pending, self.handoff_next = t, None, True
-        try: os.remove(PENDING)
+        try: os.remove(_pending_path(self.session_id))
         except OSError: pass
         return f"[familia] escalated to {t} on {d['host']} ({d.get('eta_s') or '?'}s est.)"
 
@@ -129,23 +168,50 @@ class Escalator:
             self.handoff_next = False
         return url, body
 
-def make_handler(esc, log=sys.stderr):
+class EscalatorPool:
+    """Per-session Escalator map. Factory builds a fresh Escalator for a new session id."""
+    def __init__(self, factory, seed=None):
+        self._factory = factory
+        self._lock = threading.Lock()
+        self._by = {}
+        if seed is not None:
+            sid, esc = seed
+            esc.session_id = sid
+            if not hasattr(esc, "lock") or esc.lock is None:
+                esc.lock = threading.RLock()
+            self._by[sid] = esc
+
+    def get(self, session_id):
+        sid = session_id or DEFAULT_SESSION
+        with self._lock:
+            e = self._by.get(sid)
+            if e is None:
+                e = self._factory()
+                e.session_id = sid
+                self._by[sid] = e
+            return e
+
+def make_handler(pool, log=sys.stderr):
+    """``pool`` is an EscalatorPool (or any object with get(session_id) -> Escalator)."""
     class H(BaseHTTPRequestHandler):
         def log_message(self, *a): pass
+
+        def _esc(self):
+            return pool.get(session_id_from(self.headers))
 
         def _copy_headers(self, r):
             for k, v in r.headers.items():
                 if k.lower() not in ("content-length", "transfer-encoding", "connection"):
                     self.send_header(k, v)
 
-        def _record_transport_fail(self, body):
+        def _record_transport_fail(self, esc, body):
             if body is not None:
                 esc.sig.transport_failures += 1
 
         def _502(self, msg):
             self.send_response(502); self.end_headers(); self.wfile.write(str(msg).encode())
 
-        def _write_chat(self, r, body, note, method, raw):
+        def _write_chat(self, esc, r, body, note, method, raw):
             """Relay a successful chat/completions upstream response; run after_reply(ok=True)."""
             stream = body is not None and body.get("stream")
             if body is None:
@@ -173,9 +239,9 @@ def make_handler(esc, log=sys.stderr):
             try:
                 j = json.load(r); m = j["choices"][0]["message"]; text.append(m.get("content") or "")
             except Exception as e:
-                self._record_transport_fail(body)
+                self._record_transport_fail(esc, body)
                 fb = esc.after_reply(ok=False)
-                if fb and self._retry_once(body, method, raw, fb):
+                if fb and self._retry_once(esc, body, method, raw, fb):
                     return
                 self._502(f"upstream returned invalid JSON: {e}")
                 return
@@ -187,7 +253,7 @@ def make_handler(esc, log=sys.stderr):
             if note: m["content"] = (m.get("content") or "") + "\n\n" + note
             self.wfile.write(json.dumps(j).encode())
 
-        def _retry_once(self, body, method, raw, note):
+        def _retry_once(self, esc, body, method, raw, note):
             url, _alias = esc.upstream()
             target = url.rsplit("/v1", 1)[0] + self.path
             req = urllib.request.Request(target, data=raw, method=method, headers={"Content-Type": "application/json"})
@@ -195,42 +261,57 @@ def make_handler(esc, log=sys.stderr):
                 r = urllib.request.urlopen(req, timeout=3600)
             except Exception as e2:
                 # Retry failed too. Fall back again so heavy does not stick (#98); do not recurse.
-                self._record_transport_fail(body)
+                self._record_transport_fail(esc, body)
                 note2 = esc.after_reply(ok=False)
                 msg = str(e2)
                 if note2: msg = f"{msg}\n{note2}"
                 self._502(msg)
                 return True
-            self._write_chat(r, body, note, method, raw)
+            self._write_chat(esc, r, body, note, method, raw)
             return True
 
         def _fwd(self, method):
-            esc.check_accept()
-            n = int(self.headers.get("Content-Length") or 0)
-            raw = self.rfile.read(n) if n else None
-            url, alias = esc.upstream()
-            body = None
-            if raw and self.path.endswith("/chat/completions"):
-                url, body = esc.rewrite(json.loads(raw)); raw = json.dumps(body).encode()
-            target = url.rsplit("/v1", 1)[0] + self.path
-            req = urllib.request.Request(target, data=raw, method=method, headers={"Content-Type": "application/json"})
-            try:
-                r = urllib.request.urlopen(req, timeout=3600)
-            except Exception as e:
-                # Count transport error BEFORE decide (#100), then escalate/fallback (#98).
-                self._record_transport_fail(body)
-                note = esc.after_reply(ok=False)
-                if note and self._retry_once(body, method, raw, note):
+            esc = self._esc()
+            # Hold the session lock for the whole request so concurrent clients on
+            # the same session cannot interleave rewrite / after_reply / swap (#101).
+            with esc.lock:
+                esc.check_accept()
+                n = int(self.headers.get("Content-Length") or 0)
+                raw = self.rfile.read(n) if n else None
+                url, alias = esc.upstream()
+                body = None
+                if raw and self.path.endswith("/chat/completions"):
+                    url, body = esc.rewrite(json.loads(raw)); raw = json.dumps(body).encode()
+                target = url.rsplit("/v1", 1)[0] + self.path
+                req = urllib.request.Request(target, data=raw, method=method, headers={"Content-Type": "application/json"})
+                try:
+                    r = urllib.request.urlopen(req, timeout=3600)
+                except Exception as e:
+                    # Count transport error BEFORE decide (#100), then escalate/fallback (#98).
+                    self._record_transport_fail(esc, body)
+                    note = esc.after_reply(ok=False)
+                    if note and self._retry_once(esc, body, method, raw, note):
+                        return
+                    self._502(e)
                     return
-                self._502(e)
-                return
-            self._write_chat(r, body, None, method, raw)
+                self._write_chat(esc, r, body, None, method, raw)
 
         def do_POST(self): self._fwd("POST")
         def do_GET(self): self._fwd("GET")
     return H
 
 def serve(esc, port=0):
-    srv = ThreadingHTTPServer(("127.0.0.1", port), make_handler(esc))  # localhost only
+    """Serve ``esc`` as the default session; other X-Familia-Session values get clones."""
+    if not hasattr(esc, "lock") or esc.lock is None:
+        esc.lock = threading.RLock()
+    esc.session_id = getattr(esc, "session_id", None) or DEFAULT_SESSION
+
+    def factory():
+        return Escalator(esc.g, esc.light, esc.recs, esc.local_host,
+                         ensure=esc.ensure, consent=esc.consent,
+                         swap_back=esc.swap_back, reachable=esc.reachable)
+
+    pool = EscalatorPool(factory, seed=(DEFAULT_SESSION, esc))
+    srv = ThreadingHTTPServer(("127.0.0.1", port), make_handler(pool))  # localhost only
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     return srv

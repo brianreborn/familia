@@ -178,3 +178,106 @@ def test_transport_failures_persist_across_observe_request():
     assert s.failures == 0
     assert s.transport_failures == 2
     assert s.dict()["failures"] == 2
+
+def post_headers(port, msgs, headers=None):
+    h = {"Content-Type": "application/json"}
+    if headers:
+        h.update(headers)
+    r = urllib.request.urlopen(urllib.request.Request(
+        f"http://127.0.0.1:{port}/v1/chat/completions",
+        data=json.dumps({"model": "x", "messages": msgs}).encode(), headers=h))
+    return json.load(r)["choices"][0]["message"]["content"]
+
+
+def test_session_id_from_headers():
+    assert EP.session_id_from({}) == EP.DEFAULT_SESSION
+    assert EP.session_id_from({"X-Familia-Session": " a "}) == "a"
+    assert EP.session_id_from({"Authorization": "Bearer tok123"}) == "bearer:tok123"
+    # Explicit session header wins over bearer.
+    assert EP.session_id_from({"X-Familia-Session": "s1", "Authorization": "Bearer tok"}) == "s1"
+
+
+def test_concurrent_sessions_no_crosstalk(monkeypatch, tmp_path):
+    """#101: N parallel clients; only the one with an escalation phrase gets [familia]."""
+    monkeypatch.setattr(EP, "STATE", str(tmp_path)); monkeypatch.setattr(EP, "PENDING", str(tmp_path / "p.json"))
+    monkeypatch.setenv("FAMILIA_ESCALATE", "auto")
+    seen = []
+    pl = mock("light", seen)
+    ph = mock("heavy", seen)
+    g = {"hosts": {"h": {}}, "aliases": {},
+         "nodes": {"light": {"host": "h", "port": pl, "model": "smollm2", "escalates_to": ["heavy"],
+                            "escalation": {"mode": "auto", "triggers": {"repeat_outputs": 0, "failure_retries": 0,
+                                                                       "phrases": ["try harder"]}}},
+                   "heavy": {"host": "h", "port": ph, "model": "qwen35-2b"}}}
+    esc = EP.Escalator(g, "light", [], "h", consent={}); srv = EP.serve(esc); p = srv.server_address[1]
+
+    n = 8
+    escalate_i = 3
+    results = [None] * n
+    errors = [None] * n
+    barrier = threading.Barrier(n)
+
+    def worker(i):
+        try:
+            barrier.wait(timeout=5)
+            sid = f"client-{i}"
+            msg = "please try harder" if i == escalate_i else "hello from quiet client"
+            results[i] = post_headers(p, [{"role": "user", "content": msg}],
+                                      headers={"X-Familia-Session": sid})
+        except Exception as e:
+            errors[i] = e
+
+    threads = [threading.Thread(target=worker, args=(i,)) for i in range(n)]
+    for t in threads: t.start()
+    for t in threads: t.join(timeout=30)
+
+    assert all(e is None for e in errors), errors
+    assert all(r is not None for r in results)
+    for i, out in enumerate(results):
+        if i == escalate_i:
+            assert "[familia]" in out and "escalated to heavy" in out, out
+        else:
+            assert "[familia]" not in out, f"client-{i} got cross-talk: {out!r}"
+    srv.shutdown()
+
+
+def test_default_session_lock_serializes_mutations(monkeypatch, tmp_path):
+    """#101: without a session header, concurrent requests share one Escalator under a lock."""
+    monkeypatch.setattr(EP, "STATE", str(tmp_path)); monkeypatch.setattr(EP, "PENDING", str(tmp_path / "p.json"))
+    monkeypatch.setenv("FAMILIA_ESCALATE", "auto")
+    seen = []
+    pl = mock("light", seen)
+    ph = mock("heavy", seen)
+    g = {"hosts": {"h": {}}, "aliases": {},
+         "nodes": {"light": {"host": "h", "port": pl, "model": "smollm2", "escalates_to": ["heavy"],
+                            "escalation": {"mode": "auto", "triggers": {"repeat_outputs": 0, "failure_retries": 0,
+                                                                       "phrases": ["try harder"]}}},
+                   "heavy": {"host": "h", "port": ph, "model": "qwen35-2b"}}}
+    esc = EP.Escalator(g, "light", [], "h", consent={}); srv = EP.serve(esc); p = srv.server_address[1]
+    assert isinstance(esc.lock, type(threading.RLock()))
+
+    n = 6
+    results = [None] * n
+    errors = [None] * n
+    barrier = threading.Barrier(n)
+
+    def worker(i):
+        try:
+            barrier.wait(timeout=5)
+            # Mix escalate + quiet on the shared default session; lock must prevent torn state.
+            msg = "please try harder" if i == 0 else f"quiet {i}"
+            results[i] = post(p, [{"role": "user", "content": msg}])
+        except Exception as e:
+            errors[i] = e
+
+    threads = [threading.Thread(target=worker, args=(i,)) for i in range(n)]
+    for t in threads: t.start()
+    for t in threads: t.join(timeout=30)
+
+    assert all(e is None for e in errors), errors
+    assert all(r is not None for r in results)
+    # At least one reply carries the escalate note; no crashes / empty bodies.
+    assert any("escalated to heavy" in (r or "") for r in results)
+    # Escalator state machine remains coherent (on light or heavy, never half-swapped).
+    assert esc.current in ("light", "heavy")
+    srv.shutdown()
