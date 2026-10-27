@@ -43,10 +43,14 @@ def test_lean_keeps_mcp_aux():
     assert "mcp" not in hh.LEAN_AUX_DROP
 
 def test_graph_accepts_plugins_field():
+    """agents.*.plugins is a known field; ignore unrelated graph validation noise."""
     import copy, yaml
     g = yaml.safe_load(open(os.path.join(ROOT, "graph.yaml")))
     g = copy.deepcopy(g)
     g["agents"]["hermes-lab"]["plugins"] = ["rea"]
     import graph_types as gt
-    errs = [e for e in gt.validate_types(g) if "plugins" in e or "unknown field" in e]
+    # Only plugin-related complaints matter here. Broader "unknown field" matches would
+    # fail this test whenever unrelated catalog fields (e.g. options.*.db) drift.
+    errs = [e for e in gt.validate_types(g) if "plugins" in e.lower()]
     assert not errs, errs
+    assert "plugins" in (gt.TYPES["agents"].fields or {})
