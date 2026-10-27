@@ -70,7 +70,7 @@ Parameters a launch needs: `docs/model-params.md` (`scripts/model_db.py params-d
 Card values are copied, never invented. Anything the card or config does not state stays `null`.
 
 ### How `card_defaults` is chosen
-1. **Recommended sets** (a labelled set of at least 2 parameters, or a code block the card calls recommended). One set: it wins. Several: narrowed by the card's stated default mode (thinking / non-thinking), then by a "text"/"general" label, then by matching the repo's `generation_config.json`. Still several: ambiguous, `card_defaults` stays `null` and the node must pick one with `card_set`.
+1. **Recommended sets** (a labelled set of at least 2 parameters, a markdown table whose header names Temperature / Top_p / etc., or a code block the card calls recommended). One set: it wins. Several: narrowed by the card's stated default mode (thinking / non-thinking), then by a "text"/"general" label, then by a soft-prefer of a single chat/reasoning/conversational label (agentic/coding stays available via `card_set`), then by matching the repo's `generation_config.json`. Still several: ambiguous, `card_defaults` stays `null` and the node must pick one with `card_set`.
 2. Otherwise the sampling values of `generation_config.json` (repo, then base repo).
 3. Otherwise a single distinct code example from the card, flagged in `card_defaults_how`.
 

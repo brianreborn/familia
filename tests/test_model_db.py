@@ -270,6 +270,30 @@ def entry(**kw):
     return e
 
 
+def test_scan_sampling_tables_from_markdown():
+    body = """
+We recommend adjusting inference settings:
+
+| Scenario | Temperature | Top_p | Max New Tokens |
+|---|---:|---:|---:|
+| Agentic and tool-use tasks | 1.0 | 0.95 | 65,536 |
+| Reasoning and chat tasks | 0.6 | 0.95 | 262,144 |
+
+The model supports a context length of up to 524,288 tokens (512K).
+"""
+    sc = am.scan_card_body(body, 1, "README.md")
+    rec = [x for x in sc["sets"] if x["kind"] == "recommended"]
+    assert len(rec) == 2
+    assert rec[0]["params"] == {"temp": 1.0, "top-p": 0.95}
+    assert rec[1]["params"] == {"temp": 0.6, "top-p": 0.95}
+    assert sc["ctx"] == 524288
+    d, _, label, modes, how = am.choose_card_defaults([("", sc)], [])
+    assert d == {"temp": 0.6, "top-p": 0.95} and "soft-prefer" in how
+    assert "Agentic and tool-use tasks" in modes and "Reasoning and chat tasks" in modes
+
+
+
+
 def graph(node=None, model=None):
     m = {"gguf": "Thing-Q4_K_M.gguf", "sha256": "c" * 64, "arch": "qwen3", "trained_ctx": 40960, "db": "org--Thing-GGUF--Thing-Q4_K_M"}
     m.update(model or {})

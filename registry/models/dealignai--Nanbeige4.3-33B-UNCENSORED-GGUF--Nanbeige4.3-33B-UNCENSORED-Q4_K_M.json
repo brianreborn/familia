@@ -9,15 +9,15 @@
  "quant": "Q4_K_M",
  "arch": "llama",
  "roles": [
-  "coder",
-  "chat"
+  "chat",
+  "coder"
  ],
  "license": "dealignai-community-model-license-v0.3 (LICENSE.md)",
  "license_source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF card license",
  "ctx": 524288,
  "ctx_source": "GGUF llama.context_length",
- "card_ctx": null,
- "card_ctx_source": null,
+ "card_ctx": 524288,
+ "card_ctx_source": "Nanbeige/Nanbeige4.3-33B README.md:L96",
  "base_model": "Nanbeige/Nanbeige4.3-33B",
  "base_revision": "c1093c501cc6460427c0ac634db7223d0450c0ee",
  "card_defaults": {
@@ -25,11 +25,11 @@
   "top-p": 0.95
  },
  "card_defaults_source": {
-  "temp": "Nanbeige/Nanbeige4.3-33B README.md sampling table: Reasoning and chat tasks",
-  "top-p": "Nanbeige/Nanbeige4.3-33B README.md sampling table: Reasoning and chat tasks"
+  "temp": "Nanbeige/Nanbeige4.3-33B Nanbeige/Nanbeige4.3-33B README.md:L103",
+  "top-p": "Nanbeige/Nanbeige4.3-33B Nanbeige/Nanbeige4.3-33B README.md:L103"
  },
  "card_default_set": "Reasoning and chat tasks",
- "card_defaults_how": "soft-prefer chat/reasoning from Nanbeige/Nanbeige4.3-33B README sampling table over dealignai coding example",
+ "card_defaults_how": "the card's only recommended set, soft-prefer chat/reasoning/general",
  "card_sampling_modes": {
   "Agentic and tool-use tasks": {
    "temp": 1.0,
@@ -38,10 +38,6 @@
   "Reasoning and chat tasks": {
    "temp": 0.6,
    "top-p": 0.95
-  },
-  "Agentic/coding greedy (dealignai example)": {
-   "temp": 0.0,
-   "top-p": 1.0
   }
  },
  "card_default_mode": null,
@@ -55,7 +51,7 @@
     "temp": 1.0,
     "top-p": 0.95
    },
-   "source": "Nanbeige/Nanbeige4.3-33B README.md sampling table"
+   "source": "Nanbeige/Nanbeige4.3-33B README.md:L102"
   },
   {
    "label": "Reasoning and chat tasks",
@@ -65,17 +61,26 @@
     "temp": 0.6,
     "top-p": 0.95
    },
-   "source": "Nanbeige/Nanbeige4.3-33B README.md sampling table"
+   "source": "Nanbeige/Nanbeige4.3-33B README.md:L103"
   },
   {
-   "label": "Agentic/coding greedy (dealignai example)",
+   "label": "For agentic and coding workflows (tool-calling, iterative code tasks), use low-temperature greedy or near-greedy",
    "kind": "example",
    "mode": null,
    "params": {
     "temp": 0.0,
     "top-p": 1.0
    },
-   "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF README.md:L226"
+   "source": "dealignai README.md:L226"
+  },
+  {
+   "label": "For conversational / creative use, 0.6\u20130.8 temperature +",
+   "kind": "mention",
+   "mode": null,
+   "params": {
+    "top-p": 0.95
+   },
+   "source": "dealignai README.md:L229"
   }
  ],
  "card_commands": [

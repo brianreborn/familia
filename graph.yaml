@@ -644,7 +644,6 @@ nodes:
     card_set: "Reasoning and chat tasks"
     override_reasons:
       ctx: 'same RAM budget as angel-coder; heavy ctx relative to host, not full 512K'
-      card_set: 'chat/reasoning role: base-card Reasoning and chat (temp 0.6 top_p 0.95); soft default; distinct from angel-coder'
     note: 'card_set is soft default (Reasoning and chat); do not co-start with angel-coder on 24 GiB'
 
 speculative:
