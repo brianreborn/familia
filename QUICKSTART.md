@@ -119,7 +119,7 @@ an error. `--no-escalate` turns the automatic proxy off. Self-improving harnesse
 are a separate, optional layer that hermes picks up when the graph enables it:
 [docs/harness2.md](docs/harness2.md).
 
-The harness expects hermes-agent at `/snap/bin/hermes-agent`; set `HERMES_BIN` if yours is elsewhere.
+The harness resolves hermes-agent automatically: Linux snap (`/snap/bin/hermes-agent`) when present; FreeBSD ports (`/usr/local/bin/hermes-agent`, packages under `/usr/local/lib/hermes-agent`, not site-packages); otherwise `PATH`. Override with `HERMES_BIN` / `HERMES_PY` / `HERMES_SP`. On angel (FreeBSD): `pkg install hermes-agent` then `scripts/hermes.sh --model angel-coder --render-only` (host-scoped; no box GGUFs). Launch still needs a node whose per-slot ctx ≥ agent `min_ctx` (64K hermes-agent floor) — `angel-coder` is 32K today; see docs/vvram-ssd/ANGEL-OPERATOR.md.
 
 ## 5. Add a model
 

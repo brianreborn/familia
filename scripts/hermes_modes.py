@@ -28,6 +28,7 @@ usage: hermes.sh [--graph-mode | --model NODE | --mode graph|single] [--agent NA
                  [-h|--help] [-- HERMES-ARGS...]
   --graph-mode is the same as --mode graph (the default); --graph FILE only picks which graph.yaml.
 example: scripts/hermes.sh --model coder --render-only
+       scripts/hermes.sh --model angel-coder --render-only   # FreeBSD angel smoke (host-scoped files)
        hermes.sh harness2 COMMAND ...    Harness² review CLI (scripts/harness2.py); launches nothing
 """
 import copy, os, socket, subprocess, sys
@@ -97,8 +98,13 @@ def eligible(g, floor):
             and (g["models"].get(n["model"]) or {}).get("role") not in NOT_CHAT]
 
 
-def single_agent(g, agent, node):
-    """-> (graph copy with a synthetic agent '<agent>@<node>', its name). Exits on refusal."""
+def single_agent(g, agent, node, *, enforce_min_ctx=True):
+    """-> (graph copy with a synthetic agent '<agent>@<node>', its name). Exits on refusal.
+
+    enforce_min_ctx=False (--render-only): warn when below min_ctx so angel can smoke-render
+    without box GGUFs / without raising angel-coder.ctx yet. Launch still enforces the floor
+    (hermes-agent MINIMUM_CONTEXT_LENGTH is 64_000 as of upstream).
+    """
     a = (g.get("agents") or {}).get(agent) or usage_err(f"agent {agent!r} not in graph")
     n = (g.get("nodes") or {}).get(node)
     if n is None: usage_err(f"--model {node!r}: no such node (nodes: {sorted(g['nodes'])})")
@@ -107,9 +113,12 @@ def single_agent(g, agent, node):
     if role in NOT_CHAT: sys.exit(f"hermes.sh: node {node} serves a role:{role} model; hermes needs a chat model. Eligible: {', '.join(eligible(g, floor)) or 'none'}")
     if n.get("status") != "active": sys.exit(f"hermes.sh: node {node} is status {n.get('status')}, not active")
     if slot(n) < floor:
-        sys.exit(f"hermes.sh: node {node} per-slot ctx {slot(n)} (ctx {n['ctx']} / parallel {n['parallel']}) is below "
-                 f"agent {agent} min_ctx {floor} (hermes-agent refuses smaller windows). "
-                 f"Eligible: {', '.join(eligible(g, floor)) or 'none'}; or raise nodes.{node}.ctx (validate_graph checks RAM)")
+        msg = (f"hermes.sh: node {node} per-slot ctx {slot(n)} (ctx {n['ctx']} / parallel {n['parallel']}) is below "
+               f"agent {agent} min_ctx {floor} (hermes-agent refuses smaller windows). "
+               f"Eligible: {', '.join(eligible(g, floor)) or 'none'}; or raise nodes.{node}.ctx (validate_graph checks RAM)")
+        if enforce_min_ctx:
+            sys.exit(msg)
+        print(msg + " — continuing for --render-only only", file=sys.stderr)
     here = socket.gethostname().split(".")[0]
     if here in (g.get("hosts") or {}) and n["host"] != here:
         sys.exit(f"hermes.sh: node {node} is on {n['host']}, this is {here}; single-model mode starts the node locally")
@@ -191,17 +200,30 @@ def main(argv):
             pickup(raw, o, agent)
             link_skills(raw, agent, os.path.expanduser(f"~/.cache/familia/hermes-{agent}"))
         return hh.main(fwd + (["--"] + o["rest"] if o["rest"] else []))
-    g = hh.load_graph(o["graph"])
-    node = o["model"] or hh.node_for(g, agent)[1]
-    g2, name = single_agent(g, agent, node)
+    # Scope weight checks to the node's host (angel must not require box GGUFs).
+    peek = yaml.safe_load(open(o["graph"])) or {}
+    peek["_path"] = o["graph"]
+    node = o["model"]
+    if not node:
+        # Need aliases to pick default node; schema-only load first.
+        g0 = hh.load_graph(o["graph"], check_files=False)
+        node = hh.node_for(g0, agent)[1]
+    npeek = (peek.get("nodes") or {}).get(node) or {}
+    scope = npeek.get("host")
+    g = hh.load_graph(o["graph"], check_files=(o["action"] != "render"),
+                      host=None if o["action"] == "render" else scope)
+    g2, name = single_agent(g, agent, node, enforce_min_ctx=(o["action"] != "render"))
     home = os.path.expanduser(f"~/.cache/familia/hermes-{name}")
     print(f"hermes.sh: mode=single agent={agent} node={node} ctx={g2['agents'][name]['context_length']} router=none compression=on", file=sys.stderr)
     pickup(g, o, agent, into=home)
     link_skills(g, agent, home)
-    if o["action"] == "selftest": return hh.selftest(g2, name)
+    if o["action"] == "selftest":
+        hh.ensure_hermes()
+        return hh.selftest(g2, name)
     home, base, n, nname = hh.render(g2, name)
     print(f"hermes.sh: HERMES_HOME={home} model={base}", file=sys.stderr)
     if o["action"] == "render": return 0
+    hh.ensure_hermes()
     hh.ensure_server(g2, nname, n)
     hh.warm_prompt(g2, nname, n, home)
     os.environ["HERMES_HOME"] = home
