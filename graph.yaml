@@ -114,7 +114,7 @@ hosts:
     reserve_ram_mib: 4096                # policy (installer default), not measured; see docs/ram-safety.md
     gpus: null                   # inventory unknown; measure GPUs before GPU offload
     notes: >-
-      Nanbeige4.3-33B Q4_K_M (~18.7 GiB) planned on this host. Before activate: measure SSD swap
+      Nanbeige4.3-33B Q4_K_M (~18.7 GiB) active via angel-coder (angel-chat stays planned; do not co-start). Before activate: measure SSD swap
       (target ~24 GiB familia swap or proven RSS) + mkdir ~/.cache/familia/spill/angel-{coder,chat}.
       Software VVRAM: load_mode mmap (see install-notes/vvram-ssd/LAYER.md). FreeBSD nvso scaffold
       in gpu-legacy/nvso (stubs; not required for Nanbeige). Do not co-start angel-coder and angel-chat.
@@ -624,7 +624,7 @@ nodes:
     port: 18200
     cache_ram_mib: 512
     load_mode: mmap              # SSD-friendly for 18.7 GiB weights
-    status: planned
+    status: active
     card_set: "Agentic and tool-use tasks"
     override_reasons:
       ctx: 'dealignai README llama-server example uses -c 32768; full 524288 exceeds angel 24442 MiB - 4096 reserve with 18.7 GiB weights'

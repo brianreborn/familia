@@ -74,7 +74,7 @@
    "source": "dealignai README.md:L226"
   },
   {
-   "label": "For conversational / creative use, 0.6\u20130.8 temperature +",
+   "label": "For conversational / creative use, 0.6–0.8 temperature +",
    "kind": "mention",
    "mode": null,
    "params": {
@@ -669,12 +669,19 @@
   "add-model.sh --fetch --damp-run"
  ],
  "match": null,
- "local_check": null,
+ "local_check": {
+  "host": "angel",
+  "sha256_ok": true,
+  "checked": "2026-10-24",
+  "path": "~/.local/share/gguf/models/general/Nanbeige4.3-33B-UNCENSORED-Q4_K_M.gguf",
+  "bytes": 20051495968,
+  "note": "operator/graph notes: shipped tested on angel; box damp never downloaded weights"
+ },
  "unknown": null,
  "warnings": null,
  "updated": "2026-10-26",
  "by": "scripts/model_db.py",
- "weights": "absent (damp)",
+ "weights": "present (angel, sha256 checked 2026-10-24)",
  "gguf_meta": {
   "general.architecture": "llama",
   "general.type": "model",
@@ -1153,7 +1160,7 @@
     "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF LICENSE.md:L229"
    },
    {
-    "quote": "(All multi-turn responses verified compliant on manual content check. Earlier grader false-positives on dense structured output \u2014 a word-uniqueness heuristic firing on numbered lists \u2014 were investigated and found to be non-loops.)",
+    "quote": "(All multi-turn responses verified compliant on manual content check. Earlier grader false-positives on dense structured output — a word-uniqueness heuristic firing on numbered lists — were investigated and found to be non-loops.)",
     "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF README.md:L153"
    }
   ],
@@ -1179,5 +1186,5 @@
   ]
  },
  "repo_bytes": 56552243997,
- "notes": "Q4_K_M \u224818.7 GiB; trained_ctx 524288; GGUF arch=llama (llama.cpp also lists nanbeige). Weights on angel only (damp on box). License dealignai-community-model-license-v0.3 + Apache-2.0 upstream. Hosted inference reserved by dealignai license \u00a73."
+ "notes": "Q4_K_M ≈18.7 GiB; trained_ctx 524288; GGUF arch=llama (llama.cpp also lists nanbeige). Weights on angel only (damp on box). License dealignai-community-model-license-v0.3 + Apache-2.0 upstream. Hosted inference reserved by dealignai license §3."
 }
