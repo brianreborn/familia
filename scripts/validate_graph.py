@@ -184,16 +184,25 @@ def validate(graph, check_files=True, host=None):
         state = kv_mib(meta, arch, n["ctx"] // n["parallel"], n["kv_type"])
         if n.get("embeddings"): state = None  # embedding servers keep no prompt cache
         if state is not None and n["cache_ram_mib"] < state:
-            errs.append(f"nodes.{name}: cache_ram_mib {n['cache_ram_mib']} < estimated per-slot prompt state {state:.0f} MiB (prompt cache would always be skipped)")
+            msg = (
+                f"nodes.{name}: cache_ram_mib {n['cache_ram_mib']} < estimated per-slot prompt state "
+                f"{state:.0f} MiB (prompt cache would always be skipped)"
+            )
+            # Phones stay strict (no big swap). Swap-rich desktops/laptops/VMs: advisory only.
+            hk = (hosts.get(n["host"]) or {}).get("kind")
+            hos = str((hosts.get(n["host"]) or {}).get("os") or "").lower()
+            androidish = hk == "phone" or hos.startswith("android")
+            if androidish:
+                errs.append(msg)
+            else:
+                WARNINGS.append(msg + " (non-Android: advisory; raise cache_ram_mib when you want prompt cache)")
         weight_mib = os.path.getsize(path) / 2**20
         # Software VVRAM (docs/vvram-ssd/LAYER.md): mmap + swap_budget means weights are
         # file/swap-backed; counting the full GGUF as RAM hard-fails Nanbeige on 24 GiB hosts.
         # Still charge KV + cache_ram + overhead; warn so operators keep swap measured.
         if n.get("load_mode") == "mmap" and n.get("swap_budget_mib"):
             WARNINGS.append(
-                f"nodes.{name}: load_mode mmap + swap_budget_mib {n['swap_budget_mib']}: "
-                f"GGUF {weight_mib:.0f} MiB omitted from hard RAM total (file/swap-backed); "
-                f"charged KV+cache+overhead only"
+                f"nodes.{name}: mmap+swap_budget — GGUF {weight_mib:.0f} MiB not charged to hard RAM total"
             )
             weight_mib = 0.0
         totals[n["host"]] = totals.get(n["host"], 0.0) + weight_mib + (kv or 0) + 256 + n["cache_ram_mib"]
@@ -209,21 +218,48 @@ def validate(graph, check_files=True, host=None):
         dctx = sp.get("draft_ctx", t["ctx"])
         dkv = kv_mib(dmeta, dmeta.get("general.architecture"), dctx, sp.get("draft_kv_type", t["kv_type"])) or 0
         totals[t["host"]] = totals.get(t["host"], 0.0) + os.path.getsize(dp) / 2**20 + dkv  # draft weights + its KV
+    def _android_host(h):
+        hh = hosts.get(h) or {}
+        hos = str(hh.get("os") or "").lower()
+        return hh.get("kind") == "phone" or hos.startswith("android")
+
+    def _swap_rich_host(h):
+        """Non-Android host that declares swap budget on an active node, or measured swap >= 32 GiB."""
+        if _android_host(h):
+            return False
+        for _n, nd in graph["nodes"].items():
+            if nd.get("host") != h or nd.get("status") == "planned":
+                continue
+            if int(nd.get("swap_budget_mib") or 0) >= 8192:
+                return True
+        # Live swap when validating on that host (angel, etc.)
+        have = host_swap_total_mib()
+        if have is not None and have >= 32768:
+            return True
+        return False
+
     for h, total in totals.items():
-        # RAM safety (docs/ram-safety.md). reserve_ram_mib and the 2 GiB small-host floor are
-        # PROVISIONAL guidance: idle load has not been characterized and no system-level OOM
-        # protection is deployed yet, so margin-only issues warn. Only clear overcommit fails.
+        # RAM safety (docs/ram-safety.md). Android phones stay hard-fail on overcommit.
+        # Swap-rich desktops/laptops/VMs (angel-class): overcommit and tight margins are
+        # advisory — software VVRAM / large swap is the intended path.
         ram = hosts[h]["ram_mib"]
         reserve = hosts[h].get("reserve_ram_mib") or 0
+        soft = _swap_rich_host(h)
         if total > ram:
-            errs.append(f"hosts.{h}: estimated RAM {total:.0f} MiB exceeds physical ram_mib {ram} MiB (overcommit)")
-            continue
+            msg = f"hosts.{h}: estimated RAM {total:.0f} MiB exceeds physical ram_mib {ram} MiB (overcommit)"
+            if soft:
+                WARNINGS.append(msg + " (swap-rich non-Android: advisory; see docs/vvram-ssd/LAYER.md)")
+            else:
+                errs.append(msg)
+            if not soft:
+                continue
         if total + reserve > ram:
             WARNINGS.append(
                 f"hosts.{h}: estimated RAM {total:.0f} MiB + provisional reserve {reserve} MiB exceeds ram_mib {ram} MiB "
                 f"(guidance, not a hard limit; see docs/ram-safety.md)")
         free_after = ram - total
-        if ram < 8192 and free_after < 2048:
+        # Small-host floor: skip noise on swap-rich angel-class; keep for phones / tight hosts
+        if (not soft) and ram < 8192 and free_after < 2048:
             WARNINGS.append(
                 f"hosts.{h}: estimated free after nodes {free_after:.0f} MiB < 2048 MiB provisional floor "
                 f"on host with ram_mib {ram} < 8192 (guidance; see docs/ram-safety.md)")

@@ -34,7 +34,7 @@ high RAM utilization.
 
 | Check | Result |
 |---|---|
-| `estimated_used > ram_mib` | **ERROR**: clear overcommit, fails. |
+| `estimated_used > ram_mib` | **ERROR** on Android/phones; **WARNING** on swap-rich non-Android (angel-class / `swap_budget_mib` ≥ 8 GiB or live swap ≥ 32 GiB). |
 | `estimated_used + reserve_ram_mib > ram_mib` | WARNING (provisional margin). |
 | `ram_mib < 8192` and `ram_mib - estimated_used < 2048` | WARNING (provisional small-host floor). |
 
@@ -118,3 +118,9 @@ cat /proc/swaps
 - `scripts/dogfood/install-loop-unit.sh` and `scripts/watchdog/install-kill-watch.sh` install user
   units with `Restart=always`. kill-watch tags kills of protected processes `P0-PROTECTED` and copies
   them to `protected-kills.log`. Tested only on recorded fixtures (tests/fixtures/oom112).
+
+## Swap-rich non-Android (2026-10-27)
+
+On angel-class hosts (lots of swap / software VVRAM), RAM overcommit and undersized
+`cache_ram_mib` are **warnings**, not start-blockers. Android (`kind: phone` /
+`os: android*`) stays strict — no big swap assumption there.

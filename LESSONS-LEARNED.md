@@ -201,3 +201,7 @@ Do not disable an improvement subsystem just because the selected model has a pa
 role. If the user engages the subsystem, it should be available across model types; model
 selection is a separate choice. Keep opt-in, consent and target-specific safety checks at
 the subsystem boundary rather than using model metadata as a proxy for user intent.
+
+## L-screen. Always start servers in screen so we can attach (2026-10-27)
+Agents and automation must **never** start llama-server / familia graph servers in non-screen mode (`foreground`, `nohup`, bare background). Use `DETACH_MODE=screen` or `DETACH_MODE=screen-attached` so the operator can attach (`screen -r familia-server`). Attaching is critical for ops on angel/Uriel and other desktop hosts. Operator-driven starts in Konsole should prefer `screen-attached`.
+
