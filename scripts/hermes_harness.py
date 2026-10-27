@@ -9,7 +9,7 @@
    ~/.hermes/config.yaml; ~/.hermes is only read, never written.
 3. Starts the node's llama-server from `validate_graph.py --args` if it is not
    up, and waits until /props reports the expected n_ctx.
-4. Execs /snap/bin/hermes-agent with that HERMES_HOME.
+4. Execs hermes-agent (resolved: snap, FreeBSD ports, or HERMES_BIN) with that HERMES_HOME.
 --escalate [--light NODE] puts a localhost escalation proxy (scripts/escalation_proxy.py,
 docs/escalation.md) between hermes and the node; hermes then runs as a child, not exec.
 --selftest-compaction runs hermes' own ContextCompressor on a synthetic
@@ -23,7 +23,7 @@ gate: prompts on a terminal; --accept-licenses / --yes or FAMILIA_ACCEPT_LICENSE
 Arguments for hermes-agent itself go after "--"; anything else unknown is an error (exit 2),
 so a typo never renders a config and starts a server.
 """
-import copy, json, os, re, subprocess, sys, time, urllib.request
+import copy, glob, json, os, re, shutil, subprocess, sys, time, urllib.request
 import yaml
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -31,9 +31,193 @@ sys.path.insert(0, os.path.join(ROOT, "scripts"))
 import validate_graph as vg  # noqa: E402
 import oom_adj  # noqa: E402
 
-HERMES_BIN = os.environ.get("HERMES_BIN", "/snap/bin/hermes-agent")
-HERMES_PY = os.environ.get("HERMES_PY", "/snap/hermes-agent/current/bin/python3")
-HERMES_SP = os.environ.get("HERMES_SP", "/snap/hermes-agent/current/lib/python3.12/site-packages")
+# Default Linux snap layout (kept when /snap/bin/hermes-agent exists).
+SNAP_BIN = "/snap/bin/hermes-agent"
+SNAP_PY = "/snap/hermes-agent/current/bin/python3"
+SNAP_SP = "/snap/hermes-agent/current/lib/python3.12/site-packages"
+# FreeBSD ports misc/hermes-agent: wrappers in PREFIX/bin, source tree under PREFIX/lib/hermes-agent
+# (not site-packages — see ports wrapper.in). Angel/Uriel: pkg hermes-agent.
+FREEBSD_BIN = "/usr/local/bin/hermes-agent"
+FREEBSD_LIB = "/usr/local/lib/hermes-agent"
+
+HERMES_BIN = HERMES_PY = HERMES_SP = None  # set by resolve_hermes() below
+
+
+def _path_exists(p):
+    return bool(p) and os.path.exists(p)
+
+
+def _read_shebang(path):
+    """Return interpreter from a #! line, or None."""
+    try:
+        with open(path, "rb") as f:
+            line = f.readline(256)
+    except OSError:
+        return None
+    if not line.startswith(b"#!"):
+        return None
+    parts = line[2:].decode("utf-8", "replace").strip().split()
+    if not parts:
+        return None
+    if os.path.basename(parts[0]) == "env" and len(parts) >= 2:
+        return shutil.which(parts[1]) or parts[1]
+    return parts[0]
+
+
+def _can_import_hermes_cli(py, sp, run=subprocess.run):
+    """True if `import hermes_cli` works with sp on sys.path (empty sp = bare import)."""
+    if not py:
+        return False
+    code = (
+        "import sys\n"
+        + (f"sys.path.insert(0, {sp!r})\n" if sp else "")
+        + "import hermes_cli\n"
+    )
+    try:
+        r = run([py, "-c", code], capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return r.returncode == 0
+
+
+def _discover_sp_via_import(py, run=subprocess.run):
+    """Parent dir of the hermes_cli package (site-packages or FreeBSD HERMES_LIBDIR)."""
+    code = (
+        "import hermes_cli, os\n"
+        "print(os.path.dirname(os.path.dirname(os.path.abspath(hermes_cli.__file__))))\n"
+    )
+    try:
+        r = run([py, "-c", code], capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if r.returncode != 0:
+        return None
+    out = (r.stdout or "").strip()
+    return out or None
+
+
+def _sp_candidates(bin_path, py, exists=_path_exists):
+    """Likely HERMES_SP roots: FreeBSD libdir, venv site-packages, PREFIX/lib/hermes-agent."""
+    out = []
+    if exists(FREEBSD_LIB):
+        out.append(FREEBSD_LIB)
+    if py:
+        root = os.path.dirname(os.path.dirname(os.path.abspath(py)))
+        out.extend(sorted(glob.glob(os.path.join(root, "lib", "python*", "site-packages"))))
+        out.extend(sorted(glob.glob(os.path.join(root, "Lib", "site-packages"))))
+    if bin_path:
+        prefix = os.path.dirname(os.path.dirname(os.path.abspath(bin_path)))
+        out.append(os.path.join(prefix, "lib", "hermes-agent"))
+    # de-dupe, keep order
+    seen, uniq = set(), []
+    for c in out:
+        if c and c not in seen:
+            seen.add(c)
+            uniq.append(c)
+    return uniq
+
+
+def _derive_py(bin_path, exists=_path_exists, which=shutil.which):
+    if bin_path and str(bin_path).startswith("/snap/bin/"):
+        return SNAP_PY
+    sheb = _read_shebang(bin_path) if bin_path and exists(bin_path) else None
+    if sheb and exists(sheb):
+        return sheb
+    if bin_path:
+        sibling = os.path.join(os.path.dirname(os.path.abspath(bin_path)), "python3")
+        if exists(sibling):
+            return sibling
+    return which("python3") or which("python") or sys.executable
+
+
+def _derive_sp(bin_path, py, exists=_path_exists, run=subprocess.run):
+    if bin_path and str(bin_path).startswith("/snap/bin/"):
+        return SNAP_SP
+    for cand in _sp_candidates(bin_path, py, exists=exists):
+        if exists(cand) and _can_import_hermes_cli(py, cand, run=run):
+            return cand
+    # FreeBSD ports: libdir is HERMES_SP (wrapper inserts it; not site-packages).
+    if bin_path and (str(bin_path) == FREEBSD_BIN or str(bin_path).endswith("/hermes-agent")
+                     or str(bin_path).endswith("/hermes")) and exists(FREEBSD_LIB):
+        return FREEBSD_LIB
+    discovered = _discover_sp_via_import(py, run=run)
+    if discovered and exists(discovered):
+        return discovered
+    if exists(FREEBSD_LIB):
+        return FREEBSD_LIB
+    return None
+
+
+def resolve_hermes(environ=None, *, exists=_path_exists, which=shutil.which,
+                   system=None, run=subprocess.run, missing="defaults"):
+    """Resolve HERMES_BIN / HERMES_PY / HERMES_SP.
+
+    Order: explicit env overrides always win per-variable; then Linux snap if
+    present; then FreeBSD ports (/usr/local/bin/hermes-agent); then PATH
+    (hermes-agent, hermes). PY/SP are derived from the chosen bin when unset.
+    missing='defaults' keeps snap path strings when nothing is found (import-safe);
+    missing='die' exits with an actionable message (no snap on FreeBSD).
+    """
+    env = os.environ if environ is None else environ
+    sysname = system if system is not None else os.uname().sysname
+
+    bin_path = env.get("HERMES_BIN") or None
+    py = env.get("HERMES_PY") or None
+    sp = env.get("HERMES_SP") or None
+
+    if not bin_path:
+        # Linux snap when present; FreeBSD ports layout next; else PATH.
+        if sysname != "FreeBSD" and exists(SNAP_BIN):
+            bin_path = SNAP_BIN
+        elif exists(FREEBSD_BIN):
+            bin_path = FREEBSD_BIN
+        elif exists(SNAP_BIN):
+            bin_path = SNAP_BIN
+        else:
+            bin_path = which("hermes-agent") or which("hermes")
+
+    if not bin_path:
+        if missing == "die":
+            die(
+                "hermes-agent not found. Set HERMES_BIN to the CLI "
+                "(FreeBSD: pkg install hermes-agent → /usr/local/bin/hermes-agent; "
+                "lib at /usr/local/lib/hermes-agent — no snap). "
+                "Elsewhere: curl installer (https://hermes-agent.nousresearch.com/install.sh) "
+                "or a venv, then export HERMES_BIN."
+            )
+        bin_path, py, sp = SNAP_BIN, py or SNAP_PY, sp or SNAP_SP
+        return bin_path, py, sp
+
+    if not py:
+        py = _derive_py(bin_path, exists=exists, which=which)
+    if not sp:
+        sp = _derive_sp(bin_path, py, exists=exists, run=run)
+    if not sp:
+        if missing == "die":
+            die(
+                f"could not locate hermes packages for {bin_path!r}. "
+                "Set HERMES_SP to the directory that contains hermes_cli "
+                "(FreeBSD ports: /usr/local/lib/hermes-agent) and HERMES_PY to that install's python."
+            )
+        sp = SNAP_SP if str(bin_path).startswith("/snap/bin/") else (FREEBSD_LIB if exists(FREEBSD_LIB) else SNAP_SP)
+
+    if missing == "die" and not exists(bin_path):
+        die(
+            f"HERMES_BIN={bin_path!r} is missing. "
+            "FreeBSD: pkg install hermes-agent (no snap). "
+            "Or set HERMES_BIN to a real hermes-agent/hermes binary."
+        )
+    return bin_path, py, sp
+
+
+def ensure_hermes():
+    """Re-resolve with hard failure; update module globals for prefix/selftest/exec."""
+    global HERMES_BIN, HERMES_PY, HERMES_SP
+    HERMES_BIN, HERMES_PY, HERMES_SP = resolve_hermes(missing="die")
+    return HERMES_BIN, HERMES_PY, HERMES_SP
+
+
+HERMES_BIN, HERMES_PY, HERMES_SP = resolve_hermes(missing="defaults")
 USER_HOME = os.path.expanduser("~/.hermes")
 SECRET_RE = re.compile(r"(api_?key|token|secret|password|passwd|auth|cookie|credential)", re.I)
 # Sections the harness owns; never inherited from the user's config.
@@ -67,12 +251,26 @@ def strip_secrets(v):
     return v
 
 
-def load_graph(path):
+def load_graph(path, check_files=True, host=None):
+    """Load + validate. check_files/host match validate_graph (angel must not need box GGUFs)."""
     g = yaml.safe_load(open(path)); g["_path"] = path
-    errs, _ = vg.validate(g)
+    errs, _ = vg.validate(g, check_files=check_files, host=host)
     for e in errs: print(f"graph: ERROR: {e}", file=sys.stderr)
     if errs: die("graph validation failed; not launching")
     return g
+
+
+def local_graph_host(g):
+    """Graph host id for this machine via hosts.*.local_names / hostname, or None."""
+    here = __import__("socket").gethostname().split(".")[0]
+    hosts = g.get("hosts") or {}
+    if here in hosts:
+        return here
+    for hid, h in hosts.items():
+        names = h.get("local_names") or []
+        if here in names or __import__("socket").gethostname() in names:
+            return hid
+    return None
 
 
 def node_for(g, agent):
@@ -256,7 +454,8 @@ json.dump({"system": build_system_prompt(a), "volatile": build_system_prompt_par
 
 def hermes_prefix(home):
     """The system prompt + tool schemas hermes will send, built offline by hermes itself. A snap
-    hermes is asked inside its own snap environment (outside it, fewer tools are detected)."""
+    hermes is asked inside its own snap environment (outside it, fewer tools are detected);
+    non-snap uses HERMES_PY + HERMES_SP from resolve_hermes()."""
     env = dict(os.environ, HERMES_HOME=home, HERMES_SP=HERMES_SP, FAMILIA_PREFIX_CHILD=PREFIX_CHILD)
     if HERMES_BIN.startswith("/snap/bin/"):
         cmd = ["snap", "run", "--shell", os.path.basename(HERMES_BIN), "-c", '"$SNAP/bin/python3" -c "$FAMILIA_PREFIX_CHILD"']
@@ -398,13 +597,21 @@ def parse_argv(argv):
 
 def main(argv):
     agent, graph_path, mode, light, swap_back, rest = parse_argv(argv)
-    g = load_graph(graph_path)
+    # Peek hosts for scoped file checks before full validate (other hosts' GGUFs stay optional).
+    peek = yaml.safe_load(open(graph_path)) or {}
+    peek["_path"] = graph_path
+    scope = local_graph_host(peek)
+    # --render-only: schema only (no weight files). Run/selftest: files for this host only.
+    g = load_graph(graph_path, check_files=(mode != "render"), host=scope if mode != "render" else None)
+    if mode == "render":
+        home, base, n, name = render(g, agent)
+        print(f"hermes.sh: HERMES_HOME={home} model={base}", file=sys.stderr)
+        return 0
+    ensure_hermes()
     if mode == "selftest":
         return selftest(g, agent)
     home, base, n, name = render(g, agent)
-    print(f"hermes.sh: HERMES_HOME={home} model={base}", file=sys.stderr)
-    if mode == "render":
-        return 0
+    print(f"hermes.sh: HERMES_HOME={home} model={base} bin={HERMES_BIN}", file=sys.stderr)
     if mode == "escalate":
         return run_escalating(g, agent, light or name, swap_back, rest)
     ensure_server(g, name, n)

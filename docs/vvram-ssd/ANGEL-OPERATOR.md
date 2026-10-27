@@ -30,3 +30,22 @@ Do **not** co-start `angel-chat` on 24 GiB. Spill/mmap: [LAYER.md](./LAYER.md).
 | miryam | coder, embed, … | per graph |
 
 Progress-to-issues agents: pull tip `98633d5`+, then sync/start as above — skip limp `--model` unless the graph fails hard.
+
+## Hermes on angel (non-snap)
+
+`pkg install hermes-agent` (misc/hermes-agent) installs:
+
+- `HERMES_BIN=/usr/local/bin/hermes-agent` (wrappers also: `hermes`, `hermes-acp`)
+- `HERMES_PY=/usr/local/bin/python3.12` (wrapper shebang)
+- `HERMES_SP=/usr/local/lib/hermes-agent` (ports libdir — **not** site-packages)
+
+The familia harness auto-detects this; export the three vars only to override. Smoke without box GGUFs:
+
+```sh
+cd ~/familia
+scripts/hermes.sh --model angel-coder --render-only
+# or: python3 scripts/validate_graph.py --host angel
+```
+
+**min_ctx gap:** `agents.hermes.min_ctx` is 64000 (matches upstream `MINIMUM_CONTEXT_LENGTH`). `angel-coder` is ctx 32768 — launch/`--model angel-coder` without `--render-only` refuses until ctx is raised (RAM/swap check) or a dedicated angel agent with an honest floor exists. Do not lower `min_ctx` blindly.
+
