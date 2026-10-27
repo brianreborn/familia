@@ -172,15 +172,30 @@ def test_load_graph_host_scope(tmp_path, monkeypatch):
 
 
 def test_single_agent_render_allows_below_min_ctx(capsys):
+    import copy
+    import yaml
+    import hermes_modes as hm
+    g = yaml.safe_load(open(os.path.join(ROOT, "graph.yaml")))
+    # Synthetic node below hermes min_ctx 64000 (angel-coder is now 65536 / #125).
+    base = g["nodes"].get("angel-coder") or g["nodes"]["coder"]
+    g["nodes"]["small-ctx"] = dict(copy.deepcopy(base), ctx=32768, parallel=1, port=19999, status="active")
+    g2, name = hm.single_agent(g, "hermes", "small-ctx", enforce_min_ctx=False)
+    assert name == "hermes@small-ctx"
+    assert g2["agents"][name]["context_length"] == 32768
+    err = capsys.readouterr().err
+    assert "continuing for --render-only" in err
+    with pytest.raises(SystemExit):
+        hm.single_agent(g, "hermes", "small-ctx", enforce_min_ctx=True)
+
+
+def test_angel_coder_meets_hermes_min_ctx():
+    """#125: angel-coder.ctx 65536 clears agents.hermes.min_ctx 64000."""
     import yaml
     import hermes_modes as hm
     g = yaml.safe_load(open(os.path.join(ROOT, "graph.yaml")))
     if "angel-coder" not in g.get("nodes", {}):
         pytest.skip("no angel-coder in graph")
-    g2, name = hm.single_agent(g, "hermes", "angel-coder", enforce_min_ctx=False)
+    assert hm.slot(g["nodes"]["angel-coder"]) >= g["agents"]["hermes"]["min_ctx"]
+    g2, name = hm.single_agent(g, "hermes", "angel-coder", enforce_min_ctx=True)
     assert name == "hermes@angel-coder"
-    assert g2["agents"][name]["context_length"] == 32768
-    err = capsys.readouterr().err
-    assert "continuing for --render-only" in err
-    with pytest.raises(SystemExit):
-        hm.single_agent(g, "hermes", "angel-coder", enforce_min_ctx=True)
+    assert g2["agents"][name]["context_length"] == 65536

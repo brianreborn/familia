@@ -625,7 +625,7 @@ nodes:
     model: nanbeige43-33b-q4km
     host: angel
     runtime: llama-b11669-freebsd
-    ctx: 32768                   # card example; 512K trained but RAM-limited on 24 GiB
+    ctx: 65536                   # Hermes min_ctx 64000; Brian #125 accept mmap/SSD spill (trained 512K)
     parallel: 1
     kv_type: q8_0
     flash_attn: true
@@ -633,7 +633,7 @@ nodes:
     offload: {backend: cpu, ngl: 0, split: none, main_gpu: 0}
     bind: 127.0.0.1
     port: 18200
-    cache_ram_mib: 3584         # >= per-slot KV ~3536 MiB at ctx 32768 q8_0 (validator)
+    cache_ram_mib: 3584         # baseline for 32K (~3536 MiB KV); at 64K expect ~2× (advisory; mmap+swap)
     load_mode: mmap              # SSD-friendly for 18.7 GiB weights
     status: active
     card_set: "Agentic and tool-use tasks"
@@ -642,7 +642,7 @@ nodes:
     # Loopback-only (check_node). Restores agentic dogfood for Nanbeige on angel.
     server_tools: all
     override_reasons:
-      ctx: 'dealignai README llama-server example uses -c 32768; full 524288 exceeds angel 24442 MiB - 4096 reserve with 18.7 GiB weights'
+      ctx: '65536 meets hermes-agent MINIMUM_CONTEXT_LENGTH 64000; KV ~2× vs 32K; mmap + spill_path + swap_budget_mib 24576; Brian accepted heavier SSD spill (#125)'
       card_set: 'coder/agentic role: base-card Agentic and tool-use (temp 1.0 top_p 0.95); distinct from angel-chat soft default'
     slot_save: true              # SSD/VVRAM spill via spill_path (--slot-save-path)
     spill_path: ~/.cache/familia/spill/angel-coder
