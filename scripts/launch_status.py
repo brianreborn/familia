@@ -16,7 +16,7 @@ CODES = {
     "OK_READY": ("READY", 0), "OK_EXIT": ("EXITED_OK", 0),
     "LF_BAD_PARAMS": ("LAUNCH_FAILED", 64), "LF_MISSING_RUNTIME": ("LAUNCH_FAILED", 65),
     "LF_MODEL_FILE": ("LAUNCH_FAILED", 66), "LF_TIMEOUT": ("LAUNCH_FAILED", 67),
-    "LF_PORT": ("LAUNCH_FAILED", 68), "LF_OOM_CAP": ("LAUNCH_FAILED", 69), "LF_ENGINE": ("LAUNCH_FAILED", 70),
+    "LF_PORT": ("LAUNCH_FAILED", 68), "LF_OOM_CAP": ("LAUNCH_FAILED", 69), "LF_ENGINE": ("LAUNCH_FAILED", 70), "LF_TOKENIZER": ("LAUNCH_FAILED", 71),
     "CR_SIGNAL": ("CRASHED", 80), "CR_ASSERT": ("CRASHED", 81),
     "CR_OOM_KERNEL": ("CRASHED", 82), "CR_OOM_MEMCG": ("CRASHED", 83), "CR_EXIT": ("CRASHED", 84),
     "KL_WATCHDOG": ("KILLED", 90), "KL_USER": ("KILLED", 91), "KL_OOMD": ("KILLED", 92), "KL_EARLYOOM": ("KILLED", 93),
@@ -59,7 +59,7 @@ def from_matrix_class(cls, ready, rc, killer=None, text=""):
         return "CR_OOM_MEMCG"
     if not ready:
         return {"BAD_PARAMS": "LF_BAD_PARAMS", "MISSING_RUNTIME": "LF_MISSING_RUNTIME", "MODEL_FILE": "LF_MODEL_FILE",
-                "TIMEOUT": "LF_TIMEOUT", "OOM": "LF_OOM_CAP", "OK": "OK_READY"}.get(cls, "LF_ENGINE")
+                "TOKENIZER": "LF_TOKENIZER", "TIMEOUT": "LF_TIMEOUT", "OOM": "LF_OOM_CAP", "OK": "OK_READY"}.get(cls, "LF_ENGINE")
     if cls == "OK":
         return "OK_READY"
     if re.search(r"GGML_ASSERT|assert", text or ""):

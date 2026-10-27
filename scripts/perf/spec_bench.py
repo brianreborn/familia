@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """Draft-model speculative decoding vs none vs n-gram (#91, contrast #82), one host.
 
-For each config, starts llama-server (args through bench_guard.preflight, cgroup memory cap,
-no swap), sends the same greedy (temperature 0, seed 0) requests, and records decode t/s,
+For each config, starts llama-server (args through bench_guard.preflight, cgroup MemoryMax from reservation/headroom, swap allowed (#95)), sends the same greedy (temperature 0, seed 0) requests, and records decode t/s,
 draft acceptance and whether the text is byte-identical to the no-speculation baseline
 (greedy speculative decoding must be lossless; a mismatch = quality loss, reported).
 
@@ -37,7 +36,21 @@ def req(port, sysmsg, user, n):
             "n": tm.get("predicted_n"), "draft_n": tm.get("draft_n"), "draft_ok": tm.get("draft_n_accepted"),
             "sha": hashlib.sha256(txt.encode()).hexdigest()[:12]}
 
+def _mem_max_mib(mem_max):
+    """Parse MemoryMax size (12G / 4096M / 4096) to MiB; fall back to headroom (#95)."""
+    s = str(mem_max).strip().upper()
+    if s.endswith("G"):
+        return int(float(s[:-1]) * 1024)
+    if s.endswith("M"):
+        return int(float(s[:-1]))
+    try:
+        return int(s)
+    except ValueError:
+        return BG.headroom_cap_mib() or 4096
+
+
 def run(a, name, extra, log):
+    import oom_adj  # noqa: E402
     args = [a.bin, "-m", a.target, "-c", str(a.ctx), "-t", str(a.threads), "-ngl", "0", "-np", "1", "--port", str(a.port),
             "--host", "127.0.0.1", "-lm", "none", "--jinja", "-fa", "on"] + extra
     if hasattr(BG, "preflight"): probs, args = BG.preflight(args, BG.summarize(BG.read_gguf(a.target)))
@@ -46,8 +59,19 @@ def run(a, name, extra, log):
         except ValueError as e: probs = [f"BAD_PARAMS: {e}"]
     if probs: return {"config": name, "args": args, "error": "; ".join(probs)}
     lf = f"{a.out}-{name}.log"
-    p = subprocess.Popen(["systemd-run", "--user", "--scope", "-q", "-p", f"MemoryMax={a.mem_max}", "-p", "MemorySwapMax=0"] + args,
-                         stdout=open(lf, "w"), stderr=subprocess.STDOUT)
+    # #95: hard MemoryMax = reservation; swap allowed (MemorySwapMax not set). Cap from --mem-max or headroom.
+    hard = _mem_max_mib(a.mem_max)
+    # fleet admission (#95); MemoryMax = reservation; swap allowed. Big sweeps: wrap with with-host-lock.
+    ar = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "launch_status.py"),
+                         "admit", "--mib", str(hard), "--pid", str(os.getpid()), "--tag", f"spec-{name}"],
+                        capture_output=True, text=True)
+    if ar.returncode != 0:
+        return {"config": name, "args": args, "error": "LF_OOM_CAP: " + (ar.stderr or ar.stdout or "admission refused")[-200:]}
+    p = subprocess.Popen(
+        ["systemd-run", "--user", "--scope", "-q",
+         "-p", f"MemoryHigh={max(256, hard - 256)}M", "-p", f"MemoryMax={hard}M",
+         os.path.join(ROOT, "scripts", "oom-adj"), "900"] + args,
+        stdout=open(lf, "w"), stderr=subprocess.STDOUT, preexec_fn=oom_adj.preexec())
     up = False
     for _ in range(300):
         if p.poll() is not None: break
@@ -56,13 +80,19 @@ def run(a, name, extra, log):
     r = {"config": name, "args": args[1:], "rows": {}}
     if not up:
         r["error"] = f"server died rc={p.poll()} during load: " + " | ".join(open(lf).read().strip().splitlines()[-3:])[-300:]
-        p.kill(); return r
+        p.kill()
+        subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "launch_status.py"),
+                        "release", "--pid", str(os.getpid())], capture_output=True)
+        return r
     try:
         for wn, s, u in workloads(a.hermes_sys):
             r["rows"][wn] = req(a.port, s, u, a.max_tokens); log(f"  {name:<12} {wn:<24} {r['rows'][wn]}")
     except Exception as e:
         r["error"] = f"request failed ({e}); server rc={p.poll()}: " + " | ".join(open(lf).read().strip().splitlines()[-3:])[-300:]
-    p.terminate(); p.wait(30); return r
+    p.terminate(); p.wait(30)
+    subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "launch_status.py"),
+                    "release", "--pid", str(os.getpid())], capture_output=True)
+    return r
 
 def main(argv=None):
     ap = argparse.ArgumentParser(); ap.add_argument("--bin", required=True); ap.add_argument("--target", required=True); ap.add_argument("--draft", required=True)

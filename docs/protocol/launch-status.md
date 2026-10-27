@@ -6,7 +6,7 @@ Fields: `v`(1) `phase`(launch|run) `status` `code` `engine` `model` `params` `rc
 | status | meaning | codes (exit code) |
 |---|---|---|
 | READY / EXITED_OK | healthy / clean exit | OK_READY, OK_EXIT (0) |
-| LAUNCH_FAILED | never reached health | LF_BAD_PARAMS 64, LF_MISSING_RUNTIME 65, LF_MODEL_FILE 66, LF_TIMEOUT 67, LF_PORT 68, LF_OOM_CAP 69, LF_ENGINE 70 |
+| LAUNCH_FAILED | never reached health | LF_BAD_PARAMS 64, LF_MISSING_RUNTIME 65, LF_MODEL_FILE 66, LF_TIMEOUT 67, LF_PORT 68, LF_OOM_CAP 69, LF_ENGINE 70, LF_TOKENIZER 71 |
 | CRASHED | died after READY | CR_SIGNAL 80, CR_ASSERT 81, CR_OOM_KERNEL 82, CR_OOM_MEMCG 83, CR_EXIT 84 |
 | KILLED | external killer identified | KL_WATCHDOG 90, KL_USER 91, KL_OOMD 92, KL_EARLYOOM 93 |
 

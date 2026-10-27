@@ -767,7 +767,8 @@ def run_escalating(g, agent, light, swap_back, rest, client="cli"):
     warm_prompt(g, light, g["nodes"][light], home)
     print(f"hermes.sh: escalation proxy {base} light={light} targets={g['nodes'][light].get('escalates_to')}", file=sys.stderr)
     argv = prepare_client_launch(home, client, rest)
-    return subprocess.call([HERMES_BIN] + argv, env=hermes_child_env({"HERMES_HOME": home}))
+    return subprocess.call([HERMES_BIN] + argv, env=hermes_child_env({"HERMES_HOME": home}),
+                           preexec_fn=oom_adj.preexec())
 
 
 USAGE = __doc__.split("usage: ", 1)[1].strip()
@@ -837,6 +838,8 @@ def main(argv):
     launch_env = hermes_child_env({"HERMES_HOME": home})
     os.environ.clear()
     os.environ.update(launch_env)
+    # #112: hermes process is first-to-kill (no longer Popen's llama-server; serve.sh does)
+    oom_adj.set_self()
     os.execv(HERMES_BIN, [HERMES_BIN] + argv)
 
 

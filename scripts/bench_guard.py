@@ -262,7 +262,15 @@ def preflight(args, meta=None, prompt_tokens=None, legacy_gpu=False, build=None)
     if meta is not None:
         for k in REQUIRED:
             if meta.get(k) in (None, ""):
-                problems.append("MODEL_FILE: %s missing from GGUF header" % k)
+                # tokenizer/vocab is its own launch-failure class (#109); other REQUIRED -> MODEL_FILE
+                if k == "tokenizer_model":
+                    problems.append("TOKENIZER: tokenizer_model missing from GGUF header")
+                else:
+                    problems.append("MODEL_FILE: %s missing from GGUF header" % k)
+        # empty vocab array = tokenizer not loaded
+        vs = meta.get("vocab_size")
+        if vs is not None and int(vs) == 0:
+            problems.append("TOKENIZER: vocab_size is 0 (tokenizer/vocab not loaded)")
         ctx, train = _argval(args, "-c", "--ctx-size"), meta.get("context_length")
         if ctx and train and int(ctx) > int(train) and not _argval(args, "--rope-scaling", "--rope-scale", "--yarn-orig-ctx"):
             problems.append("BAD_PARAMS: -c %s > trained context %s without rope scaling" % (ctx, train))
@@ -310,7 +318,12 @@ def check_main(argv):
         print("familia-guard: refusing launch: %s" % p, file=sys.stderr)
     if problems:
         import launch_status as ls
-        code = "LF_MODEL_FILE" if problems[0].startswith("MODEL_FILE") else "LF_BAD_PARAMS"
+        if problems[0].startswith("TOKENIZER"):
+            code = "LF_TOKENIZER"
+        elif problems[0].startswith("MODEL_FILE"):
+            code = "LF_MODEL_FILE"
+        else:
+            code = "LF_BAD_PARAMS"
         ls.emit(ls.record(code, "guard", model or "", {"args": args}, evidence="; ".join(problems)))
         return ls.exit_code(code)
     return 0
