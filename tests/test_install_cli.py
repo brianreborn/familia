@@ -150,6 +150,7 @@ def test_installers_wire_it_in_with_no_path():
     for p in ("install.sh", "install/linux/install.sh", "install/termux/install.sh"):
         s = open(os.path.join(ROOT, p)).read()
         assert "install-cli.sh" in s and "--no-path" in s, p
+        assert "install-gum.sh" in s, p
     ps = open(os.path.join(ROOT, "install/windows/install.ps1")).read()
     assert "install-cli.ps1" in ps and "NoPath" in ps
     w = open(os.path.join(ROOT, "scripts/windows/install-cli.ps1")).read()

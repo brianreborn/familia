@@ -27,17 +27,35 @@ if ($ListGoals -or $env:FAMILIA_NO_TTY -eq '1' -or -not [Environment]::UserInter
   Write-Host 'Legacy fallback: familia.cmd -LegacyMenu'
   exit 0
 }
+function Write-PilotCanopy([string]$title = 'FAMILIA PILOT LINK') {
+  Write-Host ''
+  Write-Host ('  ╔' + ('═' * 70) + '╗') -ForegroundColor Cyan
+  Write-Host ('  ║  ◈ ' + $title.PadRight(64) + '◈  ║') -ForegroundColor Cyan
+  Write-Host ('  ║  COCKPIT HUD  ·  FRAME SYNC  ·  ORDNANCE PREFETCH' + (' ' * 18) + '║') -ForegroundColor DarkCyan
+  Write-Host ('  ╚' + ('═' * 70) + '╝') -ForegroundColor Cyan
+}
+function Start-OrdnancePrefetch {
+  $pf = Join-Path $root 'scripts\windows\prefetch-first-models.ps1'
+  Write-Host '  [PREFETCHING ORDNANCE] first-try models in background…' -ForegroundColor Yellow
+  if (Test-Path $pf) {
+    & powershell -NoProfile -ExecutionPolicy Bypass -File $pf -Background | Out-Null
+  }
+}
+
 $gum = Get-Command gum -ErrorAction SilentlyContinue
 if (-not $gum) {
   Write-Host 'familia-home: gum (Charm) is required for the new front door.' -ForegroundColor Yellow
-  Write-Host 'Install a Windows gum release onto PATH, or use: familia.cmd -LegacyMenu'
+  Write-Host 'Install (user-local):  powershell -File scripts\windows\install-gum.ps1 -Yes'
+  Write-Host '     or re-run:        install\windows\install.ps1 -Yes'
+  Write-Host 'Legacy menu (no gum):  familia.cmd -LegacyMenu'
   exit 2
 }
+Write-PilotCanopy 'FAMILIA PILOT LINK'
 $choice = $goals | & gum choose --header 'What do you want to do?' --height 10
 if (-not $choice) { Write-Host 'familia-home: cancelled'; exit 0 }
 switch ($choice) {
   'Talk to the protomodel' {
-    # Prefer WSL/bash proto_chat when available; else open bootstrap URL hint
+    Start-OrdnancePrefetch
     $bash = Get-Command bash -ErrorAction SilentlyContinue
     if ($bash) {
       & bash "$root\scripts\proto_chat.sh"
@@ -53,6 +71,7 @@ switch ($choice) {
     & bash "$root\scripts\search_x.sh"
   }
   'Install / first-time setup' {
+    Start-OrdnancePrefetch
     & powershell -NoProfile -ExecutionPolicy Bypass -File "$root\scripts\windows\setup-goals.ps1" -Goal first-time
   }
   '★ Required checks (must-run)' {

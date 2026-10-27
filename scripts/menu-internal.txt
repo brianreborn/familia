@@ -67,3 +67,8 @@ scripts/find_models.sh|guided fetch from gum home "Find more models"
 scripts/search_x.sh|X/Twitter search from gum home via Agent-Reach
 scripts/windows/familia-home.ps1|Windows mirror of familia_home.sh
 scripts/start_graph.py|graph dry-run helper; preview twin retired — use hosts.start / start.sh
+scripts/install-gum.sh|install helper: put Charm gum in ~/.local/bin; called by install.sh / setup_goals, not a menu item
+scripts/pilot_hud.sh|Charm/ANSI mecha pilot HUD helpers sourced by familia_home / setup_goals; not a menu item
+scripts/prefetch-first-models.sh|background first-try model fetch kicked by gum home / setup / proto_chat; not a menu item
+scripts/windows/install-gum.ps1|Windows install helper for gum.exe into %LOCALAPPDATA%\Programs\familia\bin; called by install.ps1
+scripts/windows/prefetch-first-models.ps1|Windows Start-Job wrapper for prefetch-first-models; kicked by familia-home / setup-goals

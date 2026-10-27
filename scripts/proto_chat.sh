@@ -107,7 +107,12 @@ start_bootstrap() {
     BACKEND="$ROOT/../code-bootstraps-llama.cpp/start.sh"
   elif [ -f "$ROOT/start.sh" ]; then
     say "starting bootstrap via ./start.sh --bootstrap (detached)…"
-    ( cd "$ROOT" && nohup sh ./start.sh --bootstrap >"$ROOT/.cache/proto-bootstrap.log" 2>&1 & echo $! >"$ROOT/.cache/proto-bootstrap.pid" ) || true
+    # Overlap: free-download first-try models while bootstrap reactor comes up.
+  if [ -f "$ROOT/scripts/prefetch-first-models.sh" ]; then
+    printf 'proto-chat: PREFETCHING ORDNANCE (models) in background…\n' >&2
+    sh "$ROOT/scripts/prefetch-first-models.sh" --background >/dev/null 2>&1 || true
+  fi
+  ( cd "$ROOT" && nohup sh ./start.sh --bootstrap >"$ROOT/.cache/proto-bootstrap.log" 2>&1 & echo $! >"$ROOT/.cache/proto-bootstrap.pid" ) || true
     BOOT_PID=$(cat "$ROOT/.cache/proto-bootstrap.pid" 2>/dev/null || true)
     return 0
   fi

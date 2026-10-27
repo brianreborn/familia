@@ -88,12 +88,21 @@ DEPS_SH=""
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 [ -f "$SCRIPT_DIR/../deps.sh" ] && DEPS_SH="$SCRIPT_DIR/../deps.sh"
 [ -z "$DEPS_SH" ] && [ -f "$SCRIPT_DIR/deps.sh" ] && DEPS_SH="$SCRIPT_DIR/deps.sh"
+# Preliminary stock owned by installer: any missing base package → deps --install; gum → ~/.local/bin.
 need_tools=0
-for c in git curl python3; do command -v "$c" >/dev/null 2>&1 || need_tools=1; done
-command -v tar >/dev/null 2>&1 || [ "$RUNTIME" = 0 ] || need_tools=1
+if [ -n "$DEPS_SH" ]; then
+  if [ "$DRY" = 1 ]; then
+    say "[dry-run] would check preliminary stock: sh $DEPS_SH (install if missing)"
+  elif ! sh "$DEPS_SH" >/dev/null 2>&1; then
+    need_tools=1
+  fi
+else
+  for c in git curl python3; do command -v "$c" >/dev/null 2>&1 || need_tools=1; done
+  command -v tar >/dev/null 2>&1 || [ "$RUNTIME" = 0 ] || need_tools=1
+fi
 if [ "$need_tools" = 1 ]; then
   if [ -n "$DEPS_SH" ]; then
-    say "missing tools; running sh install/deps.sh --install (see docs/safe-mode-bootstrap.md)"
+    say "preliminary stock missing; running sh install/deps.sh --install (see docs/safe-mode-bootstrap.md)"
     if [ "$DRY" = 1 ]; then
       say "[dry-run] would run: sh $DEPS_SH --install${FAMILIA_ACCEPT_LICENSES:+ --yes}"
     else
@@ -279,5 +288,16 @@ elif [ -f "$PREFIX/repo/scripts/install-cli.sh" ]; then
   CF=""; [ "$DRY" = 1 ] && CF=--dry-run
   XDG_BIN_HOME=$BIN_DIR sh "$PREFIX/repo/scripts/install-cli.sh" $CF | sed 's/^/  /' >&2 || say "warning: could not put familia on PATH"
 else say "[dry-run] put familia on PATH: sh $PREFIX/repo/scripts/install-cli.sh (shim $BIN_DIR/familia)"; fi
+# Charm gum → user-local bin (no sudo). Soft-fail.
+GUM_SH=$PREFIX/repo/scripts/install-gum.sh
+if [ -f "$GUM_SH" ]; then
+  if [ "$DRY" = 1 ]; then
+    say "[dry-run] would ensure gum: sh $GUM_SH --dry-run"
+  else
+    GF=""; [ "${FAMILIA_ACCEPT_LICENSES:-}" = yes ] && GF=--yes
+    # shellcheck disable=SC2086
+    XDG_BIN_HOME=$BIN_DIR sh "$GUM_SH" $GF || say "warning: gum not installed; retry: sh $GUM_SH  (legacy: ./familia --legacy-menu)"
+  fi
+fi
 say "done. Models go in $PREFIX/models; start with: FAMILIA_MODEL=x.gguf familia-start"
-say "what now: run $PREFIX/repo/familia for the menu (Skills, Models, Agents). Quick start: $PREFIX/repo/QUICKSTART.md"
+say "what now: run $PREFIX/repo/familia for the Charm/gum home (Talk to the protomodel). Quick start: $PREFIX/repo/QUICKSTART.md"

@@ -53,7 +53,7 @@ Menu: `setup.deps`. Platform helpers:
 
 Base profile: `git`, `curl`, `python3`/`python`, `tar`, `unzip`, PyYAML, **pytest**. Build profile adds cmake/ninja/a C++ toolchain for code-bootstraps source builds. `getconf` is base/glibc on Linux/macOS/FreeBSD; on Termux it is the **`getconf`** package.
 
-The top-level bootstrap `install.sh` (clones into `~/familia`, configure + start) is separate from `install/linux/install.sh` (one-click graph-node under `~/.local/share/familia`). Both call the deps helper when tools are missing.
+The top-level bootstrap `install.sh` (clones into `~/familia`, configure + start) is separate from `install/linux/install.sh` (one-click graph-node under `~/.local/share/familia`). Both own the **preliminary stock**: they call `install/deps.sh --install` when **any** base package is missing (not only python3/curl), and they ensure Charm gum in `~/.local/bin` via `scripts/install-gum.sh` (Windows: `scripts\windows\install-gum.ps1` → `%LOCALAPPDATA%\Programs\familia\bin\gum.exe`). Gum install soft-fails with a legacy-menu hint. The Charm/gum home (`./familia`) owns the overlapping first-try model prefetch during Install / Talk-to-protomodel (see `scripts/prefetch-first-models.sh`).
 
 ## What every installer does
 

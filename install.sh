@@ -14,6 +14,8 @@ Usage:
     --no-start  stop after setup (same as INSTALL_NO_START=1)
     --no-path   do not put `familia` on PATH (default: 2-line shim ~/.local/bin/familia; scripts/install-cli.sh)
     --branch    choose a branch for a new checkout or switch an existing checkout to track it
+Preliminary stock (owned by this script): OS packages via install/deps.sh when anything
+base is missing, and Charm gum into ~/.local/bin via scripts/install-gum.sh (no sudo; soft-fail).
 Example: curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install.sh | sh -s -- --yes --no-start
 USAGE
   exit 0 ;; esac
@@ -39,6 +41,8 @@ while [ $# -gt 0 ]; do
 done
 if [ "$DRY" = 1 ]; then
   echo "install.sh: [dry-run] would clone or update $REPO_URL in $PREFIX${BRANCH:+ on branch $BRANCH}" >&2
+  echo "install.sh: [dry-run] would install preliminary stock if missing: sh $PREFIX/install/deps.sh --install (git/curl/python3/…)" >&2
+  echo "install.sh: [dry-run] would ensure Charm gum in ~/.local/bin: sh $PREFIX/scripts/install-gum.sh --dry-run" >&2
   echo "install.sh: [dry-run] would show the license review (scripts/licenses.py gate)" >&2
   echo "install.sh: [dry-run] would run sh $PREFIX/scripts/configure.sh (syncs every pin in pins.txt together; scripts/sync_pins.py)" >&2
   [ "${INSTALL_NO_PATH:-0}" = 1 ] || echo "install.sh: [dry-run] would put familia on PATH: sh $PREFIX/scripts/install-cli.sh" >&2
@@ -97,19 +101,33 @@ else
   fi
 fi
 
-# Local packages first (safe-mode bootstrap): help the user install what this host needs
-# before configure/sync. Home of the build-helper AI: pinned code-bootstraps-llama.cpp.
+# Preliminary stock (owned here — small and trivial): OS packages + Charm gum.
+# install/deps.sh and scripts/install-gum.sh are the helpers; this script triggers them
+# whenever anything in the base stock is missing (not only python3/curl).
+# Home of the build-helper AI: pinned code-bootstraps-llama.cpp.
 if [ -f "$PREFIX/install/deps.sh" ]; then
-  if ! command -v python3 >/dev/null 2>&1 || ! command -v curl >/dev/null 2>&1; then
-    echo "install.sh: missing tools; running install/deps.sh --install…" >&2
+  if sh "$PREFIX/install/deps.sh" >/dev/null 2>&1; then
+    echo "install.sh: preliminary OS packages look present" >&2
+  else
+    echo "install.sh: preliminary stock missing; running install/deps.sh --install…" >&2
     if [ "${INSTALL_ACK:-}" = yes ] || [ "${FAMILIA_ACCEPT_LICENSES:-}" = yes ]; then
       sh "$PREFIX/install/deps.sh" --install --yes || die "deps install failed; see docs/safe-mode-bootstrap.md"
     else
       sh "$PREFIX/install/deps.sh" --install || die "deps install failed or declined; see: sh $PREFIX/install/deps.sh --help"
     fi
-  else
-    # Non-fatal check: print present/missing; do not stop a working host.
-    sh "$PREFIX/install/deps.sh" >/dev/null 2>&1 || true
+  fi
+fi
+# Charm gum → ~/.local/bin (no sudo). Soft-fail: home falls back to ./familia --legacy-menu.
+if [ -f "$PREFIX/scripts/install-gum.sh" ]; then
+  echo "install.sh: ensuring Charm gum in ~/.local/bin…" >&2
+  GUM_FLAGS=""
+  if [ "${INSTALL_ACK:-}" = yes ] || [ "${FAMILIA_ACCEPT_LICENSES:-}" = yes ]; then
+    GUM_FLAGS="--yes"
+  fi
+  # shellcheck disable=SC2086
+  if ! sh "$PREFIX/scripts/install-gum.sh" $GUM_FLAGS; then
+    echo "install.sh: warning: gum not installed; ./familia home needs it. Retry: sh $PREFIX/scripts/install-gum.sh" >&2
+    echo "install.sh: legacy menu without gum: cd $PREFIX && ./familia --legacy-menu" >&2
   fi
 fi
 
@@ -133,7 +151,7 @@ if [ "${INSTALL_NO_PATH:-0}" != 1 ] && [ -f "$PREFIX/scripts/install-cli.sh" ]; 
   sh "$PREFIX/scripts/install-cli.sh" >&2 || echo "install.sh: warning: could not put familia on PATH" >&2
 fi
 
-echo "install.sh: next steps: cd $PREFIX && ./familia   (opens the menu; start with Skills, then Agents)" >&2
+echo "install.sh: next steps: cd $PREFIX && ./familia   (Charm/gum home — Talk to the protomodel first; legacy: ./familia --legacy-menu)" >&2
 if [ "${INSTALL_NO_START:-0}" = "1" ]; then
   echo "install.sh: installation complete (not starting; you asked for --no-start)." >&2
 else

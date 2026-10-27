@@ -231,5 +231,13 @@ elif [ -f "$REPO/scripts/install-cli.sh" ]; then
   CF=""; [ "$DRY" = 1 ] && CF=--dry-run
   sh "$REPO/scripts/install-cli.sh" $CF | sed 's/^/  /' >&2 || say "warning: could not write the familia shim"
 else say "[dry-run] write the familia shim: sh $REPO/scripts/install-cli.sh"; fi
+# Charm gum (pkg or Charm Linux binary → $PREFIX/bin). Soft-fail.
+if [ -f "$REPO/scripts/install-gum.sh" ]; then
+  if [ "$DRY" = 1 ]; then
+    say "[dry-run] would ensure gum: sh $REPO/scripts/install-gum.sh --dry-run"
+  else
+    sh "$REPO/scripts/install-gum.sh" --yes || say "warning: gum not installed; retry: sh $REPO/scripts/install-gum.sh"
+  fi
+fi
 say "done. Put GGUFs in $PREFIX_DIR/models; start: FAMILIA_MODEL=x.gguf familia-start"
-say "what now: run $REPO/familia for the menu (Skills, Models, Agents). Quick start: $REPO/QUICKSTART.md"
+say "what now: run $REPO/familia for the Charm/gum home (Talk to the protomodel). Quick start: $REPO/QUICKSTART.md"

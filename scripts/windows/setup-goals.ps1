@@ -36,13 +36,33 @@ function RunStep([string]$label, [scriptblock]$block) {
 
 switch ($Goal) {
   'first-time' {
-    Say 'Goal: first-time setup on this machine'
+    Write-Host ''
+    Write-Host ('  ╔' + ('═' * 70) + '╗') -ForegroundColor Cyan
+    Write-Host ('  ║  ◈ FAMILIA PILOT LINK — FIRST-TIME SETUP'.PadRight(68) + '◈  ║') -ForegroundColor Cyan
+    Write-Host ('  ║  COCKPIT HUD  ·  FRAME SYNC  ·  ORDNANCE PREFETCH' + (' ' * 18) + '║') -ForegroundColor DarkCyan
+    Write-Host ('  ╚' + ('═' * 70) + '╝') -ForegroundColor Cyan
     $deps = Join-Path $root 'install\windows\deps.ps1'
     $install = Join-Path $root 'install\windows\install.ps1'
     $cli = Join-Path $root 'scripts\windows\install-cli.ps1'
+    $pf = Join-Path $root 'scripts\windows\prefetch-first-models.ps1'
+    if (-not $WhatIfPreference -and (Test-Path $pf)) {
+      Write-Host '  [PREFETCHING ORDNANCE] first-try models → background' -ForegroundColor Yellow
+      Write-Host '  ┌ INSTRUMENT 1 — FOREGROUND: REACTOR BUILD (deps → sync → install)' -ForegroundColor Cyan
+      Write-Host '  └ INSTRUMENT 2 — BACKGROUND: ORDNANCE PREFETCH (.cache\prefetch-first-models.log)' -ForegroundColor Cyan
+      & powershell -NoProfile -ExecutionPolicy Bypass -File $pf -Background | Out-Null
+    } elseif ($WhatIfPreference) {
+      Say '[dry-run] would PREFETCHING ORDNANCE (models) in background'
+    }
     if (Test-Path $deps) {
-      RunStep 'Install OS packages this host needs' { & powershell -NoProfile -ExecutionPolicy Bypass -File $deps -Install }
+      RunStep 'SYNCING FRAME — OS packages' { & powershell -NoProfile -ExecutionPolicy Bypass -File $deps -Install }
     } else { Say "skip deps: $deps not found" }
+    $gumPs = Join-Path $root 'scripts\windows\install-gum.ps1'
+    if (Test-Path $gumPs) {
+      RunStep 'SYNCING FRAME — Charm gum (user-local)' {
+        $a = @('-NoProfile','-ExecutionPolicy','Bypass','-File', $gumPs, '-Yes')
+        & powershell @a
+      }
+    }
     RunStep 'Review licenses' { & python (Join-Path $root 'scripts\licenses.py') review }
     # configure.sh is POSIX-only; Windows uses sync_pins as the closest checkout setup step
     RunStep 'Sync pinned parts (Windows stand-in for configure.sh)' { & python (Join-Path $root 'scripts\sync_pins.py') }
@@ -61,8 +81,8 @@ switch ($Goal) {
       RunStep 'Install familia CLI shim' { & powershell -NoProfile -ExecutionPolicy Bypass -File $cli }
     } else { Say 'Skipped PATH.' }
     Say ''
-    Say 'First-time setup finished.'
-    Say 'Next: Hosts → start (hosts.start) or: familia.cmd -Run hosts.start'
+    Write-Host '  LINK ESTABLISHED — First-time setup finished.' -ForegroundColor Green
+    Say 'Next: Talk to the protomodel — familia.cmd  (or Hosts → start)'
   }
   'sync-pins' {
     Say 'Goal: sync pinned parts only'

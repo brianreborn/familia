@@ -49,24 +49,42 @@ fi
 
 if ! command -v gum >/dev/null 2>&1; then
   printf 'familia-home: gum (Charm) is required for the new front door.\n' >&2
-  printf 'Install:  go install github.com/charmbracelet/gum@latest\n' >&2
-  printf '     or:  download a release from https://github.com/charmbracelet/gum/releases\n' >&2
-  printf '     and put gum on PATH (this box: ~/.local/bin/gum).\n' >&2
+  printf 'Install (user-local, no sudo):  sh scripts/install-gum.sh\n' >&2
+  printf '     or re-run:                 sh install.sh --yes --no-start\n' >&2
   printf 'Legacy menu (no gum):  ./familia --legacy-menu\n' >&2
   exit 2
 fi
 
-gum style --border rounded --border-foreground 84 --foreground 159 --bold \
-  --align center --width 64 --padding "0 2" \
-  "familia" "Talk to the protomodel first — old menus are legacy"
+# Pilot canopy — mecha HUD framing for the home.
+if [ -f "$ROOT/scripts/pilot_hud.sh" ]; then
+  # shellcheck disable=SC1091
+  . "$ROOT/scripts/pilot_hud.sh"
+  pilot_canopy "FAMILIA PILOT LINK"
+else
+  gum style --border double --border-foreground 51 --foreground 159 --bold \
+    --align center --width 64 --padding "0 2" \
+    "familia" "Talk to the protomodel first — old menus are legacy"
+fi
 
 CHOICE=$(printf '%s\n' "$GOALS" | gum choose --header "What do you want to do?" --height 10) || {
   printf 'familia-home: cancelled\n'
   exit 0
 }
 
+# Background ordnance prefetch when entering build/talk paths (UI-owned overlap).
+kick_prefetch() {
+  [ -f "$ROOT/scripts/prefetch-first-models.sh" ] || return 0
+  if [ -f "$ROOT/scripts/pilot_hud.sh" ]; then
+    pilot_strip "PREFETCHING ORDNANCE" "first-try models in background (.cache/prefetch-first-models.log)"
+  else
+    printf 'familia-home: prefetching first-try model in background…\n' >&2
+  fi
+  sh "$ROOT/scripts/prefetch-first-models.sh" --background >/dev/null 2>&1 || true
+}
+
 case "$CHOICE" in
   "Talk to the protomodel")
+    kick_prefetch
     exec sh "$ROOT/scripts/proto_chat.sh"
     ;;
   "Find more models")
@@ -76,6 +94,7 @@ case "$CHOICE" in
     exec sh "$ROOT/scripts/search_x.sh"
     ;;
   "Install / first-time setup")
+    kick_prefetch
     exec sh "$ROOT/scripts/setup_goals.sh" first-time
     ;;
   "★ Required checks (must-run)")

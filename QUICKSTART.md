@@ -35,6 +35,7 @@ Pick one. All of them are per-user (no root or admin).
 
 - The full-stack installer clones into `~/familia` (`INSTALL_PREFIX` changes that), runs `scripts/configure.sh`, and starts `./start.sh` (`INSTALL_NO_START=1` skips that). It asks you to type `yes` once to acknowledge the voluntary contribution notice; `INSTALL_ACK=yes` answers it for unattended installs. Paying is never required.
 - Every installer also puts `familia` on your PATH: a 2-line shim in `~/.local/bin` (Windows: `%LOCALAPPDATA%\Programs\familia\bin` + your user PATH), with the code left where it is. If `~/.local/bin` isn't on your PATH it prints the one line to add, or run `familia path --add`. `--no-path` skips it; from a checkout, `sh scripts/install-cli.sh --dry-run` previews it. Details: [docs/install.md](docs/install.md#familia-on-your-path).
+- Installers also put **Charm gum** in that same user-local bin when missing (`scripts/install-gum.sh` / `scripts\windows\install-gum.ps1` — no sudo/admin). The gum home owns first-time setup's pilot HUD and backgrounds a free-download of first-try models (SmolLM + Laya) while foreground build runs.
 - The graph-node installers, their flags (`--dry-run`, `--uninstall`, `--name`, ...) and install locations are in [docs/install.md](docs/install.md). Windows details: [docs/windows.md](docs/windows.md).
 
 Already have a checkout? Update familia and bring every pinned sub-project to its pin, together:

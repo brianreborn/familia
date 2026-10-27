@@ -90,10 +90,43 @@ installer() {
 }
 
 goal_first_time() {
-  say "Goal: first-time setup on this machine"
-  run_step "Install OS packages this host needs" sh "$ROOT/install/deps.sh" --install
-  run_step "Review licenses" "$PY" "$ROOT/scripts/licenses.py" review
-  run_step "Configure checkout (pins + git-pull hooks)" sh "$ROOT/scripts/configure.sh"
+  # Mecha pilot HUD: this UI owns overlapping build (foreground) + model prefetch (background).
+  # install.sh still owns boring prelim packages → ~/.local; the canopy is the home/setup phase.
+  if [ -f "$ROOT/scripts/pilot_hud.sh" ]; then
+    # shellcheck disable=SC1091
+    . "$ROOT/scripts/pilot_hud.sh"
+    pilot_canopy "FAMILIA PILOT LINK — FIRST-TIME SETUP"
+  else
+    say "Goal: first-time setup on this machine"
+  fi
+
+  # Kick free-download of first-try models in background while foreground work runs.
+  if [ "$DRY" = 1 ]; then
+    say "[dry-run] would PREFETCHING ORDNANCE (models) in background"
+  elif [ -f "$ROOT/scripts/prefetch-first-models.sh" ]; then
+    if [ -f "$ROOT/scripts/pilot_hud.sh" ]; then
+      pilot_strip "PREFETCHING ORDNANCE" "first-try models (SmolLM + Laya) → background"
+      pilot_instruments "REACTOR BUILD: deps → licenses → configure → install"         "PREFETCHING ORDNANCE: see .cache/prefetch-first-models.log"
+    else
+      say "prefetching first-try model in background…"
+    fi
+    sh "$ROOT/scripts/prefetch-first-models.sh" --background || say "prefetch: soft-fail (non-fatal)"
+  fi
+
+  run_step "SYNCING FRAME — OS packages" sh "$ROOT/install/deps.sh" --install
+  # Ensure gum for the home (user-local); soft-fail.
+  if [ -f "$ROOT/scripts/install-gum.sh" ]; then
+    if [ "$DRY" = 1 ]; then
+      say "[dry-run] sh scripts/install-gum.sh --dry-run"
+    else
+      sh "$ROOT/scripts/install-gum.sh" --yes || say "gum soft-fail; legacy: ./familia --legacy-menu"
+    fi
+  fi
+  run_step "LICENSE GATE" "$PY" "$ROOT/scripts/licenses.py" review
+  if [ -f "$ROOT/scripts/pilot_hud.sh" ] && [ "$DRY" != 1 ]; then
+    pilot_strip "REACTOR BUILD" "configure (pins + hooks)"
+  fi
+  run_step "REACTOR BUILD — configure" sh "$ROOT/scripts/configure.sh"
   if [ "$DRY" = 1 ]; then
     say "[dry-run] would ask: Apply install on this host?"
     say "[dry-run] would run: sh $(installer)"
@@ -102,7 +135,11 @@ goal_first_time() {
     return 0
   fi
   if confirm "Apply install on this host for real?"; then
-    run_step "Install for real" sh "$(installer)"
+    if [ -f "$ROOT/scripts/pilot_hud.sh" ]; then
+      pilot_strip "FRAME DEPLOY" "host installer"
+      pilot_instruments "REACTOR BUILD: host install running"         "PREFETCHING ORDNANCE: $(sh "$ROOT/scripts/prefetch-first-models.sh" --status 2>&1 | head -1)"
+    fi
+    run_step "FRAME DEPLOY — install" sh "$(installer)"
   else
     say "Skipped install. You can run setup.install later, or Advanced → install."
   fi
@@ -115,8 +152,13 @@ goal_first_time() {
     say "Skipped PATH. Use setup.install-cli later, or Advanced → install-cli."
   fi
   say ""
-  say "First-time setup finished."
-  say "Next: Talk to the protomodel — run ./familia and pick that goal"
+  if [ -f "$ROOT/scripts/pilot_hud.sh" ]; then
+    pilot_ok "First-time setup finished."
+    pilot_strip "NEXT" "Talk to the protomodel — ./familia"
+  else
+    say "First-time setup finished."
+    say "Next: Talk to the protomodel — run ./familia and pick that goal"
+  fi
   say "  or start a server: ./familia start   /   ./familia-menu.sh --run hosts.start"
 }
 

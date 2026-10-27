@@ -76,6 +76,48 @@ foreach ($d in @($Prefix, $runtimeRoot, $ModelsPath)) {
   if (-not (Test-Path $d) -and $PSCmdlet.ShouldProcess($d, 'Create directory')) { New-Item -ItemType Directory -Force $d | Out-Null }
 }
 
+# Preliminary stock (owned here): OS tools via deps.ps1 when anything base is missing,
+# Charm gum.exe → %LOCALAPPDATA%\Programs\familia\bin (no admin). Soft-fail gum.
+$depsPs = Join-Path $PSScriptRoot 'deps.ps1'
+if (-not (Test-Path $depsPs)) { $depsPs = Join-Path (Split-Path $PSScriptRoot) 'windows\deps.ps1' }
+# Prefer checkout copy once repo exists; for first run use installer-side script.
+$depsCandidates = @(
+  (Join-Path $repo 'install\windows\deps.ps1'),
+  (Join-Path $PSScriptRoot 'deps.ps1')
+)
+$depsPs = $depsCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+if ($depsPs) {
+  if ($dry) { Say "[dry-run] would check preliminary stock: $depsPs -Install (if missing)" }
+  else {
+    & powershell -NoProfile -ExecutionPolicy Bypass -File $depsPs 2>$null
+    if ($LASTEXITCODE -ne 0) {
+      Say 'preliminary stock missing; running deps.ps1 -Install'
+      $depsArgs = @('-NoProfile','-ExecutionPolicy','Bypass','-File', $depsPs, '-Install')
+      if ($Yes) { $depsArgs += '-Yes' }
+      & powershell @depsArgs
+      if ($LASTEXITCODE -ne 0) { Say 'warning: deps install reported problems (see install\windows\deps.ps1)' }
+    } else { Say 'preliminary OS packages look present' }
+  }
+}
+$gumPsCandidates = @(
+  (Join-Path $repo 'scripts\windows\install-gum.ps1'),
+  (Join-Path (Split-Path $PSScriptRoot -Parent) '..\scripts\windows\install-gum.ps1')
+)
+# Also resolve relative to this script's repo root when running from a checkout
+$srcRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+$gumPsCandidates += (Join-Path $srcRoot 'scripts\windows\install-gum.ps1')
+$gumPs = $gumPsCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+if ($gumPs) {
+  if ($dry) { Say "[dry-run] would ensure gum: $gumPs -WhatIf" }
+  else {
+    Say 'ensuring Charm gum.exe in user-local bin…'
+    $gArgs = @('-NoProfile','-ExecutionPolicy','Bypass','-File', $gumPs)
+    if ($Yes) { $gArgs += '-Yes' }
+    & powershell @gArgs
+    if ($LASTEXITCODE -ne 0) { Say 'warning: gum not installed; retry scripts\windows\install-gum.ps1 (legacy: familia.cmd -LegacyMenu)' }
+  }
+}
+
 # 1. repo
 $git = Get-Command git -ErrorAction SilentlyContinue
 $selectBranch = -not [string]::IsNullOrWhiteSpace($Branch)
@@ -262,5 +304,16 @@ if ($LogonTask) {
 $cli = Join-Path $repo 'scripts\windows\install-cli.ps1'
 if (Test-Path $cli) { & $cli -NoPath:$NoPath -WhatIf:$dry }
 else { Say "would put familia on PATH via $cli" }
+# Prefer checkout install-gum after repo is present (idempotent if already installed).
+$gumCheckout = Join-Path $repo 'scripts\windows\install-gum.ps1'
+if (Test-Path $gumCheckout) {
+  if ($dry) { Say "[dry-run] would ensure gum from checkout: $gumCheckout" }
+  else {
+    $gArgs2 = @('-NoProfile','-ExecutionPolicy','Bypass','-File', $gumCheckout)
+    if ($Yes) { $gArgs2 += '-Yes' }
+    & powershell @gArgs2 2>$null | Out-Null
+  }
+}
+
 Say "done. Start a node: set FAMILIA_RUNTIME to the runtime dir and FAMILIA_MODEL, then run $repo\scripts\windows\start.bat"
-Say "what now: run $repo\familia.cmd for the menu (Skills, Models, licenses). Quick start: $repo\QUICKSTART.md"
+Say "what now: run $repo\familia.cmd for the Charm/gum home (Talk to the protomodel). Quick start: $repo\QUICKSTART.md"
