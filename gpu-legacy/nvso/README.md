@@ -71,3 +71,10 @@ sys/bus.h: fatal error: 'device_if.h' file not found
 ```
 
 Kernel sources (`/usr/src/sys`) and `bsd.kmod.mk` are required on the build host.
+
+### Verified on angel (FreeBSD 15.1)
+
+`make -f Makefile.kmod` produces `nvso.ko` (soft domains ABI 2). Load with
+`sudo kldload ./nvso.ko` only for ABI bring-up; then `./tools/nvsoctl` for the
+soft create→map→gate round-trip. **Not hardware HVVRAM.**
+

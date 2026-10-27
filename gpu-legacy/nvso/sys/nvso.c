@@ -30,12 +30,6 @@
 #include "nvso_if.h"
 #include "nvso_var.h"
 
-static MALLOC_DEFINE(M_NVSO, "nvso", "nvso(4) softc");
-
-/* Forward: backends in nvso_ssd.c / nvso_gpu.c */
-int     nvso_ssd_queue_export(struct nvso_softc *, struct nvssd_queue_export_req *);
-int     nvso_gpu_dma_post(struct nvso_softc *, struct nvgpu_dma_post_req *);
-
 struct nvso_domain *
 nvso_domain_lookup(struct nvso_softc *sc, uint32_t id)
 {
