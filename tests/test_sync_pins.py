@@ -107,6 +107,34 @@ def test_dirty_nested_checkout_refuses_and_moves_nothing(tmp_path, fam):
     assert sync(fam, "--dry-run").returncode == 3
 
 
+
+
+def test_empty_placeholder_dir_is_replaced_not_refused(tmp_path, fam):
+    """A leftover empty gitlink dir (plain git clone of a 160000 entry) must clone."""
+    a, a1, a2 = upstream(tmp_path, "a")
+    (fam / "a").mkdir()  # empty placeholder, like an unpopulated submodule
+    pins(fam, [("a", a2, a)])
+    dry = sync(fam, "--dry-run")
+    assert dry.returncode == 0, dry.stderr
+    assert "replace empty dir" in dry.stdout or "clone" in dry.stdout
+    r = sync(fam)
+    assert r.returncode == 0, r.stderr
+    assert g(fam / "a", "rev-parse", "HEAD") == a2
+    assert (fam / "a" / "f.txt").exists()
+
+
+def test_nonempty_nongit_dir_still_refused(tmp_path, fam):
+    a, a1, a2 = upstream(tmp_path, "a")
+    d = fam / "a"
+    d.mkdir()
+    (d / "keepme.txt").write_text("local stuff")
+    pins(fam, [("a", a2, a)])
+    r = sync(fam)
+    assert r.returncode == 3
+    assert "REFUSED a" in r.stderr
+    assert (d / "keepme.txt").read_text() == "local stuff"
+    assert not (d / ".git").exists()
+
 def test_commit_on_no_branch_refuses(tmp_path, fam):
     a, a1, a2 = upstream(tmp_path, "a")
     da = nested(fam, a, "a", a1)

@@ -83,7 +83,7 @@ if [ "$UNINSTALL" = 1 ]; then
   say "uninstalled"; exit 0
 fi
 
-for c in git curl python3; do command -v "$c" >/dev/null 2>&1 || die "$c is required (apt install $c)"; done
+for c in git curl python3; do command -v "$c" >/dev/null 2>&1 || die "$c is required (see: sh install/linux/deps.sh --install)"; done
 command -v tar >/dev/null 2>&1 || [ "$RUNTIME" = 0 ] || die "tar is required (or pass --no-runtime)"
 python3 -c 'import yaml' 2>/dev/null || say "warning: python3-yaml missing; graph validation will be skipped"
 

@@ -25,6 +25,17 @@ build the pinned llama.cpp checkout from source as described above.
 macOS uses the Linux script (README lists macOS as supported); it has been
 syntax-checked but **not run on a Mac**.
 
+## OS packages (Linux)
+
+Before the one-click installer, or when it stops on a missing tool, run:
+
+```
+sh install/linux/deps.sh            # list present / missing
+sh install/linux/deps.sh --install  # install missing (apt/dnf/pacman/zypper/brew)
+```
+
+Required: `git`, `curl`, `python3`, `tar`. Also `python3-yaml` (PyYAML) for graph validation, and `unzip` when a release asset is a zip. The top-level bootstrap `install.sh` (clones into `~/familia`, configure + start) is separate from `install/linux/install.sh` (one-click graph-node under `~/.local/share/familia`).
+
 ## What every installer does
 
 1. Clones (or fast-forwards) the repo. Re-running is safe.

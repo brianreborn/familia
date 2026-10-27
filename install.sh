@@ -101,9 +101,18 @@ fi
 command -v python3 >/dev/null 2>&1 || die "python3 is required (Debian/Ubuntu: sudo apt install python3; Termux: pkg install python)."
 python3 "$PREFIX/scripts/licenses.py" gate || die "licenses not accepted; stopped before fetching anything. Review: python3 $PREFIX/scripts/licenses.py review (or re-run with --yes, plus --accept-unknown for unknown licenses)"
 
-# Run configuration shell
+# Run configuration shell (syncs every pin in pins.txt together).
+# A leftover empty gitlink dir for a pin (from an old .gitmodules) used to stop
+# here with a refuse; sync_pins.py now replaces empty placeholders automatically.
 echo "install.sh: running configuration shell..." >&2
-sh "$PREFIX/scripts/configure.sh"
+if ! sh "$PREFIX/scripts/configure.sh"; then
+  echo "install.sh: configuration failed (pinned parts could not be synced)." >&2
+  echo "install.sh: common fix: if a pin directory exists but is empty / not a git checkout," >&2
+  echo "install.sh:   mv $PREFIX/<name> $PREFIX/<name>.bak && sh $PREFIX/scripts/configure.sh" >&2
+  echo "install.sh: or: cd $PREFIX && ./familia sync --dry-run   # see what is refused" >&2
+  echo "install.sh: pins are NOT git submodules (see pins.txt). Do not run git submodule update." >&2
+  die "configure.sh failed"
+fi
 if [ "${INSTALL_NO_PATH:-0}" != 1 ] && [ -f "$PREFIX/scripts/install-cli.sh" ]; then
   sh "$PREFIX/scripts/install-cli.sh" >&2 || echo "install.sh: warning: could not put familia on PATH" >&2
 fi

@@ -19,6 +19,9 @@ How to run and look after a familia setup day to day. Install and first start ar
 
 `scripts/sync_pins.py` (`./familia sync`) moves every part in `pins.txt` (code-bootstraps-llama.cpp, agent-reach, green-roomz, green-agentz, green-agency; engine pins such as `llama-server__nace-ai__edlm` only when checked out or picked with `ENGINE_*`) to its pin, all together:
 
+They are pins, not git submodules. A leftover `.gitmodules` / gitlink (mode `160000`) used to make a plain `git clone` create an empty `code-bootstraps-llama.cpp/` directory that sync refused; current `sync_pins.py` replaces empty / unpopulated placeholders automatically, and the repo no longer ships that gitlink.
+
+
 - In sync costs one file read per part: no git, no network. A pin that is already here is checked out without fetching; only a missing pin is fetched (by commit, then the branches).
 - All or nothing. Nothing moves if any part has uncommitted changes, a HEAD on no branch, or a pin that can't be fetched; the message says what to do. A failed checkout puts back the parts already moved. Nothing is reset, cleaned or force-pushed.
 - When a part was cloned or moved, its licenses are checked again (`scripts/licenses.py gate`), so you are asked only when they changed. Tests only warn.

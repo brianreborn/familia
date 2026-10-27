@@ -109,6 +109,30 @@ def git_dir(path):
     return d if os.path.isdir(d) else None
 
 
+def is_safe_pin_placeholder(path):
+    """True for an empty dir or unpopulated gitlink left by a plain `git clone`.
+
+    pins.txt owns these checkouts (not submodules). A leftover 160000 gitlink
+    makes `git clone` create an empty directory; treating that as refuse forced
+    every fresh install to fail until the user moved it aside by hand.
+    Non-empty non-git paths are still refused so local work is never discarded.
+    """
+    if os.path.islink(path):
+        return False
+    if not os.path.isdir(path):
+        return False
+    try:
+        names = os.listdir(path)
+    except OSError:
+        return False
+    if not names:
+        return True
+    # Broken submodule placeholder: only a .git file/dir that does not resolve.
+    if names == [".git"] and not git_dir(path):
+        return True
+    return False
+
+
 def fast_head(path):
     """HEAD without running git when it is a detached commit (the normal state of a pin)."""
     g = git_dir(path)
@@ -155,7 +179,20 @@ def plan(root, pins, engines):
                 c["state"] = "clone"
                 continue
         if not git_dir(c["path"]):
-            c["state"], c["note"] = "refuse", "%s exists but is not a git checkout; move it aside" % c["path"]
+            if is_safe_pin_placeholder(c["path"]):
+                # Empty/unpopulated leftover (often a gitlink from .gitmodules):
+                # remove it under apply() and clone the pin like a missing path.
+                c["state"] = "clone"
+                c["replace_placeholder"] = True
+                c["note"] = "empty or unpopulated pin placeholder; will replace with a real checkout"
+                continue
+            c["state"], c["note"] = "refuse", (
+                "%s exists but is not a git checkout; move it aside "
+                "(e.g. mv %s %s.bak), then run: ./familia sync. "
+                "If this was left by a leftover git submodule/gitlink, "
+                "familia pins are not submodules — see pins.txt."
+                % (c["path"], c["path"], c["path"])
+            )
             continue
         c["have"] = head(c["path"])
         if HEX.fullmatch(p["rev"]) and c["have"] and c["have"].startswith(p["rev"]):
@@ -192,6 +229,8 @@ def describe(c):
     if s == "skip":
         return "%-30s -        not synced: %s" % (n, c["note"])
     if s == "clone":
+        if c.get("replace_placeholder"):
+            return "%-30s placeholder -> %s  replace empty dir, clone %s" % (n, pin, c["url"])
         return "%-30s missing -> %s  clone %s" % (n, pin, c["url"])
     if s == "link":
         return "%-30s use sibling %s (%s -> %s)" % (n, c["sibling"], have, pin)
@@ -276,6 +315,11 @@ def apply(root, comps, quiet):
             done.append(c)
         for c in todo:
             if c["state"] == "clone":
+                if c.get("replace_placeholder") and os.path.lexists(c["path"]):
+                    if os.path.isdir(c["path"]) and not os.path.islink(c["path"]):
+                        shutil.rmtree(c["path"])
+                    else:
+                        os.unlink(c["path"])
                 os.rename(c["work"], c["path"])
             elif c["state"] == "link":
                 os.symlink(c["sibling"], os.path.join(root, c["name"]))
@@ -289,6 +333,8 @@ def apply(root, comps, quiet):
         return 1
     for c in todo:
         verb = {"clone": "cloned", "link": "linked sibling", "move": "moved", "fetch": "fetched and moved"}[c["state"]]
+        if c["state"] == "clone" and c.get("replace_placeholder"):
+            verb = "replaced placeholder and cloned"
         say("%s %s %s -> %s" % (verb, c["name"], short(c["have"]), short(c["want"])))
     return 0
 
