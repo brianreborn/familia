@@ -21,6 +21,8 @@ familia is a **topology coordinator**. It doesn't replace your inference server 
 > | `lfm3-omni` | LiquidAI LFM3-Omni-2B Q4_K_M + mmproj | **images + audio** | 1.64 GB | partial tested (image OK, audio TODO) |
 > | `lfm3-audio` | LiquidAI LFM3-Audio-2B Q4_K_M + mmproj | **audio** input | 1.44 GB | partial tested (loads, audio TODO) |
 >
+> `lfm3-vl`, `lfm3-omni` and `lfm3-audio` are **Linux/macOS only for now**: `fetch-models.ps1` / `serve.ps1` do not fetch or pass the mmproj yet (TODO, #190).
+>
 > After a download, restart; each media pick is served as its own model (`lfm3-vl`, `lfm3-omni`, `lfm3-audio`) with `--mmproj`, so the web UI's image/audio attach and OpenAI `image_url` / `input_audio` messages work. Benchmarks: [#183](https://github.com/brianreborn/familia/issues/183).
 
 > **Status:** pre-release (`v0.1.0-rc2`). Linux is the tested platform. **Want to help test? Start with [TESTING.md](TESTING.md).** See [Platform status](#platform-status) and [Known issues](docs/known-issues.md).
