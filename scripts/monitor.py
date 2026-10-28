@@ -790,7 +790,24 @@ def main(argv=None):
     ap.add_argument("--on-death", metavar="CMD", help="sh command run per familia process death; env FAMILIA_HOST/NODE/PID/PROC/PORT/CAUSE/EVENT_JSON")
     ap.add_argument("--no-state", action="store_true", help="don't load/save the last sample (no cross-run death detection)")
     ap.add_argument("--list", action="store_true", help="list hosts and how each is reached, then exit")
+    ap.add_argument("--deploy-probe", action="store_true",
+                    help="deploy pinned probe via scripts/monitor/deploy-probe.sh")
+    ap.add_argument("--deploy-local", action="store_true", help="with --deploy-probe: install on this machine")
+    ap.add_argument("--deploy-dry-run", action="store_true", help="with --deploy-probe: print plan only")
+    ap.add_argument("--deploy-windows", action="store_true", help="with --deploy-probe: also copy probe.ps1")
     a = ap.parse_args(argv)
+    if a.deploy_probe:
+        import subprocess
+        script = os.path.join(HERE, "monitor", "deploy-probe.sh")
+        cmd = ["sh", script]
+        if a.deploy_dry_run:
+            cmd.append("--dry-run")
+        if a.deploy_local:
+            cmd.append("--local")
+        if a.deploy_windows:
+            cmd.append("--windows")
+        cmd += list(a.hosts or [])
+        raise SystemExit(subprocess.call(cmd))
     if a.interval < 1:
         ap.error("--interval must be >= 1")
     graph, cfg = load_graph(a.graph), load_config(a.config)

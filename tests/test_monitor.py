@@ -200,3 +200,33 @@ def test_cli_once_local_only(tmp_path):
                        stdout=subprocess.PIPE, env=env, timeout=60)
     d = json.loads(p.stdout)
     assert d["hosts"]["miryam"]["transport"] == "local" and d["hosts"]["miryam"]["sample"]["ok"]
+
+
+def test_deploy_probe_script_parses_and_dry_run_local(tmp_path):
+    import os, subprocess
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    script = os.path.join(root, "scripts", "monitor", "deploy-probe.sh")
+    assert os.path.isfile(script)
+    assert subprocess.run(["sh", "-n", script], cwd=root).returncode == 0
+    env = dict(os.environ)
+    env["HOME"] = str(tmp_path)
+    r = subprocess.run(
+        ["sh", script, "--dry-run", "--local"],
+        cwd=root, env=env, capture_output=True, text=True, timeout=30,
+    )
+    assert r.returncode == 0, r.stderr + r.stdout
+    out = r.stdout + r.stderr
+    assert "[dry-run]" in out
+    assert "monitor-probe.py" in out
+    assert ".local/share/familia" in out
+
+
+def test_monitor_deploy_probe_flag_help():
+    import os, subprocess
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    r = subprocess.run(
+        ["python3", os.path.join(root, "scripts", "monitor.py"), "--help"],
+        cwd=root, capture_output=True, text=True, timeout=30,
+    )
+    assert r.returncode == 0
+    assert "--deploy-probe" in r.stdout
