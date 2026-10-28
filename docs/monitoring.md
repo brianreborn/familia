@@ -164,7 +164,27 @@ Re-copy the probe when it changes. On Windows the equivalent forced command is
 This is part of the end-of-sprint SSH lockdown, tracked privately. Keep real host names, keys and
 addresses out of this repo.
 
+## Deploy the pinned probe (one command)
+
+```sh
+# this machine
+./familia-monitor --deploy-probe --   # or:
+sh scripts/monitor/deploy-probe.sh --local
+
+# one or more ssh aliases
+sh scripts/monitor/deploy-probe.sh miryam phone7
+# or from private monitor.json hosts.*.ssh:
+sh scripts/monitor/deploy-probe.sh
+
+# Windows OpenSSH Server (also copies probe.ps1)
+sh scripts/monitor/deploy-probe.sh --windows qodesh
+```
+
+Then set `"probe": "pinned"` for those hosts in `~/.config/familia/monitor.json`.
+`--dry-run` prints the mkdir/scp/cp plan without touching the remotes.
+
 ## Not yet
 
-Planned follow-ups are tracked in the monitoring issue: a live tok/s readout against registry
-numbers, forwarding alerts to the hermes relay, and a one-command deploy for the pinned probe.
+Still open on #71: a live tok/s readout against registry numbers, and forwarding
+alerts to the hermes relay. Live tests of `probe.ps1` / Termux once those hosts
+are back in range.
