@@ -139,3 +139,16 @@ def test_probe_up_rejected_down(monkeypatch):
     s.shutdown()
     sock = _socket.socket(); sock.bind(("127.0.0.1", 0)); port = sock.getsockname()[1]; sock.close()
     assert fa.probe("http://127.0.0.1:%d" % port) == fa.DOWN
+
+
+def test_key_for_url_uses_the_urls_port(tmp_path):
+    """A server start.sh moved to another port: --url alone must find its key (no FAMILIA_PORT)."""
+    env = {"XDG_CONFIG_HOME": str(tmp_path)}
+    for port, key in (("9931", "k-default"), ("45109", "k-moved")):
+        d = tmp_path / "familia" / "instances" / port
+        d.mkdir(parents=True)
+        (d / "api-keys").write_text("# one key per line, never rotated (see docs)\n" + key + "\n")
+    assert FA.key_for_url("http://127.0.0.1:45109/v1/models", env=env) == "k-moved"
+    assert FA.key_for_url("http://localhost:9931", env=env) == "k-default"
+    env["FAMILIA_API_KEY"] = "explicit"
+    assert FA.key_for_url("http://127.0.0.1:45109", env=env) == "explicit"

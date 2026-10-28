@@ -106,7 +106,12 @@ find_endpoint() {
     fi
     return 1
   fi
-  for cand in \
+  # a code-bootstraps server says where it is (start.sh may have moved off 9931)
+  ready=""
+  for b in "$ROOT/code-bootstraps-llama.cpp" "$ROOT/../code-bootstraps-llama.cpp" "${FAMILIA_BOOTSTRAP_ROOT:-}"; do
+    [ -n "$b" ] && [ -f "$b/.cache/serve.ready" ] && { ready=$(cut -d' ' -f1 "$b/.cache/serve.ready"); break; }
+  done
+  for cand in ${ready:+"http://127.0.0.1:$ready"} \
       "http://127.0.0.1:8080" \
       "http://127.0.0.1:9931" \
       "http://127.0.0.1:8187"; do
@@ -217,7 +222,7 @@ if st in (None, "loaded"):
     sys.exit(0)
 if st == "unloaded":
     req = urllib.request.Request(url + "/models/load", data=json.dumps({"model": model}).encode(),
-                                 headers=familia_auth.auth_headers({"Content-Type": "application/json"}), method="POST")
+                                 headers=familia_auth.auth_headers({"Content-Type": "application/json"}, key=familia_auth.key_for_url(url)), method="POST")
     try:
         urllib.request.urlopen(req, timeout=10).read()
     except Exception as e:
@@ -294,7 +299,7 @@ body = {
 req = urllib.request.Request(
     url.rstrip("/") + "/v1/chat/completions",
     data=json.dumps(body).encode("utf-8"),
-    headers=familia_auth.auth_headers({"Content-Type": "application/json"}),
+    headers=familia_auth.auth_headers({"Content-Type": "application/json"}, key=familia_auth.key_for_url(url)),
     method="POST",
 )
 try:
