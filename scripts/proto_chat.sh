@@ -33,6 +33,11 @@ Talk to the familia protomodel (tiny local chat). Detects a local server
 (green-roomz :8080, bootstrap :9931, or FAMILIA_PROTO_URL). Starts
 ./start.sh --bootstrap when nothing is listening (unless --no-start).
 
+Waits for the server with readiness polling (/v1/models, then the router's
+/models status of the chat model), printing progress. FAMILIA_PROTO_WAIT=SECONDS
+sets the ceiling (default 1800, 3600 on Android/Termux or <=2 cores; 0 = no limit).
+FAMILIA_PROTO_REPLY_TIMEOUT (default 900) bounds one reply.
+
 Quit with an empty line, /q, /quit, or exit.
 USAGE
 }
@@ -141,17 +146,101 @@ start_bootstrap() {
   fi
 }
 
+# Readiness ceiling (seconds). A first start can build llama.cpp, hash and load models:
+# minutes on a laptop, much longer on a phone or a throttled CPU. FAMILIA_PROTO_WAIT
+# overrides (0 = wait as long as the server process lives).
+wait_ceiling() {
+  case "${FAMILIA_PROTO_WAIT:-auto}" in
+    auto)
+      cores=$(getconf _NPROCESSORS_ONLN 2>/dev/null || nproc 2>/dev/null || echo 4)
+      case "${PREFIX:-}" in *com.termux*) echo 3600; return ;; esac
+      if [ -n "${ANDROID_ROOT:-}" ] || [ "${cores:-4}" -le 2 ]; then echo 3600; else echo 1800; fi ;;
+    *[!0-9]*|"") die "FAMILIA_PROTO_WAIT must be seconds (0 = no limit)" 2 ;;
+    *) echo "$FAMILIA_PROTO_WAIT" ;;
+  esac
+}
+WAIT_EVERY=${FAMILIA_PROTO_WAIT_EVERY:-15}   # progress line interval (seconds)
+boot_alive() { [ -z "$BOOT_PID" ] || kill -0 "$BOOT_PID" 2>/dev/null; }
+log_hint() {
+  f="$ROOT/.cache/proto-bootstrap.log"
+  [ -s "$f" ] && tail -n 1 "$f" | cut -c1-160
+}
+
 wait_ready() {
-  i=0
-  while [ "$i" -lt 60 ]; do
+  ceiling=$(wait_ceiling) || exit 2
+  start=$(date +%s); next=$WAIT_EVERY
+  while :; do
     if ep=$(find_endpoint); then
       URL=$ep
+      say "server answers /v1/models after $(( $(date +%s) - start ))s"
       return 0
     fi
-    i=$((i + 1))
-    sleep 1
+    el=$(( $(date +%s) - start ))
+    if ! boot_alive; then
+      die "the server process (pid $BOOT_PID) exited after ${el}s before answering; last log line: $(log_hint) (full log: .cache/proto-bootstrap.log)" 1
+    fi
+    if [ "$ceiling" -gt 0 ] && [ "$el" -ge "$ceiling" ]; then
+      die "server not ready after ${el}s (FAMILIA_PROTO_WAIT=$ceiling). It may still be building or loading models: see .cache/proto-bootstrap.log, then rerun with FAMILIA_PROTO_WAIT=0 (no limit) or a larger value" 1
+    fi
+    if [ "$el" -ge "$next" ]; then
+      lim="no limit"; [ "$ceiling" -gt 0 ] && lim="limit ${ceiling}s"
+      say "still waiting for the server (${el}s, $lim)${BOOT_PID:+; last: $(log_hint)}"
+      _proto_osc working --id home/proto --msg "waiting for local chat server (${el}s)" --progress 10
+      next=$((next + WAIT_EVERY))
+    fi
+    sleep 2
   done
-  return 1
+}
+
+# The router answers /v1/models before the chat model is loaded; the first message would
+# then wait for the load inside one request (and time out on a slow host). Load it first
+# and poll the router's /models status. Servers without /models (one model) are ready.
+wait_model() {
+  ceiling=$(wait_ceiling) || exit 2
+  "$PY" - "$URL" "$MODEL" "$ceiling" "$WAIT_EVERY" <<'PY'
+import json, os, sys, time, urllib.request
+sys.path.insert(0, os.environ["FAMILIA_SCRIPTS"]); import familia_auth
+url, model, ceiling, every = sys.argv[1].rstrip("/"), sys.argv[2], int(sys.argv[3]), int(sys.argv[4])
+def status():
+    with familia_auth.open_url(url + "/models", timeout=5) as r:
+        data = json.load(r)
+    for m in data.get("data") or []:
+        if m.get("id") == model or model in (m.get("aliases") or []):
+            st = m.get("status") or {}
+            return st.get("value") if isinstance(st, dict) else st
+    return None
+try:
+    st = status()
+except Exception:
+    sys.exit(0)            # not a router: one model, served once /v1/models answers
+if st in (None, "loaded"):
+    sys.exit(0)
+if st == "unloaded":
+    req = urllib.request.Request(url + "/models/load", data=json.dumps({"model": model}).encode(),
+                                 headers=familia_auth.auth_headers({"Content-Type": "application/json"}), method="POST")
+    try:
+        urllib.request.urlopen(req, timeout=10).read()
+    except Exception as e:
+        print(f"proto-chat: could not ask the router to load {model}: {e}", file=sys.stderr)
+t0 = time.time(); nxt = every
+while True:
+    try:
+        st = status()
+    except Exception:
+        st = "unreachable"
+    el = int(time.time() - t0)
+    if st == "loaded":
+        print(f"proto-chat: model {model} loaded after {el}s", file=sys.stderr); sys.exit(0)
+    if st == "failed":
+        print(f"proto-chat: error: the router failed to load {model} (see the server log)", file=sys.stderr); sys.exit(1)
+    if ceiling > 0 and el >= ceiling:
+        print(f"proto-chat: error: {model} not loaded after {el}s (FAMILIA_PROTO_WAIT={ceiling}); "
+              "it may still be loading: rerun with FAMILIA_PROTO_WAIT=0 or a larger value", file=sys.stderr); sys.exit(1)
+    if el >= nxt:
+        lim = f"limit {ceiling}s" if ceiling > 0 else "no limit"
+        print(f"proto-chat: loading {model} ({st}, {el}s, {lim})", file=sys.stderr); nxt += every
+    time.sleep(2)
+PY
 }
 
 SYSTEM_PROMPT='You are the familia protomodel — a tiny local helper that runs on this machine.
@@ -171,6 +260,8 @@ fi
 [ -n "$MODEL" ] || MODEL=$(pick_model "$URL" "${FAMILIA_PROTO_MODEL:-}")
 [ -n "$MODEL" ] || MODEL=general-text
 
+_proto_osc working --id home/proto --msg "loading $MODEL" --progress 50
+wait_model || die "model $MODEL did not load" 1
 say "endpoint $URL  model $MODEL"
 _proto_osc working --id home/proto --msg "Talk to the protomodel ($MODEL)" --title "proto_chat"
 say "type a message (empty /q /quit /exit to quit)"
@@ -207,7 +298,7 @@ req = urllib.request.Request(
     method="POST",
 )
 try:
-    with urllib.request.urlopen(req, timeout=120) as r:
+    with urllib.request.urlopen(req, timeout=int(os.environ.get("FAMILIA_PROTO_REPLY_TIMEOUT", "900"))) as r:
         data = json.load(r)
 except Exception as e:
     print(f"(error talking to {url}: {e})", file=sys.stderr)
