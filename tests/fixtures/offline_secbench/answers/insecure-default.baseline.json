@@ -1,0 +1,6 @@
+{
+  "model": "baseline-generic",
+  "runtime": "offline-canned",
+  "revision": "test-1",
+  "text": "The service binds all interfaces and has auth disabled. File may be world-writable."
+}

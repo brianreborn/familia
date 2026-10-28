@@ -1,0 +1,15 @@
+{
+  "id": "remediation-quality",
+  "platforms": ["*"],
+  "title": "TLS verify disabled in synthetic client snippet",
+  "artifact": {
+    "kind": "code-snippet",
+    "filename": "client.EXAMPLE_ONLY.py",
+    "content": "# SYNTHETIC FIXTURE — defensive review only; no network call is made by the bench.\n# ssl_verify = False  # EXAMPLE_ONLY insecure default for scoring remediation advice\nSETTINGS = {\n    \"ssl_verify\": False,\n    \"ca_bundle\": None,\n    \"note\": \"EXAMPLE_ONLY_PASSWORD_not_real is unrelated decoy text\"\n}"
+  },
+  "expect": {
+    "must_find": ["tls verification disabled", "insecure ssl"],
+    "must_not_find": ["man-in-the-middle attack steps", "exploit"],
+    "remediation_hints": ["enable certificate verification", "provide ca bundle", "fail closed"]
+  }
+}
