@@ -12,8 +12,9 @@
 #        --no-runtime  skip the llama.cpp download     --systemd  install a systemd --user unit
 #        --branch BRANCH  select the familia branch (default: checkout branch, else main)
 #        --force-host  replace an existing hosts.NAME block
-#        --yes         accept the license review without a prompt (summary still printed)
+#        --yes         accept the license review without a prompt (summary still printed); also attests root
 #        --accept-unknown  also accept components whose license could not be found
+#        --allow-root  attest running as root (or FAMILIA_ALLOW_ROOT=yes; interactive: type yes)
 #        --no-path     do not put `familia` on PATH (default: 2-line shim ~/.local/bin/familia, scripts/install-cli.sh)
 # Safety: llama.cpp assets are verified against the sha256 digest published by
 # the GitHub release API at install time. No hash is hardcoded. Idempotent.
@@ -40,6 +41,7 @@ say() { echo "familia-install: $*" >&2; }
 die() { say "error: $*"; exit 1; }
 run() { if [ "$DRY" = 1 ]; then say "[dry-run] $*"; else "$@"; fi; }
 
+ORIG_ARGS="$*"
 while [ $# -gt 0 ]; do
   case "$1" in
     --dry-run|-n) DRY=1 ;;
@@ -52,9 +54,10 @@ while [ $# -gt 0 ]; do
     --systemd) SYSTEMD=1 ;;
     --no-path) NOPATH=1 ;;
     --force-host) FORCE_HOST=--force ;;
-    --yes|-y) FAMILIA_ACCEPT_LICENSES=yes; export FAMILIA_ACCEPT_LICENSES ;;
+    --allow-root) FAMILIA_ALLOW_ROOT=yes ;;
+    --yes|-y) FAMILIA_ACCEPT_LICENSES=yes; export FAMILIA_ACCEPT_LICENSES; FAMILIA_ALLOW_ROOT=${FAMILIA_ALLOW_ROOT:-yes} ;;
     --accept-unknown) FAMILIA_ACCEPT_UNKNOWN_LICENSES=yes; export FAMILIA_ACCEPT_UNKNOWN_LICENSES ;;
-    -h|--help) sed -n '2,18p' "$0" 2>/dev/null | sed 's/^# \{0,1\}//' || true; exit 0 ;;
+    -h|--help) sed -n '2,19p' "$0" 2>/dev/null | sed 's/^# \{0,1\}//' || true; exit 0 ;;
     *) die "unknown flag: $1 (see --help)" ;;
   esac
   shift
@@ -62,7 +65,20 @@ done
 
 git check-ref-format --branch "$BRANCH" >/dev/null 2>&1 || die "invalid branch name: $BRANCH"
 
-[ "$(id -u)" = 0 ] && die "do not run as root; this installer is user-space only"
+if [ "$(id -u)" = 0 ]; then
+  say "warning: do not run as root; this installer is user-space only"
+  case "${FAMILIA_ALLOW_ROOT:-}" in
+    [Yy][Ee][Ss]) say "continuing as root (FAMILIA_ALLOW_ROOT=yes)" ;;
+    *)
+      if [ -t 0 ]; then
+        printf 'Type yes to continue as root: ' >&2
+        ans=""; read -r ans || ans=""
+        case "$ans" in [Yy][Ee][Ss]) say "continuing as root" ;; *) die "not confirmed; aborting (nothing was changed)" ;; esac
+      else
+        die "running as root needs an attestation; to attest, run: FAMILIA_ALLOW_ROOT=yes sh install/linux/install.sh${ORIG_ARGS:+ $ORIG_ARGS}  (or pass --allow-root or --yes)"
+      fi ;;
+  esac
+fi
 UNIT="$HOME/.config/systemd/user/familia-node.service"
 
 if [ "$UNINSTALL" = 1 ]; then
