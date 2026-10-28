@@ -28,7 +28,10 @@ changes or commits that are on no branch, or if a missing pin cannot be fetched.
 parts are checked out to their pins, each HEAD is verified, and a failure puts back the
 ones already moved. Nothing is ever force-pushed, reset or cleaned.
 Engine pins (llama-server__*) are synced when they are checked out already or asked for by
-an ENGINE_* setting. FAMILIA_SYNC=0 skips syncing (a note is printed).
+an ENGINE_* setting. FAMILIA_SYNC=0 skips syncing (a note is printed). Linked git worktrees
+(`.git` is a file) skip automatic sync by default — hooks and `--auto` print how to sync
+(FAMILIA_SYNC=1 or `./familia sync`); an explicit sync still runs. Primary checkouts
+keep the previous default.
 Exit codes: 0 in sync; 1 could not sync (nothing changed); 2 usage; 3 refused (local
 changes); 4 synced, but the licenses changed and are not accepted yet.
 Stdlib only. Docs: MANUAL.md (Keeping the pinned parts in sync).
@@ -107,6 +110,15 @@ def git_dir(path):
         except OSError:
             return None
     return d if os.path.isdir(d) else None
+
+
+def is_linked_worktree(root):
+    """True when root is a linked `git worktree` (or similar): `.git` is a gitdir file.
+
+    Primary checkouts have a `.git/` directory. Linked worktrees are where
+    `git worktree add` lands; auto pin-sync there is slow and usually unwanted (#108).
+    """
+    return os.path.isfile(os.path.join(root, ".git"))
 
 
 def is_safe_pin_placeholder(path):
@@ -366,6 +378,15 @@ def install_hooks(root):
     os.makedirs(hooks, exist_ok=True)
     body = ("#!/bin/sh\n%s\n# After git pull / merge / rebase of familia: pins.txt may have changed.\n"
             "root=$(git rev-parse --show-toplevel) || exit 0\n"
+            "# Linked worktrees (git worktree add): skip pin sync by default (#108).\n"
+            "# Opt in: FAMILIA_SYNC=1, or sync explicitly: ./familia sync\n"
+            "if [ -f \"$root/.git\" ]; then\n"
+            "  case \"${FAMILIA_SYNC-}\" in\n"
+            "    1) ;;\n"
+            "    *) echo \"familia: linked worktree — skipped pin sync "
+            "(set FAMILIA_SYNC=1 or run: ./familia sync)\" >&2; exit 0 ;;\n"
+            "  esac\n"
+            "fi\n"
             "[ \"${FAMILIA_SYNC:-1}\" = 0 ] && exit 0\n"
             "[ -f \"$root/scripts/sync_pins.py\" ] || exit 0\n"
             "PY=${PYTHON:-python3}; command -v \"$PY\" >/dev/null 2>&1 || PY=python\n"
@@ -497,6 +518,11 @@ def main(argv):
         return do_update(root, rest, dry, branch)
     if os.environ.get("FAMILIA_SYNC", "1") == "0":
         say("skipped (FAMILIA_SYNC=0); the pinned parts may be behind pins.txt")
+        return 0
+    # Linked worktrees: automatic sync is opt-in (FAMILIA_SYNC=1). Explicit
+    # `./familia sync` / scripts/sync_pins.py without --auto still runs (#108).
+    if auto and is_linked_worktree(root) and os.environ.get("FAMILIA_SYNC") != "1":
+        say("linked worktree — skipped pin sync (set FAMILIA_SYNC=1 or run: ./familia sync)")
         return 0
     if auto and os.path.normcase(os.environ.get("FAMILIA_SYNC_DONE", "")) == os.path.normcase(root):
         return 0
