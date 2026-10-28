@@ -132,6 +132,23 @@ Rules: D1 and D2 can only reach D3 through the forge (job queue or issue command
 reaches D4 only through `queue-add.sh`. No domain passes a secret to a lower domain or to
 the forge.
 
+## R11 identd (v0.3) — N
+
+Each worker host runs an RFC 1413 ident service, so that TCP peers on the LAN can be
+mapped to a host:user. It is **advisory** only: never used for authorization, LAN-only
+(firewall port 113 from outside), and recorded in the stamp as `ident=<user>@<host>`.
+
+| OS | Service |
+|---|---|
+| FreeBSD | base inetd built-in `ident` (`auth stream tcp nowait root internal` in `inetd.conf(5)`; `inetd_enable=YES`) |
+| Linux | `oidentd` (or `pidentd`) from the distro, LAN-bound |
+| Termux/Android, Windows, macOS | none in base; marked unavailable in the stamp |
+
+Enabling it is a root step, so it goes through the root queue (R6). Regression test:
+a worker job connects to a local TCP listener, queries `127.0.0.1:113` for that
+connection, and asserts that the reply equals `id -un`. It reports `skip` when no identd
+is present. That job is still to be added (gap).
+
 ## R10 Identity stamping (v1.0) — N
 
 Every layer attempts an identity stamp. All layers are optional **except system-login
@@ -153,7 +170,7 @@ passwords or key fingerprints). Values that are missing are left out, not invent
 | Root queue | rq, plus the approving root uid | optional; written in `results/ID` |
 | External program | prog | optional |
 | Model/agent call | model | optional |
-| Network peer | peer | optional |
+| Network peer | peer (ident advisory, see R11) | optional |
 
 Recorded: the first line of every worker log, the issue result comment (the worker-made
 summary carries it; the hosted job does not add one), and the ledger (`ledger.append`,
