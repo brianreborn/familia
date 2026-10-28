@@ -245,3 +245,24 @@ and fails loud. Each kind has a default graph shape in
 `scripts/box_archetypes.py` (starter roles, reserve hint, transports); 
 `generate_graph.py` applies that shape then overrides. 1U=small / 2U=medium /
 3U=large server. Do not invent rack units for tower/desktop hosts.
+
+## L-190. Rapid build coordination on #190 (2026-10-28)
+Source: [#190](https://github.com/brianreborn/familia/issues/190), PRs #186/#187, cbl #46, tags.
+
+1. **The issue became a dump.** Teammates posted long status, verify and review comments on #190, and each one restated blockers, PR tables and test commands. Commands that pointed at a tag that no longer exists (`v0.0.0-pre-alpha`) were left in older comments. Readers could not tell the current state without reading everything.
+   *Rule:* the issue body is the single summary. One owner edits it in place (state, blockers, held PRs, test command). Comments are append-only evidence, and a third party folds them into the body afterward.
+2. **Held PRs were merged.** #190 listed familia #186 and #187 and cbl #46 as "held for Brian". All three were merged at 11:38 PT (18:38 UTC) by the shared `brianreborn` account, within 15 seconds of each other. The shared account hides which agent did it. Nothing in GitHub enforced the hold, which lived only in a table in a comment.
+   *Rule:* mark held PRs with a `held` label or a draft state, and never merge a PR that carries that label. Agents record their own name in the merge commit message.
+3. **The tag was named without checking existing tags.** `v0.0.0-pre-alpha` was cut while both repos already had `v0.1.0`, so it sorted below an older release. It was renamed to `v0.2.0-pre-alpha` (same commits, familia 5ed49c7, cbl 2d7108e) and the old tag was deleted.
+   *Rule:* run `git tag --sort=-v:refname | head` on every affected repo before naming a tag.
+4. **Blockers were found late.** The following only surfaced in the fresh-clone test on the day of the build:
+   - an undeclared host started nothing
+   - `INSTALL_ACK=yes` ran `sudo apt-get` and did not accept licenses
+   - a missing registry entry broke every declared host
+   - the release JSON was still at b11669, which can't load lfm3
+
+   *Rule:* run a fresh-clone install, unattended, on an unlisted host, with no sudo, before calling anything "testable". Keep it as a CI or swarm job.
+5. **The failure baseline drifts.** pytest on main had 35 known failures (it had been 33), and they were accepted as "same as baseline" rather than fixed.
+   *Rule:* track the baseline in an issue with the failing list. It may shrink but never grow, and a change to it must be called out.
+6. **Box restarts lose work.** An end-to-end source-build run on the box was lost when the box restarted, so `BUILD=1` was not re-verified for the tag.
+   *Rule:* write long runs' logs and results to a persistent path (familia-private or the repo) and not to scratch, and note what was not re-run.
