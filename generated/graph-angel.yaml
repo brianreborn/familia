@@ -125,6 +125,24 @@ hosts:
       Software VVRAM: load_mode mmap (see install-notes/vvram-ssd/LAYER.md). FreeBSD
       nvso scaffold in gpu-legacy/nvso (stubs; not required for Nanbeige). Do not
       co-start angel-coder and angel-chat.'
+  macmini:
+    kind: desktop
+    measured: true
+    os: linux
+    cpu: Intel(R) Core(TM) i5-4308U CPU @ 2.80GHz
+    threads: 4
+    ram_mib: 7300
+    reserve_ram_mib: 3072
+    local_names:
+    - green-Macmini7-1
+    - macmini
+    gpus: null
+    notes: 'Ubuntu ZFS box: rpool ~920G root, spool ~98G mounted at /SSD (79G free
+      2026-10-27). Repo at /SSD/Shared/green/familia (symlink ~/familia). Spill dirs:
+      ~/.cache/familia/spill/macmini-{coder,chat}. Good mmap/SSD spill host for 64k
+      ctx (docs/vvram-ssd). IGP: lspci 00:02.0 Haswell-ULT; prefer CPU until Vulkan
+      measured (miryam HD620 was slower than CPU on SmolLM2). Do not co-start heavy
+      coder+chat without checking MemAvailable.'
   centos10-bigram:
     kind: desktop
     measured: true
@@ -531,13 +549,14 @@ models:
       (vvram-ssd/LAYER.md).
   dolphin3-cyber-8b-q2k:
     gguf: ~/.local/share/gguf/models/pentest/Dolphin3.0-Llama3.1-8B-abliterated.Q2_K.gguf
-    sha256: unmeasured
+    sha256: 8944d35bdd613fe9279198b76eebeb9ab79c09a2bba526988ee3e3297862ea91
     arch: llama
     trained_ctx: 131072
     role: pentest
     db: RavichandranJ--Dolphin3-Cyber-8B-GGUF--Dolphin3.0-Llama3.1-8B-abliterated.Q2_K
-    notes: Official pentest-role weight (docs/pentest-models.md). Q2_K ~3.0 GiB. Fetch
-      before activating miryam-pentest.
+    notes: Official guardian weight (docs/guardian-weights.md). Q2_K ~3.0 GiB. sha256
+      is registry HF LFS oid; verify with activate_guardian_weights.py --measure.
+      Fetch before activating miryam-pentest / angel-guardian.
 nodes:
   coder:
     model: nanbeige43-33b-q4km

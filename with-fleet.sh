@@ -161,8 +161,9 @@ PY
   [ -n "$onode" ] || { echo "with-fleet.sh: pentests.$name has no node" >&2; exit 1; }
   if [ "$ostatus" != "active" ]; then
     echo "with-fleet.sh: guardian node still planned (status=$ostatus) — fetch weights, measure sha, set active, retry" >&2
+    echo "with-fleet.sh: helper: python3 scripts/activate_guardian_weights.py   # docs/guardian-weights.md" >&2
     echo "with-fleet.sh: fetch: scripts/add-model.sh --fetch RavichandranJ/Dolphin3-Cyber-8B-GGUF --quant Q2_K --role pentest --accept-licenses" >&2
-    echo "with-fleet.sh: documented LAUNCH_FAILED fix: weights absent (LF_MODEL_FILE); see docs/guardian-nodes.md" >&2
+    echo "with-fleet.sh: documented LAUNCH_FAILED fix: weights absent (LF_MODEL_FILE); see docs/guardian-weights.md" >&2
     exit 1
   fi
   if [ "$ntools" != "0" ]; then
