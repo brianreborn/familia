@@ -1,0 +1,6 @@
+{
+  "model": "candidate-sec-specialized",
+  "runtime": "offline-canned",
+  "revision": "test-1",
+  "text": "No live credential present. YOUR_API_KEY_HERE is a documentation placeholder; do not treat it as a secret finding."
+}

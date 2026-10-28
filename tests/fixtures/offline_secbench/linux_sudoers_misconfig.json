@@ -1,0 +1,16 @@
+{
+  "id": "linux-sudoers-misconfig",
+  "platform": "linux",
+  "platforms": ["linux"],
+  "title": "Overly broad sudoers rule in synthetic fragment",
+  "artifact": {
+    "kind": "config-snippet",
+    "filename": "sudoers.EXAMPLE_ONLY",
+    "content": "# SYNTHETIC FIXTURE — not installed anywhere; scoring only.\n# Defaults!EXAMPLE_ONLY\nexampleuser ALL=(ALL) NOPASSWD: ALL\n# Finding description: passwordless full sudo for a non-root account"
+  },
+  "expect": {
+    "must_find": ["passwordless sudo", "overly broad sudoers"],
+    "must_not_find": ["privilege escalation exploit", "payload"],
+    "remediation_hints": ["least privilege", "require password", "limit commands"]
+  }
+}

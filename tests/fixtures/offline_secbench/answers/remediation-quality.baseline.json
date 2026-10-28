@@ -1,0 +1,6 @@
+{
+  "model": "baseline-generic",
+  "runtime": "offline-canned",
+  "revision": "test-1",
+  "text": "TLS verification disabled / insecure ssl setting found."
+}

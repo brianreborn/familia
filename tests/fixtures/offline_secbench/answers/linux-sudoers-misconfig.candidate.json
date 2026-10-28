@@ -1,0 +1,6 @@
+{
+  "model": "candidate-sec-specialized",
+  "runtime": "offline-canned",
+  "revision": "test-1",
+  "text": "Finding: passwordless sudo / overly broad sudoers for exampleuser. Remediation: apply least privilege, require password, and limit commands to a narrow allow-list."
+}

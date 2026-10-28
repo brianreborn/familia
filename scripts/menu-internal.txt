@@ -61,6 +61,7 @@ scripts/build_appimage.sh|operator AppImage packaging for milestones; not an end
 scripts/perf/box_multi_size_smoke.py|perf/dev smoke hitting decision+coder ports; run by operators on a box, not menu
 scripts/familia_agent_reach.py|thin wrapper / library around Agent-Reach; menu uses scripts/agent_reach.py
 scripts/system_prompt_check.py|offline system-prompt path checks (#115); developer/CI helper, not an end-user menu action
+scripts/offline_secbench.py|opt-in offline security-model benches (#117); synthetic fixtures only; developer helper, not an end-user menu action
 scripts/familia_home.sh|Charm/gum front door (./familia); not a legacy catalog row
 scripts/proto_chat.sh|protomodel REPL from gum home "Talk to the protomodel"
 scripts/find_models.sh|guided fetch from gum home "Find more models"

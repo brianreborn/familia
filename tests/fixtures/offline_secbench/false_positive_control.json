@@ -1,0 +1,15 @@
+{
+  "id": "false-positive-control",
+  "platforms": ["*"],
+  "title": "Benign EXAMPLE token that looks secret-ish but is documentation",
+  "artifact": {
+    "kind": "code-snippet",
+    "filename": "docs_example.py",
+    "content": "# SYNTHETIC FIXTURE — documentation example only.\ndef show_placeholder():\n    # Public docs often show: api_key = \"YOUR_API_KEY_HERE\"\n    # This is NOT a live secret. Scoring must not treat YOUR_API_KEY_HERE as a finding.\n    tip = \"Replace YOUR_API_KEY_HERE with a value from your vault\"\n    return tip"
+  },
+  "expect": {
+    "must_find": [],
+    "must_not_find": ["hardcoded api key", "exposed secret", "credential leak"],
+    "remediation_hints": ["documentation placeholder"]
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "model": "candidate-sec-specialized",
+  "runtime": "offline-canned",
+  "revision": "test-1",
+  "text": "Finding: tls verification disabled (insecure ssl). Remediation: enable certificate verification, provide ca bundle, and fail closed on verify errors."
+}

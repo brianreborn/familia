@@ -50,6 +50,7 @@ test.unit|Test & benchmark|Run the unit tests (installs pytest into .cache/pylib
 test.offline|Test & benchmark|Offline test plan (prints live steps; RUN=1 to run them)|bash scripts/offline-test-plan.sh|||
 test.registry|Test & benchmark|Benchmark records: best measured model per host and role|PY scripts/registry.py suggest --host {HOST:host name} --role {ROLE:role, e.g. coder}|||python scripts\registry.py suggest --host {HOST:host name} --role {ROLE:role, e.g. coder}
 test.registry-summary|Test & benchmark|Summary of every benchmark record|PY scripts/registry.py summarize|||python scripts\registry.py summarize
+test.offline-secbench|Test & benchmark|Opt-in offline security-model benches (#117); synthetic fixtures only|env FAMILIA_OFFLINE_SECBENCH=1 PY scripts/offline_secbench.py --platform {PLATFORM:linux} --answers-dir {DIR:answers dir}|||set FAMILIA_OFFLINE_SECBENCH=1&& python scripts\offline_secbench.py --platform {PLATFORM:linux} --answers-dir {DIR:answers dir}
 hosts.monitor|Hosts|Monitor hosts over SSH (read-only console; --once for one snapshot)|sh familia-monitor|||python scripts\monitor.py
 hosts.monitor-once|Hosts|One snapshot of every host, then exit|sh familia-monitor --once|||python scripts\monitor.py --once
 hosts.start|Hosts|Start the model server on this machine from graph.yaml|sh start.sh|lic||scripts\windows\start.bat

@@ -131,6 +131,7 @@ Default front door is the gum home (`./familia`). This catalog is **fallback onl
 | `test.offline` | Offline test plan (prints live steps; RUN=1 to run them) | `bash scripts/offline-test-plan.sh` | — |
 | `test.registry` | Benchmark records: best measured model per host and role | `python3 scripts/registry.py suggest --host <HOST> --role <ROLE>` | `python scripts\registry.py suggest --host <HOST> --role <ROLE>` |
 | `test.registry-summary` | Summary of every benchmark record | `python3 scripts/registry.py summarize` | `python scripts\registry.py summarize` |
+| `test.offline-secbench` | Opt-in offline security-model benches (#117); synthetic fixtures only | `env FAMILIA_OFFLINE_SECBENCH=1 python3 scripts/offline_secbench.py --platform <PLATFORM> --answers-dir <DIR>` | `set FAMILIA_OFFLINE_SECBENCH=1&& python scripts\offline_secbench.py --platform <PLATFORM> --answers-dir <DIR>` |
 
 ### Hosts
 
@@ -241,6 +242,7 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/bench_guard.py` | library for perf/bench drivers: GGUF metadata validation, current llama.cpp flag spellings, encoder ubatch rule, per-run memory cap (`meta FILE`, `memcap PEAK_MIB`) |
 | `scripts/prompt_cache.py` | library: prefill an agent's fixed prompt prefix once, save it with llama-server slot save, restore it on later starts (#85); used by hermes.sh |
 | `scripts/system_prompt_check.py` | offline system-prompt path checks (#115); developer/CI helper, not an end-user menu action |
+| `scripts/offline_secbench.py` | opt-in offline security-model benches (#117); synthetic fixtures only; developer helper, not an end-user menu action |
 | `scripts/familia_agent_reach.py` | thin wrapper / library around Agent-Reach; menu uses scripts/agent_reach.py |
 | `scripts/retry_wrapper.py` | library for agent model calls; its main is only a self-demo |
 | `scripts/isolated/hfchat.py` | adapter that graph nodes of kind isolated_remote call; not run by hand |
