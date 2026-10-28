@@ -96,16 +96,20 @@ jobs:
           set -u
           mkdir -p "$RUNNER_TEMP/swarm"
           log="$RUNNER_TEMP/swarm/run.log"
+          # R10 mandatory identity stamp (no secrets).
+          h=$(hostname | cut -d. -f1); u=$(id -un)
+          stamp="stamp v=1 host=$h user=$u uid=$(id -u) session=${XDG_SESSION_ID:-$(tty 2>/dev/null | tr -d ' ' || echo none)} pid=$$ node=$h-$u role=swarm-bench forge=github run=$GITHUB_RUN_ID"
+          [ -n "$h" ] && [ -n "$u" ] || { echo "identity stamp unavailable" >&2; exit 1; }
           if [ -x tests/e2e_user_journey.sh ] || [ -f tests/e2e_user_journey.sh ]; then
-            sh tests/e2e_user_journey.sh > "$log" 2>&1; rc=$?
+            { echo "$stamp"; sh tests/e2e_user_journey.sh; } > "$log" 2>&1; rc=$?
           else
-            echo "tests/e2e_user_journey.sh not present on this ref" > "$log"; rc=78
+            printf '%s\n%s\n' "$stamp" "tests/e2e_user_journey.sh not present on this ref" > "$log"; rc=78
           fi
           # Redact anything shaped like a key before it leaves the host (R5).
           sed -E -i 's/(api[_-]?key|token|authorization|bearer)([=: "]+)[^ "]+/\1\2[REDACTED]/Ig' "$log"
           case $rc in 0) st=pass ;; 78) st=skip ;; *) st=fail ;; esac
           echo "status=$st" >> "$GITHUB_OUTPUT"
-          { echo "summary<<SWARMEOF"; echo "exit $rc on $(hostname -s)"; tail -n 20 "$log"; echo "SWARMEOF"; } >> "$GITHUB_OUTPUT"
+          { echo "summary<<SWARMEOF"; echo "$stamp"; echo "exit $rc"; tail -n 20 "$log"; echo "SWARMEOF"; } >> "$GITHUB_OUTPUT"
           echo "LOG=$log" >> "$GITHUB_ENV"
           exit 0
       - id: up

@@ -132,6 +132,46 @@ Rules: D1 and D2 can only reach D3 through the forge (job queue or issue command
 reaches D4 only through `queue-add.sh`. No domain passes a secret to a lower domain or to
 the forge.
 
+## R10 Identity stamping (v1.0) — N
+
+Every layer attempts an identity stamp. All layers are optional **except system-login
+identity** (host, OS user, uid, login session) wherever familia needs it. That part is
+mandatory, and a job that cannot get it fails.
+
+Format: one line, `key=value` pairs separated by spaces, with no secrets (no tokens, keys,
+passwords or key fingerprints). Values that are missing are left out, not invented:
+
+`stamp v=1 host=<host> user=<user> uid=<uid> session=<id|tty> pid=<pid> node=<host>-<user> role=<role> forge=<kind>:<account> run=<run-id> rq=<root-queue-id> prog=<name>@<version> model=<alias> peer=<addr:port>`
+
+| Layer | Field | Required |
+|---|---|---|
+| OS login | host, user, uid, session | **yes** |
+| Process | pid (and the familia PID logging) | yes when a process is involved |
+| Runner/node | node, role | yes on workers |
+| Forge account | forge | optional |
+| Conductor | `conductor=grokbot` | optional |
+| Root queue | rq, plus the approving root uid | optional; written in `results/ID` |
+| External program | prog | optional |
+| Model/agent call | model | optional |
+| Network peer | peer | optional |
+
+Recorded: the first line of every worker log, the issue result comment (the worker-made
+summary carries it; the hosted job does not add one), and the ledger (`ledger.append`,
+pqfreebsd R1) when there is one.
+
+Per-OS sources for the mandatory part:
+
+| OS | host | user/uid | session |
+|---|---|---|---|
+| Linux | `hostname` | `id -un`, `id -u` | `$XDG_SESSION_ID` / `loginctl`, else `tty` |
+| FreeBSD | `hostname` | `id -un`, `id -u` | `tty`; `who am i` |
+| Termux/Android | `getprop ro.product.model` or `hostname` | `id -un` (`u0_aNNN`), `id -u` | `$TERMUX_VERSION` and `tty` |
+| macOS | `scutil --get LocalHostName` | `id -un`, `id -u` | `tty`; `who am i` |
+| Windows | `$env:COMPUTERNAME` | `whoami`, `whoami /user` (SID) | `query session` / `$env:SESSIONNAME` |
+
+Status: the worker summary already starts with a stamp line on Unix (`swarm-worker.yml`
+bench job). The other layers are spec-only for v1.0.
+
 ## Per-OS differences
 
 | | Linux | FreeBSD | Termux |
