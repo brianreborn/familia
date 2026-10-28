@@ -2,8 +2,12 @@
 # FAMILIA: Top-level super-project installer.
 # Pure POSIX /bin/sh.
 # Two clicks:
-#   curl -fsSLo install-familia.sh https://raw.githubusercontent.com/brianreborn/familia/main/install.sh && \
-#     sh ./install-familia.sh
+#   p=familia                          && \
+#   o=brianreborn                      && \
+#   h=raw.githubusercontent.com        && \
+#   u=https://$h/$o/$p/main/install.sh && \
+#   curl -fsSLo install-$p.sh $u       && \
+#   sh        ./install-$p.sh
 # Click 1 is running the command. Click 2 is the donation tap-through.
 set -eu
 case "${1:-}" in -h|--help) cat <<'USAGE'
@@ -20,7 +24,13 @@ Preliminary stock (owned by this script): OS packages via install/deps.sh when a
 base is missing, and Charm gum into ~/.local/bin via scripts/install-gum.sh (no sudo; soft-fail).
 llama.cpp is prebuilt-first: an existing build is reused, else the sha256-checked b11944 release
 binary for this OS/arch; it builds from source only when none fits (FreeBSD, Termux) or BUILD=1.
-Example: curl -fsSLo install-familia.sh https://raw.githubusercontent.com/brianreborn/familia/main/install.sh && sh ./install-familia.sh --yes --no-start
+Example:
+  p=familia                          && \
+  o=brianreborn                      && \
+  h=raw.githubusercontent.com        && \
+  u=https://$h/$o/$p/main/install.sh && \
+  curl -fsSLo install-$p.sh $u       && \
+  sh        ./install-$p.sh --yes --no-start
 USAGE
   exit 0 ;; esac
 

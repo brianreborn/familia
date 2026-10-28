@@ -52,8 +52,12 @@ improve small-model results yet. Details are in [docs/skills.md](docs/skills.md)
 ## Quick start
 
 ```sh
-curl -fsSLo install-familia.sh https://raw.githubusercontent.com/brianreborn/familia/main/install.sh && \
-  sh ./install-familia.sh
+p=familia                          && \
+o=brianreborn                      && \
+h=raw.githubusercontent.com        && \
+u=https://$h/$o/$p/main/install.sh && \
+curl -fsSLo install-$p.sh $u       && \
+sh        ./install-$p.sh
 ```
 
 llama.cpp is **prebuilt-first**: the installer reuses an existing build, else downloads the sha256-checked b11944 release binary for your OS/arch (Linux, macOS, Windows), and builds from source only when none fits (FreeBSD, Termux) or you set `BUILD=1`.

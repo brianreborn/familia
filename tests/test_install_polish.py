@@ -24,7 +24,7 @@ def test_no_pipe_install_one_liners():
 
 def test_documented_installs_download_then_run():
     readme = open(os.path.join(ROOT, "README.md")).read()
-    assert "curl -fsSLo install-familia.sh https://raw.githubusercontent.com/brianreborn/familia/main/install.sh && \\\n  sh ./install-familia.sh" in readme
+    assert 'p=familia                          && \\\no=brianreborn                      && \\\nh=raw.githubusercontent.com        && \\\nu=https://$h/$o/$p/main/install.sh && \\\ncurl -fsSLo install-$p.sh $u       && \\\nsh        ./install-$p.sh' in readme
 
 
 def test_start_paths_print_log_paths():
