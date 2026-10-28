@@ -9,6 +9,8 @@
 #   u=https://$h/$o/$p/main/install/termux/install.sh && \
 #   curl -fsSLo install-$p.sh $u                      && \
 #   sh        ./install-$p.sh
+#   one line:
+#   p=familia && o=brianreborn && h=raw.githubusercontent.com && u=https://$h/$o/$p/main/install/termux/install.sh && curl -fsSLo install-$p.sh $u && sh ./install-$p.sh
 # Runtime comes from Termux's own `llama-cpp` package (pkg verifies package
 # signatures/hashes), so no unverified binary is downloaded here.
 # Flags: --dry-run  --uninstall [--purge]  --name NAME  --sshd (install+start openssh)

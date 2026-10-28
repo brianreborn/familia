@@ -60,6 +60,10 @@ curl -fsSLo install-$p.sh $u       && \
 sh        ./install-$p.sh
 ```
 
+```sh
+p=familia && o=brianreborn && h=raw.githubusercontent.com && u=https://$h/$o/$p/main/install.sh && curl -fsSLo install-$p.sh $u && sh ./install-$p.sh
+```
+
 llama.cpp is **prebuilt-first**: the installer reuses an existing build, else downloads the sha256-checked b11944 release binary for your OS/arch (Linux, macOS, Windows), and builds from source only when none fits (FreeBSD, Termux) or you set `BUILD=1`.
 
 For the ordered checklist (measure host, place a model, validate, start), see [QUICKSTART.md — What you actually need](QUICKSTART.md#what-you-actually-need). That clones familia into `~/familia`, shows the license review, syncs the pinned sub-projects and starts the active local topology declared in `graph.yaml`. You type `yes` once to acknowledge the voluntary contribution notice (`INSTALL_ACK=yes` for unattended installs); paying is never required. The graph gateway is loopback-only at **http://127.0.0.1:9931**; use `GET /v1/models` to see the local aliases.

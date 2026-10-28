@@ -8,6 +8,8 @@
 #   u=https://$h/$o/$p/main/install.sh && \
 #   curl -fsSLo install-$p.sh $u       && \
 #   sh        ./install-$p.sh
+#   one line:
+#   p=familia && o=brianreborn && h=raw.githubusercontent.com && u=https://$h/$o/$p/main/install.sh && curl -fsSLo install-$p.sh $u && sh ./install-$p.sh
 # Click 1 is running the command. Click 2 is the donation tap-through.
 set -eu
 case "${1:-}" in -h|--help) cat <<'USAGE'
@@ -31,6 +33,8 @@ Example:
   u=https://$h/$o/$p/main/install.sh && \
   curl -fsSLo install-$p.sh $u       && \
   sh        ./install-$p.sh --yes --no-start
+  one line:
+  p=familia && o=brianreborn && h=raw.githubusercontent.com && u=https://$h/$o/$p/main/install.sh && curl -fsSLo install-$p.sh $u && sh ./install-$p.sh --yes --no-start
 USAGE
   exit 0 ;; esac
 
