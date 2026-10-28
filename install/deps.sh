@@ -30,14 +30,11 @@ USAGE
   exit 0 ;; esac
 
 # Detect platform. Termux exports PREFIX under com.termux; uname alone is Linux.
-is_termux() {
-  case "${PREFIX:-}" in *com.termux*) return 0 ;; esac
-  [ -d /data/data/com.termux/files/usr ] && return 0
-  return 1
-}
+. "$ROOT/lib/os.mk"   # mk_is_termux
+is_termux() { mk_is_termux || [ -d /data/data/com.termux/files/usr ]; }
 
 OS=$(uname -s 2>/dev/null || echo unknown)
-say() { echo "familia-deps: $*" >&2; }
+MK_TAG=familia-deps; . "$ROOT/lib/msg.mk"   # say
 
 if is_termux; then
   say "platform=termux → install/termux/deps.sh"

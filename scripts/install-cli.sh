@@ -16,8 +16,7 @@
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 ACTION=install; SUB=""; DRY=0; YES=0; FORCE=0; OPT_PREFIX=""
-say() { echo "familia-cli: $*"; }
-die() { echo "familia-cli: error: $1" >&2; exit "${2:-1}"; }
+MK_TAG=familia-cli; MK_SAY_FD=1; . "$ROOT/lib/msg.mk"   # say (stdout), die
 abs() { case "$1" in /*) printf '%s\n' "$1" ;; *) printf '%s/%s\n' "$(pwd)" "$1" ;; esac; }
 xdg() { case "${1:-}" in /*) printf '%s\n' "$1" ;; *) printf '%s\n' "$2" ;; esac; }  # XDG: relative = unset
 

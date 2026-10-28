@@ -12,12 +12,12 @@
 # (in its --log-file) is retried once on the CPU (-ngl 0) with Vulkan hidden
 # (GGML_VK_VISIBLE_DEVICES=, LESSONS-LEARNED L-vkshm). Any other failure is returned as is.
 set -eu
-say() { printf '%s\n' "familia-serve: $*" >&2; }
 case "${1:-}" in
   ""|-h|--help) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; [ -n "${1:-}" ] && exit 0; exit 2 ;;
 esac
 node="$1"; shift
 here="$(cd "$(dirname "$0")/.." && pwd)"
+MK_TAG=familia-serve; . "$here/lib/msg.mk"   # say
 if [ -n "${FAMILIA_HOST:-}" ]; then
   # The host name comes from graph selection, not arbitrary shell text.
   case "$FAMILIA_HOST" in *[!A-Za-z0-9._-]*)

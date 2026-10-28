@@ -22,23 +22,14 @@ getconf: usually in glibc/coreutils (Linux) or the system; no separate package o
 USAGE
   exit 0 ;; esac
 
-INSTALL=0; YES=0; DRY=0; PROFILE=base
-for a in "$@"; do
-  case "$a" in
-    --install) INSTALL=1 ;;
-    --yes|-y) YES=1 ;;
-    --dry-run|-n) DRY=1 ;;
-    --profile) ;; # next arg handled below
-    base|build) PROFILE=$a ;;
-    --profile=*) PROFILE=${a#--profile=} ;;
-  esac
-done
-# Allow --profile build as two tokens
-prev=""
-for a in "$@"; do
-  if [ "$prev" = "--profile" ]; then PROFILE=$a; fi
-  prev=$a
-done
+case $0 in */*) LIB=${0%/*} ;; *) LIB=. ;; esac   # no dirname: deps.sh runs on a bare PATH
+LIB=$(CDPATH='' cd -- "$LIB/../../lib" && pwd)
+MK_TAG=familia-deps
+# shellcheck source=SCRIPTDIR/../../lib/msg.mk
+. "$LIB/msg.mk"    # say
+# shellcheck source=SCRIPTDIR/../../lib/deps.mk
+. "$LIB/deps.mk"   # deps_args, deps_confirm
+deps_args "$@"
 case "$PROFILE" in base|build) ;; *) echo "familia-deps: unknown --profile $PROFILE (base|build)" >&2; exit 2 ;; esac
 
 # Abstract names checked below; mapped to distro packages later.
@@ -81,7 +72,6 @@ if [ "$PROFILE" = build ]; then
   if have_cxx; then present="$present c++"; else missing="$missing build-essential"; fi
 fi
 
-say() { echo "familia-deps: $*" >&2; }
 say "profile=$PROFILE"
 say "present:${present:- (none)}"
 say "missing:${missing:- (none)}"
@@ -155,16 +145,6 @@ case "$PM" in
   *) say "unknown package manager; install manually:$install_missing"; exit 1 ;;
 esac
 
-say "suggested: $CMD"
-if [ "$INSTALL" != 1 ]; then
-  say "re-run with --install to install them (add --yes for non-interactive)"
-  exit 1
-fi
-if [ "$DRY" = 1 ]; then say "[dry-run] $CMD"; exit 0; fi
-if [ "$YES" != 1 ] && [ -r /dev/tty ]; then
-  printf 'familia-deps: install missing packages now? [y/N] ' >&2
-  read -r ans < /dev/tty || ans=n
-  case "$ans" in y|Y|yes) ;; *) say "aborted"; exit 1 ;; esac
-fi
+deps_confirm "$CMD" "install missing packages now?"
 sh -c "$CMD"
 say "done"
