@@ -230,6 +230,7 @@ def _serve_env(tmp_path, args, server_body):
     d = tmp_path / "repo"
     (d / "scripts").mkdir(parents=True)
     shutil.copy(os.path.join(ROOT, "scripts", "serve.sh"), d / "scripts" / "serve.sh")
+    shutil.copytree(os.path.join(ROOT, "lib"), d / "lib")
     (d / "graph.yaml").write_text("{}\n")
     srv = tmp_path / "fake-server"
     srv.write_text("#!/bin/sh\n" + server_body)

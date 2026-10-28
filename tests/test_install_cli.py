@@ -119,6 +119,7 @@ def test_man_page_and_completion_linked_when_present(tmp_path):
     co = tmp_path / "checkout"
     (co / "scripts").mkdir(parents=True)
     shutil.copy(CLI, co / "scripts")
+    shutil.copytree(os.path.join(ROOT, "lib"), co / "lib")
     shutil.copy(os.path.join(ROOT, "familia"), co / "familia")
     (co / "man").mkdir(); (co / "man/familia.1").write_text(".TH FAMILIA 1\n")
     (co / "completions").mkdir(); (co / "completions/familia.bash").write_text("complete -W x familia\n")

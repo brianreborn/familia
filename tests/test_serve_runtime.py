@@ -10,6 +10,7 @@ def _tree(tmp_path, binpath):
     s = tmp_path / "scripts"
     s.mkdir()
     shutil.copy(os.path.join(ROOT, "scripts", "serve.sh"), s / "serve.sh")
+    shutil.copytree(os.path.join(ROOT, "lib"), tmp_path / "lib")
     (s / "validate_graph.py").write_text("print(%r)\n" % (binpath + " -m " + str(tmp_path / "m.gguf") + " -ngl 0"))
     (s / "licenses.py").write_text("")
     (tmp_path / "m.gguf").write_bytes(b"GGUF")
