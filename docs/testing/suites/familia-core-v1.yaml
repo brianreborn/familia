@@ -1,0 +1,229 @@
+# familia fixed task-suite (revision familia-core-v1)
+# Used by scripts/task_suite_runner.py and scripts/task_suite_promote.py (#119).
+# No host addresses, logins, ports, or keys. Platform classes only.
+schema: 1
+suite_id: familia-core-v1
+revision: "1"
+title: "Familia core acceptance suite"
+description: >
+  Small fixed representative suite for promoting a model configuration from
+  planned/experimental to active/default, and for substantial feature acceptance.
+  Limitations: not a substitute for full public benchmarks; coverage is role smoke
+  plus routing/#150 multi-engine cases. Expand before claiming broad quality.
+
+# Platforms the feature must be evidenced on when claimed. Results on one do not
+# imply the others. Android targets are Samsung A57-class Termux hosts (two
+# current phones); do not assume Note9-only hardware.
+platforms:
+  - id: ubuntu
+    class: linux-desktop
+  - id: windows
+    class: windows-desktop
+  - id: freebsd
+    class: bsd-desktop
+  - id: android-termux-a57
+    class: android-termux
+    notes: "Samsung A57 / Exynos 1680 class; twin A57 phones are the current targets"
+
+# Roles covered by this suite. A config must declare its intended role(s).
+roles:
+  - chat
+  - coder
+  - general
+  - decision
+  - reasoning
+  - embed
+
+# Changes that require this acceptance before active/default (#119).
+radical_change_triggers:
+  - model_family_or_architecture
+  - serving_runtime_or_backend
+  - quantization
+  - tokenizer_or_chat_template_or_system_prompt
+  - context_beyond_model_card
+  - unusual_sampling_or_tool_configuration
+  - multi_engine_same_role_topology   # #150
+
+# Harness modes to exercise when the feature claims them.
+harness_modes:
+  - id: plain-llamacpp
+    required_when: [serving]
+  - id: hermes-single
+    required_when: [agent]
+  - id: hermes-graph
+    required_when: [agent, routing]
+  - id: harness2
+    required_when: [harness2]
+    optional: true
+
+# Routing baselines (always compare candidate against these on the same tasks).
+baselines:
+  - id: always-light
+    strategy: route_all_to_light
+  - id: always-heavy
+    strategy: route_all_to_heavy
+  - id: random
+    strategy: random_light_or_heavy
+    seed_required: true
+
+# Aggregate pass rules vs baseline on the same tasks/seed/platform class.
+aggregate_gate:
+  min_pass_rate: 0.8
+  # Candidate must not regress aggregate pass_rate more than this vs best baseline.
+  max_pass_rate_regression: 0.05
+  # Escalation precision/recall when suite includes escalate labels.
+  min_escalation_precision: 0.7
+  min_escalation_recall: 0.7
+
+tasks:
+  # --- Role smoke (no network probes, no attack tools) ---
+  - id: chat-smoke-greeting
+    roles: [chat, general]
+    kind: generation
+    prompt: "Reply with exactly: familia-ok"
+    expect: {type: exact, value: "familia-ok"}
+    tags: [smoke]
+
+  - id: chat-smoke-short-qa
+    roles: [chat, general, decision]
+    kind: generation
+    prompt: "What is 2+2? Answer with a single digit."
+    expect: {type: contains, value: "4"}
+    tags: [smoke, math]
+
+  - id: coder-smoke-fizz
+    roles: [coder, general]
+    kind: generation
+    prompt: |
+      Write a Python function fizzbuzz(n) that returns "fizz" if n divisible by 3,
+      "buzz" if by 5, "fizzbuzz" if by both, else str(n). Only the function.
+    expect: {type: contains_all, values: ["def fizzbuzz", "fizz", "buzz"]}
+    tags: [smoke, code]
+
+  - id: coder-smoke-json
+    roles: [coder, general]
+    kind: generation
+    prompt: 'Return ONLY valid JSON: {"ok": true, "n": 1}'
+    expect: {type: json_keys, keys: [ok, n]}
+    tags: [smoke, json]
+
+  - id: decision-smoke-yesno
+    roles: [decision, reasoning]
+    kind: generation
+    prompt: "Should a planned model config become active without task-suite evidence? Answer YES or NO."
+    expect: {type: contains, value: "NO"}
+    tags: [smoke, policy]
+
+  - id: reasoning-smoke-steps
+    roles: [reasoning, general]
+    kind: generation
+    prompt: "List three steps to validate a model before promotion. Number them 1. 2. 3."
+    expect: {type: contains_all, values: ["1.", "2.", "3."]}
+    tags: [smoke]
+
+  - id: embed-smoke-shape
+    roles: [embed]
+    kind: embedding
+    prompt: "familia acceptance"
+    expect: {type: embedding_dim_positive}
+    tags: [smoke, embed]
+
+  # --- Routing / escalation (labels for precision/recall) ---
+  - id: route-light-ok
+    roles: [chat, general, coder]
+    kind: routing
+    prompt: "Say hi in one short sentence."
+    expect: {type: non_empty}
+    gold_route: light
+    tags: [routing, baseline]
+
+  - id: route-escalate-hard
+    roles: [coder, reasoning, general]
+    kind: routing
+    prompt: |
+      Refactor a multi-file Python package to add structured logging, retries with
+      jittered backoff, and typed config loading. Outline the module layout and
+      key interfaces (no network access).
+    expect: {type: contains_all, values: ["module", "config"]}
+    gold_route: heavy
+    tags: [routing, escalate]
+
+  - id: route-no-escalate-negation
+    roles: [chat, general]
+    kind: routing
+    prompt: "Do not escalate; just reply with the word calm."
+    expect: {type: contains, value: "calm"}
+    gold_route: light
+    tags: [routing, negation]
+
+  # --- #150 multi-engine same-role (schema may land later; cases are fixed now) ---
+  - id: multi-engine-compete-coder
+    roles: [coder]
+    kind: multi_engine
+    mode: competing
+    prompt: "Implement binary search in Python; return only the function."
+    expect: {type: contains_all, values: ["def ", "mid"]}
+    setup:
+      same_role: coder
+      instances:
+        - engine: llama
+          label: coder-llama
+        - engine: other
+          label: coder-other
+      policy: pick_one_winner
+    tags: [multi-engine, competing, issue-150]
+
+  - id: multi-engine-tandem-coder
+    roles: [coder]
+    kind: multi_engine
+    mode: tandem
+    prompt: "One engine drafts a function stub; the other fills the body for add(a,b)."
+    expect: {type: contains_all, values: ["def add", "return"]}
+    setup:
+      same_role: coder
+      instances:
+        - engine: llama
+          label: coder-llama
+        - engine: other
+          label: coder-other
+      policy: tandem_draft_then_fill
+    tags: [multi-engine, tandem, issue-150]
+
+  - id: multi-engine-specialized-coder
+    roles: [coder]
+    kind: multi_engine
+    mode: specialized
+    prompt: "Format this JSON compactly: {\"a\": 1, \"b\": [2, 3]}"
+    expect: {type: json_keys, keys: [a, b]}
+    setup:
+      same_role: coder
+      instances:
+        - engine: llama
+          label: coder-llama
+          specialty: general_code
+        - engine: other
+          label: coder-other
+          specialty: structured_transform
+      policy: route_by_specialty
+    tags: [multi-engine, specialized, issue-150]
+
+  - id: multi-engine-escalate-across-engines
+    roles: [coder, general]
+    kind: multi_engine
+    mode: escalate
+    prompt: "Design an incremental compaction scheme for agent context windows."
+    expect: {type: non_empty}
+    gold_route: heavy
+    setup:
+      same_role: coder
+      instances:
+        - engine: llama
+          label: coder-llama
+          weight: light
+        - engine: other
+          label: coder-other
+          weight: heavy
+      policy: escalate_light_to_heavy_same_role
+    tags: [multi-engine, escalate, issue-150]
+
+seed_default: 119

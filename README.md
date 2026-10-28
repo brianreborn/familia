@@ -195,6 +195,7 @@ Start with [QUICKSTART.md](QUICKSTART.md), then [MANUAL.md](MANUAL.md).
 | [QUICKSTART.md](QUICKSTART.md) | Install, validate, start, add a model, test |
 | [MANUAL.md](MANUAL.md) | Settings, detaching, models, escalation, RAM safety, Windows |
 | [TESTING.md](TESTING.md) | Testing on your own hardware and reporting back |
+| [docs/testing/task-suite-acceptance.md](docs/testing/task-suite-acceptance.md) | Task-suite gate before active/default (#119) |
 | [DESIGN.md](DESIGN.md) | The graph, transactions, transports, snapshots |
 | [REQUIREMENTS.md](REQUIREMENTS.md) | Requirements and their status |
 | [LESSONS-LEARNED.md](LESSONS-LEARNED.md) | What went wrong before, and the rule that came out of it |
