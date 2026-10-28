@@ -1,0 +1,61 @@
+# .ci/warnings-baseline.txt: pre-existing warnings tolerated by .ci/lint-warnings.sh (familia).
+# Format: <count> <file> <code>  # why. The check fails when a file/code count goes ABOVE
+# its baseline (new warning); a lower count only prints a "fixed" hint, so shrink this file
+# as warnings get fixed. Generated with shellcheck 0.11.0 -x -S warning (.mk as -s sh).
+# Regenerate counts: SHELLCHECK=shellcheck sh .ci/lint-warnings.sh --current
+# Python: none baselined (compile -W error; pytest --collect-only -W error::*Deprecation* where pytest.ini exists).
+1 familia-menu.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
+1 familia-menu.sh SC2034  # variable appears unused (pre-existing, unreviewed)
+2 familia-menu.sh SC2163  # export of a variable name held in a variable (pre-existing, unreviewed)
+1 familia-menu.sh SC2221  # overlapping case patterns (pre-existing)
+1 familia-menu.sh SC2222  # overlapping case patterns (pre-existing)
+1 install/deps.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
+2 install/linux/install.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
+1 install/termux/install.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
+1 scripts/activate_guardian_weights.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
+1 scripts/add-model.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
+1 scripts/build_appimage.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
+1 scripts/configure.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
+1 scripts/configure.sh SC1090  # source path not followable statically
+1 scripts/dogfood/loop.sh SC2164  # cd without `|| exit` (pre-existing, unreviewed)
+1 scripts/familia_home.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
+1 scripts/find_models.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
+1 scripts/find_models.sh SC2034  # variable appears unused (pre-existing, unreviewed)
+1 scripts/freebsd/poudriere-build.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
+1 scripts/install-cli.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
+1 scripts/install-gum.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
+1 scripts/install-gum.sh SC2034  # variable appears unused (pre-existing, unreviewed)
+2 scripts/offline_improve.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
+1 scripts/offline_improve.sh SC2034  # variable appears unused (pre-existing, unreviewed)
+1 scripts/osc7501.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
+2 scripts/osc7501.sh SC1010  # `done` parsed as a word (pre-existing, unreviewed)
+2 scripts/perf/bonsai_check.sh SC2034  # variable appears unused (pre-existing, unreviewed)
+1 scripts/perf/centos_sweep_driver.sh SC2164  # cd without `|| exit` (pre-existing, unreviewed)
+1 scripts/perf/harness_driver.sh SC2034  # variable appears unused (pre-existing, unreviewed)
+2 scripts/perf/validate_layer_stream.sh SC2034  # variable appears unused (pre-existing, unreviewed)
+1 scripts/pilot_hud.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
+1 scripts/pilot_hud.sh SC1010  # `done` parsed as a word (pre-existing, unreviewed)
+1 scripts/prefetch-first-models.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
+1 scripts/proto_chat.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
+1 scripts/proto_chat.sh SC1010  # `done` parsed as a word (pre-existing, unreviewed)
+1 scripts/reconnect_selfheal.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
+1 scripts/required_checks.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
+1 scripts/run-tests.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
+1 scripts/safe-build-help.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
+1 scripts/search_x.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
+1 scripts/search_x.sh SC3050  # printf %q is not POSIX sh (pre-existing)
+1 scripts/setup_goals.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
+1 scripts/swarm/forge.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
+1 scripts/swarm/forge.sh SC1090  # source path not followable statically
+1 scripts/swarm/forge/forgejo.sh SC2148  # no shebang (pre-existing, unreviewed)
+1 scripts/swarm/forge/github.sh SC2046  # unquoted command substitution (pre-existing, unreviewed)
+1 scripts/swarm/forge/github.sh SC2148  # no shebang (pre-existing, unreviewed)
+1 scripts/swarm/swarm-bench-runner.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
+1 scripts/tune/centos-memory.sh SC2166  # `-a`/`-o` inside [ ] (pre-existing, unreviewed)
+1 scripts/tune/linux-memory.sh SC2166  # `-a`/`-o` inside [ ] (pre-existing, unreviewed)
+1 start.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
+2 start.sh SC3044  # `disown` is not POSIX sh (pre-existing, unreviewed)
+1 tests/test_nexus_localhost.sh SC2046  # unquoted command substitution (pre-existing, unreviewed)
+1 tests/test_with_fleet.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
+1 watchdog_android.sh SC2164  # cd without `|| exit` (pre-existing, unreviewed)
+1 with-fleet.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command

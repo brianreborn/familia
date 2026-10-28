@@ -8,8 +8,7 @@ PY=${PYTHON:-python3}
 YES=0
 GUM=$(command -v gum || true)
 
-say() { printf 'find-models: %s\n' "$*"; }
-die() { printf 'find-models: error: %s\n' "$1" >&2; exit "${2:-1}"; }
+MK_TAG=find-models; MK_SAY_FD=1; . "$ROOT/lib/msg.mk"   # say (stdout), die
 
 while [ $# -gt 0 ]; do
   case "$1" in

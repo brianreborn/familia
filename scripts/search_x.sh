@@ -8,8 +8,7 @@ GUM=$(command -v gum || true)
 YES=0
 QUERY=""
 
-say() { printf 'search-x: %s\n' "$*"; }
-die() { printf 'search-x: error: %s\n' "$1" >&2; exit "${2:-1}"; }
+MK_TAG=search-x; MK_SAY_FD=1; . "$ROOT/lib/msg.mk"   # say (stdout), die
 
 while [ $# -gt 0 ]; do
   case "$1" in

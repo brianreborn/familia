@@ -12,8 +12,7 @@ GOAL=""
 DRY=0
 YES=0
 
-say() { printf 'familia-setup: %s\n' "$*"; }
-die() { printf 'familia-setup: error: %s\n' "$1" >&2; exit "${2:-1}"; }
+MK_TAG=familia-setup; MK_SAY_FD=1; . "$ROOT/lib/msg.mk"   # say (stdout), die
 
 usage() {
   cat <<'USAGE'

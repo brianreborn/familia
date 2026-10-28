@@ -1,7 +1,8 @@
 #!/bin/sh
 # familia one-click installer: desktop Linux (Ubuntu/Debian and similar) and macOS.
 # Usage: sh install/linux/install.sh [flags]   (flags below)
-#   curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install/linux/install.sh | sh
+#   curl -fsSLo install-familia-node.sh https://raw.githubusercontent.com/brianreborn/familia/main/install/linux/install.sh && \
+#     sh ./install-familia-node.sh
 # No sudo. Everything goes under ~/.local (override with FAMILIA_PREFIX).
 # Flags: --dry-run  print every action, change nothing
 #        --uninstall remove what this script installed (models dir kept unless --purge)
@@ -12,8 +13,9 @@
 #        --no-runtime  skip the llama.cpp download     --systemd  install a systemd --user unit
 #        --branch BRANCH  select the familia branch (default: checkout branch, else main)
 #        --force-host  replace an existing hosts.NAME block
-#        --yes         accept the license review without a prompt (summary still printed)
+#        --yes         accept the license review without a prompt (summary still printed); also attests root
 #        --accept-unknown  also accept components whose license could not be found
+#        --allow-root  attest running as root (or FAMILIA_ALLOW_ROOT=yes; interactive: type yes)
 #        --no-path     do not put `familia` on PATH (default: 2-line shim ~/.local/bin/familia, scripts/install-cli.sh)
 # Safety: llama.cpp assets are verified against the sha256 digest published by
 # the GitHub release API at install time. No hash is hardcoded. Idempotent.
@@ -40,6 +42,7 @@ say() { echo "familia-install: $*" >&2; }
 die() { say "error: $*"; exit 1; }
 run() { if [ "$DRY" = 1 ]; then say "[dry-run] $*"; else "$@"; fi; }
 
+ORIG_ARGS="$*"
 while [ $# -gt 0 ]; do
   case "$1" in
     --dry-run|-n) DRY=1 ;;
@@ -52,9 +55,10 @@ while [ $# -gt 0 ]; do
     --systemd) SYSTEMD=1 ;;
     --no-path) NOPATH=1 ;;
     --force-host) FORCE_HOST=--force ;;
-    --yes|-y) FAMILIA_ACCEPT_LICENSES=yes; export FAMILIA_ACCEPT_LICENSES ;;
+    --allow-root) FAMILIA_ALLOW_ROOT=yes ;;
+    --yes|-y) FAMILIA_ACCEPT_LICENSES=yes; export FAMILIA_ACCEPT_LICENSES; FAMILIA_ALLOW_ROOT=${FAMILIA_ALLOW_ROOT:-yes} ;;
     --accept-unknown) FAMILIA_ACCEPT_UNKNOWN_LICENSES=yes; export FAMILIA_ACCEPT_UNKNOWN_LICENSES ;;
-    -h|--help) sed -n '2,18p' "$0" 2>/dev/null | sed 's/^# \{0,1\}//' || true; exit 0 ;;
+    -h|--help) sed -n '2,19p' "$0" 2>/dev/null | sed 's/^# \{0,1\}//' || true; exit 0 ;;
     *) die "unknown flag: $1 (see --help)" ;;
   esac
   shift
@@ -62,7 +66,20 @@ done
 
 git check-ref-format --branch "$BRANCH" >/dev/null 2>&1 || die "invalid branch name: $BRANCH"
 
-[ "$(id -u)" = 0 ] && die "do not run as root; this installer is user-space only"
+if [ "$(id -u)" = 0 ]; then
+  say "warning: do not run as root; this installer is user-space only"
+  case "${FAMILIA_ALLOW_ROOT:-}" in
+    [Yy][Ee][Ss]) say "continuing as root (FAMILIA_ALLOW_ROOT=yes)" ;;
+    *)
+      if [ -t 0 ]; then
+        printf 'Type yes to continue as root: ' >&2
+        ans=""; read -r ans || ans=""
+        case "$ans" in [Yy][Ee][Ss]) say "continuing as root" ;; *) die "not confirmed; aborting (nothing was changed)" ;; esac
+      else
+        die "running as root needs an attestation; to attest, run: FAMILIA_ALLOW_ROOT=yes sh $0${ORIG_ARGS:+ $ORIG_ARGS}  (or pass --allow-root or --yes)"
+      fi ;;
+  esac
+fi
 UNIT="$HOME/.config/systemd/user/familia-node.service"
 
 if [ "$UNINSTALL" = 1 ]; then
@@ -260,6 +277,7 @@ else
 : "\${FAMILIA_MODEL:?set FAMILIA_MODEL to a GGUF path or a name in $PREFIX/models}"
 M="\$FAMILIA_MODEL"; [ -f "\$M" ] || M="$PREFIX/models/\$FAMILIA_MODEL"
 B="$PREFIX/runtime/current/llama-server"; [ -x "\$B" ] || B="$PREFIX/runtime/current/build/bin/llama-server"
+echo "familia-start: logs: this terminal (stdout/stderr; under systemd: journalctl --user -u familia-node)" >&2
 exec "\$B" -m "\$M" --host "\${FAMILIA_BIND:-127.0.0.1}" --port "\${FAMILIA_PORT:-9941}" -c "\${FAMILIA_CTX:-4096}" \${FAMILIA_EXTRA:-}
 EOS
   chmod +x "$LAUNCH"
@@ -279,7 +297,7 @@ MemoryHigh=80%
 [Install]
 WantedBy=default.target
 EOS
-    say "wrote $UNIT; put FAMILIA_MODEL=... in ~/.config/familia/node.env, then: systemctl --user enable --now familia-node"
+    say "wrote $UNIT; put FAMILIA_MODEL=... in ~/.config/familia/node.env, then: systemctl --user enable --now familia-node (logs: journalctl --user -u familia-node)"
   fi
 fi
 # 5. `familia` on PATH: a 2-line shim in $BIN_DIR that runs $PREFIX/repo/familia (docs/install.md)

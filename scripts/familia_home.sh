@@ -82,9 +82,9 @@ CHOICE=$(printf '%s\n' "$GOALS" | gum choose --header "What do you want to do?" 
 kick_prefetch() {
   [ -f "$ROOT/scripts/prefetch-first-models.sh" ] || return 0
   if [ -f "$ROOT/scripts/pilot_hud.sh" ]; then
-    pilot_strip "PREFETCHING ORDNANCE" "first-try models in background (.cache/prefetch-first-models.log)"
+    pilot_strip "PREFETCHING ORDNANCE" "first-try models in background (logs: $ROOT/.cache/prefetch-first-models.log)"
   else
-    printf 'familia-home: prefetching first-try model in background…\n' >&2
+    printf 'familia-home: prefetching first-try model in background… logs: %s\n' "$ROOT/.cache/prefetch-first-models.log" >&2
   fi
   sh "$ROOT/scripts/prefetch-first-models.sh" --background >/dev/null 2>&1 || true
 }

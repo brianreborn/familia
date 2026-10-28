@@ -18,7 +18,7 @@ BG=0
 DRY=0
 STATUS=0
 
-say() { printf 'prefetch: %s\n' "$*" >&2; }
+MK_TAG=prefetch; . "$ROOT/lib/msg.mk"   # say
 
 while [ $# -gt 0 ]; do
   case "$1" in

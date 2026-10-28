@@ -2,7 +2,8 @@
 # FAMILIA: Top-level super-project installer.
 # Pure POSIX /bin/sh.
 # Two clicks:
-#   curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install.sh | sh
+#   curl -fsSLo install-familia.sh https://raw.githubusercontent.com/brianreborn/familia/main/install.sh && \
+#     sh ./install-familia.sh
 # Click 1 is running the command. Click 2 is the donation tap-through.
 set -eu
 case "${1:-}" in -h|--help) cat <<'USAGE'
@@ -17,7 +18,9 @@ Usage:
     --branch    choose a branch for a new checkout or switch an existing checkout to track it
 Preliminary stock (owned by this script): OS packages via install/deps.sh when anything
 base is missing, and Charm gum into ~/.local/bin via scripts/install-gum.sh (no sudo; soft-fail).
-Example: curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install.sh | sh -s -- --yes --no-start
+llama.cpp is prebuilt-first: an existing build is reused, else the sha256-checked b11944 release
+binary for this OS/arch; it builds from source only when none fits (FreeBSD, Termux) or BUILD=1.
+Example: curl -fsSLo install-familia.sh https://raw.githubusercontent.com/brianreborn/familia/main/install.sh && sh ./install-familia.sh --yes --no-start
 USAGE
   exit 0 ;; esac
 
@@ -112,13 +115,26 @@ if [ -f "$PREFIX/install/deps.sh" ]; then
     echo "install.sh: preliminary OS packages look present" >&2
   else
     echo "install.sh: preliminary OS packages missing" >&2
-    if [ "${INSTALL_ACK:-}" = yes ] || [ "${FAMILIA_ACCEPT_LICENSES:-}" = yes ]; then
-      sh "$PREFIX/install/deps.sh" --install --yes || die "deps install failed; see docs/safe-mode-bootstrap.md"
-    elif [ "${AUTO_DEPS:-0}" != 1 ]; then
+    if [ "${AUTO_DEPS:-0}" != 1 ]; then
+      # No root without an explicit --auto-deps: print the packages and the command only.
       sh "$PREFIX/install/deps.sh" || true
-      die "install the packages with the command above, or re-run with --auto-deps (or AUTO_DEPS=1) to install them after one confirmation"
+      if ! python3 -c 'import yaml' >/dev/null 2>&1; then
+        echo "install.sh: trying PyYAML without root: python3 -m pip install --user pyyaml" >&2
+        python3 -m pip install --user --quiet pyyaml >/dev/null 2>&1 \
+          || python3 -m pip install --user --break-system-packages --quiet pyyaml >/dev/null 2>&1 || true
+      fi
+      if sh "$PREFIX/install/deps.sh" >/dev/null 2>&1; then
+        echo "install.sh: preliminary packages satisfied without root" >&2
+      else
+        die "install the packages with the command above, or re-run with --auto-deps (or AUTO_DEPS=1) to install them (needs root)"
+      fi
     else
-      sh "$PREFIX/install/deps.sh" --install || die "deps install failed or declined; see: sh $PREFIX/install/deps.sh --help"
+      echo "install.sh: WARNING: the next step installs OS packages AS ROOT (sudo / package manager)." >&2
+      if [ "${INSTALL_ACK:-}" = yes ]; then
+        sh "$PREFIX/install/deps.sh" --install --yes || die "deps install failed; see docs/safe-mode-bootstrap.md"
+      else
+        sh "$PREFIX/install/deps.sh" --install || die "deps install failed or declined; see: sh $PREFIX/install/deps.sh --help"
+      fi
     fi
   fi
 fi
@@ -138,6 +154,7 @@ fi
 
 # Licenses before anything is fetched or run (docs/licenses.md).
 command -v python3 >/dev/null 2>&1 || die "python3 is required (Debian/Ubuntu: sudo apt install python3; Termux: pkg install python; or: sh $PREFIX/install/deps.sh --install)."
+[ "${INSTALL_ACK:-}" = yes ] && { FAMILIA_ACCEPT_LICENSES=yes; export FAMILIA_ACCEPT_LICENSES; }
 python3 "$PREFIX/scripts/licenses.py" gate || die "licenses not accepted; stopped before fetching anything. Review: python3 $PREFIX/scripts/licenses.py review (or re-run with --yes, plus --accept-unknown for unknown licenses)"
 # Accepted once for this run: start.sh and anything it runs reuse that answer (the summary
 # is still printed if the selection grows after the pinned parts are fetched).

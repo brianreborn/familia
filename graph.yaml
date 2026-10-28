@@ -245,7 +245,7 @@ hosts:
   box:
     kind: desktop
     measured: true
-    local_names: [grok-bot-vm-414232872]  # OS hostname → graph host id (name is historical; kind is form factor)
+    local_names: [grok-bot-vm-414232872, grok-bot-vm-414137730]  # OS hostname → graph host id (name is historical; kind is form factor)
     os: linux
     cpu: 'Intel(R) Xeon(R) Processor'
     threads: 8
@@ -300,6 +300,16 @@ runtimes:
     bin: code-bootstraps-llama.cpp/bin/llama-b11539-linux-x64-vulkan/llama-server
     hosts: [miryam]
     supported_archs: [gemma-embedding2]
+    backends: [cpu, vulkan]
+    spec_types: [draft-simple, ngram-simple, ngram-map-k, ngram-map-k4v, ngram-mod, ngram-cache]
+
+  llama-b11944:
+    kind: llama-server
+    build: b11944 (code-bootstraps pin; config/llama-release.json + llama-pin.env)
+    commit: 1b4554eff124a8f0033bc09b3f708a5e51cbda15
+    bin: code-bootstraps-llama.cpp/bin/llama-b11944-linux-x64-cpu/llama-server
+    hosts: [miryam]
+    supported_archs: [qwen35, gemma-embedding2, llama, lfm2, lfm3, qwen2, gemma2, gemma3, nanbeige]
     backends: [cpu, vulkan]
     spec_types: [draft-simple, ngram-simple, ngram-map-k, ngram-map-k4v, ngram-mod, ngram-cache]
 
@@ -480,8 +490,8 @@ models:
     arch: llama                  # GGUF general.architecture; llama.cpp also knows nanbeige (aliased in validator)
     trained_ctx: 524288
     role: coder                  # also used for chat via angel-chat card_set; roles in db: coder+chat
-    db: dealignai--Nanbeige4.3-33B-UNCENSORED-GGUF--Nanbeige4.3-33B-UNCENSORED-Q4_K_M
     notes: "Prize on angel (FreeBSD). damp-run on box 2026-10-26; weights stay on angel. Dual coder+chat via card_set. Needs measured SSD swap/spill before activate (vvram-ssd/LAYER.md)."
+    db: dealignai--Nanbeige4.3-33B-UNCENSORED-GGUF--Nanbeige4.3-33B-UNCENSORED-Q4_K_M
 
 
   dolphin3-cyber-8b-q2k:
@@ -490,8 +500,8 @@ models:
     arch: llama
     trained_ctx: 131072         # Llama-3.1-8B family; node ctx stays RAM-bounded
     role: pentest
-    db: RavichandranJ--Dolphin3-Cyber-8B-GGUF--Dolphin3.0-Llama3.1-8B-abliterated.Q2_K
     notes: Official guardian weight (docs/guardian-weights.md). Q2_K ~3.0 GiB. sha256 is registry HF LFS oid; verify with activate_guardian_weights.py --measure. Fetch before activating miryam-pentest / angel-guardian.
+    db: RavichandranJ--Dolphin3-Cyber-8B-GGUF--Dolphin3.0-Llama3.1-8B-abliterated.Q2_K
 
 nodes:
 
@@ -587,7 +597,7 @@ nodes:
     model: qwen35-2b-q4km
     role: coder
     host: miryam
-    runtime: llama-b11669
+    runtime: llama-b11944
     ctx: 65536                   # total; per-slot = ctx / parallel
     override_reasons:            # model card / model-database deviations (#51)
       ctx: "miryam has 7270 MiB with a 3072 MiB reserve: at 262144 the q8_0 KV is ~1650 MiB and cache_ram must cover a slot's prompt state (~1650 MiB), about 2.4 GiB more than at 65536 (426 MiB KV); 65536 meets hermes min_ctx 64000"
@@ -607,7 +617,7 @@ nodes:
     model: egemma2-q8
     role: embed
     host: miryam
-    runtime: llama-b11669
+    runtime: llama-b11944
     ctx: 8192
     parallel: 1
     kv_type: f16
@@ -748,7 +758,7 @@ nodes:
     model: dolphin3-cyber-8b-q2k
     role: guardian              # public type; model catalog role remains pentest (synonym)
     host: miryam
-    runtime: llama-b11669
+    runtime: llama-b11944
     ctx: 8192
     parallel: 1
     kv_type: q8_0

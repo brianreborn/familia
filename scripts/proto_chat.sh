@@ -4,6 +4,7 @@
 # Usage: sh scripts/proto_chat.sh [--url URL] [--model NAME] [--no-start]
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+. "$ROOT/lib/os.mk"   # mk_nproc
 cd "$ROOT"
 PY=${PYTHON:-python3}
 export FAMILIA_SCRIPTS="$ROOT/scripts"
@@ -137,6 +138,7 @@ start_bootstrap() {
     printf 'proto-chat: PREFETCHING ORDNANCE (models) in background…\n' >&2
     sh "$ROOT/scripts/prefetch-first-models.sh" --background >/dev/null 2>&1 || true
   fi
+  printf 'proto-chat: logs: %s\n' "$ROOT/.cache/proto-bootstrap.log" >&2
   ( cd "$ROOT" && nohup sh ./start.sh --bootstrap >"$ROOT/.cache/proto-bootstrap.log" 2>&1 & echo $! >"$ROOT/.cache/proto-bootstrap.pid" ) || true
     BOOT_PID=$(cat "$ROOT/.cache/proto-bootstrap.pid" 2>/dev/null || true)
     return 0
@@ -144,6 +146,7 @@ start_bootstrap() {
   if [ -n "$BACKEND" ]; then
     say "starting code-bootstraps at $BACKEND …"
     mkdir -p "$ROOT/.cache"
+    printf 'proto-chat: logs: %s\n' "$ROOT/.cache/proto-bootstrap.log" >&2
     ( cd "$(dirname "$BACKEND")" && nohup sh "$(basename "$BACKEND")" >"$ROOT/.cache/proto-bootstrap.log" 2>&1 & echo $! >"$ROOT/.cache/proto-bootstrap.pid" ) || true
     BOOT_PID=$(cat "$ROOT/.cache/proto-bootstrap.pid" 2>/dev/null || true)
   else
@@ -157,7 +160,7 @@ start_bootstrap() {
 wait_ceiling() {
   case "${FAMILIA_PROTO_WAIT:-auto}" in
     auto)
-      cores=$(getconf _NPROCESSORS_ONLN 2>/dev/null || nproc 2>/dev/null || echo 4)
+      cores=$(mk_nproc 4)
       case "${PREFIX:-}" in *com.termux*) echo 3600; return ;; esac
       if [ -n "${ANDROID_ROOT:-}" ] || [ "${cores:-4}" -le 2 ]; then echo 3600; else echo 1800; fi ;;
     *[!0-9]*|"") die "FAMILIA_PROTO_WAIT must be seconds (0 = no limit)" 2 ;;

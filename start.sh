@@ -19,19 +19,34 @@ USAGE
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 cd "$ROOT"
-say() { printf '%s\n' "familia: $*" >&2; }
+MK_TAG=familia; . "$ROOT/lib/msg.mk"   # say
+. "$ROOT/lib/path.mk"   # abs_path: absolute form of a path, for "logs:" lines only
+. "$ROOT/lib/os.mk"     # mk_is_termux
 
 if [ "${1:-}" != "--bootstrap" ]; then
   GRAPH_START="$ROOT/scripts/start_graph.py"
-  case "${PREFIX:-}" in
-    *com.termux*) command -v termux-wake-lock >/dev/null 2>&1 && termux-wake-lock >/dev/null 2>&1 && say "wake-lock acquired" || true ;;
-  esac
+  if mk_is_termux; then
+    command -v termux-wake-lock >/dev/null 2>&1 && termux-wake-lock >/dev/null 2>&1 && say "wake-lock acquired" || true
+  fi
   case "${1:-}" in
     --dry-run|-n) exec python3 "$GRAPH_START" "$@" ;;
   esac
+  # Single-node default: a host that is not in graph.yaml (or has no active local
+  # nodes) runs the pinned code-bootstraps click-and-go with the default model
+  # (LFM3-1.7B-Uncensored) on 127.0.0.1:${PORT:-9931}. FAMILIA_SINGLE_NODE=0 disables.
+  if [ "${FAMILIA_SINGLE_NODE:-1}" != 0 ] && [ -f "$ROOT/code-bootstraps-llama.cpp/start.sh" ]; then
+    _rc=0; _probe=$(python3 "$GRAPH_START" --dry-run "$@" 2>&1) || _rc=$?
+    case "$_rc:$_probe" in
+      3:*|*"is not declared in graph.yaml"*|*"nothing would start"*|*"graph validation failed"*)
+        say "this host has no familia topology yet; starting the single-node default (LFM3-1.7B-Uncensored via code-bootstraps-llama.cpp)"
+        say "to join the fleet later: python3 scripts/host_measure.py --name NAME ... (see QUICKSTART.md)"
+        exec sh "$ROOT/code-bootstraps-llama.cpp/start.sh" ;;
+    esac
+  fi
   DETACH_MODE="${DETACH_MODE:-screen-attached}"
   LOG_FILE="${LOG_FILE:-$ROOT/.cache/graph.log}"
   mkdir -p "$(dirname "$LOG_FILE")"
+  say "logs: $(abs_path "$LOG_FILE")"
   _run_graph_detached() {
     nohup python3 "$GRAPH_START" "$@" >> "$LOG_FILE" 2>&1 &
     disown $! 2>/dev/null || true
@@ -86,7 +101,7 @@ esac
 
 # Detect Termux (Android)
 TERMUX=0
-case "${PREFIX:-}" in *com.termux*) TERMUX=1 ;; esac
+if mk_is_termux; then TERMUX=1; fi
 
 # On Android/Termux, enforce wake-lock so the server survives backgrounding (#7).
 if [ "$TERMUX" = 1 ] && command -v termux-wake-lock >/dev/null 2>&1; then
@@ -147,6 +162,7 @@ DETACH_MODE="${DETACH_MODE:-screen-attached}"
 # when we detach here, the backend must run in the foreground and share LOG_FILE.
 export LOG_FILE="${LOG_FILE:-$ROOT/.cache/server.log}"
 mkdir -p "$(dirname "$LOG_FILE")"
+[ "${FAMILIA_DETACHED:-}" = 1 ] || say "logs: $(abs_path "$LOG_FILE")"
 
 _run_backend_detached() {
   # Already detached in this process tree; backend stays foreground.

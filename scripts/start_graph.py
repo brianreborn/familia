@@ -394,6 +394,8 @@ def run(args=None):
                 print(f"familia-graph: gateway {gateway_name} on 127.0.0.1:{gateway['port']}; aliases: {', '.join(aliases)}")
             if not nodes and not gateways:
                 print("familia-graph: no active local nodes or routable local gateway; nothing would start")
+                print(f"familia-graph: next: give host {host} a node in graph.yaml (or set FAMILIA_HOST), then re-run", file=sys.stderr)
+                return 3
             return 0
 
         if not nodes and not gateways:

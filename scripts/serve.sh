@@ -12,12 +12,12 @@
 # (in its --log-file) is retried once on the CPU (-ngl 0) with Vulkan hidden
 # (GGML_VK_VISIBLE_DEVICES=, LESSONS-LEARNED L-vkshm). Any other failure is returned as is.
 set -eu
-say() { printf '%s\n' "familia-serve: $*" >&2; }
 case "${1:-}" in
   ""|-h|--help) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; [ -n "${1:-}" ] && exit 0; exit 2 ;;
 esac
 node="$1"; shift
 here="$(cd "$(dirname "$0")/.." && pwd)"
+MK_TAG=familia-serve; . "$here/lib/msg.mk"   # say
 if [ -n "${FAMILIA_HOST:-}" ]; then
   # The host name comes from graph selection, not arbitrary shell text.
   case "$FAMILIA_HOST" in *[!A-Za-z0-9._-]*)
@@ -135,6 +135,7 @@ logdir="${FAMILIA_LOG_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/familia/logs}"
 mkdir -p "$logdir"
 log="$logdir/serve-$node.log"
 : > "$log"
+case "$log" in /*) say "logs: $log" ;; *) say "logs: $PWD/$log" ;; esac
 rc=0
 # shellcheck disable=SC2086
 $args --log-file "$log" "$@" || rc=$?
@@ -145,6 +146,7 @@ if [ "${ngl:-0}" -gt 0 ] && [ "$rc" -lt 128 ] && \
   say "Vulkan launch failed (exit $rc, $log); retrying on the CPU with -ngl 0 and Vulkan hidden"
   export GGML_VK_VISIBLE_DEVICES=
   safe_args="$(printf '%s\n' "$args" | sed -E 's/(^|[[:space:]])-ngl[[:space:]]+[0-9]+/\1-ngl 0/')"
+  case "$log" in /*) say "logs: $log.cpu" ;; *) say "logs: $PWD/$log.cpu" ;; esac
   # shellcheck disable=SC2086
   exec $safe_args --log-file "$log.cpu" "$@"
 fi

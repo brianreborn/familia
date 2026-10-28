@@ -8,6 +8,8 @@ Your models and data stay on your machines. A file, context, or result moves acr
 
 familia is a **topology coordinator**. It doesn't replace your inference server or your agents. It pins them, checks them out side by side, and wires them into one graph you control: llama.cpp model servers, the green-roomz alias gateway, the green-agentz fleet, and agents such as hermes-agent, across the machines you own.
 
+> **Headline model: LFM3-1.7B-Uncensored** ([AtomicChat/LFM3-1.7B-Uncensored-GGUF](https://huggingface.co/AtomicChat/LFM3-1.7B-Uncensored-GGUF), base LiquidAI LFM3-1.7B, 256k context, tool calling). It is the default on every platform: one 1.13 GB file served as both `general` and `coder`. No safety tuning; you are responsible for its output. License `lfm1.0`: commercial use only for organisations under US$10M annual revenue. Want to iterate on it? Swap quants or sampling in [`code-bootstraps-llama.cpp/config/models-manifest.json`](https://github.com/brianreborn/code-bootstraps-llama.cpp/blob/main/config/models-manifest.json), or try the official LiquidAI builds with `scripts/fetch-models.sh --pick lfm3` / `--pick lfm3-qad` (opt-in downloads only).
+
 > **Status:** pre-release (`v0.1.0-rc2`). Linux is the tested platform. **Want to help test? Start with [TESTING.md](TESTING.md).** See [Platform status](#platform-status) and [Known issues](docs/known-issues.md).
 
 **Projects familia coordinates:** [code-bootstraps-llama.cpp](https://github.com/brianreborn/code-bootstraps-llama.cpp) provides model serving and bootstrap tooling; [green-roomz](https://github.com/brianreborn/green-roomz) provides the alias gateway; [green-agentz](https://github.com/brianreborn/green-agentz) provides the agent fleet; [Agent-Reach](https://github.com/Panniantong/Agent-Reach) provides optional reach tools; and [nace-ai/llama.cpp](https://github.com/nace-ai/llama.cpp/tree/edlm) is the experimental DReX-DLM runtime. Their repositories and licenses remain independent; familia's [`pins.txt`](pins.txt) keeps the selected revisions together. [green-agency](https://github.com/brianreborn/green-agency) is retired and retained only for historical specifications.
@@ -50,8 +52,11 @@ improve small-model results yet. Details are in [docs/skills.md](docs/skills.md)
 ## Quick start
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install.sh | sh
+curl -fsSLo install-familia.sh https://raw.githubusercontent.com/brianreborn/familia/main/install.sh && \
+  sh ./install-familia.sh
 ```
+
+llama.cpp is **prebuilt-first**: the installer reuses an existing build, else downloads the sha256-checked b11944 release binary for your OS/arch (Linux, macOS, Windows), and builds from source only when none fits (FreeBSD, Termux) or you set `BUILD=1`.
 
 For the ordered checklist (measure host, place a model, validate, start), see [QUICKSTART.md — What you actually need](QUICKSTART.md#what-you-actually-need). That clones familia into `~/familia`, shows the license review, syncs the pinned sub-projects and starts the active local topology declared in `graph.yaml`. You type `yes` once to acknowledge the voluntary contribution notice (`INSTALL_ACK=yes` for unattended installs); paying is never required. The graph gateway is loopback-only at **http://127.0.0.1:9931**; use `GET /v1/models` to see the local aliases.
 
