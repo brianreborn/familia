@@ -2,7 +2,7 @@
 # FAMILIA: Top-level super-project installer.
 # Pure POSIX /bin/sh.
 # Two clicks:
-#   curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install.sh | sh
+#   curl -fsSLo install-familia.sh https://raw.githubusercontent.com/brianreborn/familia/main/install.sh; sh ./install-familia.sh
 # Click 1 is running the command. Click 2 is the donation tap-through.
 set -eu
 case "${1:-}" in -h|--help) cat <<'USAGE'
@@ -17,7 +17,7 @@ Usage:
     --branch    choose a branch for a new checkout or switch an existing checkout to track it
 Preliminary stock (owned by this script): OS packages via install/deps.sh when anything
 base is missing, and Charm gum into ~/.local/bin via scripts/install-gum.sh (no sudo; soft-fail).
-Example: curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install.sh | sh -s -- --yes --no-start
+Example: curl -fsSLo install-familia.sh https://raw.githubusercontent.com/brianreborn/familia/main/install.sh; sh ./install-familia.sh --yes --no-start
 USAGE
   exit 0 ;; esac
 

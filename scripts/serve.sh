@@ -120,6 +120,7 @@ logdir="${FAMILIA_LOG_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/familia/logs}"
 mkdir -p "$logdir"
 log="$logdir/serve-$node.log"
 : > "$log"
+case "$log" in /*) say "logs: $log" ;; *) say "logs: $PWD/$log" ;; esac
 rc=0
 # shellcheck disable=SC2086
 $args --log-file "$log" "$@" || rc=$?
@@ -130,6 +131,7 @@ if [ "${ngl:-0}" -gt 0 ] && [ "$rc" -lt 128 ] && \
   say "Vulkan launch failed (exit $rc, $log); retrying on the CPU with -ngl 0 and Vulkan hidden"
   export GGML_VK_VISIBLE_DEVICES=
   safe_args="$(printf '%s\n' "$args" | sed -E 's/(^|[[:space:]])-ngl[[:space:]]+[0-9]+/\1-ngl 0/')"
+  case "$log" in /*) say "logs: $log.cpu" ;; *) say "logs: $PWD/$log.cpu" ;; esac
   # shellcheck disable=SC2086
   exec $safe_args --log-file "$log.cpu" "$@"
 fi

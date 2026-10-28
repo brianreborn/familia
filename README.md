@@ -50,7 +50,7 @@ improve small-model results yet. Details are in [docs/skills.md](docs/skills.md)
 ## Quick start
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install.sh | sh
+curl -fsSLo install-familia.sh https://raw.githubusercontent.com/brianreborn/familia/main/install.sh; sh ./install-familia.sh
 ```
 
 For the ordered checklist (measure host, place a model, validate, start), see [QUICKSTART.md — What you actually need](QUICKSTART.md#what-you-actually-need). That clones familia into `~/familia`, shows the license review, syncs the pinned sub-projects and starts the active local topology declared in `graph.yaml`. You type `yes` once to acknowledge the voluntary contribution notice (`INSTALL_ACK=yes` for unattended installs); paying is never required. The graph gateway is loopback-only at **http://127.0.0.1:9931**; use `GET /v1/models` to see the local aliases.

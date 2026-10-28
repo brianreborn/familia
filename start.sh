@@ -20,6 +20,8 @@ USAGE
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 cd "$ROOT"
 say() { printf '%s\n' "familia: $*" >&2; }
+# absolute form of a path, for "logs:" lines only (the path itself is unchanged)
+abs_path() { case "$1" in /*) printf '%s\n' "$1" ;; *) printf '%s\n' "$PWD/$1" ;; esac; }
 
 if [ "${1:-}" != "--bootstrap" ]; then
   GRAPH_START="$ROOT/scripts/start_graph.py"
@@ -32,6 +34,7 @@ if [ "${1:-}" != "--bootstrap" ]; then
   DETACH_MODE="${DETACH_MODE:-screen-attached}"
   LOG_FILE="${LOG_FILE:-$ROOT/.cache/graph.log}"
   mkdir -p "$(dirname "$LOG_FILE")"
+  say "logs: $(abs_path "$LOG_FILE")"
   _run_graph_detached() {
     nohup python3 "$GRAPH_START" "$@" >> "$LOG_FILE" 2>&1 &
     disown $! 2>/dev/null || true
@@ -147,6 +150,7 @@ DETACH_MODE="${DETACH_MODE:-screen-attached}"
 # when we detach here, the backend must run in the foreground and share LOG_FILE.
 export LOG_FILE="${LOG_FILE:-$ROOT/.cache/server.log}"
 mkdir -p "$(dirname "$LOG_FILE")"
+[ "${FAMILIA_DETACHED:-}" = 1 ] || say "logs: $(abs_path "$LOG_FILE")"
 
 _run_backend_detached() {
   # Already detached in this process tree; backend stays foreground.
