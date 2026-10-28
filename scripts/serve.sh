@@ -71,6 +71,38 @@ case "$bin" in */*)
     exit 1
   fi ;;
 esac
+# Race TOCTOU: capture Platform fingerprint after bin check; re-assert immediately before
+# exec/spawn (swap window between PolicyGate/first refuse and screen attach). Soft skip
+# when scripts/refuse_soname_skew.py is not present yet.
+_race_fp_capture=""
+_race_fp_assert() {
+  [ -n "${_race_fp_capture}" ] || return 0
+  [ -f "$here/scripts/miryam_perf_seatbelts.py" ] || return 0
+  case "$bin" in */*) ;; *) return 0 ;; esac
+  _race_out="$(printf '%s\n' "$_race_fp_capture" | python3 "$here/scripts/miryam_perf_seatbelts.py" assert-stable --bin "$bin" --capture-json -)" || {
+    say "soname_fingerprint_drift: runtime $bin changed between check and exec (Race TOCTOU); not starting $node"
+    printf '%s\n' "${_race_out:-}" >&2
+    exit 1
+  }
+  # CLI prints JSON and exits 1 on refuse; also refuse if ok:false slipped through.
+  case "$_race_out" in *"\"ok\": false"*|*"\"ok\":false"*)
+    say "soname_fingerprint_drift: runtime $bin refused late fingerprint check; not starting $node"
+    printf '%s\n' "$_race_out" >&2
+    exit 1
+    ;;
+  esac
+  unset _race_out
+}
+if [ -f "$here/scripts/miryam_perf_seatbelts.py" ]; then
+  case "$bin" in */*)
+    _race_fp_capture="$(python3 "$here/scripts/miryam_perf_seatbelts.py" capture --bin "$bin" 2>/dev/null || true)"
+    if ! python3 "$here/scripts/miryam_perf_seatbelts.py" check-skew --bin "$bin" >/dev/null; then
+      say "check_soname_skew refused runtime $bin; not starting $node"
+      exit 1
+    fi
+    ;;
+  esac
+fi
 # Launch guard: refuse params bench_guard flags (removed flags, ctx > train, encoder ubatch,
 # quantized V without FA, GPU layers on a legacy GPU). FAMILIA_GUARD=0 skips it.
 if [ "${FAMILIA_GUARD:-1}" != 0 ] && [ ! -f "$here/scripts/bench_guard.py" ]; then
@@ -92,8 +124,14 @@ if printf '%s\n' "$args" | grep -q -E -e '(^|[[:space:]])--embeddings?([[:space:
 fi
 # Vulkan builds allocate ~1.83 GB of host buffers in shmem even with -ngl 0, counted
 # against the memcap scope (LESSONS-LEARNED L-vkshm). With no GPU layers, hide Vulkan unless set.
+# #83: if the binary path still looks like a Vulkan pack, also pass --no-op-offload (child argv only).
 case " $args " in *" -ngl 0 "*)
-  [ -n "${GGML_VK_VISIBLE_DEVICES+set}" ] || export GGML_VK_VISIBLE_DEVICES= ;;
+  [ -n "${GGML_VK_VISIBLE_DEVICES+set}" ] || export GGML_VK_VISIBLE_DEVICES=
+  case "$bin" in *vulkan*|*Vulkan*)
+    case " $args " in *" --no-op-offload "*) ;; *) args="$args --no-op-offload" ;; esac
+    ;;
+  esac
+  ;;
 esac
 # shellcheck disable=SC2086
 if [ "$FAMILIA_MEMCAP" = 1 ] && command -v systemd-run >/dev/null 2>&1; then
@@ -111,6 +149,7 @@ if [ "$FAMILIA_MEMCAP" = 1 ] && command -v systemd-run >/dev/null 2>&1; then
     python3 "$here/scripts/launch_status.py" emit LF_OOM_CAP --engine serve --model "$model" --evidence "admission refused for node $node"
     exit 69
   fi
+  _race_fp_assert
   exec systemd-run --user --scope --quiet --unit="familia-$node-$$" \
     ${FAMILIA_MEMHIGH:+-p MemoryHigh="$FAMILIA_MEMHIGH"} -p MemoryMax="$FAMILIA_MEMMAX" \
     -- sh -c 'echo ${FAMILIA_OOM_ADJ:-800} > /proc/self/oom_score_adj; exec "$@"' sh $args "$@"
@@ -121,6 +160,7 @@ mkdir -p "$logdir"
 log="$logdir/serve-$node.log"
 : > "$log"
 rc=0
+_race_fp_assert
 # shellcheck disable=SC2086
 $args --log-file "$log" "$@" || rc=$?
 [ "$rc" -eq 0 ] && exit 0
@@ -130,6 +170,9 @@ if [ "${ngl:-0}" -gt 0 ] && [ "$rc" -lt 128 ] && \
   say "Vulkan launch failed (exit $rc, $log); retrying on the CPU with -ngl 0 and Vulkan hidden"
   export GGML_VK_VISIBLE_DEVICES=
   safe_args="$(printf '%s\n' "$args" | sed -E 's/(^|[[:space:]])-ngl[[:space:]]+[0-9]+/\1-ngl 0/')"
+  # #83: Vulkan packs still op-offload at -ngl 0; disable op offload on the CPU retry.
+  case " $safe_args " in *" --no-op-offload "*) ;; *) safe_args="$safe_args --no-op-offload" ;; esac
+  _race_fp_assert
   # shellcheck disable=SC2086
   exec $safe_args --log-file "$log.cpu" "$@"
 fi

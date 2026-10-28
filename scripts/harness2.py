@@ -70,6 +70,18 @@ def start_node(g, node, yes=False):
     logd = os.path.join(ROOT, ".cache", "familia", "logs"); os.makedirs(logd, exist_ok=True)
     log = open(os.path.join(logd, f"{node}.harness2.log"), "ab")
     args = vg.server_args(g, node)
+    # Race: first refuse + fingerprint capture, then late TOCTOU assert before Popen.
+    try:
+        import miryam_perf_seatbelts as mps
+        skew_notes = []
+        if not mps.check_soname_skew(args[0], note_sink=skew_notes):
+            die(f"check_soname_skew refused {args[0]}: {'; '.join(skew_notes) or 'soname_skew'}")
+        fp_capture = mps.capture_spawn_fingerprint(args[0], note_sink=skew_notes)
+        stable = mps.assert_fingerprint_stable(args[0], fp_capture, note_sink=skew_notes)
+        if not stable.get("ok"):
+            die(f"soname_fingerprint_drift refused {args[0]}: {stable.get('reason')}")
+    except ImportError:
+        pass
     try:
         p = subprocess.Popen(args, stdout=log, stderr=log, stdin=subprocess.DEVNULL,
                              start_new_session=True, env=vg.server_env(g, node), preexec_fn=oom_adj.preexec())
