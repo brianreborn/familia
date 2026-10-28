@@ -64,6 +64,20 @@ sh        ./install-$p.sh
 p=familia && o=brianreborn && h=raw.githubusercontent.com && u=https://$h/$o/$p/main/install.sh && curl -fsSLo install-$p.sh $u && sh ./install-$p.sh
 ```
 
+```sh
+# Options (from sh ./install-familia.sh --help):
+#   --dry-run    say what would happen; change nothing
+#   --yes        non-interactive; accept notice and licenses
+#   --auto-deps  install missing OS packages (asks once; may use sudo)
+#   --no-start   stop after setup
+#   --no-path    do not put familia on PATH
+#   --branch B   track branch B
+# Env: INSTALL_PREFIX=DIR (default ~/familia), INSTALL_ACK=yes,
+#      BUILD=1 (force source build), AUTO_DEPS=1, INSTALL_NO_START=1
+# Already downloaded? Rerun with options, no new download:
+sh ./install-familia.sh --dry-run
+```
+
 llama.cpp is **prebuilt-first**: the installer reuses an existing build, else downloads the sha256-checked b11944 release binary for your OS/arch (Linux, macOS, Windows), and builds from source only when none fits (FreeBSD, Termux) or you set `BUILD=1`.
 
 For the ordered checklist (measure host, place a model, validate, start), see [QUICKSTART.md — What you actually need](QUICKSTART.md#what-you-actually-need). That clones familia into `~/familia`, shows the license review, syncs the pinned sub-projects and starts the active local topology declared in `graph.yaml`. You type `yes` once to acknowledge the voluntary contribution notice (`INSTALL_ACK=yes` for unattended installs); paying is never required. The graph gateway is loopback-only at **http://127.0.0.1:9931**; use `GET /v1/models` to see the local aliases.
