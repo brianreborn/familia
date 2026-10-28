@@ -37,3 +37,20 @@ SSH banner timed out from miryam at inventory time (same LAN-drop / process-life
 - [ ] After Shizuku install OK: `system_agent.py probe --dry-run` then live `probe`
 - [ ] Map Bixby UI for text entry (still undocumented)
 - [ ] Confirm Gemini Send / reply heuristics on SM-A576U
+
+## Deferred interactive (Brian t774u HOLD)
+
+**HOLD all interactive testing** until Brian says otherwise. Do not ask for more phone steps.
+
+Deferred until lift:
+1. Tap Install for Shizuku APK already on galaxy2 (`/sdcard/Download/shizuku-v13.6.0-release.apk`, v13.6.0 from GitHub releases)
+2. Start Shizuku via Wireless debugging pairing
+3. Export `rish` + `rish_shizuku.dex` into Termux `~`, `chmod +x ~/rish`
+4. Live `system_agent.py probe` (and any `open`/`ask`)
+5. galaxy1 inventory / SSH recovery (separate from Shizuku)
+
+Already done non-interactive:
+- Branch `swarm/qodesh/system-agents-80` @ inventory commit
+- Package presence inventory on galaxy2
+- `system_agent.py` copied to galaxy2 `~/system_agent.py`
+- `probe --dry-run --json` ran (prints `rish -c id`; shizuku absent)
