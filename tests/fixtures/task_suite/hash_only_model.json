@@ -1,0 +1,69 @@
+{
+  "schema": 1,
+  "suite_id": "familia-core-v1",
+  "suite_revision": "1",
+  "seed": 119,
+  "platform_class": "ubuntu",
+  "candidate": {
+    "model_name": "deadbeefcafebabe",
+    "model_version": "2026-10-01",
+    "quant": "Q4_K_M",
+    "role": "coder",
+    "runtime_name": "llama-server",
+    "runtime_commit": "abc1234",
+    "engine": "llama",
+    "node_id": "coder",
+    "status_before": "planned",
+    "radical_triggers": [
+      "quantization"
+    ]
+  },
+  "baseline_id": "always-light",
+  "harness": "plain-llamacpp",
+  "tasks": [
+    {
+      "id": "coder-smoke-fizz",
+      "passed": true
+    },
+    {
+      "id": "coder-smoke-json",
+      "passed": true
+    },
+    {
+      "id": "route-light-ok",
+      "passed": true,
+      "route_taken": "light",
+      "gold_route": "light"
+    },
+    {
+      "id": "route-escalate-hard",
+      "passed": true,
+      "route_taken": "heavy",
+      "gold_route": "heavy"
+    },
+    {
+      "id": "multi-engine-compete-coder",
+      "passed": true,
+      "engine_used": "llama"
+    }
+  ],
+  "aggregate": {
+    "n_tasks": 5,
+    "n_passed": 5,
+    "pass_rate": 1.0,
+    "escalation_precision": 1.0,
+    "escalation_recall": 1.0,
+    "baseline_pass_rate": 0.8
+  },
+  "gate": {
+    "passed": true,
+    "reasons": [
+      "aggregate thresholds met"
+    ]
+  },
+  "limitations": [
+    "fixture"
+  ],
+  "recorded_at": "2026-10-27T17:00:00-07:00",
+  "notes": "pass fixture"
+}
