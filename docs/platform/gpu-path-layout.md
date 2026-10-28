@@ -57,22 +57,32 @@ PowerShell 5.1 cannot hold empty `GGML_VK_VISIBLE_DEVICES`. Existing rule: CPU b
 
 ## Wrong-`.so` refuse (Platform seatbelt)
 
-Before exec:
+Hook: **`refuse_soname_skew`** (`scripts/refuse_soname_skew.py`).
+
+Env: **`FAMILIA_REFUSE_SONAME_SKEW`** — **default on** (unset / `1` / `true` / `yes`). Off: `0` / `false` / `off` / `no`.
+
+Before exec (`scripts/serve.sh`, also `harness2.start_node`):
 
 1. Resolve realpath of `llama-server`.
-2. `ldd` / `readelf -d` NEEDED; every `libggml-*.so` / `libllama.so` must resolve under the runtime’s own dir (or documented `lib/`), not a random `PATH`/`PREFIX` hit.
-3. Checksum or soname pair file for the pack (install-time). Peer sync must copy **bin+lib** together.
+2. Read DT_NEEDED (pure-Python ELF; injectable in tests). Every `libggml*` / `libllama*` must resolve under pack roots: `dirname(bin)` and, for `…/bin/llama-server` layouts, `dirname(bin)/../lib`.
+3. If the same soname exists as distinct files in both `bin/` and `lib/` trees → `ok: false` (`bin_lib_pack_disagree`) with paths + sonames; do not start.
+4. Win: skipped (`ok: true`, `reason: skipped_win`). Peer sync must copy **bin+lib** together.
+
+CLI: `python3 scripts/refuse_soname_skew.py --bin PATH` → JSON; `--fingerprint-only` for Race TOCTOU re-stat.
+
+Importable: `refuse_soname_skew(bin)`, `fingerprint(bin)`, `env_enabled()`.
 
 ## Race wiring hooks
 
 | Hook | Platform provides | Race uses |
 |------|-------------------|-----------|
+| `refuse_soname_skew` | fail spawn `ok:false` + mismatched bin/lib packs; `fingerprint()` inode/mtime/size | re-stat after PolicyGate / before screen attach (TOCTOU) |
 | `server_env(graph, node, env)` | empty `GGML_VK_VISIBLE_DEVICES` when `ngl==0` | keep; add `--no-op-offload` / CPU runtime select for #83 |
-| Runtime `bin` pin | graph `runtimes.*` | TOCTOU: re-stat bin+lib mtime/inode at spawn vs health |
+| Runtime `bin` pin | graph `runtimes.*` | TOCTOU: compare `fingerprint()` before/after gate |
 | Thread budget | host `threads` / reserve | refuse oversubscribe when Vulkan path + CPU threads fight |
 | Spec | — | `#82` ngram-simple opt-in / prefer ngram-mod |
 
 ## Status
 
-- Sketch only on this branch; implement refuse/`lib` atomicity in follow-up commits once Race confirms hooks.
+- Layout sketch @ `3915111`; **`refuse_soname_skew` implemented** on this branch (serve.sh + harness2 wired).
 - Mirror: `/workspace/reviews/gpu-path-layout-miryam.md`

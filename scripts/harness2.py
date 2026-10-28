@@ -71,6 +71,13 @@ def start_node(g, node, yes=False):
     log = open(os.path.join(logd, f"{node}.harness2.log"), "ab")
     args = vg.server_args(g, node)
     try:
+        import refuse_soname_skew as rss
+        skew = rss.refuse_soname_skew(args[0])
+        if not skew.get("ok"):
+            die(f"refuse_soname_skew: runtime {args[0]} bin/lib pack mismatch: {skew.get('reason')}; mismatches={skew.get('mismatches')}")
+    except ImportError:
+        pass
+    try:
         p = subprocess.Popen(args, stdout=log, stderr=log, stdin=subprocess.DEVNULL,
                              start_new_session=True, env=vg.server_env(g, node), preexec_fn=oom_adj.preexec())
     except FileNotFoundError:
