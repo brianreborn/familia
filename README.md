@@ -10,6 +10,19 @@ familia is a **topology coordinator**. It doesn't replace your inference server 
 
 > **Headline model: LFM3-1.7B-Uncensored** ([AtomicChat/LFM3-1.7B-Uncensored-GGUF](https://huggingface.co/AtomicChat/LFM3-1.7B-Uncensored-GGUF), base LiquidAI LFM3-1.7B, 256k context, tool calling). It is the default on every platform: one 1.13 GB file served as both `general` and `coder`. No safety tuning; you are responsible for its output. License `lfm1.0`: commercial use only for organisations under US$10M annual revenue. Want to iterate on it? Swap quants or sampling in [`code-bootstraps-llama.cpp/config/models-manifest.json`](https://github.com/brianreborn/code-bootstraps-llama.cpp/blob/main/config/models-manifest.json), or try the official LiquidAI builds with `scripts/fetch-models.sh --pick lfm3` / `--pick lfm3-qad` (opt-in downloads only).
 
+> **The LFM3 family: try them all.** Every pick is an opt-in, sha256-pinned download (never fetched by default), licensed `lfm1.0`. From the familia menu: **Models → LFM3 family** (`./familia --run models.lfm3 lfm3-vl`), or directly `sh code-bootstraps-llama.cpp/scripts/fetch-models.sh --pick NAME`:
+>
+> | pick | model | what it adds | size | status on b11944 |
+> |---|---|---|---|---|
+> | (default) | **LFM3-1.7B-Uncensored** Q4_K_M | chat + coder, tool calls, 256k ctx | 1.13 GB | tested |
+> | `lfm3` | LiquidAI LFM3-1.7B Q4_K_M | official (safety-tuned) build | 1.10 GB | tested |
+> | `lfm3-qad` | LiquidAI LFM3-1.7B QAD Q4_0 | ~20% faster prompt eval on CPU | 1.05 GB | tested |
+> | `lfm3-vl` | LiquidAI LFM3-VL-2B Q4_K_M + mmproj | **vision**: images in chat | 1.30 GB | tested (image prompt) |
+> | `lfm3-omni` | LiquidAI LFM3-Omni-2B Q4_K_M + mmproj | **images + audio** | 1.64 GB | partial tested (image OK, audio TODO) |
+> | `lfm3-audio` | LiquidAI LFM3-Audio-2B Q4_K_M + mmproj | **audio** input | 1.44 GB | partial tested (loads, audio TODO) |
+>
+> After a download, restart; each media pick is served as its own model (`lfm3-vl`, `lfm3-omni`, `lfm3-audio`) with `--mmproj`, so the web UI's image/audio attach and OpenAI `image_url` / `input_audio` messages work. Benchmarks: [#183](https://github.com/brianreborn/familia/issues/183).
+
 > **Status:** pre-release (`v0.1.0-rc2`). Linux is the tested platform. **Want to help test? Start with [TESTING.md](TESTING.md).** See [Platform status](#platform-status) and [Known issues](docs/known-issues.md).
 
 **Projects familia coordinates:** [code-bootstraps-llama.cpp](https://github.com/brianreborn/code-bootstraps-llama.cpp) provides model serving and bootstrap tooling; [green-roomz](https://github.com/brianreborn/green-roomz) provides the alias gateway; [green-agentz](https://github.com/brianreborn/green-agentz) provides the agent fleet; [Agent-Reach](https://github.com/Panniantong/Agent-Reach) provides optional reach tools; and [nace-ai/llama.cpp](https://github.com/nace-ai/llama.cpp/tree/edlm) is the experimental DReX-DLM runtime. Their repositories and licenses remain independent; familia's [`pins.txt`](pins.txt) keeps the selected revisions together. [green-agency](https://github.com/brianreborn/green-agency) is retired and retained only for historical specifications.

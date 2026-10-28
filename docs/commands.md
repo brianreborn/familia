@@ -92,6 +92,7 @@ Default front door is the gum home (`./familia`). This catalog is **fallback onl
 |---|---|---|---|
 | `models.add` | Add a model from a Hugging Face folder or a .gguf | `scripts/add-model.sh <PATH>` | `python scripts\add_model.py <PATH>` |
 | `models.fetch` | Download and add a model from Hugging Face (asks you to accept its license) | `scripts/add-model.sh --fetch <REPO> --quant <QUANT>` | `python scripts\add_model.py --fetch <REPO> --quant <QUANT>` |
+| `models.lfm3` | LFM3 family: download an optional LFM3 model (lfm3, lfm3-qad, lfm3-vl, lfm3-omni, lfm3-audio; vision/audio served with --mmproj) | `sh code-bootstraps-llama.cpp/scripts/fetch-models.sh --pick <PICK>` | `powershell -File code-bootstraps-llama.cpp\scripts\fetch-models.ps1 -Pick <PICK>` |
 | `models.cards` | Fetch only a model's card, config and license (no weights) | `python3 scripts/hf_fetch.py <REPO> --damp-run` | `python scripts\hf_fetch.py <REPO> --damp-run` |
 | `models.license` | Show one model's license and what it obliges you to | `python3 scripts/model_license.py show <ID>` | `python scripts\model_license.py show <ID>` |
 | `models.check` | Check graph.yaml: models, RAM budget, required launch parameters | `python3 scripts/validate_graph.py --graph graph.yaml` | `python scripts\validate_graph.py --graph graph.yaml` |

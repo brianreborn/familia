@@ -119,6 +119,11 @@ Add a model from a Hugging Face folder or a .gguf.
 .br
 Runs: \fBscripts/add\-model.sh <PATH>\fR
 .TP
+\fBlfm3\fR \fI<PICK>\fR
+LFM3 family: download an optional LFM3 model (lfm3 lfm3\-qad lfm3\-vl lfm3\-omni lfm3\-audio; vision/audio use \-\-mmproj) (licenses first).
+.br
+Runs: \fBsh code\-bootstraps\-llama.cpp/scripts/fetch\-models.sh \-\-pick <PICK>\fR
+.TP
 \fBmodel fetch\fR \fI<REPO>\fR \fI<QUANT>\fR
 Download and add a model from Hugging Face (asks you to accept its license).
 .br
@@ -176,19 +181,29 @@ Launch\-test a role: validate, would\-start, stop.
 Runs: \fBsh with\-fleet.sh \-\-role <ROLE> \-\-launch\-test\fR
 .TP
 \fBfleet\fR \fI<ROLE>\fR
-Launch a role from graph.yaml (pentest roles are only launch\-tested) (licenses first).
+Launch a role from graph.yaml (guardian/defender: seatbelts on by default) (licenses first).
 .br
 Runs: \fBsh with\-fleet.sh \-\-role <ROLE>\fR
 .TP
-\fBpentest\-launch\-test\fR
-Pentest fleet: launch\-test only (validate → would\-start → stop).
+\fBguardian\-launch\-test\fR
+Guardian/defender node: launch\-test (seatbelts on; validate → would\-start → stop).
 .br
-Runs: \fBsh with\-fleet.sh \-\-role fleet \-\-launch\-test\fR
+Runs: \fBsh with\-fleet.sh \-\-role guardian \-\-launch\-test\fR
+.TP
+\fBguardian\-start\fR
+Guardian/defender: operator\-confirmed model start (owned scope; tools empty) (licenses first).
+.br
+Runs: \fBenv FAMILIA_OPERATOR_CONFIRM=yes sh with\-fleet.sh \-\-role guardian \-\-operator\-start\fR
+.TP
+\fBpentest\-launch\-test\fR
+Legacy id → guardian launch\-test.
+.br
+Runs: \fBsh with\-fleet.sh \-\-role guardian \-\-launch\-test\fR
 .TP
 \fBpentest\-start\fR
-Pentest fleet: operator\-confirmed model start (owned scope; no live scans) (licenses first).
+Legacy id → guardian operator\-start (licenses first).
 .br
-Runs: \fBenv FAMILIA_OPERATOR_CONFIRM=yes sh with\-fleet.sh \-\-role fleet \-\-operator\-start\fR
+Runs: \fBenv FAMILIA_OPERATOR_CONFIRM=yes sh with\-fleet.sh \-\-role guardian \-\-operator\-start\fR
 .SS Self\-improving harness (Harness2)
 .TP
 \fBharness2 status\fR
@@ -231,6 +246,11 @@ Runs: \fBpython3 scripts/registry.py suggest \-\-host <HOST> \-\-role <ROLE>\fR
 Summary of every benchmark record.
 .br
 Runs: \fBpython3 scripts/registry.py summarize\fR
+.TP
+\fBoffline\-secbench\fR \fI<PLATFORM>\fR \fI<DIR>\fR
+Opt\-in offline security\-model benches (#117); synthetic fixtures only.
+.br
+Runs: \fBenv FAMILIA_OFFLINE_SECBENCH=1 python3 scripts/offline_secbench.py \-\-platform <PLATFORM> \-\-answers\-dir <DIR>\fR
 .SS Hosts
 .TP
 \fBmonitor\fR
@@ -329,10 +349,10 @@ validate_graph: also verify model sha256 and runtimes (slow).
 .br
 Runs: \fBpython3 scripts/validate_graph.py \-\-graph graph.yaml \-\-verify\-sha \-\-check\-runtimes\fR
 .TP
-\fBgraph edit\fR \fI<ASSIGN>\fR
-modify_graph: assign a model to a node (rewrites graph.yaml).
+\fBgraph edit\fR \fI<HOST>\fR \fI<ASSIGN>\fR
+modify_graph: assign models: key to a type\-named node (prefer \-\-host for private topology).
 .br
-Runs: \fBpython3 scripts/modify_graph.py \-\-assign\-model <ASSIGN>\fR
+Runs: \fBpython3 scripts/modify_graph.py \-\-host <HOST> \-\-assign\-model <ASSIGN>\fR
 .TP
 \fBmodel db list\fR
 Model database: list entries.
@@ -658,6 +678,9 @@ Where license acceptance is recorded (default .cache/familia/license\-acceptance
 .TP
 \fBFAMILIA_GRAPH\fR
 Graph file to use instead of graph.yaml, where the script supports it.
+.TP
+\fBFAMILIA_HOSTS_OVERLAY\fR
+Path to hosts.local.yaml connection overlay (#104); default ~/.config/familia/hosts.local.yaml.
 .TP
 \fBPYTHON\fR
 Python interpreter (default python3).

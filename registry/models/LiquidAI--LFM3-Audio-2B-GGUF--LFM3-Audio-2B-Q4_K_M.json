@@ -1,0 +1,1372 @@
+{
+ "schema": 2,
+ "id": "LiquidAI--LFM3-Audio-2B-GGUF--LFM3-Audio-2B-Q4_K_M",
+ "repo": "LiquidAI/LFM3-Audio-2B-GGUF",
+ "revision": "642697a5597a675cb819ed236ac415c1e60a4f6f",
+ "file": "LFM3-Audio-2B-Q4_K_M.gguf",
+ "sha256": "9a773289bd321ed879cd3a76545f6aca506e403851a45fb315420aee45625be2",
+ "bytes": 1099626016,
+ "quant": "Q4_K_M",
+ "arch": "lfm3",
+ "roles": [
+  "chat",
+  "media"
+ ],
+ "license": "lfm1.0 (LICENSE)",
+ "license_source": "LiquidAI/LFM3-Audio-2B-GGUF card license",
+ "ctx": 128000,
+ "ctx_source": "GGUF lfm3.context_length",
+ "card_ctx": null,
+ "card_ctx_source": null,
+ "base_model": "LiquidAI/LFM3-Audio-2B",
+ "base_revision": "9d49701c372d6011d900f6abb40c6b296fb706dd",
+ "card_defaults": {
+  "temp": 0
+ },
+ "card_defaults_source": {
+  "temp": "LiquidAI/LFM3-Audio-2B-GGUF LiquidAI/LFM3-Audio-2B-GGUF README.md:L73 (example)"
+ },
+ "card_default_set": "example: Speech recognition: use the system prompt Perform ASR in <language . , or Perform ASR. to let the model infer the language",
+ "card_defaults_how": "the card's only code example with sampling values",
+ "card_sampling_modes": {
+  "Speech recognition: use the system prompt Perform ASR in <language . , or Perform ASR. to let the model infer the language": {
+   "temp": 0
+  }
+ },
+ "card_default_mode": null,
+ "card_default_mode_source": null,
+ "card_sampling_sets": [
+  {
+   "label": "Speech recognition: use the system prompt Perform ASR in <language . , or Perform ASR. to let the model infer the language",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 0
+   },
+   "source": "LiquidAI/LFM3-Audio-2B-GGUF README.md:L73"
+  }
+ ],
+ "card_commands": [
+  {
+   "source": "LiquidAI/LFM3-Audio-2B-GGUF README.md:L72-73",
+   "file": "README.md",
+   "lines": [
+    72,
+    73
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "llama-mtmd-cli -hf LiquidAI/LFM3-Audio-2B-GGUF:Q4_K_M \\\n  --audio speech.wav -sys \"Perform ASR in English.\" -p \"<__media__>\" --temp 0",
+   "llama": [
+    {
+     "tool": "llama-mtmd-cli",
+     "raw": "llama-mtmd-cli -hf LiquidAI/LFM3-Audio-2B-GGUF:Q4_K_M    --audio speech.wav -sys \"Perform ASR in English.\" -p \"<__media__>\" --temp 0",
+     "flags": [
+      {
+       "flag": "-hf",
+       "canonical": "--hf-repo",
+       "value": "LiquidAI/LFM3-Audio-2B-GGUF:Q4_K_M",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--audio",
+       "canonical": "--image",
+       "value": "speech.wav",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-sys",
+       "canonical": "--system-prompt",
+       "value": "Perform ASR in English.",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-p",
+       "canonical": "--prompt",
+       "value": "<__media__>",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--temp",
+       "canonical": "--temp",
+       "value": "0",
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    }
+   ],
+   "doc": "card",
+   "doc_sha": "642697a5597a675cb819ed236ac415c1e60a4f6f",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-Audio-2B-GGUF README.md:L79-80",
+   "file": "README.md",
+   "lines": [
+    79,
+    80
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "llama-tts -m LFM3-Audio-2B-Q4_K_M.gguf -mm mmproj-LFM3-Audio-2B-Q8_0.gguf \\\n  -p \"Hello world\" --tts-voice male -o out.wav",
+   "doc": "card",
+   "doc_sha": "642697a5597a675cb819ed236ac415c1e60a4f6f",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-Audio-2B README.md:L155-155",
+   "file": "README.md",
+   "lines": [
+    155,
+    155
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install \"transformers>=5.20.2\" torch accelerate librosa soundfile",
+   "doc": "base-card",
+   "doc_sha": "9d49701c372d6011d900f6abb40c6b296fb706dd",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-Audio-2B README.md:L161-174",
+   "file": "README.md",
+   "lines": [
+    161,
+    174
+   ],
+   "lang": "python",
+   "tool": "transformers",
+   "kind": "code",
+   "text": "import torch\nimport soundfile as sf\n\nfrom transformers import AutoModelForMultimodalLM, AutoProcessor\n\nmodel_id = \"LiquidAI/LFM3-Audio-2B\"\ndevice = \"cuda\" if torch.cuda.is_available() else \"cpu\"\ndtype = torch.bfloat16 if device == \"cuda\" else torch.float32\n\nmodel = AutoModelForMultimodalLM.from_pretrained(\n    model_id, dtype=dtype, device_map=device, trust_remote_code=True\n).eval()\nprocessor = AutoProcessor.from_pretrained(model_id, trust_remote_code=True)\ncodec = processor.audio_tokenizer.to(device=device).eval()",
+   "doc": "base-card",
+   "doc_sha": "9d49701c372d6011d900f6abb40c6b296fb706dd",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-Audio-2B README.md:L192-216",
+   "file": "README.md",
+   "lines": [
+    192,
+    216
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "conversation = [\n    {\"role\": \"system\", \"content\": \"Perform ASR in English.\"},\n    {\"role\": \"user\", \"content\": [{\"type\": \"audio\", \"audio\": \"audio.wav\"}]},\n]\n\ninputs = processor.apply_chat_template(\n    conversation,\n    add_generation_prompt=True,\n    tokenize=True,\n    return_dict=True,\n    return_tensors=\"pt\",\n).to(device)\nwith torch.no_grad():\n    outputs = model.generate(\n        **inputs,\n        max_new_tokens=1024,\n        suppress_mixed=True,\n        suppress_audio_out=True,\n        return_dict_in_generate=True,\n    )\ntext = processor.decode(\n    outputs.sequences[0, inputs[\"input_ids\"].shape[1]:],\n    skip_special_tokens=True,\n)\nprint(text)",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-n",
+      "value": "1024",
+      "from": "max_new_tokens: 1024"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "9d49701c372d6011d900f6abb40c6b296fb706dd",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-Audio-2B README.md:L229-276",
+   "file": "README.md",
+   "lines": [
+    229,
+    276
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "import librosa\n\ntokenizer = processor.tokenizer\nchunk_frames = 8 * model.config.interleaved_n_audio\nprompt = tokenizer(\n    \"<|startoftext|><|im_start|>system\\nPerform live ASR.<|im_end|>\\n<|im_start|>assistant\\n\",\n    add_special_tokens=False,\n    return_tensors=\"pt\",\n).input_ids.to(device)\nsuppress = tokenizer.convert_tokens_to_ids([\"<|mixed_end|>\", \"<|endoftext|>\"])\nstop = tokenizer.convert_tokens_to_ids([\"<|endoftext|>\", \"<|im_start|>\"])\nstate, feature_cache = None, None\nmel = torch.empty((1, processor.feature_extractor.feature_size, 0), device=device)\n\n\ndef transcribe(frames, is_final=False):\n    global state\n    output = model.transcribe_live(\n        frames,\n        state,\n        input_ids=prompt if state is None else None,\n        is_final=is_final,\n        max_new_tokens=96 if is_final else 48,\n        suppress_token_ids=suppress,\n        stop_token_ids=stop,\n    )\n    state = output.state\n    print(tokenizer.decode(output.sequences[0], skip_special_tokens=True), end=\"\", flush=True)\n\n\nwaveform, _ = librosa.load(\"audio.wav\", sr=16_000)\nfor start in range(0, len(waveform), 1_600):  # 100 ms microphone chunks\n    features, feature_cache = processor.feature_extractor.stream(\n        waveform[start:start + 1_600], feature_cache\n    )\n    mel = torch.cat((mel, features.input_features.to(device)), dim=-1)\n    while mel.shape[-1] >= chunk_frames:\n        transcribe(mel[..., :chunk_frames])\n        mel = mel[..., chunk_frames:]\n\n# flush the remaining audio and end the transcript\nfeatures, feature_cache = processor.feature_extractor.stream([], feature_cache, is_final=True)\nmel = torch.cat((mel, features.input_features.to(device)), dim=-1)\nwhile mel.shape[-1] > chunk_frames:\n    transcribe(mel[..., :chunk_frames])\n    mel = mel[..., chunk_frames:]\ntranscribe(mel, is_final=True)\nprint()",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-n",
+      "value": "96",
+      "from": "max_new_tokens: 96"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "9d49701c372d6011d900f6abb40c6b296fb706dd",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-Audio-2B README.md:L290-316",
+   "file": "README.md",
+   "lines": [
+    290,
+    316
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "conversation = [\n    {\"role\": \"system\", \"content\": \"Perform TTS in American English using a female voice.\"},\n    {\"role\": \"user\", \"content\": \"The quick brown fox jumps over the lazy dog\"},\n    {\"role\": \"assistant\", \"content\": \"<|audio_start|>\"},\n]\ninputs = processor.apply_chat_template(\n    conversation,\n    continue_final_message=True,\n    tokenize=True,\n    return_dict=True,\n    return_tensors=\"pt\",\n).to(device)\nwith torch.no_grad():\n    outputs = model.generate(\n        **inputs,\n        max_new_tokens=256,\n        audio_temperature=1.0,\n        audio_top_k=128,\n        audio_repetition_penalty=1.1,\n        audio_repetition_window=4096,\n        return_dict_in_generate=True,\n    )\n    waveform = codec.decode(\n        outputs.audio_codes[:1, :, :outputs.audio_lengths[0]]\n    ).audio_values[0]  # 24 kHz\n\nsf.write(\"tts.wav\", waveform.float().cpu().numpy(), 24_000)",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-n",
+      "value": "256",
+      "from": "max_new_tokens: 256"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "9d49701c372d6011d900f6abb40c6b296fb706dd",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-Audio-2B README.md:L331-362",
+   "file": "README.md",
+   "lines": [
+    331,
+    362
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "conversation = [\n    {\"role\": \"system\", \"content\": \"Respond with interleaved text and audio.\"},\n    {\"role\": \"user\", \"content\": [{\"type\": \"audio\", \"audio\": \"question.wav\"}]},\n    {\"role\": \"assistant\", \"content\": \"<|mixed_start|>\"},\n]\ninputs = processor.apply_chat_template(\n    conversation,\n    continue_final_message=True,\n    tokenize=True,\n    return_dict=True,\n    return_tensors=\"pt\",\n).to(device)\nwith torch.no_grad():\n    outputs = model.generate(\n        **inputs,\n        max_new_tokens=1024,\n        audio_temperature=1.0,\n        audio_top_k=128,\n        audio_repetition_penalty=1.1,\n        audio_repetition_window=4096,\n        return_dict_in_generate=True,\n    )\n\n    text = processor.decode(\n        outputs.sequences[0, inputs[\"input_ids\"].shape[1]:],\n        skip_special_tokens=True,\n    )\n    waveform = codec.decode(\n        outputs.audio_codes[:1, :, :outputs.audio_lengths[0]]\n    ).audio_values[0]  # 24 kHz\nprint(text)\nsf.write(\"reply.wav\", waveform.float().cpu().numpy(), 24_000)",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-n",
+      "value": "1024",
+      "from": "max_new_tokens: 1024"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "9d49701c372d6011d900f6abb40c6b296fb706dd",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-Audio-2B README.md:L375-403",
+   "file": "README.md",
+   "lines": [
+    375,
+    403
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "use_thinking = True\nconversation = [\n    {\"role\": \"user\", \"content\": [{\"type\": \"audio\", \"audio\": \"question.wav\"}]},\n    {\"role\": \"assistant\", \"content\": \"<think>\" if use_thinking else \"<think></think>\"},\n]\ninputs = processor.apply_chat_template(\n    conversation,\n    continue_final_message=True,\n    tokenize=True,\n    return_dict=True,\n    return_tensors=\"pt\",\n).to(device)\nwith torch.no_grad():\n    outputs = model.generate(\n        **inputs,\n        max_new_tokens=1024,\n        suppress_mixed=True,\n        suppress_audio_out=True,\n        return_dict_in_generate=True,\n    )\n    text = processor.decode(\n        outputs.sequences[0, inputs[\"input_ids\"].shape[1]:],\n        skip_special_tokens=True,\n    )\nif use_thinking:\n    _, separator, text = text.partition(\"</think>\")\n    if not separator:\n        raise RuntimeError(\"Reasoning has not finished; increase max_new_tokens.\")\nprint(text.strip())",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-n",
+      "value": "1024",
+      "from": "max_new_tokens: 1024"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "9d49701c372d6011d900f6abb40c6b296fb706dd",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-Audio-2B README.md:L414-447",
+   "file": "README.md",
+   "lines": [
+    414,
+    447
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "conversation = [\n    {\n        \"role\": \"system\",\n        \"content\": \"Answer questions about the provided audio clip. Base every answer only on what can be heard.\",\n    },\n    {\n        \"role\": \"user\",\n        \"content\": [\n            {\"type\": \"audio\", \"audio\": \"recording.wav\"},\n            {\"type\": \"text\", \"text\": \"What is happening in this recording?\"},\n        ],\n    },\n]\ninputs = processor.apply_chat_template(\n    conversation,\n    add_generation_prompt=True,\n    tokenize=True,\n    return_dict=True,\n    return_tensors=\"pt\",\n).to(device)\n\nwith torch.no_grad():\n    outputs = model.generate(\n        **inputs,\n        max_new_tokens=1024,\n        suppress_mixed=True,\n        suppress_audio_out=True,\n        return_dict_in_generate=True,\n    )\n\nprint(processor.decode(\n    outputs.sequences[0, inputs[\"input_ids\"].shape[1]:],\n    skip_special_tokens=True,\n))",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-n",
+      "value": "1024",
+      "from": "max_new_tokens: 1024"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "9d49701c372d6011d900f6abb40c6b296fb706dd",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-Audio-2B README.md:L474-480",
+   "file": "README.md",
+   "lines": [
+    474,
+    480
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "prompt-format",
+   "text": "<tool_call>\n<function=set_volume>\n<parameter=volume>\n30\n</parameter>\n</function>\n</tool_call>",
+   "doc": "base-card",
+   "doc_sha": "9d49701c372d6011d900f6abb40c6b296fb706dd",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-Audio-2B README.md:L486-569",
+   "file": "README.md",
+   "lines": [
+    486,
+    569
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "import json\nimport re\n\ntools = [{\n    \"type\": \"function\",\n    \"function\": {\n        \"name\": \"set_volume\",\n        \"description\": \"Set the device speaker volume.\",\n        \"parameters\": {\n            \"type\": \"object\",\n            \"properties\": {\n                \"volume\": {\"type\": \"integer\", \"description\": \"Volume from 0 to 100.\"}\n            },\n            \"required\": [\"volume\"],\n        },\n    },\n}]\nfunctions = {\"set_volume\": lambda volume: {\"volume\": volume}}  # your implementations\n\nCALL_RE = re.compile(r\"<tool_call>\\s*<function=([^>\\n]+)>(.*?)</function>\\s*</tool_call>\", re.DOTALL)\nPARAM_RE = re.compile(r\"<parameter=([^>\\n]+)>\\n?(.*?)\\n?</parameter>\", re.DOTALL)\n\n\ndef parse_tool_calls(text):\n    calls = []\n    for name, body in CALL_RE.findall(text):\n        arguments = {}\n        for key, value in PARAM_RE.findall(body):\n            try:\n                arguments[key] = json.loads(value)\n            except json.JSONDecodeError:\n                arguments[key] = value  # plain string\n        calls.append({\"type\": \"function\", \"function\": {\"name\": name, \"arguments\": arguments}})\n    return calls\n\n\ndef respond(conversation):\n    inputs = processor.apply_chat_template(\n        conversation,\n        tools=tools,\n        add_generation_prompt=True,\n        tokenize=True,\n        return_dict=True,\n        return_tensors=\"pt\",\n    ).to(device)\n    with torch.no_grad():\n        outputs = model.generate(\n            **inputs,\n            max_new_tokens=1024,\n            audio_temperature=1.0,\n            audio_top_k=128,\n            audio_repetition_penalty=1.1,\n            audio_repetition_window=4096,\n            return_dict_in_generate=True,\n        )\n    text = processor.decode(\n        outputs.sequences[0, inputs[\"input_ids\"].shape[1]:],\n        skip_special_tokens=True,\n    )\n    return text, outputs\n\n\nconversation = [\n    {\n        \"role\": \"system\",\n        \"content\": \"Respond with function calls, and interleaved text and audio.\\n\\nList of tools:\",\n    },\n    {\"role\": \"user\", \"content\": [{\"type\": \"audio\", \"audio\": \"question.wav\"}]},\n]\ntext, outputs = respond(conversation)\nwhile calls := parse_tool_calls(text):\n    results = [functions[c[\"function\"][\"name\"]](**c[\"function\"][\"arguments\"]) for c in calls]\n    conversation += [\n        {\"role\": \"assistant\", \"tool_calls\": calls},\n        {\"role\": \"tool\", \"content\": json.dumps(results)},\n    ]\n    text, outputs = respond(conversation)\n\nprint(text)\nwith torch.no_grad():\n    waveform = codec.decode(\n        outputs.audio_codes[:1, :, :outputs.audio_lengths[0]]\n    ).audio_values[0]  # 24 kHz\nsf.write(\"reply.wav\", waveform.float().cpu().numpy(), 24_000)",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-n",
+      "value": "1024",
+      "from": "max_new_tokens: 1024"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "9d49701c372d6011d900f6abb40c6b296fb706dd",
+   "scope": "model"
+  }
+ ],
+ "card_notes": [
+  {
+   "text": "<th scope=\"row\" style=\"text-align: left; background-color: transparent; font-weight: 400; border: 0; padding: 0.55em 0.75em;\"><strong>Context length</strong></th>",
+   "source": "LiquidAI/LFM3-Audio-2B README.md:L92"
+  },
+  {
+   "text": "To use the model for transcription, use the system prompt `Perform ASR in <language>.`, where `<language>` is the English name of the language.",
+   "source": "LiquidAI/LFM3-Audio-2B README.md:L186"
+  },
+  {
+   "text": "LiveASR transcribes speech while it is still being spoken, instead of waiting for the full recording. Use the system prompt `Perform live ASR.`. LiveASR currently supports English only. The model processes audio in chunks of about 0.96 s and writes the text for each chunk as soon as the chunk arrive",
+   "source": "LiquidAI/LFM3-Audio-2B README.md:L224"
+  },
+  {
+   "text": "For speech synthesis, use the system prompt `Perform TTS in <language> using a <gender> voice.`.",
+   "source": "LiquidAI/LFM3-Audio-2B README.md:L286"
+  },
+  {
+   "text": "The recommended system prompt is `Respond with interleaved text and audio.`.",
+   "source": "LiquidAI/LFM3-Audio-2B README.md:L325"
+  },
+  {
+   "text": "For a text-only answer, no specific system prompt is needed. Prefill `<think>` to let the model reason before answering, or `<think></think>` for a direct response.",
+   "source": "LiquidAI/LFM3-Audio-2B README.md:L372"
+  },
+  {
+   "text": "Include the recording and a question in the user turn. Questions can address speech, music, background sounds, or events. No specific system prompt is required; to ground answers in the recording, use `Answer questions about the provided audio clip. Base every answer only on what can be heard.`.",
+   "source": "LiquidAI/LFM3-Audio-2B README.md:L411"
+  },
+  {
+   "text": "Use a system prompt that specifies the source language, target language, and output format:",
+   "source": "LiquidAI/LFM3-Audio-2B README.md:L457"
+  },
+  {
+   "text": "Pass function schemas through `tools=...` to `apply_chat_template()`. The chat template appends them to the system prompt, one JSON definition per line inside `<tools>…</tools>`. Requests may be spoken or written.",
+   "source": "LiquidAI/LFM3-Audio-2B README.md:L469"
+  },
+  {
+   "text": "With the system prompt `Respond with function calls, and interleaved text and audio.\\n\\nList of tools:`, the model either calls tools or answers with interleaved text and speech. Do not prefill the assistant turn: the model chooses whether to start with `<tool_call>` or `<|mixed_start|>`. A tool cal",
+   "source": "LiquidAI/LFM3-Audio-2B README.md:L471"
+  },
+  {
+   "text": "**Text-only answers:** use the system prompt `List of tools:` (keep `tools=`) and pass `suppress_mixed=True, suppress_audio_out=True` to `generate()`. Calls and results are handled the same way.",
+   "source": "LiquidAI/LFM3-Audio-2B README.md:L572"
+  },
+  {
+   "text": "Speech recognition: use the system prompt `Perform ASR in <language>.`, or `Perform ASR.` to let the model infer the language.",
+   "source": "LiquidAI/LFM3-Audio-2B-GGUF README.md:L69"
+  }
+ ],
+ "chat_template": {
+  "gguf_sha256": "8769fc2ac03684665a009b1908fee359e418329019dd83dbc57152167e448099",
+  "repo_sha256": "8769fc2ac03684665a009b1908fee359e418329019dd83dbc57152167e448099",
+  "repo_file": "chat_template.jinja",
+  "same": true,
+  "gguf_chars": 9328,
+  "repo_chars": 9328,
+  "repo_label": "LiquidAI/LFM3-Audio-2B",
+  "use": "gguf"
+ },
+ "stop": {
+  "eos_token": "<|im_end|>",
+  "eos_token_id": [
+   124900,
+   125014
+  ],
+  "eos_token_id_source": "LiquidAI/LFM3-Audio-2B generation_config.json",
+  "analysis": {
+   "tokens": [
+    {
+     "id": 124900,
+     "text": "<|im_end|>",
+     "source": "LiquidAI/LFM3-Audio-2B generation_config.json eos_token_id",
+     "eog_by": "GGUF tokenizer.ggml.eos_token_id"
+    },
+    {
+     "id": 125014,
+     "text": "<|text_end|>",
+     "source": "LiquidAI/LFM3-Audio-2B generation_config.json eos_token_id",
+     "eog_by": null
+    }
+   ],
+   "missing": [
+    {
+     "id": 125014,
+     "text": "<|text_end|>",
+     "source": "LiquidAI/LFM3-Audio-2B generation_config.json eos_token_id",
+     "eog_by": null
+    }
+   ],
+   "gguf": {
+    "eos": 124900
+   }
+  }
+ },
+ "rope": {
+  "rope.freq_base": 1000000.0
+ },
+ "aux": [
+  {
+   "kind": "mmproj",
+   "file": "mmproj-LFM3-Audio-2B-BF16.gguf",
+   "size": 570846400,
+   "sha256": "c20fced222c6b7e7bcd32eb0480fad5108f9ea26cadca4f106fac37747868ed9",
+   "fetched": false,
+   "source": "LiquidAI/LFM3-Audio-2B-GGUF repo file"
+  },
+  {
+   "kind": "mmproj",
+   "file": "mmproj-LFM3-Audio-2B-F16.gguf",
+   "size": 570846400,
+   "sha256": "bd0fce0670c96e405a753f996701dee6568bc6a1318a80091d74fb58f7510d79",
+   "fetched": false,
+   "source": "LiquidAI/LFM3-Audio-2B-GGUF repo file"
+  },
+  {
+   "kind": "mmproj",
+   "file": "mmproj-LFM3-Audio-2B-Q8_0.gguf",
+   "size": 337862080,
+   "sha256": "26601e904245a85bd8f3cf320a629e897cfc01c1d09369e8b4fd951f13024d3e",
+   "fetched": false,
+   "source": "LiquidAI/LFM3-Audio-2B-GGUF repo file"
+  }
+ ],
+ "gguf": {
+  "general.architecture": "lfm3",
+  "general.name": "LFM3 Audio 2B",
+  "general.file_type": 15,
+  "general.quantization_version": 2,
+  "_gguf_version": 3
+ },
+ "snapshot": {
+  "path": "LiquidAI--LFM3-Audio-2B-GGUF/642697a5597a675cb819ed236ac415c1e60a4f6f",
+  "fetched_bytes": 16415,
+  "errors": null,
+  "gated": false
+ },
+ "base_snapshot": {
+  "path": "LiquidAI--LFM3-Audio-2B/9d49701c372d6011d900f6abb40c6b296fb706dd",
+  "fetched_bytes": 18265834,
+  "errors": null,
+  "gated": false
+ },
+ "repo_files": {
+  ".gitattributes": {
+   "size": 2020,
+   "sha256": null,
+   "blob": "e1a09141e0e08e786021a1bf62de1e6a8db4a7ff",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "LFM3-Audio-2B-BF16.gguf": {
+   "size": 3466624544,
+   "sha256": "80948b38aa7b9c86c8afdc74ad785d73ed6929f8912212b6679d06858eaf3a15",
+   "blob": "c651a69effec7a487dfe7a6b90e28fc7719a9f49",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (3466 MB)"
+  },
+  "LFM3-Audio-2B-F16.gguf": {
+   "size": 3466624544,
+   "sha256": "aaac1e611220b38fb73da44118480acafab0c1076acd25a99088f35960b6f47d",
+   "blob": "31874c71c98b8e3ad59aba440cf466c85790b9a4",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (3466 MB)"
+  },
+  "LFM3-Audio-2B-Q4_0.gguf": {
+   "size": 1049613856,
+   "sha256": "112e4acb79be79dcd8df5749495614817e51c064cd9ca576aead02b64b2b7584",
+   "blob": "cddf0db66f89f788df19023930c2c20bb0191852",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (1049 MB)"
+  },
+  "LFM3-Audio-2B-Q4_K_M.gguf": {
+   "size": 1099626016,
+   "sha256": "9a773289bd321ed879cd3a76545f6aca506e403851a45fb315420aee45625be2",
+   "blob": "d318fbfac34d13de7d451bd163e877ecc2271ee7",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (1099 MB)"
+  },
+  "LFM3-Audio-2B-Q8_0.gguf": {
+   "size": 1846236704,
+   "sha256": "d4e36902ba8f0ee7b333596030a59d650f88ac76660b4d9ba5ff77c3c2258fc0",
+   "blob": "f9f21c5d8fb87d52ffec69ae7e621a57d48219cf",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (1846 MB)"
+  },
+  "LICENSE": {
+   "size": 10574,
+   "sha256": null,
+   "blob": "25e731c697c4fe4c52ee654cedf7106a827748d2",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "README.md": {
+   "size": 3821,
+   "sha256": null,
+   "blob": "64ac7858d85c4b9ca37ccfcfa0ec2dc0dca6af2e",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "mmproj-LFM3-Audio-2B-BF16.gguf": {
+   "size": 570846400,
+   "sha256": "c20fced222c6b7e7bcd32eb0480fad5108f9ea26cadca4f106fac37747868ed9",
+   "blob": "7bf1d0360acb16c18f32ae7175f44c0acc933cf3",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (570 MB)"
+  },
+  "mmproj-LFM3-Audio-2B-F16.gguf": {
+   "size": 570846400,
+   "sha256": "bd0fce0670c96e405a753f996701dee6568bc6a1318a80091d74fb58f7510d79",
+   "blob": "9a815a6b2ff19888c58ba9c86b48bba131f60da6",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (570 MB)"
+  },
+  "mmproj-LFM3-Audio-2B-Q8_0.gguf": {
+   "size": 337862080,
+   "sha256": "26601e904245a85bd8f3cf320a629e897cfc01c1d09369e8b4fd951f13024d3e",
+   "blob": "dc716b1ba5bb292cce2bd45ba652c6ee55e94bc4",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (337 MB)"
+  }
+ },
+ "base_repo_files": {
+  ".gitattributes": {
+   "size": 1570,
+   "sha256": null,
+   "blob": "52373fe24473b1aa44333d318f578ae6bf04b49b",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "LICENSE": {
+   "size": 10574,
+   "sha256": null,
+   "blob": "25e731c697c4fe4c52ee654cedf7106a827748d2",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "README.md": {
+   "size": 38883,
+   "sha256": null,
+   "blob": "ecfa81a7b3b6e56bcd24247adedc58d0b163c66f",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "assets/icons/api.svg": {
+   "size": 233,
+   "sha256": null,
+   "blob": "8626acd537902ba4761fd62eec2bfae363197bd2",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "assets/icons/blog.svg": {
+   "size": 258,
+   "sha256": null,
+   "blob": "186f835548622364993de5843a3bd33eb7bb935c",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "assets/icons/docs.svg": {
+   "size": 276,
+   "sha256": null,
+   "blob": "ab29c7f647f30fbf9cfa7c5880fae78963667c00",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "assets/icons/try.svg": {
+   "size": 246,
+   "sha256": null,
+   "blob": "e4c1624c3225c6d3f8b302f52bb0339ddc20fbc2",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "assets/lfm3-audio-architecture.svg": {
+   "size": 5729,
+   "sha256": null,
+   "blob": "658c236880721362bccf2cd20a755963a27c8e76",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "assets/lfm3-audio-architecture.webp": {
+   "size": 25880,
+   "sha256": null,
+   "blob": "55e7d541e1cd585807f6762c6fa6bfa823b4cd02",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "assets/liquid-ai-banner.webp": {
+   "size": 38172,
+   "sha256": null,
+   "blob": "6215ed705c92655e6dbf40f955abc1169f3c3516",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "audio_tokenizer/config.json": {
+   "size": 801,
+   "sha256": null,
+   "blob": "691025073d47c8e5de98b690c4c60e812eda14d0",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "audio_tokenizer/model.safetensors": {
+   "size": 147143540,
+   "sha256": "45984a872fdcf0b94cd0ec68822bbf26f0c6fcb580cfaba0f7fa3ee60355137f",
+   "blob": "6f9ec92fd0e07e205ead1852835a54f34c1335d4",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (147 MB)"
+  },
+  "chat_template.jinja": {
+   "size": 9328,
+   "sha256": null,
+   "blob": "79806ec0046e91f9f2a7b6757d0c926bbc5c6dd0",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "config.json": {
+   "size": 6243,
+   "sha256": null,
+   "blob": "22b9c3aaff94eed8b487495fe0b8bb92945f8ffd",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "configuration_lfm3.py": {
+   "size": 6113,
+   "sha256": null,
+   "blob": "a3cc0e726e8f4656f8468df5c8445f26e6dc8464",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "configuration_lfm3_audio.py": {
+   "size": 12973,
+   "sha256": null,
+   "blob": "2fae5add80420eb6bc84ec1d3f2f032668920ad7",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "configuration_liquid_codec.py": {
+   "size": 5401,
+   "sha256": null,
+   "blob": "30409c65b5713d70745a9dd8062bb8ca6bd0fde1",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "feature_extraction_lfm3_audio.py": {
+   "size": 13394,
+   "sha256": null,
+   "blob": "9073a5327a2d70767fa2778267e7092c1eaa4969",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "generation_config.json": {
+   "size": 382,
+   "sha256": null,
+   "blob": "74d095d2e6f1914d54ab47fbd152124a1f54fd35",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "lfm3_conv.py": {
+   "size": 8532,
+   "sha256": null,
+   "blob": "a1b67afdb605452f5a99751862863d5460a1fa69",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "model.safetensors": {
+   "size": 4004729320,
+   "sha256": "9abe5e402f163296e0988f94ad67f65dab61c723e260fea9374109b3775e28f7",
+   "blob": "13938d3bb40e8ca11b2d019df025c64b0c8ec33e",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (4004 MB)"
+  },
+  "modeling_lfm3.py": {
+   "size": 42359,
+   "sha256": null,
+   "blob": "0ccffc7ed179c2e3aaa19ab93bba735abb1d124d",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "modeling_lfm3_audio.py": {
+   "size": 91241,
+   "sha256": null,
+   "blob": "3d6e3410726ae2a26b519c94bffb695f28404dcc",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "modeling_liquid_codec.py": {
+   "size": 17884,
+   "sha256": null,
+   "blob": "2c77c3b953faae96073176fa0243dc17d7ac644d",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "preprocessor_config.json": {
+   "size": 466,
+   "sha256": null,
+   "blob": "50b5a88b34970aa94c75628bc0079103ada9c90b",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "processing_lfm3_audio.py": {
+   "size": 18723,
+   "sha256": null,
+   "blob": "138d1b2573ab90dd29879156701cdde9e4f52ab5",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "processor_config.json": {
+   "size": 773,
+   "sha256": null,
+   "blob": "5478f2b1bb2283f348b555ab0483e414af6ffa87",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "special_tokens_map.json": {
+   "size": 92,
+   "sha256": null,
+   "blob": "5d871daaacbf26aaa9cb47c2935f30e797ee35a7",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "tokenizer.json": {
+   "size": 17908634,
+   "sha256": "41927bd314d17d7d7fadb44e10cd0919f7b71528d7741596d8cbd15c6945ec44",
+   "blob": "e1d790a4dafc1b53d7d72b428b3e2be99c989e1f",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "tokenizer_config.json": {
+   "size": 674,
+   "sha256": null,
+   "blob": "a44ee8c5a658a4f7d04bc5605a52840a5e471acb",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  }
+ },
+ "found_in": [
+  "add-model.sh --fetch",
+  "graph.yaml models.lfm3-audio-2b-q4km"
+ ],
+ "match": "LFS sha256 match",
+ "local_check": {
+  "host": "grok-bot-vm-414137730",
+  "sha256_ok": true,
+  "checked": "2026-10-28"
+ },
+ "unknown": null,
+ "warnings": null,
+ "updated": "2026-10-28",
+ "by": "scripts/model_db.py",
+ "gguf_meta": {
+  "general.architecture": "lfm3",
+  "general.type": "model",
+  "general.sampling.top_k": 1,
+  "general.sampling.temp": 0.0,
+  "general.sampling.penalty_repeat": 1.0,
+  "general.name": "LFM3 Audio 2B",
+  "general.basename": "LFM3-Audio",
+  "general.size_label": "2B",
+  "general.license": "other",
+  "general.license.name": "lfm1.0",
+  "general.license.link": "LICENSE",
+  "general.tags": [
+   "liquid",
+   "lfm3",
+   "audio",
+   "speech",
+   "edge",
+   "conversational",
+   "multilingual",
+   "custom_code",
+   "any-to-any"
+  ],
+  "general.languages": [
+   "en",
+   "ar",
+   "da",
+   "de",
+   "el",
+   "fi",
+   "fr",
+   "he",
+   "it",
+   "ja",
+   "ko",
+   "nl",
+   "pl",
+   "pt",
+   "es",
+   "sv",
+   "tr",
+   "zh"
+  ],
+  "lfm3.block_count": 24,
+  "lfm3.context_length": 128000,
+  "lfm3.embedding_length": 2048,
+  "lfm3.feed_forward_length": 7680,
+  "lfm3.attention.head_count": 16,
+  "lfm3.attention.head_count_kv": {
+   "array_len": 24
+  },
+  "lfm3.rope.freq_base": 1000000.0,
+  "lfm3.rope.freq_base_swa": 10000.0,
+  "lfm3.attention.layer_norm_rms_epsilon": 9.999999747378752e-06,
+  "lfm3.attention.key_length": 128,
+  "lfm3.attention.value_length": 128,
+  "lfm3.rope.dimension_count": 128,
+  "lfm3.attention.sliding_window_pattern": {
+   "array_len": 24
+  },
+  "lfm3.attention.sliding_window": 256,
+  "lfm3.shortconv.l_cache": 7,
+  "tokenizer.ggml.model": "gpt2",
+  "tokenizer.ggml.pre": "lfm2",
+  "tokenizer.ggml.tokens": {
+   "array_len": 128000
+  },
+  "tokenizer.ggml.token_type": {
+   "array_len": 128000
+  },
+  "tokenizer.ggml.merges": {
+   "array_len": 293320
+  },
+  "tokenizer.ggml.bos_token_id": 124894,
+  "tokenizer.ggml.eos_token_id": 124900,
+  "tokenizer.ggml.padding_token_id": 124893,
+  "tokenizer.ggml.add_bos_token": false,
+  "tokenizer.ggml.add_eos_token": false,
+  "tokenizer.chat_template": {
+   "sha256": "8769fc2ac03684665a009b1908fee359e418329019dd83dbc57152167e448099",
+   "chars": 9328
+  },
+  "tokenizer.chat_template.asr": "{{- bos_token -}}{{- '<|im_start|>system\\nPerform live ASR.<|im_end|>\\n' -}}{%- if add_generation_prompt -%}{{- '<|im_start|>assistant\\n' -}}{%- endif -%}",
+  "tokenizer.chat_template.tts": "{%- set names = {\"ar\": \"Arabic\", \"da\": \"Danish\", \"de\": \"German\", \"el\": \"Greek\", \"en\": \"American English\", \"en-us\": \"American English\", \"en-gb\": \"British English\", \"fi\": \"Finnish\", \"fr\": \"French\", \"he\": \"Hebrew\", \"it\": \"Italian\", \"ja\": \"Japanese\", \"ko\": \"Korean\", \"nl\": \"Dutch\", \"pl\": \"Polish\", \"pt\": \"Portuguese\", \"es\": \"Spanish\", \"sv\": \"Swedish\", \"tr\": \"Turkish\", \"zh\": \"Chinese\"} -%}{%- set code = (language | lower) if language is defined and language else 'en' -%}{%- set lang = names[code] if code in names else language -%}{%- set v = (voice | lower) if voice is defined and voice and (voice | lower) in ['female', 'male'] else 'female' -%}{{- bos_token -}}{{- '<|im_start|>system\\nPerform TTS in ' + lang + ' using a ' + v + ' voice.<|im_end|>\\n' -}}{{- '<|im_start|>user\\n' + messages[0]['content'] + '<|im_end|>\\n' -}}{{- '<|im_start|>assistant\\n<|audio_start|>' -}}",
+  "tokenizer.chat_templates": [
+   "tts",
+   "asr"
+  ],
+  "general.quantization_version": 2,
+  "general.file_type": 15,
+  "_gguf_version": 3,
+  "_n_tensors": 287
+ },
+ "base_chain": [
+  {
+   "repo": "LiquidAI/LFM3-Audio-2B",
+   "api_id": "LiquidAI/LFM3-Audio-2B",
+   "revision": "9d49701c372d6011d900f6abb40c6b296fb706dd",
+   "via": "card base_model",
+   "card_data": {
+    "license": "other",
+    "license_name": "lfm1.0",
+    "license_link": "LICENSE",
+    "language": [
+     "en",
+     "ar",
+     "da",
+     "de",
+     "el",
+     "fi",
+     "fr",
+     "he",
+     "it",
+     "ja",
+     "ko",
+     "nl",
+     "pl",
+     "pt",
+     "es",
+     "sv",
+     "tr",
+     "zh"
+    ],
+    "pipeline_tag": "any-to-any",
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "any-to-any",
+   "safetensors": {
+    "parameters": {
+     "BF16": 2002332928
+    },
+    "total": 2002332928
+   },
+   "license_files": [
+    "LICENSE"
+   ]
+  }
+ ],
+ "github": null,
+ "github_dropped": [
+  {
+   "repo": "ggml-org/llama.cpp",
+   "why": "inference/training tool repo"
+  }
+ ],
+ "descriptor": {
+  "repo_id": {
+   "effective": "LiquidAI/LFM3-Audio-2B-GGUF",
+   "source": "HF API id"
+  },
+  "revision": {
+   "effective": "642697a5597a675cb819ed236ac415c1e60a4f6f",
+   "source": "pinned (manifest / database)"
+  },
+  "file": {
+   "effective": "LFM3-Audio-2B-Q4_K_M.gguf",
+   "source": "HF API siblings"
+  },
+  "bytes": {
+   "effective": 1099626016,
+   "source": "HF API LFS size"
+  },
+  "sha256": {
+   "effective": "9a773289bd321ed879cd3a76545f6aca506e403851a45fb315420aee45625be2",
+   "source": "HF API LFS oid"
+  },
+  "quant": {
+   "effective": "Q4_K_M",
+   "source": "file name",
+   "values": [
+    {
+     "value": "Q4_K_M",
+     "source": "file name"
+    },
+    {
+     "value": "Q4_K_M",
+     "source": "GGUF general.file_type"
+    }
+   ]
+  },
+  "license": {
+   "effective": "other",
+   "source": "LiquidAI/LFM3-Audio-2B-GGUF card license",
+   "values": [
+    {
+     "value": "other",
+     "source": "LiquidAI/LFM3-Audio-2B-GGUF card license"
+    },
+    {
+     "value": "other",
+     "source": "LiquidAI/LFM3-Audio-2B card license"
+    },
+    {
+     "value": "other",
+     "source": "GGUF general.license"
+    }
+   ]
+  },
+  "license_name": {
+   "effective": "lfm1.0",
+   "source": "LiquidAI/LFM3-Audio-2B-GGUF card license_name",
+   "values": [
+    {
+     "value": "lfm1.0",
+     "source": "LiquidAI/LFM3-Audio-2B-GGUF card license_name"
+    },
+    {
+     "value": "lfm1.0",
+     "source": "LiquidAI/LFM3-Audio-2B card license_name"
+    },
+    {
+     "value": "lfm1.0",
+     "source": "GGUF general.license.name"
+    }
+   ]
+  },
+  "license_link": {
+   "effective": "LICENSE",
+   "source": "LiquidAI/LFM3-Audio-2B-GGUF card license_link",
+   "values": [
+    {
+     "value": "LICENSE",
+     "source": "LiquidAI/LFM3-Audio-2B-GGUF card license_link"
+    },
+    {
+     "value": "LICENSE",
+     "source": "LiquidAI/LFM3-Audio-2B card license_link"
+    },
+    {
+     "value": "LICENSE",
+     "source": "GGUF general.license.link"
+    }
+   ]
+  },
+  "license_file": {
+   "effective": "LiquidAI/LFM3-Audio-2B-GGUF@642697a5597a/LICENSE",
+   "source": "LiquidAI/LFM3-Audio-2B-GGUF repo file",
+   "values": [
+    {
+     "value": "LiquidAI/LFM3-Audio-2B-GGUF@642697a5597a/LICENSE",
+     "source": "LiquidAI/LFM3-Audio-2B-GGUF repo file"
+    },
+    {
+     "value": "LiquidAI/LFM3-Audio-2B@9d49701c372d/LICENSE",
+     "source": "LiquidAI/LFM3-Audio-2B repo file"
+    }
+   ]
+  },
+  "base_model_chain": {
+   "effective": "LiquidAI/LFM3-Audio-2B",
+   "source": "card base_model"
+  },
+  "architecture": {
+   "effective": "lfm3",
+   "source": "GGUF general.architecture",
+   "values": [
+    {
+     "value": "lfm3",
+     "source": "GGUF general.architecture"
+    },
+    {
+     "value": "lfm3",
+     "source": "HF API gguf.architecture"
+    }
+   ]
+  },
+  "hf_architectures": {
+   "effective": [
+    "Lfm3AudioForConditionalGeneration"
+   ],
+   "source": "LiquidAI/LFM3-Audio-2B config.json architectures"
+  },
+  "hf_model_type": {
+   "effective": "lfm3_audio",
+   "source": "LiquidAI/LFM3-Audio-2B config.json model_type"
+  },
+  "parameters": {
+   "effective": 1728801600,
+   "source": "HF API gguf.total (LiquidAI/LFM3-Audio-2B-GGUF)",
+   "values": [
+    {
+     "value": 1728801600,
+     "source": "HF API gguf.total (LiquidAI/LFM3-Audio-2B-GGUF)"
+    },
+    {
+     "value": 2002332928,
+     "source": "HF API safetensors.total (LiquidAI/LFM3-Audio-2B)"
+    }
+   ],
+   "conflict": true
+  },
+  "size_label": {
+   "effective": "2B",
+   "source": "GGUF general.size_label"
+  },
+  "ctx": {
+   "effective": 128000,
+   "source": "GGUF lfm3.context_length",
+   "precedence": "card statement > config.json > GGUF header > GitHub README"
+  },
+  "pipeline_tag": {
+   "effective": "any-to-any",
+   "source": "LiquidAI/LFM3-Audio-2B-GGUF HF API pipeline_tag",
+   "values": [
+    {
+     "value": "any-to-any",
+     "source": "LiquidAI/LFM3-Audio-2B-GGUF HF API pipeline_tag"
+    },
+    {
+     "value": "any-to-any",
+     "source": "LiquidAI/LFM3-Audio-2B HF API pipeline_tag"
+    }
+   ]
+  },
+  "languages": {
+   "effective": [
+    "en",
+    "ar",
+    "da",
+    "de",
+    "el",
+    "fi",
+    "fr",
+    "he",
+    "it",
+    "ja",
+    "ko",
+    "nl",
+    "pl",
+    "pt",
+    "es",
+    "sv",
+    "tr",
+    "zh"
+   ],
+   "source": "LiquidAI/LFM3-Audio-2B-GGUF card language",
+   "values": [
+    {
+     "value": [
+      "en",
+      "ar",
+      "da",
+      "de",
+      "el",
+      "fi",
+      "fr",
+      "he",
+      "it",
+      "ja",
+      "ko",
+      "nl",
+      "pl",
+      "pt",
+      "es",
+      "sv",
+      "tr",
+      "zh"
+     ],
+     "source": "LiquidAI/LFM3-Audio-2B-GGUF card language"
+    },
+    {
+     "value": [
+      "en",
+      "ar",
+      "da",
+      "de",
+      "el",
+      "fi",
+      "fr",
+      "he",
+      "it",
+      "ja",
+      "ko",
+      "nl",
+      "pl",
+      "pt",
+      "es",
+      "sv",
+      "tr",
+      "zh"
+     ],
+     "source": "LiquidAI/LFM3-Audio-2B card language"
+    },
+    {
+     "value": [
+      "en",
+      "ar",
+      "da",
+      "de",
+      "el",
+      "fi",
+      "fr",
+      "he",
+      "it",
+      "ja",
+      "ko",
+      "nl",
+      "pl",
+      "pt",
+      "es",
+      "sv",
+      "tr",
+      "zh"
+     ],
+     "source": "GGUF general.languages"
+    }
+   ]
+  }
+ },
+ "required_params": {
+  "kind": "chat",
+  "native_ctx": 128000,
+  "native_ctx_source": "GGUF lfm3.context_length",
+  "yarn": null,
+  "yarn_source": null,
+  "items": [
+   {
+    "class": "REQUIRED",
+    "flag": "--jinja",
+    "value": null,
+    "source": "GGUF tokenizer.chat_template (8769fc2ac036)",
+    "why_required": "messages, tool calls and thinking are formatted by the model's chat template; without --jinja llama-server falls back to a built-in approximation"
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--image",
+    "value": "speech.wav",
+    "source": "LiquidAI/LFM3-Audio-2B-GGUF README.md:L72-73",
+    "why_required": "performance / tool option in the card's command"
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--system-prompt",
+    "value": "Perform ASR in English.",
+    "source": "LiquidAI/LFM3-Audio-2B-GGUF README.md:L72-73",
+    "why_required": "performance / tool option in the card's command"
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--temp",
+    "value": "0",
+    "source": "LiquidAI/LFM3-Audio-2B-GGUF README.md:L72-73",
+    "why_required": "sampling in the card's llama-mtmd-cli command",
+    "also": [
+     "LiquidAI/LFM3-Audio-2B-GGUF LiquidAI/LFM3-Audio-2B-GGUF README.md:L73 (example)"
+    ]
+   },
+   {
+    "class": "REQUIRED",
+    "flag": "@stop",
+    "value": "<|text_end|>",
+    "source": "LiquidAI/LFM3-Audio-2B generation_config.json eos_token_id",
+    "why_required": "the model ends turns with '<|text_end|>' (id 125014) but neither the GGUF eos/eot id nor llama.cpp's built-in end-of-generation list covers it; send it as a stop string or set --override-kv tokenizer.ggml.eot_token_id=int:125014",
+    "client": true
+   }
+  ]
+ },
+ "blockers": null,
+ "params_problems": null,
+ "params_build": "b11374",
+ "native_ctx": 128000,
+ "native_ctx_source": "GGUF lfm3.context_length",
+ "license_info": {
+  "id": "lfm1.0",
+  "id_source": "LiquidAI/LFM3-Audio-2B-GGUF card front matter license_name",
+  "name": "lfm1.0",
+  "summary": "lfm1.0 (LICENSE)",
+  "summary_source": "LiquidAI/LFM3-Audio-2B-GGUF card license",
+  "link": "https://huggingface.co/LiquidAI/LFM3-Audio-2B-GGUF/blob/642697a5597a675cb819ed236ac415c1e60a4f6f/LICENSE",
+  "link_source": "LiquidAI/LFM3-Audio-2B-GGUF card license_link",
+  "texts": [
+   {
+    "file": "LiquidAI/LFM3-Audio-2B-GGUF@642697a5597a/LICENSE",
+    "path": "/home/box/.local/share/gguf/hf-meta/LiquidAI--LFM3-Audio-2B-GGUF/642697a5597a675cb819ed236ac415c1e60a4f6f/LICENSE",
+    "url": "https://huggingface.co/LiquidAI/LFM3-Audio-2B-GGUF/blob/642697a5597a675cb819ed236ac415c1e60a4f6f/LICENSE",
+    "sha256": "4d28ca14dedc0b3d0fcc2b3339f0e79931faa33874f3d24f522183a8fc70068c",
+    "bytes": 10574,
+    "what": "model"
+   },
+   {
+    "file": "LiquidAI/LFM3-Audio-2B@9d49701c372d/LICENSE",
+    "path": "/home/box/.local/share/gguf/hf-meta/LiquidAI--LFM3-Audio-2B/9d49701c372d6011d900f6abb40c6b296fb706dd/LICENSE",
+    "url": "https://huggingface.co/LiquidAI/LFM3-Audio-2B/blob/9d49701c372d6011d900f6abb40c6b296fb706dd/LICENSE",
+    "sha256": "4d28ca14dedc0b3d0fcc2b3339f0e79931faa33874f3d24f522183a8fc70068c",
+    "bytes": 10574,
+    "what": "model"
+   }
+  ],
+  "obligations": [
+   {
+    "quote": "\"Commercial Use\" shall mean any use of the Work for direct or indirect commercial advantage or monetary compensation.",
+    "source": "LiquidAI/LFM3-Audio-2B-GGUF LICENSE:L27"
+   },
+   {
+    "quote": "\"Non-Commercial or Research Purposes\" shall mean purposes that do not involve any use of the Work or a Derivative Work for Commercial Use.",
+    "source": "LiquidAI/LFM3-Audio-2B-GGUF LICENSE:L31"
+   },
+   {
+    "quote": "2. Grant of Copyright License. Subject to the terms and conditions of this License, including the Commercial Use limitation set forth in Section 5, each Contributor hereby grants to You a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable copyright license to reproduce, prepar...",
+    "source": "LiquidAI/LFM3-Audio-2B-GGUF LICENSE:L35"
+   },
+   {
+    "quote": "3. Grant of Patent License. Subject to the terms and conditions of this License, including the Commercial Use limitation set forth in Section 5, each Contributor hereby grants to You a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable (except as stated in this section) patent...",
+    "source": "LiquidAI/LFM3-Audio-2B-GGUF LICENSE:L37"
+   },
+   {
+    "quote": "(a) You must give any other recipients of the Work or Derivative Works a copy of this License; and",
+    "source": "LiquidAI/LFM3-Audio-2B-GGUF LICENSE:L41"
+   },
+   {
+    "quote": "(b) You must cause any modified files to carry prominent notices stating that You changed the files; and",
+    "source": "LiquidAI/LFM3-Audio-2B-GGUF LICENSE:L43"
+   },
+   {
+    "quote": "(c) You must retain, in the Source form of any Derivative Works that You distribute, all copyright, patent, trademark, and attribution notices from the Source form of the Work, excluding those notices that do not pertain to any part of the Derivative Works; and",
+    "source": "LiquidAI/LFM3-Audio-2B-GGUF LICENSE:L45"
+   },
+   {
+    "quote": "(d) If the Work includes a \"NOTICE\" text file as part of its distribution, then any Derivative Works that You distribute must include a readable copy of the attribution notices contained within such NOTICE file, excluding those notices that do not pertain to any part of the Derivative Works, in at l...",
+    "source": "LiquidAI/LFM3-Audio-2B-GGUF LICENSE:L47"
+   },
+   {
+    "quote": "\"Commercial Use\" shall mean any use of the Work for direct or indirect commercial advantage or monetary compensation.",
+    "source": "LiquidAI/LFM3-Audio-2B LICENSE:L27"
+   },
+   {
+    "quote": "\"Non-Commercial or Research Purposes\" shall mean purposes that do not involve any use of the Work or a Derivative Work for Commercial Use.",
+    "source": "LiquidAI/LFM3-Audio-2B LICENSE:L31"
+   },
+   {
+    "quote": "2. Grant of Copyright License. Subject to the terms and conditions of this License, including the Commercial Use limitation set forth in Section 5, each Contributor hereby grants to You a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable copyright license to reproduce, prepar...",
+    "source": "LiquidAI/LFM3-Audio-2B LICENSE:L35"
+   },
+   {
+    "quote": "3. Grant of Patent License. Subject to the terms and conditions of this License, including the Commercial Use limitation set forth in Section 5, each Contributor hereby grants to You a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable (except as stated in this section) patent...",
+    "source": "LiquidAI/LFM3-Audio-2B LICENSE:L37"
+   },
+   {
+    "quote": "(a) You must give any other recipients of the Work or Derivative Works a copy of this License; and",
+    "source": "LiquidAI/LFM3-Audio-2B LICENSE:L41"
+   },
+   {
+    "quote": "(b) You must cause any modified files to carry prominent notices stating that You changed the files; and",
+    "source": "LiquidAI/LFM3-Audio-2B LICENSE:L43"
+   },
+   {
+    "quote": "(c) You must retain, in the Source form of any Derivative Works that You distribute, all copyright, patent, trademark, and attribution notices from the Source form of the Work, excluding those notices that do not pertain to any part of the Derivative Works; and",
+    "source": "LiquidAI/LFM3-Audio-2B LICENSE:L45"
+   },
+   {
+    "quote": "(d) If the Work includes a \"NOTICE\" text file as part of its distribution, then any Derivative Works that You distribute must include a readable copy of the attribution notices contained within such NOTICE file, excluding those notices that do not pertain to any part of the Derivative Works, in at l...",
+    "source": "LiquidAI/LFM3-Audio-2B LICENSE:L47"
+   }
+  ],
+  "gated": false,
+  "unknown": false,
+  "seen": [
+   {
+    "value": "other",
+    "source": "LiquidAI/LFM3-Audio-2B-GGUF card license"
+   },
+   {
+    "value": "other",
+    "source": "LiquidAI/LFM3-Audio-2B card license"
+   },
+   {
+    "value": "other",
+    "source": "GGUF general.license"
+   }
+  ]
+ }
+}
