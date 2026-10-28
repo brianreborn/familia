@@ -12,19 +12,11 @@ Key lookup order (first hit wins):
                                 (%APPDATA%\familia\instances\<port> on Windows; port = FAMILIA_PORT/PORT, 9931)
   5. legacy <bootstrap root>/.secrets/api-keys for FAMILIA_BOOTSTRAP_ROOT, ROOT/code-bootstraps-llama.cpp,
      ROOT/../code-bootstraps-llama.cpp, ~/code-bootstraps-llama.cpp
-Generation: ensure_instance_key() creates the per-instance key file ONCE (atomic, 0600) when it is
-missing and never rotates it; serve.sh / serve.ps1 do the same at the same path, so whichever starts
-first wins and every later start reuses it (code-bootstraps-llama.cpp docs/api-key-design.md).
-
-Forwarding to nested callers: child_env() never puts the key itself into a child's environment. It
-pins the child to the SAME instance by passing the key-file PATH (API_KEY_FILE) and FAMILIA_PORT, so
-recursive callers (hermes_loop -> hermes.sh -> hermes_harness, harness2_loop -> harness2.py ->
-harness2_local chat(), with-fleet.sh -> serve.sh/hermes.sh) all resolve the one instance key.
+The key is never generated here; serve.sh / serve.ps1 create it once per instance and never rotate it
+(code-bootstraps-llama.cpp docs/api-key-design.md).
 
 CLI:  python3 scripts/familia_auth.py curl-config   -> 'header = "Authorization: Bearer ..."' for curl -K -
       python3 scripts/familia_auth.py has-key       -> exit 0 when a key is found
-      python3 scripts/familia_auth.py ensure        -> create the instance key once if missing; print fingerprint
-      python3 scripts/familia_auth.py child-env     -> sh 'export' lines pinning children to this instance key file
       python3 scripts/familia_auth.py probe [URL]   -> authenticated probe of the instance:
                                                        0 up, 3 nothing listening, 4 key rejected (401/403:
                                                        a misconfiguration, NEVER "no server"), 5 other error
@@ -152,47 +144,6 @@ def load_or_create_key_file(path):
     return k
 
 
-def ensure_instance_key(port=None, env=None):
-    """The instance key, created once (0600, atomic) if no key is configured anywhere."""
-    env = os.environ if env is None else env
-    k = api_key(env=env) if port is None else ""
-    if k:
-        return k
-    return load_or_create_key_file(instance_key_file(port=port, env=env))
-
-
-def key_source(env=None):
-    """Path of the key file that api_key() would read, or None for an explicit env key."""
-    env = os.environ if env is None else env
-    if any(_first_key_in(env.get(n, "")) for n in ("FAMILIA_API_KEY", "LLAMA_API_KEY")):
-        return None
-    for path in candidate_key_files(env=env):
-        if _read(path):
-            return path
-    return None
-
-
-def child_env(base=None, env=None, required=False):
-    """Env for a nested familia caller: same instance key, key value never copied into env.
-
-    An explicit FAMILIA_API_KEY/LLAMA_API_KEY already in *env* is inherited unchanged (the
-    caller chose that). Otherwise API_KEY_FILE + FAMILIA_PORT pin the child to the parent's key
-    file. required=True fails closed when the parent has no key."""
-    env = dict(os.environ if env is None else env)
-    out = dict(env)
-    if base:
-        out.update(base)
-    src = key_source(out)
-    if src is None and not any(_first_key_in(out.get(n, "")) for n in ("FAMILIA_API_KEY", "LLAMA_API_KEY")):
-        if required:
-            raise MissingKey("no API key to forward to child (run: python3 scripts/familia_auth.py ensure)")
-        return out
-    if src:
-        out["API_KEY_FILE"] = src
-    out.setdefault("FAMILIA_PORT", instance_port(out))
-    return out
-
-
 def auth_headers(headers=None, key=None, incoming=None, required=False):
     """Return headers with Authorization set.
 
@@ -285,19 +236,6 @@ def main(argv):
         return 0
     if cmd == "probe":
         return probe(argv[2] if len(argv) > 2 else None)
-    if cmd == "ensure":
-        try:
-            print(fingerprint(ensure_instance_key()))
-            return 0
-        except (OSError, MissingKey) as e:
-            print("familia_auth: %s" % e, file=sys.stderr)
-            return 1
-    if cmd == "child-env":
-        e = child_env()
-        for n in ("API_KEY_FILE", "FAMILIA_PORT"):
-            if e.get(n) and "'" not in e[n]:
-                print("export %s='%s'" % (n, e[n]))
-        return 0
     if cmd == "has-key":
         return 0 if k else 1
     print(__doc__, file=sys.stderr)

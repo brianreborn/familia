@@ -5,14 +5,6 @@
 # validates → would-start → stop. Tools stay dual-disabled until the operator widens.
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-
-# :9931 instance key: create once (0600) if missing, then pin exec'd children (serve.sh / hermes.sh
-# and everything they call) to that key FILE. The key value never goes into env or argv. Fail closed.
-familia_key_for_children() {
-  python3 "$ROOT/scripts/familia_auth.py" ensure >/dev/null || {
-    echo "with-fleet.sh: no instance API key and could not create one; nothing started (fail closed)" >&2; exit 1; }
-  eval "$(python3 "$ROOT/scripts/familia_auth.py" child-env)"
-}
 cd "$ROOT"
 
 ROLE=""
@@ -183,7 +175,6 @@ PY
     rc=$?; echo "with-fleet.sh: licenses not accepted; nothing started" >&2; exit $rc; }
   echo "with-fleet.sh: OPERATOR START — guardian model node only ($onode); owned-fleet; tools.allow empty (seatbelt)" >&2
   export DETACH_MODE="${DETACH_MODE:-screen-attached}"
-  familia_key_for_children
   exec sh "$ROOT/scripts/serve.sh" "$onode"
 fi
 
@@ -223,7 +214,9 @@ if [ "$kind" = "agents" ]; then
   # Licenses first: show what this selection brings in (docs/licenses.md).
   python3 "$ROOT/scripts/licenses.py" gate || {
     rc=$?; echo "with-fleet.sh: licenses not accepted; nothing started. Review: python3 scripts/licenses.py review" >&2; exit $rc; }
-  familia_key_for_children
+  # fail closed: hermes talks to :9931, which needs the instance key (familia_auth; serve.sh creates it)
+  python3 "$ROOT/scripts/familia_auth.py" has-key || {
+    echo "with-fleet.sh: no instance API key found (start the server once: scripts/serve.sh, or set API_KEY_FILE); nothing started" >&2; exit 1; }
   exec bash "$ROOT/scripts/hermes.sh" --agent "$name"   # hermes.sh is bash (pipefail)
 fi
 

@@ -89,10 +89,7 @@ def run_render(mode: str, node: str, *, sh, agent: str = "hermes",
     """Run hermes.sh render-only. Returns (rc, out, cmd)."""
     cmd = build_render_cmd(mode, node, agent=agent, repo_root=repo_root)
     root = Path(repo_root) if repo_root else HERE
-    import familia_auth
-
-    # render writes the instance key into HERMES_HOME config: pin it to the parent's key file
-    rc, out = sh(cmd, cwd=str(root), timeout=timeout, env=familia_auth.child_env({"FAMILIA_SYNC": "0"}))
+    rc, out = sh(cmd, cwd=str(root), timeout=timeout)
     return rc, out, cmd
 
 

@@ -163,45 +163,8 @@ def _clean_env(tmp_path, **extra):
     return e
 
 
-def test_ensure_instance_key_persists_0600_across_restart(tmp_path):
-    import importlib, stat
-    env = _clean_env(tmp_path)
-    k1 = FA.ensure_instance_key(env=env)
-    path = FA.instance_key_file(env=env)
-    assert k1 and stat.S_IMODE(os.stat(path).st_mode) == 0o600
-    importlib.reload(FA)  # "restart": fresh module state, same disk
-    assert FA.ensure_instance_key(env=env) == k1
-    assert FA.api_key(str(tmp_path), env) == k1
 
 
-def test_child_env_forwards_file_not_value(tmp_path):
-    env = _clean_env(tmp_path)
-    k = FA.ensure_instance_key(env=env)
-    c = FA.child_env({"X": "1"}, env=env)
-    assert c["API_KEY_FILE"] == FA.instance_key_file(env=env) and c["FAMILIA_PORT"] == "9931"
-    assert k not in "".join(c.values()) and c["X"] == "1"
-
-
-def test_child_env_required_fails_closed(tmp_path):
-    with pytest.raises(FA.MissingKey):
-        FA.child_env(env=_clean_env(tmp_path), required=True)
-
-
-def test_nested_forwarding_three_levels(tmp_path):
-    """parent -> child -> grandchild python processes each resolve the same key via child_env."""
-    import subprocess, sys
-    env = _clean_env(tmp_path, PATH=os.environ.get("PATH", ""))
-    k = FA.ensure_instance_key(env=env)
-    scripts = os.path.join(FA.ROOT, "scripts")
-    code = ("import os,sys,subprocess; sys.path.insert(0,%r); import familia_auth as F;"
-            "d=int(sys.argv[1]); assert F.api_key()==%r, d;"
-            "e=F.child_env(env={k:v for k,v in os.environ.items() if k!='XDG_CONFIG_HOME'}, required=True);"
-            "sys.exit(subprocess.call([sys.executable,'-c',sys.argv[2],str(d-1),sys.argv[2]],env=e) if d else 0)")
-    code = code % (scripts, k)
-    root_env = FA.child_env(env=env, required=True)
-    root_env.pop("XDG_CONFIG_HOME")  # grandchildren must rely on forwarded API_KEY_FILE only
-    r = subprocess.run([sys.executable, "-c", code, "3", code], env=root_env)
-    assert r.returncode == 0
 
 
 def test_harness2_chat_sends_key_and_fails_closed(tmp_path, monkeypatch):
@@ -233,33 +196,30 @@ def test_harness2_chat_sends_key_and_fails_closed(tmp_path, monkeypatch):
         chat([{"role": "user", "content": "x"}])
 
 
-def test_dogfood_loops_forward_key_file(tmp_path, monkeypatch):
-    import sys
-    sys.path.insert(0, os.path.join(FA.ROOT, "scripts", "dogfood"))
-    import harness2_loop as H2, hermes_loop as HL
-    for n in ("FAMILIA_API_KEY", "LLAMA_API_KEY"):
-        monkeypatch.delenv(n, raising=False)
-    f = tmp_path / "k"; f.write_text("filek\n")
-    monkeypatch.setenv("API_KEY_FILE", str(f))
-    got = {}
-    def sh(cmd, cwd=None, timeout=None, env=None):
-        got.setdefault("envs", []).append(env); return 0, "dry-run: ok"
-    H2.run_propose("t", sh=sh, smoke=True)
-    HL.run_render("single", "coder", sh=sh)
-    for e in got["envs"]:
-        assert e["API_KEY_FILE"] == str(f) and "filek" not in "".join(map(str, e.values()))
+def test_instance_key_persists_0600_across_restart(tmp_path):
+    """existing load_or_create_key_file: created once, 0600, same key after a restart."""
+    import importlib, stat
+    env = _clean_env(tmp_path)
+    path = FA.instance_key_file(env=env)
+    k1 = FA.load_or_create_key_file(path)
+    assert k1 and stat.S_IMODE(os.stat(path).st_mode) == 0o600
+    importlib.reload(FA)
+    assert FA.load_or_create_key_file(path) == k1 and FA.api_key(str(tmp_path), env) == k1
 
 
-def test_with_fleet_helper_cli_ensure_then_child_env(tmp_path):
-    """with-fleet.sh: `ensure` creates once, `child-env` exports the file path only (sh-evalable)."""
-    env = dict(os.environ, **_clean_env(tmp_path))
-    for n in ("FAMILIA_API_KEY", "LLAMA_API_KEY", "API_KEY_FILE"):
-        env.pop(n, None)
-    cli = os.path.join(FA.ROOT, "scripts", "familia_auth.py")
-    fp1 = subprocess.run([sys.executable, cli, "ensure"], env=env, capture_output=True, text=True).stdout
-    fp2 = subprocess.run([sys.executable, cli, "ensure"], env=env, capture_output=True, text=True).stdout
-    assert fp1 == fp2 and fp1.startswith("sha256:")
-    out = subprocess.run([sys.executable, cli, "child-env"], env=env, capture_output=True, text=True).stdout
-    key = FA._read(FA.instance_key_file(env=env))
-    assert "export API_KEY_FILE=" in out and key not in out
-    assert "familia_key_for_children" in open(os.path.join(FA.ROOT, "with-fleet.sh")).read()
+def test_nested_children_inherit_key_via_env(tmp_path):
+    """plain env inheritance: parent -> child -> grandchild all resolve the same API_KEY_FILE key."""
+    f = tmp_path / "k"; f.write_text("# c\nnestedkey\n")
+    env = {k: v for k, v in os.environ.items() if k not in ("FAMILIA_API_KEY", "LLAMA_API_KEY")}
+    env.update(API_KEY_FILE=str(f), HOME=str(tmp_path))
+    scripts = os.path.join(FA.ROOT, "scripts")
+    code = ("import sys,subprocess; sys.path.insert(0,%r); import familia_auth as F;"
+            "d=int(sys.argv[1]); assert F.api_key()=='nestedkey', d;"
+            "sys.exit(subprocess.call([sys.executable,'-c',sys.argv[2],str(d-1),sys.argv[2]]) if d else 0)") % scripts
+    assert subprocess.run([sys.executable, "-c", code, "3", code], env=env).returncode == 0
+
+
+def test_with_fleet_hermes_has_key_precheck():
+    src = open(os.path.join(FA.ROOT, "with-fleet.sh")).read()
+    assert src.index("familia_auth.py\" has-key") < src.index('scripts/hermes.sh" --agent')
+
