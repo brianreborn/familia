@@ -2,15 +2,80 @@
 # Unattended centos10-bigram sweep. Log: ~/perf/driver.log. One big model on disk at a time.
 cd ~/models; L=~/perf/driver.log; R=~/perf/results.md; F=~/repositories/familia
 log(){ echo "$(date +%H:%M) $*" | tee -a $L >&2; }
+# Resolve GGUF for repo + path pattern. Prefer a verified local file (registry sha256 or
+# last-known HF LFS oid) so a transient HF tree failure does not skip an on-disk model (#107).
 fetch(){ # repo pattern -> prints filename
-  f=$(curl -sf "https://huggingface.co/api/models/$1/tree/main" | python3 -c "
-import sys,json
+  local repo=$1 pat=$2
+  local oid_dir=${OID_CACHE_DIR:-$HOME/perf/oids}
+  local oid_file="$oid_dir/${repo//\//--}--${pat}"
+  local reg="$F/registry/models/${repo//\//--}--${pat}.json"
+  local known="" localf="" got="" path="" oid="" i
+
+  if [ -f "$reg" ]; then
+    known=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1])).get('sha256') or '')" "$reg" 2>/dev/null || true)
+  fi
+  if [ -z "$known" ] && [ -f "$oid_file" ]; then
+    known=$(tr -d '[:space:]' < "$oid_file")
+  fi
+
+  if [ -f "${pat}.gguf" ]; then
+    localf="${pat}.gguf"
+  else
+    localf=""
+    for _cand in ./*"${pat}"*.gguf; do
+      [ -f "$_cand" ] || continue
+      case "$_cand" in *mmproj*) continue ;; esac
+      localf=${_cand#./}
+      break
+    done
+  fi
+  if [ -n "$localf" ] && [ -n "$known" ] && [ "$(sha256sum "$localf" | cut -d' ' -f1)" = "$known" ]; then
+    log "LOCAL $localf"
+    echo "$localf"
+    return 0
+  fi
+
+  got=""
+  export FETCH_PAT=$pat
+  for i in 1 2 3 4 5; do
+    got=$(curl -sf "https://huggingface.co/api/models/${repo}/tree/main" | python3 -c '
+import json, os, sys
+pat = os.environ["FETCH_PAT"]
 for x in json.load(sys.stdin):
-  if x['path'].endswith('.gguf') and '$2' in x['path'] and 'mmproj' not in x['path']: print(x['path'],x['lfs']['oid']);break")
-  set -- $1 $f; [ -z "$2" ] && { log "NOFILE $1"; return 1; }
-  for i in 1 2 3 4 5; do curl -sfL -C - -o "$2" "https://huggingface.co/$1/resolve/main/$2" && break; log "dl retry $i $2 rc=$?"; sleep 20; done
-  [ "$(sha256sum "$2"|cut -d' ' -f1)" = "$3" ] || { log "SHA-MISMATCH $2"; return 1; }
-  echo "$2"
+  p = x.get("path") or ""
+  if p.endswith(".gguf") and pat in p and "mmproj" not in p:
+    oid = (x.get("lfs") or {}).get("oid") or ""
+    print(p, oid)
+    break
+' 2>/dev/null) && [ -n "$got" ] && break
+    log "tree retry $i $repo"
+    sleep $((10 * i))
+    got=""
+  done
+  unset FETCH_PAT
+  # shellcheck disable=SC2086
+  set -- $got
+  path=$1; oid=$2
+  if [ -z "$path" ] || [ -z "$oid" ]; then
+    log "NOFILE $repo"
+    return 1
+  fi
+  mkdir -p "$oid_dir"
+  printf '%s\n' "$oid" > "$oid_file"
+
+  if [ -f "$path" ] && [ "$(sha256sum "$path" | cut -d' ' -f1)" = "$oid" ]; then
+    log "LOCAL $path"
+    echo "$path"
+    return 0
+  fi
+
+  for i in 1 2 3 4 5; do
+    curl -sfL -C - -o "$path" "https://huggingface.co/${repo}/resolve/main/${path}" && break
+    log "dl retry $i $path rc=$?"
+    sleep 20
+  done
+  [ "$(sha256sum "$path" | cut -d' ' -f1)" = "$oid" ] || { log "SHA-MISMATCH $path"; return 1; }
+  echo "$path"
 }
 sweep(){ m=$1; tag=$2
   lab=$(python3 $F/scripts/bench_guard.py label $m); log "== $tag [$lab] $(du -h $m|cut -f1)"
