@@ -7,6 +7,18 @@ ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$ROOT"
 PY=${PYTHON:-python3}
 
+# OSC 7501 status (#123); soft-fail if absent.
+_proto_osc_ready=0
+_proto_osc() {
+  if [ "$_proto_osc_ready" != 1 ] && [ -f "$ROOT/scripts/osc7501.sh" ]; then
+    # shellcheck disable=SC1091
+    . "$ROOT/scripts/osc7501.sh"
+    _proto_osc_ready=1
+  fi
+  command -v osc7501_emit >/dev/null 2>&1 || return 0
+  osc7501_emit "$@" --app familia 2>/dev/null || true
+}
+
 URL="${FAMILIA_PROTO_URL:-}"
 MODEL="${FAMILIA_PROTO_MODEL:-}"
 NO_START=0
@@ -36,7 +48,7 @@ while [ $# -gt 0 ]; do
 done
 
 say() { printf 'proto-chat: %s\n' "$*"; }
-die() { printf 'proto-chat: error: %s\n' "$1" >&2; exit "${2:-1}"; }
+die() { _proto_osc error --id home/proto --msg "$1"; printf 'proto-chat: error: %s\n' "$1" >&2; exit "${2:-1}"; }
 
 probe() {
   # probe URL — 0 if /v1/models answers
@@ -149,6 +161,7 @@ if ! URL=$(find_endpoint); then
   say "no local OpenAI-compatible server detected"
   start_bootstrap
   say "waiting for server…"
+_proto_osc working --id home/proto --msg "waiting for local chat server" --progress 10
   wait_ready || die "server did not become ready (see .cache/proto-bootstrap.log)" 1
 fi
 
@@ -156,6 +169,7 @@ fi
 [ -n "$MODEL" ] || MODEL=general-text
 
 say "endpoint $URL  model $MODEL"
+_proto_osc working --id home/proto --msg "Talk to the protomodel ($MODEL)" --title "proto_chat"
 say "type a message (empty /q /quit /exit to quit)"
 printf '\n'
 
@@ -167,7 +181,7 @@ while true; do
     break
   fi
   case "$line" in
-    ""|/q|/quit|/exit|exit|quit) say "bye"; break ;;
+    ""|/q|/quit|/exit|exit|quit) say "bye"; _proto_osc done --id home/proto --msg "proto chat ended"; break ;;
   esac
   reply=$("$PY" - "$URL" "$MODEL" "$SYSTEM_PROMPT" "$line" <<'PY' 2>/tmp/proto-chat.err || true
 import json, sys, urllib.request, urllib.error

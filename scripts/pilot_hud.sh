@@ -3,6 +3,7 @@
 # Sourceable:  . scripts/pilot_hud.sh
 # Or: sh scripts/pilot_hud.sh canopy|strip|instruments|spin -- TITLE...
 # Charm gum when present; plain ANSI fallback. 80-col safe. No heavy TUI.
+# Also emits OSC 7501 Program Status (#123) alongside the visible HUD.
 set -eu
 
 # Allow sourcing without set -e killing the parent on a missing gum.
@@ -22,9 +23,33 @@ _PILOT_RED='\033[31m'
 
 _pilot_have_gum() { command -v gum >/dev/null 2>&1; }
 
+# OSC 7501 emit (soft-load; never required for HUD to paint)
+_pilot_osc_loaded=0
+_pilot_load_osc() {
+  [ "$_pilot_osc_loaded" = 1 ] && return 0
+  if [ -f "$_pilot_root/scripts/osc7501.sh" ]; then
+    # shellcheck disable=SC1091
+    . "$_pilot_root/scripts/osc7501.sh"
+    _pilot_osc_loaded=1
+  fi
+}
+
+_pilot_osc_id() {
+  # Sanitize free text into a legal OSC 7501 id segment (≤32, [A-Za-z0-9_.+-]).
+  printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | tr -cs 'A-Za-z0-9_.+-' '-' | cut -c1-32 | sed 's/^-//;s/-$//'
+}
+
+_pilot_osc() {
+  # _pilot_osc STATE [--id …] [--msg …] …
+  _pilot_load_osc || return 0
+  command -v osc7501_emit >/dev/null 2>&1 || return 0
+  osc7501_emit "$@" --app "${OSC7501_APP:-familia}" 2>/dev/null || true
+}
+
 pilot_canopy() {
   # One-shot canopy / reticle header at phase start.
   title=${1:-FAMILIA PILOT LINK}
+  _pilot_osc working --id home --msg "$title" --title "familia home"
   if _pilot_have_gum; then
     gum style --border double --border-foreground 51 --foreground 159 --bold \
       --align center --width 72 --padding "0 1" \
@@ -43,6 +68,7 @@ pilot_strip() {
   # Bold status strip: pilot_strip SYNCING_FRAME "pins + configure"
   code=${1:-STATUS}; shift
   msg=${*:-}
+  _sid=$(_pilot_osc_id "$code"); _pilot_osc working --id "home/${_sid:-phase}" --msg "$code: $msg" --title "$code"
   if _pilot_have_gum; then
     gum style --border rounded --border-foreground 214 --foreground 230 --bold \
       --width 72 --padding "0 1" \
@@ -57,6 +83,7 @@ pilot_instruments() {
   # pilot_instruments "REACTOR BUILD: configure" "PREFETCHING ORDNANCE: SmolLM+Laya"
   fg=${1:-REACTOR: idle}
   bg=${2:-ORDNANCE: idle}
+  _pilot_osc working --id home/instruments --msg "$fg | $bg" --title "instruments"
   if _pilot_have_gum; then
     gum style --border rounded --border-foreground 51 --foreground 159 \
       --width 72 --padding "0 1" \
@@ -75,14 +102,24 @@ pilot_instruments() {
   fi
 }
 
-pilot_ok() { printf '%bLINK ESTABLISHED%b %s\n' "$_PILOT_GREEN$_PILOT_BOLD" "$_PILOT_R" "$*"; }
-pilot_warn() { printf '%bCAUTION%b %s\n' "$_PILOT_AMBER$_PILOT_BOLD" "$_PILOT_R" "$*"; }
-pilot_fail() { printf '%bFRAME FAULT%b %s\n' "$_PILOT_RED$_PILOT_BOLD" "$_PILOT_R" "$*"; }
+pilot_ok() {
+  _pilot_osc done --id home --msg "$*"
+  printf '%bLINK ESTABLISHED%b %s\n' "$_PILOT_GREEN$_PILOT_BOLD" "$_PILOT_R" "$*"
+}
+pilot_warn() {
+  _pilot_osc blocked --id home --kind question --msg "$*"
+  printf '%bCAUTION%b %s\n' "$_PILOT_AMBER$_PILOT_BOLD" "$_PILOT_R" "$*"
+}
+pilot_fail() {
+  _pilot_osc error --id home --msg "$*"
+  printf '%bFRAME FAULT%b %s\n' "$_PILOT_RED$_PILOT_BOLD" "$_PILOT_R" "$*"
+}
 
 pilot_spin() {
   # pilot_spin "SYNCING FRAME" -- cmd...
   title=$1; shift
   if [ "${1:-}" = "--" ]; then shift; fi
+  _pilot_osc working --id home/spin --msg "$title"
   if _pilot_have_gum && [ $# -gt 0 ]; then
     gum spin --spinner pulse --title "$title" -- "$@"
   elif [ $# -gt 0 ]; then
@@ -109,6 +146,7 @@ case "${0##*/}" in
         cat <<'H'
 Usage: sh scripts/pilot_hud.sh canopy|strip|instruments|spin|ok|warn|fail …
 Source: . scripts/pilot_hud.sh   then call pilot_* functions
+Emits OSC 7501 alongside visible HUD (see scripts/osc7501.sh, #123).
 H
         ;;
       *) printf 'pilot_hud: unknown %s\n' "$cmd" >&2; exit 2 ;;
