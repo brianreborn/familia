@@ -1,4 +1,4 @@
-"""One place to find and attach the API key of the local familia/llama-server instance.
+r"""One place to find and attach the API key of the local familia/llama-server instance.
 
 Every client that talks to :9931 (or any gateway that requires a key) must call
 auth_headers() / open_url() instead of building a bare urllib.Request. Requiring the key
