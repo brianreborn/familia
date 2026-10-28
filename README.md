@@ -52,8 +52,30 @@ improve small-model results yet. Details are in [docs/skills.md](docs/skills.md)
 ## Quick start
 
 ```sh
-curl -fsSLo install-familia.sh https://raw.githubusercontent.com/brianreborn/familia/main/install.sh && \
-  sh ./install-familia.sh
+p=familia                          && \
+o=brianreborn                      && \
+h=raw.githubusercontent.com        && \
+u=https://$h/$o/$p/main/install.sh && \
+curl -fsSLo install-$p.sh $u       && \
+sh        ./install-$p.sh
+```
+
+```sh
+p=familia && o=brianreborn && h=raw.githubusercontent.com && u=https://$h/$o/$p/main/install.sh && curl -fsSLo install-$p.sh $u && sh ./install-$p.sh
+```
+
+```sh
+# Options (from sh ./install-familia.sh --help):
+#   --dry-run    say what would happen; change nothing
+#   --yes        non-interactive; accept notice and licenses
+#   --auto-deps  install missing OS packages (asks once; may use sudo)
+#   --no-start   stop after setup
+#   --no-path    do not put familia on PATH
+#   --branch B   track branch B
+# Env: INSTALL_PREFIX=DIR (default ~/familia), INSTALL_ACK=yes,
+#      BUILD=1 (force source build), AUTO_DEPS=1, INSTALL_NO_START=1
+# Already downloaded? Rerun with options, no new download:
+sh ./install-familia.sh --dry-run
 ```
 
 llama.cpp is **prebuilt-first**: the installer reuses an existing build, else downloads the sha256-checked b11944 release binary for your OS/arch (Linux, macOS, Windows), and builds from source only when none fits (FreeBSD, Termux) or you set `BUILD=1`.
