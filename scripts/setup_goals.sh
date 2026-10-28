@@ -50,13 +50,25 @@ done
 
 can_prompt() { [ -t 0 ] && [ "${FAMILIA_NO_TTY:-}" != 1 ]; }
 
+_setup_osc() {
+  if [ -f "$ROOT/scripts/osc7501.sh" ]; then
+    # shellcheck disable=SC1091
+    . "$ROOT/scripts/osc7501.sh" 2>/dev/null || return 0
+    osc7501_emit "$@" --app familia 2>/dev/null || true
+  fi
+}
+
 confirm() {
   # confirm QUESTION — --yes, or y on a terminal
   [ "$YES" = 1 ] && return 0
   can_prompt || return 1
+  _setup_osc blocked --id home/setup --kind permission --msg "$1" --title "confirm"
   printf '%s [y/N] ' "$1" >&2
   read -r a || return 1
-  case "$a" in y|Y|yes|YES) return 0 ;; esac
+  case "$a" in y|Y|yes|YES)
+    _setup_osc working --id home/setup --msg "confirmed"
+    return 0 ;;
+  esac
   return 1
 }
 
