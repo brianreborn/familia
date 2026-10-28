@@ -751,6 +751,7 @@ nodes:
     port: 18202
     cache_ram_mib: 1024
     status: planned              # flip active after GGUF present + sha measured
+                                 # Boundary: python3 scripts/guardian_ready.py (never auto-activates; Hermes owns fetch)
     card_set: "5. Recommended settings"
     override_reasons:
       ctx: "8B Q2_K advisory node; 8192 keeps KV small beside coder:9941 on miryam"
@@ -784,6 +785,7 @@ nodes:
     note: >-
       Guardian/defender on angel (FreeBSD jump). Planned until weights on angel + measured sha.
       Private graph key is guardian (scripts/generate_graph.py angel). Seatbelts: tools dual-disable default.
+      Ready-check (Boundary, no activate): python3 scripts/guardian_ready.py
 
 
 speculative:
