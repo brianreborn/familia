@@ -524,7 +524,7 @@ def _git_tree_clean(repo: Path, *, runner=None) -> Tuple[bool, str]:
     runner = runner or subprocess.run
     try:
         p = runner(
-            ["git", "-C", str(repo), "status", "--porcelain"],
+            ["git", "-C", str(repo), "status", "--porcelain", "--ignore-submodules=all"],
             capture_output=True,
             text=True,
             timeout=10,
@@ -543,7 +543,7 @@ def repair_git_fetch_tip(
     repo: Optional[Path] = None,
     runner=None,
 ) -> RepairResult:
-    """Optional git fetch tip when FAMILIA_RECONNECT_PULL=1 and tree is clean. Never surprise-pull dirty."""
+    """Optional git fetch tip when FAMILIA_RECONNECT_PULL=1. Fetch only: local edits are never touched or blocking."""
     if os.environ.get("FAMILIA_RECONNECT_PULL") != "1":
         return RepairResult(
             action=RepairAction.GIT_FETCH_TIP.value,
@@ -553,15 +553,8 @@ def repair_git_fetch_tip(
             reason="FAMILIA_RECONNECT_PULL!=1",
         )
     repo = repo or ROOT
+    # git fetch never touches the working tree, so local edits never block it (familia #181 U10).
     clean, why = _git_tree_clean(repo, runner=runner)
-    if not clean:
-        return RepairResult(
-            action=RepairAction.GIT_FETCH_TIP.value,
-            ok=False,
-            dry_run=dry_run,
-            detail="refused_dirty",
-            reason=f"refusing git fetch/pull on dirty tree ({why})",
-        )
     cmd = ["git", "-C", str(repo), "fetch", "--all", "--prune"]
     if dry_run:
         return RepairResult(

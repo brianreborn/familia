@@ -198,17 +198,19 @@ def test_hook_stub_and_dry_run(monkeypatch):
     assert r2.reason == "echo rejoin"
 
 
-def test_git_fetch_refuses_dirty(monkeypatch, tmp_path):
+def test_git_fetch_not_blocked_by_local_edits(monkeypatch, tmp_path):
+    """familia #181 U10: a local edit never blocks the fetch (fetch does not touch the tree)."""
     monkeypatch.setenv("FAMILIA_RECONNECT_PULL", "1")
 
     def fake_run(cmd, capture_output=True, text=True, timeout=None):
         if "status" in cmd:
+            assert "--ignore-submodules=all" in cmd
             return types.SimpleNamespace(returncode=0, stdout=" M dirty.txt\n", stderr="")
         raise AssertionError(f"unexpected cmd {cmd}")
 
     r = rs.repair_git_fetch_tip(dry_run=True, repo=tmp_path, runner=fake_run)
-    assert r.ok is False
-    assert r.detail == "refused_dirty"
+    assert r.ok is True
+    assert r.detail == "would_run"
 
 
 def test_git_fetch_skipped_without_env(monkeypatch):
