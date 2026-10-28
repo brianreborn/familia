@@ -97,3 +97,45 @@ def test_fail_closed_and_fingerprint():
     fp = FA.fingerprint("abc")
     assert fp.startswith("sha256:") and "abc" not in fp
     assert FA.keys_match("k", "k") and not FA.keys_match("k", "kk") and not FA.keys_match("", "")
+
+
+# --- per-instance key + authenticated probe (code-bootstraps-llama.cpp docs/api-key-design.md) ---
+import http.server as _hs
+import socket as _socket
+import threading as _th
+
+
+def test_instance_key_file_per_port(tmp_path, monkeypatch):
+    import familia_auth as fa
+    env = {"XDG_CONFIG_HOME": str(tmp_path), "PORT": "9940"}
+    assert fa.instance_key_file(env=env) == str(tmp_path / "familia" / "instances" / "9940" / "api-keys")
+    assert fa.instance_key_file(port=9931, env=env).endswith("/instances/9931/api-keys")
+    assert fa.candidate_key_files(env=env)[0] == fa.instance_key_file(env=env)
+
+
+def _serve_probe(code):
+    class H(_hs.BaseHTTPRequestHandler):
+        def do_GET(self):
+            ok = self.headers.get("Authorization") == "Bearer good"
+            self.send_response(200 if (ok and code == 200) else 401)
+            self.end_headers(); self.wfile.write(b"{}")
+        def log_message(self, *a):
+            pass
+    srv = _hs.HTTPServer(("127.0.0.1", 0), H)
+    _th.Thread(target=srv.serve_forever, daemon=True).start()
+    return srv
+
+
+def test_probe_up_rejected_down(monkeypatch):
+    import familia_auth as fa
+    monkeypatch.setenv("FAMILIA_API_KEY", "good")
+    s = _serve_probe(200)
+    assert fa.probe("http://127.0.0.1:%d" % s.server_port) == fa.UP
+    s.shutdown()
+    monkeypatch.setenv("FAMILIA_API_KEY", "wrong")
+    s = _serve_probe(200)
+    # a 401 is a misconfiguration, never "no server"
+    assert fa.probe("http://127.0.0.1:%d" % s.server_port) == fa.AUTH_REJECTED
+    s.shutdown()
+    sock = _socket.socket(); sock.bind(("127.0.0.1", 0)); port = sock.getsockname()[1]; sock.close()
+    assert fa.probe("http://127.0.0.1:%d" % port) == fa.DOWN
