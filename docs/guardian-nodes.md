@@ -45,3 +45,7 @@ Menus: `agents.guardian-launch-test`, `agents.guardian-start` (legacy
 - Section name `pentests:` remains the schema type; UX name is guardian/defender
 
 Weights / placement details: [pentest-models.md](pentest-models.md).
+
+## Security assessment (separate from guardian launch)
+
+Operator-authorized assessment is **not** guardian launch-test and is never started by `start.sh`/CI. See [security-assessment.md](security-assessment.md) (`scripts/sec_assess.py`).
