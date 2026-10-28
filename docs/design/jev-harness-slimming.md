@@ -10,6 +10,11 @@ guide for prompt and harness slimming; apply findings to familia (#85 lean path)
 
 ## Existing familia surface
 
+`docs/harness-slimming.md` already records an applied first land (lean aux drop +
+shorter base prompts). This branch tracks **remaining** measurement and any
+further Jev-PDF recipes not yet mirrored.
+
+
 - `docs/harness-slimming.md` — current lean rules
 - `scripts/hermes_harness.py` — `LEAN_AUX_DROP`, base/guardrails
 - `scripts/measure_prompt.py` — token/char counts for hermes lean + Harness² base
