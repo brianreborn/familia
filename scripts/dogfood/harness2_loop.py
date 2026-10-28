@@ -13,6 +13,15 @@ import sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parents[2]
+if str(HERE / "scripts") not in sys.path:
+    sys.path.insert(0, str(HERE / "scripts"))
+
+
+def propose_env(extra=None) -> dict:
+    """Env for the nested harness2.py propose: same instance key file (never the key value)."""
+    import familia_auth
+
+    return familia_auth.child_env(extra)
 
 
 def build_propose_cmd(
@@ -59,10 +68,11 @@ def run_propose(
         target, smoke=smoke, max_tasks=max_tasks, enable=enable, repo_root=root,
     )
     run_cwd = str(cwd if cwd is not None else root)
+    env = propose_env()
     if smoke or not lock_prefix:
-        rc, out = sh(cmd, cwd=run_cwd, timeout=timeout)
+        rc, out = sh(cmd, cwd=run_cwd, timeout=timeout, env=env)
     else:
-        rc, out = sh(list(lock_prefix) + cmd, cwd=run_cwd, timeout=timeout)
+        rc, out = sh(list(lock_prefix) + cmd, cwd=run_cwd, timeout=timeout, env=env)
     return rc, out, cmd
 
 

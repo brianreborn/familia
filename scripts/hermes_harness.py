@@ -333,9 +333,8 @@ def hermes_child_env(extra=None, environ=None):
     Force a fresh probe with FAMILIA_HERMES_ENV_PROBE_REFRESH=1.
     When HERMES_HOME/bin exists (Agent-Reach wrapper from link_reaches), prepend it to PATH.
     """
-    env = dict(os.environ if environ is None else environ)
-    if extra:
-        env.update(extra)
+    # forward the instance key (by file path, never the value) to every nested hermes child
+    env = familia_auth.child_env(extra, env=os.environ if environ is None else environ)
     overlay = ENV_PROBE_CACHE_OVERLAY
     if os.path.isdir(overlay):
         parts = [p for p in (env.get("PYTHONPATH") or "").split(os.pathsep) if p]
