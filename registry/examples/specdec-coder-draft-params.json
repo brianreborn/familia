@@ -1,0 +1,46 @@
+{
+  "edge": "coder-draft",
+  "status": "planned",
+  "mode": "draft",
+  "spec_type": "draft-simple",
+  "target": {
+    "node": "coder",
+    "model": "qwen35-2b-q4km",
+    "gguf": "/home/box/.local/share/gguf/models/coder/Qwen3.5-2B-Q4_K_M.gguf",
+    "sha256": "aaf42c8b7c3cab2bf3d69c355048d4a0ee9973d48f16c731c0520ee914699223",
+    "arch": "qwen35",
+    "db": "unsloth--Qwen3.5-2B-GGUF--Qwen3.5-2B-Q4_K_M",
+    "threads": 3,
+    "parallel": 1,
+    "ctx": 65536,
+    "kv_type": "q8_0",
+    "ngl": 0,
+    "host": "miryam",
+    "runtime": "llama-b11669"
+  },
+  "draft": {
+    "model": "qwen35-08b-q4km",
+    "gguf": "/home/box/.local/share/gguf/models/draft/Qwen3.5-0.8B-Q4_K_M.gguf",
+    "sha256": "bd258782e35f7f458f8aced1adc053e6e92e89bc735ba3be89d38a06121dc517",
+    "arch": "qwen35",
+    "db": "unsloth--Qwen3.5-0.8B-GGUF--Qwen3.5-0.8B-Q4_K_M",
+    "draft_max": 8,
+    "draft_min": 0,
+    "p_min": 0.75,
+    "draft_ngl": 0,
+    "draft_kv_type": null,
+    "draft_ctx": null
+  },
+  "llama_server_flags": {
+    "-md": "/home/box/.local/share/gguf/models/draft/Qwen3.5-0.8B-Q4_K_M.gguf",
+    "--spec-type": "draft-simple",
+    "--spec-draft-n-max": 8,
+    "--spec-draft-n-min": 0,
+    "--spec-draft-p-min": 0.75,
+    "-ngld": 0
+  },
+  "contrast_ngram_issue": 82,
+  "live_measure": "deferred",
+  "_comment": "Exact per-weight-file params for speculative.coder-draft (#91). status is planned (opt-in). Live CentOS/phone speedup measure deferred \u2014 see docs/specdec-draft.md. Do not treat this file as an enable flag.",
+  "_schema": "familia.specdec-draft-params/1"
+}

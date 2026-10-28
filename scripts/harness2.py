@@ -70,6 +70,12 @@ def start_node(g, node, yes=False):
     logd = os.path.join(ROOT, ".cache", "familia", "logs"); os.makedirs(logd, exist_ok=True)
     log = open(os.path.join(logd, f"{node}.harness2.log"), "ab")
     args = vg.server_args(g, node)
+    import specdec_seatbelts as _specdec
+    ok, se, sw = _specdec.preflight_node(g, node, check_files=True)
+    for note in sw:
+        print(f"harness2: {note}", file=sys.stderr)
+    if not ok:
+        die("specdec seatbelt refused node " + node + ": " + "; ".join(se))
     try:
         p = subprocess.Popen(args, stdout=log, stderr=log, stdin=subprocess.DEVNULL,
                              start_new_session=True, env=vg.server_env(g, node), preexec_fn=oom_adj.preexec())

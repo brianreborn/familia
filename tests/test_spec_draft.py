@@ -26,3 +26,27 @@ def test_served_args_include_draft_when_enabled(tmp_path):
     out = subprocess.run([sys.executable, os.path.join(HERE, "scripts", "validate_graph.py"), "--graph", str(p), "--no-files", "--args", "coder"], capture_output=True, text=True)
     assert out.returncode == 0, out.stderr[-500:]
     assert "-md " in out.stdout and "--spec-type draft-simple" in out.stdout and "--spec-draft-n-max" in out.stdout
+
+
+def test_opt_in_default_emits_no_draft_flags():
+    """coder-draft stays planned: fleet-wide silent on is forbidden (#91)."""
+    out = subprocess.run([sys.executable, os.path.join(HERE, "scripts", "validate_graph.py"),
+                          "--graph", os.path.join(HERE, "graph.yaml"), "--no-files", "--args", "coder"],
+                         capture_output=True, text=True)
+    assert out.returncode == 0, out.stderr[-500:]
+    assert "-md " not in out.stdout and "draft-simple" not in out.stdout
+
+
+def test_params_shape_helper_and_registry_example():
+    import specdec_seatbelts as S
+    shape = S.params_shape(G, "coder-draft")
+    assert shape["llama_server_flags"]["--spec-draft-n-max"] == 8
+    assert os.path.isfile(os.path.join(HERE, "registry/examples/specdec-coder-draft-params.json"))
+
+
+def test_harness2_start_path_imports_seatbelt():
+    """Harness² start_node must call preflight_node (source hook; no live spawn)."""
+    src = open(os.path.join(HERE, "scripts", "harness2.py")).read()
+    assert "specdec_seatbelts" in src and "preflight_node" in src
+    src2 = open(os.path.join(HERE, "scripts", "start_graph.py")).read()
+    assert "specdec_seatbelts" in src2 and "preflight_node" in src2
