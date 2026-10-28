@@ -110,6 +110,7 @@ Default front door is the gum home (`./familia`). This catalog is **fallback onl
 | `agents.fleet` | Launch a role from graph.yaml (guardian/defender: seatbelts on by default) | `sh with-fleet.sh --role <ROLE>` | — |
 | `agents.guardian-launch-test` | Guardian/defender: launch-test (seatbelts on) | `sh with-fleet.sh --role guardian --launch-test` | — |
 | `agents.guardian-start` | Guardian/defender: operator-confirmed model start (tools empty) | `env FAMILIA_OPERATOR_CONFIRM=yes sh with-fleet.sh --role guardian --operator-start` | — |
+| `agents.guardian-weights` | Guardian: dry-run fetch/measure/activate path (Dolphin3 Q2_K; no seatbelt edits) | `python3 scripts/activate_guardian_weights.py` | — |
 | `agents.pentest-launch-test` | Legacy id → guardian launch-test | `sh with-fleet.sh --role guardian --launch-test` | — |
 | `agents.pentest-start` | Legacy id → guardian operator-start | `env FAMILIA_OPERATOR_CONFIRM=yes sh with-fleet.sh --role guardian --operator-start` | — |
 

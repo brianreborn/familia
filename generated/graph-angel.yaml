@@ -549,13 +549,14 @@ models:
       (vvram-ssd/LAYER.md).
   dolphin3-cyber-8b-q2k:
     gguf: ~/.local/share/gguf/models/pentest/Dolphin3.0-Llama3.1-8B-abliterated.Q2_K.gguf
-    sha256: unmeasured
+    sha256: 8944d35bdd613fe9279198b76eebeb9ab79c09a2bba526988ee3e3297862ea91
     arch: llama
     trained_ctx: 131072
     role: pentest
     db: RavichandranJ--Dolphin3-Cyber-8B-GGUF--Dolphin3.0-Llama3.1-8B-abliterated.Q2_K
-    notes: Official pentest-role weight (docs/pentest-models.md). Q2_K ~3.0 GiB. Fetch
-      before activating miryam-pentest.
+    notes: Official guardian weight (docs/guardian-weights.md). Q2_K ~3.0 GiB. sha256
+      is registry HF LFS oid; verify with activate_guardian_weights.py --measure.
+      Fetch before activating miryam-pentest / angel-guardian.
 nodes:
   coder:
     model: nanbeige43-33b-q4km
