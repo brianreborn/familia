@@ -1,0 +1,35 @@
+# Queued-too-long stall (adapted from brianreborn/japanglify swarm-watchdog.yml).
+# Comments once per run when a swarm-bench job has been queued > 20 minutes.
+# GitHub-only: uses gh run/jobs APIs (isolated here; Forgejo port = gap, R0).
+# Cancels/alerts only; never proposes work (pqfreebsd swarm-roles.json watchdog).
+name: Swarm watchdog
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+  issues: write
+jobs:
+  stall:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          now=$(date -u +%s)
+          for run in $(gh run list --workflow swarm-worker.yml --status in_progress --json databaseId --jq '.[].databaseId'); do
+            gh api "repos/$GH_REPO/actions/runs/$run/jobs" --jq '.jobs[] | select(.name=="bench" and .status=="queued") | .created_at' | while read -r c; do
+              age=$(( now - $(date -u -d "$c" +%s) ))
+              [ "$age" -gt 1200 ] || continue
+              issue=$(gh run view "$run" --json displayTitle --jq .displayTitle | grep -o '#[0-9]*' | tr -d '#' | head -n1 || true)
+              [ -n "$issue" ] || continue
+              mark="swarm-watchdog:$run"
+              if ! gh issue view "$issue" --comments --json comments --jq '.comments[].body' | grep -q "$mark"; then
+                gh issue comment "$issue" --body "Swarm bench still queued after $((age/60)) min: no online \`[self-hosted, Linux, swarm-bench]\` runner. Not a second /run. <!-- $mark -->"
+              fi
+            done
+          done
