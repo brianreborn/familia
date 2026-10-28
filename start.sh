@@ -19,15 +19,15 @@ USAGE
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 cd "$ROOT"
-say() { printf '%s\n' "familia: $*" >&2; }
-# absolute form of a path, for "logs:" lines only (the path itself is unchanged)
-abs_path() { case "$1" in /*) printf '%s\n' "$1" ;; *) printf '%s\n' "$PWD/$1" ;; esac; }
+MK_TAG=familia; . "$ROOT/lib/msg.mk"   # say
+. "$ROOT/lib/path.mk"   # abs_path: absolute form of a path, for "logs:" lines only
+. "$ROOT/lib/os.mk"     # mk_is_termux
 
 if [ "${1:-}" != "--bootstrap" ]; then
   GRAPH_START="$ROOT/scripts/start_graph.py"
-  case "${PREFIX:-}" in
-    *com.termux*) command -v termux-wake-lock >/dev/null 2>&1 && termux-wake-lock >/dev/null 2>&1 && say "wake-lock acquired" || true ;;
-  esac
+  if mk_is_termux; then
+    command -v termux-wake-lock >/dev/null 2>&1 && termux-wake-lock >/dev/null 2>&1 && say "wake-lock acquired" || true
+  fi
   case "${1:-}" in
     --dry-run|-n) exec python3 "$GRAPH_START" "$@" ;;
   esac
@@ -101,7 +101,7 @@ esac
 
 # Detect Termux (Android)
 TERMUX=0
-case "${PREFIX:-}" in *com.termux*) TERMUX=1 ;; esac
+if mk_is_termux; then TERMUX=1; fi
 
 # On Android/Termux, enforce wake-lock so the server survives backgrounding (#7).
 if [ "$TERMUX" = 1 ] && command -v termux-wake-lock >/dev/null 2>&1; then
