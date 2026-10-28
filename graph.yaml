@@ -245,7 +245,7 @@ hosts:
   box:
     kind: desktop
     measured: true
-    local_names: [grok-bot-vm-414232872]  # OS hostname → graph host id (name is historical; kind is form factor)
+    local_names: [grok-bot-vm-414232872, grok-bot-vm-414137730]  # OS hostname → graph host id (name is historical; kind is form factor)
     os: linux
     cpu: 'Intel(R) Xeon(R) Processor'
     threads: 8
@@ -480,8 +480,8 @@ models:
     arch: llama                  # GGUF general.architecture; llama.cpp also knows nanbeige (aliased in validator)
     trained_ctx: 524288
     role: coder                  # also used for chat via angel-chat card_set; roles in db: coder+chat
-    db: dealignai--Nanbeige4.3-33B-UNCENSORED-GGUF--Nanbeige4.3-33B-UNCENSORED-Q4_K_M
     notes: "Prize on angel (FreeBSD). damp-run on box 2026-10-26; weights stay on angel. Dual coder+chat via card_set. Needs measured SSD swap/spill before activate (vvram-ssd/LAYER.md)."
+    db: dealignai--Nanbeige4.3-33B-UNCENSORED-GGUF--Nanbeige4.3-33B-UNCENSORED-Q4_K_M
 
 
   dolphin3-cyber-8b-q2k:
@@ -490,8 +490,8 @@ models:
     arch: llama
     trained_ctx: 131072         # Llama-3.1-8B family; node ctx stays RAM-bounded
     role: pentest
-    db: RavichandranJ--Dolphin3-Cyber-8B-GGUF--Dolphin3.0-Llama3.1-8B-abliterated.Q2_K
     notes: Official guardian weight (docs/guardian-weights.md). Q2_K ~3.0 GiB. sha256 is registry HF LFS oid; verify with activate_guardian_weights.py --measure. Fetch before activating miryam-pentest / angel-guardian.
+    db: mradermacher--Dolphin3.0-Llama3.1-8B-abliterated-GGUF--Dolphin3.0-Llama3.1-8B-abliterated.Q2_K
 
 nodes:
 

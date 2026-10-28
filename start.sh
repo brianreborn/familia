@@ -31,6 +31,18 @@ if [ "${1:-}" != "--bootstrap" ]; then
   case "${1:-}" in
     --dry-run|-n) exec python3 "$GRAPH_START" "$@" ;;
   esac
+  # Single-node default: a host that is not in graph.yaml (or has no active local
+  # nodes) runs the pinned code-bootstraps click-and-go with the default model
+  # (LFM3-1.7B-Uncensored) on 127.0.0.1:${PORT:-9931}. FAMILIA_SINGLE_NODE=0 disables.
+  if [ "${FAMILIA_SINGLE_NODE:-1}" != 0 ] && [ -f "$ROOT/code-bootstraps-llama.cpp/start.sh" ]; then
+    _rc=0; _probe=$(python3 "$GRAPH_START" --dry-run "$@" 2>&1) || _rc=$?
+    case "$_rc:$_probe" in
+      3:*|*"is not declared in graph.yaml"*|*"nothing would start"*)
+        say "this host has no familia topology yet; starting the single-node default (LFM3-1.7B-Uncensored via code-bootstraps-llama.cpp)"
+        say "to join the fleet later: python3 scripts/host_measure.py --name NAME ... (see QUICKSTART.md)"
+        exec sh "$ROOT/code-bootstraps-llama.cpp/start.sh" ;;
+    esac
+  fi
   DETACH_MODE="${DETACH_MODE:-screen-attached}"
   LOG_FILE="${LOG_FILE:-$ROOT/.cache/graph.log}"
   mkdir -p "$(dirname "$LOG_FILE")"
