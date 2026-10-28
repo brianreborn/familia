@@ -23,6 +23,7 @@ import json, os, re, sys, threading, time, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import escalation as E
+import familia_auth  # noqa: E402
 
 STATE = os.path.join(E.ROOT, ".cache", "familia")
 PENDING = os.path.join(STATE, "escalation-pending.json")
@@ -258,7 +259,7 @@ def make_handler(pool, log=sys.stderr):
         def _retry_once(self, esc, body, method, raw, note):
             url, _alias = esc.upstream()
             target = url.rsplit("/v1", 1)[0] + self.path
-            req = urllib.request.Request(target, data=raw, method=method, headers={"Content-Type": "application/json"})
+            req = urllib.request.Request(target, data=raw, method=method, headers=familia_auth.auth_headers({"Content-Type": "application/json"}, incoming=self.headers, required=True))
             try:
                 r = urllib.request.urlopen(req, timeout=3600)
             except Exception as e2:
@@ -285,7 +286,14 @@ def make_handler(pool, log=sys.stderr):
                 if raw and self.path.endswith("/chat/completions"):
                     url, body = esc.rewrite(json.loads(raw)); raw = json.dumps(body).encode()
                 target = url.rsplit("/v1", 1)[0] + self.path
-                req = urllib.request.Request(target, data=raw, method=method, headers={"Content-Type": "application/json"})
+                try:
+                    hdrs = familia_auth.auth_headers({"Content-Type": "application/json"}, incoming=self.headers, required=True)
+                except familia_auth.MissingKey:
+                    # fail closed: never forward an unauthenticated request upstream
+                    self.send_response(401); self.send_header("Content-Type", "application/json"); self.end_headers()
+                    self.wfile.write(b'{"error":{"message":"no API key for upstream","code":401}}')
+                    return
+                req = urllib.request.Request(target, data=raw, method=method, headers=hdrs)
                 try:
                     r = urllib.request.urlopen(req, timeout=3600)
                 except Exception as e:

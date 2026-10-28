@@ -35,6 +35,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 import validate_graph as vg  # noqa: E402
 import oom_adj  # noqa: E402
+import familia_auth  # noqa: E402
 
 # Default Linux snap layout (kept when /snap/bin/hermes-agent exists).
 SNAP_BIN = "/snap/bin/hermes-agent"
@@ -485,7 +486,7 @@ def render(g, agent, user_cfg_path=os.path.join(USER_HOME, "config.yaml"), base_
     ctx = a["context_length"]
     comp = a.get("compression") or {}
     cfg["model"] = {"provider": "custom", "base_url": base, "default": alias,
-                    "context_length": ctx, "api_key": "local"}
+                    "context_length": ctx, "api_key": familia_auth.api_key() or "local"}
     cfg["compression"] = {"enabled": True,
                           "threshold": comp.get("threshold", 0.75),
                           "target_ratio": comp.get("target_ratio", 0.20),
@@ -495,7 +496,7 @@ def render(g, agent, user_cfg_path=os.path.join(USER_HOME, "config.yaml"), base_
     ag["disabled_toolsets"] = [t for t in ag.get("disabled_toolsets", []) or [] if t != "context_engine"]
     aux = {"transient_retries": 2}
     for t in AUX_TASKS:
-        aux[t] = {"provider": "custom", "model": alias, "base_url": base, "api_key": "local",
+        aux[t] = {"provider": "custom", "model": alias, "base_url": base, "api_key": familia_auth.api_key() or "local",
                   "timeout": comp.get("aux_timeout", 3600)}
     cfg["auxiliary"] = aux
     if prompt_profile(g, a, n) == "lean":
@@ -522,7 +523,7 @@ def render(g, agent, user_cfg_path=os.path.join(USER_HOME, "config.yaml"), base_
 def props(n):
     url = f"http://{bind(n)}:{n['port']}/props"
     try:
-        with urllib.request.urlopen(url, timeout=5) as r:
+        with familia_auth.open_url(url, timeout=5) as r:
             return json.load(r)
     except Exception:
         return None
@@ -536,7 +537,7 @@ def tools_live(n, timeout=5):
     """
     url = f"http://{bind(n)}:{n['port']}/tools"
     try:
-        with urllib.request.urlopen(url, timeout=timeout) as r:
+        with familia_auth.open_url(url, timeout=timeout) as r:
             body = r.read(512).decode("utf-8", "replace")
             if "feature_disabled" in body:
                 return False
@@ -694,7 +695,7 @@ def warm_prompt(g, name, n, home):
 def chat(base, alias, messages, max_tokens=400):
     body = json.dumps({"model": alias, "messages": messages, "max_tokens": max_tokens,
                        "chat_template_kwargs": {"enable_thinking": False}}).encode()
-    req = urllib.request.Request(base + "/chat/completions", body, {"Content-Type": "application/json"})
+    req = familia_auth.request(base + "/chat/completions", body, {"Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=7200) as r:
         return json.load(r)["choices"][0]["message"].get("content") or ""
 
@@ -706,7 +707,7 @@ from agent.context_compressor import ContextCompressor
 spec = json.load(sys.stdin)
 cc = ContextCompressor(model=spec["alias"], threshold_percent=0.75, protect_first_n=1,
                        protect_last_n=2, summary_target_ratio=spec["target_ratio"], quiet_mode=True,
-                       base_url=spec["base"], api_key="local", config_context_length=spec["ctx"],
+                       base_url=spec["base"], api_key=spec.get("api_key") or "local", config_context_length=spec["ctx"],
                        provider="custom")
 out = cc.compress(spec["messages"], force=True)
 json.dump({"messages": out}, sys.stdout)
@@ -730,7 +731,8 @@ def selftest(g, agent):
     msgs += [{"role": "user", "content": "Thanks. Keep them in mind."},
              {"role": "assistant", "content": "Will do."}]
     # Tail budget scales with the window; a tiny target_ratio keeps it below the transcript.
-    spec = {"alias": alias, "base": base, "ctx": ctx, "target_ratio": 0.02, "messages": msgs}
+    spec = {"alias": alias, "base": base, "ctx": ctx, "target_ratio": 0.02, "messages": msgs,
+            "api_key": familia_auth.api_key()}  # via stdin, not env/argv
     env = hermes_child_env({"HERMES_HOME": home, "HERMES_SP": HERMES_SP})
     t0 = time.time()
     r = subprocess.run([HERMES_PY, "-c", SELFTEST_CHILD], input=json.dumps(spec), capture_output=True,

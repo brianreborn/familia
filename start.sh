@@ -126,6 +126,19 @@ if [ ! -f "$BACKEND_START" ]; then
 fi
 
 
+# One instance per port (docs/api-key-design.md): probe it WITH the instance key first.
+#   up (0)            -> already running: reuse it, do not bootstrap a second one
+#   key rejected (4)  -> a server is there but rejects our key: misconfiguration, stop loudly
+#   nothing there (3) -> start it
+if [ "${FAMILIA_FORCE_BOOTSTRAP:-0}" != 1 ]; then
+  probe_rc=0
+  python3 "$ROOT/scripts/familia_auth.py" probe "http://127.0.0.1:${PORT:-9931}" || probe_rc=$?
+  case "$probe_rc" in
+    0) say "a server already answers on :${PORT:-9931} with this instance's key; reusing it (FAMILIA_FORCE_BOOTSTRAP=1 to start anyway)"; exit 0 ;;
+    4) say "ERROR: :${PORT:-9931} is running but rejects this instance's API key. Not starting another server. Check ${XDG_CONFIG_HOME:-$HOME/.config}/familia/instances/${PORT:-9931}/api-keys"; exit 4 ;;
+  esac
+fi
+
 # DETACH_MODE support. screen-attached is the default (attached + reattachable via
 # screen -r familia-server). Override with DETACH_MODE=foreground|nohup|tmux|screen.
 DETACH_MODE="${DETACH_MODE:-screen-attached}"
