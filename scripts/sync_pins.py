@@ -45,7 +45,27 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 HEX = re.compile(r"[0-9a-f]{7,40}")
 HOOK_MARK = "# familia: sync pinned parts (scripts/sync_pins.py --install-hooks)"
-GIT_ENV = dict(os.environ, GIT_TERMINAL_PROMPT="0", LC_ALL="C")
+# Repo-binding vars set by git for hooks. If they leak into child `git -C <pin>`
+# calls, -C is ignored and pin checkouts move *familia* HEAD (#111).
+_GIT_REPO_ENV = (
+    "GIT_DIR",
+    "GIT_WORK_TREE",
+    "GIT_INDEX_FILE",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_COMMON_DIR",
+    "GIT_PREFIX",
+)
+
+
+def git_env(base=None):
+    """Env for child git: no hook/repo bindings, never prompts."""
+    env = dict(base if base is not None else os.environ)
+    env["GIT_TERMINAL_PROMPT"] = "0"
+    env["LC_ALL"] = "C"
+    for k in _GIT_REPO_ENV:
+        env.pop(k, None)
+    return env
 
 
 def say(msg, out=sys.stderr):
@@ -53,7 +73,7 @@ def say(msg, out=sys.stderr):
 
 
 def git(path, *args, check=False):
-    r = subprocess.run(["git", "-C", path] + list(args), capture_output=True, text=True, env=GIT_ENV)
+    r = subprocess.run(["git", "-C", path] + list(args), capture_output=True, text=True, env=git_env())
     if check and r.returncode:
         raise RuntimeError("git %s: %s" % (" ".join(args), (r.stderr or r.stdout).strip()))
     return r
@@ -370,14 +390,41 @@ def license_gate(root, mode):
 
 
 def install_hooks(root):
+    # Hooks are shared across worktrees; install into the common git dir.
     g = git_dir(root)
     if not g:
         say("%s is not a git checkout; no hooks installed" % root)
         return 1
-    hooks = os.path.join(g, "hooks")
+    common = g
+    cd = os.path.join(g, "commondir")
+    if os.path.isfile(cd):
+        try:
+            with open(cd, encoding="utf-8") as fh:
+                rel = fh.read().strip()
+            if rel:
+                common = os.path.normpath(os.path.join(g, rel))
+        except OSError:
+            pass
+    hooks = os.path.join(common, "hooks")
     os.makedirs(hooks, exist_ok=True)
+    # post-checkout gets prev_head new_head flag(1=branch,0=file). File checkouts
+    # must not sync: with a leaked GIT_DIR they used to move familia HEAD through
+    # each pin (#111). Linked worktrees skip auto-sync by default (#108/#111);
+    # opt in with FAMILIA_SYNC=1 or run ./familia sync.
     body = ("#!/bin/sh\n%s\n# After git pull / merge / rebase of familia: pins.txt may have changed.\n"
+            "[ \"${FAMILIA_SYNC:-1}\" = 0 ] && exit 0\n"
+            "# post-checkout only: skip file checkouts (3rd arg is 0). File checkouts\n"
+            "# used to fire sync with a leaked GIT_DIR and move familia HEAD (#111).\n"
+            "case \"$0\" in\n"
+            "  */post-checkout)\n"
+            "    [ \"$3\" = \"1\" ] || exit 0\n"
+            "    ;;\n"
+            "esac\n"
+            "# Resolve root while hook GIT_DIR is still set, then drop repo bindings\n"
+            "# so child git -C <pin> cannot operate on familia itself (#111).\n"
             "root=$(git rev-parse --show-toplevel) || exit 0\n"
+            "unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY \\\n"
+            "  GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR GIT_PREFIX\n"
             "# Linked worktrees (git worktree add): skip pin sync by default (#108).\n"
             "# Opt in: FAMILIA_SYNC=1, or sync explicitly: ./familia sync\n"
             "if [ -f \"$root/.git\" ]; then\n"
@@ -387,7 +434,6 @@ def install_hooks(root):
             "(set FAMILIA_SYNC=1 or run: ./familia sync)\" >&2; exit 0 ;;\n"
             "  esac\n"
             "fi\n"
-            "[ \"${FAMILIA_SYNC:-1}\" = 0 ] && exit 0\n"
             "[ -f \"$root/scripts/sync_pins.py\" ] || exit 0\n"
             "PY=${PYTHON:-python3}; command -v \"$PY\" >/dev/null 2>&1 || PY=python\n"
             "\"$PY\" \"$root/scripts/sync_pins.py\" --root \"$root\" --quiet --license-gate warn || "
@@ -424,28 +470,28 @@ def do_update(root, rest, dry, branch=None):
     before = git(root, "rev-parse", "HEAD").stdout.strip()
     if branch:
         r = subprocess.run(["git", "-C", root, "fetch", "origin",
-                            "+refs/heads/%s:refs/remotes/origin/%s" % (branch, branch)], env=GIT_ENV)
+                            "+refs/heads/%s:refs/remotes/origin/%s" % (branch, branch)], env=git_env())
         if r.returncode:
             say("could not fetch origin/%s; nothing was synced. See: git -C %s status" % (branch, root))
             return 1
         exists = git(root, "show-ref", "--verify", "--quiet", "refs/heads/" + branch).returncode == 0
         if exists:
-            r = subprocess.run(["git", "-C", root, "switch", branch], env=GIT_ENV)
+            r = subprocess.run(["git", "-C", root, "switch", branch], env=git_env())
         else:
             r = subprocess.run(["git", "-C", root, "switch", "--track", "-c", branch,
-                                "origin/" + branch], env=GIT_ENV)
+                                "origin/" + branch], env=git_env())
         if r.returncode:
             say("could not switch to %s (check for local changes or branch conflicts); nothing was synced. "
                 "See: git -C %s status" % (branch, root))
             return 1
         r = subprocess.run(["git", "-C", root, "branch", "--set-upstream-to=origin/" + branch, branch],
-                           env=GIT_ENV)
+                           env=git_env())
         if r.returncode:
             say("could not set %s to track origin/%s; nothing was synced" % (branch, branch))
             return 1
-        r = subprocess.run(["git", "-C", root, "merge", "--ff-only", "origin/" + branch], env=GIT_ENV)
+        r = subprocess.run(["git", "-C", root, "merge", "--ff-only", "origin/" + branch], env=git_env())
     else:
-        r = subprocess.run(["git", "-C", root, "pull", "--ff-only"], env=GIT_ENV)
+        r = subprocess.run(["git", "-C", root, "pull", "--ff-only"], env=git_env())
     if r.returncode:
         say("git update failed (local commits or changes may prevent a fast-forward); nothing was synced. "
             "See: git -C %s status" % root)
@@ -454,7 +500,7 @@ def do_update(root, rest, dry, branch=None):
     if before != after:
         say("familia %s -> %s" % (short(before), short(after)))
     # Run the sync from the updated checkout: sync_pins.py itself may have changed.
-    env = dict(os.environ)
+    env = git_env()
     env.pop("FAMILIA_SYNC_DONE", None)
     return subprocess.run([sys.executable, os.path.join(root, "scripts", "sync_pins.py"), "--root", root] + rest,
                           env=env).returncode

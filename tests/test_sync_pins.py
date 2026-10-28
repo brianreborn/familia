@@ -15,6 +15,9 @@ ENV = dict(os.environ, GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@example.invalid"
            GIT_COMMITTER_EMAIL="t@example.invalid", GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1",
            FAMILIA_SYNC="1")
 ENV.pop("FAMILIA_SYNC_DONE", None)
+for _k in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_OBJECT_DIRECTORY",
+           "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_COMMON_DIR", "GIT_PREFIX"):
+    ENV.pop(_k, None)
 
 pytestmark = pytest.mark.skipif(not shutil.which("git"), reason="git not installed")
 
@@ -337,6 +340,79 @@ def test_linked_worktree_auto_skips_without_opt_in(tmp_path):
     assert r.returncode == 0
     assert "linked worktree" in r.stderr and "FAMILIA_SYNC=1" in r.stderr
     assert not (wt / "a").exists()
+
+def test_hook_env_git_dir_does_not_move_familia_head(tmp_path, fam):
+    """#111: leaked GIT_DIR/GIT_WORK_TREE must not make pin checkouts hit familia."""
+    a, a1, a2 = upstream(tmp_path, "a")
+    g(fam, "init", "-q", "-b", "main")
+    (fam / "KEEP.txt").write_text("familia-only\n")
+    g(fam, "add", "KEEP.txt")
+    g(fam, "commit", "-q", "-m", "familia base")
+    fam_head = g(fam, "rev-parse", "HEAD")
+    nested(fam, a, "a", a1)
+    pins(fam, [("a", a2, a)])
+    # Simulate post-checkout hook env pointing at the familia worktree.
+    leak = dict(ENV,
+                GIT_DIR=str(fam / ".git"),
+                GIT_WORK_TREE=str(fam))
+    r = sync(fam, env=leak)
+    assert r.returncode == 0, r.stderr
+    assert g(fam, "rev-parse", "HEAD") == fam_head, "familia HEAD must stay put under leaked GIT_DIR"
+    assert (fam / "KEEP.txt").read_text() == "familia-only\n"
+    assert g(fam / "a", "rev-parse", "HEAD") == a2, "pin must still move to its pin"
+
+
+def test_install_hooks_skips_file_checkout_and_linked_worktree(tmp_path, fam):
+    """Hook body guards: file checkout ($3=0) and linked worktrees must no-op."""
+    g(fam, "init", "-q", "-b", "main")
+    assert sync(fam, "--install-hooks").returncode == 0
+    body = (fam / ".git" / "hooks" / "post-checkout").read_text()
+    assert 'unset GIT_DIR' in body
+    assert '[ "$3" = "1" ] || exit 0' in body
+    assert '[ -f "$root/.git" ]' in body
+    # File-checkout simulation: hook exits before sync (no pin scripts needed).
+    r = subprocess.run(["sh", str(fam / ".git" / "hooks" / "post-checkout"),
+                        "a" * 40, "b" * 40, "0"],
+                       cwd=str(fam), capture_output=True, text=True, env=ENV)
+    assert r.returncode == 0
+    assert "sync" not in r.stderr.lower() or "NOT in sync" not in r.stderr
+
+
+def test_linked_worktree_hook_skips_auto_sync(tmp_path):
+    """#111/#108: post-checkout in a linked worktree must not run sync_pins."""
+    a, a1, a2 = upstream(tmp_path, "a")
+    main = tmp_path / "main"
+    main.mkdir()
+    (main / "scripts").mkdir()
+    shutil.copy(SYNC, main / "scripts" / "sync_pins.py")
+    g(main, "init", "-q", "-b", "main")
+    pins(main, [("a", a1, a)])
+    (main / "README").write_text("x\n")
+    g(main, "add", ".")
+    g(main, "commit", "-q", "-m", "base")
+    assert sync(main, "--install-hooks").returncode == 0
+    nested(main, a, "a", a1)
+    wt = tmp_path / "wt"
+    g(main, "worktree", "add", "-q", str(wt), "HEAD")
+    assert (wt / ".git").is_file()
+    hook = main / ".git" / "hooks" / "post-checkout"
+    assert hook.is_file()
+    env = dict(ENV,
+               GIT_DIR=g(wt, "rev-parse", "--git-dir"),
+               GIT_WORK_TREE=str(wt))
+    before = g(main, "rev-parse", "HEAD")
+    # Branch-checkout flag ($3=1) still must skip because $root/.git is a file.
+    r = subprocess.run(["sh", str(hook), before, before, "1"],
+                       cwd=str(wt), capture_output=True, text=True, env=env)
+    assert r.returncode == 0, r.stderr
+    assert g(main, "rev-parse", "HEAD") == before
+    assert g(main / "a", "rev-parse", "HEAD") == a1
+    # Manual sync with leaked hook env must still move only the pin, not familia HEAD.
+    pins(main, [("a", a2, a)])
+    r = sync(main, env=dict(ENV, GIT_DIR=str(main / ".git"), GIT_WORK_TREE=str(main)))
+    assert r.returncode == 0, r.stderr
+    assert g(main, "rev-parse", "HEAD") == before
+    assert g(main / "a", "rev-parse", "HEAD") == a2
 
 
 def test_foreign_hook_is_left_alone(tmp_path, fam):
