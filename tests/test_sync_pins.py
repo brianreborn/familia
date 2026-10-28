@@ -245,7 +245,102 @@ def test_branch_option_rejects_invalid_names(tmp_path, fam):
     assert "invalid branch name" in r.stderr
 
 
+
+def test_linked_worktree_hook_skips_sync_by_default(tmp_path):
+    """git worktree add must not clone every pin (#108); message says how to sync."""
+    a, a1, a2 = upstream(tmp_path, "a")
+    up = tmp_path / "up" / "familia"
+    (up / "scripts").mkdir(parents=True)
+    shutil.copy(SYNC, up / "scripts" / "sync_pins.py")
+    g(up.parent, "init", "-q", "-b", "main", "familia")
+    pins(up, [("a", a2, a)])
+    g(up, "add", ".")
+    g(up, "commit", "-q", "-m", "pins")
+    g(tmp_path, "clone", "-q", "--branch", "main", str(up), "mine")
+    mine = tmp_path / "mine"
+    assert sync(mine, "--install-hooks").returncode == 0
+    # No pins checked out yet in the primary either for this test — we care that
+    # creating a linked worktree does not clone them into the new tree.
+    wt = tmp_path / "wt"
+    env = dict(ENV)
+    env.pop("FAMILIA_SYNC", None)  # default: linked worktrees skip
+    r = subprocess.run(["git", "-C", str(mine), "worktree", "add", str(wt), "HEAD"],
+                       capture_output=True, text=True, env=env)
+    assert r.returncode == 0, r.stderr
+    combined = (r.stdout or "") + (r.stderr or "")
+    assert "linked worktree" in combined and "FAMILIA_SYNC=1" in combined and "./familia sync" in combined
+    assert not (wt / "a").exists(), "linked worktree must not clone pins by default"
+    assert (wt / ".git").is_file()
+
+
+def test_linked_worktree_syncs_with_FAMILIA_SYNC_1(tmp_path):
+    a, a1, a2 = upstream(tmp_path, "a")
+    up = tmp_path / "up" / "familia"
+    (up / "scripts").mkdir(parents=True)
+    shutil.copy(SYNC, up / "scripts" / "sync_pins.py")
+    g(up.parent, "init", "-q", "-b", "main", "familia")
+    pins(up, [("a", a2, a)])
+    g(up, "add", ".")
+    g(up, "commit", "-q", "-m", "pins")
+    g(tmp_path, "clone", "-q", "--branch", "main", str(up), "mine")
+    mine = tmp_path / "mine"
+    assert sync(mine, "--install-hooks").returncode == 0
+    wt = tmp_path / "wt"
+    r = subprocess.run(["git", "-C", str(mine), "worktree", "add", str(wt), "HEAD"],
+                       capture_output=True, text=True, env=dict(ENV, FAMILIA_SYNC="1"))
+    assert r.returncode == 0, r.stderr
+    assert g(wt / "a", "rev-parse", "HEAD") == a2
+
+
+def test_linked_worktree_explicit_sync_still_runs(tmp_path):
+    a, a1, a2 = upstream(tmp_path, "a")
+    up = tmp_path / "up" / "familia"
+    (up / "scripts").mkdir(parents=True)
+    shutil.copy(SYNC, up / "scripts" / "sync_pins.py")
+    g(up.parent, "init", "-q", "-b", "main", "familia")
+    pins(up, [("a", a2, a)])
+    g(up, "add", ".")
+    g(up, "commit", "-q", "-m", "pins")
+    g(tmp_path, "clone", "-q", "--branch", "main", str(up), "mine")
+    mine = tmp_path / "mine"
+    assert sync(mine, "--install-hooks").returncode == 0
+    wt = tmp_path / "wt"
+    env = dict(ENV)
+    env.pop("FAMILIA_SYNC", None)
+    assert subprocess.run(["git", "-C", str(mine), "worktree", "add", str(wt), "HEAD"],
+                          capture_output=True, text=True, env=env).returncode == 0
+    assert not (wt / "a").exists()
+    # Explicit sync (no --auto) must still bring pins in, even without FAMILIA_SYNC=1.
+    r = sync(wt, env=env)
+    assert r.returncode == 0, r.stderr
+    assert g(wt / "a", "rev-parse", "HEAD") == a2
+
+
+def test_linked_worktree_auto_skips_without_opt_in(tmp_path):
+    a, a1, a2 = upstream(tmp_path, "a")
+    up = tmp_path / "up" / "familia"
+    (up / "scripts").mkdir(parents=True)
+    shutil.copy(SYNC, up / "scripts" / "sync_pins.py")
+    g(up.parent, "init", "-q", "-b", "main", "familia")
+    pins(up, [("a", a2, a)])
+    g(up, "add", ".")
+    g(up, "commit", "-q", "-m", "pins")
+    g(tmp_path, "clone", "-q", "--branch", "main", str(up), "mine")
+    mine = tmp_path / "mine"
+    assert sync(mine, "--install-hooks").returncode == 0
+    wt = tmp_path / "wt"
+    env = dict(ENV)
+    env.pop("FAMILIA_SYNC", None)
+    assert subprocess.run(["git", "-C", str(mine), "worktree", "add", str(wt), "HEAD"],
+                          capture_output=True, text=True, env=env).returncode == 0
+    r = sync(wt, "--auto", env=env)
+    assert r.returncode == 0
+    assert "linked worktree" in r.stderr and "FAMILIA_SYNC=1" in r.stderr
+    assert not (wt / "a").exists()
+
+
 def test_foreign_hook_is_left_alone(tmp_path, fam):
+
     g(fam, "init", "-q")
     h = fam / ".git" / "hooks" / "post-merge"
     h.parent.mkdir(parents=True, exist_ok=True)
