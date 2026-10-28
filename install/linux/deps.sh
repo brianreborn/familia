@@ -144,11 +144,13 @@ if [ -z "$pkgs" ]; then
   exit 0
 fi
 
+# root (e.g. a fresh root-only box) needs no sudo, and may not have it installed
+SUDO=sudo; [ "$(id -u)" = 0 ] && SUDO=""
 case "$PM" in
-  apt) CMD="sudo apt-get update && sudo apt-get install -y $pkgs" ;;
-  dnf) CMD="sudo dnf install -y $pkgs" ;;
-  pacman) CMD="sudo pacman -Sy --needed --noconfirm $pkgs" ;;
-  zypper) CMD="sudo zypper install -y $pkgs" ;;
+  apt) CMD="${SUDO:+$SUDO }apt-get update && ${SUDO:+$SUDO }apt-get install -y $pkgs" ;;
+  dnf) CMD="${SUDO:+$SUDO }dnf install -y $pkgs" ;;
+  pacman) CMD="${SUDO:+$SUDO }pacman -Sy --needed --noconfirm $pkgs" ;;
+  zypper) CMD="${SUDO:+$SUDO }zypper install -y $pkgs" ;;
   brew) CMD="brew install $pkgs" ;;
   *) say "unknown package manager; install manually:$install_missing"; exit 1 ;;
 esac
