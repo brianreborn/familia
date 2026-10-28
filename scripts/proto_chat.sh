@@ -6,6 +6,7 @@ set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$ROOT"
 PY=${PYTHON:-python3}
+export FAMILIA_SCRIPTS="$ROOT/scripts"
 
 # OSC 7501 status (#123); soft-fail if absent.
 _proto_osc_ready=0
@@ -54,10 +55,11 @@ probe() {
   # probe URL — 0 if /v1/models answers
   u=$1
   "$PY" - "$u" <<'PY' 2>/dev/null
-import sys, urllib.request
+import os, sys, urllib.request
+sys.path.insert(0, os.environ["FAMILIA_SCRIPTS"]); import familia_auth
 url = sys.argv[1].rstrip("/") + "/v1/models"
 try:
-    with urllib.request.urlopen(url, timeout=1.5) as r:
+    with familia_auth.open_url(url, timeout=1.5) as r:
         sys.exit(0 if r.status == 200 else 1)
 except Exception:
     sys.exit(1)
@@ -68,12 +70,13 @@ pick_model() {
   # pick_model URL [hint] — print a model id
   u=$1; hint=${2:-}
   "$PY" - "$u" "$hint" <<'PY'
-import json, sys, urllib.request
+import json, os, sys, urllib.request
+sys.path.insert(0, os.environ["FAMILIA_SCRIPTS"]); import familia_auth
 url = sys.argv[1].rstrip("/") + "/v1/models"
 hint = (sys.argv[2] or "").strip()
 prefer = ["general-text", "general-text-speculator", "chat", "safe-build", "miryam-gpu-decision"]
 try:
-    with urllib.request.urlopen(url, timeout=3) as r:
+    with familia_auth.open_url(url, timeout=3) as r:
         data = json.load(r)
 except Exception as e:
     print("", end="")
@@ -184,7 +187,8 @@ while true; do
     ""|/q|/quit|/exit|exit|quit) say "bye"; _proto_osc done --id home/proto --msg "proto chat ended"; break ;;
   esac
   reply=$("$PY" - "$URL" "$MODEL" "$SYSTEM_PROMPT" "$line" <<'PY' 2>/tmp/proto-chat.err || true
-import json, sys, urllib.request, urllib.error
+import json, os, sys, urllib.request, urllib.error
+sys.path.insert(0, os.environ["FAMILIA_SCRIPTS"]); import familia_auth
 url, model, system, user = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
 body = {
     "model": model,
@@ -199,7 +203,7 @@ body = {
 req = urllib.request.Request(
     url.rstrip("/") + "/v1/chat/completions",
     data=json.dumps(body).encode("utf-8"),
-    headers={"Content-Type": "application/json"},
+    headers=familia_auth.auth_headers({"Content-Type": "application/json"}),
     method="POST",
 )
 try:
