@@ -94,22 +94,79 @@ def test_in_sync_is_a_noop_without_git_or_network(tmp_path, fam):
     assert not marker.exists(), "an in-sync part must not run git (and so never touches the network)"
 
 
-def test_dirty_nested_checkout_refuses_and_moves_nothing(tmp_path, fam):
+def test_user_edit_survives_the_sync(tmp_path, fam):
+    """familia #181 U10: a real local edit never blocks a sync and is kept."""
+    a, a1, a2 = upstream(tmp_path, "a")
+    commit(a, "other.txt", "upstream adds other")
+    a3 = g(a, "rev-parse", "HEAD")
+    b, b1, b2 = upstream(tmp_path, "b")
+    da = nested(fam, a, "a", a1)
+    nested(fam, b, "b", b1)
+    (da / "other0.txt").write_text("x")  # untracked file is kept too
+    commit(da, "mine.txt", "base")  # on a1+: a tracked file the update does not touch
+    g(da, "-c", "advice.detachedHead=false", "checkout", "-q", a1)
+    g(da, "checkout", "-q", "HEAD@{1}", "--", "mine.txt")
+    pins(fam, [("a", a3, a), ("b", b2, b)])
+    (da / "f.txt").write_text("two")  # same as upstream's change: pops cleanly
+    r = sync(fam)
+    assert r.returncode == 0, r.stderr
+    assert g(da, "rev-parse", "HEAD") == a3 and g(fam / "b", "rev-parse", "HEAD") == b2
+    assert (da / "mine.txt").read_text() == "base" and (da / "other0.txt").read_text() == "x"
+    assert g(da, "stash", "list") == ""
+
+
+def test_conflicting_user_edit_is_kept_in_stash(tmp_path, fam):
+    a, a1, a2 = upstream(tmp_path, "a")
+    da = nested(fam, a, "a", a1)
+    (da / "f.txt").write_text("my local edit")
+    pins(fam, [("a", a2, a)])
+    r = sync(fam)
+    assert r.returncode == 0, r.stderr
+    assert g(da, "rev-parse", "HEAD") == a2
+    assert (da / "f.txt").read_text() == "two"
+    assert "stash pop stash@{0}" in r.stderr and "familia-sync" in g(da, "stash", "list")
+    g(da, "checkout", "-q", "-B", "restore")
+    g(da, "-c", "advice.detachedHead=false", "checkout", "-q", a1)
+    g(da, "stash", "pop")
+    assert (da / "f.txt").read_text() == "my local edit", "the user's edit is never lost"
+
+
+def test_no_stash_refuses_and_moves_nothing(tmp_path, fam):
     a, a1, a2 = upstream(tmp_path, "a")
     b, b1, b2 = upstream(tmp_path, "b")
     da = nested(fam, a, "a", a1)
     nested(fam, b, "b", b1)
     (da / "f.txt").write_text("my local edit")
     pins(fam, [("a", a2, a), ("b", b2, b)])
-    r = sync(fam)
+    r = sync(fam, "--no-stash")
     assert r.returncode == 3
     assert "REFUSED a" in r.stderr and "stash" in r.stderr
     assert (da / "f.txt").read_text() == "my local edit"
     assert g(da, "rev-parse", "HEAD") == a1
-    assert g(fam / "b", "rev-parse", "HEAD") == b1, "all or nothing: b must not move when a is refused"
-    assert sync(fam, "--dry-run").returncode == 3
+    assert g(fam / "b", "rev-parse", "HEAD") == b1
+    assert sync(fam, "--force").returncode == 0
 
 
+def test_our_patched_submodule_is_clean(tmp_path, fam):
+    """Our own llama.cpp patch commits in a submodule never count as a local change."""
+    lib, l1, l2 = upstream(tmp_path, "lib")
+    a, a1, a2 = upstream(tmp_path, "a")
+    g(a, "-c", "protocol.file.allow=always", "submodule", "add", "-q", str(lib), "sub")
+    g(a, "commit", "-q", "-m", "sub")
+    a3 = g(a, "rev-parse", "HEAD")
+    commit(a, "g.txt", "later")
+    a4 = g(a, "rev-parse", "HEAD")
+    da = fam / "a"
+    g(fam, "clone", "-q", str(a), "a")
+    g(da, "-c", "advice.detachedHead=false", "checkout", "-q", a3)
+    g(da, "-c", "protocol.file.allow=always", "submodule", "update", "-q", "--init")
+    commit(da / "sub", "f.txt", "familia patch")  # like apply-patches.sh: a local commit in the submodule
+    (da / "sub" / "build.ini").write_text("generated")
+    pins(fam, [("a", a4, a)])
+    r = sync(fam)
+    assert r.returncode == 0, r.stderr
+    assert "stash" not in r.stderr
+    assert g(da, "rev-parse", "HEAD") == a4
 
 
 def test_empty_placeholder_dir_is_replaced_not_refused(tmp_path, fam):

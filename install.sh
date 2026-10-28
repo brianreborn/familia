@@ -95,10 +95,10 @@ else
     fi
     git -C "$PREFIX" branch --set-upstream-to="origin/$BRANCH" "$BRANCH" ||
       die "could not set $BRANCH to track origin/$BRANCH"
-    git -C "$PREFIX" merge --ff-only "origin/$BRANCH" ||
+    git -C "$PREFIX" merge --ff-only --autostash "origin/$BRANCH" ||
       die "could not fast-forward $BRANCH; local changes were preserved"
   else
-    git -C "$PREFIX" pull --ff-only ||
+    git -C "$PREFIX" pull --ff-only --autostash ||
       die "could not fast-forward the current branch from its configured upstream; local changes were preserved"
   fi
 fi
