@@ -62,6 +62,15 @@ if [ -n "$model" ] && [ ! -f "$model" ]; then
   say "model file $model of node $node not found; not starting"
   exit 1
 fi
+# Draft GGUF (#91): -md is loaded inside this same llama-server; refuse if missing.
+draft="$(printf '%s\n' "$args" | sed -n -E 's/.*[[:space:]]-md[[:space:]]+([^[:space:]]+).*/\1/p')"
+if [ -z "$draft" ]; then
+  draft="$(printf '%s\n' "$args" | sed -n -E 's/.*[[:space:]]--model-draft[[:space:]]+([^[:space:]]+).*/\1/p')"
+fi
+if [ -n "$draft" ] && [ ! -f "$draft" ]; then
+  say "draft model file $draft of node $node not found; not starting (speculative.draft / #91)"
+  exit 1
+fi
 # The runtime binary must exist too: a pinned runtime that was never fetched used to end
 # in a bare "not found" and rc 127 (#84).
 bin="${args%% *}"
