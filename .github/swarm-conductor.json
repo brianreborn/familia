@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "project": "familia",
+  "source": "Shape from brianreborn/japanglify .github/swarm-conductor.json + docs/swarm-conductor/; roles from brianreborn/pqfreebsd docs/swarm-roles.json. No japanglify product content.",
+  "forge": {
+    "kind": "github",
+    "url": "https://github.com",
+    "alternatives": [
+      "forgejo"
+    ]
+  },
+  "official": "brianreborn/familia",
+  "logs": {
+    "repo": "brianreborn/familia-private",
+    "path": "logs/swarm/{yyyymmdd}/{run}-{host}.log",
+    "secret": "FAMILIA_PRIVATE_LOGS_TOKEN"
+  },
+  "commands": {
+    "/run": {
+      "suites": {
+        "e2e": "tests/e2e_user_journey.sh"
+      },
+      "workflow": "swarm-worker.yml",
+      "owner_only": true
+    }
+  },
+  "runnerLabels": [
+    "self-hosted",
+    "Linux",
+    "swarm-bench",
+    "host:<host>",
+    "node:<host>-<user>"
+  ],
+  "workdir": "{home}/swarm-agents/{project}/{hostname}-{user}/{role}/{official,dev}",
+  "roles": {
+    "swarm-conductor": {
+      "who": "Grok Bot issue watcher",
+      "integrity": "high",
+      "may": [
+        "github.ingest",
+        "assignment.propose",
+        "github.issue-comment",
+        "ledger.append"
+      ],
+      "must_not": [
+        "git.push-agent-branch",
+        "test.domain",
+        "secret.*",
+        "device.*",
+        "merge.main"
+      ]
+    },
+    "watchdog": {
+      "who": "swarm-watchdog.yml / swarm-ping.yml",
+      "integrity": "high",
+      "may": [
+        "assignment.cancel",
+        "github.status-edit",
+        "alert.human"
+      ],
+      "must_not": [
+        "assignment.propose",
+        "git.push-agent-branch",
+        "merge.main"
+      ]
+    },
+    "swarm-bench": {
+      "who": "self-hosted runner",
+      "integrity": "low",
+      "may": [
+        "test.domain",
+        "github.issue-comment",
+        "git.push-agent-branch",
+        "ledger.append"
+      ],
+      "must_not": [
+        "assignment.propose",
+        "secret.*",
+        "merge.main",
+        "root.direct"
+      ]
+    }
+  },
+  "hosts": {
+    "linux-55:<user>": {
+      "host": "linux-55",
+      "user": "<unix-user>",
+      "node": "linux-55-<unix-user>",
+      "role": "swarm-bench",
+      "os": "linux",
+      "match": {
+        "hostname": [
+          "<set-on-host>"
+        ],
+        "user": [
+          "<unix-user>"
+        ]
+      },
+      "addr": "overlay-only (hosts.local.yaml)",
+      "notes": "Repair-install Linux for this sprint; becomes Windows later. One runner per host:user node."
+    }
+  },
+  "unknown": {
+    "role": null,
+    "never": [
+      "secret.*",
+      "root.direct",
+      "git.push-agent-branch"
+    ]
+  },
+  "runnerName": "<host>-<user>-<role>"
+}

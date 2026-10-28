@@ -1,0 +1,25 @@
+# Observe swarm runners (adapted from brianreborn/japanglify swarm-ping.yml).
+# Never enqueues work. GITHUB_TOKEN often 403s /actions/runners; then status is
+# "unknown", not green. Set SWARM_ADMIN_TOKEN (read runners) for a real answer.
+name: Swarm ping
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - env:
+          GH_TOKEN: ${{ secrets.SWARM_ADMIN_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if out=$(sh scripts/swarm/forge.sh runners 2>/dev/null); then
+            printf '%s\n' "${out:-no runners registered}" | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo "runner status unknown (token cannot read /actions/runners)" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi

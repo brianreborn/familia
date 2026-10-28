@@ -31,3 +31,10 @@ hosts:
 # meshes:
 #   lan-bt:
 #     bind: 192.0.2.9
+
+# Swarm worker (docs/swarm-worker-requirements.md). Real address stays here only.
+# hosts:
+#   linux-55:
+#     addr: 192.0.2.55
+#     user: your-linux-user
+#     port: 22
