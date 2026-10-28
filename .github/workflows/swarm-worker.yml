@@ -1,0 +1,150 @@
+# Swarm worker dispatch (pattern from brianreborn/japanglify swarm-conductor-uat.yml):
+#   ubuntu dispatch -> self-hosted [self-hosted, Linux, swarm-bench] job -> ubuntu report.
+# The report runs on ubuntu because a dead self-hosted runner cannot comment.
+# Trigger: an owner comment whose whole first line is `/run e2e` (optionally
+# `/run e2e <ref>`), or workflow_dispatch with an issue number.
+# Forge calls go through scripts/swarm/forge.sh (R0, Forgejo-portable syntax).
+# Logs go to brianreborn/familia-private (secret FAMILIA_PRIVATE_LOGS_TOKEN), never to this repo.
+name: Swarm worker
+
+on:
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: Issue number to report to
+        required: true
+      ref:
+        description: Branch or SHA to test
+        required: false
+        default: main
+      suite:
+        description: Suite name
+        required: false
+        default: e2e
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: swarm-worker-${{ github.event.issue.number || github.event.inputs.issue }}
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    # Loop guard (japanglify loops.md): only the owner, never a bot, can command.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.comment.user.login == github.repository_owner &&
+       github.event.comment.user.type != 'Bot' &&
+       startsWith(github.event.comment.body, '/run '))
+    outputs:
+      issue: ${{ steps.p.outputs.issue }}
+      ref: ${{ steps.p.outputs.ref }}
+      suite: ${{ steps.p.outputs.suite }}
+    steps:
+      - id: p
+        env:
+          BODY: ${{ github.event.comment.body }}
+          IN_ISSUE: ${{ github.event.inputs.issue }}
+          IN_REF: ${{ github.event.inputs.ref }}
+          IN_SUITE: ${{ github.event.inputs.suite }}
+          EV_ISSUE: ${{ github.event.issue.number }}
+        run: |
+          set -eu
+          if [ -n "${IN_ISSUE:-}" ]; then
+            issue=$IN_ISSUE; ref=${IN_REF:-main}; suite=${IN_SUITE:-e2e}
+          else
+            line=$(printf '%s\n' "$BODY" | head -n1 | tr -d '\r')
+            set -- $line
+            [ "${1:-}" = "/run" ] || { echo "not a command"; exit 1; }
+            suite=${2:-e2e}; ref=${3:-main}; issue=$EV_ISSUE
+          fi
+          case "$suite" in e2e) ;; *) echo "unknown suite $suite" >&2; exit 1 ;; esac
+          case "$ref" in *[!A-Za-z0-9._/-]*) echo "bad ref" >&2; exit 1 ;; esac
+          echo "issue=$issue" >> "$GITHUB_OUTPUT"
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+          echo "suite=$suite" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with: { sparse-checkout: "scripts/swarm\n.github/swarm-conductor.json" }
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          printf '%s\n' "swarm-worker: queued \`${{ steps.p.outputs.suite }}\` on \`${{ steps.p.outputs.ref }}\` for a \`[self-hosted, Linux, swarm-bench]\` runner. Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" > q.md
+          sh scripts/swarm/forge.sh comment "${{ steps.p.outputs.issue }}" q.md
+
+  bench:
+    needs: dispatch
+    runs-on: [self-hosted, Linux, swarm-bench]
+    timeout-minutes: 240
+    outputs:
+      status: ${{ steps.run.outputs.status }}
+      summary: ${{ steps.run.outputs.summary }}
+      log: ${{ steps.up.outputs.log }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.dispatch.outputs.ref }}
+          submodules: recursive
+      - id: run
+        run: |
+          set -u
+          mkdir -p "$RUNNER_TEMP/swarm"
+          log="$RUNNER_TEMP/swarm/run.log"
+          if [ -x tests/e2e_user_journey.sh ] || [ -f tests/e2e_user_journey.sh ]; then
+            sh tests/e2e_user_journey.sh > "$log" 2>&1; rc=$?
+          else
+            echo "tests/e2e_user_journey.sh not present on this ref" > "$log"; rc=78
+          fi
+          # Redact anything shaped like a key before it leaves the host (R5).
+          sed -E -i 's/(api[_-]?key|token|authorization|bearer)([=: "]+)[^ "]+/\1\2[REDACTED]/Ig' "$log"
+          case $rc in 0) st=pass ;; 78) st=skip ;; *) st=fail ;; esac
+          echo "status=$st" >> "$GITHUB_OUTPUT"
+          { echo "summary<<SWARMEOF"; echo "exit $rc on $(hostname -s)"; tail -n 20 "$log"; echo "SWARMEOF"; } >> "$GITHUB_OUTPUT"
+          echo "LOG=$log" >> "$GITHUB_ENV"
+          exit 0
+      - id: up
+        if: always()
+        env:
+          PRIV_TOKEN: ${{ secrets.FAMILIA_PRIVATE_LOGS_TOKEN }}
+        run: |
+          set -eu
+          [ -n "${PRIV_TOKEN:-}" ] || { echo "FAMILIA_PRIVATE_LOGS_TOKEN not set; log stays on runner"; exit 0; }
+          path="logs/swarm/$(date -u +%Y%m%d)/${GITHUB_RUN_ID}-$(hostname -s).log"
+          d=$(mktemp -d)
+          git -c credential.helper= clone -q --depth 1 \
+            "https://x-access-token:${PRIV_TOKEN}@github.com/brianreborn/familia-private.git" "$d" 2>/dev/null
+          mkdir -p "$d/$(dirname "$path")"; cp "$LOG" "$d/$path"
+          git -C "$d" -c user.name=swarm-worker -c user.email=swarm-worker@users.noreply.github.com add "$path"
+          git -C "$d" -c user.name=swarm-worker -c user.email=swarm-worker@users.noreply.github.com commit -qm "swarm log $GITHUB_RUN_ID"
+          git -C "$d" push -q origin HEAD 2>/dev/null
+          rm -rf "$d"
+          echo "log=familia-private:$path" >> "$GITHUB_OUTPUT"
+
+  report:
+    needs: [dispatch, bench]
+    if: always() && needs.dispatch.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          BENCH: ${{ needs.bench.result }}
+          ST: ${{ needs.bench.outputs.status }}
+          SUM: ${{ needs.bench.outputs.summary }}
+          LOGP: ${{ needs.bench.outputs.log }}
+        run: |
+          {
+            echo "swarm-worker: **${ST:-$BENCH}** (\`${{ needs.dispatch.outputs.suite }}\` @ \`${{ needs.dispatch.outputs.ref }}\`)"
+            echo
+            echo '```'
+            printf '%s\n' "${SUM:-bench job $BENCH; no output}"
+            echo '```'
+            echo "Full log: ${LOGP:-not uploaded}. Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          } > body.md
+          sh scripts/swarm/forge.sh comment "${{ needs.dispatch.outputs.issue }}" body.md
