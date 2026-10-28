@@ -72,5 +72,6 @@ No familia FreeBSD Electron port is required for this track.
 - `scripts/hermes.sh`, `scripts/hermes_modes.py`, `scripts/hermes_harness.py`
 - [commands.md](commands.md) (Agents / hermes menu rows — CLI today; Desktop /
   Webapp menu rows deferred so Continuity’s front door is not collided)
+- [packaging/README.md](../packaging/README.md) (familia AppImage ≠ Hermes Desktop; FreeBSD port notes)
 - [appimage.md](appimage.md), [escalation.md](escalation.md)
 - Issue [#142](https://github.com/brianreborn/familia/issues/142)

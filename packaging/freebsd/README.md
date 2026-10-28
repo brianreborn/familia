@@ -38,3 +38,18 @@ optionally misc/llama-cpp, www/aria2, graphics/vulkan-loader) automatically.
 - LICENSE value (set as UNKNOWN pending review).
 - rc.d pidfile/daemon behaviour; whether start.sh's subproject fetches (git
   clone at runtime) are acceptable in a port or need a separate flavor.
+
+## Hermes clients on FreeBSD (ordinary port notes)
+
+This port ships **familia**, not Hermes Desktop. Native Hermes Desktop (Electron)
+targets macOS / Windows / Linux — no familia FreeBSD Electron port is required.
+
+On FreeBSD, treat Hermes as an ordinary frontend client:
+
+- **CLI** — install/resolve `hermes-agent` (ports / `HERMES_BIN`); launch via
+  `scripts/hermes.sh` (default `--client cli`).
+- **Webapp** — when the installed Hermes build provides `webapp`, use
+  `scripts/hermes.sh --client webapp` and open the one-use browser link
+  (upstream documents BSD/illumos link-file behaviour).
+
+Details: [`docs/hermes-clients.md`](../../docs/hermes-clients.md).
