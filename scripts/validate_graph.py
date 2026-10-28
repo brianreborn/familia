@@ -491,13 +491,22 @@ def parse_argv(argv):
 def main(argv):
     o = parse_argv(argv)
     path = o["graph"]
-    try: graph = load(path); graph["_path"] = path
+    try:
+        raw_text = open(path, encoding="utf-8").read()
+        graph = load(path); graph["_path"] = path
     except yaml.YAMLError as e:
         print(f"graph: ERROR: {e}", file=sys.stderr); return 1
+    except OSError as e:
+        print(f"graph: ERROR: {e}", file=sys.stderr); return 1
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import hosts_overlay
+    # Privacy lint runs on the tracked file *before* overlay merge (#104).
+    privacy_errs = hosts_overlay.privacy_lint_graph(graph, path_label=path, raw_text=raw_text)
+    hosts_overlay.merge_connection_overlay(graph, graph_path=path)
     if o["host"] and o["host"] not in graph.get("hosts", {}):
         print(f"graph: ERROR: no host {o['host']!r}", file=sys.stderr); return 1
     errs, totals = validate(graph, check_files=not o["no_files"], host=o["host"])
-    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    errs = list(privacy_errs) + list(errs)
     from transport_graph import validate_transports
     errs += validate_transports(graph)  # meshes: (ssh nexus / bittorrent), #22
     if o["check_swap"]:

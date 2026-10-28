@@ -34,7 +34,7 @@ Other hosts are reached in this order:
    `enabled`, `local`. Hosts that are not in the graph can be added here as well.
 2. An `~/.ssh/config` alias with the graph host's name (`Host phone7` … `HostName`/`User`/`Port`).
 3. Nothing else by default. Addresses in `graph.yaml` are only used if you set `"allow_graph_addr": true`,
-   because connection details belong in private config.
+   because connection details belong in private config. The same rule applies to `graph.yaml` hosts themselves (#104): real `addr`/`user` live in `hosts.local.yaml` (see `docs/hosts-overlay.md`), not in the tracked graph.
 
 A host with no transport is listed as `no transport` and never contacted.
 

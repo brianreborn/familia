@@ -134,6 +134,8 @@ familia: graph check failed
 
 ## Editing the graph
 
+**Connection privacy (#104):** tracked `graph.yaml` keeps `hosts.*.addr`/`user` and `meshes.*.bind` as placeholders. Real LAN details live in the hosts overlay — [hosts-overlay.md](hosts-overlay.md).
+
 **Private topologies (design law):** node type/role implies capability; placement is `host:`. Prefer `python3 scripts/generate_graph.py HOST` (type-named nodes in `generated/graph-HOST.yaml`) and `modify_graph.py --host HOST --assign-model coder=<models-key>`. Host-prefixed fleet keys (`angel-coder`, …) are transitional — see LESSONS-LEARNED `L-node-type`.
 
 Edit `graph.yaml` by hand, or use `scripts/generate_graph.py HOST` / `scripts/modify_graph.py` for scripted per-host changes, then validate. A visual editor and natural-language configuration are future ideas, not planned yet; if they come, they must produce a declaration that goes through the same validation.

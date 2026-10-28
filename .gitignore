@@ -26,3 +26,7 @@ gpu-legacy/*.log
 # Milestone AppImage build outputs (rebuild with scripts/build_appimage.sh)
 dist/*.AppImage
 dist/*.AppDir.tar.gz
+
+# Local connection overlay (#104) — never commit real addr/user/port
+/hosts.local.yaml
+/graph.local.yaml

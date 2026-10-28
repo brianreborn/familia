@@ -166,6 +166,7 @@ ENV = [
     ("FAMILIA_NO_TTY", "1 makes the menu behave as if there were no terminal (print the items, exit 2)."),
     ("FAMILIA_MENU_PIPE", "1 lets menus read choices from a pipe."),
     ("FAMILIA_GRAPH", "Graph file to use instead of graph.yaml, where the script supports it."),
+    ("FAMILIA_HOSTS_OVERLAY", "Path to hosts.local.yaml connection overlay (#104); default ~/.config/familia/hosts.local.yaml."),
     ("PYTHON", "Python interpreter (default python3)."),
     ("PAGER", "Pager for the quick start and other text (default more)."),
     ("HF_TOKEN", "Hugging Face token for gated models. Read from the environment only; never printed or written to logs."),
