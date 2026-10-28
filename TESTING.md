@@ -12,9 +12,9 @@ download, and support a dry run. Details and flags: [docs/install.md](docs/insta
 
 | Platform | One click | Dry run |
 |---|---|---|
-| Desktop Linux (Ubuntu/Debian, also macOS, untested on a Mac) | `curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install/linux/install.sh \| sh` | add `-s -- --dry-run` |
+| Desktop Linux (Ubuntu/Debian, also macOS, untested on a Mac) | `curl -fsSLo install-familia-node.sh https://raw.githubusercontent.com/brianreborn/familia/main/install/linux/install.sh; sh ./install-familia-node.sh` | add `--dry-run` |
 | Windows 10/11 | double-click `install\windows\install.bat` (or `powershell -ExecutionPolicy Bypass -File install\windows\install.ps1`) | `-DryRun` |
-| Android (Termux from F-Droid/GitHub) | `curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install/termux/install.sh \| sh` | add `-s -- --dry-run` |
+| Android (Termux from F-Droid/GitHub) | `curl -fsSLo install-familia-termux.sh https://raw.githubusercontent.com/brianreborn/familia/main/install/termux/install.sh; sh ./install-familia-termux.sh` | add `--dry-run` |
 
 Each installer clones the repo, fetches a llama.cpp CPU runtime (ggml-org release with the
 sha256 checked at install time; Termux uses `pkg install llama-cpp`), measures the host and

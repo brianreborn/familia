@@ -311,7 +311,7 @@ In the graph it is one implementation of `chat`. A document is still a `path=` (
 
 A platform is not supported until the same two clicks install it on an old device and a current one.
 
-The first click is the install command: `curl | sh` or `irm | iex`. The Windows script stays PowerShell 5.1. The unpacked tree must run with no ZFS, no GPU, and no new runtime. `VARIANT=cpu` and file snapshots are that path. ZFS, Vulkan, NFS, and a tracker are upgrades the graph offers when the hooks exist.
+The first click is the install command: download the script to a named file, then run it (`curl -fsSLo install-familia.sh URL; sh ./install-familia.sh`, or the PowerShell `Invoke-WebRequest -OutFile` then `& .\install.ps1` equivalent). The Windows script stays PowerShell 5.1. The unpacked tree must run with no ZFS, no GPU, and no new runtime. `VARIANT=cpu` and file snapshots are that path. ZFS, Vulkan, NFS, and a tracker are upgrades the graph offers when the hooks exist.
 
 The second click is the donation-ware tap-through. A terminal asks for one word. A phone asks for one tap. The install does not continue until that answer. Paying is not required, and the notice cannot be skipped. There is no third question.
 

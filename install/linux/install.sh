@@ -1,7 +1,7 @@
 #!/bin/sh
 # familia one-click installer: desktop Linux (Ubuntu/Debian and similar) and macOS.
 # Usage: sh install/linux/install.sh [flags]   (flags below)
-#   curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install/linux/install.sh | sh
+#   curl -fsSLo install-familia-node.sh https://raw.githubusercontent.com/brianreborn/familia/main/install/linux/install.sh; sh ./install-familia-node.sh
 # No sudo. Everything goes under ~/.local (override with FAMILIA_PREFIX).
 # Flags: --dry-run  print every action, change nothing
 #        --uninstall remove what this script installed (models dir kept unless --purge)
@@ -75,7 +75,7 @@ if [ "$(id -u)" = 0 ]; then
         ans=""; read -r ans || ans=""
         case "$ans" in [Yy][Ee][Ss]) say "continuing as root" ;; *) die "not confirmed; aborting (nothing was changed)" ;; esac
       else
-        die "running as root needs an attestation; to attest, run: FAMILIA_ALLOW_ROOT=yes sh install/linux/install.sh${ORIG_ARGS:+ $ORIG_ARGS}  (or pass --allow-root or --yes)"
+        die "running as root needs an attestation; to attest, run: FAMILIA_ALLOW_ROOT=yes sh $0${ORIG_ARGS:+ $ORIG_ARGS}  (or pass --allow-root or --yes)"
       fi ;;
   esac
 fi
@@ -276,6 +276,7 @@ else
 : "\${FAMILIA_MODEL:?set FAMILIA_MODEL to a GGUF path or a name in $PREFIX/models}"
 M="\$FAMILIA_MODEL"; [ -f "\$M" ] || M="$PREFIX/models/\$FAMILIA_MODEL"
 B="$PREFIX/runtime/current/llama-server"; [ -x "\$B" ] || B="$PREFIX/runtime/current/build/bin/llama-server"
+echo "familia-start: logs: this terminal (stdout/stderr; under systemd: journalctl --user -u familia-node)" >&2
 exec "\$B" -m "\$M" --host "\${FAMILIA_BIND:-127.0.0.1}" --port "\${FAMILIA_PORT:-9941}" -c "\${FAMILIA_CTX:-4096}" \${FAMILIA_EXTRA:-}
 EOS
   chmod +x "$LAUNCH"
@@ -295,7 +296,7 @@ MemoryHigh=80%
 [Install]
 WantedBy=default.target
 EOS
-    say "wrote $UNIT; put FAMILIA_MODEL=... in ~/.config/familia/node.env, then: systemctl --user enable --now familia-node"
+    say "wrote $UNIT; put FAMILIA_MODEL=... in ~/.config/familia/node.env, then: systemctl --user enable --now familia-node (logs: journalctl --user -u familia-node)"
   fi
 fi
 # 5. `familia` on PATH: a 2-line shim in $BIN_DIR that runs $PREFIX/repo/familia (docs/install.md)

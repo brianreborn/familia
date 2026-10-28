@@ -137,6 +137,7 @@ start_bootstrap() {
     printf 'proto-chat: PREFETCHING ORDNANCE (models) in background…\n' >&2
     sh "$ROOT/scripts/prefetch-first-models.sh" --background >/dev/null 2>&1 || true
   fi
+  printf 'proto-chat: logs: %s\n' "$ROOT/.cache/proto-bootstrap.log" >&2
   ( cd "$ROOT" && nohup sh ./start.sh --bootstrap >"$ROOT/.cache/proto-bootstrap.log" 2>&1 & echo $! >"$ROOT/.cache/proto-bootstrap.pid" ) || true
     BOOT_PID=$(cat "$ROOT/.cache/proto-bootstrap.pid" 2>/dev/null || true)
     return 0
@@ -144,6 +145,7 @@ start_bootstrap() {
   if [ -n "$BACKEND" ]; then
     say "starting code-bootstraps at $BACKEND …"
     mkdir -p "$ROOT/.cache"
+    printf 'proto-chat: logs: %s\n' "$ROOT/.cache/proto-bootstrap.log" >&2
     ( cd "$(dirname "$BACKEND")" && nohup sh "$(basename "$BACKEND")" >"$ROOT/.cache/proto-bootstrap.log" 2>&1 & echo $! >"$ROOT/.cache/proto-bootstrap.pid" ) || true
     BOOT_PID=$(cat "$ROOT/.cache/proto-bootstrap.pid" 2>/dev/null || true)
   else

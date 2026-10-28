@@ -118,7 +118,7 @@ if [ "$DRY" = 1 ]; then
   exit 0
 fi
 
-# Non-interactive by default when gum is missing (install.sh --yes / curl|sh).
+# Non-interactive by default when gum is missing (install.sh --yes / a downloaded installer run without a terminal).
 # Only ask when a TTY is present and --yes was not passed.
 if [ "$YES" != 1 ] && [ -r /dev/tty ] && [ -t 0 ]; then
   printf 'install-gum: gum (Charm) missing; download %s into %s now? [Y/n] ' "$ASSET" "$DEST" >&2

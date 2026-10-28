@@ -3,7 +3,7 @@
 # Usage: sh install/termux/install.sh [flags]   (flags below)
 # Add-ons must match Termux's signing key: with Termux from GitHub releases, get Termux:API from
 #   https://github.com/termux/termux-api/releases (the termux-api pkg alone is not enough; termux-battery-status hangs).
-#   curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install/termux/install.sh | sh
+#   curl -fsSLo install-familia-termux.sh https://raw.githubusercontent.com/brianreborn/familia/main/install/termux/install.sh; sh ./install-familia-termux.sh
 # Runtime comes from Termux's own `llama-cpp` package (pkg verifies package
 # signatures/hashes), so no unverified binary is downloaded here.
 # Flags: --dry-run  --uninstall [--purge]  --name NAME  --sshd (install+start openssh)
@@ -205,6 +205,7 @@ else
 : "\${FAMILIA_MODEL:?set FAMILIA_MODEL to a GGUF path or a name in $PREFIX_DIR/models}"
 M="\$FAMILIA_MODEL"; [ -f "\$M" ] || M="$PREFIX_DIR/models/\$FAMILIA_MODEL"
 command -v termux-wake-lock >/dev/null 2>&1 && termux-wake-lock
+echo "familia-start: logs: this terminal (stdout/stderr)" >&2
 VK="$VKDIR"; NGL="\${FAMILIA_NGL:-0}"
 if [ -e /system/lib64/libvulkan.so ]; then
   mkdir -p "\$VK"

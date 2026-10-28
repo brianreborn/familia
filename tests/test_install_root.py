@@ -54,7 +54,7 @@ def test_root_non_interactive_refused_with_one_line_attestation(tmp_path):
     r = _run(tmp_path, 0)
     assert r.returncode != 0
     assert "warning: do not run as root" in r.stderr
-    assert "FAMILIA_ALLOW_ROOT=yes sh install/linux/install.sh --uninstall --dry-run" in r.stderr
+    assert f"FAMILIA_ALLOW_ROOT=yes sh {INSTALL} --uninstall --dry-run" in r.stderr
     assert "uninstalled" not in r.stderr
 
 
