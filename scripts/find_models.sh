@@ -63,7 +63,7 @@ confirm() {
 # Ensure protomodel tip is available (best-effort; never a gate).
 if command -v curl >/dev/null 2>&1; then
   if ! curl -sf --connect-timeout 1 http://127.0.0.1:8080/v1/models >/dev/null 2>&1 \
-     && ! { python3 "$ROOT/scripts/familia_auth.py" curl-config 2>/dev/null; } | curl -sf -K - --connect-timeout 1 http://127.0.0.1:9931/v1/models >/dev/null 2>&1; then
+     && { rc=0; python3 "$ROOT/scripts/familia_auth.py" probe >/dev/null || rc=$?; [ "$rc" != 4 ] || say "the :9931 server rejects our API key (see above); not starting another one"; [ "$rc" = 3 ]; }; then
     say "protomodel not up yet — starting chat helper in background (optional)…"
     sh "$ROOT/scripts/proto_chat.sh" --no-start >/dev/null 2>&1 || true
     # Don't block on start; fetch works without the chat server.
