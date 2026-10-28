@@ -42,7 +42,8 @@ The earlier 2.2× gain was full-file echo edits only.
 |------|--------|
 | `server_env` empty VK devices | `scripts/validate_graph.py` |
 | CPU prefer + `--no-op-offload` | `scripts/miryam_perf_seatbelts.py` → `server_args` |
-| `check_soname_skew` | Race stub → Platform `refuse_soname_skew` if importable; else skip+note. Called from `start_graph.validate_local_nodes` when `check_files` |
+| `check_soname_skew` | Soft→hard Race refuse: Platform `refuse_soname_skew` `{ok:false}` hard-refuses; ImportError soft-skips. `start_graph` / `serve.sh` / `harness2` |
+| `capture_spawn_fingerprint` + `assert_fingerprint_stable` | Race TOCTOU: capture after first refuse; re-stat `fingerprint(bin)` late before Popen/exec; compare `bin` + `libs[]` `ino`/`mtime_ns`/`size`/`dev` directly (no `fingerprints_equal`); refuse `soname_fingerprint_drift`. Platform SHA compose target: `e49bce1` |
 | Thread budget | Keep `with-host-lock` / fleet admission; soft note if CPU node `-t` > 4 beside same-host active Vulkan peer (resident 4 / sprint 6) |
 
 ## Deferred
@@ -50,4 +51,4 @@ The earlier 2.2× gain was full-file echo edits only.
 - Live miryam re-measure after merge (DETACH_MODE=screen-attached).
 - angel / fam-gpu CUDA path (Platform + measured NVIDIA).
 - Win CPU empty-env / PS 5.1.
-- Platform `refuse_soname_skew` implementation (Race only stubs `check_soname_skew`).
+- Live compose once Platform `refuse_soname_skew` (`e49bce1`) lands on main; Race already soft-imports.

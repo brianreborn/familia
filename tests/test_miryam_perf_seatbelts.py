@@ -2,6 +2,7 @@
 import copy
 import os
 import sys
+import types
 
 import pytest
 
@@ -111,3 +112,129 @@ def test_thread_oversubscribe_note_when_vulkan_peer_active():
     x["nodes"]["coder"]["threads"] = 8
     notes = mps.warn_thread_oversubscribe(x, "coder")
     assert any("Vulkan peer" in n for n in notes)
+
+
+def _install_fake_refuse(monkeypatch, *, refuse_result=None, fingerprint_fn=None):
+    """Inject a fake Platform refuse_soname_skew module into sys.modules."""
+    mod = types.ModuleType("refuse_soname_skew")
+    if refuse_result is None:
+        refuse_result = {"ok": True, "reason": "ok"}
+    if callable(refuse_result):
+        mod.refuse_soname_skew = refuse_result
+    else:
+        mod.refuse_soname_skew = lambda bin_path, **kw: refuse_result
+    if fingerprint_fn is None:
+        fingerprint_fn = lambda bin_path, **kw: {
+            "bin": {"path": bin_path, "ino": 1, "mtime_ns": 100, "size": 10, "dev": 1},
+            "libs": [],
+        }
+    mod.fingerprint = fingerprint_fn
+    monkeypatch.setitem(sys.modules, "refuse_soname_skew", mod)
+    return mod
+
+
+def test_check_soname_skew_hard_refuses_platform_dict(monkeypatch):
+    _install_fake_refuse(
+        monkeypatch,
+        refuse_result={"ok": False, "reason": "soname_skew", "mismatches": [{"soname": "libggml.so"}]},
+    )
+    notes = []
+    assert mps.check_soname_skew("/x/llama-server", note_sink=notes) is False
+    assert any("refused" in n for n in notes)
+
+
+def test_check_soname_skew_allows_platform_ok(monkeypatch):
+    _install_fake_refuse(monkeypatch, refuse_result={"ok": True, "reason": "ok"})
+    notes = []
+    assert mps.check_soname_skew("/x/llama-server", note_sink=notes) is True
+
+
+def test_assert_fingerprint_stable_refuses_lib_ino_drift(monkeypatch):
+    fps = [
+        {
+            "bin": {"path": "/x/llama-server", "ino": 1, "mtime_ns": 100, "size": 10, "dev": 1},
+            "libs": [
+                {"path": "/x/libggml.so", "ino": 2, "mtime_ns": 100, "size": 5, "dev": 1},
+            ],
+        },
+        {
+            "bin": {"path": "/x/llama-server", "ino": 1, "mtime_ns": 100, "size": 10, "dev": 1},
+            "libs": [
+                # attacker swapped the .so — same path, new inode
+                {"path": "/x/libggml.so", "ino": 99, "mtime_ns": 100, "size": 5, "dev": 1},
+            ],
+        },
+    ]
+
+    def fingerprint(bin_path, **kw):
+        return fps.pop(0)
+
+    _install_fake_refuse(monkeypatch, fingerprint_fn=fingerprint)
+    cap = mps.capture_spawn_fingerprint("/x/llama-server")
+    assert cap is not None
+    result = mps.assert_fingerprint_stable("/x/llama-server", cap)
+    assert result["ok"] is False
+    assert result["reason"] == "soname_fingerprint_drift"
+    assert result["drift"]["lib"] == "/x/libggml.so"
+
+
+def test_assert_fingerprint_stable_refuses_bin_mtime_drift(monkeypatch):
+    fps = [
+        {
+            "bin": {"path": "/x/llama-server", "ino": 1, "mtime_ns": 100, "size": 10, "dev": 1},
+            "libs": [],
+        },
+        {
+            "bin": {"path": "/x/llama-server", "ino": 1, "mtime_ns": 999, "size": 10, "dev": 1},
+            "libs": [],
+        },
+    ]
+
+    def fingerprint(bin_path, **kw):
+        return fps.pop(0)
+
+    _install_fake_refuse(monkeypatch, fingerprint_fn=fingerprint)
+    cap = mps.capture_spawn_fingerprint("/x/llama-server")
+    result = mps.assert_fingerprint_stable("/x/llama-server", cap)
+    assert result["ok"] is False
+    assert result["reason"] == "soname_fingerprint_drift"
+    assert "bin" in result["drift"]
+
+
+def test_assert_fingerprint_stable_allows_stable(monkeypatch):
+    stable_fp = {
+        "bin": {"path": "/x/llama-server", "ino": 1, "mtime_ns": 100, "size": 10, "dev": 1},
+        "libs": [
+            {"path": "/x/libllama.so", "ino": 3, "mtime_ns": 50, "size": 20, "dev": 1},
+        ],
+    }
+
+    def fingerprint(bin_path, **kw):
+        return {
+            "bin": dict(stable_fp["bin"]),
+            "libs": [dict(stable_fp["libs"][0])],
+        }
+
+    _install_fake_refuse(monkeypatch, fingerprint_fn=fingerprint)
+    cap = mps.capture_spawn_fingerprint("/x/llama-server")
+    result = mps.assert_fingerprint_stable("/x/llama-server", cap)
+    assert result["ok"] is True
+    assert result["reason"] == "ok"
+
+
+def test_assert_fingerprint_stable_skips_without_platform():
+    notes = []
+    # Ensure Platform module is not importable for this test.
+    sys.modules.pop("refuse_soname_skew", None)
+    result = mps.assert_fingerprint_stable("/x/llama-server", {"bin": {}}, note_sink=notes)
+    assert result["ok"] is True
+    assert result["reason"] == "skipped_no_platform"
+    assert any("not importable" in n for n in notes)
+
+
+def test_assert_fingerprint_stable_skips_without_prior_capture(monkeypatch):
+    _install_fake_refuse(monkeypatch)
+    notes = []
+    result = mps.assert_fingerprint_stable("/x/llama-server", None, note_sink=notes)
+    assert result["ok"] is True
+    assert result["reason"] == "skipped_no_prior_capture"
