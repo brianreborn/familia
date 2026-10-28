@@ -6,6 +6,18 @@ pipes a small read-only probe (`scripts/monitor/probe.py`, or `probe.ps1` on Win
 `ssh HOST python3 -` and reads back one JSON object. Nothing is installed on the remote, and no new
 port is opened anywhere. There is no HTTP dashboard.
 
+## Offline improve (disconnected hosts)
+
+When this host cannot reach fleet peers over SSH, run a bounded local perf cycle
+instead of idling — see [offline-improve.md](./offline-improve.md):
+
+```sh
+python3 scripts/offline_improve.py --check-only
+python3 scripts/offline_improve.py --loop
+```
+
+Optional: `./familia-monitor --watch-deaths --on-death 'python3 scripts/offline_improve.py --once'`.
+
 ## Quickstart
 
 ```sh

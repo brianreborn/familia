@@ -125,6 +125,24 @@ hosts:
       Software VVRAM: load_mode mmap (see install-notes/vvram-ssd/LAYER.md). FreeBSD
       nvso scaffold in gpu-legacy/nvso (stubs; not required for Nanbeige). Do not
       co-start angel-coder and angel-chat.'
+  macmini:
+    kind: desktop
+    measured: true
+    os: linux
+    cpu: Intel(R) Core(TM) i5-4308U CPU @ 2.80GHz
+    threads: 4
+    ram_mib: 7300
+    reserve_ram_mib: 3072
+    local_names:
+    - green-Macmini7-1
+    - macmini
+    gpus: null
+    notes: 'Ubuntu ZFS box: rpool ~920G root, spool ~98G mounted at /SSD (79G free
+      2026-10-27). Repo at /SSD/Shared/green/familia (symlink ~/familia). Spill dirs:
+      ~/.cache/familia/spill/macmini-{coder,chat}. Good mmap/SSD spill host for 64k
+      ctx (docs/vvram-ssd). IGP: lspci 00:02.0 Haswell-ULT; prefer CPU until Vulkan
+      measured (miryam HD620 was slower than CPU on SmolLM2). Do not co-start heavy
+      coder+chat without checking MemAvailable.'
   centos10-bigram:
     kind: desktop
     measured: true
@@ -686,11 +704,11 @@ gateways:
     host: angel
     port: 18080
 aliases:
-  chat:
-    node: chat
-    gateway: local
   coder:
     node: coder
+    gateway: local
+  chat:
+    node: chat
     gateway: local
   guardian:
     node: guardian
@@ -712,6 +730,23 @@ agents:
     - green-format
     - green-deploy
     - etioz
+  hermes-lab:
+    kind: hermes-agent
+    host: angel
+    min_ctx: 64000
+    context_length: 65536
+    aliases:
+      main: coder
+      auxiliary: coder
+  pentest-ops:
+    kind: hermes-agent
+    host: angel
+    prompt_profile: lean
+    min_ctx: 8192
+    context_length: 8192
+    aliases:
+      main: guardian
+      auxiliary: guardian
 fleets:
   green-agentz:
     repo: brianreborn/green-agentz
@@ -964,6 +999,7 @@ options:
 harnesses:
   hermes-lab:
     kind: files
+    agent: hermes-lab
     root: ~/.cache/familia/hermes-hermes-lab
     prompt: SOUL.md
     skills: skills
