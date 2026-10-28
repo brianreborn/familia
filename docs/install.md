@@ -21,9 +21,9 @@ build the pinned llama.cpp checkout from source as described above.
 | Platform | One click | Installs to |
 |---|---|---|
 | Windows 10/11 | double-click `install\windows\install.bat` (or `powershell -ExecutionPolicy Bypass -File install\windows\install.ps1`) | `%LOCALAPPDATA%\familia`; models on `E:\temp\familia\models` when `E:\temp` exists |
-| Desktop Linux (Ubuntu/Debian…) and macOS | `curl -fsSLo install-familia-node.sh https://raw.githubusercontent.com/brianreborn/familia/main/install/linux/install.sh; sh ./install-familia-node.sh` | `~/.local/share/familia`, launcher `~/.local/bin/familia-start` |
+| Desktop Linux (Ubuntu/Debian…) and macOS | `curl -fsSLo install-familia-node.sh https://raw.githubusercontent.com/brianreborn/familia/main/install/linux/install.sh && sh ./install-familia-node.sh` | `~/.local/share/familia`, launcher `~/.local/bin/familia-start` |
 | Desktop Linux **AppImage** (milestone) | download `familia-*-x86_64.AppImage`, double-click (see [appimage.md](./appimage.md)) | writable checkout `~/.local/share/familia/appimage-checkout`; terminal menu |
-| Android (Termux from F-Droid/GitHub) | `curl -fsSLo install-familia-termux.sh https://raw.githubusercontent.com/brianreborn/familia/main/install/termux/install.sh; sh ./install-familia-termux.sh` | `~/familia`, launcher `$PREFIX/bin/familia-start` |
+| Android (Termux from F-Droid/GitHub) | `curl -fsSLo install-familia-termux.sh https://raw.githubusercontent.com/brianreborn/familia/main/install/termux/install.sh && sh ./install-familia-termux.sh` | `~/familia`, launcher `$PREFIX/bin/familia-start` |
 
 macOS uses the Linux script (README lists macOS as supported); it has been
 syntax-checked but **not run on a Mac**.
