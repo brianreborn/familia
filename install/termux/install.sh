@@ -3,7 +3,8 @@
 # Usage: sh install/termux/install.sh [flags]   (flags below)
 # Add-ons must match Termux's signing key: with Termux from GitHub releases, get Termux:API from
 #   https://github.com/termux/termux-api/releases (the termux-api pkg alone is not enough; termux-battery-status hangs).
-#   curl -fsSLo install-familia-termux.sh https://raw.githubusercontent.com/brianreborn/familia/main/install/termux/install.sh; sh ./install-familia-termux.sh
+#   curl -fsSLo install-familia-termux.sh https://raw.githubusercontent.com/brianreborn/familia/main/install/termux/install.sh && \
+#     sh ./install-familia-termux.sh
 # Runtime comes from Termux's own `llama-cpp` package (pkg verifies package
 # signatures/hashes), so no unverified binary is downloaded here.
 # Flags: --dry-run  --uninstall [--purge]  --name NAME  --sshd (install+start openssh)

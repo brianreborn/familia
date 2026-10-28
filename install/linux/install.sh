@@ -1,7 +1,8 @@
 #!/bin/sh
 # familia one-click installer: desktop Linux (Ubuntu/Debian and similar) and macOS.
 # Usage: sh install/linux/install.sh [flags]   (flags below)
-#   curl -fsSLo install-familia-node.sh https://raw.githubusercontent.com/brianreborn/familia/main/install/linux/install.sh; sh ./install-familia-node.sh
+#   curl -fsSLo install-familia-node.sh https://raw.githubusercontent.com/brianreborn/familia/main/install/linux/install.sh && \
+#     sh ./install-familia-node.sh
 # No sudo. Everything goes under ~/.local (override with FAMILIA_PREFIX).
 # Flags: --dry-run  print every action, change nothing
 #        --uninstall remove what this script installed (models dir kept unless --purge)

@@ -1,0 +1,396 @@
+{
+ "schema": 2,
+ "id": "mradermacher--Dolphin3.0-Llama3.1-8B-abliterated-GGUF--Dolphin3.0-Llama3.1-8B-abliterated.Q2_K",
+ "repo": "mradermacher/Dolphin3.0-Llama3.1-8B-abliterated-GGUF",
+ "revision": "a58298bb7ca5393024d1844e97cc5e078bb002c1",
+ "file": "Dolphin3.0-Llama3.1-8B-abliterated.Q2_K.gguf",
+ "sha256": "966de37829dbfc8472bc3730623a1deea0285ece32f295e5070feab179cbe9a2",
+ "bytes": 3179142048,
+ "quant": "Q2_K",
+ "arch": "llama",
+ "roles": [
+  "pentest"
+ ],
+ "license": "llama3.1",
+ "license_source": "mradermacher/Dolphin3.0-Llama3.1-8B-abliterated-GGUF card license",
+ "ctx": 131072,
+ "ctx_source": "GGUF llama.context_length",
+ "card_ctx": null,
+ "card_ctx_source": null,
+ "base_model": "huihui-ai/Dolphin3.0-Llama3.1-8B-abliterated",
+ "base_revision": null,
+ "card_defaults": null,
+ "card_defaults_source": null,
+ "card_default_set": null,
+ "card_defaults_how": "the card and generation_config.json state no sampling values",
+ "card_sampling_modes": null,
+ "card_default_mode": null,
+ "card_default_mode_source": null,
+ "card_sampling_sets": null,
+ "card_commands": null,
+ "card_notes": null,
+ "chat_template": {
+  "gguf_sha256": "58c1a1f04baa7adaeaba1f90267c3d57d9396f0c1f0129bdde9e76d3c6784af7",
+  "gguf_chars": 291,
+  "use": "gguf"
+ },
+ "stop": {
+  "eos_token_id": 128256,
+  "eos_token_id_source": "GGUF"
+ },
+ "rope": {
+  "rope.freq_base": 500000.0
+ },
+ "aux": null,
+ "gguf": {
+  "general.architecture": "llama",
+  "general.name": "Dolphin3.0 Llama3.1 8B Abliterated",
+  "general.file_type": 10,
+  "general.quantization_version": 2,
+  "_gguf_version": 3
+ },
+ "snapshot": {
+  "path": "mradermacher--Dolphin3.0-Llama3.1-8B-abliterated-GGUF/a58298bb7ca5393024d1844e97cc5e078bb002c1",
+  "fetched_bytes": 6456,
+  "errors": null,
+  "gated": false
+ },
+ "base_snapshot": null,
+ "repo_files": {
+  ".gitattributes": {
+   "size": 2506,
+   "sha256": null,
+   "blob": "9f332db591dead792de474c9a9e95e244e85ad3e",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "Dolphin3.0-Llama3.1-8B-abliterated.IQ4_XS.gguf": {
+   "size": 4484375072,
+   "sha256": "94681a9ff3fb2cc803c268242bb00ef0ff3a5347b05df10f9be5250b6452f6a5",
+   "blob": "20d7a598b7bd02948ebb2ed53b9db435ee5e54c6",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (4484 MB)"
+  },
+  "Dolphin3.0-Llama3.1-8B-abliterated.Q2_K.gguf": {
+   "size": 3179142048,
+   "sha256": "966de37829dbfc8472bc3730623a1deea0285ece32f295e5070feab179cbe9a2",
+   "blob": "1e7ac6ff79cec97b0321581a6da49f9f502cd029",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (3179 MB)"
+  },
+  "Dolphin3.0-Llama3.1-8B-abliterated.Q3_K_L.gguf": {
+   "size": 4321967840,
+   "sha256": "edc6247836e4f7c0ee4a4801f9b42729bbec0803a68cb65b333abd191b117ef8",
+   "blob": "a4584050cd691bbcd9550f332011f1057d8dc98a",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (4321 MB)"
+  },
+  "Dolphin3.0-Llama3.1-8B-abliterated.Q3_K_M.gguf": {
+   "size": 4018929376,
+   "sha256": "befc01da1d12fef3330392435b349f5b06180db5e54d7aca073116f8473165df",
+   "blob": "3af6aa1b979b3e5485f953df6dc79b73be0ba522",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (4018 MB)"
+  },
+  "Dolphin3.0-Llama3.1-8B-abliterated.Q3_K_S.gguf": {
+   "size": 3664510688,
+   "sha256": "d8a8fbc59185aca47bab6711fbdfb0a1c97c5d954ec654bf5c7e428bc5df0f47",
+   "blob": "1687022c24a538ddf83e225804fc0ddccd034d8e",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (3664 MB)"
+  },
+  "Dolphin3.0-Llama3.1-8B-abliterated.Q4_K_M.gguf": {
+   "size": 4920746784,
+   "sha256": "66068764f4a5dcd25619357bd24f656509edb6371f5735c1b0df406280119c6a",
+   "blob": "f013ac70f33f7deb15c7f159e6e438e06654f485",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (4920 MB)"
+  },
+  "Dolphin3.0-Llama3.1-8B-abliterated.Q4_K_S.gguf": {
+   "size": 4692681504,
+   "sha256": "c4132e35ffdf7268cf99faa25436944f1dfa3764c5f828cce9d27270fba092d4",
+   "blob": "ad2e5db2de99808f52fe89b9e9f6187781e8fe0b",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (4692 MB)"
+  },
+  "Dolphin3.0-Llama3.1-8B-abliterated.Q5_K_M.gguf": {
+   "size": 5733000992,
+   "sha256": "efa036cf4dc977543284216e87c6d4cef37220664052769054303d02c7116a64",
+   "blob": "a37875b68cb4b274f3f67cbdc91a92c150229a11",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (5733 MB)"
+  },
+  "Dolphin3.0-Llama3.1-8B-abliterated.Q5_K_S.gguf": {
+   "size": 5599307552,
+   "sha256": "67ed7711fe378d2dfdd815436963784ab661d514e9a395cec6cdc8747898119b",
+   "blob": "bcdcaf968eeea01b96912a721e52330d3249dd5e",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (5599 MB)"
+  },
+  "Dolphin3.0-Llama3.1-8B-abliterated.Q6_K.gguf": {
+   "size": 6596021088,
+   "sha256": "1cc7550951e6974bc723f90fd9ce3b3136bae4f42e76710ec15ef28978f23659",
+   "blob": "29021a4c64a70b647e6fc657625fd4a49349ff0e",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (6596 MB)"
+  },
+  "Dolphin3.0-Llama3.1-8B-abliterated.Q8_0.gguf": {
+   "size": 8540789472,
+   "sha256": "1188246ef39df12c63d4b3ac096864dc671872de98f6fdd948de5329eb884ac1",
+   "blob": "716b95537fce1ca1403603de100d3b60f03f4a9e",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (8540 MB)"
+  },
+  "Dolphin3.0-Llama3.1-8B-abliterated.f16.gguf": {
+   "size": 16068925152,
+   "sha256": "fb201b1308b43f7cb4cbd9058c8c82e7ca6f293ffb458ae8aaa9c4fc9d123001",
+   "blob": "e3f9ab71c6e2e57fbd3734d33c355803ce67ba4b",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (16068 MB)"
+  },
+  "README.md": {
+   "size": 3950,
+   "sha256": null,
+   "blob": "46898b260c4dc28163bca4be223b06cb84668df0",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  }
+ },
+ "base_repo_files": null,
+ "found_in": [
+  "graph.yaml models.dolphin3-cyber-8b-q2k"
+ ],
+ "match": "unique filename match (sha256 not measured)",
+ "local_check": null,
+ "unknown": [
+  "card_defaults: the card and generation_config.json state no sampling values"
+ ],
+ "warnings": [
+  "base model huihui-ai/Dolphin3.0-Llama3.1-8B-abliterated: https://huggingface.co/api/models/huihui-ai/Dolphin3.0-Llama3.1-8B-abliterated/revision/main: HTTP 401 unauthorized (gated or private; set HF_TOKEN) {\"error\":\"Invalid username or password.\"}"
+ ],
+ "updated": "2026-10-28",
+ "by": "scripts/model_db.py",
+ "gguf_meta": {
+  "general.architecture": "llama",
+  "general.type": "model",
+  "general.name": "Dolphin3.0 Llama3.1 8B Abliterated",
+  "general.finetune": "abliterated",
+  "general.basename": "Dolphin3.0-Llama3.1",
+  "general.size_label": "8B",
+  "general.license": "llama3.1",
+  "general.base_model.count": 1,
+  "general.base_model.0.name": "Dolphin3.0 Llama3.1 8B",
+  "general.base_model.0.organization": "Cognitivecomputations",
+  "general.base_model.0.repo_url": "https://huggingface.co/cognitivecomputations/Dolphin3.0-Llama3.1-8B",
+  "general.tags": [
+   "abliterated",
+   "uncensored"
+  ],
+  "general.languages": [
+   "en"
+  ],
+  "llama.block_count": 32,
+  "llama.context_length": 131072,
+  "llama.embedding_length": 4096,
+  "llama.feed_forward_length": 14336,
+  "llama.attention.head_count": 32,
+  "llama.attention.head_count_kv": 8,
+  "llama.rope.freq_base": 500000.0,
+  "llama.attention.layer_norm_rms_epsilon": 9.999999747378752e-06,
+  "llama.attention.key_length": 128,
+  "llama.attention.value_length": 128,
+  "general.file_type": 10,
+  "llama.vocab_size": 128258,
+  "llama.rope.dimension_count": 128,
+  "tokenizer.ggml.model": "gpt2",
+  "tokenizer.ggml.pre": "llama-bpe",
+  "tokenizer.ggml.tokens": {
+   "array_len": 128258
+  },
+  "tokenizer.ggml.token_type": {
+   "array_len": 128258
+  },
+  "tokenizer.ggml.merges": {
+   "array_len": 280147
+  },
+  "tokenizer.ggml.bos_token_id": 128000,
+  "tokenizer.ggml.eos_token_id": 128256,
+  "tokenizer.ggml.padding_token_id": 128001,
+  "tokenizer.chat_template": {
+   "sha256": "58c1a1f04baa7adaeaba1f90267c3d57d9396f0c1f0129bdde9e76d3c6784af7",
+   "chars": 291
+  },
+  "general.quantization_version": 2,
+  "general.url": "https://huggingface.co/mradermacher/Dolphin3.0-Llama3.1-8B-abliterated-GGUF",
+  "mradermacher.quantize_version": "2",
+  "mradermacher.quantized_by": "mradermacher",
+  "mradermacher.quantized_at": "2025-01-08T21:12:26+01:00",
+  "mradermacher.quantized_on": "rich1",
+  "general.source.url": "https://huggingface.co/huihui-ai/Dolphin3.0-Llama3.1-8B-abliterated",
+  "mradermacher.convert_type": "hf",
+  "_gguf_version": 3,
+  "_n_tensors": 292
+ },
+ "base_chain": [
+  {
+   "repo": "huihui-ai/Dolphin3.0-Llama3.1-8B-abliterated",
+   "via": "card base_model",
+   "error": "https://huggingface.co/api/models/huihui-ai/Dolphin3.0-Llama3.1-8B-abliterated/revision/main: HTTP 401 unauthorized (gated or private; set HF_TOKEN) {\"error\":\"Invalid username or password.\"}"
+  }
+ ],
+ "github": null,
+ "github_dropped": null,
+ "descriptor": {
+  "repo_id": {
+   "effective": "mradermacher/Dolphin3.0-Llama3.1-8B-abliterated-GGUF",
+   "source": "HF API id"
+  },
+  "revision": {
+   "effective": "a58298bb7ca5393024d1844e97cc5e078bb002c1",
+   "source": "pinned (manifest / database)"
+  },
+  "file": {
+   "effective": "Dolphin3.0-Llama3.1-8B-abliterated.Q2_K.gguf",
+   "source": "HF API siblings"
+  },
+  "bytes": {
+   "effective": 3179142048,
+   "source": "HF API LFS size"
+  },
+  "sha256": {
+   "effective": "966de37829dbfc8472bc3730623a1deea0285ece32f295e5070feab179cbe9a2",
+   "source": "HF API LFS oid"
+  },
+  "quant": {
+   "effective": "Q2_K",
+   "source": "file name",
+   "values": [
+    {
+     "value": "Q2_K",
+     "source": "file name"
+    },
+    {
+     "value": "Q2_K",
+     "source": "GGUF general.file_type"
+    }
+   ]
+  },
+  "license": {
+   "effective": "llama3.1",
+   "source": "mradermacher/Dolphin3.0-Llama3.1-8B-abliterated-GGUF card license",
+   "values": [
+    {
+     "value": "llama3.1",
+     "source": "mradermacher/Dolphin3.0-Llama3.1-8B-abliterated-GGUF card license"
+    },
+    {
+     "value": "llama3.1",
+     "source": "GGUF general.license"
+    }
+   ]
+  },
+  "base_model_chain": {
+   "effective": "huihui-ai/Dolphin3.0-Llama3.1-8B-abliterated",
+   "source": "card base_model"
+  },
+  "gguf_base_model": {
+   "effective": {
+    "name": "Dolphin3.0 Llama3.1 8B",
+    "organization": "Cognitivecomputations",
+    "repo_url": "https://huggingface.co/cognitivecomputations/Dolphin3.0-Llama3.1-8B"
+   },
+   "source": "GGUF general.base_model.0"
+  },
+  "architecture": {
+   "effective": "llama",
+   "source": "GGUF general.architecture",
+   "values": [
+    {
+     "value": "llama",
+     "source": "GGUF general.architecture"
+    },
+    {
+     "value": "llama",
+     "source": "HF API gguf.architecture"
+    }
+   ]
+  },
+  "parameters": {
+   "effective": 8030277696,
+   "source": "HF API gguf.total (mradermacher/Dolphin3.0-Llama3.1-8B-abliterated-GGUF)"
+  },
+  "size_label": {
+   "effective": "8B",
+   "source": "GGUF general.size_label"
+  },
+  "ctx": {
+   "effective": 131072,
+   "source": "GGUF llama.context_length",
+   "precedence": "card statement > config.json > GGUF header > GitHub README"
+  },
+  "languages": {
+   "effective": [
+    "en"
+   ],
+   "source": "mradermacher/Dolphin3.0-Llama3.1-8B-abliterated-GGUF card language",
+   "values": [
+    {
+     "value": [
+      "en"
+     ],
+     "source": "mradermacher/Dolphin3.0-Llama3.1-8B-abliterated-GGUF card language"
+    },
+    {
+     "value": [
+      "en"
+     ],
+     "source": "GGUF general.languages"
+    }
+   ]
+  }
+ },
+ "required_params": {
+  "kind": "chat",
+  "native_ctx": 131072,
+  "native_ctx_source": "GGUF llama.context_length",
+  "yarn": null,
+  "yarn_source": null,
+  "items": [
+   {
+    "class": "REQUIRED",
+    "flag": "--jinja",
+    "value": null,
+    "source": "GGUF tokenizer.chat_template (58c1a1f04baa)",
+    "why_required": "messages, tool calls and thinking are formatted by the model's chat template; without --jinja llama-server falls back to a built-in approximation"
+   }
+  ]
+ },
+ "blockers": null,
+ "params_problems": null,
+ "params_build": "b11374",
+ "native_ctx": 131072,
+ "native_ctx_source": "GGUF llama.context_length",
+ "license_info": {
+  "id": "llama3.1",
+  "id_source": "mradermacher/Dolphin3.0-Llama3.1-8B-abliterated-GGUF card front matter license",
+  "name": null,
+  "summary": "llama3.1",
+  "summary_source": "mradermacher/Dolphin3.0-Llama3.1-8B-abliterated-GGUF card license",
+  "link": null,
+  "link_source": null,
+  "texts": null,
+  "obligations": null,
+  "gated": false,
+  "unknown": false,
+  "seen": [
+   {
+    "value": "llama3.1",
+    "source": "mradermacher/Dolphin3.0-Llama3.1-8B-abliterated-GGUF card license"
+   },
+   {
+    "value": "llama3.1",
+    "source": "GGUF general.license"
+   }
+  ]
+ }
+}

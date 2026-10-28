@@ -30,7 +30,8 @@ Everything else follows from that rule:
 ## Two clicks
 
 ```sh
-curl -fsSLo install-familia.sh https://raw.githubusercontent.com/brianreborn/familia/main/install.sh; sh ./install-familia.sh
+curl -fsSLo install-familia.sh https://raw.githubusercontent.com/brianreborn/familia/main/install.sh && \
+  sh ./install-familia.sh
 ```
 
 The first click runs the command. The second is a one-word acknowledgement of a voluntary contribution notice. Paying is never required. Then open `http://127.0.0.1:9931/?model=chat`, paste the API key from your terminal, and you're talking to `chat`. Code tasks hand off to `coder`, and a small resident `route` model dispatches between them.
