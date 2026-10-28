@@ -61,6 +61,7 @@ switch ($choice) {
       & bash "$root\scripts\proto_chat.sh"
     } else {
       Write-Host 'Start bootstrap: .\start.bat  then open http://127.0.0.1:9931/?model=chat'
+      Write-Host 'The :9931 server requires this instance API key (%APPDATA%\familia\instances\9931\api-keys); see docs\api-key-design.md.'
       Write-Host 'Or install Git Bash / WSL and re-run Talk to the protomodel.'
     }
   }

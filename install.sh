@@ -10,6 +10,7 @@ install.sh: Install familia into ~/familia (or $INSTALL_PREFIX), sync the pinned
 Usage:
   sh install.sh [--dry-run] [--yes] [--no-start] [--no-path] [--branch BRANCH]
     --dry-run   say what would happen; change nothing
+    --auto-deps install missing OS packages after one confirmation (AUTO_DEPS=1); without it the exact command is printed
     --yes       non-interactive: acknowledge the notice and accept licenses (the summary is still printed)
     --no-start  stop after setup (same as INSTALL_NO_START=1)
     --no-path   do not put `familia` on PATH (default: 2-line shim ~/.local/bin/familia; scripts/install-cli.sh)
@@ -32,6 +33,7 @@ while [ $# -gt 0 ]; do
     --dry-run|-n) DRY=1 ;;
     --branch) [ $# -ge 2 ] || die "--branch needs a branch name"; shift; BRANCH=$1 ;;
     --yes|-y) INSTALL_ACK=yes; FAMILIA_ACCEPT_LICENSES=yes; export INSTALL_ACK FAMILIA_ACCEPT_LICENSES ;;
+    --auto-deps) AUTO_DEPS=1; export AUTO_DEPS ;;
     --accept-unknown) FAMILIA_ACCEPT_UNKNOWN_LICENSES=yes; export FAMILIA_ACCEPT_UNKNOWN_LICENSES ;;
     --no-start) INSTALL_NO_START=1 ;;
     --no-path) INSTALL_NO_PATH=1 ;;
@@ -109,9 +111,12 @@ if [ -f "$PREFIX/install/deps.sh" ]; then
   if sh "$PREFIX/install/deps.sh" >/dev/null 2>&1; then
     echo "install.sh: preliminary OS packages look present" >&2
   else
-    echo "install.sh: preliminary stock missing; running install/deps.sh --install…" >&2
+    echo "install.sh: preliminary OS packages missing" >&2
     if [ "${INSTALL_ACK:-}" = yes ] || [ "${FAMILIA_ACCEPT_LICENSES:-}" = yes ]; then
       sh "$PREFIX/install/deps.sh" --install --yes || die "deps install failed; see docs/safe-mode-bootstrap.md"
+    elif [ "${AUTO_DEPS:-0}" != 1 ]; then
+      sh "$PREFIX/install/deps.sh" || true
+      die "install the packages with the command above, or re-run with --auto-deps (or AUTO_DEPS=1) to install them after one confirmation"
     else
       sh "$PREFIX/install/deps.sh" --install || die "deps install failed or declined; see: sh $PREFIX/install/deps.sh --help"
     fi
@@ -134,6 +139,9 @@ fi
 # Licenses before anything is fetched or run (docs/licenses.md).
 command -v python3 >/dev/null 2>&1 || die "python3 is required (Debian/Ubuntu: sudo apt install python3; Termux: pkg install python; or: sh $PREFIX/install/deps.sh --install)."
 python3 "$PREFIX/scripts/licenses.py" gate || die "licenses not accepted; stopped before fetching anything. Review: python3 $PREFIX/scripts/licenses.py review (or re-run with --yes, plus --accept-unknown for unknown licenses)"
+# Accepted once for this run: start.sh and anything it runs reuse that answer (the summary
+# is still printed if the selection grows after the pinned parts are fetched).
+FAMILIA_ACCEPT_LICENSES=yes; FAMILIA_ACCEPT_UNKNOWN_LICENSES=yes; export FAMILIA_ACCEPT_LICENSES FAMILIA_ACCEPT_UNKNOWN_LICENSES
 
 # Run configuration shell (syncs every pin in pins.txt together).
 # A leftover empty gitlink dir for a pin (from an old .gitmodules) used to stop

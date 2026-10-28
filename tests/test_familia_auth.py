@@ -2,6 +2,7 @@ import os, sys, threading, json, subprocess
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 import familia_auth as FA
+import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -152,3 +153,73 @@ def test_key_for_url_uses_the_urls_port(tmp_path):
     assert FA.key_for_url("http://localhost:9931", env=env) == "k-default"
     env["FAMILIA_API_KEY"] = "explicit"
     assert FA.key_for_url("http://127.0.0.1:45109", env=env) == "explicit"
+
+
+# --- combined key fix: persistence across restart + nested forwarding -------------------------
+
+def _clean_env(tmp_path, **extra):
+    e = {"XDG_CONFIG_HOME": str(tmp_path / "cfg"), "HOME": str(tmp_path / "home"), "FAMILIA_PORT": "9931"}
+    e.update(extra)
+    return e
+
+
+
+
+
+
+def test_harness2_chat_sends_key_and_fails_closed(tmp_path, monkeypatch):
+    import sys, json
+    sys.path.insert(0, os.path.join(FA.ROOT, "scripts"))
+    import harness2_local as L
+    seen = []
+
+    class R:
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def read(self): return json.dumps({"choices": [{"message": {"content": "ok"}}]}).encode()
+
+    def fake_open(req, timeout=None):
+        seen.append(req.get_header("Authorization"))
+        return R()
+    monkeypatch.setattr(L.urllib.request, "urlopen", fake_open)
+    monkeypatch.setattr(L.json, "load", lambda r: json.loads(r.read()))
+    monkeypatch.setenv("FAMILIA_API_KEY", "nested-k")
+    chat = L.make_chat("http://127.0.0.1:9931/v1", "m")
+    for _ in range(3):  # recursive engine calls chat() repeatedly
+        assert chat([{"role": "user", "content": "x"}])[0] == "ok"
+    assert seen == ["Bearer nested-k"] * 3
+    for n in ("FAMILIA_API_KEY", "LLAMA_API_KEY", "API_KEY_FILE"):
+        monkeypatch.delenv(n, raising=False)
+    monkeypatch.setattr(FA, "candidate_key_files", lambda *a, **k: [])
+    monkeypatch.setattr(FA, "instance_key_file", lambda *a, **k: str(tmp_path / "none"))
+    with pytest.raises(FA.MissingKey):
+        chat([{"role": "user", "content": "x"}])
+
+
+def test_instance_key_persists_0600_across_restart(tmp_path):
+    """existing load_or_create_key_file: created once, 0600, same key after a restart."""
+    import importlib, stat
+    env = _clean_env(tmp_path)
+    path = FA.instance_key_file(env=env)
+    k1 = FA.load_or_create_key_file(path)
+    assert k1 and stat.S_IMODE(os.stat(path).st_mode) == 0o600
+    importlib.reload(FA)
+    assert FA.load_or_create_key_file(path) == k1 and FA.api_key(str(tmp_path), env) == k1
+
+
+def test_nested_children_inherit_key_via_env(tmp_path):
+    """plain env inheritance: parent -> child -> grandchild all resolve the same API_KEY_FILE key."""
+    f = tmp_path / "k"; f.write_text("# c\nnestedkey\n")
+    env = {k: v for k, v in os.environ.items() if k not in ("FAMILIA_API_KEY", "LLAMA_API_KEY")}
+    env.update(API_KEY_FILE=str(f), HOME=str(tmp_path))
+    scripts = os.path.join(FA.ROOT, "scripts")
+    code = ("import sys,subprocess; sys.path.insert(0,%r); import familia_auth as F;"
+            "d=int(sys.argv[1]); assert F.api_key()=='nestedkey', d;"
+            "sys.exit(subprocess.call([sys.executable,'-c',sys.argv[2],str(d-1),sys.argv[2]]) if d else 0)") % scripts
+    assert subprocess.run([sys.executable, "-c", code, "3", code], env=env).returncode == 0
+
+
+def test_with_fleet_hermes_has_key_precheck():
+    src = open(os.path.join(FA.ROOT, "with-fleet.sh")).read()
+    assert src.index("familia_auth.py\" has-key") < src.index('scripts/hermes.sh" --agent')
+

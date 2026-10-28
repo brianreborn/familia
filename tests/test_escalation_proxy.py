@@ -3,6 +3,15 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 import escalation_proxy as EP
 
+import pytest as _pytest
+
+
+@_pytest.fixture(autouse=True)
+def _instance_key(monkeypatch):
+    """The proxy fails closed without an instance key (familia_auth); give tests one."""
+    monkeypatch.setenv("FAMILIA_API_KEY", "test-instance-key")
+
+
 def mock(name, seen):
     class H(BaseHTTPRequestHandler):
         def log_message(self, *a): pass

@@ -145,9 +145,9 @@ if [ -z "$pkgs" ]; then
 fi
 
 case "$PM" in
-  apt) CMD="sudo apt-get install -y $pkgs" ;;
+  apt) CMD="sudo apt-get update && sudo apt-get install -y $pkgs" ;;
   dnf) CMD="sudo dnf install -y $pkgs" ;;
-  pacman) CMD="sudo pacman -S --needed --noconfirm $pkgs" ;;
+  pacman) CMD="sudo pacman -Sy --needed --noconfirm $pkgs" ;;
   zypper) CMD="sudo zypper install -y $pkgs" ;;
   brew) CMD="brew install $pkgs" ;;
   *) say "unknown package manager; install manually:$install_missing"; exit 1 ;;
@@ -164,7 +164,5 @@ if [ "$YES" != 1 ] && [ -r /dev/tty ]; then
   read -r ans < /dev/tty || ans=n
   case "$ans" in y|Y|yes) ;; *) say "aborted"; exit 1 ;; esac
 fi
-# shellcheck disable=SC2086
-set -- $CMD
-"$@"
+sh -c "$CMD"
 say "done"

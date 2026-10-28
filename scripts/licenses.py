@@ -105,7 +105,7 @@ def classify(lic):
     if re.search(r"\b(a?gpl|lgpl|mpl)", s):
         cat = worse("copyleft"); flags.append("copyleft")
     if cat == "permissive" and not re.search(r"\b(mit|apache|bsd|isc|0bsd|unlicense|zlib)", s):
-        return "unknown", ["unrecognized license"]
+        return "custom", ["unrecognized license: read the text", "not OSI-approved"]
     out = []
     for f in flags:
         if f not in out:
@@ -492,6 +492,11 @@ def do_review(items, digest, yes, unknown_ok, as_json):
         record(digest, items, unknown_ok, "--yes")
         sys.stderr.write("licenses: accepted (non-interactive). Stored in .cache/familia/license-acceptance.json\n")
         return 0
+    if has_unknown:
+        # One prompt for everything: a flashing warning, not a second phrase to type.
+        blink = "\033[5;1;31m" if sys.stderr.isatty() else ""
+        reset = "\033[0m" if blink else ""
+        sys.stderr.write(f"\n{blink}!!! WARNING: some licenses above are UNKNOWN. Check them by hand. !!!{reset}\n")
     ans = ask("\nType yes to accept these licenses, anything else to stop: ")
     if ans is None:
         sys.stderr.write("licenses: no terminal to ask on. Re-run with --yes to accept the list above"
@@ -500,11 +505,6 @@ def do_review(items, digest, yes, unknown_ok, as_json):
     if ans not in ("yes", "y"):
         sys.stderr.write("licenses: not accepted. Nothing was started. Change the selection (models or skills) or review again.\n")
         return 1
-    if has_unknown and not unknown_ok:
-        ans = ask("Some licenses are UNKNOWN. Type 'accept unknown' to accept them anyway: ")
-        if ans != "accept unknown":
-            sys.stderr.write("licenses: unknown licenses not accepted. Nothing was started.\n")
-            return 3
     record(digest, items, True if has_unknown else unknown_ok, "interactive")
     sys.stderr.write("licenses: accepted. You will be asked again only if the selection or its licenses change.\n")
     return 0
