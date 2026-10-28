@@ -18,7 +18,8 @@
   "commands": {
     "/run": {
       "suites": {
-        "e2e": "tests/e2e_user_journey.sh"
+        "e2e": "tests/e2e_user_journey.sh",
+        "bench": "scripts/swarm/bench.sh"
       },
       "workflow": "swarm-worker.yml",
       "owner_only": true

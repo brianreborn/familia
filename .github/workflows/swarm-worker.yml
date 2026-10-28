@@ -64,7 +64,7 @@ jobs:
             [ "${1:-}" = "/run" ] || { echo "not a command"; exit 1; }
             suite=${2:-e2e}; ref=${3:-main}; issue=$EV_ISSUE
           fi
-          case "$suite" in e2e) ;; *) echo "unknown suite $suite" >&2; exit 1 ;; esac
+          case "$suite" in e2e|bench) ;; *) echo "unknown suite $suite" >&2; exit 1 ;; esac
           case "$ref" in *[!A-Za-z0-9._/-]*) echo "bad ref" >&2; exit 1 ;; esac
           echo "issue=$issue" >> "$GITHUB_OUTPUT"
           echo "ref=$ref" >> "$GITHUB_OUTPUT"
@@ -100,10 +100,14 @@ jobs:
           h=$(hostname | cut -d. -f1); u=$(id -un)
           stamp="stamp v=1 host=$h user=$u uid=$(id -u) session=${XDG_SESSION_ID:-$(tty 2>/dev/null | tr -d ' ' || echo none)} pid=$$ node=$h-$u role=swarm-bench forge=github run=$GITHUB_RUN_ID"
           [ -n "$h" ] && [ -n "$u" ] || { echo "identity stamp unavailable" >&2; exit 1; }
-          if [ -x tests/e2e_user_journey.sh ] || [ -f tests/e2e_user_journey.sh ]; then
-            { echo "$stamp"; sh tests/e2e_user_journey.sh; } > "$log" 2>&1; rc=$?
+          case "${{ needs.dispatch.outputs.suite }}" in
+            bench) script=scripts/swarm/bench.sh ;;
+            *) script=tests/e2e_user_journey.sh ;;
+          esac
+          if [ -f "$script" ]; then
+            { echo "$stamp"; sh "$script"; } > "$log" 2>&1; rc=$?
           else
-            printf '%s\n%s\n' "$stamp" "tests/e2e_user_journey.sh not present on this ref" > "$log"; rc=78
+            printf '%s\n%s\n' "$stamp" "$script not present on this ref" > "$log"; rc=78
           fi
           # Redact anything shaped like a key before it leaves the host (R5).
           sed -E -i 's/(api[_-]?key|token|authorization|bearer)([=: "]+)[^ "]+/\1\2[REDACTED]/Ig' "$log"
