@@ -37,7 +37,7 @@ if [ "${1:-}" != "--bootstrap" ]; then
   if [ "${FAMILIA_SINGLE_NODE:-1}" != 0 ] && [ -f "$ROOT/code-bootstraps-llama.cpp/start.sh" ]; then
     _rc=0; _probe=$(python3 "$GRAPH_START" --dry-run "$@" 2>&1) || _rc=$?
     case "$_rc:$_probe" in
-      3:*|*"is not declared in graph.yaml"*|*"nothing would start"*)
+      3:*|*"is not declared in graph.yaml"*|*"nothing would start"*|*"graph validation failed"*)
         say "this host has no familia topology yet; starting the single-node default (LFM3-1.7B-Uncensored via code-bootstraps-llama.cpp)"
         say "to join the fleet later: python3 scripts/host_measure.py --name NAME ... (see QUICKSTART.md)"
         exec sh "$ROOT/code-bootstraps-llama.cpp/start.sh" ;;

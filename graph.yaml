@@ -303,6 +303,16 @@ runtimes:
     backends: [cpu, vulkan]
     spec_types: [draft-simple, ngram-simple, ngram-map-k, ngram-map-k4v, ngram-mod, ngram-cache]
 
+  llama-b11944:
+    kind: llama-server
+    build: b11944 (code-bootstraps pin; config/llama-release.json + llama-pin.env)
+    commit: 1b4554eff124a8f0033bc09b3f708a5e51cbda15
+    bin: code-bootstraps-llama.cpp/bin/llama-b11944-linux-x64-cpu/llama-server
+    hosts: [miryam]
+    supported_archs: [qwen35, gemma-embedding2, llama, lfm2, lfm3, qwen2, gemma2, gemma3, nanbeige]
+    backends: [cpu, vulkan]
+    spec_types: [draft-simple, ngram-simple, ngram-map-k, ngram-map-k4v, ngram-mod, ngram-cache]
+
   llama-b11669:
     kind: llama-server
     build: b11669 (llama.cpp 0.7.0)
@@ -587,7 +597,7 @@ nodes:
     model: qwen35-2b-q4km
     role: coder
     host: miryam
-    runtime: llama-b11669
+    runtime: llama-b11944
     ctx: 65536                   # total; per-slot = ctx / parallel
     override_reasons:            # model card / model-database deviations (#51)
       ctx: "miryam has 7270 MiB with a 3072 MiB reserve: at 262144 the q8_0 KV is ~1650 MiB and cache_ram must cover a slot's prompt state (~1650 MiB), about 2.4 GiB more than at 65536 (426 MiB KV); 65536 meets hermes min_ctx 64000"
@@ -607,7 +617,7 @@ nodes:
     model: egemma2-q8
     role: embed
     host: miryam
-    runtime: llama-b11669
+    runtime: llama-b11944
     ctx: 8192
     parallel: 1
     kv_type: f16
@@ -748,7 +758,7 @@ nodes:
     model: dolphin3-cyber-8b-q2k
     role: guardian              # public type; model catalog role remains pentest (synonym)
     host: miryam
-    runtime: llama-b11669
+    runtime: llama-b11944
     ctx: 8192
     parallel: 1
     kv_type: q8_0
