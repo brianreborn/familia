@@ -15,7 +15,10 @@ The key is never generated here; serve.sh creates it once and reuses it.
 CLI:  python3 scripts/familia_auth.py curl-config   -> 'header = "Authorization: Bearer ..."' for curl -K -
       python3 scripts/familia_auth.py has-key       -> exit 0 when a key is found
 """
+import hashlib
+import hmac
 import os
+import secrets
 import sys
 import urllib.request
 
@@ -66,7 +69,52 @@ def api_key(root=ROOT, env=None):
     return ""
 
 
-def auth_headers(headers=None, key=None, incoming=None):
+class MissingKey(RuntimeError):
+    """No key to send. Callers fail closed instead of sending an unauthenticated request."""
+
+
+def fingerprint(key):
+    """Safe-to-log identifier: first 8 hex of sha256. Never log the key itself."""
+    return "sha256:" + hashlib.sha256(key.encode()).hexdigest()[:8] if key else "none"
+
+
+def keys_match(given, expected):
+    """Constant time, no length short-circuit (compare fixed-size digests)."""
+    a = hashlib.sha256((given or "").encode()).digest()
+    b = hashlib.sha256((expected or "").encode()).digest()
+    return hmac.compare_digest(a, b) and bool(expected)
+
+
+def load_or_create_key_file(path):
+    """Return the instance key at path; create it ONLY if missing.
+
+    First write is atomic and 0600: write a private temp file in the same dir, then link()
+    it into place, which fails if another starter won the race; then everyone reads the
+    winner's key. An existing key is never rotated."""
+    k = _read(path)
+    if k:
+        return k
+    d = os.path.dirname(path) or "."
+    os.makedirs(d, mode=0o700, exist_ok=True)
+    tmp = os.path.join(d, ".api-keys.%d.%s" % (os.getpid(), secrets.token_hex(4)))
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write("# llama-server API key(s), one per line\n" + secrets.token_hex(24) + "\n")
+            f.flush(); os.fsync(f.fileno())
+        try:
+            os.link(tmp, path)
+        except FileExistsError:
+            pass
+    finally:
+        os.unlink(tmp)
+    k = _read(path)
+    if not k:
+        raise MissingKey("key file %s is empty" % path)
+    return k
+
+
+def auth_headers(headers=None, key=None, incoming=None, required=False):
     """Return headers with Authorization set.
 
     incoming: headers of a request we are forwarding; its Authorization/X-Api-Key wins so a
@@ -83,6 +131,8 @@ def auth_headers(headers=None, key=None, incoming=None):
     k = api_key() if key is None else key
     if k:
         h["Authorization"] = "Bearer " + k
+    elif required:
+        raise MissingKey("no API key for this familia instance (set FAMILIA_API_KEY or API_KEY_FILE)")
     return h
 
 
@@ -98,7 +148,14 @@ def open_url(url, data=None, headers=None, method=None, timeout=10, incoming=Non
 def main(argv):
     cmd = argv[1] if len(argv) > 1 else "has-key"
     k = api_key()
+    if cmd == "fingerprint":
+        print(fingerprint(k))
+        return 0 if k else 1
     if cmd == "curl-config":
+        # stdout is meant for a pipe into `curl -K -` (keeps the key out of argv); refuse a tty
+        if sys.stdout.isatty():
+            print("familia_auth: curl-config writes the key; pipe it into curl -K -", file=sys.stderr)
+            return 2
         if k:
             print('header = "Authorization: Bearer %s"' % k)
         return 0

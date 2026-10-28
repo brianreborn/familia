@@ -36,8 +36,6 @@ sys.path.insert(0, os.path.join(ROOT, "scripts"))
 import validate_graph as vg  # noqa: E402
 import oom_adj  # noqa: E402
 import familia_auth  # noqa: E402
-if familia_auth.api_key():
-    os.environ.setdefault("FAMILIA_API_KEY", familia_auth.api_key())
 
 # Default Linux snap layout (kept when /snap/bin/hermes-agent exists).
 SNAP_BIN = "/snap/bin/hermes-agent"
@@ -709,7 +707,7 @@ from agent.context_compressor import ContextCompressor
 spec = json.load(sys.stdin)
 cc = ContextCompressor(model=spec["alias"], threshold_percent=0.75, protect_first_n=1,
                        protect_last_n=2, summary_target_ratio=spec["target_ratio"], quiet_mode=True,
-                       base_url=spec["base"], api_key=os.environ.get("FAMILIA_API_KEY") or "local", config_context_length=spec["ctx"],
+                       base_url=spec["base"], api_key=spec.get("api_key") or "local", config_context_length=spec["ctx"],
                        provider="custom")
 out = cc.compress(spec["messages"], force=True)
 json.dump({"messages": out}, sys.stdout)
@@ -733,7 +731,8 @@ def selftest(g, agent):
     msgs += [{"role": "user", "content": "Thanks. Keep them in mind."},
              {"role": "assistant", "content": "Will do."}]
     # Tail budget scales with the window; a tiny target_ratio keeps it below the transcript.
-    spec = {"alias": alias, "base": base, "ctx": ctx, "target_ratio": 0.02, "messages": msgs}
+    spec = {"alias": alias, "base": base, "ctx": ctx, "target_ratio": 0.02, "messages": msgs,
+            "api_key": familia_auth.api_key()}  # via stdin, not env/argv
     env = hermes_child_env({"HERMES_HOME": home, "HERMES_SP": HERMES_SP})
     t0 = time.time()
     r = subprocess.run([HERMES_PY, "-c", SELFTEST_CHILD], input=json.dumps(spec), capture_output=True,

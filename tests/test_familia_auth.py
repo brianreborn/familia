@@ -72,3 +72,28 @@ def test_no_bare_9931_callers():
                 if re.search(r"curl[^\n]*:9931", line) and "familia_auth" not in line:
                     bad.append(f"{p}:{i}")
     assert not bad, bad
+
+
+def test_load_or_create_persists_0600(tmp_path):
+    p = str(tmp_path / ".secrets" / "api-keys")
+    k1 = FA.load_or_create_key_file(p)
+    assert oct(os.stat(p).st_mode & 0o777) == "0o600"
+    assert FA.load_or_create_key_file(p) == k1          # never regenerated
+    assert [f for f in os.listdir(os.path.dirname(p)) if f.startswith(".api-keys.")] == []
+
+
+def test_concurrent_first_start_one_key(tmp_path):
+    p = str(tmp_path / "api-keys")
+    out = []
+    ts = [threading.Thread(target=lambda: out.append(FA.load_or_create_key_file(p))) for _ in range(8)]
+    [t.start() for t in ts]; [t.join() for t in ts]
+    assert len(set(out)) == 1
+
+
+def test_fail_closed_and_fingerprint():
+    import pytest
+    with pytest.raises(FA.MissingKey):
+        FA.auth_headers({}, key="", required=True)
+    fp = FA.fingerprint("abc")
+    assert fp.startswith("sha256:") and "abc" not in fp
+    assert FA.keys_match("k", "k") and not FA.keys_match("k", "kk") and not FA.keys_match("", "")
