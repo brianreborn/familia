@@ -60,5 +60,8 @@ After `generate_graph.py angel`, nodes are type-named (`coder` / `chat`). Offlin
 improve does not start Nanbeige; it only benches a small GGUF so a disconnected
 angel still gathers useful thread/RAM numbers until miryam/box answer SSH again.
 
-See also: [vvram-ssd/ANGEL-OPERATOR.md](./vvram-ssd/ANGEL-OPERATOR.md),
+See also: [reconnect-selfheal.md](./reconnect-selfheal.md) (issue #149 — online-ish
+probe + exponential reconnect + seatbelted self-repair; **no models** on the probe
+path; reuses this module's fleet SSH + backoff),
+[vvram-ssd/ANGEL-OPERATOR.md](./vvram-ssd/ANGEL-OPERATOR.md),
 [monitoring.md](./monitoring.md), [perf/config-search-plan.md](./perf/config-search-plan.md).
