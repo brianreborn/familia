@@ -68,7 +68,7 @@ The conductor dispatches; it does not implement, build or sign. Dispatch is not 
 hosted `dispatch` job, then self-hosted `bench` job, then hosted `report` job.
 The forge is the event bus: the runner long-polls; nobody polls a host. Triggers: owner
 comment `/run e2e [ref]` or `workflow_dispatch`. Loop guard: bots never issue commands
-(japanglify `loops.md`). Rule: **one runner per host:user node** (replaces japanglify's
+(japanglify `loops.md`). Rule: **one runner per host:user node**. Hosted jobs follow R9 (replaces japanglify's
 one-runner-per-host).
 
 ## R5 Results and logs — G
@@ -107,6 +107,30 @@ A per-user supervisor keeps the listener up; the Grok CLI is not the supervisor.
 FreeBSD: workers `cap_enter` with the workspace as root. Linux/Termux: **gap**. Interim
 isolation is the per-user node itself (a dedicated Unix user); bubblewrap is the
 candidate.
+
+
+## R9 Trivial hosted jobs and security domains (HARD) — N
+
+Forge-hosted jobs MUST be trivial. They may only update issue records (comments,
+labels, state) and send messages (dispatch the worker, notify). No building, testing,
+synthesis, analysis or LLM calls in a hosted job. When more is needed, the hosted job
+only triggers the responsible component. The `report` job posts the worker-produced
+summary as is; it does not compute or interpret it.
+
+An external program may run only inside one of these domains, consistent with the
+pqfreebsd roles (R1):
+
+| Domain | Identity | Allowed | May hold | Trust boundary |
+|---|---|---|---|---|
+| D1 Forge-hosted trivial jobs | `github-actions[bot]` / forge bot (role watchdog, plus dispatch/report) | parse an owner command, comment, label, read runner/run status, start the self-hosted job | `GITHUB_TOKEN` (issues write, actions read); optional `SWARM_ADMIN_TOKEN` (runners read) | no checkout of untested code into execution; no secrets beyond these; never reads worker logs |
+| D2 Conductor | Grok Bot issue watcher (swarm-conductor, high integrity) | read issues/PRs, propose assignments, post `/run` commands as the owner-approved actor, comment | Grok Bot's forge connector only | never builds, tests, holds host keys, touches devices or merges |
+| D3 Worker node | one Unix user on one host (`<host>-<user>`, swarm-bench, low integrity) | check out the ref, build, test, run local familia models and agents, redact and upload its own log, produce the summary | runner credentials in `$HOME/actions-runner`; job `GITHUB_TOKEN`; `FAMILIA_PRIVATE_LOGS_TOKEN` (write familia-private only); its own instance API key, read on the host and never sent to the forge | no root; no other users' state; no merge; no release secrets |
+| D4 Root queue | root on that host, a human approving each script | run one approved, root-owned private copy | host root only | input is only a published script; worker cannot change bytes after claim; nothing runs unapproved |
+| D5 External programs on behalf | whatever program D3 or D4 launches (llama-server, test harness, forgejo-runner) | exactly what the launching domain may do | inherits a subset of the launcher's credentials, never more | runs as the launcher's identity; cannot start from D1 or D2 directly |
+
+Rules: D1 and D2 can only reach D3 through the forge (job queue or issue command). D3
+reaches D4 only through `queue-add.sh`. No domain passes a secret to a lower domain or to
+the forge.
 
 ## Per-OS differences
 

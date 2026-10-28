@@ -3,6 +3,7 @@
 # The report runs on ubuntu because a dead self-hosted runner cannot comment.
 # Trigger: an owner comment whose whole first line is `/run e2e` (optionally
 # `/run e2e <ref>`), or workflow_dispatch with an issue number.
+# R9: dispatch/report are trivial (parse, comment). All work runs in the bench job.
 # Forge calls go through scripts/swarm/forge.sh (R0, Forgejo-portable syntax).
 # Logs go to brianreborn/familia-private (secret FAMILIA_PRIVATE_LOGS_TOKEN), never to this repo.
 name: Swarm worker
@@ -139,6 +140,7 @@ jobs:
           SUM: ${{ needs.bench.outputs.summary }}
           LOGP: ${{ needs.bench.outputs.log }}
         run: |
+          # Post the worker-produced summary verbatim; no analysis here (R9).
           {
             echo "swarm-worker: **${ST:-$BENCH}** (\`${{ needs.dispatch.outputs.suite }}\` @ \`${{ needs.dispatch.outputs.ref }}\`)"
             echo
