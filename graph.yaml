@@ -869,6 +869,8 @@ gateways:
     kind: green-roomz
     host: miryam
     port: 9931
+    # :9931 requires the per-instance API key (docs/api-key-design.md). Never put the key in
+    # graph.yaml: callers resolve it via scripts/familia_auth.py (instance key file, 0600).
 
 
 aliases:
