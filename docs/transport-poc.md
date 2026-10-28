@@ -4,7 +4,7 @@ Refs #22 (C2C, stage 1: move llama.cpp slot-save KV files and model files betwee
 nodes), #5 (transports), DESIGN.md "Transports". The key names the object, the edge
 names how it moves, and the user picks the edge: nothing here auto-selects a
 transport. Both are declared in `graph.yaml` under `hosts:` and `meshes:` and
-checked by `scripts/validate_graph.py` (via `scripts/transport_graph.py`).
+checked by `scripts/validate_graph.py` (via `scripts/transport_graph.py`). Tracked `graph.yaml` keeps `REPLACE_ME` placeholders for `addr`/`user`/`bind`; merge real values from the hosts overlay (`docs/hosts-overlay.md`, #104).
 
 Naming: green-roomz calls the resident `route` model "the nexus" (DESIGN.md,
 green-roomz `policies/tool-router.md`). `lan-nexus` here is the *transport* hub that

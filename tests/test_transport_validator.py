@@ -9,7 +9,9 @@ print("ok  shipped graph.yaml meshes validate")
 cases = {
   "bind 0.0.0.0":      (lambda x: x["meshes"]["lan-bt"].__setitem__("bind", "0.0.0.0"), "must be a loopback or private LAN"),
   "public bind":       (lambda x: x["meshes"]["lan-bt"].__setitem__("bind", "8.8.8.8"), "must be a loopback or private LAN"),
-  "bind != tracker":  (lambda x: x["meshes"]["lan-bt"].__setitem__("bind", "192.168.1.99"), "!= tracker host addr"),
+  "bind != tracker":  (lambda x: (x["hosts"]["miryam"].__setitem__("addr", "192.168.1.9"),
+                                  x["meshes"]["lan-bt"].__setitem__("bind", "192.168.1.99")),
+                       "!= tracker host addr"),
   "not private":       (lambda x: x["meshes"]["lan-bt"].__setitem__("private", False), "private must be true"),
   "hostkey no":        (lambda x: x["meshes"]["lan-nexus"].__setitem__("host_key_policy", "no"), "never no"),
   "password on host":  (lambda x: x["hosts"]["phone7"].__setitem__("password", "x"), "'password' is not allowed"),

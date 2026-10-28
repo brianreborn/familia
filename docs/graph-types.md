@@ -187,7 +187,7 @@ searched and not found in the user's RTs.
 
 ## meshes (transport PoC, #22)
 
-Multi-member transports live in `meshes:` (`type: ssh` nexus hub or `type: bittorrent` private swarm, `members:` are host names). Point-to-point links stay in `transports:` (kind/from/to). Hosts that are mesh members must declare `addr`, `user` and `port`; passwords are never allowed. Detailed checks: `scripts/transport_graph.py`; see `docs/transport-poc.md`.
+Multi-member transports live in `meshes:` (`type: ssh` nexus hub or `type: bittorrent` private swarm, `members:` are host names). Point-to-point links stay in `transports:` (kind/from/to). Hosts that are mesh members must declare `addr`, `user` and `port` (placeholders `REPLACE_ME` in the tracked graph; real values come from the hosts overlay — `docs/hosts-overlay.md`, #104); passwords are never allowed. Detailed checks: `scripts/transport_graph.py`; see `docs/transport-poc.md`.
 
 ## Legacy SM11 (qodesh)
 

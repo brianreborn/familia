@@ -33,6 +33,12 @@ PINNED = "~/.local/share/familia/monitor-probe.py"
 STATE_DIR = os.path.expanduser(os.environ.get("XDG_STATE_HOME", "~/.local/state")) + "/familia"
 CONFIG = os.path.expanduser(os.environ.get("FAMILIA_MONITOR_CONFIG", "~/.config/familia/monitor.json"))
 
+try:
+    sys.path.insert(0, HERE)
+    import hosts_overlay
+except Exception:  # pragma: no cover
+    hosts_overlay = None
+
 
 # ---------------------------------------------------------------- graph + config
 
@@ -93,6 +99,12 @@ def ssh_alias_exists(name):
 def build_hosts(graph, cfg, only=None, alias_check=ssh_alias_exists, local_name=None):
     """Return {name: host-spec}. Specs never carry addresses into output; `dest` stays internal."""
     local_name = (local_name or socket.gethostname()).split(".")[0].lower()
+    # Merge #104 hosts.local.yaml so allow_graph_addr can resolve dest without tracked IPs.
+    if hosts_overlay is not None:
+        try:
+            hosts_overlay.merge_connection_overlay(graph, graph_path=graph.get("_path"))
+        except Exception:
+            pass
     over = cfg.get("hosts", {})
     names = list((graph.get("hosts") or {}).keys()) + [n for n in over if n not in (graph.get("hosts") or {})]
     nodes = graph.get("nodes") or {}
@@ -118,9 +130,12 @@ def build_hosts(graph, cfg, only=None, alias_check=ssh_alias_exists, local_name=
             spec["transport"], spec["dest"] = "ssh", o["ssh"]
         elif alias_check(n):
             spec["transport"], spec["dest"] = "ssh", n
-        elif gh.get("addr") and o.get("allow_graph_addr", cfg.get("allow_graph_addr", False)):
-            spec["transport"], spec["dest"] = "ssh-graph", "%s@%s" % (gh.get("user"), gh["addr"]) if gh.get("user") else gh["addr"]
-            if gh.get("port"):
+        elif gh.get("addr") and not (hosts_overlay and hosts_overlay.is_placeholder(gh.get("addr"))) and o.get("allow_graph_addr", cfg.get("allow_graph_addr", False)):
+            user = gh.get("user")
+            if hosts_overlay and hosts_overlay.is_placeholder(user):
+                user = None
+            spec["transport"], spec["dest"] = "ssh-graph", "%s@%s" % (user, gh["addr"]) if user else gh["addr"]
+            if gh.get("port") and not (hosts_overlay and hosts_overlay.is_placeholder(gh.get("port"))):
                 spec["ssh_opts"] += ["-p", str(gh["port"])]
         else:
             spec["transport"] = None

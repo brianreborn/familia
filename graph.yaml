@@ -6,14 +6,19 @@
 # Reported numbers go under `reported:` with a source; GPU vram_mib stays null
 # until `measured: true`.
 # Standing rule (2026-10-09 OOM): never aim for high RAM on small hosts — see docs/ram-safety.md.
+# Privacy (#104): hosts.*.addr/user and meshes.*.bind are placeholders in the
+# tracked file. Real connection details live in the untracked hosts overlay
+# (~/.config/familia/hosts.local.yaml or repo-root hosts.local.yaml). See
+# docs/hosts-overlay.md. History scrub of past commits is optional/out-of-scope.
 version: 2
 
 hosts:
   miryam:
     kind: laptop
     measured: true
-    addr: 192.168.1.9            # measured on miryam (wlp2s0); transport PoC #22
-    user: rcs
+    # Connection details live in hosts.local.yaml overlay (#104); never commit real addr/user.
+    addr: REPLACE_ME
+    user: REPLACE_ME
     port: 22
     os: linux
     cpu: Intel Core i5-7200U
@@ -40,8 +45,9 @@ hosts:
   qodesh:
     kind: desktop
     measured: true               # measured 2026-10-09 20:36 PT
-    addr: 192.168.1.2            # OpenSSH client only (no sshd, no rsync)
-    user: brian
+    # Connection details live in hosts.local.yaml overlay (#104); OpenSSH client only on this host.
+    addr: REPLACE_ME
+    user: REPLACE_ME
     port: 22
     os: windows
     cpu: AMD Athlon II X2 B24 (2 cores / 2 threads)
@@ -166,8 +172,9 @@ hosts:
   phone7:
     kind: phone
     measured: true               # measured 2026-10-09 ~22:50 PT over key-only SSH from qodesh
-    addr: 192.168.1.7            # Termux sshd, key-only
-    user: u0_a439
+    # Termux sshd, key-only. Real addr/user in hosts.local.yaml (#104).
+    addr: REPLACE_ME
+    user: REPLACE_ME
     port: 8022
     os: android-16
     cpu: 8 cores, ARMv8 (3x part 0xd80 Cortex-A520, 5x part 0xd81 Cortex-A720)
@@ -175,7 +182,7 @@ hosts:
     ram_mib: 7430                # MemTotal 7608348 kB
     reserve_ram_mib: 5120        # policy, not measured: Android + apps; MemAvailable was 2598 MiB at measurement. See docs/ram-safety.md
     notes: >-
-      Samsung Galaxy A57 (SM-A576U, a57xsq); SoC Samsung Exynos s5e8865 (ro.board.platform erd8865). SSH key-only u0_a439@192.168.1.7:8022.
+      Samsung Galaxy A57 (SM-A576U, a57xsq); SoC Samsung Exynos s5e8865 (ro.board.platform erd8865). SSH key-only (addr/user in hosts overlay #104).
       Termux, aarch64. $HOME: 224G, 86G used, 138G free. Termux pkgs: git, python, llama-cpp 0.5.0 (+opencl, vulkan backends), ollama 0.31.1 (+vulkan), rsync, python-torch/numpy/scipy, mesa-vulkan-icd-swrast.
       Two physical A57s on the LAN (distinct boot_id, same build fingerprint).
     gpus:
@@ -193,8 +200,9 @@ hosts:
   phone8:
     kind: phone
     measured: true               # measured 2026-10-09 ~22:50 PT over key-only SSH from qodesh
-    addr: 192.168.1.8            # Termux sshd, key-only
-    user: u0_a414
+    # Termux sshd, key-only. Real addr/user in hosts.local.yaml (#104).
+    addr: REPLACE_ME
+    user: REPLACE_ME
     port: 8022
     os: android-16
     cpu: 8 cores, ARMv8 (3x part 0xd80 Cortex-A520, 5x part 0xd81 Cortex-A720)
@@ -202,7 +210,7 @@ hosts:
     ram_mib: 7430                # MemTotal 7608348 kB
     reserve_ram_mib: 5120        # policy, not measured: Android + apps; MemAvailable was 2127 MiB at measurement. See docs/ram-safety.md
     notes: >-
-      Samsung Galaxy A57 (SM-A576U, a57xsq); SoC Samsung Exynos s5e8865 (ro.board.platform erd8865). SSH key-only u0_a414@192.168.1.8:8022.
+      Samsung Galaxy A57 (SM-A576U, a57xsq); SoC Samsung Exynos s5e8865 (ro.board.platform erd8865). SSH key-only (addr/user in hosts overlay #104).
       Termux, aarch64. $HOME: 224G, 50G used, 173G free. Termux pkgs: git, python only (no llama-cpp, no rsync).
       Two physical A57s on the LAN (distinct boot_id, same build fingerprint).
         2026-10-10: host key SHA256:r7Bm/uv3...fXc; anchor SmolLM2 Q4_0 ngl99 fa on = pp128 1476, tg64 100; sustained 5 min ~-12%; keep f16 KV.
@@ -264,7 +272,7 @@ meshes:
   lan-bt:
     type: bittorrent              # scripts/bt/; keys are magnet:<xt>:<path> (REQ-REPO-02)
     tracker: miryam
-    bind: 192.168.1.9             # LAN only; must match hosts.miryam.addr
+    bind: REPLACE_ME             # LAN only; filled from overlay / tracker host addr (#104)
     port: 6969
     private: true
     client: aria2c
