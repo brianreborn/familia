@@ -1,0 +1,1820 @@
+{
+ "schema": 2,
+ "id": "LiquidAI--LFM3-VL-2B-GGUF--LFM3-VL-2B-Q4_K_M",
+ "repo": "LiquidAI/LFM3-VL-2B-GGUF",
+ "revision": "128482707291d54bc44deb7f6f6bb113cf0cf14d",
+ "file": "LFM3-VL-2B-Q4_K_M.gguf",
+ "sha256": "56dac2e192ff0d9ab8507f4f1aeb4aed0463449bbbefaac79497f041c95f21eb",
+ "bytes": 1099627808,
+ "quant": "Q4_K_M",
+ "arch": "lfm3",
+ "roles": [
+  "chat",
+  "media"
+ ],
+ "license": "lfm1.0 (LICENSE)",
+ "license_source": "LiquidAI/LFM3-VL-2B-GGUF card license",
+ "ctx": 128000,
+ "ctx_source": "GGUF lfm3.context_length",
+ "card_ctx": null,
+ "card_ctx_source": null,
+ "base_model": "LiquidAI/LFM3-VL-2B",
+ "base_revision": "b22858a951448e978f8384983b2df77037346749",
+ "card_defaults": {
+  "temp": 0.1,
+  "top-p": 1.0,
+  "top-k": 50,
+  "min-p": 0.0,
+  "repeat-penalty": 1.1
+ },
+ "card_defaults_source": {
+  "temp": "LiquidAI/LFM3-VL-2B LiquidAI/LFM3-VL-2B README.md:L150",
+  "top-p": "LiquidAI/LFM3-VL-2B LiquidAI/LFM3-VL-2B README.md:L150",
+  "top-k": "LiquidAI/LFM3-VL-2B LiquidAI/LFM3-VL-2B README.md:L150",
+  "min-p": "LiquidAI/LFM3-VL-2B LiquidAI/LFM3-VL-2B README.md:L150",
+  "repeat-penalty": "LiquidAI/LFM3-VL-2B LiquidAI/LFM3-VL-2B README.md:L150"
+ },
+ "card_default_set": "Sampling parameters",
+ "card_defaults_how": "the card's only recommended set",
+ "card_sampling_modes": {
+  "Sampling parameters": {
+   "temp": 0.1,
+   "top-p": 1.0,
+   "top-k": 50,
+   "min-p": 0.0,
+   "repeat-penalty": 1.1
+  }
+ },
+ "card_default_mode": null,
+ "card_default_mode_source": null,
+ "card_sampling_sets": [
+  {
+   "label": "Sampling parameters",
+   "kind": "recommended",
+   "mode": null,
+   "params": {
+    "temp": 0.1,
+    "top-p": 1.0,
+    "top-k": 50,
+    "min-p": 0.0,
+    "repeat-penalty": 1.1
+   },
+   "source": "LiquidAI/LFM3-VL-2B README.md:L150"
+  },
+  {
+   "label": "Transformers quick start ( transformers =5.21.0",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 0.1,
+    "top-k": 50,
+    "repeat-penalty": 1.1
+   },
+   "source": "LiquidAI/LFM3-VL-2B README.md:L191"
+  },
+  {
+   "label": "From a terminal, start a web chat UI and an OpenAI-compatible API at http://localhost:8080 . With -hf , llama.cpp downloads the model and the matching vision pr",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 0.1,
+    "top-p": 1.0,
+    "top-k": 50,
+    "min-p": 0.0,
+    "repeat-penalty": 1.1
+   },
+   "source": "LiquidAI/LFM3-VL-2B README.md:L210"
+  },
+  {
+   "label": "Send an image-and-text request with the OpenAI client. Change base url to http://localhost:30000/v1 for SGLang, or http://localhost:8080/v1 for llama.cpp",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 0.1,
+    "top-k": 50,
+    "repeat-penalty": 1.1
+   },
+   "source": "LiquidAI/LFM3-VL-2B README.md:L261"
+  },
+  {
+   "label": "Start a web chat UI and an OpenAI-compatible API at http://localhost:8080",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 0.1,
+    "top-p": 1.0,
+    "top-k": 50,
+    "min-p": 0.0,
+    "repeat-penalty": 1.1
+   },
+   "source": "LiquidAI/LFM3-VL-2B-GGUF README.md:L67"
+  },
+  {
+   "label": "To ask one question about an image or a video from the command line",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 0.1,
+    "top-p": 1.0,
+    "top-k": 50,
+    "min-p": 0.0,
+    "repeat-penalty": 1.1
+   },
+   "source": "LiquidAI/LFM3-VL-2B-GGUF README.md:L79"
+  },
+  {
+   "label": "To ask one question about an image or a video from the command line",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 0.1,
+    "top-p": 1.0,
+    "top-k": 50,
+    "min-p": 0.0,
+    "repeat-penalty": 1.1
+   },
+   "source": "LiquidAI/LFM3-VL-2B-GGUF README.md:L84"
+  }
+ ],
+ "card_commands": [
+  {
+   "source": "LiquidAI/LFM3-VL-2B-GGUF README.md:L66-68",
+   "file": "README.md",
+   "lines": [
+    66,
+    68
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "llama serve -hf LiquidAI/LFM3-VL-2B-GGUF:Q4_0 \\\n  --temp 0.1 --top-p 1.0 --top-k 50 --min-p 0.0 --repeat-penalty 1.1 \\\n  --no-reasoning-preserve --port 8080",
+   "llama": [
+    {
+     "tool": "llama serve",
+     "raw": "llama serve -hf LiquidAI/LFM3-VL-2B-GGUF:Q4_0    --temp 0.1 --top-p 1.0 --top-k 50 --min-p 0.0 --repeat-penalty 1.1    --no-reasoning-preserve --port 8080",
+     "flags": [
+      {
+       "flag": "-hf",
+       "canonical": "--hf-repo",
+       "value": "LiquidAI/LFM3-VL-2B-GGUF:Q4_0",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--temp",
+       "canonical": "--temp",
+       "value": "0.1",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--top-p",
+       "canonical": "--top-p",
+       "value": "1.0",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--top-k",
+       "canonical": "--top-k",
+       "value": "50",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--min-p",
+       "canonical": "--min-p",
+       "value": "0.0",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--repeat-penalty",
+       "canonical": "--repeat-penalty",
+       "value": "1.1",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--no-reasoning-preserve",
+       "canonical": "--no-reasoning-preserve",
+       "value": null,
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--port",
+       "canonical": "--port",
+       "value": "8080",
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    }
+   ],
+   "doc": "card",
+   "doc_sha": "128482707291d54bc44deb7f6f6bb113cf0cf14d",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-VL-2B-GGUF README.md:L74-85",
+   "file": "README.md",
+   "lines": [
+    74,
+    85
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "curl -sL -o cat.jpg https://placecats.com/300/200\ncurl -sL -o reading.mp4 https://huggingface.co/datasets/raushan-testing-hf/videos-test/resolve/4cba700bd771f44d72b549253da025c32e944d42/sample_demo_1.mp4  # a child reading a book\n\nllama cli -hf LiquidAI/LFM3-VL-2B-GGUF:Q4_0 \\\n  --image cat.jpg -p \"Describe this image.\" \\\n  --temp 0.1 --top-p 1.0 --top-k 50 --min-p 0.0 --repeat-penalty 1.1 \\\n  --no-reasoning-preserve\n\nllama cli -hf LiquidAI/LFM3-VL-2B-GGUF:Q4_0 \\\n  --video reading.mp4 -p \"What is the child doing in this video?\" \\\n  --temp 0.1 --top-p 1.0 --top-k 50 --min-p 0.0 --repeat-penalty 1.1 \\\n  --no-reasoning-preserve",
+   "llama": [
+    {
+     "tool": "llama cli",
+     "raw": "llama cli -hf LiquidAI/LFM3-VL-2B-GGUF:Q4_0    --image cat.jpg -p \"Describe this image.\"    --temp 0.1 --top-p 1.0 --top-k 50 --min-p 0.0 --repeat-penalty 1.1    --no-reasoning-preserve",
+     "flags": [
+      {
+       "flag": "-hf",
+       "canonical": "--hf-repo",
+       "value": "LiquidAI/LFM3-VL-2B-GGUF:Q4_0",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--image",
+       "canonical": "--image",
+       "value": "cat.jpg",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-p",
+       "canonical": "--prompt",
+       "value": "Describe this image.",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--temp",
+       "canonical": "--temp",
+       "value": "0.1",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--top-p",
+       "canonical": "--top-p",
+       "value": "1.0",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--top-k",
+       "canonical": "--top-k",
+       "value": "50",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--min-p",
+       "canonical": "--min-p",
+       "value": "0.0",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--repeat-penalty",
+       "canonical": "--repeat-penalty",
+       "value": "1.1",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--no-reasoning-preserve",
+       "canonical": "--no-reasoning-preserve",
+       "value": null,
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    },
+    {
+     "tool": "llama cli",
+     "raw": "llama cli -hf LiquidAI/LFM3-VL-2B-GGUF:Q4_0    --video reading.mp4 -p \"What is the child doing in this video?\"    --temp 0.1 --top-p 1.0 --top-k 50 --min-p 0.0 --repeat-penalty 1.1    --no-reasoning-preserve",
+     "flags": [
+      {
+       "flag": "-hf",
+       "canonical": "--hf-repo",
+       "value": "LiquidAI/LFM3-VL-2B-GGUF:Q4_0",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--video",
+       "canonical": "--image",
+       "value": "reading.mp4",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-p",
+       "canonical": "--prompt",
+       "value": "What is the child doing in this video?",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--temp",
+       "canonical": "--temp",
+       "value": "0.1",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--top-p",
+       "canonical": "--top-p",
+       "value": "1.0",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--top-k",
+       "canonical": "--top-k",
+       "value": "50",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--min-p",
+       "canonical": "--min-p",
+       "value": "0.0",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--repeat-penalty",
+       "canonical": "--repeat-penalty",
+       "value": "1.1",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--no-reasoning-preserve",
+       "canonical": "--no-reasoning-preserve",
+       "value": null,
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    }
+   ],
+   "doc": "card",
+   "doc_sha": "128482707291d54bc44deb7f6f6bb113cf0cf14d",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-VL-2B README.md:L155-155",
+   "file": "README.md",
+   "lines": [
+    155,
+    155
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install \"transformers>=5.21.0\" torch torchvision pillow",
+   "doc": "base-card",
+   "doc_sha": "b22858a951448e978f8384983b2df77037346749",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-VL-2B README.md:L159-198",
+   "file": "README.md",
+   "lines": [
+    159,
+    198
+   ],
+   "lang": "python",
+   "tool": "transformers",
+   "kind": "code",
+   "text": "import torch\nfrom transformers import AutoModelForImageTextToText, AutoProcessor\n\nmodel_id = \"LiquidAI/LFM3-VL-2B\"\n\nmodel = AutoModelForImageTextToText.from_pretrained(\n    model_id, dtype=torch.bfloat16, device_map=\"auto\", trust_remote_code=True\n)\nprocessor = AutoProcessor.from_pretrained(model_id, trust_remote_code=True)\n\nmessages = [\n    {\n        \"role\": \"user\",\n        \"content\": [\n            {\"type\": \"image\", \"url\": \"https://placecats.com/300/200\"},\n            {\"type\": \"text\", \"text\": \"Describe this image.\"},\n        ],\n    }\n]\n\ninputs = processor.apply_chat_template(\n    messages,\n    add_generation_prompt=True,\n    tokenize=True,\n    return_dict=True,\n    return_tensors=\"pt\",\n).to(model.device)\n\nwith torch.inference_mode():\n    output_ids = model.generate(\n        **inputs,\n        do_sample=True,\n        temperature=0.1,\n        top_k=50,\n        repetition_penalty=1.1,\n        max_new_tokens=16384,  # generate() needs an explicit limit; reasoning can be long\n    )\n\ngenerated_ids = output_ids[:, inputs[\"input_ids\"].shape[1] :]\nprint(processor.batch_decode(generated_ids, skip_special_tokens=True)[0])",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--temp",
+      "value": "0.1",
+      "from": "temperature: 0.1"
+     },
+     {
+      "flag": "--top-k",
+      "value": "50",
+      "from": "top_k: 50"
+     },
+     {
+      "flag": "--repeat-penalty",
+      "value": "1.1",
+      "from": "repetition_penalty: 1.1"
+     },
+     {
+      "flag": "-n",
+      "value": "16384",
+      "from": "max_new_tokens: 16384"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "b22858a951448e978f8384983b2df77037346749",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-VL-2B README.md:L209-211",
+   "file": "README.md",
+   "lines": [
+    209,
+    211
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "llama serve -hf LiquidAI/LFM3-VL-2B-GGUF:Q4_0 \\\n  --temp 0.1 --top-p 1.0 --top-k 50 --min-p 0.0 --repeat-penalty 1.1 \\\n  --no-reasoning-preserve --port 8080",
+   "llama": [
+    {
+     "tool": "llama serve",
+     "raw": "llama serve -hf LiquidAI/LFM3-VL-2B-GGUF:Q4_0    --temp 0.1 --top-p 1.0 --top-k 50 --min-p 0.0 --repeat-penalty 1.1    --no-reasoning-preserve --port 8080",
+     "flags": [
+      {
+       "flag": "-hf",
+       "canonical": "--hf-repo",
+       "value": "LiquidAI/LFM3-VL-2B-GGUF:Q4_0",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--temp",
+       "canonical": "--temp",
+       "value": "0.1",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--top-p",
+       "canonical": "--top-p",
+       "value": "1.0",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--top-k",
+       "canonical": "--top-k",
+       "value": "50",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--min-p",
+       "canonical": "--min-p",
+       "value": "0.0",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--repeat-penalty",
+       "canonical": "--repeat-penalty",
+       "value": "1.1",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--no-reasoning-preserve",
+       "canonical": "--no-reasoning-preserve",
+       "value": null,
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--port",
+       "canonical": "--port",
+       "value": "8080",
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    }
+   ],
+   "doc": "base-card",
+   "doc_sha": "b22858a951448e978f8384983b2df77037346749",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-VL-2B README.md:L226-231",
+   "file": "README.md",
+   "lines": [
+    226,
+    231
+   ],
+   "lang": "bash",
+   "tool": "vllm",
+   "kind": "command",
+   "text": "vllm serve LiquidAI/LFM3-VL-2B \\\n  --reasoning-parser qwen3 \\\n  --enable-auto-tool-choice --tool-call-parser qwen3_coder \\\n  --chat-template-content-format openai \\\n  --structured-outputs-config '{\"backend\": \"xgrammar\", \"disable_any_whitespace\": true}' \\\n  --media-io-kwargs '{\"video\": {\"video_backend\": \"qwen3_vl\"}}'",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--reasoning-format",
+      "value": "deepseek",
+      "from": "--reasoning-parser qwen3"
+     },
+     {
+      "flag": "--jinja",
+      "value": null,
+      "from": "--enable-auto-tool-choice"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--chat-template-content-format openai",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--structured-outputs-config {\"backend\": \"xgrammar\", \"disable_any_whitespace\": true}",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--media-io-kwargs {\"video\": {\"video_backend\": \"qwen3_vl\"}}",
+      "why": "no llama.cpp mapping known"
+     }
+    ]
+   },
+   "doc": "base-card",
+   "doc_sha": "b22858a951448e978f8384983b2df77037346749",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-VL-2B README.md:L237-240",
+   "file": "README.md",
+   "lines": [
+    237,
+    240
+   ],
+   "lang": "bash",
+   "tool": "sglang",
+   "kind": "command",
+   "text": "sglang serve --model-path LiquidAI/LFM3-VL-2B --trust-remote-code \\\n  --reasoning-parser auto \\\n  --tool-call-parser auto \\\n  --constrained-json-disable-any-whitespace",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--reasoning-format",
+      "value": "deepseek",
+      "from": "--reasoning-parser auto"
+     },
+     {
+      "flag": "--jinja",
+      "value": null,
+      "from": "--tool-call-parser auto"
+     }
+    ],
+    "untranslatable": [
+     {
+      "arg": "--model-path LiquidAI/LFM3-VL-2B",
+      "why": "the model is the GGUF file"
+     },
+     {
+      "arg": "--trust-remote-code",
+      "why": "n/a for GGUF"
+     },
+     {
+      "arg": "--constrained-json-disable-any-whitespace",
+      "why": "no llama.cpp mapping known"
+     }
+    ]
+   },
+   "doc": "base-card",
+   "doc_sha": "b22858a951448e978f8384983b2df77037346749",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-VL-2B README.md:L246-264",
+   "file": "README.md",
+   "lines": [
+    246,
+    264
+   ],
+   "lang": "python",
+   "tool": "openai-client",
+   "kind": "code",
+   "text": "from openai import OpenAI\n\nclient = OpenAI(base_url=\"http://localhost:8000/v1\", api_key=\"EMPTY\")\n\nresponse = client.chat.completions.create(\n    model=\"LiquidAI/LFM3-VL-2B\",\n    messages=[\n        {\n            \"role\": \"user\",\n            \"content\": [\n                {\"type\": \"image_url\", \"image_url\": {\"url\": \"https://placecats.com/300/200\"}},\n                {\"type\": \"text\", \"text\": \"Describe this image.\"},\n            ],\n        }\n    ],\n    temperature=0.1,\n    extra_body={\"top_k\": 50, \"repetition_penalty\": 1.1},\n)\nprint(response.choices[0].message.content)",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--top-k",
+      "value": "50",
+      "from": "top_k: 50"
+     },
+     {
+      "flag": "--repeat-penalty",
+      "value": "1.1",
+      "from": "repetition_penalty: 1.1"
+     },
+     {
+      "flag": "--temp",
+      "value": "0.1",
+      "from": "temperature: 0.1"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "b22858a951448e978f8384983b2df77037346749",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-VL-2B README.md:L275-280",
+   "file": "README.md",
+   "lines": [
+    275,
+    280
+   ],
+   "lang": "text",
+   "tool": "text",
+   "kind": "prompt-format",
+   "text": "<|startoftext|><|im_start|>system\nYou are a helpful assistant trained by Liquid AI.<|im_end|>\n<|im_start|>user\n<|vision_start|><|image|><|vision_end|>What species is in this picture?<|im_end|>\n<|im_start|>assistant\n<think>",
+   "doc": "base-card",
+   "doc_sha": "b22858a951448e978f8384983b2df77037346749",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-VL-2B README.md:L297-303",
+   "file": "README.md",
+   "lines": [
+    297,
+    303
+   ],
+   "lang": "text",
+   "tool": "text",
+   "kind": "prompt-format",
+   "text": "<tool_call>\n<function=get_weather>\n<parameter=city>\nParis\n</parameter>\n</function>\n</tool_call>",
+   "doc": "base-card",
+   "doc_sha": "b22858a951448e978f8384983b2df77037346749",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-VL-2B README.md:L323-334",
+   "file": "README.md",
+   "lines": [
+    323,
+    334
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "tools = [\n    search_tool,\n    {\"type\": \"function\", \"defer_loading\": True, \"function\": get_weather_schema},\n]\nmessages.append({\n    \"role\": \"tool\",\n    \"tool_call_id\": call_id,\n    \"content\": [\n        {\"type\": \"text\", \"text\": \"Found 1 tool.\"},\n        {\"type\": \"tool_reference\", \"name\": \"get_weather\"},\n    ],\n})",
+   "doc": "base-card",
+   "doc_sha": "b22858a951448e978f8384983b2df77037346749",
+   "scope": "model"
+  }
+ ],
+ "card_notes": [
+  {
+   "text": "<td style=\"border: 0; padding: 0.55em 0.75em;\"><strong>Context length</strong></td>",
+   "source": "LiquidAI/LFM3-VL-2B README.md:L93"
+  },
+  {
+   "text": "<summary><strong>Chat template</strong></summary>",
+   "source": "LiquidAI/LFM3-VL-2B README.md:L270"
+  },
+  {
+   "text": "LFM3-VL uses this ChatML format, generated from the checkpoint's [chat template](https://huggingface.co/LiquidAI/LFM3-VL-2B/blob/main/chat_template.jinja):",
+   "source": "LiquidAI/LFM3-VL-2B README.md:L272"
+  },
+  {
+   "text": "Use `processor.apply_chat_template()` with `add_generation_prompt=True` to format messages automatically. The model thinks in a `<think>...</think>` block before it answers.",
+   "source": "LiquidAI/LFM3-VL-2B README.md:L283"
+  },
+  {
+   "text": "Pass function schemas through `tools=...` to `apply_chat_template()`. The template formats tool definitions and results automatically. Generated calls use XML:",
+   "source": "LiquidAI/LFM3-VL-2B README.md:L294"
+  },
+  {
+   "text": "LFM3 supports deferred tools. Set `defer_loading=True` to keep tool definitions out of the prompt until your harness's search tool returns their names as `tool_reference` parts. The chat template then inserts their definitions into `<additional_tools>`.",
+   "source": "LiquidAI/LFM3-VL-2B README.md:L320"
+  }
+ ],
+ "chat_template": {
+  "gguf_sha256": "f45005c50cd2a97329722bf3a2dee9f16c04cdf825a589b280fb7e99e6827818",
+  "repo_sha256": "f45005c50cd2a97329722bf3a2dee9f16c04cdf825a589b280fb7e99e6827818",
+  "repo_file": "chat_template.jinja",
+  "same": true,
+  "gguf_chars": 12129,
+  "repo_chars": 12129,
+  "repo_label": "LiquidAI/LFM3-VL-2B",
+  "use": "gguf"
+ },
+ "stop": {
+  "eos_token": "<|im_end|>",
+  "eos_token_id": 124900,
+  "eos_token_id_source": "LiquidAI/LFM3-VL-2B generation_config.json",
+  "analysis": {
+   "tokens": [
+    {
+     "id": 124900,
+     "text": "<|im_end|>",
+     "source": "LiquidAI/LFM3-VL-2B generation_config.json eos_token_id",
+     "eog_by": "GGUF tokenizer.ggml.eos_token_id"
+    }
+   ],
+   "missing": [],
+   "gguf": {
+    "eos": 124900
+   }
+  }
+ },
+ "rope": {
+  "rope.freq_base": 1000000.0,
+  "config": {
+   "full_attention": {
+    "partial_rotary_factor": 0.5,
+    "rope_theta": 1000000.0,
+    "rope_type": "default"
+   },
+   "sliding_attention": {
+    "rope_theta": 10000,
+    "rope_type": "default"
+   }
+  }
+ },
+ "aux": [
+  {
+   "kind": "mmproj",
+   "file": "mmproj-LFM3-VL-2B-BF16.gguf",
+   "size": 378996032,
+   "sha256": "8e75a88afc0e6a3bcd637becbe720447ea0794934b7b417a1f42d5cfe0d9c288",
+   "fetched": false,
+   "source": "LiquidAI/LFM3-VL-2B-GGUF repo file"
+  },
+  {
+   "kind": "mmproj",
+   "file": "mmproj-LFM3-VL-2B-F16.gguf",
+   "size": 378996032,
+   "sha256": "1d8e6e58eefc093e09d6332f081516e1ddbd5b35cfca7f35463fb270db230b1e",
+   "fetched": false,
+   "source": "LiquidAI/LFM3-VL-2B-GGUF repo file"
+  },
+  {
+   "kind": "mmproj",
+   "file": "mmproj-LFM3-VL-2B-Q8_0.gguf",
+   "size": 203031872,
+   "sha256": "c5c5b58d544a18da919172d2d0368090ea1a4a351b6feb7f8a326a264a5918ab",
+   "fetched": false,
+   "source": "LiquidAI/LFM3-VL-2B-GGUF repo file"
+  }
+ ],
+ "gguf": {
+  "general.architecture": "lfm3",
+  "general.name": "LFM3 VL 2B",
+  "general.file_type": 15,
+  "general.quantization_version": 2,
+  "_gguf_version": 3
+ },
+ "snapshot": {
+  "path": "LiquidAI--LFM3-VL-2B-GGUF/128482707291d54bc44deb7f6f6bb113cf0cf14d",
+  "fetched_bytes": 17445,
+  "errors": null,
+  "gated": false
+ },
+ "base_snapshot": {
+  "path": "LiquidAI--LFM3-VL-2B/b22858a951448e978f8384983b2df77037346749",
+  "fetched_bytes": 18233416,
+  "errors": null,
+  "gated": false
+ },
+ "repo_files": {
+  ".gitattributes": {
+   "size": 2173,
+   "sha256": null,
+   "blob": "55518db9c16c1fad9f4b45e3b609bcb3a6087758",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "LFM3-VL-2B-BF16.gguf": {
+   "size": 3466626336,
+   "sha256": "a7a514bd201faba4d329ec6d252253272904652576f0557ee84a106544d90298",
+   "blob": "c782117e9bb565589c0a96245db42201d7caf98e",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (3466 MB)"
+  },
+  "LFM3-VL-2B-F16.gguf": {
+   "size": 3466626336,
+   "sha256": "a9996199a258a936b270ac70ceec9766289429fdf15c1a69050ca9f0182d569b",
+   "blob": "bbd700661eb94e6f2f37f79ec21f634215758473",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (3466 MB)"
+  },
+  "LFM3-VL-2B-Q4_K_M.gguf": {
+   "size": 1099627808,
+   "sha256": "56dac2e192ff0d9ab8507f4f1aeb4aed0463449bbbefaac79497f041c95f21eb",
+   "blob": "6eeb0c21b5b941b73bd63cc10754b3c06d4fcc03",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (1099 MB)"
+  },
+  "LFM3-VL-2B-Q5_K_M.gguf": {
+   "size": 1258663200,
+   "sha256": "613496a9437bc72b09f57cb54365a9759dd639e20ce7715470bdd7ac1cf22790",
+   "blob": "08cce239aea7dae089d6deb0613edd73547ec6e5",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (1258 MB)"
+  },
+  "LFM3-VL-2B-Q6_K.gguf": {
+   "size": 1427638304,
+   "sha256": "ca44f8ccafd906c359d603b74689c50a939ea099b4f414e7ab86c02dd36c2769",
+   "blob": "9dac5d857f0f8dbf8c81526420dd3c918361235f",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (1427 MB)"
+  },
+  "LFM3-VL-2B-Q8_0.gguf": {
+   "size": 1846238496,
+   "sha256": "e138e54189a751d90ea8c0b236360490613ecd465d28d68fa6094d3db7fa6727",
+   "blob": "b44b255a071055228d4aa2eb21ef07aae866d3b3",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (1846 MB)"
+  },
+  "LFM3-VL-2B-QAD-Q4_0.gguf": {
+   "size": 1049615648,
+   "sha256": "621c455376cb96a20891697deb9975c6fb47dd5ea98ed3ad1f3b7e8f24f0b1e6",
+   "blob": "8bd5b9323ae1c944af1f782e2f98dfb84835d1ae",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (1049 MB)"
+  },
+  "LICENSE": {
+   "size": 10574,
+   "sha256": null,
+   "blob": "2a513f17eb4b8008fb100349fd2b7551d009fed0",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "README.md": {
+   "size": 4698,
+   "sha256": null,
+   "blob": "58004741243d1722d222c2298b3e6a78b976116f",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "mmproj-LFM3-VL-2B-BF16.gguf": {
+   "size": 378996032,
+   "sha256": "8e75a88afc0e6a3bcd637becbe720447ea0794934b7b417a1f42d5cfe0d9c288",
+   "blob": "14d3caf7458c07a0e2188cde5a2361a703f59d5f",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (378 MB)"
+  },
+  "mmproj-LFM3-VL-2B-F16.gguf": {
+   "size": 378996032,
+   "sha256": "1d8e6e58eefc093e09d6332f081516e1ddbd5b35cfca7f35463fb270db230b1e",
+   "blob": "cf612026e7fb7fe3e0636e654ceb02dbcab7995d",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (378 MB)"
+  },
+  "mmproj-LFM3-VL-2B-Q8_0.gguf": {
+   "size": 203031872,
+   "sha256": "c5c5b58d544a18da919172d2d0368090ea1a4a351b6feb7f8a326a264a5918ab",
+   "blob": "7bac1a954a572838c09ea79fd3d9d42c21fea770",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (203 MB)"
+  }
+ },
+ "base_repo_files": {
+  ".gitattributes": {
+   "size": 1570,
+   "sha256": null,
+   "blob": "52373fe24473b1aa44333d318f578ae6bf04b49b",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "LICENSE": {
+   "size": 10574,
+   "sha256": null,
+   "blob": "2a513f17eb4b8008fb100349fd2b7551d009fed0",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "README.md": {
+   "size": 141865,
+   "sha256": null,
+   "blob": "1cdd6177881ea072310e182b322f12c1a70d1b0f",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "chat_template.jinja": {
+   "size": 12129,
+   "sha256": null,
+   "blob": "d0747b8b5fc99eaecfe02a04eefcff75eb181334",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "config.json": {
+   "size": 2905,
+   "sha256": null,
+   "blob": "e533d46df1b9c3e3edfcb900d36ceaa9c8feb0a1",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "configuration_lfm3.py": {
+   "size": 6105,
+   "sha256": null,
+   "blob": "f314814961969f97cdb91ad7e00ab4b9fab1e594",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "configuration_lfm3_vl.py": {
+   "size": 9138,
+   "sha256": null,
+   "blob": "ef6fa2dbd2048fb0d9fca609f28aa726ff2ec031",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "generation_config.json": {
+   "size": 355,
+   "sha256": null,
+   "blob": "818cc89bc3a6ecbbc452431442d7cdadc48f6907",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "image_processing_lfm3_vl.py": {
+   "size": 12036,
+   "sha256": null,
+   "blob": "8d27ebbca64a3aa55313c2d074fc684a8d9c335b",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "lfm3_conv.py": {
+   "size": 8532,
+   "sha256": null,
+   "blob": "a1b67afdb605452f5a99751862863d5460a1fa69",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "model.safetensors": {
+   "size": 3836417920,
+   "sha256": "a9bb8b1c159c9d6c3007bc1c7ad8018b599f759d97da2701714e37426283e131",
+   "blob": "32cf98bd0797a7972d6085c1b525c882feead47e",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (3836 MB)"
+  },
+  "modeling_lfm3.py": {
+   "size": 42343,
+   "sha256": null,
+   "blob": "c6e66b81281c20e5758c3b4d96e0a248c3d3a233",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "modeling_lfm3_vl.py": {
+   "size": 44999,
+   "sha256": null,
+   "blob": "e6c75314edc860cadaa162ab595e2f96956d6cfe",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "processing_lfm3_vl.py": {
+   "size": 12152,
+   "sha256": null,
+   "blob": "b15a003dcad67a5d9b8ba2113bb35d622be04619",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "processor_config.json": {
+   "size": 1535,
+   "sha256": null,
+   "blob": "1f38b9a150b604c3270dbfb883b6902a5763d3da",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "tokenizer.json": {
+   "size": 17908258,
+   "sha256": "a39eed58008cbcbc09e5b629b81338a654269c64cd13348aaa6090f4db75c7e7",
+   "blob": "2ad6ecfda312be128ac878a61f3ee84dfe1134f8",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "tokenizer_config.json": {
+   "size": 1759,
+   "sha256": null,
+   "blob": "e095df65c9ef161fc054821fc6773614ac728f03",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "video_processing_lfm3_vl.py": {
+   "size": 17161,
+   "sha256": null,
+   "blob": "f26f48efc0ff1087dffdef2516b08c7ea905c9cb",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  }
+ },
+ "found_in": [
+  "add-model.sh --fetch",
+  "graph.yaml models.lfm3-vl-2b-q4km"
+ ],
+ "match": "LFS sha256 match",
+ "local_check": {
+  "host": "grok-bot-vm-414137730",
+  "sha256_ok": true,
+  "checked": "2026-10-28"
+ },
+ "unknown": null,
+ "warnings": null,
+ "updated": "2026-10-28",
+ "by": "scripts/model_db.py",
+ "gguf_meta": {
+  "general.architecture": "lfm3",
+  "general.type": "model",
+  "general.sampling.top_k": 50,
+  "general.sampling.temp": 0.10000000149011612,
+  "general.sampling.penalty_repeat": 1.100000023841858,
+  "general.name": "LFM3 VL 2B",
+  "general.basename": "LFM3-VL",
+  "general.size_label": "2B",
+  "general.license": "other",
+  "general.license.name": "lfm1.0",
+  "general.license.link": "LICENSE",
+  "general.base_model.count": 1,
+  "general.base_model.0.name": "LFM3 1.7B Base",
+  "general.base_model.0.organization": "LiquidAI",
+  "general.base_model.0.repo_url": "https://huggingface.co/LiquidAI/LFM3-1.7B-Base",
+  "general.tags": [
+   "liquid",
+   "lfm3",
+   "edge",
+   "conversational",
+   "custom_code",
+   "image-text-to-text"
+  ],
+  "general.languages": [
+   "en",
+   "ar",
+   "zh",
+   "fr",
+   "de",
+   "it",
+   "ja",
+   "ko",
+   "pt",
+   "es",
+   "vi",
+   "th",
+   "id",
+   "hi",
+   "ru",
+   "pl"
+  ],
+  "lfm3.block_count": 24,
+  "lfm3.context_length": 128000,
+  "lfm3.embedding_length": 2048,
+  "lfm3.feed_forward_length": 7680,
+  "lfm3.attention.head_count": 16,
+  "lfm3.attention.head_count_kv": {
+   "array_len": 24
+  },
+  "lfm3.rope.freq_base": 1000000.0,
+  "lfm3.rope.freq_base_swa": 10000.0,
+  "lfm3.attention.layer_norm_rms_epsilon": 9.999999747378752e-06,
+  "lfm3.attention.key_length": 128,
+  "lfm3.attention.value_length": 128,
+  "lfm3.rope.dimension_count": 128,
+  "lfm3.attention.sliding_window_pattern": {
+   "array_len": 24
+  },
+  "lfm3.attention.sliding_window": 256,
+  "lfm3.shortconv.l_cache": 7,
+  "tokenizer.ggml.model": "gpt2",
+  "tokenizer.ggml.pre": "lfm2",
+  "tokenizer.ggml.tokens": {
+   "array_len": 128000
+  },
+  "tokenizer.ggml.token_type": {
+   "array_len": 128000
+  },
+  "tokenizer.ggml.merges": {
+   "array_len": 293320
+  },
+  "tokenizer.ggml.bos_token_id": 124894,
+  "tokenizer.ggml.eos_token_id": 124900,
+  "tokenizer.ggml.padding_token_id": 124893,
+  "tokenizer.ggml.add_bos_token": false,
+  "tokenizer.ggml.add_eos_token": false,
+  "tokenizer.chat_template": {
+   "sha256": "f45005c50cd2a97329722bf3a2dee9f16c04cdf825a589b280fb7e99e6827818",
+   "chars": 12129
+  },
+  "general.quantization_version": 2,
+  "general.file_type": 15,
+  "_gguf_version": 3,
+  "_n_tensors": 287
+ },
+ "base_chain": [
+  {
+   "repo": "LiquidAI/LFM3-VL-2B",
+   "api_id": "LiquidAI/LFM3-VL-2B",
+   "revision": "b22858a951448e978f8384983b2df77037346749",
+   "via": "card base_model",
+   "card_data": {
+    "license": "other",
+    "license_name": "lfm1.0",
+    "license_link": "LICENSE",
+    "language": [
+     "en",
+     "ar",
+     "zh",
+     "fr",
+     "de",
+     "it",
+     "ja",
+     "ko",
+     "pt",
+     "es",
+     "vi",
+     "th",
+     "id",
+     "hi",
+     "ru",
+     "pl"
+    ],
+    "base_model": "LiquidAI/LFM3-1.7B-Base",
+    "pipeline_tag": "image-text-to-text",
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "image-text-to-text",
+   "safetensors": {
+    "parameters": {
+     "BF16": 1918181888
+    },
+    "total": 1918181888
+   },
+   "license_files": [
+    "LICENSE"
+   ]
+  },
+  {
+   "repo": "LiquidAI/LFM3-1.7B-Base",
+   "api_id": "LiquidAI/LFM3-1.7B-Base",
+   "revision": "545fc8f4c7b5fa9f405105274cd29c4f8f44b526",
+   "via": "LiquidAI/LFM3-VL-2B card base_model",
+   "card_data": {
+    "license": "other",
+    "license_name": "lfm1.0",
+    "license_link": "LICENSE",
+    "language": [
+     "en",
+     "ar",
+     "zh",
+     "fr",
+     "de",
+     "it",
+     "ja",
+     "ko",
+     "pt",
+     "es",
+     "vi",
+     "th",
+     "id",
+     "hi",
+     "ru",
+     "pl"
+    ],
+    "pipeline_tag": "text-generation",
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "text-generation",
+   "safetensors": {
+    "parameters": {
+     "BF16": 1728801536
+    },
+    "total": 1728801536
+   },
+   "license_files": [
+    "LICENSE"
+   ]
+  }
+ ],
+ "github": null,
+ "github_dropped": [
+  {
+   "repo": "ggml-org/llama.cpp",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "ggml-org/llama.cpp",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "vllm-project/vllm",
+   "why": "inference/training tool repo"
+  },
+  {
+   "repo": "sgl-project/sglang",
+   "why": "inference/training tool repo"
+  }
+ ],
+ "descriptor": {
+  "repo_id": {
+   "effective": "LiquidAI/LFM3-VL-2B-GGUF",
+   "source": "HF API id"
+  },
+  "revision": {
+   "effective": "128482707291d54bc44deb7f6f6bb113cf0cf14d",
+   "source": "pinned (manifest / database)"
+  },
+  "file": {
+   "effective": "LFM3-VL-2B-Q4_K_M.gguf",
+   "source": "HF API siblings"
+  },
+  "bytes": {
+   "effective": 1099627808,
+   "source": "HF API LFS size"
+  },
+  "sha256": {
+   "effective": "56dac2e192ff0d9ab8507f4f1aeb4aed0463449bbbefaac79497f041c95f21eb",
+   "source": "HF API LFS oid"
+  },
+  "quant": {
+   "effective": "Q4_K_M",
+   "source": "file name",
+   "values": [
+    {
+     "value": "Q4_K_M",
+     "source": "file name"
+    },
+    {
+     "value": "Q4_K_M",
+     "source": "GGUF general.file_type"
+    }
+   ]
+  },
+  "license": {
+   "effective": "other",
+   "source": "LiquidAI/LFM3-VL-2B-GGUF card license",
+   "values": [
+    {
+     "value": "other",
+     "source": "LiquidAI/LFM3-VL-2B-GGUF card license"
+    },
+    {
+     "value": "other",
+     "source": "LiquidAI/LFM3-VL-2B card license"
+    },
+    {
+     "value": "other",
+     "source": "LiquidAI/LFM3-1.7B-Base card license"
+    },
+    {
+     "value": "other",
+     "source": "GGUF general.license"
+    }
+   ]
+  },
+  "license_name": {
+   "effective": "lfm1.0",
+   "source": "LiquidAI/LFM3-VL-2B-GGUF card license_name",
+   "values": [
+    {
+     "value": "lfm1.0",
+     "source": "LiquidAI/LFM3-VL-2B-GGUF card license_name"
+    },
+    {
+     "value": "lfm1.0",
+     "source": "LiquidAI/LFM3-VL-2B card license_name"
+    },
+    {
+     "value": "lfm1.0",
+     "source": "LiquidAI/LFM3-1.7B-Base card license_name"
+    },
+    {
+     "value": "lfm1.0",
+     "source": "GGUF general.license.name"
+    }
+   ]
+  },
+  "license_link": {
+   "effective": "LICENSE",
+   "source": "LiquidAI/LFM3-VL-2B-GGUF card license_link",
+   "values": [
+    {
+     "value": "LICENSE",
+     "source": "LiquidAI/LFM3-VL-2B-GGUF card license_link"
+    },
+    {
+     "value": "LICENSE",
+     "source": "LiquidAI/LFM3-VL-2B card license_link"
+    },
+    {
+     "value": "LICENSE",
+     "source": "LiquidAI/LFM3-1.7B-Base card license_link"
+    },
+    {
+     "value": "LICENSE",
+     "source": "GGUF general.license.link"
+    }
+   ]
+  },
+  "license_file": {
+   "effective": "LiquidAI/LFM3-VL-2B-GGUF@128482707291/LICENSE",
+   "source": "LiquidAI/LFM3-VL-2B-GGUF repo file",
+   "values": [
+    {
+     "value": "LiquidAI/LFM3-VL-2B-GGUF@128482707291/LICENSE",
+     "source": "LiquidAI/LFM3-VL-2B-GGUF repo file"
+    },
+    {
+     "value": "LiquidAI/LFM3-VL-2B@b22858a95144/LICENSE",
+     "source": "LiquidAI/LFM3-VL-2B repo file"
+    },
+    {
+     "value": "LiquidAI/LFM3-1.7B-Base@545fc8f4c7b5/LICENSE",
+     "source": "LiquidAI/LFM3-1.7B-Base repo file"
+    }
+   ]
+  },
+  "base_model_chain": {
+   "effective": "LiquidAI/LFM3-VL-2B",
+   "source": "card base_model",
+   "values": [
+    {
+     "value": "LiquidAI/LFM3-VL-2B",
+     "source": "card base_model"
+    },
+    {
+     "value": "LiquidAI/LFM3-1.7B-Base",
+     "source": "LiquidAI/LFM3-VL-2B card base_model"
+    }
+   ]
+  },
+  "gguf_base_model": {
+   "effective": {
+    "name": "LFM3 1.7B Base",
+    "organization": "LiquidAI",
+    "repo_url": "https://huggingface.co/LiquidAI/LFM3-1.7B-Base"
+   },
+   "source": "GGUF general.base_model.0"
+  },
+  "architecture": {
+   "effective": "lfm3",
+   "source": "GGUF general.architecture",
+   "values": [
+    {
+     "value": "lfm3",
+     "source": "GGUF general.architecture"
+    },
+    {
+     "value": "lfm3",
+     "source": "HF API gguf.architecture"
+    }
+   ]
+  },
+  "hf_architectures": {
+   "effective": [
+    "Lfm3VlForConditionalGeneration"
+   ],
+   "source": "LiquidAI/LFM3-VL-2B config.json architectures"
+  },
+  "hf_model_type": {
+   "effective": "lfm3_vl",
+   "source": "LiquidAI/LFM3-VL-2B config.json model_type"
+  },
+  "parameters": {
+   "effective": 1728801600,
+   "source": "HF API gguf.total (LiquidAI/LFM3-VL-2B-GGUF)",
+   "values": [
+    {
+     "value": 1728801600,
+     "source": "HF API gguf.total (LiquidAI/LFM3-VL-2B-GGUF)"
+    },
+    {
+     "value": 1918181888,
+     "source": "HF API safetensors.total (LiquidAI/LFM3-VL-2B)"
+    },
+    {
+     "value": 1728801536,
+     "source": "HF API safetensors.total (LiquidAI/LFM3-1.7B-Base)"
+    }
+   ],
+   "conflict": true
+  },
+  "size_label": {
+   "effective": "2B",
+   "source": "GGUF general.size_label"
+  },
+  "ctx_statements": {
+   "effective": {
+    "value": 131072,
+    "quote": "<img src=\"https://cdn-uploads.huggingface.co/production/uploads/64df8592d27135dd568380b5/VRo1ZLQhR_aw0tpC6B707.png\" alt=\"LFM3-VL-2B pre-training: LFM3-1.7B-Base is pre-trained on web and synthetic data (about 15T tokens), then code, math, a"
+   },
+   "source": "LiquidAI/LFM3-VL-2B README.md:L1513",
+   "values": [
+    {
+     "value": {
+      "value": 131072,
+      "quote": "<img src=\"https://cdn-uploads.huggingface.co/production/uploads/64df8592d27135dd568380b5/VRo1ZLQhR_aw0tpC6B707.png\" alt=\"LFM3-VL-2B pre-training: LFM3-1.7B-Base is pre-trained on web and synthetic data (about 15T tokens), then code, math, a"
+     },
+     "source": "LiquidAI/LFM3-VL-2B README.md:L1513"
+    },
+    {
+     "value": {
+      "value": 262144,
+      "quote": "- **Mid-training:** the last 3.5T tokens use curated, higher-quality data with a larger share of agentic traces and tool calls. This stage also extends the context window to 256K tokens."
+     },
+     "source": "LiquidAI/LFM3-VL-2B README.md:L1518"
+    }
+   ]
+  },
+  "ctx": {
+   "effective": 128000,
+   "source": "LiquidAI/LFM3-VL-2B config.json max_position_embeddings",
+   "values": [
+    {
+     "value": 128000,
+     "source": "LiquidAI/LFM3-VL-2B config.json max_position_embeddings"
+    },
+    {
+     "value": 128000,
+     "source": "GGUF lfm3.context_length"
+    }
+   ],
+   "precedence": "card statement > config.json > GGUF header > GitHub README"
+  },
+  "pipeline_tag": {
+   "effective": "image-text-to-text",
+   "source": "LiquidAI/LFM3-VL-2B-GGUF HF API pipeline_tag",
+   "values": [
+    {
+     "value": "image-text-to-text",
+     "source": "LiquidAI/LFM3-VL-2B-GGUF HF API pipeline_tag"
+    },
+    {
+     "value": "image-text-to-text",
+     "source": "LiquidAI/LFM3-VL-2B HF API pipeline_tag"
+    },
+    {
+     "value": "text-generation",
+     "source": "LiquidAI/LFM3-1.7B-Base HF API pipeline_tag"
+    }
+   ],
+   "conflict": true
+  },
+  "languages": {
+   "effective": [
+    "en",
+    "ar",
+    "zh",
+    "fr",
+    "de",
+    "it",
+    "ja",
+    "ko",
+    "pt",
+    "es",
+    "vi",
+    "th",
+    "id",
+    "hi",
+    "ru",
+    "pl"
+   ],
+   "source": "LiquidAI/LFM3-VL-2B-GGUF card language",
+   "values": [
+    {
+     "value": [
+      "en",
+      "ar",
+      "zh",
+      "fr",
+      "de",
+      "it",
+      "ja",
+      "ko",
+      "pt",
+      "es",
+      "vi",
+      "th",
+      "id",
+      "hi",
+      "ru",
+      "pl"
+     ],
+     "source": "LiquidAI/LFM3-VL-2B-GGUF card language"
+    },
+    {
+     "value": [
+      "en",
+      "ar",
+      "zh",
+      "fr",
+      "de",
+      "it",
+      "ja",
+      "ko",
+      "pt",
+      "es",
+      "vi",
+      "th",
+      "id",
+      "hi",
+      "ru",
+      "pl"
+     ],
+     "source": "LiquidAI/LFM3-VL-2B card language"
+    },
+    {
+     "value": [
+      "en",
+      "ar",
+      "zh",
+      "fr",
+      "de",
+      "it",
+      "ja",
+      "ko",
+      "pt",
+      "es",
+      "vi",
+      "th",
+      "id",
+      "hi",
+      "ru",
+      "pl"
+     ],
+     "source": "LiquidAI/LFM3-1.7B-Base card language"
+    },
+    {
+     "value": [
+      "en",
+      "ar",
+      "zh",
+      "fr",
+      "de",
+      "it",
+      "ja",
+      "ko",
+      "pt",
+      "es",
+      "vi",
+      "th",
+      "id",
+      "hi",
+      "ru",
+      "pl"
+     ],
+     "source": "GGUF general.languages"
+    }
+   ]
+  }
+ },
+ "required_params": {
+  "kind": "chat",
+  "native_ctx": 128000,
+  "native_ctx_source": "LiquidAI/LFM3-VL-2B config.json max_position_embeddings",
+  "yarn": null,
+  "yarn_source": null,
+  "items": [
+   {
+    "class": "REQUIRED",
+    "flag": "--jinja",
+    "value": null,
+    "source": "GGUF tokenizer.chat_template (f45005c50cd2)",
+    "why_required": "messages, tool calls and thinking are formatted by the model's chat template; without --jinja llama-server falls back to a built-in approximation",
+    "also": [
+     "LiquidAI/LFM3-VL-2B README.md:L226-231",
+     "LiquidAI/LFM3-VL-2B README.md:L237-240"
+    ]
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--temp",
+    "value": "0.1",
+    "source": "LiquidAI/LFM3-VL-2B-GGUF README.md:L66-68",
+    "why_required": "sampling in the card's llama serve command",
+    "also": [
+     "LiquidAI/LFM3-VL-2B LiquidAI/LFM3-VL-2B README.md:L150",
+     "LiquidAI/LFM3-VL-2B README.md:L209-211",
+     "LiquidAI/LFM3-VL-2B-GGUF README.md:L74-85"
+    ]
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--top-p",
+    "value": "1.0",
+    "source": "LiquidAI/LFM3-VL-2B-GGUF README.md:L66-68",
+    "why_required": "sampling in the card's llama serve command",
+    "also": [
+     "LiquidAI/LFM3-VL-2B LiquidAI/LFM3-VL-2B README.md:L150",
+     "LiquidAI/LFM3-VL-2B README.md:L209-211",
+     "LiquidAI/LFM3-VL-2B-GGUF README.md:L74-85"
+    ],
+    "conflicts": [
+     {
+      "value": "1",
+      "source": "LiquidAI/LFM3-VL-2B LiquidAI/LFM3-VL-2B README.md:L150"
+     }
+    ]
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--top-k",
+    "value": "50",
+    "source": "LiquidAI/LFM3-VL-2B-GGUF README.md:L66-68",
+    "why_required": "sampling in the card's llama serve command",
+    "also": [
+     "LiquidAI/LFM3-VL-2B LiquidAI/LFM3-VL-2B README.md:L150",
+     "LiquidAI/LFM3-VL-2B README.md:L209-211",
+     "LiquidAI/LFM3-VL-2B-GGUF README.md:L74-85"
+    ]
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--min-p",
+    "value": "0.0",
+    "source": "LiquidAI/LFM3-VL-2B-GGUF README.md:L66-68",
+    "why_required": "sampling in the card's llama serve command",
+    "also": [
+     "LiquidAI/LFM3-VL-2B LiquidAI/LFM3-VL-2B README.md:L150",
+     "LiquidAI/LFM3-VL-2B README.md:L209-211",
+     "LiquidAI/LFM3-VL-2B-GGUF README.md:L74-85"
+    ]
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--repeat-penalty",
+    "value": "1.1",
+    "source": "LiquidAI/LFM3-VL-2B-GGUF README.md:L66-68",
+    "why_required": "sampling in the card's llama serve command",
+    "also": [
+     "LiquidAI/LFM3-VL-2B LiquidAI/LFM3-VL-2B README.md:L150",
+     "LiquidAI/LFM3-VL-2B README.md:L209-211",
+     "LiquidAI/LFM3-VL-2B-GGUF README.md:L74-85"
+    ]
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--no-reasoning-preserve",
+    "value": null,
+    "source": "LiquidAI/LFM3-VL-2B-GGUF README.md:L66-68",
+    "why_required": "performance / tool option in the card's command",
+    "also": [
+     "LiquidAI/LFM3-VL-2B README.md:L209-211",
+     "LiquidAI/LFM3-VL-2B-GGUF README.md:L74-85"
+    ]
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--image",
+    "value": "cat.jpg",
+    "source": "LiquidAI/LFM3-VL-2B-GGUF README.md:L74-85",
+    "why_required": "performance / tool option in the card's command"
+   },
+   {
+    "class": "REQUIRED",
+    "flag": "--reasoning-format",
+    "value": "deepseek",
+    "source": "LiquidAI/LFM3-VL-2B README.md:L226-231",
+    "why_required": "translated from --reasoning-parser qwen3: the card serves it with a reasoning parser; llama-server separates <think> with --reasoning-format deepseek (its default)",
+    "translated": true,
+    "also": [
+     "LiquidAI/LFM3-VL-2B README.md:L237-240"
+    ]
+   }
+  ]
+ },
+ "blockers": null,
+ "params_problems": null,
+ "params_build": "b11374",
+ "native_ctx": 128000,
+ "native_ctx_source": "LiquidAI/LFM3-VL-2B config.json max_position_embeddings",
+ "license_info": {
+  "id": "lfm1.0",
+  "id_source": "LiquidAI/LFM3-VL-2B-GGUF card front matter license_name",
+  "name": "lfm1.0",
+  "summary": "lfm1.0 (LICENSE)",
+  "summary_source": "LiquidAI/LFM3-VL-2B-GGUF card license",
+  "link": "https://huggingface.co/LiquidAI/LFM3-VL-2B-GGUF/blob/128482707291d54bc44deb7f6f6bb113cf0cf14d/LICENSE",
+  "link_source": "LiquidAI/LFM3-VL-2B-GGUF card license_link",
+  "texts": [
+   {
+    "file": "LiquidAI/LFM3-VL-2B-GGUF@128482707291/LICENSE",
+    "path": "/home/box/.local/share/gguf/hf-meta/LiquidAI--LFM3-VL-2B-GGUF/128482707291d54bc44deb7f6f6bb113cf0cf14d/LICENSE",
+    "url": "https://huggingface.co/LiquidAI/LFM3-VL-2B-GGUF/blob/128482707291d54bc44deb7f6f6bb113cf0cf14d/LICENSE",
+    "sha256": "30adf9d6478191fb87f2424f63ba0728598335aaf99cd2848ef17e8e545fe94b",
+    "bytes": 10574,
+    "what": "model"
+   },
+   {
+    "file": "LiquidAI/LFM3-VL-2B@b22858a95144/LICENSE",
+    "path": "/home/box/.local/share/gguf/hf-meta/LiquidAI--LFM3-VL-2B/b22858a951448e978f8384983b2df77037346749/LICENSE",
+    "url": "https://huggingface.co/LiquidAI/LFM3-VL-2B/blob/b22858a951448e978f8384983b2df77037346749/LICENSE",
+    "sha256": "30adf9d6478191fb87f2424f63ba0728598335aaf99cd2848ef17e8e545fe94b",
+    "bytes": 10574,
+    "what": "model"
+   }
+  ],
+  "obligations": [
+   {
+    "quote": "\"Commercial Use\" shall mean any use of the Work for direct or indirect commercial advantage or monetary compensation.",
+    "source": "LiquidAI/LFM3-VL-2B-GGUF LICENSE:L27"
+   },
+   {
+    "quote": "\"Non-Commercial or Research Purposes\" shall mean purposes that do not involve any use of the Work or a Derivative Work for Commercial Use.",
+    "source": "LiquidAI/LFM3-VL-2B-GGUF LICENSE:L31"
+   },
+   {
+    "quote": "2. Grant of Copyright License. Subject to the terms and conditions of this License, including the Commercial Use limitation set forth in Section 5, each Contributor hereby grants to You a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable copyright license to reproduce, prepar...",
+    "source": "LiquidAI/LFM3-VL-2B-GGUF LICENSE:L35"
+   },
+   {
+    "quote": "3. Grant of Patent License. Subject to the terms and conditions of this License, including the Commercial Use limitation set forth in Section 5, each Contributor hereby grants to You a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable (except as stated in this section) patent...",
+    "source": "LiquidAI/LFM3-VL-2B-GGUF LICENSE:L37"
+   },
+   {
+    "quote": "(a) You must give any other recipients of the Work or Derivative Works a copy of this License; and",
+    "source": "LiquidAI/LFM3-VL-2B-GGUF LICENSE:L41"
+   },
+   {
+    "quote": "(b) You must cause any modified files to carry prominent notices stating that You changed the files; and",
+    "source": "LiquidAI/LFM3-VL-2B-GGUF LICENSE:L43"
+   },
+   {
+    "quote": "(c) You must retain, in the Source form of any Derivative Works that You distribute, all copyright, patent, trademark, and attribution notices from the Source form of the Work, excluding those notices that do not pertain to any part of the Derivative Works; and",
+    "source": "LiquidAI/LFM3-VL-2B-GGUF LICENSE:L45"
+   },
+   {
+    "quote": "(d) If the Work includes a \"NOTICE\" text file as part of its distribution, then any Derivative Works that You distribute must include a readable copy of the attribution notices contained within such NOTICE file, excluding those notices that do not pertain to any part of the Derivative Works, in at l...",
+    "source": "LiquidAI/LFM3-VL-2B-GGUF LICENSE:L47"
+   },
+   {
+    "quote": "\"Commercial Use\" shall mean any use of the Work for direct or indirect commercial advantage or monetary compensation.",
+    "source": "LiquidAI/LFM3-VL-2B LICENSE:L27"
+   },
+   {
+    "quote": "\"Non-Commercial or Research Purposes\" shall mean purposes that do not involve any use of the Work or a Derivative Work for Commercial Use.",
+    "source": "LiquidAI/LFM3-VL-2B LICENSE:L31"
+   },
+   {
+    "quote": "2. Grant of Copyright License. Subject to the terms and conditions of this License, including the Commercial Use limitation set forth in Section 5, each Contributor hereby grants to You a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable copyright license to reproduce, prepar...",
+    "source": "LiquidAI/LFM3-VL-2B LICENSE:L35"
+   },
+   {
+    "quote": "3. Grant of Patent License. Subject to the terms and conditions of this License, including the Commercial Use limitation set forth in Section 5, each Contributor hereby grants to You a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable (except as stated in this section) patent...",
+    "source": "LiquidAI/LFM3-VL-2B LICENSE:L37"
+   },
+   {
+    "quote": "(a) You must give any other recipients of the Work or Derivative Works a copy of this License; and",
+    "source": "LiquidAI/LFM3-VL-2B LICENSE:L41"
+   },
+   {
+    "quote": "(b) You must cause any modified files to carry prominent notices stating that You changed the files; and",
+    "source": "LiquidAI/LFM3-VL-2B LICENSE:L43"
+   },
+   {
+    "quote": "(c) You must retain, in the Source form of any Derivative Works that You distribute, all copyright, patent, trademark, and attribution notices from the Source form of the Work, excluding those notices that do not pertain to any part of the Derivative Works; and",
+    "source": "LiquidAI/LFM3-VL-2B LICENSE:L45"
+   },
+   {
+    "quote": "(d) If the Work includes a \"NOTICE\" text file as part of its distribution, then any Derivative Works that You distribute must include a readable copy of the attribution notices contained within such NOTICE file, excluding those notices that do not pertain to any part of the Derivative Works, in at l...",
+    "source": "LiquidAI/LFM3-VL-2B LICENSE:L47"
+   },
+   {
+    "quote": "<td style=\"border: 0; padding: 0.55em 0.75em;\">LFM3, 24 layers: 13 gated short convolutions, 5 sliding-window attention, 6 global attention</td>",
+    "source": "LiquidAI/LFM3-VL-2B README.md:L82"
+   },
+   {
+    "quote": "<td style=\"border: 0; padding: 0.55em 0.75em;\">14 layers: 8 gated depthwise 2D convolutions, 6 bidirectional attention, 16×16 patches with 2D rotary embeddings</td>",
+    "source": "LiquidAI/LFM3-VL-2B README.md:L86"
+   }
+  ],
+  "gated": false,
+  "unknown": false,
+  "seen": [
+   {
+    "value": "other",
+    "source": "LiquidAI/LFM3-VL-2B-GGUF card license"
+   },
+   {
+    "value": "other",
+    "source": "LiquidAI/LFM3-VL-2B card license"
+   },
+   {
+    "value": "other",
+    "source": "LiquidAI/LFM3-1.7B-Base card license"
+   },
+   {
+    "value": "other",
+    "source": "GGUF general.license"
+   }
+  ]
+ }
+}

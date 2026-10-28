@@ -1,0 +1,1803 @@
+{
+ "schema": 2,
+ "id": "LiquidAI--LFM3-Omni-2B-GGUF--LFM3-Omni-2B-Q4_K_M",
+ "repo": "LiquidAI/LFM3-Omni-2B-GGUF",
+ "revision": "64660117852a2054cf1f666f47eeb910e2204e4d",
+ "file": "LFM3-Omni-2B-Q4_K_M.gguf",
+ "sha256": "9f8d30e9d4fd7a9349d586e077988229b3ca0a0e4ad730897563d1eccc9893e2",
+ "bytes": 1099630080,
+ "quant": "Q4_K_M",
+ "arch": "lfm3",
+ "roles": [
+  "chat",
+  "media"
+ ],
+ "license": "lfm1.0 (LICENSE)",
+ "license_source": "LiquidAI/LFM3-Omni-2B-GGUF card license",
+ "ctx": 128000,
+ "ctx_source": "GGUF lfm3.context_length",
+ "card_ctx": null,
+ "card_ctx_source": null,
+ "base_model": "LiquidAI/LFM3-Omni-2B",
+ "base_revision": "ce2458cbce4ad970f92032ed94e3d18d30b04f9c",
+ "card_defaults": {
+  "temp": 0
+ },
+ "card_defaults_source": {
+  "temp": "LiquidAI/LFM3-Omni-2B-GGUF LiquidAI/LFM3-Omni-2B-GGUF README.md:L109 (example)"
+ },
+ "card_default_set": "example: Video understanding: the model sees the frames and hears the soundtrack of the video, use the system prompt Answer questions about the video using what you see ",
+ "card_defaults_how": "the card's only code example with sampling values",
+ "card_sampling_modes": {
+  "LFM3-Omni-2B is a non-reasoning model: with llama serve , use --reasoning off . Start a web chat UI and an OpenAI-compatible API at http://localhost:8080": {
+   "temp": 0
+  },
+  "Speech recognition: use the system prompt Perform ASR in <language": {
+   "temp": 0
+  },
+  "Image understanding": {
+   "temp": 0
+  },
+  "Video understanding: the model sees the frames and hears the soundtrack of the video, use the system prompt Answer questions about the video using what you see ": {
+   "temp": 0
+  }
+ },
+ "card_default_mode": null,
+ "card_default_mode_source": null,
+ "card_sampling_sets": [
+  {
+   "label": "LFM3-Omni-2B is a non-reasoning model: with llama serve , use --reasoning off . Start a web chat UI and an OpenAI-compatible API at http://localhost:8080",
+   "kind": "example",
+   "mode": "thinking",
+   "params": {
+    "temp": 0
+   },
+   "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L83"
+  },
+  {
+   "label": "Speech recognition: use the system prompt Perform ASR in <language",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 0
+   },
+   "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L92"
+  },
+  {
+   "label": "Image understanding",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 0
+   },
+   "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L99"
+  },
+  {
+   "label": "Video understanding: the model sees the frames and hears the soundtrack of the video, use the system prompt Answer questions about the video using what you see ",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 0
+   },
+   "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L109"
+  }
+ ],
+ "card_commands": [
+  {
+   "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L83-83",
+   "file": "README.md",
+   "lines": [
+    83,
+    83
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "llama serve -hf LiquidAI/LFM3-Omni-2B-GGUF:Q4_K_M --reasoning off --temp 0 --port 8080",
+   "llama": [
+    {
+     "tool": "llama serve",
+     "raw": "llama serve -hf LiquidAI/LFM3-Omni-2B-GGUF:Q4_K_M --reasoning off --temp 0 --port 8080",
+     "flags": [
+      {
+       "flag": "-hf",
+       "canonical": "--hf-repo",
+       "value": "LiquidAI/LFM3-Omni-2B-GGUF:Q4_K_M",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--reasoning",
+       "canonical": "--reasoning",
+       "value": "off",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--temp",
+       "canonical": "--temp",
+       "value": "0",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--port",
+       "canonical": "--port",
+       "value": "8080",
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    }
+   ],
+   "doc": "card",
+   "doc_sha": "64660117852a2054cf1f666f47eeb910e2204e4d",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L91-92",
+   "file": "README.md",
+   "lines": [
+    91,
+    92
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "llama cli -hf LiquidAI/LFM3-Omni-2B-GGUF:Q4_K_M \\\n  --audio speech.wav -sys \"Perform ASR in English.\" -p \"<__media__>\" --temp 0",
+   "llama": [
+    {
+     "tool": "llama cli",
+     "raw": "llama cli -hf LiquidAI/LFM3-Omni-2B-GGUF:Q4_K_M    --audio speech.wav -sys \"Perform ASR in English.\" -p \"<__media__>\" --temp 0",
+     "flags": [
+      {
+       "flag": "-hf",
+       "canonical": "--hf-repo",
+       "value": "LiquidAI/LFM3-Omni-2B-GGUF:Q4_K_M",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--audio",
+       "canonical": "--image",
+       "value": "speech.wav",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-sys",
+       "canonical": "--system-prompt",
+       "value": "Perform ASR in English.",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-p",
+       "canonical": "--prompt",
+       "value": "<__media__>",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--temp",
+       "canonical": "--temp",
+       "value": "0",
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    }
+   ],
+   "doc": "card",
+   "doc_sha": "64660117852a2054cf1f666f47eeb910e2204e4d",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L98-99",
+   "file": "README.md",
+   "lines": [
+    98,
+    99
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "llama cli -hf LiquidAI/LFM3-Omni-2B-GGUF:Q4_K_M \\\n  --image photo.png -p \"Describe this image.\" --temp 0",
+   "llama": [
+    {
+     "tool": "llama cli",
+     "raw": "llama cli -hf LiquidAI/LFM3-Omni-2B-GGUF:Q4_K_M    --image photo.png -p \"Describe this image.\" --temp 0",
+     "flags": [
+      {
+       "flag": "-hf",
+       "canonical": "--hf-repo",
+       "value": "LiquidAI/LFM3-Omni-2B-GGUF:Q4_K_M",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--image",
+       "canonical": "--image",
+       "value": "photo.png",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-p",
+       "canonical": "--prompt",
+       "value": "Describe this image.",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--temp",
+       "canonical": "--temp",
+       "value": "0",
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    }
+   ],
+   "doc": "card",
+   "doc_sha": "64660117852a2054cf1f666f47eeb910e2204e4d",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L105-109",
+   "file": "README.md",
+   "lines": [
+    105,
+    109
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "curl -sL -o reading.mp4 https://huggingface.co/datasets/raushan-testing-hf/videos-test/resolve/4cba700bd771f44d72b549253da025c32e944d42/sample_demo_1.mp4  # a child reading a book\n\nllama cli -hf LiquidAI/LFM3-Omni-2B-GGUF:Q4_K_M \\\n  --video reading.mp4 -sys \"Answer questions about the video using what you see and hear.\" \\\n  -p \"What happens here, and what can you hear?\" --temp 0",
+   "llama": [
+    {
+     "tool": "llama cli",
+     "raw": "llama cli -hf LiquidAI/LFM3-Omni-2B-GGUF:Q4_K_M    --video reading.mp4 -sys \"Answer questions about the video using what you see and hear.\"    -p \"What happens here, and what can you hear?\" --temp 0",
+     "flags": [
+      {
+       "flag": "-hf",
+       "canonical": "--hf-repo",
+       "value": "LiquidAI/LFM3-Omni-2B-GGUF:Q4_K_M",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--video",
+       "canonical": "--image",
+       "value": "reading.mp4",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-sys",
+       "canonical": "--system-prompt",
+       "value": "Answer questions about the video using what you see and hear.",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-p",
+       "canonical": "--prompt",
+       "value": "What happens here, and what can you hear?",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--temp",
+       "canonical": "--temp",
+       "value": "0",
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    }
+   ],
+   "doc": "card",
+   "doc_sha": "64660117852a2054cf1f666f47eeb910e2204e4d",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L115-116",
+   "file": "README.md",
+   "lines": [
+    115,
+    116
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "llama-tts -m LFM3-Omni-2B-Q4_K_M.gguf -mm mmproj-LFM3-Omni-2B-Q8_0.gguf \\\n  -p \"Hello world\" -o out.wav",
+   "doc": "card",
+   "doc_sha": "64660117852a2054cf1f666f47eeb910e2204e4d",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-Omni-2B README.md:L219-219",
+   "file": "README.md",
+   "lines": [
+    219,
+    219
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install \"transformers>=5.20.2\" torch torchvision torchcodec accelerate pillow librosa soundfile",
+   "doc": "base-card",
+   "doc_sha": "ce2458cbce4ad970f92032ed94e3d18d30b04f9c",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-Omni-2B README.md:L223-236",
+   "file": "README.md",
+   "lines": [
+    223,
+    236
+   ],
+   "lang": "python",
+   "tool": "transformers",
+   "kind": "code",
+   "text": "import torch\nimport soundfile as sf\n\nfrom transformers import AutoModelForMultimodalLM, AutoProcessor\n\nmodel_id = \"LiquidAI/LFM3-Omni-2B\"\ndevice = \"cuda\" if torch.cuda.is_available() else \"cpu\"\ndtype = torch.bfloat16 if device == \"cuda\" else torch.float32\n\nmodel = AutoModelForMultimodalLM.from_pretrained(\n    model_id, dtype=dtype, device_map=device, trust_remote_code=True\n).eval()\nprocessor = AutoProcessor.from_pretrained(model_id, trust_remote_code=True)\ncodec = processor.audio_tokenizer.to(device=device).eval()",
+   "doc": "base-card",
+   "doc_sha": "ce2458cbce4ad970f92032ed94e3d18d30b04f9c",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-Omni-2B README.md:L245-254",
+   "file": "README.md",
+   "lines": [
+    245,
+    254
+   ],
+   "lang": "text",
+   "tool": "text",
+   "kind": "prompt-format",
+   "text": "<|startoftext|><|im_start|>system\nRespond with text.<|im_end|>\n<|im_start|>user\nName a famous bridge in San Francisco.<|im_end|>\n<|im_start|>assistant\n<think></think>The Golden Gate Bridge.<|im_end|>\n<|im_start|>user\nWhen did it open?<|im_end|>\n<|im_start|>assistant\n<think></think>",
+   "doc": "base-card",
+   "doc_sha": "ce2458cbce4ad970f92032ed94e3d18d30b04f9c",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-Omni-2B README.md:L260-263",
+   "file": "README.md",
+   "lines": [
+    260,
+    263
+   ],
+   "lang": "text",
+   "tool": "text",
+   "kind": "prompt-format",
+   "text": "<|startoftext|><|im_start|>user\n<|vision_start|><|image|><|vision_end|><|vision_start|><|audio|><|vision_end|>Answer in one sentence.<|im_end|>\n<|im_start|>assistant\n<think></think>",
+   "doc": "base-card",
+   "doc_sha": "ce2458cbce4ad970f92032ed94e3d18d30b04f9c",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-Omni-2B README.md:L280-298",
+   "file": "README.md",
+   "lines": [
+    280,
+    298
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "conversation = [\n    {\"role\": \"system\", \"content\": \"Perform ASR in English.\"},\n    {\"role\": \"user\", \"content\": [{\"type\": \"audio\", \"audio\": \"audio.wav\"}]},\n]\n\ninputs = processor.apply_chat_template(\n    conversation,\n    add_generation_prompt=True,\n    tokenize=True,\n    return_dict=True,\n    return_tensors=\"pt\",\n).to(device)\nwith torch.no_grad():\n    outputs = model.generate(**inputs, max_new_tokens=1024, generation_mode=\"text\")\ntext = processor.decode(\n    outputs.sequences[0, inputs[\"input_ids\"].shape[1]:outputs.sequence_lengths[0]],\n    skip_special_tokens=True,\n)\nprint(text)",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-n",
+      "value": "1024",
+      "from": "max_new_tokens: 1024"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "ce2458cbce4ad970f92032ed94e3d18d30b04f9c",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-Omni-2B README.md:L310-333",
+   "file": "README.md",
+   "lines": [
+    310,
+    333
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "conversation = [\n    {\"role\": \"system\", \"content\": \"Perform TTS in American English using a female voice.\"},\n    {\"role\": \"user\", \"content\": \"The quick brown fox jumps over the lazy dog\"},\n]\ninputs = processor.apply_chat_template(\n    conversation,\n    add_generation_prompt=True,\n    tokenize=True,\n    return_dict=True,\n    return_tensors=\"pt\",\n).to(device)\nwith torch.no_grad():\n    outputs = model.generate(\n        **inputs,\n        max_new_tokens=256,\n        generation_mode=\"audio\",\n        audio_temperature=0.4,\n        audio_repetition_penalty=1.2,\n    )\n    waveform = codec.decode(\n        outputs.audio_codes[:1, :, :outputs.audio_lengths[0]]\n    ).audio_values[0]  # 24 kHz\n\nsf.write(\"tts.wav\", waveform.squeeze(0).float().cpu().numpy(), 24_000)",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-n",
+      "value": "256",
+      "from": "max_new_tokens: 256"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "ce2458cbce4ad970f92032ed94e3d18d30b04f9c",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-Omni-2B README.md:L348-376",
+   "file": "README.md",
+   "lines": [
+    348,
+    376
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "conversation = [\n    {\"role\": \"system\", \"content\": \"Respond with interleaved text and audio.\"},\n    {\"role\": \"user\", \"content\": [{\"type\": \"audio\", \"audio\": \"question.wav\"}]},\n]\ninputs = processor.apply_chat_template(\n    conversation,\n    add_generation_prompt=True,\n    tokenize=True,\n    return_dict=True,\n    return_tensors=\"pt\",\n).to(device)\nwith torch.no_grad():\n    outputs = model.generate(\n        **inputs,\n        max_new_tokens=1024,\n        generation_mode=\"interleaved\",\n        audio_temperature=0.4,\n        audio_repetition_penalty=1.2,\n    )\n\n    text = processor.decode(\n        outputs.sequences[0, inputs[\"input_ids\"].shape[1]:outputs.sequence_lengths[0]],\n        skip_special_tokens=True,\n    )\n    waveform = codec.decode(\n        outputs.audio_codes[:1, :, :outputs.audio_lengths[0]]\n    ).audio_values[0]  # 24 kHz\nprint(text)\nsf.write(\"reply.wav\", waveform.squeeze(0).float().cpu().numpy(), 24_000)",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-n",
+      "value": "1024",
+      "from": "max_new_tokens: 1024"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "ce2458cbce4ad970f92032ed94e3d18d30b04f9c",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-Omni-2B README.md:L387-403",
+   "file": "README.md",
+   "lines": [
+    387,
+    403
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "conversation = [\n    {\"role\": \"user\", \"content\": [{\"type\": \"audio\", \"audio\": \"question.wav\"}]},\n]\ninputs = processor.apply_chat_template(\n    conversation,\n    add_generation_prompt=True,\n    tokenize=True,\n    return_dict=True,\n    return_tensors=\"pt\",\n).to(device)\nwith torch.no_grad():\n    outputs = model.generate(**inputs, max_new_tokens=1024, generation_mode=\"text\")\n    text = processor.decode(\n        outputs.sequences[0, inputs[\"input_ids\"].shape[1]:outputs.sequence_lengths[0]],\n        skip_special_tokens=True,\n    )\nprint(text)",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-n",
+      "value": "1024",
+      "from": "max_new_tokens: 1024"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "ce2458cbce4ad970f92032ed94e3d18d30b04f9c",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-Omni-2B README.md:L414-441",
+   "file": "README.md",
+   "lines": [
+    414,
+    441
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "conversation = [\n    {\n        \"role\": \"system\",\n        \"content\": \"Answer questions about the provided audio clip. Base every answer only on what can be heard.\",\n    },\n    {\n        \"role\": \"user\",\n        \"content\": [\n            {\"type\": \"audio\", \"audio\": \"recording.wav\"},\n            {\"type\": \"text\", \"text\": \"What is happening in this recording?\"},\n        ],\n    },\n]\ninputs = processor.apply_chat_template(\n    conversation,\n    add_generation_prompt=True,\n    tokenize=True,\n    return_dict=True,\n    return_tensors=\"pt\",\n).to(device)\n\nwith torch.no_grad():\n    outputs = model.generate(**inputs, max_new_tokens=1024, generation_mode=\"text\")\n\nprint(processor.decode(\n    outputs.sequences[0, inputs[\"input_ids\"].shape[1]:outputs.sequence_lengths[0]],\n    skip_special_tokens=True,\n))",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-n",
+      "value": "1024",
+      "from": "max_new_tokens: 1024"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "ce2458cbce4ad970f92032ed94e3d18d30b04f9c",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-Omni-2B README.md:L465-492",
+   "file": "README.md",
+   "lines": [
+    465,
+    492
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "conversation = [\n    {\n        \"role\": \"system\",\n        \"content\": \"Answer questions about the provided image. Base every answer only on what can be seen.\",\n    },\n    {\n        \"role\": \"user\",\n        \"content\": [\n            {\"type\": \"image\", \"image\": \"photo.jpg\"},\n            {\"type\": \"text\", \"text\": \"What is written on the sign?\"},\n        ],\n    },\n]\ninputs = processor.apply_chat_template(\n    conversation,\n    add_generation_prompt=True,\n    tokenize=True,\n    return_dict=True,\n    return_tensors=\"pt\",\n).to(device)\n\nwith torch.no_grad():\n    outputs = model.generate(**inputs, max_new_tokens=1024, generation_mode=\"text\")\n\nprint(processor.decode(\n    outputs.sequences[0, inputs[\"input_ids\"].shape[1]:outputs.sequence_lengths[0]],\n    skip_special_tokens=True,\n))",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-n",
+      "value": "1024",
+      "from": "max_new_tokens: 1024"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "ce2458cbce4ad970f92032ed94e3d18d30b04f9c",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-Omni-2B README.md:L503-530",
+   "file": "README.md",
+   "lines": [
+    503,
+    530
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "conversation = [\n    {\n        \"role\": \"system\",\n        \"content\": \"Answer questions about the provided image. Base every answer only on what can be seen. Respond with text.\",\n    },\n    {\n        \"role\": \"user\",\n        \"content\": [\n            {\"type\": \"image\", \"image\": \"photo.jpg\"},\n            {\"type\": \"audio\", \"audio\": \"question.wav\"},\n        ],\n    },\n]\ninputs = processor.apply_chat_template(\n    conversation,\n    add_generation_prompt=True,\n    tokenize=True,\n    return_dict=True,\n    return_tensors=\"pt\",\n).to(device)\n\nwith torch.no_grad():\n    outputs = model.generate(**inputs, max_new_tokens=1024, generation_mode=\"text\")\n\nprint(processor.decode(\n    outputs.sequences[0, inputs[\"input_ids\"].shape[1]:outputs.sequence_lengths[0]],\n    skip_special_tokens=True,\n))",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-n",
+      "value": "1024",
+      "from": "max_new_tokens: 1024"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "ce2458cbce4ad970f92032ed94e3d18d30b04f9c",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-Omni-2B README.md:L541-564",
+   "file": "README.md",
+   "lines": [
+    541,
+    564
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "conversation = [\n    {\n        \"role\": \"user\",\n        \"content\": [\n            {\"type\": \"video\", \"video\": \"clip.mp4\"},\n            {\"type\": \"text\", \"text\": \"What happens in this video?\"},\n        ],\n    },\n]\ninputs = processor.apply_chat_template(\n    conversation,\n    add_generation_prompt=True,\n    tokenize=True,\n    return_dict=True,\n    return_tensors=\"pt\",\n).to(device)\n\nwith torch.no_grad():\n    outputs = model.generate(**inputs, max_new_tokens=1024, generation_mode=\"text\")\n\nprint(processor.decode(\n    outputs.sequences[0, inputs[\"input_ids\"].shape[1]:outputs.sequence_lengths[0]],\n    skip_special_tokens=True,\n))",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-n",
+      "value": "1024",
+      "from": "max_new_tokens: 1024"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "ce2458cbce4ad970f92032ed94e3d18d30b04f9c",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-Omni-2B README.md:L580-606",
+   "file": "README.md",
+   "lines": [
+    580,
+    606
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "conversation = [\n    {\"role\": \"system\", \"content\": \"Answer questions about the video using what you see and hear.\"},\n    {\n        \"role\": \"user\",\n        \"content\": [\n            {\"type\": \"video\", \"video\": \"clip.mp4\"},\n            {\"type\": \"text\", \"text\": \"What happens here, and what can you hear?\"},\n        ],\n    },\n]\ninputs = processor.apply_chat_template(\n    conversation,\n    add_generation_prompt=True,\n    tokenize=True,\n    return_dict=True,\n    return_tensors=\"pt\",\n    load_audio_from_video=True,\n    processor_kwargs={\"use_audio_in_video\": True},\n).to(device)\n\nwith torch.no_grad():\n    outputs = model.generate(**inputs, max_new_tokens=1024, generation_mode=\"text\")\n\nprint(processor.decode(\n    outputs.sequences[0, inputs[\"input_ids\"].shape[1]:outputs.sequence_lengths[0]],\n    skip_special_tokens=True,\n))",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-n",
+      "value": "1024",
+      "from": "max_new_tokens: 1024"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "ce2458cbce4ad970f92032ed94e3d18d30b04f9c",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-Omni-2B README.md:L617-623",
+   "file": "README.md",
+   "lines": [
+    617,
+    623
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "prompt-format",
+   "text": "<tool_call>\n<function=set_volume>\n<parameter=volume>\n30\n</parameter>\n</function>\n</tool_call>",
+   "doc": "base-card",
+   "doc_sha": "ce2458cbce4ad970f92032ed94e3d18d30b04f9c",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-Omni-2B README.md:L629-694",
+   "file": "README.md",
+   "lines": [
+    629,
+    694
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "import json\nimport re\n\ntools = [{\n    \"type\": \"function\",\n    \"function\": {\n        \"name\": \"set_volume\",\n        \"description\": \"Set the device speaker volume.\",\n        \"parameters\": {\n            \"type\": \"object\",\n            \"properties\": {\n                \"volume\": {\"type\": \"integer\", \"description\": \"Volume from 0 to 100.\"}\n            },\n            \"required\": [\"volume\"],\n        },\n    },\n}]\nfunctions = {\"set_volume\": lambda volume: {\"volume\": volume}}  # your implementations\n\nCALL_RE = re.compile(r\"<tool_call>\\s*<function=([^>\\n]+)>(.*?)</function>\\s*</tool_call>\", re.DOTALL)\nPARAM_RE = re.compile(r\"<parameter=([^>\\n]+)>\\n?(.*?)\\n?</parameter>\", re.DOTALL)\n\n\ndef parse_tool_calls(text):\n    calls = []\n    for name, body in CALL_RE.findall(text):\n        arguments = {}\n        for key, value in PARAM_RE.findall(body):\n            try:\n                arguments[key] = json.loads(value)\n            except json.JSONDecodeError:\n                arguments[key] = value  # plain string\n        calls.append({\"type\": \"function\", \"function\": {\"name\": name, \"arguments\": arguments}})\n    return calls\n\n\ndef respond(conversation):\n    inputs = processor.apply_chat_template(\n        conversation,\n        tools=tools,\n        add_generation_prompt=True,\n        tokenize=True,\n        return_dict=True,\n        return_tensors=\"pt\",\n    ).to(device)\n    with torch.no_grad():\n        outputs = model.generate(**inputs, max_new_tokens=1024, generation_mode=\"text\")\n    return processor.decode(\n        outputs.sequences[0, inputs[\"input_ids\"].shape[1]:outputs.sequence_lengths[0]],\n        skip_special_tokens=True,\n    )\n\n\nconversation = [\n    {\"role\": \"user\", \"content\": [{\"type\": \"audio\", \"audio\": \"question.wav\"}]},\n]\ntext = respond(conversation)\nwhile calls := parse_tool_calls(text):\n    results = [functions[c[\"function\"][\"name\"]](**c[\"function\"][\"arguments\"]) for c in calls]\n    conversation += [\n        {\"role\": \"assistant\", \"tool_calls\": calls},\n        {\"role\": \"tool\", \"content\": json.dumps(results)},\n    ]\n    text = respond(conversation)\n\nprint(text)",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-n",
+      "value": "1024",
+      "from": "max_new_tokens: 1024"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "ce2458cbce4ad970f92032ed94e3d18d30b04f9c",
+   "scope": "model"
+  }
+ ],
+ "card_notes": [
+  {
+   "text": "<td style=\"border: 0; padding: 0.55em 0.75em;\"><strong>Context length</strong></td>",
+   "source": "LiquidAI/LFM3-Omni-2B README.md:L104"
+  },
+  {
+   "text": "This is a **non-reasoning** model. `enable_thinking=True` is not supported.",
+   "source": "LiquidAI/LFM3-Omni-2B README.md:L126"
+  },
+  {
+   "text": "- **Text output:** greedy decoding works well.",
+   "source": "LiquidAI/LFM3-Omni-2B README.md:L157"
+  },
+  {
+   "text": "By default, the model selects the output modality based on the system prompt and input modality, typically matching the input modality. To encourage a specific output modality, append the corresponding instructions to the end of your system prompt.",
+   "source": "LiquidAI/LFM3-Omni-2B README.md:L191"
+  },
+  {
+   "text": "<th scope=\"col\" style=\"text-align: left; padding: 0.55em 0.75em; border: 0; border-bottom: 1px solid rgba(127, 127, 127, 0.55);\">System Prompt</th>",
+   "source": "LiquidAI/LFM3-Omni-2B README.md:L197"
+  },
+  {
+   "text": "<summary><strong>Chat template</strong></summary>",
+   "source": "LiquidAI/LFM3-Omni-2B README.md:L240"
+  },
+  {
+   "text": "LFM3-Omni uses a ChatML-like format, which `processor.apply_chat_template()` renders for you, generated from the checkpoint's [chat template](https://huggingface.co/LiquidAI/LFM3-Omni-2B/blob/main/chat_template.jinja):",
+   "source": "LiquidAI/LFM3-Omni-2B README.md:L242"
+  },
+  {
+   "text": "The system turn is optional, and every assistant turn opens with an empty `<think></think>`. Each image, video or audio clip is wrapped in `<|vision_start|>` / `<|vision_end|>`, which the template adds. Here is an image and a spoken question:",
+   "source": "LiquidAI/LFM3-Omni-2B README.md:L257"
+  },
+  {
+   "text": "To use the model for transcription, use the system prompt `Perform ASR in <language>.`, where `<language>` is the English name of the language.",
+   "source": "LiquidAI/LFM3-Omni-2B README.md:L275"
+  },
+  {
+   "text": "For speech synthesis, use the system prompt `Perform TTS in <language> using a <gender> voice.`.",
+   "source": "LiquidAI/LFM3-Omni-2B README.md:L306"
+  },
+  {
+   "text": "The recommended system prompt is `Respond with interleaved text and audio.`.",
+   "source": "LiquidAI/LFM3-Omni-2B README.md:L342"
+  },
+  {
+   "text": "For a text-only answer, no specific system prompt is needed. `Respond with text.` makes it explicit. Pass `generation_mode=\"text\"`. LFM3-Omni-2B is a non-reasoning model: every answer opens with an empty `<think></think>`.",
+   "source": "LiquidAI/LFM3-Omni-2B README.md:L384"
+  },
+  {
+   "text": "Include the recording and a question in the user turn. Questions can address speech, music, background sounds, or events. No specific system prompt is required. To ground answers in the recording, use `Answer questions about the provided audio clip. Base every answer only on what can be heard.`.",
+   "source": "LiquidAI/LFM3-Omni-2B README.md:L411"
+  },
+  {
+   "text": "Use a system prompt that specifies the source language, target language, and output format:",
+   "source": "LiquidAI/LFM3-Omni-2B README.md:L451"
+  },
+  {
+   "text": "Include the image and a question in the user turn. To ground answers in the image, use the system prompt `Answer questions about the provided image. Base every answer only on what can be seen.`. For captions, use `Describe the provided image.`. Images are processed at their native resolution, up to ",
+   "source": "LiquidAI/LFM3-Omni-2B README.md:L462"
+  },
+  {
+   "text": "The question can be asked by voice, with the recording in place of the text. Add `Respond with text.` to the system prompt for a text answer, or follow the voice chat example with `Respond with interleaved text and audio.` for a spoken one.",
+   "source": "LiquidAI/LFM3-Omni-2B README.md:L500"
+  },
+  {
+   "text": "Include the video and a question in the user turn. No specific system prompt is required. Video is sampled at 2 frames per second (4 to 384 frames), and each pair of frames is prefixed with its timestamp.",
+   "source": "LiquidAI/LFM3-Omni-2B README.md:L538"
+  },
+  {
+   "text": "To let the model see and hear a video, use the system prompt `Answer questions about the video using what you see and hear.` and pass two flags:",
+   "source": "LiquidAI/LFM3-Omni-2B README.md:L572"
+  },
+  {
+   "text": "Pass function schemas through `tools=...` to `apply_chat_template()`. The chat template places them in the system prompt between `<tools>` and `</tools>`. Requests may be spoken or written. A tool call looks like this:",
+   "source": "LiquidAI/LFM3-Omni-2B README.md:L614"
+  },
+  {
+   "text": "<p><small>All scores were measured by Liquid AI. Every model uses its own chat template, prompt format, and image and video preprocessing, with greedy decoding for text output. LFM3-Omni-2B speech output uses <code>audio_temperature=0.4</code> and <code>audio_repetition_penalty=1.2</code>.</small></",
+   "source": "LiquidAI/LFM3-Omni-2B README.md:L1140"
+  },
+  {
+   "text": "LFM3-Omni-2B is a non-reasoning model: with `llama serve`, use `--reasoning off`. Start a web chat UI and an OpenAI-compatible API at `http://localhost:8080`:",
+   "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L80"
+  },
+  {
+   "text": "Speech recognition: use the system prompt `Perform ASR in <language>.`",
+   "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L88"
+  },
+  {
+   "text": "Video understanding: the model sees the frames and hears the soundtrack of the video, use the system prompt `Answer questions about the video using what you see and hear.` Video input needs `ffmpeg` in `PATH`.",
+   "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L102"
+  }
+ ],
+ "chat_template": {
+  "gguf_sha256": "ea74cc1d14319ed436dc0f37632893004d436913113e7605267f2b01694d65e4",
+  "repo_sha256": "ea74cc1d14319ed436dc0f37632893004d436913113e7605267f2b01694d65e4",
+  "repo_file": "chat_template.jinja",
+  "same": true,
+  "gguf_chars": 13513,
+  "repo_chars": 13513,
+  "repo_label": "LiquidAI/LFM3-Omni-2B",
+  "use": "gguf"
+ },
+ "stop": {
+  "eos_token": "<|im_end|>",
+  "eos_token_id": [
+   124900,
+   125014
+  ],
+  "eos_token_id_source": "LiquidAI/LFM3-Omni-2B generation_config.json",
+  "analysis": {
+   "tokens": [
+    {
+     "id": 124900,
+     "text": "<|im_end|>",
+     "source": "LiquidAI/LFM3-Omni-2B generation_config.json eos_token_id",
+     "eog_by": "GGUF tokenizer.ggml.eos_token_id"
+    },
+    {
+     "id": 125014,
+     "text": "<|text_end|>",
+     "source": "LiquidAI/LFM3-Omni-2B generation_config.json eos_token_id",
+     "eog_by": null
+    }
+   ],
+   "missing": [
+    {
+     "id": 125014,
+     "text": "<|text_end|>",
+     "source": "LiquidAI/LFM3-Omni-2B generation_config.json eos_token_id",
+     "eog_by": null
+    }
+   ],
+   "gguf": {
+    "eos": 124900
+   }
+  }
+ },
+ "rope": {
+  "rope.freq_base": 1000000.0,
+  "config": {
+   "full_attention": {
+    "partial_rotary_factor": 0.5,
+    "rope_theta": 1000000.0,
+    "rope_type": "default"
+   },
+   "sliding_attention": {
+    "rope_theta": 10000,
+    "rope_type": "default"
+   }
+  }
+ },
+ "aux": [
+  {
+   "kind": "mmproj",
+   "file": "mmproj-LFM3-Omni-2B-BF16.gguf",
+   "size": 949841248,
+   "sha256": "92907148363ed89f67c46a09264bf2635d4069a66ced26db75abd63370eddb7e",
+   "fetched": false,
+   "source": "LiquidAI/LFM3-Omni-2B-GGUF repo file"
+  },
+  {
+   "kind": "mmproj",
+   "file": "mmproj-LFM3-Omni-2B-F16.gguf",
+   "size": 949841248,
+   "sha256": "361bc95192c7d9156b566fcd4e48930363b78218e493fb1be607456bd51586e3",
+   "fetched": false,
+   "source": "LiquidAI/LFM3-Omni-2B-GGUF repo file"
+  },
+  {
+   "kind": "mmproj",
+   "file": "mmproj-LFM3-Omni-2B-Q8_0.gguf",
+   "size": 540892768,
+   "sha256": "720ff4fc09df0e026c4ec641d0c698bf27b5bcd50561944c88eda5e3dffe1839",
+   "fetched": false,
+   "source": "LiquidAI/LFM3-Omni-2B-GGUF repo file"
+  }
+ ],
+ "gguf": {
+  "general.architecture": "lfm3",
+  "general.name": "LFM3 Omni 2B",
+  "general.file_type": 15,
+  "general.quantization_version": 2,
+  "_gguf_version": 3
+ },
+ "snapshot": {
+  "path": "LiquidAI--LFM3-Omni-2B-GGUF/64660117852a2054cf1f666f47eeb910e2204e4d",
+  "fetched_bytes": 17759,
+  "errors": null,
+  "gated": false
+ },
+ "base_snapshot": {
+  "path": "LiquidAI--LFM3-Omni-2B/ce2458cbce4ad970f92032ed94e3d18d30b04f9c",
+  "fetched_bytes": 18752160,
+  "errors": null,
+  "gated": false
+ },
+ "repo_files": {
+  ".gitattributes": {
+   "size": 2012,
+   "sha256": null,
+   "blob": "4c1101515461136f12b28b25d35ad945ed3efa61",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "LFM3-Omni-2B-BF16.gguf": {
+   "size": 3466628608,
+   "sha256": "58a6d91f532e4685336ec90699d425f89f61bffa1b0bc685bf7ae9e09f72efff",
+   "blob": "40bfc86b5044275f66d2e89be36800a4cf8edd9e",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (3466 MB)"
+  },
+  "LFM3-Omni-2B-F16.gguf": {
+   "size": 3466628608,
+   "sha256": "9fde8072a7313d676591499d14ecf7f7ee2f1773cc9e4bdbdbeed4a87c5987f6",
+   "blob": "5805e6e0a70967fce965e138f8fccb94b8d3e56b",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (3466 MB)"
+  },
+  "LFM3-Omni-2B-Q4_0.gguf": {
+   "size": 1049617920,
+   "sha256": "6d2273a383b92dd7c5db0eb4c8dfeae13e805b485a6621c4b391ae179c2b5f28",
+   "blob": "e4fb378534a7377f17d2f14c6cd2a3ec7fd3e498",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (1049 MB)"
+  },
+  "LFM3-Omni-2B-Q4_K_M.gguf": {
+   "size": 1099630080,
+   "sha256": "9f8d30e9d4fd7a9349d586e077988229b3ca0a0e4ad730897563d1eccc9893e2",
+   "blob": "b41665a9496cf0aa3dc442693a2a22d15d3da432",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (1099 MB)"
+  },
+  "LFM3-Omni-2B-Q8_0.gguf": {
+   "size": 1846240768,
+   "sha256": "59118f661eaacb93d204723d76355b53347f0940b508c11412f6290fd49158d4",
+   "blob": "34d4b737a73938a6e9d47ebe9d4757d2c5f65ac5",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (1846 MB)"
+  },
+  "LICENSE": {
+   "size": 10574,
+   "sha256": null,
+   "blob": "25e731c697c4fe4c52ee654cedf7106a827748d2",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "README.md": {
+   "size": 5173,
+   "sha256": null,
+   "blob": "920e3fccce57106e420ccaca74925d3ccb50284e",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "mmproj-LFM3-Omni-2B-BF16.gguf": {
+   "size": 949841248,
+   "sha256": "92907148363ed89f67c46a09264bf2635d4069a66ced26db75abd63370eddb7e",
+   "blob": "44652bea144952fa93ed2d613c01a855be124895",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (949 MB)"
+  },
+  "mmproj-LFM3-Omni-2B-F16.gguf": {
+   "size": 949841248,
+   "sha256": "361bc95192c7d9156b566fcd4e48930363b78218e493fb1be607456bd51586e3",
+   "blob": "acad8b4e50beb18de0eac5e0574a1e20704a0a4b",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (949 MB)"
+  },
+  "mmproj-LFM3-Omni-2B-Q8_0.gguf": {
+   "size": 540892768,
+   "sha256": "720ff4fc09df0e026c4ec641d0c698bf27b5bcd50561944c88eda5e3dffe1839",
+   "blob": "fbb8ec87d6f0e4a78fc8ffcee0735b07b7a57e29",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (540 MB)"
+  }
+ },
+ "base_repo_files": {
+  ".gitattributes": {
+   "size": 1722,
+   "sha256": null,
+   "blob": "99c08a9a994f4a02ce6468f97dec7a2de363569b",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "LICENSE": {
+   "size": 10574,
+   "sha256": null,
+   "blob": "25e731c697c4fe4c52ee654cedf7106a827748d2",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "README.md": {
+   "size": 74453,
+   "sha256": null,
+   "blob": "5b57d34d1a14d999f3ffe558dc3621790aa6f041",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "assets/lfm3-omni-architecture-light.png": {
+   "size": 188029,
+   "sha256": "950e15b1f21ab682b461375b1be91ef8422de1f00c5bf064f2c9ea28d556d4bc",
+   "blob": "24b8e7d9e74b3e3727c4a66b57c160805a897c16",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "assets/lfm3-omni-family-radar-light.png": {
+   "size": 208009,
+   "sha256": "0a90156e50907d71e7fe7e352c428eeaad863a425052250e115d10e903ae1d6d",
+   "blob": "f5d8802f70fcd14c6dc1517dbb6a30df08cbd0f1",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "audio_tokenizer/config.json": {
+   "size": 512,
+   "sha256": null,
+   "blob": "c3134fe42e33dc0d1131636ad0055c610da45bf7",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "audio_tokenizer/model.safetensors": {
+   "size": 147143540,
+   "sha256": "45984a872fdcf0b94cd0ec68822bbf26f0c6fcb580cfaba0f7fa3ee60355137f",
+   "blob": "6f9ec92fd0e07e205ead1852835a54f34c1335d4",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (147 MB)"
+  },
+  "chat_template.jinja": {
+   "size": 13513,
+   "sha256": null,
+   "blob": "7601ed47a78ddfe45ff300688cf9d0a1b1e60b2c",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "config.json": {
+   "size": 5912,
+   "sha256": null,
+   "blob": "f135feb463b70073ec2c9998ed34573a2f4aba3b",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "configuration_lfm3.py": {
+   "size": 6113,
+   "sha256": null,
+   "blob": "a3cc0e726e8f4656f8468df5c8445f26e6dc8464",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "configuration_lfm3_omni.py": {
+   "size": 14598,
+   "sha256": null,
+   "blob": "74a7817148ff8e254bc1b95785081c6167268c33",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "configuration_lfm3_vl.py": {
+   "size": 9158,
+   "sha256": null,
+   "blob": "2533235779488879f8ca5c1d08ac5917aa81f799",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "configuration_liquid_codec.py": {
+   "size": 5401,
+   "sha256": null,
+   "blob": "30409c65b5713d70745a9dd8062bb8ca6bd0fde1",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "feature_extraction_lfm3_omni.py": {
+   "size": 8935,
+   "sha256": null,
+   "blob": "efd5d3407ed20bfa406202a08e46a68b6f79e027",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "generation_config.json": {
+   "size": 392,
+   "sha256": null,
+   "blob": "9db0b0d371c3a95aa5d3479e9fffeea4b866abdd",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "image_processing_lfm3_vl.py": {
+   "size": 12036,
+   "sha256": null,
+   "blob": "8d27ebbca64a3aa55313c2d074fc684a8d9c335b",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "lfm3_conv.py": {
+   "size": 8532,
+   "sha256": null,
+   "blob": "a1b67afdb605452f5a99751862863d5460a1fa69",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "model.safetensors": {
+   "size": 4333941640,
+   "sha256": "76c0ec2c3e27832fb19f886d5eb0afe37f03c5c32c4a796a7ce08cef119d2763",
+   "blob": "f06aa5bf923f56d457a9ee8ae7e8b9034360391f",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (4333 MB)"
+  },
+  "modeling_lfm3.py": {
+   "size": 42359,
+   "sha256": null,
+   "blob": "0ccffc7ed179c2e3aaa19ab93bba735abb1d124d",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "modeling_lfm3_omni.py": {
+   "size": 98277,
+   "sha256": null,
+   "blob": "7201cb1615fc14eff7dc1b142d3c72aa263520f9",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "modeling_lfm3_vl.py": {
+   "size": 45019,
+   "sha256": null,
+   "blob": "a9064e7c9560a3dda2fe214098eb7d5dfe31fdc5",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "modeling_liquid_codec.py": {
+   "size": 17884,
+   "sha256": null,
+   "blob": "2c77c3b953faae96073176fa0243dc17d7ac644d",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "processing_lfm3_omni.py": {
+   "size": 39031,
+   "sha256": null,
+   "blob": "57c500bf9d647021f27180f93a89737b1aaa1aee",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "processing_lfm3_vl.py": {
+   "size": 12152,
+   "sha256": null,
+   "blob": "b15a003dcad67a5d9b8ba2113bb35d622be04619",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "processor_config.json": {
+   "size": 2374,
+   "sha256": null,
+   "blob": "13e754413262f6217e5fbf3fc3bc24bd3977bbfb",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "tokenizer.json": {
+   "size": 17908634,
+   "sha256": "41927bd314d17d7d7fadb44e10cd0919f7b71528d7741596d8cbd15c6945ec44",
+   "blob": "e1d790a4dafc1b53d7d72b428b3e2be99c989e1f",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "tokenizer_config.json": {
+   "size": 674,
+   "sha256": null,
+   "blob": "a6b5b1dcf6e0ee72487429905d6dad3862874f67",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "video_preprocessor_config.json": {
+   "size": 706,
+   "sha256": null,
+   "blob": "3d2d909747cc2fb1e001375870af962c86ff94b7",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "video_processing_lfm3_vl.py": {
+   "size": 17161,
+   "sha256": null,
+   "blob": "f26f48efc0ff1087dffdef2516b08c7ea905c9cb",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  }
+ },
+ "found_in": [
+  "add-model.sh --fetch",
+  "graph.yaml models.lfm3-omni-2b-q4km"
+ ],
+ "match": "LFS sha256 match",
+ "local_check": {
+  "host": "grok-bot-vm-414137730",
+  "sha256_ok": true,
+  "checked": "2026-10-28"
+ },
+ "unknown": null,
+ "warnings": null,
+ "updated": "2026-10-28",
+ "by": "scripts/model_db.py",
+ "gguf_meta": {
+  "general.architecture": "lfm3",
+  "general.type": "model",
+  "general.sampling.top_k": 1,
+  "general.sampling.temp": 0.0,
+  "general.sampling.penalty_repeat": 1.0,
+  "general.name": "LFM3 Omni 2B",
+  "general.basename": "LFM3-Omni",
+  "general.size_label": "2B",
+  "general.license": "other",
+  "general.license.name": "lfm1.0",
+  "general.license.link": "LICENSE",
+  "general.tags": [
+   "liquid",
+   "lfm3",
+   "lfm3-omni",
+   "omni",
+   "audio",
+   "vision",
+   "speech-to-speech",
+   "edge",
+   "conversational",
+   "custom_code",
+   "any-to-any"
+  ],
+  "general.languages": [
+   "en",
+   "ar",
+   "zh",
+   "fr",
+   "de",
+   "it",
+   "ja",
+   "ko",
+   "pt",
+   "es",
+   "vi",
+   "th",
+   "id",
+   "hi",
+   "ru",
+   "pl",
+   "da",
+   "el",
+   "fi",
+   "he",
+   "nl",
+   "sv",
+   "tr"
+  ],
+  "lfm3.block_count": 24,
+  "lfm3.context_length": 128000,
+  "lfm3.embedding_length": 2048,
+  "lfm3.feed_forward_length": 7680,
+  "lfm3.attention.head_count": 16,
+  "lfm3.attention.head_count_kv": {
+   "array_len": 24
+  },
+  "lfm3.rope.freq_base": 1000000.0,
+  "lfm3.rope.freq_base_swa": 10000.0,
+  "lfm3.attention.layer_norm_rms_epsilon": 9.999999747378752e-06,
+  "lfm3.attention.key_length": 128,
+  "lfm3.attention.value_length": 128,
+  "lfm3.rope.dimension_count": 128,
+  "lfm3.attention.sliding_window_pattern": {
+   "array_len": 24
+  },
+  "lfm3.attention.sliding_window": 256,
+  "lfm3.shortconv.l_cache": 7,
+  "tokenizer.ggml.model": "gpt2",
+  "tokenizer.ggml.pre": "lfm2",
+  "tokenizer.ggml.tokens": {
+   "array_len": 128000
+  },
+  "tokenizer.ggml.token_type": {
+   "array_len": 128000
+  },
+  "tokenizer.ggml.merges": {
+   "array_len": 293320
+  },
+  "tokenizer.ggml.bos_token_id": 124894,
+  "tokenizer.ggml.eos_token_id": 124900,
+  "tokenizer.ggml.padding_token_id": 124893,
+  "tokenizer.ggml.add_bos_token": false,
+  "tokenizer.ggml.add_eos_token": false,
+  "tokenizer.chat_template": {
+   "sha256": "ea74cc1d14319ed436dc0f37632893004d436913113e7605267f2b01694d65e4",
+   "chars": 13513
+  },
+  "tokenizer.chat_template.tts": "{%- set names = {\"ar\": \"Arabic\", \"da\": \"Danish\", \"de\": \"German\", \"el\": \"Greek\", \"en\": \"American English\", \"en-us\": \"American English\", \"en-gb\": \"British English\", \"fi\": \"Finnish\", \"fr\": \"French\", \"he\": \"Hebrew\", \"it\": \"Italian\", \"ja\": \"Japanese\", \"ko\": \"Korean\", \"nl\": \"Dutch\", \"pl\": \"Polish\", \"pt\": \"Portuguese\", \"es\": \"Spanish\", \"sv\": \"Swedish\", \"tr\": \"Turkish\", \"zh\": \"Chinese\"} -%}{%- set code = (language | lower) if language is defined and language else 'en' -%}{%- set lang = names[code] if code in names else language -%}{%- set v = (voice | lower) if voice is defined and voice and (voice | lower) in ['female', 'male'] else 'female' -%}{{- bos_token -}}{{- '<|im_start|>system\\nPerform TTS in ' + lang + ' using a ' + v + ' voice.<|im_end|>\\n' -}}{{- '<|im_start|>user\\n' + messages[0]['content'] + '<|im_end|>\\n' -}}{{- '<|im_start|>assistant\\n<think></think><|audio_start|>' -}}",
+  "tokenizer.chat_templates": [
+   "tts"
+  ],
+  "general.quantization_version": 2,
+  "general.file_type": 15,
+  "_gguf_version": 3,
+  "_n_tensors": 287
+ },
+ "base_chain": [
+  {
+   "repo": "LiquidAI/LFM3-Omni-2B",
+   "api_id": "LiquidAI/LFM3-Omni-2B",
+   "revision": "ce2458cbce4ad970f92032ed94e3d18d30b04f9c",
+   "via": "card base_model",
+   "card_data": {
+    "license": "other",
+    "license_name": "lfm1.0",
+    "license_link": "LICENSE",
+    "language": [
+     "en",
+     "ar",
+     "zh",
+     "fr",
+     "de",
+     "it",
+     "ja",
+     "ko",
+     "pt",
+     "es",
+     "vi",
+     "th",
+     "id",
+     "hi",
+     "ru",
+     "pl",
+     "da",
+     "el",
+     "fi",
+     "he",
+     "nl",
+     "sv",
+     "tr"
+    ],
+    "pipeline_tag": "any-to-any",
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "any-to-any",
+   "safetensors": {
+    "parameters": {
+     "BF16": 2166928384
+    },
+    "total": 2166928384
+   },
+   "license_files": [
+    "LICENSE"
+   ]
+  }
+ ],
+ "github": null,
+ "github_dropped": [
+  {
+   "repo": "ggml-org/llama.cpp",
+   "why": "inference/training tool repo"
+  }
+ ],
+ "descriptor": {
+  "repo_id": {
+   "effective": "LiquidAI/LFM3-Omni-2B-GGUF",
+   "source": "HF API id"
+  },
+  "revision": {
+   "effective": "64660117852a2054cf1f666f47eeb910e2204e4d",
+   "source": "pinned (manifest / database)"
+  },
+  "file": {
+   "effective": "LFM3-Omni-2B-Q4_K_M.gguf",
+   "source": "HF API siblings"
+  },
+  "bytes": {
+   "effective": 1099630080,
+   "source": "HF API LFS size"
+  },
+  "sha256": {
+   "effective": "9f8d30e9d4fd7a9349d586e077988229b3ca0a0e4ad730897563d1eccc9893e2",
+   "source": "HF API LFS oid"
+  },
+  "quant": {
+   "effective": "Q4_K_M",
+   "source": "file name",
+   "values": [
+    {
+     "value": "Q4_K_M",
+     "source": "file name"
+    },
+    {
+     "value": "Q4_K_M",
+     "source": "GGUF general.file_type"
+    }
+   ]
+  },
+  "license": {
+   "effective": "other",
+   "source": "LiquidAI/LFM3-Omni-2B-GGUF card license",
+   "values": [
+    {
+     "value": "other",
+     "source": "LiquidAI/LFM3-Omni-2B-GGUF card license"
+    },
+    {
+     "value": "other",
+     "source": "LiquidAI/LFM3-Omni-2B card license"
+    },
+    {
+     "value": "other",
+     "source": "GGUF general.license"
+    }
+   ]
+  },
+  "license_name": {
+   "effective": "lfm1.0",
+   "source": "LiquidAI/LFM3-Omni-2B-GGUF card license_name",
+   "values": [
+    {
+     "value": "lfm1.0",
+     "source": "LiquidAI/LFM3-Omni-2B-GGUF card license_name"
+    },
+    {
+     "value": "lfm1.0",
+     "source": "LiquidAI/LFM3-Omni-2B card license_name"
+    },
+    {
+     "value": "lfm1.0",
+     "source": "GGUF general.license.name"
+    }
+   ]
+  },
+  "license_link": {
+   "effective": "LICENSE",
+   "source": "LiquidAI/LFM3-Omni-2B-GGUF card license_link",
+   "values": [
+    {
+     "value": "LICENSE",
+     "source": "LiquidAI/LFM3-Omni-2B-GGUF card license_link"
+    },
+    {
+     "value": "LICENSE",
+     "source": "LiquidAI/LFM3-Omni-2B card license_link"
+    },
+    {
+     "value": "LICENSE",
+     "source": "GGUF general.license.link"
+    }
+   ]
+  },
+  "license_file": {
+   "effective": "LiquidAI/LFM3-Omni-2B-GGUF@64660117852a/LICENSE",
+   "source": "LiquidAI/LFM3-Omni-2B-GGUF repo file",
+   "values": [
+    {
+     "value": "LiquidAI/LFM3-Omni-2B-GGUF@64660117852a/LICENSE",
+     "source": "LiquidAI/LFM3-Omni-2B-GGUF repo file"
+    },
+    {
+     "value": "LiquidAI/LFM3-Omni-2B@ce2458cbce4a/LICENSE",
+     "source": "LiquidAI/LFM3-Omni-2B repo file"
+    }
+   ]
+  },
+  "base_model_chain": {
+   "effective": "LiquidAI/LFM3-Omni-2B",
+   "source": "card base_model"
+  },
+  "architecture": {
+   "effective": "lfm3",
+   "source": "GGUF general.architecture",
+   "values": [
+    {
+     "value": "lfm3",
+     "source": "GGUF general.architecture"
+    },
+    {
+     "value": "lfm3",
+     "source": "HF API gguf.architecture"
+    }
+   ]
+  },
+  "hf_architectures": {
+   "effective": [
+    "Lfm3OmniForConditionalGeneration"
+   ],
+   "source": "LiquidAI/LFM3-Omni-2B config.json architectures"
+  },
+  "hf_model_type": {
+   "effective": "lfm3_omni",
+   "source": "LiquidAI/LFM3-Omni-2B config.json model_type"
+  },
+  "parameters": {
+   "effective": 1728801600,
+   "source": "HF API gguf.total (LiquidAI/LFM3-Omni-2B-GGUF)",
+   "values": [
+    {
+     "value": 1728801600,
+     "source": "HF API gguf.total (LiquidAI/LFM3-Omni-2B-GGUF)"
+    },
+    {
+     "value": 2166928384,
+     "source": "HF API safetensors.total (LiquidAI/LFM3-Omni-2B)"
+    }
+   ],
+   "conflict": true
+  },
+  "size_label": {
+   "effective": "2B",
+   "source": "GGUF general.size_label"
+  },
+  "ctx": {
+   "effective": 128000,
+   "source": "LiquidAI/LFM3-Omni-2B config.json max_position_embeddings",
+   "values": [
+    {
+     "value": 128000,
+     "source": "LiquidAI/LFM3-Omni-2B config.json max_position_embeddings"
+    },
+    {
+     "value": 128000,
+     "source": "GGUF lfm3.context_length"
+    }
+   ],
+   "precedence": "card statement > config.json > GGUF header > GitHub README"
+  },
+  "pipeline_tag": {
+   "effective": "any-to-any",
+   "source": "LiquidAI/LFM3-Omni-2B-GGUF HF API pipeline_tag",
+   "values": [
+    {
+     "value": "any-to-any",
+     "source": "LiquidAI/LFM3-Omni-2B-GGUF HF API pipeline_tag"
+    },
+    {
+     "value": "any-to-any",
+     "source": "LiquidAI/LFM3-Omni-2B HF API pipeline_tag"
+    }
+   ]
+  },
+  "languages": {
+   "effective": [
+    "en",
+    "ar",
+    "zh",
+    "fr",
+    "de",
+    "it",
+    "ja",
+    "ko",
+    "pt",
+    "es",
+    "vi",
+    "th",
+    "id",
+    "hi",
+    "ru",
+    "pl",
+    "da",
+    "el",
+    "fi",
+    "he",
+    "nl",
+    "sv",
+    "tr"
+   ],
+   "source": "LiquidAI/LFM3-Omni-2B-GGUF card language",
+   "values": [
+    {
+     "value": [
+      "en",
+      "ar",
+      "zh",
+      "fr",
+      "de",
+      "it",
+      "ja",
+      "ko",
+      "pt",
+      "es",
+      "vi",
+      "th",
+      "id",
+      "hi",
+      "ru",
+      "pl",
+      "da",
+      "el",
+      "fi",
+      "he",
+      "nl",
+      "sv",
+      "tr"
+     ],
+     "source": "LiquidAI/LFM3-Omni-2B-GGUF card language"
+    },
+    {
+     "value": [
+      "en",
+      "ar",
+      "zh",
+      "fr",
+      "de",
+      "it",
+      "ja",
+      "ko",
+      "pt",
+      "es",
+      "vi",
+      "th",
+      "id",
+      "hi",
+      "ru",
+      "pl",
+      "da",
+      "el",
+      "fi",
+      "he",
+      "nl",
+      "sv",
+      "tr"
+     ],
+     "source": "LiquidAI/LFM3-Omni-2B card language"
+    },
+    {
+     "value": [
+      "en",
+      "ar",
+      "zh",
+      "fr",
+      "de",
+      "it",
+      "ja",
+      "ko",
+      "pt",
+      "es",
+      "vi",
+      "th",
+      "id",
+      "hi",
+      "ru",
+      "pl",
+      "da",
+      "el",
+      "fi",
+      "he",
+      "nl",
+      "sv",
+      "tr"
+     ],
+     "source": "GGUF general.languages"
+    }
+   ]
+  }
+ },
+ "required_params": {
+  "kind": "chat",
+  "native_ctx": 128000,
+  "native_ctx_source": "LiquidAI/LFM3-Omni-2B config.json max_position_embeddings",
+  "yarn": null,
+  "yarn_source": null,
+  "items": [
+   {
+    "class": "REQUIRED",
+    "flag": "--jinja",
+    "value": null,
+    "source": "GGUF tokenizer.chat_template (ea74cc1d1431)",
+    "why_required": "messages, tool calls and thinking are formatted by the model's chat template; without --jinja llama-server falls back to a built-in approximation"
+   },
+   {
+    "class": "REQUIRED",
+    "flag": "--reasoning",
+    "value": "off",
+    "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L83-83",
+    "why_required": "the card's llama serve command sets it"
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--temp",
+    "value": "0",
+    "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L83-83",
+    "why_required": "sampling in the card's llama serve command",
+    "also": [
+     "LiquidAI/LFM3-Omni-2B-GGUF LiquidAI/LFM3-Omni-2B-GGUF README.md:L109 (example)",
+     "LiquidAI/LFM3-Omni-2B-GGUF README.md:L105-109",
+     "LiquidAI/LFM3-Omni-2B-GGUF README.md:L91-92",
+     "LiquidAI/LFM3-Omni-2B-GGUF README.md:L98-99"
+    ]
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--image",
+    "value": "speech.wav",
+    "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L91-92",
+    "why_required": "performance / tool option in the card's command",
+    "also": [
+     "LiquidAI/LFM3-Omni-2B-GGUF README.md:L105-109",
+     "LiquidAI/LFM3-Omni-2B-GGUF README.md:L98-99"
+    ],
+    "conflicts": [
+     {
+      "value": "photo.png",
+      "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L98-99"
+     },
+     {
+      "value": "reading.mp4",
+      "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L105-109"
+     }
+    ]
+   },
+   {
+    "class": "OPTIONAL",
+    "flag": "--system-prompt",
+    "value": "Perform ASR in English.",
+    "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L91-92",
+    "why_required": "performance / tool option in the card's command",
+    "also": [
+     "LiquidAI/LFM3-Omni-2B-GGUF README.md:L105-109"
+    ],
+    "conflicts": [
+     {
+      "value": "Answer questions about the video using what you see and hear.",
+      "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L105-109"
+     }
+    ]
+   },
+   {
+    "class": "REQUIRED",
+    "flag": "@stop",
+    "value": "<|text_end|>",
+    "source": "LiquidAI/LFM3-Omni-2B generation_config.json eos_token_id",
+    "why_required": "the model ends turns with '<|text_end|>' (id 125014) but neither the GGUF eos/eot id nor llama.cpp's built-in end-of-generation list covers it; send it as a stop string or set --override-kv tokenizer.ggml.eot_token_id=int:125014",
+    "client": true
+   }
+  ]
+ },
+ "blockers": null,
+ "params_problems": null,
+ "params_build": "b11374",
+ "native_ctx": 128000,
+ "native_ctx_source": "LiquidAI/LFM3-Omni-2B config.json max_position_embeddings",
+ "license_info": {
+  "id": "lfm1.0",
+  "id_source": "LiquidAI/LFM3-Omni-2B-GGUF card front matter license_name",
+  "name": "lfm1.0",
+  "summary": "lfm1.0 (LICENSE)",
+  "summary_source": "LiquidAI/LFM3-Omni-2B-GGUF card license",
+  "link": "https://huggingface.co/LiquidAI/LFM3-Omni-2B-GGUF/blob/64660117852a2054cf1f666f47eeb910e2204e4d/LICENSE",
+  "link_source": "LiquidAI/LFM3-Omni-2B-GGUF card license_link",
+  "texts": [
+   {
+    "file": "LiquidAI/LFM3-Omni-2B-GGUF@64660117852a/LICENSE",
+    "path": "/home/box/.local/share/gguf/hf-meta/LiquidAI--LFM3-Omni-2B-GGUF/64660117852a2054cf1f666f47eeb910e2204e4d/LICENSE",
+    "url": "https://huggingface.co/LiquidAI/LFM3-Omni-2B-GGUF/blob/64660117852a2054cf1f666f47eeb910e2204e4d/LICENSE",
+    "sha256": "4d28ca14dedc0b3d0fcc2b3339f0e79931faa33874f3d24f522183a8fc70068c",
+    "bytes": 10574,
+    "what": "model"
+   },
+   {
+    "file": "LiquidAI/LFM3-Omni-2B@ce2458cbce4a/LICENSE",
+    "path": "/home/box/.local/share/gguf/hf-meta/LiquidAI--LFM3-Omni-2B/ce2458cbce4ad970f92032ed94e3d18d30b04f9c/LICENSE",
+    "url": "https://huggingface.co/LiquidAI/LFM3-Omni-2B/blob/ce2458cbce4ad970f92032ed94e3d18d30b04f9c/LICENSE",
+    "sha256": "4d28ca14dedc0b3d0fcc2b3339f0e79931faa33874f3d24f522183a8fc70068c",
+    "bytes": 10574,
+    "what": "model"
+   }
+  ],
+  "obligations": [
+   {
+    "quote": "\"Commercial Use\" shall mean any use of the Work for direct or indirect commercial advantage or monetary compensation.",
+    "source": "LiquidAI/LFM3-Omni-2B-GGUF LICENSE:L27"
+   },
+   {
+    "quote": "\"Non-Commercial or Research Purposes\" shall mean purposes that do not involve any use of the Work or a Derivative Work for Commercial Use.",
+    "source": "LiquidAI/LFM3-Omni-2B-GGUF LICENSE:L31"
+   },
+   {
+    "quote": "2. Grant of Copyright License. Subject to the terms and conditions of this License, including the Commercial Use limitation set forth in Section 5, each Contributor hereby grants to You a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable copyright license to reproduce, prepar...",
+    "source": "LiquidAI/LFM3-Omni-2B-GGUF LICENSE:L35"
+   },
+   {
+    "quote": "3. Grant of Patent License. Subject to the terms and conditions of this License, including the Commercial Use limitation set forth in Section 5, each Contributor hereby grants to You a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable (except as stated in this section) patent...",
+    "source": "LiquidAI/LFM3-Omni-2B-GGUF LICENSE:L37"
+   },
+   {
+    "quote": "(a) You must give any other recipients of the Work or Derivative Works a copy of this License; and",
+    "source": "LiquidAI/LFM3-Omni-2B-GGUF LICENSE:L41"
+   },
+   {
+    "quote": "(b) You must cause any modified files to carry prominent notices stating that You changed the files; and",
+    "source": "LiquidAI/LFM3-Omni-2B-GGUF LICENSE:L43"
+   },
+   {
+    "quote": "(c) You must retain, in the Source form of any Derivative Works that You distribute, all copyright, patent, trademark, and attribution notices from the Source form of the Work, excluding those notices that do not pertain to any part of the Derivative Works; and",
+    "source": "LiquidAI/LFM3-Omni-2B-GGUF LICENSE:L45"
+   },
+   {
+    "quote": "(d) If the Work includes a \"NOTICE\" text file as part of its distribution, then any Derivative Works that You distribute must include a readable copy of the attribution notices contained within such NOTICE file, excluding those notices that do not pertain to any part of the Derivative Works, in at l...",
+    "source": "LiquidAI/LFM3-Omni-2B-GGUF LICENSE:L47"
+   },
+   {
+    "quote": "\"Commercial Use\" shall mean any use of the Work for direct or indirect commercial advantage or monetary compensation.",
+    "source": "LiquidAI/LFM3-Omni-2B LICENSE:L27"
+   },
+   {
+    "quote": "\"Non-Commercial or Research Purposes\" shall mean purposes that do not involve any use of the Work or a Derivative Work for Commercial Use.",
+    "source": "LiquidAI/LFM3-Omni-2B LICENSE:L31"
+   },
+   {
+    "quote": "2. Grant of Copyright License. Subject to the terms and conditions of this License, including the Commercial Use limitation set forth in Section 5, each Contributor hereby grants to You a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable copyright license to reproduce, prepar...",
+    "source": "LiquidAI/LFM3-Omni-2B LICENSE:L35"
+   },
+   {
+    "quote": "3. Grant of Patent License. Subject to the terms and conditions of this License, including the Commercial Use limitation set forth in Section 5, each Contributor hereby grants to You a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable (except as stated in this section) patent...",
+    "source": "LiquidAI/LFM3-Omni-2B LICENSE:L37"
+   },
+   {
+    "quote": "(a) You must give any other recipients of the Work or Derivative Works a copy of this License; and",
+    "source": "LiquidAI/LFM3-Omni-2B LICENSE:L41"
+   },
+   {
+    "quote": "(b) You must cause any modified files to carry prominent notices stating that You changed the files; and",
+    "source": "LiquidAI/LFM3-Omni-2B LICENSE:L43"
+   },
+   {
+    "quote": "(c) You must retain, in the Source form of any Derivative Works that You distribute, all copyright, patent, trademark, and attribution notices from the Source form of the Work, excluding those notices that do not pertain to any part of the Derivative Works; and",
+    "source": "LiquidAI/LFM3-Omni-2B LICENSE:L45"
+   },
+   {
+    "quote": "(d) If the Work includes a \"NOTICE\" text file as part of its distribution, then any Derivative Works that You distribute must include a readable copy of the attribution notices contained within such NOTICE file, excluding those notices that do not pertain to any part of the Derivative Works, in at l...",
+    "source": "LiquidAI/LFM3-Omni-2B LICENSE:L47"
+   }
+  ],
+  "gated": false,
+  "unknown": false,
+  "seen": [
+   {
+    "value": "other",
+    "source": "LiquidAI/LFM3-Omni-2B-GGUF card license"
+   },
+   {
+    "value": "other",
+    "source": "LiquidAI/LFM3-Omni-2B card license"
+   },
+   {
+    "value": "other",
+    "source": "GGUF general.license"
+   }
+  ]
+ }
+}

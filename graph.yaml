@@ -503,6 +503,42 @@ models:
     notes: Official guardian weight (docs/guardian-weights.md). Q2_K ~3.0 GiB. sha256 is registry HF LFS oid; verify with activate_guardian_weights.py --measure. Fetch before activating miryam-pentest / angel-guardian.
     db: RavichandranJ--Dolphin3-Cyber-8B-GGUF--Dolphin3.0-Llama3.1-8B-abliterated.Q2_K
 
+  # LFM3 family (Brian 2026-10-28): LFM3-1.7B-Uncensored is the headline default; VL / Omni /
+  # Audio are opt-in (code-bootstraps fetch-models.sh --pick lfm3-vl|lfm3-omni|lfm3-audio),
+  # served with --mmproj (the mmproj file sits beside the model). No node uses them by default.
+  lfm3-17b-uncensored-q4km:
+    gguf: ~/.local/share/gguf/models/general/LFM3-1.7B-Uncensored-AD-Q4_K_M.gguf
+    sha256: b22df65673b54ed326f18f74826d76f3b65dadc237ffd6306cd52be04544827d   # AtomicChat/LFM3-1.7B-Uncensored-GGUF@8851ef2; measured on the box 2026-10-28
+    arch: lfm3
+    trained_ctx: 262144
+    role: chat
+    db: AtomicChat--LFM3-1.7B-Uncensored-GGUF--LFM3-1.7B-Uncensored-AD-Q4_K_M
+    notes: "familia default model (general + coder). llama-bench b11944 box x86_64 CPU 8t: pp512 184, tg128 22 t/s (#183)."
+  lfm3-vl-2b-q4km:
+    gguf: ~/.local/share/gguf/models-optional/lfm3-vl/LFM3-VL-2B-Q4_K_M.gguf
+    sha256: 56dac2e192ff0d9ab8507f4f1aeb4aed0463449bbbefaac79497f041c95f21eb   # LiquidAI/LFM3-VL-2B-GGUF@017b19d
+    arch: lfm3
+    trained_ctx: 128000
+    role: chat
+    notes: "opt-in vision; mmproj-LFM3-VL-2B-Q8_0.gguf sha256 c5c5b58d544a18da919172d2d0368090ea1a4a351b6feb7f8a326a264a5918ab. Tested b11944: image prompt answered."
+    db: LiquidAI--LFM3-VL-2B-GGUF--LFM3-VL-2B-Q4_K_M
+  lfm3-omni-2b-q4km:
+    gguf: ~/.local/share/gguf/models-optional/lfm3-omni/LFM3-Omni-2B-Q4_K_M.gguf
+    sha256: 9f8d30e9d4fd7a9349d586e077988229b3ca0a0e4ad730897563d1eccc9893e2   # LiquidAI/LFM3-Omni-2B-GGUF@5e850da
+    arch: lfm3
+    trained_ctx: 128000
+    role: chat
+    notes: "opt-in image+audio; mmproj-LFM3-Omni-2B-Q8_0.gguf sha256 720ff4fc09df0e026c4ec641d0c698bf27b5bcd50561944c88eda5e3dffe1839. PARTIAL TESTED: image OK, audio reply untested."
+    db: LiquidAI--LFM3-Omni-2B-GGUF--LFM3-Omni-2B-Q4_K_M
+  lfm3-audio-2b-q4km:
+    gguf: ~/.local/share/gguf/models-optional/lfm3-audio/LFM3-Audio-2B-Q4_K_M.gguf
+    sha256: 9a773289bd321ed879cd3a76545f6aca506e403851a45fb315420aee45625be2   # LiquidAI/LFM3-Audio-2B-GGUF@642697a
+    arch: lfm3
+    trained_ctx: 128000
+    role: chat
+    notes: "opt-in audio; mmproj-LFM3-Audio-2B-Q8_0.gguf sha256 26601e904245a85bd8f3cf320a629e897cfc01c1d09369e8b4fd951f13024d3e. PARTIAL TESTED: loads, audio reply untested."
+    db: LiquidAI--LFM3-Audio-2B-GGUF--LFM3-Audio-2B-Q4_K_M
+
 nodes:
 
   qodesh-gpu-decision:
