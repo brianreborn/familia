@@ -11,6 +11,11 @@
   - **Cause:** Vulkan llama.cpp builds allocate about 1.8 GB of shared-memory host buffers even with no GPU layers.
   - **Fix:** `scripts/serve.sh` and the hermes harness export an empty `GGML_VK_VISIBLE_DEVICES` for `-ngl 0` nodes. If you start `llama-server` by hand, do the same. Windows `serve.ps1` can't set an empty variable; use a CPU build there. Live re-check: [#40](https://github.com/brianreborn/familia/issues/40).
 
+- **miryam coder TTFT / ngram (#83 / #82)**
+  - **#83:** Prefer a CPU pack for `ngl: 0`; if stuck on a Vulkan prebuilt, child env keeps empty `GGML_VK_VISIBLE_DEVICES` and argv gets `--no-op-offload` (see [miryam-perf-race.md](miryam-perf-race.md)). Do not wipe Mesa ICD globally.
+  - **#82:** `speculative.coder-ngram` is opt-in (`status: planned`); prefer `ngram-mod` when enabling. `ngram-simple` can make mixed turns ~6.8× slower.
+
+
 - **miryam RAM / OOM (standing rule)**
   - **Symptom:** hard hang when estimated llama-server use plus concurrent tests approached full MemTotal (~7.1 GiB).
   - **Rule:** keep ~2+ GiB free on hosts under 8 GiB; miryam `reserve_ram_mib` is 3072. The validator fails on a clear overcommit and warns when the reserve or the 2048 MiB small-host floor would be broken. earlyoom and zram are deployed; the disk swap is still only 16 MiB ([#43](https://github.com/brianreborn/familia/issues/43)). See [ram-safety.md](ram-safety.md).

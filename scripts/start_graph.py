@@ -215,6 +215,14 @@ def validate_local_nodes(graph, host, nodes, *, check_files):
                 binary = ROOT / binary
             if not binary.is_file() or not os.access(binary, os.X_OK):
                 raise StartupError(f"runtime for node {name} is missing or not executable: {binary}")
+            # Race #83 TOCTOU: re-check pack soname skew after policy gate, before attach/exec.
+            import miryam_perf_seatbelts as mps
+            skew_notes = []
+            if not mps.check_soname_skew(str(binary), note_sink=skew_notes):
+                raise StartupError(
+                    f"runtime for node {name} failed check_soname_skew: {binary}"
+                    + (f" ({'; '.join(skew_notes)})" if skew_notes else "")
+                )
             model_arg = next((argv[i + 1] for i, value in enumerate(argv[:-1]) if value == "-m"), None)
             model_path = Path(model_arg).expanduser() if model_arg else None
             if model_path and not model_path.is_absolute():

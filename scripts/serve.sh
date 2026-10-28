@@ -92,8 +92,14 @@ if printf '%s\n' "$args" | grep -q -E -e '(^|[[:space:]])--embeddings?([[:space:
 fi
 # Vulkan builds allocate ~1.83 GB of host buffers in shmem even with -ngl 0, counted
 # against the memcap scope (LESSONS-LEARNED L-vkshm). With no GPU layers, hide Vulkan unless set.
+# #83: if the binary path still looks like a Vulkan pack, also pass --no-op-offload (child argv only).
 case " $args " in *" -ngl 0 "*)
-  [ -n "${GGML_VK_VISIBLE_DEVICES+set}" ] || export GGML_VK_VISIBLE_DEVICES= ;;
+  [ -n "${GGML_VK_VISIBLE_DEVICES+set}" ] || export GGML_VK_VISIBLE_DEVICES=
+  case "$bin" in *vulkan*|*Vulkan*)
+    case " $args " in *" --no-op-offload "*) ;; *) args="$args --no-op-offload" ;; esac
+    ;;
+  esac
+  ;;
 esac
 # shellcheck disable=SC2086
 if [ "$FAMILIA_MEMCAP" = 1 ] && command -v systemd-run >/dev/null 2>&1; then
@@ -130,6 +136,8 @@ if [ "${ngl:-0}" -gt 0 ] && [ "$rc" -lt 128 ] && \
   say "Vulkan launch failed (exit $rc, $log); retrying on the CPU with -ngl 0 and Vulkan hidden"
   export GGML_VK_VISIBLE_DEVICES=
   safe_args="$(printf '%s\n' "$args" | sed -E 's/(^|[[:space:]])-ngl[[:space:]]+[0-9]+/\1-ngl 0/')"
+  # #83: Vulkan packs still op-offload at -ngl 0; disable op offload on the CPU retry.
+  case " $safe_args " in *" --no-op-offload "*) ;; *) safe_args="$safe_args --no-op-offload" ;; esac
   # shellcheck disable=SC2086
   exec $safe_args --log-file "$log.cpu" "$@"
 fi

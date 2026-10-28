@@ -810,20 +810,23 @@ speculative:
     p_min: 0.75
     draft_ngl: 0
   # Pencilled in. Draft is loaded inside the target's llama-server (-md).
+  # #82: ngram-simple made mixed turns ~6.8x slower (Qwen3.5-2B miryam). Opt-in only —
+  # do not leave status: active as a silent default. Prefer ngram-mod when enabling
+  # (neutral-to-better on mixed + edit prompts; see docs/miryam-perf-race.md).
   coder-ngram:
     experimental: true
-    status: active               # miryam real-edit test 2026-10-10: 2.2x decode (8.3 -> 18.2 t/s)
+    status: planned              # was active (2026-10-10 full-file echo 2.2x); opt-in after #82
     mode: ngram
     target: coder
-    spec_type: ngram-simple      # model-free lookup decoding; no extra weights. miryam 2026-10-10, -t 2, repeat-code
-                                 # prompt: 17.4 t/s vs 8.7 none (ngram-mod 16.3). Real hermes-style full-file edits: 17.9-18.4 vs 8.2-8.4 (2.2x).
+    spec_type: ngram-mod         # prefer over ngram-simple for mixed turns (#82)
+                                 # ngram-simple still OK for highly repetitive full-file echo edits.
 
   angel-nanbeige-ngram:
     experimental: true
     status: planned              # enable when angel-coder is active; no extra weights
     mode: ngram
     target: angel-coder
-    spec_type: ngram-simple
+    spec_type: ngram-mod         # same prefer-mod default as coder-ngram (#82)
 
 
 

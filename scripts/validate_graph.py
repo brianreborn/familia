@@ -271,9 +271,12 @@ def validate(graph, check_files=True, host=None):
 # Vulkan llama.cpp builds allocate ~1.83 GB of Vulkan host buffers in shmem even with -ngl 0
 # (miryam, b11374), which counts against the memcap scope and stalls the server. With no GPU
 # layers, hide the Vulkan devices. An explicit GGML_VK_VISIBLE_DEVICES in env wins.
+# Race #83: also when offload.backend is cpu (ngl may be omitted in odd graphs). Never touch
+# VK_ICD_FILENAMES / Mesa in the login shell — per-process spawn env only (Platform gpu-path-layout).
 def server_env(graph, name, env=None):
+    import miryam_perf_seatbelts as mps
     env = dict(os.environ if env is None else env)
-    if graph["nodes"][name]["offload"]["ngl"] == 0 and "GGML_VK_VISIBLE_DEVICES" not in env:
+    if mps.node_wants_cpu(graph, name) and "GGML_VK_VISIBLE_DEVICES" not in env:
         env["GGML_VK_VISIBLE_DEVICES"] = ""
     return env
 
@@ -442,6 +445,7 @@ def server_args(graph, name):
     if miss:
         raise SystemExit("\n".join(f"graph: ERROR: nodes.{name}: {x}" for x in miss))
     # Speculative flags verified against b11374/b11539 --help; --draft-max/--draft-min were removed upstream.
+    # #82: ngram / draft only when speculative.*.status is not planned (opt-in; default coder-ngram is planned).
     for sp in (graph.get("speculative") or {}).values():
         if sp["target"] != name or sp["status"] == "planned": continue
         if sp["mode"] == "draft":
@@ -451,9 +455,20 @@ def server_args(graph, name):
             if "draft_kv_type" in sp: a += ["-ctkd", sp["draft_kv_type"], "-ctvd", sp["draft_kv_type"]]
         else:
             a += ["--spec-type", sp["spec_type"]]
-    r = graph["runtimes"][n["runtime"]]
-    if "bin" in r:
-        a = [os.path.join(os.path.dirname(os.path.abspath(graph.get("_path", "graph.yaml"))), r["bin"])] + a
+    # #83 Race: prefer CPU pack for ngl==0; if stuck on Vulkan prebuilt, --no-op-offload.
+    import miryam_perf_seatbelts as mps
+    bin_path, _rt_used, _notes = mps.prefer_cpu_runtime_bin(graph, name)
+    if not bin_path:
+        r = graph["runtimes"][n["runtime"]]
+        if "bin" in r:
+            b = os.path.expanduser(r["bin"])
+            if not os.path.isabs(b):
+                b = os.path.join(os.path.dirname(os.path.abspath(graph.get("_path", "graph.yaml"))), r["bin"])
+            bin_path = b
+    if bin_path:
+        if mps.needs_no_op_offload(graph, name, bin_path) and "--no-op-offload" not in a:
+            a = ["--no-op-offload"] + a
+        a = [bin_path] + a
     return a
 
 USAGE = __doc__.split("\n\n")[1]
