@@ -172,6 +172,28 @@ Per-OS sources for the mandatory part:
 Status: the worker summary already starts with a stamp line on Unix (`swarm-worker.yml`
 bench job). The other layers are spec-only for v1.0.
 
+### R10.1 Kernel-verified peer credentials for local IPC
+
+For local IPC (root queue, mailbox rings, cockpit and serve local endpoints), a
+self-reported identity is not enough. The receiving side reads the peer's credentials
+from the kernel and records them in the stamp as `peer_uid= peer_gid= peer_pid=`. This
+is mandatory wherever familia needs the login-type identity (R10). An endpoint that
+cannot read peer creds must refuse, or fall back to a filesystem-permission check that
+the kernel enforces (for example the root queue's mode 1770 `pending/`, owned by the
+group, with a root-only claim).
+
+| OS | Mechanism | Source |
+|---|---|---|
+| Linux | `SO_PEERCRED` (`struct ucred` uid/gid/pid at connect); `SCM_CREDENTIALS` per message with `SO_PASSCRED` | [unix(7)](https://man7.org/linux/man-pages/man7/unix.7.html), [socket(7)](https://man7.org/linux/man-pages/man7/socket.7.html) |
+| FreeBSD | `getpeereid(3)`; `LOCAL_PEERCRED` (`struct xucred`, incl. `cr_pid`); `SCM_CREDS` (`struct cmsgcred`) | [unix(4)](https://man.freebsd.org/cgi/man.cgi?query=unix&sektion=4), [getpeereid(3)](https://man.freebsd.org/cgi/man.cgi?query=getpeereid&sektion=3) |
+| macOS | `getpeereid(3)`; `LOCAL_PEERCRED` (xucred), `LOCAL_PEERPID` | [getpeereid(3)](https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man3/getpeereid.3.html), `<sys/un.h>` |
+| Android/Termux | `SO_PEERCRED` on AF_UNIX (Linux kernel; per-app uid) | unix(7); Android `LocalSocket.getPeerCredentials()` |
+| Windows | named pipes: `GetNamedPipeClientProcessId`, `ImpersonateNamedPipeClient` then the token SID; AF_UNIX (Win10 1803+) has no peer-cred option, so use named pipes for identity-bearing IPC | [GetNamedPipeClientProcessId](https://learn.microsoft.com/windows/win32/api/winbase/nf-winbase-getnamedpipeclientprocessid), [ImpersonateNamedPipeClient](https://learn.microsoft.com/windows/win32/api/namedpipeapi/nf-namedpipeapi-impersonatenamedpipeclient), [AF_UNIX on Windows](https://devblogs.microsoft.com/commandline/af_unix-comes-to-windows/) |
+
+TCP loopback has no kernel peer identity. Endpoints bound to 127.0.0.1 (for example
+:9931/:9933) keep the API key, and should move to a Unix socket or named pipe where an
+identity is required. Spec only for v1.0.
+
 ## Per-OS differences
 
 | | Linux | FreeBSD | Termux |
