@@ -98,6 +98,40 @@
       },
       "addr": "overlay-only (hosts.local.yaml)",
       "notes": "Repair-install Linux for this sprint; becomes Windows later. One runner per host:user node."
+    },
+    "miryam:green": {
+      "host": "miryam",
+      "user": "green",
+      "node": "miryam-green",
+      "role": "swarm-bench",
+      "os": "linux",
+      "match": {
+        "hostname": [
+          "miryam"
+        ],
+        "user": [
+          "green"
+        ]
+      },
+      "addr": "overlay-only (hosts.local.yaml)",
+      "notes": "Brian's desktop; runner loop started by hand, no boot service."
+    },
+    "grok-bot-vm-414137730:box": {
+      "host": "grok-bot-vm-414137730",
+      "user": "box",
+      "node": "grok-bot-vm-414137730-box",
+      "role": "swarm-bench",
+      "os": "linux",
+      "match": {
+        "hostname": [
+          "grok-bot-vm-414137730"
+        ],
+        "user": [
+          "box"
+        ]
+      },
+      "addr": "overlay-only (hosts.local.yaml)",
+      "notes": "Grok Bot box; runner loop started by hand, no boot service."
     }
   },
   "unknown": {
