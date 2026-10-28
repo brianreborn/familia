@@ -71,6 +71,21 @@ case "$bin" in */*)
     exit 1
   fi ;;
 esac
+# Pack atomicity: refuse bin/lib soname skew (docs/platform/gpu-path-layout.md).
+# FAMILIA_REFUSE_SONAME_SKEW default on (unset/1/true/yes); 0/false/off disables.
+if [ -f "$here/scripts/refuse_soname_skew.py" ]; then
+  case "$bin" in */*)
+    _skew_json="$(python3 "$here/scripts/refuse_soname_skew.py" --bin "$bin" 2>/dev/null)" || _skew_rc=$?
+    _skew_rc="${_skew_rc:-0}"
+    if [ "$_skew_rc" -ne 0 ]; then
+      say "refuse_soname_skew: runtime $bin bin/lib pack mismatch (FAMILIA_REFUSE_SONAME_SKEW); not starting $node"
+      printf '%s
+' "$_skew_json" >&2
+      exit 1
+    fi
+    unset _skew_json _skew_rc ;;
+  esac
+fi
 # Launch guard: refuse params bench_guard flags (removed flags, ctx > train, encoder ubatch,
 # quantized V without FA, GPU layers on a legacy GPU). FAMILIA_GUARD=0 skips it.
 if [ "${FAMILIA_GUARD:-1}" != 0 ] && [ ! -f "$here/scripts/bench_guard.py" ]; then
