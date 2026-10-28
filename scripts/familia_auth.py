@@ -1,4 +1,4 @@
-"""One place to find and attach the API key of the local familia/llama-server instance.
+r"""One place to find and attach the API key of the local familia/llama-server instance.
 
 Every client that talks to :9931 (or any gateway that requires a key) must call
 auth_headers() / open_url() instead of building a bare urllib.Request. Requiring the key
@@ -26,16 +26,20 @@ import hmac
 import os
 import secrets
 import sys
+import urllib.parse
 import urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def _first_key_in(text):
-    for line in text.replace(",", "\n").splitlines():
-        line = line.strip()
-        if line and not line.startswith("#"):
-            return line
+    # drop comment lines first: the bootstrap key file's header contains a comma
+    for line in text.splitlines():
+        if line.strip().startswith("#"):
+            continue
+        for part in line.split(","):
+            if part.strip():
+                return part.strip()
     return ""
 
 
@@ -162,9 +166,25 @@ def auth_headers(headers=None, key=None, incoming=None, required=False):
     return h
 
 
+def key_for_url(url, env=None):
+    """The key for the server at url: a local URL's own port picks that instance's key file
+    (a server start.sh moved to another port needs no FAMILIA_PORT); else api_key()."""
+    env = os.environ if env is None else env
+    try:
+        u = urllib.parse.urlparse(url)
+        if u.port and (u.hostname or "") in ("127.0.0.1", "localhost", "::1") \
+                and not any(env.get(n) for n in ("FAMILIA_API_KEY", "LLAMA_API_KEY", "API_KEY_FILE")):
+            k = _read(instance_key_file(port=u.port, env=env))
+            if k:
+                return k
+    except ValueError:
+        pass
+    return api_key(env=env)
+
+
 def request(url, data=None, headers=None, method=None, incoming=None):
     return urllib.request.Request(url, data=data, method=method,
-                                  headers=auth_headers(headers, incoming=incoming))
+                                  headers=auth_headers(headers, key=key_for_url(url), incoming=incoming))
 
 
 def open_url(url, data=None, headers=None, method=None, timeout=10, incoming=None):
@@ -179,7 +199,7 @@ def probe(url=None, timeout=3):
     treat that as a misconfiguration (log it, do not start another server), never as 'no server'."""
     import urllib.error
     url = (url or "http://127.0.0.1:%s" % instance_port()).rstrip("/") + "/v1/models"
-    k = api_key()
+    k = key_for_url(url)
     if not k:
         print("familia_auth: no API key for this instance (%s)" % instance_key_file(), file=sys.stderr)
         return OTHER
