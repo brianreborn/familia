@@ -1,0 +1,5 @@
+# Single node. No routes section: every node is its own route ("chat").
+# python3 scripts/graph_router.py examples/routing/1-single.yaml
+version: 1
+nodes:
+  chat: http://127.0.0.1:8081

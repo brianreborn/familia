@@ -1,0 +1,8 @@
+# Chat + reasoning pair: two routes, two nodes. Clients pick with "model".
+version: 1
+nodes:
+  chat-small: http://127.0.0.1:8081
+  reasoner:   http://127.0.0.1:8082
+routes:
+  chat:  chat-small
+  think: reasoner
