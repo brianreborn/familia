@@ -35,3 +35,11 @@ Each step: move the body to the owner, delete the copies, keep the conformance t
 - **DUP-01** graph loaders routed through `familia_yaml.load`: generate_graph, scale_down, self_improve_attach, terminal_rsi, offline_improve, monitor, model_db. Parity verified against yaml.safe_load on the real graph. CFG-FILE-007.
 - **DUP-04** `validate_graph.server_args` is the single argv builder and now emits an explicit per-TYPE `--tools` on every launch (coder=all; chat/general=read set; embed/decision/reasoning/guardian/pentest=none ⇒ no flag, llama.cpp default-disabled; `server_tools` overrides). Production paths (start_graph, `with-fleet` via `--args`) inherit it; launch_matrix bench instances intentionally excluded. CFG-SPEC-TOOLS-001/002 IMPLEMENTED. (Owner code kept; DUP-04 was HIGH risk but approved.)
 - **DUP-03** owner `scripts/node_state.py` (`local_active`, `remote_active`, `placeable_items`, `is_active/is_planned`). Rerouted start_graph.local_topology and ctx_vvram. Output identical. CFG-GRAPH-NODES-102.
+
+## Deferred (approved but not done this PR — follow-up)
+These were approved but held back to honour the "behaviour identical / 0 new failures" gate; on close inspection several are thinner or riskier than first estimated:
+- **DUP-05** role/TYPE + alias resolution: `node_role.infer_role` and `graph_types.lookup` already are owners; the remaining sites are context-specific (validation vs rendering vs role-view). Consolidating risks subtle behaviour change; needs its own pass with targeted tests.
+- **DUP-06** host/port/bind + loopback: small; worth an `endpoints` helper, low risk. Deferred only for time.
+- **DUP-07** guardian/pentest role JSON + dual-disable: real duplication (guardian_ready + sec_assess define the same ROLE_JSONS and dual-disable check), but security-sensitive; must land with the pentest-policy SPEC and identical-behaviour proof.
+- **DUP-08** secret stripping: on inspection `hermes_harness.strip_secrets` and `hosts_overlay.privacy_lint` do different jobs (strip vs detect); not a true duplicate. Reclassify, do not merge blindly.
+- **DUP-09** registry loaders: not genuine duplication — each registry file already has a single owning reader (registry.py for hosts/hardware; model_params.CURATED for model-params.yaml). No deletion warranted.
