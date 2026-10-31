@@ -250,7 +250,8 @@ osc7501_clear()   { osc7501_emit clear   --app "${OSC7501_APP:-familia}" "$@"; }
 
 _osc_self_test() {
   # No TTY needed. Exercise encode + emit into a capture file.
-  _tmp=$(mktemp)
+  _tdir=$(umask 077 && mktemp -d "${TMPDIR:-/tmp}/familia-osc.XXXXXX") || exit 1
+  _tmp="$_tdir/capture"
   OSC7501_CAPTURE=$_tmp
   export OSC7501_CAPTURE
   OSC7501_FORCE=0
@@ -283,10 +284,10 @@ PY
   # Bad state must fail
   if osc7501_emit bogus 2>/dev/null; then
     printf 'self-test: expected bad state to fail\n' >&2
-    rm -f "$_tmp"
+    [ -n "$_tdir" ] && rm -rf -- "$_tdir"
     exit 1
   fi
-  rm -f "$_tmp"
+  [ -n "$_tdir" ] && rm -rf -- "$_tdir"
   printf 'osc7501: self-test ok\n'
 }
 
