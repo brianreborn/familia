@@ -116,3 +116,22 @@ def test_cli_score(tmp_path, cases, capsys):
     assert B.main(["--score", str(out)]) == 0
     res = json.loads(capsys.readouterr().out)
     assert res == {"n": 11, "passed": 10, "accuracy": 10 / 11}
+
+
+_EXPECT = {"ground_truth": [{"f": {"x": [1]}}], "functions": []}
+
+
+def test_oversized_output_is_miss():
+    ok, why = B.score_bfcl_ast(_EXPECT, "[f(x=1)]" + " " * (B.MAX_OUTPUT_BYTES + 1))
+    assert ok is False and "parse_error" in why
+
+
+@pytest.mark.parametrize("text", [
+    "[f(x=" + "[" * 5000 + "]" * 5000 + ")]",       # python-ish, deep nesting
+    "[f(x=" + "(" * 5000 + "1" + ")" * 5000 + ")]",
+    "[" * 20000 + "]" * 20000,                      # JSON path recursion
+    "[f(x=" + "-" * 30000 + "1)]",                  # deep unary chain
+])
+def test_deeply_nested_output_is_miss(text):
+    ok, why = B.score_bfcl_ast(_EXPECT, text)
+    assert ok is False and why
