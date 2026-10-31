@@ -175,7 +175,8 @@ def test_speculative_ngram():
     x = g(); x["speculative"]["coder-ngram"]["spec_type"] = "draft-simple"; has(x, "needs an ngram-* spec_type")
     x = g(); x["speculative"]["coder-ngram"]["draft"] = "egemma2-q8"; has(x, "only applies to mode draft")
 
-def test_speculative_vocab_mismatch_and_ram():
+def test_speculative_vocab_mismatch_and_ram(monkeypatch):
+    monkeypatch.setenv("FAMILIA_HOST", "miryam")  # models miryam; validate() scopes to the local host
     # egemma2 (gemma4 tokenizer) cannot draft for qwen35 (gpt2 tokenizer): file-level check
     x = g(); x["_path"] = os.path.join(ROOT, "graph.yaml")
     x["speculative"]["d"] = spec_draft(status="experimental")
@@ -394,8 +395,9 @@ def test_model_role_pentest_allowed():
     assert errs(x) == []
 
 
-def test_ram_safety_reserve_and_small_host_floor():
+def test_ram_safety_reserve_and_small_host_floor(monkeypatch):
     """reserve and small-host floor are provisional guidance -> warnings (docs/ram-safety.md)."""
+    monkeypatch.setenv("FAMILIA_HOST", "miryam")  # models miryam; validate() scopes to the local host
     coder = os.path.expanduser("~/.local/share/gguf/models/coder/Qwen3.5-2B-Q4_K_M.gguf")
     embed = os.path.expanduser("~/.local/share/gguf/models/embed/embeddinggemma-2-Q8_0.gguf")
     if not (os.path.isfile(coder) and os.path.isfile(embed)):
@@ -436,7 +438,15 @@ def test_qodesh_sm11_decision_accepted():
 def test_host_scoped_validation_skips_remote_artifacts_and_ram():
     errs, totals = validate_graph.validate(g(), check_files=True, host="angel")
     assert errs == []
-    assert totals == {}
+    import start_graph
+    try:
+        local = start_graph.select_host(BASE)
+    except BaseException:
+        local = None
+    if local == "angel":  # on angel the scope is local: only angel's RAM is totalled
+        assert set(totals) <= {"angel"}
+    else:  # elsewhere angel's artifacts and RAM are remote: skipped
+        assert totals == {}
 
 def test_validate_graph_host_option_requires_declared_host():
     assert validate_graph.parse_argv(["--host", "miryam"])["host"] == "miryam"

@@ -112,6 +112,22 @@ def validate(graph, check_files=True, host=None):
     errs = list(dict.fromkeys(errs))
     if errs or not check_files:
         return errs, {}
+    # Host scope (same rule as check_swap_budgets): file-existence and RAM totals are only
+    # meaningful on the machine that runs them. --host naming another graph host skips them;
+    # with no --host, scope to this machine's graph host when it resolves.
+    try:
+        from start_graph import select_host
+        local = select_host(graph)
+    except BaseException:
+        local = None
+    if local not in (graph.get("hosts") or {}):
+        local = None
+    if host is not None and local is not None and host != local:
+        WARNINGS.append(f"file/RAM checks skipped: this machine is graph host {local!r}, not {host!r}; "
+                        f"run validate_graph --host {host} on {host}")
+        return errs, {}
+    if host is None:
+        host = local
     hosts, models, totals = graph["hosts"], graph["models"], {}
     base = os.path.dirname(os.path.abspath(graph.get("_path", "graph.yaml")))
     for rn, r in graph["runtimes"].items():
@@ -234,7 +250,10 @@ def validate(graph, check_files=True, host=None):
                 continue
             if int(nd.get("swap_budget_mib") or 0) >= 8192:
                 return True
-        # Live swap when validating on that host (angel, etc.)
+        # Live swap only describes this machine: use it for the local graph host alone
+        # (angel's swap must not make miryam look swap-rich).
+        if local is not None and h != local:
+            return False
         have = host_swap_total_mib()
         if have is not None and have >= 32768:
             return True
