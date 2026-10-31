@@ -29,11 +29,12 @@ def groups_of(out):
 
 
 def test_search_matches_across_groups_case_insensitive():
-    r = menu("--search", "DRY-RUN")
+    # no menu item mentions dry-run any more (#228); HERMES (upper) still proves case-insensitivity
+    r = menu("--search", "HERMES")
     assert r.returncode == 0, r.stderr
     assert len(groups_of(r.stdout)) >= 3, r.stdout
     assert "runs: " in r.stdout and "key: " in r.stdout
-    assert "--search DRY-RUN --run N" in r.stdout
+    assert "--search HERMES --run N" in r.stdout
     # group names and keys are searched too
     assert "hosts.monitor" in menu("--search", "Hosts").stdout
     assert "adv.db-list" in menu("--search", "adv.db").stdout
