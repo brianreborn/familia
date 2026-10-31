@@ -69,7 +69,7 @@ name only with the node it targets. A chat + reasoning pair is just two routes (
 |---|---|---|
 | single | forwards to the node | 503 unreachable/loading, 504 read timeout |
 | fallback | tries in order; skips a node only if unreachable or 502/503 | 503 `no node reachable` + `tried[]`; a 4xx is returned from the node that sent it |
-| chain | step N's reply is step N+1's user message (`prompt` wraps `{input}`) | 503/502 naming the step; `stream: true` -> 400 |
+| chain | step N's reply is step N+1's user message (`prompt` wraps `{input}`) | 503/502 naming the step; `stream: true` streams only the final step (earlier steps run non-streamed) |
 | router | `/label text` picks directly; else the router node must answer one exact label | unknown label without `default` -> 502; specialist down -> 503 |
 | remote | any non-loopback url; requires `remote: true` | config error without it |
 | tools | `Authorization: Bearer <node key>`: `key_file`, else the node port's instance key | 503 if no key; nothing is sent |

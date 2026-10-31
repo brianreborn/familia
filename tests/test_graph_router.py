@@ -179,11 +179,31 @@ def test_chain_middle_step_down(fakes):
     assert st == 503 and "step 2/3 (b)" in err(raw) and not c.seen
 
 
-def test_chain_refuses_stream(fakes):
-    a, b = fakes("a"), fakes("b")
-    post = serve({"nodes": {"a": a.url, "b": b.url}, "routes": {"pipe": {"chain": ["a", "b"]}}})
+def test_chain_streams_only_the_final_step(fakes):
+    a, b, c = fakes("a"), fakes("b"), fakes("c")
+    post = serve({"nodes": {"a": a.url, "b": b.url, "c": c.url}, "routes": {"pipe": {"chain": ["a", "b", "c"]}}})
+    st, h, raw = post("pipe", "q", stream=True)
+    assert st == 200 and h["Content-Type"].startswith("text/event-stream")
+    assert raw.startswith(b"data: ") and b"c: b: a: q" in raw and raw.rstrip().endswith(b"[DONE]")
+    assert h["X-Familia-Node"] == "c" and h["X-Familia-Chain"] == "a>b>c"
+    assert a.seen[0][1]["stream"] is False and b.seen[0][1]["stream"] is False and c.seen[0][1]["stream"] is True
+
+
+def test_chain_stream_earlier_step_down_is_json_error(fakes):
+    b = fakes("b")
+    post = serve({"nodes": {"a": dead_url(), "b": b.url}, "routes": {"pipe": {"chain": ["a", "b"]}}})
     st, _, raw = post("pipe", "q", stream=True)
-    assert st == 400 and "stream" in err(raw) and not a.seen
+    assert st == 503 and "step 1/2 (a)" in err(raw) and not b.seen
+
+
+def test_router_streams_the_chosen_target(fakes):
+    clf, code = fakes("clf", reply="code"), fakes("code")
+    post = serve({"nodes": {"clf": clf.url, "code": code.url},
+                  "routes": {"ask": {"router": "clf", "routes": {"code": "code"}}}})
+    st, h, raw = post("ask", "fix it", stream=True)
+    assert st == 200 and raw.startswith(b"data: ") and b"code: fix it" in raw
+    assert h["X-Familia-Node"] == "code" and h["X-Familia-Route-Label"] == "code"
+    assert clf.seen[0][1]["stream"] is False and code.seen[0][1]["stream"] is True
 
 
 def test_chain_step_http_error_not_200(fakes):
