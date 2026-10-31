@@ -19,11 +19,25 @@ token; requests with neither share the "default" session (serialized by that
 session's lock). True multi-session isolation needs one of those headers —
 hermes does not send a session id today.
 """
-import json, os, re, sys, threading, time, urllib.request
+import json, os, re, sys, threading, time, urllib.request, uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import escalation as E
 import familia_auth  # noqa: E402
+
+# R1 (#244): global admission cap on upstream calls across all sessions.
+UPSTREAM_CAP = int(os.environ.get("FAMILIA_UPSTREAM_CAP", "6"))
+UPSTREAM_WARN = 4
+UPSTREAM_WAIT_S = float(os.environ.get("FAMILIA_UPSTREAM_WAIT_S", "30"))
+_UPSTREAM_SEM = threading.BoundedSemaphore(UPSTREAM_CAP)
+_inflight = [0]
+_inflight_lock = threading.Lock()
+
+
+def _nothing_sent(e):
+    """R3 (#246): True only when the request never reached upstream (safe to retry)."""
+    r = getattr(e, "reason", e)
+    return isinstance(r, (ConnectionRefusedError,)) or isinstance(e, ConnectionRefusedError)
 
 STATE = os.path.join(E.ROOT, ".cache", "familia")
 PENDING = os.path.join(STATE, "escalation-pending.json")
@@ -274,6 +288,22 @@ def make_handler(pool, log=sys.stderr):
             return True
 
         def _fwd(self, method):
+            if not _UPSTREAM_SEM.acquire(timeout=UPSTREAM_WAIT_S):
+                self.send_response(503); self.send_header("Content-Type", "application/json"); self.end_headers()
+                self.wfile.write(b'{"error":{"message":"upstream at capacity","code":503}}')
+                return
+            with _inflight_lock:
+                _inflight[0] += 1
+                if _inflight[0] > UPSTREAM_WARN:
+                    print(f"escalation_proxy: {_inflight[0]} upstream calls in flight (cap {UPSTREAM_CAP})", file=sys.stderr, flush=True)
+            try:
+                self._fwd_admitted(method)
+            finally:
+                with _inflight_lock:
+                    _inflight[0] -= 1
+                _UPSTREAM_SEM.release()
+
+        def _fwd_admitted(self, method):
             esc = self._esc()
             # Hold the session lock for the whole request so concurrent clients on
             # the same session cannot interleave rewrite / after_reply / swap (#101).
@@ -293,6 +323,8 @@ def make_handler(pool, log=sys.stderr):
                     self.send_response(401); self.send_header("Content-Type", "application/json"); self.end_headers()
                     self.wfile.write(b'{"error":{"message":"no API key for upstream","code":401}}')
                     return
+                self._rid = self.headers.get("X-Familia-Request-Id") or uuid.uuid4().hex
+                hdrs["X-Familia-Request-Id"] = self._rid  # R3: lets upstream/caller dedupe
                 req = urllib.request.Request(target, data=raw, method=method, headers=hdrs)
                 try:
                     r = urllib.request.urlopen(req, timeout=3600)
@@ -300,7 +332,7 @@ def make_handler(pool, log=sys.stderr):
                     # Count transport error BEFORE decide (#100), then escalate/fallback (#98).
                     self._record_transport_fail(esc, body)
                     note = esc.after_reply(ok=False)
-                    if note and self._retry_once(esc, body, method, raw, note):
+                    if note and _nothing_sent(e) and self._retry_once(esc, body, method, raw, note):
                         return
                     self._502(e)
                     return
