@@ -15,6 +15,7 @@ and preview what `familia start` would do with
 | Fallback when a node is down | `fallback-list.yaml` | `aliases.<a>.node: [first, backup, ...]` | `scripts/graph_router.py` (the default gateway) | works; a node is skipped only when unreachable or 502/503 |
 | Escalate light -> heavy | `escalation-chain.yaml` | `escalates_to` | escalation proxy falls back to the light node (tests/test_escalation_proxy.py) | unreachable targets are dropped; no target -> `decision: none` |
 | Remote node in an alias | `two-host.yaml` + `remote: true` | `aliases.<a>.remote: true`, `hosts.<h>.addr`, node `bind` not loopback | `scripts/graph_router.py` | opt-in only; without all three the alias is omitted |
+| Cascade council (A's reply -> B) | `councils.<c>: {mode: cascade, agents: [a, b]}` | each agent's `main` alias, in order | `scripts/graph_router.py` chain route named `<c>` | works when every agent's main alias is on the same local gateway, else `familia start` refuses |
 | Classifier, chain, tool keys | `router/*.yaml` | graph_router routes file (below) | `scripts/graph_router.py` by hand | works; not expressible in graph.yaml yet |
 
 ## Gotchas the validator now warns about
@@ -83,4 +84,4 @@ Timeouts: `FAMILIA_ROUTER_CONNECT_S` (3), `FAMILIA_ROUTER_TIMEOUT_S` (600). Bind
   An ordered list (= `first-active`) works today.
 - Classifier routes and chains declared in graph.yaml (use a router/ routes file).
 - Streaming through chain/router routes.
-- A pipeline (output of node A fed to node B). `councils: mode: cascade` validates but nothing runs it.
+- `councils: mode: quorum` validates but nothing runs it.

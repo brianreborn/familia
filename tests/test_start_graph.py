@@ -156,3 +156,64 @@ def test_dry_run_reports_gateway_process(tmp_path):
                             "--host", "h1", "--dry-run", "--fleet"], capture_output=True, text=True, cwd=ROOT)
         assert r.returncode == 0, r.stderr
         assert via in r.stdout, r.stdout
+
+
+def _cascade_graph():
+    g = _two_host()
+    g["nodes"]["critic"] = dict(g["nodes"]["chat"], port=9003)
+    g["aliases"]["critic"] = {"node": "critic", "gateway": "gw"}
+    g["agents"]["crit"] = dict(g["agents"]["ag"], aliases={"main": "critic", "auxiliary": "critic"})
+    g["councils"] = {"review": {"experimental": True, "mode": "cascade", "agents": ["ag", "crit"]}}
+    return g
+
+
+def test_cascade_council_becomes_a_chain_route():
+    """Regression: councils mode cascade validated but start_graph never compiled it into a route."""
+    g = _cascade_graph()
+    assert validate_graph.validate(g, check_files=False)[0] == []
+    (_n, gw, aliases), = start_graph.local_topology(g, "h1")[2]
+    assert "review" in aliases, "cascade council has no route on its gateway"
+    assert [m["url"] for m in aliases["review"]["chain"]] == ["http://127.0.0.1:9001", "http://127.0.0.1:9003"]
+    cfg = start_graph.router_routes(aliases)
+    import graph_router
+    route = graph_router.compile_config(cfg)["routes"]["review"]
+    assert route["type"] == "chain" and [s["node"] for s in route["steps"]] == ["chat-node", "critic-node"]
+
+
+def test_cascade_council_runs_agents_in_order(tmp_path, monkeypatch):
+    """End to end through graph_router: ag's node answers first, its reply feeds crit's node."""
+    import json, threading, urllib.request, graph_router
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+    def stub(name):
+        class H(BaseHTTPRequestHandler):
+            def log_message(self, *a): pass
+            def do_POST(self):
+                b = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+                d = json.dumps({"choices": [{"message": {"role": "assistant",
+                               "content": f"{name}({b['messages'][-1]['content']})"}}]}).encode()
+                self.send_response(200); self.send_header("Content-Length", str(len(d))); self.end_headers(); self.wfile.write(d)
+        s = ThreadingHTTPServer(("127.0.0.1", 0), H); threading.Thread(target=s.serve_forever, daemon=True).start(); return s
+    a, b = stub("A"), stub("B")
+    g = _cascade_graph(); g["nodes"]["chat"]["port"] = a.server_address[1]; g["nodes"]["critic"]["port"] = b.server_address[1]
+    import familia_auth
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))  # tool nodes get their own per-port key
+    for p in (a.server_address[1], b.server_address[1]):
+        familia_auth.load_or_create_key_file(familia_auth.instance_key_file(port=p))
+    (_n, _gw, aliases), = start_graph.local_topology(g, "h1")[2]
+    srv = graph_router.make_server(graph_router.compile_config(start_graph.router_routes(aliases)), "127.0.0.1", 0)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    req = urllib.request.Request(f"http://127.0.0.1:{srv.server_address[1]}/v1/chat/completions",
+                                 json.dumps({"model": "review", "messages": [{"role": "user", "content": "x"}]}).encode(),
+                                 {"Content-Type": "application/json"})
+    try:
+        r = json.loads(urllib.request.urlopen(req, timeout=10).read())
+    except urllib.error.HTTPError as e:
+        raise AssertionError(e.read().decode())
+    assert r["choices"][0]["message"]["content"] == "B(A(x))"
+    srv.shutdown(); a.shutdown(); b.shutdown()
+
+
+def test_cascade_council_refuses_agent_off_gateway():
+    g = _cascade_graph(); g["agents"]["crit"]["aliases"] = {"main": "far", "auxiliary": "far"}
+    with pytest.raises(start_graph.StartupError, match="council review"):
+        start_graph.local_topology(g, "h1")
