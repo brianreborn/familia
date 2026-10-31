@@ -1,6 +1,6 @@
-"""Hermes tool routing (Brian 2026-10-31): any node that can use tools gets them, directly or via
-graph routing over a nexus mesh; guardian / pentest / defender nodes get none. Plus a live MCP run
-of the real hermes-agent loader against tests/fixtures/mcp_stub."""
+"""Hermes tool routing (Brian 2026-10-31 / #243): reuses validate_graph.tool_capable,
+tool_route, tool_policy. Explicit nodes.<n>.tool_route wins; else same-host then mesh.
+Guardian / pentest / defender get none. Live MCP stub against tests/fixtures/mcp_stub."""
 import copy, json, os, shutil, subprocess, sys
 import pytest, yaml
 
@@ -62,10 +62,40 @@ def test_tool_capable_gets_all_tools_by_default(tmp_path, monkeypatch):
 
 
 def test_explicit_capability_flags_win():
+    # Final fields from #243: nodes.<n>.tool_capable and models.<m>.tool_calls (via vg.tool_capable).
     g = g_main("qodesh-gpu-decision", tool_capable=True)
     assert hh.route_tools(g, "hermes")["mode"] == "direct"
     g = g_main("coder", tool_capable=False)
     assert hh.route_tools(g, "hermes")["mode"] == "nexus"
+    g = g_main("qodesh-gpu-decision")
+    g["models"][g["nodes"]["qodesh-gpu-decision"]["model"]]["tool_calls"] = True
+    assert hh.route_tools(g, "hermes")["mode"] == "direct"
+
+
+def test_explicit_tool_route_wins_over_discovery(tmp_path, monkeypatch):
+    # nodes.<n>.tool_route (one hop, #243) is the nexus target; skip same-host preference.
+    g = g_main("qodesh-gpu-decision")
+    # Same-host discovery would pick qodesh-resident; explicit route forces coder instead.
+    g["nodes"]["qodesh-gpu-decision"]["tool_route"] = "coder"
+    assert hh.vg.tool_route(g, "qodesh-gpu-decision") == "coder"
+    r = hh.route_tools(g, "hermes")
+    assert r["mode"] == "nexus" and r["node"] == "coder" and r.get("reason") == "tool_route"
+    g["hosts"]["miryam"]["addr"] = "10.1.1.1"
+    cfg = cfg_of(g, tmp_path, monkeypatch)
+    assert cfg["model"]["default"] == "coder"
+    assert cfg["model"]["base_url"] == f"http://10.1.1.1:{g['nodes']['coder']['port']}/v1"
+
+
+def test_explicit_tool_route_to_guardian_is_ignored():
+    # #243 tool_route() rejects fail-closed targets; Hermes must not use them either.
+    g = g_main("qodesh-gpu-decision")
+    g["nodes"]["qodesh-gpu-decision"]["tool_route"] = "miryam-pentest"
+    g["nodes"]["miryam-pentest"]["status"] = "active"
+    assert hh.vg.tool_route(g, "qodesh-gpu-decision") is None
+    r = hh.route_tools(g, "hermes")
+    assert r["node"] != "miryam-pentest"
+    # Falls back to same-host discovery (qodesh-resident), not the invalid route.
+    assert r == {"mode": "nexus", "node": "qodesh-resident", "via": None}
 
 
 @pytest.mark.parametrize("node,over", [("miryam-pentest", {}), ("angel-guardian", {}),

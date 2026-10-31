@@ -504,12 +504,17 @@ def link_plugins(agent_cfg, home):
 
 
 
-# ---- tool routing (Brian 2026-10-31): any node that can use tools gets them, directly or via
-# graph routing over a nexus mesh. Guardian / pentest / defender nodes get NONE by default
-# (docs/config/pentest-policy.md). They are never auto-route / escalation targets
-# (CFG-PENT-POL-004). The node-level tools default itself is owned by graph_types
-# (Routing Test Designer, swarm/routing/tools-capability); this only decides what a Hermes
-# agent sends its tool calls to.
+# ---- tool routing (Brian 2026-10-31): Hermes side of CFG-SPEC-TOOLS-007..010 (#243).
+# Capability / explicit one-hop route / server tool policy live in validate_graph
+# (tool_capable, tool_route, tool_policy) — do not reimplement them here. This module only
+# decides where a Hermes agent sends tool-driving turns, and keeps guardian/pentest/defender
+# closed for Hermes MCP/toolsets (docs/config/pentest-policy.md, CFG-PENT-POL-004).
+#
+# Order in route_tools:
+#   1. tool_free → none (Hermes seatbelt; #243 fail-closed TYPEs plus name/role heuristics)
+#   2. vg.tool_capable → direct
+#   3. vg.tool_route (explicit nodes.<n>.tool_route, one hop, never fail-closed) → nexus
+#   4. same-host then ssh-nexus mesh discovery (NOT in #243; Hermes-only fallback)
 #
 # TODO(pentest-policy): when graph_types accepts `pentests.<p>.policy` (today
 # tests/test_config_spec.py strict-xfails until then) AND hermes-agent can enforce
@@ -522,18 +527,20 @@ def link_plugins(agent_cfg, home):
 # slash-confirm stays tools=none (CFG-PENT-MODE-003 advisory chat). Until then keep
 # closed: tool_free always, never open by default. See tests/test_hermes_tool_routing.py
 # xfail(strict=True) for the expected tools-confirm path.
-TOOL_FREE_ROLES = frozenset({"guardian", "pentest", "defender"})
-NON_TOOL_ROLES = frozenset({"embed", "diffusion", "decision"})  # no tool-call chat template
 # Modes that the SPEC says may carry tools (once preconditions + per-action confirm land).
 PENTEST_TOOLS_MODES = frozenset({"tools-confirm", "autonomous-lab"})
 
 
 def _node_role(g, name):
+    """Roles for Hermes seatbelt. Broader than vg.node_type: also name-based defender and
+    node_role.infer_role, so tests/aliases that stamp defender only in the node name still close."""
     from node_role import infer_role
     n = g["nodes"][name]
-    raw = {n.get("role"), ((g.get("models") or {}).get(n.get("model")) or {}).get("role"), infer_role(name, n, g)}
-    if name.endswith("-defender") or name == "defender": raw.add("defender")
-    return raw
+    raw = {n.get("role"), ((g.get("models") or {}).get(n.get("model")) or {}).get("role"),
+           vg.node_type(g, name), infer_role(name, n, g)}
+    if name.endswith("-defender") or name == "defender":
+        raw.add("defender")
+    return {r for r in raw if r}
 
 
 def pentest_for_node(g, name):
@@ -548,9 +555,11 @@ def pentest_policy_mode(g, name):
     """Read pentests.<p>.policy.mode when present. graph_types does not accept `policy` yet
     (CFG-PENT-* SPEC); returns None until an overlay / future schema carries it."""
     p = pentest_for_node(g, name)
-    if not p: return None
+    if not p:
+        return None
     pol = p.get("policy")
-    if not isinstance(pol, dict): return None
+    if not isinstance(pol, dict):
+        return None
     mode = pol.get("mode")
     return mode if isinstance(mode, str) else None
 
@@ -559,15 +568,14 @@ def pentest_tools_allowed(g, name):
     """Would the pentest-policy ladder grant tools on this node?
     Closed today: always False. See TODO(pentest-policy) above — gate on
     pentest_policy_mode in PENTEST_TOOLS_MODES plus per-action confirm wiring."""
-    # Keep the read so callers / tests can assert the mode is visible once schema lands.
     _ = pentest_policy_mode(g, name)
     return False
 
 
 def tool_free(g, name):
     """Guardian / pentest / defender: no Hermes tools (incl. MCP) by default.
-    Future tools-confirm opt-in goes through pentest_tools_allowed (still closed)."""
-    if not (_node_role(g, name) & TOOL_FREE_ROLES):
+    Aligns with vg.FAIL_CLOSED_TYPES; future tools-confirm opt-in via pentest_tools_allowed."""
+    if not (_node_role(g, name) & set(vg.FAIL_CLOSED_TYPES)):
         return False
     if pentest_tools_allowed(g, name):
         return False
@@ -575,14 +583,11 @@ def tool_free(g, name):
 
 
 def tool_capable(g, name):
-    """Can this node's model drive tool calls? Explicit nodes.X.tool_capable / models.X.tool_calls
-    (if the graph carries them) win; otherwise type implies capability (node_role design law).
-    Keep reading both field names until Routing Test Designer lands the final one."""
-    n = g["nodes"][name]
-    if tool_free(g, name): return False
-    for v in (n.get("tool_capable"), ((g.get("models") or {}).get(n.get("model")) or {}).get("tool_calls")):
-        if isinstance(v, bool): return v
-    return not (_node_role(g, name) & NON_TOOL_ROLES)
+    """Hermes view: vg.tool_capable (nodes.*.tool_capable > models.*.tool_calls > TYPE) and
+    not tool_free. Do not re-read the fields here — #243 owns that."""
+    if tool_free(g, name):
+        return False
+    return vg.tool_capable(g, name)
 
 
 def nexus_meshes(g, host):
@@ -591,25 +596,39 @@ def nexus_meshes(g, host):
             if (m or {}).get("type") == "ssh" and host in ((m or {}).get("members") or [])]
 
 
+def _discovery_ok(g, src, k):
+    """Same-host / mesh fallback candidate: active, not self, not fail-closed, capable per #243."""
+    o = (g.get("nodes") or {}).get(k) or {}
+    return (k != src and o.get("status") != "planned"
+            and not tool_free(g, k) and vg.tool_capable(g, k))
+
+
 def route_tools(g, agent):
-    """-> {"mode": none|direct|nexus, "node", "via"}. none: tool-free node or nothing routable.
-    direct: the agent's main node calls tools itself (all tools by default). nexus: the main model
-    cannot call tools, so tool-driving turns go to a tool-capable node, same host first, else a peer
-    host on a shared ssh nexus mesh (graph routing). Never routes into guardian/pentest/defender
-    (CFG-PENT-POL-004) — ok() excludes tool_free nodes even when they are the only candidate."""
+    """-> {"mode": none|direct|nexus, "node", "via"}.
+    Reuses validate_graph.tool_capable / tool_route / tool_policy (#243). Explicit
+    nodes.<n>.tool_route wins as the nexus target; same-host then mesh discovery is the
+    Hermes-only fallback when #243 has no route. Never into guardian/pentest/defender."""
     _, name, n, _ = node_for(g, agent)
-    if tool_free(g, name): return {"mode": "none", "node": None, "via": None, "reason": "tool-free node"}
-    if tool_capable(g, name): return {"mode": "direct", "node": name, "via": None}
+    if tool_free(g, name):
+        return {"mode": "none", "node": None, "via": None, "reason": "tool-free node"}
+    if vg.tool_capable(g, name):
+        # Direct: model emits tool calls; Hermes runs MCP/toolsets locally. tool_policy is the
+        # llama-server --tools grant (separate layer); do not require it for Hermes direct.
+        return {"mode": "direct", "node": name, "via": None}
+    # Explicit one-hop from graph (#243). tool_route already rejects fail-closed / routed targets.
+    t = vg.tool_route(g, name)
+    if t and not tool_free(g, t):
+        return {"mode": "nexus", "node": t, "via": None, "reason": "tool_route"}
+    # #243 does not discover a target — Hermes falls back to same-host, then ssh nexus mesh.
     host = n.get("host")
-    ok = lambda k, o: (k != name and o.get("status") != "planned" and not tool_free(g, k) and tool_capable(g, k))
     nodes = g.get("nodes") or {}
     for k in sorted(nodes):
-        if nodes[k].get("host") == host and ok(k, nodes[k]):
+        if nodes[k].get("host") == host and _discovery_ok(g, name, k):
             return {"mode": "nexus", "node": k, "via": None}
     for mesh in nexus_meshes(g, host):
         peers = set(g["meshes"][mesh].get("members") or []) - {host}
         for k in sorted(nodes):
-            if nodes[k].get("host") in peers and ok(k, nodes[k]):
+            if nodes[k].get("host") in peers and _discovery_ok(g, name, k):
                 return {"mode": "nexus", "node": k, "via": mesh}
     return {"mode": "none", "node": None, "via": None, "reason": "no tool-capable node reachable"}
 
