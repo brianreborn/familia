@@ -110,6 +110,8 @@ def validate(graph, check_files=True, host=None):
             try: server_args(graph, nn)
             except SystemExit as ex: errs += [l.replace("graph: ERROR: ", "") for l in str(ex).split("\n") if l]
     errs = list(dict.fromkeys(errs))
+    if not errs:
+        WARNINGS.extend(routing_warnings(graph))
     if errs or not check_files:
         return errs, {}
     # Host scope (same rule as check_swap_budgets): file-existence and RAM totals are only
@@ -310,6 +312,34 @@ def merge_args(base, extra):
             if v is not None: out.append(v)
         i += 2 if v is not None else 1
     return out
+
+# Model roles the green-roomz graph-proxy manifest can carry (start_graph.local_topology).
+PROXY_ROUTABLE_ROLES = ("chat", "coder", "general", "reasoning")
+
+
+def routing_warnings(graph):
+    """Config that validates but will not route the way it reads. Advisory (WARNING lines),
+    so existing graphs keep validating; each names the key to change."""
+    out = []
+    nodes, models = graph.get("nodes") or {}, graph.get("models") or {}
+    for a, al in sorted((graph.get("aliases") or {}).items()):
+        n = nodes.get(al.get("node")) if isinstance(al.get("node"), str) else None
+        if not n or n.get("status") != "active":
+            continue
+        if n.get("embeddings"):
+            continue
+        role = node_type(graph, al["node"])
+        if role not in PROXY_ROUTABLE_ROLES:
+            out.append(f"aliases.{a}: node {al['node']!r} has role {role!r}; familia start "
+                       f"refuses it (graph-proxy routes {'/'.join(PROXY_ROUTABLE_ROLES)} and embeddings) — "
+                       f"reach it directly on its port or drop the alias")
+    for name, n in sorted(nodes.items()):
+        if n.get("tool_route") and "server_tools" not in n and tool_capable(graph, name):
+            out.append(f"nodes.{name}.tool_route: ignored for tools — the node is directly tool-capable "
+                       f"and keeps its own --tools grant; set tool_capable: false to execute tools only on "
+                       f"{n['tool_route']!r}")
+    return out
+
 
 def explain(graph, name):
     import model_db, model_params as mp
