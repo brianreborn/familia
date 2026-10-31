@@ -175,3 +175,11 @@ def test_lang_c_and_posix_route_identically_to_utf8(tmp_path):
     for loc in ("C", "POSIX"):
         assert _run_locale(tmp_path, loc) == utf8
     assert utf8["upstream"][0][0]["content"] == list(PROMPTS.values())[0]
+
+
+@pytest.mark.xfail(strict=True, reason="CJK negation not handled yet: _NEG_BEFORE only knows English "
+                   "(do not/don't/never/no); 不要/别/不用 before a CJK phrase still escalates (fix pending)")
+@pytest.mark.parametrize("msg", ["不要升级", "请不要升级到大模型"])
+def test_cjk_negation_does_not_escalate(msg):
+    trig = dict(E.DEFAULT_TRIGGERS, phrases=["升级"])
+    assert E.stuck_reasons({"user_messages": [msg]}, trig) == []
