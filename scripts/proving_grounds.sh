@@ -5,8 +5,8 @@
 # steps reached N/M (counting its "ok"/"FAIL" lines) and this script exits 0 unless
 # --strict is given. Real pass/fail tests live in tests/ (pytest) and gate CI.
 set -u
-ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-cd "$ROOT"
+ROOT=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
+cd "$ROOT" || exit 1
 STRICT=0
 case "${1:-}" in
   -h|--help)
