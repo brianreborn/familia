@@ -6,9 +6,8 @@
 # Rollback:                      sh hvvram-p0-zfs-baseline.sh --rollback --apply
 #
 # Swap layout (Brian 2026-10-31): swap moves to its own encrypted zvol hvv/swap in this pool.
-# KNOWN RISK: FreeBSD swap on a zvol can deadlock under severe memory pressure (ZFS must
-# allocate memory to write pages out). That is why the HDD partition ada0s1b is kept as a
-# GELI-onetime fallback/bridge swap and its fstab line is kept (commented) for quick revert.
+# The HDD partition ada0s1b is used only as a GELI-onetime bridge swap while ada1 (the old
+# swap) is wiped; it is turned off once zvol swap is active, and its fstab line stays commented.
 # Persistent zvol swap (fstab/rc) is NOT set here; it needs separate approval. Suggested line:
 #   zfs set org.freebsd:swap=on hvv/swap   # or fstab: /dev/zvol/hvv/swap none swap sw,late 0 0
 #   (the zvol key is ephemeral, so boot needs a keyed create step; see §5.0)
@@ -116,7 +115,7 @@ echo "+ ephemeral key -> zfs create -V $SWAP_SIZE $POOL/swap"
     -o volblocksize=4K -o compression=off -o sync=always -o primarycache=metadata \
     -o secondarycache=none -o logbias=throughput "$POOL/swap"
 run swapon "/dev/zvol/$POOL/swap"
-[ $APPLY -eq 1 ] && { swapinfo | grep -q "zvol/$POOL/swap" || die "zvol swap not active; bridge stays on"; }
+[ $APPLY -eq 1 ] && { swapinfo | grep -q "zvol/$POOL/swap" || die "zvol swap not active; bridge swap left on"; }
 swapinfo | grep -q "$BRIDGE.eli" && run swapoff "/dev/$BRIDGE.eli"   # fstab line stays commented
 run zfs create -o sync=disabled -o recordsize=1M "$POOL/scratch"   # scratch: rebuilt at boot only if separately approved
 # ARC: runtime only, not persisted (loader.conf change needs separate approval)
