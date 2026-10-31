@@ -55,7 +55,10 @@ class Upstream:
                     self.end_headers(); self.wfile.write(out)
                 finally:
                     with up.mu: up.inflight -= 1
-        self.srv = ThreadingHTTPServer(("127.0.0.1", 0), H)
+        # Fake upstream must not be the bottleneck: default backlog 5 overflows on
+        # FreeBSD under the 64-burst and the proxy then 502s (R7, not R6).
+        srv_cls = type("_UpSrv", (ThreadingHTTPServer,), {"request_queue_size": 128})
+        self.srv = srv_cls(("127.0.0.1", 0), H)
         self.port = self.srv.server_address[1]
         threading.Thread(target=self.srv.serve_forever, daemon=True).start()
 
