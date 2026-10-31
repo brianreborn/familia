@@ -585,7 +585,7 @@ models:
     notes: Official guardian weight (docs/guardian-weights.md). Q2_K ~3.0 GiB. sha256
       is registry HF LFS oid; verify with activate_guardian_weights.py --measure.
       Fetch before activating miryam-pentest / angel-guardian.
-    db: mradermacher--Dolphin3.0-Llama3.1-8B-abliterated-GGUF--Dolphin3.0-Llama3.1-8B-abliterated.Q2_K
+    db: RavichandranJ--Dolphin3-Cyber-8B-GGUF--Dolphin3.0-Llama3.1-8B-abliterated.Q2_K
   lfm3-17b-uncensored-q4km:
     gguf: ~/.local/share/gguf/models/general/LFM3-1.7B-Uncensored-AD-Q4_K_M.gguf
     sha256: b22df65673b54ed326f18f74826d76f3b65dadc237ffd6306cd52be04544827d

@@ -34,6 +34,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 ROOT = Path(__file__).resolve().parent.parent
+import config_paths  # DUP-02/DUP-10 owner
 STATE_ROOT = Path(
     os.environ.get("FAMILIA_OFFLINE_IMPROVE_DIR")
     or (Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local" / "state")) / "familia" / "offline-improve")
@@ -50,9 +51,8 @@ def _hostname() -> str:
 
 def _load_graph(path: Path) -> dict:
     try:
-        import yaml
-        with path.open(encoding="utf-8") as f:
-            return yaml.safe_load(f) or {}
+        import familia_yaml  # DUP-01
+        return familia_yaml.load(str(path)) or {}
     except Exception:
         return {}
 
@@ -327,7 +327,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     mode.add_argument("--loop", action="store_true", help="improve → sleep/backoff → reconnect check → repeat until online")
     ap.add_argument("--offline", action="store_true", help="force offline mode (skip fleet check / treat as disconnected)")
     ap.add_argument("--host", default=_hostname(), help="graph host name for this machine (default: hostname)")
-    ap.add_argument("--graph", default=str(ROOT / "graph.yaml"))
+    ap.add_argument("--graph", default=None)  # DUP-02: resolved lazily after parse
     ap.add_argument("--peers", default="", help="comma-separated peer host aliases (default: other graph hosts)")
     ap.add_argument("--no-bench", action="store_true", help="skip llama-bench; host_ram probe only")
     ap.add_argument("--base-sleep", type=float, default=float(os.environ.get("FAMILIA_OFFLINE_IMPROVE_BASE", 30)))
@@ -335,6 +335,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     ap.add_argument("--max-cycles", type=int, default=0, help="with --loop: stop after N improve cycles (0=unlimited)")
     ap.add_argument("--state-dir", default=str(STATE_ROOT))
     args = ap.parse_args(list(argv) if argv is not None else None)
+    args.graph = config_paths.graph_path(args.graph)  # DUP-02 lazy resolve
 
     state_dir = Path(args.state_dir).expanduser()
     graph = _load_graph(Path(args.graph))

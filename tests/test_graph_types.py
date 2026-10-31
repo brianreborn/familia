@@ -20,13 +20,14 @@ def test_llama_070_runtime_preserves_existing_model_architectures():
     previous_archs = {
         arch
         for name, spec in BASE["runtimes"].items()
-        if name.startswith("llama-b") and name not in {"llama-b11669", "llama-b11669-freebsd"}
+        # only builds older than 0.7.0 (b11669); newer runtimes may add archs (e.g. b11944 lfm3)
+        if name.startswith("llama-b") and int(name[7:].split("-")[0]) < 11669
         for arch in spec["supported_archs"]
     }
     assert runtime["build"] == "b11669 (llama.cpp 0.7.0)"
     assert previous_archs <= set(runtime["supported_archs"])
-    assert BASE["nodes"]["coder"]["runtime"] == "llama-b11669"
-    assert BASE["nodes"]["embed"]["runtime"] == "llama-b11669"
+    assert int(BASE["nodes"]["coder"]["runtime"].split("-b")[1].split("-")[0]) >= 11669  # 0.7.0 or newer
+    assert int(BASE["nodes"]["embed"]["runtime"].split("-b")[1].split("-")[0]) >= 11669  # 0.7.0 or newer
     freebsd = BASE["runtimes"]["llama-b11669-freebsd"]
     assert freebsd["hosts"] == ["angel"]
     assert freebsd["backends"] == ["cpu"]
@@ -502,3 +503,41 @@ def test_options_may_carry_db_field():
     else:
         opts[name]["db"] = "example--toy--Q4_0"
     assert errs(x) == []
+
+
+def test_server_tools_rejected_for_guardian_pentest_defender():
+    """Boundary: a server_tools override on guardian/pentest/defender would bypass the
+    pentest mode ladder; graph_types must reject it (CFG-PENT-POL / CFG-SPEC-TOOLS)."""
+    import graph_types  # noqa: F401
+    for node, override in (("miryam-pentest", "all"), ("angel-guardian", ["read_file"])):
+        x = g(); x["nodes"][node]["server_tools"] = override
+        has(x, "not allowed for")
+    # defender TYPE via explicit node role on a guardian-model node
+    x = g(); x["nodes"]["miryam-pentest"]["role"] = "defender"; x["nodes"]["miryam-pentest"]["server_tools"] = "all"
+    has(x, "not allowed for defender")
+    # a non-guardian node (coder) still accepts server_tools: all on loopback
+    x = g(); x["nodes"]["coder"]["server_tools"] = "all"; x["nodes"]["coder"]["bind"] = "127.0.0.1"
+    assert [e for e in errs(x) if "coder.server_tools" in e] == []
+
+
+def test_mcp_env_names_posix_any_case():
+    x = g()
+    agents = x.setdefault("agents", {})
+    a = next(iter(agents.values())) if agents else agents.setdefault("hermes", {})
+    a.setdefault("mcp", {})["srv"] = {"command": "x", "env_from": ["1bad-name"]}
+    has(x, "env var names only")
+    for ok in (["GOOD_NAME"], ["http_proxy"], ["Mixed_1"]):
+        a["mcp"]["srv"]["env_from"] = ok
+        assert [e for e in errs(x) if "env var names only" in e] == [], ok
+
+
+def test_server_tools_explicit_opt_out_validates():
+    """CFG-SPEC-TOOLS-006: [] / none / false is an explicit opt-out: valid on any bind and
+    any TYPE (incl. guardian), and emits no --tools flag."""
+    for opt in ([], "none", False):
+        x = g(); x["nodes"]["coder"]["server_tools"] = opt; x["nodes"]["coder"]["bind"] = "0.0.0.0"
+        assert [e for e in errs(x) if "server_tools" in e] == [], opt
+        assert "--tools" not in validate_graph.server_args(x, "coder"), opt
+        x = g(); x["nodes"]["angel-guardian"]["server_tools"] = opt
+        assert [e for e in errs(x) if "server_tools" in e] == [], opt
+    x = g(); x["nodes"]["coder"]["server_tools"] = "some"; has(x, "opt-out")

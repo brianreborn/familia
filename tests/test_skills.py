@@ -17,7 +17,7 @@ def test_seed_catalog_valid():
     assert skills.validate_catalog(CAT) == []
     ids = {s["id"]: s for s in CAT["skills"]}
     assert ids["green-probe"]["status"] == "bundled" and ids["green-probe"]["home"] == "green-zkillz"
-    assert ids["artemis-android-skill"]["status"] == "available" and ids["artemis-android-skill"]["license"] == "Apache-2.0"
+    assert ids["artemis-android-skill"]["status"] == "vendored" and ids["artemis-android-skill"]["license"] == "Apache-2.0"
     assert ids["goclaw-skills"]["status"] == "license-blocked"
     assert "Anthropic proprietary" in ids["goclaw-skills"]["parts"]["pdf"]
 
@@ -76,10 +76,17 @@ def env(tmp_path, pentest=False):
     g = tmp_path / "graph.yaml"
     if not g.exists():
         text = open(os.path.join(ROOT, "graph.yaml"), encoding="utf-8").read()
+        # Start from no enabled skills so enable/disable flows are deterministic
+        # whatever the shipped graph.yaml enables.
+        import re
+        text = re.sub(r"(?m)^(    skills: )\[[^\]]*\]", r"\1[]", text)
         g.write_text(text)
-    if pentest and "pentests:" not in g.read_text():
+    if pentest and "  android-fleet:\n" not in g.read_text():
         text = g.read_text()
-        g.write_text(text.replace("kv_channels:\n", PENTEST_GRAPH_YAML + "kv_channels:\n"))
+        if "\npentests:\n" in text:  # graph.yaml already has a pentests section: add our entry to it
+            g.write_text(text.replace("\npentests:\n", "\n" + PENTEST_GRAPH_YAML.rstrip("\n") + "\n", 1))
+        else:
+            g.write_text(text.replace("kv_channels:\n", PENTEST_GRAPH_YAML + "kv_channels:\n"))
     e = dict(os.environ, FAMILIA_GRAPH=str(g), FAMILIA_LICENSE_ACCEPT_FILE=str(tmp_path / "acc.json"), FAMILIA_NO_TTY="1")
     for k in ("FAMILIA_ACCEPT_LICENSES", "FAMILIA_ACCEPT_UNKNOWN_LICENSES", "FAMILIA_MENU_PIPE"):
         e.pop(k, None)
@@ -100,8 +107,9 @@ def test_cli_enable_flow(tmp_path):
     assert r.returncode == 0 and "[dry-run]" in r.stdout
     r, g = run(tmp_path, "enable", "goclaw-skills")
     assert r.returncode == 1 and "license-blocked" in r.stderr and g.read_text() == before
+    # artemis is vendored now (a431bc4): no terminal -> license refusal, graph untouched
     r, g = run(tmp_path, "enable", "artemis-android-skill")
-    assert r.returncode == 1 and "not vendored" in r.stderr
+    assert r.returncode in (2, 3) and "not changed" in r.stderr and g.read_text() == before
     r, g = run(tmp_path, "enable", "etioz", "--agent", "android-fleet", "--dry-run", pentest=True)
     assert r.returncode == 0
     r, g = run(tmp_path, "enable", "green-probe", "--agent", "android-fleet", pentest=True)

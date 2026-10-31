@@ -19,11 +19,109 @@ token; requests with neither share the "default" session (serialized by that
 session's lock). True multi-session isolation needs one of those headers —
 hermes does not send a session id today.
 """
-import json, os, re, sys, threading, time, urllib.request
+import json, os, re, select, socket, sys, threading, time, urllib.request, uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import escalation as E
 import familia_auth  # noqa: E402
+
+# R1 (#244): global admission cap on upstream calls across all sessions.
+UPSTREAM_CAP = int(os.environ.get("FAMILIA_UPSTREAM_CAP", "6"))
+UPSTREAM_WARN = 4
+UPSTREAM_WAIT_S = float(os.environ.get("FAMILIA_UPSTREAM_WAIT_S", "30"))
+_UPSTREAM_SEM = threading.BoundedSemaphore(UPSTREAM_CAP)
+_inflight = [0]
+_inflight_lock = threading.Lock()
+
+
+# R4 (#247): finite, configurable upstream timeout (was 3600 s).
+UPSTREAM_TIMEOUT_S = float(os.environ.get("FAMILIA_PROXY_TIMEOUT_S", "600"))
+
+
+class ClientGone(Exception):
+    """The caller hung up while we waited on upstream (R4 #247)."""
+
+
+_SEQ = __import__("itertools").count()   # global arrival order (accept order for HTTP)
+_SEQ_LOCK = threading.Lock()
+
+
+_PENDING = {}       # seq -> accept time: accepted, not yet queued on a session lock
+PENDING_GRACE_S = 0.5
+
+
+def next_seq(pending=False):
+    with _SEQ_LOCK:
+        n = next(_SEQ)
+        if pending: _PENDING[n] = time.monotonic()
+        return n
+
+
+def _settle(seq):
+    with _SEQ_LOCK:
+        _PENDING.pop(seq, None)
+
+
+def _earlier_pending(seq):
+    """An earlier-accepted request is still parsing headers (bounded by PENDING_GRACE_S)."""
+    now = time.monotonic()
+    with _SEQ_LOCK:
+        return any(k < seq and now - t < PENDING_GRACE_S for k, t in _PENDING.items())
+
+
+class FairLock:
+    """Re-entrant FIFO lock: the waiter with the lowest arrival sequence goes next (R5 #248).
+
+    Drop-in for the per-session ``threading.RLock``. HTTP requests pass the sequence the
+    server stamped at accept time, so handler-thread scheduling jitter cannot reorder them.
+    """
+    def __init__(self):
+        self._cv = threading.Condition(threading.Lock())
+        self._waiting = set(); self._owner = None; self._depth = 0
+
+    def acquire(self, blocking=True, timeout=-1, seq=None):
+        me = threading.get_ident()
+        with self._cv:
+            if self._owner == me:
+                self._depth += 1; return True
+            seq = next_seq() if seq is None else seq
+            if not blocking and (self._owner is not None or self._waiting):
+                return False
+            self._waiting.add(seq); _settle(seq)
+            deadline = None if timeout is None or timeout < 0 else time.monotonic() + timeout
+            try:
+                while True:
+                    blocked = self._owner is not None or seq != min(self._waiting)
+                    early = not blocked and _earlier_pending(seq)
+                    if not blocked and not early:
+                        break
+                    left = None if deadline is None else deadline - time.monotonic()
+                    if left is not None and left <= 0:
+                        return False
+                    w = 0.002 if early else left
+                    self._cv.wait(w if left is None else min(w if w is not None else left, left))
+                self._owner, self._depth = me, 1
+                return True
+            finally:
+                self._waiting.discard(seq)
+                self._cv.notify_all()
+
+    def release(self):
+        with self._cv:
+            if self._owner != threading.get_ident():
+                raise RuntimeError("release of un-acquired FairLock")
+            self._depth -= 1
+            if self._depth == 0:
+                self._owner = None; self._cv.notify_all()
+
+    __enter__ = acquire
+    def __exit__(self, *a): self.release()
+
+
+def _nothing_sent(e):
+    """R3 (#246): True only when the request never reached upstream (safe to retry)."""
+    r = getattr(e, "reason", e)
+    return isinstance(r, (ConnectionRefusedError,)) or isinstance(e, ConnectionRefusedError)
 
 STATE = os.path.join(E.ROOT, ".cache", "familia")
 PENDING = os.path.join(STATE, "escalation-pending.json")
@@ -103,7 +201,7 @@ class Escalator:
         self.current, self.pending, self.handoff_next, self.sig = light, None, False, Signals()
         self.auto_env = os.environ.get("FAMILIA_ESCALATE") == "auto"
         self.session_id = session_id or DEFAULT_SESSION
-        self.lock = threading.RLock()
+        self.lock = FairLock()
 
     def upstream(self):
         return node_url(self.g, self.current, self.local_host), alias_for(self.g, self.current)
@@ -181,7 +279,7 @@ class EscalatorPool:
             sid, esc = seed
             esc.session_id = sid
             if not hasattr(esc, "lock") or esc.lock is None:
-                esc.lock = threading.RLock()
+                esc.lock = FairLock()
             self._by[sid] = esc
 
     def get(self, session_id):
@@ -201,6 +299,34 @@ def make_handler(pool, log=sys.stderr):
 
         def _esc(self):
             return pool.get(session_id_from(self.headers))
+
+        def handle(self):
+            try:
+                super().handle()
+            finally:
+                seq = getattr(self.server, "seq_of", {}).pop(self.request, None)
+                if seq is not None: _settle(seq)
+
+        def _client_gone(self):
+            try:
+                r, _, _ = select.select([self.connection], [], [], 0)
+                return bool(r) and self.connection.recv(1, socket.MSG_PEEK) == b""
+            except (OSError, ValueError):
+                return True
+
+        def _urlopen(self, rq, timeout):
+            """urlopen in a worker thread; raise ClientGone if the caller disconnects (R4)."""
+            box = {}
+            def run():
+                try: box["r"] = urllib.request.urlopen(rq, timeout=timeout)
+                except BaseException as e: box["e"] = e
+            t = threading.Thread(target=run, daemon=True); t.start()
+            while t.is_alive():
+                t.join(0.05)
+                if t.is_alive() and self._client_gone():
+                    raise ClientGone()
+            if "e" in box: raise box["e"]
+            return box["r"]
 
         def _copy_headers(self, r):
             for k, v in r.headers.items():
@@ -258,10 +384,17 @@ def make_handler(pool, log=sys.stderr):
 
         def _retry_once(self, esc, body, method, raw, note):
             url, _alias = esc.upstream()
+            orig = getattr(self, "_orig", None)
+            if orig is not None:
+                # R2 (#245): resend the caller's original body with the fallback node's
+                # alias, not the body rewritten (alias, handoff) for the failed node.
+                body = dict(orig, model=_alias); raw = json.dumps(body).encode()
             target = url.rsplit("/v1", 1)[0] + self.path
             req = urllib.request.Request(target, data=raw, method=method, headers=familia_auth.auth_headers({"Content-Type": "application/json"}, incoming=self.headers, required=True))
             try:
-                r = urllib.request.urlopen(req, timeout=3600)
+                r = self._urlopen(req, timeout=UPSTREAM_TIMEOUT_S)
+            except ClientGone:
+                return True
             except Exception as e2:
                 # Retry failed too. Fall back again so heavy does not stick (#98); do not recurse.
                 self._record_transport_fail(esc, body)
@@ -274,17 +407,57 @@ def make_handler(pool, log=sys.stderr):
             return True
 
         def _fwd(self, method):
+            # Session lock first (FIFO per session, R5), then the global cap (R1), so
+            # queued same-session requests do not hold upstream slots while they wait.
             esc = self._esc()
-            # Hold the session lock for the whole request so concurrent clients on
-            # the same session cannot interleave rewrite / after_reply / swap (#101).
-            with esc.lock:
+            lk = esc.lock
+            seq = getattr(self.server, "seq_of", {}).get(self.request)
+            if isinstance(lk, FairLock):
+                lk.acquire(seq=seq)
+            else:
+                lk.acquire()
+            try:
+                self._fwd_capped(method)
+            finally:
+                lk.release()
+
+        def _fwd_capped(self, method):
+            if not _UPSTREAM_SEM.acquire(timeout=UPSTREAM_WAIT_S):
+                self.send_response(503); self.send_header("Content-Type", "application/json"); self.end_headers()
+                self.wfile.write(b'{"error":{"message":"upstream at capacity","code":503}}')
+                return
+            with _inflight_lock:
+                _inflight[0] += 1
+                if _inflight[0] > UPSTREAM_WARN:
+                    print(f"escalation_proxy: {_inflight[0]} upstream calls in flight (cap {UPSTREAM_CAP})", file=sys.stderr, flush=True)
+            try:
+                self._fwd_admitted(method)
+            finally:
+                with _inflight_lock:
+                    _inflight[0] -= 1
+                _UPSTREAM_SEM.release()
+
+        def _fwd_admitted(self, method):
+            esc = self._esc()
+            # The session lock is held by _fwd for the whole request so concurrent clients
+            # on the same session cannot interleave rewrite / after_reply / swap (#101).
+            if True:
                 esc.check_accept()
                 n = int(self.headers.get("Content-Length") or 0)
                 raw = self.rfile.read(n) if n else None
                 url, alias = esc.upstream()
                 body = None
+                self._orig = None
                 if raw and self.path.endswith("/chat/completions"):
-                    url, body = esc.rewrite(json.loads(raw)); raw = json.dumps(body).encode()
+                    self._orig = json.loads(raw)
+                    # R2 (#245): re-verify a non-light local node right before dispatch.
+                    cur = esc.current
+                    if cur != esc.light and esc.g["nodes"].get(cur, {}).get("host") == esc.local_host \
+                            and not esc.ensure(cur):
+                        note = esc.after_reply(ok=False)
+                        if note: print(note, file=log, flush=True)
+                        url, alias = esc.upstream()
+                    url, body = esc.rewrite(self._orig); raw = json.dumps(body).encode()
                 target = url.rsplit("/v1", 1)[0] + self.path
                 try:
                     hdrs = familia_auth.auth_headers({"Content-Type": "application/json"}, incoming=self.headers, required=True)
@@ -293,14 +466,18 @@ def make_handler(pool, log=sys.stderr):
                     self.send_response(401); self.send_header("Content-Type", "application/json"); self.end_headers()
                     self.wfile.write(b'{"error":{"message":"no API key for upstream","code":401}}')
                     return
+                self._rid = self.headers.get("X-Familia-Request-Id") or uuid.uuid4().hex
+                hdrs["X-Familia-Request-Id"] = self._rid  # R3: lets upstream/caller dedupe
                 req = urllib.request.Request(target, data=raw, method=method, headers=hdrs)
                 try:
-                    r = urllib.request.urlopen(req, timeout=3600)
+                    r = self._urlopen(req, timeout=UPSTREAM_TIMEOUT_S)
+                except ClientGone:
+                    return  # caller hung up: drop the reply, free the session (R4)
                 except Exception as e:
                     # Count transport error BEFORE decide (#100), then escalate/fallback (#98).
                     self._record_transport_fail(esc, body)
                     note = esc.after_reply(ok=False)
-                    if note and self._retry_once(esc, body, method, raw, note):
+                    if note and _nothing_sent(e) and self._retry_once(esc, body, method, raw, note):
                         return
                     self._502(e)
                     return
@@ -310,10 +487,25 @@ def make_handler(pool, log=sys.stderr):
         def do_GET(self): self._fwd("GET")
     return H
 
+class _Server(ThreadingHTTPServer):
+    request_queue_size = 128  # R6: default 5 resets bursts on FreeBSD
+    daemon_threads = True
+
+    def __init__(self, *a, **k):
+        self.seq_of = {}
+        super().__init__(*a, **k)
+
+    def process_request(self, request, client_address):
+        # Runs on the accept thread, in accept order: stamp the FIFO sequence (R5).
+        # (socket objects use __slots__, so the sequence lives in a server-side map)
+        self.seq_of[request] = next_seq(pending=True)
+        super().process_request(request, client_address)
+
+
 def serve(esc, port=0):
     """Serve ``esc`` as the default session; other X-Familia-Session values get clones."""
     if not hasattr(esc, "lock") or esc.lock is None:
-        esc.lock = threading.RLock()
+        esc.lock = FairLock()
     esc.session_id = getattr(esc, "session_id", None) or DEFAULT_SESSION
 
     def factory():
@@ -322,6 +514,6 @@ def serve(esc, port=0):
                          swap_back=esc.swap_back, reachable=esc.reachable)
 
     pool = EscalatorPool(factory, seed=(DEFAULT_SESSION, esc))
-    srv = ThreadingHTTPServer(("127.0.0.1", port), make_handler(pool))  # localhost only
+    srv = _Server(("127.0.0.1", port), make_handler(pool))  # localhost only
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     return srv

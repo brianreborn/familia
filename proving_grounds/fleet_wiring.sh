@@ -1,6 +1,6 @@
 #!/bin/sh
 set -eu
-ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+ROOT=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 fails=0
 ok(){ echo "ok   $*"; }
 bad(){ echo "FAIL $*"; fails=$((fails+1)); }

@@ -215,10 +215,36 @@ def check_node(g, name, n, errs):
         if other < name and "planned" not in (o.get("status"), n.get("status")) and o.get("host") == n.get("host") and o.get("port") == n.get("port"):
             errs.append(f"nodes.{name}: port {n.get('port')} on host {n.get('host')!r} also used by node {other!r}")
 
+    tr = n.get("tool_route")
+    if tr is not None:
+        w = f"nodes.{name}.tool_route"
+        _t = n.get("role") or (m or {}).get("role")
+        nodes = g.get("nodes") or {}
+        tn = nodes.get(tr) if isinstance(tr, str) else None
+        if _t in ("guardian", "pentest", "defender"):
+            errs.append(f"{w}: not allowed for {_t} nodes; tools follow the pentest policy mode")
+        elif tr == name:
+            errs.append(f"{w}: cannot route to itself")
+        elif isinstance(tn, dict):
+            tm = (g.get("models") or {}).get(tn.get("model")) or {}
+            if (tn.get("role") or tm.get("role")) in ("guardian", "pentest", "defender"):
+                errs.append(f"{w}: target {tr!r} is a fail-closed TYPE")
+            elif tn.get("tool_route"):
+                errs.append(f"{w}: target {tr!r} is itself routed (one hop only)")
+
     st = n.get("server_tools")
     if st is not None:
         w = f"nodes.{name}.server_tools"
-        if st == "all":
+        # Guardian/pentest/defender tools are governed by the pentest mode ladder, not by a
+        # node override; a server_tools override here would bypass it (docs/config/pentest-policy.md).
+        _type = n.get("role") or (m or {}).get("role")
+        opt_out = st in ([], "none", False)  # explicit opt-out: no --tools flag (CFG-SPEC-TOOLS-006)
+        if opt_out:
+            pass
+        elif _type in ("guardian", "pentest", "defender"):
+            errs.append(f"{w}: not allowed for {_type} nodes; tools follow the pentest policy mode "
+                        f"(docs/config/pentest-policy.md), not a node override")
+        elif st == "all":
             pass
         elif isinstance(st, list) and st and all(isinstance(x, str) and x for x in st):
             for t in st:
@@ -227,9 +253,9 @@ def check_node(g, name, n, errs):
                 elif t not in SERVER_TOOL_NAMES:
                     errs.append(f"{w}: unknown tool {t!r}; known: {list(SERVER_TOOL_NAMES)} or all")
         else:
-            errs.append(f"{w}: expected 'all' or non-empty list of tool names {list(SERVER_TOOL_NAMES)}")
+            errs.append(f"{w}: expected 'all', [] / none / false (opt-out), or a list of tool names {list(SERVER_TOOL_NAMES)}")
         bind = n.get("bind") or ""
-        if bind not in ("127.0.0.1", "::1", "localhost") and not str(bind).startswith("127."):
+        if not opt_out and bind not in ("127.0.0.1", "::1", "localhost") and not str(bind).startswith("127."):
             errs.append(f"{w}: only allowed when bind is loopback (got {bind!r}); llama.cpp --tools is host-exec")
 
 # llama-server built-in tools (--tools); llama-ui /tools is 403 without these (M0 tools regression).
@@ -313,7 +339,7 @@ def check_alias(g, name, a, errs):
 AGENT_ROLES = ("main", "auxiliary")
 
 MCP_KEYS = {"command", "args", "url", "env_from", "headers_from", "tools", "enabled", "notes"}
-ENV_NAME_RE = __import__("re").compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+ENV_NAME_RE = __import__("re").compile(r"^[A-Za-z_][A-Za-z0-9_]*$")  # POSIX env var names, any case (e.g. http_proxy) (CFG-CRED)
 
 def check_agent_mcp(name, mcp, errs):
     for srv, c in (mcp or {}).items():
@@ -560,7 +586,7 @@ TYPES = {
                  "role": req("enum", choices={"chat", "coder", "decision", "reasoning", "embed", "vision", "diffusion", "pentest", "guardian"}),
                  "derived_from": opt("any"),
                  # model database entry (registry/models/<db>.json, docs/model-database.md, #51)
-                 "db": opt("str"), "notes": opt("str"),
+                 "db": opt("str"), "notes": opt("str"), "tool_calls": opt("bool"),  # model can emit tool calls (CFG-SPEC-TOOLS-007)
                  "quant": opt("enum", choices={"littlebit"})}, doc="weights file"),  # derived_from: written by scripts/scale_down.py
     "nodes": T({"model": req("ref", ref="models"), "host": req("ref", ref="hosts"), "runtime": req("ref", ref="runtimes"),
                 "ctx": req("int", min=1), "parallel": req("int", min=1),
@@ -581,6 +607,8 @@ TYPES = {
                 "card_set": opt("str"), "sampling": opt("map"), "override_reasons": opt("map"),
                 # llama-server --tools (llama-ui Server Tools / agentic); "all" or list of SERVER_TOOL_NAMES
                 "server_tools": opt("any"),
+                # capability-based tools default (CFG-SPEC-TOOLS-007..010, docs/config/routing-spec.md)
+                "tool_capable": opt("bool"), "tool_route": opt("ref", ref="nodes"),
                 # type/role the node provides (coder|chat|embed|…). Design law: type implies
                 # capability; placement is host:. Prefer type-named keys in private host graphs.
                 "role": opt("enum", choices={"chat", "coder", "decision", "reasoning", "embed", "vision", "diffusion", "pentest", "guardian", "general"})},

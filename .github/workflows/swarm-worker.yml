@@ -85,7 +85,6 @@ jobs:
     outputs:
       status: ${{ steps.run.outputs.status }}
       summary: ${{ steps.run.outputs.summary }}
-      log: ${{ steps.up.outputs.log }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -117,26 +116,62 @@ jobs:
           { echo "summary<<SWARMEOF"; echo "$stamp"; echo "exit $rc"; tail -n 20 "$log"; echo "SWARMEOF"; } >> "$GITHUB_OUTPUT"
           echo "LOG=$log" >> "$GITHUB_ENV"
           exit 0
-      - id: up
+      - name: Hand the redacted log to the upload job (no token in this job)
         if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: swarm-log-${{ github.run_id }}
+          path: ${{ env.LOG }}
+          retention-days: 1
+          if-no-files-found: ignore
+
+  # H1: the familia-private token only ever reaches this job, which runs on a
+  # GitHub-hosted runner and never checks out or executes code from the tested
+  # ref. It downloads the already-redacted log artifact, pushes it, then deletes
+  # the artifact so the log is not left readable on this public repo.
+  upload:
+    needs: bench
+    if: always() && needs.bench.result != 'skipped'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    outputs:
+      log: ${{ steps.up.outputs.log }}
+    steps:
+      - id: dl
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: swarm-log-${{ github.run_id }}
+          path: ${{ runner.temp }}/swarm
+      - id: up
         env:
           PRIV_TOKEN: ${{ secrets.FAMILIA_PRIVATE_LOGS_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -eu
-          [ -n "${PRIV_TOKEN:-}" ] || { echo "FAMILIA_PRIVATE_LOGS_TOKEN not set; log stays on runner"; exit 0; }
-          path="logs/swarm/$(date -u +%Y%m%d)/${GITHUB_RUN_ID}-$(hostname -s).log"
-          d=$(mktemp -d)
-          git -c credential.helper= clone -q --depth 1 \
-            "https://x-access-token:${PRIV_TOKEN}@github.com/brianreborn/familia-private.git" "$d" 2>/dev/null
-          mkdir -p "$d/$(dirname "$path")"; cp "$LOG" "$d/$path"
-          git -C "$d" -c user.name=swarm-worker -c user.email=swarm-worker@users.noreply.github.com add "$path"
-          git -C "$d" -c user.name=swarm-worker -c user.email=swarm-worker@users.noreply.github.com commit -qm "swarm log $GITHUB_RUN_ID"
-          git -C "$d" push -q origin HEAD 2>/dev/null
-          rm -rf "$d"
-          echo "log=familia-private:$path" >> "$GITHUB_OUTPUT"
+          LOG="$RUNNER_TEMP/swarm/run.log"
+          [ -f "$LOG" ] || { echo "no log artifact"; exit 0; }
+          if [ -n "${PRIV_TOKEN:-}" ]; then
+            path="logs/swarm/$(date -u +%Y%m%d)/${GITHUB_RUN_ID}.log"
+            d=$(mktemp -d)
+            git -c credential.helper= clone -q --depth 1 \
+              "https://x-access-token:${PRIV_TOKEN}@github.com/brianreborn/familia-private.git" "$d" 2>/dev/null
+            mkdir -p "$d/$(dirname "$path")"; cp "$LOG" "$d/$path"
+            git -C "$d" -c user.name=swarm-worker -c user.email=swarm-worker@users.noreply.github.com add "$path"
+            git -C "$d" -c user.name=swarm-worker -c user.email=swarm-worker@users.noreply.github.com commit -qm "swarm log $GITHUB_RUN_ID"
+            git -C "$d" push -q origin HEAD 2>/dev/null
+            rm -rf "$d"
+            echo "log=familia-private:$path" >> "$GITHUB_OUTPUT"
+          else
+            echo "FAMILIA_PRIVATE_LOGS_TOKEN not set; log not kept"
+          fi
+          id=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts" \
+                 -q '.artifacts[] | select(.name == "swarm-log-'"$GITHUB_RUN_ID"'") | .id' || true)
+          [ -z "$id" ] || gh api -X DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$id" || true
 
   report:
-    needs: [dispatch, bench]
+    needs: [dispatch, bench, upload]
     if: always() && needs.dispatch.result == 'success'
     runs-on: ubuntu-latest
     steps:
@@ -149,7 +184,7 @@ jobs:
           BENCH: ${{ needs.bench.result }}
           ST: ${{ needs.bench.outputs.status }}
           SUM: ${{ needs.bench.outputs.summary }}
-          LOGP: ${{ needs.bench.outputs.log }}
+          LOGP: ${{ needs.upload.outputs.log }}
         run: |
           # Post the worker-produced summary verbatim; no analysis here (R9).
           {
