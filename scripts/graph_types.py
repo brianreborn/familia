@@ -166,7 +166,8 @@ def check_runtime(g, name, r, errs):
 def slot_ctx(n):
     return n["ctx"] // n["parallel"] if isinstance(n.get("ctx"), int) and isinstance(n.get("parallel"), int) and n["parallel"] > 0 else None
 
-_WIN_RESERVED = {"CON", "PRN", "AUX", "NUL", *(f"COM{i}" for i in range(1, 10)), *(f"LPT{i}" for i in range(1, 10))}
+_WIN_RESERVED = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$",
+                 *(f"{p}{i}" for p in ("COM", "LPT") for i in (*"123456789", "\u00b9", "\u00b2", "\u00b3"))}
 
 def windows_unsafe_name(name):
     """Node names become file names (slots/<node>, serve-<node>.log); Windows refuses reserved
