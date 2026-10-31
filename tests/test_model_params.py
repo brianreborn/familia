@@ -218,7 +218,7 @@ def test_hermes_harness_rejects_unknown_and_helps(capsys):
     with pytest.raises(SystemExit) as ex:
         hh.parse_argv(["chat"])          # a stray word is not passed to hermes silently
     assert ex.value.code == 2
-    assert hh.parse_argv(["--render-only", "--", "chat", "-q", "x"])[2:] == ("render", None, True, ["chat", "-q", "x"])
+    assert hh.parse_argv(["--render-only", "--", "chat", "-q", "x"])[2:] == ("render", None, True, "cli", ["chat", "-q", "x"])
     hh.ACCEPT_LICENSES = False
     hh.parse_argv(["--accept-licenses"])
     assert hh.ACCEPT_LICENSES is True

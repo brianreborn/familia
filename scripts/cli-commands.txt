@@ -102,4 +102,4 @@ phone agent ask|hosts.phone-agent-ask
 phone agent consent|hosts.phone-agent-consent
 home|raw|sh scripts/familia_home.sh||||Charm/gum front door (Talk to the protomodel first)
 proto-chat|raw|sh scripts/proto_chat.sh||||interactive protomodel REPL
-required-checks|raw|sh scripts/required_checks.sh||||★ must-run: fleet + nexus + bt bash smokes
+proving-grounds|raw|sh scripts/proving_grounds.sh||||graded: fleet + nexus + bt proving grounds

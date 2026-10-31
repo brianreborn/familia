@@ -12,7 +12,7 @@ ITEMS_FILE = os.path.join(ROOT, "scripts", "menu-items.txt")
 GROUPS = ["Set up", "Skills", "Reach tools (Agent-Reach)", "Models", "Agents (hermes)",
           "Self-improving harness (Harness2)", "Test & benchmark", "Hosts",
           "Advanced: models & graph", "Advanced: agents", "Advanced: hosts & benchmarks",
-          "★ Required checks (must-run)", "Help"]
+          "◆ Proving grounds (graded)", "Help"]
 INTERNAL_FILE = os.path.join(ROOT, "scripts", "menu-internal.txt")
 # --help works but has no usage/example line yet; owned by another job (familia #74).
 HELP_NO_EXAMPLE = {"scripts/serve.sh"}
@@ -312,7 +312,7 @@ def test_familia_home_list_goals():
     assert r.returncode == 0, r.stderr
     out = r.stdout
     for goal in ("Talk to the protomodel", "Find more models", "Search my X / Twitter posts",
-                 "Install / first-time setup", "Required checks", "Legacy menu"):
+                 "Install / first-time setup", "Proving grounds", "Legacy menu"):
         assert goal in out, goal
     r2 = subprocess.run(["sh", os.path.join(ROOT, "familia")], cwd=ROOT, capture_output=True, text=True,
                         env=env(FAMILIA_NO_TTY="1"))
@@ -325,7 +325,7 @@ def test_familia_legacy_menu_flag():
                        cwd=ROOT, capture_output=True, text=True, env=env())
     assert r.returncode == 0, r.stderr
     assert "setup.first-time" in r.stdout
-    assert "test.required" in r.stdout
+    assert "test.proving-grounds" in r.stdout
 
 
 def test_menu_catalog_has_no_baked_dry_run():
@@ -343,8 +343,8 @@ def test_menu_catalog_has_no_baked_dry_run():
     for twin in ("models.fetch-preview", "hosts.start-preview", "hosts.phone-agent-ask-preview",
                  "setup.sync-preview", "models.add-apply", "setup.install-run", "setup.install-cli-run"):
         assert twin not in keys, twin
-    assert "test.required" in keys
-    assert "test.fleet" not in keys  # folded into test.required / required_checks.sh
+    assert "test.proving-grounds" in keys
+    assert "test.fleet" not in keys  # folded into test.proving-grounds / proving_grounds.sh
 
 
 def test_proto_chat_help():

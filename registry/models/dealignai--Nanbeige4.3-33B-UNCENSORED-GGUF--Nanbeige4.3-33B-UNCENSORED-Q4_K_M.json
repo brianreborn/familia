@@ -29,7 +29,7 @@
   "top-p": "Nanbeige/Nanbeige4.3-33B Nanbeige/Nanbeige4.3-33B README.md:L103"
  },
  "card_default_set": "Reasoning and chat tasks",
- "card_defaults_how": "the card's only recommended set, soft-prefer chat/reasoning/general",
+ "card_defaults_how": "soft-prefer chat/reasoning/general among recommended",
  "card_sampling_modes": {
   "Agentic and tool-use tasks": {
    "temp": 1.0,
@@ -71,7 +71,7 @@
     "temp": 0.0,
     "top-p": 1.0
    },
-   "source": "dealignai README.md:L226"
+   "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF README.md:L226"
   },
   {
    "label": "For conversational / creative use, 0.6–0.8 temperature +",
@@ -80,7 +80,7 @@
    "params": {
     "top-p": 0.95
    },
-   "source": "dealignai README.md:L229"
+   "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF README.md:L229"
   }
  ],
  "card_commands": [
@@ -428,15 +428,15 @@
    "size": 1743,
    "sha256": null,
    "blob": "f29643942e74fc7aae424c7649a3cad1233a9be4",
-   "fetched": true,
-   "verified": "git-blob-sha1"
+   "verified": "git-blob-sha1",
+   "fetched": true
   },
   "LICENSE.md": {
    "size": 22765,
    "sha256": null,
    "blob": "4a97d346373db2d4ee8cd018304ea8ddb51748b9",
-   "fetched": true,
-   "verified": "git-blob-sha1"
+   "verified": "git-blob-sha1",
+   "fetched": true
   },
   "Nanbeige4.3-33B-UNCENSORED-IQ2_XXS.gguf": {
    "size": 9326390304,
@@ -463,15 +463,15 @@
    "size": 13137,
    "sha256": null,
    "blob": "f34a8a855c6ac7529956d260196bb0cf2e8609ef",
-   "fetched": true,
-   "verified": "git-blob-sha1"
+   "verified": "git-blob-sha1",
+   "fetched": true
   },
   "dealign_mascot.png": {
    "size": 11184,
    "sha256": null,
    "blob": "da3bf39ad48aeac6a18d0a6928ab0bb8da4d90e9",
-   "fetched": true,
-   "verified": "git-blob-sha1"
+   "verified": "git-blob-sha1",
+   "fetched": true
   }
  },
  "base_repo_files": {
@@ -479,57 +479,57 @@
    "size": 1699,
    "sha256": null,
    "blob": "ffcf59baea062e44de8e842f3c5d600895ece23b",
-   "fetched": true,
-   "verified": "git-blob-sha1"
+   "verified": "git-blob-sha1",
+   "fetched": true
   },
   "README.md": {
    "size": 8884,
    "sha256": null,
    "blob": "b85cb82077cb4d81836597644756610d8cb328b8",
-   "fetched": true,
-   "verified": "git-blob-sha1"
+   "verified": "git-blob-sha1",
+   "fetched": true
   },
   "added_tokens.json": {
    "size": 174,
    "sha256": null,
    "blob": "8805f6dd0517ef0a74400d304c63bf176b3e28ed",
-   "fetched": true,
-   "verified": "git-blob-sha1"
+   "verified": "git-blob-sha1",
+   "fetched": true
   },
   "config.json": {
    "size": 883,
    "sha256": null,
    "blob": "adee1d1b766ca3dbaa104d07ba1a28b6a84fef85",
-   "fetched": true,
-   "verified": "git-blob-sha1"
+   "verified": "git-blob-sha1",
+   "fetched": true
   },
   "figures/nanbeige43-benchmarks.png": {
    "size": 137165,
    "sha256": "cb98ba304c3e3d5a8432683241fd89157ff560b2ce9682a3f1b96ea6e022fd48",
    "blob": "9c1c3468ec8cc0a4081bb423990c38c1497158fa",
-   "fetched": true,
-   "verified": "lfs-sha256"
+   "verified": "lfs-sha256",
+   "fetched": true
   },
   "figures/nbg.png": {
    "size": 15639,
    "sha256": null,
    "blob": "3466c5a7576bf8a142a80596cb73707fbc523d6c",
-   "fetched": true,
-   "verified": "git-blob-sha1"
+   "verified": "git-blob-sha1",
+   "fetched": true
   },
   "figures/occupation.png": {
    "size": 609476,
    "sha256": "90dce956d37e02f01d4150717eeb9167cd078255588091bd05128b7bdaf94aaf",
    "blob": "5aaef0707c78688b2fa3fd7696c3693eab33cc78",
-   "fetched": true,
-   "verified": "lfs-sha256"
+   "verified": "lfs-sha256",
+   "fetched": true
   },
   "generation_config.json": {
    "size": 164,
    "sha256": null,
    "blob": "a46c6565c7ccaca981a8d5f069da850827d6962b",
-   "fetched": true,
-   "verified": "git-blob-sha1"
+   "verified": "git-blob-sha1",
+   "fetched": true
   },
   "model-00001-of-00014.safetensors": {
    "size": 4051757592,
@@ -633,42 +633,43 @@
    "size": 38810,
    "sha256": null,
    "blob": "c45ed46c3ca5a40fa8f6fcfd76d48429b5e8d430",
-   "fetched": true,
-   "verified": "git-blob-sha1"
+   "verified": "git-blob-sha1",
+   "fetched": true
   },
   "special_tokens_map.json": {
    "size": 623,
    "sha256": null,
    "blob": "fb83292a14c95f398736acae643c48c152b9eb71",
-   "fetched": true,
-   "verified": "git-blob-sha1"
+   "verified": "git-blob-sha1",
+   "fetched": true
   },
   "tokenizer.json": {
    "size": 18450979,
    "sha256": "1d858a0fc007f22af6ae18bfa1ae52d30e398aa9cd1ea06e7777176869346a3f",
    "blob": "39a8c90df827f163105c35c11c00b0936f2f437c",
-   "fetched": true,
-   "verified": "lfs-sha256"
+   "verified": "lfs-sha256",
+   "fetched": true
   },
   "tokenizer.model": {
    "size": 2782298,
    "sha256": "fb41d04798b714520a9b075727b0226538b7330254299062742c50ec8374bc36",
    "blob": "5dc56ceef972dd0a233ce8c8100316ac1bdc089e",
-   "fetched": true,
-   "verified": "lfs-sha256"
+   "verified": "lfs-sha256",
+   "fetched": true
   },
   "tokenizer_config.json": {
    "size": 11033,
    "sha256": null,
    "blob": "00946f0ef9517230d7db61f70b4ae1212936f30c",
-   "fetched": true,
-   "verified": "git-blob-sha1"
+   "verified": "git-blob-sha1",
+   "fetched": true
   }
  },
  "found_in": [
-  "add-model.sh --fetch --damp-run"
+  "add-model.sh --fetch --damp-run",
+  "graph.yaml models.nanbeige43-33b-q4km"
  ],
- "match": null,
+ "match": "LFS sha256 match",
  "local_check": {
   "host": "angel",
   "sha256_ok": true,
@@ -679,7 +680,7 @@
  },
  "unknown": null,
  "warnings": null,
- "updated": "2026-10-26",
+ "updated": "2026-10-30",
  "by": "scripts/model_db.py",
  "weights": "present (angel, sha256 checked 2026-10-24)",
  "gguf_meta": {
@@ -963,8 +964,12 @@
   },
   "ctx": {
    "effective": 524288,
-   "source": "Nanbeige/Nanbeige4.3-33B config.json max_position_embeddings",
+   "source": "card: Nanbeige/Nanbeige4.3-33B README.md:L96",
    "values": [
+    {
+     "value": 524288,
+     "source": "card: Nanbeige/Nanbeige4.3-33B README.md:L96"
+    },
     {
      "value": 524288,
      "source": "Nanbeige/Nanbeige4.3-33B config.json max_position_embeddings"
@@ -1035,7 +1040,7 @@
  "required_params": {
   "kind": "chat",
   "native_ctx": 524288,
-  "native_ctx_source": "Nanbeige/Nanbeige4.3-33B config.json max_position_embeddings",
+  "native_ctx_source": "card: Nanbeige/Nanbeige4.3-33B README.md:L96",
   "yarn": null,
   "yarn_source": null,
   "items": [
@@ -1090,16 +1095,16 @@
    {
     "class": "RECOMMENDED",
     "flag": "--temp",
-    "value": "0.0",
-    "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF README.md:L226 (code example)",
-    "why_required": "the card's recommended sampling (example: For agentic and coding workflows (tool-calling, iterative code tasks), use low-temperature greedy or near-greedy)"
+    "value": "0.6",
+    "source": "Nanbeige/Nanbeige4.3-33B Nanbeige/Nanbeige4.3-33B README.md:L103",
+    "why_required": "the card's recommended sampling (Reasoning and chat tasks)"
    },
    {
     "class": "RECOMMENDED",
     "flag": "--top-p",
-    "value": "1",
-    "source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF README.md:L226 (code example)",
-    "why_required": "the card's recommended sampling (example: For agentic and coding workflows (tool-calling, iterative code tasks), use low-temperature greedy or near-greedy)"
+    "value": "0.95",
+    "source": "Nanbeige/Nanbeige4.3-33B Nanbeige/Nanbeige4.3-33B README.md:L103",
+    "why_required": "the card's recommended sampling (Reasoning and chat tasks)"
    }
   ]
  },
@@ -1107,7 +1112,7 @@
  "params_problems": null,
  "params_build": "b11374",
  "native_ctx": 524288,
- "native_ctx_source": "Nanbeige/Nanbeige4.3-33B config.json max_position_embeddings",
+ "native_ctx_source": "card: Nanbeige/Nanbeige4.3-33B README.md:L96",
  "license_info": {
   "id": "dealignai-community-model-license-v0.3",
   "id_source": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF card front matter license_name",
@@ -1184,7 +1189,5 @@
     "source": "GGUF general.license"
    }
   ]
- },
- "repo_bytes": 56552243997,
- "notes": "Q4_K_M ≈18.7 GiB; trained_ctx 524288; GGUF arch=llama (llama.cpp also lists nanbeige). Weights on angel only (damp on box). License dealignai-community-model-license-v0.3 + Apache-2.0 upstream. Hosted inference reserved by dealignai license §3."
+ }
 }

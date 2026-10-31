@@ -18,7 +18,7 @@ $goals = @(
   'Find more models',
   'Search my X / Twitter posts',
   'Install / first-time setup',
-  '★ Required checks (must-run)',
+  '◆ Proving grounds (graded)',
   'Legacy menu'
 )
 if ($ListGoals -or $env:FAMILIA_NO_TTY -eq '1' -or -not [Environment]::UserInteractive) {
@@ -75,8 +75,8 @@ switch ($choice) {
     Start-OrdnancePrefetch
     & powershell -NoProfile -ExecutionPolicy Bypass -File "$root\scripts\windows\setup-goals.ps1" -Goal first-time
   }
-  '★ Required checks (must-run)' {
-    & bash "$root\scripts\required_checks.sh"
+  '◆ Proving grounds (graded)' {
+    & bash "$root\scripts\proving_grounds.sh"
   }
   'Legacy menu' {
     & powershell -NoProfile -ExecutionPolicy Bypass -File "$root\scripts\windows\familia-menu.ps1"

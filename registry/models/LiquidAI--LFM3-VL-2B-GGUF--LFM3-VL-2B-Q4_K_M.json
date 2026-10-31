@@ -2,7 +2,7 @@
  "schema": 2,
  "id": "LiquidAI--LFM3-VL-2B-GGUF--LFM3-VL-2B-Q4_K_M",
  "repo": "LiquidAI/LFM3-VL-2B-GGUF",
- "revision": "128482707291d54bc44deb7f6f6bb113cf0cf14d",
+ "revision": "b36554cfd35854b06429900131730cd80f092cdb",
  "file": "LFM3-VL-2B-Q4_K_M.gguf",
  "sha256": "56dac2e192ff0d9ab8507f4f1aeb4aed0463449bbbefaac79497f041c95f21eb",
  "bytes": 1099627808,
@@ -97,284 +97,43 @@
    "source": "LiquidAI/LFM3-VL-2B README.md:L261"
   },
   {
-   "label": "Start a web chat UI and an OpenAI-compatible API at http://localhost:8080",
-   "kind": "example",
+   "label": "Recommended sampling",
+   "kind": "recommended",
    "mode": null,
    "params": {
     "temp": 0.1,
-    "top-p": 1.0,
     "top-k": 50,
+    "top-p": 1.0,
     "min-p": 0.0,
     "repeat-penalty": 1.1
    },
-   "source": "LiquidAI/LFM3-VL-2B-GGUF README.md:L67"
-  },
-  {
-   "label": "To ask one question about an image or a video from the command line",
-   "kind": "example",
-   "mode": null,
-   "params": {
-    "temp": 0.1,
-    "top-p": 1.0,
-    "top-k": 50,
-    "min-p": 0.0,
-    "repeat-penalty": 1.1
-   },
-   "source": "LiquidAI/LFM3-VL-2B-GGUF README.md:L79"
-  },
-  {
-   "label": "To ask one question about an image or a video from the command line",
-   "kind": "example",
-   "mode": null,
-   "params": {
-    "temp": 0.1,
-    "top-p": 1.0,
-    "top-k": 50,
-    "min-p": 0.0,
-    "repeat-penalty": 1.1
-   },
-   "source": "LiquidAI/LFM3-VL-2B-GGUF README.md:L84"
+   "source": "LiquidAI/LFM3-VL-2B-GGUF README.md:L55"
   }
  ],
  "card_commands": [
   {
-   "source": "LiquidAI/LFM3-VL-2B-GGUF README.md:L66-68",
+   "source": "LiquidAI/LFM3-VL-2B-GGUF README.md:L59",
    "file": "README.md",
    "lines": [
-    66,
-    68
+    59,
+    59
    ],
-   "lang": "bash",
-   "tool": "llama.cpp",
-   "kind": "command",
-   "text": "llama serve -hf LiquidAI/LFM3-VL-2B-GGUF:Q4_0 \\\n  --temp 0.1 --top-p 1.0 --top-k 50 --min-p 0.0 --repeat-penalty 1.1 \\\n  --no-reasoning-preserve --port 8080",
-   "llama": [
-    {
-     "tool": "llama serve",
-     "raw": "llama serve -hf LiquidAI/LFM3-VL-2B-GGUF:Q4_0    --temp 0.1 --top-p 1.0 --top-k 50 --min-p 0.0 --repeat-penalty 1.1    --no-reasoning-preserve --port 8080",
-     "flags": [
-      {
-       "flag": "-hf",
-       "canonical": "--hf-repo",
-       "value": "LiquidAI/LFM3-VL-2B-GGUF:Q4_0",
-       "known": true,
-       "note": null
-      },
-      {
-       "flag": "--temp",
-       "canonical": "--temp",
-       "value": "0.1",
-       "known": true,
-       "note": null
-      },
-      {
-       "flag": "--top-p",
-       "canonical": "--top-p",
-       "value": "1.0",
-       "known": true,
-       "note": null
-      },
-      {
-       "flag": "--top-k",
-       "canonical": "--top-k",
-       "value": "50",
-       "known": true,
-       "note": null
-      },
-      {
-       "flag": "--min-p",
-       "canonical": "--min-p",
-       "value": "0.0",
-       "known": true,
-       "note": null
-      },
-      {
-       "flag": "--repeat-penalty",
-       "canonical": "--repeat-penalty",
-       "value": "1.1",
-       "known": true,
-       "note": null
-      },
-      {
-       "flag": "--no-reasoning-preserve",
-       "canonical": "--no-reasoning-preserve",
-       "value": null,
-       "known": true,
-       "note": null
-      },
-      {
-       "flag": "--port",
-       "canonical": "--port",
-       "value": "8080",
-       "known": true,
-       "note": null
-      }
-     ],
-     "positional": [],
-     "env": null
-    }
-   ],
+   "lang": null,
+   "tool": "ollama",
+   "kind": "inline",
+   "text": "ollama run lfm3-vl",
+   "translation": {
+    "translated": true,
+    "params": [],
+    "untranslatable": [
+     {
+      "arg": "ollama run lfm3-vl",
+      "why": "Ollama pulls and runs the model with its own defaults; no flags to translate"
+     }
+    ]
+   },
    "doc": "card",
-   "doc_sha": "128482707291d54bc44deb7f6f6bb113cf0cf14d",
-   "scope": "model"
-  },
-  {
-   "source": "LiquidAI/LFM3-VL-2B-GGUF README.md:L74-85",
-   "file": "README.md",
-   "lines": [
-    74,
-    85
-   ],
-   "lang": "bash",
-   "tool": "llama.cpp",
-   "kind": "command",
-   "text": "curl -sL -o cat.jpg https://placecats.com/300/200\ncurl -sL -o reading.mp4 https://huggingface.co/datasets/raushan-testing-hf/videos-test/resolve/4cba700bd771f44d72b549253da025c32e944d42/sample_demo_1.mp4  # a child reading a book\n\nllama cli -hf LiquidAI/LFM3-VL-2B-GGUF:Q4_0 \\\n  --image cat.jpg -p \"Describe this image.\" \\\n  --temp 0.1 --top-p 1.0 --top-k 50 --min-p 0.0 --repeat-penalty 1.1 \\\n  --no-reasoning-preserve\n\nllama cli -hf LiquidAI/LFM3-VL-2B-GGUF:Q4_0 \\\n  --video reading.mp4 -p \"What is the child doing in this video?\" \\\n  --temp 0.1 --top-p 1.0 --top-k 50 --min-p 0.0 --repeat-penalty 1.1 \\\n  --no-reasoning-preserve",
-   "llama": [
-    {
-     "tool": "llama cli",
-     "raw": "llama cli -hf LiquidAI/LFM3-VL-2B-GGUF:Q4_0    --image cat.jpg -p \"Describe this image.\"    --temp 0.1 --top-p 1.0 --top-k 50 --min-p 0.0 --repeat-penalty 1.1    --no-reasoning-preserve",
-     "flags": [
-      {
-       "flag": "-hf",
-       "canonical": "--hf-repo",
-       "value": "LiquidAI/LFM3-VL-2B-GGUF:Q4_0",
-       "known": true,
-       "note": null
-      },
-      {
-       "flag": "--image",
-       "canonical": "--image",
-       "value": "cat.jpg",
-       "known": true,
-       "note": null
-      },
-      {
-       "flag": "-p",
-       "canonical": "--prompt",
-       "value": "Describe this image.",
-       "known": true,
-       "note": null
-      },
-      {
-       "flag": "--temp",
-       "canonical": "--temp",
-       "value": "0.1",
-       "known": true,
-       "note": null
-      },
-      {
-       "flag": "--top-p",
-       "canonical": "--top-p",
-       "value": "1.0",
-       "known": true,
-       "note": null
-      },
-      {
-       "flag": "--top-k",
-       "canonical": "--top-k",
-       "value": "50",
-       "known": true,
-       "note": null
-      },
-      {
-       "flag": "--min-p",
-       "canonical": "--min-p",
-       "value": "0.0",
-       "known": true,
-       "note": null
-      },
-      {
-       "flag": "--repeat-penalty",
-       "canonical": "--repeat-penalty",
-       "value": "1.1",
-       "known": true,
-       "note": null
-      },
-      {
-       "flag": "--no-reasoning-preserve",
-       "canonical": "--no-reasoning-preserve",
-       "value": null,
-       "known": true,
-       "note": null
-      }
-     ],
-     "positional": [],
-     "env": null
-    },
-    {
-     "tool": "llama cli",
-     "raw": "llama cli -hf LiquidAI/LFM3-VL-2B-GGUF:Q4_0    --video reading.mp4 -p \"What is the child doing in this video?\"    --temp 0.1 --top-p 1.0 --top-k 50 --min-p 0.0 --repeat-penalty 1.1    --no-reasoning-preserve",
-     "flags": [
-      {
-       "flag": "-hf",
-       "canonical": "--hf-repo",
-       "value": "LiquidAI/LFM3-VL-2B-GGUF:Q4_0",
-       "known": true,
-       "note": null
-      },
-      {
-       "flag": "--video",
-       "canonical": "--image",
-       "value": "reading.mp4",
-       "known": true,
-       "note": null
-      },
-      {
-       "flag": "-p",
-       "canonical": "--prompt",
-       "value": "What is the child doing in this video?",
-       "known": true,
-       "note": null
-      },
-      {
-       "flag": "--temp",
-       "canonical": "--temp",
-       "value": "0.1",
-       "known": true,
-       "note": null
-      },
-      {
-       "flag": "--top-p",
-       "canonical": "--top-p",
-       "value": "1.0",
-       "known": true,
-       "note": null
-      },
-      {
-       "flag": "--top-k",
-       "canonical": "--top-k",
-       "value": "50",
-       "known": true,
-       "note": null
-      },
-      {
-       "flag": "--min-p",
-       "canonical": "--min-p",
-       "value": "0.0",
-       "known": true,
-       "note": null
-      },
-      {
-       "flag": "--repeat-penalty",
-       "canonical": "--repeat-penalty",
-       "value": "1.1",
-       "known": true,
-       "note": null
-      },
-      {
-       "flag": "--no-reasoning-preserve",
-       "canonical": "--no-reasoning-preserve",
-       "value": null,
-       "known": true,
-       "note": null
-      }
-     ],
-     "positional": [],
-     "env": null
-    }
-   ],
-   "doc": "card",
-   "doc_sha": "128482707291d54bc44deb7f6f6bb113cf0cf14d",
+   "doc_sha": "b36554cfd35854b06429900131730cd80f092cdb",
    "scope": "model"
   },
   {
@@ -787,8 +546,8 @@
   "_gguf_version": 3
  },
  "snapshot": {
-  "path": "LiquidAI--LFM3-VL-2B-GGUF/128482707291d54bc44deb7f6f6bb113cf0cf14d",
-  "fetched_bytes": 17445,
+  "path": "LiquidAI--LFM3-VL-2B-GGUF/b36554cfd35854b06429900131730cd80f092cdb",
+  "fetched_bytes": 16287,
   "errors": null,
   "gated": false
  },
@@ -863,9 +622,9 @@
    "fetched": true
   },
   "README.md": {
-   "size": 4698,
+   "size": 3540,
    "sha256": null,
-   "blob": "58004741243d1722d222c2298b3e6a78b976116f",
+   "blob": "b2007694fb0a44fcecb98c585b355861522c61ac",
    "verified": "git-blob-sha1",
    "fetched": true
   },
@@ -1031,7 +790,7 @@
  },
  "unknown": null,
  "warnings": null,
- "updated": "2026-10-28",
+ "updated": "2026-10-30",
  "by": "scripts/model_db.py",
  "gguf_meta": {
   "general.architecture": "lfm3",
@@ -1211,6 +970,10 @@
    "why": "inference/training tool repo"
   },
   {
+   "repo": "ollama/ollama",
+   "why": "inference/training tool repo"
+  },
+  {
    "repo": "ggml-org/llama.cpp",
    "why": "inference/training tool repo"
   },
@@ -1229,7 +992,7 @@
    "source": "HF API id"
   },
   "revision": {
-   "effective": "128482707291d54bc44deb7f6f6bb113cf0cf14d",
+   "effective": "b36554cfd35854b06429900131730cd80f092cdb",
    "source": "pinned (manifest / database)"
   },
   "file": {
@@ -1325,11 +1088,11 @@
    ]
   },
   "license_file": {
-   "effective": "LiquidAI/LFM3-VL-2B-GGUF@128482707291/LICENSE",
+   "effective": "LiquidAI/LFM3-VL-2B-GGUF@b36554cfd358/LICENSE",
    "source": "LiquidAI/LFM3-VL-2B-GGUF repo file",
    "values": [
     {
-     "value": "LiquidAI/LFM3-VL-2B-GGUF@128482707291/LICENSE",
+     "value": "LiquidAI/LFM3-VL-2B-GGUF@b36554cfd358/LICENSE",
      "source": "LiquidAI/LFM3-VL-2B-GGUF repo file"
     },
     {
@@ -1598,24 +1361,20 @@
     "class": "RECOMMENDED",
     "flag": "--temp",
     "value": "0.1",
-    "source": "LiquidAI/LFM3-VL-2B-GGUF README.md:L66-68",
+    "source": "LiquidAI/LFM3-VL-2B README.md:L209-211",
     "why_required": "sampling in the card's llama serve command",
     "also": [
-     "LiquidAI/LFM3-VL-2B LiquidAI/LFM3-VL-2B README.md:L150",
-     "LiquidAI/LFM3-VL-2B README.md:L209-211",
-     "LiquidAI/LFM3-VL-2B-GGUF README.md:L74-85"
+     "LiquidAI/LFM3-VL-2B LiquidAI/LFM3-VL-2B README.md:L150"
     ]
    },
    {
     "class": "RECOMMENDED",
     "flag": "--top-p",
     "value": "1.0",
-    "source": "LiquidAI/LFM3-VL-2B-GGUF README.md:L66-68",
+    "source": "LiquidAI/LFM3-VL-2B README.md:L209-211",
     "why_required": "sampling in the card's llama serve command",
     "also": [
-     "LiquidAI/LFM3-VL-2B LiquidAI/LFM3-VL-2B README.md:L150",
-     "LiquidAI/LFM3-VL-2B README.md:L209-211",
-     "LiquidAI/LFM3-VL-2B-GGUF README.md:L74-85"
+     "LiquidAI/LFM3-VL-2B LiquidAI/LFM3-VL-2B README.md:L150"
     ],
     "conflicts": [
      {
@@ -1628,54 +1387,37 @@
     "class": "RECOMMENDED",
     "flag": "--top-k",
     "value": "50",
-    "source": "LiquidAI/LFM3-VL-2B-GGUF README.md:L66-68",
+    "source": "LiquidAI/LFM3-VL-2B README.md:L209-211",
     "why_required": "sampling in the card's llama serve command",
     "also": [
-     "LiquidAI/LFM3-VL-2B LiquidAI/LFM3-VL-2B README.md:L150",
-     "LiquidAI/LFM3-VL-2B README.md:L209-211",
-     "LiquidAI/LFM3-VL-2B-GGUF README.md:L74-85"
+     "LiquidAI/LFM3-VL-2B LiquidAI/LFM3-VL-2B README.md:L150"
     ]
    },
    {
     "class": "RECOMMENDED",
     "flag": "--min-p",
     "value": "0.0",
-    "source": "LiquidAI/LFM3-VL-2B-GGUF README.md:L66-68",
+    "source": "LiquidAI/LFM3-VL-2B README.md:L209-211",
     "why_required": "sampling in the card's llama serve command",
     "also": [
-     "LiquidAI/LFM3-VL-2B LiquidAI/LFM3-VL-2B README.md:L150",
-     "LiquidAI/LFM3-VL-2B README.md:L209-211",
-     "LiquidAI/LFM3-VL-2B-GGUF README.md:L74-85"
+     "LiquidAI/LFM3-VL-2B LiquidAI/LFM3-VL-2B README.md:L150"
     ]
    },
    {
     "class": "RECOMMENDED",
     "flag": "--repeat-penalty",
     "value": "1.1",
-    "source": "LiquidAI/LFM3-VL-2B-GGUF README.md:L66-68",
+    "source": "LiquidAI/LFM3-VL-2B README.md:L209-211",
     "why_required": "sampling in the card's llama serve command",
     "also": [
-     "LiquidAI/LFM3-VL-2B LiquidAI/LFM3-VL-2B README.md:L150",
-     "LiquidAI/LFM3-VL-2B README.md:L209-211",
-     "LiquidAI/LFM3-VL-2B-GGUF README.md:L74-85"
+     "LiquidAI/LFM3-VL-2B LiquidAI/LFM3-VL-2B README.md:L150"
     ]
    },
    {
     "class": "OPTIONAL",
     "flag": "--no-reasoning-preserve",
     "value": null,
-    "source": "LiquidAI/LFM3-VL-2B-GGUF README.md:L66-68",
-    "why_required": "performance / tool option in the card's command",
-    "also": [
-     "LiquidAI/LFM3-VL-2B README.md:L209-211",
-     "LiquidAI/LFM3-VL-2B-GGUF README.md:L74-85"
-    ]
-   },
-   {
-    "class": "OPTIONAL",
-    "flag": "--image",
-    "value": "cat.jpg",
-    "source": "LiquidAI/LFM3-VL-2B-GGUF README.md:L74-85",
+    "source": "LiquidAI/LFM3-VL-2B README.md:L209-211",
     "why_required": "performance / tool option in the card's command"
    },
    {
@@ -1702,13 +1444,13 @@
   "name": "lfm1.0",
   "summary": "lfm1.0 (LICENSE)",
   "summary_source": "LiquidAI/LFM3-VL-2B-GGUF card license",
-  "link": "https://huggingface.co/LiquidAI/LFM3-VL-2B-GGUF/blob/128482707291d54bc44deb7f6f6bb113cf0cf14d/LICENSE",
+  "link": "https://huggingface.co/LiquidAI/LFM3-VL-2B-GGUF/blob/b36554cfd35854b06429900131730cd80f092cdb/LICENSE",
   "link_source": "LiquidAI/LFM3-VL-2B-GGUF card license_link",
   "texts": [
    {
-    "file": "LiquidAI/LFM3-VL-2B-GGUF@128482707291/LICENSE",
-    "path": "/home/box/.local/share/gguf/hf-meta/LiquidAI--LFM3-VL-2B-GGUF/128482707291d54bc44deb7f6f6bb113cf0cf14d/LICENSE",
-    "url": "https://huggingface.co/LiquidAI/LFM3-VL-2B-GGUF/blob/128482707291d54bc44deb7f6f6bb113cf0cf14d/LICENSE",
+    "file": "LiquidAI/LFM3-VL-2B-GGUF@b36554cfd358/LICENSE",
+    "path": "/home/box/.local/share/gguf/hf-meta/LiquidAI--LFM3-VL-2B-GGUF/b36554cfd35854b06429900131730cd80f092cdb/LICENSE",
+    "url": "https://huggingface.co/LiquidAI/LFM3-VL-2B-GGUF/blob/b36554cfd35854b06429900131730cd80f092cdb/LICENSE",
     "sha256": "30adf9d6478191fb87f2424f63ba0728598335aaf99cd2848ef17e8e545fe94b",
     "bytes": 10574,
     "what": "model"

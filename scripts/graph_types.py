@@ -312,7 +312,28 @@ def check_alias(g, name, a, errs):
 
 AGENT_ROLES = ("main", "auxiliary")
 
+MCP_KEYS = {"command", "args", "url", "env_from", "headers_from", "tools", "enabled", "notes"}
+ENV_NAME_RE = __import__("re").compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+def check_agent_mcp(name, mcp, errs):
+    for srv, c in (mcp or {}).items():
+        where = f"agents.{name}.mcp.{srv}"
+        if not isinstance(c, dict): errs.append(f"{where}: must be a map"); continue
+        for k in c:
+            if k not in MCP_KEYS: errs.append(f"{where}: unknown key {k!r} (allowed: {sorted(MCP_KEYS)}; "
+                                              "secrets go in env_from/headers_from by env var name)")
+        if bool(c.get("command")) == bool(c.get("url")): errs.append(f"{where}: exactly one of command or url")
+        if "args" in c and not (isinstance(c["args"], list) and all(isinstance(x, str) for x in c["args"])):
+            errs.append(f"{where}.args: list of strings")
+        for k in ("env_from", "headers_from"):
+            v = c.get(k)
+            if v is None: continue
+            items = v.values() if isinstance(v, dict) else v if isinstance(v, list) else None
+            if items is None or not all(isinstance(x, str) and ENV_NAME_RE.match(x) for x in items):
+                errs.append(f"{where}.{k}: env var names only (list, or map header -> env var name)")
+
 def check_agent(g, name, a, errs):
+    if "mcp" in a: check_agent_mcp(name, a.get("mcp"), errs)
     al = a.get("aliases")
     if not isinstance(al, dict): return
     for role in al:
@@ -582,7 +603,10 @@ TYPES = {
                  # bundled skills (skills/catalog.json, scripts/skills.py, docs/skills.md)
                  "skills": opt("strlist"),
                  # portable Hermes plugins under ~/.hermes/plugins (docs/hermes-plugins.md, #92)
-                 "plugins": opt("strlist")},
+                 "plugins": opt("strlist"),
+                 # MCP servers rendered into HERMES_HOME mcp_servers (docs/hermes-mcp.md); secrets only
+                 # by env var name (env_from), never literal values in graph.yaml
+                 "mcp": opt("map")},
                 check_agent, doc="agent process"),
     "fleets": T({"repo": req("str"), "agents": req("refs", ref="agents")}, doc="green-agentz agent group"),
     "agencies": T({"repo": req("str"), "labels": req("list"), "assignments": req("map")}, check_agency,

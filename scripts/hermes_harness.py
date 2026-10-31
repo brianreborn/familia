@@ -412,10 +412,38 @@ def prompt_profile(g, a, n):
     return "lean" if h.get("kind") == "phone" or (h.get("ram_mib") or 0) < LEAN_RAM_MIB else "full"
 
 
-def lean_toolsets(cfg):
-    """Only ever narrows: toolsets the user did not enable are never added."""
+def lean_toolsets(cfg, keep=()):
+    """Only ever narrows user toolsets; `keep` (graph-declared MCP toolsets) always survives."""
     have = ((cfg.get("platform_toolsets") or {}).get("cli"))
-    return [t for t in have if t in LEAN_TOOLSETS] if isinstance(have, list) else list(LEAN_TOOLSETS)
+    out = [t for t in have if t in LEAN_TOOLSETS] if isinstance(have, list) else list(LEAN_TOOLSETS)
+    return out + [t for t in keep if t not in out]
+
+
+def mcp_servers(a):
+    """agents.<a>.mcp -> hermes mcp_servers. Secrets are written as ${VAR} refs that hermes-agent
+    interpolates at load (tools/mcp_tool_config.py); no secret value ever lands in config.yaml."""
+    out = {}
+    for srv, c in (a.get("mcp") or {}).items():
+        if c.get("enabled") is False: continue
+        e = {k: c[k] for k in ("command", "args", "url", "tools") if k in c}
+        env_from = c.get("env_from") or []
+        env_from = list(env_from.values()) if isinstance(env_from, dict) else list(env_from)
+        if env_from: e["env"] = {v: "${" + v + "}" for v in env_from}
+        if c.get("headers_from"): e["headers"] = {h: "Bearer ${" + v + "}" if h.lower() == "authorization"
+                                                  else "${" + v + "}" for h, v in c["headers_from"].items()}
+        out[srv] = e
+    return out
+
+
+def mcp_env_allowlist(a):
+    """Env var names declared by this agent's MCP servers (the only secrets passed to hermes)."""
+    names = []
+    for c in (a.get("mcp") or {}).values():
+        if not isinstance(c, dict) or c.get("enabled") is False: continue
+        for k in ("env_from", "headers_from"):
+            v = c.get(k) or []
+            names += list(v.values()) if isinstance(v, dict) else list(v)
+    return sorted(set(names))
 
 
 
@@ -499,8 +527,12 @@ def render(g, agent, user_cfg_path=os.path.join(USER_HOME, "config.yaml"), base_
         aux[t] = {"provider": "custom", "model": alias, "base_url": base, "api_key": familia_auth.api_key() or "local",
                   "timeout": comp.get("aux_timeout", 3600)}
     cfg["auxiliary"] = aux
+    declared = mcp_servers(a)
+    if declared:  # graph-declared MCP wins over a same-named user entry (whose secrets were stripped)
+        cfg["mcp_servers"] = dict(cfg.get("mcp_servers") or {}, **declared)
     if prompt_profile(g, a, n) == "lean":
-        cfg["platform_toolsets"] = dict(cfg.get("platform_toolsets") or {}, cli=lean_toolsets(cfg))
+        cfg["platform_toolsets"] = dict(cfg.get("platform_toolsets") or {},
+                                        cli=lean_toolsets(cfg, keep=[f"mcp-{k}" for k in declared]))
         aux = cfg.get("auxiliary") or {}
         for t in LEAN_AUX_DROP:
             aux.pop(t, None)

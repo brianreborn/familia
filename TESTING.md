@@ -36,9 +36,9 @@ python3 scripts/validate_graph.py --no-files     # schema + placement rules only
 python3 scripts/validate_graph.py                # also reads GGUF headers and checks RAM/VRAM on this host
 python3 scripts/validate_graph.py --args NODE    # print the llama-server args for one node
 python3 -m pytest -q                             # unit tests
-bash tests/test_with_fleet.sh                    # repo/fleet wiring smoke test
-bash tests/test_nexus_localhost.sh               # ssh nexus on localhost (needs sshd binary)
-bash tests/test_bt_loopback.sh                   # private bittorrent loopback
+bash proving_grounds/fleet_wiring.sh                    # repo/fleet wiring smoke test
+bash proving_grounds/nexus_localhost.sh               # ssh nexus on localhost (needs sshd binary)
+bash proving_grounds/bt_loopback.sh                   # private bittorrent loopback
 ```
 
 On Windows set `PYTHONUTF8=1` first. Test counts vary with optional tools and local model files;
@@ -194,4 +194,4 @@ From [docs/ram-safety.md](docs/ram-safety.md). The validator fails on a clear ov
 - **Python 3.12** from python.org, with `set PYTHONUTF8=1`. The bash tests call `python3`, so either disable the Microsoft Store "App execution aliases" for python3, or add a shim named `python3` that runs `exec python "$@"`.
 - **numpy:** run `pip install --user "$(python scripts/cpu_level.py --numpy-spec)"` (on Windows: `python -m pip install --user (python scripts\cpu_level.py --numpy-spec)`). The choice depends only on the CPU's x86-64 level. Below v2 (no SSSE3/SSE4.1/SSE4.2/POPCNT, e.g. Athlon II X2) you get `numpy<2.4`, because NumPy 2.4.0 raised its wheel baseline to X86_V2 and those wheels crash with 0xc000001d. Everything else, including ARM, gets current numpy. On v0/v1 Windows with Python 3.12 the installer first tries our own numpy 2.5.3 wheel built with `-Dcpu-baseline=none` (release asset; rebuild with `scripts\build_numpy_wheel.ps1`, needs MSYS2 ucrt64 gcc), then falls back to `numpy<2.4`. That wheel is experimental: long double (`np.longdouble`) math can crash it; familia never uses long double. See LESSONS-LEARNED.md.
 - **pytest:** `python -m pytest -q tests`. Expected: everything passes or skips except the known `test_overcommit_is_hard_error` failure and the bash-dependent tests listed in section 2.
-- **bash tests:** `test_nexus_localhost.sh` is Linux-only because it needs sudo/useradd. `test_bt_loopback.sh` needs `aria2c`. `test_with_fleet.sh` needs the graph's model files to be present.
+- **bash tests:** `proving_grounds/nexus_localhost.sh` is Linux-only because it needs sudo/useradd. `proving_grounds/bt_loopback.sh` needs `aria2c`. `proving_grounds/fleet_wiring.sh` needs the graph's model files to be present.

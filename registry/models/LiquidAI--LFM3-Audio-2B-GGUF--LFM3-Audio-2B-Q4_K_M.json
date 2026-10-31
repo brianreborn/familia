@@ -2,7 +2,7 @@
  "schema": 2,
  "id": "LiquidAI--LFM3-Audio-2B-GGUF--LFM3-Audio-2B-Q4_K_M",
  "repo": "LiquidAI/LFM3-Audio-2B-GGUF",
- "revision": "642697a5597a675cb819ed236ac415c1e60a4f6f",
+ "revision": "02355c1a141e464a064f2ab2c276638dbcb7f38a",
  "file": "LFM3-Audio-2B-Q4_K_M.gguf",
  "sha256": "9a773289bd321ed879cd3a76545f6aca506e403851a45fb315420aee45625be2",
  "bytes": 1099626016,
@@ -21,21 +21,54 @@
  "base_model": "LiquidAI/LFM3-Audio-2B",
  "base_revision": "9d49701c372d6011d900f6abb40c6b296fb706dd",
  "card_defaults": {
-  "temp": 0
+  "temp": 0,
+  "top-k": 128,
+  "repeat-penalty": 1.1
  },
  "card_defaults_source": {
-  "temp": "LiquidAI/LFM3-Audio-2B-GGUF LiquidAI/LFM3-Audio-2B-GGUF README.md:L73 (example)"
+  "temp": "LiquidAI/LFM3-Audio-2B-GGUF LiquidAI/LFM3-Audio-2B-GGUF README.md:L64",
+  "top-k": "LiquidAI/LFM3-Audio-2B-GGUF LiquidAI/LFM3-Audio-2B-GGUF README.md:L64",
+  "repeat-penalty": "LiquidAI/LFM3-Audio-2B-GGUF LiquidAI/LFM3-Audio-2B-GGUF README.md:L64"
  },
- "card_default_set": "example: Speech recognition: use the system prompt Perform ASR in <language . , or Perform ASR. to let the model infer the language",
- "card_defaults_how": "the card's only code example with sampling values",
+ "card_default_set": "Recommended sampling: greedy decoding",
+ "card_defaults_how": "the card's only recommended set",
  "card_sampling_modes": {
-  "Speech recognition: use the system prompt Perform ASR in <language . , or Perform ASR. to let the model infer the language": {
-   "temp": 0
+  "Recommended sampling: greedy decoding": {
+   "temp": 0,
+   "top-k": 128,
+   "repeat-penalty": 1.1
   }
  },
  "card_default_mode": null,
  "card_default_mode_source": null,
  "card_sampling_sets": [
+  {
+   "label": "Recommended sampling: greedy decoding",
+   "kind": "recommended",
+   "mode": null,
+   "params": {
+    "temp": 0,
+    "top-k": 128,
+    "repeat-penalty": 1.1
+   },
+   "source": "LiquidAI/LFM3-Audio-2B-GGUF README.md:L64",
+   "conflicts": [
+    {
+     "param": "temp",
+     "also": 1.0,
+     "source": "README.md:L64"
+    }
+   ]
+  },
+  {
+   "label": "Start a web chat UI and an OpenAI-compatible API at http://localhost:8080",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 0
+   },
+   "source": "LiquidAI/LFM3-Audio-2B-GGUF README.md:L80"
+  },
   {
    "label": "Speech recognition: use the system prompt Perform ASR in <language . , or Perform ASR. to let the model infer the language",
    "kind": "example",
@@ -43,25 +76,96 @@
    "params": {
     "temp": 0
    },
-   "source": "LiquidAI/LFM3-Audio-2B-GGUF README.md:L73"
+   "source": "LiquidAI/LFM3-Audio-2B-GGUF README.md:L89"
   }
  ],
  "card_commands": [
   {
-   "source": "LiquidAI/LFM3-Audio-2B-GGUF README.md:L72-73",
+   "source": "LiquidAI/LFM3-Audio-2B-GGUF README.md:L67",
    "file": "README.md",
    "lines": [
-    72,
-    73
+    67,
+    67
+   ],
+   "lang": null,
+   "tool": "ollama",
+   "kind": "inline",
+   "text": "ollama run lfm3-audio",
+   "translation": {
+    "translated": true,
+    "params": [],
+    "untranslatable": [
+     {
+      "arg": "ollama run lfm3-audio",
+      "why": "Ollama pulls and runs the model with its own defaults; no flags to translate"
+     }
+    ]
+   },
+   "doc": "card",
+   "doc_sha": "02355c1a141e464a064f2ab2c276638dbcb7f38a",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-Audio-2B-GGUF README.md:L80-80",
+   "file": "README.md",
+   "lines": [
+    80,
+    80
    ],
    "lang": "bash",
    "tool": "llama.cpp",
    "kind": "command",
-   "text": "llama-mtmd-cli -hf LiquidAI/LFM3-Audio-2B-GGUF:Q4_K_M \\\n  --audio speech.wav -sys \"Perform ASR in English.\" -p \"<__media__>\" --temp 0",
+   "text": "llama serve -hf LiquidAI/LFM3-Audio-2B-GGUF:Q4_K_M --temp 0 --port 8080",
    "llama": [
     {
-     "tool": "llama-mtmd-cli",
-     "raw": "llama-mtmd-cli -hf LiquidAI/LFM3-Audio-2B-GGUF:Q4_K_M    --audio speech.wav -sys \"Perform ASR in English.\" -p \"<__media__>\" --temp 0",
+     "tool": "llama serve",
+     "raw": "llama serve -hf LiquidAI/LFM3-Audio-2B-GGUF:Q4_K_M --temp 0 --port 8080",
+     "flags": [
+      {
+       "flag": "-hf",
+       "canonical": "--hf-repo",
+       "value": "LiquidAI/LFM3-Audio-2B-GGUF:Q4_K_M",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--temp",
+       "canonical": "--temp",
+       "value": "0",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "--port",
+       "canonical": "--port",
+       "value": "8080",
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    }
+   ],
+   "doc": "card",
+   "doc_sha": "02355c1a141e464a064f2ab2c276638dbcb7f38a",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-Audio-2B-GGUF README.md:L88-89",
+   "file": "README.md",
+   "lines": [
+    88,
+    89
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "llama cli -hf LiquidAI/LFM3-Audio-2B-GGUF:Q4_K_M \\\n  --audio speech.wav -sys \"Perform ASR in English.\" -p \"<__media__>\" --temp 0",
+   "llama": [
+    {
+     "tool": "llama cli",
+     "raw": "llama cli -hf LiquidAI/LFM3-Audio-2B-GGUF:Q4_K_M    --audio speech.wav -sys \"Perform ASR in English.\" -p \"<__media__>\" --temp 0",
      "flags": [
       {
        "flag": "-hf",
@@ -104,22 +208,22 @@
     }
    ],
    "doc": "card",
-   "doc_sha": "642697a5597a675cb819ed236ac415c1e60a4f6f",
+   "doc_sha": "02355c1a141e464a064f2ab2c276638dbcb7f38a",
    "scope": "model"
   },
   {
-   "source": "LiquidAI/LFM3-Audio-2B-GGUF README.md:L79-80",
+   "source": "LiquidAI/LFM3-Audio-2B-GGUF README.md:L95-96",
    "file": "README.md",
    "lines": [
-    79,
-    80
+    95,
+    96
    ],
    "lang": "bash",
    "tool": "shell",
    "kind": "command",
    "text": "llama-tts -m LFM3-Audio-2B-Q4_K_M.gguf -mm mmproj-LFM3-Audio-2B-Q8_0.gguf \\\n  -p \"Hello world\" --tts-voice male -o out.wav",
    "doc": "card",
-   "doc_sha": "642697a5597a675cb819ed236ac415c1e60a4f6f",
+   "doc_sha": "02355c1a141e464a064f2ab2c276638dbcb7f38a",
    "scope": "model"
   },
   {
@@ -396,8 +500,12 @@
    "source": "LiquidAI/LFM3-Audio-2B README.md:L572"
   },
   {
+   "text": "Recommended sampling: greedy decoding (temperature 0) for text output. For speech output, audio temperature 1.0, audio top_k 128 and audio repetition penalty 1.1.",
+   "source": "LiquidAI/LFM3-Audio-2B-GGUF README.md:L64"
+  },
+  {
    "text": "Speech recognition: use the system prompt `Perform ASR in <language>.`, or `Perform ASR.` to let the model infer the language.",
-   "source": "LiquidAI/LFM3-Audio-2B-GGUF README.md:L69"
+   "source": "LiquidAI/LFM3-Audio-2B-GGUF README.md:L85"
   }
  ],
  "chat_template": {
@@ -453,7 +561,7 @@
    "kind": "mmproj",
    "file": "mmproj-LFM3-Audio-2B-BF16.gguf",
    "size": 570846400,
-   "sha256": "c20fced222c6b7e7bcd32eb0480fad5108f9ea26cadca4f106fac37747868ed9",
+   "sha256": "683b3648484cb5b0bf06185eac8be37b1a9bff03591360641248bd482119afc1",
    "fetched": false,
    "source": "LiquidAI/LFM3-Audio-2B-GGUF repo file"
   },
@@ -467,9 +575,25 @@
   },
   {
    "kind": "mmproj",
+   "file": "mmproj-LFM3-Audio-2B-Q4_0.gguf",
+   "size": 161393408,
+   "sha256": "467a1ee5512a3faba79bf04e789a838959cc48c72a802bf6d9cb951a77736cfc",
+   "fetched": false,
+   "source": "LiquidAI/LFM3-Audio-2B-GGUF repo file"
+  },
+  {
+   "kind": "mmproj",
+   "file": "mmproj-LFM3-Audio-2B-Q4_K_M.gguf",
+   "size": 172418048,
+   "sha256": "1a3a895160aad17c1f52117a6ee4cea8e68988651ea5a33c5b990539e8eae81d",
+   "fetched": false,
+   "source": "LiquidAI/LFM3-Audio-2B-GGUF repo file"
+  },
+  {
+   "kind": "mmproj",
    "file": "mmproj-LFM3-Audio-2B-Q8_0.gguf",
-   "size": 337862080,
-   "sha256": "26601e904245a85bd8f3cf320a629e897cfc01c1d09369e8b4fd951f13024d3e",
+   "size": 303811840,
+   "sha256": "2b6648b1fd48af16aa0877b0592b144d15070783673e038a379fdbc51d40e365",
    "fetched": false,
    "source": "LiquidAI/LFM3-Audio-2B-GGUF repo file"
   }
@@ -482,8 +606,8 @@
   "_gguf_version": 3
  },
  "snapshot": {
-  "path": "LiquidAI--LFM3-Audio-2B-GGUF/642697a5597a675cb819ed236ac415c1e60a4f6f",
-  "fetched_bytes": 16415,
+  "path": "LiquidAI--LFM3-Audio-2B-GGUF/02355c1a141e464a064f2ab2c276638dbcb7f38a",
+  "fetched_bytes": 17562,
   "errors": null,
   "gated": false
  },
@@ -495,9 +619,9 @@
  },
  "repo_files": {
   ".gitattributes": {
-   "size": 2020,
+   "size": 2256,
    "sha256": null,
-   "blob": "e1a09141e0e08e786021a1bf62de1e6a8db4a7ff",
+   "blob": "8cec3bb9645f85f65e7666d8bace42b9edcba63c",
    "verified": "git-blob-sha1",
    "fetched": true
   },
@@ -544,16 +668,16 @@
    "fetched": true
   },
   "README.md": {
-   "size": 3821,
+   "size": 4732,
    "sha256": null,
-   "blob": "64ac7858d85c4b9ca37ccfcfa0ec2dc0dca6af2e",
+   "blob": "b2acebf52cf1077b0aa7e78ed997df1cc0d82b8c",
    "verified": "git-blob-sha1",
    "fetched": true
   },
   "mmproj-LFM3-Audio-2B-BF16.gguf": {
    "size": 570846400,
-   "sha256": "c20fced222c6b7e7bcd32eb0480fad5108f9ea26cadca4f106fac37747868ed9",
-   "blob": "7bf1d0360acb16c18f32ae7175f44c0acc933cf3",
+   "sha256": "683b3648484cb5b0bf06185eac8be37b1a9bff03591360641248bd482119afc1",
+   "blob": "1252418452605f0d3fd8f057cc0f1cb088fea00f",
    "fetched": false,
    "skipped": "weight file, fetched only by a full run (570 MB)"
   },
@@ -564,12 +688,26 @@
    "fetched": false,
    "skipped": "weight file, fetched only by a full run (570 MB)"
   },
-  "mmproj-LFM3-Audio-2B-Q8_0.gguf": {
-   "size": 337862080,
-   "sha256": "26601e904245a85bd8f3cf320a629e897cfc01c1d09369e8b4fd951f13024d3e",
-   "blob": "dc716b1ba5bb292cce2bd45ba652c6ee55e94bc4",
+  "mmproj-LFM3-Audio-2B-Q4_0.gguf": {
+   "size": 161393408,
+   "sha256": "467a1ee5512a3faba79bf04e789a838959cc48c72a802bf6d9cb951a77736cfc",
+   "blob": "28219ad6fbd0dc82b7e212d561c92e652ee2b48d",
    "fetched": false,
-   "skipped": "weight file, fetched only by a full run (337 MB)"
+   "skipped": "weight file, fetched only by a full run (161 MB)"
+  },
+  "mmproj-LFM3-Audio-2B-Q4_K_M.gguf": {
+   "size": 172418048,
+   "sha256": "1a3a895160aad17c1f52117a6ee4cea8e68988651ea5a33c5b990539e8eae81d",
+   "blob": "083f4be8d00fc2cfca239d681823fe37b44e450e",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (172 MB)"
+  },
+  "mmproj-LFM3-Audio-2B-Q8_0.gguf": {
+   "size": 303811840,
+   "sha256": "2b6648b1fd48af16aa0877b0592b144d15070783673e038a379fdbc51d40e365",
+   "blob": "29010a67d8221b91db9f09ac55c401c6ab0a7536",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (303 MB)"
   }
  },
  "base_repo_files": {
@@ -796,7 +934,7 @@
  },
  "unknown": null,
  "warnings": null,
- "updated": "2026-10-28",
+ "updated": "2026-10-30",
  "by": "scripts/model_db.py",
  "gguf_meta": {
   "general.architecture": "lfm3",
@@ -941,6 +1079,10 @@
   {
    "repo": "ggml-org/llama.cpp",
    "why": "inference/training tool repo"
+  },
+  {
+   "repo": "ollama/ollama",
+   "why": "inference/training tool repo"
   }
  ],
  "descriptor": {
@@ -949,7 +1091,7 @@
    "source": "HF API id"
   },
   "revision": {
-   "effective": "642697a5597a675cb819ed236ac415c1e60a4f6f",
+   "effective": "02355c1a141e464a064f2ab2c276638dbcb7f38a",
    "source": "pinned (manifest / database)"
   },
   "file": {
@@ -1033,11 +1175,11 @@
    ]
   },
   "license_file": {
-   "effective": "LiquidAI/LFM3-Audio-2B-GGUF@642697a5597a/LICENSE",
+   "effective": "LiquidAI/LFM3-Audio-2B-GGUF@02355c1a141e/LICENSE",
    "source": "LiquidAI/LFM3-Audio-2B-GGUF repo file",
    "values": [
     {
-     "value": "LiquidAI/LFM3-Audio-2B-GGUF@642697a5597a/LICENSE",
+     "value": "LiquidAI/LFM3-Audio-2B-GGUF@02355c1a141e/LICENSE",
      "source": "LiquidAI/LFM3-Audio-2B-GGUF repo file"
     },
     {
@@ -1222,28 +1364,43 @@
     "why_required": "messages, tool calls and thinking are formatted by the model's chat template; without --jinja llama-server falls back to a built-in approximation"
    },
    {
+    "class": "RECOMMENDED",
+    "flag": "--temp",
+    "value": "0",
+    "source": "LiquidAI/LFM3-Audio-2B-GGUF README.md:L80-80",
+    "why_required": "sampling in the card's llama serve command",
+    "also": [
+     "LiquidAI/LFM3-Audio-2B-GGUF LiquidAI/LFM3-Audio-2B-GGUF README.md:L64",
+     "LiquidAI/LFM3-Audio-2B-GGUF README.md:L88-89"
+    ]
+   },
+   {
     "class": "OPTIONAL",
     "flag": "--image",
     "value": "speech.wav",
-    "source": "LiquidAI/LFM3-Audio-2B-GGUF README.md:L72-73",
+    "source": "LiquidAI/LFM3-Audio-2B-GGUF README.md:L88-89",
     "why_required": "performance / tool option in the card's command"
    },
    {
     "class": "OPTIONAL",
     "flag": "--system-prompt",
     "value": "Perform ASR in English.",
-    "source": "LiquidAI/LFM3-Audio-2B-GGUF README.md:L72-73",
+    "source": "LiquidAI/LFM3-Audio-2B-GGUF README.md:L88-89",
     "why_required": "performance / tool option in the card's command"
    },
    {
     "class": "RECOMMENDED",
-    "flag": "--temp",
-    "value": "0",
-    "source": "LiquidAI/LFM3-Audio-2B-GGUF README.md:L72-73",
-    "why_required": "sampling in the card's llama-mtmd-cli command",
-    "also": [
-     "LiquidAI/LFM3-Audio-2B-GGUF LiquidAI/LFM3-Audio-2B-GGUF README.md:L73 (example)"
-    ]
+    "flag": "--top-k",
+    "value": "128",
+    "source": "LiquidAI/LFM3-Audio-2B-GGUF LiquidAI/LFM3-Audio-2B-GGUF README.md:L64",
+    "why_required": "the card's recommended sampling (Recommended sampling: greedy decoding)"
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--repeat-penalty",
+    "value": "1.1",
+    "source": "LiquidAI/LFM3-Audio-2B-GGUF LiquidAI/LFM3-Audio-2B-GGUF README.md:L64",
+    "why_required": "the card's recommended sampling (Recommended sampling: greedy decoding)"
    },
    {
     "class": "REQUIRED",
@@ -1266,13 +1423,13 @@
   "name": "lfm1.0",
   "summary": "lfm1.0 (LICENSE)",
   "summary_source": "LiquidAI/LFM3-Audio-2B-GGUF card license",
-  "link": "https://huggingface.co/LiquidAI/LFM3-Audio-2B-GGUF/blob/642697a5597a675cb819ed236ac415c1e60a4f6f/LICENSE",
+  "link": "https://huggingface.co/LiquidAI/LFM3-Audio-2B-GGUF/blob/02355c1a141e464a064f2ab2c276638dbcb7f38a/LICENSE",
   "link_source": "LiquidAI/LFM3-Audio-2B-GGUF card license_link",
   "texts": [
    {
-    "file": "LiquidAI/LFM3-Audio-2B-GGUF@642697a5597a/LICENSE",
-    "path": "/home/box/.local/share/gguf/hf-meta/LiquidAI--LFM3-Audio-2B-GGUF/642697a5597a675cb819ed236ac415c1e60a4f6f/LICENSE",
-    "url": "https://huggingface.co/LiquidAI/LFM3-Audio-2B-GGUF/blob/642697a5597a675cb819ed236ac415c1e60a4f6f/LICENSE",
+    "file": "LiquidAI/LFM3-Audio-2B-GGUF@02355c1a141e/LICENSE",
+    "path": "/home/box/.local/share/gguf/hf-meta/LiquidAI--LFM3-Audio-2B-GGUF/02355c1a141e464a064f2ab2c276638dbcb7f38a/LICENSE",
+    "url": "https://huggingface.co/LiquidAI/LFM3-Audio-2B-GGUF/blob/02355c1a141e464a064f2ab2c276638dbcb7f38a/LICENSE",
     "sha256": "4d28ca14dedc0b3d0fcc2b3339f0e79931faa33874f3d24f522183a8fc70068c",
     "bytes": 10574,
     "what": "model"

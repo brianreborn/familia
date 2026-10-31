@@ -2,7 +2,7 @@
  "schema": 2,
  "id": "LiquidAI--LFM3-Omni-2B-GGUF--LFM3-Omni-2B-Q4_K_M",
  "repo": "LiquidAI/LFM3-Omni-2B-GGUF",
- "revision": "64660117852a2054cf1f666f47eeb910e2204e4d",
+ "revision": "3d29af2ad166f8299c2d820937e47dc0add20ffc",
  "file": "LFM3-Omni-2B-Q4_K_M.gguf",
  "sha256": "9f8d30e9d4fd7a9349d586e077988229b3ca0a0e4ad730897563d1eccc9893e2",
  "bytes": 1099630080,
@@ -21,30 +21,41 @@
  "base_model": "LiquidAI/LFM3-Omni-2B",
  "base_revision": "ce2458cbce4ad970f92032ed94e3d18d30b04f9c",
  "card_defaults": {
-  "temp": 0
+  "temp": 0,
+  "repeat-penalty": 1.2
  },
  "card_defaults_source": {
-  "temp": "LiquidAI/LFM3-Omni-2B-GGUF LiquidAI/LFM3-Omni-2B-GGUF README.md:L109 (example)"
+  "temp": "LiquidAI/LFM3-Omni-2B-GGUF LiquidAI/LFM3-Omni-2B-GGUF README.md:L70",
+  "repeat-penalty": "LiquidAI/LFM3-Omni-2B-GGUF LiquidAI/LFM3-Omni-2B-GGUF README.md:L70"
  },
- "card_default_set": "example: Video understanding: the model sees the frames and hears the soundtrack of the video, use the system prompt Answer questions about the video using what you see ",
- "card_defaults_how": "the card's only code example with sampling values",
+ "card_default_set": "Recommended sampling: greedy decoding",
+ "card_defaults_how": "the card's only recommended set",
  "card_sampling_modes": {
-  "LFM3-Omni-2B is a non-reasoning model: with llama serve , use --reasoning off . Start a web chat UI and an OpenAI-compatible API at http://localhost:8080": {
-   "temp": 0
-  },
-  "Speech recognition: use the system prompt Perform ASR in <language": {
-   "temp": 0
-  },
-  "Image understanding": {
-   "temp": 0
-  },
-  "Video understanding: the model sees the frames and hears the soundtrack of the video, use the system prompt Answer questions about the video using what you see ": {
-   "temp": 0
+  "Recommended sampling: greedy decoding": {
+   "temp": 0,
+   "repeat-penalty": 1.2
   }
  },
  "card_default_mode": null,
  "card_default_mode_source": null,
  "card_sampling_sets": [
+  {
+   "label": "Recommended sampling: greedy decoding",
+   "kind": "recommended",
+   "mode": null,
+   "params": {
+    "temp": 0,
+    "repeat-penalty": 1.2
+   },
+   "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L70",
+   "conflicts": [
+    {
+     "param": "temp",
+     "also": 0.4,
+     "source": "README.md:L70"
+    }
+   ]
+  },
   {
    "label": "LFM3-Omni-2B is a non-reasoning model: with llama serve , use --reasoning off . Start a web chat UI and an OpenAI-compatible API at http://localhost:8080",
    "kind": "example",
@@ -52,7 +63,7 @@
    "params": {
     "temp": 0
    },
-   "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L83"
+   "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L87"
   },
   {
    "label": "Speech recognition: use the system prompt Perform ASR in <language",
@@ -61,7 +72,7 @@
    "params": {
     "temp": 0
    },
-   "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L92"
+   "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L96"
   },
   {
    "label": "Image understanding",
@@ -70,7 +81,7 @@
    "params": {
     "temp": 0
    },
-   "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L99"
+   "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L103"
   },
   {
    "label": "Video understanding: the model sees the frames and hears the soundtrack of the video, use the system prompt Answer questions about the video using what you see ",
@@ -79,16 +90,41 @@
    "params": {
     "temp": 0
    },
-   "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L109"
+   "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L113"
   }
  ],
  "card_commands": [
   {
-   "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L83-83",
+   "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L74",
    "file": "README.md",
    "lines": [
-    83,
-    83
+    74,
+    74
+   ],
+   "lang": null,
+   "tool": "ollama",
+   "kind": "inline",
+   "text": "ollama run lfm3-omni",
+   "translation": {
+    "translated": true,
+    "params": [],
+    "untranslatable": [
+     {
+      "arg": "ollama run lfm3-omni",
+      "why": "Ollama pulls and runs the model with its own defaults; no flags to translate"
+     }
+    ]
+   },
+   "doc": "card",
+   "doc_sha": "3d29af2ad166f8299c2d820937e47dc0add20ffc",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L87-87",
+   "file": "README.md",
+   "lines": [
+    87,
+    87
    ],
    "lang": "bash",
    "tool": "llama.cpp",
@@ -133,15 +169,15 @@
     }
    ],
    "doc": "card",
-   "doc_sha": "64660117852a2054cf1f666f47eeb910e2204e4d",
+   "doc_sha": "3d29af2ad166f8299c2d820937e47dc0add20ffc",
    "scope": "model"
   },
   {
-   "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L91-92",
+   "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L95-96",
    "file": "README.md",
    "lines": [
-    91,
-    92
+    95,
+    96
    ],
    "lang": "bash",
    "tool": "llama.cpp",
@@ -193,15 +229,15 @@
     }
    ],
    "doc": "card",
-   "doc_sha": "64660117852a2054cf1f666f47eeb910e2204e4d",
+   "doc_sha": "3d29af2ad166f8299c2d820937e47dc0add20ffc",
    "scope": "model"
   },
   {
-   "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L98-99",
+   "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L102-103",
    "file": "README.md",
    "lines": [
-    98,
-    99
+    102,
+    103
    ],
    "lang": "bash",
    "tool": "llama.cpp",
@@ -246,15 +282,15 @@
     }
    ],
    "doc": "card",
-   "doc_sha": "64660117852a2054cf1f666f47eeb910e2204e4d",
+   "doc_sha": "3d29af2ad166f8299c2d820937e47dc0add20ffc",
    "scope": "model"
   },
   {
-   "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L105-109",
+   "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L109-113",
    "file": "README.md",
    "lines": [
-    105,
-    109
+    109,
+    113
    ],
    "lang": "bash",
    "tool": "llama.cpp",
@@ -306,22 +342,22 @@
     }
    ],
    "doc": "card",
-   "doc_sha": "64660117852a2054cf1f666f47eeb910e2204e4d",
+   "doc_sha": "3d29af2ad166f8299c2d820937e47dc0add20ffc",
    "scope": "model"
   },
   {
-   "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L115-116",
+   "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L119-120",
    "file": "README.md",
    "lines": [
-    115,
-    116
+    119,
+    120
    ],
    "lang": "bash",
    "tool": "shell",
    "kind": "command",
    "text": "llama-tts -m LFM3-Omni-2B-Q4_K_M.gguf -mm mmproj-LFM3-Omni-2B-Q8_0.gguf \\\n  -p \"Hello world\" -o out.wav",
    "doc": "card",
-   "doc_sha": "64660117852a2054cf1f666f47eeb910e2204e4d",
+   "doc_sha": "3d29af2ad166f8299c2d820937e47dc0add20ffc",
    "scope": "model"
   },
   {
@@ -742,16 +778,20 @@
    "source": "LiquidAI/LFM3-Omni-2B README.md:L1140"
   },
   {
+   "text": "Recommended sampling: greedy decoding (temperature 0) for text output. For speech output, audio temperature 0.4 and audio repetition penalty 1.2.",
+   "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L70"
+  },
+  {
    "text": "LFM3-Omni-2B is a non-reasoning model: with `llama serve`, use `--reasoning off`. Start a web chat UI and an OpenAI-compatible API at `http://localhost:8080`:",
-   "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L80"
+   "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L84"
   },
   {
    "text": "Speech recognition: use the system prompt `Perform ASR in <language>.`",
-   "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L88"
+   "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L92"
   },
   {
    "text": "Video understanding: the model sees the frames and hears the soundtrack of the video, use the system prompt `Answer questions about the video using what you see and hear.` Video input needs `ffmpeg` in `PATH`.",
-   "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L102"
+   "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L106"
   }
  ],
  "chat_template": {
@@ -818,7 +858,7 @@
    "kind": "mmproj",
    "file": "mmproj-LFM3-Omni-2B-BF16.gguf",
    "size": 949841248,
-   "sha256": "92907148363ed89f67c46a09264bf2635d4069a66ced26db75abd63370eddb7e",
+   "sha256": "76f31874557110106046f1ce94386fb9888889f0e046092f5fab66380a723b38",
    "fetched": false,
    "source": "LiquidAI/LFM3-Omni-2B-GGUF repo file"
   },
@@ -832,9 +872,25 @@
   },
   {
    "kind": "mmproj",
+   "file": "mmproj-LFM3-Omni-2B-Q4_0.gguf",
+   "size": 270576544,
+   "sha256": "c7341273f1757b33ccd9e6f8b17007eb81307d26c90d8c36c22efb45fd3d82eb",
+   "fetched": false,
+   "source": "LiquidAI/LFM3-Omni-2B-GGUF repo file"
+  },
+  {
+   "kind": "mmproj",
+   "file": "mmproj-LFM3-Omni-2B-Q4_K_M.gguf",
+   "size": 291586720,
+   "sha256": "0a746c0794782a16d4456b230c2a0b5888a2d94a6677211edbed7d7a4177a39a",
+   "fetched": false,
+   "source": "LiquidAI/LFM3-Omni-2B-GGUF repo file"
+  },
+  {
+   "kind": "mmproj",
    "file": "mmproj-LFM3-Omni-2B-Q8_0.gguf",
-   "size": 540892768,
-   "sha256": "720ff4fc09df0e026c4ec641d0c698bf27b5bcd50561944c88eda5e3dffe1839",
+   "size": 506842528,
+   "sha256": "8a25f9d1931244429de404fccacfb7fb933970a36aa5688d2f5069f29c6b27b1",
    "fetched": false,
    "source": "LiquidAI/LFM3-Omni-2B-GGUF repo file"
   }
@@ -847,8 +903,8 @@
   "_gguf_version": 3
  },
  "snapshot": {
-  "path": "LiquidAI--LFM3-Omni-2B-GGUF/64660117852a2054cf1f666f47eeb910e2204e4d",
-  "fetched_bytes": 17759,
+  "path": "LiquidAI--LFM3-Omni-2B-GGUF/3d29af2ad166f8299c2d820937e47dc0add20ffc",
+  "fetched_bytes": 18532,
   "errors": null,
   "gated": false
  },
@@ -860,9 +916,9 @@
  },
  "repo_files": {
   ".gitattributes": {
-   "size": 2012,
+   "size": 2244,
    "sha256": null,
-   "blob": "4c1101515461136f12b28b25d35ad945ed3efa61",
+   "blob": "b44936bde610bf962d300e8496522b7e53ab9acb",
    "verified": "git-blob-sha1",
    "fetched": true
   },
@@ -909,16 +965,16 @@
    "fetched": true
   },
   "README.md": {
-   "size": 5173,
+   "size": 5714,
    "sha256": null,
-   "blob": "920e3fccce57106e420ccaca74925d3ccb50284e",
+   "blob": "4a5c89d4b9d026dc05224a2794cb758a5935c409",
    "verified": "git-blob-sha1",
    "fetched": true
   },
   "mmproj-LFM3-Omni-2B-BF16.gguf": {
    "size": 949841248,
-   "sha256": "92907148363ed89f67c46a09264bf2635d4069a66ced26db75abd63370eddb7e",
-   "blob": "44652bea144952fa93ed2d613c01a855be124895",
+   "sha256": "76f31874557110106046f1ce94386fb9888889f0e046092f5fab66380a723b38",
+   "blob": "97d80cda7cb90ca1c2643ae17dab06c29ea224d2",
    "fetched": false,
    "skipped": "weight file, fetched only by a full run (949 MB)"
   },
@@ -929,12 +985,26 @@
    "fetched": false,
    "skipped": "weight file, fetched only by a full run (949 MB)"
   },
-  "mmproj-LFM3-Omni-2B-Q8_0.gguf": {
-   "size": 540892768,
-   "sha256": "720ff4fc09df0e026c4ec641d0c698bf27b5bcd50561944c88eda5e3dffe1839",
-   "blob": "fbb8ec87d6f0e4a78fc8ffcee0735b07b7a57e29",
+  "mmproj-LFM3-Omni-2B-Q4_0.gguf": {
+   "size": 270576544,
+   "sha256": "c7341273f1757b33ccd9e6f8b17007eb81307d26c90d8c36c22efb45fd3d82eb",
+   "blob": "40a8e230d0440c022b8f298711c3306177955c7c",
    "fetched": false,
-   "skipped": "weight file, fetched only by a full run (540 MB)"
+   "skipped": "weight file, fetched only by a full run (270 MB)"
+  },
+  "mmproj-LFM3-Omni-2B-Q4_K_M.gguf": {
+   "size": 291586720,
+   "sha256": "0a746c0794782a16d4456b230c2a0b5888a2d94a6677211edbed7d7a4177a39a",
+   "blob": "423875e8a4b45def3d50df618648c1faf9574b71",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (291 MB)"
+  },
+  "mmproj-LFM3-Omni-2B-Q8_0.gguf": {
+   "size": 506842528,
+   "sha256": "8a25f9d1931244429de404fccacfb7fb933970a36aa5688d2f5069f29c6b27b1",
+   "blob": "3dce62931c420f2ca07f33e302728a00e8d67ec1",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (506 MB)"
   }
  },
  "base_repo_files": {
@@ -1154,7 +1224,7 @@
  },
  "unknown": null,
  "warnings": null,
- "updated": "2026-10-28",
+ "updated": "2026-10-30",
  "by": "scripts/model_db.py",
  "gguf_meta": {
   "general.architecture": "lfm3",
@@ -1309,6 +1379,10 @@
   {
    "repo": "ggml-org/llama.cpp",
    "why": "inference/training tool repo"
+  },
+  {
+   "repo": "ollama/ollama",
+   "why": "inference/training tool repo"
   }
  ],
  "descriptor": {
@@ -1317,7 +1391,7 @@
    "source": "HF API id"
   },
   "revision": {
-   "effective": "64660117852a2054cf1f666f47eeb910e2204e4d",
+   "effective": "3d29af2ad166f8299c2d820937e47dc0add20ffc",
    "source": "pinned (manifest / database)"
   },
   "file": {
@@ -1401,11 +1475,11 @@
    ]
   },
   "license_file": {
-   "effective": "LiquidAI/LFM3-Omni-2B-GGUF@64660117852a/LICENSE",
+   "effective": "LiquidAI/LFM3-Omni-2B-GGUF@3d29af2ad166/LICENSE",
    "source": "LiquidAI/LFM3-Omni-2B-GGUF repo file",
    "values": [
     {
-     "value": "LiquidAI/LFM3-Omni-2B-GGUF@64660117852a/LICENSE",
+     "value": "LiquidAI/LFM3-Omni-2B-GGUF@3d29af2ad166/LICENSE",
      "source": "LiquidAI/LFM3-Omni-2B-GGUF repo file"
     },
     {
@@ -1623,40 +1697,40 @@
     "class": "REQUIRED",
     "flag": "--reasoning",
     "value": "off",
-    "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L83-83",
+    "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L87-87",
     "why_required": "the card's llama serve command sets it"
    },
    {
     "class": "RECOMMENDED",
     "flag": "--temp",
     "value": "0",
-    "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L83-83",
+    "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L87-87",
     "why_required": "sampling in the card's llama serve command",
     "also": [
-     "LiquidAI/LFM3-Omni-2B-GGUF LiquidAI/LFM3-Omni-2B-GGUF README.md:L109 (example)",
-     "LiquidAI/LFM3-Omni-2B-GGUF README.md:L105-109",
-     "LiquidAI/LFM3-Omni-2B-GGUF README.md:L91-92",
-     "LiquidAI/LFM3-Omni-2B-GGUF README.md:L98-99"
+     "LiquidAI/LFM3-Omni-2B-GGUF LiquidAI/LFM3-Omni-2B-GGUF README.md:L70",
+     "LiquidAI/LFM3-Omni-2B-GGUF README.md:L102-103",
+     "LiquidAI/LFM3-Omni-2B-GGUF README.md:L109-113",
+     "LiquidAI/LFM3-Omni-2B-GGUF README.md:L95-96"
     ]
    },
    {
     "class": "OPTIONAL",
     "flag": "--image",
     "value": "speech.wav",
-    "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L91-92",
+    "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L95-96",
     "why_required": "performance / tool option in the card's command",
     "also": [
-     "LiquidAI/LFM3-Omni-2B-GGUF README.md:L105-109",
-     "LiquidAI/LFM3-Omni-2B-GGUF README.md:L98-99"
+     "LiquidAI/LFM3-Omni-2B-GGUF README.md:L102-103",
+     "LiquidAI/LFM3-Omni-2B-GGUF README.md:L109-113"
     ],
     "conflicts": [
      {
       "value": "photo.png",
-      "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L98-99"
+      "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L102-103"
      },
      {
       "value": "reading.mp4",
-      "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L105-109"
+      "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L109-113"
      }
     ]
    },
@@ -1664,17 +1738,24 @@
     "class": "OPTIONAL",
     "flag": "--system-prompt",
     "value": "Perform ASR in English.",
-    "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L91-92",
+    "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L95-96",
     "why_required": "performance / tool option in the card's command",
     "also": [
-     "LiquidAI/LFM3-Omni-2B-GGUF README.md:L105-109"
+     "LiquidAI/LFM3-Omni-2B-GGUF README.md:L109-113"
     ],
     "conflicts": [
      {
       "value": "Answer questions about the video using what you see and hear.",
-      "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L105-109"
+      "source": "LiquidAI/LFM3-Omni-2B-GGUF README.md:L109-113"
      }
     ]
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--repeat-penalty",
+    "value": "1.2",
+    "source": "LiquidAI/LFM3-Omni-2B-GGUF LiquidAI/LFM3-Omni-2B-GGUF README.md:L70",
+    "why_required": "the card's recommended sampling (Recommended sampling: greedy decoding)"
    },
    {
     "class": "REQUIRED",
@@ -1697,13 +1778,13 @@
   "name": "lfm1.0",
   "summary": "lfm1.0 (LICENSE)",
   "summary_source": "LiquidAI/LFM3-Omni-2B-GGUF card license",
-  "link": "https://huggingface.co/LiquidAI/LFM3-Omni-2B-GGUF/blob/64660117852a2054cf1f666f47eeb910e2204e4d/LICENSE",
+  "link": "https://huggingface.co/LiquidAI/LFM3-Omni-2B-GGUF/blob/3d29af2ad166f8299c2d820937e47dc0add20ffc/LICENSE",
   "link_source": "LiquidAI/LFM3-Omni-2B-GGUF card license_link",
   "texts": [
    {
-    "file": "LiquidAI/LFM3-Omni-2B-GGUF@64660117852a/LICENSE",
-    "path": "/home/box/.local/share/gguf/hf-meta/LiquidAI--LFM3-Omni-2B-GGUF/64660117852a2054cf1f666f47eeb910e2204e4d/LICENSE",
-    "url": "https://huggingface.co/LiquidAI/LFM3-Omni-2B-GGUF/blob/64660117852a2054cf1f666f47eeb910e2204e4d/LICENSE",
+    "file": "LiquidAI/LFM3-Omni-2B-GGUF@3d29af2ad166/LICENSE",
+    "path": "/home/box/.local/share/gguf/hf-meta/LiquidAI--LFM3-Omni-2B-GGUF/3d29af2ad166f8299c2d820937e47dc0add20ffc/LICENSE",
+    "url": "https://huggingface.co/LiquidAI/LFM3-Omni-2B-GGUF/blob/3d29af2ad166f8299c2d820937e47dc0add20ffc/LICENSE",
     "sha256": "4d28ca14dedc0b3d0fcc2b3339f0e79931faa33874f3d24f522183a8fc70068c",
     "bytes": 10574,
     "what": "model"
