@@ -70,7 +70,7 @@ jobs:
           echo "ref=$ref" >> "$GITHUB_OUTPUT"
           echo "suite=$suite" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
-        with: { sparse-checkout: "scripts/swarm\n.github/swarm-conductor.json" }
+        with: { sparse-checkout: "scripts/swarm\n.github/swarm-conductor.json", persist-credentials: false }
       - env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
@@ -89,6 +89,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          persist-credentials: false
           ref: ${{ needs.dispatch.outputs.ref }}
           submodules: recursive
       - id: run
@@ -140,6 +141,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
