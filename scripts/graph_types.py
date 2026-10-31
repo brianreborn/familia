@@ -215,6 +215,23 @@ def check_node(g, name, n, errs):
         if other < name and "planned" not in (o.get("status"), n.get("status")) and o.get("host") == n.get("host") and o.get("port") == n.get("port"):
             errs.append(f"nodes.{name}: port {n.get('port')} on host {n.get('host')!r} also used by node {other!r}")
 
+    tr = n.get("tool_route")
+    if tr is not None:
+        w = f"nodes.{name}.tool_route"
+        _t = n.get("role") or (m or {}).get("role")
+        nodes = g.get("nodes") or {}
+        tn = nodes.get(tr) if isinstance(tr, str) else None
+        if _t in ("guardian", "pentest", "defender"):
+            errs.append(f"{w}: not allowed for {_t} nodes; tools follow the pentest policy mode")
+        elif tr == name:
+            errs.append(f"{w}: cannot route to itself")
+        elif isinstance(tn, dict):
+            tm = (g.get("models") or {}).get(tn.get("model")) or {}
+            if (tn.get("role") or tm.get("role")) in ("guardian", "pentest", "defender"):
+                errs.append(f"{w}: target {tr!r} is a fail-closed TYPE")
+            elif tn.get("tool_route"):
+                errs.append(f"{w}: target {tr!r} is itself routed (one hop only)")
+
     st = n.get("server_tools")
     if st is not None:
         w = f"nodes.{name}.server_tools"
@@ -569,7 +586,7 @@ TYPES = {
                  "role": req("enum", choices={"chat", "coder", "decision", "reasoning", "embed", "vision", "diffusion", "pentest", "guardian"}),
                  "derived_from": opt("any"),
                  # model database entry (registry/models/<db>.json, docs/model-database.md, #51)
-                 "db": opt("str"), "notes": opt("str"),
+                 "db": opt("str"), "notes": opt("str"), "tool_calls": opt("bool"),  # model can emit tool calls (CFG-SPEC-TOOLS-007)
                  "quant": opt("enum", choices={"littlebit"})}, doc="weights file"),  # derived_from: written by scripts/scale_down.py
     "nodes": T({"model": req("ref", ref="models"), "host": req("ref", ref="hosts"), "runtime": req("ref", ref="runtimes"),
                 "ctx": req("int", min=1), "parallel": req("int", min=1),
@@ -590,6 +607,8 @@ TYPES = {
                 "card_set": opt("str"), "sampling": opt("map"), "override_reasons": opt("map"),
                 # llama-server --tools (llama-ui Server Tools / agentic); "all" or list of SERVER_TOOL_NAMES
                 "server_tools": opt("any"),
+                # capability-based tools default (CFG-SPEC-TOOLS-007..010, docs/config/routing-spec.md)
+                "tool_capable": opt("bool"), "tool_route": opt("ref", ref="nodes"),
                 # type/role the node provides (coder|chat|embed|…). Design law: type implies
                 # capability; placement is host:. Prefer type-named keys in private host graphs.
                 "role": opt("enum", choices={"chat", "coder", "decision", "reasoning", "embed", "vision", "diffusion", "pentest", "guardian", "general"})},

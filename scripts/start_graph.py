@@ -361,7 +361,8 @@ def run(args=None):
         graph["_path"] = str(graph_path)
         host = select_host(graph, options.host)
         fleet_default = (ROOT / "graph.yaml").resolve()
-        priv = (ROOT / "generated" / f"graph-{host}.yaml").resolve()
+        import config_paths
+        priv = (Path(config_paths.generated_dir()) / f"graph-{host}.yaml").resolve()
         if (
             not options.fleet
             and graph_path == fleet_default
