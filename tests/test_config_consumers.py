@@ -42,11 +42,10 @@ def _graph_path_resolvers(monkeypatch, custom):
     monkeypatch.setenv("FAMILIA_GRAPH", custom)
     import importlib
     import familia_agent_reach, skills, guardian_ready
-    importlib.reload(guardian_ready)  # module-level DEFAULT_GRAPH
     return {
         "familia_agent_reach.graph_path": familia_agent_reach.graph_path(),
         "skills.graph_path": skills.graph_path(),
-        "guardian_ready.DEFAULT_GRAPH": guardian_ready.DEFAULT_GRAPH,
+        "guardian_ready (lazy config_paths)": guardian_ready.config_paths.graph_path(),
     }
 
 
@@ -116,7 +115,25 @@ def test_dup05_alias_resolves_to_node():
 def test_escalate_reachable_parse_smoke():
     """Platform/Boundary: --reachable must remain a real argparse flag after DUP-02
     (it was briefly swallowed into a comment). Parsing with --reachable must not raise."""
-    import escalate
+    import importlib, sys, config_paths
+    calls = []
+    orig = config_paths.graph_path
+    def spy(*a, **k):
+        calls.append(a); return orig(*a, **k)
+    config_paths.graph_path = spy
+    try:
+        sys.modules.pop("escalate", None)
+        import escalate
+        assert calls == [], "escalate resolved the graph path at import (must be lazy)"
+        assert not hasattr(escalate, "DEFAULT_GRAPH")
+    finally:
+        config_paths.graph_path = orig
     # decide with no signals returns a "none" decision; --reachable must be accepted
     rc = escalate.main(["decide", "--node", "coder", "--reachable", "h1,h2"])
     assert rc in (0, None)
+
+
+def test_guardian_ready_graph_lazy():
+    import importlib, guardian_ready
+    importlib.reload(guardian_ready)
+    assert not hasattr(guardian_ready, "DEFAULT_GRAPH")

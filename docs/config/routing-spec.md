@@ -39,7 +39,8 @@ A planned node is **excluded from automatic routing only**. It is never dropped 
 | CFG-SPEC-TOOLS-002 | Per-TYPE default `tool_policy`: coder = all; chat/general = read_file,file_glob_search,grep_search,get_info; embed/decision/reasoning = none; guardian/pentest/defender = pentest policy mode (empty allow-list now). A present `server_tools` key (incl. `[]`/`none`/`false`) is authoritative — empty means explicit opt-out (no `--tools` flag) | IMPLEMENTED | validate_graph.py TOOL_POLICY_BY_TYPE/tool_policy |
 | CFG-SPEC-TOOLS-003 | A node override (`server_tools`) needs `override_reasons.server_tools` | SPEC | — |
 | CFG-SPEC-TOOLS-004 | Loopback bind required when any host-exec tool is on | IMPLEMENTED | graph_types.py:231-233 |
-| CFG-SPEC-TOOLS-005 | guardian/pentest/defender reject a `server_tools` override (it would bypass the pentest mode ladder); the launcher's `tool_policy` also fails closed to none for these TYPEs | IMPLEMENTED | graph_types.py check_node (reject); validate_graph.py tool_policy (fail-closed) |
+| CFG-SPEC-TOOLS-005 | guardian/pentest/defender reject a `server_tools` grant (`all`/list) (it would bypass the pentest mode ladder); the launcher's `tool_policy` also fails closed to none for these TYPEs | IMPLEMENTED | graph_types.py check_node (reject); validate_graph.py tool_policy (fail-closed) |
+| CFG-SPEC-TOOLS-006 | `server_tools: []` / `none` / `false` is an explicit opt-out: accepted by validation on any TYPE and any bind (loopback check applies only to grants), and emits no `--tools` flag | IMPLEMENTED | graph_types.py check_node; validate_graph.py tool_policy; tests/test_graph_types.py |
 
 ## Agents: MCP, toolsets, prompt profile (CFG-SPEC-AGENT / CFG-SPEC-MCP)
 | ID | Requirement | Status | Pointer |

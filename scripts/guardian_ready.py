@@ -35,7 +35,6 @@ import familia_yaml  # noqa: E402
 import config_paths  # noqa: E402
 
 ROOT = config_paths.ROOT  # DUP-10 owner
-DEFAULT_GRAPH = config_paths.graph_path()  # DUP-02: honour $FAMILIA_GRAPH
 ROLE_JSONS = (
     os.path.join(ROOT, "scripts", "guardian-role.json"),
     os.path.join(ROOT, "scripts", "pentest-role.json"),
@@ -366,10 +365,10 @@ def main(argv=None) -> int:
             "(fail-closed; no network; never activates)"
         )
     )
-    ap.add_argument("--graph", default=DEFAULT_GRAPH, help="path to graph.yaml")
+    ap.add_argument("--graph", default=None, help="path to graph.yaml")
     ap.add_argument("--json", action="store_true", help="print machine-readable report")
     args = ap.parse_args(argv)
-    report = run_check(args.graph)
+    report = run_check(args.graph or config_paths.graph_path())
 
     if args.json:
         print(json.dumps(report, indent=2, sort_keys=True))
