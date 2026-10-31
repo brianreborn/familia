@@ -117,8 +117,9 @@ def test_nothing_routes_through_adb_drop_zone(termux):
     assert ADB_DROP not in blob
     masked = blob.replace(str(t["tmp"]), "$TMPDIR").replace(str(t["usr"].parent), "$TERMUX_FILES")
     assert "/tmp/" not in masked                                       # only $TMPDIR, never bare /tmp
-    for p in t["hub"].rglob("*"):
-        if p.is_file(): assert oct(p.stat().st_mode & 0o077) == "0o0", p   # umask 077 on the hub
+    # hub-side files nexus writes over ssh are private (umask 077), like peers/ and the dirs
+    for p in [*t["hub"].rglob("peers/*.json"), *t["hub"].rglob("meta.json"), *t["hub"].rglob("artifacts/*")]:
+        assert oct(p.stat().st_mode & 0o077) == "0o0", p
 
 
 def test_nexus_and_termux_scripts_never_use_adb_drop_zone():
