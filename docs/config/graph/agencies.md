@@ -6,7 +6,7 @@ Purpose: GitHub-style issue workflow (not the retired green-agency repo).
 
 <!-- BEGIN GENERATED: fields (scripts/config_docs.py --write) -->
 
-Schema: `scripts/graph_types.py:640` (stable; GitHub-style issue workflow (not the retired green-agency repo)).
+Schema: `scripts/graph_types.py:618` (stable; GitHub-style issue workflow (not the retired green-agency repo)).
 Required fields have no defaults (validator: missing required → error). Consumers = static scan of scripts/ and top-level *.sh.
 
 | ID | Field | Req | Type | Allowed / ref | Status | Consumers (static scan) |

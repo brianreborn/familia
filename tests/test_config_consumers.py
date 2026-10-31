@@ -172,6 +172,8 @@ def test_tools_via_nexus_route():
     assert v.tool_route(g, "coder-a") == "coder-b"
     assert v.tool_policy(g, "coder-a") == "all"
     assert v.tools_argv(g, "coder-a") == []
+    g["nodes"]["coder-b"]["server_tools"] = ["read_file"]
+    assert v.tool_policy(g, "coder-a") == ["read_file"]  # inherits target grant, not "all"
 
 
 def test_nexus_route_fail_closed_types_denied():

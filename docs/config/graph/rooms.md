@@ -6,7 +6,7 @@ Purpose: shared conversation space.
 
 <!-- BEGIN GENERATED: fields (scripts/config_docs.py --write) -->
 
-Schema: `scripts/graph_types.py:642` (experimental; shared conversation space).
+Schema: `scripts/graph_types.py:620` (experimental; shared conversation space).
 Required fields have no defaults (validator: missing required → error). Consumers = static scan of scripts/ and top-level *.sh.
 
 | ID | Field | Req | Type | Allowed / ref | Status | Consumers (static scan) |

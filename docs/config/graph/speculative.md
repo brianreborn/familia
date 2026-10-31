@@ -6,7 +6,7 @@ Purpose: edge draft->target (same vocab) or model-free n-gram lookup decoding.
 
 <!-- BEGIN GENERATED: fields (scripts/config_docs.py --write) -->
 
-Schema: `scripts/graph_types.py:616` (experimental; edge draft->target (same vocab) or model-free n-gram lookup decoding).
+Schema: `scripts/graph_types.py:594` (experimental; edge draft->target (same vocab) or model-free n-gram lookup decoding).
 Required fields have no defaults (validator: missing required → error). Consumers = static scan of scripts/ and top-level *.sh.
 
 | ID | Field | Req | Type | Allowed / ref | Status | Consumers (static scan) |

@@ -19,7 +19,7 @@ Writers: `scripts/host_measure.py:205` (installers call it), `scripts/modify_gra
 
 <!-- BEGIN GENERATED: fields (scripts/config_docs.py --write) -->
 
-Schema: `scripts/graph_types.py:563` (stable; physical/dedicated form-factor box (see box_archetypes.HOST_KINDS); not virtualization).
+Schema: `scripts/graph_types.py:543` (stable; physical/dedicated form-factor box (see box_archetypes.HOST_KINDS); not virtualization).
 Required fields have no defaults (validator: missing required → error). Consumers = static scan of scripts/ and top-level *.sh.
 
 | ID | Field | Req | Type | Allowed / ref | Status | Consumers (static scan) |

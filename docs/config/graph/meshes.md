@@ -6,7 +6,7 @@ Purpose: multi-member transport (ssh nexus / bittorrent swarm).
 
 <!-- BEGIN GENERATED: fields (scripts/config_docs.py --write) -->
 
-Schema: `scripts/graph_types.py:577` (stable; multi-member transport (ssh nexus / bittorrent swarm)).
+Schema: `scripts/graph_types.py:557` (stable; multi-member transport (ssh nexus / bittorrent swarm)).
 Required fields have no defaults (validator: missing required → error). Consumers = static scan of scripts/ and top-level *.sh.
 
 | ID | Field | Req | Type | Allowed / ref | Status | Consumers (static scan) |

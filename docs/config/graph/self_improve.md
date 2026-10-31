@@ -6,7 +6,7 @@ Purpose: Harness² optimizer setting over harness descriptors (off by default; p
 
 <!-- BEGIN GENERATED: fields (scripts/config_docs.py --write) -->
 
-Schema: `scripts/graph_types.py:679` (experimental; Harness² optimizer setting over harness descriptors (off by default; pentest agents excluded)).
+Schema: `scripts/graph_types.py:657` (experimental; Harness² optimizer setting over harness descriptors (off by default; pentest agents excluded)).
 Required fields have no defaults (validator: missing required → error). Consumers = static scan of scripts/ and top-level *.sh.
 
 | ID | Field | Req | Type | Allowed / ref | Status | Consumers (static scan) |

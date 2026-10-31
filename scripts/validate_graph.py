@@ -459,7 +459,7 @@ def tool_policy(graph, name):
     - A present `server_tools` key is authoritative: "all"/non-empty list verbatim; [], none,
       false, "" are an explicit opt-out, also via nexus (TOOLS-006/009).
     - Otherwise capability: directly tool-capable on a loopback bind -> "all" (TOOLS-007/008);
-      tool-capable via a validated `tool_route` -> "all" (TOOLS-009); else []."""
+      tool-capable via a validated `tool_route` -> the target's tool_policy (TOOLS-009); else []."""
     n = graph["nodes"][name]
     if node_type(graph, name) in FAIL_CLOSED_TYPES:
         return []
@@ -472,8 +472,9 @@ def tool_policy(graph, name):
         return []
     if tool_capable(graph, name) and _loopback(n.get("bind")):
         return "all"
-    if n.get("tool_route") and tool_route(graph, name):
-        return "all"
+    t = tool_route(graph, name) if n.get("tool_route") else None
+    if t:
+        return tool_policy(graph, t)  # routed grant = the target's own validated grant
     return []
 
 

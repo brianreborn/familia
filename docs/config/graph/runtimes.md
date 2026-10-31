@@ -14,7 +14,7 @@ Purpose: a pinned inference engine build installed on hosts.
 
 <!-- BEGIN GENERATED: fields (scripts/config_docs.py --write) -->
 
-Schema: `scripts/graph_types.py:581` (stable; inference engine build).
+Schema: `scripts/graph_types.py:561` (stable; inference engine build).
 Required fields have no defaults (validator: missing required → error). Consumers = static scan of scripts/ and top-level *.sh.
 
 | ID | Field | Req | Type | Allowed / ref | Status | Consumers (static scan) |

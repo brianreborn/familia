@@ -6,7 +6,7 @@ Purpose: agent-reach tool bundle.
 
 <!-- BEGIN GENERATED: fields (scripts/config_docs.py --write) -->
 
-Schema: `scripts/graph_types.py:647` (experimental; agent-reach tool bundle).
+Schema: `scripts/graph_types.py:625` (experimental; agent-reach tool bundle).
 Required fields have no defaults (validator: missing required → error). Consumers = static scan of scripts/ and top-level *.sh.
 
 | ID | Field | Req | Type | Allowed / ref | Status | Consumers (static scan) |

@@ -771,14 +771,14 @@ gateways:
     host: angel
     port: 18080
 aliases:
-  coder:
-    node: coder
+  chat:
+    node: chat
     gateway: local
   guardian:
     node: guardian
     gateway: local
-  chat:
-    node: chat
+  coder:
+    node: coder
     gateway: local
 agents:
   hermes:
