@@ -88,7 +88,8 @@ def sha256_file(path: pathlib.Path, progress: bool = False) -> str:
 
 def graph_path(host: str | None) -> pathlib.Path:
     if host:
-        p = ROOT / "generated" / f"graph-{host}.yaml"
+        import config_paths
+        p = pathlib.Path(config_paths.generated_dir()) / f"graph-{host}.yaml"
         if not p.is_file():
             die(f"private graph missing: {p} (run: python3 scripts/generate_graph.py {host})")
         return p
