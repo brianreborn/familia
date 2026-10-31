@@ -30,11 +30,11 @@ import json
 import os
 import sys
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import familia_yaml  # noqa: E402
+import config_paths  # noqa: E402
 
-DEFAULT_GRAPH = os.path.join(ROOT, "graph.yaml")
+ROOT = config_paths.ROOT  # DUP-10 owner
 ROLE_JSONS = (
     os.path.join(ROOT, "scripts", "guardian-role.json"),
     os.path.join(ROOT, "scripts", "pentest-role.json"),
@@ -279,6 +279,7 @@ def run_check(graph_path: str) -> dict:
             "Boundary owns seatbelts + this ready-check."
         ),
     }
+    print(f"guardian_ready: graph={graph_path}", file=sys.stderr)  # log resolved path (CFG-FILE-007a)
     try:
         g = _load_graph(graph_path)
     except (OSError, ValueError) as e:
@@ -364,10 +365,10 @@ def main(argv=None) -> int:
             "(fail-closed; no network; never activates)"
         )
     )
-    ap.add_argument("--graph", default=DEFAULT_GRAPH, help="path to graph.yaml")
+    ap.add_argument("--graph", default=None, help="path to graph.yaml")
     ap.add_argument("--json", action="store_true", help="print machine-readable report")
     args = ap.parse_args(argv)
-    report = run_check(args.graph)
+    report = run_check(args.graph or config_paths.graph_path())
 
     if args.json:
         print(json.dumps(report, indent=2, sort_keys=True))

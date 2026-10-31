@@ -187,7 +187,8 @@ def main(argv):
     outg = argv[argv.index("--out-graph") + 1] if "--out-graph" in argv else os.path.join(os.path.dirname(path) or ".", "graph.scaled.yaml")
     only = argv[argv.index("--node") + 1] if "--node" in argv else None
     base = os.path.dirname(os.path.abspath(path))
-    graph = yaml.safe_load(open(path))
+    import familia_yaml
+    graph = familia_yaml.load(path)  # DUP-01
     if "--method" in argv:  # CLI form: --node N --method littlebit (--from-checkpoint DIR | --train-on hf-jobs|local-cpu-exercise)
         if not only: fail("--method needs --node")
         sd = graph.get("nodes", {}).get(only, {}).setdefault("scale_down", {})
