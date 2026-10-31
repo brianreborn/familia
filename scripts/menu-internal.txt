@@ -16,12 +16,12 @@ scripts/prompt_cache.py|library: saves and restores an agent's fixed prompt pref
 scripts/retry_wrapper.py|library for agent model calls; its main is only a self-demo
 scripts/isolated/hfchat.py|adapter that graph nodes of kind isolated_remote call; not run by hand
 scripts/c2c/kv_ship.py|step of the C2C loopback test (Advanced menu), needs two running servers
-scripts/nexus/nexus.py|SSH nexus proof of concept (#22); exercised by tests/test_nexus_localhost.sh
-scripts/bt/fetch.sh|BitTorrent transport proof of concept; exercised by tests/test_bt_loopback.sh
-scripts/bt/seed.sh|BitTorrent transport proof of concept; exercised by tests/test_bt_loopback.sh
-scripts/bt/tracker.py|BitTorrent transport proof of concept; exercised by tests/test_bt_loopback.sh
-scripts/bt/mktorrent.py|BitTorrent transport proof of concept; exercised by tests/test_bt_loopback.sh
-scripts/bt/key.py|BitTorrent transport proof of concept; exercised by tests/test_bt_loopback.sh
+scripts/nexus/nexus.py|SSH nexus proof of concept (#22); exercised by proving_grounds/nexus_localhost.sh
+scripts/bt/fetch.sh|BitTorrent transport proof of concept; exercised by proving_grounds/bt_loopback.sh
+scripts/bt/seed.sh|BitTorrent transport proof of concept; exercised by proving_grounds/bt_loopback.sh
+scripts/bt/tracker.py|BitTorrent transport proof of concept; exercised by proving_grounds/bt_loopback.sh
+scripts/bt/mktorrent.py|BitTorrent transport proof of concept; exercised by proving_grounds/bt_loopback.sh
+scripts/bt/key.py|BitTorrent transport proof of concept; exercised by proving_grounds/bt_loopback.sh
 scripts/littlebit/convert.py|LittleBit backend step; run through scale_down.py (Advanced menu)
 scripts/littlebit/lbref.py|LittleBit reference runtime used by scale_down.py and its checks
 scripts/littlebit/check_ref.py|LittleBit developer check against upstream PyTorch (needs torch)

@@ -33,7 +33,7 @@ GOALS="Talk to the protomodel
 Find more models
 Search my X / Twitter posts
 Install / first-time setup
-★ Required checks (must-run)
+◆ Proving grounds (graded)
 Legacy menu"
 
 print_goals() {
@@ -104,8 +104,8 @@ case "$CHOICE" in
     kick_prefetch
     exec sh "$ROOT/scripts/setup_goals.sh" first-time
     ;;
-  "★ Required checks (must-run)")
-    exec sh "$ROOT/scripts/required_checks.sh"
+  "◆ Proving grounds (graded)")
+    exec sh "$ROOT/scripts/proving_grounds.sh"
     ;;
   "Legacy menu")
     exec bash "$ROOT/familia-menu.sh"

@@ -106,7 +106,7 @@ setup.path-add|Advanced: hosts & benchmarks|Low-level: add ~/.local/bin to PATH 
 setup.path-remove|Advanced: hosts & benchmarks|Low-level: remove familia PATH block from ~/.profile|sh scripts/install-cli.sh path --remove|||
 setup.cli-status|Advanced: hosts & benchmarks|Low-level: show where familia is on PATH|sh scripts/install-cli.sh status|||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-cli.ps1 -Status
 setup.uninstall-cli|Advanced: hosts & benchmarks|Low-level: take familia off PATH (asks first)|sh scripts/install-cli.sh uninstall|||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-cli.ps1 -Uninstall
-test.required|★ Required checks (must-run)|★ Run ALL three critical bash smokes for real (fleet + nexus + bt)|sh scripts/required_checks.sh|||
+test.proving-grounds|◆ Proving grounds (graded)|Graded progress on the three top-level proving grounds (fleet + nexus + bt); not pass/fail|sh scripts/proving_grounds.sh|||
 help.quickstart|Help|Read the quick start|PAGER QUICKSTART.md|||more QUICKSTART.md
 help.search|Help|Search every group for a word (in the menu: /word, then n / N)|./familia-menu.sh --search {WORD:word to look for, e.g. model}|||familia.cmd -Search {WORD:word to look for, e.g. model}
 help.cli|Help|Every menu item as a command (same as --list)|./familia-menu.sh --list|||familia.cmd -List

@@ -209,11 +209,11 @@ Default front door is the gum home (`./familia`). This catalog is **fallback onl
 | `setup.cli-status` | Low-level: show where familia is on PATH | `sh scripts/install-cli.sh status` | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-cli.ps1 -Status` |
 | `setup.uninstall-cli` | Low-level: take familia off PATH (asks first) | `sh scripts/install-cli.sh uninstall` | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-cli.ps1 -Uninstall` |
 
-### ★ Required checks (must-run)
+### ◆ Proving grounds (graded)
 
 | Key | Label | POSIX | Windows |
 |---|---|---|---|
-| `test.required` | ★ Run ALL three critical bash smokes for real (fleet + nexus + bt) | `sh scripts/required_checks.sh` | — |
+| `test.proving-grounds` | Graded progress on the three top-level proving grounds (fleet + nexus + bt); not pass/fail | `sh scripts/proving_grounds.sh` | — |
 
 ### Help
 
@@ -249,12 +249,12 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/retry_wrapper.py` | library for agent model calls; its main is only a self-demo |
 | `scripts/isolated/hfchat.py` | adapter that graph nodes of kind isolated_remote call; not run by hand |
 | `scripts/c2c/kv_ship.py` | step of the C2C loopback test (Advanced menu), needs two running servers |
-| `scripts/nexus/nexus.py` | SSH nexus proof of concept (#22); exercised by tests/test_nexus_localhost.sh |
-| `scripts/bt/fetch.sh` | BitTorrent transport proof of concept; exercised by tests/test_bt_loopback.sh |
-| `scripts/bt/seed.sh` | BitTorrent transport proof of concept; exercised by tests/test_bt_loopback.sh |
-| `scripts/bt/tracker.py` | BitTorrent transport proof of concept; exercised by tests/test_bt_loopback.sh |
-| `scripts/bt/mktorrent.py` | BitTorrent transport proof of concept; exercised by tests/test_bt_loopback.sh |
-| `scripts/bt/key.py` | BitTorrent transport proof of concept; exercised by tests/test_bt_loopback.sh |
+| `scripts/nexus/nexus.py` | SSH nexus proof of concept (#22); exercised by proving_grounds/nexus_localhost.sh |
+| `scripts/bt/fetch.sh` | BitTorrent transport proof of concept; exercised by proving_grounds/bt_loopback.sh |
+| `scripts/bt/seed.sh` | BitTorrent transport proof of concept; exercised by proving_grounds/bt_loopback.sh |
+| `scripts/bt/tracker.py` | BitTorrent transport proof of concept; exercised by proving_grounds/bt_loopback.sh |
+| `scripts/bt/mktorrent.py` | BitTorrent transport proof of concept; exercised by proving_grounds/bt_loopback.sh |
+| `scripts/bt/key.py` | BitTorrent transport proof of concept; exercised by proving_grounds/bt_loopback.sh |
 | `scripts/littlebit/convert.py` | LittleBit backend step; run through scale_down.py (Advanced menu) |
 | `scripts/littlebit/lbref.py` | LittleBit reference runtime used by scale_down.py and its checks |
 | `scripts/littlebit/check_ref.py` | LittleBit developer check against upstream PyTorch (needs torch) |

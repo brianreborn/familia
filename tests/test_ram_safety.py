@@ -28,6 +28,7 @@ def test_baseline_fits_raised_reserve():
     assert totals["miryam"] < 4000  # coder+embed ~3479
 
 
+@pytest.mark.proving_ground  # depends on local model files / host fleet state
 def test_estimated_plus_reserve_fails():
     g = _base()
     g["hosts"]["miryam"]["reserve_ram_mib"] = 5000  # coder+embed ~3479 + reserve exceeds 7270

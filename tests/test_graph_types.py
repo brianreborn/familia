@@ -431,6 +431,7 @@ def test_qodesh_sm11_decision_accepted():
     assert x["runtimes"]["sm11-legacy-qodesh"]["kind"] == "sm11-legacy"
     assert errs(x) == []
 
+@pytest.mark.proving_ground  # depends on local model files / host fleet state
 def test_host_scoped_validation_skips_remote_artifacts_and_ram():
     errs, totals = validate_graph.validate(g(), check_files=True, host="angel")
     assert errs == []
