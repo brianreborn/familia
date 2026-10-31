@@ -354,12 +354,14 @@ def _check_port_available(host, port, label):
         raise StartupError(f"{label} port {port} is already occupied; nothing was started")
 
 
-def _run_gate_and_sync(root, yes):
+def _run_gate_and_sync(root, yes, graph_path=None):
     env = dict(os.environ)
+    graph_file = str(graph_path or root / "graph.yaml")
+    env["FAMILIA_GRAPH"] = graph_file  # serve.sh and the gate read the same graph as start_graph
     if yes:
         env["FAMILIA_ACCEPT_LICENSES"] = "yes"
     gate = subprocess.run(
-        [sys.executable, str(root / "scripts" / "licenses.py"), "gate", "--graph", str(root / "graph.yaml")],
+        [sys.executable, str(root / "scripts" / "licenses.py"), "gate", "--graph", graph_file],
         cwd=root,
         env=env,
     )
@@ -373,7 +375,7 @@ def _run_gate_and_sync(root, yes):
     if sync.returncode:
         raise StartupError(f"pinned projects could not be synchronized (exit {sync.returncode}); nothing started")
     gate = subprocess.run(
-        [sys.executable, str(root / "scripts" / "licenses.py"), "gate", "--graph", str(root / "graph.yaml")],
+        [sys.executable, str(root / "scripts" / "licenses.py"), "gate", "--graph", graph_file],
         cwd=root,
         env=env,
     )
@@ -515,7 +517,7 @@ def run(args=None):
 
         _report_remote_topology(remote_nodes, remote_gateways, omitted_aliases)
 
-        launch_env = _run_gate_and_sync(ROOT, options.yes)
+        launch_env = _run_gate_and_sync(ROOT, options.yes, graph_path)
         # Harness² / Terminal-RSI: put accepted versions in place for any agent whose
         # self_improve mode is on, before model servers / llama UI come up (docs/harness2.md).
         try:

@@ -237,3 +237,26 @@ def test_launch_preflight_checks_the_real_binary(monkeypatch):
     monkeypatch.setattr(start_graph.shutil, "which", lambda name: None)
     with pytest.raises(start_graph.StartupError, match=r"runtime for node chat is missing or not executable: .*llama-server$"):
         start_graph.validate_local_nodes(g, "h1", ["chat"], check_files=True)
+
+
+def test_start_graph_passes_its_graph_to_serve_and_gate(tmp_path, monkeypatch):
+    """Regression: --graph X validated X, but serve.sh and the license gate read the fleet graph.yaml."""
+    import subprocess as sp
+    calls = []
+    monkeypatch.setattr(start_graph.subprocess, "run",
+                        lambda argv, **kw: calls.append((argv, kw["env"])) or sp.CompletedProcess(argv, 0))
+    g = tmp_path / "mine.yaml"
+    from pathlib import Path
+    env = start_graph._run_gate_and_sync(Path(ROOT), True, g)
+    assert env["FAMILIA_GRAPH"] == str(g)
+    gates = [a for a, _ in calls if "gate" in a]
+    assert len(gates) == 2 and all(a[a.index("--graph") + 1] == str(g) for a in gates)
+
+
+def test_serve_sh_validates_familia_graph(tmp_path):
+    import subprocess, yaml
+    g = _two_host(); g["models"]["mchat"]["gguf"] = str(tmp_path / "only-in-this-graph.gguf")
+    p = tmp_path / "g.yaml"; p.write_text(yaml.safe_dump(g))
+    r = subprocess.run(["sh", os.path.join(ROOT, "scripts", "serve.sh"), "chat"], capture_output=True, text=True,
+                       env=dict(os.environ, FAMILIA_GRAPH=str(p), FAMILIA_HOST="h1"), timeout=60)
+    assert r.returncode != 0 and "only-in-this-graph.gguf" in r.stdout + r.stderr
