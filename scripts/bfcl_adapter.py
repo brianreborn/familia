@@ -46,12 +46,18 @@ def _strip_fence(text):
     return (m.group(1) if m else text).strip()
 
 
+MAX_OUTPUT_BYTES = 64 * 1024
+
+
 def parse_calls(output):
     """Return a list of {name: {arg: value}} or raise ValueError."""
     if isinstance(output, list):
         data = output
     else:
-        text = _strip_fence(str(output or ""))
+        raw = str(output or "")
+        if len(raw.encode("utf-8", "surrogatepass")) > MAX_OUTPUT_BYTES:
+            raise ValueError(f"output exceeds {MAX_OUTPUT_BYTES} bytes")
+        text = _strip_fence(raw)
         if not text:
             raise ValueError("empty output")
         data = None
@@ -65,8 +71,8 @@ def parse_calls(output):
                 text = f"[{text}]"
             try:
                 tree = ast.parse(text, mode="eval")
-            except SyntaxError as e:
-                raise ValueError(f"unparseable: {e}") from None
+            except (SyntaxError, RecursionError, MemoryError) as e:
+                raise ValueError(f"unparseable: {type(e).__name__}") from None
             elts = tree.body.elts if isinstance(tree.body, (ast.List, ast.Tuple)) else [tree.body]
             calls = []
             for el in elts:
@@ -177,8 +183,8 @@ def ast_match(calls, ground_truth, functions=()):
 def score_bfcl_ast(expect, output):
     try:
         calls = parse_calls(output)
-    except (ValueError, json.JSONDecodeError) as e:
-        return False, f"parse_error:{e}"
+    except (ValueError, json.JSONDecodeError, RecursionError, MemoryError, TypeError) as e:
+        return False, f"parse_error:{type(e).__name__}:{str(e)[:200]}"
     return ast_match(calls, expect.get("ground_truth") or [], expect.get("functions") or [])
 
 
