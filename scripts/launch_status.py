@@ -7,6 +7,7 @@ fleet-wide memory admission budget every launcher uses before it starts a model.
   release: launch_status.py release --pid PID
   budget: launch_status.py budget                              (prints the ledger)
 Stdlib only."""
+import tempfile
 import fcntl, json, os, re, signal, sys, time
 
 V = 1
@@ -21,8 +22,10 @@ CODES = {
     "CR_OOM_KERNEL": ("CRASHED", 82), "CR_OOM_MEMCG": ("CRASHED", 83), "CR_EXIT": ("CRASHED", 84),
     "KL_WATCHDOG": ("KILLED", 90), "KL_USER": ("KILLED", 91), "KL_OOMD": ("KILLED", 92), "KL_EARLYOOM": ("KILLED", 93),
 }
+# Per-user state: $XDG_RUNTIME_DIR (0700, owned) else ~/.cache/familia; never shared /tmp.
 LEDGER = os.environ.get("FAMILIA_ADMISSION", os.path.join(
-    os.environ.get("XDG_RUNTIME_DIR") or "/tmp", "familia-admission-%d.json" % os.getuid()))
+    os.environ.get("XDG_RUNTIME_DIR") or os.path.join(os.path.expanduser("~"), ".cache", "familia"),
+    "familia-admission-%d.json" % os.getuid()))
 RESERVE_MIB = int(os.environ.get("FAMILIA_RESERVE_MIB", "1536"))
 
 
@@ -86,8 +89,9 @@ def _rss(pid):
 
 
 def _locked(fn):
-    os.makedirs(os.path.dirname(LEDGER), exist_ok=True)
-    with open(LEDGER + ".lock", "w") as lk:
+    os.makedirs(os.path.dirname(LEDGER), mode=0o700, exist_ok=True)
+    lfd = os.open(LEDGER + ".lock", os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0), 0o600)
+    with os.fdopen(lfd, "w") as lk:
         fcntl.flock(lk, fcntl.LOCK_EX)
         try:
             led = json.load(open(LEDGER))
@@ -95,8 +99,15 @@ def _locked(fn):
             led = {}
         led = {p: r for p, r in led.items() if _rss(int(p)) is not None}  # drop dead pids
         out = fn(led)
-        tmp = LEDGER + ".tmp"
-        json.dump(led, open(tmp, "w")); os.replace(tmp, LEDGER)
+        fd, tmp = tempfile.mkstemp(dir=os.path.dirname(LEDGER), prefix=".admission-", suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w") as f:
+                json.dump(led, f)
+            os.replace(tmp, LEDGER)
+        except BaseException:
+            try: os.unlink(tmp)
+            except OSError: pass
+            raise
         return out
 
 
