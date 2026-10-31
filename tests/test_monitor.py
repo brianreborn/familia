@@ -200,3 +200,11 @@ def test_cli_once_local_only(tmp_path):
                        stdout=subprocess.PIPE, env=env, timeout=60)
     d = json.loads(p.stdout)
     assert d["hosts"]["miryam"]["transport"] == "local" and d["hosts"]["miryam"]["sample"]["ok"]
+
+
+def test_parse_bsd_mem():
+    m = probe.parse_bsd_mem("25629380608\n4096\n416268\n4037176\n",
+                            "Device:       1kB-blocks      Used:\n/dev/ada1      156290904    1091368\n")
+    assert m["total_mib"] == 24442 and m["available_mib"] == (416268 + 4037176) * 4096 // 1048576
+    assert m["swap_total_mib"] == 156290904 // 1024 and m["swap_free_mib"] == (156290904 - 1091368) // 1024
+    assert probe.parse_bsd_mem("") is None

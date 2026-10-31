@@ -82,6 +82,36 @@ def forced_args():
 
 # ---------- parsers (pure functions; unit-tested) ----------
 
+def parse_bsd_mem(sysctl_out, swapinfo_out=""):
+    """FreeBSD `sysctl -n hw.physmem hw.pagesize vm.stats.vm.v_free_count vm.stats.vm.v_inactive_count`
+    (+ optional `swapinfo -k`) -> the same dict shape as parse_meminfo."""
+    v = [int(x) for x in (sysctl_out or "").split() if x.isdigit()]
+    if len(v) < 4:
+        return None
+    phys, page, free, inact = v[:4]
+    st = sf = None
+    for line in (swapinfo_out or "").splitlines()[1:]:
+        f = line.split()
+        if len(f) >= 3 and f[1].isdigit() and f[2].isdigit():
+            st = (st or 0) + int(f[1]) // 1024; sf = (sf or 0) + (int(f[1]) - int(f[2])) // 1024
+    return {"total_mib": phys // 1048576, "available_mib": (free + inact) * page // 1048576,
+            "swap_total_mib": st, "swap_free_mib": sf, "shmem_mib": None, "cached_mib": None}
+
+
+def bsd_mem():
+    import subprocess
+    try:
+        out = subprocess.run(["sysctl", "-n", "hw.physmem", "hw.pagesize", "vm.stats.vm.v_free_count",
+                              "vm.stats.vm.v_inactive_count"], capture_output=True, text=True, timeout=5).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None
+    try:
+        sw = subprocess.run(["swapinfo", "-k"], capture_output=True, text=True, timeout=5).stdout
+    except (OSError, subprocess.SubprocessError):
+        sw = ""
+    return parse_bsd_mem(out, sw)
+
+
 def parse_meminfo(text):
     m = {}
     for line in (text or "").splitlines():
@@ -419,6 +449,8 @@ def collect(o):
     uptime = float((rd("/proc/uptime") or "0").split()[0])
     load = (rd("/proc/loadavg") or "").split()[:3]
     mem = parse_meminfo(rd("/proc/meminfo"))
+    if mem["total_mib"] is None:  # FreeBSD/macOS: no /proc/meminfo
+        mem = bsd_mem() or mem
     rest = {"disks": disks(), "temps": temps(), "gpus": gpus(), "battery": battery(),
             "zram": zram(), "swaps": swaps(), "os": os_name()}
     time.sleep(max(0.0, o["interval"] - (time.time() - t1)))
