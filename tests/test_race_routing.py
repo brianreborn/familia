@@ -150,8 +150,6 @@ def test_r2_backend_dies_after_route_chosen_clean_fallback_no_stale_port():
     srv.shutdown(); light.close()
 
 
-@pytest.mark.xfail(strict=True, reason="R2: _retry_once resends raw body rewritten for the FAILED "
-                   "node (model alias of heavy, handoff msgs) to light (escalation_proxy.py:262)")
 def test_r2_fallback_retry_uses_fallback_node_alias():
     light = Upstream("light")
     esc, srv = proxy(graph(light.port, closed_port()), current="heavy")
@@ -160,8 +158,6 @@ def test_r2_fallback_retry_uses_fallback_node_alias():
     assert light.seen and light.seen[-1]["model"] == "light-a"
 
 
-@pytest.mark.xfail(strict=True, reason="R2: ensure()/health only at swap time "
-                   "(escalation_proxy.py:150); dispatch at :284-298 does not re-check")
 def test_r2_health_rechecked_at_dispatch_after_swap():
     light, heavy = Upstream("light"), Upstream("heavy")
     calls = []
@@ -201,8 +197,6 @@ def test_r3_reconnect_backoff_bounded():
 
 # ---------------- R4 timeout + cancel propagation ----------------
 
-@pytest.mark.xfail(strict=True, reason="R4: caller cancel is not propagated; session lock held "
-                   "for the whole upstream call (timeout=3600, escalation_proxy.py:280/:298)")
 def test_r4_caller_cancel_frees_session_slot():
     up = Upstream("light", delay=2.0)
     _, srv = proxy(graph(up.port, closed_port()))
@@ -269,8 +263,6 @@ def _fifo_violations(senders=4, per=16, delay=0.03, stagger=0.01):
     return {k: v for k, v in per_s.items() if v != sorted(v)}
 
 
-@pytest.mark.xfail(strict=True, reason="R5: per-session order relies on threading.RLock, which is "
-                   "not FIFO-fair (escalation_proxy.py:106/:280); no sequence number")
 def test_r5_per_sender_fifo_preserved():
     bad = _fifo_violations()
     assert not bad, f"out-of-order arrivals per session: {bad}"
@@ -324,8 +316,6 @@ def test_r6_burst_connections_all_answered():
     assert not bad, f"{len(bad)}/{BURST} burst connections failed: {bad[:5]}"
 
 
-@pytest.mark.xfail(strict=True, reason="R6: ThreadingHTTPServer default request_queue_size=5 "
-                   "(escalation_proxy.py:325); FreeBSD resets a 12+ burst. Harden to >=128")
 def test_r6_listen_backlog_covers_burst():
     up = Upstream("light")
     _, srv = proxy(graph(up.port, closed_port()))
