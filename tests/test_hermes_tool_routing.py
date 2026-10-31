@@ -98,6 +98,67 @@ def test_explicit_tool_route_to_guardian_is_ignored():
     assert r == {"mode": "nexus", "node": "qodesh-resident", "via": None}
 
 
+def test_discovery_skips_same_host_server_tools_none():
+    # Boundary B1: same-host peer with server_tools: none → tool_policy [] → skipped.
+    g = g_main("qodesh-gpu-decision")
+    # Make resident the only same-host candidate, then opt it out.
+    for k, n in g["nodes"].items():
+        if n.get("host") == "qodesh" and k not in ("qodesh-gpu-decision", "qodesh-resident"):
+            if not hh.tool_free(g, k):
+                n["status"] = "planned"
+    g["nodes"]["qodesh-resident"]["server_tools"] = "none"
+    assert hh.vg.tool_policy(g, "qodesh-resident") == []
+    # Plan mesh peers too so the only would-be target is the opted-out resident.
+    for k, n in g["nodes"].items():
+        if n.get("host") != "qodesh" and k != "qodesh-gpu-decision" and not hh.tool_free(g, k):
+            n["status"] = "planned"
+    r = hh.route_tools(g, "hermes")
+    assert r["mode"] == "none" and r["node"] is None
+
+
+def test_discovery_skips_off_loopback_mesh_peer_without_server_tools():
+    # Boundary B1: off-loopback mesh peer, no server_tools key → vg.tool_policy already
+    # returns [] (capable + non-loopback + no key / no route). _discovery_ok requires
+    # policy != [], so that peer is skipped. (No extra bind check needed in harness.)
+    g = g_main("phone7-decision", status="active")
+    for k, n in g["nodes"].items():
+        if k != "phone7-decision" and not hh.tool_free(g, k):
+            n["status"] = "planned"
+    peer = "coder"
+    g["nodes"][peer]["status"] = "active"
+    g["nodes"][peer]["bind"] = "0.0.0.0"
+    g["nodes"][peer].pop("server_tools", None)
+    assert hh.vg.tool_capable(g, peer)
+    assert hh.vg.tool_policy(g, peer) == []
+    r = hh.route_tools(g, "hermes")
+    assert r["mode"] == "none" and r["node"] is None
+
+
+def test_explicit_tool_route_skipped_when_target_policy_empty():
+    # Explicit route to a server_tools:none target must not be used (policy []).
+    g = g_main("qodesh-gpu-decision")
+    g["nodes"]["qodesh-gpu-decision"]["tool_route"] = "coder"
+    g["nodes"]["coder"]["server_tools"] = "none"
+    assert hh.vg.tool_route(g, "qodesh-gpu-decision") is None  # #243 filters
+    assert hh.vg.tool_policy(g, "coder") == []
+    r = hh.route_tools(g, "hermes")
+    assert r.get("node") != "coder"
+
+
+def test_server_tools_opt_out_on_direct_node():
+    # Boundary B2: capable node with server_tools key and policy [] → none, not direct.
+    g = g_main("coder", server_tools="none")
+    assert hh.vg.tool_capable(g, "coder") and "server_tools" in g["nodes"]["coder"]
+    assert hh.vg.tool_policy(g, "coder") == []
+    r = hh.route_tools(g, "hermes")
+    assert r == {"mode": "none", "node": None, "via": None, "reason": "server_tools opt-out"}
+    # Missing key stays direct (even though an off-loopback bind would make policy []).
+    g2 = g_main("coder", bind="0.0.0.0")
+    assert "server_tools" not in g2["nodes"]["coder"]
+    assert hh.vg.tool_policy(g2, "coder") == []
+    assert hh.route_tools(g2, "hermes") == {"mode": "direct", "node": "coder", "via": None}
+
+
 @pytest.mark.parametrize("node,over", [("miryam-pentest", {}), ("angel-guardian", {}),
                                        ("coder", {"role": "pentest"}), ("coder", {"role": "guardian"})])
 def test_guardian_pentest_get_no_tools(tmp_path, monkeypatch, node, over):

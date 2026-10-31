@@ -598,10 +598,14 @@ def nexus_meshes(g, host):
 
 
 def _discovery_ok(g, src, k):
-    """Same-host / mesh fallback candidate: active, not self, not fail-closed, capable per #243."""
+    """Same-host / mesh fallback candidate: active, not self, not fail-closed, capable, and
+    vg.tool_policy != [] (#243 / Boundary B1). tool_policy already yields [] for
+    server_tools opt-out (none/[]/false) and for a capable non-loopback peer with no
+    server_tools key — so requiring != [] skips both without a second bind check."""
     o = (g.get("nodes") or {}).get(k) or {}
     return (k != src and o.get("status") != "planned"
-            and not tool_free(g, k) and vg.tool_capable(g, k))
+            and not tool_free(g, k) and vg.tool_capable(g, k)
+            and vg.tool_policy(g, k) != [])
 
 
 def route_tools(g, agent):
@@ -613,12 +617,15 @@ def route_tools(g, agent):
     if tool_free(g, name):
         return {"mode": "none", "node": None, "via": None, "reason": "tool-free node"}
     if vg.tool_capable(g, name):
-        # Direct: model emits tool calls; Hermes runs MCP/toolsets locally. tool_policy is the
-        # llama-server --tools grant (separate layer); do not require it for Hermes direct.
+        # Explicit server_tools opt-out (TOOLS-006): present key whose policy is [] → none.
+        # Missing key stays direct even if policy would be [] for other reasons (e.g. off-loopback).
+        if "server_tools" in n and vg.tool_policy(g, name) == []:
+            return {"mode": "none", "node": None, "via": None, "reason": "server_tools opt-out"}
         return {"mode": "direct", "node": name, "via": None}
-    # Explicit one-hop from graph (#243). tool_route already rejects fail-closed / routed targets.
+    # Explicit one-hop from graph (#243). Reject fail-closed and policy-[] targets here too
+    # (vg.tool_route already filters policy-[], but keep the check so a [] grant is never used).
     t = vg.tool_route(g, name)
-    if t and not tool_free(g, t):
+    if t and not tool_free(g, t) and vg.tool_policy(g, t) != []:
         return {"mode": "nexus", "node": t, "via": None, "reason": "tool_route"}
     # #243 does not discover a target — Hermes falls back to same-host, then ssh nexus mesh.
     host = n.get("host")
