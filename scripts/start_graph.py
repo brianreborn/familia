@@ -9,6 +9,7 @@ import argparse
 import json
 import os
 from pathlib import Path
+import shlex
 import shutil
 import signal
 import socket
@@ -296,7 +297,10 @@ def validate_local_nodes(graph, host, nodes, *, check_files):
         except SystemExit as error:
             raise StartupError(str(error)) from error
         if check_files:
-            binary = Path(argv[0]).expanduser()
+            if "/" not in argv[0] and shutil.which(argv[0]):
+                binary = Path(shutil.which(argv[0]))  # runtime without bin: llama-server on PATH
+            else:
+                binary = Path(argv[0]).expanduser()
             if not binary.is_absolute():
                 binary = ROOT / binary
             if not binary.is_file() or not os.access(binary, os.X_OK):
@@ -493,6 +497,8 @@ def run(args=None):
             plans = validate_local_nodes(graph, host, nodes, check_files=False)
             _report_remote_topology(remote_nodes, remote_gateways, omitted_aliases)
             print(f"familia-graph: host {host}; active local nodes: {', '.join(n for n, _ in plans) or 'none'}")
+            for name, argv in plans:
+                print(f"familia-graph: node {name}: {shlex.join(argv)}")
             for gateway_name, gateway, aliases in gateways:
                 via = (f"graph_router (caller auth: {__import__('familia_auth').instance_key_file(port=gateway['port'])}; /health public)"
                        if needs_router(aliases, gateway) else "graph-proxy (router: false; down node retried up to 180 s)")

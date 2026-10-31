@@ -217,3 +217,23 @@ def test_cascade_council_refuses_agent_off_gateway():
     g = _cascade_graph(); g["agents"]["crit"]["aliases"] = {"main": "far", "auxiliary": "far"}
     with pytest.raises(start_graph.StartupError, match="council review"):
         start_graph.local_topology(g, "h1")
+
+
+def test_dry_run_prints_full_command_per_node(tmp_path):
+    import subprocess, yaml
+    p = tmp_path / "g.yaml"; p.write_text(yaml.safe_dump(_two_host()))
+    r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "start_graph.py"), "--graph", str(p),
+                        "--host", "h1", "--dry-run", "--fleet"], capture_output=True, text=True, cwd=ROOT)
+    assert r.returncode == 0, r.stderr
+    line = next(l for l in r.stdout.splitlines() if l.startswith("familia-graph: node chat: "))
+    argv = line.split(": ", 2)[2].split()
+    assert argv[0] == "llama-server" and argv[1] == "-m" and "--port" in argv and "-t" in argv
+
+
+def test_launch_preflight_checks_the_real_binary(monkeypatch):
+    """--launch used to take argv[0] ('-m') as the binary: preflight must look at llama-server itself."""
+    g = _two_host()
+    monkeypatch.setattr(start_graph.graph_validator, "validate", lambda *a, **k: ([], []))
+    monkeypatch.setattr(start_graph.shutil, "which", lambda name: None)
+    with pytest.raises(start_graph.StartupError, match=r"runtime for node chat is missing or not executable: .*llama-server$"):
+        start_graph.validate_local_nodes(g, "h1", ["chat"], check_files=True)

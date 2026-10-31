@@ -560,3 +560,25 @@ def test_server_tools_explicit_opt_out_validates():
         x = g(); x["nodes"]["angel-guardian"]["server_tools"] = opt
         assert [e for e in errs(x) if "server_tools" in e] == [], opt
     x = g(); x["nodes"]["coder"]["server_tools"] = "some"; has(x, "opt-out")
+
+
+def test_quantized_kv_without_fa_forces_fa_on_and_warns():
+    """sysrescue bring-up: kv q8_0 + flash_attn false -> llama-server 'quantized V cache requires flash_attn'."""
+    x = g(); n = x["nodes"]["coder"]; n["kv_type"] = "q8_0"; n["flash_attn"] = False
+    a = validate_graph.server_args(x, "coder")
+    assert a[a.index("-fa") + 1] == "on"
+    assert any(w.startswith("nodes.coder: kv_type q8_0 with flash_attn: false") for w in validate_graph.routing_warnings(x))
+    n["kv_type"] = "f16"
+    assert "-fa" not in validate_graph.server_args(x, "coder")
+    assert not any(w.startswith("nodes.coder: kv_type") for w in validate_graph.routing_warnings(x))
+
+
+def test_server_args_argv0_is_binary_and_threads_from_host():
+    x = g(); rt = x["runtimes"][x["nodes"]["coder"]["runtime"]]
+    rt.pop("bin", None); x["nodes"]["coder"].pop("threads", None)
+    a = validate_graph.server_args(x, "coder")
+    assert a[0] == "llama-server" and a[1] == "-m"            # never a bare "-m ..." argv
+    assert a[a.index("-t") + 1] == str(x["hosts"][x["nodes"]["coder"]["host"]]["threads"])
+    rt["bin"] = "bin/llama-server"; x["nodes"]["coder"]["threads"] = 3
+    a = validate_graph.server_args(x, "coder")
+    assert a[0].endswith("bin/llama-server") and a[a.index("-t") + 1] == "3"   # node.threads wins
