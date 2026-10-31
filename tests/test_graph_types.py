@@ -1,4 +1,4 @@
-import copy, os, subprocess, sys
+import copy, os, re, subprocess, sys
 import pytest, yaml
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
@@ -21,16 +21,19 @@ def test_llama_070_runtime_preserves_existing_model_architectures():
         arch
         for name, spec in BASE["runtimes"].items()
         if name.startswith("llama-b") and name not in {"llama-b11669", "llama-b11669-freebsd"}
+        # only builds older than b11669; newer pins (e.g. b11944 adds lfm3) can't be "preserved"
+        and int(re.match(r"llama-b(\d+)", name).group(1)) < 11669
         for arch in spec["supported_archs"]
     }
     assert runtime["build"] == "b11669 (llama.cpp 0.7.0)"
     assert previous_archs <= set(runtime["supported_archs"])
-    assert BASE["nodes"]["coder"]["runtime"] == "llama-b11669"
-    assert BASE["nodes"]["embed"]["runtime"] == "llama-b11669"
+    assert BASE["nodes"]["coder"]["runtime"] == "llama-b11944"  # repinned in 6707c88
+    assert BASE["nodes"]["embed"]["runtime"] == "llama-b11944"  # repinned in 6707c88
     freebsd = BASE["runtimes"]["llama-b11669-freebsd"]
     assert freebsd["hosts"] == ["angel"]
     assert freebsd["backends"] == ["cpu"]
     assert previous_archs <= set(freebsd["supported_archs"])
+    assert previous_archs <= set(BASE["runtimes"]["llama-b11944"]["supported_archs"])
 
 def test_version_required():
     x = g(); x["version"] = 1; has(x, "version: expected 2")

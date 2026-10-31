@@ -309,7 +309,7 @@ runtimes:
     commit: 1b4554eff124a8f0033bc09b3f708a5e51cbda15
     bin: code-bootstraps-llama.cpp/bin/llama-b11944-linux-x64-cpu/llama-server
     hosts: [miryam]
-    supported_archs: [qwen35, gemma-embedding2, llama, lfm2, lfm3, qwen2, gemma2, gemma3, nanbeige]
+    supported_archs: [qwen35, gemma-embedding2, llama, lfm2, lfm3, qwen2, gemma2, gemma3, nanbeige, modern-bert]
     backends: [cpu, vulkan]
     spec_types: [draft-simple, ngram-simple, ngram-map-k, ngram-map-k4v, ngram-mod, ngram-cache]
 
@@ -319,8 +319,9 @@ runtimes:
     commit: 620d2225cc436ab0b001e3200e590e3b286ef9ab
     bin: code-bootstraps-llama.cpp/bin/llama-b11669-linux-x64-cpu/llama-server
     hosts: [miryam]
-    # Preserve every model architecture supported by the existing llama.cpp runtimes.
-    supported_archs: [qwen35, gemma-embedding2, llama, lfm2, qwen2, gemma2, gemma3, nanbeige]
+    # Preserve every arch supported by OLDER llama.cpp runtimes. lfm3 is not in b11669
+    # (src/llama-arch.cpp@620d222); it first appears in b11944, so LFM3 nodes need llama-b11944.
+    supported_archs: [qwen35, gemma-embedding2, llama, lfm2, qwen2, gemma2, gemma3, nanbeige, modern-bert]
     backends: [cpu, vulkan]
     spec_types: [draft-simple, ngram-simple, ngram-map-k, ngram-map-k4v, ngram-mod, ngram-cache]
 
@@ -330,7 +331,7 @@ runtimes:
     commit: 620d2225cc436ab0b001e3200e590e3b286ef9ab
     bin: code-bootstraps-llama.cpp/build-freebsd/bin/llama-server
     hosts: [angel]
-    supported_archs: [qwen35, gemma-embedding2, llama, lfm2, qwen2, gemma2, gemma3, nanbeige]
+    supported_archs: [qwen35, gemma-embedding2, llama, lfm2, qwen2, gemma2, gemma3, nanbeige, modern-bert]
     backends: [cpu]
     spec_types: [draft-simple, ngram-simple, ngram-map-k, ngram-map-k4v, ngram-mod, ngram-cache]
 
