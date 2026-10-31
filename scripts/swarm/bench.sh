@@ -17,21 +17,36 @@ lfm3="AtomicChat/LFM3-1.7B-Uncensored-GGUF/LFM3-1.7B-Uncensored-AD-Q4_K_M.gguf@8
 models=${SWARM_BENCH_MODELS:-"$lfm3 bartowski/SmolLM2-135M-Instruct-GGUF/SmolLM2-135M-Instruct-Q8_0.gguf"}
 pp=${SWARM_BENCH_PP:-512}; tg=${SWARM_BENCH_TG:-128}
 reps=${SWARM_BENCH_REPS:-2}; knobs=""
+for v in "${SWARM_BENCH_THREADS:-}" "${SWARM_BENCH_UB:-}" "${SWARM_BENCH_LM:-}" "$reps"; do
+	case "$v" in *[!0-9a-z,]*) echo "bad knob value: $v (comma lists of [0-9a-z] only)"; exit 2 ;; esac
+done
 [ -n "${SWARM_BENCH_THREADS:-}" ] && knobs="$knobs -t $SWARM_BENCH_THREADS"
 [ -n "${SWARM_BENCH_UB:-}" ] && knobs="$knobs -ub $SWARM_BENCH_UB"
 [ -n "${SWARM_BENCH_LM:-}" ] && knobs="$knobs -lm $SWARM_BENCH_LM"
 to=""; command -v timeout >/dev/null 2>&1 && to="timeout ${SWARM_BENCH_TIMEOUT:-900}"
+load1() { # 1-min load average, locale-independent
+	if [ -r /proc/loadavg ]; then cut -d' ' -f1 /proc/loadavg
+	elif l=$(sysctl -n vm.loadavg 2>/dev/null); then echo "$l" | tr -d '{}' | awk '{print $1}'
+	else LC_ALL=C uptime | sed 's/.*average[s]*: *//; s/,.*//'; fi
+}
+avail_mib() { # MemAvailable (Linux) or free+inactive pages (FreeBSD); empty if unknown
+	if [ -r /proc/meminfo ]; then awk '/^MemAvailable:/{print int($2/1024)}' /proc/meminfo
+	elif v=$(sysctl -n hw.pagesize vm.stats.vm.v_free_count vm.stats.vm.v_inactive_count 2>/dev/null); then
+		echo "$v" | awk 'NR==1{p=$1} NR>1{c+=$1} END{print int(p*c/1048576)}'
+	fi
+}
 busy() { # $1 = model file; prints a reason and returns 0 when the host should not be benched
 	[ "${SWARM_BENCH_FORCE:-0}" = 1 ] && return 1
 	pgrep -x llama-server >/dev/null 2>&1 && { echo "llama-server running"; return 0; }
 	n=$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 2)
-	l=$(uptime | sed 's/.*average[s]*: *//; s/,.*//')
-	awk -v l="$l" -v m="${SWARM_BENCH_MAX_LOAD:-$((n / 2))}" 'BEGIN{exit !(l+0 >= m+0)}' && { echo "load $l"; return 0; }
-	[ -r /proc/meminfo ] || return 1
-	av=$(awk '/^MemAvailable:/{print int($2/1024)}' /proc/meminfo)
+	m=${SWARM_BENCH_MAX_LOAD:-$(( n / 2 > 0 ? n / 2 : 1 ))}
+	l=$(load1)
+	awk -v l="$l" -v m="$m" 'BEGIN{exit !(l+0 >= m+0)}' && { echo "load $l"; return 0; }
+	av=$(avail_mib)
+	[ -n "$av" ] || { echo "RAM guard unavailable (no /proc/meminfo or vm.stats sysctl)" >&2; return 1; }
 	sz=$(( $(wc -c < "$1") / 1048576 ))
 	need=$(( sz * 115 / 100 + ${SWARM_BENCH_RESERVE_MIB:-3072} ))
-	[ "${av:-0}" -lt "$need" ] && { echo "MemAvailable ${av}MiB < ${need}MiB"; return 0; }
+	[ "$av" -lt "$need" ] && { echo "MemAvailable ${av}MiB < ${need}MiB"; return 0; }
 	return 1
 }
 lb=${LLAMA_BENCH:-$(command -v llama-bench 2>/dev/null || true)}
@@ -58,7 +73,11 @@ for m in $models; do
 	fi
 	if why=$(busy "$f"); then echo "| $h-$u | $file | - | - | skipped: $why | SKIP |"; [ $rc = 0 ] && rc=78; continue; fi
 	# shellcheck disable=SC2086 # $to and $knobs are intentionally word-split
-	$to "$lb" -m "$f" -p "$pp" -n "$tg" -r "$reps" $knobs -o csv 2>/dev/null > "$cache/out.csv" || { echo "| $h-$u | $file | - | - | llama-bench | FAIL |"; rc=1; continue; }
+	$to "$lb" -m "$f" -p "$pp" -n "$tg" -r "$reps" $knobs -o csv 2>/dev/null > "$cache/out.csv"; e=$?
+	if [ $e -ne 0 ]; then
+		st="llama-bench exit $e"; [ $e = 124 ] && st="timeout ${SWARM_BENCH_TIMEOUT:-900}s"
+		echo "| $h-$u | $file | - | - | $st | FAIL |"; rc=1; continue
+	fi
 	python3 - "$cache/out.csv" "$h-$u" "$file" <<'PY'
 import csv,sys
 for r in csv.DictReader(open(sys.argv[1])):

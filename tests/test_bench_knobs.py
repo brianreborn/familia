@@ -2,6 +2,8 @@
 import os
 import subprocess
 
+import pytest
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BENCH = os.path.join(ROOT, "scripts", "swarm", "bench.sh")
 CSV = 'n_threads,n_prompt,n_gen,avg_ts,stddev_ts,backends\n"4","0","128","20.0","0.1","CPU"\n'
@@ -16,7 +18,8 @@ def _run(tmp_path, **env):
     fake.write_text("#!/bin/sh\necho \"$@\" > %s\nprintf '%%s' '%s'\n" % (args, CSV))
     fake.chmod(0o755)
     e = dict(os.environ, SWARM_BENCH_CACHE=str(cache), LLAMA_BENCH=str(fake),
-             SWARM_BENCH_MODELS="r/x/m.gguf", **env)
+             SWARM_BENCH_MODELS="r/x/m.gguf")
+    e.update(env)
     p = subprocess.run(["sh", BENCH], env=e, capture_output=True, text=True, timeout=60)
     return p, (args.read_text() if args.exists() else "")
 
@@ -41,6 +44,20 @@ def test_busy_host_is_skipped(tmp_path):
 
 def test_low_memory_is_skipped(tmp_path):
     if not os.path.exists("/proc/meminfo"):
-        return
+        pytest.skip("no /proc/meminfo (FreeBSD path uses vm.stats sysctl)")
     p, a = _run(tmp_path, SWARM_BENCH_MAX_LOAD="100000", SWARM_BENCH_RESERVE_MIB="100000000")
     assert p.returncode == 78 and "MemAvailable" in p.stdout and a == ""
+
+
+def test_bad_knob_rejected(tmp_path):
+    p, a = _run(tmp_path, SWARM_BENCH_FORCE="1", SWARM_BENCH_THREADS="2 *")
+    assert p.returncode == 2 and a == ""
+
+
+
+def test_timeout_labelled(tmp_path):
+    slow = tmp_path / "slow-bench"
+    slow.write_text("#!/bin/sh\nexec sleep 5\n")
+    slow.chmod(0o755)
+    p, _ = _run(tmp_path, SWARM_BENCH_FORCE="1", SWARM_BENCH_TIMEOUT="1", LLAMA_BENCH=str(slow))
+    assert p.returncode == 1 and "timeout 1s" in p.stdout, p.stdout
