@@ -458,7 +458,13 @@ run_raw() {  # run_raw GATE CMD ARGS...
 }
 cli_help() {  # cli_help [--man | COMMAND...]
   if [ "${1:-}" = --man ]; then
-    if command -v man >/dev/null 2>&1; then man "$ROOT/man/familia.1"; return $?; fi
+    if command -v man >/dev/null 2>&1; then
+      if [ -t 1 ]; then man "$ROOT/man/familia.1"; return $?; fi
+      # Not a terminal: plain text. FreeBSD's mandoc man still emits backspace overstrike
+      # (N\bNA\bA...) when piped; strip it portably (no col(1) dependency).
+      _bs=$(printf '\b')
+      MANPAGER=cat PAGER=cat man "$ROOT/man/familia.1" 2>/dev/null | sed "s/.$_bs//g"; return 0
+    fi
     err "man is not installed here; showing the plain help instead (the page is man/familia.1)."
     $PY scripts/familia_cli.py help; return $?
   fi
