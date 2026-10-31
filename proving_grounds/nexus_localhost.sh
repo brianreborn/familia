@@ -2,11 +2,11 @@
 # Nexus between three local unix users over a throwaway key-only sshd on 127.0.0.1:2222.
 # Needs sudo (creates users nxhub, nxa, nxb). Never touches the system sshd.
 set -euo pipefail
-here=$(cd "$(dirname "$0")/.." && pwd); w=/tmp/nexus-test; sudo rm -rf $w; mkdir -p $w; chmod 755 $w
+here=$(cd "$(dirname "$0")/.." && pwd); w=$(umask 077; mktemp -d "${TMPDIR:-/tmp}/nexus-test.XXXXXX"); chmod 755 "$w"  # world-readable: nx* users read scripts/
 if which useradd; then
   for u in nxhub nxa nxb; do id $u >/dev/null 2>&1 || sudo useradd -m -s /bin/bash $u; sudo usermod -p '*' $u; done  # '*': unlocked but no password exists
 else
-  for u in nxhub nxa nxb; do id $u >/dev/null 2>&1 || sudo pw useradd $u -m -s `which bash`; done  # '*': unlocked but no password exists
+  for u in nxhub nxa nxb; do id $u >/dev/null 2>&1 || sudo pw useradd $u -m -s "$(which bash)"; done  # '*': unlocked but no password exists
 fi
 ssh-keygen -q -t ed25519 -N '' -f $w/hostkey
 cat > $w/sshd_config <<C
@@ -22,7 +22,7 @@ PidFile $w/sshd.pid
 C
 sudo /usr/sbin/sshd -t -f $w/sshd_config
 sudo mkdir -p /run/sshd; sudo /usr/sbin/sshd -f $w/sshd_config -E $w/sshd.log
-trap 'sudo kill $(cat $w/sshd.pid) 2>/dev/null || true' EXIT
+trap 'sudo kill "$(cat "$w/sshd.pid")" 2>/dev/null || true; sudo rm -rf -- "$w"' EXIT
 sudo -u nxhub bash -c 'mkdir -p ~/.ssh && chmod 700 ~/.ssh && : > ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys'
 for u in nxa nxb; do
   sudo -u $u bash -c 'mkdir -p ~/.ssh && rm -f ~/.ssh/id_ed25519* ~/.ssh/known_hosts && ssh-keygen -q -t ed25519 -N "" -f ~/.ssh/id_ed25519'
