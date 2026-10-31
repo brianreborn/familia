@@ -320,7 +320,7 @@ runtimes:
     bin: code-bootstraps-llama.cpp/bin/llama-b11669-linux-x64-cpu/llama-server
     hosts: [miryam]
     # Preserve every model architecture supported by the existing llama.cpp runtimes.
-    supported_archs: [qwen35, gemma-embedding2, llama, lfm2, qwen2, gemma2, gemma3, nanbeige]
+    supported_archs: [qwen35, gemma-embedding2, llama, lfm2, modern-bert, qwen2, gemma2, gemma3, nanbeige]
     backends: [cpu, vulkan]
     spec_types: [draft-simple, ngram-simple, ngram-map-k, ngram-map-k4v, ngram-mod, ngram-cache]
 
@@ -330,7 +330,7 @@ runtimes:
     commit: 620d2225cc436ab0b001e3200e590e3b286ef9ab
     bin: code-bootstraps-llama.cpp/build-freebsd/bin/llama-server
     hosts: [angel]
-    supported_archs: [qwen35, gemma-embedding2, llama, lfm2, qwen2, gemma2, gemma3, nanbeige]
+    supported_archs: [qwen35, gemma-embedding2, llama, lfm2, modern-bert, qwen2, gemma2, gemma3, nanbeige]
     backends: [cpu]
     spec_types: [draft-simple, ngram-simple, ngram-map-k, ngram-map-k4v, ngram-mod, ngram-cache]
 

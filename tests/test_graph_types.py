@@ -20,7 +20,8 @@ def test_llama_070_runtime_preserves_existing_model_architectures():
     previous_archs = {
         arch
         for name, spec in BASE["runtimes"].items()
-        if name.startswith("llama-b") and name not in {"llama-b11669", "llama-b11669-freebsd"}
+        # only builds older than 0.7.0 (b11669); newer runtimes may add archs (e.g. b11944 lfm3)
+        if name.startswith("llama-b") and int(name[7:].split("-")[0]) < 11669
         for arch in spec["supported_archs"]
     }
     assert runtime["build"] == "b11669 (llama.cpp 0.7.0)"
