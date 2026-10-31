@@ -33,7 +33,9 @@ def test_estimated_plus_reserve_fails():
     g = _base()
     g["hosts"]["miryam"]["reserve_ram_mib"] = 5000  # coder+embed ~3479 + reserve exceeds 7270
     errs, totals = vg.validate(g)
-    assert not any("reserve" in e for e in errs) and any("hosts.miryam" in w and "reserve" in w for w in vg.WARNINGS), (errs, vg.WARNINGS)
+    # A node that no longer fits ram_mib - reserve is a hard error (no silent OOM; LF_NEED_SPILL).
+    assert any("exceeds host 'miryam' usable" in e and "reserve_ram_mib 5000" in e and "OOM" in e
+               for e in errs), (errs, vg.WARNINGS)
 
 
 def test_small_host_free_floor():
