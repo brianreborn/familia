@@ -213,7 +213,7 @@ def router_routes(aliases):
                 nodes[key(m)] = {"url": m["url"], "kind": m["kind"], "remote": m["remote"], "tools": m.get("tools", False)}
             routes[alias] = {"chain": [key(m) for m in a["chain"]]}
             continue
-        ms = a.get("members") or [{"node": alias + "--node", "url": a["url"], "kind": a["kind"], "remote": False, "tools": False}]
+        ms = a.get("members") or [{"node": alias + "--node", "url": a["url"], "kind": a["kind"], "remote": False, "tools": a.get("tools", False)}]
         names = []
         for m in ms:
             nodes[key(m)] = {"url": m["url"], "kind": m["kind"], "remote": m["remote"], "tools": m.get("tools", False)}
@@ -259,6 +259,8 @@ def local_topology(graph, host):
                 raise StartupError(f"alias {alias_name} mixes chat and embedding nodes")
             if len(members) == 1 and not members[0]["remote"]:
                 aliases[alias_name] = {"kind": members[0]["kind"], "url": members[0]["url"]}
+                if members[0].get("tools"):
+                    aliases[alias_name]["tools"] = True  # graph_router must send the node's per-port key
             else:
                 # fallback list and/or remote member: served by scripts/graph_router.py, not graph-proxy
                 aliases[alias_name] = {"kind": kinds.pop(), "members": members}
@@ -336,7 +338,7 @@ def graph_proxy_manifest(host, gateway, aliases):
         "schema_version": 1,
         "graph_host": host,
         "gateway": {"host": "127.0.0.1", "port": gateway["port"]},
-        "aliases": aliases,
+        "aliases": {n: {k: v for k, v in a.items() if k != "tools"} for n, a in aliases.items()},
     }
 
 
