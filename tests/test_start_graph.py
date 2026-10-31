@@ -36,8 +36,8 @@ def test_local_topology_starts_only_local_active_nodes_and_routes():
     assert name == "roomz"
     assert gateway["port"] == 9931
     assert aliases == {
-        "coder": {"kind": "chat", "url": "http://127.0.0.1:9941"},
-        "general": {"kind": "chat", "url": "http://127.0.0.1:9941"},
+        "coder": {"kind": "chat", "url": "http://127.0.0.1:9941", "tools": True},
+        "general": {"kind": "chat", "url": "http://127.0.0.1:9941", "tools": True},
         "embed": {"kind": "embedding", "url": "http://127.0.0.1:9951"},
     }
     # planned/unbuilt roles on miryam are listed, not started (graph.yaml)
@@ -72,7 +72,7 @@ def test_graph_proxy_manifest_preserves_graph_routes_without_remote_aliases():
         "schema_version": 1,
         "graph_host": "miryam",
         "gateway": {"host": "127.0.0.1", "port": 9931},
-        "aliases": aliases,
+        "aliases": {n: {k: v for k, v in a.items() if k != "tools"} for n, a in aliases.items()},
     }
 
 
@@ -83,7 +83,7 @@ def _two_host():
 def test_single_node_aliases_keep_graph_proxy_shape():
     _n, _r, gws, omitted, _rg = start_graph.local_topology(_two_host(), "h1")
     (_name, _gw, aliases), = gws
-    assert aliases == {"chat": {"kind": "chat", "url": "http://127.0.0.1:9001"}}
+    assert aliases == {"chat": {"kind": "chat", "url": "http://127.0.0.1:9001", "tools": True}}
     assert ("far", "far", "h2") in omitted
 
 
@@ -260,3 +260,30 @@ def test_serve_sh_validates_familia_graph(tmp_path):
     r = subprocess.run(["sh", os.path.join(ROOT, "scripts", "serve.sh"), "chat"], capture_output=True, text=True,
                        env=dict(os.environ, FAMILIA_GRAPH=str(p), FAMILIA_HOST="h1"), timeout=60)
     assert r.returncode != 0 and "only-in-this-graph.gguf" in r.stdout + r.stderr
+
+
+def test_single_alias_to_tool_node_carries_its_key(tmp_path, monkeypatch):
+    """Regression (live 9931 run): single-node aliases dropped tools, so graph_router sent no key -> 401."""
+    import json, threading, urllib.request, graph_router, familia_auth
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+    seen = []
+    class H(BaseHTTPRequestHandler):
+        def log_message(self, *a): pass
+        def do_POST(self):
+            self.rfile.read(int(self.headers["Content-Length"])); seen.append(self.headers.get("Authorization"))
+            raw = json.dumps({"choices": [{"message": {"role": "assistant", "content": "ok"}}]}).encode()
+            self.send_response(200); self.send_header("Content-Length", str(len(raw))); self.end_headers(); self.wfile.write(raw)
+    s = ThreadingHTTPServer(("127.0.0.1", 0), H); threading.Thread(target=s.serve_forever, daemon=True).start()
+    g = _two_host(); g["nodes"]["chat"]["port"] = s.server_address[1]
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    key = familia_auth.load_or_create_key_file(familia_auth.instance_key_file(port=s.server_address[1]))
+    (_n, gw, aliases), = start_graph.local_topology(g, "h1")[2]
+    alias = next(a for a, v in aliases.items() if v.get("url", "").endswith(f":{s.server_address[1]}"))
+    assert "tools" not in json.dumps(start_graph.graph_proxy_manifest("h1", gw, aliases))
+    srv = graph_router.make_server(graph_router.compile_config(start_graph.router_routes(aliases)), "127.0.0.1", 0)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    req = urllib.request.Request(f"http://127.0.0.1:{srv.server_address[1]}/v1/chat/completions",
+                                 data=json.dumps({"model": alias, "messages": [{"role": "user", "content": "x"}]}).encode(),
+                                 headers={"Content-Type": "application/json"})
+    assert urllib.request.urlopen(req, timeout=10).status == 200
+    assert seen and seen[0] and seen[0].startswith("Bearer ")
