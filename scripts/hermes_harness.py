@@ -516,13 +516,14 @@ def link_plugins(agent_cfg, home):
 #   3. vg.tool_route (explicit nodes.<n>.tool_route, one hop, never fail-closed) → nexus
 #   4. same-host then ssh-nexus mesh discovery (NOT in #243; Hermes-only fallback)
 #
-# TODO(pentest-policy): when graph_types accepts `pentests.<p>.policy` (today
-# tests/test_config_spec.py strict-xfails until then) AND hermes-agent can enforce
-# per-action confirmation on *every* tool call (today `approvals.mode: manual|smart`
-# only gates dangerous shell / execute_code, not every MCP/toolset call), open tools
-# for mode `tools-confirm` (and `autonomous-lab`) via pentest_tools_allowed() below:
+# TODO(pentest-policy): tools-confirm must not open until every tool call (MCP and
+# all toolsets) goes through per-action confirmation; setting approvals.mode=manual
+# alone is not enough. Also needs graph_types accepting `pentests.<p>.policy` (today
+# tests/test_config_spec.py strict-xfails until then). When both land, open tools for
+# mode `tools-confirm` (and `autonomous-lab`) via pentest_tools_allowed() below:
 #   - route_tools → mode=direct on the pentest node
-#   - render sets approvals.mode=manual (no yolo / mode=off)
+#   - render sets approvals.mode=manual (no yolo / mode=off) — necessary but not
+#     sufficient; every MCP and toolset call must still confirm per action
 #   - tools = full set (platform toolsets + declared MCP) per CFG-PENT-MODE-004
 # slash-confirm stays tools=none (CFG-PENT-MODE-003 advisory chat). Until then keep
 # closed: tool_free always, never open by default. See tests/test_hermes_tool_routing.py
@@ -649,9 +650,9 @@ def apply_tool_route(g, agent, cfg, route):
         _, _, n, _ = node_for(g, agent)
         cfg["model"] = dict(cfg["model"], base_url=node_base(g, route["node"], n.get("host")), default=route["node"])
     # TODO(pentest-policy): when pentest_tools_allowed opens tools-confirm, force
-    # approvals.mode=manual here (never off / yolo) so each dangerous action still
-    # prompts. Full per-tool confirm still needs hermes-agent support beyond
-    # dangerous-shell gating — see docs/config/pentest-policy.md CFG-PENT-MODE-004.
+    # approvals.mode=manual here (never off / yolo). That alone is not enough —
+    # tools-confirm must not open until every tool call (MCP and all toolsets) goes
+    # through per-action confirmation (docs/config/pentest-policy.md CFG-PENT-MODE-004).
     _, name, _, _ = node_for(g, agent)
     if route["mode"] != "none" and pentest_tools_allowed(g, name):
         appr = dict(cfg.get("approvals") or {})

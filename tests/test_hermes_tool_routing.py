@@ -159,8 +159,10 @@ def test_nexus_never_routes_into_pentest_even_when_flagged_tool_capable():
 
 
 def test_pentest_stays_closed_even_with_tools_confirm_policy_today():
-    # Seatbelt: policy.mode is not accepted by graph_types yet, and hermes cannot confirm
-    # every tool call — so tools-confirm must NOT open tools today (TODO in hermes_harness).
+    # Plain seatbelt (non-xfail): a graph with pentests.<p>.policy.mode=tools-confirm still
+    # gives tool_free == True and route mode none. CFG-PENT-MODE-004: tools-confirm must not
+    # open until every tool call (MCP and all toolsets) goes through per-action confirmation;
+    # setting approvals.mode=manual alone is not enough.
     g = g_main("miryam-pentest")
     g["pentests"] = {"fleet": {"node": "miryam-pentest",
                                "policy": {"enabled": True, "mode": "tools-confirm",
@@ -168,14 +170,14 @@ def test_pentest_stays_closed_even_with_tools_confirm_policy_today():
                                           "audit": "on"}}}
     assert hh.pentest_policy_mode(g, "miryam-pentest") == "tools-confirm"
     assert hh.pentest_tools_allowed(g, "miryam-pentest") is False
-    assert hh.tool_free(g, "miryam-pentest")
+    assert hh.tool_free(g, "miryam-pentest") is True
     assert hh.route_tools(g, "hermes")["mode"] == "none"
 
 
-@pytest.mark.xfail(strict=True, reason="TODO(pentest-policy): open tools for tools-confirm once "
-                   "graph_types accepts pentests.*.policy AND hermes-agent can enforce per-action "
-                   "confirm on every tool call (today approvals.mode only gates dangerous shell). "
-                   "See docs/config/pentest-policy.md CFG-PENT-MODE-004.")
+@pytest.mark.xfail(strict=True, reason="TODO(pentest-policy): tools-confirm must not open until "
+                   "every tool call (MCP and all toolsets) goes through per-action confirmation; "
+                   "setting approvals.mode=manual alone is not enough. Also needs graph_types "
+                   "pentests.*.policy. See docs/config/pentest-policy.md CFG-PENT-MODE-004.")
 def test_tools_confirm_grants_full_tools_with_per_action_confirm(tmp_path, monkeypatch):
     # Expected once the TODO lands: mode tools-confirm → direct + full tools + approvals.mode=manual.
     g = g_main("miryam-pentest")
