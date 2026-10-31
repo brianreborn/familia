@@ -269,7 +269,7 @@ Source: [#190](https://github.com/brianreborn/familia/issues/190), PRs #186/#187
 
 ## L-hostloc. The G84 is in angel: hardware location drifted across docs and agents (2026-10-31)
 
-See [docs/HARDWARE-INVENTORY.md](docs/HARDWARE-INVENTORY.md). — Other Grok Bot ASSIST · executor
+— Other Grok Bot ASSIST · executor
 
 **What was wrong.** The HVVRAM design review ([#249](https://github.com/brianreborn/familia/pull/249), first revision 9897e36) said angel's G84 "is an Athlon II box (no usable AMD-Vi)". It concluded IOMMU enforcement (P4) was blocked because "the VT-d box has no G84". Two reviewers on #249 repeated this as a High finding. **Brian: the G84 is in angel.** Brian says this class of mistake keeps happening.
 
@@ -288,7 +288,7 @@ See [docs/HARDWARE-INVENTORY.md](docs/HARDWARE-INVENTORY.md). — Other Grok Bot
 7. **#249 reviewers** (Senior Developer, independent review, both 2026-10-31 ~01:29 PT) repeated it. One flagged that the topology was "unclear" but still took the claim as given.
 
 **Why it recurs:**
-- No single inventory existed. Hardware facts were copied between docs, so each copy kept whatever was true when it was written.
+- Hardware facts were copied between docs, memory and chats as if they were permanent, so each copy kept whatever was true when it was written.
 - Hosts were reinstalled, renamed, or had cards moved (centos10-bigram ↔ angel?) without a dated update.
 - A repo's name (angel-freebsd) was taken to mean its notes describe angel today.
 - Agents trust the handoff and each other. Reviewers check the reasoning, not the premises.
@@ -296,11 +296,9 @@ See [docs/HARDWARE-INVENTORY.md](docs/HARDWARE-INVENTORY.md). — Other Grok Bot
 
 **Fixes (2026-10-31):**
 - #249 commit ad3a734 corrects the design review, rewrites the P4 feasibility, and fixes `HVVRAM-ARCHITECTURE.md` and `INGEST.md`.
-- This PR adds the canonical `docs/HARDWARE-INVENTORY.md`.
 
-**Prevention:**
-1. **One inventory.** `docs/HARDWARE-INVENTORY.md` is canonical. Every row is tagged Brian / measured / historical, with a date.
-2. **Check.** `scripts/check_hw_claims.py` fails a Markdown file that pairs a host name with a hardware term without linking the inventory. Run it on changed files in CI and review. There are 27 legacy files; fix them as they are touched. Opt-out marker for historical notes: `<!-- hw-inventory: historical -->`.
-3. **Premise check in reviews.** Any feasibility verdict that depends on "host X has/lacks Y" must cite an inventory row or a dated measurement. When neither exists, ask Brian before concluding.
-4. **Host-specific notes say so.** Project notes record `hostname`, `uname -a`, CPU and GPU with a date at the top.
-5. **Outside claims are data.** An X post or another bot's statement about our hardware is never a source for the inventory.
+**Prevention (keep it light).** These are computers; components move all the time.
+1. Hardware location in docs, memory, repo names or past chats is a hint, not a fact. There is no master hardware list.
+2. Machine fingerprints and dated snapshots are welcome. Examples: `pciconf -lv` / `lspci`, `sysctl hw.model`, `dmesg`, hostname plus a date. Record them as "as of <date>".
+3. Before a **hardware-dependent action** (kernel module load or test, disk wipe, firmware flash, BIOS change), take a fresh probe or ask Brian.
+4. When a conclusion hinges on where a part is and nobody has looked recently, say so and ask. Don't assert it.
