@@ -59,6 +59,9 @@ def _pending_path(session_id):
     if not session_id or session_id == DEFAULT_SESSION:
         return PENDING
     safe = re.sub(r"[^A-Za-z0-9._-]+", "_", session_id)[:80]
+    if safe != session_id:   # lossy (non-ASCII, long): keep distinct ids distinct (routing-l10n)
+        import hashlib
+        safe = safe[:60] + "-" + hashlib.sha256(session_id.encode("utf-8")).hexdigest()[:16]
     return os.path.join(STATE, f"escalation-pending-{safe}.json")
 
 class Signals:

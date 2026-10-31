@@ -79,13 +79,26 @@ def _sim(a, b):
 # phrase hits only; "do not escalate" must not fire on phrase "escalate".
 _NEG_BEFORE = re.compile(r"(?i)\b(?:do\s+not|don'?t|dont|never|no)\s*$")
 
+def _nospace(ch):
+    """Scripts written without spaces between words (Han, kana, Hangul, Thai...): no \\b there."""
+    import unicodedata as _u
+    n = _u.name(ch, "")
+    return n.startswith(("CJK ", "HIRAGANA", "KATAKANA", "HANGUL", "THAI", "LAO", "KHMER", "MYANMAR", "TIBETAN"))
+
 def _phrase_hit(message, phrases):
-    """First phrase that matches on word boundaries and is not negated."""
+    """First phrase that matches on word boundaries and is not negated.
+    Text and phrases are NFC-normalised (NFD input from macOS/IMEs must still match), and
+    no-space scripts (CJK) match without word boundaries (routing-l10n)."""
+    import unicodedata as _u
+    message = _u.normalize("NFC", message)
     for p in phrases:
-        words = re.findall(r"\w+", p.lower())
+        words = re.findall(r"\w+", _u.normalize("NFC", p).lower())
         if not words:
             continue
-        pat = re.compile(r"\b" + r"\s+".join(re.escape(w) for w in words) + r"\b", re.IGNORECASE)
+        lb = "" if _nospace(words[0][0]) else r"\b"
+        rb = "" if _nospace(words[-1][-1]) else r"\b"
+        pat = re.compile(lb + r"\s*".join(re.escape(w) for w in words) + rb if all(_nospace(w[0]) for w in words)
+                         else lb + r"\s+".join(re.escape(w) for w in words) + rb, re.IGNORECASE)
         for m in pat.finditer(message):
             window = message[max(0, m.start() - 24):m.start()]
             if _NEG_BEFORE.search(window):
