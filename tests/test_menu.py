@@ -177,6 +177,8 @@ def test_every_user_facing_script_is_in_the_menu():
     alias = {"familia": "./familia-menu.sh", "install/linux/install.sh": "INSTALLER",
              "install/termux/install.sh": "INSTALLER", "familia-monitor": "familia-monitor"}
     allow = internal()
+    # sec_assess (#116) must not appear in any menu list at all (tests/test_sec_assess.py guard).
+    allow = {**allow, "scripts/sec_assess.py": "kept out of every menu list on purpose (#116)"}
     missing = []
     for s in sorted(user_facing_scripts()):
         if s in allow:

@@ -301,4 +301,28 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/search_x.sh` | X/Twitter search via Agent-Reach from gum home |
 | `scripts/windows/familia-home.ps1` | Windows mirror of familia_home.sh (started by familia.cmd) |
 | `scripts/start_graph.py` | graph dry-run helper; hosts.start-preview twin retired — use hosts.start / start.sh |
+| `scripts/install-gum.sh` | install helper: put Charm gum in ~/.local/bin; called by install.sh / setup_goals, not a menu item |
+| `scripts/pilot_hud.sh` | Charm/ANSI mecha pilot HUD helpers sourced by familia_home / setup_goals; not a menu item |
+| `scripts/prefetch-first-models.sh` | background first-try model fetch kicked by gum home / setup / proto_chat; not a menu item |
+| `scripts/windows/install-gum.ps1` | Windows install helper for gum.exe into %LOCALAPPDATA%\Programs\familia\bin; called by install.ps1 |
+| `scripts/windows/prefetch-first-models.ps1` | Windows Start-Job wrapper for prefetch-first-models; kicked by familia-home / setup-goals |
+| `scripts/offline_improve.py` | on-host offline perf loop when fleet peers unreachable (docs/offline-improve.md); Continuity gum: optional setup.goals hook later — do not collide Continuity-owned rows |
+| `scripts/activate_guardian_weights.py` | guardian weight fetch/measure/activate (#147); operator/Boundary lane, seatbelted; not a menu item yet (Brian to decide) |
+| `scripts/activate_guardian_weights.sh` | thin wrapper for activate_guardian_weights.py |
+| `scripts/familia_auth.py` | library: gateway auth headers for clients; imported, not run |
+| `scripts/guardian_ready.py` | offline guardian/defender readiness check (#147); Boundary lane, fail-closed |
+| `scripts/hosts_overlay.py` | local host connection overlay (#104); called by graph loaders |
+| `scripts/offline_improve.sh` | thin wrapper for offline_improve.py (familia-monitor offline-improve) |
+| `scripts/osc7501.sh` | OSC 7501 program-status emitter sourced by other scripts |
+| `scripts/reconnect_selfheal.py` | host probe + reconnect + seatbelted self-repair (docs/reconnect-selfheal.md); background helper |
+| `scripts/reconnect_selfheal.sh` | thin wrapper for reconnect_selfheal.py |
+| `scripts/refuse_soname_skew.py` | platform seatbelt run before llama-server start; not user-invoked |
+| `scripts/swarm/bench.sh` | swarm /run bench entry point (#183); CI/swarm only |
+| `scripts/swarm/forge.sh` | swarm forge adapter; called by swarm workers |
+| `scripts/swarm/forge/forgejo.sh` | forge backend sourced by scripts/swarm/forge.sh |
+| `scripts/swarm/forge/github.sh` | forge backend sourced by scripts/swarm/forge.sh |
+| `scripts/swarm/swarm-bench-runner.sh` | registers a self-hosted swarm runner; swarm operator only |
+| `scripts/swarm/swarm-bootstrap.sh` | fresh swarm worker checkout; swarm operator only |
+| `scripts/task_suite_promote.py` | promote-gate for model configs (#119); called by CI/harness |
+| `scripts/task_suite_runner.py` | fixed task suite runner (#119); developer/CI helper |
 
