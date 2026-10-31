@@ -359,20 +359,18 @@ def _stop_children(children):
                 print(f"familia-graph: {label} did not stop after SIGTERM; sending SIGKILL", file=sys.stderr)
                 _signal_tree(child, signal.SIGKILL)
                 child.wait()
-        # the group may outlive its leader (sh died, runtime still exiting): finish it
+        # The group may outlive its leader (sh died, runtime still up). Probe it ONCE right
+        # after the reap and kill it; never poll, since a reaped pgid can be reused by an
+        # unrelated group later.
         if os.name == "posix":
-            end = min(deadline, time.monotonic() + 5)
-            while time.monotonic() < end:
-                try:
-                    os.killpg(child.pid, 0)
-                except (ProcessLookupError, PermissionError):
-                    break
-                time.sleep(0.05)
-            else:
-                try:
-                    os.killpg(child.pid, signal.SIGKILL)
-                except (ProcessLookupError, PermissionError):
-                    pass
+            try:
+                os.killpg(child.pid, 0)
+            except (ProcessLookupError, PermissionError):
+                continue
+            try:
+                os.killpg(child.pid, signal.SIGKILL)
+            except (ProcessLookupError, PermissionError):
+                pass
 
 
 def run(args=None):
