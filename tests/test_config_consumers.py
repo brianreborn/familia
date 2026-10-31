@@ -80,12 +80,20 @@ def test_dup04_server_args_is_single_owner():
     assert "model database" in str(ei.value)
 
 
-@pytest.mark.xfail(strict=True, reason="DUP-04 CFG-SPEC-TOOLS-001: --tools is emitted only when server_tools is set, not per TYPE")
 def test_dup04_every_launch_has_explicit_tools():
-    # server_args emits --tools only when node.server_tools is set (not per TYPE).
-    import inspect, familia_yaml, validate_graph
-    src = inspect.getsource(validate_graph.server_args)
-    assert "n.get(\"server_tools\")" not in src, "argv should derive --tools from a per-TYPE policy (CFG-SPEC-TOOLS-001)"
+    """CFG-SPEC-TOOLS-001/002: the single argv owner decides --tools per TYPE on every
+    launch. coder=all; chat/general=read set; embed/decision/reasoning/guardian/pentest=none
+    (no --tools: llama.cpp is tools-disabled by default). node.server_tools overrides."""
+    import familia_yaml, validate_graph as v
+    g = familia_yaml.load(str(FIX))
+    assert v.tools_argv(g, "coder-a") == ["--tools", "all"]
+    g["nodes"]["coder-a"]["role"] = "chat"
+    assert v.tools_argv(g, "coder-a") == ["--tools", "read_file,file_glob_search,grep_search,get_info"]
+    for t in ("embed", "decision", "reasoning", "guardian", "pentest"):
+        g["nodes"]["coder-a"]["role"] = t
+        assert v.tools_argv(g, "coder-a") == [], t
+    g["nodes"]["coder-a"]["server_tools"] = ["read_file"]
+    assert v.tools_argv(g, "coder-a") == ["--tools", "read_file"]
 
 
 # --- DUP-05: alias -> node resolution (CFG-GRAPH-ALIASES-*) ---

@@ -396,6 +396,51 @@ def check_swap_budgets(graph, host=None):
             )
     return errs
 
+# Per-TYPE --tools policy (DUP-04, CFG-SPEC-TOOLS-002). TYPE = node.role else models[model].role.
+# chat/general: read-only introspection; coder: full agentic set; embed/decision/reasoning: none;
+# guardian/pentest: current pentest-policy mode (empty allow-list now). node.server_tools overrides.
+# "none" is represented as [] and maps to omitting --tools: llama.cpp has no "none" token and is
+# tools-disabled by default (docs/config/routing-spec.md CFG-SPEC-TOOLS).
+TOOL_POLICY_BY_TYPE = {
+    "coder": "all",
+    "chat": ["read_file", "file_glob_search", "grep_search", "get_info"],
+    "general": ["read_file", "file_glob_search", "grep_search", "get_info"],
+    "embed": [],
+    "decision": [],
+    "reasoning": [],
+    "guardian": [],   # pentest policy current mode: empty allow-list
+    "pentest": [],
+    "defender": [],
+}
+
+
+def node_type(graph, name):
+    n = graph["nodes"][name]
+    if n.get("role"):
+        return n["role"]
+    m = (graph.get("models") or {}).get(n.get("model")) or {}
+    return m.get("role")
+
+
+def tool_policy(graph, name):
+    """Explicit --tools value for a node. Override wins; else the per-TYPE default.
+    Returns "all", a list of tool names, or [] for an explicit no-tools decision."""
+    st = graph["nodes"][name].get("server_tools")
+    if st == "all" or (isinstance(st, list) and st):
+        return st
+    return TOOL_POLICY_BY_TYPE.get(node_type(graph, name), [])
+
+
+def tools_argv(graph, name):
+    """argv fragment for --tools; [] when the explicit decision is no tools."""
+    pol = tool_policy(graph, name)
+    if pol == "all":
+        return ["--tools", "all"]
+    if isinstance(pol, list) and pol:
+        return ["--tools", ",".join(pol)]
+    return []
+
+
 def server_args(graph, name):
     n = graph["nodes"][name]
     kind = (graph["runtimes"].get(n["runtime"]) or {}).get("kind", "llama-server")
@@ -416,11 +461,8 @@ def server_args(graph, name):
     if names: a += ["--alias", names[0]]
     a += ["--cache-ram", str(n["cache_ram_mib"])]
     # llama-ui Server Tools: /tools is feature_disabled (403) unless --tools is set at launch.
-    st = n.get("server_tools")
-    if st == "all":
-        a += ["--tools", "all"]
-    elif isinstance(st, list) and st:
-        a += ["--tools", ",".join(st)]
+    # DUP-04/CFG-SPEC-TOOLS: explicit per-TYPE decision on every launch (override via server_tools).
+    a += tools_argv(graph, name)
     # Model parameters (#51): REQUIRED + RECOMMENDED from the model database (cards, configs,
     # GGUF), node.sampling / override_reasons applied. A REQUIRED one that cannot be met is fatal.
     import model_db
