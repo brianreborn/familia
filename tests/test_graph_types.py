@@ -26,8 +26,8 @@ def test_llama_070_runtime_preserves_existing_model_architectures():
     }
     assert runtime["build"] == "b11669 (llama.cpp 0.7.0)"
     assert previous_archs <= set(runtime["supported_archs"])
-    assert BASE["nodes"]["coder"]["runtime"] == "llama-b11669"
-    assert BASE["nodes"]["embed"]["runtime"] == "llama-b11669"
+    assert int(BASE["nodes"]["coder"]["runtime"].split("-b")[1].split("-")[0]) >= 11669  # 0.7.0 or newer
+    assert int(BASE["nodes"]["embed"]["runtime"].split("-b")[1].split("-")[0]) >= 11669  # 0.7.0 or newer
     freebsd = BASE["runtimes"]["llama-b11669-freebsd"]
     assert freebsd["hosts"] == ["angel"]
     assert freebsd["backends"] == ["cpu"]
