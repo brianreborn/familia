@@ -389,3 +389,47 @@ def test_r6_listen_backlog_covers_burst():
     q = srv.request_queue_size
     srv.shutdown(); up.close()
     assert q >= BURST, f"listen backlog {q} < burst {BURST}"
+
+
+# ---------------- R7 uncapped concurrent forwards to one upstream ----------------
+
+@pytest.mark.xfail(strict=True, reason="R7: escalation_proxy forwards uncapped; small-backlog upstream "
+                   "(llama-server) overflows -> 502. Fix: bounded upstream semaphore (6) + queue/503 at "
+                   "proxy. (sprint cap 6, warn >4)")
+def test_r7_proxy_caps_concurrent_forwards_to_upstream():
+    """Deterministic: upstream handlers block on an Event and count in-flight; no backlog/OS reliance."""
+    N, release = 16, threading.Event()
+    st = {"inflight": 0, "max": 0}; mu = threading.Lock()
+
+    class H(BaseHTTPRequestHandler):
+        def log_message(self, *a): pass
+        def do_POST(self):
+            self.rfile.read(int(self.headers["Content-Length"]))
+            with mu:
+                st["inflight"] += 1; st["max"] = max(st["max"], st["inflight"])
+            try:
+                release.wait(10)
+                out = json.dumps({"choices": [{"message": {"role": "assistant", "content": "ok"}}]}).encode()
+                self.send_response(200); self.send_header("Content-Type", "application/json")
+                self.end_headers(); self.wfile.write(out)
+            finally:
+                with mu: st["inflight"] -= 1
+
+    up = type("_UpSrv", (ThreadingHTTPServer,), {"request_queue_size": 128})(("127.0.0.1", 0), H)
+    threading.Thread(target=up.serve_forever, daemon=True).start()
+    _, srv = proxy(graph(up.server_address[1], closed_port()))
+    ex = ThreadPoolExecutor(N)
+    try:
+        futs = [ex.submit(post, srv.server_address[1], f"c{i}", f"s{i}", 15) for i in range(N)]
+        deadline = time.time() + 5  # wait until in-flight stops growing (or all N arrive)
+        last, stable = -1, 0
+        while time.time() < deadline and st["max"] < N:
+            cur = st["max"]; stable = stable + 1 if cur == last else 0; last = cur
+            if stable >= 10 and cur > 0: break
+            time.sleep(0.05)
+        observed = st["max"]
+    finally:
+        release.set()
+        for f in futs: f.result(timeout=15)
+        ex.shutdown(wait=True); srv.shutdown(); srv.server_close(); up.shutdown(); up.server_close()
+    assert observed <= SPRINT, f"upstream saw {observed} concurrent forwards (cap {SPRINT})"
