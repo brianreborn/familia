@@ -278,7 +278,7 @@ def test_no_hardcoded_homes():
     bad = re.compile(r"/home/(green|rcs)\b")
     for d, _, files in os.walk(ROOT):
         if any(p in d for p in ("/.git", "/.cache", "/registry", "/tests/fixtures", "/code-bootstraps-llama.cpp",
-                                "/green-", "/agent-reach")):
+                                "/green-", "/agent-reach", "/docs/perf")):  # docs/perf: raw measurement records
             continue
         for f in files:
             if f.endswith((".sh", ".py", ".ps1", ".bat", ".cmd", ".txt")) or f == "familia":

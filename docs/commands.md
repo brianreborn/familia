@@ -133,7 +133,7 @@ Default front door is the gum home (`./familia`). This catalog is **fallback onl
 | `test.offline` | Offline test plan (prints live steps; RUN=1 to run them) | `bash scripts/offline-test-plan.sh` | — |
 | `test.registry` | Benchmark records: best measured model per host and role | `python3 scripts/registry.py suggest --host <HOST> --role <ROLE>` | `python scripts\registry.py suggest --host <HOST> --role <ROLE>` |
 | `test.registry-summary` | Summary of every benchmark record | `python3 scripts/registry.py summarize` | `python scripts\registry.py summarize` |
-| `test.offline-secbench` | Opt-in offline security-model benches (#117); synthetic fixtures only | `env FAMILIA_OFFLINE_SECBENCH=1 python3 scripts/offline_secbench.py --platform <PLATFORM> --answers-dir <DIR>` | `set FAMILIA_OFFLINE_SECBENCH=1&& python scripts\offline_secbench.py --platform <PLATFORM> --answers-dir <DIR>` |
+| `test.offline-secbench` | Opt-in offline security-model benches (#117); synthetic fixtures only | `python3 scripts/offline_secbench.py --enable --platform <PLATFORM> --answers-dir <DIR>` | `python scripts\offline_secbench.py --enable --platform <PLATFORM> --answers-dir <DIR>` |
 
 ### Hosts
 
@@ -242,9 +242,34 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/monitor/probe.ps1` | Windows version of the probe the monitor pipes over SSH |
 | `scripts/bench_parse.py` | filter for llama-bench output (pipe llama-bench -o csv into it); nothing to do on its own |
 | `scripts/bench_guard.py` | library for perf/bench drivers: GGUF metadata validation, current llama.cpp flag spellings, encoder ubatch rule, per-run memory cap (`meta FILE`, `memcap PEAK_MIB`) |
+| `scripts/install-gum.sh` | install helper: put Charm gum in ~/.local/bin; called by install.sh / setup_goals |
+| `scripts/pilot_hud.sh` | pilot HUD helpers sourced by familia_home / setup_goals |
+| `scripts/prefetch-first-models.sh` | first-try model fetch kicked by gum home / setup / proto_chat |
+| `scripts/windows/install-gum.ps1` | Windows gum installer called by install.ps1 |
+| `scripts/windows/prefetch-first-models.ps1` | Windows wrapper for prefetch-first-models |
+| `scripts/offline_improve.py` | on-host offline perf loop (docs/offline-improve.md) |
+| `scripts/activate_guardian_weights.py` | guardian weight fetch/measure/activate (Dolphin3-Cyber Q2_K); operator step run via with-fleet.sh, docs/guardian-weights.md |
+| `scripts/activate_guardian_weights.sh` | thin wrapper for scripts/activate_guardian_weights.py |
+| `scripts/config_docs.py` | developer tool: generates/checks docs/config (CFG-* ids); not an end-user action |
+| `scripts/familia_auth.py` | library: per-instance API key headers for proxies and probes |
+| `scripts/guardian_ready.py` | offline guardian/defender readiness check (#147); developer/CI helper |
+| `scripts/hosts_overlay.py` | library: local host connection overlay (#104) used by graph loaders |
+| `scripts/offline_improve.sh` | thin wrapper for scripts/offline_improve.py |
+| `scripts/osc7501.sh` | library: emits OSC 7501 status reports; sourced by setup_goals.sh / proto_chat.sh |
+| `scripts/reconnect_selfheal.py` | host probe + reconnect/self-repair loop (seatbelted); operator/daemon helper |
+| `scripts/reconnect_selfheal.sh` | thin wrapper for scripts/reconnect_selfheal.py |
+| `scripts/refuse_soname_skew.py` | pre-start guard called by scripts/serve.sh; fails closed on bin/lib skew |
+| `scripts/sec_assess.py` | operator-authorized security assessment mode (#116); deliberately not one click from the menu |
+| `scripts/swarm/bench.sh` | swarm /run bench entry point (#183); run by swarm workers, not people |
+| `scripts/swarm/forge.sh` | swarm forge adapter library; sourced by swarm scripts |
+| `scripts/swarm/forge/forgejo.sh` | Forgejo adapter stub sourced by scripts/swarm/forge.sh |
+| `scripts/swarm/forge/github.sh` | GitHub adapter sourced by scripts/swarm/forge.sh |
+| `scripts/swarm/swarm-bench-runner.sh` | registers this host as a self-hosted swarm worker; one-time operator setup |
+| `scripts/swarm/swarm-bootstrap.sh` | fresh swarm worker checkout; one-time operator setup |
+| `scripts/task_suite_promote.py` | promote gate for model configs (#119); used by bench/CI flows |
+| `scripts/task_suite_runner.py` | fixed task suite runner (#119); used by bench/CI flows |
 | `scripts/prompt_cache.py` | library: prefill an agent's fixed prompt prefix once, save it with llama-server slot save, restore it on later starts (#85); used by hermes.sh |
 | `scripts/system_prompt_check.py` | offline system-prompt path checks (#115); developer/CI helper, not an end-user menu action |
-| `scripts/offline_secbench.py` | opt-in offline security-model benches (#117); synthetic fixtures only; developer helper, not an end-user menu action |
 | `scripts/familia_agent_reach.py` | thin wrapper / library around Agent-Reach; menu uses scripts/agent_reach.py |
 | `scripts/retry_wrapper.py` | library for agent model calls; its main is only a self-demo |
 | `scripts/isolated/hfchat.py` | adapter that graph nodes of kind isolated_remote call; not run by hand |
