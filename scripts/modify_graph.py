@@ -42,7 +42,9 @@ from node_role import (  # noqa: E402
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 BASE_GRAPH = REPO_ROOT / "graph.yaml"
 MANIFEST = REPO_ROOT / "code-bootstraps-llama.cpp" / "config" / "models-manifest.json"
-GENERATED = REPO_ROOT / "generated"
+import os
+# FAMILIA_GENERATED_DIR redirects generated graphs (tests use tmp; CFG-FILE-007b)
+GENERATED = pathlib.Path(os.environ.get("FAMILIA_GENERATED_DIR") or (REPO_ROOT / "generated"))
 
 
 def load_manifest():

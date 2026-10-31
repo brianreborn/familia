@@ -908,6 +908,9 @@ other:
   CFG-FILE-007:
     status: IMPLEMENTED
     doc: docs/config/files.md
+  CFG-FILE-007b:
+    status: IMPLEMENTED
+    doc: docs/config/files.md
   CFG-FILE-008:
     status: IMPLEMENTED
     doc: docs/config/files.md
