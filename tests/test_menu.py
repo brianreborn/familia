@@ -219,8 +219,11 @@ def test_piped_choices():
     assert r.returncode == 0, r.stderr
     assert "Running: python3 scripts/skills.py list" in r.stdout
     assert "green-probe" in r.stdout and "license-blocked" in r.stdout
-    r = menu("--pipe", inp="9\nx\n2\n7\nq\n")
-    assert "isn't one of the choices" in r.stdout
+    # Only invalid picks: menu groups were renumbered, so "9 ... 7" now ran model_db.py backfill
+    # (HF network search) and hung until the 120s timeout (#227).
+    r = menu("--pipe", inp="99\nx\n2\n99\nb\nq\n")
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.count("isn't one of the choices") >= 3, r.stdout[-800:]
 
 
 def test_menu_choice_accepts_environment_assignments_and_forwarded_arguments():
