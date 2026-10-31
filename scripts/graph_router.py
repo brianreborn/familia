@@ -316,6 +316,9 @@ class Router:
                                               and self.cfg["routes"][ref]["nodes"] == [ref] and ref in self.cfg["nodes"]):
             return self.route(ref, path, body, trail, stream_to)
         n = self.node(ref)
+        if stream_to is not None:
+            outer = stream_to
+            stream_to = lambda st, h, it: outer(st, dict(h, **{"X-Familia-Node": ref}), it)
         res = call_node(n, path, body, stream_to)
         return (*res, ref) if isinstance(res, tuple) else (None, None, None, ref)
 
@@ -331,16 +334,27 @@ class Router:
                     tried.append(str(e))
             raise RouteError(503, (f"route {name}: no node reachable" if len(tried) > 1 else f"route {name}: {tried[0]}"),
                              route=name, tried=tried)
-        if body.get("stream"):
-            raise RouteError(400, f"route {name} is a {rt['type']}; stream=true is not supported, send stream=false", route=name)
+        def tag(extra):  # add route headers to a streamed reply
+            return None if stream_to is None else (lambda st, h, it: stream_to(st, dict(h, **extra), it))
         if rt["type"] == "chain":
-            text, served = None, []
+            # stream=true: steps 1..n-1 run non-streamed (their text feeds the next step); only the final
+            # step streams to the client
+            text, served, last = None, [], len(rt["steps"]) - 1
             for i, s in enumerate(rt["steps"]):
                 b = body if i == 0 else dict(body, messages=[{"role": "user", "content": s.get("prompt", "{input}").replace("{input}", text)}])
                 if i == 0 and s.get("prompt"):
                     b = dict(body, messages=[{"role": "user", "content": s["prompt"].replace("{input}", _last_user(body))}])
+                final_stream = i == last and stream_to is not None and body.get("stream")
+                if not final_stream:
+                    b = dict(b, stream=False) if body.get("stream") else b
                 try:
-                    st, h, raw, who = self.run(s["node"], path, b, trail)
+                    if final_stream:
+                        chain_hdr = {"X-Familia-Chain": ">".join(served + [s["node"]])}
+                        st, h, raw, who = self.run(s["node"], path, b, trail, tag(chain_hdr))
+                        if st is None:
+                            return None, None, None, who
+                    else:
+                        st, h, raw, who = self.run(s["node"], path, b, trail)
                 except Down as e:
                     raise RouteError(503, f"route {name}: step {i + 1}/{len(rt['steps'])} ({s['node']}) failed: {e}", route=name, step=i + 1)
                 if st != 200:
@@ -370,7 +384,10 @@ class Router:
                 got = _content(raw, "router")[:60] if st == 200 else f"HTTP {st}"
                 raise RouteError(502, f"route {name}: router returned no known label ({got!r}); labels: {sorted(rt['labels'])}", route=name)
         target = rt["labels"][label] if label else rt["default"]
-        st, h, raw, who = self.run(target, path, body, trail)
+        lab = {"X-Familia-Route-Label": label or "<default>"}
+        st, h, raw, who = self.run(target, path, body, trail, tag(lab) if body.get("stream") else None)
+        if st is None:
+            return None, None, None, who
         return st, dict(h, **{"X-Familia-Route-Label": label or "<default>"}), raw, who
 
 
@@ -444,7 +461,11 @@ def make_server(cfg, host="127.0.0.1", port=9940, api_key=None):
             def stream_to(st, h, it):
                 self.send_response(st)
                 self.send_header("Content-Type", h.get("Content-Type", "text/event-stream"))
-                self.send_header("X-Familia-Route", name); self.send_header("X-Familia-Node", started[0] if started else "?")
+                self.send_header("X-Familia-Route", name)
+                self.send_header("X-Familia-Node", h.get("X-Familia-Node") or (started[0] if started else "?"))
+                for k, v in h.items():
+                    if k.startswith("X-Familia") and k not in ("X-Familia-Route", "X-Familia-Node"):
+                        self.send_header(k, v)
                 self.send_header("Connection", "close"); self.end_headers()
                 for b in it:
                     self.wfile.write(b); self.wfile.flush()
@@ -468,7 +489,9 @@ def make_server(cfg, host="127.0.0.1", port=9940, api_key=None):
                         except Down as e:
                             trail.append(str(e))
                     raise RouteError(503, f"route {name}: no node reachable", route=name, tried=[t for t in trail if " " in t])
-                st, h, raw, who = R.route(name, p, body, trail)
+                st, h, raw, who = R.route(name, p, body, trail, stream_to if body.get("stream") else None)
+                if st is None:
+                    return  # streamed (chain final step / router target)
                 extra = {k: v for k, v in h.items() if k.startswith("X-Familia")}
                 self.send_response(st)
                 for k, v in {"Content-Type": h.get("Content-Type", "application/json"), "Content-Length": str(len(raw)),
