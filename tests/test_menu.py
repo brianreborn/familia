@@ -3,6 +3,7 @@ import os
 import re
 import shlex
 import subprocess
+import tempfile
 
 import pytest
 
@@ -29,8 +30,12 @@ def items():
     return out
 
 
+_DB_TMP = tempfile.mkdtemp(prefix="familia-model-db-")
+
+
 def env(**kw):
-    e = dict(os.environ, FAMILIA_NO_TTY="1")
+    e = dict(os.environ, FAMILIA_NO_TTY="1",
+             FAMILIA_MODEL_DB_DIR=_DB_TMP)
     e.pop("FAMILIA_ACCEPT_LICENSES", None)
     e.update(kw)
     return e
@@ -219,7 +224,7 @@ def test_piped_choices():
     assert r.returncode == 0, r.stderr
     assert "Running: python3 scripts/skills.py list" in r.stdout
     assert "green-probe" in r.stdout and "license-blocked" in r.stdout
-    r = menu("--pipe", inp="9\nx\n2\n7\nq\n")
+    r = menu("--pipe", "--dry-run", inp="9\nx\n2\n7\nq\n")
     assert "isn't one of the choices" in r.stdout
 
 

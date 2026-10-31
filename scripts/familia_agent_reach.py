@@ -37,7 +37,8 @@ def die(msg, code=1):
 
 
 def graph_path():
-    return os.environ.get("FAMILIA_GRAPH") or os.path.join(ROOT, "graph.yaml")
+    import config_paths
+    return config_paths.graph_path()  # DUP-02
 
 
 def load_graph(path=None):

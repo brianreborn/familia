@@ -1,0 +1,11 @@
+# Fixture for tests/test_config_consumers.py. No hosts/logins/secret-ports/keys.
+hosts: {h1: {}, h2: {}}
+runtimes: {rt: {supported_archs: [qwen2]}}
+models:
+  m1: {role: coder, gguf: /models/m1.gguf, arch: qwen2}
+nodes:
+  coder-a: {host: h1, model: m1, status: active, port: 9001, bind: 127.0.0.1, runtime: rt, ctx: 4096, parallel: 1, kv_type: q8_0, flash_attn: false, cache_ram_mib: 0, offload: {ngl: 0}}
+  coder-b: {host: h1, model: m1, status: planned, port: 9002, bind: 127.0.0.1, runtime: rt, ctx: 4096, parallel: 1, kv_type: q8_0, flash_attn: false, cache_ram_mib: 0, offload: {ngl: 0}}
+  coder-c: {host: h2, model: m1, status: active, port: 9001, bind: 127.0.0.1, runtime: rt, ctx: 4096, parallel: 1, kv_type: q8_0, flash_attn: false, cache_ram_mib: 0, offload: {ngl: 0}}
+aliases:
+  coder: {node: coder-a}

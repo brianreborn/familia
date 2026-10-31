@@ -35,6 +35,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
+import config_paths  # DUP-02/DUP-10 owner (after sys.path insert)
 import familia_yaml  # noqa: E402
 
 ACCEPT_FILE = os.environ.get("FAMILIA_LICENSE_ACCEPT_FILE") or os.path.join(ROOT, ".cache", "familia", "license-acceptance.json")
@@ -516,7 +517,7 @@ def main(argv):
     cmd, rest = argv[0], argv[1:]
     if cmd not in ("review", "check", "gate", "list"):
         sys.stderr.write(f"licenses: unknown command {cmd!r}. Try: scripts/licenses.py --help\n"); return 2
-    graph = os.environ.get("FAMILIA_GRAPH") or os.path.join(ROOT, "graph.yaml")
+    graph = config_paths.graph_path()
     yes = env_yes("FAMILIA_ACCEPT_LICENSES"); unknown_ok = env_yes("FAMILIA_ACCEPT_UNKNOWN_LICENSES")
     as_json = quiet = False; add = []
     i = 0

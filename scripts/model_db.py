@@ -25,9 +25,10 @@ import add_model as am  # noqa: E402
 import hf_fetch as hf   # noqa: E402
 import llama_flags as lf  # noqa: E402
 import model_params as mp  # noqa: E402
+import config_paths  # noqa: E402
 
-REPO_ROOT = os.path.dirname(HERE)
-DB_DIR = os.path.join(REPO_ROOT, "registry", "models")
+REPO_ROOT = config_paths.ROOT  # DUP-10
+DB_DIR = config_paths.model_db_dir()  # $FAMILIA_MODEL_DB_DIR (CFG-FILE-001a)
 SCHEMA = 2      # 2: descriptor, card_commands (verbatim), required_params, blockers, github docs (#51)
 PARAMS_BUILD = "b11374"   # flag table / EOG list the analysis is run against (code-bootstraps pin)
 CONFIG_FILES = ("tokenizer.json", "config.json", "generation_config.json", "tokenizer_config.json", "config_sentence_transformers.json",
@@ -660,9 +661,8 @@ def search_repo_for(file, sha=None, size_mib=None, hints=()):
 
 
 def load_graph():
-    import yaml
-    with open(os.path.join(REPO_ROOT, "graph.yaml"), encoding="utf-8") as f:
-        return yaml.safe_load(f)
+    import familia_yaml
+    return familia_yaml.load(config_paths.graph_path())  # DUP-01/DUP-02
 
 
 def load_records():
@@ -840,7 +840,7 @@ def project_manifest(env, built):
 
 def link_graph(built, path=None):
     """Set models.<m>.db: <id> in graph.yaml with a line edit (keeps comments)."""
-    p = path or os.path.join(REPO_ROOT, "graph.yaml")
+    p = path or config_paths.graph_path()  # DUP-02
     with open(p, encoding="utf-8") as f:
         lines = f.read().split("\n")
     want = {}

@@ -396,6 +396,114 @@ def check_swap_budgets(graph, host=None):
             )
     return errs
 
+# Per-TYPE --tools policy (DUP-04, CFG-SPEC-TOOLS-002). TYPE = node.role else models[model].role.
+# chat/general: read-only introspection; coder: full agentic set; embed/decision/reasoning: none;
+# guardian/pentest: current pentest-policy mode (empty allow-list now). node.server_tools overrides.
+# "none" is represented as [] and maps to omitting --tools: llama.cpp has no "none" token and is
+# tools-disabled by default (docs/config/routing-spec.md CFG-SPEC-TOOLS).
+# Capability-based tools default (CFG-SPEC-TOOLS-007..010). Any node whose model can use tools
+# gets "all" by default; a node whose tool use goes through nexus/graph routing (`tool_route:
+# <node>`) is tool-capable via routing. guardian/pentest/defender always fail closed (TOOLS-005);
+# a present `server_tools` key is authoritative (TOOLS-006). "none" is [] -> no --tools flag.
+FAIL_CLOSED_TYPES = ("guardian", "pentest", "defender")
+# TYPE presumption when neither node nor model declares `tool_capable`.
+TOOL_CAPABLE_BY_TYPE = {"coder": True, "chat": True, "general": True, "reasoning": True,
+                        "embed": False, "decision": False, "vision": False, "diffusion": False}
+# Back-compat name: per-TYPE default expressed as a policy (derived from capability).
+TOOL_POLICY_BY_TYPE = {t: ("all" if c else []) for t, c in TOOL_CAPABLE_BY_TYPE.items()}
+TOOL_POLICY_BY_TYPE.update({t: [] for t in FAIL_CLOSED_TYPES})
+
+
+def node_type(graph, name):
+    n = graph["nodes"][name]
+    if n.get("role"):
+        return n["role"]
+    m = (graph.get("models") or {}).get(n.get("model")) or {}
+    return m.get("role")
+
+
+def _loopback(bind):
+    """True only for a loopback bind: localhost (any case), 127/8, ::1, [::1],
+    ::ffff:127.x. Anything unparseable is NOT loopback (fail-safe)."""
+    import ipaddress
+    b = str(bind or "").strip()
+    if b.lower() == "localhost":
+        return True
+    if b.startswith("[") and b.endswith("]"):
+        b = b[1:-1]
+    try:
+        ip = ipaddress.ip_address(b)
+    except ValueError:
+        return False
+    mapped = getattr(ip, "ipv4_mapped", None)
+    return (mapped or ip).is_loopback
+
+
+def tool_capable(graph, name):
+    """Direct capability: node.tool_capable > model.tool_calls > TYPE presumption."""
+    n = graph["nodes"][name]
+    if isinstance(n.get("tool_capable"), bool):
+        return n["tool_capable"]
+    m = (graph.get("models") or {}).get(n.get("model")) or {}
+    if isinstance(m.get("tool_calls"), bool):
+        return m["tool_calls"]
+    return TOOL_CAPABLE_BY_TYPE.get(node_type(graph, name), False)
+
+
+def tool_route(graph, name):
+    """Validated nexus tool target for `name`, or None. Comes only from graph config: the target
+    must be an existing, directly tool-capable, non-fail-closed node that is not itself routed."""
+    nodes = graph.get("nodes") or {}
+    t = (nodes.get(name) or {}).get("tool_route")
+    if not isinstance(t, str) or t == name or t not in nodes:
+        return None
+    if node_type(graph, t) in FAIL_CLOSED_TYPES or nodes[t].get("tool_route"):
+        return None
+    if not tool_capable(graph, t) or tool_policy(graph, t) == []:
+        return None
+    return t
+
+
+def tool_policy(graph, name):
+    """Tools grant for a node: "all", a list of tool names, or [] (no tools). Every grant goes
+    through here (launcher, nexus routing).
+    - guardian/pentest/defender fail closed to [] regardless of override or route (TOOLS-005).
+    - A present `server_tools` key is authoritative: "all"/non-empty list verbatim; [], none,
+      false, "" are an explicit opt-out, also via nexus (TOOLS-006/009).
+    - Otherwise capability: directly tool-capable on a loopback bind -> "all" (TOOLS-007/008);
+      tool-capable via a validated `tool_route` -> the target's tool_policy (TOOLS-009); else []."""
+    n = graph["nodes"][name]
+    if node_type(graph, name) in FAIL_CLOSED_TYPES:
+        return []
+    if "server_tools" in n:
+        st = n.get("server_tools")
+        if st == "all":
+            return "all"
+        if isinstance(st, list) and st:
+            return st
+        return []
+    if tool_capable(graph, name) and _loopback(n.get("bind")):
+        return "all"
+    t = tool_route(graph, name) if n.get("tool_route") else None
+    if t:
+        return tool_policy(graph, t)  # routed grant = the target's own validated grant
+    return []
+
+
+def tools_argv(graph, name):
+    """argv fragment for --tools; [] when the explicit decision is no tools."""
+    pol = tool_policy(graph, name)
+    n = graph["nodes"][name]
+    # Routed-only nodes execute tools on their nexus target, not via their own --tools.
+    if pol and "server_tools" not in n and not tool_capable(graph, name):
+        return []
+    if pol == "all":
+        return ["--tools", "all"]
+    if isinstance(pol, list) and pol:
+        return ["--tools", ",".join(pol)]
+    return []
+
+
 def server_args(graph, name):
     n = graph["nodes"][name]
     kind = (graph["runtimes"].get(n["runtime"]) or {}).get("kind", "llama-server")
@@ -416,11 +524,8 @@ def server_args(graph, name):
     if names: a += ["--alias", names[0]]
     a += ["--cache-ram", str(n["cache_ram_mib"])]
     # llama-ui Server Tools: /tools is feature_disabled (403) unless --tools is set at launch.
-    st = n.get("server_tools")
-    if st == "all":
-        a += ["--tools", "all"]
-    elif isinstance(st, list) and st:
-        a += ["--tools", ",".join(st)]
+    # DUP-04/CFG-SPEC-TOOLS: explicit per-TYPE decision on every launch (override via server_tools).
+    a += tools_argv(graph, name)
     # Model parameters (#51): REQUIRED + RECOMMENDED from the model database (cards, configs,
     # GGUF), node.sampling / override_reasons applied. A REQUIRED one that cannot be met is fatal.
     import model_db
