@@ -105,6 +105,13 @@ def score_expect(expect, output, embedding=None):
             return ok, "json_keys"
         except (TypeError, ValueError, json.JSONDecodeError) as e:
             return False, f"json_error:{e}"
+    if kind == "bfcl_ast":
+        import sys as _sys
+        _here = str(Path(__file__).resolve().parent)
+        if _here not in _sys.path:
+            _sys.path.insert(0, _here)
+        from bfcl_adapter import score_bfcl_ast  # offline AST match, no judge
+        return score_bfcl_ast(expect, output)
     if kind == "non_empty":
         return bool(text), "non_empty"
     if kind == "embedding_dim_positive":
