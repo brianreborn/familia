@@ -143,7 +143,7 @@ The sub-projects keep their own repositories and licenses. familia pins each one
 | Pin (`pins.txt`) | Role | Repository |
 |---|---|---|
 | `code-bootstraps-llama.cpp` | Models and the agent: `llama-server` router, model fetch/verify, `/local`, `/remote`, installers, launcher settings | [brianreborn/code-bootstraps-llama.cpp](https://github.com/brianreborn/code-bootstraps-llama.cpp) |
-| `green-roomz` | Alias gateway, including familia's graph-proxy mode for local declared routes | [brianreborn/green-roomz](https://github.com/brianreborn/green-roomz) |
+| `green-roomz` | Alias gateway; its graph-proxy serves graph gateways only with `gateways.<g>.router: false` (default is scripts/graph_router.py) | [brianreborn/green-roomz](https://github.com/brianreborn/green-roomz) |
 | `green-agentz` | Agent fleet (green-brainz, green-fleetz, green-zkillz) | [brianreborn/green-agentz](https://github.com/brianreborn/green-agentz) |
 | `green-agency` | **Retired.** Kept for historical specs; not the fleet | [brianreborn/green-agency](https://github.com/brianreborn/green-agency) |
 | `agent-reach` | External reach tools, pinned and not vendored | [Panniantong/Agent-Reach](https://github.com/Panniantong/Agent-Reach) |

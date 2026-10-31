@@ -167,9 +167,11 @@ def _alias_member(graph, host, alias_name, alias, node_name):
 
 
 def needs_router(aliases, gateway=None):
-    """True when a gateway needs scripts/graph_router.py: a fallback list or remote member, or
-    `gateways.<g>.router: true` (bounded connect instead of graph-proxy's 180 s ECONNREFUSED retry)."""
-    return bool((gateway or {}).get("router")) or any("members" in a for a in aliases.values())
+    """True unless `gateways.<g>.router: false` and every alias is one local node (then green-roomz
+    graph-proxy). graph_router bounds a down node to a 3 s connect instead of graph-proxy's 180 s retry."""
+    if any("members" in a for a in aliases.values()):
+        return True  # lists/remote members only graph_router can serve
+    return (gateway or {}).get("router", True) is not False  # default: graph_router; router: false = graph-proxy
 
 
 def router_routes(aliases):
@@ -456,7 +458,8 @@ def run(args=None):
             _report_remote_topology(remote_nodes, remote_gateways, omitted_aliases)
             print(f"familia-graph: host {host}; active local nodes: {', '.join(n for n, _ in plans) or 'none'}")
             for gateway_name, gateway, aliases in gateways:
-                via = "graph_router" if needs_router(aliases, gateway) else "graph-proxy"
+                via = (f"graph_router (caller auth: {__import__('familia_auth').instance_key_file(port=gateway['port'])}; /health public)"
+                       if needs_router(aliases, gateway) else "graph-proxy (router: false; down node retried up to 180 s)")
                 print(f"familia-graph: gateway {gateway_name} on 127.0.0.1:{gateway['port']} via {via}; aliases: {', '.join(aliases)}")
             if not nodes and not gateways:
                 print("familia-graph: no active local nodes or routable local gateway; nothing would start")

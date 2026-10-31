@@ -648,8 +648,8 @@ TYPES = {
                      doc="edge draft->target (same vocab) or model-free n-gram lookup decoding"),
     "gateways": T({"kind": req("enum", choices={"green-roomz"}), "host": req("ref", ref="hosts"),
                    "port": req("int", min=1), "router": opt("bool")},
-                  doc="router exposing aliases; router: true serves it with scripts/graph_router.py "
-                      "(3 s connect bound) instead of green-roomz graph-proxy (retries a down node for 180 s)"),
+                  doc="router exposing aliases; served by scripts/graph_router.py (default; caller auth, 3 s connect "
+                      "bound); router: false uses green-roomz graph-proxy (retries a down node for 180 s)"),
     "aliases": T({"node": req("noderefs", ref="nodes"), "gateway": req("ref", ref="gateways"), "remote": opt("bool")}, check_alias,
                  doc="route name -> exactly one node"),
     "agents": T({"kind": req("enum", choices={"hermes-agent"}), "host": req("ref", ref="hosts"),

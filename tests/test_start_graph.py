@@ -84,7 +84,7 @@ def test_single_node_aliases_keep_graph_proxy_shape():
     _n, _r, gws, omitted, _rg = start_graph.local_topology(_two_host(), "h1")
     (_name, _gw, aliases), = gws
     assert aliases == {"chat": {"kind": "chat", "url": "http://127.0.0.1:9001"}}
-    assert ("far", "far", "h2") in omitted and not start_graph.needs_router(aliases)
+    assert ("far", "far", "h2") in omitted
 
 
 def test_fallback_list_alias_launches_graph_router(tmp_path, monkeypatch):
@@ -117,12 +117,42 @@ def test_remote_member_needs_explicit_opt_in_and_reachable_bind():
     assert "far" not in start_graph.local_topology(g, "h1")[2][0][2]
 
 
-def test_gateway_router_opt_in_bounds_down_node_stall(tmp_path, monkeypatch):
-    g = _two_host(); g["gateways"]["gw"]["router"] = True
+def test_default_gateway_is_graph_router(tmp_path, monkeypatch):
+    g = _two_host()
+    (name, gw, aliases), = start_graph.local_topology(g, "h1")[2]
+    assert start_graph.needs_router(aliases, gw)
+    monkeypatch.setattr(start_graph, "CACHE", tmp_path)
+    argv = start_graph.gateway_command("h1", name, gw, aliases, "/gr")
+    assert argv[1].endswith("graph_router.py") and argv[-2:] == ["--port", "8080"]
+    assert "--no-auth" not in argv  # caller auth on by default (per-port instance key)
+
+
+def test_router_false_opts_out_to_graph_proxy(tmp_path, monkeypatch):
+    g = _two_host(); g["gateways"]["gw"]["router"] = False
     assert validate_graph.validate(g, check_files=False)[0] == []
     (name, gw, aliases), = start_graph.local_topology(g, "h1")[2]
-    assert start_graph.needs_router(aliases, gw) and not start_graph.needs_router(aliases)
+    assert not start_graph.needs_router(aliases, gw)
     monkeypatch.setattr(start_graph, "CACHE", tmp_path)
-    assert start_graph.gateway_command("h1", name, gw, aliases, "/gr")[1].endswith("graph_router.py")
+    assert start_graph.gateway_command("h1", name, gw, aliases, "/gr")[:3] == ["node", "/gr", "graph-proxy"]
     g["gateways"]["gw"]["router"] = "yes"
     assert validate_graph.validate(g, check_files=False)[0]
+
+
+def test_router_false_still_routes_lists_via_graph_router():
+    g = _two_host(); g["gateways"]["gw"]["router"] = False
+    g["nodes"]["chat2"] = dict(g["nodes"]["chat"], port=9003); g["aliases"]["chat"]["node"] = ["chat", "chat2"]
+    (_n, gw, aliases), = start_graph.local_topology(g, "h1")[2]
+    assert start_graph.needs_router(aliases, gw)
+
+
+def test_dry_run_reports_gateway_process(tmp_path):
+    import subprocess, yaml
+    for flag, via in ((None, "via graph_router (caller auth"), (False, "via graph-proxy")):
+        g = _two_host()
+        if flag is not None:
+            g["gateways"]["gw"]["router"] = flag
+        p = tmp_path / "g.yaml"; p.write_text(yaml.safe_dump(g))
+        r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "start_graph.py"), "--graph", str(p),
+                            "--host", "h1", "--dry-run", "--fleet"], capture_output=True, text=True, cwd=ROOT)
+        assert r.returncode == 0, r.stderr
+        assert via in r.stdout, r.stdout

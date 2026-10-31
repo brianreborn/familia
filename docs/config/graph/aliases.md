@@ -6,7 +6,7 @@ Purpose: route name → node, exposed by a gateway. Today it is exactly one node
 | ID | Requirement | Status | Pointer |
 |---|---|---|---|
 | CFG-GRAPH-ALIASES-101 | If the gateway host ≠ node host, a non-local transport between them must exist | IMPLEMENTED | graph_types.py:306-311 |
-| CFG-GRAPH-ALIASES-102 | start_graph puts only aliases to **active, local, loopback** chat/coder/embed nodes in the graph-proxy manifest. Others are omitted with a warning | IMPLEMENTED (conflicts with CFG-SPEC-PLAN-005) | start_graph.py:142-178 |
+| CFG-GRAPH-ALIASES-102 | start_graph routes only aliases to **active, local, loopback** chat/coder/embed nodes, plus remote members of `remote: true` aliases (graph_router only). Others are omitted with a warning | IMPLEMENTED (conflicts with CFG-SPEC-PLAN-005) | start_graph.py:142-178 |
 | CFG-GRAPH-ALIASES-103 | An alias to a planned node is valid, kept in the manifest, slash-reachable, never silently dropped | SPEC | routing-spec.md CFG-SPEC-PLAN-005 |
 | CFG-GRAPH-ALIASES-104 | `node` may be a list of nodes (same-role multi-engine, #150) with `policy` | SPEC | routing-spec.md CFG-SPEC-ALIAS-001 |
 

@@ -7,12 +7,12 @@ and preview what `familia start` would do with
 
 | Shape | Example | Keys that make it work | Routed by | Status today |
 |---|---|---|---|---|
-| Single node | `single-node.yaml` | `nodes`, one `aliases` entry, `gateways` | green-roomz graph-proxy (alias = model name) | works |
+| Single node | `single-node.yaml` | `nodes`, one `aliases` entry, `gateways` | `scripts/graph_router.py` (alias = model name); `router: false` -> green-roomz graph-proxy | works |
 | Specialists fan-out | `fanout-specialists.yaml` | one alias per node | client picks alias; no auto-classifier | works (manual pick only) |
 | Light -> heavy chain | `escalation-chain.yaml` | `escalates_to`, `escalation.mode` | `scripts/escalation_proxy.py` (`hermes.sh --escalate`) | suggest/auto works with mock upstreams; green-roomz hookup planned (#39) |
 | Tools on a node | `explicit-tools.yaml` | `server_tools` (list or `all`), `tool_route` + `tool_capable: false` | llama-server `--tools`; nexus forward is PR #251 | works; set `server_tools` explicitly (#264 changes the implicit default to read-only) |
 | Two hosts | `two-host.yaml` | second host, runtime `hosts`, a non-local `transports` entry | each host's own `familia start` | per-host only; aliases to another host are omitted, never proxied |
-| Fallback when a node is down | `fallback-list.yaml` | `aliases.<a>.node: [first, backup, ...]` | `scripts/graph_router.py` (started by `familia start` for that gateway) | works; a node is skipped only when unreachable or 502/503 |
+| Fallback when a node is down | `fallback-list.yaml` | `aliases.<a>.node: [first, backup, ...]` | `scripts/graph_router.py` (the default gateway) | works; a node is skipped only when unreachable or 502/503 |
 | Escalate light -> heavy | `escalation-chain.yaml` | `escalates_to` | escalation proxy falls back to the light node (tests/test_escalation_proxy.py) | unreachable targets are dropped; no target -> `decision: none` |
 | Remote node in an alias | `two-host.yaml` + `remote: true` | `aliases.<a>.remote: true`, `hosts.<h>.addr`, node `bind` not loopback | `scripts/graph_router.py` | opt-in only; without all three the alias is omitted |
 | Classifier, chain, tool keys | `router/*.yaml` | graph_router routes file (below) | `scripts/graph_router.py` by hand | works; not expressible in graph.yaml yet |
@@ -23,18 +23,18 @@ and preview what `familia start` would do with
 - `tool_route` on a node that is itself tool-capable does nothing for tools; add `tool_capable: false`.
 
 ## Which gateway process `familia start` runs
-- Every alias is one local node: green-roomz `graph-proxy` (unchanged).
-- Any alias is a list or has a remote member, or `gateways.<g>.router: true`: `scripts/graph_router.py`
-  on the same port. `--dry-run` prints `via graph_router` / `via graph-proxy`.
-- Down node: graph-proxy retries ECONNREFUSED for 180 s before a 502 (measured 181.4 s, green-roomz
-  b2a8eac; the deadline is fixed in its graph-proxy and cannot be set from the manifest).
-  graph_router fails in 3 s max (`FAMILIA_ROUTER_CONNECT_S`; measured 0.002 s for a refused port).
-  Set `router: true` on a gateway to get the bounded behaviour for single-node aliases.
-- graph_router requires a caller key (except `/health`): `Authorization: Bearer <key>` or `X-Api-Key`.
-  The key is the H4 per-port instance key `~/.config/familia/instances/<port>/api-keys`, created 0600 on
-  first start and never rotated (`--api-key-file` overrides; unreadable -> it refuses to start).
-  On the default port 9931 that is the key familia clients already send. The caller key is never
+- Default: `scripts/graph_router.py` on the gateway port for every gateway. `--dry-run` prints
+  `via graph_router (caller auth: <key file>; /health public)`.
+- `gateways.<g>.router: false`: green-roomz `graph-proxy` instead (dry-run: `via graph-proxy`), as long as every
+  alias is one local node. Aliases with a fallback list or a remote member still need graph_router.
+- Caller auth (everything except `/health`): `Authorization: Bearer <key>` or `X-Api-Key: <key>`, else 401.
+  The key is the per-port instance key `~/.config/familia/instances/<port>/api-keys` (Windows: under `%APPDATA%`),
+  created 0600 on first start and never rotated; unreadable -> the router refuses to start. On 9931 that is the
+  file familia clients already read (`familia_auth.api_key()`), so they keep working. The caller key is never
   forwarded to nodes; tool nodes get their own key.
+- Down node: graph_router answers 503 within the 3 s connect bound (`FAMILIA_ROUTER_CONNECT_S`; a refused
+  port measured 0.001 s on :9931). graph-proxy (`router: false`) retries ECONNREFUSED for 180 s before a 502
+  (measured 181.4 s, green-roomz b2a8eac; fixed in its graph-proxy, not settable from the manifest).
 
 ## graph_router routes files (`examples/graphs/router/`)
 
