@@ -152,7 +152,7 @@ def self_improve_targets(g, agent):
 def pickup(g, o, agent, into=None):
     """Put accepted harness versions in place via the shared attach hook (docs/harness2.md).
 
-    Subprocess only: hermes must not import self_improve / harness2_local (tests/test_harness2.py).
+    Subprocess only: hermes never imports the self-improve or harness2-local modules (tests/test_harness2.py).
     """
     tool = os.path.join(ROOT, "scripts", "self_improve_attach.py")
     if not os.path.isfile(tool):

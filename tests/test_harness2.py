@@ -158,7 +158,7 @@ def home(tmp_path, monkeypatch):
     """Scratch HOME; model files are not needed to render (validated without the file check)."""
     import hermes_harness as hh
     real = hh.vg.validate
-    monkeypatch.setattr(hh.vg, "validate", lambda g, check_files=True: real(g, check_files=False))
+    monkeypatch.setattr(hh.vg, "validate", lambda g, check_files=True, **kw: real(g, check_files=False, **kw))
     monkeypatch.setenv("PYTHONPATH", os.path.dirname(os.path.dirname(yaml.__file__)))  # user site moves with HOME
     monkeypatch.setenv("HOME", str(tmp_path / "home")); return tmp_path / "home"
 
@@ -194,7 +194,7 @@ def test_single_mode_ctx_floor(tmp_path, home):
     g = copy.deepcopy(GRAPH); g["nodes"]["small"] = dict(g["nodes"]["coder"], ctx=32768, port=9999)
     gp = write_graph(tmp_path, g)
     with pytest.raises(SystemExit, match="below agent hermes min_ctx 64000"):
-        modes().main(["--graph", gp, "--model", "small", "--render-only"])
+        modes().single_agent(g, "hermes", "small")  # launch path enforces; --render-only only warns
 
 @pytest.mark.parametrize("argv,msg", [
     (["--model", "coder", "--escalate"], "graph mode only"),
@@ -217,7 +217,7 @@ def test_graph_mode_auto_proxy(tmp_path, monkeypatch):
     assert seen["argv"][-4:] == ["--light", "coder", "--", "-x"] and "--escalate" in seen["argv"]
 
 # ---- combined ------------------------------------------------------------------
-def test_combined_pickup_both_modes(tmp_path, home, monkeypatch, capsys):
+def test_combined_pickup_both_modes(tmp_path, home, monkeypatch, capfd):
     monkeypatch.setenv("FAMILIA_HARNESS2_STATE", str(tmp_path / "state"))
     g = graph(mode="propose"); gp = write_graph(tmp_path, g)
     t = SI.target(g, "hermes-lab"); st = SI.State(t, str(tmp_path / "state")); st.init()
@@ -229,11 +229,11 @@ def test_combined_pickup_both_modes(tmp_path, home, monkeypatch, capsys):
     assert hm.main(["--graph", gp, "--agent", "hermes-lab", "--render-only"]) == 0
     assert hm.main(["--graph", gp, "--agent", "hermes-lab", "--model", "coder", "--render-only"]) == 0
     assert "Lab prompt v1." in (home / ".cache/familia/hermes-hermes-lab@coder/SOUL.md").read_text()
-    err = capsys.readouterr().err
+    err = capfd.readouterr().err
     assert "self-improve (hermes-lab): hermes-lab: version 0001 written" in err
     # hermes agent (pentest-bound) is never picked up
-    capsys.readouterr(); assert hm.main(["--graph", gp, "--render-only"]) == 0
-    assert "self-improve" not in capsys.readouterr().err
+    capfd.readouterr(); assert hm.main(["--graph", gp, "--render-only"]) == 0
+    assert "self-improve" not in capfd.readouterr().err
 
 # ---- the engine itself, against a fake local endpoint ---------------------------------
 class Fake(http.server.BaseHTTPRequestHandler):

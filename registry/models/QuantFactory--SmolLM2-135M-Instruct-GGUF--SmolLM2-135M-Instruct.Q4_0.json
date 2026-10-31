@@ -24,12 +24,17 @@
   "top-p": 0.9
  },
  "card_defaults_source": {
-  "temp": "HuggingFaceTB/SmolLM2-135M-Instruct HuggingFaceTB/SmolLM2-135M-Instruct README.md:L57 (code example)",
-  "top-p": "HuggingFaceTB/SmolLM2-135M-Instruct HuggingFaceTB/SmolLM2-135M-Instruct README.md:L57 (code example)"
+  "temp": "HuggingFaceTB/SmolLM2-135M-Instruct HuggingFaceTB/SmolLM2-135M-Instruct README.md:L57 (example)",
+  "top-p": "HuggingFaceTB/SmolLM2-135M-Instruct HuggingFaceTB/SmolLM2-135M-Instruct README.md:L57 (example)"
  },
  "card_default_set": "example: Transformers",
  "card_defaults_how": "the card's only code example with sampling values",
- "card_sampling_modes": null,
+ "card_sampling_modes": {
+  "Transformers": {
+   "temp": 0.2,
+   "top-p": 0.9
+  }
+ },
  "card_default_mode": null,
  "card_default_mode_source": null,
  "card_sampling_sets": [
@@ -291,98 +296,98 @@
    "sha256": "55aa88ddac43adce6af0e9be8d6cdff2337a3835cd9b50bbcd7a894eb66dfc75",
    "blob": "581e630cd38268cfa1ebde316c3d39fdb9186ebc",
    "fetched": false,
-   "skipped": "weight file not used here (88 MB)"
+   "skipped": "weight file, fetched only by a full run (88 MB)"
   },
   "SmolLM2-135M-Instruct.Q3_K_L.gguf": {
    "size": 97532992,
    "sha256": "d8a6a5c16bda8d3aec864de0cc38222db6fa7903da92119187490e9a7a1d2614",
    "blob": "ff6566ea813aa8fd8c191a22c408767401c8beb3",
    "fetched": false,
-   "skipped": "weight file not used here (97 MB)"
+   "skipped": "weight file, fetched only by a full run (97 MB)"
   },
   "SmolLM2-135M-Instruct.Q3_K_M.gguf": {
    "size": 93510208,
    "sha256": "6059a31ab58c4ea18cab94d4a3da3f041f6227a1f8621056515795f796d67efe",
    "blob": "efd08390f20046e316147fc9799b2d846fc3e6e0",
    "fetched": false,
-   "skipped": "weight file not used here (93 MB)"
+   "skipped": "weight file, fetched only by a full run (93 MB)"
   },
   "SmolLM2-135M-Instruct.Q3_K_S.gguf": {
    "size": 88201792,
    "sha256": "352142b0127d4e325d99fbd6a9578f940843ec3f9475ce51f023fdfc343afa40",
    "blob": "feb0ec82f6d5beec588f4d727f2efcfb6ebe10e7",
    "fetched": false,
-   "skipped": "weight file not used here (88 MB)"
+   "skipped": "weight file, fetched only by a full run (88 MB)"
   },
   "SmolLM2-135M-Instruct.Q4_0.gguf": {
    "size": 91726912,
    "sha256": "f68203bfb98b1b1e8c64fac75fab10c4e36acac081609573b4df0fcc19c90dd9",
    "blob": "fb984d110a159b41df75e07099652c722369e98b",
    "fetched": false,
-   "skipped": "weight file not used here (91 MB)"
+   "skipped": "weight file, fetched only by a full run (91 MB)"
   },
   "SmolLM2-135M-Instruct.Q4_1.gguf": {
    "size": 98362432,
    "sha256": "b179c9523d0e6a0f98a330c7562b682750a6f8c8c15e5bc70ea373728110db53",
    "blob": "985623cdd227669001115eeade2be5dcbd0108dc",
    "fetched": false,
-   "skipped": "weight file not used here (98 MB)"
+   "skipped": "weight file, fetched only by a full run (98 MB)"
   },
   "SmolLM2-135M-Instruct.Q4_K_M.gguf": {
    "size": 105454144,
    "sha256": "8030f04528538d47bda434f6f0bdf3952c40a58123e4d5e755332f23731a8684",
    "blob": "87631356704696e38e38332f51ec7a6ff9cd298b",
    "fetched": false,
-   "skipped": "weight file not used here (105 MB)"
+   "skipped": "weight file, fetched only by a full run (105 MB)"
   },
   "SmolLM2-135M-Instruct.Q4_K_S.gguf": {
    "size": 102039616,
    "sha256": "dbc574efbba3ea85e086cf16b3f0f1d7dc0b50e68645b7034c664dc4255685f2",
    "blob": "4f41de6fc86fb291c90b4e1bf001a10df31e8003",
    "fetched": false,
-   "skipped": "weight file not used here (102 MB)"
+   "skipped": "weight file, fetched only by a full run (102 MB)"
   },
   "SmolLM2-135M-Instruct.Q5_0.gguf": {
    "size": 104997952,
    "sha256": "cecbc3e0d5214b3ba48e6c4464cfddc2dbdb1b05aaaee40163a986cb72e1ccfb",
    "blob": "66d20d5f518e2ec8ff8884f691a01c5ac640eac2",
    "fetched": false,
-   "skipped": "weight file not used here (104 MB)"
+   "skipped": "weight file, fetched only by a full run (104 MB)"
   },
   "SmolLM2-135M-Instruct.Q5_1.gguf": {
    "size": 111633472,
    "sha256": "5b704b2dee3c9f1c07ffacf5bc9ddf2aaba9b0755b459d61bf56ba1ef4c0bcdf",
    "blob": "578b17eba31a0aed43987d698bdd488d38847f5c",
    "fetched": false,
-   "skipped": "weight file not used here (111 MB)"
+   "skipped": "weight file, fetched only by a full run (111 MB)"
   },
   "SmolLM2-135M-Instruct.Q5_K_M.gguf": {
    "size": 112103488,
    "sha256": "46a08322f57f565a021213dec5609b43a00f4f46c62761482003a070afb02ad5",
    "blob": "6c8fb187a4fb0fbf64ab4ec4d2764e0466a36bea",
    "fetched": false,
-   "skipped": "weight file not used here (112 MB)"
+   "skipped": "weight file, fetched only by a full run (112 MB)"
   },
   "SmolLM2-135M-Instruct.Q5_K_S.gguf": {
    "size": 109974592,
    "sha256": "5078864bf45b1dafecb7985b54e4d0d82f7d2809bb579c77f5c3d5605bbd1eb5",
    "blob": "2dae6c9ba1e5c2faff56c252638516d163152372",
    "fetched": false,
-   "skipped": "weight file not used here (109 MB)"
+   "skipped": "weight file, fetched only by a full run (109 MB)"
   },
   "SmolLM2-135M-Instruct.Q6_K.gguf": {
    "size": 138382912,
    "sha256": "69d21ecb0220c0a5558b7a96645ac94d66ef1764bc221fe886d2e3309022420f",
    "blob": "7d92e53b2758eec7787c4a898e776926dee29a2d",
    "fetched": false,
-   "skipped": "weight file not used here (138 MB)"
+   "skipped": "weight file, fetched only by a full run (138 MB)"
   },
   "SmolLM2-135M-Instruct.Q8_0.gguf": {
    "size": 144811072,
    "sha256": "40f7094960b6ede829145d102ca79451b364b27d9d8694d4406e002024cff357",
    "blob": "de1bd6ecaf51d7dfe86f3504fda4ebb6f3b700c9",
    "fetched": false,
-   "skipped": "weight file not used here (144 MB)"
+   "skipped": "weight file, fetched only by a full run (144 MB)"
   }
  },
  "base_repo_files": {
@@ -440,63 +445,63 @@
    "sha256": "5af571cbf074e6d21a03528d2330792e532ca608f24ac70a143f6b369968ab8c",
    "blob": "2ef707371406f95f8aa91fb03a75f22f3c568299",
    "fetched": false,
-   "skipped": "weight file not used here (269 MB)"
+   "skipped": "weight file, fetched only by a full run (269 MB)"
   },
   "onnx/model.onnx": {
    "size": 540345794,
    "sha256": "1e790f1d6fac94097a6516ed1f07c29049097271d536d538562cd31ffc011a71",
    "blob": "909ef4de400bb640ec89ff71ec9c06d005dd127d",
    "fetched": false,
-   "skipped": "weight file not used here (540 MB)"
+   "skipped": "weight file, fetched only by a full run (540 MB)"
   },
   "onnx/model_bnb4.onnx": {
    "size": 175434623,
    "sha256": "bc32b446540fe380adb6b29c7e95b0a8402c9e6addb948307daee99735a776bb",
    "blob": "2810bffebb155e3f37f5466aff8e44822c8fa38a",
    "fetched": false,
-   "skipped": "weight file not used here (175 MB)"
+   "skipped": "weight file, fetched only by a full run (175 MB)"
   },
   "onnx/model_fp16.onnx": {
    "size": 270267067,
    "sha256": "e85e706ce14a3499e1f698c0d638b430df75b5f67131d1516bd0d46b844dfb2e",
    "blob": "427f1b4cf16e375695c148f4a7aec91fb6c67460",
    "fetched": false,
-   "skipped": "weight file not used here (270 MB)"
+   "skipped": "weight file, fetched only by a full run (270 MB)"
   },
   "onnx/model_int8.onnx": {
    "size": 137147867,
    "sha256": "a7c33f9ef85d06734cc9d1f943f7e2ba57c77e769df727f4d3e217d9f672b0cc",
    "blob": "9ac229360441ba1e8891a7d9ea6ad0c1af38a29a",
    "fetched": false,
-   "skipped": "weight file not used here (137 MB)"
+   "skipped": "weight file, fetched only by a full run (137 MB)"
   },
   "onnx/model_q4.onnx": {
    "size": 182068553,
    "sha256": "933577110303a2964096d19b6f15d3b4639bef7f99481ac0b61d9f3ad72f392a",
    "blob": "d871dd8ab48cf55b491091639ac3c953cf754843",
    "fetched": false,
-   "skipped": "weight file not used here (182 MB)"
+   "skipped": "weight file, fetched only by a full run (182 MB)"
   },
   "onnx/model_q4f16.onnx": {
    "size": 117691126,
    "sha256": "9358cd4ce037c304621f8c194a525607ae7c5ea73239fcae4c21bd02f2e34ff7",
    "blob": "04b2fdf2d2ff8267e05a36545095c1fe704ac36a",
    "fetched": false,
-   "skipped": "weight file not used here (117 MB)"
+   "skipped": "weight file, fetched only by a full run (117 MB)"
   },
   "onnx/model_quantized.onnx": {
    "size": 137147981,
    "sha256": "ecc1a19eece6494e2963cf74f78ace35916e8d0b803168ddd41db00979f18e39",
    "blob": "0973be84a0863fe14df904921ade5a532e0c8831",
    "fetched": false,
-   "skipped": "weight file not used here (137 MB)"
+   "skipped": "weight file, fetched only by a full run (137 MB)"
   },
   "onnx/model_uint8.onnx": {
    "size": 137147981,
    "sha256": "ecc1a19eece6494e2963cf74f78ace35916e8d0b803168ddd41db00979f18e39",
    "blob": "0973be84a0863fe14df904921ade5a532e0c8831",
    "fetched": false,
-   "skipped": "weight file not used here (137 MB)"
+   "skipped": "weight file, fetched only by a full run (137 MB)"
   },
   "runs/Oct31_10-14-22_ip-26-0-174-36/events.out.tfevents.1730370128.ip-26-0-174-36.3239327.0": {
    "size": 78157,
@@ -571,7 +576,7 @@
  "warnings": [
   "base_model HuggingFaceTB/SmolLM2-135M-Instruct from registry/model-params.yaml (QuantFactory/SmolLM2-135M-Instruct-GGUF README.md:L15)"
  ],
- "updated": "2026-10-19",
+ "updated": "2026-10-30",
  "by": "scripts/model_db.py",
  "gguf_meta": {
   "general.architecture": "llama",
@@ -889,14 +894,14 @@
     "class": "RECOMMENDED",
     "flag": "--temp",
     "value": "0.2",
-    "source": "HuggingFaceTB/SmolLM2-135M-Instruct HuggingFaceTB/SmolLM2-135M-Instruct README.md:L57 (code example)",
+    "source": "HuggingFaceTB/SmolLM2-135M-Instruct HuggingFaceTB/SmolLM2-135M-Instruct README.md:L57 (example)",
     "why_required": "the card's recommended sampling (example: Transformers)"
    },
    {
     "class": "RECOMMENDED",
     "flag": "--top-p",
     "value": "0.9",
-    "source": "HuggingFaceTB/SmolLM2-135M-Instruct HuggingFaceTB/SmolLM2-135M-Instruct README.md:L57 (code example)",
+    "source": "HuggingFaceTB/SmolLM2-135M-Instruct HuggingFaceTB/SmolLM2-135M-Instruct README.md:L57 (example)",
     "why_required": "the card's recommended sampling (example: Transformers)"
    }
   ]

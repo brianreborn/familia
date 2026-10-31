@@ -815,168 +815,168 @@
    "sha256": "2fc237e65e1f963310e9c961d8e71e932734a72f90e3216a972d83edd1feb756",
    "blob": "6984d12e55f6ff8de58b5e1ef6cf76112f89a355",
    "fetched": false,
-   "skipped": "weight file not used here (328 MB)"
+   "skipped": "weight file, fetched only by a full run (328 MB)"
   },
   "Qwen2.5-0.5B-Instruct-IQ3_M.gguf": {
    "size": 342752576,
    "sha256": "0b2e17471ccc784dfd7b042a81e34289a3accb75ccda7347598a329e0a932099",
    "blob": "bad3b9d1eae1a28b9c4f6100364a6b5caff29744",
    "fetched": false,
-   "skipped": "weight file not used here (342 MB)"
+   "skipped": "weight file, fetched only by a full run (342 MB)"
   },
   "Qwen2.5-0.5B-Instruct-IQ3_XS.gguf": {
    "size": 338607520,
    "sha256": "c010afa79cb0607545b5b1f2af7e0a3a0311b28d33dadd92a9895f383f51a8e0",
    "blob": "eae2c0ec4be324a389a88eaea3b1d83777b03cc0",
    "fetched": false,
-   "skipped": "weight file not used here (338 MB)"
+   "skipped": "weight file, fetched only by a full run (338 MB)"
   },
   "Qwen2.5-0.5B-Instruct-IQ4_XS.gguf": {
    "size": 349402688,
    "sha256": "df178ccd68e24ce0c74f957765c00e8f5eec5c51216a1acd4444202e58df6cc1",
    "blob": "f425aa184a1a29961e912f6bceb052289bcb861e",
    "fetched": false,
-   "skipped": "weight file not used here (349 MB)"
+   "skipped": "weight file, fetched only by a full run (349 MB)"
   },
   "Qwen2.5-0.5B-Instruct-Q2_K.gguf": {
    "size": 338607520,
    "sha256": "c929ba8be98f584d0872923e373bda0da8a261eae05dd362590c9792adfc76d2",
    "blob": "7b2c1cd30a0e97564e44664a25a80f4e1ea7252b",
    "fetched": false,
-   "skipped": "weight file not used here (338 MB)"
+   "skipped": "weight file, fetched only by a full run (338 MB)"
   },
   "Qwen2.5-0.5B-Instruct-Q2_K_L.gguf": {
    "size": 338607520,
    "sha256": "c929ba8be98f584d0872923e373bda0da8a261eae05dd362590c9792adfc76d2",
    "blob": "7b2c1cd30a0e97564e44664a25a80f4e1ea7252b",
    "fetched": false,
-   "skipped": "weight file not used here (338 MB)"
+   "skipped": "weight file, fetched only by a full run (338 MB)"
   },
   "Qwen2.5-0.5B-Instruct-Q3_K_L.gguf": {
    "size": 369358400,
    "sha256": "68fefa7a768b6227c7847901ae97f1c422d09a6227fb0c244282f6f40b438ea9",
    "blob": "98a8b55ba8dd4d92a486b7fc332ba8cfae186e03",
    "fetched": false,
-   "skipped": "weight file not used here (369 MB)"
+   "skipped": "weight file, fetched only by a full run (369 MB)"
   },
   "Qwen2.5-0.5B-Instruct-Q3_K_M.gguf": {
    "size": 355466656,
    "sha256": "e14591771b0a3070c50ff11ee6055ffbb25f0bf50b6f9474ec4a16ff4ace8df6",
    "blob": "a5c497e953db8f82c45d46ac29fe8c7b81ff4f52",
    "fetched": false,
-   "skipped": "weight file not used here (355 MB)"
+   "skipped": "weight file, fetched only by a full run (355 MB)"
   },
   "Qwen2.5-0.5B-Instruct-Q3_K_S.gguf": {
    "size": 338263456,
    "sha256": "468787b643ef9081a75c6e7bd98da987f46583250248e0a0a7aca173308e8d34",
    "blob": "f9b1e957017abbc388a3d4a8f5bf5d3dc7eaaf2c",
    "fetched": false,
-   "skipped": "weight file not used here (338 MB)"
+   "skipped": "weight file, fetched only by a full run (338 MB)"
   },
   "Qwen2.5-0.5B-Instruct-Q3_K_XL.gguf": {
    "size": 369358400,
    "sha256": "68fefa7a768b6227c7847901ae97f1c422d09a6227fb0c244282f6f40b438ea9",
    "blob": "98a8b55ba8dd4d92a486b7fc332ba8cfae186e03",
    "fetched": false,
-   "skipped": "weight file not used here (369 MB)"
+   "skipped": "weight file, fetched only by a full run (369 MB)"
   },
   "Qwen2.5-0.5B-Instruct-Q4_0.gguf": {
    "size": 352972352,
    "sha256": "c8cd5f37dd1235fb010c45316d4ff8af875e1a4e0ff368b4bf6cacb9053d4919",
    "blob": "361758549f539291cedf6cbcfa217f97445ecdf5",
    "fetched": false,
-   "skipped": "weight file not used here (352 MB)"
+   "skipped": "weight file, fetched only by a full run (352 MB)"
   },
   "Qwen2.5-0.5B-Instruct-Q4_0_4_4.gguf": {
    "size": 352155200,
    "sha256": "9f2c0af1a4a2a1f1b4ad51d2aa3fb09913ba8821f3aef71541fef56b3c7da8d0",
    "blob": "049f5079a7abb1d8553662ed1b7a6740f83f52df",
    "fetched": false,
-   "skipped": "weight file not used here (352 MB)"
+   "skipped": "weight file, fetched only by a full run (352 MB)"
   },
   "Qwen2.5-0.5B-Instruct-Q4_0_4_8.gguf": {
    "size": 352155200,
    "sha256": "23b29ad0785bc79f3d10e1bc4d1dae8a40599f60d7abb7bdfde6bc0ad71642f6",
    "blob": "1249c94211cac9501955d24d60a70c126e4e589f",
    "fetched": false,
-   "skipped": "weight file not used here (352 MB)"
+   "skipped": "weight file, fetched only by a full run (352 MB)"
   },
   "Qwen2.5-0.5B-Instruct-Q4_0_8_8.gguf": {
    "size": 352155200,
    "sha256": "af7a55e4493e2cba03f7b217f24abfd962e516eb3ea1a2a89073aca0c1403a3d",
    "blob": "c6ac9926f5680c4b4f0cc59336b5ccb3cc5e4923",
    "fetched": false,
-   "skipped": "weight file not used here (352 MB)"
+   "skipped": "weight file, fetched only by a full run (352 MB)"
   },
   "Qwen2.5-0.5B-Instruct-Q4_K_L.gguf": {
    "size": 397808192,
    "sha256": "6eb923e7d26e9cea28811e1a8e852009b21242fb157b26149d3b188f3a8c8653",
    "blob": "66e0eb4fd88ab40f2833b432bac5fce1e3193cf9",
    "fetched": false,
-   "skipped": "weight file not used here (397 MB)"
+   "skipped": "weight file, fetched only by a full run (397 MB)"
   },
   "Qwen2.5-0.5B-Instruct-Q4_K_M.gguf": {
    "size": 397808192,
    "sha256": "6eb923e7d26e9cea28811e1a8e852009b21242fb157b26149d3b188f3a8c8653",
    "blob": "66e0eb4fd88ab40f2833b432bac5fce1e3193cf9",
    "fetched": false,
-   "skipped": "weight file not used here (397 MB)"
+   "skipped": "weight file, fetched only by a full run (397 MB)"
   },
   "Qwen2.5-0.5B-Instruct-Q4_K_S.gguf": {
    "size": 385472064,
    "sha256": "988083e5e5f2b6060d32f349b7e2d9e253f352e9cd3ead40fab6889041654249",
    "blob": "190a32dc1cbc654deb979801e1334108f81a71b6",
    "fetched": false,
-   "skipped": "weight file not used here (385 MB)"
+   "skipped": "weight file, fetched only by a full run (385 MB)"
   },
   "Qwen2.5-0.5B-Instruct-Q5_K_L.gguf": {
    "size": 420086336,
    "sha256": "a0a413dcbb4676f21d4c951b98a393324694edb1a20a4f9547d1de8d2919ff3b",
    "blob": "c4924d2b535e0594fd6af7019c92e7799fb95cec",
    "fetched": false,
-   "skipped": "weight file not used here (420 MB)"
+   "skipped": "weight file, fetched only by a full run (420 MB)"
   },
   "Qwen2.5-0.5B-Instruct-Q5_K_M.gguf": {
    "size": 420086336,
    "sha256": "a0a413dcbb4676f21d4c951b98a393324694edb1a20a4f9547d1de8d2919ff3b",
    "blob": "c4924d2b535e0594fd6af7019c92e7799fb95cec",
    "fetched": false,
-   "skipped": "weight file not used here (420 MB)"
+   "skipped": "weight file, fetched only by a full run (420 MB)"
   },
   "Qwen2.5-0.5B-Instruct-Q5_K_S.gguf": {
    "size": 412710464,
    "sha256": "4da812ecc1301181e03c7deb6d747d699bc7dd7cc95f7333335ddb6a70ddbd85",
    "blob": "14b7aab7e764e5de13ac44be810968f90d401226",
    "fetched": false,
-   "skipped": "weight file not used here (412 MB)"
+   "skipped": "weight file, fetched only by a full run (412 MB)"
   },
   "Qwen2.5-0.5B-Instruct-Q6_K.gguf": {
    "size": 505736768,
    "sha256": "32c14c29a44712c02e29d5c2605593ece92ccb7a4358f56016a42b151434c842",
    "blob": "e0913733be04158caee7a5bc9859de6c8b1d80fc",
    "fetched": false,
-   "skipped": "weight file not used here (505 MB)"
+   "skipped": "weight file, fetched only by a full run (505 MB)"
   },
   "Qwen2.5-0.5B-Instruct-Q6_K_L.gguf": {
    "size": 505736768,
    "sha256": "32c14c29a44712c02e29d5c2605593ece92ccb7a4358f56016a42b151434c842",
    "blob": "e0913733be04158caee7a5bc9859de6c8b1d80fc",
    "fetched": false,
-   "skipped": "weight file not used here (505 MB)"
+   "skipped": "weight file, fetched only by a full run (505 MB)"
   },
   "Qwen2.5-0.5B-Instruct-Q8_0.gguf": {
    "size": 531068480,
    "sha256": "25130a98aa782284a7dabea0c23245b2fd371ed47244e79d78b8ec23245fdf96",
    "blob": "a0f4b38f35f01b4f93d051140597cc0ebeadac60",
    "fetched": false,
-   "skipped": "weight file not used here (531 MB)"
+   "skipped": "weight file, fetched only by a full run (531 MB)"
   },
   "Qwen2.5-0.5B-Instruct-f16.gguf": {
    "size": 994156864,
    "sha256": "f1ad9d1174ce6ab47b584d522634c47e411b75bffdffd9a4e106e21e882392e5",
    "blob": "c1b62470342c0a4820546a3497a8e8fc543193c4",
    "fetched": false,
-   "skipped": "weight file not used here (994 MB)"
+   "skipped": "weight file, fetched only by a full run (994 MB)"
   },
   "Qwen2.5-0.5B-Instruct.imatrix": {
    "size": 988610,
@@ -1041,7 +1041,7 @@
    "sha256": "fdf756fa7fcbe7404d5c60e26bff1a0c8b8aa1f72ced49e7dd0210fe288fb7fe",
    "blob": "d7db405a3f0d9bf1ba5bdd4e4211db8022ebe4eb",
    "fetched": false,
-   "skipped": "weight file not used here (988 MB)"
+   "skipped": "weight file, fetched only by a full run (988 MB)"
   },
   "tokenizer.json": {
    "size": 7031645,
@@ -1072,7 +1072,7 @@
  "local_check": null,
  "unknown": null,
  "warnings": null,
- "updated": "2026-10-19",
+ "updated": "2026-10-30",
  "by": "scripts/model_db.py",
  "gguf_meta": {
   "general.architecture": "qwen2",
@@ -1557,7 +1557,7 @@
   "texts": [
    {
     "file": "Qwen/Qwen2.5-0.5B-Instruct@7ae557604adf/LICENSE",
-    "path": "/home/green/.local/share/gguf/hf-meta/Qwen--Qwen2.5-0.5B-Instruct/7ae557604adf67be50417f59c2c2f167def9a775/LICENSE",
+    "path": "/home/box/.local/share/gguf/hf-meta/Qwen--Qwen2.5-0.5B-Instruct/7ae557604adf67be50417f59c2c2f167def9a775/LICENSE",
     "url": "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct/blob/7ae557604adf67be50417f59c2c2f167def9a775/LICENSE",
     "sha256": "832dd9e00a68dd83b3c3fb9f5588dad7dcf337a0db50f7d9483f310cd292e92e",
     "bytes": 11343,

@@ -15,8 +15,8 @@ hosts:
   miryam:
     kind: laptop
     measured: true
-    addr: 192.168.1.9
-    user: rcs
+    addr: REPLACE_ME
+    user: REPLACE_ME
     port: 22
     os: linux
     cpu: Intel Core i5-7200U
@@ -42,8 +42,8 @@ hosts:
   qodesh:
     kind: desktop
     measured: true
-    addr: 192.168.1.2
-    user: brian
+    addr: REPLACE_ME
+    user: REPLACE_ME
     port: 22
     os: windows
     cpu: AMD Athlon II X2 B24 (2 cores / 2 threads)
@@ -167,8 +167,8 @@ hosts:
   phone7:
     kind: phone
     measured: true
-    addr: 192.168.1.7
-    user: u0_a439
+    addr: REPLACE_ME
+    user: REPLACE_ME
     port: 8022
     os: android-16
     cpu: 8 cores, ARMv8 (3x part 0xd80 Cortex-A520, 5x part 0xd81 Cortex-A720)
@@ -176,10 +176,11 @@ hosts:
     ram_mib: 7430
     reserve_ram_mib: 5120
     notes: 'Samsung Galaxy A57 (SM-A576U, a57xsq); SoC Samsung Exynos s5e8865 (ro.board.platform
-      erd8865). SSH key-only u0_a439@192.168.1.7:8022. Termux, aarch64. $HOME: 224G,
-      86G used, 138G free. Termux pkgs: git, python, llama-cpp 0.5.0 (+opencl, vulkan
-      backends), ollama 0.31.1 (+vulkan), rsync, python-torch/numpy/scipy, mesa-vulkan-icd-swrast.
-      Two physical A57s on the LAN (distinct boot_id, same build fingerprint).'
+      erd8865). SSH key-only (addr/user in hosts overlay #104). Termux, aarch64. $HOME:
+      224G, 86G used, 138G free. Termux pkgs: git, python, llama-cpp 0.5.0 (+opencl,
+      vulkan backends), ollama 0.31.1 (+vulkan), rsync, python-torch/numpy/scipy,
+      mesa-vulkan-icd-swrast. Two physical A57s on the LAN (distinct boot_id, same
+      build fingerprint).'
     gpus:
     - vendor: samsung
       model: Samsung Xclipse 550
@@ -195,8 +196,8 @@ hosts:
   phone8:
     kind: phone
     measured: true
-    addr: 192.168.1.8
-    user: u0_a414
+    addr: REPLACE_ME
+    user: REPLACE_ME
     port: 8022
     os: android-16
     cpu: 8 cores, ARMv8 (3x part 0xd80 Cortex-A520, 5x part 0xd81 Cortex-A720)
@@ -204,9 +205,9 @@ hosts:
     ram_mib: 7430
     reserve_ram_mib: 5120
     notes: "Samsung Galaxy A57 (SM-A576U, a57xsq); SoC Samsung Exynos s5e8865 (ro.board.platform\
-      \ erd8865). SSH key-only u0_a414@192.168.1.8:8022. Termux, aarch64. $HOME: 224G,\
-      \ 50G used, 173G free. Termux pkgs: git, python only (no llama-cpp, no rsync).\
-      \ Two physical A57s on the LAN (distinct boot_id, same build fingerprint).\n\
+      \ erd8865). SSH key-only (addr/user in hosts overlay #104). Termux, aarch64.\
+      \ $HOME: 224G, 50G used, 173G free. Termux pkgs: git, python only (no llama-cpp,\
+      \ no rsync). Two physical A57s on the LAN (distinct boot_id, same build fingerprint).\n\
       \  2026-10-10: host key SHA256:r7Bm/uv3...fXc; anchor SmolLM2 Q4_0 ngl99 fa\
       \ on = pp128 1476, tg64 100; sustained 5 min ~-12%; keep f16 KV."
     gpus:
@@ -238,6 +239,7 @@ hosts:
     measured: true
     local_names:
     - grok-bot-vm-414232872
+    - grok-bot-vm-414137730
     os: linux
     cpu: Intel(R) Xeon(R) Processor
     threads: 8
@@ -267,7 +269,7 @@ meshes:
   lan-bt:
     type: bittorrent
     tracker: miryam
-    bind: 192.168.1.9
+    bind: REPLACE_ME
     port: 6969
     private: true
     client: aria2c
@@ -304,6 +306,33 @@ runtimes:
     - miryam
     supported_archs:
     - gemma-embedding2
+    backends:
+    - cpu
+    - vulkan
+    spec_types:
+    - draft-simple
+    - ngram-simple
+    - ngram-map-k
+    - ngram-map-k4v
+    - ngram-mod
+    - ngram-cache
+  llama-b11944:
+    kind: llama-server
+    build: b11944 (code-bootstraps pin; config/llama-release.json + llama-pin.env)
+    commit: 1b4554eff124a8f0033bc09b3f708a5e51cbda15
+    bin: code-bootstraps-llama.cpp/bin/llama-b11944-linux-x64-cpu/llama-server
+    hosts:
+    - miryam
+    supported_archs:
+    - qwen35
+    - gemma-embedding2
+    - llama
+    - lfm2
+    - lfm3
+    - qwen2
+    - gemma2
+    - gemma3
+    - nanbeige
     backends:
     - cpu
     - vulkan
@@ -543,20 +572,56 @@ models:
     arch: llama
     trained_ctx: 524288
     role: coder
-    db: dealignai--Nanbeige4.3-33B-UNCENSORED-GGUF--Nanbeige4.3-33B-UNCENSORED-Q4_K_M
     notes: Prize on angel (FreeBSD). damp-run on box 2026-10-26; weights stay on angel.
       Dual coder+chat via card_set. Needs measured SSD swap/spill before activate
       (vvram-ssd/LAYER.md).
+    db: dealignai--Nanbeige4.3-33B-UNCENSORED-GGUF--Nanbeige4.3-33B-UNCENSORED-Q4_K_M
   dolphin3-cyber-8b-q2k:
     gguf: ~/.local/share/gguf/models/pentest/Dolphin3.0-Llama3.1-8B-abliterated.Q2_K.gguf
     sha256: 8944d35bdd613fe9279198b76eebeb9ab79c09a2bba526988ee3e3297862ea91
     arch: llama
     trained_ctx: 131072
     role: pentest
-    db: RavichandranJ--Dolphin3-Cyber-8B-GGUF--Dolphin3.0-Llama3.1-8B-abliterated.Q2_K
     notes: Official guardian weight (docs/guardian-weights.md). Q2_K ~3.0 GiB. sha256
       is registry HF LFS oid; verify with activate_guardian_weights.py --measure.
       Fetch before activating miryam-pentest / angel-guardian.
+    db: mradermacher--Dolphin3.0-Llama3.1-8B-abliterated-GGUF--Dolphin3.0-Llama3.1-8B-abliterated.Q2_K
+  lfm3-17b-uncensored-q4km:
+    gguf: ~/.local/share/gguf/models/general/LFM3-1.7B-Uncensored-AD-Q4_K_M.gguf
+    sha256: b22df65673b54ed326f18f74826d76f3b65dadc237ffd6306cd52be04544827d
+    arch: lfm3
+    trained_ctx: 262144
+    role: chat
+    db: AtomicChat--LFM3-1.7B-Uncensored-GGUF--LFM3-1.7B-Uncensored-AD-Q4_K_M
+    notes: 'familia default model (general + coder). llama-bench b11944 box x86_64
+      CPU 8t: pp512 184, tg128 22 t/s (#183).'
+  lfm3-vl-2b-q4km:
+    gguf: ~/.local/share/gguf/models-optional/lfm3-vl/LFM3-VL-2B-Q4_K_M.gguf
+    sha256: 56dac2e192ff0d9ab8507f4f1aeb4aed0463449bbbefaac79497f041c95f21eb
+    arch: lfm3
+    trained_ctx: 128000
+    role: chat
+    notes: 'opt-in vision; mmproj-LFM3-VL-2B-Q8_0.gguf sha256 c5c5b58d544a18da919172d2d0368090ea1a4a351b6feb7f8a326a264a5918ab.
+      Tested b11944: image prompt answered.'
+    db: LiquidAI--LFM3-VL-2B-GGUF--LFM3-VL-2B-Q4_K_M
+  lfm3-omni-2b-q4km:
+    gguf: ~/.local/share/gguf/models-optional/lfm3-omni/LFM3-Omni-2B-Q4_K_M.gguf
+    sha256: 9f8d30e9d4fd7a9349d586e077988229b3ca0a0e4ad730897563d1eccc9893e2
+    arch: lfm3
+    trained_ctx: 128000
+    role: chat
+    notes: 'opt-in image+audio; mmproj-LFM3-Omni-2B-Q8_0.gguf sha256 720ff4fc09df0e026c4ec641d0c698bf27b5bcd50561944c88eda5e3dffe1839.
+      PARTIAL TESTED: image OK, audio reply untested.'
+    db: LiquidAI--LFM3-Omni-2B-GGUF--LFM3-Omni-2B-Q4_K_M
+  lfm3-audio-2b-q4km:
+    gguf: ~/.local/share/gguf/models-optional/lfm3-audio/LFM3-Audio-2B-Q4_K_M.gguf
+    sha256: 9a773289bd321ed879cd3a76545f6aca506e403851a45fb315420aee45625be2
+    arch: lfm3
+    trained_ctx: 128000
+    role: chat
+    notes: 'opt-in audio; mmproj-LFM3-Audio-2B-Q8_0.gguf sha256 26601e904245a85bd8f3cf320a629e897cfc01c1d09369e8b4fd951f13024d3e.
+      PARTIAL TESTED: loads, audio reply untested.'
+    db: LiquidAI--LFM3-Audio-2B-GGUF--LFM3-Audio-2B-Q4_K_M
 nodes:
   coder:
     model: nanbeige43-33b-q4km
@@ -647,7 +712,8 @@ nodes:
       card_set: same Recommended settings card as Ubuntu guardian node
     note: 'Guardian/defender on angel (FreeBSD jump). Planned until weights on angel
       + measured sha. Private graph key is guardian (scripts/generate_graph.py angel).
-      Seatbelts: tools dual-disable default.'
+      Seatbelts: tools dual-disable default. Ready-check (Boundary, no activate):
+      python3 scripts/guardian_ready.py'
 speculative:
   coder-draft:
     experimental: true

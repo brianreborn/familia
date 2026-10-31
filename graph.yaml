@@ -1185,7 +1185,7 @@ self_improve:
   harness2:
     experimental: true
     engine: harness2
-    mode: propose                # "off" (quoted: YAML reads bare off as false) | propose (review by hand) | apply (needs consent)
+    mode: "off"                  # "off" (quoted: YAML reads bare off as false) | propose (review by hand) | apply (needs consent)
     targets: [hermes-lab]
     k: 1
     recursion: parallel          # parallel = Harness² agg, sequential = seq
@@ -1194,7 +1194,7 @@ self_improve:
   harness2-hermes:
     experimental: true
     engine: harness2
-    mode: propose
+    mode: "off"
     targets: [hermes]
     k: 1
     recursion: parallel

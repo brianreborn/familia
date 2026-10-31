@@ -136,6 +136,10 @@ def main(argv=None):
     g = yaml.safe_load(open(a.graph)) or {}
     g["_path"] = a.graph
     if a.agent and a.agent in SI.pentest_agents(g):
+        # Refuse only when something would actually self-improve; a pentest agent with no
+        # enabled/forced target must still launch (hermes.sh calls this on every start).
+        if not (a.force or any(on for _, on in targets_for(g, agent=a.agent))):
+            return 0
         raise SystemExit(
             f"{a.log_prefix}: agent {a.agent!r} is used by a pentest; "
             "pentest agents never self-improve"

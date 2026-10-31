@@ -36,7 +36,7 @@
   "repeat-penalty": "Qwen/Qwen3.5-2B Qwen/Qwen3.5-2B README.md:L705"
  },
  "card_default_set": "Non-thinking mode for text tasks",
- "card_defaults_how": "recommended set for the card's default mode (non-thinking, Qwen/Qwen3.5-2B README.md:L585), text/general task set",
+ "card_defaults_how": "text/general task set among recommended",
  "card_sampling_modes": {
   "Non-thinking mode for text tasks": {
    "temp": 1.0,
@@ -1994,154 +1994,154 @@
    "sha256": "dc11be2ca4519954a3e4b013ef59497b5522209987d67891851113eda89619f1",
    "blob": "a9052ff3141c2a5d319b661c41e4946c408f6997",
    "fetched": false,
-   "skipped": "weight file not used here (3775 MB)"
+   "skipped": "weight file, fetched only by a full run (3775 MB)"
   },
   "Qwen3.5-2B-IQ4_NL.gguf": {
    "size": 1213300992,
    "sha256": "e430d87ebc5abbb269c2e2461f1a49b9c5dc79847c13c786dc3615d0b116c4ba",
    "blob": "308ab71e7250b0b28706baa24daea2dacdaa7de2",
    "fetched": false,
-   "skipped": "weight file not used here (1213 MB)"
+   "skipped": "weight file, fetched only by a full run (1213 MB)"
   },
   "Qwen3.5-2B-IQ4_XS.gguf": {
    "size": 1172996352,
    "sha256": "3639f34b5ca22aa1c51f3616566eae8c355111554f6924ad97ee2652ed11c1cd",
    "blob": "fe98b1ed8ae269904452b178aada543df9682391",
    "fetched": false,
-   "skipped": "weight file not used here (1172 MB)"
+   "skipped": "weight file, fetched only by a full run (1172 MB)"
   },
   "Qwen3.5-2B-Q3_K_M.gguf": {
    "size": 1107149056,
    "sha256": "8b049f98461020b7e15797e13413fc63b9b500ffa883c74618b618ecbc2bfccf",
    "blob": "5aceef72ad92098b3a8d2fc29f2a95a7974c4bde",
    "fetched": false,
-   "skipped": "weight file not used here (1107 MB)"
+   "skipped": "weight file, fetched only by a full run (1107 MB)"
   },
   "Qwen3.5-2B-Q3_K_S.gguf": {
    "size": 1030947072,
    "sha256": "21026bce70a757887bce861047c26966109206ebe2adeb7b662de9a179952d28",
    "blob": "332a5eaac59550950d29ff4dd58624f6ac2ce51a",
    "fetched": false,
-   "skipped": "weight file not used here (1030 MB)"
+   "skipped": "weight file, fetched only by a full run (1030 MB)"
   },
   "Qwen3.5-2B-Q4_0.gguf": {
    "size": 1214873856,
    "sha256": "cd70221bebaee0503e0f6717e174250cd7825aa88438b3aabec9ad55731d9bb1",
    "blob": "70420b8356f1c0ae442b2c55c7e717cce2090ea5",
    "fetched": false,
-   "skipped": "weight file not used here (1214 MB)"
+   "skipped": "weight file, fetched only by a full run (1214 MB)"
   },
   "Qwen3.5-2B-Q4_1.gguf": {
    "size": 1293517056,
    "sha256": "93a49bfdb0619305584b81608a2d8c931fdcfc0bd4b0d75f25ac2d8988199278",
    "blob": "ba39cf14b20b84c32d8e0485d02c1d1fe3cb14cf",
    "fetched": false,
-   "skipped": "weight file not used here (1293 MB)"
+   "skipped": "weight file, fetched only by a full run (1293 MB)"
   },
   "Qwen3.5-2B-Q4_K_M.gguf": {
    "size": 1280835840,
    "sha256": "aaf42c8b7c3cab2bf3d69c355048d4a0ee9973d48f16c731c0520ee914699223",
    "blob": "2dd42a93d110e1a333c7464693e3c38b979a940e",
    "fetched": false,
-   "skipped": "weight file not used here (1280 MB)"
+   "skipped": "weight file, fetched only by a full run (1280 MB)"
   },
   "Qwen3.5-2B-Q4_K_S.gguf": {
    "size": 1217757440,
    "sha256": "56eee7b85a2023ba393c5f9a5a5e372e3645e7925a13adb4d13723fc5bc14124",
    "blob": "e669187e2b14a686ed62eb6ce3e8a9da39c8ad5b",
    "fetched": false,
-   "skipped": "weight file not used here (1217 MB)"
+   "skipped": "weight file, fetched only by a full run (1217 MB)"
   },
   "Qwen3.5-2B-Q5_K_M.gguf": {
    "size": 1435238656,
    "sha256": "1885b3a9195f8cc09da9a7a7a75afdc1e8d5cbf9fc4a499c3961dddea37098ac",
    "blob": "a3fada179bafcdad75ceeb4e08f3b2b9acfe50c7",
    "fetched": false,
-   "skipped": "weight file not used here (1435 MB)"
+   "skipped": "weight file, fetched only by a full run (1435 MB)"
   },
   "Qwen3.5-2B-Q5_K_S.gguf": {
    "size": 1384546560,
    "sha256": "5503c57f038bd201e0583d64d50d4aebba2f628004834cb4d32abb141eb1bfda",
    "blob": "dd95ed5e4f69297f79cf87b8b19aa102b6065701",
    "fetched": false,
-   "skipped": "weight file not used here (1384 MB)"
+   "skipped": "weight file, fetched only by a full run (1384 MB)"
   },
   "Qwen3.5-2B-Q6_K.gguf": {
    "size": 1574961408,
    "sha256": "fc90339420b4298887aafb307a4291c55440b730133bbffe6ba9630503dcb548",
    "blob": "0a9bb4c65cbe48505704ac7f2d06f1ec6f08b44b",
    "fetched": false,
-   "skipped": "weight file not used here (1574 MB)"
+   "skipped": "weight file, fetched only by a full run (1574 MB)"
   },
   "Qwen3.5-2B-Q8_0.gguf": {
    "size": 2012012800,
    "sha256": "1b04acba824817554f4ce23639bc8495ff70453b8fcb047900c731521021f2c1",
    "blob": "e9b5735a49b5bab7e33f98d13fba439d85dff6bd",
    "fetched": false,
-   "skipped": "weight file not used here (2012 MB)"
+   "skipped": "weight file, fetched only by a full run (2012 MB)"
   },
   "Qwen3.5-2B-UD-IQ2_M.gguf": {
    "size": 859857152,
    "sha256": "7df5673b6c1a8efb3b5f5988a506d991ab936b3e00ad29f94e0f75cfbf8599da",
    "blob": "ca9848c7cf793033f95c6b3e8d3814177a8ecddd",
    "fetched": false,
-   "skipped": "weight file not used here (859 MB)"
+   "skipped": "weight file, fetched only by a full run (859 MB)"
   },
   "Qwen3.5-2B-UD-IQ2_XXS.gguf": {
    "size": 768270592,
    "sha256": "43aedbd2b03a3c2cc39f49ccf74fcd3c394ed0b2a1ede8a30ee652ee9cfc27ef",
    "blob": "2a0251f1bb6f5fe6e64eee68957f209c999a082e",
    "fetched": false,
-   "skipped": "weight file not used here (768 MB)"
+   "skipped": "weight file, fetched only by a full run (768 MB)"
   },
   "Qwen3.5-2B-UD-IQ3_XXS.gguf": {
    "size": 931823872,
    "sha256": "36347f47f9eab7d433c7c37be1f87ac2253378c3d530da3cb25fb5f71f8f1a58",
    "blob": "5f8073353df36c68c9b2ebe52a4de3fd064d3ff1",
    "fetched": false,
-   "skipped": "weight file not used here (931 MB)"
+   "skipped": "weight file, fetched only by a full run (931 MB)"
   },
   "Qwen3.5-2B-UD-Q2_K_XL.gguf": {
    "size": 966533376,
    "sha256": "dbcf28421dece9c86884f9da5a2291c8214be7920623f1fcb663ed8f58b38ccb",
    "blob": "d9eef9c08b0b355bebb03755fd6d97d87c2173de",
    "fetched": false,
-   "skipped": "weight file not used here (966 MB)"
+   "skipped": "weight file, fetched only by a full run (966 MB)"
   },
   "Qwen3.5-2B-UD-Q3_K_XL.gguf": {
    "size": 1159274752,
    "sha256": "d34e1271b7ca784d739b2b7e804bac391d7b6471e695d88e8c79eae0df032263",
    "blob": "5fcaa4da95c67c1047a3acf655e0d3cce0677236",
    "fetched": false,
-   "skipped": "weight file not used here (1159 MB)"
+   "skipped": "weight file, fetched only by a full run (1159 MB)"
   },
   "Qwen3.5-2B-UD-Q4_K_XL.gguf": {
    "size": 1339752704,
    "sha256": "0af96165ea615bea39a04118d63f0b6d35908aea850ee4a51aa6151d851b8b35",
    "blob": "d7499601142920a9c54616762be8de4426a64215",
    "fetched": false,
-   "skipped": "weight file not used here (1339 MB)"
+   "skipped": "weight file, fetched only by a full run (1339 MB)"
   },
   "Qwen3.5-2B-UD-Q5_K_XL.gguf": {
    "size": 1466687744,
    "sha256": "67bff9774bc55e44af2eee3c448dc054478b45c0607858fc6df5b336b55f36f4",
    "blob": "41b154b37bae1b41e9dace0d2393dcecdb9ae275",
    "fetched": false,
-   "skipped": "weight file not used here (1466 MB)"
+   "skipped": "weight file, fetched only by a full run (1466 MB)"
   },
   "Qwen3.5-2B-UD-Q6_K_XL.gguf": {
    "size": 1864483072,
    "sha256": "2f956e57c27b3f257916825d9d3bc174269f3df9c6fcf87a64da666c0e7a518a",
    "blob": "e4ba64360226608493e1a13c05b11b5d06044e63",
    "fetched": false,
-   "skipped": "weight file not used here (1864 MB)"
+   "skipped": "weight file, fetched only by a full run (1864 MB)"
   },
   "Qwen3.5-2B-UD-Q8_K_XL.gguf": {
    "size": 2834940160,
    "sha256": "a53988df91157d78acaf3c95e22db179d13f6236061bdb86576494dc99b1bc3b",
    "blob": "f2c725d061363924944f2dbd678b170753531d5f",
    "fetched": false,
-   "skipped": "weight file not used here (2834 MB)"
+   "skipped": "weight file, fetched only by a full run (2834 MB)"
   },
   "README.md": {
    "size": 64059,
@@ -2162,21 +2162,21 @@
    "sha256": "f17196c0d8fc756bc65be60075bd4a359917eee8a438505639511727c585d3c2",
    "blob": "4930d4a798b18080d9cf8153f8651634bb6744ab",
    "fetched": false,
-   "skipped": "weight file not used here (671 MB)"
+   "skipped": "weight file, fetched only by a full run (671 MB)"
   },
   "mmproj-F16.gguf": {
    "size": 668227264,
    "sha256": "7035e9cb8d7c6a9681d07eef9a364783e86ea4cd73faab2eabb4f43a101830c7",
    "blob": "5c87505c54bca9ebdb1e4db0c45b8a09b019c464",
    "fetched": false,
-   "skipped": "weight file not used here (668 MB)"
+   "skipped": "weight file, fetched only by a full run (668 MB)"
   },
   "mmproj-F32.gguf": {
    "size": 1325684416,
    "sha256": "d23b0e7bd6fe4416151838434f6a33a1d5f116a82b35565a11579e37dc80ad78",
    "blob": "39556a509dad6d5222003d536906af8b4cdb4b86",
    "fetched": false,
-   "skipped": "weight file not used here (1325 MB)"
+   "skipped": "weight file, fetched only by a full run (1325 MB)"
   }
  },
  "base_repo_files": {
@@ -2227,7 +2227,7 @@
    "sha256": "aa33250c4fc64891ddfaba3a314fd9542ea371843c387178b425fbcc5ed680b1",
    "blob": "3868ead7f1658210f24643fa927afa7d9717083c",
    "fetched": false,
-   "skipped": "weight file not used here (4548 MB)"
+   "skipped": "weight file, fetched only by a full run (4548 MB)"
   },
   "model.safetensors.index.json": {
    "size": 64460,
@@ -2273,17 +2273,18 @@
   }
  },
  "found_in": [
+  "graph.yaml models.qwen35-2b-q4km",
   "manifest coder/default"
  ],
- "match": null,
+ "match": "LFS sha256 match",
  "local_check": {
-  "host": "miryam",
+  "host": "grok-bot-vm-414232872",
   "sha256_ok": true,
-  "checked": "2026-10-19"
+  "checked": "2026-10-30"
  },
  "unknown": null,
  "warnings": null,
- "updated": "2026-10-19",
+ "updated": "2026-10-30",
  "by": "scripts/model_db.py",
  "gguf_meta": {
   "general.architecture": "qwen35",
@@ -2834,7 +2835,7 @@
   "texts": [
    {
     "file": "Qwen/Qwen3.5-2B@15852e8c1636/LICENSE",
-    "path": "/home/green/.local/share/gguf/hf-meta/Qwen--Qwen3.5-2B/15852e8c16360a2fea060d615a32b45270f8a8fc/LICENSE",
+    "path": "/home/box/.local/share/gguf/hf-meta/Qwen--Qwen3.5-2B/15852e8c16360a2fea060d615a32b45270f8a8fc/LICENSE",
     "url": "https://huggingface.co/Qwen/Qwen3.5-2B/blob/15852e8c16360a2fea060d615a32b45270f8a8fc/LICENSE",
     "sha256": "bbedc3fda3305820b977265f01b8619d87570a6739de3a5582c3464840f1e57a",
     "bytes": 11544,
