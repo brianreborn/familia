@@ -327,10 +327,29 @@ def _wait_ready(child, url, label, timeout):
     raise StartupError(f"{label} did not become ready within {timeout:g} seconds")
 
 
+def spawn_child(argv, **kw):
+    """Start a service in its own process group (POSIX) so stopping it also stops what it
+    started: serve.sh does not exec llama-server on the default path (CPU retry), so a plain
+    terminate() of sh orphaned the runtime and kept its port bound (routing-lifetime)."""
+    if os.name == "posix":
+        kw.setdefault("start_new_session", True)
+    return subprocess.Popen(argv, **kw)
+
+
+def _signal_tree(child, sig):
+    if os.name == "posix":
+        try:
+            os.killpg(child.pid, sig)   # group leader == child.pid via start_new_session
+            return
+        except (ProcessLookupError, PermissionError):
+            pass
+    if child.poll() is None:
+        child.send_signal(sig)
+
+
 def _stop_children(children):
     for child, _ in reversed(children):
-        if child.poll() is None:
-            child.terminate()
+        _signal_tree(child, signal.SIGTERM)
     deadline = time.monotonic() + 10
     for child, label in reversed(children):
         if child.poll() is None:
@@ -338,8 +357,22 @@ def _stop_children(children):
                 child.wait(timeout=max(0, deadline - time.monotonic()))
             except subprocess.TimeoutExpired:
                 print(f"familia-graph: {label} did not stop after SIGTERM; sending SIGKILL", file=sys.stderr)
-                child.kill()
+                _signal_tree(child, signal.SIGKILL)
                 child.wait()
+        # the group may outlive its leader (sh died, runtime still exiting): finish it
+        if os.name == "posix":
+            end = min(deadline, time.monotonic() + 5)
+            while time.monotonic() < end:
+                try:
+                    os.killpg(child.pid, 0)
+                except (ProcessLookupError, PermissionError):
+                    break
+                time.sleep(0.05)
+            else:
+                try:
+                    os.killpg(child.pid, signal.SIGKILL)
+                except (ProcessLookupError, PermissionError):
+                    pass
 
 
 def run(args=None):
@@ -427,7 +460,7 @@ def run(args=None):
         signal.signal(signal.SIGTERM, interrupt)
         try:
             for name, _ in plans:
-                child = subprocess.Popen(
+                child = spawn_child(
                     ["sh", str(SCRIPTS / "serve.sh"), name],
                     cwd=ROOT,
                     env=dict(launch_env, FAMILIA_HOST=host),
@@ -441,7 +474,7 @@ def run(args=None):
 
             for gateway_name, gateway, aliases in gateways:
                 manifest_path = _write_proxy_manifest(host, gateway_name, gateway, aliases)
-                child = subprocess.Popen(
+                child = spawn_child(
                     ["node", str(green_roomz), "graph-proxy", "--manifest", str(manifest_path)],
                     cwd=ROOT,
                     env=launch_env,
