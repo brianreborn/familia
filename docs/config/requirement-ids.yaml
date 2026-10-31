@@ -146,6 +146,9 @@ graph:
     quant:
       id: CFG-GRAPH-MODELS-009
       status: IMPLEMENTED
+    tool_calls:
+      id: CFG-GRAPH-MODELS-010
+      status: IMPLEMENTED
   nodes:
     model:
       id: CFG-GRAPH-NODES-001
@@ -230,6 +233,12 @@ graph:
       status: IMPLEMENTED
     role:
       id: CFG-GRAPH-NODES-028
+      status: IMPLEMENTED
+    tool_capable:
+      id: CFG-GRAPH-NODES-029
+      status: IMPLEMENTED
+    tool_route:
+      id: CFG-GRAPH-NODES-030
       status: IMPLEMENTED
   speculative:
     experimental:
@@ -843,7 +852,7 @@ other:
     status: IMPLEMENTED
     doc: docs/config/routing-spec.md
   CFG-SPEC-TOOLS-002:
-    status: IMPLEMENTED
+    status: SUPERSEDED
     doc: docs/config/routing-spec.md
   CFG-SPEC-TOOLS-003:
     status: SPEC
@@ -957,5 +966,17 @@ other:
     status: IMPLEMENTED
     doc: docs/config/routing-spec.md
   CFG-SPEC-TOOLS-006:
+    status: IMPLEMENTED
+    doc: docs/config/routing-spec.md
+  CFG-SPEC-TOOLS-007:
+    status: IMPLEMENTED
+    doc: docs/config/routing-spec.md
+  CFG-SPEC-TOOLS-008:
+    status: IMPLEMENTED
+    doc: docs/config/routing-spec.md
+  CFG-SPEC-TOOLS-009:
+    status: IMPLEMENTED
+    doc: docs/config/routing-spec.md
+  CFG-SPEC-TOOLS-010:
     status: IMPLEMENTED
     doc: docs/config/routing-spec.md
