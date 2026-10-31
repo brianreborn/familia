@@ -504,6 +504,84 @@ def link_plugins(agent_cfg, home):
 
 
 
+# ---- tool routing (Brian 2026-10-31): any node that can use tools gets them, directly or via
+# graph routing over a nexus mesh. Guardian / pentest / defender nodes get NONE (pentest policy
+# ladder governs them, docs/config/pentest-policy.md). The node-level tools default itself is owned
+# by graph_types (Routing Test Designer, swarm/routing/tools-capability); this only decides what a
+# Hermes agent sends its tool calls to.
+TOOL_FREE_ROLES = frozenset({"guardian", "pentest", "defender"})
+NON_TOOL_ROLES = frozenset({"embed", "diffusion", "decision"})  # no tool-call chat template
+
+
+def _node_role(g, name):
+    from node_role import infer_role
+    n = g["nodes"][name]
+    raw = {n.get("role"), ((g.get("models") or {}).get(n.get("model")) or {}).get("role"), infer_role(name, n, g)}
+    if name.endswith("-defender") or name == "defender": raw.add("defender")
+    return raw
+
+
+def tool_free(g, name):
+    """Guardian / pentest / defender nodes never get Hermes tools (incl. MCP)."""
+    return bool(_node_role(g, name) & TOOL_FREE_ROLES)
+
+
+def tool_capable(g, name):
+    """Can this node's model drive tool calls? Explicit nodes.X.tool_capable / models.X.tool_calls
+    (if the graph carries them) win; otherwise type implies capability (node_role design law)."""
+    n = g["nodes"][name]
+    if tool_free(g, name): return False
+    for v in (n.get("tool_capable"), ((g.get("models") or {}).get(n.get("model")) or {}).get("tool_calls")):
+        if isinstance(v, bool): return v
+    return not (_node_role(g, name) & NON_TOOL_ROLES)
+
+
+def nexus_meshes(g, host):
+    """ssh nexus meshes (meshes.*, type ssh) that `host` is a member of."""
+    return [k for k, m in (g.get("meshes") or {}).items()
+            if (m or {}).get("type") == "ssh" and host in ((m or {}).get("members") or [])]
+
+
+def route_tools(g, agent):
+    """-> {"mode": none|direct|nexus, "node", "via"}. none: tool-free node or nothing routable.
+    direct: the agent's main node calls tools itself (all tools by default). nexus: the main model
+    cannot call tools, so tool-driving turns go to a tool-capable node, same host first, else a peer
+    host on a shared ssh nexus mesh (graph routing)."""
+    _, name, n, _ = node_for(g, agent)
+    if tool_free(g, name): return {"mode": "none", "node": None, "via": None, "reason": "tool-free node"}
+    if tool_capable(g, name): return {"mode": "direct", "node": name, "via": None}
+    host = n.get("host")
+    ok = lambda k, o: (k != name and o.get("status") != "planned" and not tool_free(g, k) and tool_capable(g, k))
+    nodes = g.get("nodes") or {}
+    for k in sorted(nodes):
+        if nodes[k].get("host") == host and ok(k, nodes[k]):
+            return {"mode": "nexus", "node": k, "via": None}
+    for mesh in nexus_meshes(g, host):
+        peers = set(g["meshes"][mesh].get("members") or []) - {host}
+        for k in sorted(nodes):
+            if nodes[k].get("host") in peers and ok(k, nodes[k]):
+                return {"mode": "nexus", "node": k, "via": mesh}
+    return {"mode": "none", "node": None, "via": None, "reason": "no tool-capable node reachable"}
+
+
+def node_base(g, k, from_host):
+    """OpenAI base URL for node k as seen from from_host (loopback bind only works same-host)."""
+    n = g["nodes"][k]; b = bind(n)
+    if n.get("host") != from_host and (b in ("localhost", "::1") or str(b).startswith("127.")):
+        b = ((g.get("hosts") or {}).get(n.get("host")) or {}).get("addr") or b
+    return f"http://{b}:{n['port']}/v1"
+
+
+def apply_tool_route(g, agent, cfg, route):
+    if route["mode"] == "none":
+        cfg.pop("mcp_servers", None)
+        cfg["platform_toolsets"] = dict(cfg.get("platform_toolsets") or {}, cli=[])
+    elif route["mode"] == "nexus":
+        _, _, n, _ = node_for(g, agent)
+        cfg["model"] = dict(cfg["model"], base_url=node_base(g, route["node"], n.get("host")), default=route["node"])
+    return cfg
+
+
 def render(g, agent, user_cfg_path=os.path.join(USER_HOME, "config.yaml"), base_override=None):
     a, name, n, alias = node_for(g, agent)
     base = base_override or f"http://{bind(n)}:{n['port']}/v1"
@@ -537,6 +615,7 @@ def render(g, agent, user_cfg_path=os.path.join(USER_HOME, "config.yaml"), base_
         for t in LEAN_AUX_DROP:
             aux.pop(t, None)
         cfg["auxiliary"] = aux
+    apply_tool_route(g, agent, cfg, route_tools(g, agent))
     # Official / portable Hermes plugins (Agent Plugins v1) live under HERMES_HOME/plugins.
     # Opt-in via agents.<name>.plugins: ["rea"] or ["*"] to link from ~/.hermes/plugins (#92).
     # Self-improve never adds plugins (scripts/self_improve.py gate).
