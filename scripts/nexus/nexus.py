@@ -74,7 +74,7 @@ class Nexus:
         got = s.ssh(f"sha256sum {s.r(d)}/{shlex.quote(name)}").split()[0]
         if got != h: raise SystemExit(f"nexus: hub sha256 {got} != local {h}")
         meta = json.dumps(dict(sha256=h, name=name, kind=kind, size=os.path.getsize(f), from_=s.me, ts=int(time.time())))
-        s.ssh(f"umask 077; cat > {s.r(d)}/meta.json", meta)
+        s.ssh(f"umask 077; cat > {s.r(d)}/meta.json && chmod 600 {s.r(d)}/meta.json", meta)  # umask only covers new files
         print(h)
     def entries(s):
         out = s.ssh(f"for m in {s.r(s.root)}/artifacts/*/meta.json; do [ -f \"$m\" ] && cat \"$m\" && echo; done; true")

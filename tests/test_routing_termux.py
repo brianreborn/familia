@@ -133,3 +133,13 @@ def test_nexus_and_termux_scripts_never_use_adb_drop_zone():
                 except (UnicodeDecodeError, OSError): continue
                 if ADB_DROP in s: hits.append(os.path.relpath(p, ROOT))
     assert hits == []
+
+
+def test_existing_world_readable_meta_is_tightened(termux):
+    """umask only applies to new files: a pre-existing 0644 meta.json must end up 0600."""
+    t = termux; f = t["tmp"] / "again.bin"; f.write_bytes(b"y" * 32)
+    h = nexus(t, "put", str(f)).strip()
+    meta = t["hub"] / ".familia/nexus/artifacts" / h / "meta.json"
+    meta.chmod(0o644)
+    nexus(t, "put", str(f))
+    assert oct(meta.stat().st_mode & 0o777) == "0o600"
