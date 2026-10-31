@@ -70,17 +70,25 @@ Cost key: S < 1 agent-day, M 1–5 days, L 1–3 weeks, **XL/HUGE** = open-ended
 | Deferred | PSP/CSME off-load | FW/security | **HUGE** ⚠, security-sensitive | recommend dropping |
 | Deferred | Stage 4 SO domains (silicon/FPGA) | — | **HUGE** | paper only |
 
-**⚠ Huge-item flags (P4):**
-- The GPU in reach is the G84 on the **legacy nvidia-340 blob**. It doesn't route its DMA through FreeBSD `busdma`/DMAR in a way we can retag, and its sources are closed. "GPU-owned" enforcement by the IOMMU is therefore likely **infeasible on the G84 path**.
-- angel's i5-4570 does have VT-d, but per the CUDA notes the G84 board is an Athlon II box (no usable AMD-Vi).
-- P4 realistically needs either an open driver (nouveau-class, not on FreeBSD) or a different GPU. Brian should decide this before P3 is funded.
+**⚠ P4 feasibility, revised 2026-10-31.** An earlier revision wrongly said the G84 was in a separate Athlon II box. **Per Brian, the G84 (GeForce 8600 GT) is in angel**, and angel's i5-4570 supports VT-d. See [HARDWARE-INVENTORY](../HARDWARE-INVENTORY.md) and LESSONS-LEARNED `L-hostloc`.
+
+- **No longer a blocker:** the "wrong box" problem is gone. VT-d and the GPU are in the same machine.
+- **Still the main risk:** the closed nvidia-340 FreeBSD kmod.
+  - It is believed to allocate with `contigmalloc` and hand the GPU physical addresses (`vtophys`) instead of going through `busdma`. Unverified: check by reading the open-source kmod shim in `nvidia-driver-340`.
+  - If so, then with DMAR translation enabled (`hw.dmar.enable=1`), GPU DMA either faults, or the GPU has to be excluded or identity-mapped. In both cases the driver never tells DMAR which pages it uses.
+- **Faults are not recoverable:** the G84 has no ATS/PRI, so an IOMMU fault is a GPU hang or a lost transfer, not a recoverable page fault.
+- **Realistic shape:** P4 can only be a **tripwire/enforcement experiment**. nvso would own the G84's DMAR context, identity-map the driver's pages, and flip R/W on HVVRAM-managed ranges. It can't do demand paging. That's **XL, high risk, bare metal on angel only**, since passing a G84 through to a VM is itself a VT-d experiment.
+- **Gate P4-0 (cheap, needs Brian's OK for one reboot):**
+  - The chipset must expose a DMAR ACPI table (`acpidump -t | grep -c DMAR`). B85/H87 boards vary, so VT-d on the CPU alone isn't enough.
+  - Then boot once with `hw.dmar.enable=1` and record whether `nvidia0` attaches and CUDA `vadd` passes. That needs a root script for Brian.
+- **Decision:** P3 is worth funding only if P4-0 passes. Otherwise use directory-only (soft) enforcement.
 
 ## 5. SSD tier: ZFS on the Vertex 2, example performance and tuning
 
 **Hardware facts:**
 - The OCZ Vertex 2 uses a SandForce SF-1222 controller over SATA 3 Gb/s.
 - SandForce compresses internally, so incompressible data (quantised GGUF weights) runs slower than vendor numbers.
-- angel: i5-4570 (4C/4T, Haswell), 24 GiB, FreeBSD 15.1, swap on HDD.
+- angel: i5-4570 (4C/4T, Haswell, VT-d capable), 24 GiB, FreeBSD 15.1, **GeForce 8600 GT (G84) installed**, swap on HDD. Canonical: [HARDWARE-INVENTORY](../HARDWARE-INVENTORY.md).
 
 **Example performance (expected ranges, NOT measured; P0 measures them):**
 
@@ -180,6 +188,6 @@ P3/P4 get their own review documents. They change VM/pmap/DMAR and are high risk
 1. **D0:** OK to wipe the Vertex 2 and create the `hvv` pool, plus a bench window on angel (root script to be supplied).
 2. **D1:** Approve the ABI 3 fix scope, the VM test on a LAN host, then kldload on angel.
 3. **D2:** Accept a directory-first API (5–7 calls) and demote the PLL/gate/IRQ/DMA_POST ioctls to a lab ABI? Choose the first workload (KV cache?).
-4. **D3/D4:** Fund P3 (kernel pager) only if P4 is viable. Given that nvidia-340 is closed, should the IOMMU-enforcement path target a different GPU, or accept soft (directory-only) enforcement?
+4. **D3/D4:** Fund P3 (kernel pager) only if P4 is viable. Approve gate P4-0 (DMAR table check + one `hw.dmar.enable=1` boot on angel with the G84). If nvidia-340 fails under DMAR, accept directory-only enforcement or pick a different GPU.
 5. Drop PSP/CSME off-load from scope? (security and TCB size)
 6. Where is the "Linux prototype with partitioned L2"? It's still unlocated.
