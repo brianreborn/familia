@@ -164,3 +164,40 @@ def test_cli(capsys):
 def test_no_routerbench_data_committed():
     d = ROOT / "tests" / "fixtures" / "routerbench"
     assert sorted(p.name for p in d.iterdir()) == ["README.md", "synthetic_wide.jsonl"]
+
+
+COMPRESSED_PICKLES = [".pkl.gz", ".pkl.bz2", ".pkl.xz", ".pickle.gz", ".pickle.bz2", ".pickle.xz",
+                      ".PKL.GZ"]
+
+
+@pytest.mark.parametrize("ext", COMPRESSED_PICKLES)
+def test_compressed_pickle_refused_unless_flag(tmp_path, monkeypatch, ext):
+    import routerbench_pickle_to_parquet as C
+    p = tmp_path / ("rb" + ext)
+    p.write_bytes(b"not really a pickle")  # never opened when refused
+    assert RB.is_pickle_name(p)
+    with pytest.raises(SystemExit, match="refusing to load pickle"):
+        RB.load(str(p))
+    with pytest.raises(SystemExit, match="refusing to load pickle"):
+        RB.main(["--data", str(p), "--brief"])
+    monkeypatch.setenv(RB.DATA_ENV, str(p))
+    monkeypatch.setenv("ROUTERBENCH_ALLOW_PICKLE", "1")
+    with pytest.raises(SystemExit, match="refusing to load pickle"):
+        RB.main(["--brief"])
+    with pytest.raises(SystemExit, match="--allow-pickle"):
+        C.main([str(p)])
+
+
+@pytest.mark.parametrize("ext", [e for e in COMPRESSED_PICKLES if e.islower()])
+def test_compressed_pickle_loads_and_converts_with_flag(tmp_path, ext):
+    pd = pytest.importorskip("pandas")
+    pytest.importorskip("pyarrow")
+    import routerbench_pickle_to_parquet as C
+    src = _write_pickle(tmp_path)
+    p = tmp_path / ("rb" + ext)
+    pd.read_pickle(src).to_pickle(p)
+    recs, models = RB.load(str(p), allow_pickle=True)
+    assert models == RB.load(str(FIX))[1]
+    assert C.main([str(p), "--allow-pickle"]) == 0
+    out = tmp_path / "rb.parquet"
+    assert out.exists() and RB.load(str(out))[1] == models

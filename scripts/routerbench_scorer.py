@@ -52,6 +52,13 @@ def _num(v):
 
 
 PICKLE_SUFFIXES = (".pkl", ".pickle")
+PICKLE_COMPRESSIONS = ("", ".gz", ".bz2", ".xz")
+PICKLE_NAMES = tuple(b + c for b in PICKLE_SUFFIXES for c in PICKLE_COMPRESSIONS)
+
+
+def is_pickle_name(p):
+    """True for .pkl/.pickle and their .gz/.bz2/.xz compressed forms (pandas infers compression)."""
+    return Path(p).name.lower().endswith(PICKLE_NAMES)
 PICKLE_REFUSED = ("refusing to load pickle {p}: unpickling runs arbitrary code. "
                   "Convert it to parquet, JSONL or CSV (scripts/routerbench_pickle_to_parquet.py), "
                   "or pass --allow-pickle on the command line if you trust this file.")
@@ -59,7 +66,8 @@ PICKLE_REFUSED = ("refusing to load pickle {p}: unpickling runs arbitrary code. 
 
 def _read_rows(p, allow_pickle=False):
     suf = p.suffix.lower()
-    if suf in PICKLE_SUFFIXES and allow_pickle is not True:
+    pickled = is_pickle_name(p)
+    if pickled and allow_pickle is not True:
         raise SystemExit(PICKLE_REFUSED.format(p=p))
     if suf == ".jsonl":
         return [json.loads(l) for l in p.read_text(encoding="utf-8").splitlines() if l.strip()]
@@ -69,9 +77,9 @@ def _read_rows(p, allow_pickle=False):
     if suf == ".csv":
         with open(p, newline="", encoding="utf-8") as f:
             return list(csv.DictReader(f))
-    if suf in (".pkl", ".pickle", ".parquet"):
+    if pickled or suf == ".parquet":
         import pandas as pd
-        df = pd.read_parquet(p) if suf == ".parquet" else pd.read_pickle(p)
+        df = pd.read_pickle(p) if pickled else pd.read_parquet(p)
         return df.to_dict(orient="records")
     raise SystemExit(f"unsupported RouterBench file type: {p.suffix}")
 
