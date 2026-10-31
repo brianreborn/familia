@@ -2,6 +2,7 @@
 # harness_driver.sh MODEL [THREADS]: plain llama.cpp vs hermes single / --graph vs Harness² on one llama-server.
 # Rows: harness, prompt tokens sent, TTFT, tg. hermes rows use the prompt hermes would send (--render-only),
 # replayed to the same server, so tools are never executed. Output: ~/perf/harness.md
+SCR=$(umask 077; mktemp -d "${TMPDIR:-/tmp}/harness.XXXXXX") || exit 1; trap 'rm -rf "$SCR"' EXIT
 M=$1; T=${2:-4}; F=~/repositories/familia; B=$F/code-bootstraps-llama.cpp/build-linux-x86_64/bin; O=~/perf/harness.md; P=18099
 python3 $F/scripts/bench_guard.py meta $M --default "sampling=temp 0 (harness timing)" > /dev/null || { echo "GUARD-FAIL $M" >> $O; exit 3; }
 systemd-run --user --scope -q -p MemoryHigh=$(( $(awk "/MemAvailable/{print int(\$2/1024)}" /proc/meminfo) - 1536 ))M $B/llama-server -m $M -t $T -c 32768 --port $P -lm none --jinja > ~/perf/harness-server.log 2>&1 &
@@ -27,5 +28,5 @@ q plain-llama.cpp - >> $O; q plain-llama.cpp-warm - >> $O
 for mode in single graph; do d=$(mktemp -d); HERMES_HOME=$d sh $F/scripts/hermes.sh --mode $mode ${mode/single/--model coder} --render-only > $d/render.txt 2>&1
   f=$(ls $d/SOUL.md $d/*/SOUL.md 2>/dev/null | head -1); [ -n "$f" ] || f=$d/render.txt
   q hermes-$mode "$f" >> $O; q hermes-$mode-warm "$f" >> $O; done
-/usr/bin/time -f "%e s wall %M KiB" python3 $F/scripts/harness2.py status > /dev/null 2> /tmp/h2t; echo "| harness2 status (mode off) | - | $(tail -1 /tmp/h2t) | - | - |" >> $O
+/usr/bin/time -f "%e s wall %M KiB" python3 $F/scripts/harness2.py status > /dev/null 2> "$SCR/h2t"; echo "| harness2 status (mode off) | - | $(tail -1 "$SCR/h2t") | - | - |" >> $O
 pkill -f "llama-server -m $M"

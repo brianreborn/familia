@@ -21,8 +21,17 @@ CODES = {
     "CR_OOM_KERNEL": ("CRASHED", 82), "CR_OOM_MEMCG": ("CRASHED", 83), "CR_EXIT": ("CRASHED", 84),
     "KL_WATCHDOG": ("KILLED", 90), "KL_USER": ("KILLED", 91), "KL_OOMD": ("KILLED", 92), "KL_EARLYOOM": ("KILLED", 93),
 }
-LEDGER = os.environ.get("FAMILIA_ADMISSION", os.path.join(
-    os.environ.get("XDG_RUNTIME_DIR") or "/tmp", "familia-admission-%d.json" % os.getuid()))
+_LEDGER_ENV = os.environ.get("FAMILIA_ADMISSION")
+LEDGER = _LEDGER_ENV  # resolved lazily into the private runtime dir (t835u: no shared /tmp)
+
+
+def _ledger():
+    global LEDGER
+    if LEDGER is None:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import runtime_dir as _rd
+        LEDGER = os.path.join(_rd.runtime_dir(), "admission-%d.json" % os.getuid())
+    return LEDGER
 RESERVE_MIB = int(os.environ.get("FAMILIA_RESERVE_MIB", "1536"))
 
 
@@ -86,17 +95,27 @@ def _rss(pid):
 
 
 def _locked(fn):
-    os.makedirs(os.path.dirname(LEDGER), exist_ok=True)
-    with open(LEDGER + ".lock", "w") as lk:
+    ledger = _ledger()
+    os.makedirs(os.path.dirname(ledger), mode=0o700, exist_ok=True)
+    nf = getattr(os, "O_NOFOLLOW", 0)
+    lfd = os.open(ledger + ".lock", os.O_RDWR | os.O_CREAT | nf, 0o600)
+    with os.fdopen(lfd, "r+") as lk:
         fcntl.flock(lk, fcntl.LOCK_EX)
         try:
-            led = json.load(open(LEDGER))
+            with os.fdopen(os.open(ledger, os.O_RDONLY | nf)) as f:
+                led = json.load(f)
         except Exception:
             led = {}
         led = {p: r for p, r in led.items() if _rss(int(p)) is not None}  # drop dead pids
         out = fn(led)
-        tmp = LEDGER + ".tmp"
-        json.dump(led, open(tmp, "w")); os.replace(tmp, LEDGER)
+        tmp = ledger + ".tmp"
+        try:
+            os.unlink(tmp)  # we hold the lock; a leftover/planted tmp is never followed
+        except FileNotFoundError:
+            pass
+        with os.fdopen(os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | nf, 0o600), "w") as f:
+            json.dump(led, f)
+        os.replace(tmp, ledger)
         return out
 
 

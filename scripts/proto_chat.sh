@@ -7,6 +7,7 @@ ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 . "$ROOT/lib/os.mk"   # mk_nproc
 cd "$ROOT"
 PY=${PYTHON:-python3}
+ERRF=$(umask 077; mktemp "${TMPDIR:-/tmp}/proto-chat-err.XXXXXX") || exit 1; trap 'rm -f "$ERRF"' EXIT
 export FAMILIA_SCRIPTS="$ROOT/scripts"
 
 # OSC 7501 status (#123); soft-fail if absent.
@@ -285,7 +286,7 @@ while true; do
   case "$line" in
     ""|/q|/quit|/exit|exit|quit) say "bye"; _proto_osc done --id home/proto --msg "proto chat ended"; break ;;
   esac
-  reply=$("$PY" - "$URL" "$MODEL" "$SYSTEM_PROMPT" "$line" <<'PY' 2>/tmp/proto-chat.err || true
+  reply=$("$PY" - "$URL" "$MODEL" "$SYSTEM_PROMPT" "$line" <<'PY' 2>"$ERRF" || true
 import json, os, sys, urllib.request, urllib.error
 sys.path.insert(0, os.environ["FAMILIA_SCRIPTS"]); import familia_auth
 url, model, system, user = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
@@ -320,8 +321,8 @@ print((msg.get("content") or "").strip() or "(empty reply)", end="")
 PY
 )
   if [ -z "$reply" ]; then
-    if [ -s /tmp/proto-chat.err ]; then
-      printf 'proto> %s\n' "$(cat /tmp/proto-chat.err)"
+    if [ -s "$ERRF" ]; then
+      printf 'proto> %s\n' "$(cat "$ERRF")"
     else
       printf 'proto> (no reply)\n'
     fi
