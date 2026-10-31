@@ -30,6 +30,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 import shutil
@@ -89,7 +90,8 @@ def endpoint_up(host, port, timeout=2):
 
 def new_worktree_dir(tid):
     """Unpredictable 0700 worktree dir (honors TMPDIR); recorded in results.jsonl for loop.sh."""
-    wt = Path(tempfile.mkdtemp(prefix=f"dogfood-wt-{tid}-"))
+    safe = re.sub(r"[^A-Za-z0-9_.-]", "_", str(tid)).replace("..", "_")
+    wt = Path(tempfile.mkdtemp(prefix=f"dogfood-wt-{safe}-"))
     _CREATED_WT.append(wt)
     return wt
 
@@ -102,8 +104,9 @@ def _discard_worktrees(repo, wts):
     for wt in wts:
         try:
             worktree_remove(repo, wt)
-        finally:
-            shutil.rmtree(wt, ignore_errors=True)
+        except Exception:
+            pass  # never mask the task's original error
+        shutil.rmtree(wt, ignore_errors=True)
 
 
 def worktree_add(repo, wt, ref="origin/main"):
