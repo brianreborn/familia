@@ -377,10 +377,12 @@ def run(args=None):
             graph_path = priv
             graph = graph_validator.load(str(graph_path))
             graph["_path"] = str(graph_path)
-        nodes, remote_nodes, gateways, omitted_aliases, remote_gateways = local_topology(graph, host)
+        # Validate first: local_topology indexes nodes by alias target, so an invalid graph
+        # (unknown alias node, list alias) would otherwise crash with a raw KeyError/TypeError.
         errors, _ = graph_validator.validate(graph, check_files=False)
         if errors:
             raise StartupError("graph validation failed:\n  " + "\n  ".join(errors))
+        nodes, remote_nodes, gateways, omitted_aliases, remote_gateways = local_topology(graph, host)
         if options.dry_run:
             plans = validate_local_nodes(graph, host, nodes, check_files=False)
             _report_remote_topology(remote_nodes, remote_gateways, omitted_aliases)
