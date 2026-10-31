@@ -162,6 +162,7 @@ Default front door is the gum home (`./familia`). This catalog is **fallback onl
 | Key | Label | POSIX | Windows |
 |---|---|---|---|
 | `adv.args` | validate_graph: the llama-server arguments for one node | `python3 scripts/validate_graph.py --graph graph.yaml --args <NODE>` | `python scripts\validate_graph.py --graph graph.yaml --args <NODE>` |
+| `adv.routes` | graph_router: check a routes file (single, pair, fallback, chain, router, remote, tools); see docs/routing-graphs.md | `python3 scripts/graph_router.py <ROUTES> --check` | `python scripts\graph_router.py <ROUTES> --check` |
 | `adv.verify` | validate_graph: also verify model sha256 and runtimes (slow) | `python3 scripts/validate_graph.py --graph graph.yaml --verify-sha --check-runtimes` | `python scripts\validate_graph.py --graph graph.yaml --verify-sha --check-runtimes` |
 | `adv.graph-edit` | modify_graph: assign a models: key to a type-named node | `python3 scripts/modify_graph.py --host angel --assign-model coder=nanbeige43-33b-q4km` | `python scripts\modify_graph.py --host angel --assign-model coder=nanbeige43-33b-q4km` |
 | `adv.db-list` | Model database: list entries | `python3 scripts/model_db.py list` | `python scripts\model_db.py list` |
