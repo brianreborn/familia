@@ -17,9 +17,9 @@ def test_client_argv_cli_passthrough():
     assert hh.client_argv("cli", []) == []
 
 
-def test_client_argv_desktop_and_webapp_prefix():
+def test_client_argv_desktop_and_webapp_prefix(tmp_path):
     assert hh.client_argv("desktop", []) == ["desktop"]
-    assert hh.client_argv("desktop", ["--cwd", "/tmp"]) == ["desktop", "--cwd", "/tmp"]
+    assert hh.client_argv("desktop", ["--cwd", str(tmp_path)]) == ["desktop", "--cwd", str(tmp_path)]
     assert hh.client_argv("webapp", ["--no-open"]) == ["webapp", "--no-open"]
 
 

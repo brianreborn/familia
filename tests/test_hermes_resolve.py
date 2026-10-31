@@ -135,7 +135,7 @@ def test_ensure_hermes_updates_globals(monkeypatch):
     assert hh.HERMES_SP == "/x/lib/hermes-agent"
 
 
-def test_hermes_prefix_nonsnap_uses_py(monkeypatch):
+def test_hermes_prefix_nonsnap_uses_py(monkeypatch, tmp_path):
     hh.HERMES_BIN = "/usr/local/bin/hermes-agent"
     hh.HERMES_PY = "/usr/local/bin/python3.12"
     hh.HERMES_SP = "/usr/local/lib/hermes-agent"
@@ -146,7 +146,7 @@ def test_hermes_prefix_nonsnap_uses_py(monkeypatch):
         return type("R", (), {"returncode": 0, "stdout": '{"system":"","volatile":"","tools":[]}', "stderr": ""})()
 
     monkeypatch.setattr(hh.subprocess, "run", fake_run)
-    out = hh.hermes_prefix("/tmp/fake-home")
+    out = hh.hermes_prefix(str(tmp_path / "fake-home"))
     assert out["tools"] == []
     assert calls and calls[0][0] == "/usr/local/bin/python3.12"
     assert "-c" in calls[0]

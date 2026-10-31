@@ -19,7 +19,7 @@ Launch: `llama-server -c 8192 -np 1 -t 4 --alias coder --jinja` on loopback.
 
 `scripts/harness2.py install` → pinned engine `1cfe254e8d25`.
 `propose --target hermes-lab --enable --max-tasks 1` against the 1.2B endpoint
-(see `/tmp/p1live.log` on the box; summary filled after the run). Mode stays
+(see `p1live.log` in a `mktemp -d` run dir on the box; summary filled after the run). Mode stays
 `off` in repo `graph.yaml`. Self-improve gate: no tools/plugins/pentest.
 
 ## Slimming (#89)
