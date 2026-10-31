@@ -51,8 +51,16 @@ def _num(v):
     return None if f != f else f  # NaN -> None
 
 
-def _read_rows(p):
+PICKLE_SUFFIXES = (".pkl", ".pickle")
+PICKLE_REFUSED = ("refusing to load pickle {p}: unpickling runs arbitrary code. "
+                  "Convert it to parquet, JSONL or CSV (scripts/routerbench_pickle_to_parquet.py), "
+                  "or pass --allow-pickle on the command line if you trust this file.")
+
+
+def _read_rows(p, allow_pickle=False):
     suf = p.suffix.lower()
+    if suf in PICKLE_SUFFIXES and allow_pickle is not True:
+        raise SystemExit(PICKLE_REFUSED.format(p=p))
     if suf == ".jsonl":
         return [json.loads(l) for l in p.read_text(encoding="utf-8").splitlines() if l.strip()]
     if suf == ".json":
@@ -76,9 +84,9 @@ def models_in(rows):
                   if c.endswith(COST_SUFFIX) and c[: -len(COST_SUFFIX)] in cols)
 
 
-def load(path=None, evals=None, models=None, limit=None):
+def load(path=None, evals=None, models=None, limit=None, allow_pickle=False):
     """Return (records, models). Each record: {sample_id, eval_name, scores{m}, costs{m}}."""
-    rows = _read_rows(resolve_path(path))
+    rows = _read_rows(resolve_path(path), allow_pickle=allow_pickle)
     all_models = models_in(rows)
     if models:
         unknown = set(models) - set(all_models)
@@ -209,9 +217,11 @@ def main(argv=None):
     ap.add_argument("--model", action="append", dest="models", help="restrict model pool (repeatable)")
     ap.add_argument("--limit", type=int)
     ap.add_argument("--seed", type=int, default=167)
+    ap.add_argument("--allow-pickle", action="store_true",
+                    help="allow .pkl/.pickle input (runs code on load; CLI only, never via env)")
     ap.add_argument("--brief", action="store_true", help="omit per-eval breakdown")
     a = ap.parse_args(argv)
-    recs, models = load(a.data, a.evals, a.models, a.limit)
+    recs, models = load(a.data, a.evals, a.models, a.limit, allow_pickle=a.allow_pickle)
     out = report(recs, models, a.policy, a.seed)
     if a.brief:
         for k in ("policy", "oracle", "best_single"):
