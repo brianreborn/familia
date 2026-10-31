@@ -189,7 +189,7 @@ zpool create -o ashift=12 -o autotrim=on -O atime=off -O xattr=sa \
 
 Brian: on-drive processing is a priority and comes right after the ZFS baseline. It is not deferred. It is also the riskiest phase.
 
-**Note on a reviewer conflict:** the Senior Developer follow-up (at `70cbd85`) says Brian chose "firmware replacement *instead of* ZFS". This doc follows Brian's recorded words (ZFS baseline first, then firmware). **Brian to confirm** (decision D-PF0). Its firmware findings apply either way.
+**Note on a reviewer conflict:** the Senior Developer follow-up (at `70cbd85`) says Brian chose "firmware replacement *instead of* ZFS". Resolved by Brian on 2026-10-31: both ZFS and custom firmware are in scope, ZFS first (see §8, D-PF0). Its firmware findings apply either way.
 
 **Target problem.** The Vertex 2 (SF-1222, SATA) is close to a dead end for computational storage: closed, encrypted/obfuscated vendor images, no SDK, no documented spare compute, ~15-year-old MLC, and NVMe computational-storage commands (TP4091 family) don't exist on SATA. It also is the P0 tier, so flashing it would destroy the baseline. So the Vertex 2 is the ZFS tier, and the firmware target is chosen by a scorecard.
 
@@ -241,7 +241,7 @@ Test order: VM on an idle LAN host (instructions: `docs/vvram-ssd/HVVRAM-P1-LAN-
 
 ## 8. Decisions for Brian
 
-1. **D-PF0:** confirm order: ZFS baseline (P0) first, then firmware (PF). A reviewer recorded "firmware *instead of* ZFS"; this doc follows your earlier words.
+1. **D-PF0: RESOLVED (Brian, 2026-10-31 9:14 AM PT):** "We're doing both ZFS and custom firmware but trying to unblock the ZFS stuff before we can make the firmware". Both are in scope; the order is ZFS baseline (P0) first, then firmware (PF). The "firmware *instead of* ZFS" reading is withdrawn.
 2. **D0:** OK to wipe the Vertex 2 by serial allowlist (you supply serial + model), the bench window, and each persistent change separately.
 3. **D1:** ABI 3 fix scope; OK to run the P1 build + VM test on an idle LAN host (which host?); later and separately, kldload on angel.
 4. **D2 / D2-sec:** accept the hardened 7-call directory-first API (§3.1), KV cache first, lab ioctls split out.
