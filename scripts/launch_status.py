@@ -23,9 +23,19 @@ CODES = {
     "KL_WATCHDOG": ("KILLED", 90), "KL_USER": ("KILLED", 91), "KL_OOMD": ("KILLED", 92), "KL_EARLYOOM": ("KILLED", 93),
 }
 # Per-user state: $XDG_RUNTIME_DIR (0700, owned) else ~/.cache/familia; never shared /tmp.
-LEDGER = os.environ.get("FAMILIA_ADMISSION", os.path.join(
-    os.environ.get("XDG_RUNTIME_DIR") or os.path.join(os.path.expanduser("~"), ".cache", "familia"),
-    "familia-admission-%d.json" % os.getuid()))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import runtime_dir as _rd  # noqa: E402
+
+
+def _default_ledger():
+    try:
+        d = _rd.runtime_dir()  # XDG -> ~/.cache/familia/run -> TMPDIR/familia-<uid>, logs rejects
+    except _rd.RuntimeDirError:
+        d = os.path.join(os.path.expanduser("~"), ".cache", "familia")  # b041fb8 path; _locked re-checks
+    return os.path.join(d, "familia-admission-%d.json" % os.getuid())
+
+
+LEDGER = os.environ.get("FAMILIA_ADMISSION") or _default_ledger()
 RESERVE_MIB = int(os.environ.get("FAMILIA_RESERVE_MIB", "1536"))
 
 
@@ -90,7 +100,7 @@ def _rss(pid):
 
 def _locked(fn):
     os.makedirs(os.path.dirname(LEDGER), mode=0o700, exist_ok=True)
-    lfd = os.open(LEDGER + ".lock", os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0), 0o600)
+    lfd = _rd.open_lock(LEDGER + ".lock")  # private-dir + regular-file + owner checks
     with os.fdopen(lfd, "w") as lk:
         fcntl.flock(lk, fcntl.LOCK_EX)
         try:
