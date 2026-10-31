@@ -1,5 +1,5 @@
 """scripts/install-cli.sh: per-user `familia` on PATH (docs/install.md#familia-on-your-path). Temp HOME only."""
-import os, shutil, subprocess
+import os, shutil, subprocess, sys
 import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -9,7 +9,8 @@ SH = shutil.which("dash") or "sh"
 
 def env(home, **kw):
     e = {k: v for k, v in os.environ.items() if not k.startswith("XDG_") and k not in ("PREFIX", "TERMUX_VERSION")}
-    e.update(HOME=str(home), PATH="/usr/bin:/bin", **kw)
+    py_dir = os.path.dirname(shutil.which("python3") or sys.executable)  # /usr/local/bin on FreeBSD
+    e.update(HOME=str(home), PATH=":".join(dict.fromkeys([py_dir, "/usr/bin", "/bin"])), **kw)
     return e
 
 
@@ -81,7 +82,7 @@ def test_path_add_remove_only_touch_marked_block(tmp_path):
     assert p.read_text() == once
     # the block works in a POSIX shell, and does not duplicate an existing entry
     out = subprocess.run([SH, "-c", ". ./.profile; echo $PATH"], capture_output=True, text=True, env=env(tmp_path), cwd=str(tmp_path))
-    assert out.stdout.strip() == f"{tmp_path}/.local/bin:/usr/bin:/bin"
+    assert out.stdout.strip() == f"{tmp_path}/.local/bin:" + env(tmp_path)["PATH"]
     out = subprocess.run([SH, "-c", ". ./.profile; . ./.profile; echo $PATH"], capture_output=True, text=True, env=env(tmp_path), cwd=str(tmp_path))
     assert out.stdout.strip().count(".local/bin") == 1
     assert cli(tmp_path, "path", "--remove", "--yes").returncode == 0

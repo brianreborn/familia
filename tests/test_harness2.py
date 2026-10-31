@@ -162,6 +162,13 @@ def home(tmp_path, monkeypatch):
     monkeypatch.setenv("PYTHONPATH", os.path.dirname(os.path.dirname(yaml.__file__)))  # user site moves with HOME
     monkeypatch.setenv("HOME", str(tmp_path / "home")); return tmp_path / "home"
 
+@pytest.fixture(autouse=True)
+def _on_miryam(monkeypatch):
+    # Fixtures model miryam's nodes; hermes single-model mode refuses a node on another host.
+    import socket
+    monkeypatch.setattr(socket, "gethostname", lambda: "miryam")
+
+
 def modes():
     import hermes_modes; return hermes_modes
 

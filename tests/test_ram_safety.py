@@ -19,6 +19,7 @@ pytestmark = pytest.mark.skipif(
 def _as_miryam(monkeypatch):
     # These fixtures model miryam's nodes; validate() scopes file/RAM checks to the local host.
     monkeypatch.setenv("FAMILIA_HOST", "miryam")
+    monkeypatch.setattr(vg, "host_swap_total_mib", lambda: None)  # not this machine's real swap
 
 
 def _base():

@@ -17,7 +17,8 @@ def test_env_order_and_comma_list(tmp_path):
 def test_bootstrap_root_secrets(tmp_path):
     d = tmp_path / "code-bootstraps-llama.cpp" / ".secrets"; d.mkdir(parents=True)
     (d / "api-keys").write_text("# llama-server API key(s)\nrootkey\n")
-    assert FA.api_key(str(tmp_path), {}) == "rootkey"
+    # Isolate from this machine's real instance key (~/.config/familia/instances/*/api-keys).
+    assert FA.api_key(str(tmp_path), {"XDG_CONFIG_HOME": str(tmp_path / "cfg")}) == "rootkey"
 
 
 def test_incoming_auth_passes_through():

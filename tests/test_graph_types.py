@@ -177,6 +177,7 @@ def test_speculative_ngram():
 
 def test_speculative_vocab_mismatch_and_ram(monkeypatch):
     monkeypatch.setenv("FAMILIA_HOST", "miryam")  # models miryam; validate() scopes to the local host
+    monkeypatch.setattr(validate_graph, "host_swap_total_mib", lambda: None)  # not this machine's swap
     # egemma2 (gemma4 tokenizer) cannot draft for qwen35 (gpt2 tokenizer): file-level check
     x = g(); x["_path"] = os.path.join(ROOT, "graph.yaml")
     x["speculative"]["d"] = spec_draft(status="experimental")
@@ -398,6 +399,7 @@ def test_model_role_pentest_allowed():
 def test_ram_safety_reserve_and_small_host_floor(monkeypatch):
     """reserve and small-host floor are provisional guidance -> warnings (docs/ram-safety.md)."""
     monkeypatch.setenv("FAMILIA_HOST", "miryam")  # models miryam; validate() scopes to the local host
+    monkeypatch.setattr(validate_graph, "host_swap_total_mib", lambda: None)  # not this machine's swap
     coder = os.path.expanduser("~/.local/share/gguf/models/coder/Qwen3.5-2B-Q4_K_M.gguf")
     embed = os.path.expanduser("~/.local/share/gguf/models/embed/embeddinggemma-2-Q8_0.gguf")
     if not (os.path.isfile(coder) and os.path.isfile(embed)):
