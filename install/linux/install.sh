@@ -278,7 +278,14 @@ else
 M="\$FAMILIA_MODEL"; [ -f "\$M" ] || M="$PREFIX/models/\$FAMILIA_MODEL"
 B="$PREFIX/runtime/current/llama-server"; [ -x "\$B" ] || B="$PREFIX/runtime/current/build/bin/llama-server"
 echo "familia-start: logs: this terminal (stdout/stderr; under systemd: journalctl --user -u familia-node)" >&2
-exec "\$B" -m "\$M" --host "\${FAMILIA_BIND:-127.0.0.1}" --port "\${FAMILIA_PORT:-9941}" -c "\${FAMILIA_CTX:-4096}" \${FAMILIA_EXTRA:-}
+# Extra args: familia-start's own arguments ("\$@", exact), then FAMILIA_EXTRA as a POSIX-shell-quoted
+# argv (--alias 'my model'), loaded with set -- so it is never word-split or glob-expanded.
+# FAMILIA_EXTRA must never be filled from graph.yaml or the HUD without shlex.join (quote every
+# word with shlex.quote when it comes from Python): it is eval'd as shell words here.
+# systemd: node.env (EnvironmentFile=) strips one outer pair of quotes around the whole value and
+# unescapes backslashes, so write FAMILIA_EXTRA=--alias 'my model' (or wrap the lot in "...").
+if [ -n "\${FAMILIA_EXTRA:-}" ]; then eval "set -- \"\\\$@\" \$FAMILIA_EXTRA"; fi
+exec "\$B" -m "\$M" --host "\${FAMILIA_BIND:-127.0.0.1}" --port "\${FAMILIA_PORT:-9941}" -c "\${FAMILIA_CTX:-4096}" "\$@"
 EOS
   chmod +x "$LAUNCH"
 fi

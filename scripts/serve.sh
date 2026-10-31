@@ -38,6 +38,8 @@ fi
 # `validate_graph.py --args` prints a POSIX-shell-quoted argv (shlex.join), so paths with
 # spaces, tabs, globs or non-ASCII survive; it refuses newline/NUL. Never expand $args
 # unquoted: always `eval "set -- $args ..."` and use "$@" (routing-paths).
+# FAMILIA_EXTRA (generated launchers) and $args must never be filled from
+# graph.yaml or the HUD without shlex.join (shlex.quote each word from Python): eval'd = shell syntax.
 q() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
 extra=""
 for _a in "$@"; do extra="$extra $(q "$_a")"; done
