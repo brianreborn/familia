@@ -78,6 +78,10 @@ def _sim(a, b):
 # Negation immediately before a phrase match (short window). Word-boundary
 # phrase hits only; "do not escalate" must not fire on phrase "escalate".
 _NEG_BEFORE = re.compile(r"(?i)\b(?:do\s+not|don'?t|dont|never|no)\s*$")
+# CJK negation (no word boundaries): Chinese 不要/别 precede the verb; Japanese しない/しないで
+# follow it, optionally after a particle (大きいモデルにしないで).
+_NEG_CJK_BEFORE = re.compile(r"(?:不要|别|別)\s*$")
+_NEG_CJK_AFTER = re.compile(r"^\s*(?:[をにはが]\s*)?(?:しないで|しない)")
 
 def _nospace(ch):
     """Scripts written without spaces between words (Han, kana, Hangul, Thai...): no \\b there."""
@@ -101,7 +105,8 @@ def _phrase_hit(message, phrases):
                          else lb + r"\s+".join(re.escape(w) for w in words) + rb, re.IGNORECASE)
         for m in pat.finditer(message):
             window = message[max(0, m.start() - 24):m.start()]
-            if _NEG_BEFORE.search(window):
+            if _NEG_BEFORE.search(window) or _NEG_CJK_BEFORE.search(window) \
+                    or _NEG_CJK_AFTER.match(message[m.end():m.end() + 8]):
                 continue
             return p
     return None
