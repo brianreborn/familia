@@ -441,10 +441,21 @@ def _wait_ready(child, url, label, timeout):
     raise StartupError(f"{label} did not become ready within {timeout:g} seconds")
 
 
+def _signal_group(child, sig):
+    """serve.sh runs llama-server as a child (not exec) so it can retry on the CPU; signal the
+    whole process group, or SIGTERM to the shell leaves llama-server holding the port."""
+    try:
+        if os.getpgid(child.pid) == child.pid:
+            os.killpg(child.pid, sig); return
+    except (ProcessLookupError, PermissionError):
+        pass
+    child.send_signal(sig)
+
+
 def _stop_children(children):
     for child, _ in reversed(children):
         if child.poll() is None:
-            child.terminate()
+            _signal_group(child, signal.SIGTERM)
     deadline = time.monotonic() + 10
     for child, label in reversed(children):
         if child.poll() is None:
@@ -452,7 +463,7 @@ def _stop_children(children):
                 child.wait(timeout=max(0, deadline - time.monotonic()))
             except subprocess.TimeoutExpired:
                 print(f"familia-graph: {label} did not stop after SIGTERM; sending SIGKILL", file=sys.stderr)
-                child.kill()
+                _signal_group(child, signal.SIGKILL)
                 child.wait()
 
 
@@ -553,6 +564,7 @@ def run(args=None):
                     ["sh", str(SCRIPTS / "serve.sh"), name],
                     cwd=ROOT,
                     env=dict(launch_env, FAMILIA_HOST=host),
+                    start_new_session=True,  # own process group: stopping it also stops llama-server
                 )
                 label = f"node {name}"
                 children.append((child, label))
@@ -566,6 +578,7 @@ def run(args=None):
                     gateway_command(host, gateway_name, gateway, aliases, green_roomz),
                     cwd=ROOT,
                     env=launch_env,
+                    start_new_session=True,
                 )
                 label = f"gateway {gateway_name}"
                 children.append((child, label))
