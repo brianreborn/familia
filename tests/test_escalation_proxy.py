@@ -311,3 +311,41 @@ def test_handoff_keeps_tools(monkeypatch, tmp_path):
     assert "tools" in last and last["tools"] == tools
     assert last.get("tool_choice") == "auto"
     srv.shutdown()
+
+
+def _tool_graph(pl, pc, route="coder", coder_role="coder"):
+    return {"hosts": {"h": {}}, "aliases": {"coder-a": {"node": "coder"}},
+            "models": {"m": {"role": "chat"}, "c": {"role": coder_role, "tool_calls": True}},
+            "nodes": {"light": {"host": "h", "port": pl, "model": "m", "bind": "0.0.0.0", "tool_route": route},
+                      "coder": {"host": "h", "port": pc, "model": "c", "bind": "127.0.0.1"}}}
+
+def _post_body(port, body):
+    r = urllib.request.urlopen(urllib.request.Request(f"http://127.0.0.1:{port}/v1/chat/completions",
+        data=json.dumps(body).encode(), headers={"Content-Type": "application/json"}))
+    return json.load(r)
+
+TOOLS = [{"type": "function", "function": {"name": "ls", "parameters": {"type": "object"}}}]
+
+def test_tool_request_forwarded_to_tool_route(monkeypatch, tmp_path):
+    monkeypatch.setattr(EP, "STATE", str(tmp_path)); monkeypatch.setattr(EP, "PENDING", str(tmp_path / "p.json"))
+    seen = []; g = _tool_graph(mock("light", seen), mock("coder", seen))
+    srv = EP.serve(EP.Escalator(g, "light", [], "h", consent={})); p = srv.server_address[1]
+    msgs = [{"role": "user", "content": "list files"}]
+    _post_body(p, {"model": "x", "messages": msgs, "tools": TOOLS})
+    assert seen[-1][0] == "coder" and seen[-1][1]["model"] == "coder-a" and seen[-1][1]["tools"] == TOOLS
+    _post_body(p, {"model": "x", "messages": msgs})          # no tools -> stays on light
+    assert seen[-1][0] == "light"
+    srv.shutdown()
+
+def test_tool_route_to_fail_closed_target_not_forwarded(monkeypatch, tmp_path):
+    monkeypatch.setattr(EP, "STATE", str(tmp_path)); monkeypatch.setattr(EP, "PENDING", str(tmp_path / "p.json"))
+    seen = []; g = _tool_graph(mock("light", seen), mock("coder", seen), coder_role="guardian")
+    assert EP.tool_target(g, "light") is None
+    srv = EP.serve(EP.Escalator(g, "light", [], "h", consent={})); p = srv.server_address[1]
+    _post_body(p, {"model": "x", "messages": [{"role": "user", "content": "x"}], "tools": TOOLS})
+    assert seen[-1][0] == "light"
+    srv.shutdown()
+
+def test_tool_target_ignores_unrouted_and_bad_graph():
+    assert EP.tool_target({"nodes": {"a": {}}}, "a") is None
+    assert EP.tool_target({"nodes": {"a": {"tool_route": "missing"}}}, "a") is None
