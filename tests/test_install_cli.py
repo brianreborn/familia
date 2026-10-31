@@ -82,7 +82,7 @@ def test_path_add_remove_only_touch_marked_block(tmp_path):
     assert p.read_text() == once
     # the block works in a POSIX shell, and does not duplicate an existing entry
     out = subprocess.run([SH, "-c", ". ./.profile; echo $PATH"], capture_output=True, text=True, env=env(tmp_path), cwd=str(tmp_path))
-    assert out.stdout.strip() == f"{tmp_path}/.local/bin:/usr/bin:/bin"
+    assert out.stdout.strip() == f"{tmp_path}/.local/bin:" + env(tmp_path)["PATH"]
     out = subprocess.run([SH, "-c", ". ./.profile; . ./.profile; echo $PATH"], capture_output=True, text=True, env=env(tmp_path), cwd=str(tmp_path))
     assert out.stdout.strip().count(".local/bin") == 1
     assert cli(tmp_path, "path", "--remove", "--yes").returncode == 0
