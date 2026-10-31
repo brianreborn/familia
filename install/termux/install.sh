@@ -78,8 +78,8 @@ if [ "$UNINSTALL" = 1 ]; then
     if [ "$DRY" = 1 ]; then sh "$PREFIX_DIR/repo/scripts/install-cli.sh" uninstall --dry-run
     else sh "$PREFIX_DIR/repo/scripts/install-cli.sh" uninstall --yes; fi
   fi
-  if [ "$PURGE" = 1 ]; then run rm -rf "$PREFIX_DIR"
-  else run rm -rf "$PREFIX_DIR/repo"; say "kept $PREFIX_DIR/models (use --purge)"; fi
+  if [ "$PURGE" = 1 ]; then run rm -rf -- "$PREFIX_DIR"
+  else run rm -rf -- "$PREFIX_DIR/repo"; say "kept $PREFIX_DIR/models (use --purge)"; fi
   say "left Termux packages (git python llama-cpp openssh) installed; remove with pkg uninstall if wanted"
   say "uninstalled"; exit 0
 fi
@@ -183,6 +183,7 @@ elif [ "$DRY" = 1 ] && [ -n "$SELF_REPO" ] && [ -f "$SELF_REPO/scripts/host_meas
 elif [ "$DRY" = 1 ] && command -v curl >/dev/null 2>&1; then
   # Dry run has no clone; fetch the read-only measurer + graph into a temp dir and delete it after.
   MTMP=$(umask 077; mktemp -d "${TMPDIR:-${PREFIX:-}/tmp}/grz.XXXXXX" 2>/dev/null || true)
+  [ -n "$MTMP" ] && { trap 'rm -rf -- "$MTMP"' EXIT; trap 'exit 130' INT HUP TERM; }
   if [ -n "$MTMP" ] && mkdir -p "$MTMP/scripts" && curl -fsSL "$RAW_URL/$BRANCH/scripts/host_measure.py" -o "$MTMP/scripts/host_measure.py" \
      && curl -fsSL "$RAW_URL/$BRANCH/graph.yaml" -o "$MTMP/graph.yaml"; then MREPO="$MTMP"
   else MREPO=""; say "warning: could not fetch host_measure.py from $BRANCH"; fi
@@ -201,7 +202,7 @@ if [ -n "$MREPO" ]; then
 else
   say "warning: host_measure.py unavailable; host not measured"
 fi
-[ -n "$MTMP" ] && rm -rf "$MTMP"
+[ -n "$MTMP" ] && rm -rf -- "$MTMP"
 
 LAUNCH="${PREFIX:-/data/data/com.termux/files/usr}/bin/familia-start"
 if [ "$DRY" = 1 ]; then say "[dry-run] write $LAUNCH"

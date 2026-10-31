@@ -92,9 +92,9 @@ if [ "$UNINSTALL" = 1 ]; then
     if [ "$DRY" = 1 ]; then XDG_BIN_HOME=$BIN_DIR sh "$PREFIX/repo/scripts/install-cli.sh" uninstall --dry-run
     else XDG_BIN_HOME=$BIN_DIR sh "$PREFIX/repo/scripts/install-cli.sh" uninstall --yes; fi
   fi
-  if [ "$PURGE" = 1 ]; then run rm -rf "$PREFIX"
+  if [ "$PURGE" = 1 ]; then run rm -rf -- "$PREFIX"
   else
-    run rm -rf "$PREFIX/repo" "$PREFIX/runtime"
+    run rm -rf -- "$PREFIX/repo" "$PREFIX/runtime"
     say "kept $PREFIX/models (use --purge to remove it)"
   fi
   say "uninstalled"; exit 0
@@ -226,7 +226,7 @@ for r in (j if isinstance(j, list) else [j]):
     say "[dry-run] download $AURL, verify sha256 $SHA, extract to $DEST"
   else
     TMP=$(umask 077; mktemp -d "${TMPDIR:-/tmp}/grz.XXXXXX") || die "mktemp failed"
-    trap 'rm -rf "$TMP"' EXIT INT HUP TERM
+    trap 'rm -rf -- "$TMP"' EXIT; trap 'exit 130' INT HUP TERM
     curl -fL --retry 3 -o "$TMP/$ANAME" "$AURL"
     if command -v sha256sum >/dev/null 2>&1; then GOT=$(sha256sum "$TMP/$ANAME" | cut -d' ' -f1)
     else GOT=$(shasum -a 256 "$TMP/$ANAME" | cut -d' ' -f1); fi
