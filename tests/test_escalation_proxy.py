@@ -263,7 +263,7 @@ def test_default_session_lock_serializes_mutations(monkeypatch, tmp_path):
                                                                        "phrases": ["try harder"]}}},
                    "heavy": {"host": "h", "port": ph, "model": "qwen35-2b"}}}
     esc = EP.Escalator(g, "light", [], "h", consent={}); srv = EP.serve(esc); p = srv.server_address[1]
-    assert isinstance(esc.lock, type(threading.RLock()))
+    assert isinstance(esc.lock, EP.FairLock)  # re-entrant FIFO lock (R5 #248)
 
     n = 6
     results = [None] * n
