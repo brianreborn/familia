@@ -171,7 +171,7 @@ def test_load_graph_host_scope(tmp_path, monkeypatch):
     assert seen["check_files"] is False
 
 
-def test_single_agent_render_allows_below_min_ctx(capsys):
+def test_single_agent_render_allows_below_min_ctx(capsys, monkeypatch):
     import copy
     import yaml
     import hermes_modes as hm
@@ -179,6 +179,8 @@ def test_single_agent_render_allows_below_min_ctx(capsys):
     # Synthetic node below hermes min_ctx 64000 (angel-coder is now 65536 / #125).
     base = g["nodes"].get("angel-coder") or g["nodes"]["coder"]
     g["nodes"]["small-ctx"] = dict(copy.deepcopy(base), ctx=32768, parallel=1, port=19999, status="active")
+    # single_agent refuses nodes on another fleet host; pretend we run on the node's host.
+    monkeypatch.setattr(hm.socket, "gethostname", lambda: g["nodes"]["small-ctx"]["host"])
     g2, name = hm.single_agent(g, "hermes", "small-ctx", enforce_min_ctx=False)
     assert name == "hermes@small-ctx"
     assert g2["agents"][name]["context_length"] == 32768
@@ -188,7 +190,7 @@ def test_single_agent_render_allows_below_min_ctx(capsys):
         hm.single_agent(g, "hermes", "small-ctx", enforce_min_ctx=True)
 
 
-def test_angel_coder_meets_hermes_min_ctx():
+def test_angel_coder_meets_hermes_min_ctx(monkeypatch):
     """#125: angel-coder.ctx 65536 clears agents.hermes.min_ctx 64000."""
     import yaml
     import hermes_modes as hm
@@ -196,6 +198,7 @@ def test_angel_coder_meets_hermes_min_ctx():
     if "angel-coder" not in g.get("nodes", {}):
         pytest.skip("no angel-coder in graph")
     assert hm.slot(g["nodes"]["angel-coder"]) >= g["agents"]["hermes"]["min_ctx"]
+    monkeypatch.setattr(hm.socket, "gethostname", lambda: g["nodes"]["angel-coder"]["host"])
     g2, name = hm.single_agent(g, "hermes", "angel-coder", enforce_min_ctx=True)
     assert name == "hermes@angel-coder"
     assert g2["agents"][name]["context_length"] == 65536
