@@ -26,8 +26,8 @@ import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-import config_paths  # DUP-02/DUP-10 owner
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
+import config_paths  # DUP-02/DUP-10 owner (after sys.path insert)
 import self_improve as SI  # noqa: E402
 
 
@@ -116,7 +116,7 @@ def main(argv=None):
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    ap.add_argument("--graph", default=config_paths.graph_path())
+    ap.add_argument("--graph", default=None)  # DUP-02: resolved lazily after parse
     gsel = ap.add_mutually_exclusive_group()
     gsel.add_argument("--agent", help="sync harnesses.* entries with this agent:")
     gsel.add_argument("--target", help="sync one harnesses.<T> descriptor")
@@ -132,6 +132,7 @@ def main(argv=None):
         help="stderr tag (default self-improve; hermes uses hermes.sh)",
     )
     a = ap.parse_args(argv)
+    a.graph = config_paths.graph_path(a.graph)  # DUP-02 lazy resolve
     import familia_yaml
 
     g = familia_yaml.load(a.graph) or {}  # DUP-01

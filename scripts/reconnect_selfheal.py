@@ -643,7 +643,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     ap.add_argument("--dry-run", action="store_true", default=False, help="force dry-run for repair (default when --repair)")
     ap.add_argument("--no-dry-run", action="store_true", help="allow non-dry repair (still seatbelted; needs FAMILIA_RECONNECT_ALLOW_START=1 for restarts)")
     ap.add_argument("--host", default=_hostname())
-    ap.add_argument("--graph", default=config_paths.graph_path())
+    ap.add_argument("--graph", default=None)  # DUP-02: resolved lazily after parse
     ap.add_argument("--peers", default="", help="comma-separated peer SSH aliases")
     ap.add_argument("--health-urls", default="", help="comma-separated local health URLs (else graph/env)")
     ap.add_argument("--dns", default=DEFAULT_DNS_TARGET)
@@ -658,6 +658,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     ap.add_argument("--list-actions", action="store_true", help="print self-repair action enum and exit 0")
     ap.add_argument("--show-backoff", action="store_true", help="print documented backoff schedule and exit 0")
     args = ap.parse_args(list(argv) if argv is not None else None)
+    args.graph = config_paths.graph_path(args.graph)  # DUP-02 lazy resolve
 
     if args.list_actions:
         print(json.dumps({"repair_actions": list_repair_actions(), "detach_mode": detach_mode()}, indent=2))

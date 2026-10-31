@@ -43,3 +43,4 @@ These were approved but held back to honour the "behaviour identical / 0 new fai
 - **DUP-07** guardian/pentest role JSON + dual-disable: real duplication (guardian_ready + sec_assess define the same ROLE_JSONS and dual-disable check), but security-sensitive; must land with the pentest-policy SPEC and identical-behaviour proof.
 - **DUP-08** secret stripping: on inspection `hermes_harness.strip_secrets` and `hosts_overlay.privacy_lint` do different jobs (strip vs detect); not a true duplicate. Reclassify, do not merge blindly.
 - **DUP-09** registry loaders: not genuine duplication — each registry file already has a single owning reader (registry.py for hosts/hardware; model_params.CURATED for model-params.yaml). No deletion warranted.
+- **DUP-02 follow-up:** `escalate.py --reachable` was briefly swallowed into a trailing comment by the DUP-02 edit; restored with lazy `graph_path` resolution. Smoke test in `tests/test_config_consumers.py`.

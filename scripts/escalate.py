@@ -17,9 +17,10 @@ def main(argv=None):
         epilog="Example: escalate.py decide --node coder --signals signals.json",
     ); p.add_argument("cmd", choices=["decide", "consent", "handoff", "accept"])
     p.add_argument("--node"); p.add_argument("--target"); p.add_argument("--signals")
-    p.add_argument("--graph", default=config_paths.graph_path())  # DUP-02; p.add_argument("--reachable")
+    p.add_argument("--graph", default=None); p.add_argument("--reachable")  # DUP-02: graph resolved lazily below
     p.add_argument("--consent-file", default=E.CONSENT)
     o = p.parse_args(argv)
+    o.graph = config_paths.graph_path(o.graph)  # DUP-02 lazy resolve
     sig = json.load(sys.stdin if o.signals == "-" else open(o.signals)) if o.signals else {}
     if o.cmd == "accept":  # accept the proxy's pending suggestion (docs/escalation.md)
         import escalation_proxy as EP

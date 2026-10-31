@@ -423,11 +423,23 @@ def node_type(graph, name):
 
 
 def tool_policy(graph, name):
-    """Explicit --tools value for a node. Override wins; else the per-TYPE default.
-    Returns "all", a list of tool names, or [] for an explicit no-tools decision."""
-    st = graph["nodes"][name].get("server_tools")
-    if st == "all" or (isinstance(st, list) and st):
-        return st
+    """Explicit --tools value for a node. Returns "all", a list of tool names, or [] for an
+    explicit no-tools decision.
+    - guardian/pentest/defender fail closed to [] regardless of any override (the pentest
+      mode ladder governs their tools; graph_types also rejects a server_tools override).
+    - A present `server_tools` key is authoritative: "all" or a non-empty list verbatim; an
+      empty/none/false value means an explicit opt-out ([] -> no --tools).
+    - Otherwise the per-TYPE default applies (coder = all for now)."""
+    n = graph["nodes"][name]
+    if node_type(graph, name) in ("guardian", "pentest", "defender"):
+        return []
+    if "server_tools" in n:
+        st = n.get("server_tools")
+        if st == "all":
+            return "all"
+        if isinstance(st, list) and st:
+            return st
+        return []   # explicit opt-out: [], "none", false, "" -> no --tools
     return TOOL_POLICY_BY_TYPE.get(node_type(graph, name), [])
 
 

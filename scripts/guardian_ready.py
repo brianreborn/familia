@@ -280,6 +280,7 @@ def run_check(graph_path: str) -> dict:
             "Boundary owns seatbelts + this ready-check."
         ),
     }
+    print(f"guardian_ready: graph={graph_path}", file=sys.stderr)  # log resolved path (CFG-FILE-007a)
     try:
         g = _load_graph(graph_path)
     except (OSError, ValueError) as e:

@@ -34,8 +34,8 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
-import config_paths  # DUP-02/DUP-10 owner
 sys.path.insert(0, HERE)
+import config_paths  # DUP-02/DUP-10 owner (after sys.path insert)
 import familia_yaml  # noqa: E402
 
 ACCEPT_FILE = os.environ.get("FAMILIA_LICENSE_ACCEPT_FILE") or os.path.join(ROOT, ".cache", "familia", "license-acceptance.json")

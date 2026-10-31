@@ -92,8 +92,18 @@ def test_dup04_every_launch_has_explicit_tools():
     for t in ("embed", "decision", "reasoning", "guardian", "pentest"):
         g["nodes"]["coder-a"]["role"] = t
         assert v.tools_argv(g, "coder-a") == [], t
+    g["nodes"]["coder-a"]["role"] = "coder"  # reset TYPE before testing override
     g["nodes"]["coder-a"]["server_tools"] = ["read_file"]
     assert v.tools_argv(g, "coder-a") == ["--tools", "read_file"]
+    # explicit opt-out: a present empty/none server_tools key means no --tools
+    for opt in ([], "none", False):
+        g["nodes"]["coder-a"]["server_tools"] = opt
+        assert v.tools_argv(g, "coder-a") == [], opt
+    # guardian/pentest/defender fail closed even if an override sneaks past validation
+    for t in ("guardian", "pentest", "defender"):
+        g["nodes"]["coder-a"]["role"] = t
+        g["nodes"]["coder-a"]["server_tools"] = "all"
+        assert v.tools_argv(g, "coder-a") == [], t
 
 
 # --- DUP-05: alias -> node resolution (CFG-GRAPH-ALIASES-*) ---
@@ -101,3 +111,12 @@ def test_dup05_alias_resolves_to_node():
     import familia_yaml, graph_types
     g = familia_yaml.load(str(FIX))
     assert graph_types.lookup(g, "aliases", "coder") == g["aliases"]["coder"]
+
+
+def test_escalate_reachable_parse_smoke():
+    """Platform/Boundary: --reachable must remain a real argparse flag after DUP-02
+    (it was briefly swallowed into a comment). Parsing with --reachable must not raise."""
+    import escalate
+    # decide with no signals returns a "none" decision; --reachable must be accepted
+    rc = escalate.main(["decide", "--node", "coder", "--reachable", "h1,h2"])
+    assert rc in (0, None)
