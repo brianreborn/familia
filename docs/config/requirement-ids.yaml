@@ -947,3 +947,6 @@ other:
   CFG-FILE-020:
     status: IMPLEMENTED
     doc: docs/config/files.md
+  CFG-SPEC-TOOLS-005:
+    status: IMPLEMENTED
+    doc: docs/config/routing-spec.md

@@ -8,5 +8,5 @@
 | CFG-CRED-004 | The local API key for familia nodes comes from `familia_auth.api_key()` (env or local state), never from graph.yaml | IMPLEMENTED | scripts/familia_auth.py |
 | CFG-CRED-005 | `HF_TOKEN` is honoured and never printed | IMPLEMENTED | scripts/hf_fetch.py |
 | CFG-CRED-006 | Host addresses, logins and ports are not secrets but are private: untracked overlay only (hosts-overlay.md) | IMPLEMENTED | scripts/hosts_overlay.py |
-| CFG-CRED-007 | The hermes child env is narrowed to declared `env_from` names | SPEC | hermes_harness.py mcp_env_allowlist (unused) |
+| CFG-CRED-007 | The hermes child env is narrowed to declared `env_from` names | SPEC (known gap: `mcp_env_allowlist` exists but is unused; the child still inherits the full env) | hermes_harness.py mcp_env_allowlist |
 | CFG-CRED-008 | Secret files are referenced as `*_file: PATH` (mode 0600, outside the repo) where a tool needs a file rather than env | SPEC | — |

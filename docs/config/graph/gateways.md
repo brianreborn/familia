@@ -14,7 +14,7 @@ Purpose: an alias router (green-roomz graph-proxy) on one host.
 
 <!-- BEGIN GENERATED: fields (scripts/config_docs.py --write) -->
 
-Schema: `scripts/graph_types.py:596` (stable; router exposing aliases).
+Schema: `scripts/graph_types.py:602` (stable; router exposing aliases).
 Required fields have no defaults (validator: missing required → error). Consumers = static scan of scripts/ and top-level *.sh.
 
 | ID | Field | Req | Type | Allowed / ref | Status | Consumers (static scan) |

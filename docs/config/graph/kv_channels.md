@@ -6,7 +6,7 @@ Purpose: C2C stage 1 edge: llama-server slot save/restore file shipped between s
 
 <!-- BEGIN GENERATED: fields (scripts/config_docs.py --write) -->
 
-Schema: `scripts/graph_types.py:637` (experimental; C2C stage 1 edge: llama-server slot save/restore file shipped between same-model nodes (#22)).
+Schema: `scripts/graph_types.py:643` (experimental; C2C stage 1 edge: llama-server slot save/restore file shipped between same-model nodes (#22)).
 Required fields have no defaults (validator: missing required → error). Consumers = static scan of scripts/ and top-level *.sh.
 
 | ID | Field | Req | Type | Allowed / ref | Status | Consumers (static scan) |

@@ -502,3 +502,28 @@ def test_options_may_carry_db_field():
     else:
         opts[name]["db"] = "example--toy--Q4_0"
     assert errs(x) == []
+
+
+def test_server_tools_rejected_for_guardian_pentest_defender():
+    """Boundary: a server_tools override on guardian/pentest/defender would bypass the
+    pentest mode ladder; graph_types must reject it (CFG-PENT-POL / CFG-SPEC-TOOLS)."""
+    import graph_types  # noqa: F401
+    for node, override in (("miryam-pentest", "all"), ("angel-guardian", ["read_file"])):
+        x = g(); x["nodes"][node]["server_tools"] = override
+        has(x, "not allowed for")
+    # defender TYPE via explicit node role on a guardian-model node
+    x = g(); x["nodes"]["miryam-pentest"]["role"] = "defender"; x["nodes"]["miryam-pentest"]["server_tools"] = "all"
+    has(x, "not allowed for defender")
+    # a non-guardian node (coder) still accepts server_tools: all on loopback
+    x = g(); x["nodes"]["coder"]["server_tools"] = "all"; x["nodes"]["coder"]["bind"] = "127.0.0.1"
+    assert [e for e in errs(x) if "coder.server_tools" in e] == []
+
+
+def test_mcp_env_names_must_be_uppercase():
+    x = g()
+    agents = x.setdefault("agents", {})
+    a = next(iter(agents.values())) if agents else agents.setdefault("hermes", {})
+    a.setdefault("mcp", {})["srv"] = {"command": "x", "env_from": ["lower_case"]}
+    has(x, "env var names only")
+    a["mcp"]["srv"]["env_from"] = ["GOOD_NAME"]
+    assert [e for e in errs(x) if "env var names only" in e] == []

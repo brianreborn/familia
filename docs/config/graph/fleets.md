@@ -6,7 +6,7 @@ Purpose: green-agentz agent group.
 
 <!-- BEGIN GENERATED: fields (scripts/config_docs.py --write) -->
 
-Schema: `scripts/graph_types.py:611` (stable; green-agentz agent group).
+Schema: `scripts/graph_types.py:617` (stable; green-agentz agent group).
 Required fields have no defaults (validator: missing required → error). Consumers = static scan of scripts/ and top-level *.sh.
 
 | ID | Field | Req | Type | Allowed / ref | Status | Consumers (static scan) |

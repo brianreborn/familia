@@ -23,7 +23,7 @@ Writers: `modify_graph.py` (assign-model / split-node), `generate_graph.py`, `sc
 
 <!-- BEGIN GENERATED: fields (scripts/config_docs.py --write) -->
 
-Schema: `scripts/graph_types.py:565` (stable; model instance on host+runtime).
+Schema: `scripts/graph_types.py:571` (stable; model instance on host+runtime).
 Required fields have no defaults (validator: missing required → error). Consumers = static scan of scripts/ and top-level *.sh.
 
 | ID | Field | Req | Type | Allowed / ref | Status | Consumers (static scan) |

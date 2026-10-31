@@ -11,12 +11,13 @@ MODES = SPEC["modes"]
 LAB = {"kind": "isolated", "members": ["lab-target-1"], "cidrs": ["192.0.2.0/24"], "egress": "none",
        "verify": {"no_default_route": True, "no_lan_route": True, "dns_lab_only": True, "max_age_s": 3600}}
 
-def check_policy(p, labs, escalation_targets=(), node="miryam-pentest"):
+def check_policy(p, labs, escalation_targets=(), node="miryam-pentest", verify_age_s=0):
     """Reference validator for CFG-PENT-POL/LAB/AUD rules. Returns error list."""
     e, pol = [], p.get("policy") or {}
     mode = pol.get("mode", "planned")
-    if mode not in MODES: e.append("mode")
-    rank = MODES.index(mode) if mode in MODES else 0
+    if mode not in MODES:
+        return ["mode"]  # unknown mode is rejected outright, never ranked as a safe default
+    rank = MODES.index(mode)
     if pol.get("autonomy") == "autonomous" and mode != "autonomous-lab": e.append("autonomy")   # POL-003
     if rank > MODES.index("planned") and not p.get("requires_operator_confirm"): e.append("confirm")  # POL-005
     if mode in ("tools-confirm", "autonomous-lab"):
@@ -29,7 +30,12 @@ def check_policy(p, labs, escalation_targets=(), node="miryam-pentest"):
                 (lab.get("verify") or {}).get(k) is True for k in ("no_default_route", "no_lan_route", "dns_lab_only")):
             e.append("lab-verify")
         elif not set((p.get("scope") or {}).get("allow") or []) <= set(lab["members"]): e.append("scope-lab")
-    if node in escalation_targets: e.append("escalation-target")                          # POL-004
+    if node in escalation_targets: e.append("escalation-target")                          # POL-004 (incoming)
+    if p.get("escalates_to"):            e.append("escalates-out")                         # POL-004 / ESC-004 (outgoing)
+    if mode == "autonomous-lab":                                                           # LAB-003 stale verification
+        lab = labs.get(pol.get("lab")) or {}
+        max_age = (lab.get("verify") or {}).get("max_age_s", 3600)
+        if verify_age_s > max_age: e.append("lab-stale")
     return e
 
 def pent(mode, **kw):
@@ -76,3 +82,18 @@ def test_examples_use_documentation_ranges_only():
 def test_graph_types_accepts_policy():
     import graph_types as GT
     assert "policy" in GT.TYPES["pentests"].fields and "labs" in GT.TYPES
+
+
+def test_unknown_mode_rejected_not_defaulted():
+    assert check_policy(pent("ludicrous-speed"), {"range1": LAB}) == ["mode"]
+
+
+def test_pentest_escalating_out_is_rejected():
+    p = pent("slash-confirm"); p["escalates_to"] = ["coder"]
+    assert "escalates-out" in check_policy(p, {})
+
+
+def test_stale_lab_verification_blocks_mode():  # LAB-003
+    p, labs = pent("autonomous-lab"), {"range1": copy.deepcopy(LAB)}
+    assert check_policy(p, labs, verify_age_s=10) == []          # fresh
+    assert "lab-stale" in check_policy(p, labs, verify_age_s=99999)  # stale

@@ -6,7 +6,7 @@ Purpose: unplaced model option (catalog only; never placed or RAM-counted).
 
 <!-- BEGIN GENERATED: fields (scripts/config_docs.py --write) -->
 
-Schema: `scripts/graph_types.py:668` (stable; unplaced model option (catalog only; never placed or RAM-counted)).
+Schema: `scripts/graph_types.py:674` (stable; unplaced model option (catalog only; never placed or RAM-counted)).
 Required fields have no defaults (validator: missing required → error). Consumers = static scan of scripts/ and top-level *.sh.
 
 | ID | Field | Req | Type | Allowed / ref | Status | Consumers (static scan) |
