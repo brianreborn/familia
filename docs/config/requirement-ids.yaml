@@ -840,10 +840,10 @@ other:
     status: SPEC
     doc: docs/config/routing-spec.md
   CFG-SPEC-TOOLS-001:
-    status: SPEC
+    status: IMPLEMENTED
     doc: docs/config/routing-spec.md
   CFG-SPEC-TOOLS-002:
-    status: SPEC
+    status: IMPLEMENTED
     doc: docs/config/routing-spec.md
   CFG-SPEC-TOOLS-003:
     status: SPEC
@@ -948,5 +948,8 @@ other:
     status: IMPLEMENTED
     doc: docs/config/files.md
   CFG-SPEC-TOOLS-005:
+    status: IMPLEMENTED
+    doc: docs/config/routing-spec.md
+  CFG-SPEC-TOOLS-006:
     status: IMPLEMENTED
     doc: docs/config/routing-spec.md

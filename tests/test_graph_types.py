@@ -519,11 +519,24 @@ def test_server_tools_rejected_for_guardian_pentest_defender():
     assert [e for e in errs(x) if "coder.server_tools" in e] == []
 
 
-def test_mcp_env_names_must_be_uppercase():
+def test_mcp_env_names_posix_any_case():
     x = g()
     agents = x.setdefault("agents", {})
     a = next(iter(agents.values())) if agents else agents.setdefault("hermes", {})
-    a.setdefault("mcp", {})["srv"] = {"command": "x", "env_from": ["lower_case"]}
+    a.setdefault("mcp", {})["srv"] = {"command": "x", "env_from": ["1bad-name"]}
     has(x, "env var names only")
-    a["mcp"]["srv"]["env_from"] = ["GOOD_NAME"]
-    assert [e for e in errs(x) if "env var names only" in e] == []
+    for ok in (["GOOD_NAME"], ["http_proxy"], ["Mixed_1"]):
+        a["mcp"]["srv"]["env_from"] = ok
+        assert [e for e in errs(x) if "env var names only" in e] == [], ok
+
+
+def test_server_tools_explicit_opt_out_validates():
+    """CFG-SPEC-TOOLS-006: [] / none / false is an explicit opt-out: valid on any bind and
+    any TYPE (incl. guardian), and emits no --tools flag."""
+    for opt in ([], "none", False):
+        x = g(); x["nodes"]["coder"]["server_tools"] = opt; x["nodes"]["coder"]["bind"] = "0.0.0.0"
+        assert [e for e in errs(x) if "server_tools" in e] == [], opt
+        assert "--tools" not in validate_graph.server_args(x, "coder"), opt
+        x = g(); x["nodes"]["angel-guardian"]["server_tools"] = opt
+        assert [e for e in errs(x) if "server_tools" in e] == [], opt
+    x = g(); x["nodes"]["coder"]["server_tools"] = "some"; has(x, "opt-out")

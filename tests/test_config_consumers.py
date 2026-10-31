@@ -42,15 +42,13 @@ def _graph_path_resolvers(monkeypatch, custom):
     monkeypatch.setenv("FAMILIA_GRAPH", custom)
     import importlib
     import familia_agent_reach, skills, guardian_ready
-    importlib.reload(guardian_ready)  # module-level DEFAULT_GRAPH
     return {
         "familia_agent_reach.graph_path": familia_agent_reach.graph_path(),
         "skills.graph_path": skills.graph_path(),
-        "guardian_ready.DEFAULT_GRAPH": guardian_ready.DEFAULT_GRAPH,
+        "guardian_ready (lazy config_paths)": guardian_ready.config_paths.graph_path(),
     }
 
 
-@pytest.mark.xfail(strict=True, reason="DUP-02 CFG-FILE-007: FAMILIA_GRAPH honoured inconsistently (guardian_ready/model_db ignore it)")
 def test_dup02_graph_path_honours_env(monkeypatch):
     custom = "/custom/elsewhere/graph.yaml"
     res = _graph_path_resolvers(monkeypatch, custom)
@@ -81,12 +79,30 @@ def test_dup04_server_args_is_single_owner():
     assert "model database" in str(ei.value)
 
 
-@pytest.mark.xfail(strict=True, reason="DUP-04 CFG-SPEC-TOOLS-001: --tools is emitted only when server_tools is set, not per TYPE")
 def test_dup04_every_launch_has_explicit_tools():
-    # server_args emits --tools only when node.server_tools is set (not per TYPE).
-    import inspect, familia_yaml, validate_graph
-    src = inspect.getsource(validate_graph.server_args)
-    assert "n.get(\"server_tools\")" not in src, "argv should derive --tools from a per-TYPE policy (CFG-SPEC-TOOLS-001)"
+    """CFG-SPEC-TOOLS-001/002: the single argv owner decides --tools per TYPE on every
+    launch. coder=all; chat/general=read set; embed/decision/reasoning/guardian/pentest=none
+    (no --tools: llama.cpp is tools-disabled by default). node.server_tools overrides."""
+    import familia_yaml, validate_graph as v
+    g = familia_yaml.load(str(FIX))
+    assert v.tools_argv(g, "coder-a") == ["--tools", "all"]
+    g["nodes"]["coder-a"]["role"] = "chat"
+    assert v.tools_argv(g, "coder-a") == ["--tools", "read_file,file_glob_search,grep_search,get_info"]
+    for t in ("embed", "decision", "reasoning", "guardian", "pentest"):
+        g["nodes"]["coder-a"]["role"] = t
+        assert v.tools_argv(g, "coder-a") == [], t
+    g["nodes"]["coder-a"]["role"] = "coder"  # reset TYPE before testing override
+    g["nodes"]["coder-a"]["server_tools"] = ["read_file"]
+    assert v.tools_argv(g, "coder-a") == ["--tools", "read_file"]
+    # explicit opt-out: a present empty/none server_tools key means no --tools
+    for opt in ([], "none", False):
+        g["nodes"]["coder-a"]["server_tools"] = opt
+        assert v.tools_argv(g, "coder-a") == [], opt
+    # guardian/pentest/defender fail closed even if an override sneaks past validation
+    for t in ("guardian", "pentest", "defender"):
+        g["nodes"]["coder-a"]["role"] = t
+        g["nodes"]["coder-a"]["server_tools"] = "all"
+        assert v.tools_argv(g, "coder-a") == [], t
 
 
 # --- DUP-05: alias -> node resolution (CFG-GRAPH-ALIASES-*) ---
@@ -94,3 +110,30 @@ def test_dup05_alias_resolves_to_node():
     import familia_yaml, graph_types
     g = familia_yaml.load(str(FIX))
     assert graph_types.lookup(g, "aliases", "coder") == g["aliases"]["coder"]
+
+
+def test_escalate_reachable_parse_smoke():
+    """Platform/Boundary: --reachable must remain a real argparse flag after DUP-02
+    (it was briefly swallowed into a comment). Parsing with --reachable must not raise."""
+    import importlib, sys, config_paths
+    calls = []
+    orig = config_paths.graph_path
+    def spy(*a, **k):
+        calls.append(a); return orig(*a, **k)
+    config_paths.graph_path = spy
+    try:
+        sys.modules.pop("escalate", None)
+        import escalate
+        assert calls == [], "escalate resolved the graph path at import (must be lazy)"
+        assert not hasattr(escalate, "DEFAULT_GRAPH")
+    finally:
+        config_paths.graph_path = orig
+    # decide with no signals returns a "none" decision; --reachable must be accepted
+    rc = escalate.main(["decide", "--node", "coder", "--reachable", "h1,h2"])
+    assert rc in (0, None)
+
+
+def test_guardian_ready_graph_lazy():
+    import importlib, guardian_ready
+    importlib.reload(guardian_ready)
+    assert not hasattr(guardian_ready, "DEFAULT_GRAPH")

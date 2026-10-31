@@ -24,14 +24,14 @@ from node_role import private_topology, resolve_model_assign  # noqa: E402
 from box_archetypes import shape_for, shape_header_lines, merge_shape_roles  # noqa: E402
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
+import familia_yaml  # DUP-01 loader owner
 BASE_GRAPH = REPO_ROOT / "graph.yaml"
 OVERrides_FILE = REPO_ROOT / "config" / "host-overrides.yaml"
 OUTPUT_DIR = REPO_ROOT / "generated"
 
 
 def load_yaml(path: pathlib.Path):
-    with path.open("r", encoding="utf-8") as f:
-        return yaml.safe_load(f) or {}
+    return familia_yaml.load(str(path)) or {}  # DUP-01
 
 
 def merge_dict(base: dict, overrides: dict):
