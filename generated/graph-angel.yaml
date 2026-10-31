@@ -771,14 +771,14 @@ gateways:
     host: angel
     port: 18080
 aliases:
-  coder:
-    node: coder
-    gateway: local
   chat:
     node: chat
     gateway: local
   guardian:
     node: guardian
+    gateway: local
+  coder:
+    node: coder
     gateway: local
 agents:
   hermes:
@@ -1082,7 +1082,7 @@ self_improve:
   harness2:
     experimental: true
     engine: harness2
-    mode: propose
+    mode: 'off'
     targets:
     - hermes-lab
     k: 1
@@ -1092,7 +1092,7 @@ self_improve:
   harness2-hermes:
     experimental: true
     engine: harness2
-    mode: propose
+    mode: 'off'
     targets:
     - hermes
     k: 1

@@ -562,8 +562,8 @@
    "size": 2173,
    "sha256": null,
    "blob": "55518db9c16c1fad9f4b45e3b609bcb3a6087758",
-   "fetched": true,
-   "verified": "git-blob-sha1"
+   "verified": "git-blob-sha1",
+   "fetched": true
   },
   "LFM3-VL-2B-BF16.gguf": {
    "size": 3466626336,
@@ -618,15 +618,15 @@
    "size": 10574,
    "sha256": null,
    "blob": "2a513f17eb4b8008fb100349fd2b7551d009fed0",
-   "fetched": true,
-   "verified": "git-blob-sha1"
+   "verified": "git-blob-sha1",
+   "fetched": true
   },
   "README.md": {
    "size": 3540,
    "sha256": null,
    "blob": "b2007694fb0a44fcecb98c585b355861522c61ac",
-   "fetched": true,
-   "verified": "git-blob-sha1"
+   "verified": "git-blob-sha1",
+   "fetched": true
   },
   "mmproj-LFM3-VL-2B-BF16.gguf": {
    "size": 378996032,
