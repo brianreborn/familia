@@ -182,6 +182,8 @@ def test_every_user_facing_script_is_in_the_menu():
     alias = {"familia": "./familia-menu.sh", "install/linux/install.sh": "INSTALLER",
              "install/termux/install.sh": "INSTALLER", "familia-monitor": "familia-monitor"}
     allow = internal()
+    # CLI-only by design (#116): test_sec_assess forbids it in every menu table.
+    allow = set(allow) | {"scripts/sec_assess.py"}
     missing = []
     for s in sorted(user_facing_scripts()):
         if s in allow:
