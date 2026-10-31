@@ -505,12 +505,27 @@ def link_plugins(agent_cfg, home):
 
 
 # ---- tool routing (Brian 2026-10-31): any node that can use tools gets them, directly or via
-# graph routing over a nexus mesh. Guardian / pentest / defender nodes get NONE (pentest policy
-# ladder governs them, docs/config/pentest-policy.md). The node-level tools default itself is owned
-# by graph_types (Routing Test Designer, swarm/routing/tools-capability); this only decides what a
-# Hermes agent sends its tool calls to.
+# graph routing over a nexus mesh. Guardian / pentest / defender nodes get NONE by default
+# (docs/config/pentest-policy.md). They are never auto-route / escalation targets
+# (CFG-PENT-POL-004). The node-level tools default itself is owned by graph_types
+# (Routing Test Designer, swarm/routing/tools-capability); this only decides what a Hermes
+# agent sends its tool calls to.
+#
+# TODO(pentest-policy): when graph_types accepts `pentests.<p>.policy` (today
+# tests/test_config_spec.py strict-xfails until then) AND hermes-agent can enforce
+# per-action confirmation on *every* tool call (today `approvals.mode: manual|smart`
+# only gates dangerous shell / execute_code, not every MCP/toolset call), open tools
+# for mode `tools-confirm` (and `autonomous-lab`) via pentest_tools_allowed() below:
+#   - route_tools → mode=direct on the pentest node
+#   - render sets approvals.mode=manual (no yolo / mode=off)
+#   - tools = full set (platform toolsets + declared MCP) per CFG-PENT-MODE-004
+# slash-confirm stays tools=none (CFG-PENT-MODE-003 advisory chat). Until then keep
+# closed: tool_free always, never open by default. See tests/test_hermes_tool_routing.py
+# xfail(strict=True) for the expected tools-confirm path.
 TOOL_FREE_ROLES = frozenset({"guardian", "pentest", "defender"})
 NON_TOOL_ROLES = frozenset({"embed", "diffusion", "decision"})  # no tool-call chat template
+# Modes that the SPEC says may carry tools (once preconditions + per-action confirm land).
+PENTEST_TOOLS_MODES = frozenset({"tools-confirm", "autonomous-lab"})
 
 
 def _node_role(g, name):
@@ -521,14 +536,48 @@ def _node_role(g, name):
     return raw
 
 
+def pentest_for_node(g, name):
+    """First pentests.* entry whose `node` is `name`, or None. Forward-compat for policy mode."""
+    for p in (g.get("pentests") or {}).values():
+        if isinstance(p, dict) and p.get("node") == name:
+            return p
+    return None
+
+
+def pentest_policy_mode(g, name):
+    """Read pentests.<p>.policy.mode when present. graph_types does not accept `policy` yet
+    (CFG-PENT-* SPEC); returns None until an overlay / future schema carries it."""
+    p = pentest_for_node(g, name)
+    if not p: return None
+    pol = p.get("policy")
+    if not isinstance(pol, dict): return None
+    mode = pol.get("mode")
+    return mode if isinstance(mode, str) else None
+
+
+def pentest_tools_allowed(g, name):
+    """Would the pentest-policy ladder grant tools on this node?
+    Closed today: always False. See TODO(pentest-policy) above — gate on
+    pentest_policy_mode in PENTEST_TOOLS_MODES plus per-action confirm wiring."""
+    # Keep the read so callers / tests can assert the mode is visible once schema lands.
+    _ = pentest_policy_mode(g, name)
+    return False
+
+
 def tool_free(g, name):
-    """Guardian / pentest / defender nodes never get Hermes tools (incl. MCP)."""
-    return bool(_node_role(g, name) & TOOL_FREE_ROLES)
+    """Guardian / pentest / defender: no Hermes tools (incl. MCP) by default.
+    Future tools-confirm opt-in goes through pentest_tools_allowed (still closed)."""
+    if not (_node_role(g, name) & TOOL_FREE_ROLES):
+        return False
+    if pentest_tools_allowed(g, name):
+        return False
+    return True
 
 
 def tool_capable(g, name):
     """Can this node's model drive tool calls? Explicit nodes.X.tool_capable / models.X.tool_calls
-    (if the graph carries them) win; otherwise type implies capability (node_role design law)."""
+    (if the graph carries them) win; otherwise type implies capability (node_role design law).
+    Keep reading both field names until Routing Test Designer lands the final one."""
     n = g["nodes"][name]
     if tool_free(g, name): return False
     for v in (n.get("tool_capable"), ((g.get("models") or {}).get(n.get("model")) or {}).get("tool_calls")):
@@ -546,7 +595,8 @@ def route_tools(g, agent):
     """-> {"mode": none|direct|nexus, "node", "via"}. none: tool-free node or nothing routable.
     direct: the agent's main node calls tools itself (all tools by default). nexus: the main model
     cannot call tools, so tool-driving turns go to a tool-capable node, same host first, else a peer
-    host on a shared ssh nexus mesh (graph routing)."""
+    host on a shared ssh nexus mesh (graph routing). Never routes into guardian/pentest/defender
+    (CFG-PENT-POL-004) — ok() excludes tool_free nodes even when they are the only candidate."""
     _, name, n, _ = node_for(g, agent)
     if tool_free(g, name): return {"mode": "none", "node": None, "via": None, "reason": "tool-free node"}
     if tool_capable(g, name): return {"mode": "direct", "node": name, "via": None}
@@ -579,6 +629,15 @@ def apply_tool_route(g, agent, cfg, route):
     elif route["mode"] == "nexus":
         _, _, n, _ = node_for(g, agent)
         cfg["model"] = dict(cfg["model"], base_url=node_base(g, route["node"], n.get("host")), default=route["node"])
+    # TODO(pentest-policy): when pentest_tools_allowed opens tools-confirm, force
+    # approvals.mode=manual here (never off / yolo) so each dangerous action still
+    # prompts. Full per-tool confirm still needs hermes-agent support beyond
+    # dangerous-shell gating — see docs/config/pentest-policy.md CFG-PENT-MODE-004.
+    _, name, _, _ = node_for(g, agent)
+    if route["mode"] != "none" and pentest_tools_allowed(g, name):
+        appr = dict(cfg.get("approvals") or {})
+        appr["mode"] = "manual"
+        cfg["approvals"] = appr
     return cfg
 
 

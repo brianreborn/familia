@@ -87,11 +87,84 @@ def test_defender_node_gets_no_tools():
 
 
 def test_tool_free_node_is_never_a_nexus_target():
+    # Mesh case: only tool-capable candidates left are guardian/pentest → none, not into them.
     g = g_main("phone7-decision", status="active")
     for k, n in g["nodes"].items():
         if k != "phone7-decision" and not hh.tool_free(g, k): n["status"] = "planned"
     for k in ("miryam-pentest", "angel-guardian"): g["nodes"][k]["status"] = "active"
+    r = hh.route_tools(g, "hermes")
+    assert r["mode"] == "none" and r["node"] is None
+    assert r.get("reason")
+
+
+def test_nexus_never_routes_into_guardian_pentest_or_defender_same_host():
+    # Only remaining "active" peers are defender/guardian (same host + mesh). Must still be none.
+    g = g_main("qodesh-gpu-decision")
+    for k, n in list(g["nodes"].items()):
+        if k != "qodesh-gpu-decision" and not hh.tool_free(g, k):
+            n["status"] = "planned"
+    # Inject a same-host defender that *looks* tool-capable by model type but is tool_free by role.
+    g["nodes"]["qodesh-defender"] = dict(g["nodes"]["coder"], host="qodesh", port=1, status="active")
+    # And a same-host guardian.
+    g["nodes"]["qodesh-guardian"] = dict(g["nodes"]["miryam-pentest"], host="qodesh", port=2, status="active",
+                                         role="guardian")
+    # Mesh peers that are guardian/pentest also flipped active — still must not be chosen.
+    for k in ("miryam-pentest", "angel-guardian"):
+        g["nodes"][k]["status"] = "active"
+    r = hh.route_tools(g, "hermes")
+    assert r["mode"] == "none" and r["node"] is None, r
+    assert hh.tool_free(g, "qodesh-defender") and hh.tool_free(g, "qodesh-guardian")
+
+
+def test_nexus_never_routes_into_pentest_even_when_flagged_tool_capable():
+    # Even an explicit tool_capable=True on a pentest/guardian must not make it a nexus target
+    # (CFG-PENT-POL-004: never an auto-route target in any mode).
+    g = g_main("phone7-decision", status="active")
+    for k, n in g["nodes"].items():
+        if k != "phone7-decision" and not hh.tool_free(g, k): n["status"] = "planned"
+    g["nodes"]["miryam-pentest"]["status"] = "active"
+    g["nodes"]["miryam-pentest"]["tool_capable"] = True
+    r = hh.route_tools(g, "hermes")
+    assert r["mode"] == "none" and r["node"] is None
+
+
+def test_pentest_stays_closed_even_with_tools_confirm_policy_today():
+    # Seatbelt: policy.mode is not accepted by graph_types yet, and hermes cannot confirm
+    # every tool call — so tools-confirm must NOT open tools today (TODO in hermes_harness).
+    g = g_main("miryam-pentest")
+    g["pentests"] = {"fleet": {"node": "miryam-pentest",
+                               "policy": {"enabled": True, "mode": "tools-confirm",
+                                          "tools": "all", "autonomy": "confirm-each-action",
+                                          "audit": "on"}}}
+    assert hh.pentest_policy_mode(g, "miryam-pentest") == "tools-confirm"
+    assert hh.pentest_tools_allowed(g, "miryam-pentest") is False
+    assert hh.tool_free(g, "miryam-pentest")
     assert hh.route_tools(g, "hermes")["mode"] == "none"
+
+
+@pytest.mark.xfail(strict=True, reason="TODO(pentest-policy): open tools for tools-confirm once "
+                   "graph_types accepts pentests.*.policy AND hermes-agent can enforce per-action "
+                   "confirm on every tool call (today approvals.mode only gates dangerous shell). "
+                   "See docs/config/pentest-policy.md CFG-PENT-MODE-004.")
+def test_tools_confirm_grants_full_tools_with_per_action_confirm(tmp_path, monkeypatch):
+    # Expected once the TODO lands: mode tools-confirm → direct + full tools + approvals.mode=manual.
+    g = g_main("miryam-pentest")
+    g["agents"]["hermes"]["prompt_profile"] = "full"
+    g["agents"]["hermes"]["mcp"] = {"stub": {"command": sys.executable, "args": [STUB]}}
+    g["pentests"] = {"fleet": {"node": "miryam-pentest",
+                               "policy": {"enabled": True, "mode": "tools-confirm",
+                                          "tools": "all", "autonomy": "confirm-each-action",
+                                          "audit": "on"},
+                               "scope": {"allow": ["miryam"], "deny": []}}}
+    assert hh.pentest_tools_allowed(g, "miryam-pentest") is True
+    assert not hh.tool_free(g, "miryam-pentest")
+    r = hh.route_tools(g, "hermes")
+    assert r == {"mode": "direct", "node": "miryam-pentest", "via": None}
+    cfg = cfg_of(g, tmp_path, monkeypatch)
+    assert "stub" in (cfg.get("mcp_servers") or {})
+    assert (cfg.get("approvals") or {}).get("mode") == "manual"
+    # Must not be opened without confirm: yolo / mode=off forbidden.
+    assert (cfg.get("approvals") or {}).get("mode") != "off"
 
 
 # ---- live MCP: real hermes-agent loader + client against the stdio stub -------------------------
@@ -110,8 +183,13 @@ def _hermes_py():
     src = os.environ.get("FAMILIA_HERMES_SRC") or "/workspace/hermes-agent"
     cands = [os.environ.get("FAMILIA_HERMES_TEST_PY"), hh.HERMES_PY, shutil.which("python3")]
     for py in filter(None, cands):
-        if os.path.isdir(os.path.join(src, "tools")) and subprocess.run(
-                [py, "-c", "import mcp, yaml"], capture_output=True).returncode == 0:
+        if not os.path.isdir(os.path.join(src, "tools")):
+            continue
+        try:
+            ok = subprocess.run([py, "-c", "import mcp, yaml"], capture_output=True).returncode == 0
+        except (FileNotFoundError, OSError):
+            continue
+        if ok:
             return py, src
     return None, None
 
