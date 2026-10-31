@@ -166,10 +166,37 @@ def _alias_member(graph, host, alias_name, alias, node_name):
     return {"node": node_name, "kind": kind, "url": url, "remote": not local, "tools": tools}
 
 
+def _cascade_routes(graph, gateway_name, aliases, alias_members):
+    """councils.<c> mode cascade -> a graph_router chain over each agent's `main` alias, in list order
+    (agent 1's reply is agent 2's input). Only councils whose agents all route on this gateway."""
+    out = {}
+    for cname, c in sorted((graph.get("councils") or {}).items()):
+        if c.get("mode") != "cascade":
+            continue  # quorum: not run yet (docs/graph-recipes.md)
+        steps, gws = [], set()
+        for agent in c.get("agents") or []:
+            main = ((graph["agents"].get(agent) or {}).get("aliases") or {}).get("main")
+            alias_gw = (graph["aliases"].get(main) or {}).get("gateway")
+            gws.add(alias_gw)
+            if alias_gw == gateway_name and main in alias_members:
+                steps.append(alias_members[main][0])
+        if gateway_name not in gws:
+            continue  # this council belongs to another gateway
+        if len(steps) != len(c.get("agents") or []) or len(gws) > 1:
+            raise StartupError(f"council {cname}: every agent's main alias must be routable on gateway "
+                               f"{gateway_name} from this host")
+        if cname in aliases:
+            raise StartupError(f"council {cname}: name clashes with an alias")
+        if any(m["kind"] != "chat" for m in steps):
+            raise StartupError(f"council {cname}: cascade steps must be chat nodes")
+        out[cname] = {"kind": "chat", "chain": steps}
+    return out
+
+
 def needs_router(aliases, gateway=None):
     """True unless `gateways.<g>.router: false` and every alias is one local node (then green-roomz
     graph-proxy). graph_router bounds a down node to a 3 s connect instead of graph-proxy's 180 s retry."""
-    if any("members" in a for a in aliases.values()):
+    if any("members" in a or "chain" in a for a in aliases.values()):
         return True  # lists/remote members only graph_router can serve
     return (gateway or {}).get("router", True) is not False  # default: graph_router; router: false = graph-proxy
 
@@ -177,13 +204,19 @@ def needs_router(aliases, gateway=None):
 def router_routes(aliases):
     """graph_router config (version 1) for a gateway's aliases."""
     nodes, routes = {}, {}
+    def key(m):  # router: route and node names are disjoint
+        return m["node"] + "-node" if m["node"] in aliases else m["node"]
     for alias, a in sorted(aliases.items()):
+        if "chain" in a:
+            for m in a["chain"]:
+                nodes[key(m)] = {"url": m["url"], "kind": m["kind"], "remote": m["remote"], "tools": m.get("tools", False)}
+            routes[alias] = {"chain": [key(m) for m in a["chain"]]}
+            continue
         ms = a.get("members") or [{"node": alias + "--node", "url": a["url"], "kind": a["kind"], "remote": False, "tools": False}]
         names = []
         for m in ms:
-            key = m["node"] + "-node" if m["node"] in aliases else m["node"]  # router: route/node names disjoint
-            nodes[key] = {"url": m["url"], "kind": m["kind"], "remote": m["remote"], "tools": m.get("tools", False)}
-            names.append(key)
+            nodes[key(m)] = {"url": m["url"], "kind": m["kind"], "remote": m["remote"], "tools": m.get("tools", False)}
+            names.append(key(m))
         routes[alias] = names[0] if len(names) == 1 else names
     return {"version": 1, "nodes": nodes, "routes": routes}
 
@@ -205,6 +238,7 @@ def local_topology(graph, host):
         if gateway.get("kind") != "green-roomz":
             raise StartupError(f"gateway {gateway_name} has unsupported kind {gateway.get('kind')!r}")
         aliases = {}
+        alias_members = {}
         for alias_name, alias in sorted(graph.get("aliases", {}).items()):
             if alias.get("gateway") != gateway_name:
                 continue
@@ -218,6 +252,7 @@ def local_topology(graph, host):
                     members.append(m)
             if not members:
                 continue
+            alias_members[alias_name] = members
             kinds = {m["kind"] for m in members}
             if len(kinds) > 1:
                 raise StartupError(f"alias {alias_name} mixes chat and embedding nodes")
@@ -226,6 +261,7 @@ def local_topology(graph, host):
             else:
                 # fallback list and/or remote member: served by scripts/graph_router.py, not graph-proxy
                 aliases[alias_name] = {"kind": kinds.pop(), "members": members}
+        aliases.update(_cascade_routes(graph, gateway_name, aliases, alias_members))
         if aliases:
             gateways.append((gateway_name, gateway, aliases))
     return nodes, remote_nodes, gateways, omitted_aliases, remote_gateways
