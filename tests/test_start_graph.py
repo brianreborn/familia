@@ -16,14 +16,15 @@ def graph():
     return copy.deepcopy(GRAPH)
 
 
-def test_host_selection_requires_an_exact_declared_graph_host():
+def test_host_selection_requires_an_exact_declared_graph_host(tmp_path):
     g = graph()
-    assert start_graph.select_host(g, environ={}, hostname="miryam.example") == "miryam"
-    assert start_graph.select_host(g, requested="angel", environ={"FAMILIA_HOST": "miryam"}) == "angel"
+    env = {"XDG_STATE_HOME": str(tmp_path)}  # isolate from this machine's hostname pin
+    assert start_graph.select_host(g, environ=dict(env), hostname="miryam.example") == "miryam"
+    assert start_graph.select_host(g, requested="angel", environ={**env, "FAMILIA_HOST": "miryam"}) == "angel"
     with pytest.raises(start_graph.StartupError, match="not declared"):
-        start_graph.select_host(g, environ={}, hostname="codespace")
+        start_graph.select_host(g, environ=dict(env), hostname="codespace")
     # OS hostname can differ from the graph key via hosts.*.local_names
-    assert start_graph.select_host(g, environ={}, hostname="grok-bot-vm-414232872") == "box"
+    assert start_graph.select_host(g, environ=dict(env), hostname="grok-bot-vm-414232872") == "box"
 
 
 def test_local_topology_starts_only_local_active_nodes_and_routes():
@@ -39,13 +40,16 @@ def test_local_topology_starts_only_local_active_nodes_and_routes():
         "general": {"kind": "chat", "url": "http://127.0.0.1:9941"},
         "embed": {"kind": "embedding", "url": "http://127.0.0.1:9951"},
     }
-    assert omitted == []
+    # planned/unbuilt roles on miryam are listed, not started (graph.yaml)
+    assert {role for role, _node, host in omitted} == {"defender", "guardian", "pentest", "safe-build"}
+    assert all(host == "miryam" for _r, _n, host in omitted)
     assert remote_gateways == []
 
 
-def test_freebsd_host_with_no_active_nodes_does_not_start_remote_gateway():
+def test_freebsd_host_runs_its_nodes_without_starting_a_gateway():
+    # angel-coder is active on angel since the Nanbeige prize; the gateway stays on miryam
     nodes, remote, gateways, omitted, remote_gateways = start_graph.local_topology(graph(), "angel")
-    assert nodes == []
+    assert nodes == ["angel-coder"]
     assert remote
     assert gateways == []
     assert omitted == []
