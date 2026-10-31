@@ -17,7 +17,8 @@ def test_seed_catalog_valid():
     assert skills.validate_catalog(CAT) == []
     ids = {s["id"]: s for s in CAT["skills"]}
     assert ids["green-probe"]["status"] == "bundled" and ids["green-probe"]["home"] == "green-zkillz"
-    assert ids["artemis-android-skill"]["status"] == "available" and ids["artemis-android-skill"]["license"] == "Apache-2.0"
+    assert ids["artemis-android-skill"]["status"] == "vendored"  # vendored in a431bc4
+    assert ids["artemis-android-skill"]["license"] == "Apache-2.0"
     assert ids["goclaw-skills"]["status"] == "license-blocked"
     assert "Anthropic proprietary" in ids["goclaw-skills"]["parts"]["pdf"]
 
@@ -76,10 +77,18 @@ def env(tmp_path, pentest=False):
     g = tmp_path / "graph.yaml"
     if not g.exists():
         text = open(os.path.join(ROOT, "graph.yaml"), encoding="utf-8").read()
-        g.write_text(text)
-    if pentest and "pentests:" not in g.read_text():
+        # graph.yaml now enables every bundled skill for hermes; start the temp copy from the
+        # empty list (as the tests were written) so enable/dry-run flows have something to change (#230).
+        full = "skills: [green-zkillz, green-probe, green-bootstrap, green-ingest, green-format, green-deploy, etioz]"
+        assert text.count(full) == 1, "hermes skills line changed; update this fixture"
+        g.write_text(text.replace(full, "skills: []"))
+    if pentest and "  android-fleet:" not in g.read_text():
         text = g.read_text()
-        g.write_text(text.replace("kv_channels:\n", PENTEST_GRAPH_YAML + "kv_channels:\n"))
+        if "\npentests:\n" in text:  # graph.yaml has its own pentests section now: add ours to it
+            text = text.replace("\npentests:\n", "\n" + PENTEST_GRAPH_YAML.rstrip("\n") + "\n", 1)
+        else:
+            text = text.replace("kv_channels:\n", PENTEST_GRAPH_YAML + "kv_channels:\n")
+        g.write_text(text)
     e = dict(os.environ, FAMILIA_GRAPH=str(g), FAMILIA_LICENSE_ACCEPT_FILE=str(tmp_path / "acc.json"), FAMILIA_NO_TTY="1")
     for k in ("FAMILIA_ACCEPT_LICENSES", "FAMILIA_ACCEPT_UNKNOWN_LICENSES", "FAMILIA_MENU_PIPE"):
         e.pop(k, None)
@@ -100,8 +109,10 @@ def test_cli_enable_flow(tmp_path):
     assert r.returncode == 0 and "[dry-run]" in r.stdout
     r, g = run(tmp_path, "enable", "goclaw-skills")
     assert r.returncode == 1 and "license-blocked" in r.stderr and g.read_text() == before
+    # artemis is vendored now (a431bc4): it reaches the license review, which refuses with no TTY
+    before = g.read_text()
     r, g = run(tmp_path, "enable", "artemis-android-skill")
-    assert r.returncode == 1 and "not vendored" in r.stderr
+    assert r.returncode in (2, 3) and "licenses not accepted" in r.stderr + r.stdout and g.read_text() == before
     r, g = run(tmp_path, "enable", "etioz", "--agent", "android-fleet", "--dry-run", pentest=True)
     assert r.returncode == 0
     r, g = run(tmp_path, "enable", "green-probe", "--agent", "android-fleet", pentest=True)
