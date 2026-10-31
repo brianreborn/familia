@@ -1,5 +1,5 @@
 """scripts/install-cli.sh: per-user `familia` on PATH (docs/install.md#familia-on-your-path). Temp HOME only."""
-import os, shutil, subprocess
+import os, shutil, subprocess, sys
 import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -9,7 +9,8 @@ SH = shutil.which("dash") or "sh"
 
 def env(home, **kw):
     e = {k: v for k, v in os.environ.items() if not k.startswith("XDG_") and k not in ("PREFIX", "TERMUX_VERSION")}
-    e.update(HOME=str(home), PATH="/usr/bin:/bin", **kw)
+    py_dir = os.path.dirname(shutil.which("python3") or sys.executable)  # /usr/local/bin on FreeBSD
+    e.update(HOME=str(home), PATH=":".join(dict.fromkeys([py_dir, "/usr/bin", "/bin"])), **kw)
     return e
 
 
