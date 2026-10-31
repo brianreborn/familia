@@ -168,7 +168,7 @@
  "warnings": [
   "base model huihui-ai/Dolphin3.0-Llama3.1-8B-abliterated: https://huggingface.co/api/models/huihui-ai/Dolphin3.0-Llama3.1-8B-abliterated/revision/main: HTTP 401 unauthorized (gated or private; set HF_TOKEN) {\"error\":\"Invalid username or password.\"}"
  ],
- "updated": "2026-10-31",
+ "updated": "2026-10-30",
  "by": "scripts/model_db.py",
  "gguf_meta": {
   "general.architecture": "llama",

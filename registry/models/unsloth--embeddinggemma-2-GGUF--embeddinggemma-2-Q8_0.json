@@ -502,7 +502,7 @@
  "local_check": {
   "host": "grok-bot-vm-414232872",
   "sha256_ok": true,
-  "checked": "2026-10-31"
+  "checked": "2026-10-30"
  },
  "unknown": [
   "card_defaults: the card and generation_config.json state no sampling values"
@@ -510,7 +510,7 @@
  "warnings": [
   "card states context 8192 (google/embeddinggemma-2 README.md:L45) but GGUF gemma-embedding2.context_length is 262144"
  ],
- "updated": "2026-10-31",
+ "updated": "2026-10-30",
  "by": "scripts/model_db.py",
  "gguf_meta": {
   "general.architecture": "gemma-embedding2",

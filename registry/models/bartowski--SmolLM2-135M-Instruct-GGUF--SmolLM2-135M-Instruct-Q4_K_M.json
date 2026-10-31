@@ -628,7 +628,7 @@
  "local_check": null,
  "unknown": null,
  "warnings": null,
- "updated": "2026-10-31",
+ "updated": "2026-10-30",
  "by": "scripts/model_db.py",
  "gguf_meta": {
   "general.architecture": "llama",
