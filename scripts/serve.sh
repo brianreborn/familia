@@ -35,6 +35,12 @@ else
     exit 1
   fi
 fi
+# `validate_graph.py --args` prints a POSIX-shell-quoted argv (shlex.join), so paths with
+# spaces, tabs, globs or non-ASCII survive; it refuses newline/NUL. Never expand $args
+# unquoted: always `eval "set -- $args ..."` and use "$@" (routing-paths).
+q() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
+extra=""
+for _a in "$@"; do extra="$extra $(q "$_a")"; done
 # Licenses first (docs/licenses.md): the graph selection's licenses must be accepted before any
 # model starts. scripts/licenses.py gate asks on a terminal; FAMILIA_ACCEPT_LICENSES=yes accepts.
 if [ ! -f "$here/scripts/licenses.py" ]; then
@@ -57,14 +63,19 @@ if [ -z "${FAMILIA_MEMCAP:-}" ]; then
   case "$_fh" in miryam*) FAMILIA_MEMCAP=1 ;; *) FAMILIA_MEMCAP=0 ;; esac
 fi
 # The model file must exist: never start a node without its model.
-model="$(printf '%s\n' "$args" | sed -n -E 's/.*[[:space:]]-m[[:space:]]+([^[:space:]]+).*/\1/p')"
+model=""
+eval "set -- $args"
+while [ $# -gt 0 ]; do
+  if [ "$1" = -m ] && [ $# -ge 2 ]; then model="$2"; break; fi
+  shift
+done
 if [ -n "$model" ] && [ ! -f "$model" ]; then
   say "model file $model of node $node not found; not starting"
   exit 1
 fi
 # The runtime binary must exist too: a pinned runtime that was never fetched used to end
 # in a bare "not found" and rc 127 (#84).
-bin="${args%% *}"
+eval "set -- $args"; bin="$1"
 case "$bin" in */*)
   if [ ! -x "$bin" ]; then
     say "runtime $bin of node $node is missing or not executable; fetch the pinned runtime (sh scripts/configure.sh, or scripts/sync_pins.py) and check runtimes.*.bin in graph.yaml; not starting"
@@ -92,7 +103,8 @@ if [ "${FAMILIA_GUARD:-1}" != 0 ] && [ ! -f "$here/scripts/bench_guard.py" ]; th
   say "warning: scripts/bench_guard.py missing; launch guard skipped"
 elif [ "${FAMILIA_GUARD:-1}" != 0 ]; then
   # shellcheck disable=SC2086
-  if ! python3 "$here/scripts/bench_guard.py" check -- ${args#* } "$@"; then
+  eval "set -- $args $extra"; shift
+  if ! python3 "$here/scripts/bench_guard.py" check -- "$@"; then
     gr=$?
     say "launch guard refused node $node (see familia-guard lines above); fix the params in graph.yaml; not starting"
     exit "$gr"
@@ -126,11 +138,17 @@ if [ "$FAMILIA_MEMCAP" = 1 ] && command -v systemd-run >/dev/null 2>&1; then
     python3 "$here/scripts/launch_status.py" emit LF_OOM_CAP --engine serve --model "$model" --evidence "admission refused for node $node"
     exit 69
   fi
+  eval "set -- $args $extra"
   exec systemd-run --user --scope --quiet --unit="familia-$node-$$" \
     ${FAMILIA_MEMHIGH:+-p MemoryHigh="$FAMILIA_MEMHIGH"} -p MemoryMax="$FAMILIA_MEMMAX" \
-    -- sh -c 'echo ${FAMILIA_OOM_ADJ:-800} > /proc/self/oom_score_adj; exec "$@"' sh $args "$@"
+    -- sh -c 'echo ${FAMILIA_OOM_ADJ:-800} > /proc/self/oom_score_adj; exec "$@"' sh "$@"
 fi
-ngl="$(printf '%s\n' "$args" | sed -n -E 's/.*[[:space:]]-ngl[[:space:]]+([0-9]+).*/\1/p')"
+ngl=""; safe_args=""; _prev=""
+eval "set -- $args"
+for _a in "$@"; do   # -ngl value, and a quoted copy with -ngl 0 for the CPU retry
+  if [ "$_prev" = -ngl ]; then ngl="$_a"; _a=0; fi
+  safe_args="$safe_args $(q "$_a")"; _prev="$_a"
+done
 logdir="${FAMILIA_LOG_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/familia/logs}"
 mkdir -p "$logdir"
 log="$logdir/serve-$node.log"
@@ -138,16 +156,17 @@ log="$logdir/serve-$node.log"
 case "$log" in /*) say "logs: $log" ;; *) say "logs: $PWD/$log" ;; esac
 rc=0
 # shellcheck disable=SC2086
-$args --log-file "$log" "$@" || rc=$?
+eval "set -- $args --log-file \"\$log\" $extra"
+"$@" || rc=$?
 [ "$rc" -eq 0 ] && exit 0
 # Retry on the CPU only for a Vulkan failure of a GPU launch that was not stopped by a signal.
 if [ "${ngl:-0}" -gt 0 ] && [ "$rc" -lt 128 ] && \
    grep -q -i -E -e 'ggml_vulkan: *(error|fail)|vk::[A-Za-z]*error|VK_ERROR_|failed to (initiali[sz]e|create).*vulkan|vulkan.*unsupported device' "$log"; then
   say "Vulkan launch failed (exit $rc, $log); retrying on the CPU with -ngl 0 and Vulkan hidden"
   export GGML_VK_VISIBLE_DEVICES=
-  safe_args="$(printf '%s\n' "$args" | sed -E 's/(^|[[:space:]])-ngl[[:space:]]+[0-9]+/\1-ngl 0/')"
   case "$log" in /*) say "logs: $log.cpu" ;; *) say "logs: $PWD/$log.cpu" ;; esac
   # shellcheck disable=SC2086
-  exec $safe_args --log-file "$log.cpu" "$@"
+  eval "set -- $safe_args --log-file \"\$log.cpu\" $extra"
+  exec "$@"
 fi
 exit "$rc"

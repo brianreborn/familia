@@ -487,10 +487,12 @@ def server_args(graph, name):
     a = merge_args(a, extra)
     # serve.sh expands the printed argv unquoted (`$args`), so sh splits on IFS. A path with
     # space/tab/newline would reach llama-server as a wrong argv; refuse it (routing-paths).
-    bad = [x for x in a if any(c in x for c in " \t\n")]
+    # Spaces, tabs, globs and non-ASCII are fine (--args prints shlex-quoted; serve.sh uses "$@").
+    # A newline or NUL cannot round-trip through a command line or a log: refuse those only.
+    bad = [x for x in a if "\n" in x or "\0" in x]
     if bad:
-        raise SystemExit(f"graph: ERROR: nodes.{name}: argument {bad[0]!r} contains whitespace; "
-                         "serve.sh word-splits launch args, so move/rename the file (no spaces/tabs)")
+        raise SystemExit(f"graph: ERROR: nodes.{name}: argument {bad[0]!r} contains a newline or NUL; "
+                         "rename the file/dir (spaces and non-ASCII are fine)")
     import model_params as mp
     _, build = model_db.runtime_build(graph, n)
     reasons = n.get("override_reasons") or {}
@@ -581,7 +583,8 @@ def main(argv):
         print(f"graph: ERROR: node {o['args']!r} is on host {graph['nodes'][o['args']]['host']!r}, not {o['host']!r}", file=sys.stderr)
         return 1
     if o["args"]:
-        print(" ".join(server_args(graph, o["args"]))); return 0
+        import shlex   # POSIX-sh quoted; plain args print unchanged; serve.sh evals it into "$@"
+        print(shlex.join(server_args(graph, o["args"]))); return 0
     if o["explain"]:
         print("\n".join(explain(graph, o["explain"]))); return 0
     try:  # model registry evidence (docs/model-registry.md): warn only, never fail
