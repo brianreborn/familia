@@ -1,5 +1,7 @@
 # familia graph types (graph.yaml v2)
 
+Ready-made shapes (single, fan-out, escalation chain, tools, two-host): see [graph-recipes.md](graph-recipes.md).
+
 `graph.yaml` declares the whole topology: which hosts exist, what runs where,
 which model sits behind each route name, and which agents use them. Every
 section is a **type** registered in `scripts/graph_types.py`. Every field is
