@@ -177,9 +177,14 @@ def test_lang_c_and_posix_route_identically_to_utf8(tmp_path):
     assert utf8["upstream"][0][0]["content"] == list(PROMPTS.values())[0]
 
 
-@pytest.mark.xfail(strict=True, reason="CJK negation not handled yet: _NEG_BEFORE only knows English "
-                   "(do not/don't/never/no); 不要/别/不用 before a CJK phrase still escalates (fix pending)")
-@pytest.mark.parametrize("msg", ["不要升级", "请不要升级到大模型"])
-def test_cjk_negation_does_not_escalate(msg):
-    trig = dict(E.DEFAULT_TRIGGERS, phrases=["升级"])
+@pytest.mark.parametrize("phrase,msg", [("升级", "不要升级"), ("升级", "请不要升级到大模型"), ("升级", "别升级"),
+                                        ("大きいモデル", "大きいモデルにしないで"), ("大きいモデル", "大きいモデルしない")])
+def test_cjk_negation_does_not_escalate(phrase, msg):
+    trig = dict(E.DEFAULT_TRIGGERS, phrases=[phrase])
     assert E.stuck_reasons({"user_messages": [msg]}, trig) == []
+
+
+@pytest.mark.parametrize("phrase,msg", [("升级", "升级吧"), ("升级", "要升级"), ("大きいモデル", "大きいモデルにして")])
+def test_cjk_affirmative_still_escalates(phrase, msg):
+    trig = dict(E.DEFAULT_TRIGGERS, phrases=[phrase])
+    assert E.stuck_reasons({"user_messages": [msg]}, trig)
