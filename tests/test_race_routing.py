@@ -244,40 +244,90 @@ def test_r5_replies_matched_to_requests_under_concurrency():
     srv.shutdown(); up.close()
 
 
-def _fifo_violations(senders=4, per=16, delay=0.03, stagger=0.01):
-    """Per-session numbered requests; returns {session: arrival seq list} where out of order."""
-    up = Upstream("light", delay=delay, echo=True)
+class _OrderedGrantLock:
+    """Test stand-in for the per-session lock (escalation_proxy.py:106/:280).
+
+    threading.RLock documents no FIFO guarantee for waiters; this lock models that
+    deterministically. The first acquirer holds it; its release() waits until
+    ``expect - 1`` waiters are queued, then grants them in ``policy`` order
+    ("lifo" = legal-but-unfair non-arrival order, "fifo" = arrival order).
+    Reentrant like RLock. No sleeps decide the outcome; waits are bounded only as
+    a hang guard.
+    """
+    def __init__(self, expect, policy):
+        self.expect, self.policy = expect, policy
+        self.cond = threading.Condition(threading.Lock())
+        self.owner, self.depth, self.waiters, self.arrivals, self.next = None, 0, [], 0, None
+
+    def acquire(self, blocking=True, timeout=-1):
+        me = threading.get_ident()
+        with self.cond:
+            self.arrivals += 1
+            if self.owner == me:
+                self.depth += 1; return True
+            if self.owner is None and not self.waiters and self.next is None:
+                self.owner, self.depth = me, 1; return True
+            self.waiters.append(me); self.cond.notify_all()
+            assert self.cond.wait_for(lambda: self.next == me, timeout=20), "grant hang"
+            self.next, self.owner, self.depth = None, me, 1
+            return True
+
+    def release(self):
+        with self.cond:
+            self.depth -= 1
+            if self.depth: return
+            self.cond.wait_for(lambda: len(self.waiters) >= self.expect - 1 or self.expect <= 1, timeout=20)
+            self.expect = 0  # only gate the first hand-off
+            self.owner = None
+            if self.waiters:
+                self.next = self.waiters.pop() if self.policy == "lifo" else self.waiters.pop(0)
+            self.cond.notify_all()
+
+    __enter__ = acquire
+    def __exit__(self, *a): self.release()
+
+
+def _ordered_arrivals(monkeypatch, policy, n=6):
+    """Send n numbered requests on ONE session, each only after the previous one has
+    reached the session lock (so submission order == lock arrival order, no timing
+    luck). Returns the order in which the upstream received them."""
+    locks = []
+    orig = EP.Escalator.__init__
+
+    def init(self, *a, **k):
+        orig(self, *a, **k)
+        self.lock = _OrderedGrantLock(n, policy); locks.append(self.lock)
+    monkeypatch.setattr(EP.Escalator, "__init__", init)
+    up = Upstream("light", delay=0.0, echo=True)
     _, srv = proxy(graph(up.port, closed_port()))
     port = srv.server_address[1]
-    start = threading.Barrier(senders)
     ts = []
-
-    def sender(sid):
-        start.wait()
-        inner = []
-        for n in range(per):  # submit in order; later ones queue behind the session lock
-            t = threading.Thread(target=post, args=(port, f"{sid}:{n:03d}", sid, 30)); t.start(); inner.append(t)
-            time.sleep(stagger)
-        for t in inner: t.join()
-
-    for k in range(senders):
-        t = threading.Thread(target=sender, args=(f"S{k}",)); t.start(); ts.append(t)
+    for i in range(n):
+        t = threading.Thread(target=post, args=(port, f"S:{i:03d}", "S", 30)); t.start(); ts.append(t)
+        lk = next((l for l in locks if l.arrivals), None)
+        deadline = time.time() + 20
+        while (lk is None or lk.arrivals < i + 1) and time.time() < deadline:
+            time.sleep(0.002); lk = next((l for l in locks if l.arrivals), None)
+        assert lk is not None and lk.arrivals >= i + 1, "request never reached the session lock"
     for t in ts: t.join()
     srv.shutdown(); up.close()
-    per_s = {}
-    for b in up.seen:
-        sid, n = b["messages"][-1]["content"].split(":")
-        per_s.setdefault(sid, []).append(int(n))
-    # Every request must have arrived; a short count means a transport error (see R6), not R5.
-    assert sorted(len(v) for v in per_s.values()) == [per] * senders, f"lost requests: {per_s}"
-    return {k: v for k, v in per_s.items() if v != sorted(v)}
+    got = [int(b["messages"][-1]["content"].split(":")[1]) for b in up.seen]
+    assert sorted(got) == list(range(n)), f"lost requests: {got}"
+    return got
 
 
-@pytest.mark.xfail(strict=True, reason="R5: per-session order relies on threading.RLock, which is "
-                   "not FIFO-fair (escalation_proxy.py:106/:280); no sequence number")
-def test_r5_per_sender_fifo_preserved():
-    bad = _fifo_violations()
-    assert not bad, f"out-of-order arrivals per session: {bad}"
+def test_r5_guard_order_follows_lock_grant_order(monkeypatch):
+    """Deterministic guard: with a FIFO-granting lock the proxy forwards in arrival
+    order, so the harness itself introduces no reordering."""
+    assert _ordered_arrivals(monkeypatch, "fifo") == list(range(6))
+
+
+@pytest.mark.xfail(strict=True, reason="R5: per-session order is only whatever order the session "
+                   "lock grants (escalation_proxy.py:106/:280); RLock has no FIFO guarantee and the "
+                   "proxy has no sequence number of its own")
+def test_r5_per_sender_fifo_preserved(monkeypatch):
+    got = _ordered_arrivals(monkeypatch, "lifo")
+    assert got == list(range(6)), f"out-of-order upstream arrivals for one session: {got}"
 
 
 # ---------------- R6 accept-backlog burst ----------------
