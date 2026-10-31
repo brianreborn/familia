@@ -57,7 +57,7 @@
 
 | Host | Stages | Notes |
 |------|--------|-------|
-| angel / Uriel | 0 (now), 1 (soft ABI 2 in-tree), 2 (FW lab), 3–4 candidate | FreeBSD coordinator; i5-4570 (VT-d), **G84 8600 GT installed**; see [HARDWARE-INVENTORY](../HARDWARE-INVENTORY.md) |
+| angel / Uriel | 0 (now), 1 (soft ABI 2 in-tree), 2 (FW lab), 3–4 candidate | FreeBSD coordinator; i5-4570 (VT-d), **G84 8600 GT installed** (Brian 2026-10-31; re-probe before any test) |
 | qodesh | 3 bridge experiments (Windows) | Its own 8600 GT + gpu-legacy (Windows); sole Worker |
 | miryam | Stage 0 adjacent (Vulkan iGPU) | Not HVVRAM |
 | box | Stage 0 dogfood / docs / userspace build | No DRI |

@@ -26,10 +26,10 @@ Bench method: [BENCH.md](./BENCH.md)
 
 | Host | Role in this R&D | Today | This scaffold |
 |------|------------------|-------|---------------|
-| **angel** (FreeBSD, i5-4570 VT-d, 24 GiB, 4T, **G84 8600 GT installed**, see [HARDWARE-INVENTORY](../HARDWARE-INVENTORY.md)) | Nanbeige4.3-33B Q4_K_M (~18.7 GiB); SSD swap/mmap/spill | Nodes `angel-coder` / `angel-chat` **planned**; runtime `llama-b11669-freebsd` | **Software VVRAM layer** (LAYER.md) + FreeBSD **nvso** kmod/ioctl stubs (compile when SSH up) |
+| **angel** (FreeBSD, i5-4570 VT-d, 24 GiB, 4T, **G84 8600 GT installed**, Brian 2026-10-31; re-probe before any test) | Nanbeige4.3-33B Q4_K_M (~18.7 GiB); SSD swap/mmap/spill | Nodes `angel-coder` / `angel-chat` **planned**; runtime `llama-b11669-freebsd` | **Software VVRAM layer** (LAYER.md) + FreeBSD **nvso** kmod/ioctl stubs (compile when SSH up) |
 | **gabriel** | Same class FreeBSD desktop (twin / follow-on) | Not in graph yet | Same LAYER policy; share nvso when host facts land |
 | **qodesh** (Win, G84 8600 GT, CC 1.1, ~256 MiB) | Verified `gpu-legacy` sm11 path; CUDA 6.5 / nvidia 340 era | Offline; CPU llama for GGUF; sm11 for stories15M/SmolLM | **G84 bridge** only — do not claim SO domains on stock silicon; queue Worker checklist |
-| **centos10-bigram** (historical, 2026-10-19; i5-4570 + 8600 GT; whether this is the same chassis now running FreeBSD as angel is unconfirmed, see HARDWARE-INVENTORY) | Same G84 profile on Linux | nouveau owns card; 340.108 built but unbound | Linux prototype notes only; FreeBSD-first APIs preferred |
+| **centos10-bigram** (historical, 2026-10-19; i5-4570 + 8600 GT; whether this is the same chassis now running FreeBSD as angel is unconfirmed) | Same G84 profile on Linux | nouveau owns card; 340.108 built but unbound | Linux prototype notes only; FreeBSD-first APIs preferred |
 | **miryam** (Intel HD 620 Vulkan) | iGPU hang path for decision SmolLM | Vulkan ICD present; **vulkan llama-server bin + SmolLM path missing** last probe | Unstick plan in G84-BRIDGE §miryam; not VVRAM |
 | **box** (Grok Bot VM) | CPU dogfood multi-size | No `/dev/dri` / nvidia; SmolLM+Qwen2B healthy | Perf harness only |
 

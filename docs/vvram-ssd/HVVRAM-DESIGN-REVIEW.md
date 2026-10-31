@@ -70,7 +70,7 @@ Cost key: S < 1 agent-day, M 1–5 days, L 1–3 weeks, **XL/HUGE** = open-ended
 | Deferred | PSP/CSME off-load | FW/security | **HUGE** ⚠, security-sensitive | recommend dropping |
 | Deferred | Stage 4 SO domains (silicon/FPGA) | — | **HUGE** | paper only |
 
-**⚠ P4 feasibility, revised 2026-10-31.** An earlier revision wrongly said the G84 was in a separate Athlon II box. **Per Brian, the G84 (GeForce 8600 GT) is in angel**, and angel's i5-4570 supports VT-d. See [HARDWARE-INVENTORY](../HARDWARE-INVENTORY.md) and LESSONS-LEARNED `L-hostloc`.
+**⚠ P4 feasibility, revised 2026-10-31.** An earlier revision wrongly said the G84 was in a separate Athlon II box. **Per Brian, the G84 (GeForce 8600 GT) is in angel**, and angel's i5-4570 supports VT-d. See LESSONS-LEARNED `L-hostloc`. **Re-probe angel (`pciconf -lv`, `sysctl hw.model`, `dmesg`) before any test, since parts move.**
 
 - **No longer a blocker:** the "wrong box" problem is gone. VT-d and the GPU are in the same machine.
 - **Still the main risk:** the closed nvidia-340 FreeBSD kmod.
@@ -88,7 +88,7 @@ Cost key: S < 1 agent-day, M 1–5 days, L 1–3 weeks, **XL/HUGE** = open-ended
 **Hardware facts:**
 - The OCZ Vertex 2 uses a SandForce SF-1222 controller over SATA 3 Gb/s.
 - SandForce compresses internally, so incompressible data (quantised GGUF weights) runs slower than vendor numbers.
-- angel: i5-4570 (4C/4T, Haswell, VT-d capable), 24 GiB, FreeBSD 15.1, **GeForce 8600 GT (G84) installed**, swap on HDD. Canonical: [HARDWARE-INVENTORY](../HARDWARE-INVENTORY.md).
+- angel: i5-4570 (4C/4T, Haswell, VT-d capable), 24 GiB, FreeBSD 15.1, **GeForce 8600 GT (G84) installed**, swap on HDD. (Brian, 2026-10-31; re-probe before any test.)
 
 **Example performance (expected ranges, NOT measured; P0 measures them):**
 
