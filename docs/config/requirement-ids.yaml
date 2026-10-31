@@ -146,7 +146,7 @@ graph:
     quant:
       id: CFG-GRAPH-MODELS-009
       status: IMPLEMENTED
-    tool_capable:
+    tool_calls:
       id: CFG-GRAPH-MODELS-010
       status: IMPLEMENTED
   nodes:

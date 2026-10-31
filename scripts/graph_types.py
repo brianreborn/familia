@@ -586,7 +586,7 @@ TYPES = {
                  "role": req("enum", choices={"chat", "coder", "decision", "reasoning", "embed", "vision", "diffusion", "pentest", "guardian"}),
                  "derived_from": opt("any"),
                  # model database entry (registry/models/<db>.json, docs/model-database.md, #51)
-                 "db": opt("str"), "notes": opt("str"), "tool_capable": opt("bool"),
+                 "db": opt("str"), "notes": opt("str"), "tool_calls": opt("bool"),  # model can emit tool calls (CFG-SPEC-TOOLS-007)
                  "quant": opt("enum", choices={"littlebit"})}, doc="weights file"),  # derived_from: written by scripts/scale_down.py
     "nodes": T({"model": req("ref", ref="models"), "host": req("ref", ref="hosts"), "runtime": req("ref", ref="runtimes"),
                 "ctx": req("int", min=1), "parallel": req("int", min=1),

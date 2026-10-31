@@ -147,13 +147,13 @@ def _g():
 
 
 def test_tools_capability_flags():
-    """CFG-SPEC-TOOLS-007/008: node.tool_capable > model.tool_capable > TYPE; default grant
+    """CFG-SPEC-TOOLS-007/008: node.tool_capable > model.tool_calls > TYPE; default grant
     only on loopback bind."""
     import validate_graph as v
     g = _g()
     g["nodes"]["coder-a"]["role"] = "embed"
     assert v.tools_argv(g, "coder-a") == []
-    g["models"]["m1"]["tool_capable"] = True
+    g["models"]["m1"]["tool_calls"] = True
     assert v.tools_argv(g, "coder-a") == ["--tools", "all"]
     g["nodes"]["coder-a"]["tool_capable"] = False
     assert v.tool_policy(g, "coder-a") == []

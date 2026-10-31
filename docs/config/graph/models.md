@@ -27,7 +27,7 @@ Required fields have no defaults (validator: missing required → error). Consum
 | CFG-GRAPH-MODELS-006 | `derived_from` | opt | any | — | IMPLEMENTED | `scripts/graph_types.py`, `scripts/scale_down.py`, `scripts/validate_graph.py` |
 | CFG-GRAPH-MODELS-007 | `db` | opt | str | — | IMPLEMENTED | `scripts/graph_types.py`, `scripts/licenses.py`, `scripts/model_db.py`, `scripts/validate_graph.py` |
 | CFG-GRAPH-MODELS-008 | `notes` | opt | str | — | IMPLEMENTED | `scripts/add_model.py`, `scripts/bench_guard.py`, `scripts/graph_types.py`, `scripts/licenses.py`, `scripts/model_db.py`, `scripts/offline_secbench.py` +2 |
-| CFG-GRAPH-MODELS-010 | `tool_capable` | opt | bool | — | IMPLEMENTED | `scripts/graph_types.py`, `scripts/validate_graph.py` |
+| CFG-GRAPH-MODELS-010 | `tool_calls` | opt | bool | — | IMPLEMENTED | `scripts/graph_types.py`, `scripts/validate_graph.py` |
 | CFG-GRAPH-MODELS-009 | `quant` | opt | enum | one of `littlebit` | IMPLEMENTED | `scripts/add_model.py`, `scripts/graph_types.py`, `scripts/model_db.py`, `scripts/model_params.py`, `scripts/registry.py`, `scripts/scale_down.py` +2 |
 
 <!-- END GENERATED: fields -->

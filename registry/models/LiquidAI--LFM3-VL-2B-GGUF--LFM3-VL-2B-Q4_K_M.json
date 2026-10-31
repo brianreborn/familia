@@ -790,7 +790,7 @@
  },
  "unknown": null,
  "warnings": null,
- "updated": "2026-10-30",
+ "updated": "2026-10-31",
  "by": "scripts/model_db.py",
  "gguf_meta": {
   "general.architecture": "lfm3",

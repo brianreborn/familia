@@ -428,13 +428,13 @@ def _loopback(bind):
 
 
 def tool_capable(graph, name):
-    """Direct capability: node.tool_capable > model.tool_capable > TYPE presumption."""
+    """Direct capability: node.tool_capable > model.tool_calls > TYPE presumption."""
     n = graph["nodes"][name]
     if isinstance(n.get("tool_capable"), bool):
         return n["tool_capable"]
     m = (graph.get("models") or {}).get(n.get("model")) or {}
-    if isinstance(m.get("tool_capable"), bool):
-        return m["tool_capable"]
+    if isinstance(m.get("tool_calls"), bool):
+        return m["tool_calls"]
     return TOOL_CAPABLE_BY_TYPE.get(node_type(graph, name), False)
 
 
