@@ -19,12 +19,12 @@ Writers: `scripts/host_measure.py:205` (installers call it), `scripts/modify_gra
 
 <!-- BEGIN GENERATED: fields (scripts/config_docs.py --write) -->
 
-Schema: `scripts/graph_types.py:543` (stable; physical/dedicated form-factor box (see box_archetypes.HOST_KINDS); not virtualization).
+Schema: `scripts/graph_types.py:588` (stable; physical/dedicated form-factor box (see box_archetypes.HOST_KINDS); not virtualization).
 Required fields have no defaults (validator: missing required → error). Consumers = static scan of scripts/ and top-level *.sh.
 
 | ID | Field | Req | Type | Allowed / ref | Status | Consumers (static scan) |
 |---|---|---|---|---|---|---|
-| CFG-GRAPH-HOSTS-001 | `kind` | **req** | enum | one of `1U`, `2U`, `3U`, `appliance`, `console`, `desktop`, `drone`, `laptop`, `notebook`, `phone`, `tablet`, `unknown`, `watch` | IMPLEMENTED | `scripts/android_target.py`, `scripts/escalation.py`, `scripts/generate_graph.py`, `scripts/graph_types.py`, `scripts/hermes_harness.py`, `scripts/host_measure.py` +9 |
+| CFG-GRAPH-HOSTS-001 | `kind` | **req** | enum | one of `1U`, `2U`, `3U`, `appliance`, `console`, `desktop`, `drone`, `laptop`, `notebook`, `phone`, `tablet`, `unknown`, `watch` | IMPLEMENTED | `scripts/android_target.py`, `scripts/escalation.py`, `scripts/generate_graph.py`, `scripts/graph_router.py`, `scripts/graph_types.py`, `scripts/hermes_harness.py` +10 |
 | CFG-GRAPH-HOSTS-002 | `measured` | **req** | bool | — | IMPLEMENTED | `scripts/graph_types.py`, `scripts/host_measure.py`, `scripts/registry.py`, `scripts/sec_assess.py` |
 | CFG-GRAPH-HOSTS-003 | `os` | opt | str | — | IMPLEMENTED | `scripts/graph_types.py`, `scripts/host_measure.py`, `scripts/monitor.py`, `scripts/registry.py`, `scripts/sec_assess.py`, `scripts/validate_graph.py` |
 | CFG-GRAPH-HOSTS-004 | `cpu` | opt | str | — | IMPLEMENTED | `scripts/graph_types.py`, `scripts/host_measure.py`, `scripts/monitor.py`, `scripts/registry.py` |
@@ -36,8 +36,8 @@ Required fields have no defaults (validator: missing required → error). Consum
 | CFG-GRAPH-HOSTS-010 | `reported` | opt | any | — | IMPLEMENTED | `scripts/graph_types.py` |
 | CFG-GRAPH-HOSTS-011 | `windows` | opt | any | — | IMPLEMENTED | `scripts/graph_types.py`, `scripts/host_measure.py`, `scripts/monitor.py` |
 | CFG-GRAPH-HOSTS-012 | `local_names` | opt | strlist | — | IMPLEMENTED | `scripts/graph_types.py`, `scripts/hermes_harness.py`, `scripts/host_measure.py`, `scripts/start_graph.py`, `scripts/validate_graph.py` |
-| CFG-GRAPH-HOSTS-013 | `addr` | opt | str | — | IMPLEMENTED | `scripts/android_target.py`, `scripts/escalation_proxy.py`, `scripts/graph_types.py`, `scripts/hosts_overlay.py`, `scripts/monitor.py`, `scripts/transport_graph.py` |
-| CFG-GRAPH-HOSTS-014 | `user` | opt | str | — | IMPLEMENTED | `scripts/android_target.py`, `scripts/escalation.py`, `scripts/escalation_proxy.py`, `scripts/graph_types.py`, `scripts/hermes_harness.py`, `scripts/hosts_overlay.py` +2 |
-| CFG-GRAPH-HOSTS-015 | `port` | opt | int | min 1 | IMPLEMENTED | `scripts/android_target.py`, `scripts/dogfood/dispatch.py`, `scripts/escalation_proxy.py`, `scripts/graph_types.py`, `scripts/hermes_harness.py`, `scripts/hosts_overlay.py` +6 |
+| CFG-GRAPH-HOSTS-013 | `addr` | opt | str | — | IMPLEMENTED | `scripts/android_target.py`, `scripts/escalation_proxy.py`, `scripts/graph_router.py`, `scripts/graph_types.py`, `scripts/hosts_overlay.py`, `scripts/monitor.py` +2 |
+| CFG-GRAPH-HOSTS-014 | `user` | opt | str | — | IMPLEMENTED | `scripts/android_target.py`, `scripts/escalation.py`, `scripts/escalation_proxy.py`, `scripts/graph_router.py`, `scripts/graph_types.py`, `scripts/hermes_harness.py` +3 |
+| CFG-GRAPH-HOSTS-015 | `port` | opt | int | min 1 | IMPLEMENTED | `scripts/android_target.py`, `scripts/dogfood/dispatch.py`, `scripts/escalation_proxy.py`, `scripts/graph_router.py`, `scripts/graph_types.py`, `scripts/hermes_harness.py` +7 |
 
 <!-- END GENERATED: fields -->

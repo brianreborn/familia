@@ -88,7 +88,7 @@ def target(g, name, root_override=None):
     if not isinstance(h, dict):
         raise SystemExit(f"harness2: no harnesses.{name} in the graph (declared: {sorted(g.get('harnesses') or {})})")
     n = g["nodes"][h["node"]]
-    alias = next((a for a, al in (g.get("aliases") or {}).items() if al.get("node") == h["node"]), h["node"])
+    alias = next((a for a, al in (g.get("aliases") or {}).items() if __import__("graph_types").alias_primary(al) == h["node"]), h["node"])
     return Target(name, root_override or h["root"], h["prompt"], h.get("guardrails"), h.get("memory"), h.get("skills"),
                   endpoint=f"http://{n['bind']}:{n['port']}/v1", model=alias, node=h["node"], agent=h.get("agent"))
 

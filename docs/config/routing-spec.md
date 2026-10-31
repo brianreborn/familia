@@ -28,7 +28,7 @@ A planned node is **excluded from automatic routing only**. It is never dropped 
 ## Alias as a list of nodes (#150) (CFG-SPEC-ALIAS)
 | ID | Requirement | Status |
 |---|---|---|
-| CFG-SPEC-ALIAS-001 | `aliases.<a>.node` may be a list of nodes (same role, any engine/runtime), with `policy: competing \| tandem \| specialized \| escalate \| first-active` (default `first-active`) | SPEC |
+| CFG-SPEC-ALIAS-001 | `aliases.<a>.node` may be a list of nodes (same role, any engine/runtime), with `policy: competing \| tandem \| specialized \| escalate \| first-active` (default `first-active`) | PARTIAL: an ordered list (first-active) is implemented (graph_types `noderefs`, served by scripts/graph_router.py); `policy:` is SPEC |
 | CFG-SPEC-ALIAS-002 | All listed nodes have one TYPE; mixed TYPEs are a validation error | SPEC |
 | CFG-SPEC-ALIAS-003 | Planned members are slash-only members; auto picks only active members | SPEC |
 

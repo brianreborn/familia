@@ -162,7 +162,8 @@ def private_topology(graph: dict, host: str) -> dict:
         aliases_out[role] = {"node": role, "gateway": gw0}
     # Keep any already-local aliases that still resolve
     for k, v in (g.get("aliases") or {}).items():
-        if isinstance(v, dict) and v.get("node") in local_keys and v.get("gateway") in gateways:
+        if isinstance(v, dict) and v.get("gateway") in gateways and \
+                all(n in local_keys for n in __import__("graph_types").alias_nodes(v) or [None]):
             aliases_out[k] = v
     g["aliases"] = aliases_out
 

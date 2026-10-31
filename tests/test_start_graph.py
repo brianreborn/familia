@@ -74,3 +74,55 @@ def test_graph_proxy_manifest_preserves_graph_routes_without_remote_aliases():
         "gateway": {"host": "127.0.0.1", "port": 9931},
         "aliases": aliases,
     }
+
+
+def _two_host():
+    return validate_graph.load(os.path.join(ROOT, "examples", "graphs", "two-host.yaml"))
+
+
+def test_single_node_aliases_keep_graph_proxy_shape():
+    _n, _r, gws, omitted, _rg = start_graph.local_topology(_two_host(), "h1")
+    (_name, _gw, aliases), = gws
+    assert aliases == {"chat": {"kind": "chat", "url": "http://127.0.0.1:9001"}}
+    assert ("far", "far", "h2") in omitted and not start_graph.needs_router(aliases)
+
+
+def test_fallback_list_alias_launches_graph_router(tmp_path, monkeypatch):
+    g = _two_host()
+    g["nodes"]["chat2"] = dict(g["nodes"]["chat"], port=9003)
+    g["aliases"]["chat"]["node"] = ["chat", "chat2"]
+    assert validate_graph.validate(g, check_files=False)[0] == []
+    _n, _r, gws, _o, _rg = start_graph.local_topology(g, "h1")
+    (name, gw, aliases), = gws
+    assert [m["url"] for m in aliases["chat"]["members"]] == ["http://127.0.0.1:9001", "http://127.0.0.1:9003"]
+    assert start_graph.needs_router(aliases)
+    cfg = start_graph.router_routes(aliases)
+    assert cfg["routes"] == {"chat": ["chat-node", "chat2"]}
+    monkeypatch.setattr(start_graph, "CACHE", tmp_path)
+    argv = start_graph.gateway_command("h1", name, gw, aliases, "/gr")
+    assert argv[1].endswith("graph_router.py") and argv[-2:] == ["--port", "8080"]
+    import json, graph_router
+    compiled = graph_router.compile_config(json.loads(open(argv[2]).read()))
+    assert compiled["routes"]["chat"]
+
+
+def test_remote_member_needs_explicit_opt_in_and_reachable_bind():
+    g = _two_host()
+    g["aliases"]["far"]["remote"] = True                    # node bound to loopback: still omitted
+    assert "far" not in start_graph.local_topology(g, "h1")[2][0][2]
+    g["nodes"]["far"]["bind"] = "0.0.0.0"; g["hosts"]["h2"]["addr"] = "10.0.0.2"
+    aliases = start_graph.local_topology(g, "h1")[2][0][2]
+    assert aliases["far"]["members"][0]["url"] == "http://10.0.0.2:9002" and start_graph.needs_router(aliases)
+    del g["aliases"]["far"]["remote"]                       # no consent: omitted again
+    assert "far" not in start_graph.local_topology(g, "h1")[2][0][2]
+
+
+def test_gateway_router_opt_in_bounds_down_node_stall(tmp_path, monkeypatch):
+    g = _two_host(); g["gateways"]["gw"]["router"] = True
+    assert validate_graph.validate(g, check_files=False)[0] == []
+    (name, gw, aliases), = start_graph.local_topology(g, "h1")[2]
+    assert start_graph.needs_router(aliases, gw) and not start_graph.needs_router(aliases)
+    monkeypatch.setattr(start_graph, "CACHE", tmp_path)
+    assert start_graph.gateway_command("h1", name, gw, aliases, "/gr")[1].endswith("graph_router.py")
+    g["gateways"]["gw"]["router"] = "yes"
+    assert validate_graph.validate(g, check_files=False)[0]

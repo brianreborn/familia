@@ -290,12 +290,18 @@ graph:
     port:
       id: CFG-GRAPH-GATEWAYS-003
       status: IMPLEMENTED
+    router:
+      id: CFG-GRAPH-GATEWAYS-004
+      status: IMPLEMENTED
   aliases:
     node:
       id: CFG-GRAPH-ALIASES-001
       status: IMPLEMENTED
     gateway:
       id: CFG-GRAPH-ALIASES-002
+      status: IMPLEMENTED
+    remote:
+      id: CFG-GRAPH-ALIASES-003
       status: IMPLEMENTED
   agents:
     kind:

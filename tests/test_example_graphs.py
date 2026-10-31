@@ -77,7 +77,8 @@ def test_alias_to_unroutable_role_warns_before_start_refuses():
 
 @pytest.mark.parametrize("mutate,expect", [
     (lambda g: g["aliases"].__setitem__("x", {"node": "nope", "gateway": "gw"}), "no such nodes entry 'nope'"),
-    (lambda g: g["aliases"]["chat"].__setitem__("node", ["chat"]), "expected a nodes name"),
+    (lambda g: g["aliases"]["chat"].__setitem__("node", ["chat", "ghost"]), "no such nodes entry 'ghost'"),
+    (lambda g: g["aliases"]["chat"].__setitem__("node", []), "non-empty list"),
 ])
 def test_start_dry_run_reports_validation_not_traceback(tmp_path, mutate, expect):
     g = load("single-node.yaml"); mutate(g)
