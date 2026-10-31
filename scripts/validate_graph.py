@@ -536,6 +536,12 @@ def server_args(graph, name):
     if errs:
         raise SystemExit("\n".join(f"graph: ERROR: nodes.{name}: {x}" for x in errs))
     a = merge_args(a, extra)
+    # serve.sh expands the printed argv unquoted (`$args`), so sh splits on IFS. A path with
+    # space/tab/newline would reach llama-server as a wrong argv; refuse it (routing-paths).
+    bad = [x for x in a if any(c in x for c in " \t\n")]
+    if bad:
+        raise SystemExit(f"graph: ERROR: nodes.{name}: argument {bad[0]!r} contains whitespace; "
+                         "serve.sh word-splits launch args, so move/rename the file (no spaces/tabs)")
     import model_params as mp
     _, build = model_db.runtime_build(graph, n)
     reasons = n.get("override_reasons") or {}
