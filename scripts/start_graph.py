@@ -23,6 +23,7 @@ SCRIPTS = ROOT / "scripts"
 CACHE = ROOT / ".cache"
 sys.path.insert(0, str(SCRIPTS))
 import validate_graph as graph_validator  # noqa: E402
+import graph_types  # noqa: E402
 
 
 class StartupError(RuntimeError):
@@ -116,6 +117,75 @@ def select_host(graph, requested=None, environ=None, hostname=None):
     )
 
 
+def _alias_member(graph, host, alias_name, alias, node_name):
+    """One alias member as {node, kind, url, remote}, or None when it cannot be routed from here
+    (not active, or on another host without `remote: true` / a usable addr / a non-loopback bind)."""
+    node = graph["nodes"][node_name]
+    if node.get("status") != "active":
+        return None
+    local = node.get("host") == host
+    if not local:
+        if alias.get("remote") is not True:
+            return None
+        addr = ((graph.get("hosts") or {}).get(node.get("host")) or {}).get("addr")
+        if not addr or addr == "REPLACE_ME" or node.get("bind") in ("127.0.0.1", "localhost", "::1"):
+            return None
+    else:
+        if node.get("runtime") not in graph["runtimes"]:
+            raise StartupError(f"alias {alias_name} references an unknown runtime")
+        runtime = graph["runtimes"][node["runtime"]]
+        if runtime.get("kind") != "llama-server":
+            raise StartupError(
+                f"alias {alias_name} targets node {node_name} with unsupported "
+                f"runtime kind {runtime.get('kind')!r}"
+            )
+        if node.get("bind") not in ("127.0.0.1", "localhost", "::1"):
+            raise StartupError(
+                f"alias {alias_name} targets node {node_name} bound to "
+                f"{node.get('bind')!r}; graph-proxy requires a loopback node bind"
+            )
+    model = graph["models"][node["model"]]
+    if node.get("embeddings"):
+        if model.get("role") != "embed":
+            raise StartupError(f"alias {alias_name} marks a non-embedding model as embeddings")
+        kind = "embedding"
+    else:
+        role = graph_validator.node_type(graph, node_name)  # node.role > model.role
+        if role not in graph_validator.PROXY_ROUTABLE_ROLES:
+            raise StartupError(
+                f"alias {alias_name} targets node role {role!r}; graph-proxy routes "
+                f"{', '.join(graph_validator.PROXY_ROUTABLE_ROLES)} as chat, plus embeddings"
+            )
+        kind = "chat"
+    url = f"http://127.0.0.1:{node['port']}" if local else f"http://{addr}:{node['port']}"
+    tools = False
+    try:
+        tools = bool(graph_validator.tool_policy(graph, node_name))
+    except Exception:
+        pass
+    return {"node": node_name, "kind": kind, "url": url, "remote": not local, "tools": tools}
+
+
+def needs_router(aliases, gateway=None):
+    """True when a gateway needs scripts/graph_router.py: a fallback list or remote member, or
+    `gateways.<g>.router: true` (bounded connect instead of graph-proxy's 180 s ECONNREFUSED retry)."""
+    return bool((gateway or {}).get("router")) or any("members" in a for a in aliases.values())
+
+
+def router_routes(aliases):
+    """graph_router config (version 1) for a gateway's aliases."""
+    nodes, routes = {}, {}
+    for alias, a in sorted(aliases.items()):
+        ms = a.get("members") or [{"node": alias + "--node", "url": a["url"], "kind": a["kind"], "remote": False, "tools": False}]
+        names = []
+        for m in ms:
+            key = m["node"] + "-node" if m["node"] in aliases else m["node"]  # router: route/node names disjoint
+            nodes[key] = {"url": m["url"], "kind": m["kind"], "remote": m["remote"], "tools": m.get("tools", False)}
+            names.append(key)
+        routes[alias] = names[0] if len(names) == 1 else names
+    return {"version": 1, "nodes": nodes, "routes": routes}
+
+
 def local_topology(graph, host):
     import node_state  # DUP-03 owner
     nodes = node_state.local_active(graph, host)
@@ -136,41 +206,24 @@ def local_topology(graph, host):
         for alias_name, alias in sorted(graph.get("aliases", {}).items()):
             if alias.get("gateway") != gateway_name:
                 continue
-            node_name = alias["node"]
-            node = graph["nodes"][node_name]
-            if node.get("status") != "active" or node.get("host") != host:
-                omitted_aliases.append((alias_name, node_name, node.get("host")))
+            members = []
+            for node_name in graph_types.alias_nodes(alias):
+                m = _alias_member(graph, host, alias_name, alias, node_name)
+                if m is None:
+                    node = graph["nodes"][node_name]
+                    omitted_aliases.append((alias_name, node_name, node.get("host")))
+                else:
+                    members.append(m)
+            if not members:
                 continue
-            if node.get("runtime") not in graph["runtimes"]:
-                raise StartupError(f"alias {alias_name} references an unknown runtime")
-            runtime = graph["runtimes"][node["runtime"]]
-            if runtime.get("kind") != "llama-server":
-                raise StartupError(
-                    f"alias {alias_name} targets node {node_name} with unsupported "
-                    f"runtime kind {runtime.get('kind')!r}"
-                )
-            if node.get("bind") not in ("127.0.0.1", "localhost", "::1"):
-                raise StartupError(
-                    f"alias {alias_name} targets node {node_name} bound to "
-                    f"{node.get('bind')!r}; graph-proxy requires a loopback node bind"
-                )
-            model = graph["models"][node["model"]]
-            if node.get("embeddings"):
-                if model.get("role") != "embed":
-                    raise StartupError(f"alias {alias_name} marks a non-embedding model as embeddings")
-                kind = "embedding"
+            kinds = {m["kind"] for m in members}
+            if len(kinds) > 1:
+                raise StartupError(f"alias {alias_name} mixes chat and embedding nodes")
+            if len(members) == 1 and not members[0]["remote"]:
+                aliases[alias_name] = {"kind": members[0]["kind"], "url": members[0]["url"]}
             else:
-                role = graph_validator.node_type(graph, node_name)  # node.role > model.role
-                if role not in graph_validator.PROXY_ROUTABLE_ROLES:
-                    raise StartupError(
-                        f"alias {alias_name} targets node role {role!r}; graph-proxy routes "
-                        f"{', '.join(graph_validator.PROXY_ROUTABLE_ROLES)} as chat, plus embeddings"
-                    )
-                kind = "chat"
-            aliases[alias_name] = {
-                "kind": kind,
-                "url": f"http://127.0.0.1:{node['port']}",
-            }
+                # fallback list and/or remote member: served by scripts/graph_router.py, not graph-proxy
+                aliases[alias_name] = {"kind": kinds.pop(), "members": members}
         if aliases:
             gateways.append((gateway_name, gateway, aliases))
     return nodes, remote_nodes, gateways, omitted_aliases, remote_gateways
@@ -289,6 +342,20 @@ def _run_gate_and_sync(root, yes):
     return env
 
 
+def gateway_command(host, gateway_name, gateway, aliases, green_roomz):
+    """argv for one local gateway: green-roomz graph-proxy for plain one-node aliases, else
+    scripts/graph_router.py (fallback lists, remote members) on the same port."""
+    if needs_router(aliases, gateway):
+        CACHE.mkdir(parents=True, exist_ok=True)
+        path = CACHE / f"graph-router-{host}-{gateway_name}.json"
+        tmp = path.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(router_routes(aliases), indent=2) + "\n", encoding="utf-8")
+        os.replace(tmp, path)
+        return [sys.executable, str(SCRIPTS / "graph_router.py"), str(path), "--port", str(gateway["port"])]
+    manifest_path = _write_proxy_manifest(host, gateway_name, gateway, aliases)
+    return ["node", str(green_roomz), "graph-proxy", "--manifest", str(manifest_path)]
+
+
 def _write_proxy_manifest(host, gateway_name, gateway, aliases):
     CACHE.mkdir(parents=True, exist_ok=True)
     path = CACHE / f"graph-proxy-{host}-{gateway_name}.json"
@@ -389,7 +456,8 @@ def run(args=None):
             _report_remote_topology(remote_nodes, remote_gateways, omitted_aliases)
             print(f"familia-graph: host {host}; active local nodes: {', '.join(n for n, _ in plans) or 'none'}")
             for gateway_name, gateway, aliases in gateways:
-                print(f"familia-graph: gateway {gateway_name} on 127.0.0.1:{gateway['port']}; aliases: {', '.join(aliases)}")
+                via = "graph_router" if needs_router(aliases, gateway) else "graph-proxy"
+                print(f"familia-graph: gateway {gateway_name} on 127.0.0.1:{gateway['port']} via {via}; aliases: {', '.join(aliases)}")
             if not nodes and not gateways:
                 print("familia-graph: no active local nodes or routable local gateway; nothing would start")
                 print(f"familia-graph: next: give host {host} a node in graph.yaml (or set FAMILIA_HOST), then re-run", file=sys.stderr)
@@ -418,10 +486,11 @@ def run(args=None):
                 raise StartupError(f"node {name} port {node['port']} is already occupied; nothing was started")
         for gateway_name, gateway, _ in gateways:
             _check_port_available("127.0.0.1", gateway["port"], f"gateway {gateway_name}")
-        if gateways and not shutil.which("node"):
+        proxied = [g for g in gateways if not needs_router(g[2], g[1])]
+        if proxied and not shutil.which("node"):
             raise StartupError("Node.js is required to start Green-Roomz graph-proxy")
         green_roomz = ROOT / "green-roomz" / "bin" / "green-roomz.mjs"
-        if gateways and not green_roomz.is_file():
+        if proxied and not green_roomz.is_file():
             raise StartupError("pinned Green-Roomz checkout is missing; synchronize pins before starting")
 
         children = []
@@ -444,9 +513,8 @@ def run(args=None):
                 print(f"familia-graph: {label} ready")
 
             for gateway_name, gateway, aliases in gateways:
-                manifest_path = _write_proxy_manifest(host, gateway_name, gateway, aliases)
                 child = subprocess.Popen(
-                    ["node", str(green_roomz), "graph-proxy", "--manifest", str(manifest_path)],
+                    gateway_command(host, gateway_name, gateway, aliases, green_roomz),
                     cwd=ROOT,
                     env=launch_env,
                 )

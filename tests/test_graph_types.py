@@ -211,9 +211,16 @@ def test_server_tools_args_and_loopback():
     has(x, "only allowed when bind is loopback")
     x = g(); x["nodes"]["coder"]["server_tools"] = ["nope"]; has(x, "unknown tool")
 
-def test_alias_exactly_one_node():
-    x = g(); x["aliases"]["coder"]["node"] = ["coder"]; has(x, "expected a nodes name")
+def test_alias_node_or_fallback_list():
+    """CFG-SPEC-ALIAS-001: aliases.<a>.node is one node (unchanged) or a fallback list."""
     x = g(); x["aliases"]["coder"]["node"] = "auto"; has(x, "no such nodes entry 'auto'")
+    x = g(); x["aliases"]["coder"]["node"] = ["coder"]; assert errs(x) == []
+    x = g(); x["aliases"]["coder"]["node"] = ["coder", "auto"]; has(x, "no such nodes entry 'auto'")
+    x = g(); x["aliases"]["coder"]["node"] = []; has(x, "non-empty list")
+    x = g(); x["aliases"]["coder"]["node"] = ["coder", "coder"]; has(x, "duplicate entries")
+    x = g(); x["aliases"]["coder"]["node"] = ["coder", "embed"]; has(x, "mixes embedding and chat")
+    x = g(); x["aliases"]["coder"]["node"] = 7; has(x, "expected a nodes name or a non-empty list")
+    x = g(); x["aliases"]["coder"]["remote"] = "yes"; has(x, "expected true/false")
 
 def test_duplicate_yaml_keys_rejected(tmp_path):
     p = tmp_path / "g.yaml"; p.write_text("version: 2\naliases:\n  coder: {node: a}\n  coder: {node: b}\n")

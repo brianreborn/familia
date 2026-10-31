@@ -139,7 +139,7 @@ def node_url(g, name, local_host):
     return f"http://{addr}:{n['port']}/v1"
 
 def alias_for(g, name):
-    return next((a for a, x in (g.get("aliases") or {}).items() if x["node"] == name), name)
+    return next((a for a, x in (g.get("aliases") or {}).items() if __import__("graph_types").alias_primary(x) == name), name)
 
 def session_id_from(headers):
     """Stable session key for per-client Escalator isolation (#101)."""

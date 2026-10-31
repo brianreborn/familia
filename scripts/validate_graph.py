@@ -337,12 +337,14 @@ def routing_warnings(graph):
     out = []
     nodes, models = graph.get("nodes") or {}, graph.get("models") or {}
     for a, al in sorted((graph.get("aliases") or {}).items()):
-        n = nodes.get(al.get("node")) if isinstance(al.get("node"), str) else None
+        import graph_types as _gt
+        prim = _gt.alias_primary(al)
+        n = nodes.get(prim) if prim else None
         if not n or n.get("status") != "active":
             continue
         if n.get("embeddings"):
             continue
-        role = node_type(graph, al["node"])
+        role = node_type(graph, prim)
         if role not in PROXY_ROUTABLE_ROLES:
             out.append(f"aliases.{a}: node {al['node']!r} has role {role!r}; familia start "
                        f"refuses it (graph-proxy routes {'/'.join(PROXY_ROUTABLE_ROLES)} and embeddings) — "
@@ -595,7 +597,8 @@ def server_args(graph, name):
     if n.get("slot_save") or n.get("spill_path"):  # #85 + SSD/VVRAM spill (docs/vvram-ssd/LAYER.md)
         d = slot_save_dir(n, name); os.makedirs(d, exist_ok=True)
         a += ["--slot-save-path", d]
-    names = sorted(al for al, x in graph["aliases"].items() if x["node"] == name)
+    import graph_types as _gt
+    names = sorted(al for al, x in graph["aliases"].items() if _gt.alias_primary(x) == name)
     if names: a += ["--alias", names[0]]
     a += ["--cache-ram", str(n["cache_ram_mib"])]
     # llama-ui Server Tools: /tools is feature_disabled (403) unless --tools is set at launch.

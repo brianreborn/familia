@@ -14,12 +14,13 @@ Purpose: route name → node, exposed by a gateway. Today it is exactly one node
 
 <!-- BEGIN GENERATED: fields (scripts/config_docs.py --write) -->
 
-Schema: `scripts/graph_types.py:604` (stable; route name -> exactly one node).
+Schema: `scripts/graph_types.py:653` (stable; route name -> exactly one node).
 Required fields have no defaults (validator: missing required → error). Consumers = static scan of scripts/ and top-level *.sh.
 
 | ID | Field | Req | Type | Allowed / ref | Status | Consumers (static scan) |
 |---|---|---|---|---|---|---|
-| CFG-GRAPH-ALIASES-001 | `node` | **req** | ref | ref → `nodes` | IMPLEMENTED | `scripts/escalation_proxy.py`, `scripts/graph_types.py`, `scripts/harness2.py`, `scripts/hermes_harness.py`, `scripts/hermes_modes.py`, `scripts/monitor.py` +5 |
+| CFG-GRAPH-ALIASES-001 | `node` | **req** | noderefs | ref → `nodes` | IMPLEMENTED | `scripts/graph_router.py`, `scripts/graph_types.py`, `scripts/harness2.py`, `scripts/hermes_harness.py`, `scripts/monitor.py`, `scripts/node_role.py` +4 |
 | CFG-GRAPH-ALIASES-002 | `gateway` | **req** | ref | ref → `gateways` | IMPLEMENTED | `scripts/graph_types.py`, `scripts/node_role.py`, `scripts/start_graph.py` |
+| CFG-GRAPH-ALIASES-003 | `remote` | opt | bool | — | IMPLEMENTED | `scripts/graph_router.py`, `scripts/graph_types.py`, `scripts/start_graph.py` |
 
 <!-- END GENERATED: fields -->

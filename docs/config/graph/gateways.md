@@ -14,7 +14,7 @@ Purpose: an alias router (green-roomz graph-proxy) on one host.
 
 <!-- BEGIN GENERATED: fields (scripts/config_docs.py --write) -->
 
-Schema: `scripts/graph_types.py:602` (stable; router exposing aliases).
+Schema: `scripts/graph_types.py:649` (stable; router exposing aliases; router: true serves it with scripts/graph_router.py (3 s connect bound) instead of green-roomz graph-proxy (retries a down node for 180 s)).
 Required fields have no defaults (validator: missing required → error). Consumers = static scan of scripts/ and top-level *.sh.
 
 | ID | Field | Req | Type | Allowed / ref | Status | Consumers (static scan) |
@@ -22,5 +22,6 @@ Required fields have no defaults (validator: missing required → error). Consum
 | CFG-GRAPH-GATEWAYS-001 | `kind` | **req** | enum | one of `green-roomz` | IMPLEMENTED | `scripts/graph_types.py`, `scripts/node_role.py`, `scripts/start_graph.py` |
 | CFG-GRAPH-GATEWAYS-002 | `host` | **req** | ref | ref → `hosts` | IMPLEMENTED | `scripts/graph_types.py`, `scripts/node_role.py`, `scripts/start_graph.py` |
 | CFG-GRAPH-GATEWAYS-003 | `port` | **req** | int | min 1 | IMPLEMENTED | `scripts/graph_types.py`, `scripts/node_role.py`, `scripts/start_graph.py` |
+| CFG-GRAPH-GATEWAYS-004 | `router` | opt | bool | — | IMPLEMENTED | `scripts/graph_types.py`, `scripts/start_graph.py` |
 
 <!-- END GENERATED: fields -->
