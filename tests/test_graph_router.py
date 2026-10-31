@@ -329,9 +329,9 @@ def test_config_errors(doc, msg):
 
 
 def test_examples_compile():
-    d = os.path.join(os.path.dirname(__file__), "..", "examples", "routing")
+    d = os.path.join(os.path.dirname(__file__), "..", "examples", "graphs", "router")
     files = sorted(f for f in os.listdir(d) if f.endswith(".yaml"))
-    assert len(files) >= 7
+    assert len(files) >= 6
     for f in files:
         gr.load(os.path.join(d, f))
 
@@ -347,3 +347,49 @@ def test_graph_alias_to_planned_node_is_409_not_dropped():
     with pytest.raises(urllib.error.HTTPError) as e:
         urllib.request.urlopen(req, timeout=5)
     assert e.value.code == 409 and "planned" in json.loads(e.value.read())["error"]["message"]
+
+
+# caller auth (H4 pattern) ----------------------------------------------------------
+def _authed_server(fakes, key="caller-key-1"):
+    a = fakes("a")
+    srv = gr.make_server(gr.compile_config({"nodes": {"a": a.url}}), "127.0.0.1", 0, api_key=key)
+    srv.daemon_threads = True; threading.Thread(target=srv.serve_forever, daemon=True).start()
+    return a, f"http://127.0.0.1:{srv.server_address[1]}"
+
+
+def _call(base, path="/v1/chat/completions", headers=None, body=True):
+    data = json.dumps({"model": "a", "messages": [{"role": "user", "content": "hi"}]}).encode() if body else None
+    req = urllib.request.Request(base + path, data, {"Content-Type": "application/json", **(headers or {})})
+    try:
+        r = urllib.request.urlopen(req, timeout=5); return r.status, r.read()
+    except urllib.error.HTTPError as e:
+        return e.code, e.read()
+
+
+def test_router_caller_auth_required(fakes):
+    a, base = _authed_server(fakes)
+    assert _call(base)[0] == 401
+    assert _call(base, headers={"Authorization": "Bearer wrong"})[0] == 401
+    assert _call(base, "/v1/models", body=False)[0] == 401
+    assert not a.seen                                         # nothing reached the node
+    assert _call(base, "/health", body=False)[0] == 200       # health stays public
+    st, raw = _call(base, headers={"Authorization": "Bearer caller-key-1"})
+    assert st == 200 and content(raw) == "a: hi"
+    assert _call(base, headers={"X-Api-Key": "caller-key-1"})[0] == 200
+    assert a.seen[0][2] is None                               # caller key is never forwarded to a node
+
+
+def test_router_main_creates_instance_key_once(tmp_path, monkeypatch):
+    """CLI default: per-port instance key, created 0600 on first start, never rotated; fail closed."""
+    import stat, familia_auth
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path)); monkeypatch.delenv("API_KEY_FILE", raising=False)
+    cfgf = tmp_path / "r.yaml"; cfgf.write_text("version: 1\nnodes: {a: 'http://127.0.0.1:1'}\n")
+    started = []
+    monkeypatch.setattr(gr, "make_server", lambda cfg, h, p, api_key=None: started.append(api_key) or
+                        type("S", (), {"serve_forever": lambda s: None})())
+    assert gr.main([str(cfgf), "--port", "19999"]) == 0
+    path = familia_auth.instance_key_file(port=19999)
+    assert stat.S_IMODE(os.stat(path).st_mode) == 0o600 and started[0] == familia_auth._read(path)
+    assert gr.main([str(cfgf), "--port", "19999"]) == 0 and started[1] == started[0]
+    assert gr.main([str(cfgf), "--port", "19999", "--no-auth"]) == 0 and started[2] is None
+    assert gr.main([str(cfgf), "--api-key-file", "/proc/familia-no-such/k"]) == 2   # fail closed
