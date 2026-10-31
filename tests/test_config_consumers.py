@@ -233,3 +233,15 @@ def test_nexus_route_only_from_validated_config():
     g["nodes"]["coder-b"].pop("tool_route"); g["nodes"]["coder-a"]["tool_route"] = "coder-b"
     g["nodes"]["coder-b"]["role"] = "pentest"
     assert any("fail-closed" in str(e) for e in gt.validate_types(g))
+
+
+@pytest.mark.parametrize("bind,ok", [
+    ("127.0.0.1", True), ("127.1.2.3", True), ("localhost", True), ("LOCALHOST", True),
+    ("LocalHost", True), ("::1", True), ("[::1]", True), ("::ffff:127.0.0.1", True),
+    ("0.0.0.0", False), ("", False), (None, False), ("10.0.0.1", False), ("::", False),
+    ("127.evil.example", False), ("localhost.example", False), ("[::1", False),
+    ("::ffff:10.0.0.1", False),
+])
+def test_loopback_bind_forms(bind, ok):
+    import validate_graph as vg
+    assert vg._loopback(bind) is ok

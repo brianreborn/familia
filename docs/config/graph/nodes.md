@@ -11,7 +11,7 @@ Purpose: one model instance (weights × runtime × host). The node TYPE (`role`,
 | CFG-GRAPH-NODES-104 | `role` may differ from the model role only as: chat/general view of coder, general of chat, guardian/defender of pentest | IMPLEMENTED | graph_types.py:179-193 |
 | CFG-GRAPH-NODES-105 | Model arch ∈ runtime `supported_archs` (upgrade the runtime, never drop the model) | IMPLEMENTED | graph_types.py:194-202 |
 | CFG-GRAPH-NODES-106 | No two non-planned nodes share host+port | IMPLEMENTED | graph_types.py:213-216 |
-| CFG-GRAPH-NODES-107 | `server_tools`: `all` or a non-empty list ⊆ SERVER_TOOL_NAMES; loopback bind only | IMPLEMENTED | graph_types.py:218-233 |
+| CFG-GRAPH-NODES-107 | `server_tools`: `all` or a non-empty list ⊆ SERVER_TOOL_NAMES; loopback bind only (localhost any case, 127/8, ::1, [::1], ::ffff:127.x; unparseable = not loopback) | IMPLEMENTED | graph_types.py:218-233 |
 | CFG-GRAPH-NODES-108 | Launch argv comes only from `validate_graph.py --args` (REQUIRED/RECOMMENDED model params; `--tools` only if `server_tools` is set) | IMPLEMENTED | validate_graph.py:399-440 |
 | CFG-GRAPH-NODES-109 | `escalates_to` / `escalation` per docs/escalation.md (no self, no cycles, known nodes, mode off/suggest/auto) | IMPLEMENTED | escalation.py:36-61 |
 | CFG-GRAPH-NODES-110 | Planned sub-states and slash reachability (see [routing-spec.md](../routing-spec.md) CFG-SPEC-PLAN-*) | SPEC | — |

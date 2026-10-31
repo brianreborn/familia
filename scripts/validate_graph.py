@@ -423,8 +423,20 @@ def node_type(graph, name):
 
 
 def _loopback(bind):
-    bind = str(bind or "")
-    return bind in ("127.0.0.1", "::1", "localhost") or bind.startswith("127.")
+    """True only for a loopback bind: localhost (any case), 127/8, ::1, [::1],
+    ::ffff:127.x. Anything unparseable is NOT loopback (fail-safe)."""
+    import ipaddress
+    b = str(bind or "").strip()
+    if b.lower() == "localhost":
+        return True
+    if b.startswith("[") and b.endswith("]"):
+        b = b[1:-1]
+    try:
+        ip = ipaddress.ip_address(b)
+    except ValueError:
+        return False
+    mapped = getattr(ip, "ipv4_mapped", None)
+    return (mapped or ip).is_loopback
 
 
 def tool_capable(graph, name):
