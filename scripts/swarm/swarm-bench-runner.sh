@@ -127,7 +127,7 @@ UNIT
 			echo "  queue-add.sh linger-$NODE   with body:   loginctl enable-linger $user"
 		fi
 	elif command -v crontab >/dev/null 2>&1; then
-		tdir=$(umask 077 && mktemp -d "${TMPDIR:-/tmp}/familia-cron.XXXXXX"); trap '[ -n "$tdir" ] && rm -rf -- "$tdir"' EXIT INT TERM HUP
+		tdir=$(umask 077 && mktemp -d "${TMPDIR:-/tmp}/familia-cron.$$.XXXXXX"); trap '[ -n "$tdir" ] && rm -rf -- "$tdir" 2>/dev/null' EXIT; trap 'exit 129' HUP; trap 'exit 130' INT; trap 'exit 143' TERM
 		tab="$tdir/crontab"
 		crontab -l 2>/dev/null | grep -v "swarm-run-loop.sh" > "$tab" || true
 		echo "@reboot $DIR/swarm-run-loop.sh" >> "$tab"

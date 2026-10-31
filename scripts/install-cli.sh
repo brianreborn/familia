@@ -139,10 +139,12 @@ do_uninstall() {
 }
 
 remove_block() {
-  tdir=$(umask 077 && mktemp -d "${TMPDIR:-/tmp}/familia-profile.XXXXXX") || die "mktemp -d failed"
+  tdir=$(umask 077 && mktemp -d "${TMPDIR:-/tmp}/familia-profile.$$.XXXXXX") || die "mktemp -d failed"
+  trap '[ -n "$tdir" ] && rm -rf -- "$tdir" 2>/dev/null' EXIT
+  trap 'exit 129' HUP; trap 'exit 130' INT; trap 'exit 143' TERM
   tmp="$tdir/profile"
   awk -v b="$BEGIN" -v e="$END" '$0==b{skip=1; next} skip&&$0==e{skip=0; next} !skip' "$PROFILE" > "$tmp"
-  cat "$tmp" > "$PROFILE"; [ -n "$tdir" ] && rm -rf -- "$tdir"   # rewrite in place: keeps the file's owner and mode
+  cat "$tmp" > "$PROFILE"; [ -n "$tdir" ] && rm -rf -- "$tdir" 2>/dev/null; tdir=   # rewrite in place: keeps the file's owner and mode
   say "removed the familia block from $PROFILE"
 }
 
