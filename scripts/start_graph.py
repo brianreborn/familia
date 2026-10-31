@@ -160,10 +160,11 @@ def local_topology(graph, host):
                     raise StartupError(f"alias {alias_name} marks a non-embedding model as embeddings")
                 kind = "embedding"
             else:
-                if model.get("role") not in ("chat", "coder"):
+                role = graph_validator.node_type(graph, node_name)  # node.role > model.role
+                if role not in graph_validator.PROXY_ROUTABLE_ROLES:
                     raise StartupError(
-                        f"alias {alias_name} targets model role {model.get('role')!r}; "
-                        "graph-proxy only routes chat and embeddings"
+                        f"alias {alias_name} targets node role {role!r}; graph-proxy routes "
+                        f"{', '.join(graph_validator.PROXY_ROUTABLE_ROLES)} as chat, plus embeddings"
                     )
                 kind = "chat"
             aliases[alias_name] = {
