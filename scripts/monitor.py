@@ -44,9 +44,8 @@ except Exception:  # pragma: no cover
 
 def load_graph(path):
     try:
-        import yaml
-        with open(path) as f:
-            return yaml.safe_load(f) or {}
+        import familia_yaml  # DUP-01
+        return familia_yaml.load(path) or {}
     except ImportError:
         return mini_graph(path)
     except OSError:

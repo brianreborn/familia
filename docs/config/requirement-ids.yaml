@@ -1,0 +1,982 @@
+# Stable requirement IDs for config fields. Never renumber. Managed by scripts/config_docs.py.
+graph:
+  hosts:
+    kind:
+      id: CFG-GRAPH-HOSTS-001
+      status: IMPLEMENTED
+    measured:
+      id: CFG-GRAPH-HOSTS-002
+      status: IMPLEMENTED
+    os:
+      id: CFG-GRAPH-HOSTS-003
+      status: IMPLEMENTED
+    cpu:
+      id: CFG-GRAPH-HOSTS-004
+      status: IMPLEMENTED
+    threads:
+      id: CFG-GRAPH-HOSTS-005
+      status: IMPLEMENTED
+    ram_mib:
+      id: CFG-GRAPH-HOSTS-006
+      status: IMPLEMENTED
+    gpus:
+      id: CFG-GRAPH-HOSTS-007
+      status: IMPLEMENTED
+    reserve_ram_mib:
+      id: CFG-GRAPH-HOSTS-008
+      status: IMPLEMENTED
+    notes:
+      id: CFG-GRAPH-HOSTS-009
+      status: IMPLEMENTED
+    reported:
+      id: CFG-GRAPH-HOSTS-010
+      status: IMPLEMENTED
+    windows:
+      id: CFG-GRAPH-HOSTS-011
+      status: IMPLEMENTED
+    local_names:
+      id: CFG-GRAPH-HOSTS-012
+      status: IMPLEMENTED
+    addr:
+      id: CFG-GRAPH-HOSTS-013
+      status: IMPLEMENTED
+    user:
+      id: CFG-GRAPH-HOSTS-014
+      status: IMPLEMENTED
+    port:
+      id: CFG-GRAPH-HOSTS-015
+      status: IMPLEMENTED
+  transports:
+    kind:
+      id: CFG-GRAPH-TRANSPORTS-001
+      status: IMPLEMENTED
+    from:
+      id: CFG-GRAPH-TRANSPORTS-002
+      status: IMPLEMENTED
+    to:
+      id: CFG-GRAPH-TRANSPORTS-003
+      status: IMPLEMENTED
+  meshes:
+    type:
+      id: CFG-GRAPH-MESHES-001
+      status: IMPLEMENTED
+    members:
+      id: CFG-GRAPH-MESHES-002
+      status: IMPLEMENTED
+    hub:
+      id: CFG-GRAPH-MESHES-003
+      status: IMPLEMENTED
+    root:
+      id: CFG-GRAPH-MESHES-004
+      status: IMPLEMENTED
+    identity:
+      id: CFG-GRAPH-MESHES-005
+      status: IMPLEMENTED
+    host_key_policy:
+      id: CFG-GRAPH-MESHES-006
+      status: IMPLEMENTED
+    tracker:
+      id: CFG-GRAPH-MESHES-007
+      status: IMPLEMENTED
+    bind:
+      id: CFG-GRAPH-MESHES-008
+      status: IMPLEMENTED
+    port:
+      id: CFG-GRAPH-MESHES-009
+      status: IMPLEMENTED
+    private:
+      id: CFG-GRAPH-MESHES-010
+      status: IMPLEMENTED
+    client:
+      id: CFG-GRAPH-MESHES-011
+      status: IMPLEMENTED
+  runtimes:
+    kind:
+      id: CFG-GRAPH-RUNTIMES-001
+      status: IMPLEMENTED
+    build:
+      id: CFG-GRAPH-RUNTIMES-002
+      status: IMPLEMENTED
+    commit:
+      id: CFG-GRAPH-RUNTIMES-003
+      status: IMPLEMENTED
+    hosts:
+      id: CFG-GRAPH-RUNTIMES-004
+      status: IMPLEMENTED
+    supported_archs:
+      id: CFG-GRAPH-RUNTIMES-005
+      status: IMPLEMENTED
+    backends:
+      id: CFG-GRAPH-RUNTIMES-006
+      status: IMPLEMENTED
+    spec_types:
+      id: CFG-GRAPH-RUNTIMES-007
+      status: IMPLEMENTED
+    bin:
+      id: CFG-GRAPH-RUNTIMES-008
+      status: IMPLEMENTED
+    quants:
+      id: CFG-GRAPH-RUNTIMES-009
+      status: IMPLEMENTED
+  models:
+    gguf:
+      id: CFG-GRAPH-MODELS-001
+      status: IMPLEMENTED
+    sha256:
+      id: CFG-GRAPH-MODELS-002
+      status: IMPLEMENTED
+    arch:
+      id: CFG-GRAPH-MODELS-003
+      status: IMPLEMENTED
+    trained_ctx:
+      id: CFG-GRAPH-MODELS-004
+      status: IMPLEMENTED
+    role:
+      id: CFG-GRAPH-MODELS-005
+      status: IMPLEMENTED
+    derived_from:
+      id: CFG-GRAPH-MODELS-006
+      status: IMPLEMENTED
+    db:
+      id: CFG-GRAPH-MODELS-007
+      status: IMPLEMENTED
+    notes:
+      id: CFG-GRAPH-MODELS-008
+      status: IMPLEMENTED
+    quant:
+      id: CFG-GRAPH-MODELS-009
+      status: IMPLEMENTED
+    tool_calls:
+      id: CFG-GRAPH-MODELS-010
+      status: IMPLEMENTED
+  nodes:
+    model:
+      id: CFG-GRAPH-NODES-001
+      status: IMPLEMENTED
+    host:
+      id: CFG-GRAPH-NODES-002
+      status: IMPLEMENTED
+    runtime:
+      id: CFG-GRAPH-NODES-003
+      status: IMPLEMENTED
+    ctx:
+      id: CFG-GRAPH-NODES-004
+      status: IMPLEMENTED
+    parallel:
+      id: CFG-GRAPH-NODES-005
+      status: IMPLEMENTED
+    kv_type:
+      id: CFG-GRAPH-NODES-006
+      status: IMPLEMENTED
+    flash_attn:
+      id: CFG-GRAPH-NODES-007
+      status: IMPLEMENTED
+    offload:
+      id: CFG-GRAPH-NODES-008
+      status: IMPLEMENTED
+    bind:
+      id: CFG-GRAPH-NODES-009
+      status: IMPLEMENTED
+    port:
+      id: CFG-GRAPH-NODES-010
+      status: IMPLEMENTED
+    cache_ram_mib:
+      id: CFG-GRAPH-NODES-011
+      status: IMPLEMENTED
+    status:
+      id: CFG-GRAPH-NODES-012
+      status: IMPLEMENTED
+    embeddings:
+      id: CFG-GRAPH-NODES-013
+      status: IMPLEMENTED
+    threads:
+      id: CFG-GRAPH-NODES-014
+      status: IMPLEMENTED
+    scale_down:
+      id: CFG-GRAPH-NODES-015
+      status: IMPLEMENTED
+    load_mode:
+      id: CFG-GRAPH-NODES-016
+      status: IMPLEMENTED
+    slot_save:
+      id: CFG-GRAPH-NODES-017
+      status: IMPLEMENTED
+    spill_path:
+      id: CFG-GRAPH-NODES-018
+      status: IMPLEMENTED
+    swap_budget_mib:
+      id: CFG-GRAPH-NODES-019
+      status: IMPLEMENTED
+    selection:
+      id: CFG-GRAPH-NODES-020
+      status: IMPLEMENTED
+    note:
+      id: CFG-GRAPH-NODES-021
+      status: IMPLEMENTED
+    escalates_to:
+      id: CFG-GRAPH-NODES-022
+      status: IMPLEMENTED
+    escalation:
+      id: CFG-GRAPH-NODES-023
+      status: IMPLEMENTED
+    card_set:
+      id: CFG-GRAPH-NODES-024
+      status: IMPLEMENTED
+    sampling:
+      id: CFG-GRAPH-NODES-025
+      status: IMPLEMENTED
+    override_reasons:
+      id: CFG-GRAPH-NODES-026
+      status: IMPLEMENTED
+    server_tools:
+      id: CFG-GRAPH-NODES-027
+      status: IMPLEMENTED
+    role:
+      id: CFG-GRAPH-NODES-028
+      status: IMPLEMENTED
+    tool_capable:
+      id: CFG-GRAPH-NODES-029
+      status: IMPLEMENTED
+    tool_route:
+      id: CFG-GRAPH-NODES-030
+      status: IMPLEMENTED
+  speculative:
+    experimental:
+      id: CFG-GRAPH-SPECULATIVE-001
+      status: IMPLEMENTED
+    status:
+      id: CFG-GRAPH-SPECULATIVE-002
+      status: IMPLEMENTED
+    mode:
+      id: CFG-GRAPH-SPECULATIVE-003
+      status: IMPLEMENTED
+    target:
+      id: CFG-GRAPH-SPECULATIVE-004
+      status: IMPLEMENTED
+    spec_type:
+      id: CFG-GRAPH-SPECULATIVE-005
+      status: IMPLEMENTED
+    draft:
+      id: CFG-GRAPH-SPECULATIVE-006
+      status: IMPLEMENTED
+    draft_max:
+      id: CFG-GRAPH-SPECULATIVE-007
+      status: IMPLEMENTED
+    draft_min:
+      id: CFG-GRAPH-SPECULATIVE-008
+      status: IMPLEMENTED
+    p_min:
+      id: CFG-GRAPH-SPECULATIVE-009
+      status: IMPLEMENTED
+    draft_ctx:
+      id: CFG-GRAPH-SPECULATIVE-010
+      status: IMPLEMENTED
+    draft_kv_type:
+      id: CFG-GRAPH-SPECULATIVE-011
+      status: IMPLEMENTED
+    draft_ngl:
+      id: CFG-GRAPH-SPECULATIVE-012
+      status: IMPLEMENTED
+    notes:
+      id: CFG-GRAPH-SPECULATIVE-013
+      status: IMPLEMENTED
+  gateways:
+    kind:
+      id: CFG-GRAPH-GATEWAYS-001
+      status: IMPLEMENTED
+    host:
+      id: CFG-GRAPH-GATEWAYS-002
+      status: IMPLEMENTED
+    port:
+      id: CFG-GRAPH-GATEWAYS-003
+      status: IMPLEMENTED
+  aliases:
+    node:
+      id: CFG-GRAPH-ALIASES-001
+      status: IMPLEMENTED
+    gateway:
+      id: CFG-GRAPH-ALIASES-002
+      status: IMPLEMENTED
+  agents:
+    kind:
+      id: CFG-GRAPH-AGENTS-001
+      status: IMPLEMENTED
+    host:
+      id: CFG-GRAPH-AGENTS-002
+      status: IMPLEMENTED
+    prompt_profile:
+      id: CFG-GRAPH-AGENTS-003
+      status: IMPLEMENTED
+    min_ctx:
+      id: CFG-GRAPH-AGENTS-004
+      status: IMPLEMENTED
+    context_length:
+      id: CFG-GRAPH-AGENTS-005
+      status: IMPLEMENTED
+    aliases:
+      id: CFG-GRAPH-AGENTS-006
+      status: IMPLEMENTED
+    skills:
+      id: CFG-GRAPH-AGENTS-007
+      status: IMPLEMENTED
+    plugins:
+      id: CFG-GRAPH-AGENTS-008
+      status: IMPLEMENTED
+    mcp:
+      id: CFG-GRAPH-AGENTS-009
+      status: IMPLEMENTED
+  fleets:
+    repo:
+      id: CFG-GRAPH-FLEETS-001
+      status: IMPLEMENTED
+    agents:
+      id: CFG-GRAPH-FLEETS-002
+      status: IMPLEMENTED
+  agencies:
+    repo:
+      id: CFG-GRAPH-AGENCIES-001
+      status: IMPLEMENTED
+    labels:
+      id: CFG-GRAPH-AGENCIES-002
+      status: IMPLEMENTED
+    assignments:
+      id: CFG-GRAPH-AGENCIES-003
+      status: IMPLEMENTED
+  rooms:
+    experimental:
+      id: CFG-GRAPH-ROOMS-001
+      status: IMPLEMENTED
+    gateway:
+      id: CFG-GRAPH-ROOMS-002
+      status: IMPLEMENTED
+    agents:
+      id: CFG-GRAPH-ROOMS-003
+      status: IMPLEMENTED
+  swarms:
+    experimental:
+      id: CFG-GRAPH-SWARMS-001
+      status: IMPLEMENTED
+    rooms:
+      id: CFG-GRAPH-SWARMS-002
+      status: IMPLEMENTED
+  stores:
+    experimental:
+      id: CFG-GRAPH-STORES-001
+      status: IMPLEMENTED
+    kind:
+      id: CFG-GRAPH-STORES-002
+      status: IMPLEMENTED
+    host:
+      id: CFG-GRAPH-STORES-003
+      status: IMPLEMENTED
+    path:
+      id: CFG-GRAPH-STORES-004
+      status: IMPLEMENTED
+  reaches:
+    experimental:
+      id: CFG-GRAPH-REACHES-001
+      status: IMPLEMENTED
+    repo:
+      id: CFG-GRAPH-REACHES-002
+      status: IMPLEMENTED
+    agents:
+      id: CFG-GRAPH-REACHES-003
+      status: IMPLEMENTED
+  councils:
+    experimental:
+      id: CFG-GRAPH-COUNCILS-001
+      status: IMPLEMENTED
+    mode:
+      id: CFG-GRAPH-COUNCILS-002
+      status: IMPLEMENTED
+    agents:
+      id: CFG-GRAPH-COUNCILS-003
+      status: IMPLEMENTED
+    quorum:
+      id: CFG-GRAPH-COUNCILS-004
+      status: IMPLEMENTED
+  pentests:
+    name:
+      id: CFG-GRAPH-PENTESTS-001
+      status: IMPLEMENTED
+    node:
+      id: CFG-GRAPH-PENTESTS-002
+      status: IMPLEMENTED
+    agent:
+      id: CFG-GRAPH-PENTESTS-003
+      status: IMPLEMENTED
+    scope:
+      id: CFG-GRAPH-PENTESTS-004
+      status: IMPLEMENTED
+    tools:
+      id: CFG-GRAPH-PENTESTS-005
+      status: IMPLEMENTED
+    report_to:
+      id: CFG-GRAPH-PENTESTS-006
+      status: IMPLEMENTED
+    requires_operator_confirm:
+      id: CFG-GRAPH-PENTESTS-007
+      status: IMPLEMENTED
+    launch_test_only:
+      id: CFG-GRAPH-PENTESTS-008
+      status: IMPLEMENTED
+    status:
+      id: CFG-GRAPH-PENTESTS-009
+      status: IMPLEMENTED
+    notes:
+      id: CFG-GRAPH-PENTESTS-010
+      status: IMPLEMENTED
+    skills:
+      id: CFG-GRAPH-PENTESTS-011
+      status: IMPLEMENTED
+  kv_channels:
+    experimental:
+      id: CFG-GRAPH-KVCHANNELS-001
+      status: IMPLEMENTED
+    status:
+      id: CFG-GRAPH-KVCHANNELS-002
+      status: IMPLEMENTED
+    from:
+      id: CFG-GRAPH-KVCHANNELS-003
+      status: IMPLEMENTED
+    to:
+      id: CFG-GRAPH-KVCHANNELS-004
+      status: IMPLEMENTED
+    via:
+      id: CFG-GRAPH-KVCHANNELS-005
+      status: IMPLEMENTED
+    transport:
+      id: CFG-GRAPH-KVCHANNELS-006
+      status: IMPLEMENTED
+    slot:
+      id: CFG-GRAPH-KVCHANNELS-007
+      status: IMPLEMENTED
+    notes:
+      id: CFG-GRAPH-KVCHANNELS-008
+      status: IMPLEMENTED
+  harnesses:
+    kind:
+      id: CFG-GRAPH-HARNESSES-001
+      status: IMPLEMENTED
+    root:
+      id: CFG-GRAPH-HARNESSES-002
+      status: IMPLEMENTED
+    prompt:
+      id: CFG-GRAPH-HARNESSES-003
+      status: IMPLEMENTED
+    guardrails:
+      id: CFG-GRAPH-HARNESSES-004
+      status: IMPLEMENTED
+    memory:
+      id: CFG-GRAPH-HARNESSES-005
+      status: IMPLEMENTED
+    skills:
+      id: CFG-GRAPH-HARNESSES-006
+      status: IMPLEMENTED
+    node:
+      id: CFG-GRAPH-HARNESSES-007
+      status: IMPLEMENTED
+    agent:
+      id: CFG-GRAPH-HARNESSES-008
+      status: IMPLEMENTED
+    notes:
+      id: CFG-GRAPH-HARNESSES-009
+      status: IMPLEMENTED
+  self_improve:
+    experimental:
+      id: CFG-GRAPH-SELFIMPROVE-001
+      status: IMPLEMENTED
+    engine:
+      id: CFG-GRAPH-SELFIMPROVE-002
+      status: IMPLEMENTED
+    mode:
+      id: CFG-GRAPH-SELFIMPROVE-003
+      status: IMPLEMENTED
+    targets:
+      id: CFG-GRAPH-SELFIMPROVE-004
+      status: IMPLEMENTED
+    k:
+      id: CFG-GRAPH-SELFIMPROVE-005
+      status: IMPLEMENTED
+    recursion:
+      id: CFG-GRAPH-SELFIMPROVE-006
+      status: IMPLEMENTED
+    tasks:
+      id: CFG-GRAPH-SELFIMPROVE-007
+      status: IMPLEMENTED
+    max_tasks:
+      id: CFG-GRAPH-SELFIMPROVE-008
+      status: IMPLEMENTED
+    notes:
+      id: CFG-GRAPH-SELFIMPROVE-009
+      status: IMPLEMENTED
+  system_agents:
+    kind:
+      id: CFG-GRAPH-SYSTEMAGENTS-001
+      status: IMPLEMENTED
+    provider:
+      id: CFG-GRAPH-SYSTEMAGENTS-002
+      status: IMPLEMENTED
+    backend:
+      id: CFG-GRAPH-SYSTEMAGENTS-003
+      status: IMPLEMENTED
+    host:
+      id: CFG-GRAPH-SYSTEMAGENTS-004
+      status: IMPLEMENTED
+    transport:
+      id: CFG-GRAPH-SYSTEMAGENTS-005
+      status: IMPLEMENTED
+    cloud:
+      id: CFG-GRAPH-SYSTEMAGENTS-006
+      status: IMPLEMENTED
+    consent:
+      id: CFG-GRAPH-SYSTEMAGENTS-007
+      status: IMPLEMENTED
+    status:
+      id: CFG-GRAPH-SYSTEMAGENTS-008
+      status: IMPLEMENTED
+    experimental:
+      id: CFG-GRAPH-SYSTEMAGENTS-009
+      status: IMPLEMENTED
+    agents:
+      id: CFG-GRAPH-SYSTEMAGENTS-010
+      status: IMPLEMENTED
+    notes:
+      id: CFG-GRAPH-SYSTEMAGENTS-011
+      status: IMPLEMENTED
+  options:
+    role:
+      id: CFG-GRAPH-OPTIONS-001
+      status: IMPLEMENTED
+    unverified:
+      id: CFG-GRAPH-OPTIONS-002
+      status: IMPLEMENTED
+    sources:
+      id: CFG-GRAPH-OPTIONS-003
+      status: IMPLEMENTED
+    hf_repo:
+      id: CFG-GRAPH-OPTIONS-004
+      status: IMPLEMENTED
+    size_note:
+      id: CFG-GRAPH-OPTIONS-005
+      status: IMPLEMENTED
+    placement_note:
+      id: CFG-GRAPH-OPTIONS-006
+      status: IMPLEMENTED
+    candidate_hosts:
+      id: CFG-GRAPH-OPTIONS-007
+      status: IMPLEMENTED
+    gpu_candidate:
+      id: CFG-GRAPH-OPTIONS-008
+      status: IMPLEMENTED
+    gpu_host:
+      id: CFG-GRAPH-OPTIONS-009
+      status: IMPLEMENTED
+    runtime_note:
+      id: CFG-GRAPH-OPTIONS-010
+      status: IMPLEMENTED
+    notes:
+      id: CFG-GRAPH-OPTIONS-011
+      status: IMPLEMENTED
+    db:
+      id: CFG-GRAPH-OPTIONS-012
+      status: IMPLEMENTED
+other:
+  CFG-GRAPH-HOSTS-101:
+    status: IMPLEMENTED
+  CFG-GRAPH-HOSTS-102:
+    status: IMPLEMENTED
+  CFG-GRAPH-HOSTS-103:
+    status: IMPLEMENTED
+  CFG-GRAPH-HOSTS-104:
+    status: IMPLEMENTED
+  CFG-GRAPH-HOSTS-105:
+    status: IMPLEMENTED
+  CFG-GRAPH-HOSTS-106:
+    status: IMPLEMENTED
+  CFG-GRAPH-HOSTS-107:
+    status: IMPLEMENTED
+  CFG-GRAPH-NODES-101:
+    status: IMPLEMENTED
+  CFG-GRAPH-NODES-102:
+    status: IMPLEMENTED
+  CFG-GRAPH-NODES-103:
+    status: IMPLEMENTED
+  CFG-GRAPH-NODES-104:
+    status: IMPLEMENTED
+  CFG-GRAPH-NODES-105:
+    status: IMPLEMENTED
+  CFG-GRAPH-NODES-106:
+    status: IMPLEMENTED
+  CFG-GRAPH-NODES-107:
+    status: IMPLEMENTED
+  CFG-GRAPH-NODES-108:
+    status: IMPLEMENTED
+  CFG-GRAPH-NODES-109:
+    status: IMPLEMENTED
+  CFG-GRAPH-NODES-110:
+    status: SPEC
+  CFG-GRAPH-NODES-111:
+    status: SPEC
+  CFG-GRAPH-ALIASES-101:
+    status: IMPLEMENTED
+  CFG-GRAPH-ALIASES-102:
+    status: IMPLEMENTED
+  CFG-GRAPH-ALIASES-103:
+    status: SPEC
+  CFG-GRAPH-ALIASES-104:
+    status: SPEC
+  CFG-GRAPH-AGENTS-101:
+    status: IMPLEMENTED
+  CFG-GRAPH-AGENTS-102:
+    status: IMPLEMENTED
+  CFG-GRAPH-AGENTS-103:
+    status: IMPLEMENTED
+  CFG-GRAPH-AGENTS-104:
+    status: IMPLEMENTED
+  CFG-GRAPH-AGENTS-105:
+    status: IMPLEMENTED
+  CFG-GRAPH-AGENTS-106:
+    status: SPEC
+  CFG-GRAPH-AGENTS-107:
+    status: SPEC
+  CFG-GRAPH-GATEWAYS-101:
+    status: IMPLEMENTED
+  CFG-GRAPH-GATEWAYS-102:
+    status: IMPLEMENTED
+  CFG-GRAPH-GATEWAYS-103:
+    status: SPEC
+  CFG-GRAPH-GATEWAYS-104:
+    status: SPEC
+  CFG-GRAPH-PENTESTS-101:
+    status: IMPLEMENTED
+  CFG-GRAPH-PENTESTS-102:
+    status: IMPLEMENTED
+  CFG-GRAPH-PENTESTS-103:
+    status: IMPLEMENTED
+  CFG-GRAPH-PENTESTS-104:
+    status: IMPLEMENTED
+  CFG-GRAPH-PENTESTS-105:
+    status: IMPLEMENTED
+  CFG-GRAPH-RUNTIMES-101:
+    status: IMPLEMENTED
+  CFG-GRAPH-RUNTIMES-102:
+    status: IMPLEMENTED
+  CFG-GRAPH-RUNTIMES-103:
+    status: IMPLEMENTED
+  CFG-GRAPH-RUNTIMES-104:
+    status: IMPLEMENTED
+  CFG-GRAPH-MODELS-101:
+    status: IMPLEMENTED
+  CFG-GRAPH-MODELS-102:
+    status: IMPLEMENTED
+  CFG-GRAPH-MODELS-103:
+    status: IMPLEMENTED
+  CFG-GRAPH-MODELS-104:
+    status: IMPLEMENTED
+  CFG-CRED-001:
+    status: IMPLEMENTED
+    doc: docs/config/credentials.md
+  CFG-CRED-002:
+    status: IMPLEMENTED
+    doc: docs/config/credentials.md
+  CFG-CRED-003:
+    status: IMPLEMENTED
+    doc: docs/config/credentials.md
+  CFG-CRED-004:
+    status: IMPLEMENTED
+    doc: docs/config/credentials.md
+  CFG-CRED-005:
+    status: IMPLEMENTED
+    doc: docs/config/credentials.md
+  CFG-CRED-006:
+    status: IMPLEMENTED
+    doc: docs/config/credentials.md
+  CFG-CRED-007:
+    status: SPEC
+    doc: docs/config/credentials.md
+  CFG-CRED-008:
+    status: SPEC
+    doc: docs/config/credentials.md
+  CFG-SPEC-AGENT-001:
+    status: SPEC
+    doc: docs/config/graph/agents.md
+  CFG-SPEC-AGENT-002:
+    status: SPEC
+    doc: docs/config/graph/agents.md
+  CFG-SPEC-PLAN-005:
+    status: IMPLEMENTED
+    doc: docs/config/graph/aliases.md
+  CFG-SPEC-ALIAS-001:
+    status: SPEC
+    doc: docs/config/graph/aliases.md
+  CFG-SPEC-GW-001:
+    status: SPEC
+    doc: docs/config/graph/gateways.md
+  CFG-SPEC-GW-002:
+    status: SPEC
+    doc: docs/config/graph/gateways.md
+  CFG-HERMES-001:
+    status: IMPLEMENTED
+    doc: docs/config/hermes-config.md
+  CFG-HERMES-002:
+    status: IMPLEMENTED
+    doc: docs/config/hermes-config.md
+  CFG-HERMES-003:
+    status: IMPLEMENTED
+    doc: docs/config/hermes-config.md
+  CFG-HERMES-004:
+    status: IMPLEMENTED
+    doc: docs/config/hermes-config.md
+  CFG-HERMES-005:
+    status: IMPLEMENTED
+    doc: docs/config/hermes-config.md
+  CFG-HERMES-006:
+    status: IMPLEMENTED
+    doc: docs/config/hermes-config.md
+  CFG-HERMES-007:
+    status: IMPLEMENTED
+    doc: docs/config/hermes-config.md
+  CFG-HERMES-008:
+    status: IMPLEMENTED
+    doc: docs/config/hermes-config.md
+  CFG-PENT-RISK-001:
+    status: SPEC
+    doc: docs/config/pentest-policy.md
+  CFG-PENT-CUR-001:
+    status: IMPLEMENTED
+    doc: docs/config/pentest-policy.md
+  CFG-PENT-CUR-002:
+    status: IMPLEMENTED
+    doc: docs/config/pentest-policy.md
+  CFG-PENT-CUR-003:
+    status: IMPLEMENTED
+    doc: docs/config/pentest-policy.md
+  CFG-PENT-CUR-004:
+    status: IMPLEMENTED
+    doc: docs/config/pentest-policy.md
+  CFG-PENT-CUR-005:
+    status: IMPLEMENTED
+    doc: docs/config/pentest-policy.md
+  CFG-PENT-CUR-006:
+    status: IMPLEMENTED
+    doc: docs/config/pentest-policy.md
+  CFG-PENT-CUR-007:
+    status: IMPLEMENTED
+    doc: docs/config/pentest-policy.md
+  CFG-PENT-MODE-001:
+    status: SPEC
+    doc: docs/config/pentest-policy.md
+  CFG-PENT-MODE-002:
+    status: SPEC
+    doc: docs/config/pentest-policy.md
+  CFG-PENT-MODE-003:
+    status: SPEC
+    doc: docs/config/pentest-policy.md
+  CFG-PENT-MODE-004:
+    status: SPEC
+    doc: docs/config/pentest-policy.md
+  CFG-PENT-MODE-005:
+    status: SPEC
+    doc: docs/config/pentest-policy.md
+  CFG-PENT-POL-001:
+    status: SPEC
+    doc: docs/config/pentest-policy.md
+  CFG-PENT-POL-002:
+    status: SPEC
+    doc: docs/config/pentest-policy.md
+  CFG-PENT-POL-003:
+    status: SPEC
+    doc: docs/config/pentest-policy.md
+  CFG-PENT-POL-004:
+    status: SPEC
+    doc: docs/config/pentest-policy.md
+  CFG-PENT-POL-005:
+    status: SPEC
+    doc: docs/config/pentest-policy.md
+  CFG-PENT-POL-006:
+    status: SPEC
+    doc: docs/config/pentest-policy.md
+  CFG-PENT-LAB-001:
+    status: SPEC
+    doc: docs/config/pentest-policy.md
+  CFG-PENT-LAB-002:
+    status: SPEC
+    doc: docs/config/pentest-policy.md
+  CFG-PENT-LAB-003:
+    status: SPEC
+    doc: docs/config/pentest-policy.md
+  CFG-PENT-LAB-004:
+    status: SPEC
+    doc: docs/config/pentest-policy.md
+  CFG-PENT-AUD-001:
+    status: SPEC
+    doc: docs/config/pentest-policy.md
+  CFG-PENT-AUD-002:
+    status: SPEC
+    doc: docs/config/pentest-policy.md
+  CFG-PENT-AUD-003:
+    status: SPEC
+    doc: docs/config/pentest-policy.md
+  CFG-SPEC-PLAN-001:
+    status: SPEC
+    doc: docs/config/routing-spec.md
+  CFG-SPEC-PLAN-002:
+    status: SPEC
+    doc: docs/config/routing-spec.md
+  CFG-SPEC-PLAN-003:
+    status: SPEC
+    doc: docs/config/routing-spec.md
+  CFG-SPEC-PLAN-004:
+    status: SPEC
+    doc: docs/config/routing-spec.md
+  CFG-SPEC-PLAN-006:
+    status: SPEC
+    doc: docs/config/routing-spec.md
+  CFG-SPEC-PLAN-007:
+    status: SPEC
+    doc: docs/config/routing-spec.md
+  CFG-SPEC-GW-003:
+    status: SPEC
+    doc: docs/config/routing-spec.md
+  CFG-SPEC-GW-004:
+    status: IMPLEMENTED
+    doc: docs/config/routing-spec.md
+  CFG-SPEC-ALIAS-002:
+    status: SPEC
+    doc: docs/config/routing-spec.md
+  CFG-SPEC-ALIAS-003:
+    status: SPEC
+    doc: docs/config/routing-spec.md
+  CFG-SPEC-TOOLS-001:
+    status: IMPLEMENTED
+    doc: docs/config/routing-spec.md
+  CFG-SPEC-TOOLS-002:
+    status: SUPERSEDED
+    doc: docs/config/routing-spec.md
+  CFG-SPEC-TOOLS-003:
+    status: SPEC
+    doc: docs/config/routing-spec.md
+  CFG-SPEC-TOOLS-004:
+    status: IMPLEMENTED
+    doc: docs/config/routing-spec.md
+  CFG-SPEC-MCP-001:
+    status: IMPLEMENTED
+    doc: docs/config/routing-spec.md
+  CFG-SPEC-MCP-002:
+    status: IMPLEMENTED
+    doc: docs/config/routing-spec.md
+  CFG-SPEC-MCP-003:
+    status: IMPLEMENTED
+    doc: docs/config/routing-spec.md
+  CFG-SPEC-MCP-004:
+    status: SPEC
+    doc: docs/config/routing-spec.md
+  CFG-SPEC-MCP-005:
+    status: IMPLEMENTED
+    doc: docs/config/routing-spec.md
+  CFG-SPEC-AGENT-003:
+    status: IMPLEMENTED
+    doc: docs/config/routing-spec.md
+  CFG-SPEC-ESC-001:
+    status: IMPLEMENTED
+    doc: docs/config/routing-spec.md
+  CFG-SPEC-ESC-002:
+    status: IMPLEMENTED
+    doc: docs/config/routing-spec.md
+  CFG-SPEC-ESC-003:
+    status: SPEC
+    doc: docs/config/routing-spec.md
+  CFG-SPEC-ESC-004:
+    status: SPEC
+    doc: docs/config/routing-spec.md
+  CFG-RULE-001:
+    status: IMPLEMENTED
+    doc: docs/config/README.md
+  CFG-RULE-002:
+    status: IMPLEMENTED
+    doc: docs/config/README.md
+  CFG-FILE-001:
+    status: IMPLEMENTED
+    doc: docs/config/files.md
+  CFG-FILE-002:
+    status: IMPLEMENTED
+    doc: docs/config/files.md
+  CFG-FILE-003:
+    status: IMPLEMENTED
+    doc: docs/config/files.md
+  CFG-FILE-004:
+    status: IMPLEMENTED
+    doc: docs/config/files.md
+  CFG-FILE-005:
+    status: IMPLEMENTED
+    doc: docs/config/files.md
+  CFG-FILE-006:
+    status: IMPLEMENTED
+    doc: docs/config/files.md
+  CFG-FILE-007:
+    status: IMPLEMENTED
+    doc: docs/config/files.md
+  CFG-FILE-001a:
+    status: IMPLEMENTED
+    doc: docs/config/files.md
+  CFG-FILE-007b:
+    status: IMPLEMENTED
+    doc: docs/config/files.md
+  CFG-FILE-008:
+    status: IMPLEMENTED
+    doc: docs/config/files.md
+  CFG-FILE-009:
+    status: IMPLEMENTED
+    doc: docs/config/files.md
+  CFG-FILE-010:
+    status: IMPLEMENTED
+    doc: docs/config/files.md
+  CFG-FILE-011:
+    status: IMPLEMENTED
+    doc: docs/config/files.md
+  CFG-FILE-012:
+    status: IMPLEMENTED
+    doc: docs/config/files.md
+  CFG-FILE-013:
+    status: IMPLEMENTED
+    doc: docs/config/files.md
+  CFG-FILE-014:
+    status: IMPLEMENTED
+    doc: docs/config/files.md
+  CFG-FILE-015:
+    status: IMPLEMENTED
+    doc: docs/config/files.md
+  CFG-FILE-016:
+    status: IMPLEMENTED
+    doc: docs/config/files.md
+  CFG-FILE-017:
+    status: IMPLEMENTED
+    doc: docs/config/files.md
+  CFG-FILE-018:
+    status: IMPLEMENTED
+    doc: docs/config/files.md
+  CFG-FILE-019:
+    status: IMPLEMENTED
+    doc: docs/config/files.md
+  CFG-FILE-020:
+    status: IMPLEMENTED
+    doc: docs/config/files.md
+  CFG-SPEC-TOOLS-005:
+    status: IMPLEMENTED
+    doc: docs/config/routing-spec.md
+  CFG-SPEC-TOOLS-006:
+    status: IMPLEMENTED
+    doc: docs/config/routing-spec.md
+  CFG-SPEC-TOOLS-007:
+    status: IMPLEMENTED
+    doc: docs/config/routing-spec.md
+  CFG-SPEC-TOOLS-008:
+    status: IMPLEMENTED
+    doc: docs/config/routing-spec.md
+  CFG-SPEC-TOOLS-009:
+    status: IMPLEMENTED
+    doc: docs/config/routing-spec.md
+  CFG-SPEC-TOOLS-010:
+    status: IMPLEMENTED
+    doc: docs/config/routing-spec.md

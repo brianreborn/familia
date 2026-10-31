@@ -117,15 +117,9 @@ def select_host(graph, requested=None, environ=None, hostname=None):
 
 
 def local_topology(graph, host):
-    nodes = sorted(
-        name for name, node in graph.get("nodes", {}).items()
-        if node.get("status") == "active" and node.get("host") == host
-    )
-    remote_nodes = sorted(
-        (name, node.get("host"))
-        for name, node in graph.get("nodes", {}).items()
-        if node.get("status") == "active" and node.get("host") != host
-    )
+    import node_state  # DUP-03 owner
+    nodes = node_state.local_active(graph, host)
+    remote_nodes = node_state.remote_active(graph, host)
     gateways = []
     omitted_aliases = []
     remote_gateways = sorted(
@@ -367,7 +361,8 @@ def run(args=None):
         graph["_path"] = str(graph_path)
         host = select_host(graph, options.host)
         fleet_default = (ROOT / "graph.yaml").resolve()
-        priv = (ROOT / "generated" / f"graph-{host}.yaml").resolve()
+        import config_paths
+        priv = (Path(config_paths.generated_dir()) / f"graph-{host}.yaml").resolve()
         if (
             not options.fleet
             and graph_path == fleet_default
