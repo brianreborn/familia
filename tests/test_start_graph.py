@@ -287,3 +287,26 @@ def test_single_alias_to_tool_node_carries_its_key(tmp_path, monkeypatch):
                                  headers={"Content-Type": "application/json"})
     assert urllib.request.urlopen(req, timeout=10).status == 200
     assert seen and seen[0] and seen[0].startswith("Bearer ")
+
+
+def test_stop_children_stops_the_server_under_serve_sh(tmp_path):
+    """Regression (live 9931 run): SIGTERM reached serve.sh only; its llama-server kept the port."""
+    import subprocess, time
+    pidf = tmp_path / "grandchild.pid"
+    child = subprocess.Popen(["sh", "-c", f"sleep 300 & echo $! > {pidf}; wait"], start_new_session=True)
+    for _ in range(100):
+        if pidf.exists() and pidf.read_text().strip(): break
+        time.sleep(0.05)
+    gc = int(pidf.read_text())
+    start_graph._stop_children([(child, "node x")])
+    for _ in range(100):
+        try:
+            os.kill(gc, 0)
+            with open(f"/proc/{gc}/stat") as f:
+                if f.read().split()[2] == "Z": break
+        except (ProcessLookupError, FileNotFoundError):
+            break
+        time.sleep(0.05)
+    else:
+        os.kill(gc, 9)
+        pytest.fail("grandchild (the llama-server stand-in) survived _stop_children")
