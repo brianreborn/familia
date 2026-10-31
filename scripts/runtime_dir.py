@@ -6,7 +6,7 @@ all created with umask 077. Every dir is
 lstat-verified (not a symlink, owner==uid, no group/other bits); otherwise
 RuntimeDirError (fail-closed). Old /tmp paths are never followed.
 """
-import errno, fcntl, logging, os, stat, tempfile
+import errno, fcntl, logging, os, stat
 
 log = logging.getLogger("familia.runtime_dir")
 if not log.handlers and not logging.getLogger().handlers:
@@ -46,10 +46,11 @@ def _ensure_private(path):
     return check_private_dir(path)
 
 
-def _tmp_base():
-    if os.environ.get("TMPDIR"):
-        return os.environ["TMPDIR"]
-    pre = os.environ.get("PREFIX")  # Termux
+def _tmp_base(env=None):
+    env = os.environ if env is None else env
+    if env.get("TMPDIR"):
+        return env["TMPDIR"]
+    pre = env.get("PREFIX")  # Termux
     if pre and os.path.isdir(os.path.join(pre, "tmp")):
         return os.path.join(pre, "tmp")
     return "/tmp"
@@ -97,7 +98,7 @@ def runtime_dir(env=None):
         except (RuntimeDirError, OSError) as e:
             log.warning("runtime_dir: reject cache candidate: %s", e)
     # Last resort: predictable per-uid name; verified, never followed (fail-closed).
-    cand = os.path.join(_tmp_base(), "%s-%d" % (APP, os.getuid()))
+    cand = os.path.join(_tmp_base(env), "%s-%d" % (APP, os.getuid()))
     try:
         return _ensure_private(cand)
     except RuntimeDirError as e:

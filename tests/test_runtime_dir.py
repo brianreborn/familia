@@ -5,7 +5,7 @@ import runtime_dir as rd
 
 def test_xdg_private_used(tmp_path):
     x = tmp_path / "xdg"; x.mkdir(mode=0o700)
-    assert rd.runtime_dir({"XDG_RUNTIME_DIR": str(x)}) == str(x / "familia")
+    assert rd.runtime_dir({"XDG_RUNTIME_DIR": str(x), "TMPDIR": str(tmp_path)}) == str(x / "familia")
     assert oct(os.stat(x / "familia").st_mode & 0o777) == "0o700"
 
 def test_symlink_planted_refuses(tmp_path, monkeypatch):
@@ -13,16 +13,16 @@ def test_symlink_planted_refuses(tmp_path, monkeypatch):
     monkeypatch.setenv("TMPDIR", str(tmp_path))
     os.symlink(real, tmp_path / ("familia-%d" % os.getuid()))
     with pytest.raises(rd.RuntimeDirError):
-        rd.runtime_dir({})
+        rd.runtime_dir({"TMPDIR": str(tmp_path)})
 
 def test_0777_dir_refuses_and_bad_xdg_falls_back(tmp_path, monkeypatch):
     d = tmp_path / ("familia-%d" % os.getuid()); d.mkdir(); os.chmod(d, 0o777)
     monkeypatch.setenv("TMPDIR", str(tmp_path))
     with pytest.raises(rd.RuntimeDirError):
-        rd.runtime_dir({})
+        rd.runtime_dir({"TMPDIR": str(tmp_path)})
     x = tmp_path / "xdg"; x.mkdir(); os.chmod(x, 0o755)  # untrusted XDG
     with pytest.raises(rd.RuntimeDirError):  # falls back to (bad) tmp, still refuses
-        rd.runtime_dir({"XDG_RUNTIME_DIR": str(x)})
+        rd.runtime_dir({"XDG_RUNTIME_DIR": str(x), "TMPDIR": str(tmp_path)})
 
 def test_foreign_owner_refuses(tmp_path, monkeypatch):
     d = tmp_path / "d"; d.mkdir(mode=0o700)
@@ -106,7 +106,7 @@ def test_bad_cache_falls_to_tmp_with_logged_reason(tmp_path, monkeypatch, caplog
     (home / ".cache" / "familia" / "run").mkdir(); os.chmod(home / ".cache" / "familia" / "run", 0o755)
     t = tmp_path / "t"; t.mkdir(); monkeypatch.setenv("TMPDIR", str(t))
     with caplog.at_level("WARNING", logger="familia.runtime_dir"):
-        got = rd.runtime_dir({"HOME": str(home)})
+        got = rd.runtime_dir({"HOME": str(home), "TMPDIR": str(t)})
     assert got == str(t / ("familia-%d" % os.getuid()))
     assert "reject cache candidate" in caplog.text and "group/other" in caplog.text
 
@@ -159,3 +159,8 @@ def test_launch_status_default_ledger_private(tmp_path, monkeypatch):
     monkeypatch.setenv("XDG_RUNTIME_DIR", str(x)); monkeypatch.delenv("FAMILIA_ADMISSION", raising=False)
     import launch_status as ls; ls = importlib.reload(ls)
     assert ls.LEDGER.startswith(str(x / "familia") + "/")
+
+def test_tmp_base_honors_passed_env(tmp_path, monkeypatch):
+    monkeypatch.setenv("TMPDIR", "/should/not/be/used")
+    assert rd._tmp_base({"TMPDIR": str(tmp_path)}) == str(tmp_path)
+    assert rd._tmp_base({}).endswith("/tmp")
