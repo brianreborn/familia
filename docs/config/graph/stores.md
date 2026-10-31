@@ -6,7 +6,7 @@ Purpose: persistent state.
 
 <!-- BEGIN GENERATED: fields (scripts/config_docs.py --write) -->
 
-Schema: `scripts/graph_types.py:623` (experimental; persistent state).
+Schema: `scripts/graph_types.py:645` (experimental; persistent state).
 Required fields have no defaults (validator: missing required → error). Consumers = static scan of scripts/ and top-level *.sh.
 
 | ID | Field | Req | Type | Allowed / ref | Status | Consumers (static scan) |

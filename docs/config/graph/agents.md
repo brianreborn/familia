@@ -17,7 +17,7 @@ Purpose: an agent process (hermes-agent) and its model aliases, skills, plugins 
 
 <!-- BEGIN GENERATED: fields (scripts/config_docs.py --write) -->
 
-Schema: `scripts/graph_types.py:606` (stable; agent process).
+Schema: `scripts/graph_types.py:628` (stable; agent process).
 Required fields have no defaults (validator: missing required → error). Consumers = static scan of scripts/ and top-level *.sh.
 
 | ID | Field | Req | Type | Allowed / ref | Status | Consumers (static scan) |

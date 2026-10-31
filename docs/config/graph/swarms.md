@@ -6,7 +6,7 @@ Purpose: set of rooms.
 
 <!-- BEGIN GENERATED: fields (scripts/config_docs.py --write) -->
 
-Schema: `scripts/graph_types.py:622` (experimental; set of rooms).
+Schema: `scripts/graph_types.py:644` (experimental; set of rooms).
 Required fields have no defaults (validator: missing required → error). Consumers = static scan of scripts/ and top-level *.sh.
 
 | ID | Field | Req | Type | Allowed / ref | Status | Consumers (static scan) |

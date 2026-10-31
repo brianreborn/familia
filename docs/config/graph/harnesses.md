@@ -6,7 +6,7 @@ Purpose: target harness descriptor: prompt/guardrails/memory/skills paths + loca
 
 <!-- BEGIN GENERATED: fields (scripts/config_docs.py --write) -->
 
-Schema: `scripts/graph_types.py:653` (stable; target harness descriptor: prompt/guardrails/memory/skills paths + local endpoint).
+Schema: `scripts/graph_types.py:675` (stable; target harness descriptor: prompt/guardrails/memory/skills paths + local endpoint).
 Required fields have no defaults (validator: missing required → error). Consumers = static scan of scripts/ and top-level *.sh.
 
 | ID | Field | Req | Type | Allowed / ref | Status | Consumers (static scan) |
