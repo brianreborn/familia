@@ -32,6 +32,7 @@ import json
 import os
 import subprocess
 import sys
+import shutil
 import tempfile
 import time
 import urllib.request
@@ -88,7 +89,21 @@ def endpoint_up(host, port, timeout=2):
 
 def new_worktree_dir(tid):
     """Unpredictable 0700 worktree dir (honors TMPDIR); recorded in results.jsonl for loop.sh."""
-    return Path(tempfile.mkdtemp(prefix=f"dogfood-wt-{tid}-"))
+    wt = Path(tempfile.mkdtemp(prefix=f"dogfood-wt-{tid}-"))
+    _CREATED_WT.append(wt)
+    return wt
+
+
+_CREATED_WT: list = []
+
+
+def _discard_worktrees(repo, wts):
+    """Remove worktree dirs created by a task that died before recording results."""
+    for wt in wts:
+        try:
+            worktree_remove(repo, wt)
+        finally:
+            shutil.rmtree(wt, ignore_errors=True)
 
 
 def worktree_add(repo, wt, ref="origin/main"):
@@ -102,7 +117,7 @@ def worktree_add(repo, wt, ref="origin/main"):
 
 
 def worktree_remove(repo, wt):
-    sh(f"git worktree remove --force {wt}", cwd=repo, env={"FAMILIA_SYNC": "0"})
+    sh(["git", "worktree", "remove", "--force", str(wt)], cwd=repo, env={"FAMILIA_SYNC": "0"})
 
 
 def task_prompt(t):
@@ -324,6 +339,17 @@ def run_harness2_task(t, args, out_dir, repo):
 
 
 def run_task(t, harness, args, out_dir, repo):
+    mark = len(_CREATED_WT)
+    try:
+        return _run_task(t, harness, args, out_dir, repo)
+    except BaseException:
+        _discard_worktrees(repo, _CREATED_WT[mark:])
+        raise
+    finally:
+        del _CREATED_WT[mark:]
+
+
+def _run_task(t, harness, args, out_dir, repo):
     if harness in HERMES_MODES:
         return run_hermes_task(t, harness, args, out_dir, repo)
     if harness == "harness2":
