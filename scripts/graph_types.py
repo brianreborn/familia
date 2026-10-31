@@ -218,7 +218,13 @@ def check_node(g, name, n, errs):
     st = n.get("server_tools")
     if st is not None:
         w = f"nodes.{name}.server_tools"
-        if st == "all":
+        # Guardian/pentest/defender tools are governed by the pentest mode ladder, not by a
+        # node override; a server_tools override here would bypass it (docs/config/pentest-policy.md).
+        _type = n.get("role") or (m or {}).get("role")
+        if _type in ("guardian", "pentest", "defender"):
+            errs.append(f"{w}: not allowed for {_type} nodes; tools follow the pentest policy mode "
+                        f"(docs/config/pentest-policy.md), not a node override")
+        elif st == "all":
             pass
         elif isinstance(st, list) and st and all(isinstance(x, str) and x for x in st):
             for t in st:
@@ -313,7 +319,7 @@ def check_alias(g, name, a, errs):
 AGENT_ROLES = ("main", "auxiliary")
 
 MCP_KEYS = {"command", "args", "url", "env_from", "headers_from", "tools", "enabled", "notes"}
-ENV_NAME_RE = __import__("re").compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+ENV_NAME_RE = __import__("re").compile(r"^[A-Z_][A-Z0-9_]*$")  # conventional env var names (CFG-CRED)
 
 def check_agent_mcp(name, mcp, errs):
     for srv, c in (mcp or {}).items():
