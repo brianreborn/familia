@@ -15,6 +15,12 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+@pytest.fixture(autouse=True)
+def _as_miryam(monkeypatch):
+    # These fixtures model miryam's nodes; validate() scopes file/RAM checks to the local host.
+    monkeypatch.setenv("FAMILIA_HOST", "miryam")
+
+
 def _base():
     g = yaml.safe_load(open(os.path.join(ROOT, "graph.yaml")))
     g["_path"] = os.path.join(ROOT, "graph.yaml")
