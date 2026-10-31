@@ -147,7 +147,9 @@ def _win_reserved(name):
                                                     *(f"LPT{i}" for i in range(1, 10))}
 
 
-@pytest.mark.parametrize("name", ["CON", "nul", "Prn", "aux", "com1", "LPT9", "con.d", "coder.", "coder "])
+@pytest.mark.parametrize("name", ["CON", "nul", "Prn", "aux", "com1", "LPT9", "con.d", "coder.", "coder ",
+                                  "COM\u00b9", "COM\u00b2", "com\u00b3", "LPT\u00b9", "LPT\u00b2", "lpt\u00b3.log",
+                                  "CONIN$", "conout$", "CONOUT$.txt"])
 def test_windows_reserved_node_names_rejected(name):
     """Node names become file names (slots/<node>, serve-<node>.log, start.bat units);
     a reserved device name or a trailing dot/space cannot be a Windows file."""
@@ -159,7 +161,7 @@ def test_windows_reserved_node_names_rejected(name):
     assert any(f"nodes.{name}" in m and "Windows" in m for m in e), e
 
 
-@pytest.mark.parametrize("name", ["coder-2", "console", "nullable", "con-x", "comx"])
+@pytest.mark.parametrize("name", ["coder-2", "console", "nullable", "con-x", "comx", "COM0", "LPT10", "conin"])
 def test_ordinary_node_names_not_flagged(name):
     assert not _win_reserved(name)
     x = g(); n = copy.deepcopy(x["nodes"]["coder"]); n["status"] = "planned"; n["port"] = 1 + max(
