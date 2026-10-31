@@ -15,8 +15,8 @@ and preview what `familia start` would do with
 | Fallback when a node is down | `escalation-chain.yaml` | `escalates_to` | escalation proxy falls back to the light node (tests/test_escalation_proxy.py) | unreachable targets are dropped; no target -> `decision: none` |
 
 ## Gotchas the validator now warns about
-- An alias to a node whose **model** role is not chat/coder (e.g. `reasoning`) validates but
-  `familia start` refuses it. `nodes.<n>.role` does not change this; the launcher reads the model role.
+- An alias to a node whose role (`nodes.<n>.role`, else the model role) is not chat, coder, general or reasoning (e.g. `vision`) validates but
+  `familia start` refuses it. chat, coder, general and reasoning nodes are routed as chat.
 - `tool_route` on a node that is itself tool-capable does nothing for tools; add `tool_capable: false`.
 
 ## Not available yet (SPEC in docs/config/routing-spec.md)

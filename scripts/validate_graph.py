@@ -314,7 +314,7 @@ def merge_args(base, extra):
     return out
 
 # Model roles the green-roomz graph-proxy manifest can carry (start_graph.local_topology).
-PROXY_ROUTABLE_ROLES = ("chat", "coder")
+PROXY_ROUTABLE_ROLES = ("chat", "coder", "general", "reasoning")
 
 
 def routing_warnings(graph):
@@ -326,12 +326,12 @@ def routing_warnings(graph):
         n = nodes.get(al.get("node")) if isinstance(al.get("node"), str) else None
         if not n or n.get("status") != "active":
             continue
-        role = (models.get(n.get("model")) or {}).get("role")
         if n.get("embeddings"):
             continue
+        role = node_type(graph, al["node"])
         if role not in PROXY_ROUTABLE_ROLES:
-            out.append(f"aliases.{a}: node {al['node']!r} has model role {role!r}; familia start "
-                       f"refuses it (graph-proxy routes only chat/coder models and embeddings) — "
+            out.append(f"aliases.{a}: node {al['node']!r} has role {role!r}; familia start "
+                       f"refuses it (graph-proxy routes {'/'.join(PROXY_ROUTABLE_ROLES)} and embeddings) — "
                        f"reach it directly on its port or drop the alias")
     for name, n in sorted(nodes.items()):
         if n.get("tool_route") and "server_tools" not in n and tool_capable(graph, name):

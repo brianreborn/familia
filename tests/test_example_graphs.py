@@ -55,12 +55,23 @@ def test_tool_route_on_capable_node_warns():
     assert any("nodes.r.tool_route: ignored" in w for w in vg.WARNINGS)
 
 
-def test_alias_to_reasoning_model_warns_before_start_refuses():
+@pytest.mark.parametrize("model_role,node_role", [("reasoning", None), ("chat", "general")])
+def test_reasoning_and_general_nodes_route_as_chat(model_role, node_role):
     g = load("single-node.yaml")
-    g["models"]["mchat"]["role"] = "reasoning"
+    g["models"]["mchat"]["role"] = model_role
+    if node_role: g["nodes"]["chat"]["role"] = node_role
     assert vg.validate(g, check_files=False)[0] == []
-    assert any(w.startswith("aliases.chat:") and "reasoning" in w for w in vg.WARNINGS)
-    with pytest.raises(start_graph.StartupError, match="only routes chat"):
+    assert not any(w.startswith("aliases.") for w in vg.WARNINGS)
+    routes, _ = aliases_on(g)
+    assert routes == {"chat": "http://127.0.0.1:9001"}
+
+
+def test_alias_to_unroutable_role_warns_before_start_refuses():
+    g = load("single-node.yaml")
+    g["models"]["mchat"]["role"] = "vision"
+    assert vg.validate(g, check_files=False)[0] == []
+    assert any(w.startswith("aliases.chat:") and "vision" in w for w in vg.WARNINGS)
+    with pytest.raises(start_graph.StartupError, match="node role 'vision'"):
         start_graph.local_topology(g, "h1")
 
 
