@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """familia graph router: one OpenAI-compatible endpoint for every common graph shape.
 
-Topologies (docs/routing-graphs.md, examples/routing/):
+Topologies (docs/graph-recipes.md, examples/graphs/router/):
   single      route: node
   pair        two routes, e.g. chat: chat-node, think: reasoning-node
   fallback    route: [primary, backup, ...]          first reachable node answers
@@ -374,7 +374,8 @@ class Router:
         return st, dict(h, **{"X-Familia-Route-Label": label or "<default>"}), raw, who
 
 
-def make_server(cfg, host="127.0.0.1", port=9940):
+def make_server(cfg, host="127.0.0.1", port=9940, api_key=None):
+    """api_key: required on every endpoint except /health (H4 pattern); None = no caller auth (tests)."""
     if not _is_loopback(host):
         raise ConfigError("graph router binds loopback only")
     R = Router(cfg)
@@ -393,10 +394,24 @@ def make_server(cfg, host="127.0.0.1", port=9940):
         def _err(self, st, msg, **extra):
             self._json(st, {"error": {"message": msg, "type": "familia_route_error", **extra}})
 
+        def _authed(self):
+            if api_key is None:
+                return True
+            import familia_auth
+            a = self.headers.get("Authorization") or ""
+            given = a[7:].strip() if a.lower().startswith("bearer ") else (self.headers.get("X-Api-Key") or "").strip()
+            if familia_auth.keys_match(given, api_key):
+                return True
+            n = int(self.headers.get("Content-Length") or 0)
+            if 0 < n <= BODY_LIMIT: self.rfile.read(n)
+            self._err(401, "missing or invalid API key for this graph router (Authorization: Bearer <key>)")
+            return False
+
         def do_GET(self):
             p = urllib.parse.urlparse(self.path).path
             if p in ("/health", "/v1/health"):
                 return self._json(200, {"status": "ok", "routes": len(cfg["routes"])})
+            if not self._authed(): return
             if p == "/v1/models":
                 return self._json(200, {"object": "list", "data": [
                     {"id": r, "object": "model", "owned_by": "familia", "familia": {"type": rt["type"], "kind": rt["kind"]}}
@@ -405,6 +420,7 @@ def make_server(cfg, host="127.0.0.1", port=9940):
 
         def do_POST(self):
             p = urllib.parse.urlparse(self.path).path
+            if not self._authed(): return
             kind = {"/v1/chat/completions": "chat", "/v1/embeddings": "embedding"}.get(p)
             if not kind:
                 return self._err(404, f"unknown path {p}")
@@ -472,6 +488,9 @@ def main(argv=None):
     ap.add_argument("config", help="routes.yaml")
     ap.add_argument("--port", type=int, default=int(os.environ.get("FAMILIA_ROUTER_PORT", "9940")))
     ap.add_argument("--host-id", help="graph host this router runs on (for graph-backed configs)")
+    ap.add_argument("--api-key-file", help="caller key file (default: the per-port instance key "
+                    "~/.config/familia/instances/<port>/api-keys, created 0600 once, never rotated)")
+    ap.add_argument("--no-auth", action="store_true", help="serve without caller auth (loopback dev only)")
     ap.add_argument("--check", action="store_true", help="validate and print the compiled routes, then exit")
     a = ap.parse_args(argv)
     try:
@@ -483,7 +502,17 @@ def main(argv=None):
     for r, rt in sorted(cfg["routes"].items()):
         print(f"graph-router: route {r} [{rt['type']}/{rt['kind']}] -> {', '.join(_refs(rt))}", file=sys.stderr)
     if a.check: return 0
-    srv = make_server(cfg, "127.0.0.1", a.port)
+    key = None
+    if not a.no_auth:
+        import familia_auth
+        path = a.api_key_file or os.environ.get("API_KEY_FILE") or familia_auth.instance_key_file(port=a.port)
+        try:
+            key = familia_auth.load_or_create_key_file(os.path.expanduser(path))
+        except (OSError, familia_auth.MissingKey) as e:
+            print(f"graph-router: ERROR: cannot read or create API key file {path} ({e.__class__.__name__}); not starting",
+                  file=sys.stderr); return 2
+        print(f"graph-router: caller auth on ({path}, {familia_auth.fingerprint(key)})", file=sys.stderr)
+    srv = make_server(cfg, "127.0.0.1", a.port, api_key=key)
     print(f"graph-router: listening on 127.0.0.1:{a.port}", file=sys.stderr)
     try: srv.serve_forever()
     except KeyboardInterrupt: pass

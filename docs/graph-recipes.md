@@ -12,13 +12,75 @@ and preview what `familia start` would do with
 | Light -> heavy chain | `escalation-chain.yaml` | `escalates_to`, `escalation.mode` | `scripts/escalation_proxy.py` (`hermes.sh --escalate`) | suggest/auto works with mock upstreams; green-roomz hookup planned (#39) |
 | Tools on a node | `explicit-tools.yaml` | `server_tools` (list or `all`), `tool_route` + `tool_capable: false` | llama-server `--tools`; nexus forward is PR #251 | works; set `server_tools` explicitly (#264 changes the implicit default to read-only) |
 | Two hosts | `two-host.yaml` | second host, runtime `hosts`, a non-local `transports` entry | each host's own `familia start` | per-host only; aliases to another host are omitted, never proxied |
-| Fallback when a node is down | `escalation-chain.yaml` | `escalates_to` | escalation proxy falls back to the light node (tests/test_escalation_proxy.py) | unreachable targets are dropped; no target -> `decision: none` |
+| Fallback when a node is down | `fallback-list.yaml` | `aliases.<a>.node: [first, backup, ...]` | `scripts/graph_router.py` (started by `familia start` for that gateway) | works; a node is skipped only when unreachable or 502/503 |
+| Escalate light -> heavy | `escalation-chain.yaml` | `escalates_to` | escalation proxy falls back to the light node (tests/test_escalation_proxy.py) | unreachable targets are dropped; no target -> `decision: none` |
+| Remote node in an alias | `two-host.yaml` + `remote: true` | `aliases.<a>.remote: true`, `hosts.<h>.addr`, node `bind` not loopback | `scripts/graph_router.py` | opt-in only; without all three the alias is omitted |
+| Classifier, chain, tool keys | `router/*.yaml` | graph_router routes file (below) | `scripts/graph_router.py` by hand | works; not expressible in graph.yaml yet |
 
 ## Gotchas the validator now warns about
 - An alias to a node whose role (`nodes.<n>.role`, else the model role) is not chat, coder, general or reasoning (e.g. `vision`) validates but
   `familia start` refuses it. chat, coder, general and reasoning nodes are routed as chat.
 - `tool_route` on a node that is itself tool-capable does nothing for tools; add `tool_capable: false`.
 
+## Which gateway process `familia start` runs
+- Every alias is one local node: green-roomz `graph-proxy` (unchanged).
+- Any alias is a list or has a remote member, or `gateways.<g>.router: true`: `scripts/graph_router.py`
+  on the same port. `--dry-run` prints `via graph_router` / `via graph-proxy`.
+- Down node: graph-proxy retries ECONNREFUSED for 180 s before a 502 (measured 181.4 s, green-roomz
+  b2a8eac; the deadline is fixed in its graph-proxy and cannot be set from the manifest).
+  graph_router fails in 3 s max (`FAMILIA_ROUTER_CONNECT_S`; measured 0.002 s for a refused port).
+  Set `router: true` on a gateway to get the bounded behaviour for single-node aliases.
+- graph_router requires a caller key (except `/health`): `Authorization: Bearer <key>` or `X-Api-Key`.
+  The key is the H4 per-port instance key `~/.config/familia/instances/<port>/api-keys`, created 0600 on
+  first start and never rotated (`--api-key-file` overrides; unreadable -> it refuses to start).
+  On the default port 9931 that is the key familia clients already send. The caller key is never
+  forwarded to nodes; tool nodes get their own key.
+
+## graph_router routes files (`examples/graphs/router/`)
+
+```sh
+python3 scripts/graph_router.py examples/graphs/router/fallback.yaml --check   # validate + print routes
+python3 scripts/graph_router.py examples/graphs/router/fallback.yaml --port 9940
+# key: first non-comment line of ~/.config/familia/instances/9940/api-keys
+curl -s 127.0.0.1:9940/v1/chat/completions -H "Authorization: Bearer $KEY" \
+  -d '{"model":"chat","messages":[{"role":"user","content":"hi"}]}'
+```
+
+```yaml
+version: 1
+graph: ../../../graph.yaml   # optional: node names resolve from graph.yaml; its aliases become routes
+nodes:                       # name -> url, or a map
+  a: http://127.0.0.1:8081
+  t: {url: http://127.0.0.1:8082, tools: true}                       # sends t's own key
+  r: {url: http://10.0.0.5:8080, remote: true, key_file: ~/.config/familia/remote-keys/r}
+  e: {url: http://127.0.0.1:8083, kind: embedding}
+routes:                      # omit entirely: every node is its own route
+  single: a
+  fallback: [a, t]                                  # or {fallback: [...]}
+  chain: {chain: [a, {node: t, prompt: "fix: {input}"}, a]}
+  ask: {router: a, routes: {code: t, far: r}, default: a}   # default optional
+```
+
+Defaults: `kind: chat`, `tools: false`, `remote: false`, router `slash: true`. A route may share a
+name only with the node it targets. A chat + reasoning pair is just two routes (or two graph aliases).
+
+| shape | what happens | refused with |
+|---|---|---|
+| single | forwards to the node | 503 unreachable/loading, 504 read timeout |
+| fallback | tries in order; skips a node only if unreachable or 502/503 | 503 `no node reachable` + `tried[]`; a 4xx is returned from the node that sent it |
+| chain | step N's reply is step N+1's user message (`prompt` wraps `{input}`) | 503/502 naming the step; `stream: true` -> 400 |
+| router | `/label text` picks directly; else the router node must answer one exact label | unknown label without `default` -> 502; specialist down -> 503 |
+| remote | any non-loopback url; requires `remote: true` | config error without it |
+| tools | `Authorization: Bearer <node key>`: `key_file`, else the node port's instance key | 503 if no key; nothing is sent |
+
+Always: no/wrong caller key -> 401; unknown route -> 404 listing routes; chat vs embeddings
+mismatch -> 400; a graph alias to a planned or slash-only node -> 409 naming the node. Replies carry
+`X-Familia-Route` and `X-Familia-Node`; chains add `X-Familia-Chain`, routers `X-Familia-Route-Label`.
+Timeouts: `FAMILIA_ROUTER_CONNECT_S` (3), `FAMILIA_ROUTER_TIMEOUT_S` (600). Binds 127.0.0.1 only.
+
 ## Not available yet (SPEC in docs/config/routing-spec.md)
-- An alias naming several nodes with a policy (`competing | tandem | escalate | first-active`), CFG-SPEC-ALIAS-001.
+- Alias policies other than ordered fallback (`competing | tandem | escalate`), CFG-SPEC-ALIAS-001.
+  An ordered list (= `first-active`) works today.
+- Classifier routes and chains declared in graph.yaml (use a router/ routes file).
+- Streaming through chain/router routes.
 - A pipeline (output of node A fed to node B). `councils: mode: cascade` validates but nothing runs it.
