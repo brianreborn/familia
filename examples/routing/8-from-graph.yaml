@@ -1,0 +1,7 @@
+# Graph-backed: node names come from graph.yaml (url from bind/port, remote hosts'
+# addr from hosts.local.yaml); every graph alias is already a route. Planned and
+# slash-only (guardian/pentest/defender) nodes are refused by name, not dropped.
+#   python3 scripts/graph_router.py examples/routing/8-from-graph.yaml --host-id miryam --check
+version: 1
+graph: ../../graph.yaml
+routes: {}
