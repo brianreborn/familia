@@ -51,9 +51,8 @@ def _hostname() -> str:
 
 def _load_graph(path: Path) -> dict:
     try:
-        import yaml
-        with path.open(encoding="utf-8") as f:
-            return yaml.safe_load(f) or {}
+        import familia_yaml  # DUP-01
+        return familia_yaml.load(str(path)) or {}
     except Exception:
         return {}
 

@@ -132,9 +132,9 @@ def main(argv=None):
         help="stderr tag (default self-improve; hermes uses hermes.sh)",
     )
     a = ap.parse_args(argv)
-    import yaml
+    import familia_yaml
 
-    g = yaml.safe_load(open(a.graph)) or {}
+    g = familia_yaml.load(a.graph) or {}  # DUP-01
     g["_path"] = a.graph
     if a.agent and a.agent in SI.pentest_agents(g):
         # Refuse only when something would actually self-improve; a pentest agent with no
