@@ -4,6 +4,14 @@
 # DRAFT — NOT RUN. Needs Brian's explicit approval before it is run as root on angel.
 # Default is DRY RUN. Real run:  sh hvvram-p0-zfs-baseline.sh --apply
 # Rollback:                      sh hvvram-p0-zfs-baseline.sh --rollback --apply
+#
+# Swap layout (Brian 2026-10-31): swap moves to its own encrypted zvol hvv/swap in this pool.
+# KNOWN RISK: FreeBSD swap on a zvol can deadlock under severe memory pressure (ZFS must
+# allocate memory to write pages out). That is why the HDD partition ada0s1b is kept as a
+# GELI-onetime fallback/bridge swap and its fstab line is kept (commented) for quick revert.
+# Persistent zvol swap (fstab/rc) is NOT set here; it needs separate approval. Suggested line:
+#   zfs set org.freebsd:swap=on hvv/swap   # or fstab: /dev/zvol/hvv/swap none swap sw,late 0 0
+#   (the zvol key is ephemeral, so boot needs a keyed create step; see §5.0)
 # Signed: Other Grok Bot ASSIST
 set -eu
 
@@ -12,6 +20,7 @@ ALLOW_MODEL="OCZ-VERTEX2"
 POOL=hvv
 OUT=/var/tmp/hvvram-p0-$(date +%Y%m%dT%H%M%S%z)
 ARC_MAX=$((2*1024*1024*1024)); ARC_MIN=$((512*1024*1024))
+SWAP_SIZE=16G; BRIDGE=ada0s1b; BRIDGE_SERIAL="__HDD_SERIAL__"
 BENCH_SIZE=4g; BENCH_TIME=60            # bounded: ~4 GiB per job, 60 s cap
 APPLY=0; MODE=build
 for a in "$@"; do case $a in --apply) APPLY=1;; --rollback) MODE=rollback;; *) echo "unknown arg $a"; exit 2;; esac; done
@@ -21,7 +30,7 @@ run(){ echo "+ $*"; if [ $APPLY -eq 1 ]; then "$@"; fi; }
 [ "$(id -u)" -eq 0 ] || [ $APPLY -eq 0 ] || die "must be root for --apply"
 mkdir -p "$OUT"   # tip: pipe through `tee $OUT/run.log`
 echo "mode=$MODE apply=$APPLY out=$OUT"
-case $ALLOW_SERIAL in __*) die "ALLOW_SERIAL is a placeholder; use the familia-private copy";; esac
+case "$ALLOW_SERIAL$BRIDGE_SERIAL" in *__*) die "serial placeholder present; use the familia-private copy";; esac
 
 # --- resolve the disk by serial (never by adaN) ---
 DEV=""
@@ -45,10 +54,12 @@ OTHERPARTS=$(gpart show "$DEV" 2>/dev/null | grep -v -e 'hvv0' -e '^$' -e '=>' -
 if [ $MODE = rollback ]; then
   echo "== ROLLBACK: destroy pool, restore fstab, re-enable swap on $DEV =="
   if [ $APPLY -eq 1 ]; then printf 'Type ROLLBACK %s: ' "$ALLOW_SERIAL"; read r; [ "$r" = "ROLLBACK $ALLOW_SERIAL" ] || die "not confirmed"; fi
+  swapinfo | grep -q "zvol/$POOL/swap" && run swapoff "/dev/zvol/$POOL/swap"
   zpool list "$POOL" >/dev/null 2>&1 && run zpool destroy "$POOL"
   run gpart destroy -F "$DEV"
   B=$(ls -t /etc/fstab.hvvram-p0.* 2>/dev/null | head -1); [ -n "$B" ] && run cp -p "$B" /etc/fstab
   run sysctl vfs.zfs.arc.max=0 vfs.zfs.arc.min=0     # 0 = back to auto
+  swapinfo | grep -q "/dev/$BRIDGE.eli" && run swapoff "/dev/$BRIDGE.eli"
   run swapon "/dev/$DEV"; swapinfo -h; exit 0
 fi
 
@@ -69,6 +80,18 @@ if [ $APPLY -eq 1 ]; then
   [ "$reply" = "WIPE $ALLOW_SERIAL" ] || die "not confirmed"
 fi
 
+# --- bridge swap on HDD (GELI onetime) so there is no no-swap window; abort before touching $DEV ---
+BD=${BRIDGE%%s*}
+[ "$(geom disk list "$BD" | awk '/ident:/{print $2}')" = "$BRIDGE_SERIAL" ] || die "bridge disk $BD serial mismatch"
+[ -c "/dev/$BRIDGE" ] || die "/dev/$BRIDGE missing"
+gpart show "$BD" | grep -q "freebsd-swap" || die "no freebsd-swap partition on $BD"
+mount -p | awk '{print $1}' | grep -q "/dev/$BRIDGE" && die "$BRIDGE is mounted"
+if [ $APPLY -eq 1 ]; then
+  [ -c "/dev/$BRIDGE.eli" ] || geli onetime -e AES-XTS -l 256 -d "$BRIDGE" || die "geli onetime failed; $DEV untouched"
+  swapon "/dev/$BRIDGE.eli" || die "bridge swapon failed; $DEV untouched"
+  swapinfo | grep -q "$BRIDGE.eli" || die "bridge swap not active; $DEV untouched"
+else echo "+ geli onetime -d $BRIDGE && swapon /dev/$BRIDGE.eli"; fi
+
 # --- swap off + fstab (backup first) ---
 swapinfo | grep -q "/dev/$DEV" && run swapoff "/dev/$DEV"
 run cp -p /etc/fstab "/etc/fstab.hvvram-p0.$(date +%Y%m%d%H%M%S)"
@@ -87,6 +110,14 @@ for ds in kv:64K spill:1M; do n=${ds%%:*}; rs=${ds#*:}
   [ $APPLY -eq 1 ] && dd if=/dev/random bs=32 count=1 2>/dev/null | zfs create $EK -o recordsize=$rs \
       -o primarycache=metadata -o secondarycache=none -o logbias=throughput "$POOL/$n"
 done
+# swap zvol: own area, 4K blocks, encrypted one-time key, not compressed
+echo "+ ephemeral key -> zfs create -V $SWAP_SIZE $POOL/swap"
+[ $APPLY -eq 1 ] && dd if=/dev/random bs=32 count=1 2>/dev/null | zfs create -V $SWAP_SIZE $EK \
+    -o volblocksize=4K -o compression=off -o sync=always -o primarycache=metadata \
+    -o secondarycache=none -o logbias=throughput "$POOL/swap"
+run swapon "/dev/zvol/$POOL/swap"
+[ $APPLY -eq 1 ] && { swapinfo | grep -q "zvol/$POOL/swap" || die "zvol swap not active; bridge stays on"; }
+swapinfo | grep -q "$BRIDGE.eli" && run swapoff "/dev/$BRIDGE.eli"   # fstab line stays commented
 run zfs create -o sync=disabled -o recordsize=1M "$POOL/scratch"   # scratch: rebuilt at boot only if separately approved
 # ARC: runtime only, not persisted (loader.conf change needs separate approval)
 run sysctl vfs.zfs.arc.max=$ARC_MAX vfs.zfs.arc.min=$ARC_MIN
