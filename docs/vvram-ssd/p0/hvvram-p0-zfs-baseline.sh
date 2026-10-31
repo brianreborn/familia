@@ -6,8 +6,9 @@
 # Rollback:                      sh hvvram-p0-zfs-baseline.sh --rollback --apply
 #
 # Swap layout (Brian 2026-10-31): swap moves to its own encrypted zvol hvv/swap in this pool.
-# The HDD partition ada0s1b is used only as a GELI-onetime bridge swap while ada1 (the old
-# swap) is wiped; it is turned off once zvol swap is active, and its fstab line stays commented.
+# The HDD partition ada0s1b becomes permanent GELI-onetime swap (Brian 2026-10-31): it bridges
+# the ada1 wipe and then stays on alongside the zvol. fstab gets `/dev/ada0s1b.eli none swap sw 0 0`.
+# FreeBSD has no swap priorities, so both devices are simply active.
 # Persistent zvol swap (fstab/rc) is NOT set here; it needs separate approval. Suggested line:
 #   zfs set org.freebsd:swap=on hvv/swap   # or fstab: /dev/zvol/hvv/swap none swap sw,late 0 0
 #   (the zvol key is ephemeral, so boot needs a keyed create step; see §5.0)
@@ -94,7 +95,10 @@ else echo "+ geli onetime -d $BRIDGE && swapon /dev/$BRIDGE.eli"; fi
 # --- swap off + fstab (backup first) ---
 swapinfo | grep -q "/dev/$DEV" && run swapoff "/dev/$DEV"
 run cp -p /etc/fstab "/etc/fstab.hvvram-p0.$(date +%Y%m%d%H%M%S)"
-[ $APPLY -eq 1 ] && sed -i '' "s|^/dev/$DEV[[:space:]].*swap.*|#&  # disabled by hvvram-p0|" /etc/fstab
+if [ $APPLY -eq 1 ]; then
+  sed -i '' -e "s|^/dev/$DEV[[:space:]].*swap.*|#&  # disabled by hvvram-p0|" -e "/^#*\/dev\/$BRIDGE[[:space:]].*swap/d" /etc/fstab
+  grep -q "^/dev/$BRIDGE.eli" /etc/fstab || echo "/dev/$BRIDGE.eli none swap sw 0 0" >> /etc/fstab
+fi
 
 # --- partition + pool (GPT label, never adaN) ---
 run gpart create -s gpt "$DEV"
@@ -116,7 +120,6 @@ echo "+ ephemeral key -> zfs create -V $SWAP_SIZE $POOL/swap"
     -o secondarycache=none -o logbias=throughput "$POOL/swap"
 run swapon "/dev/zvol/$POOL/swap"
 [ $APPLY -eq 1 ] && { swapinfo | grep -q "zvol/$POOL/swap" || die "zvol swap not active; bridge swap left on"; }
-swapinfo | grep -q "$BRIDGE.eli" && run swapoff "/dev/$BRIDGE.eli"   # fstab line stays commented
 run zfs create -o sync=disabled -o recordsize=1M "$POOL/scratch"   # scratch: rebuilt at boot only if separately approved
 # ARC: runtime only, not persisted (loader.conf change needs separate approval)
 run sysctl vfs.zfs.arc.max=$ARC_MAX vfs.zfs.arc.min=$ARC_MIN

@@ -118,7 +118,7 @@ Cost key: S < 1 agent-day, M 1–5 days, L 1–3 weeks, **XL/HUGE** = open-ended
 - **Readers** treat EIO/checksum errors as a cache miss, never fall back to unverified data. `hvv/weights`: `readonly=on` after population, `exec=off setuid=off devices=off`, GGUF hash checked on load.
 - **Persistent changes** (loader.conf, sysctl, zpool, trim, powerd, BIOS) are each approved separately, live in one `/boot/loader.conf.d/hvv.conf` + `sysctl.conf.d` snippet with an undo script, and are recorded before → after (`sysctl -a` snapshot). BIOS changes need a person at the machine. CPU mitigations stay at default.
 - **Tunables:** verify every name with `sysctl -d` on 15.1 and fail on unknown names. Use `vfs.zfs.arc.max/min`. `vm.overcommit=0` and `pm_level=0` are defaults (not tuning); `pageout_oom_seq=120` *delays* OOM; `vfs.zfs.trim.queue_limit` likely doesn't exist; `pm_level`/`write_cache` are loader-only; check TSC-low in `kern.timecounter.choice`. Drop `shm_use_phys`.
-- **Swap (Brian 2026-10-31):** swap gets its own zvol `hvv/swap` in the pool (16G default; volblocksize=4K, compression=off, sync=always, primarycache=metadata, logbias=throughput, one-time encryption key). The HDD `ada0s1b` is used only as a GELI-onetime bridge swap while ada1 (the old swap) is wiped, then turned off once zvol swap is active. Persistent zvol swap (fstab/rc) is a separate approval.
+- **Swap (Brian 2026-10-31):** swap gets its own zvol `hvv/swap` in the pool (16G default; volblocksize=4K, compression=off, sync=always, primarycache=metadata, logbias=throughput, one-time encryption key). The HDD `ada0s1b` also becomes permanent GELI-onetime swap (`/dev/ada0s1b.eli none swap sw 0 0` in fstab): it covers the ada1 wipe and then stays on alongside the zvol (FreeBSD has no swap priorities, so both are active). Persistent zvol swap (fstab/rc) is a separate approval.
 - **A/B in P0:** `primarycache=all` vs `metadata` and recordsize 128K vs 1M under real mmap faulting (1M records with metadata-only caching may re-read 1 MiB per 4 KiB fault); lz4 on vs off on top of SandForce compression; ashift 12 vs 13 means creating the pool twice; autotrim **or** periodic trim, not both. The L2ARC "HDD pool" alternative is dropped (swap is a raw partition). Pin llama mmap flags. BENCH JSONL in C locale, UTC offsets, BIOS and powerd state recorded.
 
 The table and settings below are the **pre-review starting point**; where 5.0 conflicts, 5.0 wins.
@@ -170,7 +170,7 @@ zpool create -o ashift=12 -o autotrim=on -O atime=off -O xattr=sa \
 **FreeBSD kernel / sysctl:**
 - `hint.ahcich.N.pm_level=0`: disable SATA link power management (ALPM adds wake latency).
 - `kern.cam.ada.N.write_cache=1`: SandForce has no power-loss capacitor. That's acceptable only because the tier is scratch.
-- Swap: its own encrypted zvol `hvv/swap` in the pool (see §5.0); HDD only as bridge swap during the P0 wipe.
+- Swap: its own encrypted zvol `hvv/swap` in the pool (see §5.0); plus permanent GELI-onetime swap on HDD `ada0s1b`.
 - `vm.pageout_oom_seq=120` and `vm.overcommit=0` so OOM shows up in `dmesg_oom` instead of thrashing.
 - `kern.ipc.shm_use_phys=1` if P2 uses SysV/POSIX shm for L1.
 - `machdep.hyperthreading_allowed` n/a (4C/4T)
