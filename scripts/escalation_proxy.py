@@ -25,6 +25,17 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import escalation as E
 import familia_auth  # noqa: E402
 
+def tool_target(g, name):
+    """Validated graph `tool_route` target for `name` (validate_graph.tool_route), else None.
+    Fails safe to None on any graph shape the validator cannot evaluate."""
+    if not (((g.get("nodes") or {}).get(name) or {}).get("tool_route")):
+        return None
+    try:
+        import validate_graph as VG
+        return VG.tool_route(g, name)
+    except Exception:
+        return None
+
 STATE = os.path.join(E.ROOT, ".cache", "familia")
 PENDING = os.path.join(STATE, "escalation-pending.json")
 ACCEPT = os.path.join(STATE, "escalation-accept.json")
@@ -157,6 +168,13 @@ class Escalator:
     def rewrite(self, body):
         self.sig.observe_request(body)
         url, alias = self.upstream()
+        # Tool forward (#243 runtime half): a tool-bearing request on a node with a validated
+        # tool_route goes whole (chat + tools loop) to the target, which runs under its own
+        # tool_policy/--tools. Unreachable target -> stay put (no tools executed off-policy).
+        tt = tool_target(self.g, self.current) if body.get("tools") else None
+        if tt:
+            turl = node_url(self.g, tt, self.local_host)
+            if turl: url, alias = turl, alias_for(self.g, tt)
         body = dict(body, model=alias)
         if self.handoff_next:
             msgs = body.get("messages") or []
