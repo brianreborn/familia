@@ -105,8 +105,53 @@ def test_pickle_wide_frame(tmp_path, data):
     rows[4]["mid"] = float("nan")  # missing cached score -> model skipped for that row
     p = tmp_path / "routerbench_0shot.pkl"
     pd.DataFrame(rows).to_pickle(p)
-    recs, models = RB.load(str(p))
+    recs, models = RB.load(str(p), allow_pickle=True)
     assert models == data[1] and "mid" not in recs[4]["scores"]
+    assert RB.main(["--data", str(p), "--allow-pickle", "--brief"]) == 0
+
+
+def _write_pickle(tmp_path):
+    pd = pytest.importorskip("pandas")
+    rows = [json.loads(l) for l in FIX.read_text().splitlines()]
+    p = tmp_path / "rb.pickle"
+    pd.DataFrame(rows).to_pickle(p)
+    return p
+
+
+def test_pickle_refused_by_default(tmp_path):
+    p = _write_pickle(tmp_path)
+    with pytest.raises(SystemExit, match="parquet, JSONL or CSV"):
+        RB.load(str(p))
+    with pytest.raises(SystemExit, match="refusing to load pickle"):
+        RB.main(["--data", str(p), "--brief"])
+
+
+def test_env_var_cannot_enable_pickle(tmp_path, monkeypatch):
+    p = _write_pickle(tmp_path)
+    monkeypatch.setenv(RB.DATA_ENV, str(p))
+    for k in ("ROUTERBENCH_ALLOW_PICKLE", "ALLOW_PICKLE"):
+        monkeypatch.setenv(k, "1")
+    with pytest.raises(SystemExit, match="refusing to load pickle"):
+        RB.main(["--brief"])
+    with pytest.raises(SystemExit, match="refusing to load pickle"):
+        RB.load()
+
+
+def test_pickle_to_parquet_requires_flag(tmp_path):
+    import routerbench_pickle_to_parquet as C
+    p = _write_pickle(tmp_path)
+    with pytest.raises(SystemExit, match="--allow-pickle"):
+        C.main([str(p)])
+    assert not p.with_suffix(".parquet").exists()
+
+
+def test_pickle_to_parquet_converter(tmp_path):
+    pytest.importorskip("pyarrow")
+    import routerbench_pickle_to_parquet as C
+    p = _write_pickle(tmp_path)
+    assert C.main([str(p), "--allow-pickle"]) == 0
+    recs, models = RB.load(str(p.with_suffix(".parquet")))
+    assert models == RB.load(str(FIX))[1] and len(recs) == len(RB.load(str(FIX))[0])
 
 
 def test_cli(capsys):
