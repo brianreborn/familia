@@ -12,24 +12,29 @@ START_BAT = os.path.join(ROOT, "scripts", "windows", "start.bat")
 STUB = "#!/usr/bin/env python3\nimport json, os, sys\njson.dump(sys.argv[1:], open(os.environ['STUB_OUT'], 'w'))\n"
 
 
-def _render_launcher(tmp_path):
-    src = open(INSTALL, encoding="utf-8").read()
+LINUX_INSTALL = os.path.join(ROOT, "install", "linux", "install.sh")
+
+
+def _render_launcher(tmp_path, kind="termux"):
+    src = open(INSTALL if kind == "termux" else LINUX_INSTALL, encoding="utf-8").read()
     m = re.search(r'cat > "\$LAUNCH" <<EOS\n(.*?)\nEOS\n', src, re.S)
     assert m, "launcher heredoc not found"
-    body = m.group(1)
     out = tmp_path / "familia-start"
-    script = f'cat > "$1" <<EOS\n{body}\nEOS\n'
+    script = f'cat > "$1" <<EOS\n{m.group(1)}\nEOS\n'
     subprocess.run(["sh", "-c", script, "sh", str(out)], check=True,
-                   env=dict(os.environ, PREFIX_DIR=str(tmp_path / "pfx"), VKDIR=str(tmp_path / "vk")))
+                   env=dict(os.environ, PREFIX_DIR=str(tmp_path / "pfx"), VKDIR=str(tmp_path / "vk"),
+                            PREFIX=str(tmp_path / "pfx")))
     return out
 
 
-@pytest.fixture
-def launcher(tmp_path):
+@pytest.fixture(params=["termux", "linux"])
+def launcher(tmp_path, request):
     if os.name != "posix": pytest.skip("POSIX sh")
-    l = _render_launcher(tmp_path)
+    l = _render_launcher(tmp_path, request.param)
     bindir = tmp_path / "bin"; bindir.mkdir()
     (bindir / "llama-server").write_text(STUB); (bindir / "llama-server").chmod(0o755)
+    rt = tmp_path / "pfx" / "runtime" / "current"; rt.mkdir(parents=True)      # linux: $PREFIX runtime
+    (rt / "llama-server").write_text(STUB); (rt / "llama-server").chmod(0o755)
     model = tmp_path / "my model ü.gguf"; model.write_bytes(b"GGUF")
     cwd = tmp_path / "cwd"; cwd.mkdir()
     for decoy in ("a.gguf", "b.gguf", "starX", "zz"): (cwd / decoy).write_bytes(b"")
@@ -71,10 +76,49 @@ def test_launcher_no_extra(launcher):
     assert launcher() == []
 
 
-def test_launcher_has_no_unquoted_extra_expansion():
-    src = open(INSTALL, encoding="utf-8").read()
-    assert not re.search(r'(?<!")\\\$\{FAMILIA_EXTRA:-\}(?!")', src.split("eval")[-1].split("\n", 1)[1])
-    assert '"\\$@"' in src
+@pytest.mark.parametrize("path", [INSTALL, LINUX_INSTALL], ids=["termux", "linux"])
+def test_launcher_has_no_unquoted_extra_expansion(path):
+    body = re.search(r'cat > "\$LAUNCH" <<EOS\n(.*?)\nEOS\n', open(path, encoding="utf-8").read(), re.S).group(1)
+    code = [l for l in body.splitlines() if not l.lstrip().startswith("#")]
+    assert not any(re.search(r'(?<!")\\\$\{FAMILIA_EXTRA:-\}(?!")', l) for l in code if "eval" not in l)
+    assert code[-1].startswith("exec ") and code[-1].endswith('"\\$@"')
+
+
+@pytest.mark.parametrize("path", [INSTALL, LINUX_INSTALL, os.path.join(ROOT, "scripts", "serve.sh")],
+                         ids=["termux", "linux", "serve.sh"])
+def test_extra_args_carry_shlex_join_warning(path):
+    src = open(path, encoding="utf-8").read()
+    assert "graph.yaml or the HUD without shlex.join" in src
+
+
+def _unit():
+    src = open(LINUX_INSTALL, encoding="utf-8").read()
+    return re.search(r'cat > "\$UNIT" <<EOS\n(.*?)\nEOS\n', src, re.S).group(1)
+
+
+def test_systemd_unit_does_not_put_extra_in_execstart():
+    """FAMILIA_EXTRA reaches the launcher only via EnvironmentFile; ExecStart has no $FAMILIA_EXTRA,
+    so systemd's own ExecStart word splitting / $VAR expansion never touches it."""
+    unit = _unit()
+    exec_line = next(l for l in unit.splitlines() if l.startswith("ExecStart="))
+    assert exec_line == "ExecStart=$LAUNCH" and "FAMILIA_EXTRA" not in unit
+    assert "EnvironmentFile=-%h/.config/familia/node.env" in unit
+
+
+def _systemd_env_value(raw):
+    """systemd EnvironmentFile= value rules (simplified): a value wholly wrapped in "..." or '...'
+    loses that pair; inside double quotes backslash escapes are removed."""
+    if len(raw) >= 2 and raw[0] == raw[-1] == '"':
+        return re.sub(r'\\(.)', r'\1', raw[1:-1])
+    if len(raw) >= 2 and raw[0] == raw[-1] == "'":
+        return raw[1:-1]
+    return raw
+
+
+@pytest.mark.parametrize("raw", ["--alias 'my model' --x \"a b\"", "\"--alias 'my model' --x \\\"a b\\\"\""])
+def test_node_env_line_as_systemd_delivers_it(launcher, raw):
+    """What node.env says after systemd's quote handling still yields the intended argv."""
+    assert launcher(extra=_systemd_env_value(raw)) == ["--alias", "my model", "--x", "a b"]
 
 
 # ---- Windows start.bat: static checks only (cmd.exe semantics, not executed) ----------------
