@@ -1,8 +1,12 @@
 # HVVRAM design-review package (pre-build)
 
-— Other Grok Bot ASSIST · executor · 2026-10-31 (PT)
+— Other Grok Bot ASSIST · executor · 2026-10-31 (PT) · rev 3 (reviewer objections folded in)
 
-**Status: for review. Nothing gets built, loaded, or installed until Brian approves each phase.** SSD special-firmware work is **deferred** (see §6).
+**Status: for review. Nothing gets built, loaded, or installed until Brian approves each phase.** Firmware with on-drive processing is **phase PF, right after the P0 ZFS baseline** (see §6).
+
+**Resources:** HVVRAM is critical but runs alongside other work. It never blocks a pre-release and never takes over all dev machines or reviewers: when they compete, HVVRAM yields to pre-release work.
+
+**Hardware locations:** this doc makes no inventory claims. Parts move. Every hardware-dependent step starts with a fresh probe of the live host (`pciconf -lv`, `sysctl hw.model hw.physmem`, `camcontrol devlist`, `geom disk list`, `dmesg`), and the result goes in that step's log.
 
 ## 1. Sources, newest first
 
@@ -54,23 +58,39 @@ The current ABI exposes 6 ioctls. Four of them encode Stage 3/4 hardware that do
 
 That's 5–7 calls. Everything else (PLL, gate, IRQ, DMA_POST) moves to an `nvso` "lab" ABI that isn't on the critical path.
 
+### 3.1 API hardening (from Senior Dev, Bootstraps, Platform, Boundary reviews)
+- **Count:** the five rows above plus `hv_version()` and `hv_revoke()` = 7 calls.
+- **Errors, all-or-nothing:** every call returns 0 or an errno: `EINVAL` (bad/unknown flag or enum, unaligned, `len==0`, `off+len` overflow checked with overflow builtins, out of region), `EBUSY` (conflicting owner), `EAGAIN`/`ETIMEDOUT` (contended, with an optional timeout), `ENOSPC` (tier full), `ESTALE` (generation changed), `EPERM` (not the owner), `EINTR` (signal; nothing changed). A transition never leaves a range half-moved; the doc states the state after every failure. `hv_place` reports its result via an out-param and `hv_stats`.
+- **Lifetime and owner-death release:** ownership is tied to a handle (fd or region object). Close, exit or signal death releases every range the handle owns. `hv_revoke` lets the region owner reclaim; optional lease timeouts. Fork: handles are not inherited (`O_CLOEXEC`-like); a child must reacquire.
+- **Versioning:** `hv_version()` / `HVIOC_GETINFO` returns ABI, tiers, features. Every struct carries size + version; unknown flags are rejected, never ignored.
+- **N-ary state:** replace the 2-bit page state with a versioned state word: state, owner id, tier, generation counter, migrating bit, updated by CAS (the generation also stops ABA). Shared supports several readers.
+- **Concurrency:** page/region alignment, overlap rules, CAS ordering across tiers, acquire/release memory ordering after `hv_acquire` returns, plus a fence for GPU visibility. A state-transition table lists illegal transitions → error.
+- **Caller isolation:** the principal is the handle from `open()`; regions belong to the creating cred; no global names. `hv_stats` is per caller; global stats are root-only (timing side channel). Tier files are opened with `openat` under a dirfd, `O_NOFOLLOW|O_CREAT|O_EXCL`, generated ids only, mode 0600; one tier root with strict `${}` expansion so a missing variable never becomes an empty path. No SysV shm (`shm_use_phys` dropped); use `shm_open(SHM_ANON)` with fd passing.
+- **Trust boundary:** P2's userspace directory is **advisory/cooperative only**; it is never the only thing protecting a page. Enforcement comes only in P3/P4.
+- **:9931 per-instance key:** hv calls are in-process library calls from the llama runtime only, with no network/RPC surface. If one is ever added, it sits behind the familia :9931 per-instance key, forwarded on every hop (including recursive `operator()`), compared in constant time, fail-closed. No field derived from model output ever reaches `hv_*` arguments (no region names, paths or tiers from model text).
+- **Lab ABI:** PLL/gate/IRQ/DMA_POST move to a separate module or are compiled out by default; when present they return `ENODEV`/`EOPNOTSUPP` unless loader tunable `hw.nvso.lab=1`, node mode 0600 root. No silent success.
+- **Host scope:** FreeBSD first. Linux (RLIMIT_MEMLOCK), Windows (VirtualLock) and Termux/SELinux are out of scope until named.
+
 ## 4. Phases, decision points, and rough cost
 
 Cost key: S < 1 agent-day, M 1–5 days, L 1–3 weeks, **XL/HUGE** = open-ended research.
 
-| Phase | Deliverable | Kernel change? | Cost | Gate / Brian decision |
-|---|---|---|---|---|
-| **P0** Baseline | Stage-0 BENCH JSONL on angel: Nanbeige mmap + spill, plus the ZFS SSD tier from §5 vs the HDD | No (pool creation needs root, delivered as a script) | S–M | **D0:** approve the Vertex 2 zpool creation (destroys data on that disk) and bench window |
-| **P1** Soft ABI fix | ABI 3 nvso (defects above), negative tests, kldload in a **bhyve/QEMU FreeBSD 15.1 VM on a LAN host**, never on angel first | Yes, kmod only, no VM/pmap | S | **D1:** approve the KERNEL-REVIEW.md diff, then the VM test, then (separately) kldload on angel |
-| **P2** Userspace directory + FS tier | `libhvv`: lock-free directory (per-page 2-bit state, atomics), L1↔L2 migration via files on ZFS, `mlock`/`msync` barriers; hooks for llama KV/weights | No | M–L (~2–3k LOC) | **D2:** approve the API in §3 and which workload goes first (KV cache recommended) |
-| **P3** Kernel pager | Fault-driven tiering: managed `cdev_pager`/`OBJT_MGTDEVICE` VM object, ownership in the vm_page layer | **Yes: VM/pmap, high risk** | L | **D3:** separate kernel review; VM-only testing for weeks first |
-| **P4** IOMMU enforcement | Tags in VT-d PTE bits 53:52, permission flips + IOTLB invalidation via FreeBSD DMAR (`sys/x86/iommu`) | **Yes: DMAR driver** | **HUGE** ⚠ | **D4:** see blockers below |
-| **P5** Async invalidation co-pilot | Dedicated core drains the invalidation queue | Yes | M (after P4) | with D4 |
-| Deferred | SSD custom firmware (Vertex 2 SandForce SF-1222) | FW | **HUGE** ⚠ | deferred per Brian |
-| Deferred | PSP/CSME off-load | FW/security | **HUGE** ⚠, security-sensitive | recommend dropping |
-| Deferred | Stage 4 SO domains (silicon/FPGA) | — | **HUGE** | paper only |
+| Phase | Deliverable | Kernel change? | Cost | Gate / Brian decision | Exit / kill / rollback |
+|---|---|---|---|---|---|
+| **P0** ZFS baseline | Live-host probe; stock-firmware raw bench + SMART + identity dump; ZFS tier from §5 vs HDD; smaller model first, `rctl` memory cap | No (pool creation by a reviewed root script) | **M** | **D0:** wipe-by-serial (§5.0), bench window, each persistent change approved separately | **Go/no-go for the project:** if KV spill on the SSD doesn't beat recompute/HDD by a set margin, stop before P2. Rollback: `zpool destroy`, revert script |
+| **PF** Firmware with on-drive processing | §6 sub-phases PF-sel → PF0 (emulated NVMe) → PF1 donor → PF2 target | FW + host command channel | **HUGE ⚠** (many months) | **D-PF:** the 8 pre-flash gates in §6 | Kill criteria in §6 |
+| **P1** Soft ABI fix | ABI 3 nvso, negative tests + fuzz, kldload in an INVARIANTS/WITNESS FreeBSD 15.1 VM on an idle LAN host, never on angel first | kmod only | **M** (VM image, harness, 1000× loop) | **D1:** KERNEL-REVIEW.md diff → VM test → separately kldload on angel | Rollback `kldunload`; no loader.conf/devd/rc autoload |
+| **P2** Userspace directory + FS tier | `libhvv` (§3.1), KV cache first; llama.cpp patch costed separately on a pinned version | No | **L** (+ model checker / stress harness for the lock-free code) | **D2** API + **D2-sec** security review (first multi-process surface) | Correctness gate before D2 |
+| **P3a** Read-only pager spike | `cdev_pager`, no ownership | VM | L | after D4 | |
+| **P3** Kernel pager | Fault-driven tiering, ownership in vm_page | **VM/pmap, high risk** | **XL/HUGE ⚠**, needs a FreeBSD VM expert | **D3** blocked until D4 | weeks VM-only first |
+| **P4** IOMMU enforcement | Tripwire only (see below); PTE bits 53:52 must be checked against VT-d spec and `sys/x86/iommu` users | DMAR | **XL/HUGE ⚠** | **D4** decided **before P2 design** | |
+| **P5** Async invalidation | co-pilot core | Yes | M, contingent on P4 | with D4 | |
+| Dropped | PSP/CSME off-load | — | — | recommend dropping (TCB we can't audit) | |
+| Paper only | Stage 4 SO domains | — | HUGE | — | |
 
-**⚠ P4 feasibility, revised 2026-10-31.** An earlier revision wrongly said the G84 was in a separate Athlon II box. **Per Brian, the G84 (GeForce 8600 GT) is in angel**, and angel's i5-4570 supports VT-d. See LESSONS-LEARNED `L-hostloc`. **Re-probe angel (`pciconf -lv`, `sysctl hw.model`, `dmesg`) before any test, since parts move.**
+**Order:** P0 → PF-sel (cheap) → P1 (parallel, idle LAN host) → D4 → PF0… → P2 (KV first) → P3a → P3/P4 only if D4 says yes. Total: many months, not weeks.
+
+**⚠ P4 feasibility.** Brian said on 2026-10-31 that the G84 is in angel. That is a hint, not an inventory claim: re-probe before any test (see header). Fault handling and what happens to pages owned by a dead process go in the P3/P4 review docs.
 
 - **No longer a blocker:** the "wrong box" problem is gone. VT-d and the GPU are in the same machine.
 - **Still the main risk:** the closed nvidia-340 FreeBSD kmod.
@@ -88,9 +108,21 @@ Cost key: S < 1 agent-day, M 1–5 days, L 1–3 weeks, **XL/HUGE** = open-ended
 **Hardware facts:**
 - The OCZ Vertex 2 uses a SandForce SF-1222 controller over SATA 3 Gb/s.
 - SandForce compresses internally, so incompressible data (quantised GGUF weights) runs slower than vendor numbers.
-- angel: i5-4570 (4C/4T, Haswell, VT-d capable), 24 GiB, FreeBSD 15.1, **GeForce 8600 GT (G84) installed**, swap on HDD. (Brian, 2026-10-31; re-probe before any test.)
+- Target host: whatever the live probe shows. Last reported (hint only, not inventory): Haswell i5 with VT-d, ~24 GiB, FreeBSD 15.1, G84, swap on HDD.
 
-**Example performance (expected ranges, NOT measured; P0 measures them):**
+### 5.0 Safety rules for P0 (from all four reviews)
+- **Wipe by serial allowlist.** The D0 root script takes the drive **serial + model** Brian supplies, resolves the device via `camcontrol identify` / `geom disk list`, and refuses if: the serial isn't on the allowlist, it is the boot disk, it is mounted, it is in any pool, or it holds partitions/labels not on the allowlist. Dry-run by default, typed confirmation, then GPT-partition and use `gpt/hvv0`, never `adaN`. The script is reviewed before D0, not "to be supplied".
+- **Archive first:** stock FW rev, `camcontrol identify`, SMART (wear/life + reallocated) before and after; write budget per bench; abort on wear threshold.
+- **Encryption:** KV/spill hold prompts and outputs. `hvv/kv` and `hvv/spill` use `encryption=aes-256-gcm, keyformat=raw` with a per-boot ephemeral key (reboot = crypto-erase). Swap on the HDD uses GELI onetime (`.eli`). No plaintext KV on any tier. BENCH logs are classified and scrubbed of prompts.
+- **sync:** `sync=disabled` only on a dataset that is pure scratch **and** wiped/recreated at boot. `hvv/kv` stays `sync=standard` until P2 has a persisted pool-generation id checked at startup. On a single no-PLP SandForce disk a power cut can lose the whole pool, so `hvv/logs` lives on the OS disk/HDD, not this pool, and `write_cache=1` is bench-only.
+- **Readers** treat EIO/checksum errors as a cache miss, never fall back to unverified data. `hvv/weights`: `readonly=on` after population, `exec=off setuid=off devices=off`, GGUF hash checked on load.
+- **Persistent changes** (loader.conf, sysctl, zpool, trim, powerd, BIOS) are each approved separately, live in one `/boot/loader.conf.d/hvv.conf` + `sysctl.conf.d` snippet with an undo script, and are recorded before → after (`sysctl -a` snapshot). BIOS changes need a person at the machine. CPU mitigations stay at default.
+- **Tunables:** verify every name with `sysctl -d` on 15.1 and fail on unknown names. Use `vfs.zfs.arc.max/min`. `vm.overcommit=0` and `pm_level=0` are defaults (not tuning); `pageout_oom_seq=120` *delays* OOM; `vfs.zfs.trim.queue_limit` likely doesn't exist; `pm_level`/`write_cache` are loader-only; check TSC-low in `kern.timecounter.choice`. Drop `shm_use_phys`.
+- **A/B in P0:** `primarycache=all` vs `metadata` and recordsize 128K vs 1M under real mmap faulting (1M records with metadata-only caching may re-read 1 MiB per 4 KiB fault); lz4 on vs off on top of SandForce compression; ashift 12 vs 13 means creating the pool twice; autotrim **or** periodic trim, not both. The L2ARC "HDD pool" alternative is dropped (swap is a raw partition). Pin llama mmap flags. BENCH JSONL in C locale, UTC offsets, BIOS and powerd state recorded.
+
+The table and settings below are the **pre-review starting point**; where 5.0 conflicts, 5.0 wins.
+
+**Example performance (estimates only, NOT measured; P0 measures them):**
 
 | Workload | Raw Vertex 2 (incompressible) | ZFS dataset as tuned below | HDD (7.2k) for contrast |
 |---|---|---|---|
@@ -116,9 +148,9 @@ zpool create -o ashift=12 -o autotrim=on -O atime=off -O xattr=sa \
 | Dataset | recordsize | compression | primarycache | secondarycache | sync / logbias | Why |
 |---|---|---|---|---|---|---|
 | `hvv/weights` (GGUF, read-only) | 1M | off (Q4 data incompressible; saves CPU) | **metadata** | none | standard / throughput | llama `mmap` already caches in the VM page cache. ARC=all would **double-cache** 18.7 GiB on a 24 GiB box. |
-| `hvv/kv` (L2 tier pages, directory-managed) | 64K (match the hvv page/region size; 16K if regions are small) | lz4 (f16 KV compresses ~1.1–1.3×) | **metadata**: the directory/L1 is the cache; ARC would hide tier latency and break measurements | none | **disabled** / throughput | Scratch tier: on crash the directory marks it Invalid. sync=disabled is only safe because of that contract. |
-| `hvv/spill` (llama slot saves) | 1M | lz4 | metadata | none | disabled / throughput | Large sequential, reproducible |
-| `hvv/logs` (BENCH JSONL) | 128K | zstd | all | none | standard | Must survive crashes |
+| `hvv/kv` (L2 tier pages, directory-managed) | 64K (match the hvv page/region size; 16K if regions are small) | lz4 (f16 KV compresses ~1.1–1.3×) | **metadata**: the directory/L1 is the cache; ARC would hide tier latency and break measurements | none | **standard** / throughput, encrypted (§5.0) | sync=disabled only after P2 has a persisted generation id checked at boot. |
+| `hvv/spill` (llama slot saves) | 1M | lz4 | metadata | none | disabled only if wiped at boot / throughput, encrypted | Large sequential, reproducible |
+| ~~`hvv/logs`~~ | — | — | — | — | — | Moved off this pool to the OS disk/HDD (§5.0) |
 
 **ARC sizing (`/boot/loader.conf`):**
 - `vfs.zfs.arc_max="2G"`, `vfs.zfs.arc_min="512M"`. ARC must not compete with the 18.7 GiB model plus KV in 24 GiB. The default (most of RAM) is wrong for this workload.
@@ -153,41 +185,68 @@ zpool create -o ashift=12 -o autotrim=on -O atime=off -O xattr=sa \
 - ASPM off for PCIe/SATA during benches. Above-4G decoding n/a. CSM/legacy only if the G84 VBIOS needs it.
 - Boot from the OS disk only. **Never** select the Vertex 2 as a boot device.
 
-## 6. Deferred: SSD special firmware
+## 6. Phase PF: SSD firmware with on-drive processing (next after the P0 baseline)
 
-Deferred per Brian. It's sized **HUGE**:
-- The SF-1222 firmware is proprietary and unsigned-tool-locked.
-- Public reverse-engineering is partial.
-- A bad flash bricks the drive.
-- Bring-up needs a UART/JTAG programmer and a donor drive.
+Brian: on-drive processing is a priority and comes right after the ZFS baseline. It is not deferred. It is also the riskiest phase.
 
-Any flash needs Brian's explicit OK (runbook §4).
+**Note on a reviewer conflict:** the Senior Developer follow-up (at `70cbd85`) says Brian chose "firmware replacement *instead of* ZFS". This doc follows Brian's recorded words (ZFS baseline first, then firmware). **Brian to confirm** (decision D-PF0). Its firmware findings apply either way.
+
+**Target problem.** The Vertex 2 (SF-1222, SATA) is close to a dead end for computational storage: closed, encrypted/obfuscated vendor images, no SDK, no documented spare compute, ~15-year-old MLC, and NVMe computational-storage commands (TP4091 family) don't exist on SATA. It also is the P0 tier, so flashing it would destroy the baseline. So the Vertex 2 is the ZFS tier, and the firmware target is chosen by a scorecard.
+
+| Sub-phase | Work | Cost |
+|---|---|---|
+| **PF-sel** | Drive-selection scorecard (toolchain openness, recovery path, compute headroom, cost, licensing) across Vertex 2, a community-reversed controller, and an open platform (OpenSSD-class FPGA, open-channel/ZNS). Named offload candidate (e.g. KV-page compression/filter) with a measured host bottleneck from P0. Licensing note. | M |
+| **PF0** | **Emulated NVMe first:** QEMU NVMe / FEMU with a NAND model. Host command channel, FTL state machine, fault injection, power-cut simulation in CI. No hardware. | XL |
+| **PF1** | Toolchain bring-up and **recovery demonstrated on a donor** (brick on purpose, restore stock) | HUGE ⚠, may stop here |
+| **PF2** | FTL + kernels on the donor: soak, thousands of relay power cuts | XL |
+| **PF3** | Target drive, then integration as an HVVRAM tier | L–XL |
+
+**Design requirements.**
+- **FTL:** written state machine before code; CoW mapping with journalled/checkpointed metadata, atomic commit records with sequence numbers, recovery scan proven for a cut at any point, FLUSH/FUA strict, host write cache off until power-cut tests pass; TLA+ model of the metadata protocol. Vendor NAND/ECC parameters read from stock behaviour; erase counts, ECC histogram, bad blocks via log page/SMART; retirement threshold; retention bake.
+- **End-to-end integrity:** host-side CRC32C/xxh3 per 4 KiB + LBA + generation, verified on every read, mismatch → Invalid; periodic scrub. Logs and bench results never on the drive.
+- **Trust:** the drive is untrusted. Host encrypts before data reaches it (§5.0); plaintext offload is a named per-dataset opt-in. Never boot from it, no secrets, no auto-flash. Reproducible image, hash reviewed by two people, recorded privately. Flash only on an isolated host with no other disks. Treat the drive as untrusted-for-confidentiality forever; physical destruction at decommission. Any future PCIe/NVMe target only with IOMMU confinement.
+- **Command channel:** CAM pass-through tool (no kmod) or nvso extension; versioned device ABI separate from nvso; version/caps/submit/poll/abort; job size/duration limits, timeouts, error codes, idempotent reset, defined media state after a half job; root-only, no jails, no generic pass-through exposed to hv callers.
+- **Donor/spares:** at least two identical spares (controller, NAND, board revision): one for RE/recovery, one flashed first. Budget for losing both.
+- **Licensing:** written note before PF1: which tools are licensed, whether derived work can be redistributed, DMCA §1201 exposure if the boot ROM verifies signatures (if it does, custom code is out of scope). No vendor blobs, keys, dumps or bypass details in any public repo; stock images and checksums go to familia-private only; clean-room docs for anything published.
+
+**Recovery:** a stock image, identity, serial and factory/calibration data backed up off-host before any write; restore path rehearsed on the donor. If recovery can't be shown, Brian signs off on the exact wording "drive is consumable".
+
+**Kill criteria (stop PF):** boot ROM requires a signature we can't legally satisfy; recovery can't be demonstrated and Brian declines "consumable"; emulator FTL can't pass power-cut tests; the offload can't beat the host path measured in P0 (≈200 MB/s SATA ceiling); both spares lost.
+
+**The 8 gates before the first real flash (all required):**
+1. Fresh hardware probe of the live host and target drive; controller, FW, NAND, board rev match the donor.
+2. P0 stock baseline published.
+3. Legal/licensing note done; no proprietary material in a public repo.
+4. Recovery demonstrated on an identical donor, or Brian signed "drive is consumable".
+5. Emulator + donor pass criteria met (≥10× capacity write/read/verify, N thousand power cuts with zero mapping loss, results bit-identical to host reference, SMART stable).
+6. Host-side checksums implemented and verified.
+7. Reproducible image, two-person hash review, flash script selects by serial allowlist with dry-run.
+8. Brian's explicit OK for that specific flash, with a person physically present.
 
 ## 7. Kernel-review scope (feeds `gpu-legacy/nvso/KERNEL-REVIEW.md`, P1)
 
-P1 touches **no VM/pmap/busdma**. It covers:
-- a cdev with a single `MTX_DEF`
-- the ioctl ABI (group 'N', numbers 1–8)
-- copyin of ≤ 8 KiB
+P1 touches no VM/pmap/busdma. Checklist (Platform, Boundary, Senior Dev, Bootstraps):
+- **Unload with open handles / in-flight ioctls:** `destroy_dev` drain, `MOD_QUIESCE` refuses while busy, DMA-post work drained.
+- **DESTROY vs DMA_POST race** (new now that post runs outside the lock): refcount domains against in-flight posts; destroy only by owner (domains carry creator cred/fd).
+- **devfs perms and jail visibility:** `make_dev_s` UID_ROOT, mode 0600 (or a dedicated group), hidden in jails via devfs ruleset; `priv_check` on mutating ioctls; securelevel behaviour.
+- **ABI size checks:** every command listed with its `_IOWR` size; group 'N' checked for collisions; ABI-2 callers fail cleanly against ABI 3; size validated **before** allocation; u64 overflow-safe sums; unknown flags rejected.
+- **Signal / exit cleanup:** per-fd state released on close and on signal death (cdevpriv destructor).
+- **Info leak:** bzero structs before copyout, including STATS.
+- **Resource limits:** per-user domain-table caps, malloc caps; no stored user pointers.
+- **Concurrency:** many-thread ioctls under WITNESS.
+- **Fuzz:** random-ioctl fuzzer (or syzkaller) for N hours on the INVARIANTS VM, a gate before D1.
+- **Rollback:** `kldunload`; also confirm no loader.conf/devd/rc autoload, plus a reboot test.
 
-Failure modes:
-- A panic on load or unload would be a bug in `make_dev_s`/`destroy_dev`.
-- A WITNESS warning would mean a lock-order regression.
-
-Rollback is `kldunload nvso`. Nothing is in `loader.conf`.
-
-Test order:
-1. VM on a LAN host (INVARIANTS+WITNESS kernel), `nvsoctl` round-trip + negative tests, 1000× load/unload loop.
-2. Brian reviews the results.
-3. Only then, a single `kldload` on angel.
-
-P3/P4 get their own review documents. They change VM/pmap/DMAR and are high risk.
+Test order: VM on an idle LAN host (instructions: `docs/vvram-ssd/HVVRAM-P1-LAN-INSTRUCTIONS.md`) → Brian reviews → only then one `kldload` on angel. P3/P4 docs are scoped now: vm_object/vm_page busy and locking, pmap invalidation, DMAR context teardown and IOTLB ordering, ATS/device bypass, GEOM/CAM/ZFS path from the fault handler, fault handling and dead-owner pages.
 
 ## 8. Decisions for Brian
 
-1. **D0:** OK to wipe the Vertex 2 and create the `hvv` pool, plus a bench window on angel (root script to be supplied).
-2. **D1:** Approve the ABI 3 fix scope, the VM test on a LAN host, then kldload on angel.
-3. **D2:** Accept a directory-first API (5–7 calls) and demote the PLL/gate/IRQ/DMA_POST ioctls to a lab ABI? Choose the first workload (KV cache?).
-4. **D3/D4:** Fund P3 (kernel pager) only if P4 is viable. Approve gate P4-0 (DMAR table check + one `hw.dmar.enable=1` boot on angel with the G84). If nvidia-340 fails under DMAR, accept directory-only enforcement or pick a different GPU.
-5. Drop PSP/CSME off-load from scope? (security and TCB size)
-6. Where is the "Linux prototype with partitioned L2"? It's still unlocated.
+1. **D-PF0:** confirm order: ZFS baseline (P0) first, then firmware (PF). A reviewer recorded "firmware *instead of* ZFS"; this doc follows your earlier words.
+2. **D0:** OK to wipe the Vertex 2 by serial allowlist (you supply serial + model), the bench window, and each persistent change separately.
+3. **D1:** ABI 3 fix scope; OK to run the P1 build + VM test on an idle LAN host (which host?); later and separately, kldload on angel.
+4. **D2 / D2-sec:** accept the hardened 7-call directory-first API (§3.1), KV cache first, lab ioctls split out.
+5. **D4 (before P2):** run gate P4-0 (DMAR ACPI table check + one `hw.dmar.enable=1` boot) or accept software-only (advisory) enforcement / a different GPU. D3 waits on it.
+6. **D-PF:** fund PF-sel (cheap) now; buy at least two identical donor/spare drives; licensing note owner.
+7. Drop PSP/CSME off-load.
+8. Encryption: ephemeral-key ZFS encryption for kv/spill and GELI onetime swap.
+9. Where is the "Linux prototype with partitioned L2"? Still unlocated.
