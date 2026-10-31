@@ -32,6 +32,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 import time
 import urllib.request
 from collections import defaultdict
@@ -85,11 +86,16 @@ def endpoint_up(host, port, timeout=2):
         return False
 
 
+def new_worktree_dir(tid):
+    """Unpredictable 0700 worktree dir (honors TMPDIR); recorded in results.jsonl for loop.sh."""
+    return Path(tempfile.mkdtemp(prefix=f"dogfood-wt-{tid}-"))
+
+
 def worktree_add(repo, wt, ref="origin/main"):
     """Create a detached worktree without running pin-sync into it (#111)."""
     env = {"FAMILIA_SYNC": "0"}
-    sh(f"git worktree remove --force {wt}", cwd=repo, env=env)
-    rc, out = sh(f"git worktree add -q --detach {wt} {ref}", cwd=repo, env=env)
+    # wt is a fresh empty 0700 dir from new_worktree_dir(); never force-remove a guessable path.
+    rc, out = sh(["git", "worktree", "add", "-q", "--detach", str(wt), ref], cwd=repo, env=env)
     if rc != 0:
         raise RuntimeError(f"worktree add failed: {out[-500:]}")
     return wt
@@ -160,7 +166,7 @@ def collect_patch(wt, scope_files):
 def run_hermes_task(t, harness, args, out_dir, repo):
     mode = HERMES_MODES[harness]
     tid = t["id"]
-    wt = Path(f"/tmp/dogfood-wt-{tid}")
+    wt = new_worktree_dir(tid)
     d = out_dir / tid
     d.mkdir(parents=True, exist_ok=True)
     worktree_add(repo, str(wt))
@@ -272,7 +278,7 @@ def run_hermes_task(t, harness, args, out_dir, repo):
 
 def run_harness2_task(t, args, out_dir, repo):
     tid = t["id"]
-    wt = Path(f"/tmp/dogfood-wt-{tid}")
+    wt = new_worktree_dir(tid)
     d = out_dir / tid
     d.mkdir(parents=True, exist_ok=True)
     # Worktree still created so loop.sh paths stay stable; H2 edits harness state, not the issue tree.
