@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Start the Android node on one phone. Target comes from graph.yaml (#18):
 #   ./android_start.sh phone7
-# Env overrides: ANDROID_HOST, ANDROID_USER, ANDROID_PORT. Key-only SSH; no passwords.
+# Env overrides: ANDROID_HOST, ANDROID_USER, ANDROID_PORT, ANDROID_DIR. Key-only SSH; no passwords.
+# Runs as the Termux app user, which cannot exec from /data/local/tmp; default dir is Termux $HOME.
 set -euo pipefail
 case "${1:-}" in -h|--help) cat <<'USAGE'
 android_start.sh: Start the familia node on one Android phone over key-only SSH (target from graph.yaml).
@@ -12,11 +13,12 @@ USAGE
   exit 0 ;; esac
 cd "$(dirname "$0")"
 read -r HOST USER PORT < <(python3 scripts/android_target.py "${1:-}")
+DIR="${ANDROID_DIR:-\$HOME/green-roomz}"
 SSH=(ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 -p "$PORT" "$USER@$HOST")
 
 "${SSH[@]}" "\
-  cd /data/local/tmp && \
-  if [ ! -x ./start-green-roomz.sh ]; then echo 'start-green-roomz.sh not deployed to /data/local/tmp' >&2; exit 1; fi && \
+  cd \"$DIR\" && \
+  if [ ! -x ./start-green-roomz.sh ]; then echo 'start-green-roomz.sh not deployed to $DIR' >&2; exit 1; fi && \
   ./start-green-roomz.sh && \
   echo 'Android node started'"
 
