@@ -21,6 +21,11 @@ hermes does not send a session id today.
 """
 import json, os, re, sys, threading, time, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+
+class _ProxyHTTPServer(ThreadingHTTPServer):
+    """R6: default listen backlog of 5 resets bursts (ECONNRESET on FreeBSD at 12+)."""
+    request_queue_size = 128
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import escalation as E
 import familia_auth  # noqa: E402
@@ -322,6 +327,6 @@ def serve(esc, port=0):
                          swap_back=esc.swap_back, reachable=esc.reachable)
 
     pool = EscalatorPool(factory, seed=(DEFAULT_SESSION, esc))
-    srv = ThreadingHTTPServer(("127.0.0.1", port), make_handler(pool))  # localhost only
+    srv = _ProxyHTTPServer(("127.0.0.1", port), make_handler(pool))  # localhost only
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     return srv

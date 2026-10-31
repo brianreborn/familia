@@ -381,8 +381,6 @@ def test_r6_burst_connections_all_answered():
     assert not bad, f"{len(bad)}/{BURST} burst connections failed: {bad[:5]}"
 
 
-@pytest.mark.xfail(strict=True, reason="R6: ThreadingHTTPServer default request_queue_size=5 "
-                   "(escalation_proxy.py:325); FreeBSD resets a 12+ burst. Harden to >=128")
 def test_r6_listen_backlog_covers_burst():
     up = Upstream("light")
     _, srv = proxy(graph(up.port, closed_port()))
