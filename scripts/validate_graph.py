@@ -271,6 +271,20 @@ def validate(graph, check_files=True, host=None):
 # Vulkan llama.cpp builds allocate ~1.83 GB of Vulkan host buffers in shmem even with -ngl 0
 # (miryam, b11374), which counts against the memcap scope and stalls the server. With no GPU
 # layers, hide the Vulkan devices. An explicit GGML_VK_VISIBLE_DEVICES in env wins.
+def tool_key_file(n, env=None):
+    """Per-instance key file for a tool-enabled node (created 0600 once, never rotated).
+    Fails closed: no readable key -> SystemExit, the node does not start."""
+    import familia_auth
+    env = os.environ if env is None else env
+    path = env.get("API_KEY_FILE") or familia_auth.instance_key_file(port=n["port"], env=env)
+    try:
+        k = familia_auth.load_or_create_key_file(path)
+    except OSError as e:
+        raise SystemExit(f"graph: ERROR: tool-enabled node on port {n['port']}: cannot create its API key file ({e.__class__.__name__}); not starting")
+    if not k:
+        raise SystemExit(f"graph: ERROR: tool-enabled node on port {n['port']}: empty API key file; not starting")
+    return path
+
 def server_env(graph, name, env=None):
     env = dict(os.environ if env is None else env)
     if graph["nodes"][name]["offload"]["ngl"] == 0 and "GGML_VK_VISIBLE_DEVICES" not in env:
@@ -410,7 +424,10 @@ FAIL_CLOSED_TYPES = ("guardian", "pentest", "defender")
 TOOL_CAPABLE_BY_TYPE = {"coder": True, "chat": True, "general": True, "reasoning": True,
                         "embed": False, "decision": False, "vision": False, "diffusion": False}
 # Back-compat name: per-TYPE default expressed as a policy (derived from capability).
-TOOL_POLICY_BY_TYPE = {t: ("all" if c else []) for t, c in TOOL_CAPABLE_BY_TYPE.items()}
+# H4: the default grant is read-only. Shell/write tools (exec_shell_command, write_file, edit_file)
+# are granted only when `server_tools` explicitly lists them (or says "all").
+READ_ONLY_TOOLS = ["read_file", "file_glob_search", "grep_search", "get_info"]
+TOOL_POLICY_BY_TYPE = {t: (list(READ_ONLY_TOOLS) if c else []) for t, c in TOOL_CAPABLE_BY_TYPE.items()}
 TOOL_POLICY_BY_TYPE.update({t: [] for t in FAIL_CLOSED_TYPES})
 
 
@@ -470,7 +487,8 @@ def tool_policy(graph, name):
     - guardian/pentest/defender fail closed to [] regardless of override or route (TOOLS-005).
     - A present `server_tools` key is authoritative: "all"/non-empty list verbatim; [], none,
       false, "" are an explicit opt-out, also via nexus (TOOLS-006/009).
-    - Otherwise capability: directly tool-capable on a loopback bind -> "all" (TOOLS-007/008);
+    - Otherwise capability: directly tool-capable on a loopback bind -> READ_ONLY_TOOLS (H4;
+      TOOLS-007/008); shell/write tools need an explicit server_tools;
       tool-capable via a validated `tool_route` -> the target's tool_policy (TOOLS-009); else []."""
     n = graph["nodes"][name]
     if node_type(graph, name) in FAIL_CLOSED_TYPES:
@@ -483,7 +501,7 @@ def tool_policy(graph, name):
             return st
         return []
     if tool_capable(graph, name) and _loopback(n.get("bind")):
-        return "all"
+        return list(READ_ONLY_TOOLS)
     t = tool_route(graph, name) if n.get("tool_route") else None
     if t:
         return tool_policy(graph, t)  # routed grant = the target's own validated grant
@@ -502,6 +520,14 @@ def tools_argv(graph, name):
     if isinstance(pol, list) and pol:
         return ["--tools", ",".join(pol)]
     return []
+
+
+def launch_tools_argv(graph, name):
+    """--tools plus, on every tool-enabled server, --api-key-file (H4): llama-server then
+    requires the per-instance key on every endpoint, /tools included. The key FILE is passed,
+    never the key, so it does not show in argv/ps."""
+    ta = tools_argv(graph, name)
+    return ta + ["--api-key-file", tool_key_file(graph["nodes"][name])] if ta else []
 
 
 def server_args(graph, name):
@@ -525,7 +551,7 @@ def server_args(graph, name):
     a += ["--cache-ram", str(n["cache_ram_mib"])]
     # llama-ui Server Tools: /tools is feature_disabled (403) unless --tools is set at launch.
     # DUP-04/CFG-SPEC-TOOLS: explicit per-TYPE decision on every launch (override via server_tools).
-    a += tools_argv(graph, name)
+    a += launch_tools_argv(graph, name)
     # Model parameters (#51): REQUIRED + RECOMMENDED from the model database (cards, configs,
     # GGUF), node.sampling / override_reasons applied. A REQUIRED one that cannot be met is fatal.
     import model_db
