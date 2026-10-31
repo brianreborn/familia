@@ -50,7 +50,7 @@ if (-not $Yes -and [Environment]::UserInteractive) {
 }
 
 if (-not (Test-Path $bin)) { New-Item -ItemType Directory -Force $bin | Out-Null }
-$tmp = Join-Path $env:TEMP ("familia-gum-" + [guid]::NewGuid().ToString('n'))
+$tmp = Join-Path ([IO.Path]::GetTempPath()) ('grz.' + [guid]::NewGuid().ToString('n'))
 New-Item -ItemType Directory -Force $tmp | Out-Null
 try {
   $zip = Join-Path $tmp $asset

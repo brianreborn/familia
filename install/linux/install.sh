@@ -225,7 +225,8 @@ for r in (j if isinstance(j, list) else [j]):
   elif [ "$DRY" = 1 ]; then
     say "[dry-run] download $AURL, verify sha256 $SHA, extract to $DEST"
   else
-    TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
+    TMP=$(umask 077; mktemp -d "${TMPDIR:-/tmp}/grz.XXXXXX") || die "mktemp failed"
+    trap 'rm -rf "$TMP"' EXIT INT HUP TERM
     curl -fL --retry 3 -o "$TMP/$ANAME" "$AURL"
     if command -v sha256sum >/dev/null 2>&1; then GOT=$(sha256sum "$TMP/$ANAME" | cut -d' ' -f1)
     else GOT=$(shasum -a 256 "$TMP/$ANAME" | cut -d' ' -f1); fi

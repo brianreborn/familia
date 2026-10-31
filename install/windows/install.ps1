@@ -153,11 +153,14 @@ if (Test-Path (Join-Path $repo '.git')) {
   } else {
     $zipUrl = ($RepoUrl -replace '\.git$', '') + "/archive/refs/heads/$Branch.zip"
     if ($PSCmdlet.ShouldProcess($repo, "download $zipUrl (git not found; no updates via pull)")) {
-      $tmpz = Join-Path $env:TEMP "familia-$Branch.zip"
-      Invoke-WebRequest -UseBasicParsing $zipUrl -OutFile $tmpz
-      $ex = Join-Path $env:TEMP 'familia-src'; Expand-Archive -Force $tmpz $ex
-      Move-Item (Get-ChildItem $ex | Select-Object -First 1).FullName $repo
-      Remove-Item -Recurse -Force $ex, $tmpz
+      $tmpd = Join-Path ([IO.Path]::GetTempPath()) ('grz.' + [IO.Path]::GetRandomFileName())
+      New-Item -ItemType Directory -Path $tmpd | Out-Null
+      try {
+        $tmpz = Join-Path $tmpd "familia-src.zip"
+        Invoke-WebRequest -UseBasicParsing $zipUrl -OutFile $tmpz
+        $ex = Join-Path $tmpd 'src'; Expand-Archive -Force $tmpz $ex
+        Move-Item (Get-ChildItem $ex | Select-Object -First 1).FullName $repo
+      } finally { Remove-Item -Recurse -Force $tmpd -ErrorAction SilentlyContinue }
     }
   }
 }
@@ -202,13 +205,16 @@ if (-not $NoRuntime) {
   $dest = Join-Path $runtimeRoot $tag
   if (Test-Path (Join-Path $dest 'llama-server.exe')) { Say "runtime $tag already installed" }
   elseif ($PSCmdlet.ShouldProcess($dest, "download $($asset.browser_download_url), verify sha256 $want, extract")) {
-    $tmp = Join-Path $env:TEMP $asset.name
-    Invoke-WebRequest -UseBasicParsing $asset.browser_download_url -OutFile $tmp
-    $got = (Get-FileHash -Algorithm SHA256 $tmp).Hash.ToLower()
-    if ($got -ne $want) { Remove-Item -Force $tmp; throw "sha256 mismatch for $($asset.name): got $got want $want" }
-    Say "sha256 ok ($want)"
-    Expand-Archive -Force $tmp $dest
-    Remove-Item -Force $tmp
+    $tmpd = Join-Path ([IO.Path]::GetTempPath()) ('grz.' + [IO.Path]::GetRandomFileName())
+    New-Item -ItemType Directory -Path $tmpd | Out-Null
+    try {
+      $tmp = Join-Path $tmpd $asset.name
+      Invoke-WebRequest -UseBasicParsing $asset.browser_download_url -OutFile $tmp
+      $got = (Get-FileHash -Algorithm SHA256 $tmp).Hash.ToLower()
+      if ($got -ne $want) { throw "sha256 mismatch for $($asset.name): got $got want $want" }
+      Say "sha256 ok ($want)"
+      Expand-Archive -Force $tmp $dest
+    } finally { Remove-Item -Recurse -Force $tmpd -ErrorAction SilentlyContinue }
     $exe = Get-ChildItem -Recurse $dest -Filter llama-server.exe | Select-Object -First 1
     if (-not $exe) { throw 'llama-server.exe missing from archive' }
     if ($exe.DirectoryName -ne $dest) { Get-ChildItem $exe.DirectoryName | Move-Item -Destination $dest -Force }

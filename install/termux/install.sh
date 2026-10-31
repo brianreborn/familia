@@ -182,7 +182,7 @@ if [ -f "$REPO/scripts/host_measure.py" ]; then MREPO="$REPO"
 elif [ "$DRY" = 1 ] && [ -n "$SELF_REPO" ] && [ -f "$SELF_REPO/scripts/host_measure.py" ]; then MREPO="$SELF_REPO"
 elif [ "$DRY" = 1 ] && command -v curl >/dev/null 2>&1; then
   # Dry run has no clone; fetch the read-only measurer + graph into a temp dir and delete it after.
-  MTMP=$(mktemp -d "${TMPDIR:-${PREFIX:-}/tmp}/familia-measure.XXXXXX" 2>/dev/null || true)
+  MTMP=$(umask 077; mktemp -d "${TMPDIR:-${PREFIX:-}/tmp}/grz.XXXXXX" 2>/dev/null || true)
   if [ -n "$MTMP" ] && mkdir -p "$MTMP/scripts" && curl -fsSL "$RAW_URL/$BRANCH/scripts/host_measure.py" -o "$MTMP/scripts/host_measure.py" \
      && curl -fsSL "$RAW_URL/$BRANCH/graph.yaml" -o "$MTMP/graph.yaml"; then MREPO="$MTMP"
   else MREPO=""; say "warning: could not fetch host_measure.py from $BRANCH"; fi
