@@ -9,7 +9,13 @@ rem   FAMILIA_MODEL      GGUF file name inside FAMILIA_MODELS, or a full path
 rem   FAMILIA_RUNTIME    dir holding llama-server.exe (default: %~dp0..\..\runtime)
 rem   FAMILIA_PORT       default 9941      FAMILIA_BIND  default 127.0.0.1
 rem   FAMILIA_CTX        default 4096      FAMILIA_THREADS default 2
-rem   FAMILIA_KV         default q8_0      FAMILIA_EXTRA  extra llama-server args
+rem   FAMILIA_KV         default q8_0      FAMILIA_EXTRA  extra llama-server args (see below)
+rem FAMILIA_EXTRA is a raw Windows command-line fragment appended verbatim to llama-server's
+rem command line; llama-server.exe splits it with the usual CommandLineToArgvW rules. Quote any
+rem argument that contains spaces yourself, e.g.
+rem   set "FAMILIA_EXTRA=--alias "my model" --chat-template-file "C:\Users\Jos Perez\t.jinja""
+rem It is expanded with delayed expansion (!FAMILIA_EXTRA!) on the launch line only, so cmd does
+rem not act on & | < > ^ %% or ! inside it; they reach llama-server as literal characters.
 rem Nothing here edits the graph; values should match the node in graph.yaml.
 setlocal EnableExtensions
 
@@ -70,9 +76,13 @@ if not exist "%BIN%" (
 
 if not exist "%FAMILIA_MODELS%\..\logs" mkdir "%FAMILIA_MODELS%\..\logs" >nul 2>&1
 set "LOG=%FAMILIA_MODELS%\..\logs\llama-server-%FAMILIA_PORT%.log"
-echo familia: %BIN% -m "%MODEL%" on %FAMILIA_BIND%:%FAMILIA_PORT% (log %LOG%)
-"%BIN%" -m "%MODEL%" --host %FAMILIA_BIND% --port %FAMILIA_PORT% -c %FAMILIA_CTX% -t %FAMILIA_THREADS% -np 1 -ctk %FAMILIA_KV% -ctv %FAMILIA_KV% %FAMILIA_EXTRA% >> "%LOG%" 2>&1
-exit /b %ERRORLEVEL%
+rem Launch with delayed expansion ONLY: values expanded via !VAR! are not re-parsed, so paths
+rem with spaces/&/^/!/%% (e.g. %USERPROFILE%) and FAMILIA_EXTRA metacharacters stay literal.
+rem Do not mix %VAR% into these lines: a %-expanded "!" would be eaten by delayed expansion.
+setlocal EnableDelayedExpansion
+echo familia: "!BIN!" -m "!MODEL!" on !FAMILIA_BIND!:!FAMILIA_PORT! ^(log "!LOG!"^)
+"!BIN!" -m "!MODEL!" --host "!FAMILIA_BIND!" --port "!FAMILIA_PORT!" -c "!FAMILIA_CTX!" -t "!FAMILIA_THREADS!" -np 1 -ctk "!FAMILIA_KV!" -ctv "!FAMILIA_KV!" !FAMILIA_EXTRA! >> "!LOG!" 2>&1
+exit /b !ERRORLEVEL!
 
 :help
 echo start.bat: start one llama-server node on this Windows machine (settings via FAMILIA_* variables above).

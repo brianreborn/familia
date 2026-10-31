@@ -222,7 +222,11 @@ if [ -e /system/lib64/libvulkan.so ]; then
   NGL="\${FAMILIA_NGL:-99}"
 fi
 # Defaults from the 2026-10-10 A57 sweep (#34): 3 threads, flash-attn on; -ngl 99 on Vulkan (CPU ngl 0 on 0.6.0 collapses to <1 t/s tg).
-exec llama-server -m "\$M" -ngl "\$NGL" -t "\${FAMILIA_THREADS:-3}" -fa "\${FAMILIA_FA:-on}" --host "\${FAMILIA_BIND:-127.0.0.1}" --port "\${FAMILIA_PORT:-9941}" -c "\${FAMILIA_CTX:-2048}" \${FAMILIA_EXTRA:-}
+# Extra args: familia-start's own arguments ("\$@", exact), then FAMILIA_EXTRA as a POSIX-shell-quoted
+# argv (like serve.sh's --args: --alias 'my model'), loaded with set -- so it is never word-split or
+# glob-expanded. FAMILIA_EXTRA is shell syntax from your own environment; keep it to quoted words.
+if [ -n "\${FAMILIA_EXTRA:-}" ]; then eval "set -- \"\\\$@\" \$FAMILIA_EXTRA"; fi
+exec llama-server -m "\$M" -ngl "\$NGL" -t "\${FAMILIA_THREADS:-3}" -fa "\${FAMILIA_FA:-on}" --host "\${FAMILIA_BIND:-127.0.0.1}" --port "\${FAMILIA_PORT:-9941}" -c "\${FAMILIA_CTX:-2048}" "\$@"
 EOS
   chmod +x "$LAUNCH"
 fi
