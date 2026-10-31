@@ -166,7 +166,17 @@ def check_runtime(g, name, r, errs):
 def slot_ctx(n):
     return n["ctx"] // n["parallel"] if isinstance(n.get("ctx"), int) and isinstance(n.get("parallel"), int) and n["parallel"] > 0 else None
 
+_WIN_RESERVED = {"CON", "PRN", "AUX", "NUL", *(f"COM{i}" for i in range(1, 10)), *(f"LPT{i}" for i in range(1, 10))}
+
+def windows_unsafe_name(name):
+    """Node names become file names (slots/<node>, serve-<node>.log); Windows refuses reserved
+    device names (CON, NUL.txt, ...) and names ending in a dot or space."""
+    s = str(name)
+    return s != s.rstrip(" .") or s.split(".")[0].rstrip(" ").upper() in _WIN_RESERVED
+
 def check_node(g, name, n, errs):
+    if windows_unsafe_name(name):
+        errs.append(f"nodes.{name}: name is not a valid Windows file name (reserved device name or trailing dot/space)")
     h, r, m = lookup(g, "hosts", n.get("host")), lookup(g, "runtimes", n.get("runtime")), lookup(g, "models", n.get("model"))
     planned = n.get("status") == "planned"
     if h is not None and h.get("measured") is not True and not planned:
