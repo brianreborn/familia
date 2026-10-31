@@ -30,11 +30,12 @@ import json
 import os
 import sys
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import familia_yaml  # noqa: E402
+import config_paths  # noqa: E402
 
-DEFAULT_GRAPH = os.path.join(ROOT, "graph.yaml")
+ROOT = config_paths.ROOT  # DUP-10 owner
+DEFAULT_GRAPH = config_paths.graph_path()  # DUP-02: honour $FAMILIA_GRAPH
 ROLE_JSONS = (
     os.path.join(ROOT, "scripts", "guardian-role.json"),
     os.path.join(ROOT, "scripts", "pentest-role.json"),

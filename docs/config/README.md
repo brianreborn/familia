@@ -16,6 +16,7 @@ Code and tests cite the requirement IDs (`CFG-…-NNN`). The IDs are stable and 
 ## Producer / consumer matrix (graph.yaml)
 | Program | Reads | Writes |
 |---|---|---|
+| config_paths.py (DUP-02/10 owner) | `$FAMILIA_GRAPH` / path resolution | — |
 | graph_types.py / validate_graph.py | all sections (schema, `--args` argv) | — |
 | start_graph.py | nodes, aliases, gateways, hosts | gateway manifest (start_graph.py:301) |
 | hermes_harness.py / hermes_modes.py | agents, aliases, nodes, hosts | hermes config (hermes_harness.py:284,547) |

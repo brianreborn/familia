@@ -50,7 +50,6 @@ def _graph_path_resolvers(monkeypatch, custom):
     }
 
 
-@pytest.mark.xfail(strict=True, reason="DUP-02 CFG-FILE-007: FAMILIA_GRAPH honoured inconsistently (guardian_ready/model_db ignore it)")
 def test_dup02_graph_path_honours_env(monkeypatch):
     custom = "/custom/elsewhere/graph.yaml"
     res = _graph_path_resolvers(monkeypatch, custom)

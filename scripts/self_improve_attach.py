@@ -26,6 +26,7 @@ import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+import config_paths  # DUP-02/DUP-10 owner
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 import self_improve as SI  # noqa: E402
 
@@ -115,7 +116,7 @@ def main(argv=None):
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    ap.add_argument("--graph", default=os.path.join(ROOT, "graph.yaml"))
+    ap.add_argument("--graph", default=config_paths.graph_path())
     gsel = ap.add_mutually_exclusive_group()
     gsel.add_argument("--agent", help="sync harnesses.* entries with this agent:")
     gsel.add_argument("--target", help="sync one harnesses.<T> descriptor")

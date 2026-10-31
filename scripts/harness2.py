@@ -29,6 +29,7 @@ import argparse, json, os, signal, subprocess, sys, time
 import yaml
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+import config_paths  # DUP-02/DUP-10 owner
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 import self_improve as SI  # noqa: E402
 import oom_adj  # noqa: E402
@@ -342,7 +343,7 @@ def cmd_review(a, g):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="harness2.py", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--graph", default=os.path.join(ROOT, "graph.yaml"))
+    ap.add_argument("--graph", default=config_paths.graph_path())
     ap.add_argument("--state", default=None, help="state dir (default .cache/familia/harness2; env FAMILIA_HARNESS2_STATE)")
     ap.add_argument("--root", default=None, help="replace the target's root directory")
     sp = ap.add_subparsers(dest="cmd", required=True)

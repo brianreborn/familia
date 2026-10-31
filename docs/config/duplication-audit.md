@@ -16,7 +16,7 @@ LOC estimates are the duplicated bodies that would go away once callers use the 
 | DUP-07 | guardian/pentest role JSON load + dual-disable | one `pentest_policy.load_role` | guardian_ready.py:39-40; sec_assess.py:44-45,300-309; pentest-role.json/guardian-role.json readers | CFG-PENT-CUR-003, CFG-PENT-POL-* | 45 | medium; security seatbelt — keep behaviour identical |
 | DUP-08 | secret stripping / `${VAR}` secret refs | `hermes_harness.strip_secrets` + `mcp_servers` | ad-hoc redaction in licenses/privacy lint; hosts_overlay privacy_lint overlaps | CFG-CRED-001..003 | 30 | low |
 | DUP-09 | registry YAML loaders (hosts, hardware, model-params, builds) | `registry.py` loaders | registry.py:49,54; model_params/model_db re-open same files | CFG-FILE-002..005 | 40 | low |
-| DUP-10 | REPO/ROOT discovery | one `config_paths.ROOT` | 40 `ROOT=`/`REPO_ROOT=` defs across scripts/ | — | 35 | low; mechanical |
+| DUP-10 | REPO/ROOT discovery | `config_paths.ROOT` (partial) | 40 `ROOT=`/`REPO_ROOT=` defs across scripts/ | — | 35 | low; mechanical |
 
 Total estimated deletable: **~625 LOC** across 10 clusters (owner modules excluded).
 
@@ -28,3 +28,7 @@ Total estimated deletable: **~625 LOC** across 10 clusters (owner modules exclud
 5. DUP-04 last (live launch argv; gate on the task-suite #119).
 
 Each step: move the body to the owner, delete the copies, keep the conformance test green (flip its xfail to pass), update docs/config and requirement-ids.yaml in the same PR (CFG-RULE-001).
+
+
+## Completed (this PR, swarm/routing/config-dedupe)
+- **DUP-02** owner `scripts/config_paths.py` (`graph_path`, `default_graph`). Rerouted: guardian_ready, model_db (both previously ignored `$FAMILIA_GRAPH`), familia_agent_reach, skills, offline_improve, harness2, self_improve_attach, reconnect_selfheal, licenses, escalate. Conformance xfail flipped to pass. CFG-FILE-007.

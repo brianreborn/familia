@@ -39,6 +39,7 @@ if str(_SCRIPTS) not in sys.path:
 import offline_improve as oi  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
+import config_paths  # DUP-02/DUP-10 owner
 STATE_ROOT = Path(
     os.environ.get("FAMILIA_RECONNECT_DIR")
     or (
@@ -642,7 +643,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     ap.add_argument("--dry-run", action="store_true", default=False, help="force dry-run for repair (default when --repair)")
     ap.add_argument("--no-dry-run", action="store_true", help="allow non-dry repair (still seatbelted; needs FAMILIA_RECONNECT_ALLOW_START=1 for restarts)")
     ap.add_argument("--host", default=_hostname())
-    ap.add_argument("--graph", default=str(ROOT / "graph.yaml"))
+    ap.add_argument("--graph", default=config_paths.graph_path())
     ap.add_argument("--peers", default="", help="comma-separated peer SSH aliases")
     ap.add_argument("--health-urls", default="", help="comma-separated local health URLs (else graph/env)")
     ap.add_argument("--dns", default=DEFAULT_DNS_TARGET)

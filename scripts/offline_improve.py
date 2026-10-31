@@ -34,6 +34,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 ROOT = Path(__file__).resolve().parent.parent
+import config_paths  # DUP-02/DUP-10 owner
 STATE_ROOT = Path(
     os.environ.get("FAMILIA_OFFLINE_IMPROVE_DIR")
     or (Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local" / "state")) / "familia" / "offline-improve")
@@ -327,7 +328,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     mode.add_argument("--loop", action="store_true", help="improve → sleep/backoff → reconnect check → repeat until online")
     ap.add_argument("--offline", action="store_true", help="force offline mode (skip fleet check / treat as disconnected)")
     ap.add_argument("--host", default=_hostname(), help="graph host name for this machine (default: hostname)")
-    ap.add_argument("--graph", default=str(ROOT / "graph.yaml"))
+    ap.add_argument("--graph", default=config_paths.graph_path())
     ap.add_argument("--peers", default="", help="comma-separated peer host aliases (default: other graph hosts)")
     ap.add_argument("--no-bench", action="store_true", help="skip llama-bench; host_ram probe only")
     ap.add_argument("--base-sleep", type=float, default=float(os.environ.get("FAMILIA_OFFLINE_IMPROVE_BASE", 30)))
