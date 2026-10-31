@@ -344,6 +344,10 @@ def routing_warnings(graph):
     so existing graphs keep validating; each names the key to change."""
     out = []
     nodes, models = graph.get("nodes") or {}, graph.get("models") or {}
+    for nn, n in sorted(nodes.items()):
+        if quantized_v_needs_fa(n):
+            out.append(f"nodes.{nn}: kv_type {n['kv_type']} with flash_attn: false; llama-server refuses a quantized "
+                       f"V cache without flash attention, so it is launched with -fa on (set flash_attn: true to make that explicit)")
     for a, al in sorted((graph.get("aliases") or {}).items()):
         import graph_types as _gt
         prim = _gt.alias_primary(al)
@@ -625,6 +629,12 @@ def launch_tools_argv(graph, name):
     return ta + ["--api-key-file", tool_key_file(graph["nodes"][name])] if ta else []
 
 
+def quantized_v_needs_fa(n):
+    """llama-server refuses a quantized V cache without flash attention ('quantized V cache requires
+    flash_attn'): kv_type q8_0/q4_0 with flash_attn: false is launched with -fa on (and warned)."""
+    return n.get("kv_type") in ("q8_0", "q4_0") and not n.get("flash_attn")
+
+
 def server_args(graph, name):
     n = graph["nodes"][name]
     kind = (graph["runtimes"].get(n["runtime"]) or {}).get("kind", "llama-server")
@@ -635,8 +645,9 @@ def server_args(graph, name):
          "-c", str(n["ctx"]), "-np", str(n["parallel"]), "-ctk", n["kv_type"], "-ctv", n["kv_type"],
          "-ngl", str(n["offload"]["ngl"]), "--jinja"]
     if n["offload"]["ngl"]: a += ["-sm", n["offload"]["split"], "-mg", str(n["offload"]["main_gpu"])]
-    if n["flash_attn"]: a += ["-fa", "on"]
-    if n.get("threads"): a += ["-t", str(n["threads"])]
+    if n["flash_attn"] or quantized_v_needs_fa(n): a += ["-fa", "on"]
+    threads = n.get("threads") or (graph.get("hosts", {}).get(n.get("host")) or {}).get("threads")
+    if threads: a += ["-t", str(threads)]  # node.threads, else the host's measured threads
     if n.get("load_mode"): a += ["-lm", n["load_mode"]]
     if n.get("slot_save") or n.get("spill_path"):  # #85 + SSD/VVRAM spill (docs/vvram-ssd/LAYER.md)
         d = slot_save_dir(n, name); os.makedirs(d, exist_ok=True)
@@ -679,9 +690,10 @@ def server_args(graph, name):
         else:
             a += ["--spec-type", sp["spec_type"]]
     r = graph["runtimes"][n["runtime"]]
-    if "bin" in r:
-        a = [os.path.join(os.path.dirname(os.path.abspath(graph.get("_path", "graph.yaml"))), r["bin"])] + a
-    return a
+    # argv[0] is always the binary: runtimes.<r>.bin (relative to graph.yaml), else llama-server on PATH
+    binary = (os.path.join(os.path.dirname(os.path.abspath(graph.get("_path", "graph.yaml"))), r["bin"])
+              if "bin" in r else "llama-server")
+    return [binary] + a
 
 USAGE = __doc__.split("\n\n")[1]
 
