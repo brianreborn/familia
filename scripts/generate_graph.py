@@ -29,7 +29,8 @@ BASE_GRAPH = REPO_ROOT / "graph.yaml"
 OVERrides_FILE = REPO_ROOT / "config" / "host-overrides.yaml"
 import os
 # FAMILIA_GENERATED_DIR redirects output (tests use tmp; CFG-FILE-007b)
-OUTPUT_DIR = pathlib.Path(os.environ.get("FAMILIA_GENERATED_DIR") or (REPO_ROOT / "generated"))
+import config_paths  # noqa: E402
+OUTPUT_DIR = pathlib.Path(config_paths.generated_dir())
 
 
 def load_yaml(path: pathlib.Path):

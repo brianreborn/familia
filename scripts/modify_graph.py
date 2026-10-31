@@ -44,7 +44,8 @@ BASE_GRAPH = REPO_ROOT / "graph.yaml"
 MANIFEST = REPO_ROOT / "code-bootstraps-llama.cpp" / "config" / "models-manifest.json"
 import os
 # FAMILIA_GENERATED_DIR redirects generated graphs (tests use tmp; CFG-FILE-007b)
-GENERATED = pathlib.Path(os.environ.get("FAMILIA_GENERATED_DIR") or (REPO_ROOT / "generated"))
+import config_paths  # noqa: E402
+GENERATED = pathlib.Path(config_paths.generated_dir())
 
 
 def load_manifest():

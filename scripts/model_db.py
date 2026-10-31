@@ -28,7 +28,7 @@ import model_params as mp  # noqa: E402
 import config_paths  # noqa: E402
 
 REPO_ROOT = config_paths.ROOT  # DUP-10
-DB_DIR = os.path.join(REPO_ROOT, "registry", "models")
+DB_DIR = config_paths.model_db_dir()  # $FAMILIA_MODEL_DB_DIR (CFG-FILE-001a)
 SCHEMA = 2      # 2: descriptor, card_commands (verbatim), required_params, blockers, github docs (#51)
 PARAMS_BUILD = "b11374"   # flag table / EOG list the analysis is run against (code-bootstraps pin)
 CONFIG_FILES = ("tokenizer.json", "config.json", "generation_config.json", "tokenizer_config.json", "config_sentence_transformers.json",
