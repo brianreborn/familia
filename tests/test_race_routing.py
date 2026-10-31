@@ -244,15 +244,95 @@ def test_r5_replies_matched_to_requests_under_concurrency():
     srv.shutdown(); up.close()
 
 
-@pytest.mark.xfail(strict=False, reason="R5: per-session order relies on threading.RLock, which is "
-                   "not FIFO-fair (escalation_proxy.py:106/:280); no sequence number")
-def test_r5_per_sender_fifo_preserved():
-    up = Upstream("light", delay=0.08, echo=True)
+def _fifo_violations(senders=4, per=16, delay=0.03, stagger=0.01):
+    """Per-session numbered requests; returns {session: arrival seq list} where out of order."""
+    up = Upstream("light", delay=delay, echo=True)
     _, srv = proxy(graph(up.port, closed_port()))
+    port = srv.server_address[1]
+    start = threading.Barrier(senders)
     ts = []
-    for i in range(8):
-        t = threading.Thread(target=post, args=(srv.server_address[1], f"m{i}", "A")); t.start(); ts.append(t)
-        time.sleep(0.01)
+
+    def sender(sid):
+        start.wait()
+        inner = []
+        for n in range(per):  # submit in order; later ones queue behind the session lock
+            t = threading.Thread(target=post, args=(port, f"{sid}:{n:03d}", sid, 30)); t.start(); inner.append(t)
+            time.sleep(stagger)
+        for t in inner: t.join()
+
+    for k in range(senders):
+        t = threading.Thread(target=sender, args=(f"S{k}",)); t.start(); ts.append(t)
     for t in ts: t.join()
     srv.shutdown(); up.close()
-    assert [b["messages"][-1]["content"] for b in up.seen] == [f"m{i}" for i in range(8)]
+    per_s = {}
+    for b in up.seen:
+        sid, n = b["messages"][-1]["content"].split(":")
+        per_s.setdefault(sid, []).append(int(n))
+    # Every request must have arrived; a short count means a transport error (see R6), not R5.
+    assert sorted(len(v) for v in per_s.values()) == [per] * senders, f"lost requests: {per_s}"
+    return {k: v for k, v in per_s.items() if v != sorted(v)}
+
+
+@pytest.mark.xfail(strict=True, reason="R5: per-session order relies on threading.RLock, which is "
+                   "not FIFO-fair (escalation_proxy.py:106/:280); no sequence number")
+def test_r5_per_sender_fifo_preserved():
+    bad = _fifo_violations()
+    assert not bad, f"out-of-order arrivals per session: {bad}"
+
+
+# ---------------- R6 accept-backlog burst ----------------
+
+BURST = 64
+
+
+def _burst(port, n):
+    """n raw sockets connect+send at a barrier; returns list of (ok, detail)."""
+    bar = threading.Barrier(n)
+    out = [None] * n
+
+    def one(i):
+        body = json.dumps({"model": "x", "messages": [{"role": "user", "content": f"b{i}"}]}).encode()
+        req = (f"POST /v1/chat/completions HTTP/1.1\r\nHost: x\r\nContent-Type: application/json\r\n"
+               f"{EP.SESSION_HEADER}: s{i}\r\nContent-Length: {len(body)}\r\nConnection: close\r\n\r\n").encode() + body
+        try:
+            bar.wait()
+            with socket.create_connection(("127.0.0.1", port), timeout=20) as s:
+                s.sendall(req)
+                data = b""
+                while True:
+                    c = s.recv(65536)
+                    if not c: break
+                    data += c
+            head, _, rb = data.partition(b"\r\n\r\n")
+            ok = head.startswith(b"HTTP/1.") and b" 200 " in head.split(b"\r\n")[0]
+            out[i] = (ok and json.loads(rb)["choices"][0]["message"]["content"] == f"b{i}", head[:40])
+        except Exception as e:  # ECONNRESET / ECONNREFUSED land here
+            out[i] = (False, repr(e))
+
+    ts = [threading.Thread(target=one, args=(i,)) for i in range(n)]
+    for t in ts: t.start()
+    for t in ts: t.join()
+    return out
+
+
+def test_r6_burst_connections_all_answered():
+    """Behavioural half: on Linux the kernel rounds tiny backlogs up / SYN-retries, so this
+    usually passes here; on angel (FreeBSD) backlog 5 gave ECONNRESET. Kept strict (no xfail)."""
+    up = Upstream("light", delay=0.01, echo=True)
+    _, srv = proxy(graph(up.port, closed_port()))
+    try:
+        res = _burst(srv.server_address[1], BURST)
+    finally:
+        srv.shutdown(); up.close()
+    bad = [(i, d) for i, (ok, d) in enumerate(res) if not ok]
+    assert not bad, f"{len(bad)}/{BURST} burst connections failed: {bad[:5]}"
+
+
+@pytest.mark.xfail(strict=True, reason="R6: ThreadingHTTPServer default request_queue_size=5 "
+                   "(escalation_proxy.py:325); FreeBSD resets a 12+ burst. Harden to >=128")
+def test_r6_listen_backlog_covers_burst():
+    up = Upstream("light")
+    _, srv = proxy(graph(up.port, closed_port()))
+    q = srv.request_queue_size
+    srv.shutdown(); up.close()
+    assert q >= BURST, f"listen backlog {q} < burst {BURST}"
