@@ -111,7 +111,7 @@ jobs:
           fi
           # Redact anything shaped like a key before it leaves the host (R5).
           sed -E -i 's/(api[_-]?key|token|authorization|bearer)([=: "]+)[^ "]+/\1\2[REDACTED]/Ig' "$log"
-          case $rc in 0) st=pass ;; 78) st=skip ;; *) st=fail ;; esac
+          case $rc in 0) st=pass ;; 77|78) st=skip ;; *) st=fail ;; esac
           echo "status=$st" >> "$GITHUB_OUTPUT"
           { echo "summary<<SWARMEOF"; echo "$stamp"; echo "exit $rc"; tail -n 20 "$log"; echo "SWARMEOF"; } >> "$GITHUB_OUTPUT"
           echo "LOG=$log" >> "$GITHUB_ENV"
