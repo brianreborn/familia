@@ -20,6 +20,14 @@ def _as_miryam(monkeypatch):
     # These fixtures model miryam's nodes; validate() scopes file/RAM checks to the local host.
     monkeypatch.setenv("FAMILIA_HOST", "miryam")
     monkeypatch.setattr(vg, "host_swap_total_mib", lambda: None)  # not this machine's real swap
+    monkeypatch.setattr(vg, "live_ram_mib", lambda: None)  # model miryam's snapshot, not this box (#224)
+
+
+def _totals(errs, totals, host="miryam"):
+    # #224: validate() returns {} when it stops early (schema errors, host scope); show why
+    # instead of a bare KeyError.
+    assert host in totals, (f"no RAM total for {host!r}; validate errors: {errs}; warnings: {vg.WARNINGS}")
+    return totals[host]
 
 
 def _base():
@@ -32,7 +40,7 @@ def test_baseline_fits_raised_reserve():
     errs, totals = vg.validate(_base())
     ram_errs = [e for e in errs if "RAM" in e or "free after" in e or "OOM" in e]
     assert ram_errs == [], ram_errs
-    assert totals["miryam"] < 4000  # coder+embed ~3479
+    assert _totals(errs, totals) < 4000  # coder+embed ~3479
 
 
 @pytest.mark.proving_ground  # depends on local model files / host fleet state
@@ -59,3 +67,4 @@ def test_overcommit_is_hard_error():
     g["hosts"]["miryam"]["reserve_ram_mib"] = 0  # else the reserve >= ram_mib check fires first and hides it
     errs, totals = vg.validate(g)
     assert any("overcommit" in e for e in errs), errs
+

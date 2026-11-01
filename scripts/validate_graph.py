@@ -263,8 +263,15 @@ def validate(graph, check_files=True, host=None):
         # RAM safety (docs/ram-safety.md). Android phones stay hard-fail on overcommit.
         # Swap-rich desktops/laptops/servers (angel-class): overcommit and tight margins are
         # advisory — software VVRAM / large swap is the intended path.
-        ram = hosts[h]["ram_mib"]
-        reserve = hosts[h].get("reserve_ram_mib") or 0
+        hh = hosts.get(h) or {}
+        ram, src = host_ram_mib(h, hh, local)
+        if ram is None:
+            # #224: unknown host or no RAM figure must not crash; with no live probe and no
+            # dated snapshot the budget cannot be checked, so say so instead of guessing.
+            WARNINGS.append(f"hosts.{h}: RAM unknown ({src}); RAM safety check skipped for "
+                            f"estimated {total:.0f} MiB (run scripts/host_measure.py on {h})")
+            continue
+        reserve = hh.get("reserve_ram_mib") or 0
         soft = _swap_rich_host(h)
         if total > ram:
             msg = f"hosts.{h}: estimated RAM {total:.0f} MiB exceeds physical ram_mib {ram} MiB (overcommit)"
@@ -342,6 +349,31 @@ def admit_peak_mib(graph, name):
 def check_vvram_policy(graph, metas=None):
     import ctx_vvram
     return ctx_vvram.check_vvram_policy(graph, metas=metas, gguf_meta=gguf_meta, kv_mib=kv_mib)
+
+def live_ram_mib():
+    """Physical RAM MiB of this machine from a live probe, or None (#224)."""
+    try:
+        import host_measure
+        v = host_measure._meminfo_mib()
+        return int(v) if v else None
+    except Exception:
+        return None
+
+def host_ram_mib(name, host, local=None):
+    """(ram_mib, source) for a graph host (#224). No master inventory: the graph's ram_mib is a
+    dated snapshot; on the local graph host a live probe is preferred. Unknown -> (None, why)."""
+    live = live_ram_mib() if (local is not None and name == local) else None
+    v = (host or {}).get("ram_mib")
+    snap = v if isinstance(v, int) and not isinstance(v, bool) and v > 0 else None
+    if live and snap:  # safe fallback: budget against the smaller figure
+        return min(live, snap), "live probe" if live < snap else "graph snapshot"
+    if live:
+        return live, "live probe"
+    if snap:
+        return snap, "graph snapshot"
+    if not host:
+        return None, f"host {name!r} not declared in graph hosts"
+    return None, "no ram_mib snapshot and no live probe"
 
 def host_swap_total_mib():
     """Total swap MiB on this machine, or None if unknown. FreeBSD swapinfo -k; Linux /proc/swaps."""
