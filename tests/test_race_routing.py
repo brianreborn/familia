@@ -120,12 +120,50 @@ def test_r1_distinct_sessions_refuse_oversubscribe_beyond_sprint():
     assert up.max_inflight <= SPRINT
 
 
-def test_r1_wait_budget_refuses_oversubscribe(monkeypatch):
+def test_r1_wait_budget_refuses_oversubscribe(monkeypatch, tmp_path):
     import dispatch
+    monkeypatch.setenv("FAMILIA_BUDGET_DIR", str(tmp_path))
     monkeypatch.setattr(dispatch, "threads_in_use", lambda: RESIDENT)
     monkeypatch.setattr(dispatch.time, "sleep", lambda s: None)
     assert dispatch.wait_budget(2, SPRINT, max_wait=0) is True      # 4+2 == 6 ok
     assert dispatch.wait_budget(3, SPRINT, max_wait=-1) is False    # 7 > 6 refused
+
+
+def _reserve_child(d, q):
+    import dispatch
+    os.environ["FAMILIA_BUDGET_DIR"] = d
+    dispatch.threads_in_use = lambda: RESIDENT
+    q.put(dispatch.reserve_budget(2, SPRINT, max_wait=-1))
+    time.sleep(1.0)  # keep the reservation (pid alive) while siblings check
+
+
+def test_r1_reserve_budget_atomic_across_processes(tmp_path):
+    """#244: N dispatchers racing for the last 2 threads -> exactly one wins (was: all)."""
+    import multiprocessing as mp
+    ctx = mp.get_context("fork")
+    q = ctx.Queue()
+    ps = [ctx.Process(target=_reserve_child, args=(str(tmp_path), q)) for _ in range(6)]
+    [p.start() for p in ps]
+    got = [q.get(timeout=20) for _ in ps]
+    [p.join(20) for p in ps]
+    assert got.count(True) == 1, got
+
+
+def test_r1_reservation_released_and_dead_owner_reclaimed(monkeypatch, tmp_path):
+    import dispatch
+    monkeypatch.setenv("FAMILIA_BUDGET_DIR", str(tmp_path))
+    monkeypatch.setattr(dispatch, "threads_in_use", lambda: RESIDENT)
+    assert dispatch.reserve_budget(2, SPRINT, max_wait=-1) is True
+    assert dispatch.reserve_budget(1, SPRINT, max_wait=-1) is False   # 4+2+1 > 6
+    dispatch.release_budget(2)
+    assert dispatch.reserve_budget(2, SPRINT, max_wait=-1) is True
+    dispatch.release_budget(2)
+    # a crashed dispatcher's reservation must not leak budget forever
+    import subprocess
+    dead = subprocess.Popen([sys.executable, "-c", "pass"]); dead.wait()
+    (tmp_path / "thread-budget.json").write_text(json.dumps({str(dead.pid): 2}))
+    assert dispatch.reserve_budget(2, SPRINT, max_wait=-1) is True
+    assert oct(os.stat(tmp_path / "thread-budget.lock").st_mode & 0o777) == "0o600"
 
 
 def test_r1_threads_in_use_counts_comma_threads():
