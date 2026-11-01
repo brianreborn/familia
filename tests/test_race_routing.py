@@ -272,6 +272,21 @@ def test_r5_replies_matched_to_requests_under_concurrency():
     srv.shutdown(); up.close()
 
 
+def _raw_post(s, content, session):
+    """POST over an already-connected socket ``s``; returns the reply content."""
+    body = json.dumps({"model": "x", "messages": [{"role": "user", "content": content}]}).encode()
+    req = (f"POST /v1/chat/completions HTTP/1.1\r\nHost: x\r\nContent-Type: application/json\r\n"
+           f"{EP.SESSION_HEADER}: {session}\r\nContent-Length: {len(body)}\r\nConnection: close\r\n\r\n").encode() + body
+    with s:
+        s.sendall(req)
+        data = b""
+        while True:
+            c = s.recv(65536)
+            if not c: break
+            data += c
+    return data
+
+
 def _fifo_violations(senders=4, per=16, delay=0.03, stagger=0.01):
     """Per-session numbered requests; returns {session: arrival seq list} where out of order."""
     up = Upstream("light", delay=delay, echo=True)
@@ -284,7 +299,11 @@ def _fifo_violations(senders=4, per=16, delay=0.03, stagger=0.01):
         start.wait()
         inner = []
         for n in range(per):  # submit in order; later ones queue behind the session lock
-            t = threading.Thread(target=post, args=(port, f"{sid}:{n:03d}", sid, 30)); t.start(); inner.append(t)
+            # #248: connect on this thread so arrival (accept) order is the submit order.
+            # A thread-per-request connect lets client scheduling reorder arrivals before
+            # the proxy ever sees them, which is not a proxy bug.
+            s = socket.create_connection(("127.0.0.1", port), timeout=30)
+            t = threading.Thread(target=_raw_post, args=(s, f"{sid}:{n:03d}", sid)); t.start(); inner.append(t)
             time.sleep(stagger)
         for t in inner: t.join()
 
@@ -360,3 +379,23 @@ def test_r6_listen_backlog_covers_burst():
     q = srv.request_queue_size
     srv.shutdown(); up.close()
     assert q >= BURST, f"listen backlog {q} < burst {BURST}"
+
+
+def test_r5_fairlock_grants_by_arrival_seq_not_wake_order():
+    """#248 deterministic: waiters that reach the lock out of arrival order still run in seq order."""
+    lk = EP.FairLock()
+    lk.acquire(seq=EP.next_seq())
+    base = EP.next_seq()
+    order, ts = [], []
+
+    def w(seq):
+        lk.acquire(seq=seq)
+        order.append(seq)
+        lk.release()
+
+    for off in (3, 1, 2):  # threads reach acquire() in this (wrong) order
+        t = threading.Thread(target=w, args=(base + off,)); t.start(); ts.append(t)
+        time.sleep(0.02)
+    lk.release()
+    for t in ts: t.join(5)
+    assert order == [base + 1, base + 2, base + 3]
