@@ -138,7 +138,7 @@ function RunCmd($gate, $cmd) {  # the license gate when asked for, then the comm
     Write-Host "[dry-run] $cmd"; return 0
   }
   if ($gate -eq 'lic') {
-    & python scripts\licenses.py gate | Out-Host
+    & python scripts/licenses.py gate | Out-Host
     if ($LASTEXITCODE) { Write-Host "$($script:Me): stopped: licenses not accepted yet. Review them with: python scripts\licenses.py review"; return $LASTEXITCODE }
   }
   Write-Host "Running: $cmd"
@@ -259,6 +259,11 @@ function ListItems {
   }
 }
 
+if (-not (Get-Command python -CommandType Application -ErrorAction SilentlyContinue)) {
+  # Linux/macOS pwsh (and some Windows installs) only ship python3 or the py launcher.
+  $alt = Get-Command python3, py -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+  if ($alt) { $script:PyExe = $alt.Source; function python { & $script:PyExe @args } }
+}
 if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
   Write-Host 'familia-menu: python was not found. Install Python 3 from python.org (tick "Add to PATH"), then run familia.cmd again.'
   exit 1
@@ -287,7 +292,7 @@ if ($Cli) {
     $k++
   }
   $rest = @(); if ($k -lt $a.Count) { $rest = @($a[$k..($a.Count - 1)]) }
-  if ($wantHelp) { & python scripts\familia_cli.py help --windows | Out-Host; exit 0 }
+  if ($wantHelp) { & python scripts/familia_cli.py help --windows | Out-Host; exit 0 }
   if ($Run -or $Search -or $List) {  # the old flag style: -Run KEY [ARG...] [-DryRun] [-Yes]
     $RunArgs = @(); foreach ($x in $rest) {
       if ($x -eq '-DryRun') { $DryRun = $true } elseif ($x -eq '-Yes') { $env:FAMILIA_ACCEPT_LICENSES = 'yes' } else { $RunArgs += $x } }
@@ -299,7 +304,7 @@ if ($Cli) {
           Write-Host 'The manual page is man\familia.1. Read it with: man ./man/familia.1 (Git Bash or WSL). The same commands:'
           $more = @()
         }
-        & python scripts\familia_cli.py help --windows @more | Out-Host; exit $LASTEXITCODE
+        & python scripts/familia_cli.py help --windows @more | Out-Host; exit $LASTEXITCODE
       }
       'list' { ListItems; exit 0 }
       'menu' { break }
@@ -313,12 +318,12 @@ if ($Cli) {
           if ($more[$i] -match '^(--run|-Run)$' -and $i + 1 -lt $more.Count) { $Run = $more[$i + 1]; $i++ } else { $RunArgs += $more[$i] } }
       }
       default {
-        $r = (& python scripts\familia_cli.py resolve --windows @rest | Select-Object -First 1)
+        $r = (& python scripts/familia_cli.py resolve --windows @rest | Select-Object -First 1)
         if ($r -match '^item (\S+) (\d+)$') {
           $key = $matches[1]; $n = [int]$matches[2]
           $script:CliHint = 'familia.cmd ' + ($rest[0..($n - 1)] -join ' ')
           $vals = @(); if ($rest.Count -gt $n) { $vals = @($rest[$n..($rest.Count - 1)]) }
-          if ($vals.Count -gt 0 -and $vals[0] -match '^(-h|--help)$') { & python scripts\familia_cli.py help --windows @($rest[0..($n - 1)]) | Out-Host; exit 0 }
+          if ($vals.Count -gt 0 -and $vals[0] -match '^(-h|--help)$') { & python scripts/familia_cli.py help --windows @($rest[0..($n - 1)]) | Out-Host; exit 0 }
           exit (RunItem $key $vals $false)
         }
         if ($r -match '^raw (\d+) (\S+) (.*)$') {
@@ -326,7 +331,7 @@ if ($Cli) {
           if ($rest.Count -gt $n) { foreach ($x in $rest[$n..($rest.Count - 1)]) { $cmd += ' ' + (Quote $x) } }
           exit (RunCmd $gate $cmd)
         }
-        $p = (& python scripts\familia_cli.py resolve @rest | Select-Object -First 1)
+        $p = (& python scripts/familia_cli.py resolve @rest | Select-Object -First 1)
         if ($p -and $p -ne 'none') { Write-Host "familia: '$($rest -join ' ')' runs only on Linux, Android or FreeBSD (./familia). See: familia.cmd help"; exit 2 }
         Write-Host "familia: unknown command '$($rest -join ' ')'. Try: familia.cmd help, or: familia.cmd search $w"; exit 2
       }
