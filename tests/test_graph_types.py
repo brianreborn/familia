@@ -181,7 +181,9 @@ def test_speculative_vocab_mismatch_and_ram(monkeypatch):
     # egemma2 (gemma4 tokenizer) cannot draft for qwen35 (gpt2 tokenizer): file-level check
     x = g(); x["_path"] = os.path.join(ROOT, "graph.yaml")
     x["speculative"]["d"] = spec_draft(status="experimental")
-    if not os.path.isfile(os.path.expanduser(BASE["models"]["egemma2-q8"]["gguf"])): pytest.skip("GGUFs not on this machine")
+    tgt = BASE["models"][BASE["nodes"]["coder"]["model"]]["gguf"]
+    if not all(os.path.isfile(os.path.expanduser(p)) for p in (BASE["models"]["egemma2-q8"]["gguf"], tgt)):
+        pytest.skip("draft and target GGUFs not both on this machine")
     e, tot = validate_graph.validate(x); assert any("tokenizer/vocab mismatch" in m for m in e), e
     _, base = validate_graph.validate(g()); assert tot["miryam"] > base["miryam"] + 290  # draft weights counted
 
