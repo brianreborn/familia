@@ -168,6 +168,29 @@ def test_r2_health_rechecked_at_dispatch_after_swap():
     assert len(calls) >= 2
 
 
+def test_r2_retry_health_checks_fallback_before_redial():
+    light = Upstream("light")
+    calls = []
+    def ensure(n):
+        calls.append(n); return n != "light"          # fallback node fails its health check
+    esc, srv = proxy(graph(light.port, closed_port()), current="heavy", ensure=ensure)
+    s, _ = post(srv.server_address[1])
+    srv.shutdown(); light.close()
+    assert "light" in calls                            # checked before the retry
+    assert s == 502 and not light.seen                 # not dialed blind
+
+
+def test_r2_retry_resends_original_body_not_handoff():
+    light = Upstream("light")
+    esc, srv = proxy(graph(light.port, closed_port()), current="heavy")
+    esc.handoff_next = True                            # heavy body would be handoff-compacted
+    post(srv.server_address[1], "original question")
+    srv.shutdown(); light.close()
+    msgs = light.seen[-1]["messages"]
+    assert light.seen[-1]["model"] == "light-a"
+    assert any("original question" == m.get("content") for m in msgs)
+
+
 # ---------------- R3 reconnect mid-tool-call (#149) ----------------
 
 def test_r3_drop_mid_call_no_duplicate_execution():
