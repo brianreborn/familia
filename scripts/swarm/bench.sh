@@ -10,7 +10,7 @@
 # Idle guard (stability first; SWARM_BENCH_FORCE=1 skips it): skip with 78 if llama-server is
 # running, 1-min load >= SWARM_BENCH_MAX_LOAD (default nproc/2, at least 1), or MemAvailable < model size
 # * 1.15 + SWARM_BENCH_RESERVE_MIB (default 3072). Each llama-bench call is capped by
-# SWARM_BENCH_TIMEOUT seconds (default 900) when timeout(1) exists.
+# SWARM_BENCH_TIMEOUT seconds (default 900) when timeout(1) exists; KILL 30 s later if TERM is ignored.
 set -u
 cache=${SWARM_BENCH_CACHE:-$HOME/.cache/familia-bench}
 # Entry: repo/file[@revision][#sha256]. Default: LFM3-1.7B-Uncensored (familia's default model,
@@ -25,7 +25,7 @@ done
 [ -n "${SWARM_BENCH_THREADS:-}" ] && knobs="$knobs -t $SWARM_BENCH_THREADS"
 [ -n "${SWARM_BENCH_UB:-}" ] && knobs="$knobs -ub $SWARM_BENCH_UB"
 [ -n "${SWARM_BENCH_LM:-}" ] && knobs="$knobs -lm $SWARM_BENCH_LM"
-to=""; command -v timeout >/dev/null 2>&1 && to="timeout ${SWARM_BENCH_TIMEOUT:-900}"
+to=""; command -v timeout >/dev/null 2>&1 && to="timeout -k 30 ${SWARM_BENCH_TIMEOUT:-900}"
 load1() { # 1-min load average, locale-independent
 	if [ -n "${SWARM_BENCH_LOAD1:-}" ]; then echo "$SWARM_BENCH_LOAD1" # test hook
 	elif [ -r /proc/loadavg ]; then cut -d' ' -f1 /proc/loadavg
@@ -79,7 +79,7 @@ for m in $models; do
 	# shellcheck disable=SC2086 # $to and $knobs are intentionally word-split
 	$to "$lb" -m "$f" -p "$pp" -n "$tg" -r "$reps" $knobs -o csv 2>/dev/null > "$cache/out.csv"; e=$?
 	if [ $e -ne 0 ]; then
-		st="llama-bench exit $e"; [ $e = 124 ] && st="timeout ${SWARM_BENCH_TIMEOUT:-900}s"
+		st="llama-bench exit $e"; { [ $e = 124 ] || [ $e = 137 ]; } && st="timeout ${SWARM_BENCH_TIMEOUT:-900}s"
 		echo "| $h-$u | $file | - | - | $st | FAIL |"; rc=1; continue
 	fi
 	python3 - "$cache/out.csv" "$h-$u" "$file" <<'PY'
