@@ -110,8 +110,8 @@ jobs:
             printf '%s\n%s\n' "$stamp" "$script not present on this ref" > "$log"; rc=78
           fi
           # Redact anything shaped like a key before it leaves the host (R5).
-          sed -E -i 's/(api[_-]?key|token|authorization|bearer)([=: "]+)[^ "]+/\1\2[REDACTED]/Ig' "$log"
-          case $rc in 0) st=pass ;; 78) st=skip ;; *) st=fail ;; esac
+          sed -E -e 's/([Bb][Ee][Aa][Rr][Ee][Rr])[ ]+[^ "]+/\1 [REDACTED]/g' -e 's/([Aa][Pp][Ii][_-]?[Kk][Ee][Yy]|[Tt][Oo][Kk][Ee][Nn]|[Aa][Uu][Tt][Hh][Oo][Rr][Ii][Zz][Aa][Tt][Ii][Oo][Nn]|[Bb][Ee][Aa][Rr][Ee][Rr])([=: "]+)[^ "]+/\1\2[REDACTED]/g' "$log" > "$log.tmp" && mv "$log.tmp" "$log"
+          case $rc in 0) st=pass ;; 77|78) st=skip ;; *) st=fail ;; esac
           echo "status=$st" >> "$GITHUB_OUTPUT"
           { echo "summary<<SWARMEOF"; echo "$stamp"; echo "exit $rc"; tail -n 20 "$log"; echo "SWARMEOF"; } >> "$GITHUB_OUTPUT"
           echo "LOG=$log" >> "$GITHUB_ENV"
