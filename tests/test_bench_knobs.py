@@ -43,9 +43,10 @@ def test_busy_host_is_skipped(tmp_path):
 
 
 def test_low_memory_is_skipped(tmp_path):
-    if not os.path.exists("/proc/meminfo"):
-        pytest.skip("no /proc/meminfo (FreeBSD path uses vm.stats sysctl)")
-    p, a = _run(tmp_path, SWARM_BENCH_MAX_LOAD="100000", SWARM_BENCH_RESERVE_MIB="100000000")
+    mi = tmp_path / "meminfo"
+    mi.write_text("MemTotal: 1000 kB\nMemAvailable: 2048 kB\n")
+    p, a = _run(tmp_path, SWARM_BENCH_MAX_LOAD="100000", SWARM_BENCH_RESERVE_MIB="100000000",
+                SWARM_BENCH_MEMINFO=str(mi))
     assert p.returncode == 78 and "MemAvailable" in p.stdout and a == ""
 
 
@@ -61,3 +62,28 @@ def test_timeout_labelled(tmp_path):
     slow.chmod(0o755)
     p, _ = _run(tmp_path, SWARM_BENCH_FORCE="1", SWARM_BENCH_TIMEOUT="1", LLAMA_BENCH=str(slow))
     assert p.returncode == 1 and "timeout 1s" in p.stdout, p.stdout
+
+
+def test_one_cpu_host_not_always_skipped(tmp_path):
+    mi = tmp_path / "meminfo"
+    mi.write_text("MemAvailable: 99999999 kB\n")
+    # nproc=1 -> default max load floors at 1; load 0.50 must run (was: max 0, always skip)
+    p, a = _run(tmp_path, SWARM_BENCH_NPROC="1", SWARM_BENCH_LOAD1="0.50",
+                SWARM_BENCH_MEMINFO=str(mi), SWARM_BENCH_RESERVE_MIB="0")
+    assert p.returncode == 0 and a, p.stdout + p.stderr
+    p, a = _run(tmp_path / "b" if (tmp_path / "b").mkdir() is None else tmp_path,
+                SWARM_BENCH_NPROC="1", SWARM_BENCH_LOAD1="1.00", SWARM_BENCH_MEMINFO=str(mi))
+    assert p.returncode == 78 and "load 1.00" in p.stdout
+
+
+def test_missing_meminfo_is_not_silent_pass(tmp_path):
+    p, a = _run(tmp_path, SWARM_BENCH_MAX_LOAD="100000",
+                SWARM_BENCH_MEMINFO=str(tmp_path / "nope1") + " " + str(tmp_path / "nope2"))
+    assert p.returncode == 77 and a == "", p.stdout
+    assert "RAM guard unavailable: mount procfs+linprocfs (see fstab)" in p.stderr
+
+
+def test_missing_meminfo_force_overrides(tmp_path):
+    p, a = _run(tmp_path, SWARM_BENCH_FORCE="1", SWARM_BENCH_MEMINFO=str(tmp_path / "nope"))
+    assert p.returncode == 0 and a
+
