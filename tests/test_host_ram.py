@@ -39,3 +39,40 @@ def test_live_probe_never_raises(monkeypatch):
     import host_measure
     monkeypatch.setattr(host_measure, "_meminfo_mib", lambda: (_ for _ in ()).throw(OSError("x")))
     assert vg.live_ram_mib() is None
+
+
+# --- fail-closed verdicts for unknown RAM (#224 review) ---
+
+def test_undeclared_host_is_error():
+    e, w = vg.unknown_ram_verdict("ghost", False, False, 1000, "x")
+    assert e and "not declared" in e[0] and w == []
+
+
+def test_undeclared_host_is_error_even_if_swap_rich_flag():
+    e, w = vg.unknown_ram_verdict("ghost", False, True, 1000, "x")
+    assert e and w == []
+
+
+def test_phone_unknown_ram_is_error():
+    # phones are never swap-rich (_android_host), so unknown RAM fails closed
+    e, w = vg.unknown_ram_verdict("phone7", True, False, 900, "no ram_mib snapshot and no live probe")
+    assert e and "fail closed" in e[0] and w == []
+
+
+def test_no_swap_host_sysrescue_unknown_ram_is_error():
+    e, w = vg.unknown_ram_verdict("sysrescue", True, False, 2000, "no ram_mib snapshot and no live probe")
+    assert e and "not swap-rich" in e[0]
+
+
+def test_swap_rich_unknown_ram_warns_reserve_skipped():
+    e, w = vg.unknown_ram_verdict("angel", True, True, 2000, "x")
+    assert e == [] and "RAM reserve check SKIPPED" in w[0]
+
+
+def test_android_platform_reads_proc_meminfo(monkeypatch, tmp_path):
+    import host_measure, builtins
+    monkeypatch.setattr(host_measure.sys, "platform", "android")
+    real_open = builtins.open
+    f = tmp_path / "meminfo"; f.write_text("MemTotal:        5859328 kB\n")
+    monkeypatch.setattr(builtins, "open", lambda p, *a, **k: real_open(f if p == "/proc/meminfo" else p, *a, **k))
+    assert host_measure._meminfo_mib() == 5722

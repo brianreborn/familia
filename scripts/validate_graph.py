@@ -263,14 +263,15 @@ def validate(graph, check_files=True, host=None):
         # RAM safety (docs/ram-safety.md). Android phones stay hard-fail on overcommit.
         # Swap-rich desktops/laptops/servers (angel-class): overcommit and tight margins are
         # advisory — software VVRAM / large swap is the intended path.
-        hh = hosts.get(h) or {}
+        hh = hosts.get(h)
         ram, src = host_ram_mib(h, hh, local)
         if ram is None:
-            # #224: unknown host or no RAM figure must not crash; with no live probe and no
-            # dated snapshot the budget cannot be checked, so say so instead of guessing.
-            WARNINGS.append(f"hosts.{h}: RAM unknown ({src}); RAM safety check skipped for "
-                            f"estimated {total:.0f} MiB (run scripts/host_measure.py on {h})")
+            # #224: fail closed. Undeclared host -> error; declared host with unknown RAM ->
+            # error unless swap-rich (then an explicit "reserve check skipped" warning).
+            e, w = unknown_ram_verdict(h, hh is not None, (hh is not None) and _swap_rich_host(h), total, src)
+            errs.extend(e); WARNINGS.extend(w)
             continue
+        hh = hh or {}
         reserve = hh.get("reserve_ram_mib") or 0
         soft = _swap_rich_host(h)
         if total > ram:
@@ -349,6 +350,17 @@ def admit_peak_mib(graph, name):
 def check_vvram_policy(graph, metas=None):
     import ctx_vvram
     return ctx_vvram.check_vvram_policy(graph, metas=metas, gguf_meta=gguf_meta, kv_mib=kv_mib)
+
+def unknown_ram_verdict(h, declared, swap_rich, total, src):
+    """(errors, warnings) for a host whose RAM could not be determined (#224). Fails closed."""
+    if not declared:
+        return [f"hosts.{h}: nodes placed on host {h!r} which is not declared in graph hosts "
+                f"(estimated {total:.0f} MiB; RAM unknown)"], []
+    if swap_rich:
+        return [], [f"hosts.{h}: RAM unknown ({src}); RAM reserve check SKIPPED for estimated "
+                    f"{total:.0f} MiB (swap-rich host; run scripts/host_measure.py on {h})"]
+    return [f"hosts.{h}: RAM unknown ({src}) and host is not swap-rich; cannot verify estimated "
+            f"{total:.0f} MiB + reserve fits (fail closed; run scripts/host_measure.py on {h})"], []
 
 def live_ram_mib():
     """Physical RAM MiB of this machine from a live probe, or None (#224)."""
