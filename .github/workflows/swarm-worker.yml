@@ -2,7 +2,8 @@
 #   ubuntu dispatch -> self-hosted [self-hosted, Linux, swarm-bench] job -> ubuntu report.
 # The report runs on ubuntu because a dead self-hosted runner cannot comment.
 # Trigger: an owner comment whose whole first line is `/run e2e` (optionally
-# `/run e2e <ref>`), or workflow_dispatch with an issue number.
+# `/run e2e <ref>`), or workflow_dispatch with an issue number. Bench knobs:
+# `/run bench [ref] threads=2,4 ub=64,512 lm=mmap,none reps=3` (any subset).
 # R9: dispatch/report are trivial (parse, comment). All work runs in the bench job.
 # Forge calls go through scripts/swarm/forge.sh (R0, Forgejo-portable syntax).
 # Logs go to brianreborn/familia-private (secret FAMILIA_PRIVATE_LOGS_TOKEN), never to this repo.
@@ -46,6 +47,10 @@ jobs:
       issue: ${{ steps.p.outputs.issue }}
       ref: ${{ steps.p.outputs.ref }}
       suite: ${{ steps.p.outputs.suite }}
+      threads: ${{ steps.p.outputs.threads }}
+      ub: ${{ steps.p.outputs.ub }}
+      lm: ${{ steps.p.outputs.lm }}
+      reps: ${{ steps.p.outputs.reps }}
     steps:
       - id: p
         env:
@@ -60,9 +65,22 @@ jobs:
             issue=$IN_ISSUE; ref=${IN_REF:-main}; suite=${IN_SUITE:-e2e}
           else
             line=$(printf '%s\n' "$BODY" | head -n1 | tr -d '\r')
-            set -- $line
+            set -f; set -- $line; set +f
             [ "${1:-}" = "/run" ] || { echo "not a command"; exit 1; }
-            suite=${2:-e2e}; ref=${3:-main}; issue=$EV_ISSUE
+            suite=${2:-e2e}; ref=main; issue=$EV_ISSUE
+            # Optional bench knobs after suite/ref: threads= ub= lm= reps= (comma lists,
+            # [A-Za-z0-9,] only). bench.sh re-validates and exits 2 on a bad value.
+            if [ $# -ge 2 ]; then shift 2; else shift $#; fi
+            for tok in "$@"; do
+              case "$tok" in
+                threads=*|ub=*|lm=*|reps=*)
+                  k=${tok%%=*}; v=${tok#*=}
+                  case "$v" in ''|*[!A-Za-z0-9,]*) echo "bad knob $tok" >&2; exit 1 ;; esac
+                  echo "$k=$v" >> "$GITHUB_OUTPUT" ;;
+                *=*) echo "unknown knob $tok" >&2; exit 1 ;;
+                *) ref=$tok ;;
+              esac
+            done
           fi
           case "$suite" in e2e|bench) ;; *) echo "unknown suite $suite" >&2; exit 1 ;; esac
           case "$ref" in *[!A-Za-z0-9._/-]*) echo "bad ref" >&2; exit 1 ;; esac
@@ -92,6 +110,12 @@ jobs:
           ref: ${{ needs.dispatch.outputs.ref }}
           submodules: recursive
       - id: run
+        env:
+          # Empty = unset for bench.sh (it uses ${VAR:-}); only the bench suite reads them.
+          SWARM_BENCH_THREADS: ${{ needs.dispatch.outputs.threads }}
+          SWARM_BENCH_UB: ${{ needs.dispatch.outputs.ub }}
+          SWARM_BENCH_LM: ${{ needs.dispatch.outputs.lm }}
+          SWARM_BENCH_REPS: ${{ needs.dispatch.outputs.reps }}
         run: |
           set -u
           mkdir -p "$RUNNER_TEMP/swarm"
