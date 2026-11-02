@@ -20,13 +20,13 @@ an error (exit 2), never a silent default.
   1. Candidates: releases that are not drafts, not flagged prerelease, whose tag does not look
      like a prerelease (rc, alpha, beta, pre, preview, dev, nightly, snapshot) and whose tag /
      revision passes the strict name check. Invalid names are skipped and logged, never used.
-  2. Soak time of a candidate = time until the next candidate was published (or until now for
-     the newest). A long soak means nobody had to ship a follow-up quickly.
-  3. In the window [now - N days, now], among candidates with at least MIN_SOAK (24 h) of soak,
-     pick the longest soak; ties go to the newer release.
-  4. If the window has candidates but none soaked 24 h, or the window is empty, fall back to the
-     newest candidate published before the window (logged as a fallback). If there is none,
-     the longest-soaked candidate in the window is used (logged).
+  2. Soak time of a candidate: for the newest candidate, time since it was published; for an
+     older one, how long it stayed un-superseded (until the next candidate was published).
+     A candidate qualifies when it soaked at least MIN_SOAK (24 h).
+  3. In the window [now - N days, now], pick the NEWEST qualifying candidate (leans newer).
+  4. If nothing in the window qualifies (or the window is empty), fall back to the newest
+     qualifying candidate published before the window (logged as a fallback). Last resorts,
+     also logged: the newest candidate before the window, then the newest in the window.
   Releases deleted ("yanked") upstream are simply absent from the list, so they are never picked.
   llama.cpp: upstream flags every bNNNN build as a prerelease and publishes vX.Y.Z releases as
   its stable line, each with a nightly-tag.txt asset naming the bNNNN build it was cut from.
@@ -387,15 +387,18 @@ def select(releases, channel, days, now, asset_re=None):
     window = [r for r in cands if start <= r.published <= now]
     ripe = [r for r in window if soak[r] >= MIN_SOAK]
     if ripe:
-        best = max(ripe, key=lambda r: (soak[r], r.published))
-        return best, False, "stable: longest soak in the last %d days (%s un-superseded)" % (days, _fmt(soak[best]))
+        best = ripe[-1]  # cands is sorted by publish time: newest qualifying in the window
+        return best, False, "stable: newest release of the last %d days that soaked %s (%s)" % (
+            days, _fmt(MIN_SOAK), _fmt(soak[best]))
+    why = "no release in the last %d days soaked %s" % (days, _fmt(MIN_SOAK)) if window \
+        else "no release in the last %d days" % days
     older = [r for r in cands if r.published < start]
+    older_ripe = [r for r in older if soak[r] >= MIN_SOAK]
+    if older_ripe:
+        return older_ripe[-1], True, "stable fallback: %s; newest qualifying release before the window" % why
     if older:
-        why = "no release in the last %d days soaked %s" % (days, _fmt(MIN_SOAK)) if window \
-            else "no release in the last %d days" % days
-        return older[-1], True, "stable fallback: %s; newest release before the window" % why
-    best = max(window, key=lambda r: (soak[r], r.published))
-    return best, True, "stable fallback: nothing older than the window; longest soak in it"
+        return older[-1], True, "stable fallback: %s; nothing before the window soaked %s either; newest release before the window" % (why, _fmt(MIN_SOAK))
+    return window[-1], True, "stable fallback: %s; nothing older than the window; newest release in it" % why
 
 
 def _fmt(td):

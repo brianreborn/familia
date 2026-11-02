@@ -89,12 +89,27 @@ def test_source_id_validation(bad):
 
 # ---------------------------------------------------------------- selection
 
-def test_window_longest_soak():
-    # in a 30-day window: v1.0 (soaked 10d), v1.1 (soaked 2d), v1.2 (soaked 5d, newest)
+def test_window_newest_qualifying():
+    # in a 30-day window: v1.0 (soaked 10d), v1.1 (soaked 2d), v1.2 (newest, 5d since publish)
     f = fake({1: [gh("v1.2", 5), gh("v1.1", 7), gh("v1.0", 17), gh("v0.9", 40)]})
     r = channel.resolve("hermes-agent", "stable", 30, now=NOW, fetch=f, fetch_text=no_text)
-    assert (r.ref, r.fallback, r.kind) == ("v1.0", False, "tag")
+    assert (r.ref, r.fallback, r.kind) == ("v1.2", False, "tag")
     assert r.channel == "stable" and r.days == 30
+
+
+def test_window_skips_fresh_and_quickly_superseded():
+    # v1.4 is 3 h old (not soaked); v1.3 was replaced after 2 h; v1.2 stood for about 10 days
+    f = fake({1: [gh("v1.4", 0, 3), gh("v1.3", 0, 5), gh("v1.2", 10), gh("v1.1", 21), gh("v1.0", 40)]})
+    r = channel.resolve("hermes-agent", "stable", 30, now=NOW, fetch=f)
+    assert (r.ref, r.fallback) == ("v1.2", False)
+
+
+def test_fallback_skips_unqualified_before_window():
+    # 1-day window: v1.3 is 5 h old (not soaked); before the window v1.2 was replaced after
+    # 21 h (not qualifying), v1.1 stood for about 4 days
+    f = fake({1: [gh("v1.3", 0, 5), gh("v1.2", 1, 2), gh("v1.1", 5), gh("v1.0", 9)]})
+    r = channel.resolve("hermes-agent", "stable", 1, now=NOW, fetch=f)
+    assert (r.ref, r.fallback) == ("v1.1", True) and "qualifying" in r.reason
 
 
 def test_window_tie_goes_to_newer():
@@ -176,10 +191,12 @@ def test_llama_stable_maps_version_to_build():
         seen.append(url)
         return {"v0.7.0": "b11669\n", "v0.8.0": "b11960\n"}[url.rsplit("/", 2)[1]]
     r = channel.resolve("llama.cpp", "stable", 30, now=NOW, fetch=fake(llama_pages()), fetch_text=text)
-    assert (r.ref, r.release) == ("b11669", "v0.7.0")
-    assert seen == ["https://github.com/ggml-org/llama.cpp/releases/download/v0.7.0/nightly-tag.txt"]
+    assert (r.ref, r.release, r.fallback) == ("b11960", "v0.8.0", False)   # leans newer over v0.7.0
+    assert seen == ["https://github.com/ggml-org/llama.cpp/releases/download/v0.8.0/nightly-tag.txt"]
     r = channel.resolve("llama.cpp", "stable", 7, now=NOW, fetch=fake(llama_pages()), fetch_text=text)
     assert (r.ref, r.release) == ("b11960", "v0.8.0")
+    r = channel.resolve("llama.cpp", "stable", 3, now=NOW, fetch=fake(llama_pages()), fetch_text=text)
+    assert (r.ref, r.release, r.fallback) == ("b11960", "v0.8.0", True)   # window empty: newest before it
 
 
 @pytest.mark.parametrize("body", ["b1;rm", "$(x)", "", "v0.7.0", "b12 34", "../b1"])
@@ -203,7 +220,7 @@ def hf_commit(i, days):
 def test_hf_stable_commit():
     f = fake({0: [hf_commit(1, 2), hf_commit(2, 4), hf_commit(3, 20), {"id": "../x", "date": ago(1)}]})
     r = channel.resolve("hf:Org/Model-GGUF", "stable", 30, now=NOW, fetch=f)
-    assert r.ref == "3" * 40 and r.kind == "commit"
+    assert r.ref == "1" * 40 and r.kind == "commit"   # newest commit that soaked 24 h
     assert f.calls[0].startswith("https://huggingface.co/api/models/Org/Model-GGUF/commits/main?")
 
 

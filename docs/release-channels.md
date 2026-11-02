@@ -45,15 +45,17 @@ pin in code-bootstraps-llama.cpp.
    along with tags that look like one (`rc`, `alpha`, `beta`, `pre`,
    `preview`, `dev`, `nightly`, `snapshot`). Any tag or revision that fails the
    strict name check is dropped too and logged, never used.
-2. **Soak time.** A candidate's soak time runs until the next candidate was
-   published, or until now for the newest. A long soak means nobody had to
-   ship a follow-up quickly.
-3. **Pick.** Within the last N days, among candidates that soaked at least 24
-   hours, the longest soak wins; ties go to the newer release.
-4. **Fallback.** If nothing in the window soaked 24 hours, or the window is
-   empty, the newest candidate from before the window is used. If there is
-   none, the longest-soaked candidate in the window is used. Every fallback is
-   logged.
+2. **Soak time.** For the newest candidate, soak time is the time since it
+   was published. For an older one, it is how long it stayed un-superseded,
+   until the next candidate was published. A candidate qualifies once it has
+   soaked at least 24 hours.
+3. **Pick.** Within the last N days, the newest qualifying candidate wins.
+   The channel leans newer: anything that survived a day without being
+   replaced is preferred over older releases.
+4. **Fallback.** If nothing in the window qualifies, or the window is empty,
+   the newest qualifying candidate from before the window is used. Last
+   resorts are the newest candidate before the window, then the newest in the
+   window. Every fallback is logged.
 
 Releases deleted (yanked) upstream no longer appear in the list, so they are
 never picked.
