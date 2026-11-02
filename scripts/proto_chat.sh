@@ -256,6 +256,12 @@ Help with local install and build (deps, licenses, configure, PATH).
 Help the user explore which larger models to fetch next (coding, chat, phone, vision).
 Help search the user'\''s X/Twitter posts when Agent-Reach / twitter-cli is available.
 Keep answers short and actionable. Prefer one next command. Never claim cloud access you do not have.'
+# Fleet greeting (docs/FLEET-GREETING.md) first, once; a missing file only warns (scripts/fleet_greeting.py).
+# The trailing x keeps the command substitution from eating the prompt's last newline.
+if _greeted=$(printf '%s' "$SYSTEM_PROMPT" | "$PY" "$FAMILIA_SCRIPTS/fleet_greeting.py" prepend && printf x); then
+  SYSTEM_PROMPT=${_greeted%x}
+fi
+unset _greeted
 
 if ! URL=$(find_endpoint); then
   say "no local OpenAI-compatible server detected"
