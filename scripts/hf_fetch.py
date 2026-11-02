@@ -104,40 +104,32 @@ def fetch_range(repo, rev, path, nbytes):
 
 
 def download(repo, rev, sib, dest):
-    """Download one sibling to dest (atomic) and verify LFS sha256 / git blob sha1."""
+    """Download one sibling to dest via hf_cache (sidecar revalidation, Range/If-Range resume,
+    sha256 before an atomic rename) and verify LFS sha256 / git blob sha1."""
+    import hf_cache
     path = sib["rfilename"]
-    tmp = dest + ".part"
-    os.makedirs(os.path.dirname(dest), exist_ok=True)
-    h = hashlib.sha256()
-    s1 = hashlib.sha1()
     size = sib.get("size")
-    if size is not None and not sib.get("lfs"):
-        s1.update(b"blob %d\0" % size)
-    n = 0
-    with _request(resolve_url(repo, rev, path), timeout=300) as r, open(tmp, "wb") as f:
-        while True:
-            b = r.read(1 << 20)
-            if not b:
-                break
-            f.write(b)
-            h.update(b)
-            s1.update(b)
-            n += len(b)
-    sha = h.hexdigest()
     lfs = sib.get("lfs") or {}
-    if size is not None and n != size:
-        os.unlink(tmp)
-        raise HFError("%s: size %d != listed %d" % (path, n, size))
-    if lfs.get("sha256") and lfs["sha256"] != sha:
-        os.unlink(tmp)
-        raise HFError("%s: sha256 %s != LFS %s" % (path, sha, lfs["sha256"]))
+    h = {"User-Agent": UA}
+    tok = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
+    url = resolve_url(repo, rev, path)
+    if tok and url.startswith(ENDPOINT):
+        h["Authorization"] = "Bearer " + tok
+    try:
+        res = hf_cache.fetch(url, dest, sha256=lfs.get("sha256"), size=size, headers=h, opener=_opener)
+    except hf_cache.FetchError as e:
+        raise HFError("%s: %s" % (path, e))
+    sha, n = res["sha256"], res["size"]
     verified = "lfs-sha256" if lfs.get("sha256") else None
     if not lfs and sib.get("blobId") and size is not None:
+        s1 = hashlib.sha1(b"blob %d\0" % size)
+        hf_cache.sha256_file(dest, s1)
         if s1.hexdigest() != sib["blobId"]:
-            os.unlink(tmp)
+            for p in (dest, dest + ".meta.json"):
+                if os.path.exists(p):
+                    os.unlink(p)
             raise HFError("%s: git blob sha1 %s != %s" % (path, s1.hexdigest(), sib["blobId"]))
         verified = "git-blob-sha1"
-    os.replace(tmp, dest)
     return sha, n, verified
 
 
