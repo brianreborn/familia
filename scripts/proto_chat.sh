@@ -257,6 +257,12 @@ Help the user explore which larger models to fetch next (coding, chat, phone, vi
 Help search the user'\''s X/Twitter posts when Agent-Reach / twitter-cli is available.
 Keep answers short and actionable. Prefer one next command. Never claim cloud access you do not have.'
 
+# Private scratch for child stderr (honors TMPDIR, incl. Termux $PREFIX/tmp).
+_tbase=${TMPDIR:-${PREFIX:+$PREFIX/tmp}}
+PROTO_TMP=$(umask 077; mktemp -d "${_tbase:-/tmp}/familia-proto.XXXXXX") || die "mktemp failed" 1
+trap 'rm -rf -- "$PROTO_TMP"' EXIT HUP INT TERM
+PROTO_ERR=$PROTO_TMP/err
+
 if ! URL=$(find_endpoint); then
   say "no local OpenAI-compatible server detected"
   start_bootstrap
@@ -285,7 +291,7 @@ while true; do
   case "$line" in
     ""|/q|/quit|/exit|exit|quit) say "bye"; _proto_osc done --id home/proto --msg "proto chat ended"; break ;;
   esac
-  reply=$("$PY" - "$URL" "$MODEL" "$SYSTEM_PROMPT" "$line" <<'PY' 2>/tmp/proto-chat.err || true
+  reply=$("$PY" - "$URL" "$MODEL" "$SYSTEM_PROMPT" "$line" <<'PY' 2>"$PROTO_ERR" || true
 import json, os, sys, urllib.request, urllib.error
 sys.path.insert(0, os.environ["FAMILIA_SCRIPTS"]); import familia_auth
 url, model, system, user = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
@@ -320,8 +326,8 @@ print((msg.get("content") or "").strip() or "(empty reply)", end="")
 PY
 )
   if [ -z "$reply" ]; then
-    if [ -s /tmp/proto-chat.err ]; then
-      printf 'proto> %s\n' "$(cat /tmp/proto-chat.err)"
+    if [ -s "$PROTO_ERR" ]; then
+      printf 'proto> %s\n' "$(cat "$PROTO_ERR")"
     else
       printf 'proto> (no reply)\n'
     fi
