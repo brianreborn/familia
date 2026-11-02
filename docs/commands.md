@@ -236,6 +236,8 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/monitor.sh` | the same console as ./familia-monitor, which the menu runs |
 | `scripts/hermes_harness.py` | always run through scripts/hermes.sh, which the menu runs |
 | `scripts/hermes_modes.py` | the graph/single-model front end scripts/hermes.sh execs; run hermes.sh |
+| `scripts/runtime_dir.py` | helper module the launchers and admission ledger import (private runtime dir); not run directly |
+| `scripts/runtime_dir.sh` | helper sourced by the shell launchers (private runtime dir); not run directly |
 | `install/windows/install.bat` | double-click wrapper for install\windows\install.ps1, which the Windows menu runs |
 | `start-green-roomz.sh` | guard stub; the real one is deployed onto the phone by android_start.sh |
 | `scripts/monitor/probe.py` | read-only probe the monitor pipes to each host over SSH |
