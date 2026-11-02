@@ -216,7 +216,7 @@ flowchart LR
   gw --> a4 --> dec
 ```
 
-Tool grants at launch (`validate_graph.tools_argv`, #243): `coder`, `chat`, `general` and `reasoning` nodes get `--tools all` by default; `embed`, `decision`, `vision` and `diffusion` get none; `guardian`, `pentest` and `defender` always fail closed; an explicit `server_tools` key wins, and is only allowed on a loopback bind.
+Tool grants at launch (`validate_graph.tools_argv`, #243): `coder`, `chat`, `general` and `reasoning` nodes get `--tools all` by default (default under review); `embed`, `decision`, `vision` and `diffusion` get none; `guardian`, `pentest` and `defender` always fail closed; an explicit `server_tools` key wins, and is only allowed on a loopback bind.
 
 ### Node lifecycle (`start.sh` -> `scripts/start_graph.py`)
 
@@ -247,7 +247,7 @@ stateDiagram-v2
 
 ### Installer flow and the license gate
 
-Proposed behavior for the unattended installer (ALPHA, [#277](https://github.com/brianreborn/familia/issues/277)). Today `--yes` on `main` sets `FAMILIA_ACCEPT_LICENSES` (and allows root on Linux), which was a deliberate Oct 28 change; which policy ships is still Brian's call, so this diagram shows the proposal, not current behavior.
+Proposed behavior for the unattended installer (ALPHA, [#277](https://github.com/brianreborn/familia/issues/277)). Today `--yes` on `main` sets `FAMILIA_ACCEPT_LICENSES` (and allows root on Linux); which policy ships is still Brian's call, so this diagram shows the proposal, not current behavior.
 
 ```mermaid
 flowchart TD
@@ -266,7 +266,7 @@ flowchart TD
   startg --> done
 ```
 
-Unattended and test installs answer the real license prompt through a pty, the way a person types, instead of a flag that skips it.
+Under the ALPHA proposal, unattended and test installs would answer the real license prompt through a pty, the way a person types, instead of a flag that skips it.
 
 ### Hugging Face download cache
 
