@@ -8,7 +8,9 @@ through `fleet_greeting.py prepend`). Pentest and guardian agents get it too: it
 and widens no tool, toolset or scope.
 
   path      FAMILIA_FLEET_GREETING (absolute, or relative to the repo root), else
-            <repo>/docs/FLEET-GREETING.md
+            <repo>/docs/FLEET-GREETING.md. Whatever the override, the resolved real path must be a
+            regular file under <repo>/docs/ of at most MAX_BYTES, or the greeting is skipped (so a
+            key file elsewhere can never land in every system prompt)
   missing   a warning on stderr, once per process; the prompt is used without it (never fatal)
   once      the greeting is followed by END_MARKER; prepend() first drops everything up to an
             existing END_MARKER, so re-rendering never stacks a second (or a stale) copy
@@ -24,6 +26,9 @@ ENV = "FAMILIA_FLEET_GREETING"
 # Plain HTML comment; avoids the words hermes' context-file scanner treats as injection
 # (tools/threat_patterns.py html_comment_injection).
 END_MARKER = "<!-- end of familia fleet greeting (docs/FLEET-GREETING.md, prepended at startup) -->"
+
+MAX_BYTES = 64 * 1024
+DOCS = os.path.realpath(os.path.join(ROOT, "docs"))
 
 _cache = {}
 
@@ -48,9 +53,23 @@ def load(p=None):
         return _cache[p]
     text = None
     try:
-        with open(p, "rb") as f:
-            text = f.read().decode("utf-8")
-        if not text.strip():
+        real = os.path.realpath(p)
+        if os.path.commonpath([real, DOCS]) != DOCS:
+            _warn(f"{p} is outside {DOCS}")
+        elif not os.path.isfile(real):
+            _warn(f"{p} is not a regular file")
+        elif os.path.getsize(real) > MAX_BYTES:
+            _warn(f"{p} is larger than {MAX_BYTES} bytes")
+        else:
+            with open(real, "rb") as f:
+                text = f.read(MAX_BYTES + 1).decode("utf-8")
+            if len(text.encode("utf-8")) > MAX_BYTES:
+                _warn(f"{p} is larger than {MAX_BYTES} bytes")
+                text = None
+        if text is not None and END_MARKER in text:
+            _warn(f"{p} contains the end marker")
+            text = None
+        elif text is not None and not text.strip():
             _warn(f"{p} is empty")
             text = None
     except FileNotFoundError:
@@ -62,10 +81,12 @@ def load(p=None):
 
 
 def strip(text):
-    """`text` without a previously prepended greeting block (anything up to END_MARKER)."""
+    """`text` without a previously prepended greeting block: only a leading block, i.e. an
+    END_MARKER line within the first MAX_BYTES (+ marker) of the text. A marker deeper in the
+    body is left alone."""
     text = text or ""
     i = text.find(END_MARKER)
-    if i < 0:
+    if i < 0 or len(text[:i].encode("utf-8")) > MAX_BYTES or (i and text[i - 1] != "\n"):
         return text
     return text[i + len(END_MARKER):].lstrip("\r\n")
 
