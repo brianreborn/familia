@@ -173,11 +173,26 @@ def sibling_record(s):
             "sha256": lfs.get("sha256"), "blob": s.get("blobId"), "lfs": bool(lfs)}
 
 
+def default_revision(repo, environ=None):
+    """Revision used when none is given: "main" on the default bleeding channel (unchanged);
+    on FAMILIA_CHANNEL=stable the most stable commit of the last FAMILIA_STABLE_DAYS days
+    (scripts/channel.py, docs/release-channels.md)."""
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import channel
+    try:
+        ch, days = channel.effective(environ=environ)
+        if ch != "stable":
+            return "main"
+        return channel.resolve("hf:" + repo, ch, days, environ=environ).ref
+    except (channel.ChannelError, channel.ResolveError) as e:
+        raise HFError("%s: release channel: %s" % (repo, e))
+
+
 def snapshot(repo, revision=None, keep=(), max_bytes=DEFAULT_MAX, root=None, log=None, dry_run=False):
     """Fetch the small files of repo@revision. Returns the snapshot dict (also written
     as snapshot.json). Existing verified files are not downloaded again."""
     log = log or (lambda m: print(m, file=sys.stderr))
-    info = repo_info(repo, revision or "main")
+    info = repo_info(repo, revision or default_revision(repo))
     rev = info["sha"]
     d = os.path.join(root or meta_root(), repo.replace("/", "--"), rev)
     snap_path = os.path.join(d, "snapshot.json")
