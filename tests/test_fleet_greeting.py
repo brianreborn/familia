@@ -35,14 +35,17 @@ def test_default_path_is_repo_doc_and_content_byte_exact():
 def test_env_override_absolute_and_repo_relative(tmp_path, monkeypatch):
     alt = tmp_path / "greet.md"
     alt.write_bytes(b"# Hi fleet\n\nline two\n")
+    monkeypatch.setattr(FG, "DOCS", str(tmp_path.resolve()))  # override must stay under docs/
     monkeypatch.setenv(FG.ENV, str(alt))
     assert FG.path() == str(alt) and FG.load() == "# Hi fleet\n\nline two\n"
     monkeypatch.setenv(FG.ENV, os.path.join("docs", "FLEET-GREETING.md"))
     assert FG.path() == os.path.join(ROOT, "docs", "FLEET-GREETING.md")
+    monkeypatch.setattr(FG, "DOCS", os.path.realpath(os.path.join(ROOT, "docs")))
     assert FG.load().encode("utf-8") == DOC_BYTES
 
 
-def test_read_once_per_process(tmp_path):
+def test_read_once_per_process(tmp_path, monkeypatch):
+    monkeypatch.setattr(FG, "DOCS", str(tmp_path.resolve()))
     f = tmp_path / "g.md"
     f.write_text("first\n")
     assert FG.load(str(f)) == "first\n"
