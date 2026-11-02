@@ -136,6 +136,271 @@ For the full design (transaction blocks, `/local` and `/remote`, snapshots as ca
 
 ---
 
+## Diagrams
+
+Mermaid diagrams of current `main`, rendered by GitHub. Dashed edges and grey boxes are planned or still in review; they are labeled. The text diagram above and the graph-types model in [docs/graph-types.md](docs/graph-types.md) are kept as they are.
+
+### Components
+
+```mermaid
+flowchart TB
+  subgraph clients["Clients"]
+    hcli["Hermes CLI<br/>scripts/hermes.sh (graph harness)"]
+    hdesk["Hermes desktop<br/>frontend client only"]
+    ui["llama-ui / OpenAI clients"]
+  end
+  subgraph familia["familia (this repo)"]
+    gyaml["graph.yaml<br/>hosts, runtimes, models, nodes,<br/>gateways, aliases, agents, meshes"]
+    validate["scripts/validate_graph.py<br/>graph_types.py"]
+    start["start.sh -> scripts/start_graph.py"]
+    proxy["scripts/escalation_proxy.py<br/>local escalation proxy"]
+    nexus["scripts/nexus/nexus.py<br/>nexus (lan-nexus)"]
+    hf["scripts/hf_fetch.py<br/>model database snapshots"]
+    reg["registry/<br/>models, records.jsonl, llama-builds,<br/>hardware, hosts.yaml"]
+  end
+  subgraph pins["Pinned sub-projects (pins.txt)"]
+    grz["green-roomz<br/>alias gateway / graph-proxy"]
+    cbl["code-bootstraps-llama.cpp<br/>llama-server builds, model fetch"]
+    agentz["green-agentz<br/>agent fleet"]
+  end
+  nodes["llama-server nodes<br/>one per active graph node"]
+
+  gyaml --> validate --> start
+  start -->|spawns, waits for /health| nodes
+  start -->|spawns graph-proxy| grz
+  start -.->|syncs pins| pins
+  cbl -->|runtime binaries| nodes
+  hcli --> proxy --> nodes
+  hdesk --> grz
+  ui --> grz
+  grz -->|alias -> one node| nodes
+  hf --> reg
+  reg --> validate
+  nexus -.->|artifacts by sha256| nodes
+  agentz -.-> grz
+```
+
+### Request routing
+
+`#243` (merged) decides at launch which nodes get `--tools`. The runtime forward of tool-bearing requests to a node's `tool_route` target is [#251](https://github.com/brianreborn/familia/pull/251), still open, so it is drawn dashed.
+
+```mermaid
+flowchart LR
+  hcli["Hermes CLI<br/>(scripts/hermes.sh)"]
+  hdesk["Hermes desktop<br/>(frontend only)"]
+  oai["OpenAI client / llama-ui"]
+  gw["green-roomz gateway 'roomz'<br/>local gateway"]
+  px["escalation_proxy<br/>local"]
+  subgraph aliases["aliases (graph.yaml)"]
+    a1["coder / general"]
+    a2["embed"]
+    a3["guardian / pentest / defender"]
+    a4["safe-build"]
+  end
+  coder["node coder<br/>local model server"]
+  embed["node embed<br/>local model server"]
+  pent["node pentest<br/>(planned)"]
+  dec["node gpu-decision<br/>(planned)"]
+  heavy["escalates_to target node<br/>(ranked by measured t/s)"]
+  troute["tool_route target<br/>(tool-capable node)"]
+
+  oai --> gw
+  hdesk --> gw
+  hcli --> px
+  px -->|current upstream| coder
+  px -->|suggest / auto escalation,<br/>compact handoff, swap back| heavy
+  px -.->|"#251 (open): forward tool-bearing<br/>request to tool_route"| troute
+  gw --> a1 --> coder
+  gw --> a2 --> embed
+  gw --> a3 --> pent
+  gw --> a4 --> dec
+```
+
+Tool grants at launch (`validate_graph.tools_argv`, #243): `coder`, `chat`, `general` and `reasoning` nodes get `--tools all` by default; `embed`, `decision`, `vision` and `diffusion` get none; `guardian`, `pentest` and `defender` always fail closed; an explicit `server_tools` key wins, and is only allowed on a loopback bind.
+
+### Node lifecycle (`start.sh` -> `scripts/start_graph.py`)
+
+```mermaid
+stateDiagram-v2
+  [*] --> SelectHost: --host NAME or exact hostname match
+  SelectHost --> Validate: graph + local node preflight
+  SelectHost --> Failed: unknown or ambiguous host
+  Validate --> LicenseGate: license review
+  Validate --> Failed: validation errors (nothing started)
+  LicenseGate --> SyncPins: accepted
+  LicenseGate --> Failed: not accepted (nothing started)
+  SyncPins --> PortCheck
+  PortCheck --> Spawning: node and gateway ports free
+  PortCheck --> Failed: port occupied (nothing started)
+  Spawning --> WaitHealth: llama-server per local active node
+  WaitHealth --> Ready: GET /health ok
+  WaitHealth --> Stopping: child exited or timeout
+  Ready --> Stopping: SIGINT / SIGTERM, or any child exits
+  Stopping --> Stopped: SIGTERM children, then SIGKILL after grace
+  Failed --> [*]
+  Stopped --> [*]
+  note right of Validate
+    Only nodes with status active on this host start.
+    Remote nodes and gateways are reported, never contacted.
+  end note
+```
+
+### Installer flow and the license gate
+
+Proposed behavior for the unattended installer (ALPHA, [#277](https://github.com/brianreborn/familia/issues/277)). Today `--yes` on `main` sets `FAMILIA_ACCEPT_LICENSES` (and allows root on Linux), which was a deliberate Oct 28 change; which policy ships is still Brian's call, so this diagram shows the proposal, not current behavior.
+
+```mermaid
+flowchart TD
+  s(["install.sh / install.ps1"]) --> args["parse flags<br/>(defaults on: deps, PATH, start)"]
+  args --> fetch["clone or download<br/>GIT_TERMINAL_PROMPT=0"]
+  fetch --> deps["OS deps (opt-in --auto-deps)<br/>non-interactive package managers"]
+  deps --> lic{"licenses accepted<br/>explicitly?"}
+  lic -->|"--accept-license or<br/>FAMILIA_ACCEPT_LICENSES=yes"| pins["sync pins, fetch models"]
+  lic -->|"terminal: show licenses,<br/>person types yes"| pins
+  lic -->|"no TTY and no explicit flag"| stop["exit 2 with how to accept<br/>(nothing downloaded)"]
+  yes["--yes"] -.->|"covers prompts EXCEPT the license"| args
+  pins --> path["install-cli: add to PATH"]
+  path --> run{"--no-start?"}
+  run -->|no| startg["start.sh"]
+  run -->|yes| done(["done"])
+  startg --> done
+```
+
+Unattended and test installs answer the real license prompt through a pty, the way a person types, instead of a flag that skips it.
+
+### Hugging Face download cache
+
+`scripts/hf_fetch.py` on `main` downloads to `DEST.part`, checks the LFS sha256, then renames. The cache-coherent resume and revalidate layer (`scripts/hf_cache.py`) is on `release/llama-bump-hf-cache` and handed off in [#278](https://github.com/brianreborn/familia/issues/278); this is its state machine.
+
+```mermaid
+stateDiagram-v2
+  [*] --> Locked: take DEST.lock
+  Locked --> Revalidate: DEST + DEST.meta.json exist
+  Locked --> Resume: DEST.part + strong validator
+  Locked --> Fresh: nothing usable
+  Revalidate --> Fresh_ok: 304, or 200 with same ETag + size and sha256 still good
+  Revalidate --> Fresh: ETag or size changed
+  Resume --> Downloading: Range + If-Range -> 206 at current offset
+  Resume --> Fresh: 200 (upstream changed): truncate, never splice
+  Fresh --> Downloading: GET into DEST.part
+  Downloading --> Verify: complete
+  Verify --> Commit: sha256 matches (expected or LFS ETag)
+  Verify --> Failed: mismatch
+  Commit --> Fresh_ok: fsync, os.replace, fsync dir, write sidecar
+  Fresh_ok --> [*]
+  Failed --> [*]
+```
+
+### Graph YAML and registry
+
+```mermaid
+erDiagram
+  HOST ||--o{ NODE : "runs"
+  HOST ||--o{ GPU : "has"
+  RUNTIME ||--o{ NODE : "serves"
+  MODEL ||--o{ NODE : "loaded by"
+  NODE ||--o{ ALIAS : "exactly one per alias"
+  GATEWAY ||--o{ ALIAS : "exposes"
+  AGENT }o--|| ALIAS : "main / auxiliary"
+  NODE ||--o{ NODE : "escalates_to / tool_route"
+  MESH }o--o{ HOST : "members"
+  MODEL }o--|| REGISTRY_MODEL : "db entry"
+  REGISTRY_MODEL ||--o{ RECORD : "measured on host"
+  HOST ||--o| HARDWARE_PROFILE : "registry/hosts.yaml"
+  RUNTIME ||--o| LLAMA_BUILD : "registry/llama-builds"
+
+  HOST {
+    string kind
+    string os
+    int ram_mib
+    int reserve_ram_mib
+  }
+  NODE {
+    string host
+    string model
+    string runtime
+    int port
+    string bind
+    string status
+    list server_tools
+  }
+  MODEL {
+    string gguf
+    string sha256
+    string arch
+    string role
+  }
+  RUNTIME {
+    string kind
+    string build
+    list supported_archs
+  }
+  GATEWAY {
+    string kind
+    string host
+    int port
+  }
+  AGENT {
+    string kind
+    string host
+    int context_length
+  }
+  MESH {
+    string type
+    string hub
+  }
+  REGISTRY_MODEL {
+    string repo
+    string revision
+    string file
+    string sha256
+    string license
+  }
+  RECORD {
+    string host
+    string device
+    float tg_tps
+  }
+  LLAMA_BUILD {
+    list archs
+  }
+```
+
+Field-level detail for every key is in [docs/graph-types.md](docs/graph-types.md) and `docs/config/graph/`.
+
+### Fleet deployment
+
+Hosts are shown by role only.
+
+```mermaid
+flowchart TB
+  subgraph gpu["GPU node (Linux)"]
+    m_gw["green-roomz gateway 'roomz'"]
+    m_coder["coder + embed nodes"]
+    m_hermes["Hermes agents"]
+    m_hub["lan-nexus hub + lan-bt tracker"]
+  end
+  subgraph fbsd["FreeBSD node"]
+    a_coder["coder node<br/>Nanbeige4.3-33B, server_tools all"]
+    a_plan["chat, guardian nodes (planned)"]
+  end
+  subgraph win["Windows node"]
+    q_res["resident node (CPU)"]
+    q_gpu["gpu-decision node<br/>legacy GPU, tiny model only"]
+  end
+  lin["Linux node<br/>test loop"]
+  ci["Linux CI / test node<br/>decision, coder nodes"]
+  phones["Android phone x2 (Termux)"]
+
+  m_hub <-->|"lan-nexus"| win
+  m_hub <-->|"lan-nexus / lan-bt"| phones
+  win -.->|"smol-cpu node (planned) escalates_to coder"| m_coder
+```
+
+`graph.yaml` lists the two Android phones under legacy node names; `registry/hosts.yaml` maps both to one hardware profile.
+
+---
+
 ## Sub-projects
 
 The sub-projects keep their own repositories and licenses. familia pins each one by revision in [`pins.txt`](pins.txt). They are pins, not submodules. Nothing is vendored. `scripts/configure.sh` checks them out next to the top-level tree, or links a sibling checkout that already exists.
