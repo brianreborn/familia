@@ -232,6 +232,7 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | script | why it's not in the menu |
 |---|---|
 | `install.sh` | bootstrap you run before familia is on disk (download, then sh ./install-familia.sh); inside a checkout use Set up -> Install |
+| `scripts/fleet_greeting.py` | fleet greeting helper; called by hermes.sh, proto_chat.sh and start_graph at startup |
 | `scripts/windows/familia-menu.ps1` | the Windows menu itself (started by familia.cmd) |
 | `scripts/monitor.sh` | the same console as ./familia-monitor, which the menu runs |
 | `scripts/hermes_harness.py` | always run through scripts/hermes.sh, which the menu runs |
