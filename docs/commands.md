@@ -261,6 +261,7 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/refuse_soname_skew.py` | pre-start guard called by scripts/serve.sh; fails closed on bin/lib skew |
 | `scripts/sec_assess.py` | operator-authorized security assessment mode (#116); deliberately not one click from the menu |
 | `scripts/swarm/bench.sh` | swarm /run bench entry point (#183); run by swarm workers, not people; see docs/swarm-bench.md |
+| `scripts/swarm/bench_idle.py` | opt-in run-when-idle trigger for scripts/swarm/bench.sh (per host:user, nice 19, CPU only); run by a user timer or crontab; see docs/swarm-bench.md |
 | `scripts/swarm/forge.sh` | swarm forge adapter library; sourced by swarm scripts |
 | `scripts/swarm/forge/forgejo.sh` | Forgejo adapter stub sourced by scripts/swarm/forge.sh |
 | `scripts/swarm/forge/github.sh` | GitHub adapter sourced by scripts/swarm/forge.sh |

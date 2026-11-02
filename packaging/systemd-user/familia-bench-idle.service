@@ -1,0 +1,20 @@
+# OPT-IN example: run scripts/swarm/bench.sh when this host is idle (per host:user).
+# Not installed by any familia installer. Per-user only (systemd --user); no root needed:
+#   mkdir -p $HOME/.config/systemd/user
+#   cp packaging/systemd-user/familia-bench-idle.* $HOME/.config/systemd/user/
+#   (edit WorkingDirectory below if your checkout is not $HOME/familia)
+#   systemctl --user daemon-reload && systemctl --user enable --now familia-bench-idle.timer
+# Disarm without uninstalling: touch $HOME/.local/state/familia/bench/disarmed
+# A system-wide unit, loginctl enable-linger, or any sudo step needs the owner's explicit yes.
+[Unit]
+Description=familia swarm bench when idle (low priority, CPU only)
+ConditionACPower=true
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/familia
+ExecStart=/usr/bin/env python3 scripts/swarm/bench_idle.py
+Nice=19
+IOSchedulingClass=idle
+CPUSchedulingPolicy=idle
+NoNewPrivileges=yes
