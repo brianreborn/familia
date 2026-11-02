@@ -1,7 +1,8 @@
-import json, os, sys, threading, urllib.request
+import io, json, os, sys, threading, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 import escalation_proxy as EP
+import validate_graph as VG
 
 import pytest as _pytest
 
@@ -349,3 +350,59 @@ def test_tool_route_to_fail_closed_target_not_forwarded(monkeypatch, tmp_path):
 def test_tool_target_ignores_unrouted_and_bad_graph():
     assert EP.tool_target({"nodes": {"a": {}}}, "a") is None
     assert EP.tool_target({"nodes": {"a": {"tool_route": "missing"}}}, "a") is None
+
+
+# Boundary nits on #251: legacy tool fields, unreachable/invalid target stays put, forward log.
+
+@_pytest.mark.parametrize("extra", [{"functions": [{"name": "ls", "parameters": {"type": "object"}}]},
+                                    {"tool_choice": "auto"}, {"tool_choice": {"type": "function", "function": {"name": "ls"}}},
+                                    {"function_call": "auto"}])
+def test_legacy_tool_fields_are_tool_bearing(monkeypatch, tmp_path, extra):
+    monkeypatch.setattr(EP, "STATE", str(tmp_path)); monkeypatch.setattr(EP, "PENDING", str(tmp_path / "p.json"))
+    assert EP.tool_bearing(extra)
+    seen = []; g = _tool_graph(mock("light", seen), mock("coder", seen))
+    srv = EP.serve(EP.Escalator(g, "light", [], "h", consent={})); p = srv.server_address[1]
+    _post_body(p, dict({"model": "x", "messages": [{"role": "user", "content": "x"}]}, **extra))
+    assert seen[-1][0] == "coder"
+    srv.shutdown()
+
+def test_tool_choice_none_is_not_tool_bearing():
+    assert not EP.tool_bearing({"messages": []})
+    assert not EP.tool_bearing({"tool_choice": "none"})
+    assert not EP.tool_bearing({"function_call": "none", "tools": []})
+
+def test_invalid_tool_route_stays_put_with_no_tools(monkeypatch, tmp_path):
+    monkeypatch.setattr(EP, "STATE", str(tmp_path)); monkeypatch.setattr(EP, "PENDING", str(tmp_path / "p.json"))
+    seen = []; g = _tool_graph(mock("light", seen), mock("coder", seen), route="nope")
+    assert EP.tool_target(g, "light") is None
+    assert VG.tool_policy(g, "light") == [] and VG.tools_argv(g, "light") == []
+    srv = EP.serve(EP.Escalator(g, "light", [], "h", consent={})); p = srv.server_address[1]
+    _post_body(p, {"model": "x", "messages": [{"role": "user", "content": "x"}], "tools": TOOLS})
+    assert seen[-1][0] == "light" and seen[-1][1]["model"] == "light"
+    srv.shutdown()
+
+def test_unreachable_tool_route_stays_put_without_tools_flag(monkeypatch, tmp_path):
+    monkeypatch.setattr(EP, "STATE", str(tmp_path)); monkeypatch.setattr(EP, "PENDING", str(tmp_path / "p.json"))
+    seen = []; g = _tool_graph(mock("light", seen), 1)
+    g["hosts"]["r"] = {"addr": "10.0.0.9"}; g["nodes"]["coder"]["host"] = "r"   # remote + loopback bind
+    g["models"]["m"]["tool_calls"] = False   # routed-only light (not itself tool-capable)
+    assert EP.tool_target(g, "light") == "coder" and EP.node_url(g, "coder", "h") is None
+    assert VG.tools_argv(g, "light") == []    # light never launches with --tools; tools run only on coder
+    esc = EP.Escalator(g, "light", [], "h", consent={})
+    url, body = esc.rewrite({"model": "x", "messages": [{"role": "user", "content": "x"}], "tools": TOOLS})
+    assert url == EP.node_url(g, "light", "h") and body["model"] == "light"
+    assert esc.tool_note == "[familia] tool_route coder unreachable; staying on light"
+
+def test_tool_forward_logged_source_to_target(monkeypatch, tmp_path):
+    monkeypatch.setattr(EP, "STATE", str(tmp_path)); monkeypatch.setattr(EP, "PENDING", str(tmp_path / "p.json"))
+    seen = []; g = _tool_graph(mock("light", seen), mock("coder", seen))
+    esc = EP.Escalator(g, "light", [], "h", consent={}); buf = io.StringIO()
+    srv = ThreadingHTTPServer(("127.0.0.1", 0), EP.make_handler(EP.EscalatorPool(lambda: esc, seed=("default", esc)), log=buf))
+    threading.Thread(target=srv.serve_forever, daemon=True).start(); p = srv.server_address[1]
+    secret = "list files SECRET-BODY"
+    _post_body(p, {"model": "x", "messages": [{"role": "user", "content": secret}], "tools": TOOLS})
+    _post_body(p, {"model": "x", "messages": [{"role": "user", "content": "plain"}]})
+    out = buf.getvalue()
+    assert out.splitlines() == ["[familia] tool forward: light -> coder"]   # one line, no body/keys
+    assert "SECRET" not in out
+    srv.shutdown()

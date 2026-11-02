@@ -135,6 +135,13 @@ def tool_target(g, name):
     except Exception:
         return None
 
+def tool_bearing(body):
+    """True if the request asks for tools: `tools`, legacy `functions`, or a `tool_choice` /
+    legacy `function_call` other than "none" (those are only meaningful with tools)."""
+    if body.get("tools") or body.get("functions"):
+        return True
+    return any(body.get(k) not in (None, "", "none") for k in ("tool_choice", "function_call"))
+
 STATE = os.path.join(E.ROOT, ".cache", "familia")
 PENDING = os.path.join(STATE, "escalation-pending.json")
 ACCEPT = os.path.join(STATE, "escalation-accept.json")
@@ -214,6 +221,7 @@ class Escalator:
         self.auto_env = os.environ.get("FAMILIA_ESCALATE") == "auto"
         self.session_id = session_id or DEFAULT_SESSION
         self.lock = FairLock()
+        self.tool_note = None  # last rewrite's tool-forward log line (no bodies/keys)
 
     def upstream(self):
         return node_url(self.g, self.current, self.local_host), alias_for(self.g, self.current)
@@ -270,10 +278,15 @@ class Escalator:
         # Tool forward (#243 runtime half): a tool-bearing request on a node with a validated
         # tool_route goes whole (chat + tools loop) to the target, which runs under its own
         # tool_policy/--tools. Unreachable target -> stay put (no tools executed off-policy).
-        tt = tool_target(self.g, self.current) if body.get("tools") else None
+        self.tool_note = None
+        tt = tool_target(self.g, self.current) if tool_bearing(body) else None
         if tt:
             turl = node_url(self.g, tt, self.local_host)
-            if turl: url, alias = turl, alias_for(self.g, tt)
+            if turl:
+                url, alias = turl, alias_for(self.g, tt)
+                self.tool_note = f"[familia] tool forward: {self.current} -> {tt}"
+            else:
+                self.tool_note = f"[familia] tool_route {tt} unreachable; staying on {self.current}"
         body = dict(body, model=alias)
         if self.handoff_next:
             msgs = body.get("messages") or []
@@ -483,6 +496,7 @@ def make_handler(pool, log=sys.stderr):
                         if note: print(note, file=log, flush=True)
                         url, alias = esc.upstream()
                     url, body = esc.rewrite(self._orig); raw = json.dumps(body).encode()
+                    if esc.tool_note: print(esc.tool_note, file=log, flush=True)
                 target = url.rsplit("/v1", 1)[0] + self.path
                 try:
                     hdrs = familia_auth.auth_headers({"Content-Type": "application/json"}, incoming=self.headers, required=True)
