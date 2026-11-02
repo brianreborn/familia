@@ -332,7 +332,11 @@ UNSTABLE_LINES = ("Python toolchain:",)   # same line as the small-host floor in
 ENV_PROBE_CACHE_OVERLAY = os.path.join(ROOT, "scripts", "hermes_env_probe_cache")
 AUX_TASKS = ["web_extract", "compression", "skills_hub", "approval", "mcp", "title_generation",
              "memory_query_rewrite", "tts_audio_tags", "triage_specifier", "kanban_decomposer",
-             "profile_describer", "goal_judge", "curator", "monitor"]
+             "profile_describer", "goal_judge", "curator", "monitor",
+             # Text aux tasks upstream added (v0.22.x) that otherwise default to provider "auto":
+             "review", "background_review"]
+# Not routed here (modality-specific; need a vision/voice-capable node): vision, voice_chat,
+# moa_reference, moa_aggregator. See docs/hermes-pin.md.
 
 
 def die(msg):
