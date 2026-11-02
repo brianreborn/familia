@@ -203,6 +203,15 @@ def validate_local_nodes(graph, host, nodes, *, check_files):
             argv = graph_validator.server_args(graph, name)
         except SystemExit as error:
             raise StartupError(str(error)) from error
+        # Race #91: draft-simple admission before any spawn (dry refuse; no orphan draft).
+        import specdec_seatbelts as _specdec
+        ok, se, sw = _specdec.preflight_node(graph, name, check_files=check_files)
+        for note in sw:
+            print(f"familia-graph: {note}", file=sys.stderr)
+        if not ok:
+            raise StartupError(
+                f"specdec seatbelt refused node {name}:\n  " + "\n  ".join(se)
+            )
         if check_files:
             binary = Path(argv[0]).expanduser()
             if not binary.is_absolute():

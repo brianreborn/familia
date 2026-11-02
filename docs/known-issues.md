@@ -40,3 +40,11 @@
   - **Harness:** `hermes_harness.ensure_server` will not daemon-spawn a missing node and will
     refuse to adopt a live port when `server_tools` is set but `/tools` is feature_disabled.
 
+- **Speculative draft (#91) opt-in; live CentOS/phone measure deferred**
+  - `speculative.coder-draft` stays `status: planned` until measured. Enabling loads
+    Qwen3.5-0.8B inside the coder via `-md` / `draft-simple` (see [specdec-draft.md](specdec-draft.md)).
+  - Race seatbelts refuse missing draft GGUF and thread budgets above sprint 6.
+  - Prior box CPU A/B (2026-10-19) did not pay for fresh answers; re-measure under
+    `with-host-lock` + `DETACH_MODE=screen-attached` before flipping to active.
+  - Contrast [#82](https://github.com/brianreborn/familia/issues/82): ngram-simple can
+    slow mixed turns ~6.8× — prefer `ngram-mod` if comparing.

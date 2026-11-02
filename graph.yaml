@@ -846,7 +846,7 @@ speculative:
   coder-draft:                   # #91: draft-model speculation (same qwen35 vocab; validator checks)
     experimental: true
     status: planned              # enable with status: experimental (and set coder-ngram planned: one active per target);
-                                 # measured results: docs/perf/2026-10-19-spec-draft.md
+                                 # params shape + deferred live measure: docs/specdec-draft.md
     mode: draft
     target: coder
     spec_type: draft-simple

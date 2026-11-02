@@ -110,7 +110,20 @@ def validate(graph, check_files=True, host=None):
             try: server_args(graph, nn)
             except SystemExit as ex: errs += [l.replace("graph: ERROR: ", "") for l in str(ex).split("\n") if l]
     errs = list(dict.fromkeys(errs))
-    if errs or not check_files:
+    if errs:
+        return errs, {}
+    if not check_files:
+        # Schema-only: still apply draft thread/slot budgets (no GGUF IO).
+        import specdec_seatbelts as _specdec
+        for _nn, _nd in graph["nodes"].items():
+            if _nd.get("status") == "planned":
+                continue
+            if host is not None and _nd.get("host") != host:
+                continue
+            _se, _sw = _specdec.check_draft_admission(graph, _nn, check_files=False)
+            errs += _se
+            WARNINGS.extend(_sw)
+        errs = list(dict.fromkeys(errs))
         return errs, {}
     # Host scope (same rule as check_swap_budgets): file-existence and RAM totals are only
     # meaningful on the machine that runs them. --host naming another graph host skips them;
@@ -285,6 +298,17 @@ def validate(graph, check_files=True, host=None):
                 f"hosts.{h}: estimated free after nodes {free_after:.0f} MiB < 2048 MiB provisional floor "
                 f"on host with ram_mib {ram} < 8192 (guidance; see docs/ram-safety.md)")
     errs += check_vvram_policy(graph, metas=metas)
+    # Race #91: draft-simple admission (thread budget + missing draft GGUF).
+    import specdec_seatbelts as _specdec
+    for _nn, _nd in graph["nodes"].items():
+        if _nd.get("status") == "planned":
+            continue
+        if host is not None and _nd.get("host") != host:
+            continue
+        _se, _sw = _specdec.check_draft_admission(graph, _nn, check_files=True)
+        errs += _se
+        WARNINGS.extend(_sw)
+    errs = list(dict.fromkeys(errs))
     return errs, totals
 
 # Vulkan llama.cpp builds allocate ~1.83 GB of Vulkan host buffers in shmem even with -ngl 0

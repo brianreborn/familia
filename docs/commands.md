@@ -293,7 +293,8 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/dogfood/pytest_vs_baseline.sh` | dogfood loop internals: compares a candidate fix's pytest results to the baseline |
 | `scripts/terminal_rsi.py` | Terminal-RSI self-improvement round for a harness target (#88); proposals only, review with scripts/harness2.py |
 | `scripts/self_improve_attach.py` | shared Harness² / Terminal-RSI attach hook called by hermes.sh and start_graph.py; not a standalone menu action |
-| `scripts/perf/spec_bench.py` | draft/n-gram speculative decoding bench, lossless check, one host (#91) |
+| `scripts/perf/spec_bench.py` | draft/n-gram speculative decoding bench, lossless check, one host (#91); see [specdec-draft.md](specdec-draft.md) |
+| `scripts/specdec_seatbelts.py` | Race draft-simple admission (thread budget, missing GGUF); hooked from start/serve/harness2 |
 | `scripts/launch_matrix.py` | dev launch matrix: every engine x local model through bench_guard, classifies launch failures vs crashes |
 | `scripts/launch_status.py` | library + CLI for launch status protocol v1 and fleet memory admission budget; called by launchers |
 | `scripts/measure_prompt.py` | dev measurement of fixed-prompt size for hermes / Harness2 (#89, #85) |
