@@ -202,3 +202,55 @@ def test_angel_coder_meets_hermes_min_ctx(monkeypatch):
     g2, name = hm.single_agent(g, "hermes", "angel-coder", enforce_min_ctx=True)
     assert name == "hermes@angel-coder"
     assert g2["agents"][name]["context_length"] == 65536
+
+
+def _write(path, text):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text)
+    return str(path)
+
+
+LEGACY = "#!/v/bin/python3\nimport sys\nfrom agent.legacy_cli import main\nsys.exit(main())\n"
+FULL = "#!/v/bin/python3\nimport sys\nfrom hermes_cli.main import main\nsys.exit(main())\n"
+
+
+def test_path_prefers_full_cli_over_legacy_runner(tmp_path):
+    """pip/uv/install.sh: `hermes-agent` is agent.legacy_cli (no -z/-t/desktop); use `hermes`."""
+    legacy = _write(tmp_path / "bin" / "hermes-agent", LEGACY)
+    full = _write(tmp_path / "bin" / "hermes", FULL)
+    b, _py, _sp = hh.resolve_hermes(
+        environ={"HERMES_PY": "/v/bin/python3", "HERMES_SP": "/v/lib"},
+        exists=lambda p: os.path.exists(p) or p in ("/v/bin/python3", "/v/lib"),
+        which=lambda n: {"hermes-agent": legacy, "hermes": full}.get(n),
+        system="Linux", missing="defaults")
+    assert b == full
+
+
+def test_path_keeps_non_legacy_hermes_agent(tmp_path):
+    """Packaged wrappers named hermes-agent (ports, distro) are the full CLI: keep them."""
+    wrapper = _write(tmp_path / "bin" / "hermes-agent", "#!/bin/sh\nexec python3 -m hermes_cli.main \"$@\"\n")
+    _write(tmp_path / "bin" / "hermes", FULL)
+    b, _py, _sp = hh.resolve_hermes(
+        environ={"HERMES_PY": "/v/bin/python3", "HERMES_SP": "/v/lib"},
+        exists=lambda p: os.path.exists(p) or p in ("/v/bin/python3", "/v/lib"),
+        which=lambda n: wrapper if n == "hermes-agent" else None,
+        system="Linux", missing="defaults")
+    assert b == wrapper
+
+
+def test_explicit_legacy_bin_wins_but_warns(tmp_path, capsys):
+    legacy = _write(tmp_path / "bin" / "hermes-agent", LEGACY)
+    b, _py, _sp = hh.resolve_hermes(
+        environ={"HERMES_BIN": legacy, "HERMES_PY": "/v/bin/python3", "HERMES_SP": "/v/lib"},
+        exists=lambda p: True, which=lambda n: None, system="Linux", missing="die")
+    assert b == legacy
+    assert "legacy single-query runner" in capsys.readouterr().err
+
+
+def test_snap_site_packages_follows_snap_python(monkeypatch):
+    """Upstream moved its runtime to python 3.14; the snap SP is no longer assumed to be 3.12."""
+    sp314 = "/snap/hermes-agent/current/lib/python3.14/site-packages"
+    monkeypatch.setattr(hh.glob, "glob", lambda pat: [hh.SNAP_SP, sp314] if pat.startswith("/snap/") else [])
+    b, py, sp = hh.resolve_hermes(environ={}, exists=_exists_set([hh.SNAP_BIN, hh.SNAP_PY, hh.SNAP_SP, sp314]),
+                                  which=lambda n: None, system="Linux", missing="defaults")
+    assert b == hh.SNAP_BIN and sp == sp314

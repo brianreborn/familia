@@ -47,6 +47,10 @@ FREEBSD_BIN = "/usr/local/bin/hermes-agent"
 FREEBSD_LIB = "/usr/local/lib/hermes-agent"
 
 HERMES_BIN = HERMES_PY = HERMES_SP = None  # set by resolve_hermes() below
+# pip / uv / install.sh layouts ship two console scripts: `hermes` (hermes_cli.main, the full CLI
+# with -z, -t, desktop, webapp) and `hermes-agent` (agent.legacy_cli, a single-query runner that
+# has none of those). Seen in every upstream release from v0.21.7 through v0.22.6.
+LEGACY_RUNNER_MARK = b"agent.legacy_cli"
 
 
 def _path_exists(p):
@@ -123,6 +127,38 @@ def _sp_candidates(bin_path, py, exists=_path_exists):
     return uniq
 
 
+def _is_legacy_runner(path, exists=_path_exists):
+    """True when *path* is upstream's legacy single-query console script (agent.legacy_cli)."""
+    if not path or str(path).startswith("/snap/bin/") or not exists(path):
+        return False
+    try:
+        with open(path, "rb") as f:
+            return LEGACY_RUNNER_MARK in f.read(4096)
+    except OSError:
+        return False
+
+
+def _full_cli_for(bin_path, exists=_path_exists):
+    """The full `hermes` CLI next to a legacy `hermes-agent` script, else bin_path unchanged."""
+    if not _is_legacy_runner(bin_path, exists=exists):
+        return bin_path
+    sibling = os.path.join(os.path.dirname(os.path.abspath(bin_path)), "hermes")
+    return sibling if exists(sibling) and not _is_legacy_runner(sibling, exists=exists) else bin_path
+
+
+def _snap_sp(exists=_path_exists):
+    """Snap site-packages for whatever python the snap ships (upstream runs on 3.14 now; the
+    snap was 3.12). Highest python3.N first; SNAP_SP when nothing else exists."""
+    def key(p):
+        m = re.search(r"python3\.(\d+)", p)
+        return int(m.group(1)) if m else -1
+    found = sorted(glob.glob("/snap/hermes-agent/current/lib/python3.*/site-packages"), key=key, reverse=True)
+    for cand in found + [SNAP_SP]:
+        if exists(cand):
+            return cand
+    return SNAP_SP
+
+
 def _derive_py(bin_path, exists=_path_exists, which=shutil.which):
     if bin_path and str(bin_path).startswith("/snap/bin/"):
         return SNAP_PY
@@ -138,7 +174,7 @@ def _derive_py(bin_path, exists=_path_exists, which=shutil.which):
 
 def _derive_sp(bin_path, py, exists=_path_exists, run=subprocess.run):
     if bin_path and str(bin_path).startswith("/snap/bin/"):
-        return SNAP_SP
+        return _snap_sp(exists=exists)
     for cand in _sp_candidates(bin_path, py, exists=exists):
         if exists(cand) and _can_import_hermes_cli(py, cand, run=run):
             return cand
@@ -181,6 +217,7 @@ def resolve_hermes(environ=None, *, exists=_path_exists, which=shutil.which,
             bin_path = SNAP_BIN
         else:
             bin_path = which("hermes-agent") or which("hermes")
+            bin_path = _full_cli_for(bin_path, exists=exists)
 
     if not bin_path:
         if missing == "die":
@@ -205,7 +242,7 @@ def resolve_hermes(environ=None, *, exists=_path_exists, which=shutil.which,
                 "Set HERMES_SP to the directory that contains hermes_cli "
                 "(FreeBSD ports: /usr/local/lib/hermes-agent) and HERMES_PY to that install's python."
             )
-        sp = SNAP_SP if str(bin_path).startswith("/snap/bin/") else (FREEBSD_LIB if exists(FREEBSD_LIB) else SNAP_SP)
+        sp = _snap_sp(exists=exists) if str(bin_path).startswith("/snap/bin/") else (FREEBSD_LIB if exists(FREEBSD_LIB) else SNAP_SP)
 
     if missing == "die" and not exists(bin_path):
         die(
@@ -213,6 +250,10 @@ def resolve_hermes(environ=None, *, exists=_path_exists, which=shutil.which,
             "FreeBSD: pkg install hermes-agent (no snap). "
             "Or set HERMES_BIN to a real hermes-agent/hermes binary."
         )
+    if missing == "die" and _is_legacy_runner(bin_path, exists=exists):
+        print(f"hermes.sh: warning: {bin_path} is hermes-agent's legacy single-query runner "
+              "(no -z/-t/desktop/webapp); point HERMES_BIN at the `hermes` CLI of the same install",
+              file=sys.stderr)
     return bin_path, py, sp
 
 
