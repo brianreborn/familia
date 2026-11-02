@@ -257,10 +257,55 @@ def resolve_hermes(environ=None, *, exists=_path_exists, which=shutil.which,
     return bin_path, py, sp
 
 
+def _py_version(py, run=subprocess.run):
+    """(major, minor) of interpreter *py*, or None when it cannot be asked."""
+    try:
+        r = run([py, "-c", "import sys; print('%d.%d' % sys.version_info[:2])"],
+                capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    m = re.fullmatch(r"(\d+)\.(\d+)", (r.stdout or "").strip()) if r.returncode == 0 else None
+    return (int(m.group(1)), int(m.group(2))) if m else None
+
+
+def check_toolchain(bin_path, py, *, run=subprocess.run, environ=None):
+    """Warn when HERMES_PY is older than the pinned hermes' python floor (config/hermes-agent.pins.json:
+    upstream declares its dependencies only for 3.14+). FAMILIA_HERMES_PIN_CHECK=1 also compares
+    `hermes --version` with the channel's pin (offline; =strict refuses a mismatch).
+    FAMILIA_HERMES_TOOLCHAIN_CHECK=0 skips everything. Returns a list of warnings."""
+    env = os.environ if environ is None else environ
+    if env.get("FAMILIA_HERMES_TOOLCHAIN_CHECK", "1") == "0":
+        return []
+    import hermes_pin
+    try:
+        want = hermes_pin.resolve_ref(offline=True, environ=env)
+    except (hermes_pin.PinError, OSError, ValueError) as e:
+        die(f"hermes pin: {e}")
+    warns = []
+    floor = tuple(int(x) for x in str(want.get("python") or "0.0").split(".")[:2])
+    have = None if str(bin_path).startswith("/snap/bin/") else _py_version(py, run=run)
+    if have and have < floor:
+        warns.append(f"HERMES_PY {py} is python {have[0]}.{have[1]}; hermes-agent {want['ref']} needs "
+                     f">= {floor[0]}.{floor[1]} (upstream declares its dependencies only for 3.14+)")
+    mode = env.get("FAMILIA_HERMES_PIN_CHECK", "0")
+    if mode in ("1", "strict"):
+        ver, commit = hermes_pin.installed_version(bin_path, run=run, env=hermes_child_env(environ=env))
+        if not hermes_pin.matches(want, ver, commit):
+            msg = (f"installed hermes {ver or 'unknown'} ({commit or '?'}) is not the {want['channel']} pin "
+                   f"{want['ref']} ({(want.get('commit') or '?')[:12]}); see docs/hermes-pin.md")
+            if mode == "strict":
+                die(msg)
+            warns.append(msg)
+    for w in warns:
+        print(f"hermes.sh: warning: {w}", file=sys.stderr)
+    return warns
+
+
 def ensure_hermes():
     """Re-resolve with hard failure; update module globals for prefix/selftest/exec."""
     global HERMES_BIN, HERMES_PY, HERMES_SP
     HERMES_BIN, HERMES_PY, HERMES_SP = resolve_hermes(missing="die")
+    check_toolchain(HERMES_BIN, HERMES_PY)
     return HERMES_BIN, HERMES_PY, HERMES_SP
 
 
