@@ -6,7 +6,7 @@ note=coarse binary search; short smoke; no MemoryMax
 bench=/tmp/llama-prebuilt/llama-b11935/llama-bench
 bench_version=load_backend: loaded RPC backend from /tmp/llama-prebuilt/llama-b11935/libggml-rpc.so load_backend: loaded CPU backend from /tmp/llama-prebuilt/llama-b11935/libggml-cpu-haswell.so version: 0.7.0-dev (build 11935, commit 7ecb57f7a) built with GNU 11.4.0 for Linux x86_64 
 model=SmolLM2-135M-Instruct Q4_0
-model_path=/home/green/models/SmolLM2-135M-Instruct-Q4_0.gguf
+model_path=~/models/SmolLM2-135M-Instruct-Q4_0.gguf
 sha256=bcc3af2849ad6095af57e9b5cd43775256efdc66e306acb529172f92d0c04b03
                total        used        free      shared  buff/cache   available
 Mem:            7289        6267         252         780        1853        1022
