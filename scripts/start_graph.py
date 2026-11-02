@@ -29,6 +29,26 @@ class StartupError(RuntimeError):
     pass
 
 
+def _fleet_banner(host):
+    """One line when this host brings its graph topology up (joins the mesh). Best effort."""
+    try:
+        import fleet_greeting
+        p = fleet_greeting.path()
+        if fleet_greeting.load(p) is None:
+            return False
+        try:
+            shown = os.path.relpath(p, ROOT)
+        except ValueError:
+            shown = p
+        if shown.startswith(".."):
+            shown = p
+        print(f"familia-graph: welcome to the familia, {host}. Fleet greeting: {shown} "
+              "(opens every agent's system prompt)", file=sys.stderr)
+        return True
+    except Exception:
+        return False
+
+
 def _os_host_matches(graph, hostname):
     """Unique graph host id for this OS hostname, or None if ambiguous/unknown."""
     if not hostname:
@@ -398,6 +418,7 @@ def run(args=None):
             return 0
 
         _report_remote_topology(remote_nodes, remote_gateways, omitted_aliases)
+        _fleet_banner(host)
 
         launch_env = _run_gate_and_sync(ROOT, options.yes)
         # Harness² / Terminal-RSI: put accepted versions in place for any agent whose
