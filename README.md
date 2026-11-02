@@ -136,6 +136,303 @@ For the full design (transaction blocks, `/local` and `/remote`, snapshots as ca
 
 ---
 
+## Diagrams
+
+Mermaid diagrams of current `main`, rendered by GitHub. Dashed edges are planned or still in review; they are labeled. The text diagram above and the graph-types model in [docs/graph-types.md](docs/graph-types.md) are kept as they are.
+
+### Components
+
+```mermaid
+flowchart TB
+  subgraph clients["Clients"]
+    hcli["Hermes CLI<br/>scripts/hermes.sh (graph harness)"]
+    hdesk["Hermes desktop<br/>frontend client only"]
+    ui["llama-ui / OpenAI clients"]
+  end
+  subgraph familia["familia (this repo)"]
+    gyaml["graph.yaml<br/>hosts, runtimes, models, nodes,<br/>gateways, aliases, agents, meshes"]
+    validate["scripts/validate_graph.py<br/>graph_types.py"]
+    start["start.sh -> scripts/start_graph.py"]
+    proxy["scripts/escalation_proxy.py<br/>local escalation proxy"]
+    nexus["scripts/nexus/nexus.py<br/>nexus (lan-nexus)"]
+    hf["scripts/hf_fetch.py<br/>model database snapshots"]
+    reg["registry/<br/>models, records.jsonl, llama-builds,<br/>hardware, hosts.yaml"]
+  end
+  subgraph pins["Pinned sub-projects (pins.txt)"]
+    grz["green-roomz<br/>alias gateway / graph-proxy"]
+    cbl["code-bootstraps-llama.cpp<br/>llama-server builds, model fetch"]
+    agentz["green-agentz<br/>agent fleet"]
+  end
+  nodes["llama-server nodes<br/>one per active graph node"]
+
+  gyaml --> validate --> start
+  start -->|spawns, waits for /health| nodes
+  start -->|spawns graph-proxy| grz
+  start -->|syncs pins| pins
+  cbl -->|runtime binaries| nodes
+  hcli -->|escalation on| proxy --> nodes
+  hcli -->|no escalation: node aliases| nodes
+  hdesk -->|same path as the CLI| proxy
+  hdesk -->|no escalation| nodes
+  ui --> grz
+  grz -->|alias -> one node| nodes
+  hf --> reg
+  reg --> validate
+  nexus -->|"opt-in PoC: file sync only,<br/>artifacts by sha256"| nodes
+  agentz -.-> grz
+```
+
+### Request routing
+
+Hermes desktop is launched by `scripts/hermes.sh --client desktop`; only the final exec differs from the CLI, so it uses the same rendered `HERMES_HOME` aliases and the same proxy decision. The escalation proxy runs only with `--escalate`, or when the agent's main node declares `escalates_to` and its escalation mode is not `off`; otherwise Hermes talks to the node aliases directly.
+
+`#243` (merged) decides at launch which nodes get `--tools`. The runtime forward of tool-bearing requests to a node's `tool_route` target is [#251](https://github.com/brianreborn/familia/pull/251), still open, so it is drawn dashed.
+
+```mermaid
+flowchart LR
+  hcli["Hermes CLI<br/>(scripts/hermes.sh)"]
+  hdesk["Hermes desktop<br/>(frontend only, launched by<br/>scripts/hermes.sh --client desktop)"]
+  oai["OpenAI client / llama-ui"]
+  gw["green-roomz gateway 'roomz'<br/>local gateway"]
+  px["escalation_proxy<br/>local"]
+  subgraph aliases["aliases (graph.yaml)"]
+    a1["coder / general"]
+    a2["embed"]
+    a3["guardian / pentest / defender"]
+    a4["safe-build"]
+  end
+  coder["node coder<br/>local model server"]
+  embed["node embed<br/>local model server"]
+  pent["node pentest<br/>(planned)"]
+  dec["node gpu-decision<br/>(planned)"]
+  heavy["escalates_to target node<br/>(ranked by measured t/s)"]
+  troute["tool_route target<br/>(tool-capable node)"]
+
+  oai --> gw
+  hcli -->|escalation on| px
+  hcli -->|no escalation| coder
+  hdesk -->|escalation on| px
+  hdesk -->|no escalation| coder
+  px -->|current upstream| coder
+  px -->|suggest / auto escalation,<br/>compact handoff, swap back| heavy
+  px -.->|"#251 (open): forward tool-bearing<br/>request to tool_route"| troute
+  gw --> a1 --> coder
+  gw --> a2 --> embed
+  gw --> a3 --> pent
+  gw --> a4 --> dec
+```
+
+Tool grants at launch (`validate_graph.tools_argv`, #243): `coder`, `chat`, `general` and `reasoning` nodes get `--tools all` by default when bound to loopback (default under review; a node's `tool_capable` or its model's `tool_calls` overrides the type presumption); `embed`, `decision`, `vision` and `diffusion` get none; `guardian`, `pentest` and `defender` always fail closed; an explicit `server_tools` key wins, and is only allowed on a loopback bind.
+
+### Node lifecycle (`start.sh` -> `scripts/start_graph.py`)
+
+```mermaid
+stateDiagram-v2
+  [*] --> SelectHost: --host NAME, FAMILIA_HOST, host pin, or hostname / local_names match
+  SelectHost --> SingleNode: via start.sh dry-run, host not in graph, no active local nodes, or graph validation failed
+  SingleNode --> [*]: code-bootstraps-llama.cpp single-node default (FAMILIA_SINGLE_NODE=0 disables)
+  SelectHost --> ValidateGraph: graph only (no file checks)
+  SelectHost --> Failed: unknown or ambiguous host (start_graph.py run directly)
+  ValidateGraph --> Failed: validation errors (nothing started)
+  ValidateGraph --> Stopped: no active local topology (exit 0)
+  ValidateGraph --> LicenseGate: license review
+  LicenseGate --> SyncPins: accepted
+  LicenseGate --> Failed: not accepted (nothing started)
+  SyncPins --> LicenseGate2: pins synced
+  SyncPins --> Failed: sync error (nothing started)
+  LicenseGate2 --> SelfImprove: accepted again after sync
+  LicenseGate2 --> Failed: not accepted (nothing started)
+  SelfImprove --> Preflight: attach accepted self-improve versions
+  SelfImprove --> Failed: pentest refuse
+  Preflight --> PortCheck: local node preflight (binary + model files)
+  Preflight --> Failed: files missing (nothing started)
+  PortCheck --> SpawnNode: node and gateway ports free
+  PortCheck --> Failed: port occupied, or Node.js / green-roomz missing
+  SpawnNode --> WaitNodeHealth: sh serve.sh NAME (one node at a time)
+  WaitNodeHealth --> SpawnNode: GET /health ok, next node
+  WaitNodeHealth --> SpawnGateway: last node healthy, local gateway declared
+  WaitNodeHealth --> Ready: last node healthy, no local gateway
+  WaitNodeHealth --> Stopping: child exited
+  SpawnGateway --> WaitGatewayHealth: green-roomz graph-proxy (one at a time)
+  WaitGatewayHealth --> SpawnGateway: GET /health ok, next gateway
+  WaitGatewayHealth --> Ready: last gateway healthy
+  WaitGatewayHealth --> Stopping: child exited or timeout
+  Ready --> Stopping: SIGINT / SIGTERM, or any child exits
+  Stopping --> Stopped: SIGTERM children in reverse, shared 10 s grace, then SIGKILL + wait
+  Failed --> [*]
+  Stopped --> [*]
+  note right of ValidateGraph
+    Only nodes with status active on this host start.
+    Remote nodes and gateways are reported, never contacted.
+  end note
+  note left of WaitNodeHealth
+    Node wait: FAMILIA_START_TIMEOUT, default 0 = unlimited
+    (fails only if the child exits).
+    Gateway wait: FAMILIA_START_TIMEOUT, default 60 s.
+  end note
+```
+
+### Installer flow and the license gate
+
+Target behavior per Brian's spec recorded in [#277](https://github.com/brianreborn/familia/issues/277) (ALPHA, not implemented yet): licenses are accepted only by an interactive click-through, `FAMILIA_ACCEPT_LICENSES=yes`, or a new `--accept-licenses` flag (`-AcceptLicenses` on Windows), and `--yes` / `-Yes` never accepts licenses. `main` still differs today: `--yes` sets `FAMILIA_ACCEPT_LICENSES` in every installer entry point and in `start.sh` / `start_graph.py --yes` (and the Linux installer's `--yes` also attests running as root). That is the bug #277 fixes.
+
+```mermaid
+flowchart TD
+  s(["install.sh / install/windows/install.ps1"]) --> args["parse flags<br/>(automation flags default on)"]
+  args --> notice["contribution notice<br/>(print-only per #277; INSTALL_ACK today)"]
+  notice --> fetch["clone or download<br/>GIT_TERMINAL_PROMPT=0"]
+  fetch --> deps["OS deps + Charm gum<br/>(default on, gated on --yes, not on licenses;<br/>non-interactive package managers)"]
+  deps --> lic{"licenses accepted<br/>explicitly? (scripts/licenses.py)"}
+  lic -->|"--accept-licenses (-AcceptLicenses) or<br/>FAMILIA_ACCEPT_LICENSES=yes"| pins["sync pins, fetch models"]
+  lic -->|"terminal: show licenses,<br/>person types yes"| pins
+  lic -->|"no TTY and no explicit acceptance"| stop["exit 2 with how to accept<br/>(nothing downloaded)"]
+  yes["--yes / -Yes"] -.->|"covers prompts EXCEPT the license"| args
+  pins --> path["install-cli: add to PATH"]
+  path --> run{"--no-start?"}
+  run -->|no| startg["start.sh<br/>(Windows: scripts/windows/start.bat)"]
+  run -->|yes| done(["done"])
+  startg --> done
+```
+
+ALPHA proposal, not built yet: unattended and test installs would answer the real license prompt through a pty driver, the way a person types, instead of a flag that skips it (#277 lists the pty driver as not started).
+
+### Hugging Face download cache
+
+`scripts/hf_fetch.py` on `main` downloads to `DEST.part`, checks the LFS sha256, then renames. The cache-coherent resume and revalidate layer (`scripts/hf_cache.py`) is on `release/llama-bump-hf-cache` and handed off in [#278](https://github.com/brianreborn/familia/issues/278); this is its state machine.
+
+```mermaid
+stateDiagram-v2
+  [*] --> Locked: take DEST.lock (held for the whole fetch)
+  Locked --> Revalidate: DEST + DEST.meta.json exist and sidecar matches url / sha256 / size / file size
+  Locked --> Resume: DEST.part + matching .part.meta.json with a validator (strong ETag, else Last-Modified)
+  Locked --> Fresh: nothing usable (stale .part discarded)
+  Revalidate --> Cached: 304, or 200 with same ETag + size and sha256 still good
+  Revalidate --> Downloading: ETag or size changed (reuse the 200 body from 0)
+  Revalidate --> Failed: other HTTP or network error (DEST and sidecar untouched)
+  Resume --> Downloading: Range + If-Range -> 206 at current offset, same validator
+  Resume --> Downloading: 200 (upstream changed): truncate and restart from 0, never splice
+  Resume --> Fresh: 416, or 206 with wrong offset or validator: discard .part
+  Resume --> Failed: other HTTP or network error (.part and .part.meta.json kept for the next resume)
+  Fresh --> Downloading: GET 200 into DEST.part
+  Fresh --> Failed: any status other than 200
+  Downloading --> Verify: complete, .part fsynced
+  Verify --> Commit: size and sha256 match (expected or LFS ETag)
+  Verify --> Failed: size or sha256 mismatch: remove .part + .part.meta.json
+  Commit --> Cached: os.replace, fsync dir, write sidecar, remove .part.meta.json
+  Cached --> [*]
+  Failed --> [*]
+```
+
+### Graph YAML and registry
+
+```mermaid
+erDiagram
+  HOST ||--o{ NODE : "runs"
+  HOST ||--o{ GPU : "has"
+  RUNTIME ||--o{ NODE : "serves"
+  MODEL ||--o{ NODE : "loaded by"
+  NODE ||--o{ ALIAS : "exactly one per alias"
+  GATEWAY ||--o{ ALIAS : "exposes"
+  AGENT }o--|| ALIAS : "main / auxiliary"
+  NODE ||--o{ NODE : "escalates_to / tool_route"
+  MESH }o--o{ HOST : "members"
+  MODEL }o--|| REGISTRY_MODEL : "db entry"
+  REGISTRY_MODEL ||--o{ RECORD : "measured on host"
+  HOST ||--o| HARDWARE_PROFILE : "registry/hosts.yaml"
+  RUNTIME ||--o| LLAMA_BUILD : "registry/llama-builds"
+
+  HOST {
+    string kind
+    string os
+    int ram_mib
+    int reserve_ram_mib
+  }
+  NODE {
+    string host
+    string model
+    string runtime
+    int port
+    string bind
+    string status
+    list server_tools
+  }
+  MODEL {
+    string gguf
+    string sha256
+    string arch
+    string role
+  }
+  RUNTIME {
+    string kind
+    string build
+    list supported_archs
+  }
+  GATEWAY {
+    string kind
+    string host
+    int port
+  }
+  AGENT {
+    string kind
+    string host
+    int context_length
+  }
+  MESH {
+    string type
+    string hub
+  }
+  REGISTRY_MODEL {
+    string repo
+    string revision
+    string file
+    string sha256
+    string license
+  }
+  RECORD {
+    string host
+    string device
+    float tg_tps
+  }
+  LLAMA_BUILD {
+    list archs
+  }
+```
+
+Field-level detail for every key is in [docs/graph-types.md](docs/graph-types.md) and `docs/config/graph/`.
+
+### Fleet deployment
+
+Hosts are shown by role only.
+
+```mermaid
+flowchart TB
+  subgraph gpu["GPU node (Linux)"]
+    m_gw["green-roomz gateway 'roomz'"]
+    m_coder["coder + embed nodes"]
+    m_hermes["Hermes agents"]
+    m_hub["lan-nexus hub + lan-bt tracker"]
+  end
+  subgraph fbsd["FreeBSD node"]
+    a_coder["coder node<br/>Nanbeige4.3-33B, server_tools all"]
+    a_plan["chat, guardian nodes (planned)"]
+  end
+  subgraph win["Windows node"]
+    q_res["resident node (CPU)"]
+    q_gpu["gpu-decision node<br/>legacy-GPU node runs llama2.c (no GGUF)"]
+  end
+  lin["Linux node<br/>test loop"]
+  ci["Linux CI / test node<br/>decision, coder nodes"]
+  phones["Android phones (Termux)"]
+
+  m_hub <-->|"lan-nexus"| win
+  m_hub <-->|"lan-nexus / lan-bt"| phones
+  win -.->|"smol-cpu node (planned) escalates_to coder"| m_coder
+```
+
+`graph.yaml` lists the Android phones under both legacy and fleet host names; `registry/hosts.yaml` maps all of them to one hardware profile. The legacy-GPU node runs llama2.c (no GGUF).
+
+---
+
 ## Sub-projects
 
 The sub-projects keep their own repositories and licenses. familia pins each one by revision in [`pins.txt`](pins.txt). They are pins, not submodules. Nothing is vendored. `scripts/configure.sh` checks them out next to the top-level tree, or links a sibling checkout that already exists.
