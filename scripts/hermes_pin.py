@@ -12,7 +12,8 @@ Result keys: channel, days, ref, commit (None when the ref is not one of the pin
 
 CLI (stdout = the ref only, or JSON with --json; reasons on stderr):
   python3 scripts/hermes_pin.py resolve [--channel C] [--days N] [--offline] [--json]
-  python3 scripts/hermes_pin.py check [--bin PATH] [--channel C] [--offline]   installed vs wanted
+  python3 scripts/hermes_pin.py check [--bin PATH] [--channel C] [--offline]   installed vs wanted;
+      on a mismatch prints the upstream install.sh --commit command (familia never installs hermes)
 Exit codes: 0 ok / match; 1 mismatch or nothing resolved; 2 invalid input.
 Stdlib only. This file never edits scripts/channel.py; it only imports it when present.
 """
@@ -126,6 +127,20 @@ def matches(want, version, commit):
     return bool(version) and version == want["ref"]
 
 
+INSTALL_SH = "https://hermes-agent.nousresearch.com/install.sh"
+
+
+def install_hint(want, bin_path=""):
+    """How to put the wanted ref in place. familia never installs hermes itself."""
+    if str(bin_path).startswith("/snap/") or str(bin_path).startswith("/usr/local/bin/"):
+        return ("this hermes comes from a snap/ports package, which follows its own version; "
+                "install the upstream build (below) and set HERMES_BIN, or accept the mismatch")
+    if want.get("commit"):
+        return "curl -fsSL %s | bash -s -- --commit %s   # %s" % (INSTALL_SH, want["commit"], want["ref"])
+    return ("git ls-remote https://github.com/NousResearch/hermes-agent refs/tags/%s   # then: "
+            "curl -fsSL %s | bash -s -- --commit <that sha>" % (want["ref"], INSTALL_SH))
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="hermes_pin.py", description="familia's hermes-agent pin hook")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -156,6 +171,8 @@ def main(argv=None):
     ok = matches(want, ver, commit)
     print("%s: installed %s (%s), wanted %s (%s, channel %s)" % ("ok" if ok else "MISMATCH", ver or "unknown",
           commit or "?", want["ref"], (want.get("commit") or "?")[:12], want["channel"]))
+    if not ok:
+        print("to install it: " + install_hint(want, bin_path))
     return 0 if ok else 1
 
 

@@ -292,7 +292,8 @@ def check_toolchain(bin_path, py, *, run=subprocess.run, environ=None):
         ver, commit = hermes_pin.installed_version(bin_path, run=run, env=hermes_child_env(environ=env))
         if not hermes_pin.matches(want, ver, commit):
             msg = (f"installed hermes {ver or 'unknown'} ({commit or '?'}) is not the {want['channel']} pin "
-                   f"{want['ref']} ({(want.get('commit') or '?')[:12]}); see docs/hermes-pin.md")
+                   f"{want['ref']} ({(want.get('commit') or '?')[:12]}); "
+                   f"to install it: {hermes_pin.install_hint(want, bin_path)}")
             if mode == "strict":
                 die(msg)
             warns.append(msg)

@@ -19,7 +19,7 @@ An invalid channel or day count is an error (exit 2), never a silent default.
 | Channel | Ref | Commit | Notes |
 |---|---|---|---|
 | bleeding (default) | `v0.22.6` | `f0d94882e89a` | equal to upstream `main` on 2026-11-02 |
-| stable | `v0.22.5` | `bf0203a794a0` | 30-day longest soak on 2026-11-02 |
+| stable | `v0.22.5` | `bf0203a794a0` | channel.py stable (30 days) on 2026-11-02 |
 
 Python floor: **3.14** (upstream declares its dependencies only for python >= 3.14).
 
@@ -29,8 +29,9 @@ FAMILIA_CHANNEL=stable python3 scripts/hermes_pin.py resolve --json
 python3 scripts/hermes_pin.py check                         # installed `hermes --version` vs the pin
 ```
 
-To install the targeted ref with upstream's installer: `install.sh --commit <commit>`
-(or `--channel stable|main`, upstream's own channels).
+`check` exits 1 on a mismatch and prints how to install the wanted ref with upstream's
+installer (`install.sh --commit <commit>`); familia itself never installs hermes. snap and
+FreeBSD packages follow their own versions, so for those it only warns.
 
 ## At launch (`scripts/hermes.sh`)
 

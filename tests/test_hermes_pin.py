@@ -109,3 +109,11 @@ def test_cli_resolve_offline_prints_ref(capsys):
     assert hp.main(["resolve", "--offline", "--json"]) == 0
     out = json.loads(capsys.readouterr().out)
     assert out["ref"] and out["channel"] in ("bleeding", "stable")
+
+
+def test_install_hint_uses_upstream_installer_commit():
+    want = hp.load_pins()["channels"]["stable"]
+    h = hp.install_hint(want, "/home/u/.local/bin/hermes")
+    assert "install.sh" in h and "--commit " + want["commit"] in h
+    assert "snap" in hp.install_hint(want, "/snap/bin/hermes-agent")
+    assert "ls-remote" in hp.install_hint({"ref": "v99.0.0", "commit": None})
