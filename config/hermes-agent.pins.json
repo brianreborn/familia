@@ -1,0 +1,20 @@
+{
+  "_doc": "Channel-keyed Hermes Agent pins (docs/hermes-pin.md). Read only through scripts/hermes_pin.py. When scripts/channel.py (release channels) is present, hermes_pin asks it first and uses these entries only offline or as a fallback.",
+  "source": "hermes-agent",
+  "repo": "https://github.com/NousResearch/hermes-agent.git",
+  "python": "3.14",
+  "channels": {
+    "bleeding": {
+      "ref": "v0.22.6",
+      "commit": "f0d94882e89ab8d4098b5bb2f166adfb9ee0a0ab",
+      "published_at": "2026-11-02T17:18:36Z",
+      "note": "newest non-prerelease; equal to upstream main at reintegration (2026-11-02)"
+    },
+    "stable": {
+      "ref": "v0.22.5",
+      "commit": "bf0203a794a07aac3ff764972ab9087baa4e4f4e",
+      "published_at": "2026-10-23T05:28:45Z",
+      "note": "longest soak in the last 30 days as of 2026-11-02 (channel.py stable rule); refresh with scripts/hermes_pin.py resolve --channel stable"
+    }
+  }
+}
