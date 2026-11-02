@@ -17,6 +17,9 @@
 #        --accept-unknown  also accept components whose license could not be found
 #        --allow-root  attest running as root (or FAMILIA_ALLOW_ROOT=yes; interactive: type yes)
 #        --no-path     do not put `familia` on PATH (default: 2-line shim ~/.local/bin/familia, scripts/install-cli.sh)
+#        --channel bleeding|stable  release channel (default bleeding = unchanged behavior; FAMILIA_CHANNEL)
+#        --stable-days N  stable: most stable release of the last N days, 1..365 (default 30; FAMILIA_STABLE_DAYS)
+#                     stable resolves the llama.cpp build with scripts/channel.py unless --build is given
 # Safety: llama.cpp assets are verified against the sha256 digest published by
 # the GitHub release API at install time. No hash is hardcoded. Idempotent.
 # Example: sh install/linux/install.sh --dry-run
@@ -37,6 +40,8 @@ SELECT_BRANCH=0
 { [ -n "${FAMILIA_BRANCH:-}" ] || [ -n "$SOURCE_BRANCH" ]; } && SELECT_BRANCH=1
 API=${FAMILIA_LLAMA_API:-https://api.github.com/repos/ggml-org/llama.cpp/releases}
 DRY=0; UNINSTALL=0; PURGE=0; NAME=""; BUILD=${FAMILIA_LLAMA_BUILD:-b11539}; RUNTIME=1; SYSTEMD=0; FORCE_HOST=""; NOPATH=0
+BUILD_SET=0; [ -n "${FAMILIA_LLAMA_BUILD:-}" ] && BUILD_SET=1
+CHANNEL=${FAMILIA_CHANNEL:-bleeding}; STABLE_DAYS=${FAMILIA_STABLE_DAYS:-30}
 
 say() { echo "familia-install: $*" >&2; }
 die() { say "error: $*"; exit 1; }
@@ -50,7 +55,9 @@ while [ $# -gt 0 ]; do
     --uninstall) UNINSTALL=1 ;;
     --purge) PURGE=1 ;;
     --name) shift; NAME=${1:-} ;;
-    --build) shift; BUILD=${1:-} ;;
+    --build) shift; BUILD=${1:-}; BUILD_SET=1 ;;
+    --channel) shift; CHANNEL=${1:-} ;;
+    --stable-days) shift; STABLE_DAYS=${1:-} ;;
     --no-runtime) RUNTIME=0 ;;
     --systemd) SYSTEMD=1 ;;
     --no-path) NOPATH=1 ;;
@@ -58,13 +65,18 @@ while [ $# -gt 0 ]; do
     --allow-root) FAMILIA_ALLOW_ROOT=yes ;;
     --yes|-y) FAMILIA_ACCEPT_LICENSES=yes; export FAMILIA_ACCEPT_LICENSES; FAMILIA_ALLOW_ROOT=${FAMILIA_ALLOW_ROOT:-yes} ;;
     --accept-unknown) FAMILIA_ACCEPT_UNKNOWN_LICENSES=yes; export FAMILIA_ACCEPT_UNKNOWN_LICENSES ;;
-    -h|--help) sed -n '2,19p' "$0" 2>/dev/null | sed 's/^# \{0,1\}//' || true; exit 0 ;;
+    -h|--help) sed -n '2,22p' "$0" 2>/dev/null | sed 's/^# \{0,1\}//' || true; exit 0 ;;
     *) die "unknown flag: $1 (see --help)" ;;
   esac
   shift
 done
 
 git check-ref-format --branch "$BRANCH" >/dev/null 2>&1 || die "invalid branch name: $BRANCH"
+# Release channel: strict allowlist and a plain 1..365 integer (scripts/channel.py re-validates).
+case "$CHANNEL" in bleeding|stable) ;; *) die "invalid --channel (use bleeding or stable)" ;; esac
+case "$STABLE_DAYS" in ''|*[!0-9]*|0*|????*) die "invalid --stable-days (an integer 1..365)" ;; esac
+[ "$STABLE_DAYS" -le 365 ] || die "invalid --stable-days (an integer 1..365)"
+FAMILIA_CHANNEL=$CHANNEL; FAMILIA_STABLE_DAYS=$STABLE_DAYS; export FAMILIA_CHANNEL FAMILIA_STABLE_DAYS
 
 if [ "$(id -u)" = 0 ]; then
   say "warning: do not run as root; this installer is user-space only"
@@ -198,6 +210,19 @@ elif [ "$UNINSTALL" != 1 ] && [ -f "$PREFIX/repo/scripts/sync_pins.py" ]; then
 fi
 
 # 2. llama.cpp CPU runtime, sha256 verified against the release API digest
+if [ "$RUNTIME" = 1 ] && [ "$CHANNEL" = stable ] && [ "$BUILD_SET" = 0 ]; then
+  if [ -f "$PREFIX/repo/scripts/channel.py" ]; then
+    BUILD=$(python3 "$PREFIX/repo/scripts/channel.py" resolve llama.cpp --asset-re "$ASSET_RE") ||
+      die "stable channel: could not resolve a llama.cpp build (pass --build bNNNN to choose one)"
+    case "$BUILD" in b[0-9]*) case "$BUILD" in *[!b0-9]*) die "stable channel: unexpected build name" ;; esac ;;
+      *) die "stable channel: unexpected build name" ;; esac
+    say "stable channel ($STABLE_DAYS days): llama.cpp $BUILD"
+  elif [ "$DRY" = 1 ]; then
+    say "[dry-run] would resolve the stable llama.cpp build: python3 scripts/channel.py resolve llama.cpp"
+  else
+    die "stable channel needs scripts/channel.py in $PREFIX/repo"
+  fi
+fi
 if [ "$RUNTIME" = 1 ]; then
   if [ "$BUILD" = latest ]; then URL="$API?per_page=30"; else URL="$API/tags/$BUILD"; fi
   say "querying $URL"

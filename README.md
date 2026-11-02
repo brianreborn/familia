@@ -547,6 +547,7 @@ Start with [QUICKSTART.md](QUICKSTART.md), then [MANUAL.md](MANUAL.md).
 | [docs/ram-safety.md](docs/ram-safety.md) | RAM reserve rule and protections |
 | [docs/monitoring.md](docs/monitoring.md) | `./familia-monitor`: SSH-based live console for every host, with process-death alerts |
 | [docs/install.md](docs/install.md), [docs/windows.md](docs/windows.md) | Installers and Windows startup |
+| [docs/release-channels.md](docs/release-channels.md) | Release channels: `bleeding` (default) or `stable` (most stable release of each dependency from the last N days) |
 | [docs/known-issues.md](docs/known-issues.md) | Current problems and workarounds |
 | [docs/HANDOFF.md](docs/HANDOFF.md), [docs/offline-test-plan.md](docs/offline-test-plan.md) | Open work and the tests that resume it |
 | [docs/announcements/](docs/announcements/) | Release-note and announcement **drafts** (not published) |
