@@ -229,7 +229,7 @@ Tool grants at launch (`validate_graph.tools_argv`, #243): `coder`, `chat`, `gen
 ```mermaid
 stateDiagram-v2
   [*] --> SelectHost: --host NAME, FAMILIA_HOST, host pin, or hostname / local_names match
-  SelectHost --> SingleNode: via start.sh, host not in graph or no active local nodes
+  SelectHost --> SingleNode: via start.sh dry-run, host not in graph, no active local nodes, or graph validation failed
   SingleNode --> [*]: code-bootstraps-llama.cpp single-node default (FAMILIA_SINGLE_NODE=0 disables)
   SelectHost --> ValidateGraph: graph only (no file checks)
   SelectHost --> Failed: unknown or ambiguous host (start_graph.py run directly)
@@ -250,7 +250,8 @@ stateDiagram-v2
   PortCheck --> Failed: port occupied, or Node.js / green-roomz missing
   SpawnNode --> WaitNodeHealth: sh serve.sh NAME (one node at a time)
   WaitNodeHealth --> SpawnNode: GET /health ok, next node
-  WaitNodeHealth --> SpawnGateway: last node healthy
+  WaitNodeHealth --> SpawnGateway: last node healthy, local gateway declared
+  WaitNodeHealth --> Ready: last node healthy, no local gateway
   WaitNodeHealth --> Stopping: child exited
   SpawnGateway --> WaitGatewayHealth: green-roomz graph-proxy (one at a time)
   WaitGatewayHealth --> SpawnGateway: GET /health ok, next gateway
@@ -307,9 +308,11 @@ stateDiagram-v2
   Locked --> Fresh: nothing usable (stale .part discarded)
   Revalidate --> Cached: 304, or 200 with same ETag + size and sha256 still good
   Revalidate --> Downloading: ETag or size changed (reuse the 200 body from 0)
+  Revalidate --> Failed: other HTTP or network error (DEST and sidecar untouched)
   Resume --> Downloading: Range + If-Range -> 206 at current offset, same validator
   Resume --> Downloading: 200 (upstream changed): truncate and restart from 0, never splice
-  Resume --> Fresh: 206 with wrong offset or validator, or any other status: discard .part
+  Resume --> Fresh: 416, or 206 with wrong offset or validator: discard .part
+  Resume --> Failed: other HTTP or network error (.part and .part.meta.json kept for the next resume)
   Fresh --> Downloading: GET 200 into DEST.part
   Fresh --> Failed: any status other than 200
   Downloading --> Verify: complete, .part fsynced
