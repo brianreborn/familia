@@ -125,10 +125,13 @@ def _ps_run(pwsh, script, tmp_path, *args):
                           env=env, capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=60)
 
 
-def _install_tree(tmp_path, models_path=None, pre=None, marker=True):
+def _install_tree(tmp_path, models_path=None, pre=None, marker=True,
+                  origin="https://github.com/brianreborn/familia.git"):
     pre = pre or tmp_path / "pre"
     for d in (pre / "repo" / ".git", pre / "runtime", pre / "models"):
         d.mkdir(parents=True)
+    (pre / "repo" / ".git" / "config").write_text(
+        '[core]\n\tbare = false\n[remote "origin"]\n\turl = %s\n' % origin)
     (pre / "models" / "in.gguf").write_text("")
     if marker:
         lines = ["familia_install=1", "prefix=%s" % pre]
@@ -355,3 +358,54 @@ def test_windows_reinstall_keeps_recorded_models_path(tmp_path):
     pre = _install_tree(tmp_path, ext)
     r = _ps_run(pwsh, script, tmp_path, "-Prefix", str(pre), "-DryRun", "-NoRuntime")
     assert ("models %s," % ext) in r.stdout, r.stdout + r.stderr
+
+
+
+def test_windows_no_e_temp_default():
+    """Boundary r4 (1): external models only via explicit -ModelsPath."""
+    ps = _ps_text()
+    assert "E:\\temp" not in ps and "e:\\temp" not in ps.lower()
+    assert "$ModelsPath = $prefixModels" in ps
+
+
+def _adopt_tree(tmp_path, **kw):
+    pre = tmp_path / "lad" / "familia"
+    _install_tree(tmp_path, pre=pre, marker=False, **kw)
+    return pre
+
+
+def test_windows_adopt_refuses_extra_entry(tmp_path):
+    pwsh, script = _pwsh_or_skip(tmp_path)
+    pre = _adopt_tree(tmp_path)
+    (pre / "notes.txt").write_text("")
+    r = _ps_run(pwsh, script, tmp_path, "-Prefix", str(pre), "-AdoptInstall", "-ConfirmAdopt")
+    assert r.returncode != 0 and "unexpected entries" in (r.stdout + r.stderr)
+    assert not (pre / ".familia-install").exists()
+
+
+@pytest.mark.parametrize("origin", ["https://github.com/evil/familia.git",
+                                    "https://github.com/brianreborn/familia-fork.git", ""])
+def test_windows_adopt_refuses_wrong_origin(tmp_path, origin):
+    pwsh, script = _pwsh_or_skip(tmp_path)
+    pre = _adopt_tree(tmp_path, origin=origin)
+    r = _ps_run(pwsh, script, tmp_path, "-Prefix", str(pre), "-AdoptInstall", "-ConfirmAdopt")
+    assert r.returncode != 0 and "repo origin" in (r.stdout + r.stderr), r.stdout + r.stderr
+
+
+@pytest.mark.parametrize("origin", ["git@github.com:brianreborn/familia.git",
+                                    "https://github.com/brianreborn/familia"])
+def test_windows_adopt_accepts_origin_forms(tmp_path, origin):
+    pwsh, script = _pwsh_or_skip(tmp_path)
+    pre = _adopt_tree(tmp_path, origin=origin)
+    r = _ps_run(pwsh, script, tmp_path, "-Prefix", str(pre), "-AdoptInstall", "-ConfirmAdopt")
+    assert r.returncode == 0 and (pre / ".familia-install").exists(), r.stdout + r.stderr
+
+
+def test_windows_adopt_refuses_git_symlink(tmp_path):
+    pwsh, script = _pwsh_or_skip(tmp_path)
+    pre = _adopt_tree(tmp_path)
+    real = tmp_path / "realgit"
+    shutil.move(str(pre / "repo" / ".git"), str(real))
+    _symlink_or_skip(real, pre / "repo" / ".git", target_is_directory=True)
+    r = _ps_run(pwsh, script, tmp_path, "-Prefix", str(pre), "-AdoptInstall", "-ConfirmAdopt")
+    assert r.returncode != 0 and "junction/symlink" in (r.stdout + r.stderr), r.stdout + r.stderr
