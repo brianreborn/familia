@@ -83,7 +83,7 @@ On Windows use `python` instead of `python3` and set `$env:PYTHONUTF8 = '1'` fir
 | Goal | Command |
 |---|---|
 | Active local graph topology (POSIX) | `./start.sh` (or `./start.sh --host miryam`); current gateway aliases are listed at `http://127.0.0.1:9931/v1/models` |
-| Legacy standalone bootstrap UI/router | `./start.sh --bootstrap`, then open http://127.0.0.1:9931/?model=chat and paste its API key |
+| Legacy standalone bootstrap UI/router | `./start.sh --bootstrap`, then open http://127.0.0.1:9931/?model=chat (the instance API key is read automatically from the per-instance key file; see [docs/api-key-design.md](docs/api-key-design.md)) |
 | One graph node's llama-server (Linux) | `sh scripts/serve.sh coder` |
 | One node on Windows | `$env:FAMILIA_MODEL = 'your-model.gguf'; .\scripts\windows\start.bat` |
 | hermes-agent against the graph | `scripts/hermes.sh` |
