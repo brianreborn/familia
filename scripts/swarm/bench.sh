@@ -5,6 +5,7 @@
 # Exit 78 = skipped (no llama-bench on this runner, or host busy / short on RAM).
 # Exit 77 = skipped because the RAM guard is unavailable (no /proc/meminfo and no FreeBSD
 # linprocfs /compat/linux/proc/meminfo; see docs/swarm-bench.md). SWARM_BENCH_FORCE=1 overrides.
+# Test hooks (tests only, not for production runs): SWARM_BENCH_PGREP (pgrep stand-in), SWARM_BENCH_LOAD1, SWARM_BENCH_NPROC, SWARM_BENCH_MEMINFO.
 # Tuning knobs (llama-bench comma lists, unset = llama-bench default): SWARM_BENCH_THREADS (-t),
 # SWARM_BENCH_UB (-ub), SWARM_BENCH_LM (-lm), SWARM_BENCH_REPS (-r, default 2).
 # Idle guard (stability first; SWARM_BENCH_FORCE=1 skips it): skip with 78 if llama-server is
@@ -39,7 +40,9 @@ avail_mib() { # MemAvailable MiB from Linux /proc or FreeBSD linprocfs; empty if
 }
 busy() { # $1 = model file; prints a reason and returns 0 when the host should not be benched
 	[ "${SWARM_BENCH_FORCE:-0}" = 1 ] && return 1
-	pgrep -x llama-server >/dev/null 2>&1 && { echo "llama-server running"; return 0; }
+	"${SWARM_BENCH_PGREP:-pgrep}" -x llama-server >/dev/null 2>&1; pr=$?
+	[ "$pr" -eq 0 ] && { echo "llama-server running"; return 0; }
+	[ "$pr" -gt 1 ] && { echo "pgrep unavailable (rc $pr)"; return 0; } # fail closed
 	n=${SWARM_BENCH_NPROC:-$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 2)}
 	m=${SWARM_BENCH_MAX_LOAD:-$(( n / 2 > 0 ? n / 2 : 1 ))}
 	l=$(load1)
