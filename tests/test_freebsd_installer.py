@@ -7,9 +7,10 @@ REPO = Path(__file__).resolve().parents[1]
 SCRIPT = REPO / "install" / "freebsd" / "install-familia.sh"
 DEPS = REPO / "install" / "freebsd" / "deps.sh"
 HELP_OK = "--api-key-file FNAME"
+LLAMA_SHA = "c3df4b7e22a1ac38da663552d19e649dd97ca936"
 
 
-def _env(tmp_path, help_text=HELP_OK, with_llama=True):
+def _env(tmp_path, help_text=HELP_OK, with_llama=True, version="version: 11969 (c3df4b7)", built_sha=LLAMA_SHA):
     log = tmp_path / "calls.log"
     shim = tmp_path / "bin"; shim.mkdir()
     for name in ("sudo", "doas", "pkg"):
@@ -19,9 +20,11 @@ def _env(tmp_path, help_text=HELP_OK, with_llama=True):
     if with_llama:  # reuse-existing-build path (skill §4); no real llama.cpp build on the box
         rt = home / ".local/share/familia/runtime/b11969"; rt.mkdir(parents=True)
         p = rt / "llama-server"
+        (rt / ".built-sha").write_text(built_sha + "\n")
         p.write_text('#!/bin/sh\nif [ "${1:-}" = --help ]; then echo "' + help_text + '"; exit 0; fi\n'
+                     'if [ "${1:-}" = --version ]; then echo "' + version + '"; exit 0; fi\n'
                      f'echo "llama-server $*" >> "{log}"\n'
-                     f'echo "LANG=$LANG" >> "{log}"\nenv | grep "^LLAMA" >> "{log}" || true\n')
+                     f'echo "LANG=$LANG LC_CTYPE=${{LC_CTYPE:-}} LC_ALL=${{LC_ALL:-}}" >> "{log}"\nenv | grep "^LLAMA" >> "{log}" || true\n')
         p.chmod(0o755)
     src = tmp_path / "src"; src.mkdir()
     g = {**os.environ, "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
@@ -32,9 +35,10 @@ def _env(tmp_path, help_text=HELP_OK, with_llama=True):
     sha = subprocess.run(["git", "rev-parse", "HEAD"], cwd=src, capture_output=True, text=True).stdout.strip()
     env = {**os.environ, "PATH": f"{shim}:{os.environ['PATH']}", "HOME": str(home),
            "FAMILIA_REPO_URL": str(src), "FAMILIA_ALLOW_NON_FREEBSD": "yes",
-           "FAMILIA_REF_OVERRIDE": sha,
+           "FAMILIA_REF_OVERRIDE": sha, "FAMILIA_TEST_MODE": "1",
            "PYTHONUSERBASE": os.environ.get("PYTHONUSERBASE", os.path.expanduser("~/.local"))}
-    env.pop("LANG", None)
+    for v in ("LANG", "LC_ALL", "LC_CTYPE"):
+        env.pop(v, None)
     return log, env
 
 
@@ -208,3 +212,42 @@ def test_llama_without_api_key_file_refused(tmp_path):
     log, env = _env(tmp_path, help_text="--api-key KEY")
     r = _sh(["--yes"], env)
     assert r.returncode != 0 and "--api-key-file" in r.stderr
+
+
+def test_l1_ref_override_refused_outside_test_mode(tmp_path):
+    log, env = _env(tmp_path)
+    env.pop("FAMILIA_TEST_MODE")
+    r = _sh(["--yes"], env)
+    assert r.returncode != 0 and "test-only" in r.stderr
+    assert not (Path(env["HOME"]) / ".local/share/familia/repo").exists()
+    r = _sh(["--dry-run"], env)
+    assert r.returncode == 0, r.stderr
+
+
+@pytest.mark.parametrize("kw", [{"built_sha": "0" * 40}, {"version": "version: 11000 (deadbee)"}])
+def test_l2_stale_build_not_reused(tmp_path, kw):
+    log, env = _env(tmp_path, **kw)
+    r = _sh(["--yes"], {**env, "FAMILIA_LLAMA_URL": str(tmp_path / "nonexistent")})
+    assert "already built" not in r.stderr
+    assert r.returncode != 0  # tries to rebuild (or halts on missing cmake), never reuses
+
+
+def test_l2_verified_build_reused(tmp_path):
+    log, env = _env(tmp_path)
+    r = _sh(["--yes"], env)
+    assert r.returncode == 0 and "already built and verified" in r.stderr
+
+
+@pytest.mark.parametrize("loc,want_ctype,want_lang", [
+    ({}, "C.UTF-8", "C.UTF-8"),
+    ({"LANG": "C"}, "C.UTF-8", "C.UTF-8"),
+    ({"LANG": "POSIX"}, "C.UTF-8", "C.UTF-8"),
+    ({"LC_ALL": "C", "LANG": "de_DE.UTF-8"}, "C.UTF-8", "de_DE.UTF-8"),
+    ({"LANG": "ja_JP.UTF-8"}, "", "ja_JP.UTF-8"),
+])
+def test_na_locale_utf8(tmp_path, loc, want_ctype, want_lang):
+    log, env, launch, home = _installed(tmp_path)
+    assert _launch(launch, {**env, **loc}).returncode == 0
+    line = [l for l in log.read_text().splitlines() if l.startswith("LANG=")][-1]
+    assert f"LANG={want_lang} " in line and f"LC_CTYPE={want_ctype} " in line
+    assert "LC_ALL=C" not in line and "LC_ALL=POSIX" not in line
