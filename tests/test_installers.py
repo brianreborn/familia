@@ -326,6 +326,8 @@ def test_windows_adopt_install(tmp_path):
     ext = _ext(tmp_path)
     r = run("-AdoptInstall", "-ConfirmAdopt", "-ModelsPath", str(ext))
     assert r.returncode == 0, r.stdout + r.stderr
+    assert "NOT recorded" in r.stdout and "E:\\temp\\familia\\models" in r.stdout  # older-install hint
+    assert all(ord(c) < 128 for c in r.stdout)
     m = (pre / ".familia-install").read_text(encoding="utf-8-sig")
     assert "familia_install=1" in m and "adopted=1" in m and str(ext) not in m
     r = run("-Purge", "-PurgeExternalModels")
@@ -364,7 +366,8 @@ def test_windows_reinstall_keeps_recorded_models_path(tmp_path):
 def test_windows_no_e_temp_default():
     """Boundary r4 (1): external models only via explicit -ModelsPath."""
     ps = _ps_text()
-    assert "E:\\temp" not in ps and "e:\\temp" not in ps.lower()
+    low = ps.lower()
+    assert "test-path 'e:\\temp" not in low and "$modelspath = 'e:" not in low  # never a default again
     assert "$ModelsPath = $prefixModels" in ps
 
 
