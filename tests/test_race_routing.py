@@ -385,7 +385,7 @@ def test_r5_fairlock_grants_by_arrival_seq_not_wake_order():
     """#248 deterministic: waiters that reach the lock out of arrival order still run in seq order."""
     lk = EP.FairLock()
     lk.acquire(seq=EP.next_seq())
-    base = EP.next_seq()
+    seqs = [EP.next_seq() for _ in range(3)]  # arrival order: seqs[0] < seqs[1] < seqs[2]
     order, ts = [], []
 
     def w(seq):
@@ -393,11 +393,21 @@ def test_r5_fairlock_grants_by_arrival_seq_not_wake_order():
         order.append(seq)
         lk.release()
 
-    for off in (3, 1, 2):  # threads reach acquire() in this (wrong) order
-        t = threading.Thread(target=w, args=(base + off,)); t.start(); ts.append(t)
-        time.sleep(0.02)
+    def wait_waiting(pred):
+        deadline = time.monotonic() + 5
+        with lk._cv:
+            while not pred():
+                left = deadline - time.monotonic()
+                assert left > 0, f"waiters never queued: {sorted(lk._waiting)}"
+                lk._cv.wait(min(left, 0.01))
+
+    for i in (2, 0, 1):  # threads reach acquire() in this (wrong) order
+        seq = seqs[i]
+        t = threading.Thread(target=w, args=(seq,)); t.start(); ts.append(t)
+        wait_waiting(lambda: seq in lk._waiting)
+    wait_waiting(lambda: len(lk._waiting) == 3)
     lk.release()
     for t in ts:
         t.join(5)
         assert not t.is_alive(), "FairLock waiter thread hung"
-    assert order == [base + 1, base + 2, base + 3]
+    assert order == seqs
