@@ -67,23 +67,25 @@ jobs:
             line=$(printf '%s\n' "$BODY" | head -n1 | tr -d '\r')
             set -f; set -- $line; set +f
             [ "${1:-}" = "/run" ] || { echo "not a command"; exit 1; }
-            suite=${2:-e2e}; ref=main; issue=$EV_ISSUE
+            suite=${2:-e2e}; ref=main; issue=$EV_ISSUE; seen_ref=0
             # Optional bench knobs after suite/ref: threads= ub= lm= reps= (comma lists,
-            # [A-Za-z0-9,] only). bench.sh re-validates and exits 2 on a bad value.
+            # [0-9a-z,] only, same charset as bench.sh). bench.sh re-validates and exits 2 on a bad value.
             if [ $# -ge 2 ]; then shift 2; else shift $#; fi
             for tok in "$@"; do
               case "$tok" in
                 threads=*|ub=*|lm=*|reps=*)
                   k=${tok%%=*}; v=${tok#*=}
-                  case "$v" in ''|*[!A-Za-z0-9,]*) echo "bad knob $tok" >&2; exit 1 ;; esac
+                  case "$v" in ''|*[!0-9a-z,]*) echo "bad knob $tok" >&2; exit 1 ;; esac
                   echo "$k=$v" >> "$GITHUB_OUTPUT" ;;
                 *=*) echo "unknown knob $tok" >&2; exit 1 ;;
-                *) ref=$tok ;;
+                -*) echo "bad ref $tok" >&2; exit 1 ;;
+                *) [ "$seen_ref" = 0 ] || { echo "second ref $tok" >&2; exit 1; }
+                   ref=$tok; seen_ref=1 ;;
               esac
             done
           fi
           case "$suite" in e2e|bench) ;; *) echo "unknown suite $suite" >&2; exit 1 ;; esac
-          case "$ref" in *[!A-Za-z0-9._/-]*) echo "bad ref" >&2; exit 1 ;; esac
+          case "$ref" in -*|*[!A-Za-z0-9._/-]*) echo "bad ref" >&2; exit 1 ;; esac
           echo "issue=$issue" >> "$GITHUB_OUTPUT"
           echo "ref=$ref" >> "$GITHUB_OUTPUT"
           echo "suite=$suite" >> "$GITHUB_OUTPUT"
