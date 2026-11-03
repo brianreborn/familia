@@ -169,6 +169,7 @@ if ($AdoptInstall) {
   if ($PSCmdlet.ShouldProcess($marker, 'write familia install marker (adopt)')) {
     Write-Marker $prefixModels @('adopted=1')  # never records an external models dir
     Say "adopted: wrote $marker"
+    Say 'note: older installs may have kept models in an external folder (old default: E:\temp\familia\models). That folder is NOT recorded and -Purge will not remove it; delete it manually if you no longer want it.'
   }
   return
 }
