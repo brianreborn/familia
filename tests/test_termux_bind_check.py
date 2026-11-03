@@ -174,7 +174,7 @@ SSHD_BLOCK = re.search(r"# BEGIN familia-sshd-verify.*?\n(.*?)# END familia-sshd
 
 def _sshd_t(tmp_path, out, rc=0, cfg="PasswordAuthentication no\nKbdInteractiveAuthentication no\n"):
     stub = tmp_path / "sbin"; stub.mkdir(exist_ok=True); f = stub / "sshd"
-    f.write_text(f"#!/bin/sh\n[ \"$1\" = -T ] || {{ echo RESTART-ATTEMPT >&2; exit 9; }}\necho \"$*\" > {tmp_path}/argv\nprintf '%s\\n' '{out}'\nexit {rc}\n"); f.chmod(0o755)
+    f.write_text(f"#!/bin/sh\n[ \"$1\" = -T ] || {{ echo RESTART-ATTEMPT >&2; exit 9; }}\necho \"$*\" >> {tmp_path}/argv\nprintf '%s\\n' '{out}'\nexit {rc}\n"); f.chmod(0o755)
     c = tmp_path / "cfg"; c.write_text(cfg)
     return subprocess.run(["sh", "-c", SSHD_BLOCK + f'familia_sshd_verify "{c}" && echo OK'], capture_output=True, text=True,
                           env={"PATH": f"{stub}:{os.environ['PATH']}"})
@@ -203,8 +203,23 @@ GOOD_T = "passwordauthentication no\nkbdinteractiveauthentication no"
 def test_f8b_sshd_T_uses_connection_spec(tmp_path):
     import getpass
     r = _sshd_t(tmp_path, GOOD_T); assert "OK" in r.stdout, r.stderr
-    argv = (tmp_path / "argv").read_text().split()
-    assert argv[:2] == ["-T", "-C"] and argv[2] == f"user={getpass.getuser()},addr=127.0.0.1,host=localhost" and argv[3] == "-f"
+    lines = (tmp_path / "argv").read_text().splitlines()
+    assert len(lines) == 2, lines  # F-8c: both loopback families
+    for line, addr in zip(lines, ["127.0.0.1", "::1"]):
+        argv = line.split()
+        assert argv[:2] == ["-T", "-C"] and argv[2] == f"user={getpass.getuser()},addr={addr},host=localhost" and argv[3] == "-f"
+
+
+def test_f8c_ipv6_spec_failure_refuses(tmp_path):
+    stub = tmp_path / "sbin"; stub.mkdir(); f = stub / "sshd"
+    f.write_text("#!/bin/sh\ncase \"$3\" in *addr=::1*) printf 'passwordauthentication yes\\nkbdinteractiveauthentication no\\n';; *) printf 'passwordauthentication no\\nkbdinteractiveauthentication no\\n';; esac\n"); f.chmod(0o755)
+    c = tmp_path / "cfg"; c.write_text("PasswordAuthentication no\n")
+    r = subprocess.run(["sh", "-c", SSHD_BLOCK + f'familia_sshd_verify "{c}" && echo OK'], capture_output=True, text=True, env={"PATH": f"{stub}:{os.environ['PATH']}"})
+    assert "OK" not in r.stdout and "(::1): passwordauthentication" in r.stderr, r.stderr
+
+
+def test_f8c_include_gap_documented_for_v03():
+    assert "v0.3 gap (documented, not fixed): Include'd files are not scanned" in SRC
 
 
 @pytest.mark.parametrize("cfg,ok", [
