@@ -278,10 +278,10 @@ else
 M="\$FAMILIA_MODEL"; [ -f "\$M" ] || M="$PREFIX/models/\$FAMILIA_MODEL"
 B="$PREFIX/runtime/current/llama-server"; [ -x "\$B" ] || B="$PREFIX/runtime/current/build/bin/llama-server"
 echo "familia-start: logs: this terminal (stdout/stderr; under systemd: journalctl --user -u familia-node)" >&2
-# F-6/F-7/F-8: FAMILIA_EXTRA (whitespace-split) and the launcher's own argv ("\$@") are checked
+# F-6 + Boundary Reviewer items: FAMILIA_EXTRA (whitespace-split) and the launcher's own argv ("\$@") are checked
 # token by token. If any token would override bind, port, auth, TLS or a path
 # (--host* --port* --api-key* --ssl* --path*) the whole launch is refused, never stripped.
-# F-9: set -f is turned on here and deliberately LEFT ON for the rest of the launcher: the exec
+# set -f is turned on here and deliberately LEFT ON for the rest of the launcher: the exec
 # below expands \${FAMILIA_EXTRA} unquoted and must not glob. Nothing after this relies on globbing.
 familia_extra_check() {
   set -f
@@ -292,7 +292,9 @@ familia_extra_check() {
   done
 }
 familia_extra_check "\$@"
-exec "\$B" -m "\$M" --host "\${FAMILIA_BIND:-127.0.0.1}" --port "\${FAMILIA_PORT:-9941}" -c "\${FAMILIA_CTX:-4096}" \${FAMILIA_EXTRA:-}
+# F-9: llama-server --host takes a bare IPv6 address: [::1] -> ::1.
+H="\${FAMILIA_BIND:-127.0.0.1}"; [ "\$H" = '[::1]' ] && H=::1
+exec "\$B" -m "\$M" --host "\$H" --port "\${FAMILIA_PORT:-9941}" -c "\${FAMILIA_CTX:-4096}" \${FAMILIA_EXTRA:-}
 EOS
   chmod +x "$LAUNCH"
 fi

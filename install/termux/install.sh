@@ -241,20 +241,25 @@ is_loopback() {
 }
 familia_key_args() { # sets positional-safe FAMILIA_KF or exits
   B="\${FAMILIA_BIND:-127.0.0.1}"; FAMILIA_KF=""
+  # F-9: llama-server --host takes a bare IPv6 address: [::1] -> ::1.
+  [ "\$B" = '[::1]' ] && B=::1
   is_loopback "\$B" && return 0
   KF="\${FAMILIA_API_KEY_FILE:-}"
   [ -n "\$KF" ] || { echo "familia-start: FAMILIA_BIND=\$B is not loopback; set FAMILIA_API_KEY_FILE to a 0600 key file" >&2; exit 2; }
   [ -L "\$KF" ] && { echo "familia-start: \$KF is a symlink; refusing" >&2; exit 2; }
+  # F-7: resolve first (a symlinked parent dir must not dodge the shared-storage check).
+  _r=\$(realpath -e -- "\$KF" 2>/dev/null) || { echo "familia-start: \$KF does not resolve; refusing" >&2; exit 2; }
+  KF="\$_r"
+  case "\$KF" in /storage|/storage/*|/sdcard|/sdcard/*|/mnt/sdcard|/mnt/sdcard/*|/mnt/user/*|/mnt/media_rw/*|/data/media/*|/data/local/tmp|/data/local/tmp/*) echo "familia-start: \$KF (resolved) is on shared/adb storage; refusing" >&2; exit 2 ;; esac
   [ -f "\$KF" ] || { echo "familia-start: \$KF is not a regular file" >&2; exit 2; }
-  case "\$KF" in /sdcard/*|/storage/*|/data/local/tmp/*) echo "familia-start: \$KF is on shared/adb storage; refusing" >&2; exit 2 ;; esac
   case "\$(stat -c %a "\$KF" 2>/dev/null)" in 600|400) ;; *) echo "familia-start: \$KF must be mode 0600" >&2; exit 2 ;; esac
   [ "\$(stat -c %u "\$KF" 2>/dev/null)" = "\$(id -u)" ] || { echo "familia-start: \$KF is not owned by you" >&2; exit 2; }
   FAMILIA_KF="\$KF"
 }
-# F-6/F-7/F-8: FAMILIA_EXTRA (whitespace-split) and the launcher's own argv ("\$@") are checked
+# F-6 + Boundary Reviewer items: FAMILIA_EXTRA (whitespace-split) and the launcher's own argv ("\$@") are checked
 # token by token. If any token would override bind, port, auth, TLS or a path
 # (--host* --port* --api-key* --ssl* --path*) the whole launch is refused, never stripped.
-# F-9: set -f is turned on here and deliberately LEFT ON for the rest of the launcher: the exec
+# set -f is turned on here and deliberately LEFT ON for the rest of the launcher: the exec
 # below expands \${FAMILIA_EXTRA} unquoted and must not glob. Nothing after this relies on globbing.
 familia_extra_check() {
   set -f
@@ -274,6 +279,14 @@ exec llama-server -m "\$M" -ngl "\$NGL" -t "\${FAMILIA_THREADS:-3}" -fa "\${FAMI
 EOS
   chmod +x "$LAUNCH"
 fi
+# BEGIN familia-sshd-verify (extracted by tests)
+# F-8: after writing the config, ask sshd itself for the effective settings (no restart here).
+familia_sshd_verify() { # cfg
+  _eff=$(sshd -T -f "$1" 2>&1) || { echo "error: sshd -T -f $1 failed: $_eff; not starting sshd" >&2; return 1; }
+  printf '%s\n' "$_eff" | grep -qx 'passwordauthentication no' || { echo "error: sshd -T: passwordauthentication is not 'no'; not starting sshd" >&2; return 1; }
+  printf '%s\n' "$_eff" | grep -qx 'kbdinteractiveauthentication no' || { echo "error: sshd -T: kbdinteractiveauthentication is not 'no'; not starting sshd" >&2; return 1; }
+}
+# END familia-sshd-verify
 if [ "$SSHD" = 1 ]; then
   # Key auth only: disable passwords before sshd starts (idempotent).
   SSHD_CFG="${PREFIX:-/data/data/com.termux/files/usr}/etc/ssh/sshd_config"
@@ -283,6 +296,8 @@ if [ "$SSHD" = 1 ]; then
     sed -i -e 's/^[[:space:]#]*PasswordAuthentication[[:space:]].*$/PasswordAuthentication no/' "$SSHD_CFG"
     grep -q '^PasswordAuthentication no$' "$SSHD_CFG" || printf '\nPasswordAuthentication no\n' >> "$SSHD_CFG"
     sed -i -e 's/^[[:space:]#]*KbdInteractiveAuthentication[[:space:]].*$/KbdInteractiveAuthentication no/' "$SSHD_CFG"
+    grep -q '^KbdInteractiveAuthentication no$' "$SSHD_CFG" || printf 'KbdInteractiveAuthentication no\n' >> "$SSHD_CFG"
+    familia_sshd_verify "$SSHD_CFG" || exit 1
   fi
   run sshd
   say "sshd on port 8022 (key auth only; PasswordAuthentication no). Add your key to ~/.ssh/authorized_keys"

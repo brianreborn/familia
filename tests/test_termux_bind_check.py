@@ -54,7 +54,7 @@ def test_key_file_bad_mode_refused(tmp_path):
 
 def test_key_file_missing_refused(tmp_path):
     r = gate({"FAMILIA_BIND": "0.0.0.0", "FAMILIA_API_KEY_FILE": str(tmp_path / "nope")})
-    assert r.returncode == 2 and "not a regular file" in r.stderr
+    assert r.returncode == 2 and "does not resolve" in r.stderr
 
 
 def test_launcher_passes_key_as_single_arg():
@@ -107,8 +107,65 @@ def test_familia_extra_check_benign_argv_passes():
 
 
 def test_set_f_documented_and_left_on():
-    # F-9: noglob stays on so the unquoted ${FAMILIA_EXTRA} in exec cannot glob.
+    # Boundary Reviewer: noglob stays on so the unquoted ${FAMILIA_EXTRA} in exec cannot glob.
     for src in (SRC, LINUX_SRC):
         assert "set -f is turned on here and deliberately LEFT ON" in src
     r = run('familia_extra_check; case $- in *f*) echo NOGLOB;; esac', {"FAMILIA_EXTRA": "-t 4"})
     assert "NOGLOB" in r.stdout
+
+
+# --- Senior Developer F-7 / F-8 / F-9 ---------------------------------------------------------
+def _key(tmp_path):
+    k = tmp_path / "real" / "k"; k.parent.mkdir(); k.write_text("x"); k.chmod(0o600); return k
+
+
+def test_f7_key_path_resolved_before_shared_storage_check(tmp_path):
+    k = _key(tmp_path); (tmp_path / "via").symlink_to(k.parent)
+    r = run('familia_key_args; echo "KF=$FAMILIA_KF"', {"FAMILIA_BIND": "0.0.0.0", "FAMILIA_API_KEY_FILE": str(tmp_path / "via" / "k")})
+    assert r.returncode == 0 and f"KF={k}" in r.stdout, r.stderr  # resolved path is what gets used
+    # A symlinked parent landing on shared storage: stub realpath to report the resolved target.
+    stub = tmp_path / "bin"; stub.mkdir(); rp = stub / "realpath"
+    rp.write_text("#!/bin/sh\necho /storage/emulated/0/k\n"); rp.chmod(0o755)
+    r = subprocess.run(["sh", "-c", BLOCK + "familia_key_args; echo PASSED"], capture_output=True, text=True,
+                       env={"PATH": f"{stub}:{os.environ['PATH']}", "FAMILIA_BIND": "0.0.0.0", "FAMILIA_API_KEY_FILE": str(tmp_path / "via" / "k")})
+    assert r.returncode == 2 and "PASSED" not in r.stdout and "(resolved) is on shared/adb storage" in r.stderr, r.stderr
+
+
+SSHD_BLOCK = re.search(r"# BEGIN familia-sshd-verify.*?\n(.*?)# END familia-sshd-verify", SRC, re.S).group(1)
+
+
+def _sshd_t(tmp_path, out, rc=0):
+    stub = tmp_path / "sbin"; stub.mkdir(exist_ok=True); f = stub / "sshd"
+    f.write_text(f"#!/bin/sh\n[ \"$1\" = -T ] || {{ echo RESTART-ATTEMPT >&2; exit 9; }}\nprintf '%s\\n' '{out}'\nexit {rc}\n"); f.chmod(0o755)
+    return subprocess.run(["sh", "-c", SSHD_BLOCK + 'familia_sshd_verify /cfg && echo OK'], capture_output=True, text=True,
+                          env={"PATH": f"{stub}:{os.environ['PATH']}"})
+
+
+@pytest.mark.parametrize("out,ok", [
+    ("port 8022\npasswordauthentication no\nkbdinteractiveauthentication no", True),
+    ("passwordauthentication yes\nkbdinteractiveauthentication no", False),
+    ("passwordauthentication no\nkbdinteractiveauthentication yes", False),
+    ("passwordauthentication no", False),
+])
+def test_f8_sshd_T_effective_config(tmp_path, out, ok):
+    r = _sshd_t(tmp_path, out)
+    assert ("OK" in r.stdout) == ok, r.stderr
+    assert "RESTART-ATTEMPT" not in r.stderr
+
+
+def test_f8_sshd_T_failure_refuses(tmp_path):
+    r = _sshd_t(tmp_path, "bad config", rc=255)
+    assert "OK" not in r.stdout and "sshd -T -f /cfg failed" in r.stderr
+
+
+def test_f8_verify_runs_after_config_written_before_start():
+    i_write = SRC.index("printf 'KbdInteractiveAuthentication no\\n' >> \"$SSHD_CFG\"")
+    i_ver = SRC.index('familia_sshd_verify "$SSHD_CFG" || exit 1')
+    i_start = SRC.index("  run sshd\n")
+    assert i_write < i_ver < i_start
+
+
+def test_f9_bracketed_ipv6_loopback_passed_bare():
+    r = run('familia_key_args; echo "B=$B"', {"FAMILIA_BIND": "[::1]"})
+    assert r.returncode == 0 and "B=::1\n" in r.stdout
+    assert "H=::1" in LINUX_SRC and '--host "\\$H"' in LINUX_SRC
