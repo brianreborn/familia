@@ -403,7 +403,7 @@ def test_r5_fairlock_grants_by_arrival_seq_not_wake_order():
 
     for i in (2, 0, 1):  # threads reach acquire() in this (wrong) order
         seq = seqs[i]
-        t = threading.Thread(target=w, args=(seq,)); t.start(); ts.append(t)
+        t = threading.Thread(target=w, args=(seq,), daemon=True); t.start(); ts.append(t)
         wait_waiting(lambda: seq in lk._waiting)
     wait_waiting(lambda: len(lk._waiting) == 3)
     lk.release()
