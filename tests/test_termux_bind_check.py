@@ -237,3 +237,26 @@ def test_f9_bracketed_ipv6_loopback_passed_bare(tmp_path):
     r = run('familia_key_args; echo "B=$B"', {"FAMILIA_BIND": "[::1]", "FAMILIA_API_KEY_FILE": str(k)})
     assert r.returncode == 0 and "B=::1\n" in r.stdout
     assert "H=::1" in LINUX_SRC and '--host "\\$H"' in LINUX_SRC
+
+
+@pytest.mark.parametrize("content,ok", [
+    ("k" * 32, True), ("k" * 32 + "\n", False), ("k" * 32 + "\r\n", False), ("ab\ncd", False), ("ab cd", False), ("\tabc", False), ("", False),
+])
+def test_key_content_rule_no_cr_lf_whitespace(tmp_path, content, ok):
+    k = tmp_path / ".config" / "familia" / "api.key"; k.parent.mkdir(parents=True)
+    k.write_bytes(content.encode()); k.chmod(0o600)
+    r = gate({"HOME": str(tmp_path)})
+    if ok: assert r.returncode == 0, r.stderr
+    else: assert r.returncode == 2 and ("CR/LF/whitespace" in r.stderr or "empty" in r.stderr), r.stderr
+
+
+def test_install_writes_key_with_printf_no_newline():
+    i = SRC.index('FAMILIA_KEY_DEFAULT="$HOME'); assert "printf '%s'" in SRC[i:i + 700]
+
+
+def test_env_scrub_unsets_llama_key_and_arg_vars():
+    env = {"LLAMA_API_KEY": "evil", "LLAMA_ARG_API_KEY_FILE": "/tmp/evil", "LLAMA_ARG_HOST": "0.0.0.0", "LLAMA_ARG_N_GPU_LAYERS": "99", "LLAMA_CACHE": "keep"}
+    r = run('familia_env_scrub; env | grep "^LLAMA" || true', env)
+    assert r.returncode == 0, r.stderr
+    assert "LLAMA_API_KEY=" not in r.stdout and "LLAMA_ARG_" not in r.stdout and "LLAMA_CACHE=keep" in r.stdout
+    assert SRC.index("\nfamilia_env_scrub\n") < SRC.index("exec llama-server")

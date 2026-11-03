@@ -210,7 +210,7 @@ LAUNCH="${PREFIX:-/data/data/com.termux/files/usr}/bin/familia-start"
 FAMILIA_KEY_DEFAULT="$HOME/.config/familia/api.key"
 if [ "$DRY" = 1 ]; then say "[dry-run] generate $FAMILIA_KEY_DEFAULT (0600) if missing"
 elif [ ! -e "$FAMILIA_KEY_DEFAULT" ] && [ ! -L "$FAMILIA_KEY_DEFAULT" ]; then
-  if ! { ( umask 077; mkdir -p "$HOME/.config/familia" && head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n' > "$FAMILIA_KEY_DEFAULT.tmp.$$" ) \
+  if ! { ( umask 077; mkdir -p "$HOME/.config/familia" && _k=$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n') && printf '%s' "$_k" > "$FAMILIA_KEY_DEFAULT.tmp.$$" ) \
     && chmod 600 "$FAMILIA_KEY_DEFAULT.tmp.$$" && mv -f "$FAMILIA_KEY_DEFAULT.tmp.$$" "$FAMILIA_KEY_DEFAULT"; }; then
     say "error: could not generate $FAMILIA_KEY_DEFAULT"; exit 1
   fi
@@ -268,6 +268,11 @@ familia_key_args() { # sets positional-safe FAMILIA_KF or exits
   [ -f "\$KF" ] || { echo "familia-start: \$KF is not a regular file" >&2; exit 2; }
   case "\$(stat -c %a "\$KF" 2>/dev/null)" in 600|400) ;; *) echo "familia-start: \$KF must be mode 0600" >&2; exit 2 ;; esac
   [ "\$(stat -c %u "\$KF" 2>/dev/null)" = "\$(id -u)" ] || { echo "familia-start: \$KF is not owned by you" >&2; exit 2; }
+  # One token: no CR, no LF (incl. trailing newline), no whitespace. llama-server reads one key
+  # per line and does not trim; install writes it with printf '%s'.
+  _all=\$(wc -c < "\$KF"); _tok=\$(tr -d '[:space:]' < "\$KF" | wc -c)
+  [ "\$_tok" -gt 0 ] || { echo "familia-start: \$KF is empty; refusing" >&2; exit 2; }
+  [ "\$_all" -eq "\$_tok" ] || { echo "familia-start: \$KF contains CR/LF/whitespace (write it with printf '%s'); refusing" >&2; exit 2; }
   FAMILIA_KF="\$KF"
 }
 # F-6 + Boundary Reviewer items: FAMILIA_EXTRA (whitespace-split) and the launcher's own argv ("\$@") are checked
@@ -283,9 +288,16 @@ familia_extra_check() {
     esac
   done
 }
+# llama-server also reads LLAMA_API_KEY, LLAMA_ARG_API_KEY_FILE and every LLAMA_ARG_*: drop them
+# so the caller's environment cannot add or swap a key or flags.
+familia_env_scrub() {
+  unset LLAMA_API_KEY LLAMA_ARG_API_KEY_FILE
+  for _v in \$(env | sed -n 's/^\(LLAMA_ARG_[A-Za-z0-9_]*\)=.*/\1/p'); do unset "\$_v"; done
+}
 # END familia-bind-check
 familia_key_args
 familia_extra_check "\$@"
+familia_env_scrub
 set --
 [ -n "\$FAMILIA_KF" ] || { echo "familia-start: no API key; refusing" >&2; exit 2; }
 set -- --api-key-file "\$FAMILIA_KF"
