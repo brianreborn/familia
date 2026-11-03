@@ -251,19 +251,22 @@ familia_key_args() { # sets positional-safe FAMILIA_KF or exits
   [ "\$(stat -c %u "\$KF" 2>/dev/null)" = "\$(id -u)" ] || { echo "familia-start: \$KF is not owned by you" >&2; exit 2; }
   FAMILIA_KF="\$KF"
 }
-# F-6: FAMILIA_EXTRA is parsed as an argv array (whitespace-split, globbing off). If any token
-# would override bind, port, auth or TLS the whole value is refused, never stripped.
+# F-6/F-7/F-8: FAMILIA_EXTRA (whitespace-split) and the launcher's own argv ("\$@") are checked
+# token by token. If any token would override bind, port, auth, TLS or a path
+# (--host* --port* --api-key* --ssl* --path*) the whole launch is refused, never stripped.
+# F-9: set -f is turned on here and deliberately LEFT ON for the rest of the launcher: the exec
+# below expands \${FAMILIA_EXTRA} unquoted and must not glob. Nothing after this relies on globbing.
 familia_extra_check() {
   set -f
-  for _t in \${FAMILIA_EXTRA:-}; do
+  for _t in \${FAMILIA_EXTRA:-} "\$@"; do
     case "\$_t" in
-      --host*|--port*|--api-key*|--ssl*) echo "familia-start: FAMILIA_EXTRA token \$_t would override bind/port/auth/TLS; refusing FAMILIA_EXTRA" >&2; exit 2 ;;
+      --host*|--port*|--api-key*|--ssl*|--path*) echo "familia-start: token \$_t (FAMILIA_EXTRA or argv) would override bind/port/auth/TLS/path; refusing" >&2; exit 2 ;;
     esac
   done
 }
 # END familia-bind-check
 familia_key_args
-familia_extra_check
+familia_extra_check "\$@"
 set --
 [ -n "\$FAMILIA_KF" ] && set -- --api-key-file "\$FAMILIA_KF"
 # Defaults from the 2026-10-10 A57 sweep (#34): 3 threads, flash-attn on; -ngl 99 on Vulkan (CPU ngl 0 on 0.6.0 collapses to <1 t/s tg).

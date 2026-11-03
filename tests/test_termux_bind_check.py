@@ -71,10 +71,11 @@ LINUX_SRC = open(os.path.join(ROOT, "install/linux/install.sh")).read()
 
 @pytest.mark.parametrize("extra", [
     "--host 0.0.0.0", "-t 4 --port=1", "--api-key x", "--api-key-file /tmp/k", "--ssl-key-file k", "--hostname x", "-c 8 --ssl-cert-file c",
+    "--path /tmp/evil", "--path=/x",
 ])
 def test_familia_extra_override_refused(extra):
     r = run('familia_extra_check; echo PASSED', {"FAMILIA_EXTRA": extra})
-    assert r.returncode == 2 and "PASSED" not in r.stdout and "refusing FAMILIA_EXTRA" in r.stderr, (extra, r.stderr)
+    assert r.returncode == 2 and "PASSED" not in r.stdout and "refusing" in r.stderr, (extra, r.stderr)
 
 
 @pytest.mark.parametrize("extra", ["", "-t 4 --temp 0.7", "--n-predict 64 *"])
@@ -85,5 +86,29 @@ def test_familia_extra_benign_passes_unglobbed(extra):
 
 
 def test_familia_extra_check_wired_into_both_launchers():
-    assert "familia_key_args\nfamilia_extra_check\n" in SRC
-    assert "familia_extra_check\n" in LINUX_SRC and "--api-key*|--ssl*" in LINUX_SRC
+    assert 'familia_key_args\nfamilia_extra_check "\\$@"\n' in SRC
+    assert 'familia_extra_check "\\$@"\n' in LINUX_SRC
+    for src in (SRC, LINUX_SRC):
+        assert "--api-key*|--ssl*|--path*" in src
+
+
+@pytest.mark.parametrize("argv", [["--host", "0.0.0.0"], ["-t", "4", "--port=1"], ["--path", "/x"], ["--api-key-file", "k"], ["--ssl-cert-file", "c"]])
+def test_familia_extra_check_refuses_argv(argv):
+    # F-7: the launcher's own "$@" is checked too, before set -- replaces it.
+    r = subprocess.run(["sh", "-c", BLOCK + 'familia_extra_check "$@"; echo PASSED', "sh", *argv],
+                       env={"PATH": os.environ["PATH"]}, capture_output=True, text=True)
+    assert r.returncode == 2 and "PASSED" not in r.stdout, (argv, r.stderr)
+
+
+def test_familia_extra_check_benign_argv_passes():
+    r = subprocess.run(["sh", "-c", BLOCK + 'familia_extra_check "$@"; echo PASSED', "sh", "-t", "4"],
+                       env={"PATH": os.environ["PATH"]}, capture_output=True, text=True)
+    assert r.returncode == 0 and "PASSED" in r.stdout
+
+
+def test_set_f_documented_and_left_on():
+    # F-9: noglob stays on so the unquoted ${FAMILIA_EXTRA} in exec cannot glob.
+    for src in (SRC, LINUX_SRC):
+        assert "set -f is turned on here and deliberately LEFT ON" in src
+    r = run('familia_extra_check; case $- in *f*) echo NOGLOB;; esac', {"FAMILIA_EXTRA": "-t 4"})
+    assert "NOGLOB" in r.stdout

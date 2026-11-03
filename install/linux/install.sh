@@ -278,17 +278,20 @@ else
 M="\$FAMILIA_MODEL"; [ -f "\$M" ] || M="$PREFIX/models/\$FAMILIA_MODEL"
 B="$PREFIX/runtime/current/llama-server"; [ -x "\$B" ] || B="$PREFIX/runtime/current/build/bin/llama-server"
 echo "familia-start: logs: this terminal (stdout/stderr; under systemd: journalctl --user -u familia-node)" >&2
-# F-6: FAMILIA_EXTRA is parsed as an argv array (whitespace-split, globbing off). If any token
-# would override bind, port, auth or TLS the whole value is refused, never stripped.
+# F-6/F-7/F-8: FAMILIA_EXTRA (whitespace-split) and the launcher's own argv ("\$@") are checked
+# token by token. If any token would override bind, port, auth, TLS or a path
+# (--host* --port* --api-key* --ssl* --path*) the whole launch is refused, never stripped.
+# F-9: set -f is turned on here and deliberately LEFT ON for the rest of the launcher: the exec
+# below expands \${FAMILIA_EXTRA} unquoted and must not glob. Nothing after this relies on globbing.
 familia_extra_check() {
   set -f
-  for _t in \${FAMILIA_EXTRA:-}; do
+  for _t in \${FAMILIA_EXTRA:-} "\$@"; do
     case "\$_t" in
-      --host*|--port*|--api-key*|--ssl*) echo "familia-start: FAMILIA_EXTRA token \$_t would override bind/port/auth/TLS; refusing FAMILIA_EXTRA" >&2; exit 2 ;;
+      --host*|--port*|--api-key*|--ssl*|--path*) echo "familia-start: token \$_t (FAMILIA_EXTRA or argv) would override bind/port/auth/TLS/path; refusing" >&2; exit 2 ;;
     esac
   done
 }
-familia_extra_check
+familia_extra_check "\$@"
 exec "\$B" -m "\$M" --host "\${FAMILIA_BIND:-127.0.0.1}" --port "\${FAMILIA_PORT:-9941}" -c "\${FAMILIA_CTX:-4096}" \${FAMILIA_EXTRA:-}
 EOS
   chmod +x "$LAUNCH"
