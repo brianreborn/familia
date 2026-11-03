@@ -223,22 +223,55 @@ if [ -e /system/lib64/libvulkan.so ]; then
   NGL="\${FAMILIA_NGL:-99}"
 fi
 # Loopback by default. Any other bind is reachable from phone Wi-Fi, so it needs a key file (0600).
-B="\${FAMILIA_BIND:-127.0.0.1}"; KEYARGS=""
-case "\$B" in
-  127.*|localhost|::1) ;;
-  *) KF="\${FAMILIA_API_KEY_FILE:-}"
-     [ -n "\$KF" ] && [ -f "\$KF" ] || { echo "familia-start: FAMILIA_BIND=\$B is not loopback; set FAMILIA_API_KEY_FILE to a 0600 key file" >&2; exit 2; }
-     case "\$(stat -c %a "\$KF" 2>/dev/null)" in 600|400) ;; *) echo "familia-start: \$KF must be mode 0600" >&2; exit 2 ;; esac
-     KEYARGS="--api-key-file \$KF" ;;
-esac
+# BEGIN familia-bind-check (extracted by tests/test_termux_bind_check.py)
+is_loopback() {
+  case "\$1" in
+    localhost|::1|'[::1]') return 0 ;;
+    127.*) ;;
+    *) return 1 ;;
+  esac
+  # Strict dotted quad 127.a.b.c, decimal octets 0-255 (127.example / 127.0.0.1.evil are not loopback).
+  _ip="\$1"; _n=0; _rest="\$_ip."
+  while [ -n "\$_rest" ]; do
+    _o="\${_rest%%.*}"; _rest="\${_rest#*.}"; _n=\$((_n+1))
+    case "\$_o" in ''|*[!0-9]*) return 1 ;; esac
+    [ \${#_o} -le 3 ] && [ "\$_o" -le 255 ] || return 1
+  done
+  [ "\$_n" -eq 4 ]
+}
+familia_key_args() { # sets positional-safe FAMILIA_KF or exits
+  B="\${FAMILIA_BIND:-127.0.0.1}"; FAMILIA_KF=""
+  is_loopback "\$B" && return 0
+  KF="\${FAMILIA_API_KEY_FILE:-}"
+  [ -n "\$KF" ] || { echo "familia-start: FAMILIA_BIND=\$B is not loopback; set FAMILIA_API_KEY_FILE to a 0600 key file" >&2; exit 2; }
+  [ -L "\$KF" ] && { echo "familia-start: \$KF is a symlink; refusing" >&2; exit 2; }
+  [ -f "\$KF" ] || { echo "familia-start: \$KF is not a regular file" >&2; exit 2; }
+  case "\$KF" in /sdcard/*|/storage/*|/data/local/tmp/*) echo "familia-start: \$KF is on shared/adb storage; refusing" >&2; exit 2 ;; esac
+  case "\$(stat -c %a "\$KF" 2>/dev/null)" in 600|400) ;; *) echo "familia-start: \$KF must be mode 0600" >&2; exit 2 ;; esac
+  [ "\$(stat -c %u "\$KF" 2>/dev/null)" = "\$(id -u)" ] || { echo "familia-start: \$KF is not owned by you" >&2; exit 2; }
+  FAMILIA_KF="\$KF"
+}
+# END familia-bind-check
+familia_key_args
+set --
+[ -n "\$FAMILIA_KF" ] && set -- --api-key-file "\$FAMILIA_KF"
 # Defaults from the 2026-10-10 A57 sweep (#34): 3 threads, flash-attn on; -ngl 99 on Vulkan (CPU ngl 0 on 0.6.0 collapses to <1 t/s tg).
-exec llama-server -m "\$M" -ngl "\$NGL" -t "\${FAMILIA_THREADS:-3}" -fa "\${FAMILIA_FA:-on}" --host "\$B" --port "\${FAMILIA_PORT:-9941}" -c "\${FAMILIA_CTX:-2048}" \$KEYARGS \${FAMILIA_EXTRA:-}
+exec llama-server -m "\$M" -ngl "\$NGL" -t "\${FAMILIA_THREADS:-3}" -fa "\${FAMILIA_FA:-on}" --host "\$B" --port "\${FAMILIA_PORT:-9941}" -c "\${FAMILIA_CTX:-2048}" "\$@" \${FAMILIA_EXTRA:-}
 EOS
   chmod +x "$LAUNCH"
 fi
 if [ "$SSHD" = 1 ]; then
+  # Key auth only: disable passwords before sshd starts (idempotent).
+  SSHD_CFG="${PREFIX:-/data/data/com.termux/files/usr}/etc/ssh/sshd_config"
+  if [ "$DRY" = 1 ]; then say "[dry-run] set PasswordAuthentication no in $SSHD_CFG"
+  else
+    [ -f "$SSHD_CFG" ] || { say "error: $SSHD_CFG missing; not starting sshd"; exit 1; }
+    sed -i -e 's/^[[:space:]#]*PasswordAuthentication[[:space:]].*$/PasswordAuthentication no/' "$SSHD_CFG"
+    grep -q '^PasswordAuthentication no$' "$SSHD_CFG" || printf '\nPasswordAuthentication no\n' >> "$SSHD_CFG"
+    sed -i -e 's/^[[:space:]#]*KbdInteractiveAuthentication[[:space:]].*$/KbdInteractiveAuthentication no/' "$SSHD_CFG"
+  fi
   run sshd
-  say "sshd on port 8022 (key auth: add your key to ~/.ssh/authorized_keys; set a password with passwd only if you want one)"
+  say "sshd on port 8022 (key auth only; PasswordAuthentication no). Add your key to ~/.ssh/authorized_keys"
 fi
 if [ -d "$HOME/.termux/boot" ]; then
   say "Termux:Boot detected; to autostart, create $BOOT that exports FAMILIA_MODEL and runs familia-start"
