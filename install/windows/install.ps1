@@ -140,23 +140,32 @@ if ($AdoptInstall) {
     throw "refusing -AdoptInstall: '$Prefix' does not look like a familia install (needs repo\.git and runtime\)"
   }
   $allowed = @('repo', 'runtime', 'models', '.familia-install')
-  $extra = @(Get-ChildItem -LiteralPath $Prefix -Force | Where-Object { $allowed -notcontains $_.Name.ToLowerInvariant() } | ForEach-Object { $_.Name })
-  if ($extra.Count) { throw "refusing -AdoptInstall: unexpected entries in '$Prefix': $($extra -join ', ')" }
+  foreach ($e in @(Get-ChildItem -LiteralPath $Prefix -Force)) {
+    if ($allowed -notcontains $e.Name.ToLowerInvariant()) { throw "refusing -AdoptInstall: unexpected entry in '$Prefix': $($e.Name)" }
+    if ($e.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw "refusing -AdoptInstall: $($e.Name) is a junction/symlink" }
+  }
   $gd = Get-Item -LiteralPath (Join-Path $repo '.git') -Force -ErrorAction Stop
   if ($gd.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw "refusing -AdoptInstall: repo\.git is a junction/symlink" }
-  $origin = $null
-  if (Get-Command git -ErrorAction SilentlyContinue) { $origin = (& git -C $repo config --get remote.origin.url 2>$null) }
-  if (-not $origin) {
+  if (-not $gd.PSIsContainer) { throw "refusing -AdoptInstall: repo\.git is a file (gitdir: link), not a directory" }
+  $origins = @()
+  if (Get-Command git -ErrorAction SilentlyContinue) {
+    # git present: trust only git; any failure refuses (no fallback to the file parser)
+    $out = @(& git -C $repo config --get-all remote.origin.url 2>$null)
+    if ($LASTEXITCODE -ne 0) { throw "refusing -AdoptInstall: git config failed (exit $LASTEXITCODE) reading repo origin" }
+    $origins = @($out | Where-Object { $_ -and $_.Trim() } | ForEach-Object { $_.Trim() })
+  } else {
     $cfg = Join-Path $gd.FullName 'config'
     if (Test-Path -LiteralPath $cfg -PathType Leaf) {
       $inO = $false
       foreach ($l in Get-Content -LiteralPath $cfg) {
-        if ($l -match '^\s*\[') { $inO = ($l -match '^\s*\[remote\s+"origin"\]') }
-        elseif ($inO -and $l -match '^\s*url\s*=\s*(\S+)') { $origin = $Matches[1] }
+        if ($l -match '^\s*\[') { $inO = ($l -match '^\s*\[remote\s+"origin"\]\s*$') }
+        elseif ($inO -and $l -match '^\s*url\s*=\s*(\S+)\s*$') { $origins += $Matches[1] }
       }
     }
   }
-  if ([string]$origin -notmatch '^(https://|ssh://git@|git@)github\.com[/:]brianreborn/familia(\.git)?/?$') {
+  if ($origins.Count -ne 1) { throw "refusing -AdoptInstall: expected exactly one repo origin url, found $($origins.Count)" }
+  $origin = $origins[0]
+  if ($origin -notmatch '^(https://|ssh://git@|git@)github\.com[/:]brianreborn/familia(\.git)?/?$') {
     throw "refusing -AdoptInstall: repo origin '$origin' is not github.com/brianreborn/familia"
   }
   $ok = $false

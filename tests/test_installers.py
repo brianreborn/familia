@@ -119,8 +119,10 @@ def _pwsh_or_skip(tmp_path):
 
 
 def _ps_run(pwsh, script, tmp_path, *args):
+    nogit = tmp_path / "nogit-bin"  # PATH without git: exercises the .git/config parser
+    nogit.mkdir(exist_ok=True)
     env = dict(os.environ, LOCALAPPDATA=str(tmp_path / "lad"), APPDATA=str(tmp_path / "ad"),
-               COMPUTERNAME="x")
+               COMPUTERNAME="x", PATH=str(nogit))
     return subprocess.run([pwsh, "-NoProfile", "-NonInteractive", "-File", str(script), *args],
                           env=env, capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=60)
 
@@ -382,7 +384,7 @@ def test_windows_adopt_refuses_extra_entry(tmp_path):
     pre = _adopt_tree(tmp_path)
     (pre / "notes.txt").write_text("")
     r = _ps_run(pwsh, script, tmp_path, "-Prefix", str(pre), "-AdoptInstall", "-ConfirmAdopt")
-    assert r.returncode != 0 and "unexpected entries" in (r.stdout + r.stderr)
+    assert r.returncode != 0 and "unexpected entry" in (r.stdout + r.stderr)
     assert not (pre / ".familia-install").exists()
 
 
@@ -411,4 +413,85 @@ def test_windows_adopt_refuses_git_symlink(tmp_path):
     shutil.move(str(pre / "repo" / ".git"), str(real))
     _symlink_or_skip(real, pre / "repo" / ".git", target_is_directory=True)
     r = _ps_run(pwsh, script, tmp_path, "-Prefix", str(pre), "-AdoptInstall", "-ConfirmAdopt")
+    assert r.returncode != 0 and "junction/symlink" in (r.stdout + r.stderr), r.stdout + r.stderr
+
+
+
+def _adopt(pwsh, script, tmp_path, pre):
+    return _ps_run(pwsh, script, tmp_path, "-Prefix", str(pre), "-AdoptInstall", "-ConfirmAdopt")
+
+
+def _write_cfg(pre, text):
+    (pre / "repo" / ".git" / "config").write_text(text)
+
+
+GOOD = "https://github.com/brianreborn/familia.git"
+
+
+def test_windows_adopt_parser_valid(tmp_path):
+    pwsh, script = _pwsh_or_skip(tmp_path)
+    pre = _adopt_tree(tmp_path)
+    _write_cfg(pre, '[core]\n\tbare = false\n[remote "upstream"]\n\turl = https://evil/x\n'
+                    '[remote "origin"]\n\turl = %s\n\tfetch = +refs/heads/*:refs/remotes/origin/*\n' % GOOD)
+    r = _adopt(pwsh, script, tmp_path, pre)
+    assert r.returncode == 0 and (pre / ".familia-install").exists(), r.stdout + r.stderr
+
+
+@pytest.mark.parametrize("cfg", [
+    '[remote "origin"]\n\turl = %s\n[remote "origin"]\n\turl = https://github.com/evil/familia.git\n' % GOOD,
+    '[remote "origin"]\n\turl = %s\n\turl = %s\n' % (GOOD, GOOD),
+    '[remote "upstream"]\n\turl = %s\n' % GOOD,
+], ids=["two-origins-last-evil", "two-urls", "upstream-only"])
+def test_windows_adopt_parser_refuses(tmp_path, cfg):
+    pwsh, script = _pwsh_or_skip(tmp_path)
+    pre = _adopt_tree(tmp_path)
+    _write_cfg(pre, cfg)
+    r = _adopt(pwsh, script, tmp_path, pre)
+    assert r.returncode != 0 and "origin" in (r.stdout + r.stderr), r.stdout + r.stderr
+    assert not (pre / ".familia-install").exists()
+
+
+def test_windows_adopt_refuses_gitdir_file(tmp_path):
+    pwsh, script = _pwsh_or_skip(tmp_path)
+    pre = _adopt_tree(tmp_path)
+    shutil.rmtree(pre / "repo" / ".git")
+    (pre / "repo" / ".git").write_text("gitdir: /elsewhere/.git\n")
+    r = _adopt(pwsh, script, tmp_path, pre)
+    assert r.returncode != 0 and "is a file" in (r.stdout + r.stderr), r.stdout + r.stderr
+
+
+def test_windows_adopt_git_failure_refuses_without_parser(tmp_path):
+    pwsh, script = _pwsh_or_skip(tmp_path)
+    pre = _adopt_tree(tmp_path)  # valid config file present: parser would accept it
+    git = tmp_path / "nogit-bin" / "git"
+    git.parent.mkdir(exist_ok=True)
+    git.write_text("#!/bin/sh\nexit 128\n")
+    os.chmod(git, 0o755)
+    r = _adopt(pwsh, script, tmp_path, pre)
+    assert r.returncode != 0 and "git config failed (exit 128)" in (r.stdout + r.stderr), r.stdout + r.stderr
+    assert not (pre / ".familia-install").exists()
+
+
+def test_windows_adopt_git_empty_output_refuses(tmp_path):
+    pwsh, script = _pwsh_or_skip(tmp_path)
+    pre = _adopt_tree(tmp_path)
+    git = tmp_path / "nogit-bin" / "git"
+    git.parent.mkdir(exist_ok=True)
+    git.write_text("#!/bin/sh\nexit 0\n")
+    os.chmod(git, 0o755)
+    r = _adopt(pwsh, script, tmp_path, pre)
+    assert r.returncode != 0 and "found 0" in (r.stdout + r.stderr), r.stdout + r.stderr
+
+
+@pytest.mark.parametrize("entry", ["repo", "runtime", "models", ".familia-install"])
+def test_windows_adopt_refuses_reparse_entries(tmp_path, entry):
+    pwsh, script = _pwsh_or_skip(tmp_path)
+    pre = _adopt_tree(tmp_path)
+    real = tmp_path / ("real-" + entry.strip("."))
+    if entry == ".familia-install":
+        real.write_text("familia_install=1\nprefix=%s\n" % (tmp_path / "other"))
+    else:
+        shutil.move(str(pre / entry), str(real))
+    _symlink_or_skip(real, pre / entry, target_is_directory=real.is_dir())
+    r = _adopt(pwsh, script, tmp_path, pre)
     assert r.returncode != 0 and "junction/symlink" in (r.stdout + r.stderr), r.stdout + r.stderr
