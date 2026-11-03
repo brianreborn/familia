@@ -75,7 +75,7 @@ function Protected-Reason([string]$p) {
 $nPrefix = Norm $Prefix
 $why = Protected-Reason $Prefix
 if ($why) { throw "refusing -Prefix '$Prefix': $why" }
-$pi = Get-Item -LiteralPath $Prefix -Force -ErrorAction SilentlyContinue
+$pi = if (Test-Path -LiteralPath $Prefix) { Get-Item -LiteralPath $Prefix -Force -ErrorAction Stop } else { $null }
 if ($pi -and ($pi.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw "refusing -Prefix '$Prefix': it is a junction/symlink" }
 $repo = Join-Path $Prefix 'repo'
 $runtimeRoot = Join-Path $Prefix 'runtime'
@@ -121,14 +121,14 @@ function Remove-Safe([string]$p) {
   }
   if ($it.Attributes -band [IO.FileAttributes]::ReadOnly) { $it.Attributes = $it.Attributes -band -bnot [IO.FileAttributes]::ReadOnly }
   if ($it.PSIsContainer) {
-    foreach ($c in @(Get-ChildItem -LiteralPath $it.FullName -Force)) { Remove-Safe $c.FullName }
+    foreach ($c in @(Get-ChildItem -LiteralPath $full -Force))  # \\?\ form on PS 5.1 (best effort)
+    { Remove-Safe $c.FullName }
     [IO.Directory]::Delete($full, $false)
   } else { [IO.File]::Delete($full) }
 }
 $explicitModels = [bool]$ModelsPath
-if (-not $ModelsPath) {
-  if (Test-Path 'E:\temp\') { $ModelsPath = 'E:\temp\familia\models' } else { $ModelsPath = $prefixModels }
-}
+if (-not $ModelsPath) { $ModelsPath = $prefixModels }  # external models only via explicit -ModelsPath
+elseif (Protected-Reason $ModelsPath) { throw "refusing -ModelsPath '$ModelsPath': $(Protected-Reason $ModelsPath)" }
 
 # One-time, narrow: mark an older (pre-marker) install. Only writes the marker; never deletes.
 if ($AdoptInstall) {
@@ -138,6 +138,26 @@ if ($AdoptInstall) {
   if (Read-Marker) { Say "marker already present: $marker"; return }
   if (-not ((Test-Path -LiteralPath (Join-Path $repo '.git')) -and (Test-Path -LiteralPath $runtimeRoot -PathType Container))) {
     throw "refusing -AdoptInstall: '$Prefix' does not look like a familia install (needs repo\.git and runtime\)"
+  }
+  $allowed = @('repo', 'runtime', 'models', '.familia-install')
+  $extra = @(Get-ChildItem -LiteralPath $Prefix -Force | Where-Object { $allowed -notcontains $_.Name.ToLowerInvariant() } | ForEach-Object { $_.Name })
+  if ($extra.Count) { throw "refusing -AdoptInstall: unexpected entries in '$Prefix': $($extra -join ', ')" }
+  $gd = Get-Item -LiteralPath (Join-Path $repo '.git') -Force -ErrorAction Stop
+  if ($gd.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw "refusing -AdoptInstall: repo\.git is a junction/symlink" }
+  $origin = $null
+  if (Get-Command git -ErrorAction SilentlyContinue) { $origin = (& git -C $repo config --get remote.origin.url 2>$null) }
+  if (-not $origin) {
+    $cfg = Join-Path $gd.FullName 'config'
+    if (Test-Path -LiteralPath $cfg -PathType Leaf) {
+      $inO = $false
+      foreach ($l in Get-Content -LiteralPath $cfg) {
+        if ($l -match '^\s*\[') { $inO = ($l -match '^\s*\[remote\s+"origin"\]') }
+        elseif ($inO -and $l -match '^\s*url\s*=\s*(\S+)') { $origin = $Matches[1] }
+      }
+    }
+  }
+  if ([string]$origin -notmatch '^(https://|ssh://git@|git@)github\.com[/:]brianreborn/familia(\.git)?/?$') {
+    throw "refusing -AdoptInstall: repo origin '$origin' is not github.com/brianreborn/familia"
   }
   $ok = $false
   if ($ConfirmAdopt) { $ok = $true }
