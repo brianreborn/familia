@@ -57,6 +57,7 @@ if (-not $ModelsPath) {
   if (Test-Path 'E:\temp\') { $ModelsPath = 'E:\temp\familia\models' } else { $ModelsPath = Join-Path $Prefix 'models' }
 }
 
+if ($Purge) { $Uninstall = $true }  # -Purge alone must never fall through to an install
 if ($Uninstall) {
   $task = Join-Path $repo 'scripts\windows\install-task.ps1'
   if (Test-Path $task) { & $task -Uninstall -WhatIf:$dry }
@@ -65,8 +66,13 @@ if ($Uninstall) {
   foreach ($p in @($repo, $runtimeRoot)) {
     if ((Test-Path $p) -and $PSCmdlet.ShouldProcess($p, 'Remove')) { Remove-Item -Recurse -Force $p }
   }
-  if ($Purge -and (Test-Path $Prefix) -and $PSCmdlet.ShouldProcess($Prefix, 'Remove (purge)')) { Remove-Item -Recurse -Force $Prefix }
-  Say "uninstalled (models in $ModelsPath kept)"
+  if ($Purge) {
+    # -Purge removes all, including a models dir outside the prefix (e.g. E:\temp\familia\models)
+    foreach ($p in @($ModelsPath, $Prefix)) {
+      if ((Test-Path $p) -and $PSCmdlet.ShouldProcess($p, 'Remove (purge)')) { Remove-Item -Recurse -Force $p }
+    }
+    Say 'uninstalled and purged (models removed)'
+  } else { Say "uninstalled (models in $ModelsPath kept)" }
   return
 }
 
