@@ -56,7 +56,7 @@ fi
 say "platform=FreeBSD profile=$PROFILE"
 say "present:${present:- (none)}"
 say "missing:${missing:- (none)}"
-say "pkg names (reference): git curl python3 py311-yaml py311-pytest cmake ninja llvm"
+say "pkg names (reference): git curl python3 py311-pyyaml py311-pytest cmake ninja llvm"
 say "getconf: FreeBSD base — no package"
 say "llama.cpp: BUILD_DIR=build-freebsd GPU=off  (from code-bootstraps-llama.cpp/scripts/build-linux.sh)"
 say "home of the safe-mode *build* AI: pinned code-bootstraps-llama.cpp"
@@ -66,7 +66,7 @@ pkgs=""
 for m in $missing; do
   case "$m" in
     getconf*) ;; # base
-    pyyaml) pkgs="$pkgs py311-yaml" ;;
+    pyyaml) pkgs="$pkgs py311-pyyaml" ;;
     pytest) pkgs="$pkgs py311-pytest" ;;
     llvm-or-gcc) pkgs="$pkgs llvm" ;;
     *) pkgs="$pkgs $m" ;;
