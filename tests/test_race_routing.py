@@ -397,5 +397,7 @@ def test_r5_fairlock_grants_by_arrival_seq_not_wake_order():
         t = threading.Thread(target=w, args=(base + off,)); t.start(); ts.append(t)
         time.sleep(0.02)
     lk.release()
-    for t in ts: t.join(5)
+    for t in ts:
+        t.join(5)
+        assert not t.is_alive(), "FairLock waiter thread hung"
     assert order == [base + 1, base + 2, base + 3]
