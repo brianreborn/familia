@@ -64,3 +64,26 @@ def test_launcher_passes_key_as_single_arg():
 def test_sshd_disables_password_auth():
     assert "PasswordAuthentication no" in SRC
     i = SRC.index('if [ "$SSHD" = 1 ]; then\n  # Key auth'); assert SRC.index("PasswordAuthentication no", i) < SRC.index("run sshd", i)
+
+
+LINUX_SRC = open(os.path.join(ROOT, "install/linux/install.sh")).read()
+
+
+@pytest.mark.parametrize("extra", [
+    "--host 0.0.0.0", "-t 4 --port=1", "--api-key x", "--api-key-file /tmp/k", "--ssl-key-file k", "--hostname x", "-c 8 --ssl-cert-file c",
+])
+def test_familia_extra_override_refused(extra):
+    r = run('familia_extra_check; echo PASSED', {"FAMILIA_EXTRA": extra})
+    assert r.returncode == 2 and "PASSED" not in r.stdout and "refusing FAMILIA_EXTRA" in r.stderr, (extra, r.stderr)
+
+
+@pytest.mark.parametrize("extra", ["", "-t 4 --temp 0.7", "--n-predict 64 *"])
+def test_familia_extra_benign_passes_unglobbed(extra):
+    r = run('familia_extra_check; set -- ${FAMILIA_EXTRA:-}; [ $# -gt 0 ] && printf "[%s]" "$@"; true', {"FAMILIA_EXTRA": extra})
+    assert r.returncode == 0, r.stderr
+    assert r.stdout == "".join(f"[{t}]" for t in extra.split()), r.stdout
+
+
+def test_familia_extra_check_wired_into_both_launchers():
+    assert "familia_key_args\nfamilia_extra_check\n" in SRC
+    assert "familia_extra_check\n" in LINUX_SRC and "--api-key*|--ssl*" in LINUX_SRC

@@ -251,8 +251,19 @@ familia_key_args() { # sets positional-safe FAMILIA_KF or exits
   [ "\$(stat -c %u "\$KF" 2>/dev/null)" = "\$(id -u)" ] || { echo "familia-start: \$KF is not owned by you" >&2; exit 2; }
   FAMILIA_KF="\$KF"
 }
+# F-6: FAMILIA_EXTRA is parsed as an argv array (whitespace-split, globbing off). If any token
+# would override bind, port, auth or TLS the whole value is refused, never stripped.
+familia_extra_check() {
+  set -f
+  for _t in \${FAMILIA_EXTRA:-}; do
+    case "\$_t" in
+      --host*|--port*|--api-key*|--ssl*) echo "familia-start: FAMILIA_EXTRA token \$_t would override bind/port/auth/TLS; refusing FAMILIA_EXTRA" >&2; exit 2 ;;
+    esac
+  done
+}
 # END familia-bind-check
 familia_key_args
+familia_extra_check
 set --
 [ -n "\$FAMILIA_KF" ] && set -- --api-key-file "\$FAMILIA_KF"
 # Defaults from the 2026-10-10 A57 sweep (#34): 3 threads, flash-attn on; -ngl 99 on Vulkan (CPU ngl 0 on 0.6.0 collapses to <1 t/s tg).

@@ -278,6 +278,17 @@ else
 M="\$FAMILIA_MODEL"; [ -f "\$M" ] || M="$PREFIX/models/\$FAMILIA_MODEL"
 B="$PREFIX/runtime/current/llama-server"; [ -x "\$B" ] || B="$PREFIX/runtime/current/build/bin/llama-server"
 echo "familia-start: logs: this terminal (stdout/stderr; under systemd: journalctl --user -u familia-node)" >&2
+# F-6: FAMILIA_EXTRA is parsed as an argv array (whitespace-split, globbing off). If any token
+# would override bind, port, auth or TLS the whole value is refused, never stripped.
+familia_extra_check() {
+  set -f
+  for _t in \${FAMILIA_EXTRA:-}; do
+    case "\$_t" in
+      --host*|--port*|--api-key*|--ssl*) echo "familia-start: FAMILIA_EXTRA token \$_t would override bind/port/auth/TLS; refusing FAMILIA_EXTRA" >&2; exit 2 ;;
+    esac
+  done
+}
+familia_extra_check
 exec "\$B" -m "\$M" --host "\${FAMILIA_BIND:-127.0.0.1}" --port "\${FAMILIA_PORT:-9941}" -c "\${FAMILIA_CTX:-4096}" \${FAMILIA_EXTRA:-}
 EOS
   chmod +x "$LAUNCH"
