@@ -1,3 +1,4 @@
+import subprocess
 import os, re, subprocess, sys, shutil, yaml
 import pytest
 from types import SimpleNamespace
@@ -102,25 +103,119 @@ def test_linux_installer_accepts_branch_and_dry_runs_clone(tmp_path):
     assert "[dry-run] git clone -q --branch feat/llama.cpp-0.7.0" in r.stderr
 
 
-def test_windows_purge_implies_uninstall_and_removes_models(tmp_path):
-    """#32: -Purge alone must not install, and must remove an external models dir."""
-    import shutil, subprocess
-    ps = open(os.path.join(ROOT, "install/windows/install.ps1")).read()
-    assert "if ($Purge) { $Uninstall = $true }" in ps
+def _ps_text():
+    return open(os.path.join(ROOT, "install/windows/install.ps1")).read()
+
+
+def _pwsh_or_skip(tmp_path):
+    import shutil
     pwsh = shutil.which("pwsh")
     if not pwsh:
-        import pytest
         pytest.skip("pwsh not installed")
     # CimCmdlets is Windows-only; strip that line to exercise the uninstall branch on Linux.
     script = tmp_path / "i.ps1"
-    script.write_text("\n".join(l for l in ps.splitlines() if "Import-Module CimCmdlets" not in l))
-    pre, models = tmp_path / "pre", tmp_path / "m"
-    for d in (pre / "repo", pre / "runtime", models):
+    script.write_text("\n".join(l for l in _ps_text().splitlines() if "Import-Module CimCmdlets" not in l))
+    return pwsh, script
+
+
+def _ps_run(pwsh, script, tmp_path, *args):
+    env = dict(os.environ, LOCALAPPDATA=str(tmp_path / "lad"), APPDATA=str(tmp_path / "ad"),
+               COMPUTERNAME="x")
+    return subprocess.run([pwsh, "-NoProfile", "-NonInteractive", "-File", str(script), *args],
+                          env=env, capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=60)
+
+
+def _install_tree(tmp_path, models_path=None):
+    pre = tmp_path / "pre"
+    for d in (pre / "repo", pre / "runtime", pre / "models"):
         d.mkdir(parents=True)
-    (models / "x.gguf").write_text("")
-    env = dict(os.environ, LOCALAPPDATA=str(tmp_path), COMPUTERNAME="x")
-    base = [pwsh, "-NoProfile", "-File", str(script), "-Prefix", str(pre), "-ModelsPath", str(models), "-Purge"]
-    subprocess.run(base + ["-WhatIf"], env=env, check=True, capture_output=True)
-    assert (models / "x.gguf").exists() and (pre / "repo").exists()
-    subprocess.run(base, env=env, check=True, capture_output=True)
-    assert not models.exists() and not pre.exists()
+    (pre / "models" / "in.gguf").write_text("")
+    lines = ["familia_install=1"]
+    if models_path:
+        lines.append("models_path=%s" % models_path)
+    (pre / ".familia-install").write_text("\n".join(lines) + "\n")
+    return pre
+
+
+def test_windows_purge_structure():
+    """#32 r2: static checks (run even without pwsh)."""
+    ps = _ps_text()
+    assert "if ($Purge) { $Uninstall = $true }" in ps
+    assert "[switch]$PurgeExternalModels" in ps
+    assert "no familia marker file" in ps and "'.familia-install'" in ps
+    for v in ("$HOME", "$env:USERPROFILE", "$env:APPDATA", "$env:LOCALAPPDATA"):
+        assert v in ps.split("function Read-Marker")[0]
+    assert "drive/filesystem root" in ps and "ToLowerInvariant" in ps
+    assert "ReparsePoint" in ps and "[IO.Directory]::Delete($it.FullName, $false)" in ps
+    assert "Remove-Item -Recurse" not in ps.split("if ($Name -notmatch")[0]  # uninstall path never recurses blindly
+    assert "IsInputRedirected" in ps  # non-interactive default = keep
+    assert "models_path=" in ps  # recorded at install time
+
+
+def test_windows_purge_prefix_models_reported_removed(tmp_path):
+    """Platform review: no E:\\temp -> models under $Prefix; purge must delete and say so."""
+    pwsh, script = _pwsh_or_skip(tmp_path)
+    pre = _install_tree(tmp_path)
+    r = _ps_run(pwsh, script, tmp_path, "-Prefix", str(pre), "-Purge", "-WhatIf")
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert (pre / "models" / "in.gguf").exists()
+    r = _ps_run(pwsh, script, tmp_path, "-Prefix", str(pre), "-Purge")
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert not pre.exists()
+    assert "models removed" in r.stdout and "kept" not in r.stdout
+
+
+def test_windows_purge_external_models_needs_record_and_confirm(tmp_path):
+    pwsh, script = _pwsh_or_skip(tmp_path)
+    ext = tmp_path / "ext"
+    ext.mkdir(); (ext / "x.gguf").write_text("")
+    # recorded but not confirmed (non-interactive) -> kept, and reported as kept
+    pre = _install_tree(tmp_path, ext)
+    r = _ps_run(pwsh, script, tmp_path, "-Prefix", str(pre), "-Purge")
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert (ext / "x.gguf").exists() and not pre.exists() and "kept: " in r.stdout
+    # not recorded, even with the switch -> kept
+    pre = _install_tree(tmp_path)
+    r = _ps_run(pwsh, script, tmp_path, "-Prefix", str(pre), "-ModelsPath", str(ext), "-Purge", "-PurgeExternalModels")
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert (ext / "x.gguf").exists() and "not recorded" in r.stdout
+    # recorded and confirmed -> removed
+    pre = _install_tree(tmp_path, ext)
+    r = _ps_run(pwsh, script, tmp_path, "-Prefix", str(pre), "-Purge", "-PurgeExternalModels")
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert not ext.exists() and "models removed" in r.stdout
+
+
+def test_windows_uninstall_requires_marker(tmp_path):
+    pwsh, script = _pwsh_or_skip(tmp_path)
+    pre = _install_tree(tmp_path)
+    (pre / ".familia-install").unlink()
+    r = _ps_run(pwsh, script, tmp_path, "-Prefix", str(pre), "-Purge")
+    assert r.returncode != 0 and "no familia marker" in (r.stdout + r.stderr)
+    assert (pre / "models" / "in.gguf").exists() and (pre / "repo").exists()
+
+
+@pytest.mark.parametrize("which", ["root", "home", "appdata", "localappdata", "home_case_slash"])
+def test_windows_refuses_dangerous_prefix(tmp_path, which):
+    pwsh, script = _pwsh_or_skip(tmp_path)
+    home = os.path.expanduser("~")
+    target = {"root": "/", "home": home, "appdata": str(tmp_path / "ad"),
+              "localappdata": str(tmp_path / "lad"),
+              "home_case_slash": home + "/"}[which]
+    for d in ("ad", "lad"):
+        (tmp_path / d).mkdir(exist_ok=True)
+    r = _ps_run(pwsh, script, tmp_path, "-Prefix", target, "-Purge", "-WhatIf")
+    assert r.returncode != 0 and "refusing -Prefix" in (r.stdout + r.stderr), r.stdout + r.stderr
+
+
+def test_windows_purge_does_not_follow_links(tmp_path):
+    pwsh, script = _pwsh_or_skip(tmp_path)
+    outside = tmp_path / "outside"
+    outside.mkdir(); (outside / "keep.txt").write_text("precious")
+    pre = _install_tree(tmp_path)
+    os.symlink(outside, pre / "repo" / "link", target_is_directory=True)
+    os.symlink(outside / "keep.txt", pre / "models" / "filelink")
+    r = _ps_run(pwsh, script, tmp_path, "-Prefix", str(pre), "-Purge")
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert not pre.exists()
+    assert (outside / "keep.txt").read_text() == "precious"
