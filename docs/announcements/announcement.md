@@ -34,7 +34,7 @@ curl -fsSLo install-familia.sh https://raw.githubusercontent.com/brianreborn/fam
   sh ./install-familia.sh
 ```
 
-The first click runs the command. The second is a one-word acknowledgement of a voluntary contribution notice. Paying is never required. Then open `http://127.0.0.1:9931/?model=chat`, paste the API key from your terminal, and you're talking to `chat`. Code tasks hand off to `coder`, and a small resident `route` model dispatches between them.
+The first click runs the command. The second is a one-word acknowledgement of a voluntary contribution notice. Paying is never required. Then open `http://127.0.0.1:9931/?model=chat`, and you're talking to `chat` (the instance API key is read automatically from its per-instance key file; see `docs/api-key-design.md`). Code tasks hand off to `coder`, and a small resident `route` model dispatches between them.
 
 Linux is the tested platform. Termux on Android runs the server and now keeps it alive in the background, using tmux, screen, or nohup plus a wake lock. macOS should work through the same installer but is untested. Windows doesn't have a top-level installer yet. I'd rather say that plainly than ship instructions that 404.
 
