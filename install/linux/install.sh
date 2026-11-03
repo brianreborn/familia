@@ -268,6 +268,17 @@ else
 fi
 
 # 4. launcher + optional systemd --user unit (not enabled until a model is set)
+# F-10: an API key is required on every bind, loopback included (other local users/processes
+# can reach 127.0.0.1). Generate a 0600 key once, written with printf '%s' (no newline).
+FAMILIA_KEY_DEFAULT="$HOME/.config/familia/api.key"
+if [ "$DRY" = 1 ]; then say "[dry-run] generate $FAMILIA_KEY_DEFAULT (0600) if missing"
+elif [ ! -e "$FAMILIA_KEY_DEFAULT" ] && [ ! -L "$FAMILIA_KEY_DEFAULT" ]; then
+  if ! { ( umask 077; mkdir -p "$HOME/.config/familia" && _k=$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n') && printf '%s' "$_k" > "$FAMILIA_KEY_DEFAULT.tmp.$$" ) \
+    && chmod 600 "$FAMILIA_KEY_DEFAULT.tmp.$$" && mv -f "$FAMILIA_KEY_DEFAULT.tmp.$$" "$FAMILIA_KEY_DEFAULT"; }; then
+    die "could not generate $FAMILIA_KEY_DEFAULT"
+  fi
+  say "generated API key $FAMILIA_KEY_DEFAULT (0600); clients send Authorization: Bearer <key>"
+fi
 LAUNCH="$BIN_DIR/familia-start"
 if [ "$DRY" = 1 ]; then say "[dry-run] write $LAUNCH"
 else
@@ -278,7 +289,47 @@ else
 M="\$FAMILIA_MODEL"; [ -f "\$M" ] || M="$PREFIX/models/\$FAMILIA_MODEL"
 B="$PREFIX/runtime/current/llama-server"; [ -x "\$B" ] || B="$PREFIX/runtime/current/build/bin/llama-server"
 echo "familia-start: logs: this terminal (stdout/stderr; under systemd: journalctl --user -u familia-node)" >&2
-exec "\$B" -m "\$M" --host "\${FAMILIA_BIND:-127.0.0.1}" --port "\${FAMILIA_PORT:-9941}" -c "\${FAMILIA_CTX:-4096}" \${FAMILIA_EXTRA:-}
+# F-6 + Boundary Reviewer items: FAMILIA_EXTRA (whitespace-split) and the launcher's own argv ("\$@") are checked
+# token by token. If any token would override bind, port, auth, TLS or a path
+# (--host* --port* --api-key* --ssl* --path*) the whole launch is refused, never stripped.
+# set -f is turned on here and deliberately LEFT ON for the rest of the launcher: the exec
+# below expands \${FAMILIA_EXTRA} unquoted and must not glob. Nothing after this relies on globbing.
+familia_extra_check() {
+  set -f
+  for _t in \${FAMILIA_EXTRA:-} "\$@"; do
+    case "\$_t" in
+      --host*|--port*|--api-key*|--ssl*|--path*) echo "familia-start: token \$_t (FAMILIA_EXTRA or argv) would override bind/port/auth/TLS/path; refusing" >&2; exit 2 ;;
+    esac
+  done
+}
+# BEGIN familia-linux-key (extracted by tests/test_linux_launcher_key.py)
+familia_key_args() { # F-10: key on every bind, loopback included
+  KF="\${FAMILIA_API_KEY_FILE:-\$HOME/.config/familia/api.key}"; FAMILIA_KF=""
+  [ -e "\$KF" ] || [ -L "\$KF" ] || { echo "familia-start: API key file \$KF missing; a key is required on every bind (loopback included); re-run install or set FAMILIA_API_KEY_FILE to a 0600 key file" >&2; exit 2; }
+  [ -L "\$KF" ] && { echo "familia-start: \$KF is a symlink; refusing" >&2; exit 2; }
+  _r=\$(realpath -e -- "\$KF" 2>/dev/null) || { echo "familia-start: \$KF does not resolve; refusing" >&2; exit 2; }
+  KF="\$_r"
+  [ -f "\$KF" ] || { echo "familia-start: \$KF is not a regular file" >&2; exit 2; }
+  case "\$(stat -c %a "\$KF" 2>/dev/null)" in 600|400) ;; *) echo "familia-start: \$KF must be mode 0600" >&2; exit 2 ;; esac
+  [ "\$(stat -c %u "\$KF" 2>/dev/null)" = "\$(id -u)" ] || { echo "familia-start: \$KF is not owned by you" >&2; exit 2; }
+  _all=\$(wc -c < "\$KF"); _tok=\$(tr -d '[:space:]' < "\$KF" | wc -c)
+  [ "\$_tok" -gt 0 ] || { echo "familia-start: \$KF is empty; refusing" >&2; exit 2; }
+  [ "\$_all" -eq "\$_tok" ] || { echo "familia-start: \$KF contains CR/LF/whitespace (write it with printf '%s'); refusing" >&2; exit 2; }
+  FAMILIA_KF="\$KF"
+}
+# llama-server also reads LLAMA_API_KEY, LLAMA_ARG_API_KEY_FILE and every LLAMA_ARG_*.
+familia_env_scrub() {
+  unset LLAMA_API_KEY LLAMA_ARG_API_KEY_FILE
+  for _v in \$(env | sed -n 's/^\(LLAMA_ARG_[A-Za-z0-9_]*\)=.*/\1/p'); do unset "\$_v"; done
+}
+# END familia-linux-key
+familia_extra_check "\$@"
+familia_key_args
+familia_env_scrub
+[ -n "\$FAMILIA_KF" ] || { echo "familia-start: no API key; refusing" >&2; exit 2; }
+# F-9: llama-server --host takes a bare IPv6 address: [::1] -> ::1.
+H="\${FAMILIA_BIND:-127.0.0.1}"; [ "\$H" = '[::1]' ] && H=::1
+exec "\$B" -m "\$M" --host "\$H" --port "\${FAMILIA_PORT:-9941}" -c "\${FAMILIA_CTX:-4096}" --api-key-file "\$FAMILIA_KF" \${FAMILIA_EXTRA:-}
 EOS
   chmod +x "$LAUNCH"
 fi
