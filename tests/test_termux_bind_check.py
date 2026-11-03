@@ -26,12 +26,50 @@ def gate(env):
     return run('familia_key_args; printf "KF=[%s]\\n" "$FAMILIA_KF"', env)
 
 
-def test_loopback_needs_no_key():
-    r = gate({}); assert r.returncode == 0 and "KF=[]" in r.stdout
+@pytest.mark.parametrize("bind", [None, "127.0.0.1", "localhost", "::1", "[::1]", "0.0.0.0", "127.example"])
+def test_key_required_on_every_bind_including_loopback(tmp_path, bind):
+    env = {"HOME": str(tmp_path)}
+    if bind is not None: env["FAMILIA_BIND"] = bind
+    r = gate(env); assert r.returncode == 2 and "required on every bind (loopback included)" in r.stderr, r.stderr
 
 
-def test_non_loopback_requires_key(tmp_path):
-    r = gate({"FAMILIA_BIND": "127.example"}); assert r.returncode == 2 and "not loopback" in r.stderr
+def test_loopback_uses_default_key_file(tmp_path):
+    k = tmp_path / ".config" / "familia" / "api.key"; k.parent.mkdir(parents=True); k.write_text("x"); k.chmod(0o600)
+    r = gate({"HOME": str(tmp_path)}); assert r.returncode == 0, r.stderr; assert f"KF=[{k}]" in r.stdout
+    k.chmod(0o644); r = gate({"HOME": str(tmp_path)}); assert r.returncode == 2 and "0600" in r.stderr
+
+
+def test_launcher_always_passes_key_file_and_install_generates_it():
+    assert 'is_loopback "\\$B" && return 0' not in SRC
+    assert '[ -n "\\$FAMILIA_KF" ] || { echo "familia-start: no API key; refusing" >&2; exit 2; }\nset -- --api-key-file "\\$FAMILIA_KF"' in SRC
+    i = SRC.index('FAMILIA_KEY_DEFAULT="$HOME/.config/familia/api.key"'); assert i < SRC.index('cat > "$LAUNCH"')
+    assert "umask 077" in SRC[i:i + 600] and "/dev/urandom" in SRC[i:i + 600] and "chmod 600" in SRC[i:i + 600]
+
+
+def test_install_key_generation_snippet(tmp_path):
+    i = SRC.index('FAMILIA_KEY_DEFAULT="$HOME'); j = SRC.index("\nfi\n", i) + 4
+    sh = "say(){ echo \"$*\"; }; DRY=0\n" + SRC[i:j]
+    r = subprocess.run(["sh", "-c", sh + sh], env={"PATH": os.environ["PATH"], "HOME": str(tmp_path)}, capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+    k = tmp_path / ".config" / "familia" / "api.key"
+    assert re.fullmatch(r"[0-9a-f]{64}", k.read_text()) and (k.stat().st_mode & 0o777) == 0o600
+    assert r.stdout.count("generated API key") == 1  # second run keeps the existing key
+
+
+def _prefixes(path):
+    return [l.strip() for l in open(path) if l.strip() and not l.strip().startswith("#")]
+
+
+def test_shared_prefix_list_matches_green_roomz_format():
+    # familia config/shared-storage-prefixes.txt is a documented duplicate of green-roomz's list
+    # (one prefix per line; equal-or-under after realpath). The launcher's inline case list must
+    # cover every prefix (base and base/*); optional cross-check against a green-roomz checkout.
+    got = set(re.search(r'case "\\\$KF" in (/storage[^)]*)\)', SRC).group(1).split("|"))
+    mine = _prefixes(os.path.join(ROOT, "config/shared-storage-prefixes.txt"))
+    for p in mine:
+        base = p.rstrip("/"); assert base in got and base + "/*" in got, f"launcher case list missing {base}"
+    gz = os.environ.get("GRZ_PREFIX_LIST")
+    if gz and os.path.exists(gz): assert sorted(_prefixes(gz)) == sorted(mine)
 
 
 def test_key_file_with_spaces_is_quoted(tmp_path):
@@ -54,7 +92,7 @@ def test_key_file_bad_mode_refused(tmp_path):
 
 def test_key_file_missing_refused(tmp_path):
     r = gate({"FAMILIA_BIND": "0.0.0.0", "FAMILIA_API_KEY_FILE": str(tmp_path / "nope")})
-    assert r.returncode == 2 and "does not resolve" in r.stderr
+    assert r.returncode == 2 and "missing" in r.stderr
 
 
 def test_launcher_passes_key_as_single_arg():
@@ -134,10 +172,11 @@ def test_f7_key_path_resolved_before_shared_storage_check(tmp_path):
 SSHD_BLOCK = re.search(r"# BEGIN familia-sshd-verify.*?\n(.*?)# END familia-sshd-verify", SRC, re.S).group(1)
 
 
-def _sshd_t(tmp_path, out, rc=0):
+def _sshd_t(tmp_path, out, rc=0, cfg="PasswordAuthentication no\nKbdInteractiveAuthentication no\n"):
     stub = tmp_path / "sbin"; stub.mkdir(exist_ok=True); f = stub / "sshd"
-    f.write_text(f"#!/bin/sh\n[ \"$1\" = -T ] || {{ echo RESTART-ATTEMPT >&2; exit 9; }}\nprintf '%s\\n' '{out}'\nexit {rc}\n"); f.chmod(0o755)
-    return subprocess.run(["sh", "-c", SSHD_BLOCK + 'familia_sshd_verify /cfg && echo OK'], capture_output=True, text=True,
+    f.write_text(f"#!/bin/sh\n[ \"$1\" = -T ] || {{ echo RESTART-ATTEMPT >&2; exit 9; }}\necho \"$*\" > {tmp_path}/argv\nprintf '%s\\n' '{out}'\nexit {rc}\n"); f.chmod(0o755)
+    c = tmp_path / "cfg"; c.write_text(cfg)
+    return subprocess.run(["sh", "-c", SSHD_BLOCK + f'familia_sshd_verify "{c}" && echo OK'], capture_output=True, text=True,
                           env={"PATH": f"{stub}:{os.environ['PATH']}"})
 
 
@@ -155,7 +194,35 @@ def test_f8_sshd_T_effective_config(tmp_path, out, ok):
 
 def test_f8_sshd_T_failure_refuses(tmp_path):
     r = _sshd_t(tmp_path, "bad config", rc=255)
-    assert "OK" not in r.stdout and "sshd -T -f /cfg failed" in r.stderr
+    assert "OK" not in r.stdout and "failed" in r.stderr and "sshd -T -C user=" in r.stderr
+
+
+GOOD_T = "passwordauthentication no\nkbdinteractiveauthentication no"
+
+
+def test_f8b_sshd_T_uses_connection_spec(tmp_path):
+    import getpass
+    r = _sshd_t(tmp_path, GOOD_T); assert "OK" in r.stdout, r.stderr
+    argv = (tmp_path / "argv").read_text().split()
+    assert argv[:2] == ["-T", "-C"] and argv[2] == f"user={getpass.getuser()},addr=127.0.0.1,host=localhost" and argv[3] == "-f"
+
+
+@pytest.mark.parametrize("cfg,ok", [
+    ("PasswordAuthentication no\nMatch User bob\n  PasswordAuthentication yes\n", False),
+    ("PasswordAuthentication no\nMatch Address 10.0.0.0/8\n\tKbdInteractiveAuthentication YES\n", False),
+    ("Match all\n  ChallengeResponseAuthentication yes\n", False),
+    ("Match Group x\n  HostbasedAuthentication yes\n", False),
+    ("Match User bob\n  PubkeyAuthentication yes\n  PasswordAuthentication no\n", True),
+    ("PasswordAuthentication yes\nPasswordAuthentication no\n", True),  # global; sshd -T decides
+])
+def test_f8b_match_block_enabling_auth_refused(tmp_path, cfg, ok):
+    r = _sshd_t(tmp_path, GOOD_T, cfg=cfg)
+    assert ("OK" in r.stdout) == ok, r.stderr
+    if not ok: assert "Match block" in r.stderr
+
+
+def test_f8b_running_sshd_not_restarted_note():
+    assert "A running sshd keeps its old config; it is not restarted here." in SRC
 
 
 def test_f8_verify_runs_after_config_written_before_start():
@@ -165,7 +232,8 @@ def test_f8_verify_runs_after_config_written_before_start():
     assert i_write < i_ver < i_start
 
 
-def test_f9_bracketed_ipv6_loopback_passed_bare():
-    r = run('familia_key_args; echo "B=$B"', {"FAMILIA_BIND": "[::1]"})
+def test_f9_bracketed_ipv6_loopback_passed_bare(tmp_path):
+    k = _key(tmp_path)
+    r = run('familia_key_args; echo "B=$B"', {"FAMILIA_BIND": "[::1]", "FAMILIA_API_KEY_FILE": str(k)})
     assert r.returncode == 0 and "B=::1\n" in r.stdout
     assert "H=::1" in LINUX_SRC and '--host "\\$H"' in LINUX_SRC

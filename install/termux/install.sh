@@ -205,6 +205,17 @@ fi
 [ -n "$MTMP" ] && rm -rf "$MTMP"
 
 LAUNCH="${PREFIX:-/data/data/com.termux/files/usr}/bin/familia-start"
+# Phones always require an API key (Brian 2026-11-02), loopback included: generate a 0600 key
+# in ~/.config/familia/api.key once; the launcher uses it unless FAMILIA_API_KEY_FILE is set.
+FAMILIA_KEY_DEFAULT="$HOME/.config/familia/api.key"
+if [ "$DRY" = 1 ]; then say "[dry-run] generate $FAMILIA_KEY_DEFAULT (0600) if missing"
+elif [ ! -e "$FAMILIA_KEY_DEFAULT" ] && [ ! -L "$FAMILIA_KEY_DEFAULT" ]; then
+  if ! { ( umask 077; mkdir -p "$HOME/.config/familia" && head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n' > "$FAMILIA_KEY_DEFAULT.tmp.$$" ) \
+    && chmod 600 "$FAMILIA_KEY_DEFAULT.tmp.$$" && mv -f "$FAMILIA_KEY_DEFAULT.tmp.$$" "$FAMILIA_KEY_DEFAULT"; }; then
+    say "error: could not generate $FAMILIA_KEY_DEFAULT"; exit 1
+  fi
+  say "generated API key $FAMILIA_KEY_DEFAULT (0600); clients send Authorization: Bearer <key>"
+fi
 if [ "$DRY" = 1 ]; then say "[dry-run] write $LAUNCH"
 else
   cat > "$LAUNCH" <<EOS
@@ -222,7 +233,8 @@ if [ -e /system/lib64/libvulkan.so ]; then
   export LD_LIBRARY_PATH="\$VK\${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}"
   NGL="\${FAMILIA_NGL:-99}"
 fi
-# Loopback by default. Any other bind is reachable from phone Wi-Fi, so it needs a key file (0600).
+# Loopback by default. A key file (0600) is required on EVERY bind, loopback included (other
+# Termux apps / adb on the same phone can reach 127.0.0.1).
 # BEGIN familia-bind-check (extracted by tests/test_termux_bind_check.py)
 is_loopback() {
   case "\$1" in
@@ -243,14 +255,16 @@ familia_key_args() { # sets positional-safe FAMILIA_KF or exits
   B="\${FAMILIA_BIND:-127.0.0.1}"; FAMILIA_KF=""
   # F-9: llama-server --host takes a bare IPv6 address: [::1] -> ::1.
   [ "\$B" = '[::1]' ] && B=::1
-  is_loopback "\$B" && return 0
-  KF="\${FAMILIA_API_KEY_FILE:-}"
-  [ -n "\$KF" ] || { echo "familia-start: FAMILIA_BIND=\$B is not loopback; set FAMILIA_API_KEY_FILE to a 0600 key file" >&2; exit 2; }
+  # Brian 2026-11-02: key required on every bind, loopback included.
+  KF="\${FAMILIA_API_KEY_FILE:-\$HOME/.config/familia/api.key}"
+  [ -e "\$KF" ] || [ -L "\$KF" ] || { echo "familia-start: API key file \$KF missing; a key is required on every bind (loopback included); re-run install or set FAMILIA_API_KEY_FILE to a 0600 key file" >&2; exit 2; }
   [ -L "\$KF" ] && { echo "familia-start: \$KF is a symlink; refusing" >&2; exit 2; }
   # F-7: resolve first (a symlinked parent dir must not dodge the shared-storage check).
   _r=\$(realpath -e -- "\$KF" 2>/dev/null) || { echo "familia-start: \$KF does not resolve; refusing" >&2; exit 2; }
   KF="\$_r"
-  case "\$KF" in /storage|/storage/*|/sdcard|/sdcard/*|/mnt/sdcard|/mnt/sdcard/*|/mnt/user/*|/mnt/media_rw/*|/data/media/*|/data/local/tmp|/data/local/tmp/*) echo "familia-start: \$KF (resolved) is on shared/adb storage; refusing" >&2; exit 2 ;; esac
+  # Same list as green-roomz config/shared-storage-prefixes.txt (duplicated on purpose: the
+  # launcher is standalone; tests/test_termux_bind_check.py keeps them in sync).
+  case "\$KF" in /storage|/storage/*|/sdcard|/sdcard/*|/mnt/sdcard|/mnt/sdcard/*|/mnt/user|/mnt/user/*|/mnt/media_rw|/mnt/media_rw/*|/data/media|/data/media/*|/data/local/tmp|/data/local/tmp/*) echo "familia-start: \$KF (resolved) is on shared/adb storage; refusing" >&2; exit 2 ;; esac
   [ -f "\$KF" ] || { echo "familia-start: \$KF is not a regular file" >&2; exit 2; }
   case "\$(stat -c %a "\$KF" 2>/dev/null)" in 600|400) ;; *) echo "familia-start: \$KF must be mode 0600" >&2; exit 2 ;; esac
   [ "\$(stat -c %u "\$KF" 2>/dev/null)" = "\$(id -u)" ] || { echo "familia-start: \$KF is not owned by you" >&2; exit 2; }
@@ -273,7 +287,8 @@ familia_extra_check() {
 familia_key_args
 familia_extra_check "\$@"
 set --
-[ -n "\$FAMILIA_KF" ] && set -- --api-key-file "\$FAMILIA_KF"
+[ -n "\$FAMILIA_KF" ] || { echo "familia-start: no API key; refusing" >&2; exit 2; }
+set -- --api-key-file "\$FAMILIA_KF"
 # Defaults from the 2026-10-10 A57 sweep (#34): 3 threads, flash-attn on; -ngl 99 on Vulkan (CPU ngl 0 on 0.6.0 collapses to <1 t/s tg).
 exec llama-server -m "\$M" -ngl "\$NGL" -t "\${FAMILIA_THREADS:-3}" -fa "\${FAMILIA_FA:-on}" --host "\$B" --port "\${FAMILIA_PORT:-9941}" -c "\${FAMILIA_CTX:-2048}" "\$@" \${FAMILIA_EXTRA:-}
 EOS
@@ -282,9 +297,16 @@ fi
 # BEGIN familia-sshd-verify (extracted by tests)
 # F-8: after writing the config, ask sshd itself for the effective settings (no restart here).
 familia_sshd_verify() { # cfg
-  _eff=$(sshd -T -f "$1" 2>&1) || { echo "error: sshd -T -f $1 failed: $_eff; not starting sshd" >&2; return 1; }
+  # F-8b: evaluate with a connection spec so Match blocks apply (sshd -T alone skips them).
+  _spec="user=$(id -un),addr=127.0.0.1,host=localhost"
+  _eff=$(sshd -T -C "$_spec" -f "$1" 2>&1) || { echo "error: sshd -T -C $_spec -f $1 failed: $_eff; not starting sshd" >&2; return 1; }
   printf '%s\n' "$_eff" | grep -qx 'passwordauthentication no' || { echo "error: sshd -T: passwordauthentication is not 'no'; not starting sshd" >&2; return 1; }
   printf '%s\n' "$_eff" | grep -qx 'kbdinteractiveauthentication no' || { echo "error: sshd -T: kbdinteractiveauthentication is not 'no'; not starting sshd" >&2; return 1; }
+  # Any Match block that turns an *Authentication method on (other users/addrs) is refused.
+  # PubkeyAuthentication yes is the intended method and is allowed.
+  _m=$(awk 'tolower($1)=="match"{m=1;next} m && tolower($1) ~ /authentication$/ && tolower($1)!="pubkeyauthentication" && tolower($2)=="yes"{print NR": "$0}' "$1") \
+    || { echo "error: cannot read $1; not starting sshd" >&2; return 1; }
+  [ -z "$_m" ] || { echo "error: Match block in $1 enables auth ($_m); not starting sshd" >&2; return 1; }
 }
 # END familia-sshd-verify
 if [ "$SSHD" = 1 ]; then
@@ -299,6 +321,7 @@ if [ "$SSHD" = 1 ]; then
     grep -q '^KbdInteractiveAuthentication no$' "$SSHD_CFG" || printf 'KbdInteractiveAuthentication no\n' >> "$SSHD_CFG"
     familia_sshd_verify "$SSHD_CFG" || exit 1
   fi
+  # A running sshd keeps its old config; it is not restarted here.
   run sshd
   say "sshd on port 8022 (key auth only; PasswordAuthentication no). Add your key to ~/.ssh/authorized_keys"
 fi
