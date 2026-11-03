@@ -100,3 +100,27 @@ def test_linux_installer_accepts_branch_and_dry_runs_clone(tmp_path):
                        cwd=ROOT, env=env, capture_output=True, text=True, timeout=30)
     assert r.returncode == 0, r.stdout + r.stderr
     assert "[dry-run] git clone -q --branch feat/llama.cpp-0.7.0" in r.stderr
+
+
+def test_windows_purge_implies_uninstall_and_removes_models(tmp_path):
+    """#32: -Purge alone must not install, and must remove an external models dir."""
+    import shutil, subprocess
+    ps = open(os.path.join(ROOT, "install/windows/install.ps1")).read()
+    assert "if ($Purge) { $Uninstall = $true }" in ps
+    pwsh = shutil.which("pwsh")
+    if not pwsh:
+        import pytest
+        pytest.skip("pwsh not installed")
+    # CimCmdlets is Windows-only; strip that line to exercise the uninstall branch on Linux.
+    script = tmp_path / "i.ps1"
+    script.write_text("\n".join(l for l in ps.splitlines() if "Import-Module CimCmdlets" not in l))
+    pre, models = tmp_path / "pre", tmp_path / "m"
+    for d in (pre / "repo", pre / "runtime", models):
+        d.mkdir(parents=True)
+    (models / "x.gguf").write_text("")
+    env = dict(os.environ, LOCALAPPDATA=str(tmp_path), COMPUTERNAME="x")
+    base = [pwsh, "-NoProfile", "-File", str(script), "-Prefix", str(pre), "-ModelsPath", str(models), "-Purge"]
+    subprocess.run(base + ["-WhatIf"], env=env, check=True, capture_output=True)
+    assert (models / "x.gguf").exists() and (pre / "repo").exists()
+    subprocess.run(base, env=env, check=True, capture_output=True)
+    assert not models.exists() and not pre.exists()
