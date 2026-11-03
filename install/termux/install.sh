@@ -14,6 +14,7 @@
 # Runtime comes from Termux's own `llama-cpp` package (pkg verifies package
 # signatures/hashes), so no unverified binary is downloaded here.
 # Flags: --dry-run  --uninstall [--purge]  --name NAME  --sshd (install+start openssh)
+# familia-start: loopback by default; FAMILIA_BIND=<non-loopback> requires FAMILIA_API_KEY_FILE (mode 0600, Termux $HOME, not /sdcard).
 #        --yes (accept the license review; summary still printed)  --accept-unknown
 #        --no-runtime  --force-host  --no-wakelock
 #        --branch BRANCH  select the familia branch (default: checkout branch, else main)
@@ -221,8 +222,17 @@ if [ -e /system/lib64/libvulkan.so ]; then
   export LD_LIBRARY_PATH="\$VK\${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}"
   NGL="\${FAMILIA_NGL:-99}"
 fi
+# Loopback by default. Any other bind is reachable from phone Wi-Fi, so it needs a key file (0600).
+B="\${FAMILIA_BIND:-127.0.0.1}"; KEYARGS=""
+case "\$B" in
+  127.*|localhost|::1) ;;
+  *) KF="\${FAMILIA_API_KEY_FILE:-}"
+     [ -n "\$KF" ] && [ -f "\$KF" ] || { echo "familia-start: FAMILIA_BIND=\$B is not loopback; set FAMILIA_API_KEY_FILE to a 0600 key file" >&2; exit 2; }
+     case "\$(stat -c %a "\$KF" 2>/dev/null)" in 600|400) ;; *) echo "familia-start: \$KF must be mode 0600" >&2; exit 2 ;; esac
+     KEYARGS="--api-key-file \$KF" ;;
+esac
 # Defaults from the 2026-10-10 A57 sweep (#34): 3 threads, flash-attn on; -ngl 99 on Vulkan (CPU ngl 0 on 0.6.0 collapses to <1 t/s tg).
-exec llama-server -m "\$M" -ngl "\$NGL" -t "\${FAMILIA_THREADS:-3}" -fa "\${FAMILIA_FA:-on}" --host "\${FAMILIA_BIND:-127.0.0.1}" --port "\${FAMILIA_PORT:-9941}" -c "\${FAMILIA_CTX:-2048}" \${FAMILIA_EXTRA:-}
+exec llama-server -m "\$M" -ngl "\$NGL" -t "\${FAMILIA_THREADS:-3}" -fa "\${FAMILIA_FA:-on}" --host "\$B" --port "\${FAMILIA_PORT:-9941}" -c "\${FAMILIA_CTX:-2048}" \$KEYARGS \${FAMILIA_EXTRA:-}
 EOS
   chmod +x "$LAUNCH"
 fi
