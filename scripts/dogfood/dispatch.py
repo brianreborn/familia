@@ -28,6 +28,8 @@ Gum home / Continuity front door are untouched here.
 from __future__ import annotations
 
 import argparse
+import contextlib
+import fcntl
 import json
 import os
 import subprocess
@@ -68,12 +70,91 @@ def threads_in_use():
     return t()
 
 
-def wait_budget(n, cores, max_wait):
+def _budget_paths():
+    d = os.environ.get("FAMILIA_BUDGET_DIR") or os.path.expanduser("~/.local/state/familia")
+    os.makedirs(d, mode=0o700, exist_ok=True)
+    return os.path.join(d, "thread-budget.lock"), os.path.join(d, "thread-budget.json")
+
+
+def _pid_alive(pid):
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+
+
+def _read_reservations(path):
+    try:
+        with open(path) as f:
+            r = json.load(f)
+    except (OSError, ValueError):
+        return {}
+    # Drop reservations whose owner died (crash must not leak budget forever).
+    return {k: int(v) for k, v in r.items() if k.isdigit() and _pid_alive(int(k))}
+
+
+def _write_reservations(path, r):
+    tmp = path + ".%d" % os.getpid()
+    with open(tmp, "w") as f:
+        json.dump(r, f)
+    os.replace(tmp, path)
+
+
+@contextlib.contextmanager
+def _budget_lock():
+    lock, ledger = _budget_paths()
+    fd = os.open(lock, os.O_RDWR | os.O_CREAT, 0o600)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        yield ledger
+    finally:
+        fcntl.flock(fd, fcntl.LOCK_UN)
+        os.close(fd)
+
+
+def reserve_budget(n, cores, max_wait):
+    """R1 (#244): atomic check-and-reserve of n threads across dispatchers on this host.
+
+    The check (threads_in_use + live reservations + n <= cores) and the reservation are
+    done under one flock, so two dispatchers can no longer both see the budget free and
+    both spawn. Returns True once reserved; caller must release_budget() after the spawn
+    has settled (or finished). The reservation is conservative: it may double-count the
+    spawned process until released, which errs toward refusing, never oversubscribing."""
     t0 = time.time()
-    while threads_in_use() + n > cores:
+    pid = str(os.getpid())
+    while True:
+        with _budget_lock() as ledger:
+            r = _read_reservations(ledger)
+            held = sum(v for k, v in r.items() if k != pid)
+            if threads_in_use() + held + r.get(pid, 0) + n <= cores:
+                r[pid] = r.get(pid, 0) + n
+                _write_reservations(ledger, r)
+                return True
         if time.time() - t0 > max_wait:
             return False
         time.sleep(15)
+
+
+def release_budget(n):
+    pid = str(os.getpid())
+    with _budget_lock() as ledger:
+        r = _read_reservations(ledger)
+        left = r.get(pid, 0) - n
+        if left > 0:
+            r[pid] = left
+        else:
+            r.pop(pid, None)
+        _write_reservations(ledger, r)
+
+
+def wait_budget(n, cores, max_wait):
+    """Check-only (kept for callers that do not spawn). Spawners use reserve_budget()."""
+    if not reserve_budget(n, cores, max_wait):
+        return False
+    release_budget(n)
     return True
 
 
@@ -217,18 +298,21 @@ def run_hermes_task(t, harness, args, out_dir, repo):
     host, port = node.get("bind", "127.0.0.1"), int(node.get("port", 9941))
     if not endpoint_up(host, port):
         if args.start_node:
-            if not wait_budget(args.threads, os.cpu_count() or 1, args.max_wait):
+            if not reserve_budget(args.threads, os.cpu_count() or 1, args.max_wait):
                 raise RuntimeError("thread budget never freed")
-            serve = with_host_lock_prefix() + [
-                "env", "DETACH_MODE=screen-attached",
-                "bash", str(HERE / "scripts" / "serve.sh"), args.model_node,
-            ]
-            sh(serve, cwd=str(HERE), timeout=120)
-            t_wait = time.time()
-            while not endpoint_up(host, port):
-                if time.time() - t_wait > 900:
-                    raise RuntimeError(f"node {args.model_node} did not come up on {host}:{port}")
-                time.sleep(3)
+            try:  # hold the reservation until the node is up (its threads are then visible)
+                serve = with_host_lock_prefix() + [
+                    "env", "DETACH_MODE=screen-attached",
+                    "bash", str(HERE / "scripts" / "serve.sh"), args.model_node,
+                ]
+                sh(serve, cwd=str(HERE), timeout=120)
+                t_wait = time.time()
+                while not endpoint_up(host, port):
+                    if time.time() - t_wait > 900:
+                        raise RuntimeError(f"node {args.model_node} did not come up on {host}:{port}")
+                    time.sleep(3)
+            finally:
+                release_budget(args.threads)
         else:
             raise RuntimeError(
                 f"node {args.model_node} not up on {host}:{port}; "
@@ -292,13 +376,16 @@ def run_harness2_task(t, args, out_dir, repo):
             repo_root=HERE, timeout=120,
         )
     else:
-        if not wait_budget(args.threads, os.cpu_count() or 1, args.max_wait):
+        if not reserve_budget(args.threads, os.cpu_count() or 1, args.max_wait):
             raise RuntimeError("thread budget never freed")
-        rc, out, cmd = H2.run_propose(
-            args.h2_target, sh=sh, smoke=False, max_tasks=args.h2_max_tasks,
-            repo_root=HERE, lock_prefix=with_host_lock_prefix(),
-            timeout=args.task_timeout,
-        )
+        try:  # reservation covers the whole propose run
+            rc, out, cmd = H2.run_propose(
+                args.h2_target, sh=sh, smoke=False, max_tasks=args.h2_max_tasks,
+                repo_root=HERE, lock_prefix=with_host_lock_prefix(),
+                timeout=args.task_timeout,
+            )
+        finally:
+            release_budget(args.threads)
     transcript["cmd"] = cmd
     transcript["rc"] = rc
     transcript["out"] = out[-8000:]
