@@ -276,6 +276,9 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/swarm/swarm-bootstrap.sh` | fresh swarm worker checkout; one-time operator setup |
 | `scripts/task_suite_promote.py` | promote gate for model configs (#119); used by bench/CI flows |
 | `scripts/task_suite_runner.py` | fixed task suite runner (#119); used by bench/CI flows |
+| `scripts/bfcl_adapter.py` | BFCL -> task-suite adapter and scorer (bench-adapters); used by bench/CI flows |
+| `scripts/routerbench_pickle_to_parquet.py` | one-time RouterBench pickle -> parquet converter; operator data prep |
+| `scripts/routerbench_scorer.py` | offline RouterBench routing-policy scorer (bench-adapters); used by bench/CI flows |
 | `scripts/prompt_cache.py` | library: prefill an agent's fixed prompt prefix once, save it with llama-server slot save, restore it on later starts (#85); used by hermes.sh |
 | `scripts/system_prompt_check.py` | offline system-prompt path checks (#115); developer/CI helper, not an end-user menu action |
 | `scripts/familia_agent_reach.py` | thin wrapper / library around Agent-Reach; menu uses scripts/agent_reach.py |
