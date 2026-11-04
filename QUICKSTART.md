@@ -83,7 +83,7 @@ On Windows use `python` instead of `python3` and set `$env:PYTHONUTF8 = '1'` fir
 | Goal | Command |
 |---|---|
 | Active local graph topology (POSIX) | `./start.sh` (or `./start.sh --host miryam`); current gateway aliases are listed at `http://127.0.0.1:9931/v1/models` |
-| Legacy standalone bootstrap UI/router | `./start.sh --bootstrap`, then open http://127.0.0.1:9931/?model=chat (the first time, the page shows Access denied: click **Enter API Key** and paste the instance key once, from `${XDG_CONFIG_HOME:-~/.config}/familia/instances/9931/api-keys`; never put the key in the URL. See [docs/api-key-design.md](docs/api-key-design.md). The log cockpit, `python3 scripts/cockpit.py` in code-bootstraps-llama.cpp, reads the key and attaches it server-side, so it needs no paste) |
+| Legacy standalone bootstrap UI/router | `./start.sh --bootstrap`, then open http://127.0.0.1:9931/?model=chat (the first time, the page shows Access denied: click **Enter API Key** and paste the instance key once: the key line itself, not a `#` comment line, from `${XDG_CONFIG_HOME:-~/.config}/familia/instances/9931/api-keys`. The browser keeps it in the UI settings (localStorage); never put the key in the URL. See [docs/api-key-design.md](docs/api-key-design.md). The log cockpit, `python3 scripts/cockpit.py` in code-bootstraps-llama.cpp, reads the key and attaches it server-side, so it needs no paste) |
 | One graph node's llama-server (Linux) | `sh scripts/serve.sh coder` |
 | One node on Windows | `$env:FAMILIA_MODEL = 'your-model.gguf'; .\scripts\windows\start.bat` |
 | hermes-agent against the graph | `scripts/hermes.sh` |
