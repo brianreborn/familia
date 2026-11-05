@@ -23,7 +23,7 @@ PREFIX=${FAMILIA_PREFIX:-$HOME/.local/share/familia}
 BIN_DIR=${FAMILIA_BIN_DIR:-$HOME/.local/bin}
 REPO_URL=${FAMILIA_REPO_URL:-https://github.com/brianreborn/familia.git}
 # Pinned familia release commit; bump together with this file's published SHA256.
-FAMILIA_REF=3741a2ed39ccc5b7251fd7f25c37b0d353be0092
+FAMILIA_REF=1c5cba46e6f3b4cc1f010e72dbe6fc9a11ab51b2
 REF=$FAMILIA_REF
 # Pinned llama.cpp (familia v0.2): tag b11969, built from source (no FreeBSD prebuilt).
 LLAMA_TAG=b11969

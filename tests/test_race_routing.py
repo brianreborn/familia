@@ -120,12 +120,50 @@ def test_r1_distinct_sessions_refuse_oversubscribe_beyond_sprint():
     assert up.max_inflight <= SPRINT
 
 
-def test_r1_wait_budget_refuses_oversubscribe(monkeypatch):
+def test_r1_wait_budget_refuses_oversubscribe(monkeypatch, tmp_path):
     import dispatch
+    monkeypatch.setenv("FAMILIA_BUDGET_DIR", str(tmp_path))
     monkeypatch.setattr(dispatch, "threads_in_use", lambda: RESIDENT)
     monkeypatch.setattr(dispatch.time, "sleep", lambda s: None)
     assert dispatch.wait_budget(2, SPRINT, max_wait=0) is True      # 4+2 == 6 ok
     assert dispatch.wait_budget(3, SPRINT, max_wait=-1) is False    # 7 > 6 refused
+
+
+def _reserve_child(d, q):
+    import dispatch
+    os.environ["FAMILIA_BUDGET_DIR"] = d
+    dispatch.threads_in_use = lambda: RESIDENT
+    q.put(dispatch.reserve_budget(2, SPRINT, max_wait=-1))
+    time.sleep(1.0)  # keep the reservation (pid alive) while siblings check
+
+
+def test_r1_reserve_budget_atomic_across_processes(tmp_path):
+    """#244: N dispatchers racing for the last 2 threads -> exactly one wins (was: all)."""
+    import multiprocessing as mp
+    ctx = mp.get_context("fork")
+    q = ctx.Queue()
+    ps = [ctx.Process(target=_reserve_child, args=(str(tmp_path), q)) for _ in range(6)]
+    [p.start() for p in ps]
+    got = [q.get(timeout=20) for _ in ps]
+    [p.join(20) for p in ps]
+    assert got.count(True) == 1, got
+
+
+def test_r1_reservation_released_and_dead_owner_reclaimed(monkeypatch, tmp_path):
+    import dispatch
+    monkeypatch.setenv("FAMILIA_BUDGET_DIR", str(tmp_path))
+    monkeypatch.setattr(dispatch, "threads_in_use", lambda: RESIDENT)
+    assert dispatch.reserve_budget(2, SPRINT, max_wait=-1) is True
+    assert dispatch.reserve_budget(1, SPRINT, max_wait=-1) is False   # 4+2+1 > 6
+    dispatch.release_budget(2)
+    assert dispatch.reserve_budget(2, SPRINT, max_wait=-1) is True
+    dispatch.release_budget(2)
+    # a crashed dispatcher's reservation must not leak budget forever
+    import subprocess
+    dead = subprocess.Popen([sys.executable, "-c", "pass"]); dead.wait()
+    (tmp_path / "thread-budget.json").write_text(json.dumps({str(dead.pid): 2}))
+    assert dispatch.reserve_budget(2, SPRINT, max_wait=-1) is True
+    assert oct(os.stat(tmp_path / "thread-budget.lock").st_mode & 0o777) == "0o600"
 
 
 def test_r1_threads_in_use_counts_comma_threads():
@@ -166,6 +204,29 @@ def test_r2_health_rechecked_at_dispatch_after_swap():
     post(srv.server_address[1])
     srv.shutdown(); light.close(); heavy.close()
     assert len(calls) >= 2
+
+
+def test_r2_retry_health_checks_fallback_before_redial():
+    light = Upstream("light")
+    calls = []
+    def ensure(n):
+        calls.append(n); return n != "light"          # fallback node fails its health check
+    esc, srv = proxy(graph(light.port, closed_port()), current="heavy", ensure=ensure)
+    s, _ = post(srv.server_address[1])
+    srv.shutdown(); light.close()
+    assert "light" in calls                            # checked before the retry
+    assert s == 502 and not light.seen                 # not dialed blind
+
+
+def test_r2_retry_resends_original_body_not_handoff():
+    light = Upstream("light")
+    esc, srv = proxy(graph(light.port, closed_port()), current="heavy")
+    esc.handoff_next = True                            # heavy body would be handoff-compacted
+    post(srv.server_address[1], "original question")
+    srv.shutdown(); light.close()
+    msgs = light.seen[-1]["messages"]
+    assert light.seen[-1]["model"] == "light-a"
+    assert any("original question" == m.get("content") for m in msgs)
 
 
 # ---------------- R3 reconnect mid-tool-call (#149) ----------------
@@ -234,6 +295,21 @@ def test_r5_replies_matched_to_requests_under_concurrency():
     srv.shutdown(); up.close()
 
 
+def _raw_post(s, content, session):
+    """POST over an already-connected socket ``s``; returns the reply content."""
+    body = json.dumps({"model": "x", "messages": [{"role": "user", "content": content}]}).encode()
+    req = (f"POST /v1/chat/completions HTTP/1.1\r\nHost: x\r\nContent-Type: application/json\r\n"
+           f"{EP.SESSION_HEADER}: {session}\r\nContent-Length: {len(body)}\r\nConnection: close\r\n\r\n").encode() + body
+    with s:
+        s.sendall(req)
+        data = b""
+        while True:
+            c = s.recv(65536)
+            if not c: break
+            data += c
+    return data
+
+
 def _fifo_violations(senders=4, per=16, delay=0.03, stagger=0.01):
     """Per-session numbered requests; returns {session: arrival seq list} where out of order."""
     up = Upstream("light", delay=delay, echo=True)
@@ -246,7 +322,11 @@ def _fifo_violations(senders=4, per=16, delay=0.03, stagger=0.01):
         start.wait()
         inner = []
         for n in range(per):  # submit in order; later ones queue behind the session lock
-            t = threading.Thread(target=post, args=(port, f"{sid}:{n:03d}", sid, 30)); t.start(); inner.append(t)
+            # #248: connect on this thread so arrival (accept) order is the submit order.
+            # A thread-per-request connect lets client scheduling reorder arrivals before
+            # the proxy ever sees them, which is not a proxy bug.
+            s = socket.create_connection(("127.0.0.1", port), timeout=30)
+            t = threading.Thread(target=_raw_post, args=(s, f"{sid}:{n:03d}", sid)); t.start(); inner.append(t)
             time.sleep(stagger)
         for t in inner: t.join()
 
@@ -322,3 +402,35 @@ def test_r6_listen_backlog_covers_burst():
     q = srv.request_queue_size
     srv.shutdown(); up.close()
     assert q >= BURST, f"listen backlog {q} < burst {BURST}"
+
+
+def test_r5_fairlock_grants_by_arrival_seq_not_wake_order():
+    """#248 deterministic: waiters that reach the lock out of arrival order still run in seq order."""
+    lk = EP.FairLock()
+    lk.acquire(seq=EP.next_seq())
+    seqs = [EP.next_seq() for _ in range(3)]  # arrival order: seqs[0] < seqs[1] < seqs[2]
+    order, ts = [], []
+
+    def w(seq):
+        lk.acquire(seq=seq)
+        order.append(seq)
+        lk.release()
+
+    def wait_waiting(pred):
+        deadline = time.monotonic() + 5
+        with lk._cv:
+            while not pred():
+                left = deadline - time.monotonic()
+                assert left > 0, f"waiters never queued: {sorted(lk._waiting)}"
+                lk._cv.wait(min(left, 0.01))
+
+    for i in (2, 0, 1):  # threads reach acquire() in this (wrong) order
+        seq = seqs[i]
+        t = threading.Thread(target=w, args=(seq,), daemon=True); t.start(); ts.append(t)
+        wait_waiting(lambda: seq in lk._waiting)
+    wait_waiting(lambda: len(lk._waiting) == 3)
+    lk.release()
+    for t in ts:
+        t.join(5)
+        assert not t.is_alive(), "FairLock waiter thread hung"
+    assert order == seqs

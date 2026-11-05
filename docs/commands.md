@@ -162,6 +162,7 @@ Default front door is the gum home (`./familia`). This catalog is **fallback onl
 | Key | Label | POSIX | Windows |
 |---|---|---|---|
 | `adv.args` | validate_graph: the llama-server arguments for one node | `python3 scripts/validate_graph.py --graph graph.yaml --args <NODE>` | `python scripts\validate_graph.py --graph graph.yaml --args <NODE>` |
+| `adv.routes` | graph_router (default gateway): check a routes file (single, pair, fallback, chain, router, remote, tools); see docs/graph-recipes.md | `python3 scripts/graph_router.py <ROUTES> --check` | `python scripts\graph_router.py <ROUTES> --check` |
 | `adv.verify` | validate_graph: also verify model sha256 and runtimes (slow) | `python3 scripts/validate_graph.py --graph graph.yaml --verify-sha --check-runtimes` | `python scripts\validate_graph.py --graph graph.yaml --verify-sha --check-runtimes` |
 | `adv.graph-edit` | modify_graph: assign a models: key to a type-named node | `python3 scripts/modify_graph.py --host angel --assign-model coder=nanbeige43-33b-q4km` | `python scripts\modify_graph.py --host angel --assign-model coder=nanbeige43-33b-q4km` |
 | `adv.db-list` | Model database: list entries | `python3 scripts/model_db.py list` | `python scripts\model_db.py list` |
@@ -325,5 +326,5 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/find_models.sh` | guided model fetch from gum home "Find more models" |
 | `scripts/search_x.sh` | X/Twitter search via Agent-Reach from gum home |
 | `scripts/windows/familia-home.ps1` | Windows mirror of familia_home.sh (started by familia.cmd) |
-| `scripts/start_graph.py` | graph dry-run helper; hosts.start-preview twin retired — use hosts.start / start.sh |
+| `scripts/start_graph.py` | graph dry-run helper (prints `via graph_router` = default gateway, or `via graph-proxy` with `router: false`); hosts.start-preview twin retired — use hosts.start / start.sh |
 

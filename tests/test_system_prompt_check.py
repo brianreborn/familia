@@ -1,3 +1,4 @@
+import pytest
 """#115: offline system-prompt path checks (no network, no live inference)."""
 import json
 import os
@@ -43,6 +44,7 @@ def test_llama_jinja_unsupported_is_agent_frontend():
 
 def test_duplicate_system_detected_when_supported():
     """If a template echoed system twice, count!=1 fails the check."""
+    pytest.importorskip("jinja2", reason="duplicate detection needs a real Jinja render")
     # Craft a tiny supported template that duplicates
     import tempfile
     dup = "{% for m in messages %}{{ m.content }}{{ m.content }}{% endfor %}"

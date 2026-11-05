@@ -19,7 +19,8 @@ def _sysctl(name):
         return None
 
 def _meminfo_mib():
-    if sys.platform.startswith("linux"):
+    # CPython 3.13+ reports sys.platform == "android" (Termux etc.); it has /proc/meminfo too.
+    if sys.platform.startswith("linux") or sys.platform == "android":
         try:
             with open("/proc/meminfo") as f:
                 for line in f:

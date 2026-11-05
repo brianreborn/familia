@@ -26,3 +26,9 @@ to persist it.
 
 **Brian must personally approve applying these fstab / rc.conf changes to any host** (for example angel).
 Agents document them; they do not apply them.
+
+## Test hooks (tests only)
+
+`SWARM_BENCH_PGREP`, `SWARM_BENCH_LOAD1`, `SWARM_BENCH_NPROC` and `SWARM_BENCH_MEMINFO` exist only so
+`tests/test_bench_knobs.py` can run hermetically. Do not set them on real runners. If pgrep is missing
+or fails (rc > 1), bench.sh treats the host as busy (`pgrep unavailable`) and skips with exit 78.

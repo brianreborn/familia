@@ -174,7 +174,7 @@ SSHD_BLOCK = re.search(r"# BEGIN familia-sshd-verify.*?\n(.*?)# END familia-sshd
 
 def _sshd_t(tmp_path, out, rc=0, cfg="PasswordAuthentication no\nKbdInteractiveAuthentication no\n"):
     stub = tmp_path / "sbin"; stub.mkdir(exist_ok=True); f = stub / "sshd"
-    f.write_text(f"#!/bin/sh\n[ \"$1\" = -T ] || {{ echo RESTART-ATTEMPT >&2; exit 9; }}\necho \"$*\" > {tmp_path}/argv\nprintf '%s\\n' '{out}'\nexit {rc}\n"); f.chmod(0o755)
+    f.write_text(f"#!/bin/sh\n[ \"$1\" = -T ] || {{ echo RESTART-ATTEMPT >&2; exit 9; }}\necho \"$*\" >> {tmp_path}/argv\nprintf '%s\\n' '{out}'\nexit {rc}\n"); f.chmod(0o755)
     c = tmp_path / "cfg"; c.write_text(cfg)
     return subprocess.run(["sh", "-c", SSHD_BLOCK + f'familia_sshd_verify "{c}" && echo OK'], capture_output=True, text=True,
                           env={"PATH": f"{stub}:{os.environ['PATH']}"})
@@ -203,8 +203,23 @@ GOOD_T = "passwordauthentication no\nkbdinteractiveauthentication no"
 def test_f8b_sshd_T_uses_connection_spec(tmp_path):
     import getpass
     r = _sshd_t(tmp_path, GOOD_T); assert "OK" in r.stdout, r.stderr
-    argv = (tmp_path / "argv").read_text().split()
-    assert argv[:2] == ["-T", "-C"] and argv[2] == f"user={getpass.getuser()},addr=127.0.0.1,host=localhost" and argv[3] == "-f"
+    lines = (tmp_path / "argv").read_text().splitlines()
+    assert len(lines) == 2, lines  # F-8c: both loopback families
+    for line, addr in zip(lines, ["127.0.0.1", "::1"]):
+        argv = line.split()
+        assert argv[:2] == ["-T", "-C"] and argv[2] == f"user={getpass.getuser()},addr={addr},host=localhost" and argv[3] == "-f"
+
+
+def test_f8c_ipv6_spec_failure_refuses(tmp_path):
+    stub = tmp_path / "sbin"; stub.mkdir(); f = stub / "sshd"
+    f.write_text("#!/bin/sh\ncase \"$3\" in *addr=::1*) printf 'passwordauthentication yes\\nkbdinteractiveauthentication no\\n';; *) printf 'passwordauthentication no\\nkbdinteractiveauthentication no\\n';; esac\n"); f.chmod(0o755)
+    c = tmp_path / "cfg"; c.write_text("PasswordAuthentication no\n")
+    r = subprocess.run(["sh", "-c", SSHD_BLOCK + f'familia_sshd_verify "{c}" && echo OK'], capture_output=True, text=True, env={"PATH": f"{stub}:{os.environ['PATH']}"})
+    assert "OK" not in r.stdout and "(::1): passwordauthentication" in r.stderr, r.stderr
+
+
+def test_f8c_include_gap_documented_for_v03():
+    assert "v0.3 gap (documented, not fixed): Include'd files are not scanned" in SRC
 
 
 @pytest.mark.parametrize("cfg,ok", [
@@ -237,3 +252,26 @@ def test_f9_bracketed_ipv6_loopback_passed_bare(tmp_path):
     r = run('familia_key_args; echo "B=$B"', {"FAMILIA_BIND": "[::1]", "FAMILIA_API_KEY_FILE": str(k)})
     assert r.returncode == 0 and "B=::1\n" in r.stdout
     assert "H=::1" in LINUX_SRC and '--host "\\$H"' in LINUX_SRC
+
+
+@pytest.mark.parametrize("content,ok", [
+    ("k" * 32, True), ("k" * 32 + "\n", False), ("k" * 32 + "\r\n", False), ("ab\ncd", False), ("ab cd", False), ("\tabc", False), ("", False),
+])
+def test_key_content_rule_no_cr_lf_whitespace(tmp_path, content, ok):
+    k = tmp_path / ".config" / "familia" / "api.key"; k.parent.mkdir(parents=True)
+    k.write_bytes(content.encode()); k.chmod(0o600)
+    r = gate({"HOME": str(tmp_path)})
+    if ok: assert r.returncode == 0, r.stderr
+    else: assert r.returncode == 2 and ("CR/LF/whitespace" in r.stderr or "empty" in r.stderr), r.stderr
+
+
+def test_install_writes_key_with_printf_no_newline():
+    i = SRC.index('FAMILIA_KEY_DEFAULT="$HOME'); assert "printf '%s'" in SRC[i:i + 700]
+
+
+def test_env_scrub_unsets_llama_key_and_arg_vars():
+    env = {"LLAMA_API_KEY": "evil", "LLAMA_ARG_API_KEY_FILE": "/tmp/evil", "LLAMA_ARG_HOST": "0.0.0.0", "LLAMA_ARG_N_GPU_LAYERS": "99", "LLAMA_CACHE": "keep"}
+    r = run('familia_env_scrub; env | grep "^LLAMA" || true', env)
+    assert r.returncode == 0, r.stderr
+    assert "LLAMA_API_KEY=" not in r.stdout and "LLAMA_ARG_" not in r.stdout and "LLAMA_CACHE=keep" in r.stdout
+    assert SRC.index("\nfamilia_env_scrub\n") < SRC.index("exec llama-server")
