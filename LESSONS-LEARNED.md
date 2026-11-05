@@ -266,3 +266,39 @@ Source: [#190](https://github.com/brianreborn/familia/issues/190), PRs #186/#187
    *Rule:* track the baseline in an issue with the failing list. It may shrink but never grow, and a change to it must be called out.
 6. **Box restarts lose work.** An end-to-end source-build run on the box was lost when the box restarted, so `BUILD=1` was not re-verified for the tag.
    *Rule:* write long runs' logs and results to a persistent path (familia-private or the repo) and not to scratch, and note what was not re-run.
+
+## L-hostloc. The G84 is in angel: hardware location drifted across docs and agents (2026-10-31)
+
+— Other Grok Bot ASSIST · executor
+
+**What was wrong.** The HVVRAM design review ([#249](https://github.com/brianreborn/familia/pull/249), first revision 9897e36) said angel's G84 "is an Athlon II box (no usable AMD-Vi)". It concluded IOMMU enforcement (P4) was blocked because "the VT-d box has no G84". Two reviewers on #249 repeated this as a High finding. **Brian: the G84 is in angel.** Brian says this class of mistake keeps happening.
+
+**Root-cause chain (oldest first):**
+
+1. **angel-freebsd [b81c1fe](https://github.com/brianreborn/angel-freebsd/commit/b81c1fe) (2026-09-26):** `Projects/cuda-8600gt/NOTES.md` and `cuda-8600gt-requirements.md` describe "FreeBSD 15.1 … AMD Athlon II (no x86-64-v2)" with `nvidia0: <GeForce 8600 GT>`.
+   - These were true for the machine of that session. They are in a repo *named* angel, but they never say the notes are host-specific or dated.
+2. **familia 666368c / c3d3a32 (2026-10-19):** `centos10-bigram` is recorded as an i5-4570, 23 GiB box with an 8600 GT (`docs/perf/centos-bigram-models.md`).
+   - The same CPU/RAM/GPU later shows up as angel on FreeBSD. Nothing links the two names.
+3. **familia [fa819e1](https://github.com/brianreborn/familia/commit/fa819e1) / [9c5a11a](https://github.com/brianreborn/familia/commit/9c5a11a) (2026-10-26, `docs/vvram-ssd`):** host tables list angel as "FreeBSD, i5-4570, 24 GiB" with **no GPU**.
+   - They place the G84 on qodesh and "centos10-bigram (same G84 profile)" as separate hosts.
+4. **X, 2026-10-25:** @grok wrote "CPU-only FreeBSD on the i5-4570 … rules out GPU offload".
+   - That was archived in familia-private [3fbb1c2](https://github.com/brianreborn/familia-private/commit/3fbb1c2) `x-discussion.md`. An outside model's assumption entered the record as context.
+5. **familia-private [3fbb1c2](https://github.com/brianreborn/familia-private/commit/3fbb1c2) HANDOFF.md §2 (2026-10-27):** copies the docs table (angel without a GPU; G84 on qodesh). It also cites the angel-freebsd NOTES' "Athlon II" line under "FreeBSD CUDA build located".
+6. **#249 (9897e36, 2026-10-31):** the executor merged items 3 and 5 into "the G84 board is an Athlon II box" without asking Brian. That's an inference stated as a fact.
+7. **#249 reviewers** (Senior Developer, independent review, both 2026-10-31 ~01:29 PT) repeated it. One flagged that the topology was "unclear" but still took the claim as given.
+
+**Why it recurs:**
+- Hardware facts were copied between docs, memory and chats as if they were permanent, so each copy kept whatever was true when it was written.
+- Hosts were reinstalled, renamed, or had cards moved (centos10-bigram ↔ angel?) without a dated update.
+- A repo's name (angel-freebsd) was taken to mean its notes describe angel today.
+- Agents trust the handoff and each other. Reviewers check the reasoning, not the premises.
+- L9 ("same hardware is not same software") and L11 (registry) covered the software side. Nothing covered *location*.
+
+**Fixes (2026-10-31):**
+- #249 commit ad3a734 corrects the design review, rewrites the P4 feasibility, and fixes `HVVRAM-ARCHITECTURE.md` and `INGEST.md`.
+
+**Prevention (keep it light).** These are computers; components move all the time.
+1. Hardware location in docs, memory, repo names or past chats is a hint, not a fact. There is no master hardware list.
+2. Machine fingerprints and dated snapshots are welcome. Examples: `pciconf -lv` / `lspci`, `sysctl hw.model`, `dmesg`, hostname plus a date. Record them as "as of <date>".
+3. Before a **hardware-dependent action** (kernel module load or test, disk wipe, firmware flash, BIOS change), take a fresh probe or ask Brian.
+4. When a conclusion hinges on where a part is and nobody has looked recently, say so and ask. Don't assert it.
