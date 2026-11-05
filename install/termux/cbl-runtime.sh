@@ -128,7 +128,7 @@ DL_DIR="$PREFIX_DIR/runtime/.download"
 MARKER="$DEST/.familia-cbl-pin"
 SERVER="$DEST/llama-server"
 
-# Manifest of llama-server + every .so: size+mtime + sha256 (hash small libs; skip GGUF).
+# Manifest of llama-server + every .so: size+mtime + sha256 (hash all .so files; skip GGUF).
 write_runtime_manifest() {
   python3 - "$DEST" "$MARKER" "$TAG" "$ANAME" "$SHA" "$PIN_FILE" <<'PY'
 import hashlib, os, sys
@@ -174,7 +174,7 @@ pin_matches() {
   [ -x "$SERVER" ] || return 1
   got=$(awk -F= '/^sha256=/{print $2; exit}' "$MARKER" 2>/dev/null || true)
   [ "$got" = "$SHA" ] || return 1
-  # size+mtime first; then sha256 of small .so (+ llama-server). Name the stale file.
+  # size+mtime first; then sha256 of every .so (+ llama-server; not the GGUF). Name the stale file.
   python3 - "$DEST" "$MARKER" <<'PY'
 import hashlib, os, sys
 dest, marker = sys.argv[1], sys.argv[2]

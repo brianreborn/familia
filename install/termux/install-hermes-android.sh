@@ -67,10 +67,21 @@ say "default phone model tier=$TIER model=$MODEL ctx=$CTX (override with FAMILIA
 
 # Hermes-agent upstream MINIMUM_CONTEXT_LENGTH is 64000 (agent/model_metadata.py).
 # There is no supported override for custom/llama.cpp providers (LM Studio only).
-# Phone RAM-tier ctx is often far below that — fail clearly instead of hanging.
+# Phone RAM-tier ctx is often far below that — refuse immediately after the tier
+# pick (before license gate, runtime install, model download, familia-start) so
+# nothing is left running. Product shape (host webapp vs local UI vs force 64k)
+# is still Brian's call; this gate only avoids a hang.
 HERMES_MIN_CTX=64000
 hermes_ctx_ok() { [ "$CTX" -ge "$HERMES_MIN_CTX" ]; }
 
+if ! hermes_ctx_ok; then
+  if [ "$DRY" = 1 ]; then
+    say "[dry-run] would REFUSE Hermes webapp: ctx=$CTX < hermes-agent MINIMUM_CONTEXT_LENGTH=$HERMES_MIN_CTX (no supported override for custom/llama.cpp; see docs/android-hermes.md)"
+    say "Office 3D / Hermes Desktop: run on a Linux or macOS host with ctx>=$HERMES_MIN_CTX; phone familia-start can still serve the GGUF when run on its own."
+    exit 0
+  fi
+  die "Hermes webapp refused on this phone: FAMILIA_CTX=$CTX is below hermes-agent MINIMUM_CONTEXT_LENGTH=$HERMES_MIN_CTX. Upstream hermes-agent (agent/model_metadata.py) hard-rejects smaller windows for custom/llama.cpp providers; model.context_length cannot lower that floor (NousResearch/hermes-agent#11096, #8430). Refusing before license gate / runtime install / model download / familia-start so nothing is left running. Use a Linux/macOS host with ctx>=$HERMES_MIN_CTX for Hermes, or raise FAMILIA_CTX only if the phone has RAM for it (usually not). See docs/android-hermes.md."
+fi
 
 SELECTED_DB=$(python3 -c '
 import os, sys, yaml
@@ -134,7 +145,7 @@ fi
 
 if [ "$LAUNCH_ONLY" = 1 ]; then
   say "launch-only: skipping install/termux/install.sh"
-  # Re-verify cbl runtime marker (size+mtime + sha256 of small .so files).
+  # Re-verify cbl runtime marker (size+mtime + sha256 of llama-server and every .so; not the GGUF).
   if [ -f "$HERE/cbl-runtime.sh" ]; then
     FAMILIA_PREFIX="$PREFIX_DIR" sh "$HERE/cbl-runtime.sh" --prefix "$PREFIX_DIR" >/dev/null \
       || die "cbl runtime marker stale or missing; re-run without --launch-only"
@@ -180,14 +191,10 @@ fi
 
 if [ "$DRY" = 1 ]; then
   say "[dry-run] would: FAMILIA_MODEL=$MODEL_PATH FAMILIA_CTX=$CTX familia-start (serves the chosen .gguf on 127.0.0.1:$PORT)"
-  if hermes_ctx_ok; then
-    say "[dry-run] would: FAMILIA_HERMES_CONTEXT_LENGTH=$CTX FAMILIA_HERMES_BASE_URL=http://127.0.0.1:${PORT}/v1 bash $HERMES --client webapp --yes"
-    say "[dry-run] would poll hermes output for a webapp URL (no sleep+guessed port)"
-    [ "$NO_OPEN" = 1 ] && say "[dry-run] --no-open: would not launch a browser"
-    [ "$NO_OPEN" = 1 ] || say "[dry-run] would open the one-use webapp URL via termux-open-url"
-  else
-    say "[dry-run] would REFUSE Hermes webapp: ctx=$CTX < hermes-agent MINIMUM_CONTEXT_LENGTH=$HERMES_MIN_CTX (no supported override for custom/llama.cpp; see docs/android-hermes.md)"
-  fi
+  say "[dry-run] would: FAMILIA_HERMES_CONTEXT_LENGTH=$CTX FAMILIA_HERMES_BASE_URL=http://127.0.0.1:${PORT}/v1 bash $HERMES --client webapp --yes"
+  say "[dry-run] would poll hermes output for a webapp URL (no sleep+guessed port)"
+  [ "$NO_OPEN" = 1 ] && say "[dry-run] --no-open: would not launch a browser"
+  [ "$NO_OPEN" = 1 ] || say "[dry-run] would open the one-use webapp URL via termux-open-url"
   say "Office 3D / Hermes Desktop: run on a Linux or macOS host with ctx>=$HERMES_MIN_CTX; phone familia-start can still serve the GGUF."
   exit 0
 fi
@@ -279,9 +286,6 @@ if [ "$NEED_START" = 1 ]; then
   fi
 fi
 
-if ! hermes_ctx_ok; then
-  die "Hermes webapp refused on this phone: FAMILIA_CTX=$CTX is below hermes-agent MINIMUM_CONTEXT_LENGTH=$HERMES_MIN_CTX. Upstream hermes-agent (agent/model_metadata.py) hard-rejects smaller windows for custom/llama.cpp providers; model.context_length cannot lower that floor (NousResearch/hermes-agent#11096, #8430). familia-start can still serve the GGUF at ctx=$CTX for non-Hermes clients. Use a Linux/macOS host with ctx>=$HERMES_MIN_CTX for Hermes Desktop/webapp, or raise FAMILIA_CTX only if the phone has RAM for it (usually not). See docs/android-hermes.md."
-fi
 say "starting Hermes webapp UI (ctx=$CTX base=http://127.0.0.1:${PORT}/v1). Desktop+Office3D stay on a Linux/macOS host."
 LOG=$(mktemp "${TMPDIR:-/tmp}/familia-hermes-webapp.XXXXXX")
 cleanup_log() { rm -f "$LOG"; }
@@ -293,19 +297,23 @@ HPID=$!
 set -e
 
 redact_log_tail() {
-  # GNU sed -E: a bare ? is a quantifier — use [?] for a literal question mark.
+  # GNU sed -E: a bare ? is a quantifier — use [?] in the *pattern* for a literal
+  # question mark, but write a plain ? in the replacement (never leave "[?]" in output).
   # BusyBox sed -E accepts the same character-class form.
   # Do not append || true to the sed pipeline: a pattern error must surface.
   tail -n 40 "$1" 2>/dev/null | sed -E \
     -e 's/[Bb]earer[[:space:]]+[A-Za-z0-9._~+\/=-]+/[REDACTED_BEARER]/g' \
     -e 's/(token|access_token|api[_-]?key|one[_-]?time)(=|":[[:space:]]*")[^[:space:]&"]+/\1\2[REDACTED]/g' \
     -e 's|/auth/[A-Za-z0-9._~+/=-]+|/auth/[REDACTED]|g' \
+    -e 's|/s/[A-Za-z0-9._~+/=-]+|/s/[REDACTED]|g' \
     -e 's/#t=[^[:space:]&"]+/#t=[REDACTED]/g' \
     -e 's/[?&]t=[^[:space:]&"]+/[REDACTED_T]/g' \
-    -e 's/[?]k=[^[:space:]&"]+/[?]k=[REDACTED]/g' \
+    -e 's/[?]k=[^[:space:]&"]+/?k=[REDACTED]/g' \
     -e 's/&k=[^[:space:]&"]+/\&k=[REDACTED]/g' \
-    -e 's/[?]code=[^[:space:]&"]+/[?]code=[REDACTED]/g' \
+    -e 's/[?]code=[^[:space:]&"]+/?code=[REDACTED]/g' \
     -e 's/&code=[^[:space:]&"]+/\&code=[REDACTED]/g' \
+    -e 's/[?]session=[^[:space:]&"]+/?session=[REDACTED]/g' \
+    -e 's/&session=[^[:space:]&"]+/\&session=[REDACTED]/g' \
     -e 's|(https?://[^[:space:]]*[Tt]oken[^[:space:]]*)|[REDACTED_URL]|g' \
     -e 's|(https?://[^[:space:]]*one[_-]?time[^[:space:]]*)|[REDACTED_URL]|g' \
     -e 's|(https?://[^[:space:]]*[?][^[:space:]]*key=[^[:space:]]*)|[REDACTED_URL]|g' \

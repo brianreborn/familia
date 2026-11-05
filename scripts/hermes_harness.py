@@ -334,8 +334,10 @@ def hermes_child_env(extra=None, environ=None):
     env = dict(os.environ if environ is None else environ)
     if extra:
         env.update(extra)
-    # Point Hermes at the same key familia-start uses (~/.config/familia/api.key etc.).
-    if not env.get("FAMILIA_API_KEY"):
+    # Export FAMILIA_API_KEY into child env ONLY on Termux/phone (same key as
+    # familia-start). On desktop/Linux/FreeBSD, do not inject the instance key
+    # into every Hermes child — that leaked :9931's key into a :9941 launch.
+    if not env.get("FAMILIA_API_KEY") and familia_auth.is_termux(env):
         k = familia_auth.api_key(env=env)
         if k:
             env["FAMILIA_API_KEY"] = k

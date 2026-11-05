@@ -161,3 +161,49 @@ def test_hermes_auth_headers_authorized_against_mock_server(tmp_path, monkeypatc
     assert got["ok"] is True
     assert got["auth"] == "Bearer " + secret
     assert data["data"][0]["id"] == "ok"
+
+
+def test_desktop_hermes_child_env_does_not_leak_9931_key_to_9941(tmp_path, monkeypatch):
+    """F-3: on desktop, hermes_child_env must not export :9931's key into a :9941 child."""
+    cfg = tmp_path / "cfg"
+    inst = cfg / "familia" / "instances" / "9931" / "api-keys"
+    inst.parent.mkdir(parents=True)
+    secret = "desktop-9931-secret-key"
+    inst.write_text(secret + "\n", encoding="utf-8")
+    os.chmod(inst, 0o600)
+    # Clear any ambient key env; no Termux markers.
+    for n in ("FAMILIA_API_KEY", "LLAMA_API_KEY", "API_KEY_FILE", "FAMILIA_API_KEY_FILE",
+              "TERMUX_VERSION", "PREFIX"):
+        monkeypatch.delenv(n, raising=False)
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(cfg))
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("FAMILIA_PORT", "9941")
+    # Confirm api_key for default/9931 would see the secret if asked that way.
+    assert fa.api_key(env={"XDG_CONFIG_HOME": str(cfg), "FAMILIA_PORT": "9931"}) == secret
+    assert not fa.is_termux(env={"XDG_CONFIG_HOME": str(cfg), "FAMILIA_PORT": "9941"})
+    child = hh.hermes_child_env(environ={
+        "XDG_CONFIG_HOME": str(cfg),
+        "HOME": str(tmp_path),
+        "FAMILIA_PORT": "9941",
+        "PATH": "/usr/bin",
+    })
+    assert child.get("FAMILIA_API_KEY") != secret
+    assert "FAMILIA_API_KEY" not in child or not child.get("FAMILIA_API_KEY")
+
+
+def test_termux_hermes_child_env_still_exports_api_key(tmp_path, monkeypatch):
+    cfg = tmp_path / "cfg"
+    key = cfg / "familia" / "api.key"
+    key.parent.mkdir(parents=True)
+    key.write_text("phone-export-key\n", encoding="utf-8")
+    os.chmod(key, 0o600)
+    for n in ("FAMILIA_API_KEY", "LLAMA_API_KEY", "API_KEY_FILE", "FAMILIA_API_KEY_FILE"):
+        monkeypatch.delenv(n, raising=False)
+    child = hh.hermes_child_env(environ={
+        "XDG_CONFIG_HOME": str(cfg),
+        "HOME": str(tmp_path),
+        "TERMUX_VERSION": "0.118",
+        "FAMILIA_PORT": "9941",
+        "PATH": "/usr/bin",
+    })
+    assert child.get("FAMILIA_API_KEY") == "phone-export-key"
