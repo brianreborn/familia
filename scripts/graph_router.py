@@ -397,9 +397,19 @@ def make_server(cfg, host="127.0.0.1", port=9940, api_key=None):
         raise ConfigError("graph router binds loopback only")
     R = Router(cfg)
 
+    def _hdr(v):
+        """Header-safe text: drop CR, LF and other C0/DEL control chars."""
+        return "".join(c for c in str(v) if c >= " " and c != "\x7f")
+
     class H(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
         def log_message(self, *a): pass
+
+        def send_header(self, keyword, value):
+            # familia#303 / CodeQL py/http-response-splitting: header values can carry
+            # request- or upstream-derived text (route name, node, labels); never let
+            # CR/LF or other control chars through into the response head.
+            super().send_header(_hdr(keyword), _hdr(value))
 
         def _json(self, st, obj, extra=None):
             b = json.dumps(obj).encode()
