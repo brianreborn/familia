@@ -6,6 +6,7 @@ Artifacts that ship **familia** (menu, CLI, graph helpers) — not Hermes Deskto
 |---|---|
 | [`appimage/`](appimage/) | Linux **familia** AppImage (`AppRun`, desktop entry, icon). Build: `./scripts/build_appimage.sh`. Docs: [`docs/appimage.md`](../docs/appimage.md). |
 | [`freebsd/`](freebsd/) | FreeBSD ports overlay for `sysutils/familia`. Ordinary familia port — not an Electron / Hermes Desktop port. |
+| [`android/`](android/) | Termux:Widget one-tap for Hermes **webapp**; APK wrapper is a documented follow-up. |
 
 ## familia AppImage ≠ Hermes Desktop
 

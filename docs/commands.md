@@ -317,6 +317,11 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `install/deps.sh` | Unified OS-deps dispatcher (safe-mode bootstrap; [safe-mode-bootstrap.md](safe-mode-bootstrap.md)) | — | — |
 | `install/linux/deps.sh` | Linux/macOS OS-deps helper (apt/dnf/pacman/zypper/brew); called via `install/deps.sh` | — | — |
 | `install/termux/deps.sh` | Termux OS-deps helper (`getconf`, pytest, …) | — | — |
+| `install/termux/cbl-runtime.sh` | Download + sha256-verify code-bootstraps Android prebuilt; called by `install/termux/install.sh` | — | — |
+| `install/termux/install-hermes-android.sh` | Android one-tap: licenses + cbl + Hermes webapp (`docs/android-hermes.md`); Termux:Widget entry | — | — |
+| `install/termux/phone-model-default.py` | RAM-tier default phone model helper for `install-hermes-android.sh` | — | — |
+| `install/termux/widget/familia-hermes-android.sh` | Termux:Widget shortcut wrapper around `install-hermes-android.sh` | — | — |
+| `install/freebsd/install-familia.sh` | FreeBSD ports/bootstrap installer (`docs/install-freebsd.md`) | — | — |
 | `install/freebsd/deps.sh` | FreeBSD OS-deps helper (opt-in `pkg install`) | — | — |
 | `install/windows/deps.ps1` | Windows deps check + winget/choco hints | — | `install\windows\deps.ps1` |
 | `scripts/build_appimage.sh` | Operator AppImage packaging (not menu) | — | — |

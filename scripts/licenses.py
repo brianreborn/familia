@@ -13,6 +13,8 @@ Usage:
   scripts/licenses.py check  [--json] [--quiet]   exit 0 if the current selection is accepted
   scripts/licenses.py gate   [--yes] [--accept-unknown]   check; if needed, review (terminal) or explain
   scripts/licenses.py list   [--json]             show the list only; records nothing
+  --add-model DB_ID   include a registry model even if no graph node uses it (repeatable)
+  --require-llama31   also list Meta Llama 3.1 Community License (Android phone minimum)
 Example:
   scripts/licenses.py review
 Options:
@@ -256,6 +258,69 @@ def model_items(g):
     return out
 
 
+
+def model_item_for_db(db, used_for):
+    """Build one model license item from a registry db id (or a stub if missing)."""
+    entry = load_json(os.path.join(REG_MODELS, f"{db}.json")) if db else None
+    if not entry:
+        return item("model", db or "unknown-model", used_for, "unknown",
+                    notes="No model database entry (registry/models/). Add one with scripts/add-model.sh.")
+    snap = (entry.get("snapshot") or {})
+    sdir = os.path.join(hf_meta_root(), snap["path"]) if snap.get("path") else None
+    lf = find_license_file(sdir)
+    card = os.path.join(sdir, "README.md") if sdir else None
+    repo, rev = entry.get("repo"), entry.get("revision")
+    link = (f"https://huggingface.co/{repo}/blob/{rev}/{os.path.basename(lf)}" if lf and repo and rev
+            else f"https://huggingface.co/{repo}" if repo else None)
+    notes = []
+    if entry.get("base_model"):
+        notes.append(f"base model: {entry['base_model']} (its card may add terms)")
+    if not lf:
+        notes.append("no LICENSE file in the fetched snapshot; the model card states the license"
+                     + ("" if sdir and os.path.isdir(sdir) else " (snapshot not fetched here)"))
+    it = item("model", f"{repo} @ {str(rev)[:12]}" if repo else db, used_for, entry.get("license"),
+              text=lf or (card if card and os.path.isfile(card) else None), link=link,
+              notes="; ".join(notes) or None, extra_text=[card])
+    if snap.get("gated"):
+        it["flags"].append("gated (you accepted terms on Hugging Face)")
+        if it["category"] == "permissive":
+            it["category"] = "restrictive"
+    it["_db"] = db
+    return it
+
+
+def llama31_item(used_for="Android phone minimum (Brian 2026-11-05)"):
+    """Explicit Meta Llama 3.1 Community License row (Dolphin3 base weights)."""
+    return item(
+        "model",
+        "Meta Llama 3.1 Community License",
+        used_for,
+        "Llama 3.1 Community License",
+        link="https://www.llama.com/llama3_1/license/",
+        notes="Required phone-minimum license alongside Dolphin3 (llama3.1). Read the full text before redistribution.",
+        source="declared",
+    )
+
+
+def add_model_items(db_ids, require_llama31=False):
+    """Models forced into the selection (e.g. Android installer phone minimums)."""
+    out = []
+    seen = set()
+    need_llama31 = require_llama31
+    for db in db_ids:
+        if not db or db in seen:
+            continue
+        seen.add(db)
+        it = model_item_for_db(db, "forced phone/default selection (--add-model)")
+        out.append(it)
+        lic = (it.get("license") or "").lower().replace(" ", "")
+        if "llama3.1" in lic or "llama3_1" in lic or "llama-3.1" in lic:
+            need_llama31 = True
+    if need_llama31:
+        out.append(llama31_item())
+    return out
+
+
 def load_catalog():
     c = load_json(CATALOG) or {}
     return {s["id"]: s for s in c.get("skills") or [] if isinstance(s, dict) and s.get("id")}
@@ -391,9 +456,19 @@ def load_graph(path):
         return {}
 
 
-def selection(graph_path, add_skills=()):
+def selection(graph_path, add_skills=(), add_models=(), require_llama31=False):
     g = load_graph(graph_path)
     items = model_items(g) + skill_items(g, add_skills) + engine_items(g) + system_agent_items(g) + component_items()
+    # Forced models (Android phone minimums, etc.). Dedup by (kind, id, license).
+    seen = {(i["kind"], i["id"], i["license"]) for i in items}
+    for it in add_model_items(add_models, require_llama31=require_llama31):
+        key3 = (it["kind"], it["id"], it["license"])
+        if key3 in seen:
+            continue
+        seen.add(key3)
+        # Drop internal bookkeeping before acceptance hashing / render.
+        it.pop("_db", None)
+        items.append(it)
     key = [[i["kind"], i["id"], i["license"]] for i in items]
     digest = hashlib.sha256(json.dumps(sorted(key), sort_keys=True).encode()).hexdigest()
     return items, digest
@@ -519,7 +594,7 @@ def main(argv):
         sys.stderr.write(f"licenses: unknown command {cmd!r}. Try: scripts/licenses.py --help\n"); return 2
     graph = config_paths.graph_path()
     yes = env_yes("FAMILIA_ACCEPT_LICENSES"); unknown_ok = env_yes("FAMILIA_ACCEPT_UNKNOWN_LICENSES")
-    as_json = quiet = False; add = []
+    as_json = quiet = False; add = []; add_models = []; require_llama31 = False
     i = 0
     while i < len(rest):
         a = rest[i]
@@ -527,9 +602,11 @@ def main(argv):
         elif a == "--accept-unknown": unknown_ok = True
         elif a == "--json": as_json = True
         elif a in ("--quiet", "-q"): quiet = True
-        elif a in ("--graph", "--add-skill") and i + 1 < len(rest):
+        elif a == "--require-llama31": require_llama31 = True
+        elif a in ("--graph", "--add-skill", "--add-model") and i + 1 < len(rest):
             if a == "--graph": graph = rest[i + 1]
-            else: add.append(rest[i + 1])
+            elif a == "--add-skill": add.append(rest[i + 1])
+            else: add_models.append(rest[i + 1])
             i += 1
         elif a in ("-h", "--help"): print(__doc__.strip()); return 0
         else:
@@ -537,7 +614,7 @@ def main(argv):
         i += 1
     if not os.path.isfile(graph):
         sys.stderr.write(f"licenses: graph not found: {graph}\n"); return 2
-    items, digest = selection(graph, add)
+    items, digest = selection(graph, add, add_models=add_models, require_llama31=require_llama31)
     if cmd == "list":
         if as_json: print(json.dumps({"selection_sha256": digest, "items": items}, indent=2))
         else: render(items, digest)

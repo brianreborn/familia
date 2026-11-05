@@ -1,0 +1,21 @@
+#!/data/data/com.termux/files/usr/bin/sh
+# Termux:Widget one-tap entry for Hermes Android (webapp-first).
+# Install: copy or symlink this file into ~/.shortcuts/ (Termux:Widget looks there).
+#   mkdir -p ~/.shortcuts
+#   ln -sf "$HOME/familia/repo/install/termux/widget/familia-hermes-android.sh" \
+#          ~/.shortcuts/familia-hermes-android
+# Then add the Termux:Widget on the home screen and tap "familia-hermes-android".
+# No sudo. Does not sideload an APK (see packaging/android/README.md for the APK follow-up).
+set -eu
+REPO="${FAMILIA_PREFIX:-$HOME/familia}/repo"
+SCRIPT="$REPO/install/termux/install-hermes-android.sh"
+if [ ! -f "$SCRIPT" ]; then
+  # Fallback: this file may itself live inside a checkout
+  HERE=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
+  SCRIPT="$HERE/install-hermes-android.sh"
+fi
+[ -f "$SCRIPT" ] || {
+  echo "familia-hermes-android: missing $SCRIPT (run the Termux installer first)" >&2
+  exit 1
+}
+exec sh "$SCRIPT" "$@"

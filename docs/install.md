@@ -66,7 +66,7 @@ The top-level bootstrap `install.sh` (clones into `~/familia`, configure + start
      publishes no digest the installer stops.
    - The Windows `win-cpu-x64` build selects its CPU backend at runtime and runs
      without AVX (verified on qodesh, Athlon II X2).
-   - Termux: `pkg install llama-cpp` (signature-checked by pkg).
+   - Termux: **default** = code-bootstraps-llama.cpp Android prebuilt (`android-b12032-1`, fallback `android-b11969-1`) via `install/termux/cbl-runtime.sh` (named-file download + sha256). Opt into Termux `llama-cpp` with `--runtime pkg`. One-tap Hermes webapp: `install/termux/install-hermes-android.sh` (see `docs/android-hermes.md`).
 3. Measures the host (CPU, threads, RAM, CPU flags) and writes `hosts.<name>`
    into `graph.yaml` with `measured: true`. Unreadable values are left out, never
    guessed. `reserve_ram_mib` is set from docs/ram-safety.md policy (3072 MiB under
