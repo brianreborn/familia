@@ -1,4 +1,4 @@
-import io, json, os, sys, threading, urllib.request
+import io, json, os, socket, sys, threading, urllib.error, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 import escalation_proxy as EP
@@ -381,7 +381,7 @@ def test_invalid_tool_route_stays_put_with_no_tools(monkeypatch, tmp_path):
     assert seen[-1][0] == "light" and seen[-1][1]["model"] == "light"
     srv.shutdown()
 
-def test_unreachable_tool_route_stays_put_without_tools_flag(monkeypatch, tmp_path):
+def test_unreachable_tool_route_fails_closed_without_tools_flag(monkeypatch, tmp_path):
     monkeypatch.setattr(EP, "STATE", str(tmp_path)); monkeypatch.setattr(EP, "PENDING", str(tmp_path / "p.json"))
     seen = []; g = _tool_graph(mock("light", seen), 1)
     g["hosts"]["r"] = {"addr": "10.0.0.9"}; g["nodes"]["coder"]["host"] = "r"   # remote + loopback bind
@@ -390,8 +390,41 @@ def test_unreachable_tool_route_stays_put_without_tools_flag(monkeypatch, tmp_pa
     assert VG.tools_argv(g, "light") == []    # light never launches with --tools; tools run only on coder
     esc = EP.Escalator(g, "light", [], "h", consent={})
     url, body = esc.rewrite({"model": "x", "messages": [{"role": "user", "content": "x"}], "tools": TOOLS})
-    assert url == EP.node_url(g, "light", "h") and body["model"] == "light"
-    assert esc.tool_note == "[familia] tool_route coder unreachable; staying on light"
+    assert url is None
+    assert esc.tool_note == "[familia] tool_route coder unreachable; refusing tool request (502)"
+
+def test_unreachable_tool_route_returns_502_and_runs_no_tools(monkeypatch, tmp_path):
+    """#251 fail-closed: unreachable tool_route target -> 502; current node never sees the tools."""
+    monkeypatch.setattr(EP, "STATE", str(tmp_path)); monkeypatch.setattr(EP, "PENDING", str(tmp_path / "p.json"))
+    seen = []; g = _tool_graph(mock("light", seen), 1)
+    g["hosts"]["r"] = {"addr": "10.0.0.9"}; g["nodes"]["coder"]["host"] = "r"   # remote + loopback bind
+    srv = EP.serve(EP.Escalator(g, "light", [], "h", consent={})); p = srv.server_address[1]
+    with _pytest.raises(urllib.error.HTTPError) as ei:
+        _post_body(p, {"model": "x", "messages": [{"role": "user", "content": "x"}], "tools": TOOLS})
+    assert ei.value.code == 502 and seen == []
+    _post_body(p, {"model": "x", "messages": [{"role": "user", "content": "x"}]})   # no tools: still served
+    assert seen[-1][0] == "light"
+    srv.shutdown()
+
+def test_tool_route_target_down_mid_request_not_retried_on_current(monkeypatch, tmp_path):
+    """#251: forwarded tool request whose target refuses -> 502, no redial with tools elsewhere."""
+    monkeypatch.setattr(EP, "STATE", str(tmp_path)); monkeypatch.setattr(EP, "PENDING", str(tmp_path / "p.json"))
+    s = socket.socket(); s.bind(("127.0.0.1", 0)); dead = s.getsockname()[1]; s.close()
+    seen = []; g = _tool_graph(mock("light", seen), dead)
+    srv = EP.serve(EP.Escalator(g, "light", [], "h", consent={})); p = srv.server_address[1]
+    with _pytest.raises(urllib.error.HTTPError) as ei:
+        _post_body(p, {"model": "x", "messages": [{"role": "user", "content": "x"}], "tools": TOOLS})
+    assert ei.value.code == 502 and seen == []
+    srv.shutdown()
+
+def test_tool_target_logs_validate_graph_error(monkeypatch, capsys):
+    """#251: validate_graph exceptions are logged, and the safe default (no forward) holds."""
+    import validate_graph as VG_
+    def boom(g, n): raise ValueError("bad graph")
+    monkeypatch.setattr(VG_, "tool_route", boom)
+    assert EP.tool_target({"nodes": {"a": {"tool_route": "b"}}}, "a") is None
+    err = capsys.readouterr().err
+    assert "validate_graph error" in err and "ValueError: bad graph" in err
 
 def test_tool_forward_logged_source_to_target(monkeypatch, tmp_path):
     monkeypatch.setattr(EP, "STATE", str(tmp_path)); monkeypatch.setattr(EP, "PENDING", str(tmp_path / "p.json"))

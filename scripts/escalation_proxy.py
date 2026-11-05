@@ -126,13 +126,16 @@ def _nothing_sent(e):
 
 def tool_target(g, name):
     """Validated graph `tool_route` target for `name` (validate_graph.tool_route), else None.
-    Fails safe to None on any graph shape the validator cannot evaluate."""
+    Fails safe to None (no forward) on any graph shape the validator cannot evaluate; the
+    validator error is logged, not swallowed."""
     if not (((g.get("nodes") or {}).get(name) or {}).get("tool_route")):
         return None
     try:
         import validate_graph as VG
         return VG.tool_route(g, name)
-    except Exception:
+    except Exception as e:
+        print(f"[familia] tool_route for {name}: validate_graph error ({type(e).__name__}: {e}); not forwarding",
+              file=sys.stderr, flush=True)
         return None
 
 def tool_bearing(body):
@@ -222,6 +225,7 @@ class Escalator:
         self.session_id = session_id or DEFAULT_SESSION
         self.lock = FairLock()
         self.tool_note = None  # last rewrite's tool-forward log line (no bodies/keys)
+        self.tool_fwd = None   # tool_route target the last rewrite forwarded to, if any
 
     def upstream(self):
         return node_url(self.g, self.current, self.local_host), alias_for(self.g, self.current)
@@ -277,16 +281,18 @@ class Escalator:
         url, alias = self.upstream()
         # Tool forward (#243 runtime half): a tool-bearing request on a node with a validated
         # tool_route goes whole (chat + tools loop) to the target, which runs under its own
-        # tool_policy/--tools. Unreachable target -> stay put (no tools executed off-policy).
-        self.tool_note = None
+        # tool_policy/--tools. Unreachable target -> fail closed: rewrite returns url None and
+        # the handler answers 502, so the tools never run on the current node.
+        self.tool_note = None; self.tool_fwd = None
         tt = tool_target(self.g, self.current) if tool_bearing(body) else None
         if tt:
             turl = node_url(self.g, tt, self.local_host)
             if turl:
                 url, alias = turl, alias_for(self.g, tt)
-                self.tool_note = f"[familia] tool forward: {self.current} -> {tt}"
+                self.tool_note = f"[familia] tool forward: {self.current} -> {tt}"; self.tool_fwd = tt
             else:
-                self.tool_note = f"[familia] tool_route {tt} unreachable; staying on {self.current}"
+                self.tool_note = f"[familia] tool_route {tt} unreachable; refusing tool request (502)"
+                return None, body
         body = dict(body, model=alias)
         if self.handoff_next:
             msgs = body.get("messages") or []
@@ -497,6 +503,8 @@ def make_handler(pool, log=sys.stderr):
                         url, alias = esc.upstream()
                     url, body = esc.rewrite(self._orig); raw = json.dumps(body).encode()
                     if esc.tool_note: print(esc.tool_note, file=log, flush=True)
+                    if url is None:   # tool_route target unreachable: fail closed (#251)
+                        self._502(esc.tool_note); return
                 target = url.rsplit("/v1", 1)[0] + self.path
                 try:
                     hdrs = familia_auth.auth_headers({"Content-Type": "application/json"}, incoming=self.headers, required=True)
@@ -515,6 +523,10 @@ def make_handler(pool, log=sys.stderr):
                 except Exception as e:
                     # Count transport error BEFORE decide (#100), then escalate/fallback (#98).
                     self._record_transport_fail(esc, body)
+                    if getattr(esc, "tool_fwd", None):
+                        # #251: forwarded tool request failed; never redial it with tools on
+                        # another node (fail closed, no off-policy tool execution).
+                        self._502(f"[familia] tool_route {esc.tool_fwd} failed: {e}"); return
                     note = esc.after_reply(ok=False)
                     if note and _nothing_sent(e) and self._retry_once(esc, body, method, raw, note):
                         return

@@ -15,7 +15,8 @@
   exist, be tool-capable, not be guardian/pentest/defender, not be routed itself, and have a non-empty policy).
 - `Escalator.rewrite()`: if the request has `tools` and the current node has a validated route, the whole
   request goes to the target's URL/alias. The target runs the chat+tools loop under its own `--tools`
-  (tool_policy). If the target is unreachable (remote loopback bind), the request stays where it is.
+  (tool_policy). If the target is unreachable (remote loopback bind, or refuses mid-request), the proxy
+  fails closed with 502: tools never run on the current node, and the request is not redialed elsewhere.
 - Tests: 3 new ones in `tests/test_escalation_proxy.py`.
 
 ## Example (NOT applied to graph.yaml)
