@@ -75,3 +75,19 @@ No familia FreeBSD Electron port is required for this track.
 - [packaging/README.md](../packaging/README.md) (familia AppImage ≠ Hermes Desktop; FreeBSD port notes)
 - [appimage.md](appimage.md), [escalation.md](escalation.md)
 - Issue [#142](https://github.com/brianreborn/familia/issues/142)
+
+## Android (webapp-first)
+
+Hermes **Desktop** and the **Office 3D** plugin are not native on Android.
+On the phone, use the Hermes **webapp** client:
+
+```sh
+sh install/termux/install-hermes-android.sh   # licenses + cbl prebuilt + webapp
+# or, after install:
+scripts/hermes.sh --client webapp --yes
+```
+
+One-tap: Termux:Widget → `install/termux/widget/familia-hermes-android.sh`
+([packaging/android/README.md](../packaging/android/README.md)).
+Desktop + Office 3D stay on a Linux/macOS host; see [android-hermes.md](android-hermes.md).
+

@@ -11,24 +11,29 @@
 #   sh        ./install-$p.sh
 #   one line:
 #   p=familia && o=brianreborn && h=raw.githubusercontent.com && u=https://$h/$o/$p/main/install/termux/install.sh && curl -fsSLo install-$p.sh $u && sh ./install-$p.sh
-# Runtime comes from Termux's own `llama-cpp` package (pkg verifies package
-# signatures/hashes), so no unverified binary is downloaded here.
+# Runtime default: code-bootstraps-llama.cpp Android arm64 prebuilt (FAMILIA_RUNTIME=cbl).
+# Pin is config/cbl-android-runtime.json (android-b12032-1); verify ONLY against that sha256.
+# android-b11969-1 is an explicit opt-in fallback (TAG+SHA256 env). Download to a named file;
+# never pipe a download into a shell. Opt into Termux's `llama-cpp` package with
+# --runtime pkg (or FAMILIA_RUNTIME=pkg).
 # Flags: --dry-run  --uninstall [--purge]  --name NAME  --sshd (install+start openssh)
 # familia-start: loopback by default; FAMILIA_BIND=<non-loopback> requires FAMILIA_API_KEY_FILE (mode 0600, Termux $HOME, not /sdcard).
 #        --yes (accept the license review; summary still printed)  --accept-unknown
-#        --no-runtime  --force-host  --no-wakelock
+#        --no-runtime  --runtime cbl|pkg  --force-host  --no-wakelock
 #        --branch BRANCH  select the familia branch (default: checkout branch, else main)
 #        --no-path (do not write the $PREFIX/bin/familia shim; scripts/install-cli.sh)
 #   --name defaults to <model>-<last IPv4 octet> (or <model>-<boot_id prefix>), unique per phone;
 #          interactive installs prompt with that value as the default.
 # Example: sh install/termux/install.sh --dry-run
+# Hermes webapp one-tap: install/termux/install-hermes-android.sh (docs/android-hermes.md).
 set -eu
 
 PREFIX_DIR=${FAMILIA_PREFIX:-$HOME/familia}
+INSTALL_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" 2>/dev/null && pwd || true)
 REPO_URL=${FAMILIA_REPO_URL:-https://github.com/brianreborn/familia.git}
 SOURCE_BRANCH=""
 if [ -f "$0" ]; then
-  SOURCE_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." 2>/dev/null && pwd || true)
+  SOURCE_ROOT=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." 2>/dev/null && pwd || true)
   if [ -n "$SOURCE_ROOT" ] && git -C "$SOURCE_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     SOURCE_BRANCH=$(git -C "$SOURCE_ROOT" branch --show-current 2>/dev/null || true)
   fi
@@ -40,6 +45,8 @@ SELECT_BRANCH=0
 RESERVE_MIB=${FAMILIA_RESERVE_MIB:-5120}
 RAW_URL=${FAMILIA_RAW_URL:-https://raw.githubusercontent.com/brianreborn/familia}
 DRY=0; UNINSTALL=0; PURGE=0; NAME=""; SSHD=0; RUNTIME=1; FORCE_HOST=""; WAKE=1; NOPATH=0
+# cbl = code-bootstraps-llama.cpp Android prebuilt (default); pkg = Termux llama-cpp.
+RUNTIME_KIND=${FAMILIA_RUNTIME:-cbl}
 
 say() { echo "familia-termux: $*" >&2; }
 die() { say "error: $*"; exit 1; }
@@ -54,18 +61,24 @@ while [ $# -gt 0 ]; do
     --name) shift; NAME=${1:-} ;;
     --sshd) SSHD=1 ;;
     --no-runtime) RUNTIME=0 ;;
+    --runtime) shift; [ -n "${1:-}" ] || die "--runtime needs cbl or pkg"; RUNTIME_KIND=$1 ;;
     --force-host) FORCE_HOST=--force ;;
     --no-wakelock) WAKE=0 ;;
     --no-path) NOPATH=1 ;;
     --yes|-y) FAMILIA_ACCEPT_LICENSES=yes; export FAMILIA_ACCEPT_LICENSES ;;
     --accept-unknown) FAMILIA_ACCEPT_UNKNOWN_LICENSES=yes; export FAMILIA_ACCEPT_UNKNOWN_LICENSES ;;
-    -h|--help) sed -n '2,14p' "$0" 2>/dev/null | sed 's/^# \{0,1\}//' || true; exit 0 ;;
+    -h|--help) sed -n '2,20p' "$0" 2>/dev/null | sed 's/^# \{0,1\}//' || true; exit 0 ;;
     *) die "unknown flag: $1 (see --help)" ;;
   esac
   shift
 done
 
 git check-ref-format --branch "$BRANCH" >/dev/null 2>&1 || die "invalid branch name: $BRANCH"
+case "$RUNTIME_KIND" in
+  cbl|pkg) ;;
+  *) die "unknown --runtime / FAMILIA_RUNTIME=$RUNTIME_KIND (want cbl or pkg)" ;;
+esac
+
 
 if [ -z "${TERMUX_VERSION:-}" ] && [ ! -d /data/data/com.termux ]; then
   [ "$DRY" = 1 ] || die "not running inside Termux (use install/linux/install.sh on desktop Linux)"
@@ -81,14 +94,17 @@ if [ "$UNINSTALL" = 1 ]; then
   fi
   if [ "$PURGE" = 1 ]; then run rm -rf "$PREFIX_DIR"
   else run rm -rf "$PREFIX_DIR/repo"; say "kept $PREFIX_DIR/models (use --purge)"; fi
-  say "left Termux packages (git python llama-cpp openssh) installed; remove with pkg uninstall if wanted"
+  say "left Termux packages (git python openssh; llama-cpp if --runtime pkg) installed; remove with pkg uninstall if wanted"
+  say "cbl runtime under $PREFIX_DIR/runtime is removed with --purge"
   say "uninstalled"; exit 0
 fi
 
 # Default Termux packages (Brian 2026-10-27): getconf + pytest were missing on phones.
 # Full list / --profile build: sh install/deps.sh or install/termux/deps.sh
 PKGS="git python getconf"
-[ "$RUNTIME" = 1 ] && PKGS="$PKGS llama-cpp"
+if [ "$RUNTIME" = 1 ] && [ "$RUNTIME_KIND" = pkg ]; then
+  PKGS="$PKGS llama-cpp"
+fi
 [ "$SSHD" = 1 ] && PKGS="$PKGS openssh"
 # shellcheck disable=SC2086 # word list
 run pkg install -y $PKGS
@@ -126,7 +142,7 @@ if [ -z "$NAME" ]; then
     [ -z "$ANSWER" ] || NAME=$ANSWER
   fi
 fi
-[ -n "$NAME" ] || die "could not determine host name; pass --name (e.g. a57, note9, pixel8)"
+[ -n "$NAME" ] || die "could not determine host name; pass --name (e.g. a57, galaxy1, pixel8)"
 say "host $NAME, prefix $PREFIX_DIR"
 run mkdir -p "$PREFIX_DIR/models"
 # Vulkan: Termux's loader only sees llvmpipe; llama.cpp finds the real GPU (e.g. Xclipse 550)
@@ -177,6 +193,28 @@ elif [ -f "$REPO/scripts/sync_pins.py" ]; then
   python "$REPO/scripts/sync_pins.py" --root "$REPO" || die "the pinned parts could not be synced (see above)"
   python "$REPO/scripts/sync_pins.py" --root "$REPO" --install-hooks || true
 fi
+
+# Runtime: cbl Android prebuilt (default) or Termux llama-cpp (already installed above when pkg).
+CBL_DIR=""
+if [ "$RUNTIME" = 1 ] && [ "$RUNTIME_KIND" = cbl ]; then
+  CBL_SCRIPT="$REPO/install/termux/cbl-runtime.sh"
+  if [ ! -f "$CBL_SCRIPT" ] && [ -n "$INSTALL_DIR" ] && [ -f "$INSTALL_DIR/cbl-runtime.sh" ]; then
+    CBL_SCRIPT="$INSTALL_DIR/cbl-runtime.sh"
+  fi
+  [ -f "$CBL_SCRIPT" ] || die "missing cbl-runtime.sh (install/termux/cbl-runtime.sh)"
+  if [ "$DRY" = 1 ]; then
+    CBL_DIR=$(FAMILIA_PREFIX="$PREFIX_DIR" sh "$CBL_SCRIPT" --dry-run --prefix "$PREFIX_DIR") \
+      || die "cbl-runtime dry-run failed"
+    say "cbl runtime (dry-run): $CBL_DIR"
+  else
+    CBL_DIR=$(FAMILIA_PREFIX="$PREFIX_DIR" sh "$CBL_SCRIPT" --prefix "$PREFIX_DIR") \
+      || die "cbl Android prebuilt install failed"
+    say "cbl runtime: $CBL_DIR"
+  fi
+elif [ "$RUNTIME" = 1 ] && [ "$RUNTIME_KIND" = pkg ]; then
+  say "runtime=pkg: using Termux llama-cpp (llama-server on PATH)"
+fi
+
 SELF_REPO=$(cd "$(dirname "$0")/../.." 2>/dev/null && pwd || true)
 MTMP=""
 if [ -f "$REPO/scripts/host_measure.py" ]; then MREPO="$REPO"
@@ -302,6 +340,15 @@ set --
 [ -n "\$FAMILIA_KF" ] || { echo "familia-start: no API key; refusing" >&2; exit 2; }
 set -- --api-key-file "\$FAMILIA_KF"
 # Defaults from the 2026-10-10 A57 sweep (#34): 3 threads, flash-attn on; -ngl 99 on Vulkan (CPU ngl 0 on 0.6.0 collapses to <1 t/s tg).
+# Prefer code-bootstraps-llama.cpp Android prebuilt when present; else Termux llama-server on PATH.
+CBL_BIN="$PREFIX_DIR/runtime/current"
+if [ -x "\$CBL_BIN/llama-server" ]; then
+  export LD_LIBRARY_PATH="\$CBL_BIN\${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}"
+  if [ -e /system/lib64/libvulkan.so ]; then
+    export LD_LIBRARY_PATH="\$VK:\$LD_LIBRARY_PATH"
+  fi
+  exec "\$CBL_BIN/llama-server" -m "\$M" -ngl "\$NGL" -t "\${FAMILIA_THREADS:-3}" -fa "\${FAMILIA_FA:-on}" --host "\$B" --port "\${FAMILIA_PORT:-9941}" -c "\${FAMILIA_CTX:-2048}" "\$@" \${FAMILIA_EXTRA:-}
+fi
 exec llama-server -m "\$M" -ngl "\$NGL" -t "\${FAMILIA_THREADS:-3}" -fa "\${FAMILIA_FA:-on}" --host "\$B" --port "\${FAMILIA_PORT:-9941}" -c "\${FAMILIA_CTX:-2048}" "\$@" \${FAMILIA_EXTRA:-}
 EOS
   chmod +x "$LAUNCH"
@@ -365,5 +412,7 @@ if [ -f "$REPO/scripts/install-gum.sh" ]; then
     sh "$REPO/scripts/install-gum.sh" --yes || say "warning: gum not installed; retry: sh $REPO/scripts/install-gum.sh"
   fi
 fi
-say "done. Put GGUFs in $PREFIX_DIR/models; start: FAMILIA_MODEL=x.gguf familia-start"
+say "done. familia-start serves the GGUF: FAMILIA_MODEL=/path/to/model.gguf familia-start (or sh $REPO/install/termux/install-hermes-android.sh to fetch the RAM-tier model + start familia-start + Hermes webapp)"
+say "runtime=$RUNTIME_KIND (cbl prebuilt default; --runtime pkg for Termux llama-cpp)"
+say "Hermes webapp one-tap: sh $REPO/install/termux/install-hermes-android.sh  (docs/android-hermes.md)"
 say "what now: run $REPO/familia for the Charm/gum home (Talk to the protomodel). Quick start: $REPO/QUICKSTART.md"

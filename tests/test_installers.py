@@ -82,6 +82,9 @@ def test_installer_shapes():
     assert 'git -C "$SOURCE_ROOT" branch --show-current' in termux
     assert '--set-upstream-to="origin/$BRANCH"' in termux
     assert '--branch) shift; [ -n "${1:-}" ] || die "--branch needs a branch name"; BRANCH=$1; SELECT_BRANCH=1 ;;' in termux
+    assert "RUNTIME_KIND=${FAMILIA_RUNTIME:-cbl}" in termux
+    assert "cbl-runtime.sh" in termux
+    assert "note9" not in termux.lower()
     ps = open(os.path.join(ROOT, "install/windows/install.ps1")).read()
     assert "SupportsShouldProcess" in ps and "Get-FileHash" in ps and "refusing unverified" in ps
     assert "branch --show-current" in ps and "--set-upstream-to=origin/$Branch" in ps

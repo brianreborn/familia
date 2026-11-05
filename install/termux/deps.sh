@@ -12,7 +12,8 @@ set -eu
 case "${1:-}" in -h|--help) cat <<'USAGE'
 deps.sh (Termux): List / install packages familia needs on Android Termux.
 Usage: sh install/termux/deps.sh [--install] [--yes] [--dry-run] [--profile base|build]
-  base (default): git python getconf openssh (+ llama-cpp when installing runtime)
+  base (default): git python getconf openssh (+ llama-cpp only when FAMILIA_RUNTIME=pkg;
+                  default runtime is the cbl Android prebuilt — see install/termux/install.sh)
   build:          base + clang cmake ninja (code-bootstraps scripts/build-termux.sh)
 USAGE
   exit 0 ;; esac
@@ -43,7 +44,9 @@ have_yaml() {
 # Abstract → Termux pkg name (install list). Checks use commands.
 # getconf: confirmed Termux package name `getconf` (Brian 2026-10-27).
 NEED="git:git python:python getconf:getconf"
-[ "$RUNTIME" = 1 ] && NEED="$NEED llama-cpp:llama-server"
+# Default familia Termux runtime is cbl prebuilt; only require llama-cpp pkg when explicitly pkg.
+RUNTIME_KIND=${FAMILIA_RUNTIME:-cbl}
+if [ "$RUNTIME" = 1 ] && [ "$RUNTIME_KIND" = pkg ]; then NEED="$NEED llama-cpp:llama-server"; fi
 NEED="$NEED openssh:ssh"  # optional but common for phone SSH; listed as soft below
 SOFT="openssh:ssh"
 BUILD="clang:clang cmake:cmake ninja:ninja"
