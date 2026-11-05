@@ -19,17 +19,30 @@ and may later remote into that host.
    `FAMILIA_CBL_REPO`/`API`/`DOWNLOAD_URL`/`PIN_FILE` overrides are refused
    unless an explicit `FAMILIA_CBL_ANDROID_SHA256` (+ TAG) is also given
    (loud warning when allowed).
-4. Default GGUF chosen by **usable RAM** (`total - reserve_ram_mib`, negative
-   usable clamped to 0); see `install/termux/phone-model-default.py --list-tiers`.
+4. Default GGUF + **context** chosen by **usable RAM** (`total -
+   reserve_ram_mib`, negative usable clamped to 0); see
+   `install/termux/phone-model-default.py --list-tiers`:
+
+   | usable MiB | tier   | model                         | ctx  |
+   |------------|--------|-------------------------------|------|
+   | < 1024     | tiny   | `smollm2-135m-q4-phone`       | 2048 |
+   | < 2048     | small  | `qwen25-05b-q4km-phone`       | 2048 |
+   | < 4096     | medium | `lfm3-17b-uncensored-q4km`    | 4096 |
+   | ≥ 4096     | large  | `dolphin3-cyber-8b-q2k`       | 8192 |
+
    The chosen `.gguf` is downloaded with its graph sha256 pin
    (`install/termux/fetch-phone-model.py`). **`familia-start` loads and serves
-   that GGUF** (loopback, default port 9941); Hermes webapp is the chat UI on
-   top — it does not load the weights itself. Adjustable via
-   `FAMILIA_PHONE_MODEL` / `FAMILIA_PHONE_MODEL_TIER`.
+   that GGUF** at that ctx (`FAMILIA_CTX`, loopback port 9941). Hermes webapp
+   uses the **same** `context_length` via `FAMILIA_HERMES_CONTEXT_LENGTH` (not
+   the desktop agent floor of 64000). Auth: Hermes reads
+   `~/.config/familia/api.key` (same file familia-start uses). Adjustable via
+   `FAMILIA_PHONE_MODEL` / `FAMILIA_PHONE_MODEL_TIER` / `FAMILIA_CTX`.
 5. `familia-start` then `bash scripts/hermes.sh --client webapp`, and
    `termux-open-url` on the URL from hermes output / a readiness poll (no sleep
-   + guessed port). Widget taps launch only and never pass `--yes` (licenses
-   stay interactive / already-accepted).
+   + guessed port). A second tap reuses 9941 when it already serves the expected
+   model, otherwise restarts it; readiness wait scales with GGUF size (up to a
+   few minutes). Widget taps launch only, never pass `--yes`, and clear
+   inherited `INSTALL_ACK` / `FAMILIA_ACCEPT_LICENSES`.
 
 Opt into Termux's `llama-cpp` package instead with `FAMILIA_RUNTIME=pkg` or
 `install/termux/install.sh --runtime pkg`.

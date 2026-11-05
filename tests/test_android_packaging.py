@@ -88,7 +88,7 @@ def test_cbl_runtime_pin_only_never_curl_pipe_sh():
     assert "refused without" in text
     assert "FAMILIA_CBL_PIN_FILE" in text
     assert "FAMILIA_CBL_DOWNLOAD_URL" in text
-    assert "llama_server_size" in text
+    assert "manifest_begin" in text and "llama-server" in text
     assert "CDPATH='' cd" in text
 
 
@@ -134,11 +134,18 @@ def test_cbl_runtime_offline_reuses_verified(tmp_path):
     server = dest / "llama-server"
     server.write_text("#!/bin/sh\necho ok\n", encoding="utf-8")
     server.chmod(0o755)
+    so = dest / "libfoo.so"
+    so.write_bytes(b"so")
     size = server.stat().st_size
     mtime = int(server.stat().st_mtime)
+    so_size = so.stat().st_size
+    so_mtime = int(so.stat().st_mtime)
     (dest / ".familia-cbl-pin").write_text(
         f"tag=android-b12032-1\nasset=x\nsha256={PINNED_SHA}\npin_file=x\n"
-        f"llama_server_size={size}\nllama_server_mtime={mtime}\n",
+        f"manifest_begin\n"
+        f"libfoo.so {so_size} {so_mtime}\n"
+        f"llama-server {size} {mtime}\n"
+        f"manifest_end\n",
         encoding="utf-8",
     )
     env = dict(os.environ, FAMILIA_PREFIX=str(tmp_path))
@@ -166,7 +173,12 @@ def test_phone_model_default_tiers_and_clamp():
         check=True,
     )
     data = json.loads(r.stdout)
-    tiers = {t["tier"]: t["model"] for t in data["tiers"]}
+    tiers = {t["tier"]: t for t in data["tiers"]}
+    assert tiers["tiny"]["model"] == "smollm2-135m-q4-phone"
+    assert tiers["tiny"]["ctx"] == 2048
+    assert tiers["medium"]["ctx"] == 4096
+    assert tiers["large"]["ctx"] == 8192
+    tiers = {k: v["model"] for k, v in tiers.items()}
     assert tiers["tiny"] == "smollm2-135m-q4-phone"
     assert tiers["small"] == "qwen25-05b-q4km-phone"
     assert tiers["medium"] == "lfm3-17b-uncensored-q4km"
@@ -181,6 +193,7 @@ def test_phone_model_default_tiers_and_clamp():
     pick = json.loads(r2.stdout)
     assert pick["tier"] == "medium"
     assert pick["model"] == "lfm3-17b-uncensored-q4km"
+    assert pick["ctx"] == 4096
     # negative usable (below ~6 GiB) clamps to 0 -> tiny
     r_neg = subprocess.run(
         [sys.executable, script, "--ram-mib", "4096", "--reserve-mib", "5120", "--json"],
@@ -192,6 +205,7 @@ def test_phone_model_default_tiers_and_clamp():
     neg = json.loads(r_neg.stdout)
     assert neg["usable_mib"] == 0
     assert neg["tier"] == "tiny"
+    assert neg["ctx"] == 2048
     env = dict(os.environ, FAMILIA_PHONE_MODEL="dolphin3-cyber-8b-q2k")
     r3 = subprocess.run(
         [sys.executable, script, "--ram-mib", "7570", "--json"],
@@ -311,6 +325,7 @@ def test_install_hermes_android_dry_run(tmp_path):
     assert "fetch-phone-model" in r.stderr or "would download" in r.stderr
     assert "bash" in r.stderr and "hermes.sh" in r.stderr
     assert "familia-start" in r.stderr  # serves the GGUF
+    assert "ctx=" in r.stderr or "FAMILIA_CTX" in r.stderr or "CONTEXT_LENGTH" in r.stderr
     assert "readiness" in r.stderr.lower() or "poll" in r.stderr.lower()
     assert "8642" not in r.stderr  # no guessed port
     assert "webapp" in r.stderr.lower()
@@ -369,6 +384,7 @@ def test_widget_launch_if_installed_and_path():
     assert "CDPATH='' cd" in text
     assert "ignoring" in text
     assert "widget taps do not accept licenses" in text.lower() or "do not accept licenses" in text.lower()
+    assert "unset INSTALL_ACK" in text or "unset INSTALL_ACK FAMILIA_ACCEPT_LICENSES" in text
 
 
 
@@ -383,6 +399,8 @@ def test_android_docs_present():
     assert "opt-in" in doc.lower() or "b11969" in doc
     assert "falling back to" not in doc
     assert "familia-start" in doc and "loads and serves" in doc
+    assert "4096" in doc and "8192" in doc  # phone ctx tiers
+    assert "api.key" in doc
     assert "PIN_FILE" in doc or "DOWNLOAD_URL" in doc
     assert "note9" not in doc.lower()
 
@@ -448,7 +466,9 @@ def test_cbl_runtime_mtime_mismatch_not_offline(tmp_path):
     size = server.stat().st_size
     (dest / ".familia-cbl-pin").write_text(
         f"tag=android-b12032-1\nasset=x\nsha256={PINNED_SHA}\npin_file=x\n"
-        f"llama_server_size={size}\nllama_server_mtime=1\n",
+        f"manifest_begin\n"
+        f"llama-server {size} 1\n"
+        f"manifest_end\n",
         encoding="utf-8",
     )
     env = dict(os.environ, FAMILIA_PREFIX=str(tmp_path))
@@ -506,3 +526,40 @@ def test_install_sh_done_line_mentions_familia_start_serves():
     text = open(os.path.join(TERMUX, "install.sh"), encoding="utf-8").read()
     assert "familia-start serves the GGUF" in text
     assert "install-hermes-android.sh" in text
+
+
+def test_widget_clears_accept_env_and_never_yes():
+    text = open(os.path.join(TERMUX, "widget", "familia-hermes-android.sh"), encoding="utf-8").read()
+    assert "FAMILIA_ACCEPT_LICENSES" in text
+    assert "INSTALL_ACK" in text
+    assert 'exec sh "$SCRIPT" --launch-only --yes' not in text
+
+
+def test_redaction_patterns_in_hermes_android():
+    text = open(os.path.join(TERMUX, "install-hermes-android.sh"), encoding="utf-8").read()
+    for pat in ("/auth/", "#t=", "?k=", "&k=", "?code=", "REDACTED"):
+        assert pat in text
+
+
+def test_dry_run_prints_no_open_only_when_set(tmp_path):
+    env = dict(
+        os.environ,
+        FAMILIA_ACCEPT_LICENSES="yes",
+        FAMILIA_ACCEPT_UNKNOWN_LICENSES="yes",
+        FAMILIA_PREFIX=str(tmp_path / "prefix"),
+        FAMILIA_PHONE_MODEL="smollm2-135m-q4-phone",
+    )
+    r = subprocess.run(
+        ["sh", os.path.join(TERMUX, "install-hermes-android.sh"), "--dry-run", "--yes", "--skip-install"],
+        cwd=ROOT, env=env, capture_output=True, text=True, timeout=60,
+    )
+    assert r.returncode == 0, r.stderr
+    # without --no-open, should mention would open, not "--no-open: would not"
+    assert "--no-open: would not" not in r.stderr
+    r2 = subprocess.run(
+        ["sh", os.path.join(TERMUX, "install-hermes-android.sh"), "--dry-run", "--yes", "--skip-install", "--no-open"],
+        cwd=ROOT, env=env, capture_output=True, text=True, timeout=60,
+    )
+    assert r2.returncode == 0, r2.stderr
+    assert "--no-open" in r2.stderr
+

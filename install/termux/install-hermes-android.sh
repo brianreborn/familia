@@ -1,6 +1,6 @@
 #!/data/data/com.termux/files/usr/bin/sh
 # One-tap Android path: licenses -> cbl prebuilt runtime -> default phone model ->
-# familia-start (serves the chosen .gguf) -> Hermes webapp UI.
+# familia-start (serves the chosen .gguf at a RAM-tier ctx) -> Hermes webapp UI.
 # Webapp-first: opens the Hermes webapp URL on device. Hermes Desktop + Office 3D run on a
 # Linux/macOS host; see docs/android-hermes.md.
 # Usage:
@@ -8,11 +8,12 @@
 #                                               [--skip-install] [--no-open] [--launch-only]
 # Env:
 #   FAMILIA_ACCEPT_LICENSES=yes / FAMILIA_ACCEPT_UNKNOWN_LICENSES=yes
-#   FAMILIA_PHONE_MODEL / FAMILIA_PHONE_MODEL_TIER / FAMILIA_RESERVE_MIB
+#   FAMILIA_PHONE_MODEL / FAMILIA_PHONE_MODEL_TIER / FAMILIA_RESERVE_MIB / FAMILIA_CTX
 #   FAMILIA_RUNTIME=cbl (default) | pkg
-#   INSTALL_ACK=yes          alias for license --yes (proto compatibility; not used by the widget)
+#   INSTALL_ACK=yes          alias for license --yes (proto; widget clears this)
 # Never pipe a download into a shell. No sudo. Widget taps must not pass --yes.
-# The chosen GGUF is served by familia-start; Hermes webapp is the chat UI on top.
+# familia-start serves the GGUF; Hermes webapp is the chat UI. Phone ctx is shared
+# (FAMILIA_CTX == Hermes context_length); see phone-model-default.py --list-tiers.
 set -eu
 
 HERE=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
@@ -25,10 +26,11 @@ NO_OPEN=0
 LAUNCH_ONLY=0
 DOLPHIN_DB=RavichandranJ--Dolphin3-Cyber-8B-GGUF--Dolphin3.0-Llama3.1-8B-abliterated.Q2_K
 PREFIX_DIR=${FAMILIA_PREFIX:-$HOME/familia}
+PORT="${FAMILIA_PORT:-9941}"
+KEY_FILE="${FAMILIA_API_KEY_FILE:-$HOME/.config/familia/api.key}"
 
 say() { printf 'familia-hermes-android: %s\n' "$*" >&2; }
 die() { say "error: $*"; exit 1; }
-
 have_tty() { [ -t 0 ] && [ -t 1 ]; }
 
 while [ $# -gt 0 ]; do
@@ -54,14 +56,14 @@ if [ -z "${TERMUX_VERSION:-}" ] && [ ! -d /data/data/com.termux ]; then
   say "not in Termux; continuing because --dry-run"
 fi
 
-# --- Default phone model by RAM (needed before the license gate) ---
 MODEL_JSON=$(python3 "$HERE/phone-model-default.py" --json 2>/dev/null || true)
 if [ -z "$MODEL_JSON" ]; then
   MODEL_JSON=$(python3 "$HERE/phone-model-default.py" --ram-mib 7570 --json)
 fi
 MODEL=$(printf '%s' "$MODEL_JSON" | python3 -c 'import json,sys; print(json.load(sys.stdin)["model"])')
 TIER=$(printf '%s' "$MODEL_JSON" | python3 -c 'import json,sys; print(json.load(sys.stdin)["tier"])')
-say "default phone model tier=$TIER model=$MODEL (override with FAMILIA_PHONE_MODEL)"
+CTX=$(printf '%s' "$MODEL_JSON" | python3 -c 'import json,sys; print(json.load(sys.stdin)["ctx"])')
+say "default phone model tier=$TIER model=$MODEL ctx=$CTX (override with FAMILIA_PHONE_MODEL / FAMILIA_CTX)"
 
 SELECTED_DB=$(python3 -c '
 import os, sys, yaml
@@ -77,10 +79,6 @@ print(db)
 
 GATE_BASE="--add-model $SELECTED_DB --add-model $DOLPHIN_DB --require-llama31"
 
-# --- License gate ---
-# Launch-only: skip the gate when the current selection is already accepted.
-# If the selection changed: interactive accept on a TTY; refuse clearly with no TTY.
-# Widget taps never pass --yes, so a changed selection always needs a terminal.
 run_license_gate() {
   GATE_ARGS="gate $GATE_BASE"
   [ "$YES" = 1 ] && GATE_ARGS="$GATE_ARGS --yes"
@@ -110,10 +108,12 @@ if [ "$LAUNCH_ONLY" = 1 ] && [ "$DRY" != 1 ]; then
     fi
   fi
 elif [ "$DRY" = 1 ]; then
-  say "[dry-run] would run: python $ROOT/scripts/licenses.py gate $GATE_BASE${YES:+ --yes}${UNK:+ --accept-unknown}"
+  _gate_dry="python $ROOT/scripts/licenses.py gate $GATE_BASE"
+  [ "$YES" = 1 ] && _gate_dry="$_gate_dry --yes"
+  [ "$UNK" = 1 ] && _gate_dry="$_gate_dry --accept-unknown"
+  say "[dry-run] would run: $_gate_dry"
 else
   if [ "$YES" != 1 ] && ! have_tty; then
-    # Still try check: if already accepted, proceed; else refuse.
     # shellcheck disable=SC2086
     if python "$ROOT/scripts/licenses.py" check --quiet $GATE_BASE; then
       say "licenses already accepted; continuing without a TTY"
@@ -125,7 +125,6 @@ else
   fi
 fi
 
-# --- Base Termux install (cbl runtime by default) ---
 if [ "$LAUNCH_ONLY" = 1 ]; then
   say "launch-only: skipping install/termux/install.sh"
 elif [ "$SKIP_INSTALL" = 1 ]; then
@@ -139,8 +138,6 @@ else
   sh "$HERE/install.sh" $INSTALL_ARGS || die "install/termux/install.sh failed"
 fi
 
-# --- Download / resolve the chosen GGUF (pinned hashes) ---
-# Launch-only: --cheap skips full re-hash when marker size+mtime+sha are unchanged.
 FETCH_ARGS="--model $MODEL --prefix $PREFIX_DIR"
 [ "$DRY" = 1 ] && FETCH_ARGS="$FETCH_ARGS --dry-run"
 [ "$LAUNCH_ONLY" = 1 ] && [ "$DRY" != 1 ] && FETCH_ARGS="$FETCH_ARGS --cheap"
@@ -149,7 +146,6 @@ MODEL_PATH=$(python3 "$HERE/fetch-phone-model.py" $FETCH_ARGS) \
   || die "could not fetch/verify phone model $MODEL"
 say "model path: $MODEL_PATH"
 
-# Resolve familia-start launcher.
 FAMILIA_START=""
 for cand in \
     "${PREFIX:-/data/data/com.termux/files/usr}/bin/familia-start" \
@@ -160,57 +156,105 @@ do
 done
 
 HERMES="$ROOT/scripts/hermes.sh"
+export FAMILIA_MODEL="$MODEL_PATH"
+export FAMILIA_CTX="$CTX"
+export FAMILIA_PORT="$PORT"
+export FAMILIA_HERMES_CONTEXT_LENGTH="$CTX"
+export FAMILIA_HERMES_BASE_URL="http://127.0.0.1:${PORT}/v1"
+# Point Hermes auth at the same key familia-start uses (read the file; do not invent 'local').
+if [ -f "$KEY_FILE" ]; then
+  export FAMILIA_API_KEY_FILE="$KEY_FILE"
+fi
+
 if [ "$DRY" = 1 ]; then
-  say "[dry-run] would: FAMILIA_MODEL=$MODEL_PATH familia-start (serves the chosen .gguf on loopback${FAMILIA_START:+ via $FAMILIA_START})"
-  say "[dry-run] would: FAMILIA_MODEL=$MODEL_PATH bash $HERMES --client webapp --yes (webapp UI)"
+  say "[dry-run] would: FAMILIA_MODEL=$MODEL_PATH FAMILIA_CTX=$CTX familia-start (serves the chosen .gguf on 127.0.0.1:$PORT)"
+  say "[dry-run] would: FAMILIA_HERMES_CONTEXT_LENGTH=$CTX FAMILIA_HERMES_BASE_URL=http://127.0.0.1:${PORT}/v1 bash $HERMES --client webapp --yes"
   say "[dry-run] would poll hermes output for a webapp URL (no sleep+guessed port)"
-  say "[dry-run] would open the one-use webapp URL via termux-open-url (unless --no-open)"
+  [ "$NO_OPEN" = 1 ] && say "[dry-run] --no-open: would not launch a browser"
+  [ "$NO_OPEN" = 1 ] || say "[dry-run] would open the one-use webapp URL via termux-open-url"
   say "Office 3D / Hermes Desktop: run on a Linux or macOS host; phone uses webapp chat."
   exit 0
 fi
 
-export FAMILIA_MODEL="$MODEL_PATH"
+[ -n "$FAMILIA_START" ] || die "familia-start not found; run install/termux/install.sh first"
 
-# --- Serve the GGUF via familia-start (this is what loads the model) ---
-if [ -z "$FAMILIA_START" ]; then
-  die "familia-start not found; run install/termux/install.sh first (it installs the launcher that serves the GGUF)"
+# --- Expected model id for /v1/models checks (basename without .gguf) ---
+MODEL_EXPECT=$(basename "$MODEL_PATH" .gguf)
+
+server_serving_expected() {
+  command -v curl >/dev/null 2>&1 || return 1
+  # Prefer authenticated probe when a key file exists.
+  AUTH=""
+  if [ -f "$KEY_FILE" ]; then
+    K=$(tr -d '[:space:]' < "$KEY_FILE" 2>/dev/null || true)
+    [ -n "$K" ] && AUTH="Authorization: Bearer $K"
+  fi
+  body=$(curl -fsS -H "$AUTH" --max-time 2 "http://127.0.0.1:${PORT}/v1/models" 2>/dev/null) || return 1
+  printf '%s' "$body" | grep -q "$MODEL_EXPECT"
+}
+
+stop_familia_start_on_port() {
+  # Best-effort: kill listeners on PORT (Termux often has no fuser).
+  if command -v fuser >/dev/null 2>&1; then
+    fuser -k "${PORT}/tcp" 2>/dev/null || true
+  fi
+  pids=$(ps -o pid= -o args= 2>/dev/null | awk -v p="$PORT" '/llama-server/ && $0 ~ ("--port[= ]" p) {print $1}')
+  for pid in $pids; do
+    kill "$pid" 2>/dev/null || true
+  done
+  sleep 1
+}
+
+NEED_START=1
+if server_serving_expected; then
+  say "familia-start already serving $MODEL_EXPECT on 127.0.0.1:${PORT}; reusing"
+  NEED_START=0
+elif curl -fsS -o /dev/null --max-time 1 "http://127.0.0.1:${PORT}/health" 2>/dev/null \
+   || curl -fsS -o /dev/null --max-time 1 "http://127.0.0.1:${PORT}/v1/models" 2>/dev/null; then
+  say "port ${PORT} is up but not serving $MODEL_EXPECT; restarting familia-start"
+  stop_familia_start_on_port
 fi
-say "starting familia-start to serve $MODEL_PATH"
-FS_LOG=$(mktemp "${TMPDIR:-/tmp}/familia-start.XXXXXX")
-set +e
-"$FAMILIA_START" >"$FS_LOG" 2>&1 &
-FSPID=$!
-set -e
-# Readiness poll on the default familia-start port (9941).
-PORT="${FAMILIA_PORT:-9941}"
-i=0
-READY=0
-while [ "$i" -lt 30 ]; do
-  if command -v curl >/dev/null 2>&1; then
-    if curl -fsS -o /dev/null --max-time 1 "http://127.0.0.1:${PORT}/health" 2>/dev/null \
-       || curl -fsS -o /dev/null --max-time 1 "http://127.0.0.1:${PORT}/v1/models" 2>/dev/null; then
+
+# Readiness budget scales with model size (bytes -> seconds, capped).
+MODEL_BYTES=$(wc -c < "$MODEL_PATH" | tr -d ' ')
+# ~1s per 8 MiB, min 30s, max 300s (a few minutes for large GGUFs).
+READY_MAX=$(( MODEL_BYTES / (8 * 1024 * 1024) ))
+[ "$READY_MAX" -lt 30 ] && READY_MAX=30
+[ "$READY_MAX" -gt 300 ] && READY_MAX=300
+
+FSPID=""
+if [ "$NEED_START" = 1 ]; then
+  say "starting familia-start to serve $MODEL_PATH (ctx=$CTX, ready wait up to ${READY_MAX}s)"
+  FS_LOG=$(mktemp "${TMPDIR:-/tmp}/familia-start.XXXXXX")
+  set +e
+  "$FAMILIA_START" >"$FS_LOG" 2>&1 &
+  FSPID=$!
+  set -e
+  i=0
+  READY=0
+  while [ "$i" -lt "$READY_MAX" ]; do
+    if server_serving_expected || curl -fsS -o /dev/null --max-time 1 "http://127.0.0.1:${PORT}/health" 2>/dev/null; then
       READY=1
       break
     fi
+    if [ -n "$FSPID" ] && ! kill -0 "$FSPID" 2>/dev/null; then
+      say "familia-start exited early; log:"
+      sed 's/^/  | /' "$FS_LOG" >&2 || true
+      rm -f "$FS_LOG"
+      die "familia-start failed to serve the model"
+    fi
+    sleep 1
+    i=$((i + 1))
+  done
+  rm -f "$FS_LOG"
+  if [ "$READY" = 1 ]; then
+    say "familia-start ready on 127.0.0.1:${PORT} (waited ${i}s)"
+  else
+    say "warning: familia-start not ready after ${READY_MAX}s; continuing to Hermes webapp"
   fi
-  if ! kill -0 "$FSPID" 2>/dev/null; then
-    say "familia-start exited early; log:"
-    sed 's/^/  | /' "$FS_LOG" >&2 || true
-    rm -f "$FS_LOG"
-    die "familia-start failed to serve the model"
-  fi
-  sleep 1
-  i=$((i + 1))
-done
-if [ "$READY" = 1 ]; then
-  say "familia-start ready on 127.0.0.1:${PORT} (pid $FSPID)"
-else
-  say "warning: familia-start not ready after ${i}s; continuing to Hermes webapp (pid $FSPID)"
 fi
-rm -f "$FS_LOG"
 
-# --- Hermes webapp UI (talks to the local stack; does not load the GGUF itself) ---
-say "starting Hermes webapp UI (client=webapp). Desktop+Office3D stay on a Linux/macOS host."
+say "starting Hermes webapp UI (ctx=$CTX base=http://127.0.0.1:${PORT}/v1). Desktop+Office3D stay on a Linux/macOS host."
 LOG=$(mktemp "${TMPDIR:-/tmp}/familia-hermes-webapp.XXXXXX")
 cleanup_log() { rm -f "$LOG"; }
 trap cleanup_log EXIT
@@ -221,10 +265,16 @@ HPID=$!
 set -e
 
 redact_log_tail() {
-  # Print last 40 lines; redact bearer tokens and one-time / tokenized URLs.
   tail -n 40 "$1" 2>/dev/null | sed -E \
-    -e 's/[Bb]earer[[:space:]]+[A-Za-z0-9._~+\/=\-]+/[REDACTED_BEARER]/g' \
+    -e 's/[Bb]earer[[:space:]]+[A-Za-z0-9._~+\/=-]+/[REDACTED_BEARER]/g' \
     -e 's/(token|access_token|api[_-]?key|one[_-]?time)(=|":[[:space:]]*")[^[:space:]&"]+/\1\2[REDACTED]/g' \
+    -e 's|/auth/[A-Za-z0-9._~+/=-]+|/auth/[REDACTED]|g' \
+    -e 's/#t=[^[:space:]&"]+/#t=[REDACTED]/g' \
+    -e 's/[?&]t=[^[:space:]&"]+/[REDACTED_T]/g' \
+    -e 's/?k=[^[:space:]&"]+/?k=[REDACTED]/g' \
+    -e 's/&k=[^[:space:]&"]+/\&k=[REDACTED]/g' \
+    -e 's/?code=[^[:space:]&"]+/?code=[REDACTED]/g' \
+    -e 's/&code=[^[:space:]&"]+/\&code=[REDACTED]/g' \
     -e 's|(https?://[^[:space:]]*[Tt]oken[^[:space:]]*)|[REDACTED_URL]|g' \
     -e 's|(https?://[^[:space:]]*one[_-]?time[^[:space:]]*)|[REDACTED_URL]|g' \
     -e 's|(https?://[^[:space:]]*[?][^[:space:]]*key=[^[:space:]]*)|[REDACTED_URL]|g' \
@@ -276,11 +326,11 @@ else
     say "termux-open-url not found; open $URL in a browser (install Termux:API matching your Termux build)"
   fi
 fi
-say "done. familia-start serves the GGUF; Hermes webapp is the phone UI."
+say "done. familia-start serves the GGUF (ctx=$CTX); Hermes webapp is the phone UI (same ctx)."
 say "  Hermes Desktop + Office 3D: on a Linux/macOS host,"
 say "  hermes plugins install office-3d && hermes plugins enable office-3d"
 if kill -0 "$HPID" 2>/dev/null; then
-  say "hermes webapp pid $HPID; familia-start pid ${FSPID:-unknown}"
+  say "hermes webapp pid $HPID; familia-start pid ${FSPID:-reused}"
 else
-  say "hermes exited early; familia-start pid ${FSPID:-unknown}"
+  say "hermes exited early; familia-start pid ${FSPID:-reused}"
 fi

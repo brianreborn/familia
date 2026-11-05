@@ -112,7 +112,11 @@ def test_instance_key_file_per_port(tmp_path, monkeypatch):
     env = {"XDG_CONFIG_HOME": str(tmp_path), "PORT": "9940"}
     assert fa.instance_key_file(env=env) == str(tmp_path / "familia" / "instances" / "9940" / "api-keys")
     assert fa.instance_key_file(port=9931, env=env).endswith("/instances/9931/api-keys")
-    assert fa.candidate_key_files(env=env)[0] == fa.instance_key_file(env=env)
+    cands = fa.candidate_key_files(env=env)
+    assert fa.termux_api_key_file(env=env) in cands
+    assert fa.instance_key_file(env=env) in cands
+    # Termux phone key is preferred over per-port instance keys.
+    assert cands.index(fa.termux_api_key_file(env=env)) < cands.index(fa.instance_key_file(env=env))
 
 
 def _serve_probe(code):

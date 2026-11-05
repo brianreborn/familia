@@ -15,8 +15,8 @@
 #   FAMILIA_CBL_REPO / FAMILIA_CBL_API / FAMILIA_CBL_DOWNLOAD_URL / FAMILIA_CBL_PIN_FILE
 #     each refused unless FAMILIA_CBL_ANDROID_SHA256 (+ TAG) is also set (pin bypass
 #     blocked). PIN_FILE and DOWNLOAD_URL warn loudly when allowed with an explicit sha.
-# Offline: a previously verified unpack (marker pin sha + llama-server size/mtime) is
-# reused without network. If size/mtime changed, the marker is treated as stale.
+# Offline: a previously verified unpack (marker pin sha + size/mtime manifest of
+# llama-server and every .so) is reused without network. If any entry changes, stale.
 # Prints the absolute path of the extracted runtime dir on stdout when successful
 # (dry-run prints the would-be path). Status messages go to stderr.
 set -eu
@@ -128,18 +128,72 @@ DL_DIR="$PREFIX_DIR/runtime/.download"
 MARKER="$DEST/.familia-cbl-pin"
 SERVER="$DEST/llama-server"
 
+# Manifest of llama-server + every .so next to it (size+mtime per file).
+write_runtime_manifest() {
+  python3 - "$DEST" "$MARKER" "$TAG" "$ANAME" "$SHA" "$PIN_FILE" <<'PY'
+import os, sys
+dest, marker, tag, asset, sha, pin = sys.argv[1:7]
+rows = []
+for name in sorted(os.listdir(dest)):
+    path = os.path.join(dest, name)
+    if not os.path.isfile(path):
+        continue
+    if name == "llama-server" or name.endswith(".so") or ".so." in name:
+        st = os.stat(path)
+        rows.append("%s %d %d" % (name, st.st_size, int(st.st_mtime)))
+if not any(r.startswith("llama-server ") for r in rows):
+    sys.stderr.write("familia-cbl-runtime: llama-server missing when writing manifest\n")
+    sys.exit(1)
+with open(marker, "w", encoding="utf-8") as f:
+    f.write("tag=%s\n" % tag)
+    f.write("asset=%s\n" % asset)
+    f.write("sha256=%s\n" % sha)
+    f.write("pin_file=%s\n" % pin)
+    f.write("manifest_begin\n")
+    for r in rows:
+        f.write(r + "\n")
+    f.write("manifest_end\n")
+PY
+}
+
 pin_matches() {
   [ -f "$MARKER" ] || return 1
   [ -x "$SERVER" ] || return 1
   got=$(awk -F= '/^sha256=/{print $2; exit}' "$MARKER" 2>/dev/null || true)
   [ "$got" = "$SHA" ] || return 1
-  # Cheap but meaningful: size+mtime of llama-server must still match the marker.
-  ms=$(awk -F= '/^llama_server_size=/{print $2; exit}' "$MARKER" 2>/dev/null || true)
-  mt=$(awk -F= '/^llama_server_mtime=/{print $2; exit}' "$MARKER" 2>/dev/null || true)
-  [ -n "$ms" ] && [ -n "$mt" ] || return 1
-  cs=$(file_size "$SERVER")
-  ct=$(file_mtime "$SERVER")
-  [ "$cs" = "$ms" ] && [ "$ct" = "$mt" ]
+  # Cheap but meaningful: size+mtime manifest of llama-server + every .so.
+  python3 - "$DEST" "$MARKER" <<'PY'
+import os, sys
+dest, marker = sys.argv[1], sys.argv[2]
+want = {}
+inside = False
+with open(marker, encoding="utf-8") as f:
+    for line in f:
+        line = line.rstrip("\n")
+        if line == "manifest_begin":
+            inside = True
+            continue
+        if line == "manifest_end":
+            inside = False
+            break
+        if not inside:
+            continue
+        parts = line.split()
+        if len(parts) != 3:
+            sys.exit(1)
+        want[parts[0]] = (int(parts[1]), int(parts[2]))
+if "llama-server" not in want:
+    sys.exit(1)
+have = {}
+for name in os.listdir(dest):
+    path = os.path.join(dest, name)
+    if not os.path.isfile(path):
+        continue
+    if name == "llama-server" or name.endswith(".so") or ".so." in name:
+        st = os.stat(path)
+        have[name] = (st.st_size, int(st.st_mtime))
+sys.exit(0 if have == want else 1)
+PY
 }
 
 if pin_matches; then
@@ -190,14 +244,7 @@ else
 fi
 [ -x "$SERVER" ] || chmod +x "$SERVER" || true
 [ -x "$SERVER" ] || die "llama-server not executable at $DEST"
-{
-  printf 'tag=%s\n' "$TAG"
-  printf 'asset=%s\n' "$ANAME"
-  printf 'sha256=%s\n' "$SHA"
-  printf 'pin_file=%s\n' "$PIN_FILE"
-  printf 'llama_server_size=%s\n' "$(file_size "$SERVER")"
-  printf 'llama_server_mtime=%s\n' "$(file_mtime "$SERVER")"
-} > "$MARKER"
+write_runtime_manifest
 ln -sfn "$TAG" "$CURRENT"
 rm -rf "$DL_DIR"
 say "installed $TAG -> $DEST (current -> $TAG); cleaned $DL_DIR"

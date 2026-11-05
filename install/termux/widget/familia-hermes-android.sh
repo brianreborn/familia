@@ -8,8 +8,12 @@
 #   ln -sf "$HOME/familia/repo/install/termux/widget/familia-hermes-android.sh" \
 #          ~/.shortcuts/familia-hermes-android
 # Then add the Termux:Widget on the home screen and tap "familia-hermes-android".
-# Never passes --yes. No sudo. Does not sideload an APK (see packaging/android/README.md).
+# Never passes --yes. Clears inherited INSTALL_ACK / FAMILIA_ACCEPT_LICENSES so a
+# tap cannot auto-accept. No sudo. Does not sideload an APK (see packaging/android/README.md).
 set -eu
+
+# A widget tap must never inherit an auto-accept from the environment.
+unset INSTALL_ACK FAMILIA_ACCEPT_LICENSES FAMILIA_ACCEPT_UNKNOWN_LICENSES 2>/dev/null || true
 
 # Resolve $0 through symlinks so a ~/.shortcuts link still finds the repo copy.
 SOURCE=$0
@@ -27,12 +31,9 @@ PREFIX_DIR="${FAMILIA_PREFIX:-$HOME/familia}"
 REPO="${PREFIX_DIR}/repo"
 SCRIPT="$REPO/install/termux/install-hermes-android.sh"
 
-# Prefer the known prefix install; then sibling of this (resolved) file.
 if [ ! -f "$SCRIPT" ]; then
   SCRIPT="$HERE/../install-hermes-android.sh"
 fi
-# ~/.shortcuts copy (not a symlink): walk up from HERE looking for familia layout,
-# then fall back to the known prefix paths above.
 if [ ! -f "$SCRIPT" ]; then
   for cand in \
       "$HERE/../install-hermes-android.sh" \
@@ -58,7 +59,6 @@ done
 # shellcheck disable=SC2086
 set -- $FILTERED
 
-# Already installed? Launch only — do not re-run the full install, and never --yes.
 if [ -x "$PREFIX_DIR/runtime/current/llama-server" ] \
    && { [ -x "${PREFIX:-/data/data/com.termux/files/usr}/bin/familia-start" ] \
         || [ -x "$PREFIX_DIR/bin/familia-start" ]; }; then
