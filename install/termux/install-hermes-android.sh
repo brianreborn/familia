@@ -13,8 +13,8 @@
 # Never pipe a download into a shell. No sudo. Nothing is pushed to phones from this script alone.
 set -eu
 
-HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-ROOT=$(CDPATH= cd -- "$HERE/../.." && pwd)
+HERE=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+ROOT=$(CDPATH='' cd -- "$HERE/../.." && pwd)
 DRY=0
 YES=0
 UNK=0

@@ -28,11 +28,11 @@
 set -eu
 
 PREFIX_DIR=${FAMILIA_PREFIX:-$HOME/familia}
-INSTALL_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" 2>/dev/null && pwd || true)
+INSTALL_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" 2>/dev/null && pwd || true)
 REPO_URL=${FAMILIA_REPO_URL:-https://github.com/brianreborn/familia.git}
 SOURCE_BRANCH=""
 if [ -f "$0" ]; then
-  SOURCE_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." 2>/dev/null && pwd || true)
+  SOURCE_ROOT=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." 2>/dev/null && pwd || true)
   if [ -n "$SOURCE_ROOT" ] && git -C "$SOURCE_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     SOURCE_BRANCH=$(git -C "$SOURCE_ROOT" branch --show-current 2>/dev/null || true)
   fi

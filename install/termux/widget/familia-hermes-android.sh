@@ -11,7 +11,7 @@ REPO="${FAMILIA_PREFIX:-$HOME/familia}/repo"
 SCRIPT="$REPO/install/termux/install-hermes-android.sh"
 if [ ! -f "$SCRIPT" ]; then
   # Fallback: this file may itself live inside a checkout
-  HERE=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
+  HERE=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." && pwd)
   SCRIPT="$HERE/install-hermes-android.sh"
 fi
 [ -f "$SCRIPT" ] || {
