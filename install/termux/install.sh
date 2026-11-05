@@ -99,6 +99,28 @@ if [ "$UNINSTALL" = 1 ]; then
   say "uninstalled"; exit 0
 fi
 
+# License gate FIRST: nothing is pkg-installed or cloned before this (docs/licenses.md).
+# python/licenses.py are not available yet on a bare Termux, so this is a plain-sh pre-gate;
+# the full per-item review (scripts/licenses.py gate) still runs right after the clone.
+if [ "$DRY" = 1 ]; then
+  say "[dry-run] would ask for license acceptance before any pkg install or git clone"
+elif [ "${FAMILIA_ACCEPT_LICENSES:-}" = yes ]; then
+  say "licenses: accepted by --yes / FAMILIA_ACCEPT_LICENSES=yes (full list still printed after clone)"
+else
+  [ -t 0 ] || die "licenses: no terminal to ask on; nothing was installed or downloaded (re-run in a terminal)"
+  cat >&2 <<'LIC'
+familia-termux: before anything is downloaded, this installer will fetch:
+  - Termux packages: git python getconf (+ llama-cpp, MIT; + openssh with --sshd)
+  - the familia repository and its pinned parts (pins.txt), each under its own license
+  - later, models chosen in graph.yaml (e.g. Llama 3.1 Community License, Dolphin 3.0 terms)
+The full per-item list is shown by scripts/licenses.py right after the clone.
+Type ACCEPT to continue; anything else stops with nothing installed.
+LIC
+  printf 'Your answer: ' >&2
+  IFS= read -r LIC_ANS || LIC_ANS=""
+  [ "$LIC_ANS" = ACCEPT ] || die "licenses not accepted; nothing was installed or downloaded"
+fi
+
 # Default Termux packages (Brian 2026-10-27): getconf + pytest were missing on phones.
 # Full list / --profile build: sh install/deps.sh or install/termux/deps.sh
 PKGS="git python getconf"
@@ -180,11 +202,11 @@ else
 fi
 
 REPO="$PREFIX_DIR/repo"
-# Licenses before anything else is downloaded (docs/licenses.md).
+# Full per-item license review (the pre-gate above ran before any download).
 if [ "$DRY" = 1 ]; then
   say "[dry-run] would show the license review: python $REPO/scripts/licenses.py gate"
 elif [ -f "$REPO/scripts/licenses.py" ]; then
-  python "$REPO/scripts/licenses.py" gate || die "licenses not accepted; nothing else was downloaded. Review: python $REPO/scripts/licenses.py review (or re-run with --yes, plus --accept-unknown)"
+  python "$REPO/scripts/licenses.py" gate || die "licenses not accepted; nothing else was fetched beyond Termux packages and the repo. Review: python $REPO/scripts/licenses.py review (or re-run with --yes, plus --accept-unknown)"
 fi
 # Every pinned part to its pin, together (scripts/sync_pins.py); again after each later git pull.
 if [ "$DRY" = 1 ]; then
