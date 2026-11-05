@@ -16,16 +16,20 @@ and may later remote into that host.
    explicit opt-in fallback (`FAMILIA_CBL_ANDROID_TAG` + `FAMILIA_CBL_ANDROID_SHA256`;
    see `fallback_opt_in` in the pin file). Download to a named file; never pipe a
    download into a shell. Offline re-runs reuse a previously verified unpack.
-   `FAMILIA_CBL_REPO`/`API` overrides are refused unless an explicit
-   `FAMILIA_CBL_ANDROID_SHA256` (+ TAG) is also given.
+   `FAMILIA_CBL_REPO`/`API`/`DOWNLOAD_URL`/`PIN_FILE` overrides are refused
+   unless an explicit `FAMILIA_CBL_ANDROID_SHA256` (+ TAG) is also given
+   (loud warning when allowed).
 4. Default GGUF chosen by **usable RAM** (`total - reserve_ram_mib`, negative
    usable clamped to 0); see `install/termux/phone-model-default.py --list-tiers`.
    The chosen `.gguf` is downloaded with its graph sha256 pin
-   (`install/termux/fetch-phone-model.py`) and the absolute path is passed to
-   Hermes / `familia-start`. Adjustable via `FAMILIA_PHONE_MODEL` /
-   `FAMILIA_PHONE_MODEL_TIER`.
-5. `bash scripts/hermes.sh --client webapp` and `termux-open-url` on the URL
-   from hermes output / a readiness poll (no sleep + guessed port).
+   (`install/termux/fetch-phone-model.py`). **`familia-start` loads and serves
+   that GGUF** (loopback, default port 9941); Hermes webapp is the chat UI on
+   top — it does not load the weights itself. Adjustable via
+   `FAMILIA_PHONE_MODEL` / `FAMILIA_PHONE_MODEL_TIER`.
+5. `familia-start` then `bash scripts/hermes.sh --client webapp`, and
+   `termux-open-url` on the URL from hermes output / a readiness poll (no sleep
+   + guessed port). Widget taps launch only and never pass `--yes` (licenses
+   stay interactive / already-accepted).
 
 Opt into Termux's `llama-cpp` package instead with `FAMILIA_RUNTIME=pkg` or
 `install/termux/install.sh --runtime pkg`.

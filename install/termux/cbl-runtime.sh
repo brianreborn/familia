@@ -12,9 +12,11 @@
 #   FAMILIA_CBL_ANDROID_TAG + FAMILIA_CBL_ANDROID_SHA256
 #     optional explicit override of the in-repo pin (BOTH required; loud warning).
 #     FAMILIA_CBL_ANDROID_ASSET optional with the override.
-#   FAMILIA_CBL_REPO / FAMILIA_CBL_API
-#     refused unless FAMILIA_CBL_ANDROID_SHA256 is also set (pin bypass blocked).
-# Offline: a previously verified unpack (marker matches pin sha) is reused without network.
+#   FAMILIA_CBL_REPO / FAMILIA_CBL_API / FAMILIA_CBL_DOWNLOAD_URL / FAMILIA_CBL_PIN_FILE
+#     each refused unless FAMILIA_CBL_ANDROID_SHA256 (+ TAG) is also set (pin bypass
+#     blocked). PIN_FILE and DOWNLOAD_URL warn loudly when allowed with an explicit sha.
+# Offline: a previously verified unpack (marker pin sha + llama-server size/mtime) is
+# reused without network. If size/mtime changed, the marker is treated as stale.
 # Prints the absolute path of the extracted runtime dir on stdout when successful
 # (dry-run prints the would-be path). Status messages go to stderr.
 set -eu
@@ -27,15 +29,14 @@ die() { say "error: $*"; exit 1; }
 
 HERE=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 ROOT=$(CDPATH='' cd -- "$HERE/../.." && pwd)
-PIN_FILE=${FAMILIA_CBL_PIN_FILE:-$ROOT/config/cbl-android-runtime.json}
-[ -f "$PIN_FILE" ] || die "missing pin file $PIN_FILE"
+DEFAULT_PIN="$ROOT/config/cbl-android-runtime.json"
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --dry-run|-n) DRY=1 ;;
     --prefix) shift; [ -n "${1:-}" ] || die "--prefix needs a directory"; PREFIX_DIR=$1 ;;
     -h|--help)
-      sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '2,24p' "$0" | sed 's/^# \{0,1\}//'
       exit 0 ;;
     *) die "unknown flag: $1 (see --help)" ;;
   esac
@@ -47,6 +48,39 @@ sha256_of() {
   elif command -v shasum >/dev/null 2>&1; then shasum -a 256 "$1" | awk '{print $1}'
   else die "need sha256sum or shasum"; fi
 }
+
+file_size() { wc -c < "$1" | tr -d ' '; }
+file_mtime() {
+  # Prefer GNU/BSD stat; fall back to ls.
+  if stat -c %Y "$1" >/dev/null 2>&1; then stat -c %Y "$1"
+  elif stat -f %m "$1" >/dev/null 2>&1; then stat -f %m "$1"
+  else ls -l "$1" | awk '{print $6$7$8}'; fi
+}
+
+# Explicit override required for any pin-bypass env (REPO/API/DOWNLOAD_URL/PIN_FILE).
+need_explicit_pin() {
+  what=$1
+  if [ -z "${FAMILIA_CBL_ANDROID_SHA256:-}" ] || [ -z "${FAMILIA_CBL_ANDROID_TAG:-}" ]; then
+    die "$what refused without FAMILIA_CBL_ANDROID_TAG + FAMILIA_CBL_ANDROID_SHA256. Do not bypass the in-repo pin ($DEFAULT_PIN)."
+  fi
+}
+
+PIN_FILE=$DEFAULT_PIN
+if [ -n "${FAMILIA_CBL_PIN_FILE:-}" ]; then
+  need_explicit_pin "FAMILIA_CBL_PIN_FILE"
+  say "WARNING: FAMILIA_CBL_PIN_FILE=${FAMILIA_CBL_PIN_FILE} with explicit TAG+SHA256 — verify this pin yourself (loud warn)."
+  PIN_FILE=$FAMILIA_CBL_PIN_FILE
+fi
+[ -f "$PIN_FILE" ] || die "missing pin file $PIN_FILE"
+
+if [ -n "${FAMILIA_CBL_DOWNLOAD_URL:-}" ]; then
+  need_explicit_pin "FAMILIA_CBL_DOWNLOAD_URL"
+  say "WARNING: FAMILIA_CBL_DOWNLOAD_URL set with explicit TAG+SHA256 — verify the URL yourself (loud warn)."
+fi
+if [ -n "${FAMILIA_CBL_REPO:-}" ] || [ -n "${FAMILIA_CBL_API:-}" ]; then
+  need_explicit_pin "FAMILIA_CBL_REPO/API"
+  say "WARNING: FAMILIA_CBL_REPO/API set with an explicit pin sha — verify the override yourself (loud warn)."
+fi
 
 # Load pin (tag, asset, sha256, repo, download_url) from JSON.
 eval "$(python3 - "$PIN_FILE" <<'PY'
@@ -64,14 +98,6 @@ PIN_TAG=$TAG
 PIN_ASSET=$ASSET
 PIN_SHA=$SHA256
 
-# Overrides: REPO/API alone must not bypass the pin.
-if [ -n "${FAMILIA_CBL_REPO:-}" ] || [ -n "${FAMILIA_CBL_API:-}" ]; then
-  if [ -z "${FAMILIA_CBL_ANDROID_SHA256:-}" ]; then
-    die "FAMILIA_CBL_REPO/API override refused without FAMILIA_CBL_ANDROID_SHA256 (and TAG). Pin is $PIN_FILE (tag=$PIN_TAG sha=${PIN_SHA}). Do not bypass the in-repo pin."
-  fi
-  say "WARNING: FAMILIA_CBL_REPO/API set with an explicit pin sha — verify the override yourself (loud warn)."
-fi
-
 if [ -n "${FAMILIA_CBL_ANDROID_TAG:-}" ] || [ -n "${FAMILIA_CBL_ANDROID_SHA256:-}" ]; then
   [ -n "${FAMILIA_CBL_ANDROID_TAG:-}" ] || die "FAMILIA_CBL_ANDROID_SHA256 set but FAMILIA_CBL_ANDROID_TAG missing"
   [ -n "${FAMILIA_CBL_ANDROID_SHA256:-}" ] || die "FAMILIA_CBL_ANDROID_TAG set but FAMILIA_CBL_ANDROID_SHA256 missing (explicit pin sha required)"
@@ -83,7 +109,6 @@ if [ -n "${FAMILIA_CBL_ANDROID_TAG:-}" ] || [ -n "${FAMILIA_CBL_ANDROID_SHA256:-
   SHA=$FAMILIA_CBL_ANDROID_SHA256
   ANAME=${FAMILIA_CBL_ANDROID_ASSET:-}
   if [ -z "$ANAME" ]; then
-    # Best-effort asset name from tag (android-bNNNN-N -> llama-bNNNN-bin-android-arm64-cbl1.tar.gz)
     ANAME=$(printf '%s' "$TAG" | sed -n 's/^android-\(b[0-9][0-9]*\)-[0-9][0-9]*$/llama-\1-bin-android-arm64-cbl1.tar.gz/p')
     [ -n "$ANAME" ] || die "could not infer asset name; set FAMILIA_CBL_ANDROID_ASSET"
   fi
@@ -101,24 +126,33 @@ DEST="$PREFIX_DIR/runtime/$TAG"
 CURRENT="$PREFIX_DIR/runtime/current"
 DL_DIR="$PREFIX_DIR/runtime/.download"
 MARKER="$DEST/.familia-cbl-pin"
+SERVER="$DEST/llama-server"
 
 pin_matches() {
   [ -f "$MARKER" ] || return 1
-  [ -x "$DEST/llama-server" ] || return 1
+  [ -x "$SERVER" ] || return 1
   got=$(awk -F= '/^sha256=/{print $2; exit}' "$MARKER" 2>/dev/null || true)
-  [ "$got" = "$SHA" ]
+  [ "$got" = "$SHA" ] || return 1
+  # Cheap but meaningful: size+mtime of llama-server must still match the marker.
+  ms=$(awk -F= '/^llama_server_size=/{print $2; exit}' "$MARKER" 2>/dev/null || true)
+  mt=$(awk -F= '/^llama_server_mtime=/{print $2; exit}' "$MARKER" 2>/dev/null || true)
+  [ -n "$ms" ] && [ -n "$mt" ] || return 1
+  cs=$(file_size "$SERVER")
+  ct=$(file_mtime "$SERVER")
+  [ "$cs" = "$ms" ] && [ "$ct" = "$mt" ]
 }
 
 if pin_matches; then
-  say "runtime $TAG already verified at $DEST (offline ok; pin sha matches)"
+  say "runtime $TAG already verified at $DEST (offline ok; pin sha + size/mtime match)"
   [ "$DRY" = 1 ] || ln -sfn "$TAG" "$CURRENT"
   printf '%s\n' "$DEST"
   exit 0
 fi
 
-# Stale unpack without matching marker: refuse to treat as verified.
-if [ -x "$DEST/llama-server" ] && [ ! -f "$MARKER" ]; then
-  say "found $DEST/llama-server without pin marker; will re-download and verify against pin"
+if [ -x "$SERVER" ] && [ -f "$MARKER" ]; then
+  say "marker present but llama-server size/mtime or pin sha mismatch; will re-download and verify"
+elif [ -x "$SERVER" ] && [ ! -f "$MARKER" ]; then
+  say "found $SERVER without pin marker; will re-download and verify against pin"
 fi
 
 if [ "$DRY" = 1 ]; then
@@ -141,7 +175,6 @@ GOT=$(sha256_of "$TGZ")
 [ "$GOT" = "$SHA" ] || die "sha256 mismatch vs in-repo pin for $ANAME: got $GOT want $SHA (pin $PIN_FILE)"
 say "sha256 ok vs pin ($GOT)"
 
-# Extract into a temp dir then flatten so llama-server sits at $DEST/llama-server.
 TMP=$(mktemp -d "${TMPDIR:-/tmp}/familia-cbl.XXXXXX")
 trap 'rm -rf "$TMP"' EXIT
 tar -xzf "$TGZ" -C "$TMP"
@@ -155,16 +188,17 @@ if cp -pR "$SRC"/. "$DEST"/ 2>/dev/null; then
 else
   cp -R "$SRC"/. "$DEST"/ || die "copy into $DEST failed"
 fi
-[ -x "$DEST/llama-server" ] || chmod +x "$DEST/llama-server" || true
-[ -x "$DEST/llama-server" ] || die "llama-server not executable at $DEST"
+[ -x "$SERVER" ] || chmod +x "$SERVER" || true
+[ -x "$SERVER" ] || die "llama-server not executable at $DEST"
 {
   printf 'tag=%s\n' "$TAG"
   printf 'asset=%s\n' "$ANAME"
   printf 'sha256=%s\n' "$SHA"
   printf 'pin_file=%s\n' "$PIN_FILE"
+  printf 'llama_server_size=%s\n' "$(file_size "$SERVER")"
+  printf 'llama_server_mtime=%s\n' "$(file_mtime "$SERVER")"
 } > "$MARKER"
 ln -sfn "$TAG" "$CURRENT"
-# Clean download cache after a verified unpack (keep disk free on phones).
 rm -rf "$DL_DIR"
 say "installed $TAG -> $DEST (current -> $TAG); cleaned $DL_DIR"
 printf '%s\n' "$DEST"

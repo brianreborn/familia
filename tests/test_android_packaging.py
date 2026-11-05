@@ -86,6 +86,9 @@ def test_cbl_runtime_pin_only_never_curl_pipe_sh():
     assert re.search(r"curl\b[^\n]*\s-o\s+", text)
     assert "FAMILIA_CBL_ANDROID_SHA256" in text
     assert "refused without" in text
+    assert "FAMILIA_CBL_PIN_FILE" in text
+    assert "FAMILIA_CBL_DOWNLOAD_URL" in text
+    assert "llama_server_size" in text
     assert "CDPATH='' cd" in text
 
 
@@ -131,8 +134,11 @@ def test_cbl_runtime_offline_reuses_verified(tmp_path):
     server = dest / "llama-server"
     server.write_text("#!/bin/sh\necho ok\n", encoding="utf-8")
     server.chmod(0o755)
+    size = server.stat().st_size
+    mtime = int(server.stat().st_mtime)
     (dest / ".familia-cbl-pin").write_text(
-        f"tag=android-b12032-1\nasset=x\nsha256={PINNED_SHA}\npin_file=x\n",
+        f"tag=android-b12032-1\nasset=x\nsha256={PINNED_SHA}\npin_file=x\n"
+        f"llama_server_size={size}\nllama_server_mtime={mtime}\n",
         encoding="utf-8",
     )
     env = dict(os.environ, FAMILIA_PREFIX=str(tmp_path))
@@ -304,10 +310,14 @@ def test_install_hermes_android_dry_run(tmp_path):
     assert "--require-llama31" in r.stderr
     assert "fetch-phone-model" in r.stderr or "would download" in r.stderr
     assert "bash" in r.stderr and "hermes.sh" in r.stderr
+    assert "familia-start" in r.stderr  # serves the GGUF
     assert "readiness" in r.stderr.lower() or "poll" in r.stderr.lower()
     assert "8642" not in r.stderr  # no guessed port
     assert "webapp" in r.stderr.lower()
-    assert "CDPATH='' cd" in open(os.path.join(TERMUX, "install-hermes-android.sh")).read()
+    hermes = open(os.path.join(TERMUX, "install-hermes-android.sh"), encoding="utf-8").read()
+    assert "CDPATH='' cd" in hermes
+    assert "redact" in hermes.lower() or "REDACTED" in hermes
+    assert "have_tty" in hermes or "Widget taps do not" in hermes
 
 
 def test_termux_install_dry_run_cbl_mentions_download(tmp_path):
@@ -349,13 +359,17 @@ def test_widget_launch_if_installed_and_path():
         os.path.join(TERMUX, "widget", "familia-hermes-android.sh"), encoding="utf-8"
     ).read()
     assert "install-hermes-android.sh" in text
-    assert "HERE/../install-hermes-android.sh" in text  # fixed termux/ sibling path
-    assert "install/termux/widget/../.." not in text or "HERE/../install-hermes" in text
-    # old bug: cd to ../.. from widget -> install/ (missing termux)
-    assert '/../.." && pwd)\n  SCRIPT="$HERE/install-hermes-android.sh"' not in text
+    assert "HERE/../install-hermes-android.sh" in text
     assert "--launch-only" in text
+    assert 'exec sh "$SCRIPT" --launch-only --yes' not in text
+    assert 'exec sh "$SCRIPT" --launch-only' in text
+    assert "does NOT accept licenses" in text
+    assert '-L "$SOURCE"' in text
     assert "~/.shortcuts" in text or "Termux:Widget" in text
     assert "CDPATH='' cd" in text
+    assert "ignoring" in text
+    assert "widget taps do not accept licenses" in text.lower() or "do not accept licenses" in text.lower()
+
 
 
 def test_android_docs_present():
@@ -368,4 +382,127 @@ def test_android_docs_present():
     assert "android-b12032-1" in doc
     assert "opt-in" in doc.lower() or "b11969" in doc
     assert "falling back to" not in doc
+    assert "familia-start" in doc and "loads and serves" in doc
+    assert "PIN_FILE" in doc or "DOWNLOAD_URL" in doc
     assert "note9" not in doc.lower()
+
+
+def test_cbl_runtime_refuses_fake_pin_file_without_sha(tmp_path):
+    fake = tmp_path / "fake-pin.json"
+    fake.write_text(
+        json.dumps(
+            {
+                "repo": "evil/repo",
+                "tag": "android-evil-1",
+                "asset": "evil.tar.gz",
+                "sha256": "0" * 64,
+                "download_url": "https://example.invalid/evil.tar.gz",
+            }
+        ),
+        encoding="utf-8",
+    )
+    env = dict(
+        os.environ,
+        FAMILIA_PREFIX=str(tmp_path / "prefix"),
+        FAMILIA_CBL_PIN_FILE=str(fake),
+    )
+    r = subprocess.run(
+        ["sh", os.path.join(TERMUX, "cbl-runtime.sh"), "--dry-run", "--prefix", str(tmp_path / "prefix")],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert r.returncode == 1, r.stderr
+    assert "refused" in r.stderr.lower()
+    assert "FAMILIA_CBL_PIN_FILE" in r.stderr
+    assert "FAMILIA_CBL_ANDROID_SHA256" in r.stderr
+
+
+def test_cbl_runtime_refuses_download_url_without_sha(tmp_path):
+    env = dict(
+        os.environ,
+        FAMILIA_PREFIX=str(tmp_path / "prefix"),
+        FAMILIA_CBL_DOWNLOAD_URL="https://example.invalid/evil.tar.gz",
+    )
+    r = subprocess.run(
+        ["sh", os.path.join(TERMUX, "cbl-runtime.sh"), "--dry-run", "--prefix", str(tmp_path / "prefix")],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert r.returncode == 1, r.stderr
+    assert "refused" in r.stderr.lower()
+    assert "FAMILIA_CBL_DOWNLOAD_URL" in r.stderr
+
+
+def test_cbl_runtime_mtime_mismatch_not_offline(tmp_path):
+    dest = tmp_path / "runtime" / "android-b12032-1"
+    dest.mkdir(parents=True)
+    server = dest / "llama-server"
+    server.write_text("#!/bin/sh\necho ok\n", encoding="utf-8")
+    server.chmod(0o755)
+    size = server.stat().st_size
+    (dest / ".familia-cbl-pin").write_text(
+        f"tag=android-b12032-1\nasset=x\nsha256={PINNED_SHA}\npin_file=x\n"
+        f"llama_server_size={size}\nllama_server_mtime=1\n",
+        encoding="utf-8",
+    )
+    env = dict(os.environ, FAMILIA_PREFIX=str(tmp_path))
+    # dry-run: should NOT take the offline short-circuit (mtime mismatch)
+    r = subprocess.run(
+        ["sh", os.path.join(TERMUX, "cbl-runtime.sh"), "--dry-run", "--prefix", str(tmp_path)],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert r.returncode == 0, r.stderr
+    assert "offline ok" not in r.stderr
+    assert "would download" in r.stderr or "mismatch" in r.stderr.lower()
+
+
+def test_fetch_phone_model_cheap_skips_rehash(tmp_path):
+    # Plant a file + matching marker; --cheap must accept without network.
+    models = tmp_path / "models"
+    models.mkdir()
+    # Use a tiny stub; marker claims the graph sha — cheap trusts marker+size+mtime.
+    # For a real sha match we'd need the real file; instead test marker miss then
+    # full path: write marker with wrong sha -> cheap fails into dry-run re-download.
+    dest = models / "SmolLM2-135M-Instruct-Q4_0.gguf"
+    dest.write_bytes(b"stub-not-real")
+    marker = {
+        "model_id": "smollm2-135m-q4-phone",
+        "sha256": "bcc3af2849ad6095af57e9b5cd43775256efdc66e306acb529172f92d0c04b03",
+        "size": dest.stat().st_size,
+        "mtime": int(dest.stat().st_mtime),
+        "file": dest.name,
+    }
+    (Path(str(dest) + ".familia-verified")).write_text(json.dumps(marker), encoding="utf-8")
+    r = subprocess.run(
+        [
+            sys.executable,
+            os.path.join(TERMUX, "fetch-phone-model.py"),
+            "--model",
+            "smollm2-135m-q4-phone",
+            "--prefix",
+            str(tmp_path),
+            "--cheap",
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert "cheap ok" in r.stderr
+    assert str(dest) in r.stdout
+
+
+def test_install_sh_done_line_mentions_familia_start_serves():
+    text = open(os.path.join(TERMUX, "install.sh"), encoding="utf-8").read()
+    assert "familia-start serves the GGUF" in text
+    assert "install-hermes-android.sh" in text

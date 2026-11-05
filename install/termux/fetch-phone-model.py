@@ -3,11 +3,13 @@
 
 Pins come from graph.yaml (sha256 + db id) and registry/models/<db>.json
 (repo, revision, file). Never trust an unverified download. Offline re-run
-reuses a local file whose sha256 already matches the pin.
+reuses a local file whose sha256 already matches the pin. A marker beside the
+file stores sha256 + size + mtime so --cheap / launch-only can skip a full
+re-hash when those are unchanged.
 
 Usage:
   python3 install/termux/fetch-phone-model.py [--model ID] [--prefix DIR]
-                                              [--dry-run] [--json]
+                                              [--dry-run] [--json] [--cheap]
 Env:
   FAMILIA_PHONE_MODEL   default model id when --model omitted
   FAMILIA_PREFIX        install root (default: $HOME/familia); models land in
@@ -88,8 +90,43 @@ def resolve_model(model_id: str) -> dict:
     }
 
 
+def marker_path(dest: str) -> str:
+    return dest + ".familia-verified"
+
+
+def write_marker(dest: str, info: dict) -> None:
+    st = os.stat(dest)
+    payload = {
+        "model_id": info["model_id"],
+        "sha256": info["sha256"],
+        "size": st.st_size,
+        "mtime": int(st.st_mtime),
+        "file": info["file"],
+    }
+    with open(marker_path(dest), "w", encoding="utf-8") as fh:
+        json.dump(payload, fh, indent=2)
+        fh.write("\n")
+
+
+def cheap_verified(dest: str, info: dict) -> bool:
+    """True when marker sha matches pin and size+mtime are unchanged (no re-hash)."""
+    mp = marker_path(dest)
+    if not os.path.isfile(dest) or not os.path.isfile(mp):
+        return False
+    try:
+        marker = json.load(open(mp, encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    if (marker.get("sha256") or "").lower() != info["sha256"]:
+        return False
+    if marker.get("model_id") != info["model_id"]:
+        return False
+    st = os.stat(dest)
+    return int(marker.get("size") or -1) == st.st_size and int(marker.get("mtime") or -1) == int(st.st_mtime)
+
+
 def download(url: str, dest: str) -> None:
-    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    os.makedirs(os.path.dirname(dest) or ".", exist_ok=True)
     tmp = dest + ".partial"
     req = urllib.request.Request(url, headers={"User-Agent": "familia-fetch-phone-model/1"})
     try:
@@ -114,6 +151,7 @@ def main(argv: list[str]) -> int:
     prefix = os.environ.get("FAMILIA_PREFIX", os.path.join(os.path.expanduser("~"), "familia"))
     dry = False
     as_json = False
+    cheap = False
     i = 0
     while i < len(argv):
         a = argv[i]
@@ -124,6 +162,8 @@ def main(argv: list[str]) -> int:
             dry = True
         elif a == "--json":
             as_json = True
+        elif a == "--cheap":
+            cheap = True
         elif a == "--model" and i + 1 < len(argv):
             model_id = argv[i + 1]
             i += 1
@@ -140,10 +180,19 @@ def main(argv: list[str]) -> int:
     dest = os.path.join(prefix, "models", info["file"])
     info["path"] = dest
 
+    if cheap and cheap_verified(dest, info):
+        say(f"cheap ok {dest} (marker sha + size/mtime unchanged; skipped full re-hash)")
+        if as_json:
+            print(json.dumps(info, indent=2))
+        else:
+            print(dest)
+        return 0
+
     if os.path.isfile(dest):
         got = sha256_file(dest)
         if got.lower() == info["sha256"]:
-            say(f"cached verified {dest} (sha256 ok; offline ok)")
+            write_marker(dest, info)
+            say(f"cached verified {dest} (sha256 ok; offline ok; marker refreshed)")
             if as_json:
                 print(json.dumps(info, indent=2))
             else:
@@ -169,6 +218,7 @@ def main(argv: list[str]) -> int:
         except OSError:
             pass
         die(f"sha256 mismatch for {info['file']}: got {got} want {info['sha256']}")
+    write_marker(dest, info)
     say(f"sha256 ok ({got})")
     if as_json:
         print(json.dumps(info, indent=2))

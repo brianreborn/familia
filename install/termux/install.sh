@@ -412,7 +412,7 @@ if [ -f "$REPO/scripts/install-gum.sh" ]; then
     sh "$REPO/scripts/install-gum.sh" --yes || say "warning: gum not installed; retry: sh $REPO/scripts/install-gum.sh"
   fi
 fi
-say "done. Put GGUFs in $PREFIX_DIR/models; start: FAMILIA_MODEL=x.gguf familia-start"
+say "done. familia-start serves the GGUF: FAMILIA_MODEL=/path/to/model.gguf familia-start (or sh $REPO/install/termux/install-hermes-android.sh to fetch the RAM-tier model + start familia-start + Hermes webapp)"
 say "runtime=$RUNTIME_KIND (cbl prebuilt default; --runtime pkg for Termux llama-cpp)"
 say "Hermes webapp one-tap: sh $REPO/install/termux/install-hermes-android.sh  (docs/android-hermes.md)"
 say "what now: run $REPO/familia for the Charm/gum home (Talk to the protomodel). Quick start: $REPO/QUICKSTART.md"
