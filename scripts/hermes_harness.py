@@ -671,6 +671,11 @@ def ensure_server(g, name, n, timeout=900):
 
     timeout is kept for API compatibility; cold start wait was removed with auto-spawn.
     """
+    import guardian_load  # fail closed: guardian weights must match the pinned sha256
+    try:
+        guardian_load.require(g, n)
+    except guardian_load.GuardianRefused as e:
+        die(f"node {name}: {e}; not launching")
     want = n["ctx"] // n["parallel"]
     p = props(n)
     if p is None:
