@@ -1,0 +1,9 @@
+DOLPHIN 3.0 MODEL TERMS (verbatim from the official model card)
+Source: https://huggingface.co/cognitivecomputations/Dolphin3.0-Llama3.1-8B/blob/main/README.md
+Card front matter: license: llama3.1  -> the Llama 3.1 Community License (shown separately) governs the weights.
+Dolphin 3.0 publishes no license of its own beyond that; the card adds this statement of responsibility:
+
+Dolphin belongs to YOU, it is your tool, an extension of your will.
+Just as you are personally responsible for what you do with a knife, gun, fire, car, or the internet, you are the creator and originator of any content you generate with Dolphin.
+
+https://erichartford.com/uncensored-models

@@ -240,6 +240,8 @@ def model_items(g):
             mc = mani.get(db)
             if mc and mc.get("notice"):
                 notes.append(f"manifest notice: {mc['notice']}")
+            for t in entry.get("additional_terms") or []:
+                notes.append(f"also: {t.get('name') or t.get('id')} ({t.get('link')})")
             if entry.get("base_model"):
                 notes.append(f"base model: {entry['base_model']} (its card may add terms)")
             if not lf:
@@ -247,7 +249,9 @@ def model_items(g):
                              + ("" if sdir and os.path.isdir(sdir) else " (snapshot not fetched here)"))
             it = item("model", f"{repo} @ {str(rev)[:12]}", use, entry.get("license"),
                       text=lf or (card if card and os.path.isfile(card) else None), link=link,
-                      notes="; ".join(notes) or None, extra_text=[card])
+                      notes="; ".join(notes) or None,
+                      extra_text=[card] + [os.path.join(ROOT, t["text"]) for t in entry.get("additional_terms") or []
+                                           if t.get("text")])
             if snap.get("gated"):
                 it["flags"].append("gated (you accepted terms on Hugging Face)")
                 if it["category"] == "permissive":

@@ -1072,9 +1072,13 @@
   "name": null,
   "summary": "llama3.1",
   "summary_source": "RavichandranJ/Dolphin3-Cyber-8B-GGUF card license",
-  "link": null,
-  "link_source": null,
-  "texts": null,
+  "link": "https://github.com/meta-llama/llama-models/blob/main/models/llama3_1/LICENSE",
+  "link_source": "meta-llama/llama-models models/llama3_1/LICENSE",
+  "texts": [
+   "packaging/android/licenses/LLAMA-3.1-COMMUNITY-LICENSE.txt",
+   "packaging/android/licenses/LLAMA-3.1-ACCEPTABLE-USE-POLICY.md",
+   "packaging/android/licenses/DOLPHIN-3.0-MODEL-TERMS.txt"
+  ],
   "obligations": null,
   "gated": false,
   "unknown": false,
@@ -1085,5 +1089,14 @@
    }
   ]
  },
- "repo_bytes": 69610098121
+ "repo_bytes": 69610098121,
+ "additional_terms": [
+  {
+   "id": "dolphin3.0-terms",
+   "name": "Dolphin 3.0 model terms (card statement of responsibility; weights under llama3.1)",
+   "link": "https://huggingface.co/cognitivecomputations/Dolphin3.0-Llama3.1-8B",
+   "text": "packaging/android/licenses/DOLPHIN-3.0-MODEL-TERMS.txt",
+   "source": "cognitivecomputations/Dolphin3.0-Llama3.1-8B card (base of huihui-ai abliterated -> RavichandranJ GGUF)"
+  }
+ ]
 }
