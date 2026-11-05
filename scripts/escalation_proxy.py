@@ -384,6 +384,12 @@ def make_handler(pool, log=sys.stderr):
 
         def _retry_once(self, esc, body, method, raw, note):
             url, _alias = esc.upstream()
+            # R2 (#245): health-check the fallback node before redialing; a node that
+            # was respawned (or is still down) must not be dialed blind.
+            cur = esc.current
+            if esc.g["nodes"].get(cur, {}).get("host") == esc.local_host and not esc.ensure(cur):
+                self._502(f"{note}\n[familia] {cur} failed health check; not retried")
+                return True
             orig = getattr(self, "_orig", None)
             if orig is not None:
                 # R2 (#245): resend the caller's original body with the fallback node's
