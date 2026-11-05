@@ -1,35 +1,41 @@
 #!/bin/sh
 # Download + verify a code-bootstraps-llama.cpp Android arm64 Termux prebuilt.
-# Prefer android-b12032-1; fall back to android-b11969-1 when that tag has no asset yet.
-# Never pipe a download into a shell. Download to a named file, verify sha256, then extract.
+# Pin lives in config/cbl-android-runtime.json (tag + asset + sha256). Verify ONLY
+# against that in-repo pin — never trust a release API digest as the authority.
+# Default pin is android-b12032-1. Older android-b11969-1 is an explicit opt-in
+# fallback only (FAMILIA_CBL_ANDROID_TAG + FAMILIA_CBL_ANDROID_SHA256); see
+# fallback_opt_in in the pin file. Never pipe a download into a shell.
 # Usage (sourced or executed):
 #   sh install/termux/cbl-runtime.sh [--dry-run] [--prefix DIR]
 # Env:
 #   FAMILIA_PREFIX / PREFIX_DIR   install root (default: $HOME/familia)
-#   FAMILIA_CBL_ANDROID_TAG      force a release tag (skips prefer/fallback)
-#   FAMILIA_CBL_REPO             owner/repo (default: brianreborn/code-bootstraps-llama.cpp)
-#   FAMILIA_CBL_API              override releases API base
+#   FAMILIA_CBL_ANDROID_TAG + FAMILIA_CBL_ANDROID_SHA256
+#     optional explicit override of the in-repo pin (BOTH required; loud warning).
+#     FAMILIA_CBL_ANDROID_ASSET optional with the override.
+#   FAMILIA_CBL_REPO / FAMILIA_CBL_API
+#     refused unless FAMILIA_CBL_ANDROID_SHA256 is also set (pin bypass blocked).
+# Offline: a previously verified unpack (marker matches pin sha) is reused without network.
 # Prints the absolute path of the extracted runtime dir on stdout when successful
 # (dry-run prints the would-be path). Status messages go to stderr.
 set -eu
 
 DRY=0
 PREFIX_DIR=${FAMILIA_PREFIX:-${PREFIX_DIR:-$HOME/familia}}
-REPO=${FAMILIA_CBL_REPO:-brianreborn/code-bootstraps-llama.cpp}
-API=${FAMILIA_CBL_API:-https://api.github.com/repos/$REPO/releases}
-PREFER_TAG=${FAMILIA_CBL_ANDROID_TAG:-}
-FALLBACK_TAG=android-b11969-1
-PRIMARY_TAG=android-b12032-1
 
 say() { printf 'familia-cbl-runtime: %s\n' "$*" >&2; }
 die() { say "error: $*"; exit 1; }
+
+HERE=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+ROOT=$(CDPATH='' cd -- "$HERE/../.." && pwd)
+PIN_FILE=${FAMILIA_CBL_PIN_FILE:-$ROOT/config/cbl-android-runtime.json}
+[ -f "$PIN_FILE" ] || die "missing pin file $PIN_FILE"
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --dry-run|-n) DRY=1 ;;
     --prefix) shift; [ -n "${1:-}" ] || die "--prefix needs a directory"; PREFIX_DIR=$1 ;;
     -h|--help)
-      sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'
       exit 0 ;;
     *) die "unknown flag: $1 (see --help)" ;;
   esac
@@ -42,87 +48,98 @@ sha256_of() {
   else die "need sha256sum or shasum"; fi
 }
 
-# Resolve tag + asset name + url + sha256 (from API digest and/or SHA256SUMS).
-# Prefer PREFER_TAG if set; else PRIMARY_TAG if it has an android arm64 tarball; else FALLBACK_TAG.
-pick_release() {
-  tags=""
-  if [ -n "$PREFER_TAG" ]; then
-    tags=$PREFER_TAG
-  else
-    tags="$PRIMARY_TAG $FALLBACK_TAG"
-  fi
-  for tag in $tags; do
-    url="$API/tags/$tag"
-    say "querying $url"
-    json=$(curl -fsSL -H 'Accept: application/vnd.github+json' "$url" 2>/dev/null) || {
-      say "tag $tag not reachable; trying next"
-      continue
-    }
-    sel=$(printf '%s' "$json" | python3 -c '
-import json, re, sys
-j = json.load(sys.stdin)
-assets = j.get("assets") or []
-hit = [a for a in assets if re.search(r"llama-b[0-9]+-bin-android-arm64.*\.tar\.gz$", a.get("name", ""))]
-if not hit:
-    sys.exit(0)
-a = hit[0]
-d = a.get("digest") or ""
-sha = d.split(":", 1)[1] if d.startswith("sha256:") else ""
-print(j.get("tag_name", ""), a["name"], a["browser_download_url"], sha)
-') || true
-    if [ -n "$sel" ]; then
-      # shellcheck disable=SC2086
-      set -- $sel
-      TAG=$1; ANAME=$2; AURL=$3; SHA=${4:-}
-      return 0
-    fi
-    say "tag $tag has no android-arm64 tarball asset; trying next"
-  done
-  return 1
-}
+# Load pin (tag, asset, sha256, repo, download_url) from JSON.
+eval "$(python3 - "$PIN_FILE" <<'PY'
+import json, shlex, sys
+p = json.load(open(sys.argv[1], encoding="utf-8"))
+for k in ("repo", "tag", "asset", "sha256", "download_url"):
+    if not p.get(k):
+        sys.stderr.write("familia-cbl-runtime: pin missing %s\n" % k)
+        sys.exit(1)
+    print("%s=%s" % (k.upper() if k != "download_url" else "PIN_URL", shlex.quote(str(p[k]))))
+PY
+)" || die "could not parse pin $PIN_FILE"
+PIN_REPO=$REPO
+PIN_TAG=$TAG
+PIN_ASSET=$ASSET
+PIN_SHA=$SHA256
 
-pick_release || die "no cbl Android arm64 release found (tried ${PREFER_TAG:-$PRIMARY_TAG then $FALLBACK_TAG})"
-[ -n "$SHA" ] || say "API digest missing for $ANAME; will require SHA256SUMS match"
+# Overrides: REPO/API alone must not bypass the pin.
+if [ -n "${FAMILIA_CBL_REPO:-}" ] || [ -n "${FAMILIA_CBL_API:-}" ]; then
+  if [ -z "${FAMILIA_CBL_ANDROID_SHA256:-}" ]; then
+    die "FAMILIA_CBL_REPO/API override refused without FAMILIA_CBL_ANDROID_SHA256 (and TAG). Pin is $PIN_FILE (tag=$PIN_TAG sha=${PIN_SHA}). Do not bypass the in-repo pin."
+  fi
+  say "WARNING: FAMILIA_CBL_REPO/API set with an explicit pin sha — verify the override yourself (loud warn)."
+fi
+
+if [ -n "${FAMILIA_CBL_ANDROID_TAG:-}" ] || [ -n "${FAMILIA_CBL_ANDROID_SHA256:-}" ]; then
+  [ -n "${FAMILIA_CBL_ANDROID_TAG:-}" ] || die "FAMILIA_CBL_ANDROID_SHA256 set but FAMILIA_CBL_ANDROID_TAG missing"
+  [ -n "${FAMILIA_CBL_ANDROID_SHA256:-}" ] || die "FAMILIA_CBL_ANDROID_TAG set but FAMILIA_CBL_ANDROID_SHA256 missing (explicit pin sha required)"
+  case "${FAMILIA_CBL_ANDROID_SHA256}" in
+    REPLACE*|replace*|"" ) die "FAMILIA_CBL_ANDROID_SHA256 looks unset/placeholder; refusing" ;;
+  esac
+  say "WARNING: overriding in-repo pin with FAMILIA_CBL_ANDROID_TAG=${FAMILIA_CBL_ANDROID_TAG} sha=${FAMILIA_CBL_ANDROID_SHA256} (was tag=$PIN_TAG sha=$PIN_SHA). Verify this yourself."
+  TAG=$FAMILIA_CBL_ANDROID_TAG
+  SHA=$FAMILIA_CBL_ANDROID_SHA256
+  ANAME=${FAMILIA_CBL_ANDROID_ASSET:-}
+  if [ -z "$ANAME" ]; then
+    # Best-effort asset name from tag (android-bNNNN-N -> llama-bNNNN-bin-android-arm64-cbl1.tar.gz)
+    ANAME=$(printf '%s' "$TAG" | sed -n 's/^android-\(b[0-9][0-9]*\)-[0-9][0-9]*$/llama-\1-bin-android-arm64-cbl1.tar.gz/p')
+    [ -n "$ANAME" ] || die "could not infer asset name; set FAMILIA_CBL_ANDROID_ASSET"
+  fi
+  REPO=${FAMILIA_CBL_REPO:-$PIN_REPO}
+  AURL=${FAMILIA_CBL_DOWNLOAD_URL:-https://github.com/$REPO/releases/download/$TAG/$ANAME}
+else
+  TAG=$PIN_TAG
+  SHA=$PIN_SHA
+  ANAME=$PIN_ASSET
+  REPO=$PIN_REPO
+  AURL=$PIN_URL
+fi
 
 DEST="$PREFIX_DIR/runtime/$TAG"
 CURRENT="$PREFIX_DIR/runtime/current"
 DL_DIR="$PREFIX_DIR/runtime/.download"
-SUMS_URL="https://github.com/$REPO/releases/download/$TAG/SHA256SUMS"
+MARKER="$DEST/.familia-cbl-pin"
 
-if [ -x "$DEST/llama-server" ]; then
-  say "runtime $TAG already installed at $DEST"
+pin_matches() {
+  [ -f "$MARKER" ] || return 1
+  [ -x "$DEST/llama-server" ] || return 1
+  got=$(awk -F= '/^sha256=/{print $2; exit}' "$MARKER" 2>/dev/null || true)
+  [ "$got" = "$SHA" ]
+}
+
+if pin_matches; then
+  say "runtime $TAG already verified at $DEST (offline ok; pin sha matches)"
   [ "$DRY" = 1 ] || ln -sfn "$TAG" "$CURRENT"
   printf '%s\n' "$DEST"
   exit 0
 fi
 
+# Stale unpack without matching marker: refuse to treat as verified.
+if [ -x "$DEST/llama-server" ] && [ ! -f "$MARKER" ]; then
+  say "found $DEST/llama-server without pin marker; will re-download and verify against pin"
+fi
+
 if [ "$DRY" = 1 ]; then
+  say "[dry-run] pin file $PIN_FILE tag=$TAG asset=$ANAME sha=$SHA"
   say "[dry-run] would download $AURL to $DL_DIR/$ANAME"
-  say "[dry-run] would download $SUMS_URL to $DL_DIR/SHA256SUMS.$TAG"
-  say "[dry-run] would verify sha256${SHA:+ (api $SHA)} and extract to $DEST"
+  say "[dry-run] would verify sha256 against in-repo pin only, extract to $DEST, clean $DL_DIR"
   printf '%s\n' "$DEST"
   exit 0
 fi
 
 command -v curl >/dev/null 2>&1 || die "curl required"
 command -v tar >/dev/null 2>&1 || die "tar required"
-mkdir -p "$DL_DIR" "$DEST"
+mkdir -p "$DL_DIR"
 TGZ="$DL_DIR/$ANAME"
-SUMS="$DL_DIR/SHA256SUMS.$TAG"
 
-say "download $ANAME -> $TGZ"
-curl -fL --retry 3 -o "$TGZ" "$AURL" || die "download failed: $AURL"
-say "download SHA256SUMS -> $SUMS"
-curl -fL --retry 3 -o "$SUMS" "$SUMS_URL" || die "SHA256SUMS download failed: $SUMS_URL"
+say "download $ANAME -> $TGZ (pin tag=$TAG)"
+curl -fL --retry 3 -o "$TGZ" "$AURL" || die "download failed: $AURL (offline re-run needs a previously verified unpack under $DEST)"
 
 GOT=$(sha256_of "$TGZ")
-SUM_LINE=$(awk -v f="$ANAME" '$2 == f {print $1; exit}' "$SUMS")
-[ -n "$SUM_LINE" ] || die "SHA256SUMS has no entry for $ANAME"
-[ "$GOT" = "$SUM_LINE" ] || die "sha256 mismatch vs SHA256SUMS for $ANAME: got $GOT want $SUM_LINE"
-if [ -n "$SHA" ] && [ "$GOT" != "$SHA" ]; then
-  die "sha256 mismatch vs API digest for $ANAME: got $GOT want $SHA"
-fi
-say "sha256 ok ($GOT)"
+[ "$GOT" = "$SHA" ] || die "sha256 mismatch vs in-repo pin for $ANAME: got $GOT want $SHA (pin $PIN_FILE)"
+say "sha256 ok vs pin ($GOT)"
 
 # Extract into a temp dir then flatten so llama-server sits at $DEST/llama-server.
 TMP=$(mktemp -d "${TMPDIR:-/tmp}/familia-cbl.XXXXXX")
@@ -131,8 +148,8 @@ tar -xzf "$TGZ" -C "$TMP"
 S=$(find "$TMP" -name llama-server -type f | head -n 1)
 [ -n "$S" ] || die "llama-server not found in $ANAME"
 SRC=$(dirname "$S")
-# Copy contents (including .so next to the binary) into DEST.
-# POSIX: no cp -a required; preserve mode with cp -p when available.
+rm -rf "$DEST"
+mkdir -p "$DEST"
 if cp -pR "$SRC"/. "$DEST"/ 2>/dev/null; then
   :
 else
@@ -140,6 +157,14 @@ else
 fi
 [ -x "$DEST/llama-server" ] || chmod +x "$DEST/llama-server" || true
 [ -x "$DEST/llama-server" ] || die "llama-server not executable at $DEST"
+{
+  printf 'tag=%s\n' "$TAG"
+  printf 'asset=%s\n' "$ANAME"
+  printf 'sha256=%s\n' "$SHA"
+  printf 'pin_file=%s\n' "$PIN_FILE"
+} > "$MARKER"
 ln -sfn "$TAG" "$CURRENT"
-say "installed $TAG -> $DEST (current -> $TAG)"
+# Clean download cache after a verified unpack (keep disk free on phones).
+rm -rf "$DL_DIR"
+say "installed $TAG -> $DEST (current -> $TAG); cleaned $DL_DIR"
 printf '%s\n' "$DEST"

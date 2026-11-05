@@ -12,9 +12,10 @@
 #   one line:
 #   p=familia && o=brianreborn && h=raw.githubusercontent.com && u=https://$h/$o/$p/main/install/termux/install.sh && curl -fsSLo install-$p.sh $u && sh ./install-$p.sh
 # Runtime default: code-bootstraps-llama.cpp Android arm64 prebuilt (FAMILIA_RUNTIME=cbl).
-# Prefers release tag android-b12032-1; falls back to android-b11969-1. Download to a named
-# file and verify sha256 (SHA256SUMS + API digest); never pipe a download into a shell. Opt into Termux's
-# `llama-cpp` package with --runtime pkg (or FAMILIA_RUNTIME=pkg).
+# Pin is config/cbl-android-runtime.json (android-b12032-1); verify ONLY against that sha256.
+# android-b11969-1 is an explicit opt-in fallback (TAG+SHA256 env). Download to a named file;
+# never pipe a download into a shell. Opt into Termux's `llama-cpp` package with
+# --runtime pkg (or FAMILIA_RUNTIME=pkg).
 # Flags: --dry-run  --uninstall [--purge]  --name NAME  --sshd (install+start openssh)
 # familia-start: loopback by default; FAMILIA_BIND=<non-loopback> requires FAMILIA_API_KEY_FILE (mode 0600, Termux $HOME, not /sdcard).
 #        --yes (accept the license review; summary still printed)  --accept-unknown

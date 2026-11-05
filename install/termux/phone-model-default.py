@@ -115,6 +115,9 @@ def main(argv: list[str]) -> int:
         return 2
 
     usable = (ram - reserve) if ram is not None else None
+    # Phones under ~6 GiB with reserve 5120 can yield negative usable; clamp to 0.
+    if usable is not None and usable < 0:
+        usable = 0
     if override:
         tier, model, note = "override", override, "FAMILIA_PHONE_MODEL"
     elif tier_override:

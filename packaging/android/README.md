@@ -34,6 +34,6 @@ keystore are available on a build host.
 ## Related
 
 - `install/termux/install.sh` — Termux install; **default runtime = cbl prebuilt**
-- `install/termux/cbl-runtime.sh` — sha256-verified download of `android-b12032-1` (fallback `android-b11969-1`)
+- `install/termux/cbl-runtime.sh` — pin-verified download from `config/cbl-android-runtime.json` (`android-b12032-1`; b11969 opt-in fallback)
 - `install/termux/phone-model-default.py` — RAM-tier default model (adjustable)
 - `docs/android-hermes.md` — product shape, host Desktop/Office 3D, inconsistencies

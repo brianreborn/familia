@@ -320,6 +320,7 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `install/termux/cbl-runtime.sh` | Download + sha256-verify code-bootstraps Android prebuilt; called by `install/termux/install.sh` | — | — |
 | `install/termux/install-hermes-android.sh` | Android one-tap: licenses + cbl + Hermes webapp (`docs/android-hermes.md`); Termux:Widget entry | — | — |
 | `install/termux/phone-model-default.py` | RAM-tier default phone model helper for `install-hermes-android.sh` | — | — |
+| `install/termux/fetch-phone-model.py` | Download + sha256-verify the RAM-tier phone GGUF for `install-hermes-android.sh` | — | — |
 | `install/termux/widget/familia-hermes-android.sh` | Termux:Widget shortcut wrapper around `install-hermes-android.sh` | — | — |
 | `install/freebsd/install-familia.sh` | FreeBSD ports/bootstrap installer (`docs/install-freebsd.md`) | — | — |
 | `install/freebsd/deps.sh` | FreeBSD OS-deps helper (opt-in `pkg install`) | — | — |

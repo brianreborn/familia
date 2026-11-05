@@ -7,16 +7,25 @@ and may later remote into that host.
 ## What you get on the phone
 
 1. Termux:Widget (or `install/termux/install-hermes-android.sh`) one-tap entry.
-2. License gate via `scripts/licenses.py`, including **Dolphin3** and **Llama 3.1**
-   Community License terms at minimum (`--add-model` + `--require-llama31`).
-3. Runtime = **code-bootstraps-llama.cpp** Android arm64 prebuilt by default
-   (`android-b12032-1`, falling back to `android-b11969-1` until b12032 is
-   published). Download to a named file, verify sha256 against `SHA256SUMS`
-   (and the GitHub API digest when present). Never pipe a download into a shell.
-4. Default GGUF chosen by **usable RAM** (`total - reserve_ram_mib`); see
-   `install/termux/phone-model-default.py --list-tiers`. Adjustable via
-   `FAMILIA_PHONE_MODEL` / `FAMILIA_PHONE_MODEL_TIER`.
-5. `scripts/hermes.sh --client webapp` and `termux-open-url` on the one-use link.
+2. License gate via `scripts/licenses.py` for the **selected model** (e.g. LFM3
+   on an A57) **plus Dolphin3** and **Llama 3.1** Community License terms
+   (`--add-model` ×2 + `--require-llama31`).
+3. Runtime = **code-bootstraps-llama.cpp** Android arm64 prebuilt by default.
+   Pin is `config/cbl-android-runtime.json` (**android-b12032-1** + its tarball
+   sha256). Verify **only** against that pin. Older **android-b11969-1** is an
+   explicit opt-in fallback (`FAMILIA_CBL_ANDROID_TAG` + `FAMILIA_CBL_ANDROID_SHA256`;
+   see `fallback_opt_in` in the pin file). Download to a named file; never pipe a
+   download into a shell. Offline re-runs reuse a previously verified unpack.
+   `FAMILIA_CBL_REPO`/`API` overrides are refused unless an explicit
+   `FAMILIA_CBL_ANDROID_SHA256` (+ TAG) is also given.
+4. Default GGUF chosen by **usable RAM** (`total - reserve_ram_mib`, negative
+   usable clamped to 0); see `install/termux/phone-model-default.py --list-tiers`.
+   The chosen `.gguf` is downloaded with its graph sha256 pin
+   (`install/termux/fetch-phone-model.py`) and the absolute path is passed to
+   Hermes / `familia-start`. Adjustable via `FAMILIA_PHONE_MODEL` /
+   `FAMILIA_PHONE_MODEL_TIER`.
+5. `bash scripts/hermes.sh --client webapp` and `termux-open-url` on the URL
+   from hermes output / a readiness poll (no sleep + guessed port).
 
 Opt into Termux's `llama-cpp` package instead with `FAMILIA_RUNTIME=pkg` or
 `install/termux/install.sh --runtime pkg`.
@@ -54,11 +63,11 @@ phone therefore lands in **medium**. Dolphin3 Q2_K (~3 GiB) needs the large tier
 |---|---|---|
 | Termux runtime | `install/termux/install.sh` header and `docs/install.md` said Termux `llama-cpp` pkg is the runtime | Default is now **cbl prebuilt**; pkg is `--runtime pkg` / `FAMILIA_RUNTIME=pkg` |
 | Click-and-go on phones | Some docs implied a finished APK / click path | Shipping path is **Termux:Widget** + scripts; APK is a documented follow-up (`packaging/android/README.md`) |
-| Android release pin | Release notes / mental model may still cite only b11969 | Installer prefers **android-b12032-1**, falls back to **android-b11969-1** when b12032 is missing |
+| Android release pin | Mental model may still cite b11969 only | Pin file **`config/cbl-android-runtime.json`** is authoritative (**android-b12032-1**); b11969-1 is explicit opt-in fallback |
 | Hermes Desktop on Android | Sprint goal named Desktop + Office 3D on Android | **Not native**; webapp on phone, Desktop/Office 3D on Linux/macOS host |
 
 ## Related
 
-- `install/termux/install.sh`, `cbl-runtime.sh`, `install-hermes-android.sh`
+- `config/cbl-android-runtime.json`, `install/termux/{install,cbl-runtime,install-hermes-android,fetch-phone-model}.*`
 - `packaging/android/README.md` (Widget now, APK later)
 - `docs/hermes-clients.md`, `docs/licenses.md`, `docs/ram-safety.md`
