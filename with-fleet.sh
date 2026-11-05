@@ -171,6 +171,9 @@ PY
     echo "with-fleet.sh: keep tools.allow: [] for model-only start (REQUIREMENTS double-disable)." >&2
     exit 1
   fi
+  # Fail closed: guardian GGUF must match the pinned sha256 (scripts/guardian_load.py).
+  python3 "$ROOT/scripts/guardian_load.py" --graph "$GRAPH" || {
+    echo "with-fleet.sh: guardian weights not verified; nothing started" >&2; exit 1; }
   python3 "$ROOT/scripts/licenses.py" gate || {
     rc=$?; echo "with-fleet.sh: licenses not accepted; nothing started" >&2; exit $rc; }
   echo "with-fleet.sh: OPERATOR START — guardian model node only ($onode); owned-fleet; tools.allow empty (seatbelt)" >&2

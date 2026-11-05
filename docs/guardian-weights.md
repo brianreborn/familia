@@ -86,3 +86,12 @@ a later host-ready step after Termux disk + runtime are measured.
 
 - [guardian-nodes.md](guardian-nodes.md) — seatbelts / launch-test
 - [pentest-models.md](pentest-models.md) — model survey
+
+## Load-time gate (fail closed)
+
+`scripts/guardian_load.py` runs before Hermes adopts a guardian node
+(`hermes_harness.ensure_server`) and before `with-fleet.sh --role guardian --operator-start`.
+Path: `$FAMILIA_GUARDIAN_GGUF`, else `models.dolphin3-cyber-8b-q2k.gguf`, else
+`~/.local/share/gguf/models/pentest/Dolphin3.0-Llama3.1-8B-abliterated.Q2_K.gguf`.
+The sha256 is pinned to `8944d35bdd613fe9279198b76eebeb9ab79c09a2bba526988ee3e3297862ea91`;
+a missing file, unreadable file, mismatch, or a graph sha that disagrees with the pin refuses the start.

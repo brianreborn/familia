@@ -254,6 +254,7 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/config_docs.py` | developer tool: generates/checks docs/config (CFG-* ids); not an end-user action |
 | `scripts/familia_auth.py` | library: per-instance API key headers for proxies and probes |
 | `scripts/guardian_ready.py` | offline guardian/defender readiness check (#147); developer/CI helper |
+| `scripts/guardian_load.py` | guardian GGUF sha256 gate (fail closed) called by hermes_harness.ensure_server; developer/CI helper |
 | `scripts/hosts_overlay.py` | library: local host connection overlay (#104) used by graph loaders |
 | `scripts/offline_improve.sh` | thin wrapper for scripts/offline_improve.py |
 | `scripts/osc7501.sh` | library: emits OSC 7501 status reports; sourced by setup_goals.sh / proto_chat.sh |
