@@ -1,0 +1,24 @@
+275-
+276-# Sessions, model switches and cron jobs reject models below this (too little working memory).
+277:MINIMUM_CONTEXT_LENGTH = 64_000
+278-# In-process (model, base_url) -> (result, monotonic_ts) memo for local probes: one
+279-# startup resolves the same model several times (banner, /model, compressor). Never persisted.
+--
+645-
+646-def _maybe_cache_local_context_length(model: str, base_url: str, length: int) -> None:
+647:    """Persist a probed local window only at/above MINIMUM_CONTEXT_LENGTH: sub-minimum windows are
+648-    still returned so agent_init can reject them, but must not be blessed into the disk cache."""
+649:    if length >= MINIMUM_CONTEXT_LENGTH:
+650-        save_context_length(model, base_url, length)
+651-
+--
+668-    if not (live_ctx and live_ctx > 0 and live_ctx != cached):
+669-        return cached
+670:    if live_ctx < MINIMUM_CONTEXT_LENGTH:
+671:        logger.info("Live local probe for %s@%s reports %s (< minimum %s); invalidating stale cache — agent init should reject", model, base_url, f"{live_ctx:,}", f"{MINIMUM_CONTEXT_LENGTH:,}")
+672-    else:
+673-        logger.info("Reconciling stale local cache entry %s@%s: %s -> %s (live probe)", model, base_url, f"{cached:,}", f"{live_ctx:,}")
+674-    _invalidate_cached_context_length(model, base_url)
+675:    if live_ctx >= MINIMUM_CONTEXT_LENGTH:
+676-        _maybe_cache_local_context_length(model, base_url, live_ctx)
+677-    return live_ctx

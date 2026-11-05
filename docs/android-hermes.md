@@ -33,19 +33,35 @@ and may later remote into that host.
    The chosen `.gguf` is downloaded with its graph sha256 pin
    (`install/termux/fetch-phone-model.py`). **`familia-start` loads and serves
    that GGUF** at that ctx (`FAMILIA_CTX`, loopback port 9941). Hermes webapp
-   uses the **same** `context_length` via `FAMILIA_HERMES_CONTEXT_LENGTH` (not
-   the desktop agent floor of 64000). Auth: Hermes reads
-   `~/.config/familia/api.key` (same file familia-start uses). Adjustable via
-   `FAMILIA_PHONE_MODEL` / `FAMILIA_PHONE_MODEL_TIER` / `FAMILIA_CTX`.
+   requires upstream `MINIMUM_CONTEXT_LENGTH` **64000** — phone tiers are
+   below that, so the one-tap path **refuses Hermes clearly** (see below).
+   Auth on Termux: `~/.config/familia/api.key` (same file familia-start uses).
+   Adjustable via `FAMILIA_PHONE_MODEL` / `FAMILIA_PHONE_MODEL_TIER` / `FAMILIA_CTX`.
 5. `familia-start` then `bash scripts/hermes.sh --client webapp`, and
    `termux-open-url` on the URL from hermes output / a readiness poll (no sleep
    + guessed port). A second tap reuses 9941 when it already serves the expected
    model, otherwise restarts it; readiness wait scales with GGUF size (up to a
    few minutes). Widget taps launch only, never pass `--yes`, and clear
-   inherited `INSTALL_ACK` / `FAMILIA_ACCEPT_LICENSES`.
+   inherited `INSTALL_ACK` / `FAMILIA_ACCEPT_LICENSES` /
+   `FAMILIA_ACCEPT_UNKNOWN_LICENSES` / `FAMILIA_LICENSE_ACCEPT_FILE`.
 
 Opt into Termux's `llama-cpp` package instead with `FAMILIA_RUNTIME=pkg` or
 `install/termux/install.sh --runtime pkg`.
+
+## Hermes-agent 64K floor (phones)
+
+Upstream **hermes-agent** sets `MINIMUM_CONTEXT_LENGTH = 64_000` in
+`agent/model_metadata.py` and rejects smaller windows at agent init for
+custom/llama.cpp providers (`agent/agent_init.py`). Maintainer guidance
+(NousResearch/hermes-agent#11096, #8430): `model.context_length` cannot lower
+that floor; the closed `HERMES_MIN_CONTEXT_LENGTH` env PR is not upstream.
+LM Studio has a provider-specific exception — not used on Termux.
+
+Phone RAM-tier ctx (2048–8192) therefore **cannot** run Hermes webapp. The
+installer fails clearly instead of hanging. `familia-start` can still serve the
+GGUF at the phone ctx for non-Hermes clients. For Hermes Desktop/webapp, use a
+Linux/macOS host with ctx ≥ 64000 (graph `coder` uses 65536).
+
 
 ## Host: Hermes Desktop + Office 3D
 

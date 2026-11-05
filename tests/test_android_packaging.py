@@ -136,6 +136,8 @@ def test_cbl_runtime_offline_reuses_verified(tmp_path):
     server.chmod(0o755)
     so = dest / "libfoo.so"
     so.write_bytes(b"so")
+    def _sha(p):
+        return __import__("hashlib").sha256(p.read_bytes()).hexdigest()
     size = server.stat().st_size
     mtime = int(server.stat().st_mtime)
     so_size = so.stat().st_size
@@ -143,8 +145,8 @@ def test_cbl_runtime_offline_reuses_verified(tmp_path):
     (dest / ".familia-cbl-pin").write_text(
         f"tag=android-b12032-1\nasset=x\nsha256={PINNED_SHA}\npin_file=x\n"
         f"manifest_begin\n"
-        f"libfoo.so {so_size} {so_mtime}\n"
-        f"llama-server {size} {mtime}\n"
+        f"libfoo.so {so_size} {so_mtime} {_sha(so)}\n"
+        f"llama-server {size} {mtime} {_sha(server)}\n"
         f"manifest_end\n",
         encoding="utf-8",
     )
@@ -323,12 +325,12 @@ def test_install_hermes_android_dry_run(tmp_path):
     assert DOLPHIN_DB in r.stderr or "Dolphin3" in r.stderr
     assert "--require-llama31" in r.stderr
     assert "fetch-phone-model" in r.stderr or "would download" in r.stderr
-    assert "bash" in r.stderr and "hermes.sh" in r.stderr
     assert "familia-start" in r.stderr  # serves the GGUF
+    assert "hermes.sh" in open(os.path.join(TERMUX, "install-hermes-android.sh"), encoding="utf-8").read()
     assert "ctx=" in r.stderr or "FAMILIA_CTX" in r.stderr or "CONTEXT_LENGTH" in r.stderr
-    assert "readiness" in r.stderr.lower() or "poll" in r.stderr.lower()
+    # Phone default ctx is < 64000: dry-run must REFUSE Hermes clearly (R-2).
+    assert "REFUSE" in r.stderr and "64000" in r.stderr
     assert "8642" not in r.stderr  # no guessed port
-    assert "webapp" in r.stderr.lower()
     hermes = open(os.path.join(TERMUX, "install-hermes-android.sh"), encoding="utf-8").read()
     assert "CDPATH='' cd" in hermes
     assert "redact" in hermes.lower() or "REDACTED" in hermes
@@ -384,7 +386,7 @@ def test_widget_launch_if_installed_and_path():
     assert "CDPATH='' cd" in text
     assert "ignoring" in text
     assert "widget taps do not accept licenses" in text.lower() or "do not accept licenses" in text.lower()
-    assert "unset INSTALL_ACK" in text or "unset INSTALL_ACK FAMILIA_ACCEPT_LICENSES" in text
+    assert "FAMILIA_LICENSE_ACCEPT_FILE" in text and "unset INSTALL_ACK" in text
 
 
 
@@ -401,6 +403,7 @@ def test_android_docs_present():
     assert "familia-start" in doc and "loads and serves" in doc
     assert "4096" in doc and "8192" in doc  # phone ctx tiers
     assert "api.key" in doc
+    assert "64000" in doc and "MINIMUM_CONTEXT_LENGTH" in doc
     assert "PIN_FILE" in doc or "DOWNLOAD_URL" in doc
     assert "note9" not in doc.lower()
 
@@ -464,10 +467,11 @@ def test_cbl_runtime_mtime_mismatch_not_offline(tmp_path):
     server.write_text("#!/bin/sh\necho ok\n", encoding="utf-8")
     server.chmod(0o755)
     size = server.stat().st_size
+    digest = __import__("hashlib").sha256(server.read_bytes()).hexdigest()
     (dest / ".familia-cbl-pin").write_text(
         f"tag=android-b12032-1\nasset=x\nsha256={PINNED_SHA}\npin_file=x\n"
         f"manifest_begin\n"
-        f"llama-server {size} 1\n"
+        f"llama-server {size} 1 {digest}\n"
         f"manifest_end\n",
         encoding="utf-8",
     )
@@ -537,8 +541,65 @@ def test_widget_clears_accept_env_and_never_yes():
 
 def test_redaction_patterns_in_hermes_android():
     text = open(os.path.join(TERMUX, "install-hermes-android.sh"), encoding="utf-8").read()
-    for pat in ("/auth/", "#t=", "?k=", "&k=", "?code=", "REDACTED"):
+    for pat in ("/auth/", "#t=", "[?]k=", "&k=", "[?]code=", "REDACTED"):
         assert pat in text
+    # Bare s/?k= must not appear (GNU sed -E rejects it).
+    assert "s/?k=" not in text
+    assert "s/?code=" not in text
+
+
+def test_redaction_runs_under_gnu_sed_and_busybox():
+    """R-1: actually execute the sed -E patterns (GNU sed; busybox when present)."""
+    script = r"""
+sed -E \
+  -e 's/[Bb]earer[[:space:]]+[A-Za-z0-9._~+\/=-]+/[REDACTED_BEARER]/g' \
+  -e 's|/auth/[A-Za-z0-9._~+/=-]+|/auth/[REDACTED]|g' \
+  -e 's/#t=[^[:space:]&"]+/#t=[REDACTED]/g' \
+  -e 's/[?]k=[^[:space:]&"]+/[?]k=[REDACTED]/g' \
+  -e 's/&k=[^[:space:]&"]+/\&k=[REDACTED]/g' \
+  -e 's/[?]code=[^[:space:]&"]+/[?]code=[REDACTED]/g' \
+  -e 's/&code=[^[:space:]&"]+/\&code=[REDACTED]/g'
+"""
+    sample = "Bearer SECRETtok visit /auth/xyzzy ?k=abc&code=99 #t=onetimenear\n"
+    r = subprocess.run(["sh", "-c", script], input=sample, capture_output=True, text=True, check=True)
+    assert "SECRETtok" not in r.stdout
+    assert "[REDACTED_BEARER]" in r.stdout
+    assert "/auth/[REDACTED]" in r.stdout
+    assert "[?]k=[REDACTED]" in r.stdout
+    assert "abc" not in r.stdout
+    # BusyBox when available
+    bb = subprocess.run(["sh", "-c", "command -v busybox"], capture_output=True, text=True)
+    if bb.returncode == 0 and bb.stdout.strip():
+        r2 = subprocess.run(
+            ["busybox", "sh", "-c", script],
+            input=sample, capture_output=True, text=True, check=True,
+        )
+        assert "[REDACTED_BEARER]" in r2.stdout
+        assert "SECRETtok" not in r2.stdout
+
+
+def test_hermes_refused_when_phone_ctx_below_64000(tmp_path):
+    env = dict(
+        os.environ,
+        FAMILIA_ACCEPT_LICENSES="yes",
+        FAMILIA_ACCEPT_UNKNOWN_LICENSES="yes",
+        FAMILIA_PREFIX=str(tmp_path / "prefix"),
+        FAMILIA_PHONE_MODEL="smollm2-135m-q4-phone",
+        FAMILIA_CTX="4096",
+    )
+    r = subprocess.run(
+        ["sh", os.path.join(TERMUX, "install-hermes-android.sh"), "--dry-run", "--yes", "--skip-install"],
+        cwd=ROOT, env=env, capture_output=True, text=True, timeout=60,
+    )
+    assert r.returncode == 0, r.stderr
+    assert "REFUSE" in r.stderr
+    assert "64000" in r.stderr
+    assert "MINIMUM_CONTEXT" in r.stderr or "hermes-agent" in r.stderr
+
+
+def test_widget_clears_license_accept_file():
+    text = open(os.path.join(TERMUX, "widget", "familia-hermes-android.sh"), encoding="utf-8").read()
+    assert "FAMILIA_LICENSE_ACCEPT_FILE" in text
 
 
 def test_dry_run_prints_no_open_only_when_set(tmp_path):
@@ -548,6 +609,7 @@ def test_dry_run_prints_no_open_only_when_set(tmp_path):
         FAMILIA_ACCEPT_UNKNOWN_LICENSES="yes",
         FAMILIA_PREFIX=str(tmp_path / "prefix"),
         FAMILIA_PHONE_MODEL="smollm2-135m-q4-phone",
+        FAMILIA_CTX="65536",  # meet Hermes floor so dry-run reaches open/no-open lines
     )
     r = subprocess.run(
         ["sh", os.path.join(TERMUX, "install-hermes-android.sh"), "--dry-run", "--yes", "--skip-install"],
@@ -563,3 +625,33 @@ def test_dry_run_prints_no_open_only_when_set(tmp_path):
     assert r2.returncode == 0, r2.stderr
     assert "--no-open" in r2.stderr
 
+
+
+def test_cbl_runtime_stale_names_file(tmp_path):
+    dest = tmp_path / "runtime" / "android-b12032-1"
+    dest.mkdir(parents=True)
+    server = dest / "llama-server"
+    server.write_text("#!/bin/sh\necho ok\n", encoding="utf-8")
+    server.chmod(0o755)
+    so = dest / "libfoo.so"
+    so.write_bytes(b"so")
+    import hashlib
+    def _sha(p):
+        return hashlib.sha256(p.read_bytes()).hexdigest()
+    # Wrong sha for libfoo.so, correct size/mtime
+    (dest / ".familia-cbl-pin").write_text(
+        f"tag=android-b12032-1\nasset=x\nsha256={PINNED_SHA}\npin_file=x\n"
+        f"manifest_begin\n"
+        f"libfoo.so {so.stat().st_size} {int(so.stat().st_mtime)} {'0'*64}\n"
+        f"llama-server {server.stat().st_size} {int(server.stat().st_mtime)} {_sha(server)}\n"
+        f"manifest_end\n",
+        encoding="utf-8",
+    )
+    env = dict(os.environ, FAMILIA_PREFIX=str(tmp_path))
+    r = subprocess.run(
+        ["sh", os.path.join(TERMUX, "cbl-runtime.sh"), "--dry-run", "--prefix", str(tmp_path)],
+        cwd=ROOT, env=env, capture_output=True, text=True, timeout=30,
+    )
+    assert r.returncode == 0, r.stderr
+    assert "offline ok" not in r.stderr
+    assert "libfoo.so" in r.stderr  # names the stale file

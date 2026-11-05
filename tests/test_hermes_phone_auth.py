@@ -59,10 +59,28 @@ def test_termux_api_key_in_candidate_files(tmp_path, monkeypatch):
     key.parent.mkdir(parents=True)
     key.write_text("phone-secret-key\n", encoding="utf-8")
     os.chmod(key, 0o600)
-    env = {"XDG_CONFIG_HOME": str(cfg)}
+    env = {"XDG_CONFIG_HOME": str(cfg), "TERMUX_VERSION": "0.118"}
+    assert fa.is_termux(env=env)
     assert fa.termux_api_key_file(env=env) == str(key)
     assert fa.api_key(env=env) == "phone-secret-key"
     assert str(key) in fa.candidate_key_files(env=env)
+
+
+def test_desktop_does_not_prefer_api_key(tmp_path):
+    """R-3: Linux/desktop keeps previous resolution — api.key is not preferred."""
+    cfg = tmp_path / "cfg"
+    key = cfg / "familia" / "api.key"
+    inst = cfg / "familia" / "instances" / "9931" / "api-keys"  # default port
+    key.parent.mkdir(parents=True)
+    inst.parent.mkdir(parents=True)
+    key.write_text("phone-only-key\n", encoding="utf-8")
+    inst.write_text("desktop-instance-key\n", encoding="utf-8")
+    env = {"XDG_CONFIG_HOME": str(cfg)}  # no TERMUX_VERSION
+    assert not fa.is_termux(env=env)
+    cands = fa.candidate_key_files(env=env)
+    assert str(key) not in cands
+    assert str(inst) in cands
+    assert fa.api_key(env=env) == "desktop-instance-key"
 
 
 def test_render_writes_0600_and_uses_termux_key(tmp_path, monkeypatch):
@@ -72,6 +90,7 @@ def test_render_writes_0600_and_uses_termux_key(tmp_path, monkeypatch):
     key.write_text("e2e-phone-key\n", encoding="utf-8")
     os.chmod(key, 0o600)
     monkeypatch.setenv("XDG_CONFIG_HOME", str(cfg_home))
+    monkeypatch.setenv("TERMUX_VERSION", "0.118")  # phone path
     # Isolate HERMES_HOME under tmp
     cache = tmp_path / "cache"
     monkeypatch.setenv("HOME", str(tmp_path))
@@ -105,6 +124,7 @@ def test_hermes_auth_headers_authorized_against_mock_server(tmp_path, monkeypatc
     key.write_text(secret + "\n", encoding="utf-8")
     os.chmod(key, 0o600)
     monkeypatch.setenv("XDG_CONFIG_HOME", str(cfg_home))
+    monkeypatch.setenv("TERMUX_VERSION", "0.118")
     monkeypatch.delenv("FAMILIA_API_KEY", raising=False)
     monkeypatch.delenv("LLAMA_API_KEY", raising=False)
     monkeypatch.delenv("API_KEY_FILE", raising=False)

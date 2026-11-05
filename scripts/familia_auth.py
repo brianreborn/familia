@@ -9,7 +9,9 @@ Key lookup order (first hit wins):
   2. LLAMA_API_KEY              set by code-bootstraps serve.sh (comma list; first key used)
   3. API_KEY_FILE / FAMILIA_API_KEY_FILE   file, one key per line, '#' comments
   4. Termux / phone key file    ${XDG_CONFIG_HOME:-~/.config}/familia/api.key
-                                (written by install/termux/install.sh; mode 0600)
+                                ONLY when running on Termux/phone (TERMUX_VERSION / Prefix /
+                                /data/data/com.termux). Desktop/Linux/FreeBSD keep the previous
+                                order and do not prefer this path.
   5. the per-instance key file  ${XDG_CONFIG_HOME:-~/.config}/familia/instances/<port>/api-keys
                                 (%APPDATA%\familia\instances\<port> on Windows; port = FAMILIA_PORT/PORT, 9931)
   6. legacy <bootstrap root>/.secrets/api-keys for FAMILIA_BOOTSTRAP_ROOT, ROOT/code-bootstraps-llama.cpp,
@@ -82,14 +84,28 @@ def termux_api_key_file(env=None):
     return os.path.join(base, "familia", "api.key")
 
 
+def is_termux(env=None):
+    """True on Termux/phone. Desktop/Linux/FreeBSD must stay on the previous key order."""
+    env = os.environ if env is None else env
+    if env.get("TERMUX_VERSION"):
+        return True
+    prefix = env.get("PREFIX") or ""
+    if prefix.startswith("/data/data/com.termux"):
+        return True
+    if os.path.isdir("/data/data/com.termux"):
+        return True
+    return False
+
+
 def candidate_key_files(root=ROOT, env=None):
     env = os.environ if env is None else env
     out = []
     for name in ("API_KEY_FILE", "FAMILIA_API_KEY_FILE"):
         if env.get(name):
             out.append(env[name])
-    # Termux phone key (before per-port instance keys).
-    out.append(termux_api_key_file(env=env))
+    # Prefer ~/.config/familia/api.key ONLY on Termux/phone (R-3 regression fix).
+    if is_termux(env):
+        out.append(termux_api_key_file(env=env))
     out.append(instance_key_file(env=env))
     roots = [env.get("FAMILIA_BOOTSTRAP_ROOT", ""),
              os.path.join(root, "code-bootstraps-llama.cpp"),

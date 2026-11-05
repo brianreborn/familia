@@ -65,6 +65,13 @@ TIER=$(printf '%s' "$MODEL_JSON" | python3 -c 'import json,sys; print(json.load(
 CTX=$(printf '%s' "$MODEL_JSON" | python3 -c 'import json,sys; print(json.load(sys.stdin)["ctx"])')
 say "default phone model tier=$TIER model=$MODEL ctx=$CTX (override with FAMILIA_PHONE_MODEL / FAMILIA_CTX)"
 
+# Hermes-agent upstream MINIMUM_CONTEXT_LENGTH is 64000 (agent/model_metadata.py).
+# There is no supported override for custom/llama.cpp providers (LM Studio only).
+# Phone RAM-tier ctx is often far below that — fail clearly instead of hanging.
+HERMES_MIN_CTX=64000
+hermes_ctx_ok() { [ "$CTX" -ge "$HERMES_MIN_CTX" ]; }
+
+
 SELECTED_DB=$(python3 -c '
 import os, sys, yaml
 root = sys.argv[1]; mid = sys.argv[2]
@@ -127,6 +134,11 @@ fi
 
 if [ "$LAUNCH_ONLY" = 1 ]; then
   say "launch-only: skipping install/termux/install.sh"
+  # Re-verify cbl runtime marker (size+mtime + sha256 of small .so files).
+  if [ -f "$HERE/cbl-runtime.sh" ]; then
+    FAMILIA_PREFIX="$PREFIX_DIR" sh "$HERE/cbl-runtime.sh" --prefix "$PREFIX_DIR" >/dev/null \
+      || die "cbl runtime marker stale or missing; re-run without --launch-only"
+  fi
 elif [ "$SKIP_INSTALL" = 1 ]; then
   say "skipping install/termux/install.sh (--skip-install)"
 else
@@ -168,11 +180,15 @@ fi
 
 if [ "$DRY" = 1 ]; then
   say "[dry-run] would: FAMILIA_MODEL=$MODEL_PATH FAMILIA_CTX=$CTX familia-start (serves the chosen .gguf on 127.0.0.1:$PORT)"
-  say "[dry-run] would: FAMILIA_HERMES_CONTEXT_LENGTH=$CTX FAMILIA_HERMES_BASE_URL=http://127.0.0.1:${PORT}/v1 bash $HERMES --client webapp --yes"
-  say "[dry-run] would poll hermes output for a webapp URL (no sleep+guessed port)"
-  [ "$NO_OPEN" = 1 ] && say "[dry-run] --no-open: would not launch a browser"
-  [ "$NO_OPEN" = 1 ] || say "[dry-run] would open the one-use webapp URL via termux-open-url"
-  say "Office 3D / Hermes Desktop: run on a Linux or macOS host; phone uses webapp chat."
+  if hermes_ctx_ok; then
+    say "[dry-run] would: FAMILIA_HERMES_CONTEXT_LENGTH=$CTX FAMILIA_HERMES_BASE_URL=http://127.0.0.1:${PORT}/v1 bash $HERMES --client webapp --yes"
+    say "[dry-run] would poll hermes output for a webapp URL (no sleep+guessed port)"
+    [ "$NO_OPEN" = 1 ] && say "[dry-run] --no-open: would not launch a browser"
+    [ "$NO_OPEN" = 1 ] || say "[dry-run] would open the one-use webapp URL via termux-open-url"
+  else
+    say "[dry-run] would REFUSE Hermes webapp: ctx=$CTX < hermes-agent MINIMUM_CONTEXT_LENGTH=$HERMES_MIN_CTX (no supported override for custom/llama.cpp; see docs/android-hermes.md)"
+  fi
+  say "Office 3D / Hermes Desktop: run on a Linux or macOS host with ctx>=$HERMES_MIN_CTX; phone familia-start can still serve the GGUF."
   exit 0
 fi
 
@@ -183,13 +199,22 @@ MODEL_EXPECT=$(basename "$MODEL_PATH" .gguf)
 
 server_serving_expected() {
   command -v curl >/dev/null 2>&1 || return 1
-  # Prefer authenticated probe when a key file exists.
-  AUTH=""
+  # Auth header via 0600 temp file (curl -H @file) — never put the key on argv.
+  _hdr=""
+  body=""
   if [ -f "$KEY_FILE" ]; then
     K=$(tr -d '[:space:]' < "$KEY_FILE" 2>/dev/null || true)
-    [ -n "$K" ] && AUTH="Authorization: Bearer $K"
+    if [ -n "$K" ]; then
+      _hdr=$(mktemp "${TMPDIR:-/tmp}/familia-auth-hdr.XXXXXX") || return 1
+      chmod 600 "$_hdr"
+      printf 'Authorization: Bearer %s\n' "$K" > "$_hdr"
+      body=$(curl -fsS -H "@${_hdr}" --max-time 2 "http://127.0.0.1:${PORT}/v1/models" 2>/dev/null) || { rm -f "$_hdr"; return 1; }
+      rm -f "$_hdr"
+    fi
   fi
-  body=$(curl -fsS -H "$AUTH" --max-time 2 "http://127.0.0.1:${PORT}/v1/models" 2>/dev/null) || return 1
+  if [ -z "$body" ]; then
+    body=$(curl -fsS --max-time 2 "http://127.0.0.1:${PORT}/v1/models" 2>/dev/null) || return 1
+  fi
   printf '%s' "$body" | grep -q "$MODEL_EXPECT"
 }
 
@@ -254,6 +279,9 @@ if [ "$NEED_START" = 1 ]; then
   fi
 fi
 
+if ! hermes_ctx_ok; then
+  die "Hermes webapp refused on this phone: FAMILIA_CTX=$CTX is below hermes-agent MINIMUM_CONTEXT_LENGTH=$HERMES_MIN_CTX. Upstream hermes-agent (agent/model_metadata.py) hard-rejects smaller windows for custom/llama.cpp providers; model.context_length cannot lower that floor (NousResearch/hermes-agent#11096, #8430). familia-start can still serve the GGUF at ctx=$CTX for non-Hermes clients. Use a Linux/macOS host with ctx>=$HERMES_MIN_CTX for Hermes Desktop/webapp, or raise FAMILIA_CTX only if the phone has RAM for it (usually not). See docs/android-hermes.md."
+fi
 say "starting Hermes webapp UI (ctx=$CTX base=http://127.0.0.1:${PORT}/v1). Desktop+Office3D stay on a Linux/macOS host."
 LOG=$(mktemp "${TMPDIR:-/tmp}/familia-hermes-webapp.XXXXXX")
 cleanup_log() { rm -f "$LOG"; }
@@ -265,20 +293,23 @@ HPID=$!
 set -e
 
 redact_log_tail() {
+  # GNU sed -E: a bare ? is a quantifier — use [?] for a literal question mark.
+  # BusyBox sed -E accepts the same character-class form.
+  # Do not append || true to the sed pipeline: a pattern error must surface.
   tail -n 40 "$1" 2>/dev/null | sed -E \
     -e 's/[Bb]earer[[:space:]]+[A-Za-z0-9._~+\/=-]+/[REDACTED_BEARER]/g' \
     -e 's/(token|access_token|api[_-]?key|one[_-]?time)(=|":[[:space:]]*")[^[:space:]&"]+/\1\2[REDACTED]/g' \
     -e 's|/auth/[A-Za-z0-9._~+/=-]+|/auth/[REDACTED]|g' \
     -e 's/#t=[^[:space:]&"]+/#t=[REDACTED]/g' \
     -e 's/[?&]t=[^[:space:]&"]+/[REDACTED_T]/g' \
-    -e 's/?k=[^[:space:]&"]+/?k=[REDACTED]/g' \
+    -e 's/[?]k=[^[:space:]&"]+/[?]k=[REDACTED]/g' \
     -e 's/&k=[^[:space:]&"]+/\&k=[REDACTED]/g' \
-    -e 's/?code=[^[:space:]&"]+/?code=[REDACTED]/g' \
+    -e 's/[?]code=[^[:space:]&"]+/[?]code=[REDACTED]/g' \
     -e 's/&code=[^[:space:]&"]+/\&code=[REDACTED]/g' \
     -e 's|(https?://[^[:space:]]*[Tt]oken[^[:space:]]*)|[REDACTED_URL]|g' \
     -e 's|(https?://[^[:space:]]*one[_-]?time[^[:space:]]*)|[REDACTED_URL]|g' \
     -e 's|(https?://[^[:space:]]*[?][^[:space:]]*key=[^[:space:]]*)|[REDACTED_URL]|g' \
-    | sed 's/^/  | /' >&2 || true
+    | sed 's/^/  | /' >&2
 }
 
 URL=""

@@ -112,11 +112,17 @@ def test_instance_key_file_per_port(tmp_path, monkeypatch):
     env = {"XDG_CONFIG_HOME": str(tmp_path), "PORT": "9940"}
     assert fa.instance_key_file(env=env) == str(tmp_path / "familia" / "instances" / "9940" / "api-keys")
     assert fa.instance_key_file(port=9931, env=env).endswith("/instances/9931/api-keys")
+    # Desktop/Linux: api.key is NOT in the candidate list (R-3).
     cands = fa.candidate_key_files(env=env)
-    assert fa.termux_api_key_file(env=env) in cands
     assert fa.instance_key_file(env=env) in cands
-    # Termux phone key is preferred over per-port instance keys.
-    assert cands.index(fa.termux_api_key_file(env=env)) < cands.index(fa.instance_key_file(env=env))
+    assert fa.termux_api_key_file(env=env) not in cands
+    assert not fa.is_termux(env=env)
+    # Termux/phone: api.key is preferred over per-port instance keys.
+    tenv = dict(env, TERMUX_VERSION="0.118")
+    assert fa.is_termux(env=tenv)
+    tcands = fa.candidate_key_files(env=tenv)
+    assert fa.termux_api_key_file(env=tenv) in tcands
+    assert tcands.index(fa.termux_api_key_file(env=tenv)) < tcands.index(fa.instance_key_file(env=tenv))
 
 
 def _serve_probe(code):

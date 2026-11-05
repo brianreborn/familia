@@ -15,8 +15,8 @@
 #   FAMILIA_CBL_REPO / FAMILIA_CBL_API / FAMILIA_CBL_DOWNLOAD_URL / FAMILIA_CBL_PIN_FILE
 #     each refused unless FAMILIA_CBL_ANDROID_SHA256 (+ TAG) is also set (pin bypass
 #     blocked). PIN_FILE and DOWNLOAD_URL warn loudly when allowed with an explicit sha.
-# Offline: a previously verified unpack (marker pin sha + size/mtime manifest of
-# llama-server and every .so) is reused without network. If any entry changes, stale.
+# Offline: a previously verified unpack (marker pin sha + size/mtime + sha256 of
+# llama-server and every .so) is reused without network. Stale messages name the file.
 # Prints the absolute path of the extracted runtime dir on stdout when successful
 # (dry-run prints the would-be path). Status messages go to stderr.
 set -eu
@@ -128,11 +128,22 @@ DL_DIR="$PREFIX_DIR/runtime/.download"
 MARKER="$DEST/.familia-cbl-pin"
 SERVER="$DEST/llama-server"
 
-# Manifest of llama-server + every .so next to it (size+mtime per file).
+# Manifest of llama-server + every .so: size+mtime + sha256 (hash small libs; skip GGUF).
 write_runtime_manifest() {
   python3 - "$DEST" "$MARKER" "$TAG" "$ANAME" "$SHA" "$PIN_FILE" <<'PY'
-import os, sys
+import hashlib, os, sys
 dest, marker, tag, asset, sha, pin = sys.argv[1:7]
+
+def sha256_file(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        while True:
+            b = f.read(1024 * 1024)
+            if not b:
+                break
+            h.update(b)
+    return h.hexdigest()
+
 rows = []
 for name in sorted(os.listdir(dest)):
     path = os.path.join(dest, name)
@@ -140,7 +151,9 @@ for name in sorted(os.listdir(dest)):
         continue
     if name == "llama-server" or name.endswith(".so") or ".so." in name:
         st = os.stat(path)
-        rows.append("%s %d %d" % (name, st.st_size, int(st.st_mtime)))
+        # Hash every .so (cheap). Also hash llama-server (not the big GGUF).
+        digest = sha256_file(path)
+        rows.append("%s %d %d %s" % (name, st.st_size, int(st.st_mtime), digest))
 if not any(r.startswith("llama-server ") for r in rows):
     sys.stderr.write("familia-cbl-runtime: llama-server missing when writing manifest\n")
     sys.exit(1)
@@ -161,10 +174,21 @@ pin_matches() {
   [ -x "$SERVER" ] || return 1
   got=$(awk -F= '/^sha256=/{print $2; exit}' "$MARKER" 2>/dev/null || true)
   [ "$got" = "$SHA" ] || return 1
-  # Cheap but meaningful: size+mtime manifest of llama-server + every .so.
+  # size+mtime first; then sha256 of small .so (+ llama-server). Name the stale file.
   python3 - "$DEST" "$MARKER" <<'PY'
-import os, sys
+import hashlib, os, sys
 dest, marker = sys.argv[1], sys.argv[2]
+
+def sha256_file(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        while True:
+            b = f.read(1024 * 1024)
+            if not b:
+                break
+            h.update(b)
+    return h.hexdigest()
+
 want = {}
 inside = False
 with open(marker, encoding="utf-8") as f:
@@ -179,32 +203,54 @@ with open(marker, encoding="utf-8") as f:
         if not inside:
             continue
         parts = line.split()
-        if len(parts) != 3:
+        if len(parts) == 4:
+            want[parts[0]] = (int(parts[1]), int(parts[2]), parts[3])
+        elif len(parts) == 3:
+            # legacy size+mtime-only marker: treat as stale so we rewrite with hashes
+            sys.stderr.write("familia-cbl-runtime: stale marker format for %s (need sha256); will re-verify\n" % parts[0])
             sys.exit(1)
-        want[parts[0]] = (int(parts[1]), int(parts[2]))
+        else:
+            sys.exit(1)
 if "llama-server" not in want:
     sys.exit(1)
-have = {}
+have_names = set()
 for name in os.listdir(dest):
     path = os.path.join(dest, name)
     if not os.path.isfile(path):
         continue
-    if name == "llama-server" or name.endswith(".so") or ".so." in name:
-        st = os.stat(path)
-        have[name] = (st.st_size, int(st.st_mtime))
-sys.exit(0 if have == want else 1)
+    if not (name == "llama-server" or name.endswith(".so") or ".so." in name):
+        continue
+    have_names.add(name)
+    st = os.stat(path)
+    if name not in want:
+        sys.stderr.write("familia-cbl-runtime: unexpected file %s not in marker; will re-verify\n" % name)
+        sys.exit(1)
+    wsize, wmtime, wsha = want[name]
+    if st.st_size != wsize or int(st.st_mtime) != wmtime:
+        sys.stderr.write("familia-cbl-runtime: stale marker for %s (size/mtime changed); will re-verify\n" % name)
+        sys.exit(1)
+    # Cheap hash of .so files and llama-server (not the big GGUF model).
+    got = sha256_file(path)
+    if got != wsha:
+        sys.stderr.write("familia-cbl-runtime: stale marker for %s (sha256 mismatch); will re-verify\n" % name)
+        sys.exit(1)
+missing = set(want) - have_names
+if missing:
+    sys.stderr.write("familia-cbl-runtime: stale marker for %s (missing on disk); will re-verify\n" % sorted(missing)[0])
+    sys.exit(1)
+sys.exit(0)
 PY
 }
 
 if pin_matches; then
-  say "runtime $TAG already verified at $DEST (offline ok; pin sha + size/mtime match)"
+  say "runtime $TAG already verified at $DEST (offline ok; pin sha + .so/llama-server hashes match)"
   [ "$DRY" = 1 ] || ln -sfn "$TAG" "$CURRENT"
   printf '%s\n' "$DEST"
   exit 0
 fi
 
 if [ -x "$SERVER" ] && [ -f "$MARKER" ]; then
-  say "marker present but llama-server size/mtime or pin sha mismatch; will re-download and verify"
+  say "marker present but stale (see file named above) or pin sha mismatch; will re-download and verify"
 elif [ -x "$SERVER" ] && [ ! -f "$MARKER" ]; then
   say "found $SERVER without pin marker; will re-download and verify against pin"
 fi

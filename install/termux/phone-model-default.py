@@ -19,8 +19,9 @@ Tiers (defaults — not a hard cap; operators may override):
 On a ~7.4 GiB Galaxy A57 with reserve 5120, usable is ~2.4 GiB -> medium (LFM3, ctx 4096).
 Negative usable (common below ~6 GiB total with the default reserve) is clamped to 0.
 Dolphin3 Q2_K (~3 GiB) needs the large tier (more RAM or a lower reserve).
-Desktop Hermes agents use min_ctx 64000; phones deliberately stay at these RAM-safe
-ctx values (familia-start + Hermes override via FAMILIA_CTX).
+Desktop Hermes agents require min_ctx 64000 (upstream hermes-agent floor). Phones
+stay at these RAM-safe ctx values for familia-start; Hermes webapp is refused clearly
+when FAMILIA_CTX < 64000 (see docs/android-hermes.md).
 
 Usage:
   python3 install/termux/phone-model-default.py [--ram-mib N] [--reserve-mib N]

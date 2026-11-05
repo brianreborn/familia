@@ -8,12 +8,12 @@
 #   ln -sf "$HOME/familia/repo/install/termux/widget/familia-hermes-android.sh" \
 #          ~/.shortcuts/familia-hermes-android
 # Then add the Termux:Widget on the home screen and tap "familia-hermes-android".
-# Never passes --yes. Clears inherited INSTALL_ACK / FAMILIA_ACCEPT_LICENSES so a
-# tap cannot auto-accept. No sudo. Does not sideload an APK (see packaging/android/README.md).
+# Never passes --yes. Clears inherited INSTALL_ACK / FAMILIA_ACCEPT_LICENSES /
+# FAMILIA_LICENSE_ACCEPT_FILE so a tap cannot auto-accept. No sudo. Does not sideload an APK (see packaging/android/README.md).
 set -eu
 
 # A widget tap must never inherit an auto-accept from the environment.
-unset INSTALL_ACK FAMILIA_ACCEPT_LICENSES FAMILIA_ACCEPT_UNKNOWN_LICENSES 2>/dev/null || true
+unset INSTALL_ACK FAMILIA_ACCEPT_LICENSES FAMILIA_ACCEPT_UNKNOWN_LICENSES FAMILIA_LICENSE_ACCEPT_FILE 2>/dev/null || true
 
 # Resolve $0 through symlinks so a ~/.shortcuts link still finds the repo copy.
 SOURCE=$0
