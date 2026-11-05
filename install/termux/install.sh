@@ -11,7 +11,9 @@
 #   sh        ./install-$p.sh
 #   one line:
 #   p=familia && o=brianreborn && h=raw.githubusercontent.com && u=https://$h/$o/$p/main/install/termux/install.sh && curl -fsSLo install-$p.sh $u && sh ./install-$p.sh
-# Runtime default: code-bootstraps-llama.cpp Android arm64 prebuilt (FAMILIA_RUNTIME=cbl).
+# Default is a THIN CLIENT: no local llama.cpp; the phone opens a Linux/macOS host's Hermes
+# webapp (docs/android.md). --runtime cbl|pkg (or FAMILIA_RUNTIME=cbl|pkg) opts in to a local
+# runtime; cbl = code-bootstraps-llama.cpp Android arm64 prebuilt is the runtime kind default.
 # Pin is config/cbl-android-runtime.json (android-b12032-1); verify ONLY against that sha256.
 # android-b11969-1 is an explicit opt-in fallback (TAG+SHA256 env). Download to a named file;
 # never pipe a download into a shell. Opt into Termux's `llama-cpp` package with
@@ -19,7 +21,7 @@
 # Flags: --dry-run  --uninstall [--purge]  --name NAME  --sshd (install+start openssh)
 # familia-start: loopback by default; FAMILIA_BIND=<non-loopback> requires FAMILIA_API_KEY_FILE (mode 0600, Termux $HOME, not /sdcard).
 #        --yes (accept the license review; summary still printed)  --accept-unknown
-#        --no-runtime  --runtime cbl|pkg  --force-host  --no-wakelock
+#        --runtime cbl|pkg (opt in; default off = thin client)  --no-runtime  --force-host  --no-wakelock
 #        --branch BRANCH  select the familia branch (default: checkout branch, else main)
 #        --no-path (do not write the $PREFIX/bin/familia shim; scripts/install-cli.sh)
 #   --name defaults to <model>-<last IPv4 octet> (or <model>-<boot_id prefix>), unique per phone;
@@ -44,8 +46,11 @@ SELECT_BRANCH=0
 # Phones: Android + apps leave only ~2-2.6 GiB free on a 7.4 GiB A57 (docs/ram-safety.md); policy, not measured.
 RESERVE_MIB=${FAMILIA_RESERVE_MIB:-5120}
 RAW_URL=${FAMILIA_RAW_URL:-https://raw.githubusercontent.com/brianreborn/familia}
-DRY=0; UNINSTALL=0; PURGE=0; NAME=""; SSHD=0; RUNTIME=1; FORCE_HOST=""; WAKE=1; NOPATH=0
-# cbl = code-bootstraps-llama.cpp Android prebuilt (default); pkg = Termux llama-cpp.
+DRY=0; UNINSTALL=0; PURGE=0; NAME=""; SSHD=0; RUNTIME=0; FORCE_HOST=""; WAKE=1; NOPATH=0
+# Thin client by default (Brian 2026-11-05: webapp-first, phone -> Linux/macOS host).
+# A local runtime is opt-in: --runtime cbl|pkg, or an explicit FAMILIA_RUNTIME=cbl|pkg.
+# cbl = code-bootstraps-llama.cpp Android prebuilt (default kind); pkg = Termux llama-cpp.
+[ -n "${FAMILIA_RUNTIME:-}" ] && RUNTIME=1
 RUNTIME_KIND=${FAMILIA_RUNTIME:-cbl}
 
 say() { echo "familia-termux: $*" >&2; }
@@ -61,7 +66,7 @@ while [ $# -gt 0 ]; do
     --name) shift; NAME=${1:-} ;;
     --sshd) SSHD=1 ;;
     --no-runtime) RUNTIME=0 ;;
-    --runtime) shift; [ -n "${1:-}" ] || die "--runtime needs cbl or pkg"; RUNTIME_KIND=$1 ;;
+    --runtime) shift; [ -n "${1:-}" ] || die "--runtime needs cbl or pkg"; RUNTIME_KIND=$1; RUNTIME=1 ;;
     --force-host) FORCE_HOST=--force ;;
     --no-wakelock) WAKE=0 ;;
     --no-path) NOPATH=1 ;;
@@ -106,11 +111,15 @@ if [ "$DRY" = 1 ]; then
   say "[dry-run] would ask for license acceptance before any pkg install or git clone"
 elif [ "${FAMILIA_ACCEPT_LICENSES:-}" = yes ]; then
   say "licenses: accepted by --yes / FAMILIA_ACCEPT_LICENSES=yes (full list still printed after clone)"
+elif [ -f "$PREFIX_DIR/repo/scripts/licenses.py" ] && command -v python >/dev/null 2>&1 \
+     && python "$PREFIX_DIR/repo/scripts/licenses.py" check --quiet >/dev/null 2>&1; then
+  say "licenses: current selection already accepted on this device (scripts/licenses.py check)"
 else
   [ -t 0 ] || die "licenses: no terminal to ask on; nothing was installed or downloaded (re-run in a terminal)"
   cat >&2 <<'LIC'
 familia-termux: before anything is downloaded, this installer will fetch:
-  - Termux packages: git python getconf (+ llama-cpp, MIT; + openssh with --sshd)
+  - Termux packages: git python getconf (+ openssh with --sshd; + llama-cpp only with --runtime pkg)
+  - with --runtime cbl: the code-bootstraps-llama.cpp Android arm64 prebuilt (MIT; pinned sha256)
   - the familia repository and its pinned parts (pins.txt), each under its own license
   - later, models chosen in graph.yaml (e.g. Llama 3.1 Community License, Dolphin 3.0 terms)
 The full per-item list is shown by scripts/licenses.py right after the clone.
@@ -235,6 +244,8 @@ if [ "$RUNTIME" = 1 ] && [ "$RUNTIME_KIND" = cbl ]; then
   fi
 elif [ "$RUNTIME" = 1 ] && [ "$RUNTIME_KIND" = pkg ]; then
   say "runtime=pkg: using Termux llama-cpp (llama-server on PATH)"
+else
+  say "thin client: no local llama.cpp runtime (opt in with --runtime cbl or --runtime pkg)"
 fi
 
 SELF_REPO=$(cd "$(dirname "$0")/../.." 2>/dev/null && pwd || true)
@@ -435,6 +446,10 @@ if [ -f "$REPO/scripts/install-gum.sh" ]; then
   fi
 fi
 say "done. familia-start serves the GGUF: FAMILIA_MODEL=/path/to/model.gguf familia-start (or sh $REPO/install/termux/install-hermes-android.sh to fetch the RAM-tier model + start familia-start + Hermes webapp)"
-say "runtime=$RUNTIME_KIND (cbl prebuilt default; --runtime pkg for Termux llama-cpp)"
+if [ "$RUNTIME" = 1 ]; then
+  say "runtime=$RUNTIME_KIND (cbl prebuilt default kind; --runtime pkg for Termux llama-cpp)"
+else
+  say "thin client: no local runtime; open a Linux/macOS host's Hermes webapp (docs/android.md). Serve locally with --runtime cbl|pkg"
+fi
 say "Hermes webapp one-tap: sh $REPO/install/termux/install-hermes-android.sh  (docs/android-hermes.md)"
 say "what now: run $REPO/familia for the Charm/gum home (Talk to the protomodel). Quick start: $REPO/QUICKSTART.md"

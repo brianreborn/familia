@@ -157,6 +157,9 @@ else
   [ "$DRY" = 1 ] && INSTALL_ARGS="$INSTALL_ARGS --dry-run"
   [ "$YES" = 1 ] && INSTALL_ARGS="$INSTALL_ARGS --yes"
   [ "$UNK" = 1 ] && INSTALL_ARGS="$INSTALL_ARGS --accept-unknown"
+  # This one-tap path serves a GGUF on the phone, so it opts in to a local runtime
+  # explicitly (install.sh defaults to a thin client with no runtime).
+  INSTALL_ARGS="$INSTALL_ARGS --runtime ${FAMILIA_RUNTIME:-cbl}"
   # shellcheck disable=SC2086
   sh "$HERE/install.sh" $INSTALL_ARGS || die "install/termux/install.sh failed"
 fi
