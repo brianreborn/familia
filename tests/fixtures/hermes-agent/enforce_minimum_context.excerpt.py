@@ -38,14 +38,3 @@ def _enforce_minimum_context(agent):
             f"which is below the minimum {MINIMUM_CONTEXT_LENGTH:,} required "
             f"by Hermes Agent.  {remedy}"
         )
-
-
-def _warn_nonagentic_hermes_model(agent):
-    # Nous Hermes 3/4 are chat models, not tool-call-tuned. cli.py show_banner() already
-    # warns on the CLI, so skip platform=="cli"; non-quiet non-CLI surfaces still get it.
-    if agent.quiet_mode or (agent.platform or "cli") == "cli":
-        return
-    with suppress(Exception):
-        from hermes_cli.model_switch import _check_hermes_model_warning
-        _hermes_warn = _check_hermes_model_warning(agent.model or "")
-        if _hermes_warn:
