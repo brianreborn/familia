@@ -332,9 +332,15 @@ if [ "$SSHD" = 1 ]; then
   if [ "$DRY" = 1 ]; then say "[dry-run] set PasswordAuthentication no in $SSHD_CFG"
   else
     [ -f "$SSHD_CFG" ] || { say "error: $SSHD_CFG missing; not starting sshd"; exit 1; }
-    sed -i -e 's/^[[:space:]#]*PasswordAuthentication[[:space:]].*$/PasswordAuthentication no/' "$SSHD_CFG"
+    # POSIX: no sed -i. Rewrite via temp + mv (Platform standing rule).
+    _sshd_tmp=$(mktemp "${TMPDIR:-${PREFIX:-}/tmp}/familia-sshd.XXXXXX") \
+      || { say "error: mktemp failed; not starting sshd"; exit 1; }
+    sed -e 's/^[[:space:]#]*PasswordAuthentication[[:space:]].*$/PasswordAuthentication no/' \
+        -e 's/^[[:space:]#]*KbdInteractiveAuthentication[[:space:]].*$/KbdInteractiveAuthentication no/' \
+        "$SSHD_CFG" > "$_sshd_tmp" \
+      || { rm -f "$_sshd_tmp"; say "error: sed rewrite of $SSHD_CFG failed"; exit 1; }
+    mv "$_sshd_tmp" "$SSHD_CFG" || { rm -f "$_sshd_tmp"; say "error: mv onto $SSHD_CFG failed"; exit 1; }
     grep -q '^PasswordAuthentication no$' "$SSHD_CFG" || printf '\nPasswordAuthentication no\n' >> "$SSHD_CFG"
-    sed -i -e 's/^[[:space:]#]*KbdInteractiveAuthentication[[:space:]].*$/KbdInteractiveAuthentication no/' "$SSHD_CFG"
     grep -q '^KbdInteractiveAuthentication no$' "$SSHD_CFG" || printf 'KbdInteractiveAuthentication no\n' >> "$SSHD_CFG"
     familia_sshd_verify "$SSHD_CFG" || exit 1
   fi
