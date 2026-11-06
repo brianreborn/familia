@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Put Charm gum.exe on this Windows user's PATH (no admin).
 .DESCRIPTION

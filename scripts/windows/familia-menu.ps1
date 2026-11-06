@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   familia menu for Windows. Same items as ./familia-menu.sh (scripts\menu-items.txt).
 .DESCRIPTION
