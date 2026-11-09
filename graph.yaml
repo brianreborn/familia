@@ -649,7 +649,7 @@ nodes:
     port: 9941
     cache_ram_mib: 1024          # >= per-slot prompt state (~426 MiB KV @ 64K q8_0)
   embed:
-    status: active
+    status: planned
     model: egemma2-q8
     role: embed
     host: miryam

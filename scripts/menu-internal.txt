@@ -96,3 +96,4 @@ scripts/task_suite_promote.py|promote gate for model configs (#119); used by ben
 scripts/task_suite_runner.py|fixed task suite runner (#119); used by bench/CI flows
 scripts/runtime_dir.py|helper module the launchers and admission ledger import (private runtime dir); not run directly
 scripts/runtime_dir.sh|helper sourced by the shell launchers (private runtime dir); not run directly
+install/freebsd/install-familia.sh|FreeBSD installer, invoked by curl/fetch or sh install-familia.sh

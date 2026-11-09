@@ -322,6 +322,7 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `install/linux/deps.sh` | Linux/macOS OS-deps helper (apt/dnf/pacman/zypper/brew); called via `install/deps.sh` | — | — |
 | `install/termux/deps.sh` | Termux OS-deps helper (`getconf`, pytest, …) | — | — |
 | `install/freebsd/deps.sh` | FreeBSD OS-deps helper (opt-in `pkg install`) | — | — |
+| `install/freebsd/install-familia.sh` | FreeBSD installer, invoked by curl/fetch or sh install-familia.sh | — | — |
 | `install/windows/deps.ps1` | Windows deps check + winget/choco hints | — | `install\windows\deps.ps1` |
 | `scripts/build_appimage.sh` | Operator AppImage packaging (not menu) | — | — |
 | `scripts/perf/box_multi_size_smoke.py` | Perf/dev multi-size smoke (not menu) | — | — |

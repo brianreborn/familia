@@ -1266,14 +1266,14 @@
    "sha256": "edeea94939cd1575c1f984c28982170c0e47caab66e4b80993fed992519573b4",
    "blob": "e4c8625bf8f849cc7d585464e1d741fc052c2140",
    "fetched": false,
-   "skipped": "weight file not used here (844 MB)"
+   "skipped": "weight file, fetched only by a full run (844 MB)"
   },
   "Laya-Q8_0.gguf": {
    "size": 449397600,
    "sha256": "c06528c5746d3bb8baa72a27938be95abbfd0b226f8471e8a9e365ed0bb066d2",
    "blob": "08be2755df929ee8cc09ce15ea9e01ae933a8a48",
    "fetched": false,
-   "skipped": "weight file not used here (449 MB)"
+   "skipped": "weight file, fetched only by a full run (449 MB)"
   },
   "README.md": {
    "size": 506,
@@ -1457,7 +1457,7 @@
    "sha256": "891102d372688fc2a094dac56a384bc537b87c63f21f9f3dac0be2b7cbc8d86c",
    "blob": "9bef25a12dcb807627a798837cfbb0ea73c0e38d",
    "fetched": false,
-   "skipped": "weight file not used here (842 MB)"
+   "skipped": "weight file, fetched only by a full run (842 MB)"
   },
   "multilingual/encoder/config.json": {
    "size": 1938,
@@ -1471,7 +1471,7 @@
    "sha256": "9d628fd971b700382ac6f65920a86f149777b2e748e0c955fb3b19695aa8f204",
    "blob": "b99c8bea239c53f6f6bce734557dc6c403fa6b3e",
    "fetched": false,
-   "skipped": "weight file not used here (643 MB)"
+   "skipped": "weight file, fetched only by a full run (643 MB)"
   },
   "multilingual/rl_agent_config.json": {
    "size": 472,
@@ -1541,7 +1541,7 @@
    "sha256": "4fa56de72383a9d3efa9cfa78955733c81b9fc8067a587ca4beb82c78107a24e",
    "blob": "3fb9c9678050815e76d0c847115919d7871ace3e",
    "fetched": false,
-   "skipped": "weight file not used here (842 MB)"
+   "skipped": "weight file, fetched only by a full run (842 MB)"
   },
   "typed-decisions/rl_agent_config.json": {
    "size": 847,
@@ -1566,19 +1566,20 @@
   }
  },
  "found_in": [
+  "add-model.sh --fetch",
   "manifest decision/default"
  ],
  "match": null,
  "local_check": {
   "host": "miryam",
   "sha256_ok": true,
-  "checked": "2026-10-19"
+  "checked": "2026-11-08"
  },
  "unknown": [
   "card_defaults: the card and generation_config.json state no sampling values"
  ],
  "warnings": null,
- "updated": "2026-10-19",
+ "updated": "2026-11-08",
  "by": "scripts/model_db.py",
  "gguf_meta": {
   "general.architecture": "modern-bert",
@@ -1734,7 +1735,7 @@
    "source": "pinned (manifest / database)"
   },
   "latest_revision": {
-   "effective": "22265007700297ba9e128297e82540cf28c5d7d4",
+   "effective": "845f314dd047fc2444a5289a4d50c1e1d59e27e1",
    "source": "HF API main"
   },
   "file": {
