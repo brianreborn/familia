@@ -452,6 +452,34 @@ def write_private(path, text):
     return path
 
 
+def ensure_private_dir(path):
+    """mkdir -p *path* 0700, then make sure it (new or pre-existing) is a real directory owned by
+    this user and tighten it to 0700. A symlink, a non-directory or another owner is refused
+    (SystemExit): sessions, state.db, logs and config.yaml (familia key) live below it. The checks
+    and the chmod go through one O_NOFOLLOW|O_DIRECTORY fd (fstat + fchmod), so a swap between
+    check and chmod cannot redirect the chmod."""
+    import stat
+    try:
+        os.makedirs(path, mode=0o700, exist_ok=True)
+    except FileExistsError:
+        pass   # a non-directory there: refused below
+    st = os.lstat(path)
+    if stat.S_ISLNK(st.st_mode):
+        die(f"refusing {path}: it is a symlink (expected a private directory)")
+    if not stat.S_ISDIR(st.st_mode):
+        die(f"refusing {path}: not a directory")
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        st = os.fstat(fd)
+        if st.st_uid != os.geteuid():
+            die(f"refusing {path}: owned by uid {st.st_uid}, not {os.geteuid()}")
+        if stat.S_IMODE(st.st_mode) != 0o700:
+            os.fchmod(fd, 0o700)
+    finally:
+        os.close(fd)
+    return path
+
+
 def write_config(path, cfg):
     write_private(path, CONFIG_HEADER + yaml.safe_dump(cfg, sort_keys=False))
 
@@ -742,7 +770,8 @@ def render(g, agent, user_cfg_path=os.path.join(USER_HOME, "config.yaml"), base_
     home = os.path.expanduser(f"~/.cache/familia/hermes-{agent}")
     if os.path.realpath(home) == os.path.realpath(USER_HOME):
         die("refusing to render into ~/.hermes")
-    os.makedirs(home, mode=0o700, exist_ok=True)
+    ensure_private_dir(os.path.dirname(home))   # ~/.cache/familia (B1: existing dirs too)
+    ensure_private_dir(home)                    # ~/.cache/familia/hermes-<agent>
     write_config(os.path.join(home, "config.yaml"), cfg)   # 0600: it holds the familia API key
     link_plugins(a, home)
     link_reaches(g, agent, home)
