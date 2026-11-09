@@ -127,8 +127,8 @@ if [ "$YES" != 1 ] && [ -r /dev/tty ] && [ -t 0 ]; then
 fi
 
 command -v tar >/dev/null 2>&1 || die "tar is required to extract $ASSET"
-TMP=$(mktemp -d "${TMPDIR:-/tmp}/familia-gum.XXXXXX") || die "mktemp failed"
-trap 'rm -rf "$TMP"' EXIT INT HUP TERM
+TMP=$(umask 077; mktemp -d "${TMPDIR:-/tmp}/grz.XXXXXX") || die "mktemp failed"
+trap 'rm -rf -- "$TMP"' EXIT; trap 'exit 130' INT HUP TERM
 
 say "downloading $URL"
 if command -v curl >/dev/null 2>&1; then

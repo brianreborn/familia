@@ -233,10 +233,14 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | script | why it's not in the menu |
 |---|---|
 | `install.sh` | bootstrap you run before familia is on disk (download, then sh ./install-familia.sh); inside a checkout use Set up -> Install |
+| `scripts/channel.py` | release-channel resolver (docs/release-channels.md); installers and hf_fetch call it, pick the channel with --channel or FAMILIA_CHANNEL |
+| `scripts/fleet_greeting.py` | fleet greeting helper; called by hermes.sh, proto_chat.sh and start_graph at startup |
 | `scripts/windows/familia-menu.ps1` | the Windows menu itself (started by familia.cmd) |
 | `scripts/monitor.sh` | the same console as ./familia-monitor, which the menu runs |
 | `scripts/hermes_harness.py` | always run through scripts/hermes.sh, which the menu runs |
 | `scripts/hermes_modes.py` | the graph/single-model front end scripts/hermes.sh execs; run hermes.sh |
+| `scripts/runtime_dir.py` | helper module the launchers and admission ledger import (private runtime dir); not run directly |
+| `scripts/runtime_dir.sh` | helper sourced by the shell launchers (private runtime dir); not run directly |
 | `install/windows/install.bat` | double-click wrapper for install\windows\install.ps1, which the Windows menu runs |
 | `start-green-roomz.sh` | guard stub; the real one is deployed onto the phone by android_start.sh |
 | `scripts/monitor/probe.py` | read-only probe the monitor pipes to each host over SSH |
@@ -262,6 +266,7 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/refuse_soname_skew.py` | pre-start guard called by scripts/serve.sh; fails closed on bin/lib skew |
 | `scripts/sec_assess.py` | operator-authorized security assessment mode (#116); deliberately not one click from the menu |
 | `scripts/swarm/bench.sh` | swarm /run bench entry point (#183); run by swarm workers, not people; see docs/swarm-bench.md |
+| `scripts/swarm/bench_idle.py` | opt-in run-when-idle trigger for scripts/swarm/bench.sh (per host:user, nice 19, CPU only); run by a user timer or crontab; see docs/swarm-bench.md |
 | `scripts/swarm/forge.sh` | swarm forge adapter library; sourced by swarm scripts |
 | `scripts/swarm/forge/forgejo.sh` | Forgejo adapter stub sourced by scripts/swarm/forge.sh |
 | `scripts/swarm/forge/github.sh` | GitHub adapter sourced by scripts/swarm/forge.sh |
@@ -318,11 +323,14 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `install/linux/deps.sh` | Linux/macOS OS-deps helper (apt/dnf/pacman/zypper/brew); called via `install/deps.sh` | — | — |
 | `install/termux/deps.sh` | Termux OS-deps helper (`getconf`, pytest, …) | — | — |
 | `install/freebsd/deps.sh` | FreeBSD OS-deps helper (opt-in `pkg install`) | — | — |
+| `install/freebsd/install-familia.sh` | FreeBSD installer, invoked by curl/fetch or sh install-familia.sh | — | — |
 | `install/windows/deps.ps1` | Windows deps check + winget/choco hints | — | `install\windows\deps.ps1` |
 | `scripts/build_appimage.sh` | Operator AppImage packaging (not menu) | — | — |
 | `scripts/perf/box_multi_size_smoke.py` | Perf/dev multi-size smoke (not menu) | — | — |
 | `scripts/familia_home.sh` | Charm/gum front door (`./familia`); legacy catalog is fallback only |
 | `scripts/proto_chat.sh` | protomodel REPL from gum home "Talk to the protomodel" |
+| `scripts/open_ui.sh` | open running llama web UI in default browser | — | — |
+| `scripts/ui_bridge.py` | terminal dashboard bridge inspecting running llama-ui slots and routes | — | — |
 | `scripts/find_models.sh` | guided model fetch from gum home "Find more models" |
 | `scripts/search_x.sh` | X/Twitter search via Agent-Reach from gum home |
 | `scripts/windows/familia-home.ps1` | Windows mirror of familia_home.sh (started by familia.cmd) |

@@ -549,7 +549,58 @@ def render(g, agent, user_cfg_path=os.path.join(USER_HOME, "config.yaml"), base_
         yaml.safe_dump(cfg, f, sort_keys=False)
     link_plugins(a, home)
     link_reaches(g, agent, home)
+    greet_soul(home)
     return home, base, n, name
+
+
+def _default_soul_text():
+    """hermes-agent's own DEFAULT_SOUL_MD (what it seeds into an empty HERMES_HOME), read as a literal
+    from hermes_cli/default_soul.py without importing hermes. None when no hermes tree is found."""
+    import ast
+    for sp in (HERMES_SP, os.environ.get("FAMILIA_HERMES_SRC"), SNAP_SP, FREEBSD_LIB):
+        f = os.path.join(sp, "hermes_cli", "default_soul.py") if sp else None
+        if not (f and os.path.isfile(f)):
+            continue
+        try:
+            for node in ast.parse(open(f, encoding="utf-8").read()).body:
+                if isinstance(node, ast.Assign) and any(getattr(t, "id", None) == "DEFAULT_SOUL_MD" for t in node.targets):
+                    v = ast.literal_eval(node.value)
+                    return v if isinstance(v, str) else None
+        except (OSError, SyntaxError, ValueError):
+            continue
+    return None
+
+
+def greet_soul(home):
+    """Fleet greeting (docs/FLEET-GREETING.md, scripts/fleet_greeting.py) at the start of the rendered
+    HERMES_HOME/SOUL.md, hermes' identity slot #1, so it opens the system prompt. Exactly once; the
+    rest of SOUL.md (harness2-managed text, or hermes' default identity when there is none) follows
+    unchanged. Every agent, pentest and guardian included (text only, no tools). Best effort: a missing
+    greeting or an unwritable SOUL.md is a warning, never a failed launch. Returns the SOUL.md path or None."""
+    p = os.path.join(home, "SOUL.md")
+    try:
+        import fleet_greeting as FG
+        if os.path.islink(p):
+            print(f"hermes.sh: fleet greeting skipped: {p} is a symlink (not written through)", file=sys.stderr)
+            return None
+        cur = open(p, encoding="utf-8-sig").read() if os.path.isfile(p) else None
+        body = cur if cur is not None else (_default_soul_text() or "")
+        new = FG.prepend(body)
+        if new == (cur if cur is not None else "") or (cur is None and not new):
+            return p if cur is not None else None
+        tmp = p + f".familia-{os.getpid()}.tmp"
+        try:
+            with open(tmp, "w", encoding="utf-8") as f:
+                f.write(new)
+            os.chmod(tmp, 0o600)
+            os.replace(tmp, p)
+        finally:
+            if os.path.lexists(tmp):
+                os.unlink(tmp)
+        return p
+    except Exception as e:  # never fail a launch over the greeting
+        print(f"hermes.sh: fleet greeting skipped ({e.__class__.__name__}: {e})", file=sys.stderr)
+        return None
 
 
 def props(n):

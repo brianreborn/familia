@@ -256,6 +256,18 @@ Help with local install and build (deps, licenses, configure, PATH).
 Help the user explore which larger models to fetch next (coding, chat, phone, vision).
 Help search the user'\''s X/Twitter posts when Agent-Reach / twitter-cli is available.
 Keep answers short and actionable. Prefer one next command. Never claim cloud access you do not have.'
+# Fleet greeting (docs/FLEET-GREETING.md) first, once; a missing file only warns (scripts/fleet_greeting.py).
+# The trailing x keeps the command substitution from eating the prompt's last newline.
+if _greeted=$(printf '%s' "$SYSTEM_PROMPT" | "$PY" "$FAMILIA_SCRIPTS/fleet_greeting.py" prepend && printf x); then
+  SYSTEM_PROMPT=${_greeted%x}
+fi
+unset _greeted
+
+# Private scratch for child stderr (honors TMPDIR, incl. Termux $PREFIX/tmp).
+_tbase=${TMPDIR:-${PREFIX:+$PREFIX/tmp}}
+PROTO_TMP=$(umask 077; mktemp -d "${_tbase:-/tmp}/familia-proto.XXXXXX") || die "mktemp failed" 1
+trap 'rm -rf -- "$PROTO_TMP"' EXIT HUP INT TERM
+PROTO_ERR=$PROTO_TMP/err
 
 if ! URL=$(find_endpoint); then
   say "no local OpenAI-compatible server detected"
@@ -285,7 +297,7 @@ while true; do
   case "$line" in
     ""|/q|/quit|/exit|exit|quit) say "bye"; _proto_osc done --id home/proto --msg "proto chat ended"; break ;;
   esac
-  reply=$("$PY" - "$URL" "$MODEL" "$SYSTEM_PROMPT" "$line" <<'PY' 2>/tmp/proto-chat.err || true
+  reply=$("$PY" - "$URL" "$MODEL" "$SYSTEM_PROMPT" "$line" <<'PY' 2>"$PROTO_ERR" || true
 import json, os, sys, urllib.request, urllib.error
 sys.path.insert(0, os.environ["FAMILIA_SCRIPTS"]); import familia_auth
 url, model, system, user = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
@@ -316,12 +328,17 @@ if not choices:
     print("(empty reply)", end="")
     sys.exit(0)
 msg = choices[0].get("message") or {}
-print((msg.get("content") or "").strip() or "(empty reply)", end="")
+content = (msg.get("content") or "").strip()
+reasoning = (msg.get("reasoning_content") or "").strip()
+if not content and reasoning:
+    # Model used its token budget on reasoning (e.g. DeepSeek/Qwen/LFM3)
+    content = f"[reasoning: {reasoning}]"
+print(content or "(empty reply)", end="")
 PY
 )
   if [ -z "$reply" ]; then
-    if [ -s /tmp/proto-chat.err ]; then
-      printf 'proto> %s\n' "$(cat /tmp/proto-chat.err)"
+    if [ -s "$PROTO_ERR" ]; then
+      printf 'proto> %s\n' "$(cat "$PROTO_ERR")"
     else
       printf 'proto> (no reply)\n'
     fi
