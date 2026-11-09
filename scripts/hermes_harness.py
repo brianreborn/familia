@@ -960,7 +960,17 @@ def render(g, agent, user_cfg_path=os.path.join(USER_HOME, "config.yaml"), base_
                                               "aggregator": {"provider": "custom", "model": alias}}}}
     cfg["auxiliary"] = aux
     MCP_ENV_KEEP.clear()
-    MCP_ENV_KEEP.update(mcp_env_allowlist(a))
+    declared_env = mcp_env_allowlist(a)
+    # Boundary N3: a graph-declared MCP name that is a cloud LLM credential (OPENAI_API_KEY, AWS_*,
+    # a registry name, ...) would re-admit it into hermes' whole env, not only that server's. Local-only
+    # mode does not keep it: the server's ${VAR} stays unset (upstream drops unset refs). hermes
+    # interpolates MCP env from its own process env, so scoping the value to one server would need
+    # it on disk; FAMILIA_HERMES_ALLOW_CLOUD=1 keeps it (whole env) as before.
+    refused = [] if not local_only else [n for n in declared_env if is_cloud_key(n)]
+    if refused:
+        print(f"hermes.sh: warning: not passing cloud credential(s) {', '.join(refused)} declared by "
+              f"agents.{agent}.mcp (FAMILIA_HERMES_ALLOW_CLOUD=1 passes them)", file=sys.stderr)
+    MCP_ENV_KEEP.update(n for n in declared_env if n not in refused)
     declared = mcp_servers(a)
     if declared:  # graph-declared MCP wins over a same-named user entry (whose secrets were stripped)
         cfg["mcp_servers"] = dict(cfg.get("mcp_servers") or {}, **declared)

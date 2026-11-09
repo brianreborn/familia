@@ -247,3 +247,18 @@ def test_ambient_secrets_not_carried_unless_opted_in(tmp_path, monkeypatch):
     assert env["FAMILIA_ADMIN_PASSWORD"] == "f" and env["TERM"] == "xterm"
     opted = hh.hermes_child_env(environ=dict(src, **{hh.PASS_SECRETS_ENV: "1"}))
     assert opted["GH_TOKEN"] == "g" and opted["SSH_AUTH_SOCK"] == "/run/ssh"
+
+
+def test_mcp_declared_cloud_key_not_readmitted_into_the_whole_env(tmp_path, monkeypatch, capsys):
+    """Boundary N3: graph.yaml naming OPENAI_API_KEY under an MCP server must not put it in hermes' env."""
+    monkeypatch.delenv(hh.ALLOW_CLOUD_ENV, raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    g = copy.deepcopy(GRAPH)
+    g["agents"]["hermes"]["mcp"] = {"x": {"command": "x-mcp", "env_from": ["OPENAI_API_KEY", "AWS_PROFILE", "X_MCP_TOKEN"]}}
+    hh.render(g, "hermes", user_cfg_path=str(tmp_path / "none.yaml"))
+    assert "OPENAI_API_KEY" in capsys.readouterr().err
+    env = hh.hermes_child_env(environ={"OPENAI_API_KEY": "sk", "AWS_PROFILE": "p", "X_MCP_TOKEN": "t"})
+    assert "OPENAI_API_KEY" not in env and env.get("AWS_PROFILE") is None and env["X_MCP_TOKEN"] == "t"
+    monkeypatch.setenv(hh.ALLOW_CLOUD_ENV, "1")
+    hh.render(g, "hermes", user_cfg_path=str(tmp_path / "none.yaml"))
+    assert hh.hermes_child_env(environ={"OPENAI_API_KEY": "sk", hh.ALLOW_CLOUD_ENV: "1"})["OPENAI_API_KEY"] == "sk"
