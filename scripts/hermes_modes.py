@@ -259,7 +259,7 @@ def main(argv):
     launch_env = hh.hermes_child_env({"HERMES_HOME": home})
     os.environ.clear()
     os.environ.update(launch_env)
-    os.execv(hh.HERMES_BIN, [hh.HERMES_BIN] + argv)
+    os.execv(hh.HERMES_EXEC or hh.HERMES_BIN, [hh.HERMES_BIN] + argv)   # trusted realpath (ensure_hermes)
 
 
 if __name__ == "__main__":

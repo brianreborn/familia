@@ -130,3 +130,85 @@ def test_prepare_client_launch_webapp(tmp_path, monkeypatch):
     argv = hh.prepare_client_launch(str(home), "webapp", ["--no-open"], bin_path="/fake/hermes")
     assert argv == ["webapp", "--no-open"]
     assert yaml.safe_load((home / "config.yaml").read_text())["webapp"]["enabled"] is True
+
+
+# --- Boundary fix-forward (e): rendered config.yaml holds the familia key -> 0600, atomic ------------
+
+def test_write_private_is_0600_atomic_and_replaces_symlink(tmp_path):
+    import stat
+    target = tmp_path / "victim"; target.write_text("keep")
+    p = tmp_path / "config.yaml"; p.symlink_to(target)
+    os.umask(0o022)
+    hh.write_private(str(p), "api_key: k\n")
+    assert not p.is_symlink() and p.read_text() == "api_key: k\n"
+    assert stat.S_IMODE(p.stat().st_mode) == 0o600
+    assert target.read_text() == "keep"                       # never written through the link
+    assert [x.name for x in tmp_path.iterdir() if x.name.endswith(".tmp")] == []
+
+
+def test_render_and_webapp_write_config_0600(tmp_path, monkeypatch):
+    import stat
+    import yaml as _y
+    monkeypatch.setenv("HOME", str(tmp_path))
+    g = _y.safe_load(open(os.path.join(ROOT, "graph.yaml")))
+    home, *_ = hh.render(g, "hermes", user_cfg_path=str(tmp_path / "none.yaml"))
+    cfg = os.path.join(home, "config.yaml")
+    assert stat.S_IMODE(os.stat(cfg).st_mode) == 0o600
+    os.chmod(cfg, 0o644)
+    assert hh.ensure_webapp_enabled(home) is True
+    assert stat.S_IMODE(os.stat(cfg).st_mode) == 0o600
+    assert _y.safe_load(open(cfg))["webapp"]["enabled"] is True
+
+
+# --- Boundary B1: existing ~/.cache/familia and hermes-<agent> tightened to 0700, refused if unsafe --
+
+def _render_home(tmp_path, monkeypatch):
+    import yaml as _y
+    monkeypatch.setenv("HOME", str(tmp_path))
+    g = _y.safe_load(open(os.path.join(ROOT, "graph.yaml")))
+    return hh.render(g, "hermes", user_cfg_path=str(tmp_path / "none.yaml"))[0]
+
+
+def test_existing_cache_dirs_tightened_to_0700(tmp_path, monkeypatch):
+    import stat
+    fam = tmp_path / ".cache" / "familia"; home = fam / "hermes-hermes"
+    home.mkdir(parents=True); os.chmod(fam, 0o755); os.chmod(home, 0o755)
+    assert _render_home(tmp_path, monkeypatch) == str(home)
+    assert stat.S_IMODE(os.stat(fam).st_mode) == 0o700
+    assert stat.S_IMODE(os.stat(home).st_mode) == 0o700
+
+
+def test_new_cache_dirs_are_0700(tmp_path, monkeypatch):
+    import stat
+    os.umask(0o022)
+    home = _render_home(tmp_path, monkeypatch)
+    assert stat.S_IMODE(os.stat(home).st_mode) == 0o700
+    assert stat.S_IMODE(os.stat(os.path.dirname(home)).st_mode) == 0o700
+
+
+@pytest.mark.parametrize("which", ["familia", "home"])
+def test_symlinked_cache_dir_refused(tmp_path, monkeypatch, which, capsys):
+    elsewhere = tmp_path / "elsewhere"; elsewhere.mkdir(); os.chmod(elsewhere, 0o755)
+    (tmp_path / ".cache").mkdir()
+    fam = tmp_path / ".cache" / "familia"
+    if which == "familia":
+        fam.symlink_to(elsewhere)
+    else:
+        fam.mkdir(); (fam / "hermes-hermes").symlink_to(elsewhere)
+    with pytest.raises(SystemExit):
+        _render_home(tmp_path, monkeypatch)
+    assert "symlink" in capsys.readouterr().err
+    import stat
+    assert stat.S_IMODE(os.stat(elsewhere).st_mode) == 0o755        # target not chmod'ed
+    assert not (elsewhere / "config.yaml").exists()
+
+
+def test_cache_dir_not_a_directory_or_foreign_owner_refused(tmp_path, monkeypatch, capsys):
+    (tmp_path / ".cache").mkdir(); (tmp_path / ".cache" / "familia").write_text("x")
+    with pytest.raises(SystemExit):
+        _render_home(tmp_path, monkeypatch)
+    (tmp_path / ".cache" / "familia").unlink()
+    monkeypatch.setattr(hh.os, "geteuid", lambda: 12345)
+    with pytest.raises(SystemExit):
+        _render_home(tmp_path, monkeypatch)
+    assert "owned by uid" in capsys.readouterr().err

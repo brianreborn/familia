@@ -129,9 +129,13 @@ def test_ensure_hermes_updates_globals(monkeypatch):
     monkeypatch.setenv("HERMES_SP", "/x/lib/hermes-agent")
     # exists must see the env bin
     monkeypatch.setattr(hh, "_path_exists", lambda p: True)
+    monkeypatch.setattr(hh, "HERMES_EXEC", None)
     monkeypatch.setattr(hh, "resolve_hermes", lambda **kw: ("/x/hermes-agent", "/x/python", "/x/lib/hermes-agent"))
+    monkeypatch.setattr(hh, "trust_exec", lambda p, **kw: ("/real/x/hermes-agent", None))
+    monkeypatch.setattr(hh, "check_toolchain", lambda *a, **k: [])
     b, py, sp = hh.ensure_hermes()
     assert hh.HERMES_BIN == b == "/x/hermes-agent"
+    assert hh.HERMES_EXEC == "/real/x/hermes-agent"   # the trusted realpath is what gets exec'd
     assert hh.HERMES_SP == "/x/lib/hermes-agent"
 
 
@@ -202,3 +206,170 @@ def test_angel_coder_meets_hermes_min_ctx(monkeypatch):
     g2, name = hm.single_agent(g, "hermes", "angel-coder", enforce_min_ctx=True)
     assert name == "hermes@angel-coder"
     assert g2["agents"][name]["context_length"] == 65536
+
+
+def _write(path, text, mode=0o755):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text)
+    os.chmod(path, mode)   # installed console scripts are executable
+    return str(path)
+
+
+LEGACY = "#!" + sys.executable + "\nimport sys\nfrom agent.legacy_cli import main\nsys.exit(main())\n"
+FULL = "#!" + sys.executable + "\nimport sys\nfrom hermes_cli.main import main\nsys.exit(main())\n"
+
+
+def test_path_prefers_full_cli_over_legacy_runner(tmp_path):
+    """pip/uv/install.sh: `hermes-agent` is agent.legacy_cli (no -z/-t/desktop); use `hermes`."""
+    legacy = _write(tmp_path / "bin" / "hermes-agent", LEGACY)
+    full = _write(tmp_path / "bin" / "hermes", FULL)
+    b, _py, _sp = hh.resolve_hermes(
+        environ={"HERMES_PY": "/v/bin/python3", "HERMES_SP": "/v/lib"},
+        exists=lambda p: os.path.exists(p) or p in ("/v/bin/python3", "/v/lib"),
+        which=lambda n: {"hermes-agent": legacy, "hermes": full}.get(n),
+        system="Linux", missing="defaults")
+    assert b == full
+
+
+def test_path_keeps_non_legacy_hermes_agent(tmp_path):
+    """Packaged wrappers named hermes-agent (ports, distro) are the full CLI: keep them."""
+    wrapper = _write(tmp_path / "bin" / "hermes-agent", "#!/bin/sh\nexec python3 -m hermes_cli.main \"$@\"\n")
+    _write(tmp_path / "bin" / "hermes", FULL)
+    b, _py, _sp = hh.resolve_hermes(
+        environ={"HERMES_PY": "/v/bin/python3", "HERMES_SP": "/v/lib"},
+        exists=lambda p: os.path.exists(p) or p in ("/v/bin/python3", "/v/lib"),
+        which=lambda n: wrapper if n == "hermes-agent" else None,
+        system="Linux", missing="defaults")
+    assert b == wrapper
+
+
+def test_explicit_legacy_bin_wins_but_warns(tmp_path, capsys):
+    legacy = _write(tmp_path / "bin" / "hermes-agent", LEGACY)
+    b, _py, _sp = hh.resolve_hermes(
+        environ={"HERMES_BIN": legacy, "HERMES_PY": sys.executable, "HERMES_SP": "/v/lib"},
+        exists=lambda p: True, which=lambda n: None, system="Linux", missing="die")
+    assert b == legacy
+    assert "legacy single-query runner" in capsys.readouterr().err
+
+
+def test_snap_site_packages_follows_snap_python(monkeypatch):
+    """Upstream moved its runtime to python 3.14; the snap SP is no longer assumed to be 3.12."""
+    sp314 = "/snap/hermes-agent/current/lib/python3.14/site-packages"
+    monkeypatch.setattr(hh.glob, "glob", lambda pat: [hh.SNAP_SP, sp314] if pat.startswith("/snap/") else [])
+    b, py, sp = hh.resolve_hermes(environ={}, exists=_exists_set([hh.SNAP_BIN, hh.SNAP_PY, hh.SNAP_SP, sp314]),
+                                  which=lambda n: None, system="Linux", missing="defaults")
+    assert b == hh.SNAP_BIN and sp == sp314
+
+
+# --- Boundary fix-forward (c): HERMES_BIN / sibling pick must be a safe executable -----------------
+
+def _die_env(b):
+    return {"HERMES_BIN": b, "HERMES_PY": sys.executable, "HERMES_SP": "/v/lib"}
+
+
+def test_exec_problem_rules(tmp_path):
+    ok = _write(tmp_path / "ok", FULL)
+    assert hh.exec_problem(ok) is None
+    assert hh.exec_problem("bin/hermes") == "not an absolute path"
+    assert hh.exec_problem(str(tmp_path)) == "not a regular file"
+    assert hh.exec_problem(_write(tmp_path / "noexec", FULL, mode=0o644)) == "not executable"
+    assert hh.exec_problem(_write(tmp_path / "ww", FULL, mode=0o757)).endswith("is world-writable")
+    assert hh.exec_problem(str(tmp_path / "absent")).startswith("cannot stat")
+    link = tmp_path / "link"; link.symlink_to(ok)
+    assert hh.exec_problem(str(link)) is None          # symlink to a safe file is fine (snap /snap/bin/*)
+
+
+@pytest.mark.parametrize("bad", ["relative/hermes", "DIR", "NOEXEC", "WW"])
+def test_launch_refuses_unsafe_hermes_bin(tmp_path, bad, capsys):
+    paths = {"DIR": str(tmp_path), "NOEXEC": _write(tmp_path / "n" / "hermes", FULL, mode=0o644),
+             "WW": _write(tmp_path / "w" / "hermes", FULL, mode=0o777)}
+    b = paths.get(bad, bad)
+    with pytest.raises(SystemExit):
+        hh.resolve_hermes(environ=_die_env(b), exists=lambda p: True, which=lambda n: None,
+                          system="Linux", missing="die")
+    assert "refusing to launch" in capsys.readouterr().err
+
+
+def test_launch_accepts_safe_hermes_bin(tmp_path):
+    b = _write(tmp_path / "bin" / "hermes", FULL)
+    assert hh.resolve_hermes(environ=_die_env(b), exists=lambda p: True, which=lambda n: None,
+                             system="Linux", missing="die")[0] == b
+
+
+def test_sibling_hermes_not_taken_when_world_writable(tmp_path, capsys):
+    legacy = _write(tmp_path / "bin" / "hermes-agent", LEGACY)
+    _write(tmp_path / "bin" / "hermes", FULL, mode=0o777)
+    b, _py, _sp = hh.resolve_hermes(
+        environ={"HERMES_PY": "/v/bin/python3", "HERMES_SP": "/v/lib"},
+        exists=lambda p: os.path.exists(p) or p in ("/v/bin/python3", "/v/lib"),
+        which=lambda n: legacy if n == "hermes-agent" else None, system="Linux", missing="defaults")
+    assert b == legacy
+    assert "world-writable" in capsys.readouterr().err
+
+
+# --- Boundary N1: realpath once, owner / group / parent dirs / interpreter / HERMES_PY -------------
+
+def test_trust_exec_returns_realpath_and_checks_owner_group_parents(tmp_path, monkeypatch):
+    real = _write(tmp_path / "venv" / "bin" / "hermes", FULL)
+    link = tmp_path / "local" / "hermes"; link.parent.mkdir(); link.symlink_to(real)
+    assert hh.trust_exec(str(link)) == (real, None)
+    os.chmod(real, 0o775)
+    monkeypatch.setattr(hh, "_private_group", lambda gid: False)
+    assert hh.trust_exec(real)[1].endswith("is group-writable")
+    monkeypatch.setattr(hh, "_private_group", lambda gid: True)      # user-private group: allowed
+    assert hh.trust_exec(real)[1] is None
+    os.chmod(real, 0o755)
+    os.chmod(tmp_path / "venv" / "bin", 0o777)                       # writable parent: binary swappable
+    assert "venv/bin is world-writable" in hh.trust_exec(real)[1]
+    os.chmod(tmp_path / "venv" / "bin", 0o755)
+    monkeypatch.setattr(hh.os, "geteuid", lambda: 4242)              # someone else's file
+    assert "owned by uid" in hh.trust_exec(real)[1]
+
+
+def test_trust_exec_checks_the_shebang_interpreter(tmp_path):
+    bad_py = _write(tmp_path / "evil" / "python3", "#!/bin/sh\n", mode=0o777)
+    script = _write(tmp_path / "bin" / "hermes", "#!" + bad_py + "\nimport sys\n")
+    why = hh.trust_exec(script)[1]
+    assert why.startswith("its interpreter " + bad_py) and "world-writable" in why
+
+
+def test_root_sticky_tmp_is_an_acceptable_parent(tmp_path):
+    import stat
+    st = os.stat("/tmp")
+    if not (st.st_mode & stat.S_ISVTX and st.st_uid == 0):
+        pytest.skip("/tmp is not root-owned sticky here")
+    assert hh._dirs_problem("/tmp/x") is None
+
+
+def test_launch_refuses_untrusted_hermes_py(tmp_path, capsys):
+    b = _write(tmp_path / "bin" / "hermes", FULL)
+    py = _write(tmp_path / "ww" / "python3", "#!/bin/sh\n", mode=0o777)
+    with pytest.raises(SystemExit):
+        hh.resolve_hermes(environ={"HERMES_BIN": b, "HERMES_PY": py, "HERMES_SP": "/v/lib"},
+                          exists=lambda p: True, which=lambda n: None, system="Linux", missing="die")
+    assert "HERMES_PY" in capsys.readouterr().err
+
+
+def test_import_time_resolution_never_runs_an_untrusted_hermes_py(tmp_path):
+    b = _write(tmp_path / "bin" / "hermes", FULL)
+    py = _write(tmp_path / "ww" / "python3", "#!/bin/sh\n", mode=0o777)
+    ran = []
+    def run(*a, **k):
+        ran.append(a); raise AssertionError("must not run")
+    hh.resolve_hermes(environ={"HERMES_BIN": b, "HERMES_PY": py}, exists=os.path.exists, which=lambda n: None,
+                      system="Linux", run=run, missing="defaults")
+    assert ran == []
+
+
+def test_exec_uses_the_trusted_realpath_not_the_symlink(tmp_path, monkeypatch):
+    """A symlink retargeted after ensure_hermes() does not change what is exec'd."""
+    real = _write(tmp_path / "venv" / "bin" / "hermes", FULL)
+    other = _write(tmp_path / "other" / "hermes", FULL)
+    link = tmp_path / "local" / "hermes"; link.parent.mkdir(); link.symlink_to(real)
+    monkeypatch.setenv("HERMES_BIN", str(link)); monkeypatch.setenv("HERMES_PY", sys.executable)
+    monkeypatch.setenv("HERMES_SP", str(tmp_path)); monkeypatch.setenv("FAMILIA_HERMES_TOOLCHAIN_CHECK", "0")
+    monkeypatch.setattr(hh, "HERMES_BIN", hh.HERMES_BIN); monkeypatch.setattr(hh, "HERMES_PY", hh.HERMES_PY)
+    monkeypatch.setattr(hh, "HERMES_SP", hh.HERMES_SP); monkeypatch.setattr(hh, "HERMES_EXEC", None)
+    hh.ensure_hermes()
+    link.unlink(); link.symlink_to(other)                             # retarget after the check
+    assert hh.HERMES_EXEC == real and hh.HERMES_BIN == str(link)

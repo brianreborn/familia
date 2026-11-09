@@ -186,7 +186,9 @@ def test_every_user_facing_script_is_in_the_menu():
     # #332 Android offline queue: CLI/daemon helper; menu-internal row deferred so we
     # do not edit Antigravity-owned scripts/menu-*.txt during their sprint — PR body
     # asks for: scripts/offline_queue.py|Android/Termux offline fallback (#332)
-    allow = set(allow) | {"scripts/sec_assess.py", "scripts/offline_queue.py"}
+    # hermes_pin.py: same deferral (Hermes wiring, dev-fixforwards); the held menu-internal row is
+    # scripts/hermes_pin.py|hermes-agent pin hook used by hermes.sh at launch (docs/hermes-pin.md)
+    allow = set(allow) | {"scripts/sec_assess.py", "scripts/offline_queue.py", "scripts/hermes_pin.py"}
     missing = []
     for s in sorted(user_facing_scripts()):
         if s in allow:
