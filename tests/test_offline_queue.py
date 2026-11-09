@@ -224,6 +224,7 @@ def test_pull_responses_stores_later_comments(state):
                     "body": "re: familia-offline-queue:id=%s\nhere is the answer" % eid,
                     "created_at": "2026-11-09T17:05:00Z",
                     "user": {"login": "brianreborn"},
+                    "author_association": "OWNER",
                     "html_url": "https://example.invalid/c/11",
                 },
             ]
@@ -337,6 +338,7 @@ def test_cli_enqueue_status_flush_pull_with_mocks(state, monkeypatch, capsys):
                 "body": "ack " + eid,
                 "created_at": "2026-11-09T18:01:00Z",
                 "user": {"login": "brianreborn"},
+                "author_association": "OWNER",
                 "html_url": "u2",
             },
         ]
@@ -446,6 +448,7 @@ def test_pull_ignores_later_comments_without_marker_quote(state):
                     "body": "real reply quoting %s" % eid,
                     "created_at": "2026-11-09T17:06:00Z",
                     "user": {"login": "brianreborn"},
+                    "author_association": "OWNER",
                     "html_url": "u12",
                 },
             ]
@@ -539,3 +542,123 @@ def test_source_has_no_antigravity_hotfile_edits():
         if path.exists() and path.suffix in (".py", ".sh", ".yaml"):
             text = path.read_text(encoding="utf-8", errors="replace")
             assert "offline_queue" not in text
+
+
+# ---------------------------------------------------------------- L16 reply trust / scrub
+
+
+def test_scrub_public_text_redacts_secrets_and_controls():
+    raw = "reach 10.0.0.5:8080 user@example.com ghp_abcdefghijklmnop \x1b[31mX\x00"
+    out = oq.scrub_public_text(raw)
+    assert "[ip]" in out and "[port]" in out
+    assert "[email]" in out and "[token]" in out
+    assert "\x1b" not in out and "\x00" not in out
+    assert "10.0.0.5" not in out
+    assert "ghp_" not in out
+
+
+def test_format_comment_body_scrubs_outgoing():
+    body = oq.format_comment_body(
+        "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+        "call 192.168.0.2 and mail me@example.com",
+    )
+    assert "familia-offline-queue:id=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" in body
+    assert "192.168." not in body
+    assert "me@example.com" not in body
+    assert "[ip]" in body and "[email]" in body
+
+
+def test_trusted_reply_author_association_and_allowlist(monkeypatch):
+    assert oq.trusted_reply_author({"author_association": "OWNER", "user": {"login": "a"}})
+    assert oq.trusted_reply_author({"author_association": "MEMBER", "user": {"login": "a"}})
+    assert oq.trusted_reply_author({"author_association": "COLLABORATOR", "user": {"login": "a"}})
+    assert not oq.trusted_reply_author({"author_association": "CONTRIBUTOR", "user": {"login": "a"}})
+    assert not oq.trusted_reply_author({"author_association": "NONE", "user": {"login": "stranger"}})
+    monkeypatch.setenv("FAMILIA_OFFLINE_REPLY_ALLOWLIST", "helper, other")
+    assert oq.trusted_reply_author(
+        {"author_association": "NONE", "user": {"login": "helper"}}
+    )
+    assert not oq.trusted_reply_author(
+        {"author_association": "NONE", "user": {"login": "stranger"}}
+    )
+
+
+def test_pull_rejects_untrusted_association(state):
+    eid = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    with oq.RunContext(state) as ctx:
+        e = oq.enqueue("q", issue=332, state=ctx.state, work=ctx.work, entry_id=eid)
+        e["status"] = "posted"
+        e["comment_id"] = 10
+        e["posted_at"] = "2026-11-09T17:00:00Z"
+        oq.save_entry(ctx.state, e, ctx.work)
+
+        def getter(repo, issue, since):
+            return [
+                {
+                    "id": 10,
+                    "body": oq.format_comment_body(eid, "q"),
+                    "created_at": "2026-11-09T17:00:00Z",
+                    "user": {"login": "phone"},
+                    "author_association": "NONE",
+                    "html_url": "u10",
+                },
+                {
+                    "id": 11,
+                    "body": "spoof quoting %s" % eid,
+                    "created_at": "2026-11-09T17:05:00Z",
+                    "user": {"login": "random-user"},
+                    "author_association": "NONE",
+                    "html_url": "u11",
+                },
+                {
+                    "id": 12,
+                    "body": "trusted quoting %s" % eid,
+                    "created_at": "2026-11-09T17:06:00Z",
+                    "user": {"login": "brianreborn"},
+                    "author_association": "OWNER",
+                    "html_url": "u12",
+                },
+            ]
+
+        updated = oq.pull_responses(ctx.state, ctx.work, getter=getter)
+        assert updated[0]["status"] == "responded"
+        assert updated[0]["response_comment_ids"] == [12]
+
+
+def test_pull_stores_scrubbed_reply_body(state):
+    eid = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    with oq.RunContext(state) as ctx:
+        e = oq.enqueue("q", issue=332, state=ctx.state, work=ctx.work, entry_id=eid)
+        e["status"] = "posted"
+        e["comment_id"] = 10
+        e["posted_at"] = "2026-11-09T17:00:00Z"
+        oq.save_entry(ctx.state, e, ctx.work)
+
+        def getter(repo, issue, since):
+            return [
+                {
+                    "id": 10,
+                    "body": oq.format_comment_body(eid, "q"),
+                    "created_at": "2026-11-09T17:00:00Z",
+                    "user": {"login": "phone"},
+                    "author_association": "NONE",
+                    "html_url": "u10",
+                },
+                {
+                    "id": 11,
+                    "body": "re %s connect 10.1.2.3:9999\x1b[0m" % eid,
+                    "created_at": "2026-11-09T17:05:00Z",
+                    "user": {"login": "brianreborn"},
+                    "author_association": "MEMBER",
+                    "html_url": "u11",
+                },
+            ]
+
+        updated = oq.pull_responses(ctx.state, ctx.work, getter=getter)
+        assert updated[0]["response_comment_ids"] == [11]
+        rfile = oq.responses_dir(ctx.state) / ("%s.json" % eid)
+        data = json.loads(rfile.read_text(encoding="utf-8"))
+        body = data["responses"][0]["body"]
+        assert "10.1.2.3" not in body
+        assert "[ip]" in body and "[port]" in body
+        assert "\x1b" not in body
