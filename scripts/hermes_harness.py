@@ -444,6 +444,14 @@ def write_private(path, text):
             os.fsync(f.fileno())
         os.chmod(tmp, 0o600)   # umask can only narrow, but be explicit
         os.replace(tmp, path)
+        try:   # durability of the rename (Boundary N4); best effort where dirs cannot be opened
+            dfd = os.open(d, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+            try:
+                os.fsync(dfd)
+            finally:
+                os.close(dfd)
+        except OSError:
+            pass
     finally:
         if fd is not None:
             os.close(fd)
@@ -797,6 +805,25 @@ def _default_soul_text():
     return None
 
 
+def _read_nofollow(p):
+    """Text of regular file *p* opened O_NOFOLLOW|O_NONBLOCK (a symlink swapped in after the islink
+    check fails with ELOOP instead of being followed; a FIFO cannot block), or None when absent."""
+    import errno, stat
+    try:
+        fd = os.open(p, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+                     | getattr(os, "O_CLOEXEC", 0))
+    except FileNotFoundError:
+        return None
+    except OSError as e:
+        if e.errno == errno.ELOOP:
+            raise OSError(errno.ELOOP, f"{p} is a symlink (not followed)")
+        raise
+    with os.fdopen(fd, "rb") as f:
+        if not stat.S_ISREG(os.fstat(f.fileno()).st_mode):
+            raise OSError(errno.EINVAL, f"{p} is not a regular file")
+        return f.read().decode("utf-8-sig")
+
+
 def greet_soul(home):
     """Fleet greeting (docs/FLEET-GREETING.md, scripts/fleet_greeting.py) at the start of the rendered
     HERMES_HOME/SOUL.md, hermes' identity slot #1, so it opens the system prompt. Exactly once; the
@@ -809,7 +836,7 @@ def greet_soul(home):
         if os.path.islink(p):
             print(f"hermes.sh: fleet greeting skipped: {p} is a symlink (not written through)", file=sys.stderr)
             return None
-        cur = open(p, encoding="utf-8-sig").read() if os.path.isfile(p) else None
+        cur = _read_nofollow(p)
         body = cur if cur is not None else (_default_soul_text() or "")
         new = FG.prepend(body)
         if new == (cur if cur is not None else "") or (cur is None and not new):

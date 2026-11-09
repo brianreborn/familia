@@ -226,3 +226,16 @@ def test_self_improve_gate_allows_plain_mentions_of_the_fleet():
     base = {r: "" for r in SI.ALWAYS_ON + SI.FROZEN}
     base["systemprompt.md"] = "Be terse.\n"
     assert SI.gate(base, dict(base, **{"systemprompt.md": "Be terse.\nGreet the fleet at the end of a task.\n"})) == []
+
+
+def test_greet_soul_does_not_follow_a_symlink_swapped_in_after_the_check(tmp_path, monkeypatch, capsys):
+    """Boundary N4: islink() passes, then SOUL.md becomes a symlink before the read: O_NOFOLLOW refuses it."""
+    home = render(tmp_path, "hermes")
+    soul = os.path.join(home, "SOUL.md")
+    secret = tmp_path / "secret.txt"; secret.write_text("PRIVATE KEY MATERIAL\n")
+    os.unlink(soul); os.symlink(secret, soul)
+    monkeypatch.setattr(hh.os.path, "islink", lambda p: False)      # simulate the race
+    assert hh.greet_soul(home) is None
+    assert "fleet greeting skipped" in capsys.readouterr().err
+    monkeypatch.undo()
+    assert os.path.islink(soul) and secret.read_text() == "PRIVATE KEY MATERIAL\n"
