@@ -83,7 +83,23 @@ def _own_effective(channel, days, environ):
     if c not in CHANNELS:
         raise PinError("invalid channel %r: must be one of %s" % (c, ", ".join(CHANNELS)))
     d = days if days is not None else (env.get("FAMILIA_STABLE_DAYS") or None)
-    return c, (int(d) if isinstance(d, int) or (isinstance(d, str) and d.isdigit() and d.isascii()) else 30)
+    return c, _validate_days(d)
+
+
+DAYS_MIN, DAYS_MAX, DEFAULT_DAYS = 1, 365, 30   # same bounds as scripts/channel.py
+
+
+def _validate_days(d):
+    """None/'' -> 30; otherwise a base-10 integer 1..365 (int or ASCII digits), else PinError (exit 2),
+    like scripts/channel.py validate_days. Never silently 30, never unbounded."""
+    if d is None or d == "":
+        return DEFAULT_DAYS
+    if isinstance(d, bool) or not (isinstance(d, int) or (isinstance(d, str) and re.fullmatch(r"[0-9]{1,3}", d, re.ASCII))):
+        raise PinError("invalid stable days %r: must be an integer %d..%d" % (d, DAYS_MIN, DAYS_MAX))
+    n = int(d)
+    if not DAYS_MIN <= n <= DAYS_MAX:
+        raise PinError("invalid stable days %r: must be an integer %d..%d" % (d, DAYS_MIN, DAYS_MAX))
+    return n
 
 
 def _pin_entry(pins, ch):

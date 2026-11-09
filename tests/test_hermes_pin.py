@@ -188,3 +188,24 @@ def test_install_hint_downloads_then_runs():
         h = hp.install_hint(want, "/home/u/.local/bin/hermes")
         assert not re.search(r"\|\s*(ba)?sh\b", h), h
         assert "curl -fsSLo hermes-install.sh " in h and "&& bash hermes-install.sh --commit " in h
+
+
+# --- Boundary N6: bad FAMILIA_STABLE_DAYS without channel.py is exit 2, not 30 / unbounded ----------
+
+@pytest.mark.parametrize("bad", ["0", "abc", "999", "366", "-1", "1e2", " 7", "٣"])
+def test_bad_stable_days_is_a_pin_error(bad):
+    with pytest.raises(hp.PinError, match="stable days"):
+        hp.resolve_ref("stable", environ={"FAMILIA_STABLE_DAYS": bad}, chmod=None)
+    with pytest.raises(hp.PinError):
+        hp.resolve_ref("stable", bad, environ={}, chmod=None)
+
+
+@pytest.mark.parametrize("ok,n", [("1", 1), ("365", 365), ("", 30), (None, 30), (14, 14)])
+def test_good_stable_days(ok, n):
+    assert hp.resolve_ref("stable", ok, environ={}, chmod=None)["days"] == n
+
+
+def test_cli_bad_days_exits_2(monkeypatch, capsys):
+    monkeypatch.setattr(hp, "channel_module", lambda path=None: None)
+    assert hp.main(["resolve", "--offline", "--channel", "stable", "--days", "999"]) == 2
+    assert "stable days" in capsys.readouterr().err
