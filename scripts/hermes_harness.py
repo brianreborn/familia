@@ -47,6 +47,7 @@ FREEBSD_BIN = "/usr/local/bin/hermes-agent"
 FREEBSD_LIB = "/usr/local/lib/hermes-agent"
 
 HERMES_BIN = HERMES_PY = HERMES_SP = None  # set by resolve_hermes() below
+HERMES_EXEC = None   # trusted realpath of HERMES_BIN, set by ensure_hermes(); what is exec'd
 # pip / uv / install.sh layouts ship two console scripts: `hermes` (hermes_cli.main, the full CLI
 # with -z, -t, desktop, webapp) and `hermes-agent` (agent.legacy_cli, a single-query runner that
 # has none of those). Seen in every upstream release from v0.21.7 through v0.22.6.
@@ -138,24 +139,87 @@ def _is_legacy_runner(path, exists=_path_exists):
         return False
 
 
-def exec_problem(path):
-    """Why *path* must not be exec'd as hermes, or None. It must be absolute and (after symlinks) a
-    regular, executable file that is not world-writable (HERMES_BIN and the sibling-`hermes` pick
-    both run with the user's full environment)."""
+def _private_group(gid):
+    """True when *gid* is this user's own primary group with the user's name (user-private group)."""
+    try:
+        import grp, pwd
+        return gid == os.getegid() and grp.getgrgid(gid).gr_name == pwd.getpwuid(os.geteuid()).pw_name
+    except (ImportError, KeyError):
+        return False
+
+
+def _node_problem(p, st, is_dir):
+    """Owner must be root or this user; no group/other write, except a root-owned sticky directory
+    (/tmp) or a user-private group."""
+    import stat
+    if st.st_uid not in (0, os.geteuid()):
+        return f"{p} is owned by uid {st.st_uid}"
+    sticky_root = is_dir and st.st_mode & stat.S_ISVTX and st.st_uid == 0
+    if st.st_mode & stat.S_IWOTH and not sticky_root:
+        return f"{p} is world-writable"
+    if st.st_mode & stat.S_IWGRP and not sticky_root and not _private_group(st.st_gid):
+        return f"{p} is group-writable"
+    return None
+
+
+def _dirs_problem(path):
+    """Every directory from dirname(path) up to / must pass _node_problem (a symlinked directory
+    component is checked for its owner only; its own mode bits mean nothing)."""
+    import stat
+    d = os.path.dirname(path)
+    while True:
+        try:
+            st = os.lstat(d)
+        except OSError as e:
+            return f"cannot stat {d} ({e.strerror or e})"
+        if stat.S_ISLNK(st.st_mode):
+            if st.st_uid not in (0, os.geteuid()):
+                return f"{d} is owned by uid {st.st_uid}"
+        else:
+            why = _node_problem(d, st, True)
+            if why:
+                return why
+        parent = os.path.dirname(d)
+        if parent == d:
+            return None
+        d = parent
+
+
+def trust_exec(path, *, interpreter=True):
+    """(realpath, None) when *path* is safe to exec, else (realpath or None, reason). realpath once:
+    the real file must be regular, executable, owned by root or this user, not group/other
+    writable (user-private group excepted); every parent of both the given path and the realpath
+    likewise; a '#!' interpreter (venv python, /bin/sh, /usr/bin/env) gets the same check. Callers
+    exec the returned realpath (HERMES_EXEC), so nothing outside root's and the user's control can
+    swap the binary between this check and the exec."""
     import stat
     if not path or not os.path.isabs(str(path)):
-        return "not an absolute path"
+        return None, "not an absolute path"
+    path = os.path.normpath(str(path))
+    real = os.path.realpath(path)
     try:
-        st = os.stat(path)
+        st = os.stat(real)
     except OSError as e:
-        return f"cannot stat ({e.strerror or e})"
+        return real, f"cannot stat ({e.strerror or e})"
     if not stat.S_ISREG(st.st_mode):
-        return "not a regular file"
-    if not os.access(path, os.X_OK):
-        return "not executable"
-    if st.st_mode & stat.S_IWOTH:
-        return "world-writable"
-    return None
+        return real, "not a regular file"
+    if not os.access(real, os.X_OK):
+        return real, "not executable"
+    why = _node_problem(real, st, False) or _dirs_problem(path) or (real != path and _dirs_problem(real))
+    if why:
+        return real, why
+    if interpreter:
+        interp = _read_shebang(real)
+        if interp and os.path.isabs(interp):
+            _r, why = trust_exec(interp, interpreter=False)
+            if why:
+                return real, f"its interpreter {interp}: {why}"
+    return real, None
+
+
+def exec_problem(path):
+    """Why *path* must not be exec'd as hermes (see trust_exec), or None."""
+    return trust_exec(path)[1]
 
 
 def _full_cli_for(bin_path, exists=_path_exists, check=exec_problem):
@@ -197,6 +261,11 @@ def _derive_py(bin_path, exists=_path_exists, which=shutil.which):
         if exists(sibling):
             return sibling
     return which("python3") or which("python") or sys.executable
+
+
+def _no_run(*a, **k):
+    """Stand-in for subprocess.run when HERMES_PY failed trust_exec: never execute it."""
+    raise OSError("untrusted HERMES_PY not executed")
 
 
 def _derive_sp(bin_path, py, exists=_path_exists, run=subprocess.run):
@@ -260,8 +329,12 @@ def resolve_hermes(environ=None, *, exists=_path_exists, which=shutil.which,
 
     if not py:
         py = _derive_py(bin_path, exists=exists, which=which)
+    # HERMES_PY is executed (site-packages probe below, toolchain check, selftest/prefix children):
+    # same trust rules as HERMES_BIN (Boundary N1). Launch refuses; import-time resolution only
+    # skips the probe. The snap's python runs inside the snap's own read-only squashfs.
+    py_why = None if str(bin_path).startswith("/snap/bin/") else check(py)
     if not sp:
-        sp = _derive_sp(bin_path, py, exists=exists, run=run)
+        sp = _derive_sp(bin_path, py, exists=exists, run=run if not py_why else _no_run)
     if not sp:
         if missing == "die":
             die(
@@ -281,8 +354,12 @@ def resolve_hermes(environ=None, *, exists=_path_exists, which=shutil.which,
         why = check(bin_path)
         if why:
             src = "HERMES_BIN" if env.get("HERMES_BIN") else "hermes"
-            die(f"{src}={bin_path!r} is {why}; refusing to launch it. Point HERMES_BIN at an absolute "
-                "path to the hermes CLI: a regular, executable file that is not world-writable.")
+            die(f"{src}={bin_path!r}: {why}; refusing to launch it. Point HERMES_BIN at an absolute "
+                "path to the hermes CLI: a regular, executable file owned by root or you, not group/"
+                "world-writable, in directories only root or you can write.")
+        if py_why:
+            src = "HERMES_PY" if env.get("HERMES_PY") else "derived HERMES_PY"
+            die(f"{src}={py!r}: {py_why}; refusing to run it (same rules as HERMES_BIN).")
     if missing == "die" and _is_legacy_runner(bin_path, exists=exists):
         print(f"hermes.sh: warning: {bin_path} is hermes-agent's legacy single-query runner "
               "(no -z/-t/desktop/webapp); point HERMES_BIN at the `hermes` CLI of the same install",
@@ -337,8 +414,12 @@ def check_toolchain(bin_path, py, *, run=subprocess.run, environ=None):
 
 def ensure_hermes():
     """Re-resolve with hard failure; update module globals for prefix/selftest/exec."""
-    global HERMES_BIN, HERMES_PY, HERMES_SP
+    global HERMES_BIN, HERMES_PY, HERMES_SP, HERMES_EXEC
     HERMES_BIN, HERMES_PY, HERMES_SP = resolve_hermes(missing="die")
+    real, why = trust_exec(HERMES_BIN)
+    if why:
+        die(f"hermes {HERMES_BIN!r}: {why}; refusing to launch it")
+    HERMES_EXEC = real   # exec this realpath; argv[0] stays HERMES_BIN (snap dispatches on argv[0])
     check_toolchain(HERMES_BIN, HERMES_PY)
     return HERMES_BIN, HERMES_PY, HERMES_SP
 
@@ -1097,7 +1178,8 @@ def run_escalating(g, agent, light, swap_back, rest, client="cli"):
     warm_prompt(g, light, g["nodes"][light], home)
     print(f"hermes.sh: escalation proxy {base} light={light} targets={g['nodes'][light].get('escalates_to')}", file=sys.stderr)
     argv = prepare_client_launch(home, client, rest)
-    return subprocess.call([HERMES_BIN] + argv, env=hermes_child_env({"HERMES_HOME": home}),
+    return subprocess.call([HERMES_BIN] + argv, executable=HERMES_EXEC or HERMES_BIN,
+                           env=hermes_child_env({"HERMES_HOME": home}),
                            preexec_fn=oom_adj.preexec())
 
 
@@ -1170,7 +1252,7 @@ def main(argv):
     os.environ.update(launch_env)
     # #112: hermes process is first-to-kill (no longer Popen's llama-server; serve.sh does)
     oom_adj.set_self()
-    os.execv(HERMES_BIN, [HERMES_BIN] + argv)
+    os.execv(HERMES_EXEC or HERMES_BIN, [HERMES_BIN] + argv)   # trusted realpath (Boundary N1)
 
 
 if __name__ == "__main__":
