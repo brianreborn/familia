@@ -131,6 +131,14 @@ def write_dir_tree(tree, d):
 def editable(tree):
     return {r: t for r, t in tree.items() if r in ALWAYS_ON or SKILL_RE.fullmatch(r)}
 
+def _strip_greeting(text):
+    """Drop a fleet greeting block scripts/hermes_harness.py prepended to SOUL.md (scripts/fleet_greeting.py)."""
+    import sys
+    here = os.path.dirname(os.path.abspath(__file__))
+    if here not in sys.path: sys.path.insert(0, here)
+    import fleet_greeting
+    return fleet_greeting.strip(text)
+
 def base_tree(t):
     """The target's current files as a tree (first use), base templates filling gaps."""
     base = read_dir_tree(BASE_DIR)
@@ -139,6 +147,8 @@ def base_tree(t):
         p = t.path(getattr(t, key))
         if p and os.path.isfile(p):
             tree[rel] = open(p, encoding="utf-8", errors="replace").read()
+            if key == "prompt":  # the fleet greeting is prepended at launch, never part of the editable harness
+                tree[rel] = _strip_greeting(tree[rel])
     return tree
 
 def gate(base, tree, leak_terms=(), allow_skills=True):
