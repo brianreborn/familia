@@ -88,6 +88,17 @@ def test_enqueue_rejects_empty_and_bad_repo(state):
             oq.enqueue("  ", issue=332, state=ctx.state, work=ctx.work)
         with pytest.raises(oq.OfflineQueueError):
             oq.enqueue("x", issue=332, repo="noslash", state=ctx.state, work=ctx.work)
+        for bad in (
+            "../evil",
+            "owner/..",
+            "owner/.git",
+            "owner/-bad",
+            "-dash/name",
+            "a/b/c",
+            "owner/" + ("y" * 101),
+        ):
+            with pytest.raises(oq.OfflineQueueError):
+                oq.enqueue("x", issue=332, repo=bad, state=ctx.state, work=ctx.work)
 
 
 def test_ssh_probe_target_from_env_only(monkeypatch):
@@ -224,6 +235,7 @@ def test_pull_responses_stores_later_comments(state):
                     "body": "re: familia-offline-queue:id=%s\nhere is the answer" % eid,
                     "created_at": "2026-11-09T17:05:00Z",
                     "user": {"login": "brianreborn"},
+                    "author_association": "OWNER",
                     "html_url": "https://example.invalid/c/11",
                 },
             ]
@@ -257,7 +269,7 @@ def test_post_issue_comment_rest_never_logs_token(monkeypatch, capsys):
         calls["url"] = req.full_url
         return FakeResp()
 
-    monkeypatch.setattr(oq.urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(oq, "_github_urlopen", fake_urlopen)
 
     # Force REST path: pretend gh is missing
     def no_gh(*a, **k):
@@ -287,7 +299,7 @@ def test_post_http_error_omits_token(monkeypatch):
             req.full_url, 401, "Unauthorized", hdrs=None, fp=None
         )
 
-    monkeypatch.setattr(oq.urllib.request, "urlopen", boom)
+    monkeypatch.setattr(oq, "_github_urlopen", boom)
     with pytest.raises(oq.OfflineQueueError) as ei:
         oq.post_issue_comment("brianreborn/familia", 332, "x", gh_runner=no_gh)
     assert "ghp_SECRET" not in str(ei.value)
@@ -337,6 +349,7 @@ def test_cli_enqueue_status_flush_pull_with_mocks(state, monkeypatch, capsys):
                 "body": "ack " + eid,
                 "created_at": "2026-11-09T18:01:00Z",
                 "user": {"login": "brianreborn"},
+                "author_association": "OWNER",
                 "html_url": "u2",
             },
         ]
@@ -446,6 +459,7 @@ def test_pull_ignores_later_comments_without_marker_quote(state):
                     "body": "real reply quoting %s" % eid,
                     "created_at": "2026-11-09T17:06:00Z",
                     "user": {"login": "brianreborn"},
+                    "author_association": "OWNER",
                     "html_url": "u12",
                 },
             ]
@@ -539,3 +553,254 @@ def test_source_has_no_antigravity_hotfile_edits():
         if path.exists() and path.suffix in (".py", ".sh", ".yaml"):
             text = path.read_text(encoding="utf-8", errors="replace")
             assert "offline_queue" not in text
+
+
+# ---------------------------------------------------------------- L16 reply trust / scrub
+
+
+def test_scrub_public_text_redacts_secrets_and_controls():
+    raw = "reach 10.0.0.5:8080 user@example.com ghp_abcdefghijklmnop \x1b[31mX\x00"
+    out = oq.scrub_public_text(raw)
+    assert "[ip]" in out and "[port]" in out
+    assert "[email]" in out and "[token]" in out
+    assert "\x1b" not in out and "\x00" not in out
+    assert "10.0.0.5" not in out
+    assert "ghp_" not in out
+
+
+def test_format_comment_body_scrubs_outgoing():
+    body = oq.format_comment_body(
+        "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+        "call 192.168.0.2 and mail me@example.com",
+    )
+    assert "familia-offline-queue:id=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" in body
+    assert "192.168." not in body
+    assert "me@example.com" not in body
+    assert "[ip]" in body and "[email]" in body
+
+
+def test_trusted_reply_author_association_and_allowlist(monkeypatch):
+    assert oq.trusted_reply_author({"author_association": "OWNER", "user": {"login": "a"}})
+    assert oq.trusted_reply_author({"author_association": "MEMBER", "user": {"login": "a"}})
+    assert oq.trusted_reply_author({"author_association": "COLLABORATOR", "user": {"login": "a"}})
+    assert not oq.trusted_reply_author({"author_association": "CONTRIBUTOR", "user": {"login": "a"}})
+    assert not oq.trusted_reply_author({"author_association": "NONE", "user": {"login": "stranger"}})
+    monkeypatch.setenv("FAMILIA_OFFLINE_REPLY_ALLOWLIST", "helper, other")
+    assert oq.trusted_reply_author(
+        {"author_association": "NONE", "user": {"login": "helper"}}
+    )
+    assert not oq.trusted_reply_author(
+        {"author_association": "NONE", "user": {"login": "stranger"}}
+    )
+
+
+def test_pull_rejects_untrusted_association(state):
+    eid = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    with oq.RunContext(state) as ctx:
+        e = oq.enqueue("q", issue=332, state=ctx.state, work=ctx.work, entry_id=eid)
+        e["status"] = "posted"
+        e["comment_id"] = 10
+        e["posted_at"] = "2026-11-09T17:00:00Z"
+        oq.save_entry(ctx.state, e, ctx.work)
+
+        def getter(repo, issue, since):
+            return [
+                {
+                    "id": 10,
+                    "body": oq.format_comment_body(eid, "q"),
+                    "created_at": "2026-11-09T17:00:00Z",
+                    "user": {"login": "phone"},
+                    "author_association": "NONE",
+                    "html_url": "u10",
+                },
+                {
+                    "id": 11,
+                    "body": "spoof quoting %s" % eid,
+                    "created_at": "2026-11-09T17:05:00Z",
+                    "user": {"login": "random-user"},
+                    "author_association": "NONE",
+                    "html_url": "u11",
+                },
+                {
+                    "id": 12,
+                    "body": "trusted quoting %s" % eid,
+                    "created_at": "2026-11-09T17:06:00Z",
+                    "user": {"login": "brianreborn"},
+                    "author_association": "OWNER",
+                    "html_url": "u12",
+                },
+            ]
+
+        updated = oq.pull_responses(ctx.state, ctx.work, getter=getter)
+        assert updated[0]["status"] == "responded"
+        assert updated[0]["response_comment_ids"] == [12]
+
+
+def test_pull_stores_scrubbed_reply_body(state):
+    eid = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    with oq.RunContext(state) as ctx:
+        e = oq.enqueue("q", issue=332, state=ctx.state, work=ctx.work, entry_id=eid)
+        e["status"] = "posted"
+        e["comment_id"] = 10
+        e["posted_at"] = "2026-11-09T17:00:00Z"
+        oq.save_entry(ctx.state, e, ctx.work)
+
+        def getter(repo, issue, since):
+            return [
+                {
+                    "id": 10,
+                    "body": oq.format_comment_body(eid, "q"),
+                    "created_at": "2026-11-09T17:00:00Z",
+                    "user": {"login": "phone"},
+                    "author_association": "NONE",
+                    "html_url": "u10",
+                },
+                {
+                    "id": 11,
+                    "body": "re %s connect 10.1.2.3:9999\x1b[0m" % eid,
+                    "created_at": "2026-11-09T17:05:00Z",
+                    "user": {"login": "brianreborn"},
+                    "author_association": "MEMBER",
+                    "html_url": "u11",
+                },
+            ]
+
+        updated = oq.pull_responses(ctx.state, ctx.work, getter=getter)
+        assert updated[0]["response_comment_ids"] == [11]
+        rfile = oq.responses_dir(ctx.state) / ("%s.json" % eid)
+        data = json.loads(rfile.read_text(encoding="utf-8"))
+        body = data["responses"][0]["body"]
+        assert "10.1.2.3" not in body
+        assert "[ip]" in body and "[port]" in body
+        assert "\x1b" not in body
+
+
+def test_validate_repo_strict_charset():
+    assert oq.validate_repo("brianreborn/familia") == "brianreborn/familia"
+    assert oq.validate_repo("Org-Name/repo.name_1") == "Org-Name/repo.name_1"
+    with pytest.raises(oq.OfflineQueueError):
+        oq.validate_repo("brianreborn/familia/extra")
+    with pytest.raises(oq.OfflineQueueError):
+        oq.validate_repo(".leading/dot")
+    with pytest.raises(oq.OfflineQueueError):
+        oq.validate_repo("owner/has..dots")
+
+
+def test_enqueue_rejects_oversized_body(state, monkeypatch):
+    monkeypatch.setenv("FAMILIA_OFFLINE_MAX_BODY", "64")
+    with oq.RunContext(state) as ctx:
+        with pytest.raises(oq.OfflineQueueError) as ei:
+            oq.enqueue("x" * 65, issue=332, state=ctx.state, work=ctx.work)
+        assert "FAMILIA_OFFLINE_MAX_BODY" in str(ei.value)
+        e = oq.enqueue("ok", issue=332, state=ctx.state, work=ctx.work)
+        assert e["body"] == "ok"
+
+
+def test_format_comment_body_truncates_oversized(monkeypatch):
+    monkeypatch.setenv("FAMILIA_OFFLINE_MAX_BODY", "40")
+    eid = "00000000-0000-0000-0000-000000000001"
+    out = oq.format_comment_body(eid, "Z" * 200)
+    assert "familia-offline-queue:id=%s" % eid in out
+    assert "[truncated:FAMILIA_OFFLINE_MAX_BODY]" in out
+    # Body after marker line is capped (marker itself is the clear signal).
+    body_only = out.split("-->\n", 1)[1]
+    assert len(body_only.encode("utf-8")) <= 40 + len(oq._TRUNC_MARKER.encode("utf-8"))
+
+
+def test_rest_authorization_is_unredirected(monkeypatch):
+    monkeypatch.setenv("GITHUB_TOKEN", "gho_REDIRECT_PROBE")
+    seen = {}
+
+    class FakeResp:
+        def read(self):
+            return b'{"id": 9, "html_url": "https://example.invalid/c/9"}'
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    def fake_urlopen(req, timeout=None):
+        # Unredirected Authorization is still visible on the original request.
+        seen["auth"] = req.get_header("Authorization")
+        seen["has_unredirected"] = "Authorization" in getattr(req, "unredirected_hdrs", {})
+        seen["has_redirected"] = "Authorization" in getattr(req, "headers", {})
+        return FakeResp()
+
+    monkeypatch.setattr(oq, "_github_urlopen", fake_urlopen)
+
+    def no_gh(*a, **k):
+        raise FileNotFoundError("gh")
+
+    out = oq.post_issue_comment("brianreborn/familia", 332, "hi", gh_runner=no_gh)
+    assert out["id"] == 9
+    assert seen["auth"] == "Bearer gho_REDIRECT_PROBE"
+    assert seen["has_unredirected"] is True
+    assert seen["has_redirected"] is False
+
+
+def test_safe_github_redirect_strips_auth_on_host_change():
+    handler = oq._SafeGithubRedirect()
+    req = oq.urllib.request.Request(
+        "https://api.github.com/repos/brianreborn/familia/issues/332/comments",
+        data=b"{}",
+        method="POST",
+        headers={"Accept": "application/vnd.github+json"},
+    )
+    req.add_unredirected_header("Authorization", "Bearer gho_SECRET")
+    # Same-host https redirect: Authorization stays unredirected (not copied to redirected hdrs).
+    new = handler.redirect_request(
+        req, None, 302, "Found", {},
+        "https://api.github.com/repositories/1/issues/332/comments",
+    )
+    assert new is not None
+    assert new.get_header("Authorization") is None or "Authorization" in new.unredirected_hdrs
+    # Host change: any Authorization on redirected headers must be stripped.
+    req2 = oq.urllib.request.Request(
+        "https://api.github.com/x",
+        headers={"Authorization": "Bearer gho_SECRET", "Accept": "a"},
+    )
+    new2 = handler.redirect_request(
+        req2, None, 302, "Found", {},
+        "https://evil.example/x",
+    )
+    assert new2 is not None
+    assert new2.get_header("Authorization") is None
+    assert "Authorization" not in new2.unredirected_hdrs
+    # Non-https redirect refused.
+    with pytest.raises(oq.urllib.error.HTTPError) as ei:
+        handler.redirect_request(
+            req, None, 302, "Found", {},
+            "http://api.github.com/x",
+        )
+    assert "non-https" in str(ei.value.msg).lower() or ei.value.code == 302
+
+
+def test_list_issue_comments_rest_uses_unredirected_auth(monkeypatch):
+    monkeypatch.setenv("GH_TOKEN", "gho_GETTOKEN")
+    seen = {}
+
+    class FakeResp:
+        def read(self):
+            return b"[]"
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    def fake_urlopen(req, timeout=None):
+        seen["unredir"] = "Authorization" in getattr(req, "unredirected_hdrs", {})
+        seen["redir"] = "Authorization" in getattr(req, "headers", {})
+        return FakeResp()
+
+    monkeypatch.setattr(oq, "_github_urlopen", fake_urlopen)
+
+    def no_gh(*a, **k):
+        raise FileNotFoundError("gh")
+
+    assert oq.list_issue_comments("brianreborn/familia", 332, gh_runner=no_gh) == []
+    assert seen["unredir"] is True
+    assert seen["redir"] is False

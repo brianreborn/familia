@@ -33,10 +33,11 @@ def test_hermes_render_cmd_single_and_graph():
     assert "--render-only" in graph
 
 
-def test_hermes_agent_cmd_oneshot_limited_tools(monkeypatch):
+def test_hermes_agent_cmd_oneshot_limited_tools(tmp_path, monkeypatch):
     monkeypatch.delenv("FAMILIA_HERMES_DOGFOOD_YOLO", raising=False)
-    cmd = HL.build_agent_cmd("fix the bug", hermes_bin="/tmp/fake-hermes-agent")
-    assert cmd[0] == "/tmp/fake-hermes-agent"
+    fake = str(tmp_path / "fake-hermes-agent")
+    cmd = HL.build_agent_cmd("fix the bug", hermes_bin=fake)
+    assert cmd[0] == fake
     assert "-z" in cmd and cmd[cmd.index("-z") + 1] == "fix the bug"
     tools = cmd[cmd.index("-t") + 1]
     assert "file" in tools and "terminal" in tools
@@ -44,7 +45,7 @@ def test_hermes_agent_cmd_oneshot_limited_tools(monkeypatch):
     assert "--yolo" not in cmd   # Boundary N1b: off unless opted in
     # opt-in still refuses an untrusted absolute hermes_bin
     try:
-        HL.build_agent_cmd("x", hermes_bin="/tmp/fake-hermes-agent", yolo=True)
+        HL.build_agent_cmd("x", hermes_bin=fake, yolo=True)
         raise AssertionError("expected ValueError for untrusted yolo bin")
     except ValueError as e:
         assert "trust_exec" in str(e)
@@ -107,12 +108,12 @@ def test_run_oneshot_uses_lock_prefix_and_worktree_cwd(tmp_path, monkeypatch):
     home = tmp_path / "home"
     rc, out, cmd, env = HL.run_oneshot(
         str(tmp_path / "wt"), "do it", home, sh=fake_sh,
-        lock_prefix=["flock", "/tmp/x"], hermes_bin="/tmp/fake-hermes",
+        lock_prefix=["flock", str(tmp_path / "x.lock")], hermes_bin=str(tmp_path / "fake-hermes"),
     )
     assert rc == 0
     assert calls[0]["cwd"] == str(tmp_path / "wt")
-    assert calls[0]["cmd"][:2] == ["flock", "/tmp/x"]
-    assert calls[0]["cmd"][2] == "/tmp/fake-hermes"
+    assert calls[0]["cmd"][:2] == ["flock", str(tmp_path / "x.lock")]
+    assert calls[0]["cmd"][2] == str(tmp_path / "fake-hermes")
     assert env["HERMES_HOME"] == str(home)
     assert env["FAMILIA_SYNC"] == "0"
 

@@ -406,6 +406,11 @@ def make_handler(pool, log=sys.stderr):
             try:
                 j = json.load(r); m = j["choices"][0]["message"]; text.append(m.get("content") or "")
             except Exception as e:
+                # #251 F1: forwarded tool request with malformed JSON must fail closed.
+                # Never after_reply/_retry_once (those resend self._orig with tools to another node).
+                if getattr(esc, "tool_fwd", None):
+                    self._502(f"[familia] tool_route {esc.tool_fwd} returned invalid JSON: {e}")
+                    return
                 self._record_transport_fail(esc, body)
                 fb = esc.after_reply(ok=False)
                 if fb and self._retry_once(esc, body, method, raw, fb):
@@ -421,6 +426,10 @@ def make_handler(pool, log=sys.stderr):
             self.wfile.write(json.dumps(j).encode())
 
         def _retry_once(self, esc, body, method, raw, note):
+            # #251 F1: never redial a forwarded tool request on another node (tools included).
+            if getattr(esc, "tool_fwd", None):
+                self._502(f"[familia] tool_route {esc.tool_fwd} failed; not retried")
+                return True
             url, _alias = esc.upstream()
             # R2 (#245): health-check the fallback node before redialing; a node that
             # was respawned (or is still down) must not be dialed blind.
@@ -460,22 +469,27 @@ def make_handler(pool, log=sys.stderr):
                 lk.acquire(seq=seq)
             else:
                 lk.acquire()
+            deferred_note = None
             try:
-                self._fwd_capped(method)
+                deferred_note = self._fwd_capped(method)
             finally:
                 lk.release()
+            # F2: emit tool-forward log after releasing the session lock and upstream slot
+            # so a stalled log pipe cannot pin either.
+            if deferred_note:
+                print(deferred_note, file=log, flush=True)
 
         def _fwd_capped(self, method):
             if not _UPSTREAM_SEM.acquire(timeout=UPSTREAM_WAIT_S):
                 self.send_response(503); self.send_header("Content-Type", "application/json"); self.end_headers()
                 self.wfile.write(b'{"error":{"message":"upstream at capacity","code":503}}')
-                return
+                return None
             with _inflight_lock:
                 _inflight[0] += 1
                 if _inflight[0] > UPSTREAM_WARN:
                     print(f"escalation_proxy: {_inflight[0]} upstream calls in flight (cap {UPSTREAM_CAP})", file=sys.stderr, flush=True)
             try:
-                self._fwd_admitted(method)
+                return self._fwd_admitted(method)
             finally:
                 with _inflight_lock:
                     _inflight[0] -= 1
@@ -483,6 +497,7 @@ def make_handler(pool, log=sys.stderr):
 
         def _fwd_admitted(self, method):
             esc = self._esc()
+            deferred_tool_note = None
             # The session lock is held by _fwd for the whole request so concurrent clients
             # on the same session cannot interleave rewrite / after_reply / swap (#101).
             if True:
@@ -502,9 +517,10 @@ def make_handler(pool, log=sys.stderr):
                         if note: print(note, file=log, flush=True)
                         url, alias = esc.upstream()
                     url, body = esc.rewrite(self._orig); raw = json.dumps(body).encode()
-                    if esc.tool_note: print(esc.tool_note, file=log, flush=True)
+                    # F2: capture note under the lock; _fwd prints it after release.
+                    deferred_tool_note = esc.tool_note
                     if url is None:   # tool_route target unreachable: fail closed (#251)
-                        self._502(esc.tool_note); return
+                        self._502(esc.tool_note); return deferred_tool_note
                 target = url.rsplit("/v1", 1)[0] + self.path
                 try:
                     hdrs = familia_auth.auth_headers({"Content-Type": "application/json"}, incoming=self.headers, required=True)
@@ -512,27 +528,28 @@ def make_handler(pool, log=sys.stderr):
                     # fail closed: never forward an unauthenticated request upstream
                     self.send_response(401); self.send_header("Content-Type", "application/json"); self.end_headers()
                     self.wfile.write(b'{"error":{"message":"no API key for upstream","code":401}}')
-                    return
+                    return deferred_tool_note
                 self._rid = self.headers.get("X-Familia-Request-Id") or uuid.uuid4().hex
                 hdrs["X-Familia-Request-Id"] = self._rid  # R3: lets upstream/caller dedupe
                 req = urllib.request.Request(target, data=raw, method=method, headers=hdrs)
                 try:
                     r = self._urlopen(req, timeout=UPSTREAM_TIMEOUT_S)
                 except ClientGone:
-                    return  # caller hung up: drop the reply, free the session (R4)
+                    return deferred_tool_note  # caller hung up: drop the reply, free the session (R4)
                 except Exception as e:
                     # Count transport error BEFORE decide (#100), then escalate/fallback (#98).
                     self._record_transport_fail(esc, body)
                     if getattr(esc, "tool_fwd", None):
                         # #251: forwarded tool request failed; never redial it with tools on
                         # another node (fail closed, no off-policy tool execution).
-                        self._502(f"[familia] tool_route {esc.tool_fwd} failed: {e}"); return
+                        self._502(f"[familia] tool_route {esc.tool_fwd} failed: {e}"); return deferred_tool_note
                     note = esc.after_reply(ok=False)
                     if note and _nothing_sent(e) and self._retry_once(esc, body, method, raw, note):
-                        return
+                        return deferred_tool_note
                     self._502(e)
-                    return
+                    return deferred_tool_note
                 self._write_chat(esc, r, body, None, method, raw)
+            return deferred_tool_note
 
         def do_POST(self): self._fwd("POST")
         def do_GET(self): self._fwd("GET")

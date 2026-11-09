@@ -32,8 +32,11 @@ import contextlib
 import fcntl
 import json
 import os
+import re
 import subprocess
 import sys
+import shutil
+import tempfile
 import time
 import urllib.request
 from collections import defaultdict
@@ -166,18 +169,39 @@ def endpoint_up(host, port, timeout=2):
         return False
 
 
+def new_worktree_dir(tid):
+    """Unpredictable 0700 worktree dir (honors TMPDIR); recorded in results.jsonl for loop.sh."""
+    safe = re.sub(r"[^A-Za-z0-9_.-]", "_", str(tid)).replace("..", "_")
+    wt = Path(tempfile.mkdtemp(prefix=f"dogfood-wt-{safe}-"))
+    _CREATED_WT.append(wt)
+    return wt
+
+
+_CREATED_WT: list = []
+
+
+def _discard_worktrees(repo, wts):
+    """Remove worktree dirs created by a task that died before recording results."""
+    for wt in wts:
+        try:
+            worktree_remove(repo, wt)
+        except Exception:
+            pass  # never mask the task's original error
+        shutil.rmtree(wt, ignore_errors=True)
+
+
 def worktree_add(repo, wt, ref="origin/main"):
     """Create a detached worktree without running pin-sync into it (#111)."""
     env = {"FAMILIA_SYNC": "0"}
-    sh(f"git worktree remove --force {wt}", cwd=repo, env=env)
-    rc, out = sh(f"git worktree add -q --detach {wt} {ref}", cwd=repo, env=env)
+    # wt is a fresh empty 0700 dir from new_worktree_dir(); never force-remove a guessable path.
+    rc, out = sh(["git", "worktree", "add", "-q", "--detach", str(wt), ref], cwd=repo, env=env)
     if rc != 0:
         raise RuntimeError(f"worktree add failed: {out[-500:]}")
     return wt
 
 
 def worktree_remove(repo, wt):
-    sh(f"git worktree remove --force {wt}", cwd=repo, env={"FAMILIA_SYNC": "0"})
+    sh(["git", "worktree", "remove", "--force", str(wt)], cwd=repo, env={"FAMILIA_SYNC": "0"})
 
 
 def task_prompt(t):
@@ -241,7 +265,7 @@ def collect_patch(wt, scope_files):
 def run_hermes_task(t, harness, args, out_dir, repo):
     mode = HERMES_MODES[harness]
     tid = t["id"]
-    wt = Path(f"/tmp/dogfood-wt-{tid}")
+    wt = new_worktree_dir(tid)
     d = out_dir / tid
     d.mkdir(parents=True, exist_ok=True)
     worktree_add(repo, str(wt))
@@ -356,7 +380,7 @@ def run_hermes_task(t, harness, args, out_dir, repo):
 
 def run_harness2_task(t, args, out_dir, repo):
     tid = t["id"]
-    wt = Path(f"/tmp/dogfood-wt-{tid}")
+    wt = new_worktree_dir(tid)
     d = out_dir / tid
     d.mkdir(parents=True, exist_ok=True)
     # Worktree still created so loop.sh paths stay stable; H2 edits harness state, not the issue tree.
@@ -405,6 +429,17 @@ def run_harness2_task(t, args, out_dir, repo):
 
 
 def run_task(t, harness, args, out_dir, repo):
+    mark = len(_CREATED_WT)
+    try:
+        return _run_task(t, harness, args, out_dir, repo)
+    except BaseException:
+        _discard_worktrees(repo, _CREATED_WT[mark:])
+        raise
+    finally:
+        del _CREATED_WT[mark:]
+
+
+def _run_task(t, harness, args, out_dir, repo):
     if harness in HERMES_MODES:
         return run_hermes_task(t, harness, args, out_dir, repo)
     if harness == "harness2":
