@@ -1,0 +1,16 @@
+{
+  "repo": "brianreborn/code-bootstraps-llama.cpp",
+  "tag": "android-b12032-1",
+  "asset": "llama-b12032-bin-android-arm64-cbl1.tar.gz",
+  "sha256": "28612783f45e9ed247276f66880fc7077c0d3bedd592ce3c2361f6144ec27024",
+  "bytes": 78231898,
+  "download_url": "https://github.com/brianreborn/code-bootstraps-llama.cpp/releases/download/android-b12032-1/llama-b12032-bin-android-arm64-cbl1.tar.gz",
+  "note": "In-repo pin for the Android arm64 Termux prebuilt. install/termux/cbl-runtime.sh verifies ONLY against this sha256. Re-verified 2026-11-05 against the downloaded release asset + SHA256SUMS + API digest.",
+  "fallback_opt_in": {
+    "tag": "android-b11969-1",
+    "asset": "llama-b11969-bin-android-arm64-cbl1.tar.gz",
+    "sha256": "158db5deb3e39f20b0e4e26e265dfc242030823e96537df4dfbfe7b0557ffcc9",
+    "download_url": "https://github.com/brianreborn/code-bootstraps-llama.cpp/releases/download/android-b11969-1/llama-b11969-bin-android-arm64-cbl1.tar.gz",
+    "note": "Explicit opt-in only. Set FAMILIA_CBL_ANDROID_TAG=android-b11969-1 and FAMILIA_CBL_ANDROID_SHA256=158db5deb3e39f20b0e4e26e265dfc242030823e96537df4dfbfe7b0557ffcc9 (plus optional FAMILIA_CBL_ANDROID_ASSET) to use this older runtime. Not selected automatically."
+  }
+}

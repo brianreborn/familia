@@ -92,3 +92,9 @@ scripts/swarm/swarm-bench-runner.sh|registers this host as a self-hosted swarm w
 scripts/swarm/swarm-bootstrap.sh|fresh swarm worker checkout; one-time operator setup
 scripts/task_suite_promote.py|promote gate for model configs (#119); used by bench/CI flows
 scripts/task_suite_runner.py|fixed task suite runner (#119); used by bench/CI flows
+install/termux/cbl-runtime.sh|helper: download+sha256-verify code-bootstraps Android prebuilt; called by install/termux/install.sh
+install/termux/install-hermes-android.sh|Android one-tap orchestrator (licenses + cbl + Hermes webapp); Termux:Widget / docs/android-hermes.md; not a Charm menu row yet
+install/termux/phone-model-default.py|helper: RAM-tier default phone model id; used by install-hermes-android.sh
+install/termux/fetch-phone-model.py|helper: download+sha256-verify RAM-tier phone GGUF; used by install-hermes-android.sh
+install/termux/widget/familia-hermes-android.sh|Termux:Widget shortcut wrapper around install-hermes-android.sh; home-screen entry, not Charm menu
+install/freebsd/install-familia.sh|FreeBSD ports/bootstrap installer; documented in docs/install-freebsd.md; not a Charm menu row

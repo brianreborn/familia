@@ -11,7 +11,6 @@
 1 familia-menu.sh SC2222  # overlapping case patterns (pre-existing)
 1 install/deps.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
 2 install/linux/install.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
-1 install/termux/install.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
 1 scripts/activate_guardian_weights.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
 1 scripts/add-model.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
 1 scripts/build_appimage.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command

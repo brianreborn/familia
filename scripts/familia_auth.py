@@ -7,10 +7,14 @@ on the server is not enough: every caller, including internal and recursive ones
 Key lookup order (first hit wins):
   1. FAMILIA_API_KEY            explicit override
   2. LLAMA_API_KEY              set by code-bootstraps serve.sh (comma list; first key used)
-  3. API_KEY_FILE               file, one key per line, '#' comments
-  4. the per-instance key file  ${XDG_CONFIG_HOME:-~/.config}/familia/instances/<port>/api-keys
+  3. API_KEY_FILE / FAMILIA_API_KEY_FILE   file, one key per line, '#' comments
+  4. Termux / phone key file    ${XDG_CONFIG_HOME:-~/.config}/familia/api.key
+                                ONLY when running on Termux/phone (TERMUX_VERSION / Prefix /
+                                /data/data/com.termux). Desktop/Linux/FreeBSD keep the previous
+                                order and do not prefer this path.
+  5. the per-instance key file  ${XDG_CONFIG_HOME:-~/.config}/familia/instances/<port>/api-keys
                                 (%APPDATA%\familia\instances\<port> on Windows; port = FAMILIA_PORT/PORT, 9931)
-  5. legacy <bootstrap root>/.secrets/api-keys for FAMILIA_BOOTSTRAP_ROOT, ROOT/code-bootstraps-llama.cpp,
+  6. legacy <bootstrap root>/.secrets/api-keys for FAMILIA_BOOTSTRAP_ROOT, ROOT/code-bootstraps-llama.cpp,
      ROOT/../code-bootstraps-llama.cpp, ~/code-bootstraps-llama.cpp
 The key is never generated here; serve.sh / serve.ps1 create it once per instance and never rotate it
 (code-bootstraps-llama.cpp docs/api-key-design.md).
@@ -70,11 +74,38 @@ def instance_key_file(port=None, env=None):
     return os.path.join(base, "familia", "instances", port, "api-keys")
 
 
+def termux_api_key_file(env=None):
+    """Phone/Termux key written by install/termux/install.sh (0600)."""
+    env = os.environ if env is None else env
+    if os.name == "nt":
+        base = env.get("APPDATA") or os.path.expanduser("~")
+    else:
+        base = env.get("XDG_CONFIG_HOME") or os.path.join(os.path.expanduser("~"), ".config")
+    return os.path.join(base, "familia", "api.key")
+
+
+def is_termux(env=None):
+    """True on Termux/phone. Desktop/Linux/FreeBSD must stay on the previous key order."""
+    env = os.environ if env is None else env
+    if env.get("TERMUX_VERSION"):
+        return True
+    prefix = env.get("PREFIX") or ""
+    if prefix.startswith("/data/data/com.termux"):
+        return True
+    if os.path.isdir("/data/data/com.termux"):
+        return True
+    return False
+
+
 def candidate_key_files(root=ROOT, env=None):
     env = os.environ if env is None else env
     out = []
-    if env.get("API_KEY_FILE"):
-        out.append(env["API_KEY_FILE"])
+    for name in ("API_KEY_FILE", "FAMILIA_API_KEY_FILE"):
+        if env.get(name):
+            out.append(env[name])
+    # Prefer ~/.config/familia/api.key ONLY on Termux/phone (R-3 regression fix).
+    if is_termux(env):
+        out.append(termux_api_key_file(env=env))
     out.append(instance_key_file(env=env))
     roots = [env.get("FAMILIA_BOOTSTRAP_ROOT", ""),
              os.path.join(root, "code-bootstraps-llama.cpp"),
@@ -173,7 +204,7 @@ def key_for_url(url, env=None):
     try:
         u = urllib.parse.urlparse(url)
         if u.port and (u.hostname or "") in ("127.0.0.1", "localhost", "::1") \
-                and not any(env.get(n) for n in ("FAMILIA_API_KEY", "LLAMA_API_KEY", "API_KEY_FILE")):
+                and not any(env.get(n) for n in ("FAMILIA_API_KEY", "LLAMA_API_KEY", "API_KEY_FILE", "FAMILIA_API_KEY_FILE")):
             k = _read(instance_key_file(port=u.port, env=env))
             if k:
                 return k
