@@ -1,0 +1,13 @@
+# Chain A -> B -> C: each step's reply is the next step's input.
+# prompt (optional) wraps the input; it must contain {input}. stream=true is refused.
+version: 1
+nodes:
+  drafter: http://127.0.0.1:8081
+  critic:  http://127.0.0.1:8082
+  editor:  http://127.0.0.1:8083
+routes:
+  pipeline:
+    chain:
+      - drafter
+      - {node: critic, prompt: "List problems in this draft:\n{input}"}
+      - {node: editor, prompt: "Rewrite fixing these problems:\n{input}"}

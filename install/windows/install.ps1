@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   familia one-click installer for Windows 10/11 (per-user, no admin).
 .DESCRIPTION

@@ -123,6 +123,28 @@ def _nothing_sent(e):
     r = getattr(e, "reason", e)
     return isinstance(r, (ConnectionRefusedError,)) or isinstance(e, ConnectionRefusedError)
 
+
+def tool_target(g, name):
+    """Validated graph `tool_route` target for `name` (validate_graph.tool_route), else None.
+    Fails safe to None (no forward) on any graph shape the validator cannot evaluate; the
+    validator error is logged, not swallowed."""
+    if not (((g.get("nodes") or {}).get(name) or {}).get("tool_route")):
+        return None
+    try:
+        import validate_graph as VG
+        return VG.tool_route(g, name)
+    except Exception as e:
+        print(f"[familia] tool_route for {name}: validate_graph error ({type(e).__name__}: {e}); not forwarding",
+              file=sys.stderr, flush=True)
+        return None
+
+def tool_bearing(body):
+    """True if the request asks for tools: `tools`, legacy `functions`, or a `tool_choice` /
+    legacy `function_call` other than "none" (those are only meaningful with tools)."""
+    if body.get("tools") or body.get("functions"):
+        return True
+    return any(body.get(k) not in (None, "", "none") for k in ("tool_choice", "function_call"))
+
 STATE = os.path.join(E.ROOT, ".cache", "familia")
 PENDING = os.path.join(STATE, "escalation-pending.json")
 ACCEPT = os.path.join(STATE, "escalation-accept.json")
@@ -139,7 +161,7 @@ def node_url(g, name, local_host):
     return f"http://{addr}:{n['port']}/v1"
 
 def alias_for(g, name):
-    return next((a for a, x in (g.get("aliases") or {}).items() if x["node"] == name), name)
+    return next((a for a, x in (g.get("aliases") or {}).items() if __import__("graph_types").alias_primary(x) == name), name)
 
 def session_id_from(headers):
     """Stable session key for per-client Escalator isolation (#101)."""
@@ -202,6 +224,8 @@ class Escalator:
         self.auto_env = os.environ.get("FAMILIA_ESCALATE") == "auto"
         self.session_id = session_id or DEFAULT_SESSION
         self.lock = FairLock()
+        self.tool_note = None  # last rewrite's tool-forward log line (no bodies/keys)
+        self.tool_fwd = None   # tool_route target the last rewrite forwarded to, if any
 
     def upstream(self):
         return node_url(self.g, self.current, self.local_host), alias_for(self.g, self.current)
@@ -255,6 +279,20 @@ class Escalator:
     def rewrite(self, body):
         self.sig.observe_request(body)
         url, alias = self.upstream()
+        # Tool forward (#243 runtime half): a tool-bearing request on a node with a validated
+        # tool_route goes whole (chat + tools loop) to the target, which runs under its own
+        # tool_policy/--tools. Unreachable target -> fail closed: rewrite returns url None and
+        # the handler answers 502, so the tools never run on the current node.
+        self.tool_note = None; self.tool_fwd = None
+        tt = tool_target(self.g, self.current) if tool_bearing(body) else None
+        if tt:
+            turl = node_url(self.g, tt, self.local_host)
+            if turl:
+                url, alias = turl, alias_for(self.g, tt)
+                self.tool_note = f"[familia] tool forward: {self.current} -> {tt}"; self.tool_fwd = tt
+            else:
+                self.tool_note = f"[familia] tool_route {tt} unreachable; refusing tool request (502)"
+                return None, body
         body = dict(body, model=alias)
         if self.handoff_next:
             msgs = body.get("messages") or []
@@ -384,6 +422,12 @@ def make_handler(pool, log=sys.stderr):
 
         def _retry_once(self, esc, body, method, raw, note):
             url, _alias = esc.upstream()
+            # R2 (#245): health-check the fallback node before redialing; a node that
+            # was respawned (or is still down) must not be dialed blind.
+            cur = esc.current
+            if esc.g["nodes"].get(cur, {}).get("host") == esc.local_host and not esc.ensure(cur):
+                self._502(f"{note}\n[familia] {cur} failed health check; not retried")
+                return True
             orig = getattr(self, "_orig", None)
             if orig is not None:
                 # R2 (#245): resend the caller's original body with the fallback node's
@@ -458,6 +502,9 @@ def make_handler(pool, log=sys.stderr):
                         if note: print(note, file=log, flush=True)
                         url, alias = esc.upstream()
                     url, body = esc.rewrite(self._orig); raw = json.dumps(body).encode()
+                    if esc.tool_note: print(esc.tool_note, file=log, flush=True)
+                    if url is None:   # tool_route target unreachable: fail closed (#251)
+                        self._502(esc.tool_note); return
                 target = url.rsplit("/v1", 1)[0] + self.path
                 try:
                     hdrs = familia_auth.auth_headers({"Content-Type": "application/json"}, incoming=self.headers, required=True)
@@ -476,6 +523,10 @@ def make_handler(pool, log=sys.stderr):
                 except Exception as e:
                     # Count transport error BEFORE decide (#100), then escalate/fallback (#98).
                     self._record_transport_fail(esc, body)
+                    if getattr(esc, "tool_fwd", None):
+                        # #251: forwarded tool request failed; never redial it with tools on
+                        # another node (fail closed, no off-policy tool execution).
+                        self._502(f"[familia] tool_route {esc.tool_fwd} failed: {e}"); return
                     note = esc.after_reply(ok=False)
                     if note and _nothing_sent(e) and self._retry_once(esc, body, method, raw, note):
                         return

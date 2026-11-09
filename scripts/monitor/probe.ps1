@@ -1,4 +1,4 @@
-# familia monitor probe for Windows (PowerShell 5.1+). Read-only; prints one JSON object.
+﻿# familia monitor probe for Windows (PowerShell 5.1+). Read-only; prints one JSON object.
 # Piped over SSH (no install on the remote, no $ on the command line so cmd.exe and Git bash agree):
 #   ssh HOST 'powershell -NoProfile -NonInteractive -Command "[Console]::In.ReadToEnd() | Invoke-Expression"' < probe.ps1
 # Ports to health-check come from $env:FAMILIA_PROBE_PORTS or the first line the console prepends:

@@ -110,6 +110,8 @@ def validate(graph, check_files=True, host=None):
             try: server_args(graph, nn)
             except SystemExit as ex: errs += [l.replace("graph: ERROR: ", "") for l in str(ex).split("\n") if l]
     errs = list(dict.fromkeys(errs))
+    if not errs:
+        WARNINGS.extend(routing_warnings(graph))
     if errs or not check_files:
         return errs, {}
     # Host scope (same rule as check_swap_budgets): file-existence and RAM totals are only
@@ -263,8 +265,16 @@ def validate(graph, check_files=True, host=None):
         # RAM safety (docs/ram-safety.md). Android phones stay hard-fail on overcommit.
         # Swap-rich desktops/laptops/servers (angel-class): overcommit and tight margins are
         # advisory — software VVRAM / large swap is the intended path.
-        ram = hosts[h]["ram_mib"]
-        reserve = hosts[h].get("reserve_ram_mib") or 0
+        hh = hosts.get(h)
+        ram, src = host_ram_mib(h, hh, local)
+        if ram is None:
+            # #224: fail closed. Undeclared host -> error; declared host with unknown RAM ->
+            # error unless swap-rich (then an explicit "reserve check skipped" warning).
+            e, w = unknown_ram_verdict(h, hh is not None, (hh is not None) and _swap_rich_host(h), total, src)
+            errs.extend(e); WARNINGS.extend(w)
+            continue
+        hh = hh or {}
+        reserve = hh.get("reserve_ram_mib") or 0
         soft = _swap_rich_host(h)
         if total > ram:
             msg = f"hosts.{h}: estimated RAM {total:.0f} MiB exceeds physical ram_mib {ram} MiB (overcommit)"
@@ -290,6 +300,20 @@ def validate(graph, check_files=True, host=None):
 # Vulkan llama.cpp builds allocate ~1.83 GB of Vulkan host buffers in shmem even with -ngl 0
 # (miryam, b11374), which counts against the memcap scope and stalls the server. With no GPU
 # layers, hide the Vulkan devices. An explicit GGML_VK_VISIBLE_DEVICES in env wins.
+def tool_key_file(n, env=None):
+    """Per-instance key file for a tool-enabled node (created 0600 once, never rotated).
+    Fails closed: no readable key -> SystemExit, the node does not start."""
+    import familia_auth
+    env = os.environ if env is None else env
+    path = env.get("API_KEY_FILE") or familia_auth.instance_key_file(port=n["port"], env=env)
+    try:
+        k = familia_auth.load_or_create_key_file(path)
+    except OSError as e:
+        raise SystemExit(f"graph: ERROR: tool-enabled node on port {n['port']}: cannot create its API key file ({e.__class__.__name__}); not starting")
+    if not k:
+        raise SystemExit(f"graph: ERROR: tool-enabled node on port {n['port']}: empty API key file; not starting")
+    return path
+
 def server_env(graph, name, env=None):
     env = dict(os.environ if env is None else env)
     if graph["nodes"][name]["offload"]["ngl"] == 0 and "GGML_VK_VISIBLE_DEVICES" not in env:
@@ -310,6 +334,40 @@ def merge_args(base, extra):
             if v is not None: out.append(v)
         i += 2 if v is not None else 1
     return out
+
+# Model roles the green-roomz graph-proxy manifest can carry (start_graph.local_topology).
+PROXY_ROUTABLE_ROLES = ("chat", "coder", "general", "reasoning")
+
+
+def routing_warnings(graph):
+    """Config that validates but will not route the way it reads. Advisory (WARNING lines),
+    so existing graphs keep validating; each names the key to change."""
+    out = []
+    nodes, models = graph.get("nodes") or {}, graph.get("models") or {}
+    for nn, n in sorted(nodes.items()):
+        if quantized_v_needs_fa(n):
+            out.append(f"nodes.{nn}: kv_type {n['kv_type']} with flash_attn: false; llama-server refuses a quantized "
+                       f"V cache without flash attention, so it is launched with -fa on (set flash_attn: true to make that explicit)")
+    for a, al in sorted((graph.get("aliases") or {}).items()):
+        import graph_types as _gt
+        prim = _gt.alias_primary(al)
+        n = nodes.get(prim) if prim else None
+        if not n or n.get("status") != "active":
+            continue
+        if n.get("embeddings"):
+            continue
+        role = node_type(graph, prim)
+        if role not in PROXY_ROUTABLE_ROLES:
+            out.append(f"aliases.{a}: node {al['node']!r} has role {role!r}; familia start "
+                       f"refuses it (graph-proxy routes {'/'.join(PROXY_ROUTABLE_ROLES)} and embeddings) — "
+                       f"reach it directly on its port or drop the alias")
+    for name, n in sorted(nodes.items()):
+        if n.get("tool_route") and "server_tools" not in n and tool_capable(graph, name):
+            out.append(f"nodes.{name}.tool_route: ignored for tools — the node is directly tool-capable "
+                       f"and keeps its own --tools grant; set tool_capable: false to execute tools only on "
+                       f"{n['tool_route']!r}")
+    return out
+
 
 def explain(graph, name):
     import model_db, model_params as mp
@@ -342,6 +400,42 @@ def admit_peak_mib(graph, name):
 def check_vvram_policy(graph, metas=None):
     import ctx_vvram
     return ctx_vvram.check_vvram_policy(graph, metas=metas, gguf_meta=gguf_meta, kv_mib=kv_mib)
+
+def unknown_ram_verdict(h, declared, swap_rich, total, src):
+    """(errors, warnings) for a host whose RAM could not be determined (#224). Fails closed."""
+    if not declared:
+        return [f"hosts.{h}: nodes placed on host {h!r} which is not declared in graph hosts "
+                f"(estimated {total:.0f} MiB; RAM unknown)"], []
+    if swap_rich:
+        return [], [f"hosts.{h}: RAM unknown ({src}); RAM reserve check SKIPPED for estimated "
+                    f"{total:.0f} MiB (swap-rich host; run scripts/host_measure.py on {h})"]
+    return [f"hosts.{h}: RAM unknown ({src}) and host is not swap-rich; cannot verify estimated "
+            f"{total:.0f} MiB + reserve fits (fail closed; run scripts/host_measure.py on {h})"], []
+
+def live_ram_mib():
+    """Physical RAM MiB of this machine from a live probe, or None (#224)."""
+    try:
+        import host_measure
+        v = host_measure._meminfo_mib()
+        return int(v) if v else None
+    except Exception:
+        return None
+
+def host_ram_mib(name, host, local=None):
+    """(ram_mib, source) for a graph host (#224). No master inventory: the graph's ram_mib is a
+    dated snapshot; on the local graph host a live probe is preferred. Unknown -> (None, why)."""
+    live = live_ram_mib() if (local is not None and name == local) else None
+    v = (host or {}).get("ram_mib")
+    snap = v if isinstance(v, int) and not isinstance(v, bool) and v > 0 else None
+    if live and snap:  # safe fallback: budget against the smaller figure
+        return min(live, snap), "live probe" if live < snap else "graph snapshot"
+    if live:
+        return live, "live probe"
+    if snap:
+        return snap, "graph snapshot"
+    if not host:
+        return None, f"host {name!r} not declared in graph hosts"
+    return None, "no ram_mib snapshot and no live probe"
 
 def host_swap_total_mib():
     """Total swap MiB on this machine, or None if unknown. FreeBSD swapinfo -k; Linux /proc/swaps."""
@@ -429,7 +523,10 @@ FAIL_CLOSED_TYPES = ("guardian", "pentest", "defender")
 TOOL_CAPABLE_BY_TYPE = {"coder": True, "chat": True, "general": True, "reasoning": True,
                         "embed": False, "decision": False, "vision": False, "diffusion": False}
 # Back-compat name: per-TYPE default expressed as a policy (derived from capability).
-TOOL_POLICY_BY_TYPE = {t: ("all" if c else []) for t, c in TOOL_CAPABLE_BY_TYPE.items()}
+# H4: the default grant is read-only. Shell/write tools (exec_shell_command, write_file, edit_file)
+# are granted only when `server_tools` explicitly lists them (or says "all").
+READ_ONLY_TOOLS = ["read_file", "file_glob_search", "grep_search", "get_info"]
+TOOL_POLICY_BY_TYPE = {t: (list(READ_ONLY_TOOLS) if c else []) for t, c in TOOL_CAPABLE_BY_TYPE.items()}
 TOOL_POLICY_BY_TYPE.update({t: [] for t in FAIL_CLOSED_TYPES})
 
 
@@ -489,7 +586,8 @@ def tool_policy(graph, name):
     - guardian/pentest/defender fail closed to [] regardless of override or route (TOOLS-005).
     - A present `server_tools` key is authoritative: "all"/non-empty list verbatim; [], none,
       false, "" are an explicit opt-out, also via nexus (TOOLS-006/009).
-    - Otherwise capability: directly tool-capable on a loopback bind -> "all" (TOOLS-007/008);
+    - Otherwise capability: directly tool-capable on a loopback bind -> READ_ONLY_TOOLS (H4;
+      TOOLS-007/008); shell/write tools need an explicit server_tools;
       tool-capable via a validated `tool_route` -> the target's tool_policy (TOOLS-009); else []."""
     n = graph["nodes"][name]
     if node_type(graph, name) in FAIL_CLOSED_TYPES:
@@ -502,7 +600,7 @@ def tool_policy(graph, name):
             return st
         return []
     if tool_capable(graph, name) and _loopback(n.get("bind")):
-        return "all"
+        return list(READ_ONLY_TOOLS)
     t = tool_route(graph, name) if n.get("tool_route") else None
     if t:
         return tool_policy(graph, t)  # routed grant = the target's own validated grant
@@ -523,6 +621,20 @@ def tools_argv(graph, name):
     return []
 
 
+def launch_tools_argv(graph, name):
+    """--tools plus, on every tool-enabled server, --api-key-file (H4): llama-server then
+    requires the per-instance key on every endpoint, /tools included. The key FILE is passed,
+    never the key, so it does not show in argv/ps."""
+    ta = tools_argv(graph, name)
+    return ta + ["--api-key-file", tool_key_file(graph["nodes"][name])] if ta else []
+
+
+def quantized_v_needs_fa(n):
+    """llama-server refuses a quantized V cache without flash attention ('quantized V cache requires
+    flash_attn'): kv_type q8_0/q4_0 with flash_attn: false is launched with -fa on (and warned)."""
+    return n.get("kv_type") in ("q8_0", "q4_0") and not n.get("flash_attn")
+
+
 def server_args(graph, name):
     n = graph["nodes"][name]
     kind = (graph["runtimes"].get(n["runtime"]) or {}).get("kind", "llama-server")
@@ -533,18 +645,20 @@ def server_args(graph, name):
          "-c", str(n["ctx"]), "-np", str(n["parallel"]), "-ctk", n["kv_type"], "-ctv", n["kv_type"],
          "-ngl", str(n["offload"]["ngl"]), "--jinja"]
     if n["offload"]["ngl"]: a += ["-sm", n["offload"]["split"], "-mg", str(n["offload"]["main_gpu"])]
-    if n["flash_attn"]: a += ["-fa", "on"]
-    if n.get("threads"): a += ["-t", str(n["threads"])]
+    if n["flash_attn"] or quantized_v_needs_fa(n): a += ["-fa", "on"]
+    threads = n.get("threads") or (graph.get("hosts", {}).get(n.get("host")) or {}).get("threads")
+    if threads: a += ["-t", str(threads)]  # node.threads, else the host's measured threads
     if n.get("load_mode"): a += ["-lm", n["load_mode"]]
     if n.get("slot_save") or n.get("spill_path"):  # #85 + SSD/VVRAM spill (docs/vvram-ssd/LAYER.md)
         d = slot_save_dir(n, name); os.makedirs(d, exist_ok=True)
         a += ["--slot-save-path", d]
-    names = sorted(al for al, x in graph["aliases"].items() if x["node"] == name)
+    import graph_types as _gt
+    names = sorted(al for al, x in graph["aliases"].items() if _gt.alias_primary(x) == name)
     if names: a += ["--alias", names[0]]
     a += ["--cache-ram", str(n["cache_ram_mib"])]
     # llama-ui Server Tools: /tools is feature_disabled (403) unless --tools is set at launch.
     # DUP-04/CFG-SPEC-TOOLS: explicit per-TYPE decision on every launch (override via server_tools).
-    a += tools_argv(graph, name)
+    a += launch_tools_argv(graph, name)
     # Model parameters (#51): REQUIRED + RECOMMENDED from the model database (cards, configs,
     # GGUF), node.sampling / override_reasons applied. A REQUIRED one that cannot be met is fatal.
     import model_db
@@ -576,9 +690,10 @@ def server_args(graph, name):
         else:
             a += ["--spec-type", sp["spec_type"]]
     r = graph["runtimes"][n["runtime"]]
-    if "bin" in r:
-        a = [os.path.join(os.path.dirname(os.path.abspath(graph.get("_path", "graph.yaml"))), r["bin"])] + a
-    return a
+    # argv[0] is always the binary: runtimes.<r>.bin (relative to graph.yaml), else llama-server on PATH
+    binary = (os.path.join(os.path.dirname(os.path.abspath(graph.get("_path", "graph.yaml"))), r["bin"])
+              if "bin" in r else "llama-server")
+    return [binary] + a
 
 USAGE = __doc__.split("\n\n")[1]
 

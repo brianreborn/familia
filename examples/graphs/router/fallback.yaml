@@ -1,0 +1,9 @@
+# Fallback: try in order; skip a node only when it is unreachable or answers 502/503
+# (loading). A 4xx from the first node is returned as-is, never masked.
+# All down -> 503 listing every node tried.
+version: 1
+nodes:
+  primary: http://127.0.0.1:8081
+  backup:  http://127.0.0.1:8082
+routes:
+  chat: [primary, backup]

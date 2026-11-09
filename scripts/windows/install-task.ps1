@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   OPT-IN: register a per-user Scheduled Task that runs scripts\windows\start.bat at logon (#17).
 .DESCRIPTION

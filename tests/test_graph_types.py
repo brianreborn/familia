@@ -181,7 +181,9 @@ def test_speculative_vocab_mismatch_and_ram(monkeypatch):
     # egemma2 (gemma4 tokenizer) cannot draft for qwen35 (gpt2 tokenizer): file-level check
     x = g(); x["_path"] = os.path.join(ROOT, "graph.yaml")
     x["speculative"]["d"] = spec_draft(status="experimental")
-    if not os.path.isfile(os.path.expanduser(BASE["models"]["egemma2-q8"]["gguf"])): pytest.skip("GGUFs not on this machine")
+    tgt = BASE["models"][BASE["nodes"]["coder"]["model"]]["gguf"]
+    if not all(os.path.isfile(os.path.expanduser(p)) for p in (BASE["models"]["egemma2-q8"]["gguf"], tgt)):
+        pytest.skip("draft and target GGUFs not both on this machine")
     e, tot = validate_graph.validate(x); assert any("tokenizer/vocab mismatch" in m for m in e), e
     _, base = validate_graph.validate(g()); assert tot["miryam"] > base["miryam"] + 290  # draft weights counted
 
@@ -211,9 +213,16 @@ def test_server_tools_args_and_loopback():
     has(x, "only allowed when bind is loopback")
     x = g(); x["nodes"]["coder"]["server_tools"] = ["nope"]; has(x, "unknown tool")
 
-def test_alias_exactly_one_node():
-    x = g(); x["aliases"]["coder"]["node"] = ["coder"]; has(x, "expected a nodes name")
+def test_alias_node_or_fallback_list():
+    """CFG-SPEC-ALIAS-001: aliases.<a>.node is one node (unchanged) or a fallback list."""
     x = g(); x["aliases"]["coder"]["node"] = "auto"; has(x, "no such nodes entry 'auto'")
+    x = g(); x["aliases"]["coder"]["node"] = ["coder"]; assert errs(x) == []
+    x = g(); x["aliases"]["coder"]["node"] = ["coder", "auto"]; has(x, "no such nodes entry 'auto'")
+    x = g(); x["aliases"]["coder"]["node"] = []; has(x, "non-empty list")
+    x = g(); x["aliases"]["coder"]["node"] = ["coder", "coder"]; has(x, "duplicate entries")
+    x = g(); x["aliases"]["coder"]["node"] = ["coder", "embed"]; has(x, "mixes embedding and chat")
+    x = g(); x["aliases"]["coder"]["node"] = 7; has(x, "expected a nodes name or a non-empty list")
+    x = g(); x["aliases"]["coder"]["remote"] = "yes"; has(x, "expected true/false")
 
 def test_duplicate_yaml_keys_rejected(tmp_path):
     p = tmp_path / "g.yaml"; p.write_text("version: 2\naliases:\n  coder: {node: a}\n  coder: {node: b}\n")
@@ -553,3 +562,25 @@ def test_server_tools_explicit_opt_out_validates():
         x = g(); x["nodes"]["angel-guardian"]["server_tools"] = opt
         assert [e for e in errs(x) if "server_tools" in e] == [], opt
     x = g(); x["nodes"]["coder"]["server_tools"] = "some"; has(x, "opt-out")
+
+
+def test_quantized_kv_without_fa_forces_fa_on_and_warns():
+    """sysrescue bring-up: kv q8_0 + flash_attn false -> llama-server 'quantized V cache requires flash_attn'."""
+    x = g(); n = x["nodes"]["coder"]; n["kv_type"] = "q8_0"; n["flash_attn"] = False
+    a = validate_graph.server_args(x, "coder")
+    assert a[a.index("-fa") + 1] == "on"
+    assert any(w.startswith("nodes.coder: kv_type q8_0 with flash_attn: false") for w in validate_graph.routing_warnings(x))
+    n["kv_type"] = "f16"
+    assert "-fa" not in validate_graph.server_args(x, "coder")
+    assert not any(w.startswith("nodes.coder: kv_type") for w in validate_graph.routing_warnings(x))
+
+
+def test_server_args_argv0_is_binary_and_threads_from_host():
+    x = g(); rt = x["runtimes"][x["nodes"]["coder"]["runtime"]]
+    rt.pop("bin", None); x["nodes"]["coder"].pop("threads", None)
+    a = validate_graph.server_args(x, "coder")
+    assert a[0] == "llama-server" and a[1] == "-m"            # never a bare "-m ..." argv
+    assert a[a.index("-t") + 1] == str(x["hosts"][x["nodes"]["coder"]["host"]]["threads"])
+    rt["bin"] = "bin/llama-server"; x["nodes"]["coder"]["threads"] = 3
+    a = validate_graph.server_args(x, "coder")
+    assert a[0].endswith("bin/llama-server") and a[a.index("-t") + 1] == "3"   # node.threads wins

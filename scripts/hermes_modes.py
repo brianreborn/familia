@@ -131,7 +131,7 @@ def single_agent(g, agent, node, *, enforce_min_ctx=True):
     here = socket.gethostname().split(".")[0]
     if here in (g.get("hosts") or {}) and n["host"] != here:
         sys.exit(f"hermes.sh: node {node} is on {n['host']}, this is {here}; single-model mode starts the node locally")
-    alias = next((k for k, al in (g.get("aliases") or {}).items() if al.get("node") == node), None)
+    alias = next((k for k, al in (g.get("aliases") or {}).items() if __import__("graph_types").alias_primary(al) == node), None)
     if alias is None and node in (g.get("aliases") or {}): usage_err(f"alias {node!r} names another node; cannot address node {node} directly")
     g2 = copy.deepcopy(g); name = f"{agent}@{node}"
     g2["agents"][name] = dict(copy.deepcopy(a), context_length=slot(n), aliases={"main": alias or node, "auxiliary": alias or node})
@@ -217,7 +217,7 @@ def main(argv):
         elif o["action"] == "selftest": fwd.append("--selftest-compaction")
         if a and o["action"] == "run" and o["escalate"] is None:
             tgt = (raw.get("aliases") or {}).get((a.get("aliases") or {}).get("main"), {})
-            n = (raw.get("nodes") or {}).get(tgt.get("node"), {})
+            n = (raw.get("nodes") or {}).get(__import__("graph_types").alias_primary(tgt), {})
             if n.get("escalates_to") and (n.get("escalation") or {}).get("mode", "suggest") != "off":
                 o["escalate"] = True
         if o["escalate"]:

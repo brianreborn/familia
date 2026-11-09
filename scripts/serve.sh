@@ -18,6 +18,7 @@ esac
 node="$1"; shift
 here="$(cd "$(dirname "$0")/.." && pwd)"
 MK_TAG=familia-serve; . "$here/lib/msg.mk"   # say
+graph="${FAMILIA_GRAPH:-$here/graph.yaml}"   # start_graph.py --graph passes its file here
 if [ -n "${FAMILIA_HOST:-}" ]; then
   # The host name comes from graph selection, not arbitrary shell text.
   case "$FAMILIA_HOST" in *[!A-Za-z0-9._-]*)
@@ -25,12 +26,12 @@ if [ -n "${FAMILIA_HOST:-}" ]; then
     exit 2
     ;;
   esac
-  if ! args="$(python3 "$here/scripts/validate_graph.py" --graph "$here/graph.yaml" --host "$FAMILIA_HOST" --args "$node")"; then
+  if ! args="$(python3 "$here/scripts/validate_graph.py" --graph "$graph" --host "$FAMILIA_HOST" --args "$node")"; then
     say "validate_graph.py --args $node failed for host $FAMILIA_HOST (see above); not starting"
     exit 1
   fi
 else
-  if ! args="$(python3 "$here/scripts/validate_graph.py" --graph "$here/graph.yaml" --args "$node")"; then
+  if ! args="$(python3 "$here/scripts/validate_graph.py" --graph "$graph" --args "$node")"; then
     say "validate_graph.py --args $node failed (see above); not starting"
     exit 1
   fi
@@ -41,7 +42,7 @@ if [ ! -f "$here/scripts/licenses.py" ]; then
   say "scripts/licenses.py not found; licenses must be accepted before a model starts; not starting"
   exit 1
 fi
-if ! python3 "$here/scripts/licenses.py" gate --graph "$here/graph.yaml"; then
+if ! python3 "$here/scripts/licenses.py" gate --graph "$graph"; then
   say "licenses not accepted (scripts/licenses.py review, or FAMILIA_ACCEPT_LICENSES=yes); not starting $node"
   exit 1
 fi
@@ -118,7 +119,7 @@ if [ "$FAMILIA_MEMCAP" = 1 ] && command -v systemd-run >/dev/null 2>&1; then
   # independent headroom caps overcommit (27 GiB of caps on a 23 GiB box, #95).
   # mmap+swap_budget: admit KV+cache+working-set, not full GGUF (docs/vvram-ssd/LAYER.md).
   if [ -z "${FAMILIA_MEMMAX:-}" ]; then
-    FAMILIA_MEMMAX="$(python3 -c 'import sys; sys.path.insert(0, sys.argv[1]+"/scripts"); import validate_graph as vg; g=vg.load(sys.argv[1]+"/graph.yaml"); print("%dM" % vg.admit_peak_mib(g, sys.argv[2]))' "$here" "$node" 2>/dev/null || python3 -c 'import os, sys; print("%dM" % (os.path.getsize(sys.argv[1]) / 2**20 * 1.15 + 768))' "$model" 2>/dev/null || echo 4096M)"
+    FAMILIA_MEMMAX="$(python3 -c 'import sys; sys.path.insert(0, sys.argv[1]+"/scripts"); import validate_graph as vg; g=vg.load(sys.argv[3]); print("%dM" % vg.admit_peak_mib(g, sys.argv[2]))' "$here" "$node" "$graph" 2>/dev/null || python3 -c 'import os, sys; print("%dM" % (os.path.getsize(sys.argv[1]) / 2**20 * 1.15 + 768))' "$model" 2>/dev/null || echo 4096M)"
   fi
   # Fleet-wide admission: reserve the cap before launch so concurrent launches compose (#95).
   # The reservation is keyed to this shell's pid, which exec keeps for the server.

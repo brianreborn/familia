@@ -28,3 +28,14 @@ def test_scripts_shape():
     assert "SupportsShouldProcess" in ps and "-AtLogOn" in ps and "RunLevel Limited" in ps
     # opt-in: without -Install the script returns before registering
     assert ps.index("if (-not $Install)") < ps.index("Register-ScheduledTask")
+
+
+def test_ps1_files_have_utf8_bom_for_windows_powershell_51():
+    """#234: Windows PowerShell 5.1 reads BOM-less .ps1 as ANSI (cp1252). UTF-8 glyphs such as
+    '║' (E2 95 91) then contain 0x91/0x92, which 5.1 treats as quote characters, so
+    familia-home.ps1 / setup-goals.ps1 failed to parse. Every .ps1 must start with a UTF-8 BOM."""
+    import pathlib
+    root = pathlib.Path(__file__).resolve().parents[1]
+    bad = [str(p.relative_to(root)) for p in root.rglob("*.ps1")
+           if ".git" not in p.parts and not p.read_bytes().startswith(b"\xef\xbb\xbf")]
+    assert not bad, f"add a UTF-8 BOM (PowerShell 5.1 parses these as ANSI): {bad}"

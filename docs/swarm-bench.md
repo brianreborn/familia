@@ -91,3 +91,8 @@ it on the fleet phones without the owner's explicit yes.
 **Anything beyond these per-user examples (a system-wide unit, `loginctl enable-linger`, `sudo`,
 sysctl, `/etc/fstab` or `/etc/rc.conf`) needs Brian's explicit yes for each host.** No familia
 installer applies any of it.
+## Test hooks (tests only)
+
+`SWARM_BENCH_PGREP`, `SWARM_BENCH_LOAD1`, `SWARM_BENCH_NPROC` and `SWARM_BENCH_MEMINFO` exist only so
+`tests/test_bench_knobs.py` can run hermetically. Do not set them on real runners. If pgrep is missing
+or fails (rc > 1), bench.sh treats the host as busy (`pgrep unavailable`) and skips with exit 78.

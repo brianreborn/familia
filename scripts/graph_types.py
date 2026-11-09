@@ -49,6 +49,13 @@ def check_field(g, sec, name, key, spec, val, errs):
     elif k == "ref":
         if not isinstance(val, str): errs.append(f"{where}: expected a {spec.ref} name, got {val!r}")
         elif val not in (g.get(spec.ref) or {}): errs.append(f"{where}: no such {spec.ref} entry {val!r}")
+    elif k == "noderefs":   # one name, or a non-empty fallback list of names (aliases.node)
+        vals = [val] if isinstance(val, str) else val
+        if not isinstance(vals, list) or not vals or not all(isinstance(v, str) for v in vals):
+            errs.append(f"{where}: expected a {spec.ref} name or a non-empty list of {spec.ref} names, got {val!r}"); return
+        if len(set(vals)) != len(vals): errs.append(f"{where}: duplicate entries")
+        for v in vals:
+            if v not in (g.get(spec.ref) or {}): errs.append(f"{where}: no such {spec.ref} entry {v!r}")
     elif k == "refs":
         if not isinstance(val, list) or not val or not all(isinstance(v, str) for v in val):
             errs.append(f"{where}: expected non-empty list of {spec.ref} names"); return
@@ -329,12 +336,30 @@ def check_speculative(g, name, sp, errs):
     others = [o for o, x in (g.get("speculative") or {}).items() if x.get("target") == sp.get("target") and x.get("status") == "active" and o != name]
     if sp.get("status") == "active" and others: errs.append(f"{w}: target {sp.get('target')!r} already has active speculative {others}")
 
+def alias_nodes(a):
+    """Node names of an alias in fallback order: `node: x` -> [x]; `node: [x, y]` -> [x, y]."""
+    v = (a or {}).get("node") if isinstance(a, dict) else None
+    if isinstance(v, str): return [v]
+    return [x for x in v if isinstance(x, str)] if isinstance(v, list) else []
+
+
+def alias_primary(a):
+    """First node of an alias (what single-node consumers read), or None."""
+    ns = alias_nodes(a)
+    return ns[0] if ns else None
+
+
 def check_alias(g, name, a, errs):
-    gw, nd = lookup(g, "gateways", a.get("gateway")), lookup(g, "nodes", a.get("node"))
-    if gw and nd and gw.get("host") != nd.get("host"):
-        if not any(t.get("kind") != "local" and {t.get("from"), t.get("to")} == {gw.get("host"), nd.get("host")}
-                   for t in (g.get("transports") or {}).values()):
-            errs.append(f"aliases.{name}: gateway host {gw.get('host')!r} has no transport to node host {nd.get('host')!r}")
+    gw = lookup(g, "gateways", a.get("gateway"))
+    members = [(n, lookup(g, "nodes", n)) for n in alias_nodes(a)]
+    for n, nd in members:
+        if gw and nd and gw.get("host") != nd.get("host"):
+            if not any(t.get("kind") != "local" and {t.get("from"), t.get("to")} == {gw.get("host"), nd.get("host")}
+                       for t in (g.get("transports") or {}).values()):
+                errs.append(f"aliases.{name}: gateway host {gw.get('host')!r} has no transport to node host {nd.get('host')!r}")
+    if len(members) > 1:   # CFG-SPEC-ALIAS-002: one kind per alias
+        kinds = {bool(nd.get("embeddings")) for _, nd in members if nd}
+        if len(kinds) > 1: errs.append(f"aliases.{name}: fallback list mixes embedding and chat nodes")
 
 AGENT_ROLES = ("main", "auxiliary")
 
@@ -371,7 +396,7 @@ def check_agent(g, name, a, errs):
             errs.append(f"agents.{name}.aliases.{role}: exactly one alias per role, got a list"); continue
         alias = lookup(g, "aliases", target)
         if alias is None: errs.append(f"agents.{name}.aliases.{role}: no such alias {target!r}"); continue
-        node = lookup(g, "nodes", alias.get("node"))
+        node = lookup(g, "nodes", alias_primary(alias))
         s = slot_ctx(node) if node else None
         if s is None: continue
         if isinstance(a.get("min_ctx"), int) and s < a["min_ctx"]:
@@ -622,8 +647,10 @@ TYPES = {
                      check_speculative, experimental=True,
                      doc="edge draft->target (same vocab) or model-free n-gram lookup decoding"),
     "gateways": T({"kind": req("enum", choices={"green-roomz"}), "host": req("ref", ref="hosts"),
-                   "port": req("int", min=1)}, doc="router exposing aliases"),
-    "aliases": T({"node": req("ref", ref="nodes"), "gateway": req("ref", ref="gateways")}, check_alias,
+                   "port": req("int", min=1), "router": opt("bool")},
+                  doc="router exposing aliases; served by scripts/graph_router.py (default; caller auth, 3 s connect "
+                      "bound); router: false uses green-roomz graph-proxy (retries a down node for 180 s)"),
+    "aliases": T({"node": req("noderefs", ref="nodes"), "gateway": req("ref", ref="gateways"), "remote": opt("bool")}, check_alias,
                  doc="route name -> exactly one node"),
     "agents": T({"kind": req("enum", choices={"hermes-agent"}), "host": req("ref", ref="hosts"),
                  "prompt_profile": opt("enum", choices={"auto", "lean", "full"}),  # #85
