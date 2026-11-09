@@ -138,12 +138,39 @@ def _is_legacy_runner(path, exists=_path_exists):
         return False
 
 
-def _full_cli_for(bin_path, exists=_path_exists):
-    """The full `hermes` CLI next to a legacy `hermes-agent` script, else bin_path unchanged."""
+def exec_problem(path):
+    """Why *path* must not be exec'd as hermes, or None. It must be absolute and (after symlinks) a
+    regular, executable file that is not world-writable (HERMES_BIN and the sibling-`hermes` pick
+    both run with the user's full environment)."""
+    import stat
+    if not path or not os.path.isabs(str(path)):
+        return "not an absolute path"
+    try:
+        st = os.stat(path)
+    except OSError as e:
+        return f"cannot stat ({e.strerror or e})"
+    if not stat.S_ISREG(st.st_mode):
+        return "not a regular file"
+    if not os.access(path, os.X_OK):
+        return "not executable"
+    if st.st_mode & stat.S_IWOTH:
+        return "world-writable"
+    return None
+
+
+def _full_cli_for(bin_path, exists=_path_exists, check=exec_problem):
+    """The full `hermes` CLI next to a legacy `hermes-agent` script, else bin_path unchanged. The
+    sibling is only taken when it passes exec_problem (absolute, regular, executable, not o+w)."""
     if not _is_legacy_runner(bin_path, exists=exists):
         return bin_path
     sibling = os.path.join(os.path.dirname(os.path.abspath(bin_path)), "hermes")
-    return sibling if exists(sibling) and not _is_legacy_runner(sibling, exists=exists) else bin_path
+    if not exists(sibling) or _is_legacy_runner(sibling, exists=exists):
+        return bin_path
+    why = check(sibling)
+    if why:
+        print(f"hermes.sh: warning: not using {sibling} ({why}); keeping {bin_path}", file=sys.stderr)
+        return bin_path
+    return sibling
 
 
 def _snap_sp(exists=_path_exists):
@@ -191,7 +218,7 @@ def _derive_sp(bin_path, py, exists=_path_exists, run=subprocess.run):
 
 
 def resolve_hermes(environ=None, *, exists=_path_exists, which=shutil.which,
-                   system=None, run=subprocess.run, missing="defaults"):
+                   system=None, run=subprocess.run, missing="defaults", check=exec_problem):
     """Resolve HERMES_BIN / HERMES_PY / HERMES_SP.
 
     Order: explicit env overrides always win per-variable; then Linux snap if
@@ -217,7 +244,7 @@ def resolve_hermes(environ=None, *, exists=_path_exists, which=shutil.which,
             bin_path = SNAP_BIN
         else:
             bin_path = which("hermes-agent") or which("hermes")
-            bin_path = _full_cli_for(bin_path, exists=exists)
+            bin_path = _full_cli_for(bin_path, exists=exists, check=check)
 
     if not bin_path:
         if missing == "die":
@@ -250,6 +277,12 @@ def resolve_hermes(environ=None, *, exists=_path_exists, which=shutil.which,
             "FreeBSD: pkg install hermes-agent (no snap). "
             "Or set HERMES_BIN to a real hermes-agent/hermes binary."
         )
+    if missing == "die":
+        why = check(bin_path)
+        if why:
+            src = "HERMES_BIN" if env.get("HERMES_BIN") else "hermes"
+            die(f"{src}={bin_path!r} is {why}; refusing to launch it. Point HERMES_BIN at an absolute "
+                "path to the hermes CLI: a regular, executable file that is not world-writable.")
     if missing == "die" and _is_legacy_runner(bin_path, exists=exists):
         print(f"hermes.sh: warning: {bin_path} is hermes-agent's legacy single-query runner "
               "(no -z/-t/desktop/webapp); point HERMES_BIN at the `hermes` CLI of the same install",

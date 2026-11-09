@@ -204,9 +204,10 @@ def test_angel_coder_meets_hermes_min_ctx(monkeypatch):
     assert g2["agents"][name]["context_length"] == 65536
 
 
-def _write(path, text):
+def _write(path, text, mode=0o755):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text)
+    os.chmod(path, mode)   # installed console scripts are executable
     return str(path)
 
 
@@ -254,3 +255,49 @@ def test_snap_site_packages_follows_snap_python(monkeypatch):
     b, py, sp = hh.resolve_hermes(environ={}, exists=_exists_set([hh.SNAP_BIN, hh.SNAP_PY, hh.SNAP_SP, sp314]),
                                   which=lambda n: None, system="Linux", missing="defaults")
     assert b == hh.SNAP_BIN and sp == sp314
+
+
+# --- Boundary fix-forward (c): HERMES_BIN / sibling pick must be a safe executable -----------------
+
+def _die_env(b):
+    return {"HERMES_BIN": b, "HERMES_PY": "/v/bin/python3", "HERMES_SP": "/v/lib"}
+
+
+def test_exec_problem_rules(tmp_path):
+    ok = _write(tmp_path / "ok", FULL)
+    assert hh.exec_problem(ok) is None
+    assert hh.exec_problem("bin/hermes") == "not an absolute path"
+    assert hh.exec_problem(str(tmp_path)) == "not a regular file"
+    assert hh.exec_problem(_write(tmp_path / "noexec", FULL, mode=0o644)) == "not executable"
+    assert hh.exec_problem(_write(tmp_path / "ww", FULL, mode=0o757)) == "world-writable"
+    assert hh.exec_problem(str(tmp_path / "absent")).startswith("cannot stat")
+    link = tmp_path / "link"; link.symlink_to(ok)
+    assert hh.exec_problem(str(link)) is None          # symlink to a safe file is fine (snap /snap/bin/*)
+
+
+@pytest.mark.parametrize("bad", ["relative/hermes", "DIR", "NOEXEC", "WW"])
+def test_launch_refuses_unsafe_hermes_bin(tmp_path, bad, capsys):
+    paths = {"DIR": str(tmp_path), "NOEXEC": _write(tmp_path / "n" / "hermes", FULL, mode=0o644),
+             "WW": _write(tmp_path / "w" / "hermes", FULL, mode=0o777)}
+    b = paths.get(bad, bad)
+    with pytest.raises(SystemExit):
+        hh.resolve_hermes(environ=_die_env(b), exists=lambda p: True, which=lambda n: None,
+                          system="Linux", missing="die")
+    assert "refusing to launch" in capsys.readouterr().err
+
+
+def test_launch_accepts_safe_hermes_bin(tmp_path):
+    b = _write(tmp_path / "bin" / "hermes", FULL)
+    assert hh.resolve_hermes(environ=_die_env(b), exists=lambda p: True, which=lambda n: None,
+                             system="Linux", missing="die")[0] == b
+
+
+def test_sibling_hermes_not_taken_when_world_writable(tmp_path, capsys):
+    legacy = _write(tmp_path / "bin" / "hermes-agent", LEGACY)
+    _write(tmp_path / "bin" / "hermes", FULL, mode=0o777)
+    b, _py, _sp = hh.resolve_hermes(
+        environ={"HERMES_PY": "/v/bin/python3", "HERMES_SP": "/v/lib"},
+        exists=lambda p: os.path.exists(p) or p in ("/v/bin/python3", "/v/lib"),
+        which=lambda n: legacy if n == "hermes-agent" else None, system="Linux", missing="defaults")
+    assert b == legacy
+    assert "world-writable" in capsys.readouterr().err
