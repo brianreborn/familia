@@ -249,6 +249,34 @@ def test_ambient_secrets_not_carried_unless_opted_in(tmp_path, monkeypatch):
     assert opted["GH_TOKEN"] == "g" and opted["SSH_AUTH_SOCK"] == "/run/ssh"
 
 
+def test_ambient_secrets_n2a_token_dsn_kubeconfig(tmp_path, monkeypatch):
+    """Boundary N2a: *_TOKEN / *_PRIVATE_KEY / DSN / DB URLs / KUBECONFIG drop unless PASS_SECRETS=1."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    hh.MCP_ENV_KEEP.clear()
+    drop = {
+        "SLACK_BOT_TOKEN": "xoxb", "APP_PRIVATE_KEY": "pem", "SERVICE_DSN": "postgres://x",
+        "DSN": "mysql://x", "DATABASE_URL": "postgres://db", "PROD_DATABASE_URL": "postgres://p",
+        "APP_DB_URL": "postgres://a", "REDIS_URL": "redis://r", "MONGODB_URL": "mongodb://m",
+        "POSTGRES_URL": "postgres://pg", "POSTGRESQL_URL": "postgres://pql", "KUBECONFIG": "/home/k",
+    }
+    keep = {
+        "PATH": "/usr/bin", "HOME": str(tmp_path), "TERM": "xterm", "HERMES_HOME": "/h",
+        "FAMILIA_API_KEY": "fam", "MAX_TOKENS": "8192", "WEBHOOK_URL": "https://hooks.example/x",
+        "LLAMA_SERVER_URL": "http://127.0.0.1:8080",
+    }
+    src = dict(drop, **keep)
+    env = hh.hermes_child_env(environ=src)
+    for k in drop:
+        assert k not in env, k
+    for k, v in keep.items():
+        assert env[k] == v, k
+    # negative: bare TOKEN / URL suffixes that are not the secret shapes above
+    assert "MAX_TOKENS" in env and "WEBHOOK_URL" in env and "LLAMA_SERVER_URL" in env
+    opted = hh.hermes_child_env(environ=dict(src, **{hh.PASS_SECRETS_ENV: "1"}))
+    for k, v in drop.items():
+        assert opted[k] == v, k
+
+
 def test_mcp_declared_cloud_key_not_readmitted_into_the_whole_env(tmp_path, monkeypatch, capsys):
     """Boundary N3: graph.yaml naming OPENAI_API_KEY under an MCP server must not put it in hermes' env."""
     monkeypatch.delenv(hh.ALLOW_CLOUD_ENV, raising=False)

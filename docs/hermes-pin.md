@@ -78,7 +78,9 @@ dirs under `HERMES_HOME/.no-cloud-creds/`. Credentials found only through `$HOME
 declares (`env_from`, `headers_from`) are kept.
 
 Ambient non-LLM secrets are not carried into hermes (and so not into its terminal tool) either:
-`GH_TOKEN`, `GITHUB_TOKEN`, `GH_ENTERPRISE_TOKEN`, `GITHUB_ENTERPRISE_TOKEN`, `SSH_AUTH_SOCK` and any
-`*_SECRET`, `*_SECRET_KEY`, `*_PASSWORD`, `*_PASSWD` (`FAMILIA_*` and graph-declared MCP names kept).
+`GH_TOKEN`, `GITHUB_TOKEN`, `GH_ENTERPRISE_TOKEN`, `GITHUB_ENTERPRISE_TOKEN`, `SSH_AUTH_SOCK`,
+`DSN`, `DATABASE_URL`, `KUBECONFIG`, `REDIS_URL`, and any `*_SECRET`, `*_SECRET_KEY`, `*_PASSWORD`,
+`*_PASSWD`, `*_TOKEN`, `*_PRIVATE_KEY`, `*_DSN`, `*_DATABASE_URL`, `*_DB_URL`, `MONGO*_URL`,
+`POSTGRES*_URL` (`FAMILIA_*`, `HERMES_*`, and graph-declared MCP names kept).
 `FAMILIA_HERMES_PASS_SECRETS=1` passes them through (for example `git push` over ssh from the agent). `FAMILIA_HERMES_ALLOW_CLOUD=1` restores upstream behaviour for all of
 this (auto routing, the user's `moa` section, keys passed through).

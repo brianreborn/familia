@@ -567,18 +567,29 @@ def _no_creds_dir(env, name):
         return os.devnull
 
 
-# Ambient non-LLM secrets (Boundary N2): the hermes terminal tool inherits the child env, so model
-# output running `env` would see them. Dropped unless FAMILIA_HERMES_PASS_SECRETS=1; graph-declared
-# MCP names are kept (hermes interpolates them into that server's config).
+# Ambient non-LLM secrets (Boundary N2 / N2a): the hermes terminal tool inherits the child env, so
+# model output running `env` would see them. Dropped unless FAMILIA_HERMES_PASS_SECRETS=1; graph-
+# declared MCP names are kept (hermes interpolates them into that server's config). FAMILIA_* and
+# HERMES_* control vars are never matched by the pattern.
 PASS_SECRETS_ENV = "FAMILIA_HERMES_PASS_SECRETS"
 AMBIENT_SECRET_NAMES = frozenset({"GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN",
-                                  "SSH_AUTH_SOCK"})
-AMBIENT_SECRET_RE = re.compile(r"^(?!FAMILIA_)[A-Za-z0-9_]*_(?:SECRET|SECRET_KEY|PASSWORD|PASSWD)$")
+                                  "SSH_AUTH_SOCK", "DSN", "DATABASE_URL", "KUBECONFIG", "REDIS_URL"})
+# *_SECRET / *_PASSWORD (N2); *_TOKEN / *_PRIVATE_KEY / *_DSN / *_DATABASE_URL / *_DB_URL and
+# MONGO*_URL / POSTGRES*_URL connection strings (N2a).
+AMBIENT_SECRET_RE = re.compile(
+    r"^(?!FAMILIA_|HERMES_)"
+    r"(?:"
+    r"[A-Za-z0-9_]*_(?:SECRET|SECRET_KEY|PASSWORD|PASSWD|TOKEN|PRIVATE_KEY|DSN|DATABASE_URL|DB_URL)"
+    r"|(?:MONGO|POSTGRES)[A-Za-z0-9_]*_URL"
+    r")$"
+)
 
 
 def scrub_ambient_secrets(env, keep=()):
-    """Drop GH_TOKEN/GITHUB_TOKEN, *_SECRET, *_SECRET_KEY, *_PASSWORD, SSH_AUTH_SOCK from *env*
-    (in place) unless FAMILIA_HERMES_PASS_SECRETS=1. Returns the names removed."""
+    """Drop ambient non-LLM secrets from *env* (in place) unless FAMILIA_HERMES_PASS_SECRETS=1:
+    GH_TOKEN/GITHUB_TOKEN/SSH_AUTH_SOCK/DSN/DATABASE_URL/KUBECONFIG/REDIS_URL, *_SECRET,
+    *_SECRET_KEY, *_PASSWORD, *_TOKEN, *_PRIVATE_KEY, *_DSN, *_DATABASE_URL, *_DB_URL,
+    MONGO*_URL, POSTGRES*_URL. Returns the names removed."""
     if env.get(PASS_SECRETS_ENV) == "1":
         return []
     keep = set(keep) | MCP_ENV_KEEP
@@ -771,8 +782,9 @@ def hermes_child_env(extra=None, environ=None):
     process launches. HERMES_SP still works (children insert it on sys.path themselves).
     Force a fresh probe with FAMILIA_HERMES_ENV_PROBE_REFRESH=1.
     When HERMES_HOME/bin exists (Agent-Reach wrapper from link_reaches), prepend it to PATH.
-    Cloud LLM keys are removed unless FAMILIA_HERMES_ALLOW_CLOUD=1 (scrub_cloud_keys); GH_TOKEN,
-    *_SECRET, *_PASSWORD, SSH_AUTH_SOCK unless FAMILIA_HERMES_PASS_SECRETS=1 (scrub_ambient_secrets).
+    Cloud LLM keys are removed unless FAMILIA_HERMES_ALLOW_CLOUD=1 (scrub_cloud_keys); ambient
+    secrets (GH_TOKEN, *_SECRET/*_PASSWORD/*_TOKEN/*_PRIVATE_KEY, DSN/DATABASE_URL/KUBECONFIG,
+    MONGO*/POSTGRES*_URL, …) unless FAMILIA_HERMES_PASS_SECRETS=1 (scrub_ambient_secrets).
     """
     env = dict(os.environ if environ is None else environ)
     scrub_cloud_keys(env)   # before extra: values the harness passes on purpose are kept
