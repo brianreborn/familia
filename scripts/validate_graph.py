@@ -389,6 +389,23 @@ def slot_save_dir(n, name):
     raw = n.get("spill_path") or f"~/.cache/familia/slots/{name}"
     return os.path.expanduser(raw)
 
+def ensure_private_slot_dir(n, name):
+    """Create the slot-save dir owner-only (0700); tighten it if it already exists (CC-R4).
+    For the default ~/.cache/familia/slots/<node>, ~/.cache/familia and slots/ get 0700 too."""
+    d = slot_save_dir(n, name)
+    os.makedirs(d, mode=0o700, exist_ok=True)
+    top = d if n.get("spill_path") else os.path.expanduser("~/.cache/familia")
+    p, stop = os.path.abspath(d), os.path.abspath(top)
+    while True:
+        try:
+            os.chmod(p, 0o700)
+        except OSError as e:
+            print(f"warning: could not chmod 0700 {p}: {e}", file=sys.stderr)
+        if p == stop or not p.startswith(stop + os.sep):
+            break
+        p = os.path.dirname(p)
+    return d
+
 def vvram_spill_configured(n):
     import ctx_vvram
     return ctx_vvram.vvram_spill_configured(n)
@@ -650,7 +667,7 @@ def server_args(graph, name):
     if threads: a += ["-t", str(threads)]  # node.threads, else the host's measured threads
     if n.get("load_mode"): a += ["-lm", n["load_mode"]]
     if n.get("slot_save") or n.get("spill_path"):  # #85 + SSD/VVRAM spill (docs/vvram-ssd/LAYER.md)
-        d = slot_save_dir(n, name); os.makedirs(d, exist_ok=True)
+        d = ensure_private_slot_dir(n, name)
         a += ["--slot-save-path", d]
     import graph_types as _gt
     names = sorted(al for al, x in graph["aliases"].items() if _gt.alias_primary(x) == name)
