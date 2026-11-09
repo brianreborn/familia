@@ -2,9 +2,12 @@
 """Android/Termux offline fallback: queue commands locally, post to a GitHub
 issue when SSH/Wi-Fi to the fleet returns, then pull later comments back.
 
-Issue #332. New standalone module — does not edit familia_home / proto_chat /
-open_ui / ui_bridge / menus / graph.yaml / FreeBSD or Termux docs. Wire-in
-suggestions belong in the PR body, not in those files.
+Issue #332. Default target issue is #332; override with --issue N or
+FAMILIA_OFFLINE_ISSUE (positive integer). New standalone module — does not
+edit familia_home / proto_chat / open_ui / ui_bridge / menus / graph.yaml /
+FreeBSD or Termux docs. Wire-in suggestions belong in the PR body, not in
+those files. Sync/enqueue/flush/pull are operator-run only: do not auto-queue
+from proto_chat.sh or other launchers.
 
 State lives under $XDG_STATE_HOME/familia/offline (fallback
 $HOME/.local/state/familia/offline). Dirs 0700, files 0600, symlink-refusing,
@@ -19,13 +22,20 @@ GitHub: gh CLI when available, else REST with GITHUB_TOKEN/GH_TOKEN. Tokens
 are never logged. Tests must mock the network; this module posts nothing unless
 flush/sync is invoked with a live token (tests inject a fake poster).
 
+A later issue comment counts as a reply only when it quotes our marker
+(familia-offline-queue:id=<uuid> or the bare entry id). Other later comments
+are ignored.
+
+See docs/offline-queue.md.
+
 Usage:
   python3 scripts/offline_queue.py probe
+  python3 scripts/offline_queue.py enqueue -- "status please"   # defaults to #332
   python3 scripts/offline_queue.py enqueue --issue 332 -- "status please"
   python3 scripts/offline_queue.py status
   python3 scripts/offline_queue.py flush
   python3 scripts/offline_queue.py pull
-  python3 scripts/offline_queue.py sync
+  python3 scripts/offline_queue.py sync   # operator-run only
 """
 from __future__ import annotations
 
@@ -61,6 +71,7 @@ MARKER_RE = re.compile(
     r"<!--\s*familia-offline-queue:id=([0-9a-fA-F-]{36})\s*-->"
 )
 DEFAULT_REPO = os.environ.get("FAMILIA_OFFLINE_REPO", "brianreborn/familia")
+DEFAULT_ISSUE = 332
 DEFAULT_SSH_PORT = 22
 PROBE_TIMEOUT_DEFAULT = 2.0
 BACKOFF_BASE = 5.0
@@ -69,6 +80,41 @@ BACKOFF_CAP = 300.0
 
 class OfflineQueueError(RuntimeError):
     pass
+
+
+def parse_positive_issue(value) -> int:
+    """Validate a positive integer issue number (CLI, env, or default)."""
+    if isinstance(value, bool):
+        raise OfflineQueueError("issue number must be a positive integer")
+    if isinstance(value, int):
+        n = value
+    else:
+        s = str(value).strip()
+        if not s or not s.isdigit():
+            raise OfflineQueueError("issue number must be a positive integer, got %r" % (value,))
+        n = int(s)
+    if n < 1:
+        raise OfflineQueueError("issue number must be >= 1, got %d" % n)
+    return n
+
+
+def resolve_issue_number(cli_value=None, environ=None) -> int:
+    """Resolve issue: --issue N, else FAMILIA_OFFLINE_ISSUE, else DEFAULT_ISSUE (#332)."""
+    env = os.environ if environ is None else environ
+    if cli_value is not None:
+        return parse_positive_issue(cli_value)
+    raw = env.get("FAMILIA_OFFLINE_ISSUE")
+    if raw is not None and str(raw).strip() != "":
+        return parse_positive_issue(raw)
+    return parse_positive_issue(DEFAULT_ISSUE)
+
+
+def positive_issue_arg(value: str) -> int:
+    """argparse type: positive int issue number."""
+    try:
+        return parse_positive_issue(value)
+    except OfflineQueueError as e:
+        raise argparse.ArgumentTypeError(str(e)) from None
 
 
 # ---------------------------------------------------------------- time / ids
@@ -485,6 +531,18 @@ def parse_marker(text: str) -> Optional[str]:
     return m.group(1) if m else None
 
 
+def quotes_marker(text: str, entry_id: str) -> bool:
+    """True when *text* quotes our offline-queue marker / entry id."""
+    if not text or not entry_id:
+        return False
+    if ("familia-offline-queue:id=%s" % entry_id) in text:
+        return True
+    # bare uuid quote (common in short replies)
+    if entry_id in text:
+        return True
+    return False
+
+
 def post_issue_comment(
     repo: str,
     issue: int,
@@ -646,7 +704,7 @@ def pull_responses(
     environ: Optional[dict] = None,
     getter: Optional[Callable[..., List[dict]]] = None,
 ) -> List[dict]:
-    """For posted entries, fetch later issue comments and store non-ours as responses."""
+    """For posted entries, fetch later comments that quote our marker; ignore the rest."""
     updated: List[dict] = []
     # Group by (repo, issue) to minimize API calls.
     groups: Dict[Tuple[str, int], List[dict]] = {}
@@ -684,7 +742,7 @@ def pull_responses(
                 entry["comment_id"] = ours.get("id")
             responses = []
             response_ids = []
-            # Comments after ours on the same issue that are not our markers.
+            # Reply only if it quotes our marker/id. Ignore every other later comment.
             our_created = None
             if ours:
                 our_created = ours.get("created_at")
@@ -692,18 +750,25 @@ def pull_responses(
                 our_created = entry["posted_at"]
             for c in comments:
                 cid = c.get("id")
+                body = c.get("body") or ""
                 if our_id is not None and cid == our_id:
                     continue
-                if parse_marker(c.get("body") or ""):
-                    continue  # another queued command of ours
                 if our_created and (c.get("created_at") or "") < our_created:
+                    continue
+                # Our own enqueue posts start with the marker for this or another id —
+                # those are commands, not replies (even though they "contain" a marker).
+                mid = parse_marker(body)
+                if mid and body.lstrip().startswith("<!--"):
+                    # treat as an enqueue-shaped comment, not a human reply
+                    continue
+                if not quotes_marker(body, eid):
                     continue
                 responses.append(
                     {
                         "id": cid,
                         "user": ((c.get("user") or {}).get("login")),
                         "created_at": c.get("created_at"),
-                        "body": c.get("body") or "",
+                        "body": body,
                         "html_url": c.get("html_url"),
                     }
                 )
@@ -763,9 +828,10 @@ def cmd_enqueue(args: argparse.Namespace) -> int:
         body = sys.stdin.read()
     elif isinstance(body, list):
         body = " ".join(body)
-    issue = args.issue or int(os.environ.get("FAMILIA_OFFLINE_ISSUE") or "0")
-    if issue < 1:
-        print("offline_queue: need --issue N or FAMILIA_OFFLINE_ISSUE", file=sys.stderr)
+    try:
+        issue = resolve_issue_number(args.issue)
+    except OfflineQueueError as e:
+        print("offline_queue: %s" % e, file=sys.stderr)
         return 2
     repo = args.repo or DEFAULT_REPO
     with RunContext(environ=os.environ) as ctx:
@@ -871,7 +937,12 @@ def build_parser() -> argparse.ArgumentParser:
     sp.set_defaults(func=cmd_probe)
 
     sp = sub.add_parser("enqueue", help="queue a command for later GitHub post")
-    sp.add_argument("--issue", type=int, default=0)
+    sp.add_argument(
+        "--issue",
+        type=positive_issue_arg,
+        default=None,
+        help="GitHub issue number (default: FAMILIA_OFFLINE_ISSUE or %d)" % DEFAULT_ISSUE,
+    )
     sp.add_argument("--repo", default=None, help="owner/name (default FAMILIA_OFFLINE_REPO or brianreborn/familia)")
     sp.add_argument("text", nargs="*", default=None, help="command text; omit to read stdin")
     sp.set_defaults(func=cmd_enqueue)
@@ -889,7 +960,10 @@ def build_parser() -> argparse.ArgumentParser:
     add_probe_flags(sp)
     sp.set_defaults(func=cmd_pull)
 
-    sp = sub.add_parser("sync", help="probe; if online, flush then pull")
+    sp = sub.add_parser(
+        "sync",
+        help="operator-run only: probe; if online, flush then pull (no proto_chat auto-queue)",
+    )
     add_probe_flags(sp)
     sp.set_defaults(func=cmd_sync)
 

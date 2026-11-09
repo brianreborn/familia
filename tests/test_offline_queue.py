@@ -221,7 +221,7 @@ def test_pull_responses_stores_later_comments(state):
                 },
                 {
                     "id": 11,
-                    "body": "here is the answer",
+                    "body": "re: familia-offline-queue:id=%s\nhere is the answer" % eid,
                     "created_at": "2026-11-09T17:05:00Z",
                     "user": {"login": "brianreborn"},
                     "html_url": "https://example.invalid/c/11",
@@ -234,7 +234,7 @@ def test_pull_responses_stores_later_comments(state):
         rfile = oq.responses_dir(ctx.state) / ("%s.json" % eid)
         assert rfile.is_file()
         data = json.loads(rfile.read_text(encoding="utf-8"))
-        assert data["responses"][0]["body"] == "here is the answer"
+        assert "here is the answer" in data["responses"][0]["body"]
         assert oct(rfile.stat().st_mode & 0o777) == "0o600"
 
 
@@ -334,7 +334,7 @@ def test_cli_enqueue_status_flush_pull_with_mocks(state, monkeypatch, capsys):
             },
             {
                 "id": 43,
-                "body": "ack",
+                "body": "ack " + eid,
                 "created_at": "2026-11-09T18:01:00Z",
                 "user": {"login": "brianreborn"},
                 "html_url": "u2",
@@ -368,6 +368,126 @@ def test_flock_serializes_two_contexts(state):
                 fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         finally:
             os.close(fd)
+
+
+
+def test_default_issue_is_332(monkeypatch):
+    monkeypatch.delenv("FAMILIA_OFFLINE_ISSUE", raising=False)
+    assert oq.resolve_issue_number(None) == 332
+    assert oq.DEFAULT_ISSUE == 332
+
+
+def test_issue_env_and_flag_override(monkeypatch):
+    monkeypatch.setenv("FAMILIA_OFFLINE_ISSUE", "400")
+    assert oq.resolve_issue_number(None) == 400
+    assert oq.resolve_issue_number(401) == 401  # CLI wins
+    with pytest.raises(oq.OfflineQueueError):
+        oq.resolve_issue_number(0)
+    with pytest.raises(oq.OfflineQueueError):
+        oq.parse_positive_issue(-3)
+    with pytest.raises(oq.OfflineQueueError):
+        oq.parse_positive_issue("nope")
+    with pytest.raises(oq.OfflineQueueError):
+        oq.parse_positive_issue("3.5")
+    monkeypatch.setenv("FAMILIA_OFFLINE_ISSUE", "0")
+    with pytest.raises(oq.OfflineQueueError):
+        oq.resolve_issue_number(None)
+
+
+def test_cli_enqueue_defaults_to_332(state, monkeypatch, capsys):
+    monkeypatch.delenv("FAMILIA_OFFLINE_ISSUE", raising=False)
+    rc = oq.main(["enqueue", "--", "default issue path"])
+    assert rc == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["issue"] == 332
+
+
+def test_cli_enqueue_rejects_non_positive_issue(state, capsys):
+    with pytest.raises(SystemExit) as ei:
+        oq.main(["enqueue", "--issue", "0", "--", "x"])
+    assert ei.value.code == 2
+
+
+def test_quotes_marker_helper():
+    eid = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    assert oq.quotes_marker("see <!-- familia-offline-queue:id=%s -->" % eid, eid)
+    assert oq.quotes_marker("ack %s" % eid, eid)
+    assert not oq.quotes_marker("unrelated later comment", eid)
+    assert not oq.quotes_marker("", eid)
+
+
+def test_pull_ignores_later_comments_without_marker_quote(state):
+    eid = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    with oq.RunContext(state) as ctx:
+        e = oq.enqueue("q", issue=332, state=ctx.state, work=ctx.work, entry_id=eid)
+        e["status"] = "posted"
+        e["comment_id"] = 10
+        e["posted_at"] = "2026-11-09T17:00:00Z"
+        oq.save_entry(ctx.state, e, ctx.work)
+
+        def getter(repo, issue, since):
+            return [
+                {
+                    "id": 10,
+                    "body": oq.format_comment_body(eid, "q"),
+                    "created_at": "2026-11-09T17:00:00Z",
+                    "user": {"login": "phone"},
+                    "html_url": "u10",
+                },
+                {
+                    "id": 11,
+                    "body": "noise without quoting the marker",
+                    "created_at": "2026-11-09T17:05:00Z",
+                    "user": {"login": "brianreborn"},
+                    "html_url": "u11",
+                },
+                {
+                    "id": 12,
+                    "body": "real reply quoting %s" % eid,
+                    "created_at": "2026-11-09T17:06:00Z",
+                    "user": {"login": "brianreborn"},
+                    "html_url": "u12",
+                },
+            ]
+
+        updated = oq.pull_responses(ctx.state, ctx.work, getter=getter)
+        assert updated[0]["status"] == "responded"
+        assert updated[0]["response_comment_ids"] == [12]
+        assert "noise" not in json.dumps(updated[0])
+
+
+def test_pull_ignores_other_enqueue_shaped_comments(state):
+    eid = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    other = "bbbbbbbb-bbbb-cccc-dddd-eeeeeeeeeeee"
+    with oq.RunContext(state) as ctx:
+        e = oq.enqueue("q", issue=332, state=ctx.state, work=ctx.work, entry_id=eid)
+        e["status"] = "posted"
+        e["comment_id"] = 10
+        e["posted_at"] = "2026-11-09T17:00:00Z"
+        oq.save_entry(ctx.state, e, ctx.work)
+
+        def getter(repo, issue, since):
+            return [
+                {
+                    "id": 10,
+                    "body": oq.format_comment_body(eid, "q"),
+                    "created_at": "2026-11-09T17:00:00Z",
+                    "user": {"login": "phone"},
+                    "html_url": "u10",
+                },
+                {
+                    "id": 11,
+                    "body": oq.format_comment_body(other, "another queued cmd"),
+                    "created_at": "2026-11-09T17:05:00Z",
+                    "user": {"login": "phone"},
+                    "html_url": "u11",
+                },
+            ]
+
+        updated = oq.pull_responses(ctx.state, ctx.work, getter=getter)
+        # still posted — no quoting reply yet
+        assert updated[0]["status"] == "posted"
+        assert updated[0]["response_comment_ids"] == []
 
 
 def test_no_tracked_secrets_in_module_source():
