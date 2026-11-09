@@ -45,3 +45,15 @@ Until then the coverage test allow-lists this CLI like `sec_assess`.
 Queue and probe state live under `$XDG_STATE_HOME/familia/offline` (fallback
 `$HOME/.local/state/familia/offline`). Dirs `0700`, files `0600`, symlink
 refusing, flock. Host/port come from env only — no hostnames in the repo.
+
+## Limits and safety
+
+- **Repo:** `FAMILIA_OFFLINE_REPO` / `--repo` must be `owner/name` with GitHub-allowed
+  characters, no `..`, and no leading `.` or `-` (owner ≤39, name ≤100).
+- **Body size:** queued and flushed payloads are capped by `FAMILIA_OFFLINE_MAX_BODY`
+  (default 32768 bytes). Enqueue refuses oversize bodies; flush truncates any
+  already-queued oversize body and appends `[truncated:FAMILIA_OFFLINE_MAX_BODY]`.
+- **GitHub REST:** the `Authorization` header is unredirected. Cross-host or
+  scheme-changing redirects drop auth; non-https redirects are refused.
+- **Public issue:** flushed command text is posted to the configured issue (default
+  #332) after scrubbing IPs, ports, emails, tokens and private-looking hostnames.

@@ -79,10 +79,113 @@ DEFAULT_SSH_PORT = 22
 PROBE_TIMEOUT_DEFAULT = 2.0
 BACKOFF_BASE = 5.0
 BACKOFF_CAP = 300.0
+# GitHub issue comment hard ceiling is 65536; default leave headroom for marker/wrapper.
+DEFAULT_MAX_BODY = 32 * 1024
+# owner: 1..39; name: 1..100. Alnum start/end, no leading dot/dash, no '..'.
+_REPO_OWNER_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$")
+_REPO_NAME_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9._-]{0,98}[A-Za-z0-9])?$")
+_TRUNC_MARKER = "\n\n[truncated:FAMILIA_OFFLINE_MAX_BODY]\n"
 
 
 class OfflineQueueError(RuntimeError):
     pass
+
+
+def max_body_bytes(environ: Optional[dict] = None) -> int:
+    """Payload size cap for enqueue/flush. FAMILIA_OFFLINE_MAX_BODY or DEFAULT_MAX_BODY."""
+    env = os.environ if environ is None else environ
+    raw = (env.get("FAMILIA_OFFLINE_MAX_BODY") or "").strip()
+    if not raw:
+        return DEFAULT_MAX_BODY
+    try:
+        n = int(raw, 10)
+    except ValueError as e:
+        raise OfflineQueueError(
+            "FAMILIA_OFFLINE_MAX_BODY must be a positive integer (bytes), got %r" % (raw,)
+        ) from e
+    if n < 1:
+        raise OfflineQueueError("FAMILIA_OFFLINE_MAX_BODY must be >= 1, got %d" % n)
+    # Keep under GitHub's 64 KiB comment ceiling (leave room for marker + truncation note).
+    if n > 60 * 1024:
+        raise OfflineQueueError("FAMILIA_OFFLINE_MAX_BODY must be <= 61440 (60 KiB), got %d" % n)
+    return n
+
+
+def validate_repo(repo: str) -> str:
+    """Strict owner/name: GitHub-allowed chars, no '..', no leading dot/dash, length limits."""
+    if not isinstance(repo, str):
+        raise OfflineQueueError("repo must be owner/name")
+    repo = repo.strip()
+    if repo.count("/") != 1:
+        raise OfflineQueueError("repo must be owner/name")
+    owner, name = repo.split("/", 1)
+    if ".." in owner or ".." in name:
+        raise OfflineQueueError("repo owner/name must not contain '..'")
+    if owner.startswith((".", "-")) or name.startswith((".", "-")):
+        raise OfflineQueueError("repo owner/name must not start with '.' or '-'")
+    if not _REPO_OWNER_RE.fullmatch(owner):
+        raise OfflineQueueError(
+            "repo owner must be 1..39 chars, alnum/hyphen, start and end alnum (got %r)" % (owner,)
+        )
+    if not _REPO_NAME_RE.fullmatch(name):
+        raise OfflineQueueError(
+            "repo name must be 1..100 chars, alnum/._-, start and end alnum (got %r)" % (name,)
+        )
+    return "%s/%s" % (owner, name)
+
+
+def apply_body_size_cap(body: str, *, environ: Optional[dict] = None, refuse: bool = True) -> str:
+    """Enforce FAMILIA_OFFLINE_MAX_BODY. refuse=True raises; else truncate with a clear marker."""
+    limit = max_body_bytes(environ)
+    raw = body if isinstance(body, str) else str(body)
+    encoded = raw.encode("utf-8")
+    if len(encoded) <= limit:
+        return raw
+    if refuse:
+        raise OfflineQueueError(
+            "body exceeds FAMILIA_OFFLINE_MAX_BODY (%d bytes; got %d)" % (limit, len(encoded))
+        )
+    # Truncate on UTF-8 byte boundary, then append marker (marker may push over limit; that's ok —
+    # the point is a clear operator-visible note on an already-oversized queued payload).
+    cut = encoded[: max(0, limit - len(_TRUNC_MARKER.encode("utf-8")))]
+    while cut:
+        try:
+            head = cut.decode("utf-8")
+            break
+        except UnicodeDecodeError:
+            cut = cut[:-1]
+    else:
+        head = ""
+    return head + _TRUNC_MARKER
+
+
+class _SafeGithubRedirect(urllib.request.HTTPRedirectHandler):
+    """Follow https redirects only; drop Authorization when host or scheme changes."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        parsed = urllib.parse.urlparse(newurl)
+        if parsed.scheme != "https":
+            raise urllib.error.HTTPError(
+                newurl, code, "refusing non-https redirect", headers, fp
+            )
+        new = super().redirect_request(req, fp, code, msg, headers, newurl)
+        if new is None:
+            return None
+        old = urllib.parse.urlparse(req.full_url)
+        if parsed.netloc != old.netloc or parsed.scheme != old.scheme:
+            for h in list(new.headers):
+                if h.lower() == "authorization":
+                    del new.headers[h]
+            new.unredirected_hdrs.pop("Authorization", None)
+        return new
+
+
+_github_opener = urllib.request.build_opener(_SafeGithubRedirect)
+
+
+def _github_urlopen(req: urllib.request.Request, timeout: float = 60):
+    """urlopen via the safe redirect opener (Authorization is unredirected on the Request)."""
+    return _github_opener.open(req, timeout=timeout)
 
 
 def parse_positive_issue(value) -> int:
@@ -319,8 +422,8 @@ def enqueue(
         raise OfflineQueueError("empty command body")
     if issue < 1:
         raise OfflineQueueError("issue number must be >= 1")
-    if "/" not in repo or repo.count("/") != 1:
-        raise OfflineQueueError("repo must be owner/name")
+    repo = validate_repo(repo)
+    body = apply_body_size_cap(body, refuse=True)
     st = state or state_dir()
     eid = entry_id or _new_id()
     entry = {
@@ -519,15 +622,16 @@ def _github_token(environ: Optional[dict] = None) -> Optional[str]:
 
 
 def _split_repo(repo: str) -> Tuple[str, str]:
+    repo = validate_repo(repo)
     owner, _, name = repo.partition("/")
-    if not owner or not name or "/" in name:
-        raise OfflineQueueError("repo must be owner/name")
     return owner, name
 
 
-def format_comment_body(entry_id: str, body: str) -> str:
+def format_comment_body(entry_id: str, body: str, *, environ: Optional[dict] = None) -> str:
     # Scrub secrets/private details from the operator-visible body; marker stays intact.
+    # Oversized already-queued bodies are truncated with a clear marker (enqueue refuses).
     safe = scrub_public_text(body.rstrip("\n"))
+    safe = apply_body_size_cap(safe, environ=environ, refuse=False)
     return "<!-- familia-offline-queue:id=%s -->\n%s\n" % (entry_id, safe)
 
 
@@ -663,14 +767,15 @@ def post_issue_comment(
         method="POST",
         headers={
             "Accept": "application/vnd.github+json",
-            "Authorization": "Bearer %s" % tok,
             "Content-Type": "application/json",
             "User-Agent": "familia-offline-queue/1",
             "X-GitHub-Api-Version": "2022-11-28",
         },
     )
+    # Never send Authorization across a redirect (host/scheme change).
+    req.add_unredirected_header("Authorization", "Bearer %s" % tok)
     try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
+        with _github_urlopen(req, timeout=60) as resp:
             return json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
         # Do not include request headers (token) in the error message.
@@ -714,13 +819,14 @@ def list_issue_comments(
         url,
         headers={
             "Accept": "application/vnd.github+json",
-            "Authorization": "Bearer %s" % tok,
             "User-Agent": "familia-offline-queue/1",
             "X-GitHub-Api-Version": "2022-11-28",
         },
     )
+    # Never send Authorization across a redirect (host/scheme change).
+    req.add_unredirected_header("Authorization", "Bearer %s" % tok)
     try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
+        with _github_urlopen(req, timeout=60) as resp:
             data = json.loads(resp.read().decode("utf-8"))
             if not isinstance(data, list):
                 raise OfflineQueueError("unexpected comments payload")
@@ -749,7 +855,7 @@ def flush_queue(
             continue
         if only_id and entry.get("id") != only_id:
             continue
-        body = format_comment_body(entry["id"], entry["body"])
+        body = format_comment_body(entry["id"], entry["body"], environ=environ)
         try:
             if poster is not None:
                 resp = poster(entry["repo"], int(entry["issue"]), body)
