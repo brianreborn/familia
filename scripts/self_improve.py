@@ -154,6 +154,16 @@ def base_tree(t):
                 tree[rel] = _strip_greeting(tree[rel])
     return tree
 
+# Lookalikes of the greeting's end marker ("End  of familia\u200bfleet greeting", fullwidth, ...) could
+# still visually fake a greeting boundary to the model: compare NFKC + casefold with every whitespace,
+# zero-width / format character and soft hyphen removed.
+_MARKER_KEY = "endoffamiliafleetgreeting"
+_INVISIBLE_RE = re.compile(r"[\s\u00ad\u180e\u200b-\u200f\u2028-\u202e\u2060-\u2064\ufeff]+")
+
+def _marker_fold(text):
+    import unicodedata
+    return _INVISIBLE_RE.sub("", unicodedata.normalize("NFKC", text).casefold())
+
 def gate(base, tree, leak_terms=(), allow_skills=True):
     """familia's own safety gate on a proposed tree; returns a list of errors (empty = ok)."""
     errs = []
@@ -171,7 +181,7 @@ def gate(base, tree, leak_terms=(), allow_skills=True):
     for rel, txt in sorted(editable(tree).items()):
         # The greeting's end marker is the launcher's: a proposal carrying it could make the next
         # render strip (or keep) the wrong block, i.e. forge or hide the fleet greeting.
-        if marker in txt or "end of familia fleet greeting" in txt:
+        if marker in txt or _MARKER_KEY in _marker_fold(txt):
             errs.append(f"{rel}: contains the fleet greeting end marker (reserved for scripts/fleet_greeting.py)")
         old = set(base.get(rel, "").splitlines())
         added = [l for l in txt.splitlines() if l not in old]
