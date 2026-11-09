@@ -520,7 +520,8 @@ def upstream_provider_env_names(roots=None):
     """Provider credential / base-url env names of the installed hermes-agent (Boundary B3), read from
     its source: hermes_cli/auth.py and plugins/model-providers/*/__init__.py under the first root
     that has hermes_cli (HERMES_SP, FAMILIA_HERMES_SRC, snap, FreeBSD ports). Empty when no tree is
-    found; the static CLOUD_KEY_NAMES / regex / AWS_* superset still applies."""
+    found; the static CLOUD_KEY_NAMES / regex / AWS_* superset still applies. Warns (Boundary B3a)
+    when a parsed set is far smaller than REGISTRY_SNAPSHOT (likely a half-parsed auth.py)."""
     if roots is None:
         roots = (HERMES_SP, os.environ.get("FAMILIA_HERMES_SRC"), SNAP_SP, FREEBSD_LIB)
     for root in filter(None, roots):
@@ -531,7 +532,14 @@ def upstream_provider_env_names(roots=None):
             names = _ast_env_names(auth)
             for f in sorted(glob.glob(os.path.join(root, "plugins", "model-providers", "*", "__init__.py"))):
                 names |= _ast_env_names(f)
-            _UPSTREAM_ENV_CACHE[root] = frozenset(n for n in names if not n.startswith("FAMILIA_"))
+            parsed = frozenset(n for n in names if not n.startswith("FAMILIA_"))
+            # Boundary B3a: a real install should be near the snapshot size; half-or-less means the
+            # AST walk likely missed _REGISTRY_ROWS / plugin env_vars.
+            if parsed and len(parsed) * 2 < len(REGISTRY_SNAPSHOT):
+                print(f"hermes.sh: warning: parsed upstream provider env set ({len(parsed)}) is far "
+                      f"smaller than the v0.22.6 snapshot ({len(REGISTRY_SNAPSHOT)}); check {auth}",
+                      file=sys.stderr)
+            _UPSTREAM_ENV_CACHE[root] = parsed
         return _UPSTREAM_ENV_CACHE[root]
     return frozenset()
 

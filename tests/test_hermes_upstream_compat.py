@@ -178,6 +178,22 @@ def test_ast_parser_reads_registry_rows_and_plugin_env_vars(tmp_path):
     assert hh.upstream_provider_env_names([str(tmp_path / "absent")]) == frozenset()
 
 
+def test_upstream_parse_warns_when_far_smaller_than_snapshot(tmp_path, capsys):
+    """Boundary B3a: a half-parsed registry (far smaller than REGISTRY_SNAPSHOT) warns once."""
+    root = tmp_path / "src"; (root / "hermes_cli").mkdir(parents=True)
+    (root / "hermes_cli" / "auth.py").write_text(
+        "_REGISTRY_ROWS = (ProviderConfig('x', 'X', 'oauth', api_key_env_vars=('ONLY_ONE_KEY',)),)\n")
+    hh._UPSTREAM_ENV_CACHE.clear()
+    names = hh.upstream_provider_env_names([str(root)])
+    assert names == frozenset({"ONLY_ONE_KEY"})
+    err = capsys.readouterr().err
+    assert "far smaller" in err and "ONLY_ONE_KEY" not in err   # never print values; name count only
+    assert str(len(hh.REGISTRY_SNAPSHOT)) in err
+    # cached: no second warn
+    hh.upstream_provider_env_names([str(root)])
+    assert "far smaller" not in capsys.readouterr().err
+
+
 def test_scrub_static_superset_and_file_creds(tmp_path, monkeypatch):
     monkeypatch.delenv(hh.ALLOW_CLOUD_ENV, raising=False)
     monkeypatch.setattr(hh, "upstream_provider_env_names", lambda roots=None: frozenset())
