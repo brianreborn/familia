@@ -322,7 +322,12 @@ if not choices:
     print("(empty reply)", end="")
     sys.exit(0)
 msg = choices[0].get("message") or {}
-print((msg.get("content") or "").strip() or "(empty reply)", end="")
+content = (msg.get("content") or "").strip()
+reasoning = (msg.get("reasoning_content") or "").strip()
+if not content and reasoning:
+    # Model used its token budget on reasoning (e.g. DeepSeek/Qwen/LFM3)
+    content = f"[reasoning: {reasoning}]"
+print(content or "(empty reply)", end="")
 PY
 )
   if [ -z "$reply" ]; then

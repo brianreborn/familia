@@ -89,9 +89,38 @@ kick_prefetch() {
   sh "$ROOT/scripts/prefetch-first-models.sh" --background >/dev/null 2>&1 || true
 }
 
+# Protographs (née Protomodel) profile selector
+choose_protograph() {
+  if ! command -v gum >/dev/null 2>&1; then
+    return 0
+  fi
+  PROFILES="1) Coder-speculative (Qwen3.5-2B @ 64k, ngram-simple) [Default / Most Reliable]
+2) Uncensored-speculative (LFM3-1.7B, ngram-mod) [High-speed / Unrestricted]
+3) Dual-node c2c escalation (Router + Coder via c2c / kv_channels)
+4) Connect to existing running server (port auto-detect)"
+  
+  PCHOICE=$(printf '%s\n' "$PROFILES" | gum choose --header "Protographs (née Protomodel) — Choose Configuration:" --height 8) || return 0
+  case "$PCHOICE" in
+    1*|"")
+      export FAMILIA_PROTO_MODEL="coder"
+      ;;
+    2*)
+      export FAMILIA_PROTO_MODEL="general"
+      ;;
+    3*)
+      export FAMILIA_PROTO_MODEL="coder"
+      export FAMILIA_C2C_ESCALATE=1
+      ;;
+    4*)
+      # Leave unset for automatic detection
+      ;;
+  esac
+}
+
 case "$CHOICE" in
   "Talk to the protomodel")
     kick_prefetch
+    choose_protograph
     exec sh "$ROOT/scripts/proto_chat.sh"
     ;;
   "Find more models")
