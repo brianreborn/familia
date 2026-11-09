@@ -262,3 +262,10 @@ def test_mcp_declared_cloud_key_not_readmitted_into_the_whole_env(tmp_path, monk
     monkeypatch.setenv(hh.ALLOW_CLOUD_ENV, "1")
     hh.render(g, "hermes", user_cfg_path=str(tmp_path / "none.yaml"))
     assert hh.hermes_child_env(environ={"OPENAI_API_KEY": "sk", hh.ALLOW_CLOUD_ENV: "1"})["OPENAI_API_KEY"] == "sk"
+
+
+def test_mcp_tool_keys_still_kept_and_snapshot_without_upstream_tree(tmp_path, monkeypatch):
+    monkeypatch.delenv(hh.ALLOW_CLOUD_ENV, raising=False)
+    monkeypatch.setattr(hh, "upstream_provider_env_names", lambda roots=None: frozenset())
+    assert hh.is_llm_provider_key("ANTHROPIC_TOKEN") and hh.is_llm_provider_key("OPENROUTER_API_KEY")
+    assert not hh.is_llm_provider_key("BRAVE_SEARCH_API_KEY") and hh.is_cloud_key("BRAVE_SEARCH_API_KEY")

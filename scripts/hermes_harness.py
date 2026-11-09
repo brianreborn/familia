@@ -471,6 +471,19 @@ CLOUD_KEY_NAMES = frozenset({
     "QWEN_API_KEY", "NOUS_API_KEY", "OPENAI_ORG_ID", "OPENAI_ORGANIZATION", "OPENAI_BASE_URL",
     "OPENAI_API_BASE", "ANTHROPIC_BASE_URL", "CODEX_HOME", "CLOUDSDK_CONFIG"})
 CLOUD_KEY_PREFIXES = ("AWS_",)
+# hermes-agent v0.22.6 PROVIDER_REGISTRY api_key_env_vars (plugin providers included), for hosts
+# where no hermes source tree is found; upstream_provider_env_names() adds whatever is installed.
+REGISTRY_SNAPSHOT = frozenset("""
+ACTUAL_API_KEY AI_GATEWAY_API_KEY ALIBABA_CODING_PLAN_API_KEY ALIBABA_CODING_PLAN_CN_API_KEY
+ALIBABA_TOKEN_PLAN_API_KEY ALIBABA_TOKEN_PLAN_CN_API_KEY ANTHROPIC_API_KEY ANTHROPIC_TOKEN ARCEEAI_API_KEY
+AZURE_FOUNDRY_API_KEY CLAUDE_CODE_OAUTH_TOKEN COMMANDCODE_API_KEY DASHSCOPE_API_KEY DEEPINFRA_API_KEY
+DEEPSEEK_API_KEY FIREWORKS_API_KEY GEMINI_API_KEY GLM_API_KEY GMI_API_KEY GOOGLE_API_KEY HF_TOKEN
+KILOCODE_API_KEY KIMI_API_KEY KIMI_CN_API_KEY KIMI_CODING_API_KEY LM_API_KEY META_API_KEY META_MODEL_API_KEY
+MINIMAX_API_KEY MINIMAX_CN_API_KEY MODEL_API_KEY NEBIUS_API_KEY NEBIUS_TOKEN_FACTORY_API_KEY NOVITA_API_KEY
+NVIDIA_API_KEY OLLAMA_API_KEY OPENAI_API_KEY OPENCODE_GO_API_KEY OPENCODE_ZEN_API_KEY RAMP_ROUTER_API_KEY
+ROUTER_API_KEY STEPFUN_API_KEY TOKENHUB_API_KEY TOKENPLAN_API_KEY UPSTAGE_API_KEY XAI_API_KEY XIAOMI_API_KEY
+ZAI_API_KEY Z_AI_API_KEY OPENROUTER_API_KEY MISTRAL_API_KEY GROQ_API_KEY TOGETHER_API_KEY PERPLEXITY_API_KEY
+COHERE_API_KEY""".split())
 UPSTREAM_ENV_KEYWORDS = ("env_vars", "api_key_env_vars", "base_url_env_var")
 _ENV_NAME_RE = re.compile(r"[A-Z][A-Z0-9_]{1,127}", re.ASCII)
 
@@ -523,12 +536,22 @@ def upstream_provider_env_names(roots=None):
     return frozenset()
 
 
-def is_cloud_key(name, upstream=None):
+def is_llm_provider_key(name, upstream=None):
+    """A cloud LLM provider credential / endpoint name: upstream's registry (installed source or the
+    v0.22.6 snapshot), the static CLOUD_KEY_NAMES, or AWS_*. Not every *_API_KEY (BRAVE_SEARCH_API_KEY
+    is a tool key an MCP server may legitimately need)."""
     if name.startswith("FAMILIA_"):
         return False
     upstream = upstream_provider_env_names() if upstream is None else upstream
-    return (name in CLOUD_KEY_NAMES or name in upstream or bool(CLOUD_KEY_RE.match(name))
+    return (name in CLOUD_KEY_NAMES or name in REGISTRY_SNAPSHOT or name in upstream
             or name.startswith(CLOUD_KEY_PREFIXES))
+
+
+def is_cloud_key(name, upstream=None):
+    """What the child-env scrub drops: LLM provider names plus any *_API_KEY / *_API_TOKEN."""
+    if name.startswith("FAMILIA_"):
+        return False
+    return is_llm_provider_key(name, upstream) or bool(CLOUD_KEY_RE.match(name))
 
 
 def _no_creds_dir(env, name):
@@ -961,12 +984,12 @@ def render(g, agent, user_cfg_path=os.path.join(USER_HOME, "config.yaml"), base_
     cfg["auxiliary"] = aux
     MCP_ENV_KEEP.clear()
     declared_env = mcp_env_allowlist(a)
-    # Boundary N3: a graph-declared MCP name that is a cloud LLM credential (OPENAI_API_KEY, AWS_*,
-    # a registry name, ...) would re-admit it into hermes' whole env, not only that server's. Local-only
+    # Boundary N3: a graph-declared MCP name that is a cloud LLM provider credential (OPENAI_API_KEY,
+    # AWS_*, a registry name; not tool keys like BRAVE_SEARCH_API_KEY) would re-admit it into hermes' whole env, not only that server's. Local-only
     # mode does not keep it: the server's ${VAR} stays unset (upstream drops unset refs). hermes
     # interpolates MCP env from its own process env, so scoping the value to one server would need
     # it on disk; FAMILIA_HERMES_ALLOW_CLOUD=1 keeps it (whole env) as before.
-    refused = [] if not local_only else [n for n in declared_env if is_cloud_key(n)]
+    refused = [] if not local_only else [n for n in declared_env if is_llm_provider_key(n)]
     if refused:
         print(f"hermes.sh: warning: not passing cloud credential(s) {', '.join(refused)} declared by "
               f"agents.{agent}.mcp (FAMILIA_HERMES_ALLOW_CLOUD=1 passes them)", file=sys.stderr)
