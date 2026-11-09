@@ -230,3 +230,20 @@ def test_every_upstream_registry_env_name_is_scrubbed(tmp_path, monkeypatch):
     # and the source parser alone (no regex / static help) sees every registry name
     parsed = hh.upstream_provider_env_names([out["root"]])
     assert sorted(set(out["names"]) - parsed) == []
+
+
+def test_ambient_secrets_not_carried_unless_opted_in(tmp_path, monkeypatch):
+    """Boundary N2: GH_TOKEN / *_SECRET / *_PASSWORD / SSH_AUTH_SOCK never reach hermes' terminal env."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    g = copy.deepcopy(GRAPH)
+    g["agents"]["hermes"]["mcp"] = {"gh": {"command": "github-mcp-server", "env_from": ["GITHUB_TOKEN"]}}
+    hh.render(g, "hermes", user_cfg_path=str(tmp_path / "none.yaml"))
+    src = {"GH_TOKEN": "g", "GITHUB_TOKEN": "gt", "DB_PASSWORD": "p", "CLIENT_SECRET": "s", "AWS_X": "a",
+           "MY_SECRET_KEY": "k", "SSH_AUTH_SOCK": "/run/ssh", "FAMILIA_ADMIN_PASSWORD": "f", "TERM": "xterm"}
+    env = hh.hermes_child_env(environ=src)
+    for k in ("GH_TOKEN", "DB_PASSWORD", "CLIENT_SECRET", "MY_SECRET_KEY", "SSH_AUTH_SOCK"):
+        assert k not in env, k
+    assert env["GITHUB_TOKEN"] == "gt"                    # declared by the gh MCP server
+    assert env["FAMILIA_ADMIN_PASSWORD"] == "f" and env["TERM"] == "xterm"
+    opted = hh.hermes_child_env(environ=dict(src, **{hh.PASS_SECRETS_ENV: "1"}))
+    assert opted["GH_TOKEN"] == "g" and opted["SSH_AUTH_SOCK"] == "/run/ssh"

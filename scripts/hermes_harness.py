@@ -544,6 +544,27 @@ def _no_creds_dir(env, name):
         return os.devnull
 
 
+# Ambient non-LLM secrets (Boundary N2): the hermes terminal tool inherits the child env, so model
+# output running `env` would see them. Dropped unless FAMILIA_HERMES_PASS_SECRETS=1; graph-declared
+# MCP names are kept (hermes interpolates them into that server's config).
+PASS_SECRETS_ENV = "FAMILIA_HERMES_PASS_SECRETS"
+AMBIENT_SECRET_NAMES = frozenset({"GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN",
+                                  "SSH_AUTH_SOCK"})
+AMBIENT_SECRET_RE = re.compile(r"^(?!FAMILIA_)[A-Za-z0-9_]*_(?:SECRET|SECRET_KEY|PASSWORD|PASSWD)$")
+
+
+def scrub_ambient_secrets(env, keep=()):
+    """Drop GH_TOKEN/GITHUB_TOKEN, *_SECRET, *_SECRET_KEY, *_PASSWORD, SSH_AUTH_SOCK from *env*
+    (in place) unless FAMILIA_HERMES_PASS_SECRETS=1. Returns the names removed."""
+    if env.get(PASS_SECRETS_ENV) == "1":
+        return []
+    keep = set(keep) | MCP_ENV_KEEP
+    gone = sorted(k for k in env if k not in keep and (k in AMBIENT_SECRET_NAMES or AMBIENT_SECRET_RE.match(k)))
+    for k in gone:
+        del env[k]
+    return gone
+
+
 def isolate_file_creds(env):
     """Point the file-based cloud credential chains hermes would read regardless of HERMES_HOME
     away from the user's files (unless FAMILIA_HERMES_ALLOW_CLOUD=1): boto (~/.aws -> /dev/null,
@@ -727,10 +748,12 @@ def hermes_child_env(extra=None, environ=None):
     process launches. HERMES_SP still works (children insert it on sys.path themselves).
     Force a fresh probe with FAMILIA_HERMES_ENV_PROBE_REFRESH=1.
     When HERMES_HOME/bin exists (Agent-Reach wrapper from link_reaches), prepend it to PATH.
-    Cloud LLM keys are removed unless FAMILIA_HERMES_ALLOW_CLOUD=1 (scrub_cloud_keys).
+    Cloud LLM keys are removed unless FAMILIA_HERMES_ALLOW_CLOUD=1 (scrub_cloud_keys); GH_TOKEN,
+    *_SECRET, *_PASSWORD, SSH_AUTH_SOCK unless FAMILIA_HERMES_PASS_SECRETS=1 (scrub_ambient_secrets).
     """
     env = dict(os.environ if environ is None else environ)
     scrub_cloud_keys(env)   # before extra: values the harness passes on purpose are kept
+    scrub_ambient_secrets(env)
     if extra:
         env.update(extra)
     isolate_file_creds(env)

@@ -75,5 +75,10 @@ kept). File-based chains are pointed away: `AWS_SHARED_CREDENTIALS_FILE` / `AWS_
 `/dev/null`, `AWS_EC2_METADATA_DISABLED=true`, and `CODEX_HOME` / `CLOUDSDK_CONFIG` = empty private
 dirs under `HERMES_HOME/.no-cloud-creds/`. Credentials found only through `$HOME` (`~/.qwen/oauth_creds.json`,
 `~/.claude`) are not redirected (that would mean moving the child's HOME). MCP secrets the graph
-declares (`env_from`, `headers_from`) are kept. `FAMILIA_HERMES_ALLOW_CLOUD=1` restores upstream behaviour for all of
+declares (`env_from`, `headers_from`) are kept.
+
+Ambient non-LLM secrets are not carried into hermes (and so not into its terminal tool) either:
+`GH_TOKEN`, `GITHUB_TOKEN`, `GH_ENTERPRISE_TOKEN`, `GITHUB_ENTERPRISE_TOKEN`, `SSH_AUTH_SOCK` and any
+`*_SECRET`, `*_SECRET_KEY`, `*_PASSWORD`, `*_PASSWD` (`FAMILIA_*` and graph-declared MCP names kept).
+`FAMILIA_HERMES_PASS_SECRETS=1` passes them through (for example `git push` over ssh from the agent). `FAMILIA_HERMES_ALLOW_CLOUD=1` restores upstream behaviour for all of
 this (auto routing, the user's `moa` section, keys passed through).
