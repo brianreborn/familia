@@ -25,6 +25,7 @@ CHANNEL_PY = os.path.join(ROOT, "scripts", "channel.py")
 SOURCE = "hermes-agent"
 CHANNELS = ("bleeding", "stable")
 REF_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+-]{0,127}", re.ASCII)
+COMMIT_RE = re.compile(r"[0-9a-f]{40}", re.ASCII)   # full sha1: pins are pasted into a curl|bash hint
 VERSION_RE = re.compile(r"\bv(\d+\.\d+\.\d+)\b.*?\blocal ([0-9a-f]{7,40})\b|\bv(\d+\.\d+\.\d+)\b", re.ASCII)
 
 
@@ -37,15 +38,32 @@ def _log(msg):
 
 
 def load_pins(path=PINS):
-    with open(path, encoding="utf-8") as f:
-        data = json.load(f)
-    chans = data.get("channels") or {}
+    """The pin file, validated. Every problem (unreadable, not JSON, bad shape) is a PinError with
+    the path, never a traceback: refs match REF_RE, commits are 40 lowercase hex (or absent), and
+    both channels must be present (a missing stable entry is an error, not a silent bleeding)."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except OSError as e:
+        raise PinError("pin file %s: cannot read (%s)" % (path, e.strerror or e))
+    except (ValueError, UnicodeDecodeError) as e:   # json.JSONDecodeError is a ValueError
+        raise PinError("pin file %s: not valid JSON (%s)" % (path, e))
+    if not isinstance(data, dict) or not isinstance(data.get("channels"), dict):
+        raise PinError("pin file %s: no channels object" % path)
+    chans = data["channels"]
     for name, e in chans.items():
-        if name not in CHANNELS or not isinstance(e, dict) or not REF_RE.fullmatch(str(e.get("ref", ""))) \
-                or ".." in e["ref"]:
+        if name not in CHANNELS or not isinstance(e, dict) or not isinstance(e.get("ref"), str) \
+                or not REF_RE.fullmatch(e["ref"]) or ".." in e["ref"]:
             raise PinError("pin file %s: bad entry %r" % (path, name))
-    if "bleeding" not in chans:
-        raise PinError("pin file %s: no bleeding entry" % path)
+        c = e.get("commit")
+        if c is not None and not (isinstance(c, str) and COMMIT_RE.fullmatch(c)):
+            raise PinError("pin file %s: channel %r commit must be 40 lowercase hex, got %r" % (path, name, c))
+    missing = [c for c in CHANNELS if c not in chans]
+    if missing:
+        raise PinError("pin file %s: no %s entry" % (path, " / ".join(missing)))
+    py = data.get("python")
+    if py is not None and not (isinstance(py, str) and re.fullmatch(r"\d+\.\d+", py, re.ASCII)):
+        raise PinError("pin file %s: python must be like 3.14, got %r" % (path, py))
     return data
 
 
@@ -69,7 +87,10 @@ def _own_effective(channel, days, environ):
 
 
 def _pin_entry(pins, ch):
-    return pins["channels"].get(ch) or pins["channels"]["bleeding"]
+    e = pins["channels"].get(ch)
+    if e is None:   # injected pins (tests); load_pins already refuses a file without both channels
+        raise PinError("no %s entry in the pin file" % ch)
+    return e
 
 
 def resolve_ref(channel=None, days=None, *, offline=False, environ=None, pins=None, chmod=False):
@@ -127,18 +148,23 @@ def matches(want, version, commit):
     return bool(version) and version == want["ref"]
 
 
-INSTALL_SH = "https://hermes-agent.nousresearch.com/install.sh"
+# install.sh fetched from the pinned commit itself (scripts/install.sh upstream), never the moving
+# https://hermes-agent.nousresearch.com/install.sh, so the script that runs is the one that was pinned.
+INSTALL_SH_AT = "https://raw.githubusercontent.com/NousResearch/hermes-agent/%s/scripts/install.sh"
 
 
 def install_hint(want, bin_path=""):
-    """How to put the wanted ref in place. familia never installs hermes itself."""
+    """How to put the wanted ref in place. familia never installs hermes itself. Only a validated
+    40-hex commit is ever printed inside the curl|bash line (a crafted pin cannot inject shell)."""
     if str(bin_path).startswith("/snap/") or str(bin_path).startswith("/usr/local/bin/"):
         return ("this hermes comes from a snap/ports package, which follows its own version; "
                 "install the upstream build (below) and set HERMES_BIN, or accept the mismatch")
-    if want.get("commit"):
-        return "curl -fsSL %s | bash -s -- --commit %s   # %s" % (INSTALL_SH, want["commit"], want["ref"])
-    return ("git ls-remote https://github.com/NousResearch/hermes-agent refs/tags/%s   # then: "
-            "curl -fsSL %s | bash -s -- --commit <that sha>" % (want["ref"], INSTALL_SH))
+    c = want.get("commit")
+    ref = want.get("ref") if isinstance(want.get("ref"), str) and REF_RE.fullmatch(want["ref"]) else "?"
+    if isinstance(c, str) and COMMIT_RE.fullmatch(c):
+        return "curl -fsSL %s | bash -s -- --commit %s   # %s" % (INSTALL_SH_AT % c, c, ref)
+    return ("git ls-remote https://github.com/NousResearch/hermes-agent refs/tags/%s   # then, with that sha: "
+            "curl -fsSL %s | bash -s -- --commit <sha>" % (ref, INSTALL_SH_AT % "<sha>"))
 
 
 def main(argv=None):

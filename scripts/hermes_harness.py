@@ -225,7 +225,7 @@ def resolve_hermes(environ=None, *, exists=_path_exists, which=shutil.which,
                 "hermes-agent not found. Set HERMES_BIN to the CLI "
                 "(FreeBSD: pkg install hermes-agent → /usr/local/bin/hermes-agent; "
                 "lib at /usr/local/lib/hermes-agent — no snap). "
-                "Elsewhere: curl installer (https://hermes-agent.nousresearch.com/install.sh) "
+                "Elsewhere: upstream install.sh at the pinned commit (python3 scripts/hermes_pin.py check prints it) "
                 "or a venv, then export HERMES_BIN."
             )
         bin_path, py, sp = SNAP_BIN, py or SNAP_PY, sp or SNAP_SP

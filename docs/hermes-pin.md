@@ -30,8 +30,15 @@ python3 scripts/hermes_pin.py check                         # installed `hermes 
 ```
 
 `check` exits 1 on a mismatch and prints how to install the wanted ref with upstream's
-installer (`install.sh --commit <commit>`); familia itself never installs hermes. snap and
+installer (`install.sh --commit <commit>`), fetched from that same commit
+(`raw.githubusercontent.com/NousResearch/hermes-agent/<commit>/scripts/install.sh`, never the moving
+`hermes-agent.nousresearch.com/install.sh`); familia itself never installs hermes. snap and
 FreeBSD packages follow their own versions, so for those it only warns.
+
+The pin file is validated on every read: each `commit` is 40 lowercase hex (it is printed inside a
+`curl | bash` line), both `bleeding` and `stable` entries must exist (a missing stable entry is an
+error, not a quiet fall back to bleeding), and unreadable or malformed JSON is a one-line error
+(exit 2), not a traceback.
 
 ## At launch (`scripts/hermes.sh`)
 
