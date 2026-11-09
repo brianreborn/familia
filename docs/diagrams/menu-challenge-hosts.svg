@@ -16,23 +16,23 @@
 
 <!-- 4 host boxes in a row -->
 <rect x="36" y="110" width="280" height="100" rx="8" fill="#e3f2fd" stroke="#1565c0" stroke-width="1.8"/>
-<text x="52" y="134" font-family="DejaVu Sans, Arial, sans-serif" font-size="14" font-weight="bold" fill="#111">angel (FreeBSD)</text>
+<text x="52" y="134" font-family="DejaVu Sans, Arial, sans-serif" font-size="14" font-weight="bold" fill="#111">relay host (FreeBSD)</text>
 <text x="52" y="154" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">issue #328 | Llama-cpp 2.0</text>
-<text x="52" y="172" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">branch menu-angel</text>
+<text x="52" y="172" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">branch menu-relay host</text>
 <text x="52" y="190" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">scripts: configure_graph / pick_model /</text>
 <text x="52" y="204" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">run_graph / configure_protograph</text>
 
 <rect x="340" y="110" width="280" height="100" rx="8" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.8"/>
-<text x="356" y="134" font-family="DejaVu Sans, Arial, sans-serif" font-size="14" font-weight="bold" fill="#111">galaxy1</text>
+<text x="356" y="134" font-family="DejaVu Sans, Arial, sans-serif" font-size="14" font-weight="bold" fill="#111">phone A</text>
 <text x="356" y="154" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">issue #329 | Gemini-Pro Mobile</text>
-<text x="356" y="172" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">branch menu-galaxy1</text>
+<text x="356" y="172" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">branch menu-phone A</text>
 <text x="356" y="190" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">same script set + familia_home GOALS</text>
 <text x="356" y="204" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">tests/test_menu.sh | perf log</text>
 
 <rect x="644" y="110" width="280" height="100" rx="8" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.8"/>
-<text x="660" y="134" font-family="DejaVu Sans, Arial, sans-serif" font-size="14" font-weight="bold" fill="#111">galaxy2</text>
+<text x="660" y="134" font-family="DejaVu Sans, Arial, sans-serif" font-size="14" font-weight="bold" fill="#111">phone B</text>
 <text x="660" y="154" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">issue #330 | Qwen-3.5-2B Mobile</text>
-<text x="660" y="172" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">branch menu-galaxy2</text>
+<text x="660" y="172" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">branch menu-phone B</text>
 <text x="660" y="190" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">same script set + familia_home GOALS</text>
 <text x="660" y="204" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">tests/test_menu.sh | perf log</text>
 
@@ -57,15 +57,15 @@
 <text x="36" y="290" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" font-weight="bold" fill="#555">perf artifacts</text>
 <rect x="36" y="300" width="280" height="56" rx="6" fill="#fff" stroke="#555" stroke-width="1.4"/>
 <text x="52" y="324" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#222">generated/performance.log</text>
-<text x="52" y="342" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">menu-angel_perf (JSON)</text>
+<text x="52" y="342" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">menu-relay_perf (JSON)</text>
 
 <rect x="340" y="300" width="280" height="56" rx="6" fill="#fff" stroke="#555" stroke-width="1.4"/>
 <text x="356" y="324" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#222">generated/performance.log</text>
-<text x="356" y="342" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">menu-galaxy1_perf (JSON)</text>
+<text x="356" y="342" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">menu-phoneA_perf (JSON)</text>
 
 <rect x="644" y="300" width="280" height="56" rx="6" fill="#fff" stroke="#555" stroke-width="1.4"/>
 <text x="660" y="324" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#222">generated/performance.log</text>
-<text x="660" y="342" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">menu-galaxy2_perf (JSON)</text>
+<text x="660" y="342" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">menu-phoneB_perf (JSON)</text>
 
 <rect x="948" y="300" width="280" height="56" rx="6" fill="#fff" stroke="#555" stroke-width="1.4"/>
 <text x="964" y="324" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#222">generated/performance.log</text>
@@ -84,7 +84,7 @@
 <!-- monitor -->
 <rect x="380" y="460" width="520" height="110" rx="8" fill="#f3e5f5" stroke="#6a1b9a" stroke-width="1.8"/>
 <text x="396" y="486" font-family="DejaVu Sans, Arial, sans-serif" font-size="14" font-weight="bold" fill="#111">monitor_challenge.sh (Antigravity local)</text>
-<text x="396" y="508" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">cron every minute (* * * * *) on miryam scratch - NOT in repo</text>
+<text x="396" y="508" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">cron every minute (* * * * *) on nexus host scratch - NOT in repo</text>
 <text x="396" y="526" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">score: 0.4*latency + 0.3*mem + 0.2*cpu (+ UI smoothness 10%)</text>
 <text x="396" y="544" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">watches issues #328-#331; conflict / latency&gt;2s -&gt; prompt operator</text>
 <text x="396" y="560" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">path claimed: .../antigravity/scratch/familia/scripts/monitor_challenge.sh</text>

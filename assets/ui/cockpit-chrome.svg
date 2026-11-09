@@ -8,7 +8,7 @@
 </defs>
 <rect width="1280" height="760" fill="#f7f7f2" stroke="#333" stroke-width="2"/>
 <text x="36" y="32" font-family="DejaVu Sans, Arial, sans-serif" font-size="20" font-weight="bold" fill="#111">familia - cockpit chrome (ui_bridge + llama-ui)</text>
-<text x="36" y="52" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#444">Left: scripts/ui_bridge.py terminal HUD. Right: browser frame opened by scripts/open_ui.sh. Default FAMILIA_UI_URL=http://127.0.0.1:9941.</text>
+<text x="36" y="52" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#444">Left: scripts/ui_bridge.py terminal HUD. Right: browser frame opened by scripts/open_ui.sh. Default FAMILIA_UI_URL=http://[loopback].</text>
 
 <!-- LEFT: terminal HUD frame (taller so Keys fits) -->
 <rect x="36" y="80" width="580" height="560" rx="8" fill="#1a1a1a" stroke="#00afaf" stroke-width="2"/>
@@ -16,7 +16,7 @@
 <!-- separators as lines inside panel (inner x 52..600) -->
 <line x1="52" y1="104" x2="600" y2="104" stroke="#00ffff" stroke-width="2"/>
 <text x="52" y="130" font-family="DejaVu Sans, Arial, sans-serif" font-size="14" font-weight="bold" fill="#00ff00">  FAMILIA PROTOMODEL / LLAMA-UI LIVE COCKPIT</text>
-<text x="52" y="150" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#80ffff">  (http://127.0.0.1:9941/)</text>
+<text x="52" y="150" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#80ffff">  (http://[loopback]/)</text>
 <line x1="52" y1="164" x2="600" y2="164" stroke="#00ffff" stroke-width="2"/>
 
 <text x="52" y="198" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" font-weight="bold" fill="#ffffff">Model Alias:</text>
@@ -38,7 +38,7 @@
 
 <line x1="52" y1="458" x2="600" y2="458" stroke="#00ffff" stroke-width="1.5"/>
 <text x="52" y="486" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#888888">  To view in browser, run: sh scripts/open_ui.sh</text>
-<text x="52" y="506" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#888888">  or visit: http://127.0.0.1:9941/</text>
+<text x="52" y="506" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#888888">  or visit: http://[loopback]/</text>
 <line x1="52" y1="522" x2="600" y2="522" stroke="#00ffff" stroke-width="2"/>
 
 <text x="52" y="552" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#888888">Fetches: GET /props, GET /slots, GET /v1/models</text>
@@ -54,18 +54,18 @@
 <circle cx="692" cy="98" r="6" fill="#ffca28"/>
 <circle cx="712" cy="98" r="6" fill="#66bb6a"/>
 <rect x="740" y="88" width="460" height="20" rx="4" fill="#263238"/>
-<text x="752" y="102" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#b0bec5">http://127.0.0.1:9941/</text>
+<text x="752" y="102" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#b0bec5">http://[loopback]/</text>
 
 <rect x="670" y="140" width="550" height="460" rx="4" fill="#ffffff" stroke="#90a4ae" stroke-width="1"/>
 <text x="690" y="170" font-family="DejaVu Sans, Arial, sans-serif" font-size="16" font-weight="bold" fill="#111">llama-ui (Svelte bundle)</text>
 <text x="690" y="194" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#555">Opened by scripts/open_ui.sh when /props or /health answers.</text>
 
 <text x="690" y="230" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" font-weight="bold" fill="#333">open_ui.sh candidate ports (order)</text>
-<text x="690" y="252" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">9941  coder</text>
-<text x="690" y="270" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">18112 phone-coder</text>
-<text x="690" y="288" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">18110 decision</text>
-<text x="690" y="306" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">9931  router gateway (roomz)</text>
-<text x="690" y="324" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">8080  green-roomz</text>
+<text x="690" y="252" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">[port] coder</text>
+<text x="690" y="270" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">[port] phone-coder</text>
+<text x="690" y="288" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">[port] decision</text>
+<text x="690" y="306" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">[port] router gateway (roomz)</text>
+<text x="690" y="324" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">[port] green-roomz</text>
 
 <rect x="690" y="350" width="510" height="80" rx="4" fill="#f5f5f5" stroke="#bdbdbd"/>
 <text x="706" y="376" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#444">Chat / completions UI lives here when llama-server</text>
@@ -78,6 +78,6 @@
 <!-- footer legend -->
 <rect x="36" y="660" width="1204" height="70" rx="6" fill="#fff" stroke="#333" stroke-width="1"/>
 <text x="52" y="684" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" font-weight="bold" fill="#111">Sources</text>
-<text x="52" y="704" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">scripts/ui_bridge.py (377745f) | scripts/open_ui.sh (3e9cac0) | FAMILIA_UI_URL default :9941</text>
+<text x="52" y="704" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">scripts/ui_bridge.py (377745f) | scripts/open_ui.sh (3e9cac0) | FAMILIA_UI_URL default </text>
 <text x="52" y="722" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#777">ASCII only. Example field values marked. Art asset; does not edit hot files.</text>
 </svg>

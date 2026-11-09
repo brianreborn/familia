@@ -47,8 +47,8 @@
 <!-- 2 nexus / roomz -->
 <rect x="80" y="180" width="400" height="110" rx="8" fill="#e8f5e9" stroke="#135" stroke-width="1.8"/>
 <text x="96" y="204" font-family="DejaVu Sans, Arial, sans-serif" font-size="14" font-weight="bold" fill="#111">2  green-roomz nexus / familia roomz gateway</text>
-<text x="96" y="222" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">green-roomz default listen 127.0.0.1:8080 (README)</text>
-<text x="96" y="240" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">familia gateways.roomz -> host miryam port 9931 (graph.yaml)</text>
+<text x="96" y="222" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">green-roomz default listen [loopback] (README)</text>
+<text x="96" y="240" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">familia gateways.roomz -> host nexus host gateway port (graph.yaml)</text>
 <text x="96" y="258" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">start_graph.gateway_command: graph_router.py by default;</text>
 <text x="96" y="274" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">green-roomz graph-proxy only when gateways.*.router: false</text>
 <circle cx="80" cy="180" r="12" fill="#135"/><text x="80" y="184" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" font-weight="bold" fill="#fff">2</text>
@@ -60,7 +60,7 @@
 <!-- 3a graph_router -->
 <rect x="80" y="340" width="340" height="100" rx="8" fill="#e3f2fd" stroke="#135" stroke-width="1.8"/>
 <text x="96" y="364" font-family="DejaVu Sans, Arial, sans-serif" font-size="14" font-weight="bold" fill="#111">3a  scripts/graph_router.py</text>
-<text x="96" y="382" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">listens on gateways.roomz.port (9931)</text>
+<text x="96" y="382" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">listens on gateways.roomz.port</text>
 <text x="96" y="400" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">resolves aliases: coder / general -> node coder</text>
 <text x="96" y="418" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">config: .cache/familia/graph-router-*-roomz.json</text>
 <circle cx="80" cy="340" r="12" fill="#135"/><text x="80" y="344" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" font-weight="bold" fill="#fff">3</text>
@@ -84,8 +84,8 @@
 
 <!-- 4 coder node -->
 <rect x="80" y="550" width="360" height="120" rx="8" fill="#fff" stroke="#135" stroke-width="1.8"/>
-<text x="96" y="574" font-family="DejaVu Sans, Arial, sans-serif" font-size="14" font-weight="bold" fill="#111">4  node coder (miryam)</text>
-<text x="96" y="592" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">llama-server 127.0.0.1:9941 | model qwen35-2b-q4km</text>
+<text x="96" y="574" font-family="DejaVu Sans, Arial, sans-serif" font-size="14" font-weight="bold" fill="#111">4  node coder (nexus host)</text>
+<text x="96" y="592" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">llama-server [loopback] | model qwen35-2b-q4km</text>
 <text x="96" y="610" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">#243 launch: validate_graph.launch_tools_argv</text>
 <text x="96" y="628" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">-> --tools all (role coder; TOOL_CAPABLE_BY_TYPE)</text>
 <text x="96" y="646" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">scripts/start_graph.py + scripts/validate_graph.py</text>
@@ -95,9 +95,9 @@
 <rect x="480" y="550" width="400" height="120" rx="8" fill="#fff8e1" stroke="#a63" stroke-width="1.8"/>
 <text x="496" y="574" font-family="DejaVu Sans, Arial, sans-serif" font-size="14" font-weight="bold" fill="#111">5  tool_route target (tool-capable node)</text>
 <text x="496" y="592" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">runs under its own tool_policy / --tools</text>
-<text x="496" y="610" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">example with server_tools: all -> angel-coder</text>
-<text x="496" y="628" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">(graph.yaml nodes.angel-coder; host angel :18200)</text>
-<text x="496" y="646" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">no tool_route edge on miryam coder at tip - mechanism ready</text>
+<text x="496" y="610" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">example with server_tools: all -> relay host-coder</text>
+<text x="496" y="628" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">(graph.yaml nodes.relay host-coder; host relay host )</text>
+<text x="496" y="646" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">no tool_route edge on nexus host coder at tip - mechanism ready</text>
 <circle cx="480" cy="550" r="12" fill="#a63"/><text x="480" y="554" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" font-weight="bold" fill="#fff">5</text>
 
 <!-- tool_call loop on node 4/5 -->
@@ -131,15 +131,15 @@
 <text x="936" y="242" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">#251 runtime forward - escalation_proxy.rewrite (merged)</text>
 <text x="936" y="260" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">Sources: graph.yaml gateways.roomz / nodes.coder;</text>
 <text x="936" y="276" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">scripts/{start_graph,graph_router,escalation_proxy,validate_graph}.py</text>
-<text x="936" y="292" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">green-roomz README default :8080</text>
+<text x="936" y="292" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">green-roomz README default </text>
 
 <!-- notes strip -->
 <rect x="920" y="340" width="520" height="160" rx="8" fill="#fafafa" stroke="#999" stroke-width="1"/>
 <text x="936" y="364" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" font-weight="bold" fill="#111">Tip facts (no invention)</text>
-<text x="936" y="384" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">- roomz gateway port 9931 on miryam (graph.yaml)</text>
-<text x="936" y="402" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">- coder bind 127.0.0.1:9941, status active</text>
-<text x="936" y="420" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">- angel-coder has server_tools: all (port 18200)</text>
-<text x="936" y="438" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">- no tool_route key on miryam coder at this tip</text>
+<text x="936" y="384" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">- roomz gateway port on nexus host (graph.yaml)</text>
+<text x="936" y="402" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">- coder bind [loopback], status active</text>
+<text x="936" y="420" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">- relay host-coder has server_tools: all</text>
+<text x="936" y="438" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">- no tool_route key on nexus host coder at this tip</text>
 <text x="936" y="456" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">- README mermaid still draws #251 dashed - stale vs tip</text>
 <text x="936" y="474" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">- guardian/pentest/defender fail-closed for tools</text>
 </svg>

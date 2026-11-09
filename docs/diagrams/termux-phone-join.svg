@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="920" viewBox="0 0 1280 920">
-<title>familia Termux phone join - miryam -&gt; angel -&gt; galaxy1/2 (not yet run)</title>
-<desc>Data-flow of A57 phone join via ProxyJump angel. Reverse tunnels 18080/18081. Models from host pack or lan-bt torrent. Join not yet run.</desc>
+<title>familia Termux phone join - nexus host -&gt; relay host -&gt; phones A/B (not yet run)</title>
+<desc>Data-flow of A57 phone join via ProxyJump relay host. Reverse tunnels [port]/[port]. Models from host pack or [bt-mesh] torrent. Join not yet run.</desc>
 <defs>
   <marker id="a1" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="9" markerHeight="7" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#1a5"/></marker>
   <marker id="a2" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="9" markerHeight="7" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#36a"/></marker>
@@ -10,73 +10,73 @@
 
 <rect width="1280" height="920" fill="#f7f7f2" stroke="#333" stroke-width="2"/>
 
-<text x="36" y="32" font-family="DejaVu Sans, Arial, sans-serif" font-size="18" font-weight="bold" fill="#111">familia - Termux phone join data-flow (miryam -&gt; angel -&gt; galaxy1/2)</text>
-<text x="36" y="52" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#444">SSH ProxyJump, reverse tunnels to green-roomz :8080, model pull. Status: JOIN NOT YET RUN.</text>
+<text x="36" y="32" font-family="DejaVu Sans, Arial, sans-serif" font-size="18" font-weight="bold" fill="#111">familia - Termux phone join data-flow (nexus host -&gt; relay host -&gt; phones A/B)</text>
+<text x="36" y="52" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#444">SSH ProxyJump, reverse tunnels to green-roomz , model pull. Status: JOIN NOT YET RUN.</text>
 
 <rect x="36" y="62" width="260" height="28" rx="6" fill="#c62828" stroke="#7f0000" stroke-width="1.5"/>
 <text x="166" y="82" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-size="14" font-weight="bold" fill="#fff">JOIN NOT YET RUN</text>
 
 <!-- TOP ROW -->
 <rect x="36" y="120" width="260" height="96" rx="8" fill="#fff" stroke="#135" stroke-width="1.8"/>
-<text x="52" y="144" font-family="DejaVu Sans, Arial, sans-serif" font-size="14" font-weight="bold" fill="#111">1  miryam (hub)</text>
-<text x="52" y="162" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">graph host | lan-nexus hub</text>
-<text x="52" y="180" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">meshes.lan-nexus / lan-bt</text>
+<text x="52" y="144" font-family="DejaVu Sans, Arial, sans-serif" font-size="14" font-weight="bold" fill="#111">1  nexus host (hub)</text>
+<text x="52" y="162" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">graph host | [lan-mesh] hub</text>
+<text x="52" y="180" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">meshes.[lan-mesh] / [bt-mesh]</text>
 <text x="52" y="198" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">scripts/nexus/nexus.py | scripts/bt/</text>
 <circle cx="36" cy="120" r="11" fill="#135"/><text x="36" y="124" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" font-weight="bold" fill="#fff">1</text>
 
-<!-- miryam -> angel -->
+<!-- nexus host -> relay host -->
 <path d="M296,168 L350,168" fill="none" stroke="#1a5" stroke-width="2.4" marker-end="url(#a1)"/>
 <text x="323" y="156" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" font-weight="bold" fill="#1a5">ssh (ProxyJump)</text>
 <text x="323" y="188" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-size="10" fill="#1a5">~/.ssh/config</text>
-<text x="323" y="202" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-size="10" fill="#1a5">Host angel</text>
+<text x="323" y="202" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-size="10" fill="#1a5">Host relay host</text>
 
 <rect x="360" y="120" width="280" height="96" rx="8" fill="#e3f2fd" stroke="#135" stroke-width="1.8"/>
-<text x="376" y="144" font-family="DejaVu Sans, Arial, sans-serif" font-size="14" font-weight="bold" fill="#111">2  angel (FreeBSD jump)</text>
-<text x="376" y="162" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">192.168.4.25 | Host angel/gabriel</text>
+<text x="376" y="144" font-family="DejaVu Sans, Arial, sans-serif" font-size="14" font-weight="bold" fill="#111">2  relay host (FreeBSD jump)</text>
+<text x="376" y="162" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">[lan-ip] | relay host</text>
 <text x="376" y="180" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#333">docs/vvram-ssd/URIEL-COORDINATOR.md</text>
-<text x="376" y="198" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">graph.yaml hosts.angel</text>
+<text x="376" y="198" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">graph.yaml hosts.relay host</text>
 <circle cx="360" cy="120" r="11" fill="#135"/><text x="360" y="124" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" font-weight="bold" fill="#fff">2</text>
 
-<!-- angel -> phones (non-crossing fork) -->
+<!-- relay host -> phones (non-crossing fork) -->
 <path d="M640,148 L690,148 L690,110 L740,110" fill="none" stroke="#36a" stroke-width="2.4" marker-end="url(#a2)"/>
 <path d="M640,188 L690,188 L690,270 L740,270" fill="none" stroke="#36a" stroke-width="2.4" marker-end="url(#a2)"/>
 <text x="665" y="138" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" font-weight="bold" fill="#36a">ssh key-only</text>
 <text x="665" y="208" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-size="10" fill="#36a">Termux sshd</text>
-<text x="665" y="222" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-size="10" fill="#36a">:8022</text>
+<text x="665" y="222" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-size="10" fill="#36a"></text>
 
-<!-- galaxy1 -->
+<!-- phone A -->
 <rect x="740" y="60" width="340" height="100" rx="8" fill="#e8f5e9" stroke="#135" stroke-width="1.8"/>
-<text x="756" y="84" font-family="DejaVu Sans, Arial, sans-serif" font-size="14" font-weight="bold" fill="#111">3a  galaxy1 (phone7 legacy)</text>
-<text x="756" y="102" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">u0_a439 @ 192.168.4.21 :8022</text>
+<text x="756" y="84" font-family="DejaVu Sans, Arial, sans-serif" font-size="14" font-weight="bold" fill="#111">3a  phone A (phone node legacy)</text>
+<text x="756" y="102" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">[termux-user] @ [lan-ip] </text>
 <text x="756" y="120" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">Samsung Galaxy A57 | Termux | Xclipse 550</text>
-<text x="756" y="138" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">graph.yaml hosts.galaxy1 / phone7</text>
+<text x="756" y="138" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">graph.yaml hosts.phone A / phone node</text>
 <text x="756" y="154" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">install/termux/install.sh --sshd</text>
 <!-- badge left of box, not on corner fill -->
 <circle cx="726" cy="60" r="11" fill="#135"/><text x="726" y="64" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-size="10" font-weight="bold" fill="#fff">3a</text>
 
-<!-- galaxy2 -->
+<!-- phone B -->
 <rect x="740" y="220" width="340" height="100" rx="8" fill="#e8f5e9" stroke="#135" stroke-width="1.8"/>
-<text x="756" y="244" font-family="DejaVu Sans, Arial, sans-serif" font-size="14" font-weight="bold" fill="#111">3b  galaxy2 (phone8 legacy)</text>
-<text x="756" y="262" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">u0_a414 @ 192.168.4.22 :8022</text>
+<text x="756" y="244" font-family="DejaVu Sans, Arial, sans-serif" font-size="14" font-weight="bold" fill="#111">3b  phone B (phone node legacy)</text>
+<text x="756" y="262" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">[termux-user] @ [lan-ip] </text>
 <text x="756" y="280" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">Samsung Galaxy A57 | Termux | Xclipse 550</text>
-<text x="756" y="298" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">graph.yaml hosts.galaxy2 / phone8</text>
+<text x="756" y="298" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">graph.yaml hosts.phone B / phone node</text>
 <text x="756" y="314" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">install/termux/install.sh --sshd</text>
 <circle cx="726" cy="220" r="11" fill="#135"/><text x="726" y="224" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-size="10" font-weight="bold" fill="#fff">3b</text>
 
 <!-- TUNNEL LANE (below phones, parallel left to loopback) -->
 <!-- from bottom-center of each phone, down to dedicated y, then left -->
 <path d="M860,160 L860,360 L456,360" fill="none" stroke="#a63" stroke-width="2.2" marker-end="url(#a3)"/>
-<text x="720" y="348" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" font-weight="bold" fill="#a63">reverse tunnel: 127.0.0.1:18080 -&gt; galaxy1:8080</text>
+<text x="720" y="348" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" font-weight="bold" fill="#a63">reverse tunnel: [loopback] -&gt; phone A</text>
 
 <path d="M920,320 L920,400 L456,400" fill="none" stroke="#a63" stroke-width="2.2" marker-end="url(#a3)"/>
-<text x="720" y="392" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" font-weight="bold" fill="#a63">reverse tunnel: 127.0.0.1:18081 -&gt; galaxy2:8080</text>
+<text x="720" y="392" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" font-weight="bold" fill="#a63">reverse tunnel: [loopback] -&gt; phone B</text>
 
 <!-- 4 loopback -->
 <rect x="36" y="340" width="420" height="90" rx="8" fill="#fff3e0" stroke="#a63" stroke-width="1.8"/>
-<text x="52" y="364" font-family="DejaVu Sans, Arial, sans-serif" font-size="14" font-weight="bold" fill="#111">4  miryam loopback -&gt; phone green-roomz</text>
-<text x="52" y="382" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">127.0.0.1:18080 -&gt; galaxy1 green-roomz :8080</text>
-<text x="52" y="400" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">127.0.0.1:18081 -&gt; galaxy2 green-roomz :8080</text>
-<text x="52" y="418" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">node_role.py port 18080; a57-preflight GRZ_PORT=8080</text>
+<text x="52" y="364" font-family="DejaVu Sans, Arial, sans-serif" font-size="14" font-weight="bold" fill="#111">4  nexus host loopback -&gt; phone green-roomz</text>
+<text x="52" y="382" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">[loopback] -&gt; phone A green-roomz </text>
+<text x="52" y="400" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">[loopback] -&gt; phone B green-roomz </text>
+<text x="52" y="418" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">node_role.py port; a57-preflight GRZ_PORT (graph.yaml)</text>
 <circle cx="36" cy="340" r="11" fill="#a63"/><text x="36" y="344" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" font-weight="bold" fill="#fff">4</text>
 
 <!-- MODEL PULL (own lane: right then UP far-right rail outside phones) -->
@@ -84,7 +84,7 @@
 <text x="52" y="484" font-family="DejaVu Sans, Arial, sans-serif" font-size="14" font-weight="bold" fill="#111">5  model pull (onto phone)</text>
 <text x="52" y="504" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">A  host pack -&gt; $HOME/grz-runtime/{bin,lib,models}</text>
 <text x="52" y="522" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#333">   a57-preflight.sh GRZ_RUNTIME; pack hash .pack-sha256</text>
-<text x="52" y="542" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">B  torrent -&gt; meshes.lan-bt (tracker miryam :6969)</text>
+<text x="52" y="542" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">B  torrent -&gt; meshes.[bt-mesh] (tracker nexus host )</text>
 <text x="52" y="560" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#333">   scripts/bt/{mktorrent,seed,fetch,tracker}.py | aria2c</text>
 <circle cx="36" cy="460" r="11" fill="#806"/><text x="36" y="464" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" font-weight="bold" fill="#fff">5</text>
 
@@ -98,15 +98,15 @@
 <!-- phone llama note (left of rail, above model-pull horizontal) -->
 <rect x="560" y="460" width="280" height="110" rx="8" fill="#fff" stroke="#555" stroke-width="1.2"/>
 <text x="576" y="484" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" font-weight="bold" fill="#111">Phone llama-server (when up)</text>
-<text x="576" y="504" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">phone7-decision :18110</text>
-<text x="576" y="522" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">phone8-general :18112</text>
+<text x="576" y="504" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">phone node-decision </text>
+<text x="576" y="522" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">phone node-general </text>
 <text x="576" y="540" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">graph.yaml (status planned)</text>
-<text x="576" y="556" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">green-roomz :8080 via tunnels</text>
+<text x="576" y="556" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">green-roomz  via tunnels</text>
 
 <!-- BOTTOM: blocked + legend + sources - no overflow -->
 <rect x="36" y="640" width="500" height="72" rx="8" fill="#ffebee" stroke="#c62828" stroke-width="1.5"/>
 <text x="52" y="662" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" font-weight="bold" fill="#b71c1c">Blocked until Brian confirms</text>
-<text x="52" y="682" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">sshd on both phones (Termux :8022) + nexus LAN IP for reverse-tunnel bind</text>
+<text x="52" y="682" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333">sshd on both phones (Termux ) + nexus LAN IP for reverse-tunnel bind</text>
 <text x="52" y="700" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#333">Continuity / Forensic hold: join path drawn, not executed</text>
 
 <rect x="560" y="640" width="300" height="120" rx="8" fill="#fff" stroke="#333" stroke-width="1.4"/>
@@ -114,7 +114,7 @@
 <line x1="576" y1="678" x2="616" y2="678" stroke="#1a5" stroke-width="2" marker-end="url(#a1)"/>
 <text x="624" y="682" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#222">ssh ProxyJump</text>
 <line x1="576" y1="698" x2="616" y2="698" stroke="#36a" stroke-width="2" marker-end="url(#a2)"/>
-<text x="624" y="702" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#222">ssh Termux :8022</text>
+<text x="624" y="702" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#222">ssh Termux </text>
 <line x1="576" y1="718" x2="616" y2="718" stroke="#a63" stroke-width="2" marker-end="url(#a3)"/>
 <text x="624" y="722" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#222">reverse tunnel</text>
 <line x1="576" y1="738" x2="616" y2="738" stroke="#806" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a4)"/>
@@ -123,12 +123,12 @@
 
 <rect x="880" y="640" width="360" height="120" rx="8" fill="#fafafa" stroke="#999" stroke-width="1"/>
 <text x="896" y="662" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" font-weight="bold" fill="#111">Sources</text>
-<text x="896" y="680" font-family="DejaVu Sans, Arial, sans-serif" font-size="10" fill="#333">graph.yaml hosts.{angel,galaxy1,galaxy2,phone7,phone8}</text>
-<text x="896" y="696" font-family="DejaVu Sans, Arial, sans-serif" font-size="10" fill="#333">meshes.lan-nexus / lan-bt; install/termux/install.sh --sshd</text>
+<text x="896" y="680" font-family="DejaVu Sans, Arial, sans-serif" font-size="10" fill="#333">graph.yaml hosts.{relay host,phone A,phone B,phone node,phone node}</text>
+<text x="896" y="696" font-family="DejaVu Sans, Arial, sans-serif" font-size="10" fill="#333">meshes.[lan-mesh] / [bt-mesh]; install/termux/install.sh --sshd</text>
 <text x="896" y="712" font-family="DejaVu Sans, Arial, sans-serif" font-size="10" fill="#333">scripts/node_role.py; tests/test_android_targets.py</text>
 <text x="896" y="728" font-family="DejaVu Sans, Arial, sans-serif" font-size="10" fill="#333">URIEL-COORDINATOR.md; a57-preflight.sh</text>
-<text x="896" y="744" font-family="DejaVu Sans, Arial, sans-serif" font-size="10" fill="#555">LAN .21/.22, u0_a439/u0_a414 from fleet notes</text>
+<text x="896" y="744" font-family="DejaVu Sans, Arial, sans-serif" font-size="10" fill="#555">LAN addrs + Termux users: local hosts overlay</text>
 
-<text x="36" y="790" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">optional: scripts/nexus/nexus.py put/get --kind model (lan-nexus hub ~/.familia/nexus)</text>
+<text x="36" y="790" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#555">optional: scripts/nexus/nexus.py put/get --kind model ([lan-mesh] hub ~/.familia/nexus)</text>
 <text x="36" y="900" font-family="DejaVu Sans, Arial, sans-serif" font-size="10" fill="#777">ASCII arrows only. Tip 3e09fad facts unchanged. Branch swarm/continuity/art. No push.</text>
 </svg>
