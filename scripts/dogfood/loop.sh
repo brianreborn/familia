@@ -42,8 +42,9 @@ PY
   id=$(sed -n 's/^  id: //p;s/^- id: //p' "$D/task.yaml" | head -1); num=${id#i}
   python3 scripts/dogfood/dispatch.py "$D/task.yaml" --harness "$h" --out "$D/runs" --max-wait 7200 $SMOKE_FLAG >> "$D/loop.log" 2>&1
   r=$(grep "\"id\": \"$id\"" "$D/runs/results.jsonl" | tail -1)
-  wt=/tmp/dogfood-wt-$id; ok=0; why=""
+  wt=$(printf '%s' "$r" | python3 -c 'import json,sys;print(json.load(sys.stdin).get("worktree",""))' 2>/dev/null); ok=0; why=""
   if [ -z "$r" ]; then why="no result"
+  elif [ -z "$wt" ] || [ ! -d "$wt" ]; then why="no worktree path in result"
   elif ! echo "$r" | grep -q '"accept_rc": 0'; then why="acceptance/pytest failed or no change"
   elif echo "$r" | grep -q '"smoke": true'; then why="smoke only (no live land)"
   elif [ "$h" = harness2 ]; then
@@ -61,7 +62,7 @@ PY
   fi
   [ $ok = 1 ] || echo "{\"ts\":\"$(date -Is)\",\"issue\":$num,\"harness\":\"$h\",\"model\":\"$model\",\"reason\":\"$why\"}" >> "$GIVEUP"
   echo "$(date -Is) #$num $h ok=$ok $why" >> "$D/loop.log"; date -Is > "$D/last_iter"
-  cd "$REPO"; git worktree remove --force "$wt" 2>/dev/null
+  cd "$REPO"; [ -n "$wt" ] && git worktree remove --force "$wt" 2>/dev/null
   [ "${1:-}" = --once ] && exit 0
   sleep 60
 done
