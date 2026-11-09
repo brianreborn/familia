@@ -130,3 +130,31 @@ def test_prepare_client_launch_webapp(tmp_path, monkeypatch):
     argv = hh.prepare_client_launch(str(home), "webapp", ["--no-open"], bin_path="/fake/hermes")
     assert argv == ["webapp", "--no-open"]
     assert yaml.safe_load((home / "config.yaml").read_text())["webapp"]["enabled"] is True
+
+
+# --- Boundary fix-forward (e): rendered config.yaml holds the familia key -> 0600, atomic ------------
+
+def test_write_private_is_0600_atomic_and_replaces_symlink(tmp_path):
+    import stat
+    target = tmp_path / "victim"; target.write_text("keep")
+    p = tmp_path / "config.yaml"; p.symlink_to(target)
+    os.umask(0o022)
+    hh.write_private(str(p), "api_key: k\n")
+    assert not p.is_symlink() and p.read_text() == "api_key: k\n"
+    assert stat.S_IMODE(p.stat().st_mode) == 0o600
+    assert target.read_text() == "keep"                       # never written through the link
+    assert [x.name for x in tmp_path.iterdir() if x.name.endswith(".tmp")] == []
+
+
+def test_render_and_webapp_write_config_0600(tmp_path, monkeypatch):
+    import stat
+    import yaml as _y
+    monkeypatch.setenv("HOME", str(tmp_path))
+    g = _y.safe_load(open(os.path.join(ROOT, "graph.yaml")))
+    home, *_ = hh.render(g, "hermes", user_cfg_path=str(tmp_path / "none.yaml"))
+    cfg = os.path.join(home, "config.yaml")
+    assert stat.S_IMODE(os.stat(cfg).st_mode) == 0o600
+    os.chmod(cfg, 0o644)
+    assert hh.ensure_webapp_enabled(home) is True
+    assert stat.S_IMODE(os.stat(cfg).st_mode) == 0o600
+    assert _y.safe_load(open(cfg))["webapp"]["enabled"] is True

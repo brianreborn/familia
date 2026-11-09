@@ -131,7 +131,10 @@ def test_symlinked_soul_not_written_through(tmp_path, capsys):
 
 
 def test_unwritable_home_never_fails_render(tmp_path, monkeypatch, capsys):
-    def boom(*a, **k): raise PermissionError("read-only")
+    real_replace = os.replace
+    def boom(src, dst, *a, **k):   # SOUL.md unwritable; config.yaml (also os.replace, 0600) still lands
+        if str(dst).endswith("SOUL.md"): raise PermissionError("read-only")
+        return real_replace(src, dst, *a, **k)
     monkeypatch.setattr(hh.os, "replace", boom)
     home = render(tmp_path, "hermes")
     assert os.path.isfile(os.path.join(home, "config.yaml"))
