@@ -183,7 +183,10 @@ def test_every_user_facing_script_is_in_the_menu():
              "install/termux/install.sh": "INSTALLER", "familia-monitor": "familia-monitor"}
     allow = internal()
     # CLI-only by design (#116): test_sec_assess forbids it in every menu table.
-    allow = set(allow) | {"scripts/sec_assess.py"}
+    # #332 Android offline queue: CLI/daemon helper; menu-internal row deferred so we
+    # do not edit Antigravity-owned scripts/menu-*.txt during their sprint — PR body
+    # asks for: scripts/offline_queue.py|Android/Termux offline fallback (#332)
+    allow = set(allow) | {"scripts/sec_assess.py", "scripts/offline_queue.py"}
     missing = []
     for s in sorted(user_facing_scripts()):
         if s in allow:
