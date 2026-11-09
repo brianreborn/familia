@@ -439,3 +439,56 @@ def test_tool_forward_logged_source_to_target(monkeypatch, tmp_path):
     assert out.splitlines() == ["[familia] tool forward: light -> coder"]   # one line, no body/keys
     assert "SECRET" not in out
     srv.shutdown()
+
+
+def test_tool_route_malformed_json_fails_closed_no_retry(monkeypatch, tmp_path):
+    """#251 F1: tool_route target returns malformed JSON -> 502; never redial with tools on light."""
+    monkeypatch.setattr(EP, "STATE", str(tmp_path)); monkeypatch.setattr(EP, "PENDING", str(tmp_path / "p.json"))
+    seen = []
+    pl = mock("light", seen)
+    pc = mock_raw("coder", seen, body_bytes=b"{not json")
+    g = _tool_graph(pl, pc)
+    srv = EP.serve(EP.Escalator(g, "light", [], "h", consent={})); p = srv.server_address[1]
+    with _pytest.raises(urllib.error.HTTPError) as ei:
+        _post_body(p, {"model": "x", "messages": [{"role": "user", "content": "x"}], "tools": TOOLS})
+    assert ei.value.code == 502
+    body = ei.value.read().decode()
+    assert "tool_route" in body and "invalid JSON" in body
+    # coder saw the tools request; light must not get a redial with tools.
+    assert [s[0] for s in seen] == ["coder"]
+    assert "tools" in seen[0][1]
+    srv.shutdown()
+
+
+def test_tool_route_malformed_json_while_escalated_not_retried_on_light(monkeypatch, tmp_path):
+    """#251 F1: escalated session + tool forward + bad JSON must not resend tools to light."""
+    monkeypatch.setattr(EP, "STATE", str(tmp_path)); monkeypatch.setattr(EP, "PENDING", str(tmp_path / "p.json"))
+    monkeypatch.setenv("FAMILIA_ESCALATE", "auto")
+    seen = []
+    pl = mock("light", seen)
+    ph = mock("heavy", seen)
+    pc = mock_raw("coder", seen, body_bytes=b"{not json")
+    g = {"hosts": {"h": {}}, "aliases": {"coder-a": {"node": "coder"}},
+         "models": {"m": {"role": "chat"}, "c": {"role": "coder", "tool_calls": True},
+                    "q": {"role": "chat"}},
+         "nodes": {"light": {"host": "h", "port": pl, "model": "m", "bind": "0.0.0.0",
+                            "escalates_to": ["heavy"],
+                            "escalation": {"mode": "auto", "triggers": {"repeat_outputs": 0,
+                                                                       "failure_retries": 0,
+                                                                       "phrases": ["try harder"]}}},
+                   "heavy": {"host": "h", "port": ph, "model": "q", "bind": "0.0.0.0",
+                             "tool_route": "coder"},
+                   "coder": {"host": "h", "port": pc, "model": "c", "bind": "127.0.0.1"}}}
+    esc = EP.Escalator(g, "light", [], "h", consent={}); srv = EP.serve(esc); p = srv.server_address[1]
+    post(p, [{"role": "user", "content": "please try harder"}])  # escalate to heavy
+    assert esc.current == "heavy"
+    with _pytest.raises(urllib.error.HTTPError) as ei:
+        _post_body(p, {"model": "x", "messages": [{"role": "user", "content": "run tool"}], "tools": TOOLS})
+    assert ei.value.code == 502
+    # Before the fix, after_reply fell back to light and _retry_once resent tools there.
+    light_tool = [s for s in seen if s[0] == "light" and isinstance(s[1], dict) and "tools" in s[1]]
+    assert light_tool == [], f"light must not see tools; seen={seen}"
+    assert any(s[0] == "coder" for s in seen)
+    # Stay fail-closed: do not silently swap back via the malformed path.
+    assert esc.current == "heavy"
+    srv.shutdown()
