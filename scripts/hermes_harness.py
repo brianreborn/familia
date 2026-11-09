@@ -785,15 +785,7 @@ def greet_soul(home):
         new = FG.prepend(body)
         if new == (cur if cur is not None else "") or (cur is None and not new):
             return p if cur is not None else None
-        tmp = p + f".familia-{os.getpid()}.tmp"
-        try:
-            with open(tmp, "w", encoding="utf-8") as f:
-                f.write(new)
-            os.chmod(tmp, 0o600)
-            os.replace(tmp, p)
-        finally:
-            if os.path.lexists(tmp):
-                os.unlink(tmp)
+        write_private(p, new)   # O_CREAT|O_EXCL|O_NOFOLLOW temp, 0600, fsync, atomic replace
         return p
     except Exception as e:  # never fail a launch over the greeting
         print(f"hermes.sh: fleet greeting skipped ({e.__class__.__name__}: {e})", file=sys.stderr)

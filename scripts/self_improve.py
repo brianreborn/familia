@@ -131,13 +131,16 @@ def write_dir_tree(tree, d):
 def editable(tree):
     return {r: t for r, t in tree.items() if r in ALWAYS_ON or SKILL_RE.fullmatch(r)}
 
-def _strip_greeting(text):
-    """Drop a fleet greeting block scripts/hermes_harness.py prepended to SOUL.md (scripts/fleet_greeting.py)."""
+def _fleet_greeting():
     import sys
     here = os.path.dirname(os.path.abspath(__file__))
     if here not in sys.path: sys.path.insert(0, here)
     import fleet_greeting
-    return fleet_greeting.strip(text)
+    return fleet_greeting
+
+def _strip_greeting(text):
+    """Drop a fleet greeting block scripts/hermes_harness.py prepended to SOUL.md (scripts/fleet_greeting.py)."""
+    return _fleet_greeting().strip(text)
 
 def base_tree(t):
     """The target's current files as a tree (first use), base templates filling gaps."""
@@ -164,7 +167,12 @@ def gate(base, tree, leak_terms=(), allow_skills=True):
     for rel in FROZEN:
         if tree.get(rel, "") != base.get(rel, ""): errs.append(f"{rel}: tool descriptions are frozen in familia")
     if not tree.get("systemprompt.md", "").strip(): errs.append("systemprompt.md: empty prompt")
+    marker = _fleet_greeting().END_MARKER
     for rel, txt in sorted(editable(tree).items()):
+        # The greeting's end marker is the launcher's: a proposal carrying it could make the next
+        # render strip (or keep) the wrong block, i.e. forge or hide the fleet greeting.
+        if marker in txt or "end of familia fleet greeting" in txt:
+            errs.append(f"{rel}: contains the fleet greeting end marker (reserved for scripts/fleet_greeting.py)")
         old = set(base.get(rel, "").splitlines())
         added = [l for l in txt.splitlines() if l not in old]
         for l in added:
