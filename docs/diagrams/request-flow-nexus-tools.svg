@@ -1,0 +1,145 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1480" height="980" viewBox="0 0 1480 980">
+<title>familia request flow — nexus / router / tools @ 3e09fad</title>
+<desc>Data-flow of one chat request with tools[] at tip 3e09fad. #243 launch-time --tools; #251 escalation_proxy tool_route forward (merged).</desc>
+<defs>
+  <marker id="arr" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="9" markerHeight="7" orient="auto">
+    <path d="M0,0 L10,4 L0,8 Z" fill="#1a5"/>
+  </marker>
+  <marker id="arrb" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="9" markerHeight="7" orient="auto">
+    <path d="M0,0 L10,4 L0,8 Z" fill="#36a"/>
+  </marker>
+  <marker id="arro" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="9" markerHeight="7" orient="auto">
+    <path d="M0,0 L10,4 L0,8 Z" fill="#a63"/>
+  </marker>
+  <marker id="arrd" viewBox="0 0 10 8" refX="9" refY="4" markerWidth="9" markerHeight="7" orient="auto">
+    <path d="M0,0 L10,4 L0,8 Z" fill="#666"/>
+  </marker>
+</defs>
+
+<!-- own canvas so it reads on dark or light page -->
+<rect width="1480" height="980" fill="#f7f7f2" stroke="#333" stroke-width="2"/>
+
+<text x="40" y="36" font-family="sans-serif" font-size="20" font-weight="bold" fill="#111">familia — request data-flow (nexus → router → tool nodes) @ 3e09fad</text>
+<text x="40" y="58" font-family="sans-serif" font-size="13" fill="#444">One POST /v1/chat/completions with tools[]. Numbers = hop order. Ports and files from graph.yaml + scripts/ at tip. #251 is merged (solid).</text>
+
+<!-- lane labels -->
+<text x="24" y="110" font-family="sans-serif" font-size="11" fill="#888" transform="rotate(-90 24 110)">client</text>
+<text x="24" y="250" font-family="sans-serif" font-size="11" fill="#888" transform="rotate(-90 24 250)">nexus / gateway</text>
+<text x="24" y="420" font-family="sans-serif" font-size="11" fill="#888" transform="rotate(-90 24 420)">router / proxy</text>
+<text x="24" y="620" font-family="sans-serif" font-size="11" fill="#888" transform="rotate(-90 24 620)">nodes</text>
+<text x="24" y="820" font-family="sans-serif" font-size="11" fill="#888" transform="rotate(-90 24 820)">return</text>
+<line x1="50" y1="160" x2="1430" y2="160" stroke="#ddd"/>
+<line x1="50" y1="320" x2="1430" y2="320" stroke="#ddd"/>
+<line x1="50" y1="520" x2="1430" y2="520" stroke="#ddd"/>
+<line x1="50" y1="740" x2="1430" y2="740" stroke="#ddd"/>
+
+<!-- 1 client -->
+<rect x="80" y="80" width="320" height="70" rx="8" fill="#fff" stroke="#135" stroke-width="1.8"/>
+<text x="96" y="104" font-family="sans-serif" font-size="14" font-weight="bold" fill="#111">1  client</text>
+<text x="96" y="122" font-family="sans-serif" font-size="12" fill="#333">scripts/hermes.sh · curl · llama-ui</text>
+<text x="96" y="138" font-family="sans-serif" font-size="11" fill="#555">POST /v1/chat/completions + tools[]</text>
+<circle cx="80" cy="80" r="12" fill="#135"/><text x="80" y="84" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="bold" fill="#fff">1</text>
+
+<!-- arrow 1→2 request -->
+<path d="M240,150 L240,178" fill="none" stroke="#1a5" stroke-width="2" marker-end="url(#arr)"/>
+<text x="248" y="170" font-family="sans-serif" font-size="12" font-weight="bold" fill="#1a5">request (messages + tools[])</text>
+
+<!-- 2 nexus / roomz -->
+<rect x="80" y="180" width="400" height="110" rx="8" fill="#e8f5e9" stroke="#135" stroke-width="1.8"/>
+<text x="96" y="204" font-family="sans-serif" font-size="14" font-weight="bold" fill="#111">2  green-roomz nexus / familia roomz gateway</text>
+<text x="96" y="222" font-family="sans-serif" font-size="12" fill="#333">green-roomz default listen 127.0.0.1:8080 (README)</text>
+<text x="96" y="240" font-family="sans-serif" font-size="12" fill="#333">familia gateways.roomz → host miryam port 9931 (graph.yaml)</text>
+<text x="96" y="258" font-family="sans-serif" font-size="11" fill="#555">start_graph.gateway_command: graph_router.py by default;</text>
+<text x="96" y="274" font-family="sans-serif" font-size="11" fill="#555">green-roomz graph-proxy only when gateways.*.router: false</text>
+<circle cx="80" cy="180" r="12" fill="#135"/><text x="80" y="184" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="bold" fill="#fff">2</text>
+
+<!-- arrow 2→3 routed -->
+<path d="M280,290 L280,338" fill="none" stroke="#1a5" stroke-width="2" marker-end="url(#arr)"/>
+<text x="288" y="320" font-family="sans-serif" font-size="12" font-weight="bold" fill="#1a5">routed request (alias → node url)</text>
+
+<!-- 3a graph_router -->
+<rect x="80" y="340" width="340" height="100" rx="8" fill="#e3f2fd" stroke="#135" stroke-width="1.8"/>
+<text x="96" y="364" font-family="sans-serif" font-size="14" font-weight="bold" fill="#111">3a  scripts/graph_router.py</text>
+<text x="96" y="382" font-family="sans-serif" font-size="12" fill="#333">listens on gateways.roomz.port (9931)</text>
+<text x="96" y="400" font-family="sans-serif" font-size="12" fill="#333">resolves aliases: coder / general → node coder</text>
+<text x="96" y="418" font-family="sans-serif" font-size="11" fill="#555">config: .cache/familia/graph-router-*-roomz.json</text>
+<circle cx="80" cy="340" r="12" fill="#135"/><text x="80" y="344" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="bold" fill="#fff">3</text>
+
+<!-- 3b escalation_proxy -->
+<rect x="460" y="340" width="380" height="100" rx="8" fill="#fff3e0" stroke="#a63" stroke-width="1.8"/>
+<text x="476" y="364" font-family="sans-serif" font-size="14" font-weight="bold" fill="#111">3b  scripts/escalation_proxy.py  (#251)</text>
+<text x="476" y="382" font-family="sans-serif" font-size="12" fill="#333">rewrite(): if body.tools AND node.tool_route</text>
+<text x="476" y="400" font-family="sans-serif" font-size="12" fill="#333">→ validate_graph.tool_route → forward whole request</text>
+<text x="476" y="418" font-family="sans-serif" font-size="11" fill="#555">unreachable target → fail closed 502 (merged tip)</text>
+<circle cx="460" cy="340" r="12" fill="#a63"/><text x="460" y="344" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="bold" fill="#fff">3b</text>
+
+<!-- arrow 3a→4 forward -->
+<path d="M250,440 L250,548" fill="none" stroke="#36a" stroke-width="2" marker-end="url(#arrb)"/>
+<text x="258" y="500" font-family="sans-serif" font-size="12" font-weight="bold" fill="#36a">forward to node</text>
+
+<!-- arrow 3b→5 tool forward -->
+<path d="M650,440 L650,548" fill="none" stroke="#a63" stroke-width="2" marker-end="url(#arro)"/>
+<text x="658" y="490" font-family="sans-serif" font-size="12" font-weight="bold" fill="#a63">tool_route forward</text>
+<text x="658" y="506" font-family="sans-serif" font-size="11" fill="#a63">(chat + tools loop)</text>
+
+<!-- 4 coder node -->
+<rect x="80" y="550" width="360" height="120" rx="8" fill="#fff" stroke="#135" stroke-width="1.8"/>
+<text x="96" y="574" font-family="sans-serif" font-size="14" font-weight="bold" fill="#111">4  node coder (miryam)</text>
+<text x="96" y="592" font-family="sans-serif" font-size="12" fill="#333">llama-server 127.0.0.1:9941 · model qwen35-2b-q4km</text>
+<text x="96" y="610" font-family="sans-serif" font-size="12" fill="#333">#243 launch: validate_graph.launch_tools_argv</text>
+<text x="96" y="628" font-family="sans-serif" font-size="12" fill="#333">→ --tools all (role coder; TOOL_CAPABLE_BY_TYPE)</text>
+<text x="96" y="646" font-family="sans-serif" font-size="11" fill="#555">scripts/start_graph.py + scripts/validate_graph.py</text>
+<circle cx="80" cy="550" r="12" fill="#135"/><text x="80" y="554" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="bold" fill="#fff">4</text>
+
+<!-- 5 tool-capable target -->
+<rect x="480" y="550" width="400" height="120" rx="8" fill="#fff8e1" stroke="#a63" stroke-width="1.8"/>
+<text x="496" y="574" font-family="sans-serif" font-size="14" font-weight="bold" fill="#111">5  tool_route target (tool-capable node)</text>
+<text x="496" y="592" font-family="sans-serif" font-size="12" fill="#333">runs under its own tool_policy / --tools</text>
+<text x="496" y="610" font-family="sans-serif" font-size="12" fill="#333">example with server_tools: all → angel-coder</text>
+<text x="496" y="628" font-family="sans-serif" font-size="12" fill="#333">(graph.yaml nodes.angel-coder; host angel :18200)</text>
+<text x="496" y="646" font-family="sans-serif" font-size="11" fill="#555">no tool_route edge on miryam coder at tip — mechanism ready</text>
+<circle cx="480" cy="550" r="12" fill="#a63"/><text x="480" y="554" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="bold" fill="#fff">5</text>
+
+<!-- tool_call loop on node 4/5 -->
+<path d="M420,610 L470,610" fill="none" stroke="#a63" stroke-width="1.6" stroke-dasharray="4 3" marker-end="url(#arro)"/>
+<text x="422" y="600" font-family="sans-serif" font-size="11" font-weight="bold" fill="#a63">tool_call</text>
+<path d="M470,630 L420,630" fill="none" stroke="#1a5" stroke-width="1.6" stroke-dasharray="4 3" marker-end="url(#arr)"/>
+<text x="430" y="648" font-family="sans-serif" font-size="11" font-weight="bold" fill="#1a5">result</text>
+
+<!-- return path -->
+<path d="M260,670 L260,770" fill="none" stroke="#666" stroke-width="2" marker-end="url(#arrd)"/>
+<text x="268" y="730" font-family="sans-serif" font-size="12" font-weight="bold" fill="#666">response (assistant / tool results)</text>
+
+<rect x="80" y="770" width="520" height="70" rx="8" fill="#eceff1" stroke="#555" stroke-width="1.6"/>
+<text x="96" y="794" font-family="sans-serif" font-size="14" font-weight="bold" fill="#111">6  response back to client</text>
+<text x="96" y="812" font-family="sans-serif" font-size="12" fill="#333">node → (escalation_proxy after_reply if used) → graph_router / nexus → hermes / curl / llama-ui</text>
+<text x="96" y="828" font-family="sans-serif" font-size="11" fill="#555">client never executes tools when #251 forwarded the request</text>
+<circle cx="80" cy="770" r="12" fill="#555"/><text x="80" y="774" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="bold" fill="#fff">6</text>
+
+<!-- legend -->
+<rect x="920" y="80" width="520" height="220" rx="8" fill="#fff" stroke="#333" stroke-width="1.4"/>
+<text x="936" y="104" font-family="sans-serif" font-size="14" font-weight="bold" fill="#111">Legend</text>
+<line x1="936" y1="120" x2="980" y2="120" stroke="#1a5" stroke-width="2" marker-end="url(#arr)"/>
+<text x="990" y="124" font-family="sans-serif" font-size="12" fill="#222">request / result / response</text>
+<line x1="936" y1="144" x2="980" y2="144" stroke="#36a" stroke-width="2" marker-end="url(#arrb)"/>
+<text x="990" y="148" font-family="sans-serif" font-size="12" fill="#222">forward to node (router)</text>
+<line x1="936" y1="168" x2="980" y2="168" stroke="#a63" stroke-width="2" marker-end="url(#arro)"/>
+<text x="990" y="172" font-family="sans-serif" font-size="12" fill="#222">tool_route forward / tool_call</text>
+<line x1="936" y1="192" x2="980" y2="192" stroke="#666" stroke-width="2" marker-end="url(#arrd)"/>
+<text x="990" y="196" font-family="sans-serif" font-size="12" fill="#222">return path</text>
+<text x="936" y="224" font-family="sans-serif" font-size="12" fill="#333">#243 launch-time --tools — validate_graph.tools_argv</text>
+<text x="936" y="242" font-family="sans-serif" font-size="12" fill="#333">#251 runtime forward — escalation_proxy.rewrite (merged)</text>
+<text x="936" y="260" font-family="sans-serif" font-size="11" fill="#555">Sources: graph.yaml gateways.roomz / nodes.coder;</text>
+<text x="936" y="276" font-family="sans-serif" font-size="11" fill="#555">scripts/{start_graph,graph_router,escalation_proxy,validate_graph}.py</text>
+<text x="936" y="292" font-family="sans-serif" font-size="11" fill="#555">green-roomz README default :8080</text>
+
+<!-- notes strip -->
+<rect x="920" y="340" width="520" height="160" rx="8" fill="#fafafa" stroke="#999" stroke-width="1"/>
+<text x="936" y="364" font-family="sans-serif" font-size="13" font-weight="bold" fill="#111">Tip facts (no invention)</text>
+<text x="936" y="384" font-family="sans-serif" font-size="12" fill="#333">• roomz gateway port 9931 on miryam (graph.yaml)</text>
+<text x="936" y="402" font-family="sans-serif" font-size="12" fill="#333">• coder bind 127.0.0.1:9941, status active</text>
+<text x="936" y="420" font-family="sans-serif" font-size="12" fill="#333">• angel-coder has server_tools: all (port 18200)</text>
+<text x="936" y="438" font-family="sans-serif" font-size="12" fill="#333">• no tool_route key on miryam coder at this tip</text>
+<text x="936" y="456" font-family="sans-serif" font-size="12" fill="#333">• README mermaid still draws #251 dashed — stale vs tip</text>
+<text x="936" y="474" font-family="sans-serif" font-size="12" fill="#333">• guardian/pentest/defender fail-closed for tools</text>
+</svg>
