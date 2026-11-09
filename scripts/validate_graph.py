@@ -397,10 +397,13 @@ def ensure_private_slot_dir(n, name):
     top = d if n.get("spill_path") else os.path.expanduser("~/.cache/familia")
     p, stop = os.path.abspath(d), os.path.abspath(top)
     while True:
-        try:
-            os.chmod(p, 0o700)
-        except OSError as e:
-            print(f"warning: could not chmod 0700 {p}: {e}", file=sys.stderr)
+        if os.path.islink(p):  # os.chmod follows links; never retarget a symlink's target
+            print(f"warning: not chmodding symlink {p}", file=sys.stderr)
+        else:
+            try:
+                os.chmod(p, 0o700)
+            except OSError as e:
+                print(f"warning: could not chmod 0700 {p}: {e}", file=sys.stderr)
         if p == stop or not p.startswith(stop + os.sep):
             break
         p = os.path.dirname(p)

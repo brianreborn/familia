@@ -23,8 +23,11 @@ are never logged. Tests must mock the network; this module posts nothing unless
 flush/sync is invoked with a live token (tests inject a fake poster).
 
 A later issue comment counts as a reply only when it quotes our marker
-(familia-offline-queue:id=<uuid> or the bare entry id). Other later comments
-are ignored.
+(familia-offline-queue:id=<uuid> or the bare entry id) AND the author is
+trusted (author_association OWNER/MEMBER/COLLABORATOR, or a login listed in
+FAMILIA_OFFLINE_REPLY_ALLOWLIST). Other later comments are ignored. Outgoing
+posts and stored reply bodies are scrubbed of IPs, ports, emails, tokens and
+private-looking hostnames; control/escape characters are stripped.
 
 See docs/offline-queue.md.
 
@@ -523,7 +526,9 @@ def _split_repo(repo: str) -> Tuple[str, str]:
 
 
 def format_comment_body(entry_id: str, body: str) -> str:
-    return "<!-- familia-offline-queue:id=%s -->\n%s\n" % (entry_id, body.rstrip("\n"))
+    # Scrub secrets/private details from the operator-visible body; marker stays intact.
+    safe = scrub_public_text(body.rstrip("\n"))
+    return "<!-- familia-offline-queue:id=%s -->\n%s\n" % (entry_id, safe)
 
 
 def parse_marker(text: str) -> Optional[str]:
@@ -541,6 +546,74 @@ def quotes_marker(text: str, entry_id: str) -> bool:
     if entry_id in text:
         return True
     return False
+
+
+
+
+TRUSTED_ASSOCIATIONS = frozenset({"OWNER", "MEMBER", "COLLABORATOR"})
+
+_CTRL_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+_ANSI_RE = re.compile(
+    r"\x1b\[[0-9;?]*[A-Za-z]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)?|\x1b[@-Z\\-_]"
+)
+_IP_RE = re.compile(
+    r"\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\b"
+)
+_HOSTPORT_RE = re.compile(
+    r"\b([A-Za-z0-9][A-Za-z0-9._-]{0,63}):(\d{2,5})\b"
+)
+_EMAIL_RE = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
+_TOKEN_RE = re.compile(
+    r"\b(?:gh[pousr]_|github_pat_|sk-|xox[baprs]-)[A-Za-z0-9_-]{8,}\b"
+)
+_PRIVHOST_RE = re.compile(
+    r"\b(?:localhost|127\.0\.0\.1|0\.0\.0\.0|(?:[A-Za-z0-9-]+\.)+(?:local|lan|internal|home))\b",
+    re.IGNORECASE,
+)
+
+
+def reply_allowlist(environ: Optional[dict] = None) -> frozenset:
+    """Optional comma-separated logins in FAMILIA_OFFLINE_REPLY_ALLOWLIST."""
+    env = os.environ if environ is None else environ
+    raw = (env.get("FAMILIA_OFFLINE_REPLY_ALLOWLIST") or "").strip()
+    if not raw:
+        return frozenset()
+    return frozenset(p.strip().lstrip("@") for p in raw.split(",") if p.strip())
+
+
+def trusted_reply_author(comment: dict, environ: Optional[dict] = None) -> bool:
+    """True when author_association is OWNER/MEMBER/COLLABORATOR or login is allowlisted."""
+    assoc = (comment.get("author_association") or "").upper()
+    if assoc in TRUSTED_ASSOCIATIONS:
+        return True
+    login = ((comment.get("user") or {}).get("login") or "").strip()
+    if login and login.lstrip("@") in reply_allowlist(environ):
+        return True
+    return False
+
+
+def strip_controls_escapes(text: str) -> str:
+    """Remove C0 controls (keep TAB/LF) and ANSI/CSI escape sequences."""
+    if not text:
+        return ""
+    out = _ANSI_RE.sub("", text)
+    out = _CTRL_RE.sub("", out)
+    return out
+
+
+def scrub_public_text(text: str) -> str:
+    """Redact IPs, host:port, emails, tokens, and private-looking hostnames."""
+    if not text:
+        return ""
+    out = strip_controls_escapes(text)
+    out = _TOKEN_RE.sub("[token]", out)
+    out = _EMAIL_RE.sub("[email]", out)
+    # host:port before bare IPs so "A.B.C.D:NNNN" becomes "[ip]:[port]"
+    out = _HOSTPORT_RE.sub(lambda m: "%s:[port]" % m.group(1), out)
+    out = _IP_RE.sub("[ip]", out)
+    out = re.sub(r"\[ip\]:\d{2,5}\b", "[ip]:[port]", out)
+    out = _PRIVHOST_RE.sub("[host]", out)
+    return out
 
 
 def post_issue_comment(
@@ -763,12 +836,16 @@ def pull_responses(
                     continue
                 if not quotes_marker(body, eid):
                     continue
+                if not trusted_reply_author(c, environ):
+                    continue
+                safe_body = scrub_public_text(body)
                 responses.append(
                     {
                         "id": cid,
                         "user": ((c.get("user") or {}).get("login")),
+                        "author_association": c.get("author_association"),
                         "created_at": c.get("created_at"),
-                        "body": body,
+                        "body": safe_body,
                         "html_url": c.get("html_url"),
                     }
                 )
