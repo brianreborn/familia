@@ -160,3 +160,73 @@ def test_child_env_scrubs_cloud_keys_keeps_mcp_and_familia(tmp_path, monkeypatch
     assert env["GITHUB_PERSONAL_ACCESS_TOKEN"] == "ghp" and env["HERMES_HOME"] == "/h"
     assert src["OPENAI_API_KEY"] == "sk"                                  # caller's dict untouched
     assert hh.hermes_child_env({"OPENAI_API_KEY": "explicit"}, environ={})["OPENAI_API_KEY"] == "explicit"
+
+
+# --- Boundary B3: scrub set built from upstream's provider registry + static superset; file creds -----
+
+def test_ast_parser_reads_registry_rows_and_plugin_env_vars(tmp_path):
+    root = tmp_path / "src"; (root / "hermes_cli").mkdir(parents=True)
+    (root / "hermes_cli" / "auth.py").write_text(
+        "_REGISTRY_ROWS = (\n"
+        "    ProviderConfig('x', 'X', 'oauth', api_key_env_vars=('XO_TOKEN',)),\n"
+        "    ('a', 'A', 'https://a', ('AAA_KEY', 'AAA_SECRET_THING'), 'AAA_URL'),\n"
+        ")\n")
+    pl = root / "plugins" / "model-providers" / "p"; pl.mkdir(parents=True)
+    (pl / "__init__.py").write_text("register(name='p', env_vars=('PEE_TOKEN', 'PEE_BASE_URL'))\n")
+    names = hh.upstream_provider_env_names([str(root)])
+    assert {"XO_TOKEN", "AAA_KEY", "AAA_SECRET_THING", "AAA_URL", "PEE_TOKEN", "PEE_BASE_URL"} <= names
+    assert hh.upstream_provider_env_names([str(tmp_path / "absent")]) == frozenset()
+
+
+def test_scrub_static_superset_and_file_creds(tmp_path, monkeypatch):
+    monkeypatch.delenv(hh.ALLOW_CLOUD_ENV, raising=False)
+    monkeypatch.setattr(hh, "upstream_provider_env_names", lambda roots=None: frozenset())
+    hh.MCP_ENV_KEEP.clear()
+    home = tmp_path / "hh"; home.mkdir(mode=0o700)
+    src = {k: "v" for k in ("ANTHROPIC_TOKEN", "CLAUDE_CODE_OAUTH_TOKEN", "AWS_PROFILE", "AWS_REGION",
+                            "AWS_ACCESS_KEY_ID", "AWS_WEB_IDENTITY_TOKEN_FILE", "HF_TOKEN", "OPENAI_API_KEY",
+                            "GOOGLE_APPLICATION_CREDENTIALS", "CODEX_HOME", "PATH")}
+    env = hh.hermes_child_env({"HERMES_HOME": str(home)}, environ=src)
+    for k in ("ANTHROPIC_TOKEN", "CLAUDE_CODE_OAUTH_TOKEN", "AWS_PROFILE", "AWS_REGION", "AWS_ACCESS_KEY_ID",
+              "AWS_WEB_IDENTITY_TOKEN_FILE", "HF_TOKEN", "OPENAI_API_KEY", "GOOGLE_APPLICATION_CREDENTIALS"):
+        assert k not in env, k
+    assert env["AWS_SHARED_CREDENTIALS_FILE"] == env["AWS_CONFIG_FILE"] == os.devnull
+    assert env["AWS_EC2_METADATA_DISABLED"] == "true"
+    for k, sub in (("CODEX_HOME", "codex"), ("CLOUDSDK_CONFIG", "gcloud")):
+        assert env[k] == str(home / ".no-cloud-creds" / sub) and os.listdir(env[k]) == []
+        assert (os.stat(env[k]).st_mode & 0o777) == 0o700
+    assert hh.hermes_child_env(environ={"PATH": "/bin"})["CODEX_HOME"] == os.devnull   # no HERMES_HOME
+    cloud = hh.hermes_child_env({"HERMES_HOME": str(home)}, environ=dict(src, **{hh.ALLOW_CLOUD_ENV: "1"}))
+    assert cloud["AWS_PROFILE"] == "v" and cloud["CODEX_HOME"] == "v" and "AWS_CONFIG_FILE" not in cloud
+
+
+REGISTRY_PROBE = r'''
+import json
+from hermes_cli.auth import PROVIDER_REGISTRY
+import hermes_cli, os
+names = set()
+for p in PROVIDER_REGISTRY.values():
+    names.update(p.api_key_env_vars)
+    if p.base_url_env_var: names.add(p.base_url_env_var)
+print(json.dumps({"root": os.path.dirname(os.path.dirname(hermes_cli.__file__)), "names": sorted(names)}))
+'''
+
+
+@pytest.mark.skipif(not UPSTREAM_PY, reason="set FAMILIA_HERMES_UPSTREAM_PY to a real hermes-agent python")
+def test_every_upstream_registry_env_name_is_scrubbed(tmp_path, monkeypatch):
+    """Fails when upstream's provider registry (api_key_env_vars / base_url_env_var, plugin providers
+    included) names an env var familia's child env would still carry."""
+    env = dict(os.environ, HOME=str(tmp_path)); env.pop("PYTHONPATH", None)
+    r = subprocess.run([UPSTREAM_PY, "-c", REGISTRY_PROBE], capture_output=True, text=True, env=env,
+                       cwd=str(tmp_path), timeout=300)
+    assert r.returncode == 0, r.stderr[-3000:]
+    out = json.loads(r.stdout.strip().splitlines()[-1])
+    assert out["names"], "upstream registry is empty?"
+    monkeypatch.delenv(hh.ALLOW_CLOUD_ENV, raising=False)
+    monkeypatch.setattr(hh, "HERMES_SP", out["root"])
+    hh.MCP_ENV_KEEP.clear()
+    left = hh.hermes_child_env(environ={n: "secret" for n in out["names"]})
+    assert sorted(n for n in out["names"] if left.get(n) == "secret") == []
+    # and the source parser alone (no regex / static help) sees every registry name
+    parsed = hh.upstream_provider_env_names([out["root"]])
+    assert sorted(set(out["names"]) - parsed) == []

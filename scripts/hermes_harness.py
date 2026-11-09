@@ -461,9 +461,102 @@ ALLOW_CLOUD_ENV = "FAMILIA_HERMES_ALLOW_CLOUD"
 # any *_API_KEY / *_API_TOKEN (FAMILIA_* kept) plus these. MCP secrets the graph declares
 # (agents.<a>.mcp env_from / headers_from, see mcp_env_allowlist) are always kept.
 CLOUD_KEY_RE = re.compile(r"^(?!FAMILIA_)[A-Za-z0-9_]*_API_(?:KEY|TOKEN)$")
-CLOUD_KEY_NAMES = frozenset({"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN",
-                             "AWS_BEARER_TOKEN_BEDROCK", "GOOGLE_APPLICATION_CREDENTIALS",
-                             "AZURE_OPENAI_AD_TOKEN", "HF_TOKEN", "HUGGING_FACE_HUB_TOKEN"})
+# Static superset (Boundary B3), used with or without an upstream tree: provider env names upstream
+# hermes-agent v0.22.6 registers (PROVIDER_REGISTRY api_key_env_vars incl. plugin providers) that the
+# regex above misses, OAuth/bearer tokens, and GCP/Vertex/HF credentials. Every AWS_* name is also
+# dropped (boto chain: keys, AWS_PROFILE, AWS_CONFIG_FILE, AWS_SHARED_CREDENTIALS_FILE, web identity...).
+CLOUD_KEY_NAMES = frozenset({
+    "ANTHROPIC_TOKEN", "CLAUDE_CODE_OAUTH_TOKEN", "AZURE_OPENAI_AD_TOKEN", "AWS_BEARER_TOKEN_BEDROCK",
+    "GOOGLE_APPLICATION_CREDENTIALS", "VERTEX_CREDENTIALS_PATH", "HF_TOKEN", "HUGGING_FACE_HUB_TOKEN",
+    "QWEN_API_KEY", "NOUS_API_KEY", "OPENAI_ORG_ID", "OPENAI_ORGANIZATION", "OPENAI_BASE_URL",
+    "OPENAI_API_BASE", "ANTHROPIC_BASE_URL", "CODEX_HOME", "CLOUDSDK_CONFIG"})
+CLOUD_KEY_PREFIXES = ("AWS_",)
+UPSTREAM_ENV_KEYWORDS = ("env_vars", "api_key_env_vars", "base_url_env_var")
+_ENV_NAME_RE = re.compile(r"[A-Z][A-Z0-9_]{1,127}", re.ASCII)
+
+
+def _ast_env_names(path):
+    """Env var names a hermes-agent source file declares for providers: string constants under an
+    env_vars= / api_key_env_vars= / base_url_env_var= keyword, and auth.py _REGISTRY_ROWS tuple rows
+    (id, name, url, (KEYS...), BASE_URL_VAR, ...). Parsed, never imported or executed."""
+    import ast
+    try:
+        tree = ast.parse(open(path, encoding="utf-8").read(), filename=path)
+    except (OSError, SyntaxError, ValueError, UnicodeDecodeError):
+        return set()
+    out = set()
+    def strs(node):
+        return {c.value for c in ast.walk(node) if isinstance(c, ast.Constant) and isinstance(c.value, str)
+                and _ENV_NAME_RE.fullmatch(c.value)}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.keyword) and node.arg in UPSTREAM_ENV_KEYWORDS:
+            out |= strs(node.value)
+        targets = (node.targets if isinstance(node, ast.Assign) else [node.target] if isinstance(node, ast.AnnAssign) else [])
+        if any(getattr(t, "id", None) == "_REGISTRY_ROWS" for t in targets) and isinstance(node.value, ast.Tuple):
+            for row in node.value.elts:
+                if isinstance(row, ast.Tuple):
+                    for el in row.elts[3:5]:
+                        out |= strs(el)
+    return out
+
+
+_UPSTREAM_ENV_CACHE = {}
+
+
+def upstream_provider_env_names(roots=None):
+    """Provider credential / base-url env names of the installed hermes-agent (Boundary B3), read from
+    its source: hermes_cli/auth.py and plugins/model-providers/*/__init__.py under the first root
+    that has hermes_cli (HERMES_SP, FAMILIA_HERMES_SRC, snap, FreeBSD ports). Empty when no tree is
+    found; the static CLOUD_KEY_NAMES / regex / AWS_* superset still applies."""
+    if roots is None:
+        roots = (HERMES_SP, os.environ.get("FAMILIA_HERMES_SRC"), SNAP_SP, FREEBSD_LIB)
+    for root in filter(None, roots):
+        auth = os.path.join(root, "hermes_cli", "auth.py")
+        if not os.path.isfile(auth):
+            continue
+        if root not in _UPSTREAM_ENV_CACHE:
+            names = _ast_env_names(auth)
+            for f in sorted(glob.glob(os.path.join(root, "plugins", "model-providers", "*", "__init__.py"))):
+                names |= _ast_env_names(f)
+            _UPSTREAM_ENV_CACHE[root] = frozenset(n for n in names if not n.startswith("FAMILIA_"))
+        return _UPSTREAM_ENV_CACHE[root]
+    return frozenset()
+
+
+def is_cloud_key(name, upstream=None):
+    if name.startswith("FAMILIA_"):
+        return False
+    upstream = upstream_provider_env_names() if upstream is None else upstream
+    return (name in CLOUD_KEY_NAMES or name in upstream or bool(CLOUD_KEY_RE.match(name))
+            or name.startswith(CLOUD_KEY_PREFIXES))
+
+
+def _no_creds_dir(env, name):
+    """Private empty dir HERMES_HOME/.no-cloud-creds/<name> (0700) when HERMES_HOME is an existing
+    directory (every launch), else os.devnull (probes such as --version / --help)."""
+    home = env.get("HERMES_HOME")
+    if not home or not os.path.isdir(home) or os.path.islink(home):
+        return os.devnull
+    try:
+        ensure_private_dir(os.path.join(home, ".no-cloud-creds"))
+        return ensure_private_dir(os.path.join(home, ".no-cloud-creds", name))
+    except (OSError, SystemExit):
+        return os.devnull
+
+
+def isolate_file_creds(env):
+    """Point the file-based cloud credential chains hermes would read regardless of HERMES_HOME
+    away from the user's files (unless FAMILIA_HERMES_ALLOW_CLOUD=1): boto (~/.aws -> /dev/null,
+    no EC2/ECS metadata), Codex (CODEX_HOME), gcloud ADC (CLOUDSDK_CONFIG). Files found only via
+    $HOME (~/.qwen/oauth_creds.json, ~/.claude) cannot be redirected without moving HOME."""
+    if allow_cloud(env):
+        return env
+    env.update(AWS_SHARED_CREDENTIALS_FILE=os.devnull, AWS_CONFIG_FILE=os.devnull,
+               AWS_EC2_METADATA_DISABLED="true", CODEX_HOME=_no_creds_dir(env, "codex"),
+               CLOUDSDK_CONFIG=_no_creds_dir(env, "gcloud"))
+    return env
+
+
 MCP_ENV_KEEP = set()   # names declared by the rendered agent's MCP servers (render() fills it)
 
 
@@ -477,7 +570,8 @@ def scrub_cloud_keys(env, keep=()):
     if allow_cloud(env):
         return []
     keep = set(keep) | MCP_ENV_KEEP
-    gone = sorted(k for k in env if k not in keep and (k in CLOUD_KEY_NAMES or CLOUD_KEY_RE.match(k)))
+    upstream = upstream_provider_env_names()
+    gone = sorted(k for k in env if k not in keep and is_cloud_key(k, upstream))
     for k in gone:
         del env[k]
     return gone
@@ -639,6 +733,7 @@ def hermes_child_env(extra=None, environ=None):
     scrub_cloud_keys(env)   # before extra: values the harness passes on purpose are kept
     if extra:
         env.update(extra)
+    isolate_file_creds(env)
     overlay = ENV_PROBE_CACHE_OVERLAY
     if os.path.isdir(overlay):
         parts = [p for p in (env.get("PYTHONPATH") or "").split(os.pathsep) if p]

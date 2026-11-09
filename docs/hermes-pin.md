@@ -66,8 +66,14 @@ Then update the channel's entry in `config/hermes-agent.pins.json`.
 `vision`, `voice_chat`, `moa_reference` and `moa_aggregator` are also pinned to the local node, and
 Mixture of Agents is disabled with a local-only `moa.presets.default` (upstream's built-in preset
 uses openai-codex and openrouter). A node without vision or voice fails those tasks locally instead
-of upstream's `auto` falling through to a cloud provider. Cloud LLM keys (`*_API_KEY`,
-`*_API_TOKEN`, AWS/Bedrock, `GOOGLE_APPLICATION_CREDENTIALS`, `HF_TOKEN`; `FAMILIA_*` kept) are
-removed from the hermes child environment; MCP secrets the graph declares (`env_from`,
-`headers_from`) are kept. `FAMILIA_HERMES_ALLOW_CLOUD=1` restores upstream behaviour for all of
+of upstream's `auto` falling through to a cloud provider. Cloud LLM credentials are removed from
+the hermes child environment: every env name the installed hermes-agent's provider registry declares
+(`hermes_cli/auth.py` rows and `plugins/model-providers/*` `env_vars`, parsed from its source, never
+imported), plus a static superset (`*_API_KEY`, `*_API_TOKEN`, `ANTHROPIC_TOKEN`,
+`CLAUDE_CODE_OAUTH_TOKEN`, `HF_TOKEN`, `GOOGLE_APPLICATION_CREDENTIALS`, every `AWS_*`; `FAMILIA_*`
+kept). File-based chains are pointed away: `AWS_SHARED_CREDENTIALS_FILE` / `AWS_CONFIG_FILE` =
+`/dev/null`, `AWS_EC2_METADATA_DISABLED=true`, and `CODEX_HOME` / `CLOUDSDK_CONFIG` = empty private
+dirs under `HERMES_HOME/.no-cloud-creds/`. Credentials found only through `$HOME` (`~/.qwen/oauth_creds.json`,
+`~/.claude`) are not redirected (that would mean moving the child's HOME). MCP secrets the graph
+declares (`env_from`, `headers_from`) are kept. `FAMILIA_HERMES_ALLOW_CLOUD=1` restores upstream behaviour for all of
 this (auto routing, the user's `moa` section, keys passed through).
