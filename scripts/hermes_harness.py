@@ -504,6 +504,170 @@ def link_plugins(agent_cfg, home):
 
 
 
+# ---- tool routing (Brian 2026-10-31): Hermes side of CFG-SPEC-TOOLS-007..010 (#243).
+# Capability / explicit one-hop route / server tool policy live in validate_graph
+# (tool_capable, tool_route, tool_policy) — do not reimplement them here. This module only
+# decides where a Hermes agent sends tool-driving turns, and keeps guardian/pentest/defender
+# closed for Hermes MCP/toolsets (docs/config/pentest-policy.md, CFG-PENT-POL-004).
+#
+# Order in route_tools:
+#   1. tool_free → none (Hermes seatbelt; #243 fail-closed TYPEs plus name/role heuristics)
+#   2. vg.tool_capable → direct
+#   3. vg.tool_route (explicit nodes.<n>.tool_route, one hop, never fail-closed) → nexus
+#   4. same-host then ssh-nexus mesh discovery (NOT in #243; Hermes-only fallback)
+#
+# TODO(pentest-policy): tools-confirm must not open until every tool call (MCP and
+# all toolsets) goes through per-action confirmation; setting approvals.mode=manual
+# alone is not enough. Also needs graph_types accepting `pentests.<p>.policy` (today
+# tests/test_config_spec.py strict-xfails until then). When both land, open tools for
+# mode `tools-confirm` (and `autonomous-lab`) via pentest_tools_allowed() below:
+#   - route_tools → mode=direct on the pentest node
+#   - render sets approvals.mode=manual (no yolo / mode=off) — necessary but not
+#     sufficient; every MCP and toolset call must still confirm per action
+#   - tools = full set (platform toolsets + declared MCP) per CFG-PENT-MODE-004
+# slash-confirm stays tools=none (CFG-PENT-MODE-003 advisory chat). Until then keep
+# closed: tool_free always, never open by default. See tests/test_hermes_tool_routing.py
+# xfail(strict=True) for the expected tools-confirm path.
+# Modes that the SPEC says may carry tools (once preconditions + per-action confirm land).
+PENTEST_TOOLS_MODES = frozenset({"tools-confirm", "autonomous-lab"})
+
+
+def _node_role(g, name):
+    """Roles for Hermes seatbelt. Broader than vg.node_type: also name-based defender and
+    node_role.infer_role, so tests/aliases that stamp defender only in the node name still close."""
+    from node_role import infer_role
+    n = g["nodes"][name]
+    raw = {n.get("role"), ((g.get("models") or {}).get(n.get("model")) or {}).get("role"),
+           vg.node_type(g, name), infer_role(name, n, g)}
+    if name.endswith("-defender") or name == "defender":
+        raw.add("defender")
+    return {r for r in raw if r}
+
+
+def pentest_for_node(g, name):
+    """First pentests.* entry whose `node` is `name`, or None. Forward-compat for policy mode."""
+    for p in (g.get("pentests") or {}).values():
+        if isinstance(p, dict) and p.get("node") == name:
+            return p
+    return None
+
+
+def pentest_policy_mode(g, name):
+    """Read pentests.<p>.policy.mode when present. graph_types does not accept `policy` yet
+    (CFG-PENT-* SPEC); returns None until an overlay / future schema carries it."""
+    p = pentest_for_node(g, name)
+    if not p:
+        return None
+    pol = p.get("policy")
+    if not isinstance(pol, dict):
+        return None
+    mode = pol.get("mode")
+    return mode if isinstance(mode, str) else None
+
+
+def pentest_tools_allowed(g, name):
+    """Would the pentest-policy ladder grant tools on this node?
+    Closed today: always False. See TODO(pentest-policy) above — gate on
+    pentest_policy_mode in PENTEST_TOOLS_MODES plus per-action confirm wiring."""
+    _ = pentest_policy_mode(g, name)
+    return False
+
+
+def tool_free(g, name):
+    """Guardian / pentest / defender: no Hermes tools (incl. MCP) by default.
+    Aligns with vg.FAIL_CLOSED_TYPES; future tools-confirm opt-in via pentest_tools_allowed."""
+    if not (_node_role(g, name) & set(vg.FAIL_CLOSED_TYPES)):
+        return False
+    if pentest_tools_allowed(g, name):
+        return False
+    return True
+
+
+def tool_capable(g, name):
+    """Hermes view: vg.tool_capable (nodes.*.tool_capable > models.*.tool_calls > TYPE) and
+    not tool_free. Do not re-read the fields here — #243 owns that."""
+    if tool_free(g, name):
+        return False
+    return vg.tool_capable(g, name)
+
+
+def nexus_meshes(g, host):
+    """ssh nexus meshes (meshes.*, type ssh) that `host` is a member of."""
+    return [k for k, m in (g.get("meshes") or {}).items()
+            if (m or {}).get("type") == "ssh" and host in ((m or {}).get("members") or [])]
+
+
+def _discovery_ok(g, src, k):
+    """Same-host / mesh fallback candidate: active, not self, not fail-closed, capable, and
+    vg.tool_policy != [] (#243 / Boundary B1). tool_policy already yields [] for
+    server_tools opt-out (none/[]/false) and for a capable non-loopback peer with no
+    server_tools key — so requiring != [] skips both without a second bind check."""
+    o = (g.get("nodes") or {}).get(k) or {}
+    return (k != src and o.get("status") != "planned"
+            and not tool_free(g, k) and vg.tool_capable(g, k)
+            and vg.tool_policy(g, k) != [])
+
+
+def route_tools(g, agent):
+    """-> {"mode": none|direct|nexus, "node", "via"}.
+    Reuses validate_graph.tool_capable / tool_route / tool_policy (#243). Explicit
+    nodes.<n>.tool_route wins as the nexus target; same-host then mesh discovery is the
+    Hermes-only fallback when #243 has no route. Never into guardian/pentest/defender."""
+    _, name, n, _ = node_for(g, agent)
+    if tool_free(g, name):
+        return {"mode": "none", "node": None, "via": None, "reason": "tool-free node"}
+    if vg.tool_capable(g, name):
+        # Explicit server_tools opt-out (TOOLS-006): present key whose policy is [] → none.
+        # Missing key stays direct even if policy would be [] for other reasons (e.g. off-loopback).
+        if "server_tools" in n and vg.tool_policy(g, name) == []:
+            return {"mode": "none", "node": None, "via": None, "reason": "server_tools opt-out"}
+        return {"mode": "direct", "node": name, "via": None}
+    # Explicit one-hop from graph (#243). Reject fail-closed and policy-[] targets here too
+    # (vg.tool_route already filters policy-[], but keep the check so a [] grant is never used).
+    t = vg.tool_route(g, name)
+    if t and not tool_free(g, t) and vg.tool_policy(g, t) != []:
+        return {"mode": "nexus", "node": t, "via": None, "reason": "tool_route"}
+    # #243 does not discover a target — Hermes falls back to same-host, then ssh nexus mesh.
+    host = n.get("host")
+    nodes = g.get("nodes") or {}
+    for k in sorted(nodes):
+        if nodes[k].get("host") == host and _discovery_ok(g, name, k):
+            return {"mode": "nexus", "node": k, "via": None}
+    for mesh in nexus_meshes(g, host):
+        peers = set(g["meshes"][mesh].get("members") or []) - {host}
+        for k in sorted(nodes):
+            if nodes[k].get("host") in peers and _discovery_ok(g, name, k):
+                return {"mode": "nexus", "node": k, "via": mesh}
+    return {"mode": "none", "node": None, "via": None, "reason": "no tool-capable node reachable"}
+
+
+def node_base(g, k, from_host):
+    """OpenAI base URL for node k as seen from from_host (loopback bind only works same-host)."""
+    n = g["nodes"][k]; b = bind(n)
+    if n.get("host") != from_host and (b in ("localhost", "::1") or str(b).startswith("127.")):
+        b = ((g.get("hosts") or {}).get(n.get("host")) or {}).get("addr") or b
+    return f"http://{b}:{n['port']}/v1"
+
+
+def apply_tool_route(g, agent, cfg, route):
+    if route["mode"] == "none":
+        cfg.pop("mcp_servers", None)
+        cfg["platform_toolsets"] = dict(cfg.get("platform_toolsets") or {}, cli=[])
+    elif route["mode"] == "nexus":
+        _, _, n, _ = node_for(g, agent)
+        cfg["model"] = dict(cfg["model"], base_url=node_base(g, route["node"], n.get("host")), default=route["node"])
+    # TODO(pentest-policy): when pentest_tools_allowed opens tools-confirm, force
+    # approvals.mode=manual here (never off / yolo). That alone is not enough —
+    # tools-confirm must not open until every tool call (MCP and all toolsets) goes
+    # through per-action confirmation (docs/config/pentest-policy.md CFG-PENT-MODE-004).
+    _, name, _, _ = node_for(g, agent)
+    if route["mode"] != "none" and pentest_tools_allowed(g, name):
+        appr = dict(cfg.get("approvals") or {})
+        appr["mode"] = "manual"
+        cfg["approvals"] = appr
+    return cfg
+
+
 def render(g, agent, user_cfg_path=os.path.join(USER_HOME, "config.yaml"), base_override=None):
     a, name, n, alias = node_for(g, agent)
     base = base_override or f"http://{bind(n)}:{n['port']}/v1"
@@ -537,6 +701,7 @@ def render(g, agent, user_cfg_path=os.path.join(USER_HOME, "config.yaml"), base_
         for t in LEAN_AUX_DROP:
             aux.pop(t, None)
         cfg["auxiliary"] = aux
+    apply_tool_route(g, agent, cfg, route_tools(g, agent))
     # Official / portable Hermes plugins (Agent Plugins v1) live under HERMES_HOME/plugins.
     # Opt-in via agents.<name>.plugins: ["rea"] or ["*"] to link from ~/.hermes/plugins (#92).
     # Self-improve never adds plugins (scripts/self_improve.py gate).
