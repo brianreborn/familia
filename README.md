@@ -279,7 +279,7 @@ Target behavior per Brian's spec recorded in [#277](https://github.com/brianrebo
 ```mermaid
 flowchart TD
   s(["install.sh / install/windows/install.ps1"]) --> args["parse flags<br/>(automation flags default on)"]
-  args --> notice["contribution notice<br/>(print-only per #277; INSTALL_ACK today)"]
+  args --> notice["contribution notice<br/>(print-only per issue 277, INSTALL_ACK today)"]
   notice --> fetch["clone or download<br/>GIT_TERMINAL_PROMPT=0"]
   fetch --> deps["OS deps + Charm gum<br/>(default on, gated on --yes, not on licenses;<br/>non-interactive package managers)"]
   deps --> lic{"licenses accepted<br/>explicitly? (scripts/licenses.py)"}
