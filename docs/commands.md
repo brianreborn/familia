@@ -329,6 +329,7 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/familia_home.sh` | Charm/gum front door (`./familia`); legacy catalog is fallback only |
 | `scripts/proto_chat.sh` | protomodel REPL from gum home "Talk to the protomodel" |
 | `scripts/open_ui.sh` | open running llama web UI in default browser | — | — |
+| `scripts/ui_bridge.py` | terminal dashboard bridge inspecting running llama-ui slots and routes | — | — |
 | `scripts/find_models.sh` | guided model fetch from gum home "Find more models" |
 | `scripts/search_x.sh` | X/Twitter search via Agent-Reach from gum home |
 | `scripts/windows/familia-home.ps1` | Windows mirror of familia_home.sh (started by familia.cmd) |

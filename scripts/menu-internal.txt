@@ -98,3 +98,4 @@ scripts/runtime_dir.py|helper module the launchers and admission ledger import (
 scripts/runtime_dir.sh|helper sourced by the shell launchers (private runtime dir); not run directly
 install/freebsd/install-familia.sh|FreeBSD installer, invoked by curl/fetch or sh install-familia.sh
 scripts/open_ui.sh|open running llama web UI in default browser
+scripts/ui_bridge.py|terminal dashboard bridge inspecting running llama-ui slots and routes

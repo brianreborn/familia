@@ -30,6 +30,7 @@ USAGE
 done
 
 GOALS="Talk to the protomodel
+Open llama-ui web cockpit
 Find more models
 Search my X / Twitter posts
 Install / first-time setup
@@ -122,6 +123,9 @@ case "$CHOICE" in
     kick_prefetch
     choose_protograph
     exec sh "$ROOT/scripts/proto_chat.sh"
+    ;;
+  "Open llama-ui web cockpit")
+    exec sh "$ROOT/scripts/open_ui.sh"
     ;;
   "Find more models")
     exec sh "$ROOT/scripts/find_models.sh"
