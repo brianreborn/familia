@@ -25,7 +25,7 @@ CHANNEL_PY = os.path.join(ROOT, "scripts", "channel.py")
 SOURCE = "hermes-agent"
 CHANNELS = ("bleeding", "stable")
 REF_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+-]{0,127}", re.ASCII)
-COMMIT_RE = re.compile(r"[0-9a-f]{40}", re.ASCII)   # full sha1: pins are pasted into a curl|bash hint
+COMMIT_RE = re.compile(r"[0-9a-f]{40}", re.ASCII)   # full sha1: pins are pasted into a shell install hint
 VERSION_RE = re.compile(r"\bv(\d+\.\d+\.\d+)\b.*?\blocal ([0-9a-f]{7,40})\b|\bv(\d+\.\d+\.\d+)\b", re.ASCII)
 
 
@@ -150,21 +150,23 @@ def matches(want, version, commit):
 
 # install.sh fetched from the pinned commit itself (scripts/install.sh upstream), never the moving
 # https://hermes-agent.nousresearch.com/install.sh, so the script that runs is the one that was pinned.
+# Download, then run (familia never prints a pipe-to-shell install; tests/test_install_polish.py).
 INSTALL_SH_AT = "https://raw.githubusercontent.com/NousResearch/hermes-agent/%s/scripts/install.sh"
 
 
 def install_hint(want, bin_path=""):
     """How to put the wanted ref in place. familia never installs hermes itself. Only a validated
-    40-hex commit is ever printed inside the curl|bash line (a crafted pin cannot inject shell)."""
+    40-hex commit is ever printed in the install line (a crafted pin cannot inject shell)."""
     if str(bin_path).startswith("/snap/") or str(bin_path).startswith("/usr/local/bin/"):
         return ("this hermes comes from a snap/ports package, which follows its own version; "
                 "install the upstream build (below) and set HERMES_BIN, or accept the mismatch")
     c = want.get("commit")
     ref = want.get("ref") if isinstance(want.get("ref"), str) and REF_RE.fullmatch(want["ref"]) else "?"
     if isinstance(c, str) and COMMIT_RE.fullmatch(c):
-        return "curl -fsSL %s | bash -s -- --commit %s   # %s" % (INSTALL_SH_AT % c, c, ref)
+        return ("curl -fsSLo hermes-install.sh %s && bash hermes-install.sh --commit %s   # %s"
+                % (INSTALL_SH_AT % c, c, ref))
     return ("git ls-remote https://github.com/NousResearch/hermes-agent refs/tags/%s   # then, with that sha: "
-            "curl -fsSL %s | bash -s -- --commit <sha>" % (ref, INSTALL_SH_AT % "<sha>"))
+            "curl -fsSLo hermes-install.sh %s && bash hermes-install.sh --commit <sha>" % (ref, INSTALL_SH_AT % "<sha>"))
 
 
 def main(argv=None):
