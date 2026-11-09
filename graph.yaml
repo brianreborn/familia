@@ -554,7 +554,7 @@ nodes:
     bind: 127.0.0.1
     port: 18100
     cache_ram_mib: 64
-    status: planned
+    status: active
 
   qodesh-smol-cpu:
     model: smollm2-135m-q4
@@ -629,7 +629,7 @@ nodes:
     cache_ram_mib: 128           # min MemAvailable 1945 MiB during the run; reserve 5120
     status: planned
   coder:
-    status: planned
+    status: active
     model: qwen35-2b-q4km
     role: coder
     host: miryam
@@ -666,7 +666,7 @@ nodes:
   qodesh-resident:
     # Pencilled in: green-roomz's resident 0.5B chat path on qodesh (#18).
     # Planned nodes are schema-checked only; no placement, file or RAM checks.
-    status: planned
+    status: active
     model: qwen35-2b-q4km        # placeholder until a 0.5B model entry exists
     role: coder
     host: qodesh
@@ -703,7 +703,7 @@ nodes:
     port: 18120
     cache_ram_mib: 64
     load_mode: mmap
-    status: planned
+    status: active
     override_reasons:
       ctx: 'decision prompts are short; 2048 keeps KV small beside box-coder on 16 GiB'
 
@@ -722,7 +722,7 @@ nodes:
     port: 18121
     cache_ram_mib: 256
     load_mode: none
-    status: planned
+    status: active
     override_reasons:
       ctx: 'box dogfood mid-size coder; 8192 fits with SmolLM decision co-resident under 16 GiB - 4 GiB reserve; full 262144 not measured here'
 
@@ -744,7 +744,7 @@ nodes:
     port: 18200
     cache_ram_mib: 3584         # baseline for 32K (~3536 MiB KV); at 64K expect ~2× (advisory; mmap+swap)
     load_mode: mmap              # SSD-friendly for 18.7 GiB weights
-    status: planned
+    status: active
     card_set: "Agentic and tool-use tasks"
     # llama-ui Server Tools: without --tools, /tools returns 403 feature_disabled and the
     # UI shows no tools (capabilities stay completion-only; default chat_format Content-only).
@@ -858,7 +858,7 @@ speculative:
   # Pencilled in. Draft is loaded inside the target's llama-server (-md).
   coder-ngram:
     experimental: true
-    status: planned               # miryam real-edit test 2026-10-10: 2.2x decode (8.3 -> 18.2 t/s)
+    status: active               # miryam real-edit test 2026-10-10: 2.2x decode (8.3 -> 18.2 t/s)
     mode: ngram
     target: coder
     spec_type: ngram-simple      # model-free lookup decoding; no extra weights. miryam 2026-10-10, -t 2, repeat-code
