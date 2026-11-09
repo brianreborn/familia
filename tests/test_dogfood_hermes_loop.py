@@ -33,14 +33,21 @@ def test_hermes_render_cmd_single_and_graph():
     assert "--render-only" in graph
 
 
-def test_hermes_agent_cmd_oneshot_limited_tools():
+def test_hermes_agent_cmd_oneshot_limited_tools(monkeypatch):
+    monkeypatch.delenv("FAMILIA_HERMES_DOGFOOD_YOLO", raising=False)
     cmd = HL.build_agent_cmd("fix the bug", hermes_bin="/tmp/fake-hermes-agent")
     assert cmd[0] == "/tmp/fake-hermes-agent"
     assert "-z" in cmd and cmd[cmd.index("-z") + 1] == "fix the bug"
     tools = cmd[cmd.index("-t") + 1]
     assert "file" in tools and "terminal" in tools
     assert "web" not in tools and "search" not in tools and "browser" not in tools
-    assert "--yolo" in cmd
+    assert "--yolo" not in cmd   # Boundary N1b: off unless opted in
+    # opt-in still refuses an untrusted absolute hermes_bin
+    try:
+        HL.build_agent_cmd("x", hermes_bin="/tmp/fake-hermes-agent", yolo=True)
+        raise AssertionError("expected ValueError for untrusted yolo bin")
+    except ValueError as e:
+        assert "trust_exec" in str(e)
 
 
 def test_hermes_home_single_vs_graph():

@@ -61,17 +61,32 @@ def build_render_cmd(mode: str, node: str, agent: str = "hermes", *, repo_root=N
     return cmd
 
 
-def build_agent_cmd(prompt: str, toolsets: str = TOOLSETS, hermes_bin: str | None = None) -> list:
-    """Argv for hermes-agent oneshot inside the task worktree (after render)."""
+def build_agent_cmd(prompt: str, toolsets: str = TOOLSETS, hermes_bin: str | None = None,
+                    *, yolo: bool | None = None) -> list:
+    """Argv for hermes-agent oneshot inside the task worktree (after render).
+
+    ``--yolo`` (skip approvals) is off by default (Boundary N1b). Pass ``yolo=True`` or set
+    ``FAMILIA_HERMES_DOGFOOD_YOLO=1`` to enable it; when a concrete ``hermes_bin`` is given it must
+    also pass ``hermes_harness.trust_exec`` (or yolo is refused).
+    """
     bin_path = hermes_bin or resolve_agent_bin(missing="defaults")
-    return [
+    if yolo is None:
+        yolo = os.environ.get("FAMILIA_HERMES_DOGFOOD_YOLO") == "1"
+    cmd = [
         bin_path,
         "-z", prompt,
         "-t", toolsets,
-        "--yolo",
         "--accept-hooks",
         "--source", "tool",
     ]
+    if yolo:
+        if hermes_bin:
+            import hermes_harness as hh
+            _real, why = hh.trust_exec(hermes_bin)
+            if why:
+                raise ValueError(f"--yolo refused: hermes_bin {hermes_bin!r} failed trust_exec ({why})")
+        cmd.insert(cmd.index("--accept-hooks"), "--yolo")
+    return cmd
 
 
 def agent_env(home, extra=None) -> dict:
