@@ -63,5 +63,11 @@ That loads the rendered HERMES_HOME with that hermes (config schema incl. `mcp_s
 `approvals`, toolsets, MCP `${VAR}` interpolation, aux routing, skills, child-process symbols).
 Then update the channel's entry in `config/hermes-agent.pins.json`.
 
-Auxiliary tasks not routed to the local node: `vision`, `voice_chat`, `moa_reference`,
-`moa_aggregator` (they need a vision/voice-capable node).
+`vision`, `voice_chat`, `moa_reference` and `moa_aggregator` are also pinned to the local node, and
+Mixture of Agents is disabled with a local-only `moa.presets.default` (upstream's built-in preset
+uses openai-codex and openrouter). A node without vision or voice fails those tasks locally instead
+of upstream's `auto` falling through to a cloud provider. Cloud LLM keys (`*_API_KEY`,
+`*_API_TOKEN`, AWS/Bedrock, `GOOGLE_APPLICATION_CREDENTIALS`, `HF_TOKEN`; `FAMILIA_*` kept) are
+removed from the hermes child environment; MCP secrets the graph declares (`env_from`,
+`headers_from`) are kept. `FAMILIA_HERMES_ALLOW_CLOUD=1` restores upstream behaviour for all of
+this (auto routing, the user's `moa` section, keys passed through).

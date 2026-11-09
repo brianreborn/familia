@@ -369,8 +369,37 @@ AUX_TASKS = ["web_extract", "compression", "skills_hub", "approval", "mcp", "tit
              "profile_describer", "goal_judge", "curator", "monitor",
              # Text aux tasks upstream added (v0.22.x) that otherwise default to provider "auto":
              "review", "background_review"]
-# Not routed here (modality-specific; need a vision/voice-capable node): vision, voice_chat,
-# moa_reference, moa_aggregator. See docs/hermes-pin.md.
+# Modality / multi-model aux tasks. Upstream's "auto" for these walks a cloud provider chain (vision)
+# or the built-in MoA preset (openai-codex / openrouter), so prompt content could leave the box when a
+# cloud key is set. Unless FAMILIA_HERMES_ALLOW_CLOUD=1 they are pinned to the local node (a node
+# without vision/voice fails locally instead of falling through to a cloud provider) and MoA is
+# disabled with a local-only preset. See docs/hermes-pin.md.
+MODAL_AUX_TASKS = ("vision", "voice_chat", "moa_reference", "moa_aggregator")
+ALLOW_CLOUD_ENV = "FAMILIA_HERMES_ALLOW_CLOUD"
+# Cloud LLM credentials scrubbed from every hermes child env unless FAMILIA_HERMES_ALLOW_CLOUD=1:
+# any *_API_KEY / *_API_TOKEN (FAMILIA_* kept) plus these. MCP secrets the graph declares
+# (agents.<a>.mcp env_from / headers_from, see mcp_env_allowlist) are always kept.
+CLOUD_KEY_RE = re.compile(r"^(?!FAMILIA_)[A-Za-z0-9_]*_API_(?:KEY|TOKEN)$")
+CLOUD_KEY_NAMES = frozenset({"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_SESSION_TOKEN",
+                             "AWS_BEARER_TOKEN_BEDROCK", "GOOGLE_APPLICATION_CREDENTIALS",
+                             "AZURE_OPENAI_AD_TOKEN", "HF_TOKEN", "HUGGING_FACE_HUB_TOKEN"})
+MCP_ENV_KEEP = set()   # names declared by the rendered agent's MCP servers (render() fills it)
+
+
+def allow_cloud(environ=None):
+    return (os.environ if environ is None else environ).get(ALLOW_CLOUD_ENV) == "1"
+
+
+def scrub_cloud_keys(env, keep=()):
+    """Drop cloud LLM credentials from *env* (in place) unless FAMILIA_HERMES_ALLOW_CLOUD=1.
+    Returns the sorted names removed (never their values)."""
+    if allow_cloud(env):
+        return []
+    keep = set(keep) | MCP_ENV_KEEP
+    gone = sorted(k for k in env if k not in keep and (k in CLOUD_KEY_NAMES or CLOUD_KEY_RE.match(k)))
+    for k in gone:
+        del env[k]
+    return gone
 
 
 def die(msg):
@@ -487,8 +516,10 @@ def hermes_child_env(extra=None, environ=None):
     process launches. HERMES_SP still works (children insert it on sys.path themselves).
     Force a fresh probe with FAMILIA_HERMES_ENV_PROBE_REFRESH=1.
     When HERMES_HOME/bin exists (Agent-Reach wrapper from link_reaches), prepend it to PATH.
+    Cloud LLM keys are removed unless FAMILIA_HERMES_ALLOW_CLOUD=1 (scrub_cloud_keys).
     """
     env = dict(os.environ if environ is None else environ)
+    scrub_cloud_keys(env)   # before extra: values the harness passes on purpose are kept
     if extra:
         env.update(extra)
     overlay = ENV_PROBE_CACHE_OVERLAY
@@ -681,7 +712,20 @@ def render(g, agent, user_cfg_path=os.path.join(USER_HOME, "config.yaml"), base_
     for t in AUX_TASKS:
         aux[t] = {"provider": "custom", "model": alias, "base_url": base, "api_key": familia_auth.api_key() or "local",
                   "timeout": comp.get("aux_timeout", 3600)}
+    local_only = not allow_cloud()
+    if local_only:
+        for t in MODAL_AUX_TASKS:
+            aux[t] = {"provider": "custom", "model": alias, "base_url": base,
+                      "api_key": familia_auth.api_key() or "local", "timeout": comp.get("aux_timeout", 3600)}
+        # Explicit presets map is authoritative upstream (moa_config.apply_user_moa_presets), so this
+        # replaces the built-in cloud preset rather than merging with it; disabled as well.
+        cfg["moa"] = {"default_preset": "default", "active_preset": "",
+                      "presets": {"default": {"enabled": False,
+                                              "reference_models": [{"provider": "custom", "model": alias, "enabled": True}],
+                                              "aggregator": {"provider": "custom", "model": alias}}}}
     cfg["auxiliary"] = aux
+    MCP_ENV_KEEP.clear()
+    MCP_ENV_KEEP.update(mcp_env_allowlist(a))
     declared = mcp_servers(a)
     if declared:  # graph-declared MCP wins over a same-named user entry (whose secrets were stripped)
         cfg["mcp_servers"] = dict(cfg.get("mcp_servers") or {}, **declared)

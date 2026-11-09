@@ -62,6 +62,11 @@ print(json.dumps({
   "tools": sorted(_get_platform_tools(cfg, "cli")),
   "mcp": _load_mcp_config(),
   "aux": {k: (cfg["auxiliary"][k] or {}).get("base_url") for k in ("compression", "review", "background_review")},
+  "modal": {k: [(cfg["auxiliary"].get(k) or {}).get("provider"), (cfg["auxiliary"].get(k) or {}).get("base_url")]
+            for k in ("vision", "voice_chat", "moa_reference", "moa_aggregator")},
+  "moa": (lambda p: {"enabled": p.get("enabled"), "providers": sorted({s["provider"] for s in p.get("reference_models", [])}
+          | {(p.get("aggregator") or {}).get("provider")}), "presets": sorted(cfg["moa"]["presets"])})(
+          __import__("hermes_cli.moa_config", fromlist=["x"]).resolve_moa_preset(cfg.get("moa"))),
   "ctx": [cfg["model"]["context_length"], MINIMUM_CONTEXT_LENGTH],
   "skills": [s.get("name") for s in find_all_skills()],
   "env_probe": callable(getattr(E, "_build_probe_line", None)),
@@ -97,5 +102,61 @@ def test_upstream_hermes_accepts_rendered_home(tmp_path, monkeypatch, profile):
     if profile == "lean":
         assert set(out["tools"]) <= set(hh.LEAN_TOOLSETS) | {"gh", "web"}
     assert set(out["aux"].values()) == {cfg["model"]["base_url"]}
+    for k, (prov, url) in out["modal"].items():   # fix-forward (f): no upstream auto for these
+        assert prov == "custom" and url == cfg["model"]["base_url"], k
+    assert out["moa"] == {"enabled": False, "providers": ["custom"], "presets": ["default"]}
     assert "fam-demo" in out["skills"]
     assert open(os.path.join(home, "config.yaml"), "rb").read() == before  # hermes did not rewrite it
+
+
+# --- Boundary fix-forward (f): modality / MoA aux tasks local-or-disabled; cloud keys scrubbed ----
+
+MODAL = ("vision", "voice_chat", "moa_reference", "moa_aggregator")
+
+
+def test_modal_aux_tasks_local_and_moa_disabled(tmp_path, monkeypatch):
+    monkeypatch.delenv(hh.ALLOW_CLOUD_ENV, raising=False)
+    user = tmp_path / "user.yaml"
+    user.write_text(yaml.safe_dump({"moa": {"presets": {"cloud": {"reference_models": [
+        {"provider": "openrouter", "model": "x/y"}], "aggregator": {"provider": "openrouter", "model": "x/z"}}}}}))
+    monkeypatch.setenv("HOME", str(tmp_path))
+    home, *_ = hh.render(copy.deepcopy(GRAPH), "hermes", user_cfg_path=str(user))
+    cfg = yaml.safe_load(open(os.path.join(home, "config.yaml")))
+    for t in MODAL:
+        assert cfg["auxiliary"][t]["provider"] == "custom"
+        assert cfg["auxiliary"][t]["base_url"] == cfg["model"]["base_url"]
+    assert list(cfg["moa"]["presets"]) == ["default"]                    # user's cloud preset not inherited
+    p = cfg["moa"]["presets"]["default"]
+    assert p["enabled"] is False
+    assert {s["provider"] for s in p["reference_models"]} | {p["aggregator"]["provider"]} == {"custom"}
+
+
+def test_allow_cloud_restores_upstream_routing(tmp_path, monkeypatch):
+    monkeypatch.setenv(hh.ALLOW_CLOUD_ENV, "1")
+    monkeypatch.setenv("HOME", str(tmp_path))
+    user = tmp_path / "user.yaml"; user.write_text(yaml.safe_dump({"moa": {"default_preset": "mine"}}))
+    home, *_ = hh.render(copy.deepcopy(GRAPH), "hermes", user_cfg_path=str(user))
+    cfg = yaml.safe_load(open(os.path.join(home, "config.yaml")))
+    assert not any(t in cfg["auxiliary"] for t in MODAL)
+    assert cfg["moa"] == {"default_preset": "mine"}
+    assert hh.hermes_child_env(environ={"OPENAI_API_KEY": "sk", hh.ALLOW_CLOUD_ENV: "1"})["OPENAI_API_KEY"] == "sk"
+
+
+def test_child_env_scrubs_cloud_keys_keeps_mcp_and_familia(tmp_path, monkeypatch):
+    monkeypatch.delenv(hh.ALLOW_CLOUD_ENV, raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    g = copy.deepcopy(GRAPH)
+    g["agents"]["hermes"]["mcp"] = dict(MCP, brave={"command": "brave-mcp", "env_from": ["BRAVE_SEARCH_API_KEY"]})
+    hh.render(g, "hermes", user_cfg_path=str(tmp_path / "none.yaml"))
+    src = {"OPENAI_API_KEY": "sk", "OPENROUTER_API_KEY": "or", "ANTHROPIC_API_KEY": "a", "XAI_API_KEY": "x",
+           "AWS_SECRET_ACCESS_KEY": "aws", "HF_TOKEN": "hf", "SOME_API_TOKEN": "t",
+           "FAMILIA_API_KEY": "fam", "BRAVE_SEARCH_API_KEY": "brave", "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp",
+           "PATH": "/usr/bin", "HOME": str(tmp_path)}
+    env = hh.hermes_child_env({"HERMES_HOME": "/h"}, environ=src)
+    for k in ("OPENAI_API_KEY", "OPENROUTER_API_KEY", "ANTHROPIC_API_KEY", "XAI_API_KEY",
+              "AWS_SECRET_ACCESS_KEY", "HF_TOKEN", "SOME_API_TOKEN"):
+        assert k not in env, k
+    assert env["FAMILIA_API_KEY"] == "fam" and env["BRAVE_SEARCH_API_KEY"] == "brave"
+    assert env["GITHUB_PERSONAL_ACCESS_TOKEN"] == "ghp" and env["HERMES_HOME"] == "/h"
+    assert src["OPENAI_API_KEY"] == "sk"                                  # caller's dict untouched
+    assert hh.hermes_child_env({"OPENAI_API_KEY": "explicit"}, environ={})["OPENAI_API_KEY"] == "explicit"
