@@ -328,6 +328,17 @@ familia_extra_check() {
     esac
   done
 }
+# routing-extra-args (Platform): FAMILIA_EXTRA is split on whitespace only. Quotes and backslashes
+# are NOT shell syntax here (never eval'd), so a quoted word such as --alias 'my model' would reach
+# llama-server as the literal tokens 'my and model'. Refuse instead of guessing. Runs AFTER
+# familia_extra_check, which stays authoritative for F-6 (this only adds refusals; set -f is on).
+familia_extra_literal_check() {
+  for _t in \${FAMILIA_EXTRA:-}; do
+    case "\$_t" in
+      *\'*|*\"*|*\\\\*) echo "familia-start: FAMILIA_EXTRA token \$_t has a quote or backslash; FAMILIA_EXTRA is split on whitespace only (no shell quoting, values cannot contain spaces); refusing" >&2; exit 2 ;;
+    esac
+  done
+}
 # BEGIN familia-linux-key (extracted by tests/test_linux_launcher_key.py)
 familia_key_args() { # F-10: key on every bind, loopback included
   KF="\${FAMILIA_API_KEY_FILE:-\$HOME/.config/familia/api.key}"; FAMILIA_KF=""
@@ -350,6 +361,7 @@ familia_env_scrub() {
 }
 # END familia-linux-key
 familia_extra_check "\$@"
+familia_extra_literal_check
 familia_key_args
 familia_env_scrub
 [ -n "\$FAMILIA_KF" ] || { echo "familia-start: no API key; refusing" >&2; exit 2; }
