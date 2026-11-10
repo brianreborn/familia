@@ -19,7 +19,7 @@ Exit 0 when valid, 1 with one line per problem otherwise (2 for a usage error).
                  host swap total MiB is below the budget (SSD/VVRAM ops gate; docs/vvram-ssd/LAYER.md).
 Never guesses or inflates. Schema: scripts/graph_types.py, docs/graph-types.md.
 """
-import hashlib, json, os, struct, sys
+import hashlib, json, os, struct, sys, unicodedata
 import yaml
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from graph_types import validate_types, TYPES  # noqa: E402
@@ -539,6 +539,19 @@ def check_swap_budgets(graph, host=None):
 # <node>`) is tool-capable via routing. guardian/pentest/defender always fail closed (TOOLS-005);
 # a present `server_tools` key is authoritative (TOOLS-006). "none" is [] -> no --tools flag.
 FAIL_CLOSED_TYPES = ("guardian", "pentest", "defender")
+
+
+def normalize_role(role):
+    """Casefold + NFKC so Guardian / GUARDIAN / fullwidth forms match the TYPE names.
+
+    Applied wherever a role is compared to FAIL_CLOSED_TYPES or TOOL_CAPABLE_BY_TYPE
+    (node_type, tool_policy, Hermes, proxy). Non-ASCII lookalikes that are not NFKC
+    equivalent are not remapped — they simply miss the known TYPE tables (fail safe:
+    no TYPE presumption of tool capability).
+    """
+    if not isinstance(role, str) or not role:
+        return role
+    return unicodedata.normalize("NFKC", role).casefold()
 # TYPE presumption when neither node nor model declares `tool_capable`.
 TOOL_CAPABLE_BY_TYPE = {"coder": True, "chat": True, "general": True, "reasoning": True,
                         "embed": False, "decision": False, "vision": False, "diffusion": False}
@@ -553,14 +566,16 @@ TOOL_POLICY_BY_TYPE.update({t: [] for t in FAIL_CLOSED_TYPES})
 def node_type(graph, name):
     n = graph["nodes"][name]
     if n.get("role"):
-        return n["role"]
+        return normalize_role(n["role"])
     m = (graph.get("models") or {}).get(n.get("model")) or {}
-    return m.get("role")
+    return normalize_role(m.get("role"))
 
 
 def _loopback(bind):
-    """True only for a loopback bind: localhost (any case), 127/8, ::1, [::1],
-    ::ffff:127.x. Anything unparseable is NOT loopback (fail-safe)."""
+    """True only for a loopback bind: localhost (any case, no DNS), 127.0.0.0/8
+    (e.g. 127.0.0.2), ::1, [::1], and IPv4-mapped ::ffff:127.x / [::ffff:127.x].
+    ::, 0.0.0.0, other DNS names, and anything unparseable are NOT loopback
+    (fail-safe). Uses ipaddress only — never resolves names."""
     import ipaddress
     b = str(bind or "").strip()
     if b.lower() == "localhost":

@@ -166,6 +166,31 @@ ACCEPT = os.path.join(STATE, "escalation-accept.json")
 FAIL_RE = re.compile(r"(error|traceback|failed|exception|exit code [1-9]|FAILED)", re.I)
 DEFAULT_SESSION = "default"
 SESSION_HEADER = "X-Familia-Session"
+# Hop count set only by this proxy when it forwards a tool request. An incoming
+# value is untrusted: it can only *refuse* a further forward (no loop / no policy
+# bypass). It must never widen tool access. MAX_TOOL_HOPS=1 is one graph hop.
+TOOL_HOP_HEADER = "X-Familia-Tool-Hop"
+MAX_TOOL_HOPS = 1
+# Client-supplied headers that must never be treated as graph policy overrides.
+# They are ignored by tool_target / rewrite (policy comes only from the graph).
+POLICY_OVERRIDE_HEADERS = frozenset({
+    "x-familia-role", "x-familia-server-tools", "x-familia-tool-policy",
+    "x-familia-tool-route", "x-familia-node", "x-familia-bind", "x-familia-tools",
+})
+
+
+def tool_hops_from(headers):
+    """Incoming hop count. Malformed or negative values fail closed to MAX_TOOL_HOPS."""
+    if headers is None:
+        return 0
+    raw = headers.get(TOOL_HOP_HEADER)
+    if raw is None or str(raw).strip() == "":
+        return 0
+    try:
+        n = int(str(raw).strip())
+    except (TypeError, ValueError):
+        return MAX_TOOL_HOPS
+    return n if n >= 0 else MAX_TOOL_HOPS
 
 def node_url(g, name, local_host):
     """Base URL for a node. Remote nodes need a non-loopback bind (else None: needs a tunnel)."""
@@ -291,14 +316,19 @@ class Escalator:
         except OSError: pass
         return f"[familia] escalated to {t} on {d['host']} ({d.get('eta_s') or '?'}s est.)"
 
-    def rewrite(self, body):
+    def rewrite(self, body, hops=0):
         self.sig.observe_request(body)
         url, alias = self.upstream()
         # Tool forward (#243 runtime half): a tool-bearing request on a node with a validated
         # tool_route goes whole (chat + tools loop) to the target, which runs under its own
         # tool_policy/--tools. Unreachable target -> fail closed: rewrite returns url None and
         # the handler answers 502, so the tools never run on the current node.
+        # hops: incoming X-Familia-Tool-Hop; a re-entered forward (hops >= MAX_TOOL_HOPS)
+        # must not loop or fall through to the source with tools.
         self.tool_note = None; self.tool_fwd = None
+        if tool_bearing(body) and hops >= MAX_TOOL_HOPS:
+            self.tool_note = "[familia] tool forward re-entry refused (hop limit)"
+            return None, body
         tt = tool_target(self.g, self.current) if tool_bearing(body) else None
         if tt:
             turl = node_url(self.g, tt, self.local_host)
@@ -475,6 +505,12 @@ def make_handler(pool, log=sys.stderr):
             return True
 
         def _fwd(self, method):
+            # Re-entry of a tool forward: refuse before the session lock so a
+            # self-forward (target URL is this proxy) cannot deadlock on the same lock.
+            self._hops = tool_hops_from(self.headers)
+            if self._hops >= MAX_TOOL_HOPS:
+                self._502("[familia] tool forward re-entry refused (hop limit)")
+                return
             # Session lock first (FIFO per session, R5), then the global cap (R1), so
             # queued same-session requests do not hold upstream slots while they wait.
             esc = self._esc()
@@ -531,10 +567,10 @@ def make_handler(pool, log=sys.stderr):
                         note = esc.after_reply(ok=False)
                         if note: print(note, file=log, flush=True)
                         url, alias = esc.upstream()
-                    url, body = esc.rewrite(self._orig); raw = json.dumps(body).encode()
+                    url, body = esc.rewrite(self._orig, hops=getattr(self, "_hops", 0)); raw = json.dumps(body).encode()
                     # F2: capture note under the lock; _fwd prints it after release.
                     deferred_tool_note = esc.tool_note
-                    if url is None:   # tool_route target unreachable: fail closed (#251)
+                    if url is None:   # tool_route target unreachable / re-entry: fail closed (#251)
                         self._502(esc.tool_note); return deferred_tool_note
                 target = url.rsplit("/v1", 1)[0] + self.path
                 try:
@@ -546,6 +582,12 @@ def make_handler(pool, log=sys.stderr):
                     return deferred_tool_note
                 self._rid = self.headers.get("X-Familia-Request-Id") or uuid.uuid4().hex
                 hdrs["X-Familia-Request-Id"] = self._rid  # R3: lets upstream/caller dedupe
+                # Never copy client policy-override headers; set hop only when we actually forward.
+                for k in list(hdrs):
+                    if k.lower() in POLICY_OVERRIDE_HEADERS or k.lower() == TOOL_HOP_HEADER.lower():
+                        hdrs.pop(k, None)
+                if getattr(esc, "tool_fwd", None):
+                    hdrs[TOOL_HOP_HEADER] = str(getattr(self, "_hops", 0) + 1)
                 req = urllib.request.Request(target, data=raw, method=method, headers=hdrs)
                 try:
                     r = self._urlopen(req, timeout=UPSTREAM_TIMEOUT_S)
