@@ -262,14 +262,17 @@ def test_r3_reconnect_backoff_bounded():
 # ---------------- R4 timeout + cancel propagation ----------------
 
 def test_r4_caller_cancel_frees_session_slot():
-    up = Upstream("light", delay=2.0)
+    # Upstream delay is long so a stuck session lock would miss the bound.
+    # The bound is 2s (not 1s) because GitHub-hosted runners can add ~1s of jitter;
+    # a missed cancel still waits almost the full remaining delay (~5s).
+    up = Upstream("light", delay=5.0)
     _, srv = proxy(graph(up.port, closed_port()))
     p = srv.server_address[1]
     with pytest.raises(Exception): post(p, timeout=0.3)   # caller gives up
     up.delay = 0
     t0 = time.time(); post(p, timeout=10)
     srv.shutdown(); up.close()
-    assert time.time() - t0 < 1.0
+    assert time.time() - t0 < 2.0
 
 
 def test_r4_upstream_error_releases_lock_no_orphan_inflight():
