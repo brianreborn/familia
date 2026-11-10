@@ -6,6 +6,7 @@ Harness² / Terminal-RSI accepted harness versions whose self_improve mode is on
 (scripts/self_improve_attach.py; docs/harness2.md). Sync failure warns and continues.
 """
 import argparse
+import errno
 import json
 import os
 from pathlib import Path
@@ -485,6 +486,34 @@ def _stop_children(children):
                 print(f"familia-graph: {label} did not stop after SIGTERM; sending SIGKILL", file=sys.stderr)
                 _signal_group(child, signal.SIGKILL)
                 child.wait()
+        # The group may outlive its leader (serve.sh exits on SIGTERM; runtime keeps
+        # the port). Probe once after reap and SIGKILL remaining members; never poll
+        # (a reaped pgid can be reused). Only a group whose pgid equals the child pid
+        # (start_new_session leader); never our own pgid. ESRCH/EPERM means done.
+        if os.name == "posix":
+            pgid = child.pid
+            try:
+                if pgid == os.getpgrp():
+                    continue
+            except OSError:
+                continue
+            try:
+                os.killpg(pgid, 0)
+            except (ProcessLookupError, PermissionError):
+                continue
+            except OSError as exc:
+                if exc.errno in (errno.ESRCH, errno.EPERM):
+                    continue
+                raise
+            try:
+                os.killpg(pgid, signal.SIGKILL)
+            except (ProcessLookupError, PermissionError):
+                pass
+            except OSError as exc:
+                if exc.errno in (errno.ESRCH, errno.EPERM):
+                    pass
+                else:
+                    raise
 
 
 def run(args=None):

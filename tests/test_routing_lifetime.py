@@ -131,18 +131,58 @@ def test_port_available_uses_requested_port_only():
     assert start_graph.port_available("127.0.0.1", port)
 
 
-def test_stop_children_probes_group_once_not_in_a_loop(monkeypatch):
-    """A reaped pgid can be reused; _stop_children must probe it once, never poll it."""
+def test_stop_children_probes_group_once_not_in_a_loop(monkeypatch, tmp_path):
+    """A reaped pgid can be reused; _stop_children must probe it once, never poll it.
+
+    Also covers the orphan case: the group leader (sh) exits on SIGTERM while a
+    grandchild in the same group ignores SIGTERM and would keep a port bound.
+    After the leader is reaped, the single post-reap probe + SIGKILL must reap it.
+    """
+    if os.name != "posix":
+        pytest.skip("POSIX process groups/signals")
     probes = []
     real = os.killpg
     def spy(pg, sig):
         if sig == 0: probes.append(pg)
         return real(pg, sig)
     monkeypatch.setattr(start_graph.os, "killpg", spy)
-    kids = [_spawn(["sh", "-c", "sleep 30"]) for _ in range(2)]
+    pidfile = tmp_path / "grandchild.pid"
+    grandchild = tmp_path / "ignore_sigterm.py"
+    grandchild.write_text(
+        "import os, pathlib, signal, sys, time\n"
+        "signal.signal(signal.SIGTERM, signal.SIG_IGN)\n"
+        "signal.signal(signal.SIGHUP, signal.SIG_IGN)\n"
+        "signal.signal(signal.SIGINT, signal.SIG_IGN)\n"
+        "pathlib.Path(sys.argv[1]).write_text(str(os.getpid()))\n"
+        "while True:\n"
+        "    time.sleep(0.2)\n"
+    )
+    # sh is the start_new_session group leader; it starts the ignore-SIGTERM
+    # grandchild and exits when the group is signalled, leaving the grandchild.
+    child = _spawn(["sh", "-c", f"{sys.executable} {grandchild} {pidfile} & wait"])
+    gc_pid = None
     try:
-        start_graph._stop_children([(k, "k") for k in kids])
+        end = time.monotonic() + 10
+        while time.monotonic() < end:
+            if pidfile.exists() and pidfile.read_text().strip():
+                gc_pid = int(pidfile.read_text().strip())
+                break
+            time.sleep(0.05)
+        assert gc_pid is not None, "SIGTERM-ignoring grandchild never started"
+        assert os.getpgid(gc_pid) == child.pid
+        start_graph._stop_children([(child, "k")])
+        assert _gone(gc_pid), f"SIGTERM-ignoring grandchild {gc_pid} survived post-reap sweep"
+        assert probes.count(child.pid) == 1, probes  # exactly one probe, never a loop
     finally:
-        for k in kids:
-            if k.poll() is None: k.kill(); k.wait()
-    assert all(probes.count(k.pid) <= 1 for k in kids), probes   # at most one probe each, never a loop
+        if child.poll() is None:
+            try:
+                os.killpg(child.pid, signal.SIGKILL)
+            except (ProcessLookupError, PermissionError, OSError):
+                if child.poll() is None:
+                    child.kill()
+            child.wait()
+        if gc_pid and _alive(gc_pid):
+            try:
+                os.kill(gc_pid, signal.SIGKILL)
+            except (ProcessLookupError, PermissionError, OSError):
+                pass
