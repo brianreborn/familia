@@ -11,6 +11,11 @@ Sources:
 
 Legend: **B** = borrowed as-is in spirit, **G** = generalized for familia, **N** = new here.
 
+A coordinator-free pull design (GitHub is the nexus; no central host) is
+proposed in [Coordinator-free pull swarm](#coordinator-free-pull-swarm-proposed-2026-11-10).
+It is design-only. R0-R11 describe the current contract, which still has a
+conductor and a miryam-to-phone SSH smoke path.
+
 ## R0 Forge-agnostic (HARD, v0.3) — N
 
 Every forge-specific call goes through one thin adapter, `scripts/swarm/forge.sh`,
@@ -225,3 +230,200 @@ identity is required. Spec only for v1.0.
 - No runner for FreeBSD/Termux; R8 on Linux. A57 phones stay in that gap: bounded python/compile smoke is opt-in SSH from the miryam runner (`docs/ci/a57-ssh-dispatch.md`), not a `runs-on` Android label.
 - `tests/e2e_user_journey.sh` must exist on the tested ref (job reports `skip` otherwise).
 - Secrets `FAMILIA_PRIVATE_LOGS_TOKEN` and optional `SWARM_ADMIN_TOKEN` must be added by Brian.
+
+## Coordinator-free pull swarm (proposed, 2026-11-10)
+
+Status: design only. Not implemented. Source: Brian voice session, 2026-11-10.
+This section is the target architecture for familia swarm CI/CD. It is added
+here because this file is the canonical familia swarm-worker design (DESIGN.md
+is the product and topology design; `docs/config/graph/swarms.md` is the
+`graph.yaml` `swarms:` field reference; `docs/swarm-bench.md` is the bench
+script). Where this section conflicts with the conductor-dispatch path in R1
+and R4, this section wins for future work. R0-R11 stay the current contract
+until this is implemented.
+
+### No coordinator, no central host
+
+There is no swarm brain and no dispatcher host. GitHub (the forge, via the R0
+adapter) is the nexus: the queue, the lease, the result log, and the visible
+status all live there. Every reachable machine is a peer: miryam, the Linux
+laptop, galaxy1 and galaxy2 (A57 phones), angel-bsd (FreeBSD), qodesh, shalom,
+and any other host that can see the forge.
+
+miryam is only a peer with a convenient network position. It does not assign
+work, and it does not control other hosts. No host dispatches to another over
+SSH as a control channel. SSH is only opportunistic access when a peer happens
+to be reachable (a human or a peer checking liveness, copying a log the
+operator asked for, or the transitional A57 fallback below). Control always
+returns to the forge.
+
+### Vetted issues, then explicit admin approval
+
+This document is where peers learn how work is picked up. An issue or task is
+not runnable just because it exists.
+
+1. The issue is vetted (it is in scope, has a clear job, and is recorded here
+   or in the issue body as swarm-eligible work).
+2. Brian gives explicit admin approval for that work to enter the pull queue
+   (an approval label or an owner `/run` / equivalent forge command, already
+   `owner_only` in `.github/swarm-conductor.json`).
+3. Only then may a free peer claim it.
+
+Discovery of open issues can stay open and parallel. Claiming and running are
+side effects, so they wait on that admin gate (see Approval gates below, and
+LESSONS-LEARNED `L-2026-11-10`, still landing in PR #379). A bot must not
+approve, and a bot must not issue `/run` (the existing loop guard stays).
+
+### How a peer picks the next task
+
+A phone or laptop is not told what to do. When it is free, it pulls.
+
+**Path A: GitHub Actions self-hosted runner (preferred where the official
+runner exists).** The runner long-polls the forge for jobs whose `runs-on`
+labels are a capability set the peer advertised: OS, arch, RAM class, GPU
+API / family, and model-family, plus role labels such as `swarm-bench`. Labels
+are capabilities, not host names. `host:<host>` and `node:<host>-<user>` may
+still exist as optional identity stamps (R2, R10), but workflows must not
+route on them. The peer that is free and matches takes the job. Nobody pushes
+the job to a named machine.
+
+**Path B: tiny pull agent (when `actions/runner` is unsupported),** including
+FreeBSD and Android-native / Termux today (see Gaps). The agent polls the
+forge for approved, unclaimed work: issue labels, a workflow_dispatch queue, or
+the same capability labels as Path A. It claims with an atomic forge update:
+label plus assignee or a signed claim comment, carrying a lease and an expiry.
+If the claim loses the race, the agent leaves the item and looks again. The
+agent does not SSH to a sibling to hand off the job.
+
+Matching is any-of on optional capabilities (any peer that has at least the
+required set may take it) and all-of on required ones (OS, arch, or a stated
+minimum RAM). A job that needs a phone GPU says `android` + `vulkan` + a
+model-family, not `galaxy1`.
+
+### Result submission
+
+The peer that ran the work posts the result back to the nexus, in public
+enough form that any other peer or a person can see it without asking the
+runner host:
+
+- job logs and artifacts on the workflow run
+- check runs on the commit or pull request
+- signed issue or PR comments (pass/fail/skip, exit code, identity stamp from
+  R10, and a short tail of the log)
+- commit statuses
+
+Full logs may still go to `brianreborn/familia-private` under
+`logs/swarm/<yyyymmdd>/` with redaction, as in R5. The hosted `report` job in
+R4/R9 remains a valid way to paste a worker summary when the worker itself
+cannot comment (a dead or disconnected peer). The report job still must not
+reinterpret a failure as a pass, and it still must not compute new results
+(R9). Key- and token-shaped strings stay redacted. API keys stay on the host
+and never pass through the forge.
+
+### Failure surfacing
+
+Nothing fails silently.
+
+- A failed job is a failed check, a failed status, and a visible issue label
+  such as `swarm-failed`. The comment says what went wrong.
+- When a lease expires, the claim is void: the task returns to the queue as
+  unclaimed, approved work. Any peer may reap a stale claim (drop the lease
+  label, clear the assignee, comment that the lease expired, and leave the
+  item eligible). Reaping is not reserved for miryam or a conductor.
+- A peer that is offline is not a lost task. The forge still shows the job as
+  queued or the issue as approved-and-unclaimed.
+- Diagnostics report what is wrong without writing to a disk under test.
+  Progress and logs go off-target (a log file on a different disk, or the
+  forge / familia-private path), preferably inside a named screen session
+  (`L-screen`, `L-2026-11-10` item 4, `L-190` item 6).
+
+### Host-agnostic routing
+
+- Workflows must not hardcode a host list or a host-name `runs-on` label.
+- Routing is label-based capability matching, as above.
+- When zero eligible hosts are online, the job stays queued and visible
+  (Actions queued state, issue label, watchdog comment). It does not fail
+  closed as "no such host" and it does not get pushed over SSH to a stand-in.
+- Tasks are idempotent: a retry on another peer is safe. A busy or expired
+  claim is not a pass.
+- A failed or expired claim may be retried on any other capable peer, not
+  only on the machine that first touched it.
+
+### Migration from the miryam-to-phone SSH smoke
+
+Today `.github/workflows/a57-ssh-smoke.yml` and
+`docs/ci/a57-ssh-dispatch.md` run a bounded python/compile smoke by having the
+miryam runner SSH to galaxy1 and galaxy2. That path is a documented gap in
+this file: the phones are not Actions runners, and there is no official
+runner for FreeBSD or Termux.
+
+Keep that SSH smoke as an opportunistic fallback only, not as the control
+path. It may run when a phone is reachable from a peer that already holds an
+approved job whose capabilities include "A57 Termux smoke" and the inventory
+on that peer allows SSH. It must not be how work is assigned. The target is
+Path B on the phones themselves (a tiny pull agent, or a later supported
+runner), with the same admin-approval and lease rules. Do not add a
+`runs-on` phone or `host:miryam` requirement to new workflows.
+
+### Security
+
+- Self-hosted runner scopes stay least-privilege: the job `GITHUB_TOKEN` is
+  contents-read plus the write rights needed to post its own results (issues,
+  checks, statuses). Registration tokens are never printed or logged (R2).
+- Phones and other low-trust peers hold no secrets beyond the runner or pull
+  agent token. No `FAMILIA_PRIVATE_LOGS_TOKEN`, no host SSH keys for other
+  machines, no instance API keys from the forge, and no release secrets.
+  If a private log upload is needed from a phone, a higher-trust peer or the
+  hosted report job publishes the already-redacted summary.
+- Fork pull requests never run on self-hosted runners or on the pull agent.
+  The existing A57 gate (owner repo, `development` only, no
+  `pull_request_target`, no fork head) stays the model.
+- D1 hosted jobs stay trivial (R9): comment, label, status, dispatch into the
+  forge queue. They do not SSH, build, or test.
+- The conductor role in R1, if it remains at all, may only watch and comment.
+  It must not dispatch to a host, hold host keys, or become a control plane.
+  Peers pull; nothing pushes.
+
+### Approval gates and interactive latency
+
+Approval gates are filters on side effects, not global locks on discovery or
+parallel work (`L-2026-11-10`). Vetting and Brian's admin approval gate a
+task entering the runnable queue, and later gates may cover writes, reboots,
+installs, root-queue scripts (R6), and other side effects. They must not
+serialize independent read-only probes or make one approval a waiter that
+only lets one job through.
+
+Interactive feedback should stay under about 400 ms so the operator still
+has a sense of flow (`L-2026-11-10` item 5; attribution of the IBM /
+@lauriewired threshold is not yet verified). Queue state, claim result, and
+"I am running this" should be visible on the forge quickly. Long jobs still
+run long; the first ack must not wait on them.
+
+### Persistent installs
+
+A persistent runner, pull agent, or boot service on a host still needs
+Brian's per-host OK before it is installed or left running unattended. This
+section does not grant that OK for miryam, the Linux laptop, the A57 phones,
+angel-bsd, qodesh, shalom, or any other machine.
+
+### Current code that this section would change
+
+Documented so the design and the tree are not silently at odds. This PR does
+not change these files.
+
+- `.github/workflows/a57-ssh-smoke.yml` routes the smoke job to
+  `[self-hosted, Linux, swarm-bench, host:miryam]` and uses SSH from that
+  host as the control path to the phones.
+- `.github/workflows/swarm-worker.yml` uses
+  `[self-hosted, Linux, swarm-bench]` (no host name, but Linux-only, no
+  RAM/GPU/model-family labels) after a hosted `ubuntu-latest` dispatch.
+- `.github/swarm-conductor.json` `hosts` is a hardcoded inventory
+  (`linux-55`, `miryam:green`, `grok-bot-vm-414137730:box`). `runnerLabels`
+  still includes `host:<host>` and `node:<host>-<user>`. R1 and R4 describe
+  a conductor that dispatches.
+- Hosted trivial or analysis jobs correctly use `ubuntu-latest` today
+  (`tests.yml`, `lint-warnings.yml`, `codeql.yml`, `nvso-userspace-smoke.yml`,
+  `swarm-ping.yml`, `swarm-watchdog.yml`, and the A57/swarm gate and report
+  jobs). That remains valid for D1 and for work that must not run on
+  self-hosted peers. It is not a host-name hardcode, but it is also not
+  label-based self-hosted routing.
