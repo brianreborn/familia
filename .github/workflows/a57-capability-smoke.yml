@@ -1,5 +1,7 @@
 # Minimal capability-label smoke for the A57 Termux self-hosted runners.
-# Dispatch-only; never pull_request. Routes on capabilities, not host names.
+# Never pull_request. Routes on capabilities, not host names.
+# workflow_dispatch is usable once this file exists on the default branch.
+# Until then, a push to this branch runs both family jobs.
 name: A57 capability smoke
 
 on:
@@ -10,12 +12,17 @@ on:
         required: true
         type: choice
         options: [qwen, lfm]
+  push:
+    branches: [ci/a57-capability-smoke]
+    paths:
+      - '.github/workflows/a57-capability-smoke.yml'
 
 permissions:
   contents: read
 
 jobs:
-  smoke:
+  qwen:
+    if: github.event_name == 'push' || inputs.family == 'qwen'
     timeout-minutes: 15
     runs-on:
       - self-hosted
@@ -24,18 +31,42 @@ jobs:
       - a57
       - termux
       - ram-7g
-      - ${{ inputs.family }}
+      - qwen
     steps:
       - name: identity
         run: |
           set -eu
-          echo "stamp user=$(id -un) uid=$(id -u) pwd=$(pwd)"
+          echo "stamp family=qwen user=$(id -un) uid=$(id -u) pwd=$(pwd)"
           echo "uname=$(uname -a)"
           echo "runner_name=${RUNNER_NAME:-} runner_os=${RUNNER_OS:-} runner_arch=${RUNNER_ARCH:-}"
           if command -v getprop >/dev/null 2>&1; then
             echo "model=$(getprop ro.product.model)"
           fi
-          # Confirm this is the phone ubuntu proot, not a hosted or Linux laptop runner
+          echo "os_release=$(. /etc/os-release 2>/dev/null && echo ${ID:-unknown}-${VERSION_ID:-unknown})"
+          test -d /phone-home/actions-runner && echo "phone_home_bind=yes" || echo "phone_home_bind=no"
+          echo "ok"
+
+  lfm:
+    if: github.event_name == 'push' || inputs.family == 'lfm'
+    timeout-minutes: 15
+    runs-on:
+      - self-hosted
+      - android
+      - arm64
+      - a57
+      - termux
+      - ram-7g
+      - lfm
+    steps:
+      - name: identity
+        run: |
+          set -eu
+          echo "stamp family=lfm user=$(id -un) uid=$(id -u) pwd=$(pwd)"
+          echo "uname=$(uname -a)"
+          echo "runner_name=${RUNNER_NAME:-} runner_os=${RUNNER_OS:-} runner_arch=${RUNNER_ARCH:-}"
+          if command -v getprop >/dev/null 2>&1; then
+            echo "model=$(getprop ro.product.model)"
+          fi
           echo "os_release=$(. /etc/os-release 2>/dev/null && echo ${ID:-unknown}-${VERSION_ID:-unknown})"
           test -d /phone-home/actions-runner && echo "phone_home_bind=yes" || echo "phone_home_bind=no"
           echo "ok"
