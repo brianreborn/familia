@@ -7,8 +7,9 @@ second hop through another escalation_proxy, hostile request headers / body fiel
 model output that try to set server_tools or opt-outs, and a loopback bind matrix.
 Also: an off-loopback source with no server_tools still forwards on an explicit
 tool_route (TOOLS-009), and a discovery-only off-loopback source stays none.
-xfail(strict=True) marks a product gap: BUG-TR-n (issue pending), drafted in
-/workspace/reviews/routing-boundary-hardening-2026-11-09.md."""
+After #355 those two, and a fail-closed source (BUG-TR-1 / #358), are current
+behavior and asserted directly. xfail(strict=True) marks a gap #355 did not close:
+BUG-TR-3, BUG-TR-4, BUG-TR-5, BUG-TR-6 (issue pending; TR-4 left as a product call)."""
 import copy, json, os, socket, sys, threading, urllib.error, urllib.request
 
 import pytest
@@ -142,11 +143,9 @@ def test_node_role_cannot_launder_fail_closed_model(role):
     assert EP.tool_target(g, "light") is None
 
 
-@pytest.mark.xfail(strict=True, reason="BUG-TR-1 (#358): escalation_proxy.tool_target never checks "
-                   "the SOURCE node's tool_policy, so a guardian/pentest/defender source (policy []) still "
-                   "gets its tool requests forwarded to the tool_route target")
 @pytest.mark.parametrize("role", ["guardian", "pentest", "defender"])
 def test_fail_closed_source_does_not_forward_tools(role):
+    """#355: empty source tool_policy (fail-closed TYPE) blocks the forward (#358)."""
     g = g3(1, 2, light={"role": role})
     assert VG.tool_policy(g, "light") == []
     assert EP.tool_target(g, "light") is None
@@ -344,36 +343,30 @@ def test_remote_non_ipv4_loopback_bind_needs_tunnel(bind):
 
 # ---------------- off-loopback source: explicit tool_route vs discovery (TOOLS-009 / #345) ----------------
 
-@pytest.mark.xfail(strict=True, reason="#345: Hermes route_tools still returns direct for an "
-                   "off-loopback tool-capable node with no server_tools, so an explicit TOOLS-009 "
-                   "tool_route is not used; #355 falls through to that route and this should pass")
 def test_off_loopback_explicit_tool_route_still_forwards():
-    """TOOLS-009: an explicit graph tool_route is a deliberate opt-in and must still
-    forward, even when the source is off-loopback with no server_tools."""
+    """TOOLS-009: an explicit graph tool_route is a deliberate opt-in and still
+    forwards when the source is off-loopback with no server_tools (#355)."""
     g = _hg({"a": {"model": "cod", "bind": "0.0.0.0", "tool_route": "t"}, "t": {"model": "cod"}})
     assert "server_tools" not in g["nodes"]["a"]
     assert not VG._loopback(g["nodes"]["a"]["bind"]) and VG.tool_capable(g, "a")
     assert VG.tool_route(g, "a") == "t"
     r = HH.route_tools(g, "hermes")
-    assert r["mode"] == "nexus" and r["node"] == "t"
+    assert r == {"mode": "nexus", "node": "t", "via": None, "reason": "tool_route"}
     assert EP.tool_target(g, "a") == "t"
 
 
-@pytest.mark.xfail(strict=True, reason="#345 / #355: Hermes route_tools falls through an "
-                   "off-loopback node with no server_tools to same-host or mesh discovery; that "
-                   "fall-through is not in TOOLS-009 or #345 and is not deny-by-default. "
-                   "Discovery-only must stay none")
 def test_off_loopback_discovery_only_gets_none():
-    """Off-loopback, no server_tools, no tool_route: none, even if a discovery peer exists."""
+    """Off-loopback, no server_tools, no tool_route: none. #355 does not consult
+    same-host or mesh discovery, so rebinding cannot implicitly forward."""
     g = _hg({"a": {"model": "cod", "bind": "0.0.0.0"}, "z-local": {"model": "cod"}})
     assert "server_tools" not in g["nodes"]["a"] and "tool_route" not in g["nodes"]["a"]
     assert VG.tool_policy(g, "a") == []
     assert VG.tool_capable(g, "z-local") and VG.tool_policy(g, "z-local") != []
     r = HH.route_tools(g, "hermes")
-    assert r["mode"] == "none" and r["node"] is None
+    assert r == {"mode": "none", "node": None, "via": None, "reason": "off-loopback without server_tools"}
     assert EP.tool_target(g, "a") is None
     g = _hg({"a": {"model": "cod", "bind": "0.0.0.0"},
              "a-peer": {"model": "cod", "host": "p", "server_tools": "all", "bind": "0.0.0.0"}},
             meshes={"lan": {"type": "ssh", "members": ["h", "p"]}})
     r = HH.route_tools(g, "hermes")
-    assert r["mode"] == "none" and r["node"] is None
+    assert r == {"mode": "none", "node": None, "via": None, "reason": "off-loopback without server_tools"}
