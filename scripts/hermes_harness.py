@@ -58,8 +58,8 @@ def _path_exists(p):
     return bool(p) and os.path.exists(p)
 
 
-def _read_shebang(path):
-    """Return interpreter from a #! line, or None."""
+def _shebang_parts(path):
+    """Split #! tokens from *path*, or None."""
     try:
         with open(path, "rb") as f:
             line = f.readline(256)
@@ -68,10 +68,27 @@ def _read_shebang(path):
     if not line.startswith(b"#!"):
         return None
     parts = line[2:].decode("utf-8", "replace").strip().split()
+    return parts or None
+
+
+def _is_env_shebang(path):
+    """True when *path*'s shebang is `#!/usr/bin/env CMD` (or any `env CMD`)."""
+    parts = _shebang_parts(path)
+    return bool(parts) and os.path.basename(parts[0]) == "env" and len(parts) >= 2
+
+
+def _read_shebang(path, path_env=None):
+    """Return interpreter from a #! line, or None.
+
+    For `#!/usr/bin/env CMD`, resolve CMD on *path_env* (a PATH string) when given, else the
+    process PATH (Boundary N1a: launch must re-resolve against the child's PATH, which prepends
+    HERMES_HOME/bin).
+    """
+    parts = _shebang_parts(path)
     if not parts:
         return None
     if os.path.basename(parts[0]) == "env" and len(parts) >= 2:
-        return shutil.which(parts[1]) or parts[1]
+        return shutil.which(parts[1], path=path_env) or parts[1]
     return parts[0]
 
 
@@ -185,13 +202,14 @@ def _dirs_problem(path):
         d = parent
 
 
-def trust_exec(path, *, interpreter=True):
+def trust_exec(path, *, interpreter=True, path_env=None):
     """(realpath, None) when *path* is safe to exec, else (realpath or None, reason). realpath once:
     the real file must be regular, executable, owned by root or this user, not group/other
     writable (user-private group excepted); every parent of both the given path and the realpath
     likewise; a '#!' interpreter (venv python, /bin/sh, /usr/bin/env) gets the same check. Callers
     exec the returned realpath (HERMES_EXEC), so nothing outside root's and the user's control can
-    swap the binary between this check and the exec."""
+    swap the binary between this check and the exec. *path_env* is the PATH used to resolve an
+    `env` shebang (Boundary N1a: pass the child PATH with HERMES_HOME/bin prepended at launch)."""
     import stat
     if not path or not os.path.isabs(str(path)):
         return None, "not an absolute path"
@@ -209,7 +227,7 @@ def trust_exec(path, *, interpreter=True):
     if why:
         return real, why
     if interpreter:
-        interp = _read_shebang(real)
+        interp = _read_shebang(real, path_env=path_env)
         if interp and os.path.isabs(interp):
             _r, why = trust_exec(interp, interpreter=False)
             if why:
@@ -577,31 +595,64 @@ def _no_creds_dir(env, name):
 
 # Ambient non-LLM secrets (Boundary N2 / N2a): the hermes terminal tool inherits the child env, so
 # model output running `env` would see them. Dropped unless FAMILIA_HERMES_PASS_SECRETS=1; graph-
-# declared MCP names are kept (hermes interpolates them into that server's config). FAMILIA_* and
-# HERMES_* control vars are never matched by the pattern.
+# declared MCP names and harness control vars (HARNESS_ENV_KEEP) are kept. Secret-shaped names are
+# matched first (so FAMILIA_GH_TOKEN / HERMES_TOKEN drop); the keep set is applied after.
 PASS_SECRETS_ENV = "FAMILIA_HERMES_PASS_SECRETS"
-AMBIENT_SECRET_NAMES = frozenset({"GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN",
-                                  "SSH_AUTH_SOCK", "DSN", "DATABASE_URL", "KUBECONFIG", "REDIS_URL"})
-# *_SECRET / *_PASSWORD (N2); *_TOKEN / *_PRIVATE_KEY / *_DSN / *_DATABASE_URL / *_DB_URL and
-# MONGO*_URL / POSTGRES*_URL connection strings (N2a).
+AMBIENT_SECRET_NAMES = frozenset({
+    "GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN",
+    "SSH_AUTH_SOCK", "DSN", "DATABASE_URL", "KUBECONFIG", "REDIS_URL",
+    "AMQP_URL", "RABBITMQ_URL", "MONGODB_URI", "PGPASSWORD", "MYSQL_PWD",
+})
+# Name shapes (applied before any FAMILIA_*/HERMES_* keep): *_SECRET/_PASSWORD/_PWD/_TOKEN/…
+# plus DB/cache connection URL/URI names. Values matching scheme://user:pass@ also drop.
 AMBIENT_SECRET_RE = re.compile(
-    r"^(?!FAMILIA_|HERMES_)"
-    r"(?:"
-    r"[A-Za-z0-9_]*_(?:SECRET|SECRET_KEY|PASSWORD|PASSWD|TOKEN|PRIVATE_KEY|DSN|DATABASE_URL|DB_URL)"
-    r"|(?:MONGO|POSTGRES)[A-Za-z0-9_]*_URL"
+    r"^(?:"
+    r"[A-Za-z0-9_]*_(?:SECRET|SECRET_KEY|PASSWORD|PASSWD|PWD|TOKEN|PRIVATE_KEY|DSN|DATABASE_URL|DB_URL|REDIS_URL|URI)"
+    r"|(?:MONGO|POSTGRES|MYSQL|MARIADB|AMQP|RABBITMQ)[A-Za-z0-9_]*_(?:URL|URI)"
     r")$"
 )
+# scheme://user:pass@host… (password may be empty; user and @ required). Plain URLs without
+# userinfo (e.g. local llama http://127.0.0.1:8080) do not match.
+CREDENTIAL_URL_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*://[^/\s:@]+:[^/\s@]*@")
+# Harness / launch control vars that must survive scrub even if a future pattern widened.
+HARNESS_ENV_KEEP = frozenset({
+    "HERMES_HOME", "HERMES_BIN", "HERMES_PY", "HERMES_SP", "HERMES_EXEC",
+    "FAMILIA_HERMES_PASS_SECRETS", "FAMILIA_HERMES_ALLOW_CLOUD", "FAMILIA_HERMES_TOOLCHAIN_CHECK",
+    "FAMILIA_HERMES_PIN_CHECK", "FAMILIA_HERMES_SRC", "FAMILIA_HERMES_CLIENT_PROBE",
+    "FAMILIA_HERMES_ENV_PROBE_REFRESH", "FAMILIA_HERMES_DOGFOOD_YOLO", "FAMILIA_HERMES_UPSTREAM_PY",
+    "FAMILIA_HERMES_TEST_PY", "FAMILIA_SYNC", "FAMILIA_API_KEY", "FAMILIA_PREFIX_CHILD",
+    "FAMILIA_WARM_MIN_AVAIL_MIB", "FAMILIA_WARM_TIMEOUT", "FAMILIA_CHANNEL", "FAMILIA_STABLE_DAYS",
+    "FAMILIA_HOST",
+})
+
+
+def _ambient_secret_name(name):
+    """True when *name* is an ambient secret shape (no FAMILIA_/HERMES_ exemption)."""
+    return name in AMBIENT_SECRET_NAMES or bool(AMBIENT_SECRET_RE.match(name))
+
+
+def _credential_url_value(val):
+    """True when *val* looks like scheme://user:pass@… (embedded credentials)."""
+    if not isinstance(val, str) or "://" not in val:
+        return False
+    return bool(CREDENTIAL_URL_RE.match(val.strip()))
 
 
 def scrub_ambient_secrets(env, keep=()):
-    """Drop ambient non-LLM secrets from *env* (in place) unless FAMILIA_HERMES_PASS_SECRETS=1:
-    GH_TOKEN/GITHUB_TOKEN/SSH_AUTH_SOCK/DSN/DATABASE_URL/KUBECONFIG/REDIS_URL, *_SECRET,
-    *_SECRET_KEY, *_PASSWORD, *_TOKEN, *_PRIVATE_KEY, *_DSN, *_DATABASE_URL, *_DB_URL,
-    MONGO*_URL, POSTGRES*_URL. Returns the names removed."""
+    """Drop ambient non-LLM secrets from *env* (in place) unless FAMILIA_HERMES_PASS_SECRETS=1.
+
+    Name shapes (matched before keep): GH_TOKEN/…/KUBECONFIG/AMQP_URL/RABBITMQ_URL/MONGODB_URI/
+    PGPASSWORD/MYSQL_PWD, *_SECRET/*_PASSWORD/*_PWD/*_TOKEN/*_PRIVATE_KEY/*_DSN/*_DATABASE_URL/
+    *_DB_URL/*_REDIS_URL/*_URI, MONGO*/POSTGRES*/MYSQL*/AMQP*/RABBITMQ*_URL/_URI. Also any var
+    whose value matches scheme://user:pass@. Keep = caller keep | MCP_ENV_KEEP | HARNESS_ENV_KEEP.
+    Returns the names removed."""
     if env.get(PASS_SECRETS_ENV) == "1":
         return []
-    keep = set(keep) | MCP_ENV_KEEP
-    gone = sorted(k for k in env if k not in keep and (k in AMBIENT_SECRET_NAMES or AMBIENT_SECRET_RE.match(k)))
+    keep = set(keep) | MCP_ENV_KEEP | HARNESS_ENV_KEEP
+    gone = sorted(
+        k for k, v in env.items()
+        if k not in keep and (_ambient_secret_name(k) or _credential_url_value(v))
+    )
     for k in gone:
         del env[k]
     return gone
@@ -791,8 +842,8 @@ def hermes_child_env(extra=None, environ=None):
     Force a fresh probe with FAMILIA_HERMES_ENV_PROBE_REFRESH=1.
     When HERMES_HOME/bin exists (Agent-Reach wrapper from link_reaches), prepend it to PATH.
     Cloud LLM keys are removed unless FAMILIA_HERMES_ALLOW_CLOUD=1 (scrub_cloud_keys); ambient
-    secrets (GH_TOKEN, *_SECRET/*_PASSWORD/*_TOKEN/*_PRIVATE_KEY, DSN/DATABASE_URL/KUBECONFIG,
-    MONGO*/POSTGRES*_URL, …) unless FAMILIA_HERMES_PASS_SECRETS=1 (scrub_ambient_secrets).
+    secrets (name shapes + scheme://user:pass@ values; FAMILIA_GH_TOKEN/HERMES_TOKEN included)
+    unless FAMILIA_HERMES_PASS_SECRETS=1 (scrub_ambient_secrets).
     """
     env = dict(os.environ if environ is None else environ)
     scrub_cloud_keys(env)   # before extra: values the harness passes on purpose are kept
@@ -1514,8 +1565,10 @@ def run_escalating(g, agent, light, swap_back, rest, client="cli"):
     warm_prompt(g, light, g["nodes"][light], home)
     print(f"hermes.sh: escalation proxy {base} light={light} targets={g['nodes'][light].get('escalates_to')}", file=sys.stderr)
     argv = prepare_client_launch(home, client, rest)
-    return subprocess.call([HERMES_BIN] + argv, executable=HERMES_EXEC or HERMES_BIN,
-                           env=hermes_child_env({"HERMES_HOME": home}),
+    launch_env = hermes_child_env({"HERMES_HOME": home})
+    executable, full = hermes_exec_argv(HERMES_BIN, HERMES_EXEC, argv, launch_env)
+    return subprocess.call(full, executable=executable,
+                           env=launch_env,
                            preexec_fn=oom_adj.preexec())
 
 
@@ -1561,6 +1614,32 @@ def parse_argv(argv):
     return agent, graph_path, mode, light, swap_back, client, rest
 
 
+def hermes_exec_argv(bin_path, exec_path, argv, env):
+    """Return ``(executable, full_argv)`` for launching hermes (Boundary N1 / N1a).
+
+    Default: trusted realpath (*exec_path*) with argv0=*bin_path*. When the binary has an
+    ``#!/usr/bin/env CMD`` shebang, resolve CMD against the child PATH in *env* (which prepends
+    ``HERMES_HOME/bin``), trust that interpreter, and return it as the executable with the script
+    as argv[1] so the kernel cannot pick a different CMD than the one we checked.
+    """
+    target = exec_path or bin_path
+    if target and _is_env_shebang(target):
+        interp = _read_shebang(target, path_env=(env or {}).get("PATH"))
+        if not interp or not os.path.isabs(str(interp)):
+            die(f"env shebang interpreter for {target!r} not found on child PATH")
+        real_i, why = trust_exec(interp, interpreter=False)
+        if why:
+            die(f"child PATH interpreter {interp!r}: {why}")
+        return real_i, [real_i, target] + list(argv)
+    return target, [bin_path] + list(argv)
+
+
+def exec_hermes(bin_path, exec_path, argv, env):
+    """``os.execv`` hermes using :func:`hermes_exec_argv` (does not return)."""
+    executable, full = hermes_exec_argv(bin_path, exec_path, argv, env)
+    os.execv(executable, full)
+
+
 def main(argv):
     agent, graph_path, mode, light, swap_back, client, rest = parse_argv(argv)
     # Peek hosts for scoped file checks before full validate (other hosts' GGUFs stay optional).
@@ -1588,7 +1667,7 @@ def main(argv):
     os.environ.update(launch_env)
     # #112: hermes process is first-to-kill (no longer Popen's llama-server; serve.sh does)
     oom_adj.set_self()
-    os.execv(HERMES_EXEC or HERMES_BIN, [HERMES_BIN] + argv)   # trusted realpath (Boundary N1)
+    exec_hermes(HERMES_BIN, HERMES_EXEC, argv, launch_env)   # trusted realpath; N1a env-shebang
 
 
 if __name__ == "__main__":

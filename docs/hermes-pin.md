@@ -79,8 +79,12 @@ declares (`env_from`, `headers_from`) are kept.
 
 Ambient non-LLM secrets are not carried into hermes (and so not into its terminal tool) either:
 `GH_TOKEN`, `GITHUB_TOKEN`, `GH_ENTERPRISE_TOKEN`, `GITHUB_ENTERPRISE_TOKEN`, `SSH_AUTH_SOCK`,
-`DSN`, `DATABASE_URL`, `KUBECONFIG`, `REDIS_URL`, and any `*_SECRET`, `*_SECRET_KEY`, `*_PASSWORD`,
-`*_PASSWD`, `*_TOKEN`, `*_PRIVATE_KEY`, `*_DSN`, `*_DATABASE_URL`, `*_DB_URL`, `MONGO*_URL`,
-`POSTGRES*_URL` (`FAMILIA_*`, `HERMES_*`, and graph-declared MCP names kept).
+`DSN`, `DATABASE_URL`, `KUBECONFIG`, `REDIS_URL`, `AMQP_URL`, `RABBITMQ_URL`, `MONGODB_URI`,
+`PGPASSWORD`, `MYSQL_PWD`, and any `*_SECRET`, `*_SECRET_KEY`, `*_PASSWORD`, `*_PASSWD`, `*_PWD`,
+`*_TOKEN`, `*_PRIVATE_KEY`, `*_DSN`, `*_DATABASE_URL`, `*_DB_URL`, `*_REDIS_URL`, `*_URI`,
+`MONGO*`/`POSTGRES*`/`MYSQL*`/`AMQP*`/`RABBITMQ*_URL`/`_URI`. Secret-shaped names are matched
+before any keep list, so `FAMILIA_GH_TOKEN` and `HERMES_TOKEN` drop too. Any var whose value looks
+like `scheme://user:pass@…` is also dropped (plain URLs such as a local llama endpoint are kept).
+Graph-declared MCP names and harness control vars (`HERMES_HOME`, `FAMILIA_API_KEY`, …) are kept.
 `FAMILIA_HERMES_PASS_SECRETS=1` passes them through (for example `git push` over ssh from the agent). `FAMILIA_HERMES_ALLOW_CLOUD=1` restores upstream behaviour for all of
 this (auto routing, the user's `moa` section, keys passed through).

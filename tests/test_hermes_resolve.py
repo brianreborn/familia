@@ -333,6 +333,42 @@ def test_trust_exec_checks_the_shebang_interpreter(tmp_path):
     assert why.startswith("its interpreter " + bad_py) and "world-writable" in why
 
 
+def test_read_shebang_env_resolves_against_path_env(tmp_path):
+    """Boundary N1a: #!/usr/bin/env CMD uses path_env, not only the process PATH."""
+    home_bin = tmp_path / "hh" / "bin"; home_bin.mkdir(parents=True)
+    other = tmp_path / "other"; other.mkdir()
+    child_py = _write(home_bin / "python3", "#!/bin/sh\n")
+    launcher_py = _write(other / "python3", "#!/bin/sh\n")
+    script = _write(tmp_path / "bin" / "hermes", "#!/usr/bin/env python3\nimport sys\n")
+    # process PATH points at launcher; child PATH at HERMES_HOME/bin
+    import os as _os
+    old = _os.environ.get("PATH")
+    try:
+        _os.environ["PATH"] = str(other)
+        assert hh._read_shebang(script) == str(launcher_py)
+        assert hh._read_shebang(script, path_env=str(home_bin)) == str(child_py)
+        assert hh._is_env_shebang(script)
+    finally:
+        if old is None: _os.environ.pop("PATH", None)
+        else: _os.environ["PATH"] = old
+
+
+def test_hermes_exec_argv_env_shebang_uses_child_path(tmp_path, monkeypatch):
+    """Boundary N1a: exec argv resolves env shebang on child PATH and returns that interpreter."""
+    home_bin = tmp_path / "hh" / "bin"; home_bin.mkdir(parents=True)
+    child_py = _write(home_bin / "python3", "#!/bin/sh\n")
+    script = _write(tmp_path / "bin" / "hermes", "#!/usr/bin/env python3\nimport sys\n")
+    env = {"PATH": str(home_bin), "HERMES_HOME": str(tmp_path / "hh")}
+    executable, full = hh.hermes_exec_argv(script, script, ["--help"], env)
+    assert executable == child_py
+    assert full[:2] == [child_py, script] and full[2:] == ["--help"]
+    # absolute shebang unchanged
+    abs_py = _write(tmp_path / "venv" / "python3", "#!/bin/sh\n")
+    script2 = _write(tmp_path / "bin2" / "hermes", "#!" + abs_py + "\nimport sys\n")
+    executable2, full2 = hh.hermes_exec_argv(script2, script2, [], env)
+    assert executable2 == script2 and full2 == [script2]
+
+
 def test_root_sticky_tmp_is_an_acceptable_parent(tmp_path):
     import stat
     st = os.stat("/tmp")
