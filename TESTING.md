@@ -26,7 +26,7 @@ From a checkout instead:
 
 ```sh
 git clone https://github.com/brianreborn/familia && cd familia
-python3 -m pip install --user pyyaml pytest      # plus gguf and "$(python3 scripts/cpu_level.py --numpy-spec)" for the LittleBit tests
+python3 -m pip install --user -r requirements-dev.txt      # plus gguf and "$(python3 scripts/cpu_level.py --numpy-spec)" for the LittleBit tests
 ```
 
 ## 2. Validator and tests
