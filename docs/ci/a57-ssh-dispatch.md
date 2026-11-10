@@ -19,13 +19,13 @@ then the self-hosted worker, then a hosted paste of the worker summary):
 | `smoke` | `[self-hosted, Linux, swarm-bench, host:miryam]` | Check out that development SHA (`persist-credentials: false`) and run `scripts/swarm/a57_ssh_dispatch.py --job python-compile --devices both`. |
 | `report` | `ubuntu-latest` | Paste the worker's status lines into the step summary. It does not SSH and does not reinterpret a failure as a pass. |
 
-The Actions step clears `A57_SSH_CI_SSH`, the local-allow and budget overrides, and `A57_SSH_CI_INVENTORY` before the script runs, so CI always uses the default inventory path and the real `ssh` binary. A manual rerun on the host may set those variables; the workflow does not.
+The Actions step clears `A57_SSH_CI_SSH`, `A57_SSH_CI_ALLOW_SSH_OVERRIDE`, `A57_SSH_CI_ALLOW_LOCAL`, `A57_SSH_CI_INVENTORY`, `A57_SSH_CI_BUDGET_SEC`, `A57_SSH_CI_KILL_GRACE_SEC`, `A57_SSH_CI_LOCK_WAIT_SEC`, `A57_SSH_CI_LOCK_DIR`, and `XDG_CONFIG_HOME` before the script runs, so CI always uses the default inventory path (`~/.config/familia/a57-ssh-ci.yaml`) and the real `ssh` binary. A manual rerun on the host may set those variables; the workflow does not. The step records the script's exit status as `rc=0; python3 ... || rc=$?` so a failure still writes the summary (`bash -e` would otherwise drop `rc=$?` and skip `GITHUB_OUTPUT`).
 
-The miryam listener is the one already started from `$HOME/actions-runner/swarm-run-loop.sh`. This repo does not install or restart that loop. The published registration script names its user unit `swarm-runner-<role>.service` (default role `swarm-bench`). Pickup depends on the **labels**, not on the unit name.
+The miryam listener is the one already started from `$HOME/actions-runner/swarm-run-loop.sh`. This repo does not install or restart that loop. The published registration script names its user unit `swarm-runner-<role>.service` (default role `swarm-bench`). Pickup depends on the **labels**, not on the unit name. The runner's Python needs PyYAML (`import yaml`) on the default path, not only in a user site that vanishes when `HOME` is overridden.
 
 Workflow concurrency is one run at a time (`cancel-in-progress: false`), so a second push waits instead of killing an open SSH session. Each phone also has its own non-blocking flock on the runner, and the remote smoke takes a non-blocking flock under `~/.cache` on that phone. A second overlap reports `busy`, not `pass`.
 
-Per phone, SSH uses `ConnectTimeout=10`, the process budget defaults to 35s and is capped at 60s, and a kill grace follows. The remote Python alarm is 20s. The job `timeout-minutes` is 8. On timeout the runner kills the SSH process group (TERM, then KILL). It does not signal other processes on the phone.
+Per phone, SSH uses `ConnectTimeout=10`, the process budget defaults to 35s and is capped at 60s, and a kill grace follows. The remote Python alarm is 20s (armed first, disarmed after compile). The job `timeout-minutes` is 8. On an in-script timeout the dispatcher kills that SSH process group (TERM, then KILL). If the dispatcher itself receives `SIGTERM`, `SIGINT`, or `SIGHUP` (including a cancelled Actions step), it kills every live SSH process group the same way, releases the runner locks, and exits 1 with `overall=fail reason=signal`. It does not signal other processes on the phone. Runner locks default to `~/.cache/familia/a57-ssh-locks`, not `$XDG_RUNTIME_DIR`, so a login-shell rerun and the runner service share one directory. `$A57_SSH_CI_LOCK_DIR` still overrides that path.
 
 ## Trust
 
@@ -45,9 +45,9 @@ Inventory path, first match:
 
 Copy [a57-ssh-ci.yaml.example](a57-ssh-ci.yaml.example). Allowed device keys are only `addr`, `port`, `user`, `known_hosts`, and `identity_file`. An extra key (including any SSH option override) refuses the device. Unknown top-level keys refuse the file.
 
-The client is `ssh -F /dev/null` with `BatchMode=yes`, `StrictHostKeyChecking=yes`, `UserKnownHostsFile` set to the pin, `GlobalKnownHostsFile=/dev/null`, `ProxyJump=none`, `ProxyCommand=none`, `IdentitiesOnly=yes`, `IdentityAgent=none`, `ForwardAgent=no`, `ControlMaster=no`, and `UpdateHostKeys=no`. The child environment is only `PATH`, `HOME`, `LANG`, and `LC_ALL`. Token, key, and password values from the runner are not copied. `GITHUB_TOKEN` still exists in the Actions job; it is not forwarded.
+The client is `ssh -F /dev/null` with `BatchMode=yes`, `StrictHostKeyChecking=yes`, `UserKnownHostsFile` set to the pin, `GlobalKnownHostsFile=/dev/null`, `ProxyJump=none`, `ProxyCommand=none`, `IdentitiesOnly=yes`, `IdentityAgent=none`, `ForwardAgent=no`, `ControlMaster=no`, and `UpdateHostKeys=no`. The child environment is only `PATH`, `HOME`, `LANG`, `LC_ALL`, and `TMPDIR`. `LANG` and `LC_ALL` are `C.UTF-8`. `TMPDIR` is passed through when it is an absolute existing directory; otherwise it falls back to `~/.cache`. Token, key, and password values from the runner are not copied. `GITHUB_TOKEN` still exists in the Actions job; it is not forwarded.
 
-Addresses must be private IPv4. Loopback, link-local, public, and documentation TEST-NET ranges are refused or treated as not configured, and SSH is not opened. The known_hosts file and the identity file must be regular files owned by the runner user. The identity mode must be `0600` or `0400`. The pin must not be group- or world-writable. Because the port is not 22, the pin entry has to be for `[addr]:port`.
+Addresses must be private IPv4. Loopback, link-local, public, and documentation TEST-NET ranges are refused or treated as not configured, and SSH is not opened. Two inventory entries may not share the same `(addr, port)`; that is `bad-inventory`. The inventory file itself must be a regular file (not a symlink), owned by the runner user, mode `0600` or `0400`. A looser mode or a foreign owner is `not-configured` (fail closed); SSH is not opened. The known_hosts file and the identity file must be regular files owned by the runner user. The identity mode must be `0600` or `0400`. The pin must not be group- or world-writable. Because the port is not 22, the pin entry has to be for `[addr]:port`.
 
 The remote command is a fixed `python3 -I` program on stdin. The only approved job is `python-compile`: print the Python version, compile `print(1)` in a temporary directory, delete that directory. It does not install packages, download models, open a socket, read an API key, or signal other processes. It does not call a familia HTTP API. A future job that does, including on loopback, still has to use the on-host instance key and must not receive that key from the forge.
 
@@ -65,7 +65,7 @@ Stdout is one header, one `device=<name> status=<status>` line per phone, and `o
 | `hostkey` | Pinned host key did not match. Checks are not relaxed |
 | `timeout` | The local budget expired and the SSH process group was killed |
 | `busy` | This phone's runner lock or remote lock was already held |
-| `not-configured` | Inventory missing, device missing, or still the example placeholders |
+| `not-configured` | Inventory missing, inventory file not `0600`/`0400` owned by the runner user, device missing, or still the example placeholders |
 | `refused` | Unsafe inventory or arguments. No SSH for that case |
 
 `overall=pass` and process exit 0 happen only when every selected device is `pass`. Exit 2 is a refusal before SSH. Any other non-pass is exit 1. An offline phone is `unavailable`, not a pass. A missing inventory is `not-configured`, not a pass.
