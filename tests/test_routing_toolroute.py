@@ -472,6 +472,88 @@ def test_hostile_headers_cannot_widen_tool_access(headers):
         L.close(); C.close()
 
 
+def _familia(headers):
+    return {k.lower(): v for k, v in headers.items() if k.lower().startswith("x-familia-")}
+
+
+def test_outbound_headers_strip_untrusted_x_familia_then_set_owned(monkeypatch):
+    """A named denylist is not enough: every X-Familia-* on the outbound dict is
+    dropped, then only Request-Id and (on a forward) Tool-Hop are set."""
+    real = EP.familia_auth.auth_headers
+
+    def with_hostile(headers=None, **kw):
+        h = real(headers, **kw)
+        h["X-Familia-Role"] = "coder"
+        h["X-Familia-Tool-Capable"] = "true"
+        h["X-Familia-Opt-Out"] = "1"
+        h["X-Familia-Tool-Hop"] = "0"
+        return h
+
+    monkeypatch.setattr(EP.familia_auth, "auth_headers", with_hostile)
+    incoming = {"Authorization": "Bearer caller-key", "X-Familia-Request-Id": "caller-1"}
+    hdrs = EP.outbound_headers(incoming, request_id="caller-1", hop=1)
+    familia = _familia(hdrs)
+    assert set(familia) == {"x-familia-request-id", "x-familia-tool-hop"}
+    assert familia["x-familia-tool-hop"] == "1"
+    assert familia["x-familia-request-id"] == "caller-1"
+    plain = _familia(EP.outbound_headers(incoming, request_id="caller-1"))
+    assert set(plain) == {"x-familia-request-id"}
+
+
+def test_forward_strips_inbound_x_familia_headers():
+    """End to end: client X-Familia-* do not reach the runtime, except the proxy's
+    own request id and hop. The hop URL is cleartext HTTP."""
+    seen = []; L, C = Up("light", seen), Up("coder", seen)
+    try:
+        srv, p = serve(g3(L.port, C.port))
+        try:
+            status, body = _post(p, headers={
+                "X-Familia-Role": "coder",
+                "X-Familia-Tool-Capable": "true",
+                "X-Familia-Opt-Out": "1",
+                "X-Familia-Request-Id": "caller-1",
+            })
+            assert status == 200 and body == "coder"
+            familia = _familia(C.headers[-1])
+            assert set(familia) == {"x-familia-request-id", "x-familia-tool-hop"}
+            assert familia["x-familia-tool-hop"] == "1"
+            assert familia["x-familia-request-id"] == "caller-1"
+        finally:
+            srv.shutdown()
+    finally:
+        L.close(); C.close()
+
+
+def _remote(bind, port=2):
+    g = g3(1, port, coder={"host": "p", "bind": bind})
+    g["hosts"]["p"] = {"addr": "peer.example"}
+    return g
+
+
+@pytest.mark.parametrize("bind", ["::1", "[::1]", "::ffff:127.0.0.1", "[::ffff:127.0.0.1]",
+                                   "localhost", "LOCALHOST", " localhost ", "127.0.0.1", "127.0.0.2"])
+def test_remote_loopback_bind_needs_tunnel(bind):
+    """node_url agrees with validate_graph._loopback, including non-IPv4 loopback."""
+    assert VG._loopback(bind) is True
+    assert EP.node_url(_remote(bind), "coder", "h") is None
+
+
+@pytest.mark.parametrize("bind", ["0.0.0.0", "::", "lan.example", "127.evil.example"])
+def test_remote_non_loopback_bind_is_cleartext_http(bind):
+    """Not loopback (including a 127-prefixed name) is dialed at the host, over HTTP."""
+    assert VG._loopback(bind) is False
+    url = EP.node_url(_remote(bind), "coder", "h")
+    assert url == "http://peer.example:2/v1"
+
+
+def test_local_node_url_is_cleartext_http_and_missing_bind_needs_tunnel():
+    g = g3(9, 8)
+    assert EP.node_url(g, "coder", "h") == "http://127.0.0.1:8/v1"
+    remote = _remote("0.0.0.0")
+    del remote["nodes"]["coder"]["bind"]
+    assert EP.node_url(remote, "coder", "h") is None
+
+
 def test_hostile_hop_zero_cannot_reset_and_widen():
     """A client hop of 0 is a first hop (allowed); hop of 1 still refuses. Neither
     grants tools a graph opt-out would deny."""

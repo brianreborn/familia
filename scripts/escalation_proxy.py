@@ -171,12 +171,8 @@ SESSION_HEADER = "X-Familia-Session"
 # bypass). It must never widen tool access. MAX_TOOL_HOPS=1 is one graph hop.
 TOOL_HOP_HEADER = "X-Familia-Tool-Hop"
 MAX_TOOL_HOPS = 1
-# Client-supplied headers that must never be treated as graph policy overrides.
-# They are ignored by tool_target / rewrite (policy comes only from the graph).
-POLICY_OVERRIDE_HEADERS = frozenset({
-    "x-familia-role", "x-familia-server-tools", "x-familia-tool-policy",
-    "x-familia-tool-route", "x-familia-node", "x-familia-bind", "x-familia-tools",
-})
+# Inbound X-Familia-* are untrusted (policy comes only from the graph). They are
+# stripped on the way upstream; the proxy then sets only the headers it owns.
 
 
 def tool_hops_from(headers):
@@ -192,12 +188,36 @@ def tool_hops_from(headers):
         return MAX_TOOL_HOPS
     return n if n >= 0 else MAX_TOOL_HOPS
 
+
+def outbound_headers(incoming, *, request_id, hop=None):
+    """Headers for one upstream hop. Cleartext HTTP; no inbound X-Familia-* survive.
+
+    Strips every X-Familia-* (a named denylist would miss the next policy header),
+    then sets X-Familia-Request-Id (the caller's id when present, else a new one;
+    R3 dedupe) and, only on a real tool forward, X-Familia-Tool-Hop.
+    """
+    hdrs = familia_auth.auth_headers({"Content-Type": "application/json"}, incoming=incoming, required=True)
+    for k in [k for k in hdrs if k.lower().startswith("x-familia-")]:
+        del hdrs[k]
+    if request_id:
+        hdrs["X-Familia-Request-Id"] = request_id
+    if hop is not None:
+        hdrs[TOOL_HOP_HEADER] = str(hop)
+    return hdrs
+
+
 def node_url(g, name, local_host):
-    """Base URL for a node. Remote nodes need a non-loopback bind (else None: needs a tunnel)."""
+    """Base URL for a node. Always cleartext HTTP: this hop is not TLS.
+
+    Same-host dials the loopback interface. A remote node uses validate_graph._loopback
+    (not an IPv4-prefix test): a loopback bind returns None and needs a tunnel; any
+    other bind is dialed at the host address, still over HTTP.
+    """
     n = g["nodes"][name]
     if n["host"] == local_host: return f"http://127.0.0.1:{n['port']}/v1"
     addr = (g["hosts"].get(n["host"]) or {}).get("addr")
-    if n.get("bind", "127.0.0.1").startswith("127.") or not addr: return None
+    import validate_graph as VG
+    if VG._loopback(n.get("bind", "127.0.0.1")) or not addr: return None
     return f"http://{addr}:{n['port']}/v1"
 
 def alias_for(g, name):
@@ -488,7 +508,9 @@ def make_handler(pool, log=sys.stderr):
                 # alias, not the body rewritten (alias, handoff) for the failed node.
                 body = dict(orig, model=_alias); raw = json.dumps(body).encode()
             target = url.rsplit("/v1", 1)[0] + self.path
-            req = urllib.request.Request(target, data=raw, method=method, headers=familia_auth.auth_headers({"Content-Type": "application/json"}, incoming=self.headers, required=True))
+            rid = self.headers.get("X-Familia-Request-Id") or uuid.uuid4().hex
+            req = urllib.request.Request(target, data=raw, method=method,
+                                          headers=outbound_headers(self.headers, request_id=rid))
             try:
                 r = self._urlopen(req, timeout=UPSTREAM_TIMEOUT_S)
             except ClientGone:
@@ -573,21 +595,15 @@ def make_handler(pool, log=sys.stderr):
                     if url is None:   # tool_route target unreachable / re-entry: fail closed (#251)
                         self._502(esc.tool_note); return deferred_tool_note
                 target = url.rsplit("/v1", 1)[0] + self.path
+                self._rid = self.headers.get("X-Familia-Request-Id") or uuid.uuid4().hex
+                hop = (getattr(self, "_hops", 0) + 1) if getattr(esc, "tool_fwd", None) else None
                 try:
-                    hdrs = familia_auth.auth_headers({"Content-Type": "application/json"}, incoming=self.headers, required=True)
+                    hdrs = outbound_headers(self.headers, request_id=self._rid, hop=hop)
                 except familia_auth.MissingKey:
                     # fail closed: never forward an unauthenticated request upstream
                     self.send_response(401); self.send_header("Content-Type", "application/json"); self.end_headers()
                     self.wfile.write(b'{"error":{"message":"no API key for upstream","code":401}}')
                     return deferred_tool_note
-                self._rid = self.headers.get("X-Familia-Request-Id") or uuid.uuid4().hex
-                hdrs["X-Familia-Request-Id"] = self._rid  # R3: lets upstream/caller dedupe
-                # Never copy client policy-override headers; set hop only when we actually forward.
-                for k in list(hdrs):
-                    if k.lower() in POLICY_OVERRIDE_HEADERS or k.lower() == TOOL_HOP_HEADER.lower():
-                        hdrs.pop(k, None)
-                if getattr(esc, "tool_fwd", None):
-                    hdrs[TOOL_HOP_HEADER] = str(getattr(self, "_hops", 0) + 1)
                 req = urllib.request.Request(target, data=raw, method=method, headers=hdrs)
                 try:
                     r = self._urlopen(req, timeout=UPSTREAM_TIMEOUT_S)
