@@ -36,7 +36,11 @@ class Nexus:
                   "-o", f"StrictHostKeyChecking={s.t['host_key_policy']}", "-o", "ConnectTimeout=10"]
         if os.environ.get("NEXUS_KNOWN_HOSTS"): s.opts += ["-o", "UserKnownHostsFile=" + os.environ["NEXUS_KNOWN_HOSTS"]]
         s.dest = f"{s.hub['user']}@{s.hub['addr']}"
-    def r(s, path): return path.replace("~", "$HOME", 1) if path.startswith("~") else shlex.quote(path)
+    def r(s, path):
+        """Remote shell path: keep $HOME expandable for a leading ~, quote the rest (#346)."""
+        if path.startswith("~"):
+            return '"$HOME"' + shlex.quote(path[1:])
+        return shlex.quote(path)
     def ssh(s, cmd, inp=None):
         p = subprocess.run(["ssh", *s.opts, s.dest, cmd], input=inp, capture_output=True, text=True)
         if p.returncode: raise SystemExit(f"nexus: ssh {s.dest} failed ({p.returncode}): {p.stderr.strip()}")

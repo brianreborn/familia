@@ -126,12 +126,25 @@ def _nothing_sent(e):
 
 def tool_target(g, name):
     """Validated graph `tool_route` target for `name` (validate_graph.tool_route), else None.
+
+    Agrees with Hermes route_tools and tool_policy (#340):
+    - a directly tool-capable source stays direct (no forward), even if it also has tool_route;
+    - an explicit server_tools opt-out (or any empty tool_policy) on the source blocks forward.
     Fails safe to None (no forward) on any graph shape the validator cannot evaluate; the
     validator error is logged, not swallowed."""
     if not (((g.get("nodes") or {}).get(name) or {}).get("tool_route")):
         return None
     try:
         import validate_graph as VG
+        n = (g.get("nodes") or {}).get(name) or {}
+        # BUG-TR-1: explicit server_tools opt-out on the source blocks forward (TOOLS-006).
+        if "server_tools" in n and VG.tool_policy(g, name) == []:
+            return None
+        # BUG-TR-2: a source that Hermes would treat as direct (loopback default grant, or
+        # an explicit server_tools grant) stays direct even if it also has tool_route.
+        # Off-loopback without server_tools is not direct (#345) and may still forward.
+        if VG.tool_capable(g, name) and ("server_tools" in n or VG._loopback(n.get("bind"))):
+            return None
         return VG.tool_route(g, name)
     except Exception as e:
         print(f"[familia] tool_route for {name}: validate_graph error ({type(e).__name__}: {e}); not forwarding",

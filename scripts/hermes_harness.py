@@ -1082,10 +1082,17 @@ def route_tools(g, agent):
         return {"mode": "none", "node": None, "via": None, "reason": "tool-free node"}
     if vg.tool_capable(g, name):
         # Explicit server_tools opt-out (TOOLS-006): present key whose policy is [] → none.
-        # Missing key stays direct even if policy would be [] for other reasons (e.g. off-loopback).
-        if "server_tools" in n and vg.tool_policy(g, name) == []:
+        # Loopback default, or an explicit server_tools grant, stays direct.
+        # Off-loopback with no server_tools is not direct (#345 / TOOLS-008): fall through to
+        # tool_route / discovery (TOOLS-009); if neither applies, none.
+        opted = "server_tools" in n
+        if opted and vg.tool_policy(g, name) == []:
             return {"mode": "none", "node": None, "via": None, "reason": "server_tools opt-out"}
-        return {"mode": "direct", "node": name, "via": None}
+        if opted or vg._loopback(n.get("bind")):
+            return {"mode": "direct", "node": name, "via": None}
+        off_loopback_no_st = True
+    else:
+        off_loopback_no_st = False
     # Explicit one-hop from graph (#243). Reject fail-closed and policy-[] targets here too
     # (vg.tool_route already filters policy-[], but keep the check so a [] grant is never used).
     t = vg.tool_route(g, name)
@@ -1102,7 +1109,9 @@ def route_tools(g, agent):
         for k in sorted(nodes):
             if nodes[k].get("host") in peers and _discovery_ok(g, name, k):
                 return {"mode": "nexus", "node": k, "via": mesh}
-    return {"mode": "none", "node": None, "via": None, "reason": "no tool-capable node reachable"}
+    reason = ("off-loopback without server_tools" if off_loopback_no_st
+              else "no tool-capable node reachable")
+    return {"mode": "none", "node": None, "via": None, "reason": reason}
 
 
 def node_base(g, k, from_host):
