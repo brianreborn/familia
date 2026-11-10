@@ -11,7 +11,11 @@ def _tree(tmp_path, binpath):
     s.mkdir()
     shutil.copy(os.path.join(ROOT, "scripts", "serve.sh"), s / "serve.sh")
     shutil.copytree(os.path.join(ROOT, "lib"), tmp_path / "lib")
-    (s / "validate_graph.py").write_text("print(%r)\n" % (binpath + " -m " + str(tmp_path / "m.gguf") + " -ngl 0"))
+    for _n in ("bind_auth_guard.py", "familia_auth.py"):
+        shutil.copy(os.path.join(ROOT, "scripts", _n), s / _n)
+    kf = tmp_path / "api-keys"; kf.write_text("k" * 32); kf.chmod(0o600)
+    (s / "validate_graph.py").write_text(
+        "print(%r)\n" % (binpath + " -m " + str(tmp_path / "m.gguf") + " -ngl 0 --api-key-file " + str(kf)))
     (s / "licenses.py").write_text("")
     (tmp_path / "m.gguf").write_bytes(b"GGUF")
     (tmp_path / "graph.yaml").write_text("")

@@ -10,6 +10,8 @@ rem   FAMILIA_RUNTIME    dir holding llama-server.exe (default: %~dp0..\..\runti
 rem   FAMILIA_PORT       default 9941      FAMILIA_BIND  default 127.0.0.1
 rem   FAMILIA_CTX        default 4096      FAMILIA_THREADS default 2
 rem   FAMILIA_KV         default q8_0      FAMILIA_EXTRA  extra llama-server args
+rem   FAMILIA_API_KEY_FILE  0600 key file (default: %APPDATA%\familia\instances\<port>\api-keys)
+rem API key is required on every bind, loopback included (DESIGN.md Security).
 rem Nothing here edits the graph; values should match the node in graph.yaml.
 setlocal EnableExtensions
 
@@ -70,8 +72,25 @@ if not exist "%BIN%" (
 
 if not exist "%FAMILIA_MODELS%\..\logs" mkdir "%FAMILIA_MODELS%\..\logs" >nul 2>&1
 set "LOG=%FAMILIA_MODELS%\..\logs\llama-server-%FAMILIA_PORT%.log"
+if not defined FAMILIA_API_KEY_FILE (
+  if defined APPDATA (
+    set "FAMILIA_API_KEY_FILE=%APPDATA%\familia\instances\%FAMILIA_PORT%\api-keys"
+  ) else (
+    set "FAMILIA_API_KEY_FILE=%USERPROFILE%\familia\instances\%FAMILIA_PORT%\api-keys"
+  )
+)
+where python >nul 2>&1
+if errorlevel 1 (
+  echo familia: python not found, so the API key file cannot be created or checked. Install Python 3. 1>&2
+  exit /b 2
+)
+python "%~dp0..\bind_auth_guard.py" --ensure -- "%BIN%" -m "%MODEL%" --host %FAMILIA_BIND% --port %FAMILIA_PORT% --api-key-file "%FAMILIA_API_KEY_FILE%" %FAMILIA_EXTRA%
+if errorlevel 1 (
+  echo familia: auth guard refused this launch (API key required on every bind, loopback included) 1>&2
+  exit /b 2
+)
 echo familia: %BIN% -m "%MODEL%" on %FAMILIA_BIND%:%FAMILIA_PORT% (log %LOG%)
-"%BIN%" -m "%MODEL%" --host %FAMILIA_BIND% --port %FAMILIA_PORT% -c %FAMILIA_CTX% -t %FAMILIA_THREADS% -np 1 -ctk %FAMILIA_KV% -ctv %FAMILIA_KV% %FAMILIA_EXTRA% >> "%LOG%" 2>&1
+"%BIN%" -m "%MODEL%" --host %FAMILIA_BIND% --port %FAMILIA_PORT% -c %FAMILIA_CTX% -t %FAMILIA_THREADS% -np 1 -ctk %FAMILIA_KV% -ctv %FAMILIA_KV% --api-key-file "%FAMILIA_API_KEY_FILE%" %FAMILIA_EXTRA% >> "%LOG%" 2>&1
 exit /b %ERRORLEVEL%
 
 :help

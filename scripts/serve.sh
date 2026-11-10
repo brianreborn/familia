@@ -4,6 +4,8 @@
 # RECOMMENDED model parameter (#51, docs/model-params.md) and exits 1 when one cannot be met;
 # serve.sh then refuses to start. An embedding node must carry --embeddings and --pooling.
 # The licenses of the graph selection must be accepted first (scripts/licenses.py gate).
+# Auth: --api-key-file (0600) is required on every bind, loopback included
+# (DESIGN.md Security; scripts/bind_auth_guard.py refuses a launch without it).
 # Memory cap (docs/ram-safety.md): FAMILIA_MEMCAP=1 wraps the server in a
 # `systemd-run --user --scope` with a headroom MemoryMax (swap allowed) and sets oom_score_adj 800,
 # so on memory pressure the model dies, not the desktop. Default: on for miryam, off elsewhere.
@@ -13,7 +15,7 @@
 # (GGML_VK_VISIBLE_DEVICES=, LESSONS-LEARNED L-vkshm). Any other failure is returned as is.
 set -eu
 case "${1:-}" in
-  ""|-h|--help) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; [ -n "${1:-}" ] && exit 0; exit 2 ;;
+  ""|-h|--help) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; [ -n "${1:-}" ] && exit 0; exit 2 ;;
 esac
 node="$1"; shift
 here="$(cd "$(dirname "$0")/.." && pwd)"
@@ -147,6 +149,18 @@ if printf '%s\n' "$args" | grep -q -E -e '(^|[[:space:]])--embeddings?([[:space:
     exit 1
   fi
 fi
+# Auth guard (DESIGN.md Security, CFG-CRED-009): llama-server is not a localhost-without-key
+# exception. The final argv must include a 0600 --api-key-file (or --api-key).
+auth_guard() {
+  if [ ! -f "$here/scripts/bind_auth_guard.py" ]; then
+    say "scripts/bind_auth_guard.py not found; API key guard is required; not starting $node"
+    exit 1
+  fi
+  if ! python3 "$here/scripts/bind_auth_guard.py" --ensure -- "$@"; then
+    say "auth guard refused node $node (API key required on every bind, loopback included); not starting"
+    exit 2
+  fi
+}
 # Vulkan builds allocate ~1.83 GB of host buffers in shmem even with -ngl 0, counted
 # against the memcap scope (LESSONS-LEARNED L-vkshm). With no GPU layers, hide Vulkan unless set.
 case " $args " in *" -ngl 0 "*)
@@ -169,6 +183,7 @@ if [ "$FAMILIA_MEMCAP" = 1 ] && command -v systemd-run >/dev/null 2>&1; then
     exit 69
   fi
   eval "set -- $args $extra"
+  auth_guard "$@"
   exec systemd-run --user --scope --quiet --unit="familia-$node-$$" \
     ${FAMILIA_MEMHIGH:+-p MemoryHigh="$FAMILIA_MEMHIGH"} -p MemoryMax="$FAMILIA_MEMMAX" \
     -- sh -c 'echo ${FAMILIA_OOM_ADJ:-800} > /proc/self/oom_score_adj; exec "$@"' sh "$@"
@@ -187,6 +202,7 @@ case "$log" in /*) say "logs: $log" ;; *) say "logs: $PWD/$log" ;; esac
 rc=0
 # shellcheck disable=SC2086
 eval "set -- $args --log-file \"\$log\" $extra"
+auth_guard "$@"
 "$@" || rc=$?
 [ "$rc" -eq 0 ] && exit 0
 # Retry on the CPU only for a Vulkan failure of a GPU launch that was not stopped by a signal.
@@ -197,6 +213,7 @@ if [ "${ngl:-0}" -gt 0 ] && [ "$rc" -lt 128 ] && \
   case "$log" in /*) say "logs: $log.cpu" ;; *) say "logs: $PWD/$log.cpu" ;; esac
   # shellcheck disable=SC2086
   eval "set -- $safe_args --log-file \"\$log.cpu\" $extra"
+  auth_guard "$@"
   exec "$@"
 fi
 exit "$rc"

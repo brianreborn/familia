@@ -24,6 +24,7 @@ def test_scripts_shape():
     bat = open(os.path.join(ROOT, "scripts/windows/start.bat"), newline="").read()
     assert "E:\\temp\\familia\\models" in bat and "%USERPROFILE%\\familia\\models" in bat
     assert "127.0.0.1" in bat and "AVX" in bat
+    assert "--api-key-file" in bat and "bind_auth_guard.py" in bat
     ps = open(os.path.join(ROOT, "scripts/windows/install-task.ps1")).read()
     assert "SupportsShouldProcess" in ps and "-AtLogOn" in ps and "RunLevel Limited" in ps
     # opt-in: without -Install the script returns before registering

@@ -148,6 +148,36 @@ The agent, the router, `/local`, `/remote`, and every tool stay on step 1. They 
 
 Windows uses the same order. `SeLockMemoryPrivilege` is granted to the user for the one raise, and the process does not remain an administrator. Android is not rooted. A rooted phone still uses step 2 and then drops.
 
+## Security
+
+### API keys are the default for network listeners
+
+Recorded from Brian on a live voice call, 10 Nov 2026, America/Los_Angeles, and baked into this document the same day.
+
+Any service that listens on the network must require an API key. The default launch path is `--host` plus `--api-key-file` pointing at a mode 0600 file kept outside the repo. The key itself is never on argv, never in `graph.yaml`, and never committed. Callers send `Authorization: Bearer <key>` or `X-Api-Key`. See [docs/api-key-design.md](docs/api-key-design.md) and [docs/config/credentials.md](docs/config/credentials.md) (CFG-CRED-009, CFG-GRAPH-NODES-112).
+
+Localhost-only binding without a key is allowed only for the named local-development-tool exceptions listed below, each with a reason. If a tool is not on this list, it needs a key even on loopback. Adding a new exception requires an update to this list in the same PR, with a reason. A standing service is never an exception. A non-loopback bind without a key is always refused.
+
+familia llama-server nodes, the installer launchers (`familia-start` on Linux, Termux, and FreeBSD), `scripts/serve.sh`, `scripts/windows/start.bat`, and `scripts/graph_router.py` (unless `--no-auth`) are not exceptions. They require a key on every bind, including loopback: other local users and processes can reach 127.0.0.1. That matches the existing installer convention (F-10, #290, #373). `scripts/bind_auth_guard.py` enforces this on the final argv before `serve.sh` or `start.bat` execs the server.
+
+#### Named local-development-tool exceptions (localhost only, no key)
+
+1. `scripts/graph_router.py --no-auth`, and unit tests that construct the router with `api_key=None`. Reason: short-lived loopback test and local-dev servers; the process hard-codes 127.0.0.1, and `--no-auth` is an explicit opt-out. `/health` is public even when auth is on.
+2. `scripts/c2c/loopback_test.sh`. Reason: a temporary pair of llama-servers on 127.0.0.1 for a KV-ship self-test; both are stopped when the script ends.
+3. Short-lived benchmark helpers that spawn llama-server on 127.0.0.1 for one timed run and then exit: `scripts/perf/spec_bench.py`, `scripts/launch_matrix.py`. Reason: local measurement tools, not standing services; they must not bind a non-loopback address.
+
+This document is the starting point for new designs, service templates, and graph recipes. An audit should not have to catch an open listener later.
+
+### Run on spare CPU of Grok Bot worker hosts
+
+Recorded from Brian on a live voice call, 10 Nov 2026, 3:42 PM, America/Los_Angeles.
+
+Familia components and workers run on the spare CPU of Grok Bot's own worker hosts: miryam, angel-bsd, the Galaxy A57 phones, the box, and other Grok Bot worker hosts. They do not run on personal computers in general. This is a security requirement as well as a quota saver. Brian's stated rationale is that it reduces exposure to timing side-channel attacks.
+
+The rule applies to every decision about where a workload runs, within each host's load limits: one job per phone, and miryam's memory gate (see #29). Host addresses stay in the untracked hosts overlay, never in this document.
+
+Brian's own local machines may still take part in the swarm as peers (see docs/swarm-worker-requirements.md, Coordinator-free pull swarm). That does not move Grok Bot worker processes onto personal computers in general.
+
 ## Detached daemon mode and session persistence
 
 On Android / Termux and remote machines, interactive terminal shells can be closed or reclaimed by the OS. Processes can run detached:

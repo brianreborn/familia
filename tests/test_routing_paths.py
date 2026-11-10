@@ -101,6 +101,9 @@ def serve_tree(tmp_path):
     t = tmp_path / "repo"; (t / "scripts").mkdir(parents=True); (t / "lib").mkdir()
     shutil.copy(os.path.join(ROOT, "scripts", "serve.sh"), t / "scripts" / "serve.sh")
     shutil.copy(os.path.join(ROOT, "lib", "msg.mk"), t / "lib" / "msg.mk")
+    for _n in ("bind_auth_guard.py", "familia_auth.py"):
+        shutil.copy(os.path.join(ROOT, "scripts", _n), t / "scripts" / _n)
+    kf = tmp_path / "api-keys"; kf.write_text("k" * 32); kf.chmod(0o600)
     (t / "scripts" / "licenses.py").write_text("raise SystemExit(0)\n")
     rt = tmp_path / "rt dir ü" / "llama-server"; rt.parent.mkdir(); rt.write_text(STUB_RUNTIME); rt.chmod(0o755)
     out = tmp_path / "argv.json"
@@ -110,7 +113,7 @@ def serve_tree(tmp_path):
 
     def run(model_name, extra=(), ngl="0", vulkan_fail=False, cwd=None):
         model = tmp_path / "models" / model_name; model.parent.mkdir(exist_ok=True); model.write_bytes(b"GGUF")
-        argv = [str(rt), "-m", str(model), "-ngl", ngl, "--alias", "a b"]
+        argv = [str(rt), "-m", str(model), "-ngl", ngl, "--alias", "a b", "--api-key-file", str(kf)]
         (t / "scripts" / "validate_graph.py").write_text(
             "import shlex\nprint(shlex.join(%r))\n" % (argv,))
         e = dict(env, **({"STUB_VULKAN_FAIL": "1"} if vulkan_fail else {}))

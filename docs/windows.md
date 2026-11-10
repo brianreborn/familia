@@ -15,7 +15,11 @@ set FAMILIA_MODEL=your-model.gguf
 scripts\windows\start.bat
 ```
 Binds 127.0.0.1:9941 by default; log in `<models>\..\logs\`. Variables are listed at the top of `start.bat`;
-keep them equal to the node in `graph.yaml`.
+keep them equal to the node in `graph.yaml`. An API key is required on every bind, including
+loopback (DESIGN.md Security): `start.bat` passes `--api-key-file` from
+`%APPDATA%\familia\instances\<port>\api-keys` (mode 0600, created once) and runs
+`scripts\bind_auth_guard.py` before exec. Set `FAMILIA_API_KEY_FILE` to override the path.
+Python 3 is required for the guard.
 
 ## Autostart at logon (opt-in)
 ```
