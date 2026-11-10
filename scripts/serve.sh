@@ -75,12 +75,41 @@ if [ -n "$model" ] && [ ! -f "$model" ]; then
   exit 1
 fi
 # The runtime binary must exist too: a pinned runtime that was never fetched used to end
-# in a bare "not found" and rc 127 (#84).
+# in a bare "not found" and rc 127 (#84). When the missing path is a linux x64 CPU
+# llama-server pack, try a same-version native CPU build, then the b11669 CPU prebuilt.
 eval "set -- $args"; bin="$1"
 case "$bin" in */*)
   if [ ! -x "$bin" ]; then
-    say "runtime $bin of node $node is missing or not executable; fetch the pinned runtime (sh scripts/configure.sh, or scripts/sync_pins.py) and check runtimes.*.bin in graph.yaml; not starting"
-    exit 1
+    _fb=""
+    case "$bin" in
+      */llama-b[0-9]*-linux-x64-cpu/llama-server|*/llama-b[0-9]*-linux-x64-cpu/llama-server.exe)
+        _pack="${bin%/*}"
+        _dir="${_pack##*/}"
+        _tag="${_dir#llama-}"
+        _tag="${_tag%-linux-x64-cpu}"
+        for _cand in \
+          "$HOME/code-bootstraps-llama.cpp/build-linux-x86_64-cpu-${_tag}/bin/llama-server" \
+          "$here/code-bootstraps-llama.cpp/build-linux-x86_64-cpu-${_tag}/bin/llama-server" \
+          "$here/code-bootstraps-llama.cpp/bin/llama-b11669-linux-x64-cpu/llama-server"
+        do
+          if [ -x "$_cand" ]; then _fb="$_cand"; break; fi
+        done
+        unset _pack _dir _tag _cand
+        ;;
+    esac
+    if [ -n "$_fb" ]; then
+      say "runtime $bin of node $node is missing or not executable; using $_fb"
+      eval "set -- $args"
+      shift
+      args="$(q "$_fb")"
+      for _a in "$@"; do args="$args $(q "$_a")"; done
+      bin="$_fb"
+      unset _fb _a
+    else
+      unset _fb
+      say "runtime $bin of node $node is missing or not executable; fetch the pinned runtime (sh scripts/configure.sh, or scripts/sync_pins.py) and check runtimes.*.bin in graph.yaml; not starting"
+      exit 1
+    fi
   fi ;;
 esac
 # Pack atomicity: refuse bin/lib soname skew (docs/platform/gpu-path-layout.md).
