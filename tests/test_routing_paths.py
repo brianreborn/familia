@@ -177,3 +177,15 @@ def test_windows_style_paths_split_cleanly(p, parts):
     """%USERPROFILE% with spaces / non-ASCII and UNC paths keep drive and file name intact."""
     drive, rest = ntpath.splitdrive(p)
     assert drive == parts[0] and ntpath.basename(rest) == parts[1]
+
+
+@pytest.mark.parametrize("name", ["star*.gguf", "q?.gguf", "[ab].gguf", "*", "glob [*?] mix.gguf"])
+def test_serve_sh_does_not_glob_expand_paths(serve_tree, tmp_path, name):
+    """Unquoted $args used to pathname-expand * ? [..] against the cwd; "$@" must not."""
+    cwd = tmp_path / "models"; cwd.mkdir(exist_ok=True)
+    for decoy in ("starX.gguf", "qZ.gguf", "a.gguf", "b.gguf", "zzz"):
+        (cwd / decoy).write_bytes(b"")
+    argv, got = serve_tree(name, extra=["*", "--x=[ab]"], cwd=cwd)
+    i = got.index("--log-file")
+    assert got[:i] == argv[1:]
+    assert got[i + 2:] == ["*", "--x=[ab]"]
