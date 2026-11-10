@@ -1,0 +1,41 @@
+# Minimal capability-label smoke for the A57 Termux self-hosted runners.
+# Dispatch-only; never pull_request. Routes on capabilities, not host names.
+name: A57 capability smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      family:
+        description: model-family capability label
+        required: true
+        type: choice
+        options: [qwen, lfm]
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    timeout-minutes: 15
+    runs-on:
+      - self-hosted
+      - android
+      - arm64
+      - a57
+      - termux
+      - ram-7g
+      - ${{ inputs.family }}
+    steps:
+      - name: identity
+        run: |
+          set -eu
+          echo "stamp user=$(id -un) uid=$(id -u) pwd=$(pwd)"
+          echo "uname=$(uname -a)"
+          echo "runner_name=${RUNNER_NAME:-} runner_os=${RUNNER_OS:-} runner_arch=${RUNNER_ARCH:-}"
+          if command -v getprop >/dev/null 2>&1; then
+            echo "model=$(getprop ro.product.model)"
+          fi
+          # Confirm this is the phone ubuntu proot, not a hosted or Linux laptop runner
+          echo "os_release=$(. /etc/os-release 2>/dev/null && echo ${ID:-unknown}-${VERSION_ID:-unknown})"
+          test -d /phone-home/actions-runner && echo "phone_home_bind=yes" || echo "phone_home_bind=no"
+          echo "ok"
