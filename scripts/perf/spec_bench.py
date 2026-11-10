@@ -49,8 +49,19 @@ def _mem_max_mib(mem_max):
         return BG.headroom_cap_mib() or 4096
 
 
+def extra_overrides_host(extra):
+    """True if extra would replace the forced loopback --host (DESIGN.md Security)."""
+    for t in extra or []:
+        t = str(t)
+        if t == "--host" or t.startswith("--host="):
+            return True
+    return False
+
+
 def run(a, name, extra, log):
     import oom_adj  # noqa: E402
+    if extra_overrides_host(extra):
+        return {"config": name, "args": list(extra), "error": "refusing --host in extra; spec_bench binds 127.0.0.1 only"}
     args = [a.bin, "-m", a.target, "-c", str(a.ctx), "-t", str(a.threads), "-ngl", "0", "-np", "1", "--port", str(a.port),
             "--host", "127.0.0.1", "-lm", "none", "--jinja", "-fa", "on"] + extra
     if hasattr(BG, "preflight"): probs, args = BG.preflight(args, BG.summarize(BG.read_gguf(a.target)))

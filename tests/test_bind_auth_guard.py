@@ -63,11 +63,14 @@ def test_ensure_creates_missing_0600_file(tmp_path):
     assert ok is True and open(kf).read() == first  # never rotated
 
 
-def test_inline_api_key_satisfies_rule(tmp_path):
+def test_inline_api_key_on_argv_is_refused(tmp_path):
+    kf = _key(tmp_path)
     ok, msg = g.check(["bin", "--host", "0.0.0.0", "--api-key", "secret-token"])
-    assert ok is True, msg
+    assert ok is False and "--api-key" in msg and "argv" in msg
+    ok, msg = g.check(["bin", "--api-key-file", kf, "--api-key", "secret-token"])
+    assert ok is False and "--api-key" in msg
     ok, msg = g.check(["bin", "--host", "0.0.0.0", "--api-key="])
-    assert ok is False
+    assert ok is False and "--api-key" in msg
 
 
 def test_main_exits_2_on_refuse(tmp_path, capsys):

@@ -166,6 +166,8 @@ familia llama-server nodes, the installer launchers (`familia-start` on Linux, T
 2. `scripts/c2c/loopback_test.sh`. Reason: a temporary pair of llama-servers on 127.0.0.1 for a KV-ship self-test; both are stopped when the script ends.
 3. Short-lived benchmark helpers that spawn llama-server on 127.0.0.1 for one timed run and then exit: `scripts/perf/spec_bench.py`, `scripts/launch_matrix.py`. Reason: local measurement tools, not standing services; they must not bind a non-loopback address.
 
+These two standing listeners are known gaps in CFG-CRED-009, not exceptions: `scripts/escalation_proxy.py` binds loopback with no caller auth and injects the instance key into requests that arrived with none ([#415](https://github.com/brianreborn/familia/issues/415)); `scripts/bt/tracker.py` binds a LAN address with no key ([#416](https://github.com/brianreborn/familia/issues/416)).
+
 This document is the starting point for new designs, service templates, and graph recipes. An audit should not have to catch an open listener later.
 
 ### Run on spare CPU of Grok Bot worker hosts

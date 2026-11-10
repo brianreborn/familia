@@ -5,7 +5,7 @@ DESIGN.md Security / CFG-CRED-009: a service listening on the network must
 require an API key. familia llama-server launches are not a localhost-without-key
 exception: a key is required on every bind, loopback included, matching the
 Linux/Termux/FreeBSD installer convention (F-10). The key is passed as
---api-key-file (mode 0600, never the key on argv).
+--api-key-file (mode 0600). --api-key on argv is refused (it shows in ps).
 
 Usage:
   python3 scripts/bind_auth_guard.py [--ensure] -- <argv>
@@ -90,21 +90,23 @@ def check(argv, ensure=False):
     """Validate argv. Return (ok: bool, message: str)."""
     import familia_auth
     host, key_file, api_key = parse_host_and_key(argv)
+    args = list(argv)
+    if args and not str(args[0]).startswith("-"):
+        args = args[1:]
+    if any(str(a) == "--api-key" or str(a).startswith("--api-key=") for a in args):
+        return False, (
+            "--api-key puts the key on argv (visible in ps); use --api-key-file "
+            "with a 0600 file instead"
+        )
     if key_file and ensure:
         try:
             familia_auth.load_or_create_key_file(key_file)
         except OSError as e:
             return False, "cannot create API key file %s (%s)" % (key_file, e.__class__.__name__)
-    if (api_key or "").strip():
-        if key_file:
-            err = _key_file_error(key_file)
-            if err:
-                return False, err
-        return True, "ok"
     if not key_file:
         return False, (
             "API key required on every bind (loopback included); "
-            "argv has no --api-key-file or --api-key (host %s)" % (host or "?")
+            "argv has no --api-key-file (host %s)" % (host or "?")
         )
     err = _key_file_error(key_file)
     if err:
