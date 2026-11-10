@@ -154,7 +154,8 @@ def ask_consent(provider, yes_cloud):
 def ui_dump(sh):
     import secrets
     dump = f"{DUMP_DIR}/familia-ui.{secrets.token_hex(8)}.xml"
-    out = sh.run(f"uiautomator dump {dump} >/dev/null && cat {dump}; rm -f {dump}", timeout=30)
+    q = shlex.quote(dump)
+    out = sh.run(f"uiautomator dump {q} >/dev/null && cat {q}; rm -f {q}", timeout=30)
     return out or ""
 
 
