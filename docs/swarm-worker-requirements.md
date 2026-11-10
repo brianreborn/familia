@@ -266,13 +266,17 @@ not runnable just because it exists.
    or in the issue body as swarm-eligible work).
 2. Brian gives explicit admin approval for that work to enter the pull queue
    (an approval label or an owner `/run` / equivalent forge command, already
-   `owner_only` in `.github/swarm-conductor.json`).
+   `owner_only` in `.github/swarm-conductor.json`). The approval is bound to
+   the head SHA (or issue-body revision) it was given for. A later push
+   invalidates it. A peer must check SHA == approved SHA at claim time and
+   again immediately before executing, so a push after `/run` cannot run
+   unapproved code on self-hosted peers.
 3. Only then may a free peer claim it.
 
 Discovery of open issues can stay open and parallel. Claiming and running are
 side effects, so they wait on that admin gate (see Approval gates below, and
-LESSONS-LEARNED `L-2026-11-10`, still landing in PR #379). A bot must not
-approve, and a bot must not issue `/run` (the existing loop guard stays).
+LESSONS-LEARNED `L-2026-11-10`, merged in #379). A bot must not approve, and
+a bot must not issue `/run` (the existing loop guard stays).
 
 ### How a peer picks the next task
 
@@ -285,40 +289,102 @@ API / family, and model-family, plus role labels such as `swarm-bench`. Labels
 are capabilities, not host names. `host:<host>` and `node:<host>-<user>` may
 still exist as optional identity stamps (R2, R10), but workflows must not
 route on them. The peer that is free and matches takes the job. Nobody pushes
-the job to a named machine.
+the job to a named machine. Actions assignment is the claim for Path A.
 
 **Path B: tiny pull agent (when `actions/runner` is unsupported),** including
 FreeBSD and Android-native / Termux today (see Gaps). The agent polls the
-forge for approved, unclaimed work: issue labels, a workflow_dispatch queue, or
-the same capability labels as Path A. It claims with an atomic forge update:
-label plus assignee or a signed claim comment, carrying a lease and an expiry.
-If the claim loses the race, the agent leaves the item and looks again. The
-agent does not SSH to a sibling to hand off the job.
+forge for approved, unclaimed work in the Path B queue (see one-queue rule
+below). It does not treat a label, assignee, or comment as an atomic claim
+(GitHub has no compare-and-set on those; two peers can both "succeed"). The
+claim protocol is in Claim, lease, and fencing. The agent does not SSH to a
+sibling to hand off the job.
 
 Matching is any-of on optional capabilities (any peer that has at least the
 required set may take it) and all-of on required ones (OS, arch, or a stated
 minimum RAM). A job that needs a phone GPU says `android` + `vulkan` + a
 model-family, not `galaxy1`.
 
+Every task lives in exactly one queue: either a Path A Actions job or a
+Path B labeled-issue / dispatch item, never both. If Actions has already
+queued the job, Path B must not also claim it.
+
+Polls and claims use jittered backoff and ETag / conditional requests. Each
+peer has a max-concurrent-claims default of 1. HTTP 403 and 429 are backoff,
+not a failure and not a free slot. A burst of peers waking on one approval
+must not treat every "I posted a claim comment" as a win.
+
+### Claim, lease, and fencing
+
+GitHub issue labels, assignees, and comments are a display cache only. They
+are not a compare-and-set. Two peers can both add a label, both become
+assignees, and both post a claim comment, and each would think it holds the
+lease.
+
+A real claim uses one of these CAS mechanisms:
+
+- Preferred: create a git ref (`POST /git/refs`, for example
+  `refs/claims/<issue>-<generation>`). The forge returns 422 if the ref
+  already exists; that is the lost race, and the peer looks again.
+- Alternative, when a claims ref namespace is not available: the issue
+  timeline is the authority. The earliest unexpired claim comment, ordered
+  by forge `created_at` and then comment id, wins. After posting, every
+  claimant re-reads the timeline and withdraws if it is not first.
+
+Each successful claim carries a monotonic generation or fencing token (the
+claim ref SHA, or the winning claim comment id). Lease expiry is computed
+from forge server time only (comment `created_at`, or the response `Date`
+header), plus a grace margin. Local wall clocks are never used to stamp or
+to test expiry; a fast-clock reaper must not void a live lease.
+
+The holder heartbeats (renews) the lease so a long job can outlive the
+initial interval. Before every side effect it re-checks that it still holds
+its generation and aborts if it has lost the claim. Every result and side
+effect carries the fencing token. A result whose token has been superseded
+is marked stale and ignored; last-writer-wins on labels or statuses is not
+enough.
+
+Reaping is not "drop the lease label and clear the assignee." Any peer may
+reap, but the reap is conditional on the exact stale generation: reap of
+generation N is the same CAS as creating the tombstone / next claim
+(generation N+1). Two concurrent reapers then collide on the CAS instead of
+erasing a fresh claim that landed in between. After a successful reap, the
+task returns to the queue as unclaimed, still-approved work (same approved
+SHA, unless that approval was invalidated by a new push). Reaping is not
+reserved for miryam or a conductor.
+
+Every side effect (result post, private-log upload, install, or anything
+that touches phone or host state) is keyed by the idempotency tuple
+(issue, approved head SHA, claim generation). A retry on another peer is
+safe only when that key is checked and honored. A busy or expired claim is
+not a pass. "Idempotent because it is a smoke test" is not a substitute.
+
+A device (for example one A57 phone) has one device-level claim that both
+Path B and the opportunistic SSH fallback must take. The SSH fallback takes
+that same forge claim plus the phone-side flock, not only a flock on the
+runner host. Otherwise a phone agent and a miryam SSH job can oversubscribe
+the same device.
+
 ### Result submission
 
 The peer that ran the work posts the result back to the nexus, in public
 enough form that any other peer or a person can see it without asking the
-runner host:
+runner host. The post includes the claim generation / fencing token; a
+stale token is ignored as above.
 
 - job logs and artifacts on the workflow run
 - check runs on the commit or pull request
 - signed issue or PR comments (pass/fail/skip, exit code, identity stamp from
-  R10, and a short tail of the log)
+  R10, fencing token, and a short tail of the log)
 - commit statuses
 
 Full logs may still go to `brianreborn/familia-private` under
-`logs/swarm/<yyyymmdd>/` with redaction, as in R5. The hosted `report` job in
-R4/R9 remains a valid way to paste a worker summary when the worker itself
-cannot comment (a dead or disconnected peer). The report job still must not
-reinterpret a failure as a pass, and it still must not compute new results
-(R9). Key- and token-shaped strings stay redacted. API keys stay on the host
-and never pass through the forge.
+`logs/swarm/<yyyymmdd>/` with redaction, as in R5, and the same idempotency
+key. The hosted `report` job in R4/R9 remains a valid way to paste a worker
+summary when the worker itself cannot comment (a dead or disconnected peer).
+The report job still must not reinterpret a failure as a pass, still must
+not compute new results (R9), and still must drop a superseded fencing
+token. Key- and token-shaped strings stay redacted. API keys stay on the
+host and never pass through the forge.
 
 ### Failure surfacing
 
@@ -326,12 +392,14 @@ Nothing fails silently.
 
 - A failed job is a failed check, a failed status, and a visible issue label
   such as `swarm-failed`. The comment says what went wrong.
-- When a lease expires, the claim is void: the task returns to the queue as
-  unclaimed, approved work. Any peer may reap a stale claim (drop the lease
-  label, clear the assignee, comment that the lease expired, and leave the
-  item eligible). Reaping is not reserved for miryam or a conductor.
+- Lease expiry and stale-claim reaping follow Claim, lease, and fencing
+  (forge server time, generation-conditional CAS, no check-then-act erase of
+  a fresh claim).
 - A peer that is offline is not a lost task. The forge still shows the job as
   queued or the issue as approved-and-unclaimed.
+- The watchdog comments when an approved task has had no successful claim
+  for a bound T (starvation), and when a task's claim generation passes a
+  bound K (a lease flapping between peers).
 - Diagnostics report what is wrong without writing to a disk under test.
   Progress and logs go off-target (a log file on a different disk, or the
   forge / familia-private path), preferably inside a named screen session
@@ -344,10 +412,10 @@ Nothing fails silently.
 - When zero eligible hosts are online, the job stays queued and visible
   (Actions queued state, issue label, watchdog comment). It does not fail
   closed as "no such host" and it does not get pushed over SSH to a stand-in.
-- Tasks are idempotent: a retry on another peer is safe. A busy or expired
-  claim is not a pass.
-- A failed or expired claim may be retried on any other capable peer, not
-  only on the machine that first touched it.
+- Retries follow the idempotency key (issue, approved head SHA, claim
+  generation). A failed or expired claim may be retried on any other capable
+  peer, not only on the machine that first touched it, and only after a
+  successful generation-conditional reap.
 
 ### Migration from the miryam-to-phone SSH smoke
 
@@ -358,12 +426,15 @@ this file: the phones are not Actions runners, and there is no official
 runner for FreeBSD or Termux.
 
 Keep that SSH smoke as an opportunistic fallback only, not as the control
-path. It may run when a phone is reachable from a peer that already holds an
-approved job whose capabilities include "A57 Termux smoke" and the inventory
-on that peer allows SSH. It must not be how work is assigned. The target is
-Path B on the phones themselves (a tiny pull agent, or a later supported
-runner), with the same admin-approval and lease rules. Do not add a
-`runs-on` phone or `host:miryam` requirement to new workflows.
+path. It may run only when the peer already holds the shared device-level
+forge claim (see Claim, lease, and fencing) for an approved job whose
+capabilities include "A57 Termux smoke", the inventory on that peer allows
+SSH, and the phone-side flock is also taken. It must not be how work is
+assigned, and it must not run beside a Path B agent on the same phone. The
+target is Path B on the phones themselves (a tiny pull agent, or a later
+supported runner), with the same admin-approval, SHA binding, and lease
+rules. Do not add a `runs-on` phone or `host:miryam` requirement to new
+workflows.
 
 ### Security
 
@@ -387,11 +458,11 @@ runner), with the same admin-approval and lease rules. Do not add a
 ### Approval gates and interactive latency
 
 Approval gates are filters on side effects, not global locks on discovery or
-parallel work (`L-2026-11-10`). Vetting and Brian's admin approval gate a
-task entering the runnable queue, and later gates may cover writes, reboots,
-installs, root-queue scripts (R6), and other side effects. They must not
-serialize independent read-only probes or make one approval a waiter that
-only lets one job through.
+parallel work (`L-2026-11-10`). Vetting and Brian's admin approval (bound to
+a head SHA) gate a task entering the runnable queue, and later gates may
+cover writes, reboots, installs, root-queue scripts (R6), and other side
+effects. They must not serialize independent read-only probes or make one
+approval a waiter that only lets one job through.
 
 Interactive feedback should stay under about 400 ms so the operator still
 has a sense of flow (`L-2026-11-10` item 5; attribution of the IBM /
