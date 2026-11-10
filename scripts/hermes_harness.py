@@ -1076,15 +1076,18 @@ def route_tools(g, agent):
     """-> {"mode": none|direct|nexus, "node", "via"}.
     Reuses validate_graph.tool_capable / tool_route / tool_policy (#243). Explicit
     nodes.<n>.tool_route wins as the nexus target; same-host then mesh discovery is the
-    Hermes-only fallback when #243 has no route. Never into guardian/pentest/defender."""
+    Hermes-only fallback when #243 has no route, except for an off-loopback tool-capable
+    node with no server_tools (TOOLS-008): that path honours only an explicit tool_route
+    (TOOLS-009 opt-in) and never discovery, so rebinding to 0.0.0.0 cannot implicitly
+    forward. Never into guardian/pentest/defender."""
     _, name, n, _ = node_for(g, agent)
     if tool_free(g, name):
         return {"mode": "none", "node": None, "via": None, "reason": "tool-free node"}
     if vg.tool_capable(g, name):
         # Explicit server_tools opt-out (TOOLS-006): present key whose policy is [] → none.
         # Loopback default, or an explicit server_tools grant, stays direct.
-        # Off-loopback with no server_tools is not direct (#345 / TOOLS-008): fall through to
-        # tool_route / discovery (TOOLS-009); if neither applies, none.
+        # Off-loopback with no server_tools is not direct (#345 / TOOLS-008): honour only
+        # an explicit tool_route (TOOLS-009); do not fall through to discovery.
         opted = "server_tools" in n
         if opted and vg.tool_policy(g, name) == []:
             return {"mode": "none", "node": None, "via": None, "reason": "server_tools opt-out"}
@@ -1098,6 +1101,8 @@ def route_tools(g, agent):
     t = vg.tool_route(g, name)
     if t and not tool_free(g, t) and vg.tool_policy(g, t) != []:
         return {"mode": "nexus", "node": t, "via": None, "reason": "tool_route"}
+    if off_loopback_no_st:
+        return {"mode": "none", "node": None, "via": None, "reason": "off-loopback without server_tools"}
     # #243 does not discover a target — Hermes falls back to same-host, then ssh nexus mesh.
     host = n.get("host")
     nodes = g.get("nodes") or {}

@@ -137,12 +137,14 @@ def tool_target(g, name):
     try:
         import validate_graph as VG
         n = (g.get("nodes") or {}).get(name) or {}
-        # BUG-TR-1: explicit server_tools opt-out on the source blocks forward (TOOLS-006).
-        if "server_tools" in n and VG.tool_policy(g, name) == []:
+        # Empty source tool_policy blocks forward, even when server_tools is absent
+        # (opt-out, fail-closed, or off-loopback with no grant / no valid tool_route).
+        if VG.tool_policy(g, name) == []:
             return None
         # BUG-TR-2: a source that Hermes would treat as direct (loopback default grant, or
         # an explicit server_tools grant) stays direct even if it also has tool_route.
-        # Off-loopback without server_tools is not direct (#345) and may still forward.
+        # Off-loopback without server_tools is not direct (#345); an explicit tool_route
+        # (non-empty routed policy) may still forward.
         if VG.tool_capable(g, name) and ("server_tools" in n or VG._loopback(n.get("bind"))):
             return None
         return VG.tool_route(g, name)
