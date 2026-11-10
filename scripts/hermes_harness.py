@@ -58,8 +58,8 @@ def _path_exists(p):
     return bool(p) and os.path.exists(p)
 
 
-def _read_shebang(path):
-    """Return interpreter from a #! line, or None."""
+def _shebang_parts(path):
+    """Split #! tokens from *path*, or None."""
     try:
         with open(path, "rb") as f:
             line = f.readline(256)
@@ -68,10 +68,27 @@ def _read_shebang(path):
     if not line.startswith(b"#!"):
         return None
     parts = line[2:].decode("utf-8", "replace").strip().split()
+    return parts or None
+
+
+def _is_env_shebang(path):
+    """True when *path*'s shebang is `#!/usr/bin/env CMD` (or any `env CMD`)."""
+    parts = _shebang_parts(path)
+    return bool(parts) and os.path.basename(parts[0]) == "env" and len(parts) >= 2
+
+
+def _read_shebang(path, path_env=None):
+    """Return interpreter from a #! line, or None.
+
+    For `#!/usr/bin/env CMD`, resolve CMD on *path_env* (a PATH string) when given, else the
+    process PATH (Boundary N1a: launch must re-resolve against the child's PATH, which prepends
+    HERMES_HOME/bin).
+    """
+    parts = _shebang_parts(path)
     if not parts:
         return None
     if os.path.basename(parts[0]) == "env" and len(parts) >= 2:
-        return shutil.which(parts[1]) or parts[1]
+        return shutil.which(parts[1], path=path_env) or parts[1]
     return parts[0]
 
 
@@ -185,13 +202,14 @@ def _dirs_problem(path):
         d = parent
 
 
-def trust_exec(path, *, interpreter=True):
+def trust_exec(path, *, interpreter=True, path_env=None):
     """(realpath, None) when *path* is safe to exec, else (realpath or None, reason). realpath once:
     the real file must be regular, executable, owned by root or this user, not group/other
     writable (user-private group excepted); every parent of both the given path and the realpath
     likewise; a '#!' interpreter (venv python, /bin/sh, /usr/bin/env) gets the same check. Callers
     exec the returned realpath (HERMES_EXEC), so nothing outside root's and the user's control can
-    swap the binary between this check and the exec."""
+    swap the binary between this check and the exec. *path_env* is the PATH used to resolve an
+    `env` shebang (Boundary N1a: pass the child PATH with HERMES_HOME/bin prepended at launch)."""
     import stat
     if not path or not os.path.isabs(str(path)):
         return None, "not an absolute path"
@@ -209,7 +227,7 @@ def trust_exec(path, *, interpreter=True):
     if why:
         return real, why
     if interpreter:
-        interp = _read_shebang(real)
+        interp = _read_shebang(real, path_env=path_env)
         if interp and os.path.isabs(interp):
             _r, why = trust_exec(interp, interpreter=False)
             if why:
@@ -1547,8 +1565,10 @@ def run_escalating(g, agent, light, swap_back, rest, client="cli"):
     warm_prompt(g, light, g["nodes"][light], home)
     print(f"hermes.sh: escalation proxy {base} light={light} targets={g['nodes'][light].get('escalates_to')}", file=sys.stderr)
     argv = prepare_client_launch(home, client, rest)
-    return subprocess.call([HERMES_BIN] + argv, executable=HERMES_EXEC or HERMES_BIN,
-                           env=hermes_child_env({"HERMES_HOME": home}),
+    launch_env = hermes_child_env({"HERMES_HOME": home})
+    executable, full = hermes_exec_argv(HERMES_BIN, HERMES_EXEC, argv, launch_env)
+    return subprocess.call(full, executable=executable,
+                           env=launch_env,
                            preexec_fn=oom_adj.preexec())
 
 
@@ -1594,6 +1614,32 @@ def parse_argv(argv):
     return agent, graph_path, mode, light, swap_back, client, rest
 
 
+def hermes_exec_argv(bin_path, exec_path, argv, env):
+    """Return ``(executable, full_argv)`` for launching hermes (Boundary N1 / N1a).
+
+    Default: trusted realpath (*exec_path*) with argv0=*bin_path*. When the binary has an
+    ``#!/usr/bin/env CMD`` shebang, resolve CMD against the child PATH in *env* (which prepends
+    ``HERMES_HOME/bin``), trust that interpreter, and return it as the executable with the script
+    as argv[1] so the kernel cannot pick a different CMD than the one we checked.
+    """
+    target = exec_path or bin_path
+    if target and _is_env_shebang(target):
+        interp = _read_shebang(target, path_env=(env or {}).get("PATH"))
+        if not interp or not os.path.isabs(str(interp)):
+            die(f"env shebang interpreter for {target!r} not found on child PATH")
+        real_i, why = trust_exec(interp, interpreter=False)
+        if why:
+            die(f"child PATH interpreter {interp!r}: {why}")
+        return real_i, [real_i, target] + list(argv)
+    return target, [bin_path] + list(argv)
+
+
+def exec_hermes(bin_path, exec_path, argv, env):
+    """``os.execv`` hermes using :func:`hermes_exec_argv` (does not return)."""
+    executable, full = hermes_exec_argv(bin_path, exec_path, argv, env)
+    os.execv(executable, full)
+
+
 def main(argv):
     agent, graph_path, mode, light, swap_back, client, rest = parse_argv(argv)
     # Peek hosts for scoped file checks before full validate (other hosts' GGUFs stay optional).
@@ -1621,7 +1667,7 @@ def main(argv):
     os.environ.update(launch_env)
     # #112: hermes process is first-to-kill (no longer Popen's llama-server; serve.sh does)
     oom_adj.set_self()
-    os.execv(HERMES_EXEC or HERMES_BIN, [HERMES_BIN] + argv)   # trusted realpath (Boundary N1)
+    exec_hermes(HERMES_BIN, HERMES_EXEC, argv, launch_env)   # trusted realpath; N1a env-shebang
 
 
 if __name__ == "__main__":
