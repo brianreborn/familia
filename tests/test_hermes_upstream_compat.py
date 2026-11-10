@@ -131,6 +131,55 @@ def test_modal_aux_tasks_local_and_moa_disabled(tmp_path, monkeypatch):
     assert {s["provider"] for s in p["reference_models"]} | {p["aggregator"]["provider"]} == {"custom"}
 
 
+def test_aux_defaults_are_open_weight_not_hosted(tmp_path, monkeypatch):
+    """Local-only render must not leave hermes stock hosted fallbacks in place."""
+    monkeypatch.delenv(hh.ALLOW_CLOUD_ENV, raising=False)
+    home, cfg = _render(tmp_path, monkeypatch, "full")
+    aux = cfg["auxiliary"]
+    assert aux.get("free_only") is True
+    assert aux.get("openrouter_model") == hh.OPEN_DEFAULT_OPENROUTER_MODEL
+    assert not str(aux.get("openrouter_model") or "").endswith(":free")
+    closed = ("gemini-", "claude-", "gpt-4", "gpt-5", "openai/", "anthropic/",
+              "openrouter", "api.openai.com", "api.anthropic.com")
+    blob = yaml.safe_dump(cfg)
+    # Task / fallback model ids must not be stock hosted names. "custom" + local
+    # base_url (already asserted below) is the open default.
+    for t, block in aux.items():
+        if not isinstance(block, dict):
+            continue
+        assert block.get("provider", "custom") in ("custom", "", None) or t == "openrouter_model"
+        mid = str(block.get("model") or "")
+        assert not any(c in mid.lower() for c in closed), (t, mid)
+    assert cfg["model"]["provider"] == "custom"
+    assert cfg["model"]["base_url"] == aux["compression"]["base_url"]
+    assert "fallback_model" not in cfg
+    assert "smart_model_routing" not in cfg
+    assert cfg.get("providers") == {}
+    assert cfg.get("custom_providers") == []
+    assert cfg.get("fallback_providers") == []
+    assert not any(c in blob.lower() for c in ("gemini-3", "claude-sonnet", "gpt-4o"))
+    _, lean = _render(tmp_path, monkeypatch, "lean")
+    assert lean["auxiliary"].get("free_only") is True
+    assert lean["auxiliary"].get("openrouter_model") == hh.OPEN_DEFAULT_OPENROUTER_MODEL
+
+
+def test_user_fallback_providers_dropped_unless_cloud_allowed(tmp_path, monkeypatch):
+    """User fallback_providers is cleared in local-only mode and kept when cloud is allowed."""
+    payload = [{"provider": "openrouter", "model": "anthropic/claude-sonnet-4.6"},
+               {"provider": "custom", "base_url": "https://hosted.example.com/v1", "model": "gpt-5"}]
+    user = tmp_path / "user.yaml"
+    user.write_text(yaml.safe_dump({"fallback_providers": payload}))
+    monkeypatch.delenv(hh.ALLOW_CLOUD_ENV, raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    home, *_ = hh.render(copy.deepcopy(GRAPH), "hermes", user_cfg_path=str(user))
+    cfg = yaml.safe_load(open(os.path.join(home, "config.yaml")))
+    assert cfg.get("fallback_providers") == []
+    monkeypatch.setenv(hh.ALLOW_CLOUD_ENV, "1")
+    home, *_ = hh.render(copy.deepcopy(GRAPH), "hermes", user_cfg_path=str(user))
+    cfg = yaml.safe_load(open(os.path.join(home, "config.yaml")))
+    assert cfg.get("fallback_providers") == payload
+
+
 def test_allow_cloud_restores_upstream_routing(tmp_path, monkeypatch):
     monkeypatch.setenv(hh.ALLOW_CLOUD_ENV, "1")
     monkeypatch.setenv("HOME", str(tmp_path))
@@ -139,6 +188,8 @@ def test_allow_cloud_restores_upstream_routing(tmp_path, monkeypatch):
     cfg = yaml.safe_load(open(os.path.join(home, "config.yaml")))
     assert not any(t in cfg["auxiliary"] for t in MODAL)
     assert cfg["moa"] == {"default_preset": "mine"}
+    assert cfg["auxiliary"].get("openrouter_model") != hh.OPEN_DEFAULT_OPENROUTER_MODEL
+    assert cfg["auxiliary"].get("free_only") is not True
     assert hh.hermes_child_env(environ={"OPENAI_API_KEY": "sk", hh.ALLOW_CLOUD_ENV: "1"})["OPENAI_API_KEY"] == "sk"
 
 

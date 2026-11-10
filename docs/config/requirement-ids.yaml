@@ -746,6 +746,9 @@ other:
   CFG-HERMES-008:
     status: IMPLEMENTED
     doc: docs/config/hermes-config.md
+  CFG-HERMES-009:
+    status: IMPLEMENTED
+    doc: docs/config/hermes-config.md
   CFG-PENT-RISK-001:
     status: SPEC
     doc: docs/config/pentest-policy.md
