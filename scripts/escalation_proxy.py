@@ -36,6 +36,15 @@ _inflight_lock = threading.Lock()
 
 # R4 (#247): finite, configurable upstream timeout (was 3600 s).
 UPSTREAM_TIMEOUT_S = float(os.environ.get("FAMILIA_PROXY_TIMEOUT_S", "600"))
+# R4 follow-up (#247 review): UPSTREAM_TIMEOUT_S is per socket op, so a slow-trickling
+# stream could hold the session lock forever. PROXY_DEADLINE_S caps one request's total time
+# (dial + relay); SESSION_WAIT_S caps how long a same-session caller queues for the lock.
+PROXY_DEADLINE_S = float(os.environ.get("FAMILIA_PROXY_DEADLINE_S", "1800"))
+SESSION_WAIT_S = float(os.environ.get("FAMILIA_SESSION_WAIT_S", str(PROXY_DEADLINE_S)))
+
+
+class DeadlineExceeded(TimeoutError):
+    """The request ran past PROXY_DEADLINE_S (R4 #247)."""
 
 
 class ClientGone(Exception):
@@ -431,8 +440,14 @@ def make_handler(pool, log=sys.stderr):
                 t.join(0.05)
                 if t.is_alive() and self._client_gone():
                     raise ClientGone()
+                if t.is_alive() and self._past_deadline():
+                    raise DeadlineExceeded(f"no upstream reply within FAMILIA_PROXY_DEADLINE_S={PROXY_DEADLINE_S:g}s")
             if "e" in box: raise box["e"]
             return box["r"]
+
+        def _past_deadline(self):
+            d = getattr(self, "_deadline", None)
+            return d is not None and time.monotonic() >= d
 
         def _copy_headers(self, r):
             for k, v in r.headers.items():
@@ -455,12 +470,30 @@ def make_handler(pool, log=sys.stderr):
             text = []
             if stream:
                 self.send_response(r.status); self._copy_headers(r); self.end_headers()
-                for line in r:
-                    if line.strip() == b"data: [DONE]": break
-                    self.wfile.write(line); self.wfile.flush()
-                    if line.startswith(b"data: "):
-                        try: text.append(json.loads(line[6:])["choices"][0]["delta"].get("content") or "")
-                        except Exception: pass
+                try:
+                    for line in r:
+                        if line.strip() == b"data: [DONE]": break
+                        if self._past_deadline():
+                            # R4 (#247): stop relaying, close upstream, tell the caller; the
+                            # session lock is released by _fwd's finally right after this.
+                            err = {"error": {"message": "[familia] stream cut at FAMILIA_PROXY_DEADLINE_S="
+                                                        f"{PROXY_DEADLINE_S:g}s", "code": 504}}
+                            self.wfile.write(b"data: " + json.dumps(err).encode() + b"\n\ndata: [DONE]\n\n")
+                            self._record_transport_fail(esc, body)
+                            note = esc.after_reply(ok=False)
+                            if note: print(note, file=log, flush=True)
+                            return
+                        self.wfile.write(line); self.wfile.flush()
+                        if line.startswith(b"data: "):
+                            try: text.append(json.loads(line[6:])["choices"][0]["delta"].get("content") or "")
+                            except Exception: pass
+                except (BrokenPipeError, ConnectionResetError):
+                    # Caller hung up mid-stream: stop, close upstream (finally) so llama stops
+                    # decoding; no after_reply, so the dropped turn does not move escalation state.
+                    return
+                finally:
+                    try: r.close()
+                    except Exception: pass
                 esc.sig.observe_reply("".join(text))
                 esc.sig.transport_failures = 0
                 done = esc.after_reply(ok=True)
@@ -497,6 +530,9 @@ def make_handler(pool, log=sys.stderr):
             # #251 F1: never redial a forwarded tool request on another node (tools included).
             if getattr(esc, "tool_fwd", None):
                 self._502(f"[familia] tool_route {esc.tool_fwd} failed; not retried")
+                return True
+            if self._past_deadline():   # R4 (#247): no redial once the request deadline passed
+                self._502(f"{note}\n[familia] FAMILIA_PROXY_DEADLINE_S passed; not retried")
                 return True
             url, _alias = esc.upstream()
             # R2 (#245): health-check the fallback node before redialing; a node that
@@ -541,10 +577,16 @@ def make_handler(pool, log=sys.stderr):
             esc = self._esc()
             lk = esc.lock
             seq = getattr(self.server, "seq_of", {}).get(self.request)
+            # R4 (#247): bounded wait for the session lock; 503 instead of queueing forever.
             if isinstance(lk, FairLock):
-                lk.acquire(seq=seq)
+                got = lk.acquire(timeout=SESSION_WAIT_S, seq=seq)
             else:
-                lk.acquire()
+                got = lk.acquire(timeout=SESSION_WAIT_S)
+            if not got:
+                self.send_response(503); self.send_header("Content-Type", "application/json"); self.end_headers()
+                self.wfile.write(b'{"error":{"message":"session busy (FAMILIA_SESSION_WAIT_S)","code":503}}')
+                return
+            self._deadline = time.monotonic() + PROXY_DEADLINE_S
             deferred_note = None
             try:
                 deferred_note = self._fwd_capped(method)
