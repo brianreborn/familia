@@ -94,6 +94,12 @@ numpy-wheel|adv.numpy-wheel
 poudriere|adv.poudriere
 quickstart|help.quickstart
 internal|help.internal
+apps|apps.catalog
+app store|apps.catalog
+app list|apps.list
+app search|apps.search
+app refresh|apps.refresh
+app run|apps.run
 phone agents|hosts.phone-agents
 phone agents licenses|hosts.phone-agents-licenses
 phone agent probe|hosts.phone-agent-probe

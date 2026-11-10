@@ -204,6 +204,62 @@ Runs: \fBsh with\-fleet.sh \-\-role guardian \-\-launch\-test\fR
 Legacy id \[u2192] guardian operator\-start (licenses first).
 .br
 Runs: \fBenv FAMILIA_OPERATOR_CONFIRM=yes sh with\-fleet.sh \-\-role guardian \-\-operator\-start\fR
+.SS App catalog
+.TP
+\fBapps\fR
+Virtual app store: every app familia can run, plus open "applications" issues (cached search).
+.br
+Runs: \fBpython3 scripts/app_catalog.py menu\fR
+.TP
+\fBapp list\fR
+List the apps (menu apps and the gum\-home tools) and their ids.
+.br
+Runs: \fBpython3 scripts/app_catalog.py list\fR
+.TP
+\fBapp search\fR \fI<WORDS>\fR
+Search open "applications" issues across brianreborn (public; cached, 45 min TTL).
+.br
+Runs: \fBpython3 scripts/app_catalog.py search <WORDS>\fR
+.TP
+\fBapp refresh\fR
+Refresh the app search cache now (one GitHub request).
+.br
+Runs: \fBpython3 scripts/app_catalog.py search \-\-refresh\fR
+.TP
+\fBapp run\fR \fI<APP>\fR
+Run one app by id (see apps.list).
+.br
+Runs: \fBpython3 scripts/app_catalog.py run <APP>\fR
+.TP
+\fBphone agents\fR
+Phone assistants (Bixby, Gemini): which are set up and what leaves the phone.
+.br
+Runs: \fBpython3 scripts/system_agents.py status\fR
+.TP
+\fBphone agents licenses\fR
+Phone assistants: Shizuku license and the terms each assistant brings.
+.br
+Runs: \fBpython3 scripts/system_agents.py licenses\fR
+.TP
+\fBphone agent probe\fR
+On this phone (Termux): is Shizuku running, which assistants are installed.
+.br
+Runs: \fBpython3 scripts/termux/system_agent.py probe\fR
+.TP
+\fBphone agent open\fR \fI<PROVIDER>\fR
+On this phone: bring Gemini or Bixby to the front (sends nothing).
+.br
+Runs: \fBpython3 scripts/termux/system_agent.py open \-\-provider <PROVIDER>\fR
+.TP
+\fBphone agent ask\fR \fI<TEXT>\fR
+On this phone: ask Gemini (CLOUD: your text goes to Google; asks first) (licenses first).
+.br
+Runs: \fBpython3 scripts/termux/system_agent.py ask \-\-provider gemini \-\-text <TEXT>\fR
+.TP
+\fBphone agent consent\fR \fI<PROVIDER>\fR \fI<CHOICE>\fR
+On this phone: allow or withdraw cloud calls to an assistant.
+.br
+Runs: \fBpython3 scripts/termux/system_agent.py consent \-\-provider <PROVIDER> <CHOICE>\fR
 .SS Self\-improving harness (Harness2)
 .TP
 \fBharness2 status\fR
@@ -307,36 +363,6 @@ Runs: \fBbash android_multi_start.sh\fR
 Keep a phone's node running (restart it if it stops answering) (licenses first).
 .br
 Runs: \fBbash watchdog_android.sh <HOST>\fR
-.TP
-\fBphone agents\fR
-Phone assistants (Bixby, Gemini): which are set up and what leaves the phone.
-.br
-Runs: \fBpython3 scripts/system_agents.py status\fR
-.TP
-\fBphone agents licenses\fR
-Phone assistants: Shizuku license and the terms each assistant brings.
-.br
-Runs: \fBpython3 scripts/system_agents.py licenses\fR
-.TP
-\fBphone agent probe\fR
-On this phone (Termux): is Shizuku running, which assistants are installed.
-.br
-Runs: \fBpython3 scripts/termux/system_agent.py probe\fR
-.TP
-\fBphone agent open\fR \fI<PROVIDER>\fR
-On this phone: bring Gemini or Bixby to the front (sends nothing).
-.br
-Runs: \fBpython3 scripts/termux/system_agent.py open \-\-provider <PROVIDER>\fR
-.TP
-\fBphone agent ask\fR \fI<TEXT>\fR
-On this phone: ask Gemini (CLOUD: your text goes to Google; asks first) (licenses first).
-.br
-Runs: \fBpython3 scripts/termux/system_agent.py ask \-\-provider gemini \-\-text <TEXT>\fR
-.TP
-\fBphone agent consent\fR \fI<PROVIDER>\fR \fI<CHOICE>\fR
-On this phone: allow or withdraw cloud calls to an assistant.
-.br
-Runs: \fBpython3 scripts/termux/system_agent.py consent \-\-provider <PROVIDER> <CHOICE>\fR
 .SS Advanced: models & graph
 .TP
 \fBmodel args\fR \fI<NODE>\fR
