@@ -15,7 +15,10 @@ Key lookup order (first hit wins):
 The key is never generated here; serve.sh / serve.ps1 create it once per instance and never rotate it
 (code-bootstraps-llama.cpp docs/api-key-design.md).
 
-CLI:  python3 scripts/familia_auth.py curl-config   -> 'header = "Authorization: Bearer ..."' for curl -K -
+CLI:  python3 scripts/familia_auth.py curl-config -o FILE
+                                                    -> writes 'header = "Authorization: Bearer ..."' to a NEW
+                                                       0600 FILE for `curl -K FILE` (never to stdout; #177)
+      python3 scripts/familia_auth.py fingerprint   -> safe-to-log HMAC-SHA256 key id
       python3 scripts/familia_auth.py has-key       -> exit 0 when a key is found
       python3 scripts/familia_auth.py probe [URL]   -> authenticated probe of the instance:
                                                        0 up, 3 nothing listening, 4 key rejected (401/403:
@@ -103,9 +106,41 @@ class MissingKey(RuntimeError):
     """No key to send. Callers fail closed instead of sending an unauthenticated request."""
 
 
-def fingerprint(key):
-    """Safe-to-log identifier: first 8 hex of sha256. Never log the key itself."""
-    return "sha256:" + hashlib.sha256(key.encode()).hexdigest()[:8] if key else "none"
+SALT_NAME = "fingerprint-salt"
+_process_salt = None
+
+
+def fingerprint_salt(port=None, env=None):
+    """Per-instance salt for fingerprint(), next to the instance key file (0600).
+
+    Created only when the instance dir already exists (serve.sh / start_graph made it), so a
+    bare import or a test never writes into ~/.config. Otherwise a per-process random salt is
+    used: still safe to log, just not comparable across processes."""
+    global _process_salt
+    d = os.path.dirname(instance_key_file(port=port, env=env))
+    path = os.path.join(d, SALT_NAME)
+    s = _read(path)
+    if not s and os.path.isdir(d):
+        try:
+            s = _load_or_create_secret(path, "# familia key-fingerprint salt (not a key; do not share)\n")
+        except OSError:
+            s = ""
+    if s:
+        return s.encode()
+    if _process_salt is None:
+        _process_salt = secrets.token_bytes(32)
+    return _process_salt
+
+
+def fingerprint(key, salt=None):
+    """Safe-to-log identifier: HMAC-SHA256(per-instance salt, key), first 8 hex (#177).
+
+    A keyed hash, not a bare sha256, so the logged id cannot be brute-forced back to a short
+    or guessable key without the salt. Never log the key itself."""
+    if not key:
+        return "none"
+    salt = fingerprint_salt() if salt is None else salt
+    return "hmac-sha256:" + hmac.new(salt, key.encode(), hashlib.sha256).hexdigest()[:8]
 
 
 def keys_match(given, expected):
@@ -121,16 +156,20 @@ def load_or_create_key_file(path):
     First write is atomic and 0600: write a private temp file in the same dir, then link()
     it into place, which fails if another starter won the race; then everyone reads the
     winner's key. An existing key is never rotated."""
+    return _load_or_create_secret(path, "# llama-server API key(s), one per line\n")
+
+
+def _load_or_create_secret(path, header):
     k = _read(path)
     if k:
         return k
     d = os.path.dirname(path) or "."
     os.makedirs(d, mode=0o700, exist_ok=True)
-    tmp = os.path.join(d, ".api-keys.%d.%s" % (os.getpid(), secrets.token_hex(4)))
+    tmp = os.path.join(d, ".%s.%d.%s" % (os.path.basename(path), os.getpid(), secrets.token_hex(4)))
     fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
-            f.write("# llama-server API key(s), one per line\n" + secrets.token_hex(24) + "\n")
+            f.write(header + secrets.token_hex(24) + "\n")
             f.flush(); os.fsync(f.fileno())
         try:
             os.link(tmp, path)
@@ -220,6 +259,46 @@ def probe(url=None, timeout=3):
         return OTHER
 
 
+def write_curl_config(path, key):
+    """Write a curl -K config holding the Bearer header to a NEW file, mode 0600 (#177).
+
+    O_EXCL|O_NOFOLLOW: never follows a planted symlink or overwrites an existing file. The key
+    never goes to stdout or argv; the caller passes the file to `curl -K FILE` and removes it."""
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+    fd = os.open(path, flags, 0o600)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write('header = "Authorization: Bearer %s"\n' % key)
+    except BaseException:
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+        raise
+    if os.name != "nt":
+        os.chmod(path, 0o600)   # umask cannot widen it, but be explicit
+
+
+def curl_config(args, key):
+    usage = "usage: familia_auth.py curl-config -o FILE   (then: curl -K FILE ...; FILE must not exist)"
+    if len(args) != 2 or args[0] not in ("-o", "--output") or not args[1]:
+        print("familia_auth: curl-config no longer writes to stdout. " + usage, file=sys.stderr)
+        return 2
+    if not key:
+        print("familia_auth: no API key for this instance (%s); no curl config written" % instance_key_file(),
+              file=sys.stderr)
+        return 1
+    try:
+        write_curl_config(args[1], key)
+    except FileExistsError:
+        print("familia_auth: %s already exists; refusing to overwrite. %s" % (args[1], usage), file=sys.stderr)
+        return 2
+    except OSError as e:
+        print("familia_auth: cannot write %s: %s" % (args[1], e.strerror or type(e).__name__), file=sys.stderr)
+        return 2
+    return 0
+
+
 def main(argv):
     cmd = argv[1] if len(argv) > 1 else "has-key"
     k = api_key()
@@ -227,13 +306,7 @@ def main(argv):
         print(fingerprint(k))
         return 0 if k else 1
     if cmd == "curl-config":
-        # stdout is meant for a pipe into `curl -K -` (keeps the key out of argv); refuse a tty
-        if sys.stdout.isatty():
-            print("familia_auth: curl-config writes the key; pipe it into curl -K -", file=sys.stderr)
-            return 2
-        if k:
-            print('header = "Authorization: Bearer %s"' % k)
-        return 0
+        return curl_config(argv[2:], k)
     if cmd == "probe":
         return probe(argv[2] if len(argv) > 2 else None)
     if cmd == "has-key":
