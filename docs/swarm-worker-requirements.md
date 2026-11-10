@@ -272,14 +272,16 @@ not runnable just because it exists.
 2. Brian gives explicit admin approval for that work to enter the pull queue
    (an approval label or an owner `/run` / equivalent forge command, already
    `owner_only` in `.github/swarm-conductor.json`). An approval label is a
-   valid gate only if the peer verifies, from the issue timeline `labeled`
-   event, that the actor who applied it is the repository owner. Bare label
-   presence is not enough: a Path B token on a low-trust phone may have
-   issues:write in order to claim, and must not be able to approve itself.
-   The approval is bound to the head SHA (or issue-body revision) it was
-   given for. A later push invalidates it. A peer must check SHA == approved
-   SHA at claim time and again immediately before executing, so a push after
-   `/run` cannot run unapproved code on self-hosted peers.
+   valid gate only if the peer verifies, from the latest issue timeline
+   `labeled` event, that the actor is the repository owner and that this
+   owner identity is not shared with peers (see Path B identity below). A
+   later `unlabeled` event, or a re-add by a non-owner, revokes the
+   approval. Bare label presence is not enough. The approval is bound to
+   the head SHA (or issue-body revision) it was given for. A later push
+   invalidates it. A peer must check SHA == approved SHA at claim time, and
+   must fetch and run that approved SHA directly as a detached checkout by
+   OID, not by re-checking out a branch name, so a push after `/run` cannot
+   change what executes on self-hosted peers.
 3. Only then may a free peer claim it.
 
 Discovery of open issues can stay open and parallel. Claiming and running are
@@ -333,7 +335,10 @@ case-insensitively, as Actions does. Official runner auto-labels
 | Role (existing) | `swarm-bench` |
 
 RAM-class and model-family labels, when added, follow the same alphabet
-(for example `ram-8g`, `qwen35`).
+(for example `ram-8g`, `qwen35`). `android` + `vulkan` is a valid capability
+pair, but Vulkan through Termux on the A57 is not yet shown in this repo.
+A phone agent must probe for Vulkan at startup and advertise `vulkan` only
+when the probe succeeds; it must not assume the label from the device name.
 
 Every task lives in exactly one queue: either a Path A Actions job or a
 Path B labeled-issue / dispatch item, never both. If Actions has already
@@ -342,7 +347,10 @@ queued the job, Path B must not also claim it.
 Polls and claims use jittered backoff and ETag / conditional requests. Each
 peer has a max-concurrent-claims default of 1. HTTP 403 and 429 are backoff,
 not a failure and not a free slot. A burst of peers waking on one approval
-must not treat every "I posted a claim comment" as a win.
+must not treat every "I posted a claim comment" as a win. The post-claim
+re-read that picks the comment-fallback winner must skip any cache and
+should wait a short settle delay, so a peer does not miss an earlier,
+not-yet-visible claim and both "win".
 
 **Path B install and supervision** (see also R3 layout and R7 liveness; a
 persistent install still needs Brian's per-host OK):
@@ -378,39 +386,73 @@ lease.
 A real claim uses one of these CAS mechanisms:
 
 - Preferred: create a git ref (`POST /git/refs`, for example
-  `refs/claims/<issue>-<generation>`). The forge returns 422 if the ref
-  already exists; that is the lost race, and the peer looks again.
+  `refs/claims/<issue>-<generation>` with a zero-padded generation so
+  string sort matches numeric order: `09` then `10`). The fencing token is
+  the ref name (issue plus generation), not the ref's target SHA: the
+  target is whatever commit the creator passes and need not be unique.
+  Find the latest generation with `GET /git/matching-refs/claims/<issue>-`
+  and parse the suffix numerically, or rely on the zero-padding. A 422
+  from create is not automatically a lost race: GitHub also returns 422
+  for validation failure or when the endpoint has been spammed. Treat 422
+  as a lost race only after a `GET` of that exact ref confirms it exists
+  and its target is not yours. Otherwise back off, as for 403/429.
+  `refs/claims/<issue>-<gen>` passes `git check-ref-format` (no colons,
+  spaces, or case issues), but accepting a non-`heads`/`tags` namespace
+  such as `refs/claims/` through the REST API is untested here. Try it on
+  a scratch repo before any implementation. The docs only require a
+  `refs/` prefix and two slashes.
 - Alternative, when a claims ref namespace is not available: the claim is a
-  comment that carries a claim id. After posting, the agent re-reads, and
-  the earliest unexpired claim comment, ordered by forge `created_at` and
-  then comment id, wins. Losers delete or strike their claim comment.
+  comment that carries a claim id. After posting, the agent re-reads
+  uncached, as above, and the earliest unexpired claim comment, ordered
+  by forge `created_at` and then comment id, wins. Losers delete or strike
+  their claim comment.
 
-Each successful claim carries a monotonic generation or fencing token (the
-claim ref SHA, or the winning claim comment id). Every result and every reap
-must name that claim id / generation. Lease expiry and renewal use forge
-server time only (comment `created_at`, or the response `Date` header), plus
-a grace margin. Local wall clocks are never used to stamp or to test expiry;
-phones and RTC-less boards drift and jump after sleep, and a fast-clock
-reaper must not void a live lease.
+Creating `refs/claims/<issue>-<N+1>` only stops two peers from both
+creating N+1. It does not prove that N has expired. A peer that reads
+"N expired" while the holder is still renewing N can still win N+1, and
+both would run until the holder's next pre-side-effect check. Enforce
+expiry with one of:
 
-The holder heartbeats (renews) the lease so a long job can outlive the
-initial interval. The lease length must cover the renewal interval plus an
-Android or FreeBSD sleep pause, or the agent must re-check before every side
-effect (do both). This is what stops a Doze-paused or phantom-killed phone
-agent from waking after its lease was reaped and posting a result it no
-longer holds. Before every side effect the holder re-reads that its claim is
-still current and aborts if it has lost the generation. A result whose token
-has been superseded is labeled stale, not pass or fail, and is ignored;
-last-writer-wins on labels or statuses is not enough.
+- Asymmetric forge-time deadlines: the holder self-fences, stopping side
+  effects, at lease_end minus a margin. A reaper may create N+1 only after
+  lease_end plus that margin.
+- Or keep renewals and reaps on a single claim ref, updated with an
+  expected-old-OID CAS (GraphQL `updateRefs` `beforeOid`; verify that it
+  is available before depending on it).
+
+Each successful claim carries that generation / fencing token (the ref
+name, or the winning claim comment id). Every result and every reap must
+name it. Refs carry no server timestamp, and a commit's committer date
+comes from the client's clock, so it must not be used. Heartbeats
+(renewals) are comments, or another write that has a forge `created_at`,
+naming the generation. Lease expiry is computed from that forge server
+time only (comment `created_at`, or the response `Date` header), plus the
+asymmetric margins above. Local wall clocks are never used to stamp or to
+test expiry; phones and RTC-less boards drift and jump after sleep.
+
+The holder heartbeats so a long job can outlive the initial interval. The
+lease length must also cover the renewal interval plus an Android or
+FreeBSD sleep pause, or the agent must re-check before every side effect
+(do both). This is what stops a Doze-paused or phantom-killed phone agent
+from waking after its lease was reaped and posting a result it no longer
+holds. Before every side effect the holder re-reads that its claim is
+still current and aborts if it has lost the generation. A result whose
+token has been superseded is labeled stale, not pass or fail, and is
+ignored; last-writer-wins on labels or statuses is not enough.
 
 Reaping is not "drop the lease label and clear the assignee." Any peer may
-reap, but the reap is conditional on the exact stale generation: reap of
-generation N is the same CAS as creating the tombstone / next claim
-(generation N+1). Two concurrent reapers then collide on the CAS instead of
-erasing a fresh claim that landed in between. After a successful reap, the
-task returns to the queue as unclaimed, still-approved work (same approved
-SHA, unless that approval was invalidated by a new push). Reaping is not
-reserved for miryam or a conductor.
+reap, but only after lease_end plus the margin, and the reap is
+conditional on the exact stale generation (create N+1 as a tombstone, or
+the single-ref `beforeOid` CAS). Two concurrent reapers then collide on
+the CAS instead of erasing a fresh claim that landed in between. After a
+successful reap, the task returns to the queue as unclaimed, still-approved
+work (same approved SHA, unless that approval was invalidated by a new
+push). Reaping is not reserved for miryam or a conductor.
+
+Claim-ref GC may delete only `refs/claims/<issue>-*` generations below the
+current one, never the live or tombstone ref, and never during a live
+lease. Leftover refs for a closed issue or a final result may then be
+removed. Unbounded growth is not acceptable.
 
 Every side effect (result post, private-log upload, install, or anything
 that touches phone or host state) is keyed by the idempotency tuple
@@ -501,11 +543,24 @@ workflows.
 - Self-hosted runner scopes stay least-privilege: the job `GITHUB_TOKEN` is
   contents-read plus the write rights needed to post its own results (issues,
   checks, statuses). Registration tokens are never printed or logged (R2).
-- Phones and other low-trust peers hold no secrets beyond the runner or pull
-  agent token. No `FAMILIA_PRIVATE_LOGS_TOKEN`, no host SSH keys for other
-  machines, no instance API keys from the forge, and no release secrets.
-  If a private log upload is needed from a phone, a higher-trust peer or the
-  hosted report job publishes the already-redacted summary.
+- Path B identity and scope: phones and other Path B peers authenticate as
+  a non-owner identity, such as a GitHub App installation token or a
+  machine user, never the shared `brianreborn` account. Claim refs live in
+  a dedicated claims-only repo, for example `brianreborn/familia-claims`,
+  and Contents: write is granted only there. `brianreborn/familia` stays
+  contents-read for phones, so a phone token cannot push `development` and
+  trigger `a57-ssh-smoke.yml`. A ruleset or fine-grained token limited to
+  `refs/claims/*` is an alternative only if claim refs must stay in
+  `familia`; the claims-only repo is the default. The comment-claim
+  fallback needs only Issues: write. The owner-applied approval check
+  compares against that non-owner peer identity, so "actor == owner"
+  actually means Brian and cannot succeed for a peer.
+- Phones and other low-trust peers hold no secrets beyond the runner or
+  pull-agent token for that non-owner identity. No `FAMILIA_PRIVATE_LOGS_TOKEN`,
+  no host SSH keys for other machines, no instance API keys from the forge,
+  and no release secrets. If a private log upload is needed from a phone, a
+  higher-trust peer or the hosted report job publishes the already-redacted
+  summary.
 - Fork pull requests never run on self-hosted runners or on the pull agent.
   The existing A57 gate (owner repo, `development` only, no
   `pull_request_target`, no fork head) stays the model.
