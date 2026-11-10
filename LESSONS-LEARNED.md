@@ -266,3 +266,48 @@ Source: [#190](https://github.com/brianreborn/familia/issues/190), PRs #186/#187
    *Rule:* track the baseline in an issue with the failing list. It may shrink but never grow, and a change to it must be called out.
 6. **Box restarts lose work.** An end-to-end source-build run on the box was lost when the box restarted, so `BUILD=1` was not re-verified for the tag.
    *Rule:* write long runs' logs and results to a persistent path (familia-private or the repo) and not to scratch, and note what was not re-run.
+
+## L-2026-11-10. Approval gates, swarm concurrency, host probes, diagnostic logs, and flow latency (2026-11-10)
+Source: Brian voice session, 2026-11-10.
+
+1. **Approval gates should filter side effects, not discovery.** Using one
+   approval as a synchronization point for all work is a degenerate waiter,
+   like a condition variable that only lets one thing through. Read-only
+   discovery and parallel probes should not wait on a global lock.
+   *Rule:* gate writes, reboots, installs, and other side effects. Do not use
+   a single approval as a barrier that serializes independent read-only or
+   parallel work.
+
+2. **Independent jobs should run as a swarm, not a queue.** Skill pulls, PR
+   sweeps, CI audits, phone checks, and the testdisk investigation did not
+   depend on each other, but running them one after another hid latency and
+   wasted the session.
+   *Rule:* start independent jobs concurrently. Serialize only where there is
+   a real data or side-effect dependency.
+
+3. **Host inventory goes stale.** App-reported connection status (connected or
+   disconnected in the machine list) lagged behind reality. Reachability has
+   to be measured on the hosts themselves.
+   *Rule:* refresh inventory by probing hosts directly (SSH, ping, or
+   equivalent). Do not trust app-reported status as the live picture. See
+   also L-memcap: agent "offline" drops can be the app connection while local
+   jobs keep running.
+
+4. **Read-only diagnostics must not write the target disk, but must keep
+   progress off-target.** testdisk on angel kept progress only in memory and
+   had no log file, so about 23 hours of work disappeared. Reporting what is
+   wrong is not enough if the run cannot be resumed or audited.
+   *Rule:* do not write to the disk under test. Always pass testdisk `/log`
+   (or the tool's equivalent) to a file on a different disk, and run the job
+   inside a named screen session (see L-screen and L-190 item 6 on persistent
+   logs).
+
+5. **Keep interactive feedback under about 400 ms.** The ideas-from-x item
+   (likely @lauriewired's post https://x.com/lauriewired/status/2120209911527412081
+   citing IBM's ~400 ms flow threshold; attribution not yet verified from the
+   image) applies to swarm and system design: if the operator or an
+   interactive path waits longer than that, the work leaves the feeling of
+   flow.
+   *Rule:* design interactive swarm feedback and operator-facing status to
+   land under about 400 ms. Treat the IBM / Laurie Wired citation as
+   unverified until the source image is checked.
