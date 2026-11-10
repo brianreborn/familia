@@ -36,6 +36,15 @@ _inflight_lock = threading.Lock()
 
 # R4 (#247): finite, configurable upstream timeout (was 3600 s).
 UPSTREAM_TIMEOUT_S = float(os.environ.get("FAMILIA_PROXY_TIMEOUT_S", "600"))
+# R4 follow-up (#247 review): UPSTREAM_TIMEOUT_S is per socket op, so a slow-trickling
+# stream could hold the session lock forever. PROXY_DEADLINE_S caps one request's total time
+# (dial + relay); SESSION_WAIT_S caps how long a same-session caller queues for the lock.
+PROXY_DEADLINE_S = float(os.environ.get("FAMILIA_PROXY_DEADLINE_S", "1800"))
+SESSION_WAIT_S = float(os.environ.get("FAMILIA_SESSION_WAIT_S", str(PROXY_DEADLINE_S)))
+
+
+class DeadlineExceeded(TimeoutError):
+    """The request ran past PROXY_DEADLINE_S (R4 #247)."""
 
 
 class ClientGone(Exception):
@@ -166,13 +175,58 @@ ACCEPT = os.path.join(STATE, "escalation-accept.json")
 FAIL_RE = re.compile(r"(error|traceback|failed|exception|exit code [1-9]|FAILED)", re.I)
 DEFAULT_SESSION = "default"
 SESSION_HEADER = "X-Familia-Session"
+# Hop count set only by this proxy when it forwards a tool request. An incoming
+# value is untrusted: it can only *refuse* a further forward (no loop / no policy
+# bypass). It must never widen tool access. MAX_TOOL_HOPS=1 is one graph hop.
+TOOL_HOP_HEADER = "X-Familia-Tool-Hop"
+MAX_TOOL_HOPS = 1
+# Inbound X-Familia-* are untrusted (policy comes only from the graph). They are
+# stripped on the way upstream; the proxy then sets only the headers it owns.
+
+
+def tool_hops_from(headers):
+    """Incoming hop count. Malformed or negative values fail closed to MAX_TOOL_HOPS."""
+    if headers is None:
+        return 0
+    raw = headers.get(TOOL_HOP_HEADER)
+    if raw is None or str(raw).strip() == "":
+        return 0
+    try:
+        n = int(str(raw).strip())
+    except (TypeError, ValueError):
+        return MAX_TOOL_HOPS
+    return n if n >= 0 else MAX_TOOL_HOPS
+
+
+def outbound_headers(incoming, *, request_id, hop=None):
+    """Headers for one upstream hop. Cleartext HTTP; no inbound X-Familia-* survive.
+
+    Strips every X-Familia-* (a named denylist would miss the next policy header),
+    then sets X-Familia-Request-Id (the caller's id when present, else a new one;
+    R3 dedupe) and, only on a real tool forward, X-Familia-Tool-Hop.
+    """
+    hdrs = familia_auth.auth_headers({"Content-Type": "application/json"}, incoming=incoming, required=True)
+    for k in [k for k in hdrs if k.lower().startswith("x-familia-")]:
+        del hdrs[k]
+    if request_id:
+        hdrs["X-Familia-Request-Id"] = request_id
+    if hop is not None:
+        hdrs[TOOL_HOP_HEADER] = str(hop)
+    return hdrs
+
 
 def node_url(g, name, local_host):
-    """Base URL for a node. Remote nodes need a non-loopback bind (else None: needs a tunnel)."""
+    """Base URL for a node. Always cleartext HTTP: this hop is not TLS.
+
+    Same-host dials the loopback interface. A remote node uses validate_graph._loopback
+    (not an IPv4-prefix test): a loopback bind returns None and needs a tunnel; any
+    other bind is dialed at the host address, still over HTTP.
+    """
     n = g["nodes"][name]
     if n["host"] == local_host: return f"http://127.0.0.1:{n['port']}/v1"
     addr = (g["hosts"].get(n["host"]) or {}).get("addr")
-    if n.get("bind", "127.0.0.1").startswith("127.") or not addr: return None
+    import validate_graph as VG
+    if VG._loopback(n.get("bind", "127.0.0.1")) or not addr: return None
     return f"http://{addr}:{n['port']}/v1"
 
 def alias_for(g, name):
@@ -294,14 +348,19 @@ class Escalator:
         except OSError: pass
         return f"[familia] escalated to {t} on {d['host']} ({d.get('eta_s') or '?'}s est.)"
 
-    def rewrite(self, body):
+    def rewrite(self, body, hops=0):
         self.sig.observe_request(body)
         url, alias = self.upstream()
         # Tool forward (#243 runtime half): a tool-bearing request on a node with a validated
         # tool_route goes whole (chat + tools loop) to the target, which runs under its own
         # tool_policy/--tools. Unreachable target -> fail closed: rewrite returns url None and
         # the handler answers 502, so the tools never run on the current node.
+        # hops: incoming X-Familia-Tool-Hop; a re-entered forward (hops >= MAX_TOOL_HOPS)
+        # must not loop or fall through to the source with tools.
         self.tool_note = None; self.tool_fwd = None
+        if tool_bearing(body) and hops >= MAX_TOOL_HOPS:
+            self.tool_note = "[familia] tool forward re-entry refused (hop limit)"
+            return None, body
         tt = tool_target(self.g, self.current) if tool_bearing(body) else None
         if tt:
             turl = node_url(self.g, tt, self.local_host)
@@ -381,8 +440,14 @@ def make_handler(pool, log=sys.stderr):
                 t.join(0.05)
                 if t.is_alive() and self._client_gone():
                     raise ClientGone()
+                if t.is_alive() and self._past_deadline():
+                    raise DeadlineExceeded(f"no upstream reply within FAMILIA_PROXY_DEADLINE_S={PROXY_DEADLINE_S:g}s")
             if "e" in box: raise box["e"]
             return box["r"]
+
+        def _past_deadline(self):
+            d = getattr(self, "_deadline", None)
+            return d is not None and time.monotonic() >= d
 
         def _copy_headers(self, r):
             for k, v in r.headers.items():
@@ -405,12 +470,30 @@ def make_handler(pool, log=sys.stderr):
             text = []
             if stream:
                 self.send_response(r.status); self._copy_headers(r); self.end_headers()
-                for line in r:
-                    if line.strip() == b"data: [DONE]": break
-                    self.wfile.write(line); self.wfile.flush()
-                    if line.startswith(b"data: "):
-                        try: text.append(json.loads(line[6:])["choices"][0]["delta"].get("content") or "")
-                        except Exception: pass
+                try:
+                    for line in r:
+                        if line.strip() == b"data: [DONE]": break
+                        if self._past_deadline():
+                            # R4 (#247): stop relaying, close upstream, tell the caller; the
+                            # session lock is released by _fwd's finally right after this.
+                            err = {"error": {"message": "[familia] stream cut at FAMILIA_PROXY_DEADLINE_S="
+                                                        f"{PROXY_DEADLINE_S:g}s", "code": 504}}
+                            self.wfile.write(b"data: " + json.dumps(err).encode() + b"\n\ndata: [DONE]\n\n")
+                            self._record_transport_fail(esc, body)
+                            note = esc.after_reply(ok=False)
+                            if note: print(note, file=log, flush=True)
+                            return
+                        self.wfile.write(line); self.wfile.flush()
+                        if line.startswith(b"data: "):
+                            try: text.append(json.loads(line[6:])["choices"][0]["delta"].get("content") or "")
+                            except Exception: pass
+                except (BrokenPipeError, ConnectionResetError):
+                    # Caller hung up mid-stream: stop, close upstream (finally) so llama stops
+                    # decoding; no after_reply, so the dropped turn does not move escalation state.
+                    return
+                finally:
+                    try: r.close()
+                    except Exception: pass
                 esc.sig.observe_reply("".join(text))
                 esc.sig.transport_failures = 0
                 done = esc.after_reply(ok=True)
@@ -448,6 +531,9 @@ def make_handler(pool, log=sys.stderr):
             if getattr(esc, "tool_fwd", None):
                 self._502(f"[familia] tool_route {esc.tool_fwd} failed; not retried")
                 return True
+            if self._past_deadline():   # R4 (#247): no redial once the request deadline passed
+                self._502(f"{note}\n[familia] FAMILIA_PROXY_DEADLINE_S passed; not retried")
+                return True
             url, _alias = esc.upstream()
             # R2 (#245): health-check the fallback node before redialing; a node that
             # was respawned (or is still down) must not be dialed blind.
@@ -461,7 +547,9 @@ def make_handler(pool, log=sys.stderr):
                 # alias, not the body rewritten (alias, handoff) for the failed node.
                 body = dict(orig, model=_alias); raw = json.dumps(body).encode()
             target = url.rsplit("/v1", 1)[0] + self.path
-            req = urllib.request.Request(target, data=raw, method=method, headers=familia_auth.auth_headers({"Content-Type": "application/json"}, incoming=self.headers, required=True))
+            rid = self.headers.get("X-Familia-Request-Id") or uuid.uuid4().hex
+            req = urllib.request.Request(target, data=raw, method=method,
+                                          headers=outbound_headers(self.headers, request_id=rid))
             try:
                 r = self._urlopen(req, timeout=UPSTREAM_TIMEOUT_S)
             except ClientGone:
@@ -478,15 +566,27 @@ def make_handler(pool, log=sys.stderr):
             return True
 
         def _fwd(self, method):
+            # Re-entry of a tool forward: refuse before the session lock so a
+            # self-forward (target URL is this proxy) cannot deadlock on the same lock.
+            self._hops = tool_hops_from(self.headers)
+            if self._hops >= MAX_TOOL_HOPS:
+                self._502("[familia] tool forward re-entry refused (hop limit)")
+                return
             # Session lock first (FIFO per session, R5), then the global cap (R1), so
             # queued same-session requests do not hold upstream slots while they wait.
             esc = self._esc()
             lk = esc.lock
             seq = getattr(self.server, "seq_of", {}).get(self.request)
+            # R4 (#247): bounded wait for the session lock; 503 instead of queueing forever.
             if isinstance(lk, FairLock):
-                lk.acquire(seq=seq)
+                got = lk.acquire(timeout=SESSION_WAIT_S, seq=seq)
             else:
-                lk.acquire()
+                got = lk.acquire(timeout=SESSION_WAIT_S)
+            if not got:
+                self.send_response(503); self.send_header("Content-Type", "application/json"); self.end_headers()
+                self.wfile.write(b'{"error":{"message":"session busy (FAMILIA_SESSION_WAIT_S)","code":503}}')
+                return
+            self._deadline = time.monotonic() + PROXY_DEADLINE_S
             deferred_note = None
             try:
                 deferred_note = self._fwd_capped(method)
@@ -534,21 +634,21 @@ def make_handler(pool, log=sys.stderr):
                         note = esc.after_reply(ok=False)
                         if note: print(note, file=log, flush=True)
                         url, alias = esc.upstream()
-                    url, body = esc.rewrite(self._orig); raw = json.dumps(body).encode()
+                    url, body = esc.rewrite(self._orig, hops=getattr(self, "_hops", 0)); raw = json.dumps(body).encode()
                     # F2: capture note under the lock; _fwd prints it after release.
                     deferred_tool_note = esc.tool_note
-                    if url is None:   # tool_route target unreachable: fail closed (#251)
+                    if url is None:   # tool_route target unreachable / re-entry: fail closed (#251)
                         self._502(esc.tool_note); return deferred_tool_note
                 target = url.rsplit("/v1", 1)[0] + self.path
+                self._rid = self.headers.get("X-Familia-Request-Id") or uuid.uuid4().hex
+                hop = (getattr(self, "_hops", 0) + 1) if getattr(esc, "tool_fwd", None) else None
                 try:
-                    hdrs = familia_auth.auth_headers({"Content-Type": "application/json"}, incoming=self.headers, required=True)
+                    hdrs = outbound_headers(self.headers, request_id=self._rid, hop=hop)
                 except familia_auth.MissingKey:
                     # fail closed: never forward an unauthenticated request upstream
                     self.send_response(401); self.send_header("Content-Type", "application/json"); self.end_headers()
                     self.wfile.write(b'{"error":{"message":"no API key for upstream","code":401}}')
                     return deferred_tool_note
-                self._rid = self.headers.get("X-Familia-Request-Id") or uuid.uuid4().hex
-                hdrs["X-Familia-Request-Id"] = self._rid  # R3: lets upstream/caller dedupe
                 req = urllib.request.Request(target, data=raw, method=method, headers=hdrs)
                 try:
                     r = self._urlopen(req, timeout=UPSTREAM_TIMEOUT_S)

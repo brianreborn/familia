@@ -278,14 +278,17 @@ def test_r3_reconnect_backoff_bounded():
 # ---------------- R4 timeout + cancel propagation ----------------
 
 def test_r4_caller_cancel_frees_session_slot():
-    up = Upstream("light", delay=2.0)
+    # Upstream delay is long so a stuck session lock would miss the bound.
+    # The bound is 2s (not 1s) because GitHub-hosted runners can add ~1s of jitter;
+    # a missed cancel still waits almost the full remaining delay (~5s).
+    up = Upstream("light", delay=5.0)
     _, srv = proxy(graph(up.port, closed_port()))
     p = srv.server_address[1]
     with pytest.raises(Exception): post(p, timeout=0.3)   # caller gives up
     up.delay = 0
     t0 = time.time(); post(p, timeout=10)
     srv.shutdown(); up.close()
-    assert time.time() - t0 < 1.0
+    assert time.time() - t0 < 2.0
 
 
 def test_r4_upstream_error_releases_lock_no_orphan_inflight():
@@ -327,6 +330,83 @@ def test_r4_retry_path_timeout_is_finite_and_bounded(monkeypatch):
         assert esc.lock.acquire(timeout=1); esc.lock.release()
     finally:
         gate.set(); srv.shutdown(); light.close()
+
+
+class StreamUpstream:
+    """Mock SSE llama-server: one delta every `every` s, `n` deltas; records write failures."""
+    def __init__(self, every=0.05, n=200):
+        self.broken = threading.Event(); self.sent = 0; up = self
+
+        class H(BaseHTTPRequestHandler):
+            def log_message(self, *a): pass
+            def do_POST(self):
+                self.rfile.read(int(self.headers["Content-Length"]))
+                self.send_response(200); self.send_header("Content-Type", "text/event-stream"); self.end_headers()
+                try:
+                    for i in range(n):
+                        ch = {"choices": [{"index": 0, "delta": {"content": f"t{i} "}}]}
+                        self.wfile.write(b"data: " + json.dumps(ch).encode() + b"\n\n"); self.wfile.flush()
+                        up.sent += 1; time.sleep(every)
+                    self.wfile.write(b"data: [DONE]\n\n")
+                except (BrokenPipeError, ConnectionResetError):
+                    up.broken.set()
+        self.srv = type("_S", (ThreadingHTTPServer,), {"request_queue_size": 16, "daemon_threads": True})(
+            ("127.0.0.1", 0), H)
+        self.port = self.srv.server_address[1]
+        threading.Thread(target=self.srv.serve_forever, daemon=True).start()
+
+    def close(self): self.srv.shutdown(); self.srv.server_close()
+
+
+def _stream_post(port, timeout=10):
+    req = urllib.request.Request(f"http://127.0.0.1:{port}/v1/chat/completions",
+        headers={"Content-Type": "application/json"},
+        data=json.dumps({"model": "x", "stream": True, "messages": [{"role": "user", "content": "hi"}]}).encode())
+    return urllib.request.urlopen(req, timeout=timeout)
+
+
+def test_r4_stream_total_deadline_cuts_trickle_and_frees_session(monkeypatch):
+    monkeypatch.setattr(EP, "PROXY_DEADLINE_S", 0.4)
+    up = StreamUpstream(every=0.05, n=400)                 # ~20 s of trickle, never idle 600 s
+    esc, srv = proxy(graph(up.port, closed_port()))
+    t0 = time.time()
+    body = _stream_post(srv.server_address[1]).read().decode()
+    assert time.time() - t0 < 3 and "FAMILIA_PROXY_DEADLINE_S" in body and body.rstrip().endswith("data: [DONE]")
+    assert up.broken.wait(3)                               # upstream connection was closed
+    assert esc.lock.acquire(timeout=1); esc.lock.release() # session lock released
+    srv.shutdown(); up.close()
+
+
+def test_r4_client_drop_mid_stream_closes_upstream():
+    up = StreamUpstream(every=0.05, n=400)
+    _, srv = proxy(graph(up.port, closed_port()))
+    r = _stream_post(srv.server_address[1]); r.readline(); r.close()
+    assert up.broken.wait(5)                               # llama would stop decoding
+    srv.shutdown(); up.close()
+
+
+def test_r4_dial_deadline_bounds_slow_upstream(monkeypatch):
+    monkeypatch.setattr(EP, "PROXY_DEADLINE_S", 0.3)
+    up = Upstream("light", delay=3.0)
+    _, srv = proxy(graph(up.port, closed_port()))
+    t0 = time.time(); s, b = post(srv.server_address[1], timeout=10)
+    srv.shutdown(); up.close()
+    assert s == 502 and time.time() - t0 < 2 and "FAMILIA_PROXY_DEADLINE_S" in b
+
+
+def test_r4_session_lock_wait_is_bounded(monkeypatch):
+    monkeypatch.setattr(EP, "SESSION_WAIT_S", 0.3)
+    up = Upstream("light")
+    esc, srv = proxy(graph(up.port, closed_port()))
+    held, done = threading.Event(), threading.Event()
+    def hold():
+        esc.lock.acquire(); held.set(); done.wait(5); esc.lock.release()
+    th = threading.Thread(target=hold, daemon=True); th.start(); held.wait(2)
+    t0 = time.time(); s, b = post(srv.server_address[1], timeout=10)
+    done.set(); th.join(2)
+    assert s == 503 and "session busy" in b and time.time() - t0 < 2
+    assert post(srv.server_address[1], timeout=5)[0] == 200
+    srv.shutdown(); up.close()
 
 
 # ---------------- R5 mailbox ordering / reply matching ----------------

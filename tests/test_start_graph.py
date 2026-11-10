@@ -29,7 +29,8 @@ def test_host_selection_requires_an_exact_declared_graph_host(tmp_path):
 
 def test_local_topology_starts_only_local_active_nodes_and_routes():
     nodes, remote, gateways, omitted, remote_gateways = start_graph.local_topology(graph(), "miryam")
-    assert nodes == ["coder", "embed"]
+    # embed is planned since 146b712 (#38 defers EmbeddingGemma-2): listed in omitted, not started
+    assert nodes == ["coder"]
     assert {name for name, _ in remote} >= {"qodesh-gpu-decision", "qodesh-resident"}
     assert len(gateways) == 1
     name, gateway, aliases = gateways[0]
@@ -38,10 +39,9 @@ def test_local_topology_starts_only_local_active_nodes_and_routes():
     assert aliases == {
         "coder": {"kind": "chat", "url": "http://127.0.0.1:9941", "tools": True},
         "general": {"kind": "chat", "url": "http://127.0.0.1:9941", "tools": True},
-        "embed": {"kind": "embedding", "url": "http://127.0.0.1:9951"},
     }
     # planned/unbuilt roles on miryam are listed, not started (graph.yaml)
-    assert {role for role, _node, host in omitted} == {"defender", "guardian", "pentest", "safe-build"}
+    assert {role for role, _node, host in omitted} == {"defender", "embed", "guardian", "pentest", "safe-build"}
     assert all(host == "miryam" for _r, _n, host in omitted)
     assert remote_gateways == []
 

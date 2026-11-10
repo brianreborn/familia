@@ -34,4 +34,4 @@ See [DECISION-MODEL.md](DECISION-MODEL.md) and [bench-decision/SUMMARY.md](bench
 
 ## nvso (FreeBSD research scaffold)
 
-See [nvso/README.md](nvso/README.md) and `docs/vvram-ssd/` — SO-domain + SSD DMA ioctl stubs; not used by stock sm11 path.
+See [nvso/README.md](nvso/README.md) and `docs/vvram-ssd/`. In-tree soft domain bookkeeping plus a userspace `nvsoctl -n` smoke. SandForce firmware and peer DMA are not in this path, and sm11 does not use it.

@@ -222,6 +222,6 @@ identity is required. Spec only for v1.0.
 ## Gaps
 
 - Forgejo adapter is a stub; watchdog is GitHub-only.
-- No runner for FreeBSD/Termux; R8 on Linux.
+- No runner for FreeBSD/Termux; R8 on Linux. A57 phones stay in that gap: bounded python/compile smoke is opt-in SSH from the miryam runner (`docs/ci/a57-ssh-dispatch.md`), not a `runs-on` Android label.
 - `tests/e2e_user_journey.sh` must exist on the tested ref (job reports `skip` otherwise).
 - Secrets `FAMILIA_PRIVATE_LOGS_TOKEN` and optional `SWARM_ADMIN_TOKEN` must be added by Brian.
