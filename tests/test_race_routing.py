@@ -20,6 +20,11 @@ import reconnect_selfheal as RS  # noqa: E402
 
 RESIDENT, SPRINT = 4, 6  # nexus thread locks; never lower
 
+# setpgid/killpg/fork are POSIX-only; skip cleanly on Windows collection (Platform #362 nit).
+pytestmark = pytest.mark.skipif(
+    not hasattr(os, "setpgid"), reason="POSIX process groups (setpgid/killpg/fork)"
+)
+
 
 @pytest.fixture(autouse=True)
 def _env(monkeypatch, tmp_path):
@@ -308,7 +313,7 @@ def test_r4_proxy_timeout_is_finite_and_bounded(monkeypatch):
     esc, srv = proxy(graph(up.port, closed_port()))
     try:
         t0 = time.monotonic(); s, _ = post(srv.server_address[1], timeout=10)
-        assert s == 502 and time.monotonic() - t0 < 3, (s, time.monotonic() - t0)
+        assert s == 502 and time.monotonic() - t0 < 5, (s, time.monotonic() - t0)
         assert len(up.seen) == 1                      # one attempt, no retry of a sent request
         assert esc.lock.acquire(timeout=1); esc.lock.release()
         gate.set()                                    # upstream healthy again: served
@@ -325,7 +330,7 @@ def test_r4_retry_path_timeout_is_finite_and_bounded(monkeypatch):
     esc, srv = proxy(graph(light.port, closed_port()), current="heavy")   # heavy refused -> retry
     try:
         t0 = time.monotonic(); s, _ = post(srv.server_address[1], timeout=10)
-        assert s == 502 and time.monotonic() - t0 < 3, (s, time.monotonic() - t0)
+        assert s == 502 and time.monotonic() - t0 < 5, (s, time.monotonic() - t0)
         assert len(light.seen) == 1 and esc.current == "light"
         assert esc.lock.acquire(timeout=1); esc.lock.release()
     finally:

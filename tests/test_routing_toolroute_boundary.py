@@ -8,8 +8,11 @@ model output that try to set server_tools or opt-outs, and a loopback bind matri
 Also: an off-loopback source with no server_tools still forwards on an explicit
 tool_route (TOOLS-009), and a discovery-only off-loopback source stays none.
 After #355 those two, and a fail-closed source (BUG-TR-1 / #358), are current
-behavior and asserted directly. xfail(strict=True) marks a gap #355 did not close:
-BUG-TR-3, BUG-TR-4, BUG-TR-5, BUG-TR-6 (issue pending; TR-4 left as a product call)."""
+behavior and asserted directly. Development 79d3d84 / #364 also closed BUG-TR-5, BUG-TR-6,
+and the case/fullwidth half of BUG-TR-3 (normalize_role NFKC + casefold); those are
+now asserted directly. xfail(strict=True) marks remaining gaps: the still-open
+BUG-TR-3 cases (whitespace, Cyrillic/Greek, ZWSP) and BUG-TR-4 (issue pending;
+TR-4 left as a product call)."""
 import copy, json, os, socket, sys, threading, urllib.error, urllib.request
 
 import pytest
@@ -63,22 +66,25 @@ def _lands(g, cur="light"):
 
 # ---------------- fail-closed names: case, Unicode lookalikes, aliases, indirect ----------------
 
-CASE = ["Guardian", "GUARDIAN", "Pentest", "PENTEST", "Defender", "DeFeNdEr",
-        " guardian", "pentest ", "defender\n"]
-LOOKALIKE = ["gu\u0430rdian",            # Cyrillic a
-             "\uff47\uff55\uff41\uff52\uff44\uff49\uff41\uff4e",   # fullwidth "guardian" (NFKC folds)
-             "pen\u200btest",            # zero-width space
-             "d\u0435fender",            # Cyrillic ie
-             "defend\u0435r",           # Cyrillic ie, second e
-             "GUARD\u0399AN"]           # Greek capital iota
-BUG_TR_3 = ("BUG-TR-3 (issue pending): validate_graph.node_type compares role names verbatim, so a "
-            "case/whitespace/Unicode variant of guardian/pentest/defender is an unknown TYPE that is not "
-            "fail-closed; the model's tool_calls makes it tool-capable and the proxy forwards tools into it")
+# FIXED by normalize_role (NFKC + casefold) on development 79d3d84 / #364.
+CASE_FIXED = ["Guardian", "GUARDIAN", "Pentest", "PENTEST", "Defender", "DeFeNdEr"]
+LOOKALIKE_FIXED = ["\uff47\uff55\uff41\uff52\uff44\uff49\uff41\uff4e"]  # fullwidth "guardian"
+# Still open: strip()/Cf not applied, and non-ASCII lookalikes are unknown TYPEs.
+CASE_OPEN = [" guardian", "pentest ", "defender\n"]
+LOOKALIKE_OPEN = ["gu\u0430rdian",          # Cyrillic a
+                  "pen\u200btest",          # zero-width space (Cf)
+                  "d\u0435fender",          # Cyrillic ie
+                  "defend\u0435r",         # Cyrillic ie, second e
+                  "GUARD\u0399AN"]         # Greek capital iota
+BUG_TR_3 = ("BUG-TR-3 (issue pending): normalize_role does NFKC + casefold, so case and "
+            "fullwidth variants of guardian/pentest/defender now fail closed, but it does not "
+            "strip() or drop Unicode format chars (Cf, e.g. U+200B). Whitespace, Cyrillic/Greek "
+            "lookalikes, and ZWSP variants remain unknown TYPEs that are not fail-closed; the "
+            "model's tool_calls makes them tool-capable and the proxy forwards tools into them")
 
 
-@pytest.mark.xfail(strict=True, reason=BUG_TR_3)
 @pytest.mark.parametrize("where", ["node_role", "model_role"])
-@pytest.mark.parametrize("role", CASE + LOOKALIKE, ids=ascii)
+@pytest.mark.parametrize("role", CASE_FIXED + LOOKALIKE_FIXED, ids=ascii)
 def test_fail_closed_role_variants_get_no_forward(role, where):
     g = g3(1, 2, coder={"role": role}) if where == "node_role" else g3(1, 2, coder_role=role)
     assert VG.tool_policy(g, "coder") == []
@@ -86,9 +92,21 @@ def test_fail_closed_role_variants_get_no_forward(role, where):
 
 
 @pytest.mark.xfail(strict=True, reason=BUG_TR_3)
-@pytest.mark.parametrize("role", ["Guardian", "gu\u0430rdian"], ids=ascii)
-def test_fail_closed_role_variant_end_to_end_stays_on_source(role):
-    assert _lands(g3(0, 0, coder={"role": role})) == ("light", ["light"])
+@pytest.mark.parametrize("where", ["node_role", "model_role"])
+@pytest.mark.parametrize("role", CASE_OPEN + LOOKALIKE_OPEN, ids=ascii)
+def test_fail_closed_role_variants_still_open_get_no_forward(role, where):
+    g = g3(1, 2, coder={"role": role}) if where == "node_role" else g3(1, 2, coder_role=role)
+    assert VG.tool_policy(g, "coder") == []
+    assert EP.tool_target(g, "light") is None
+
+
+def test_fail_closed_role_variant_end_to_end_stays_on_source():
+    assert _lands(g3(0, 0, coder={"role": "Guardian"})) == ("light", ["light"])
+
+
+@pytest.mark.xfail(strict=True, reason=BUG_TR_3)
+def test_fail_closed_cyrillic_role_variant_end_to_end_stays_on_source():
+    assert _lands(g3(0, 0, coder={"role": "gu\u0430rdian"})) == ("light", ["light"])
 
 
 @pytest.mark.parametrize("role", ["guardian", "pentest", "defender"])
@@ -155,29 +173,38 @@ def test_fail_closed_source_does_not_forward_tools(role):
 
 def _two_proxies(b_current):
     """A: light -tool_route-> coder, where coder's port is proxy B. B: a real escalation_proxy
-    over its own graph (light -tool_route-> coder), current node b_current."""
+    over its own graph (light -tool_route-> coder), current node b_current.
+    If the second serve_esc fails, close B and the Ups so they do not leak."""
     seen = []
-    BL, BC, AL = Up("b-light", seen), Up("b-coder", seen), Up("a-light", seen)
-    b_esc, b_srv, b_port = serve_esc(g3(BL.port, BC.port), cur=b_current)
-    a_esc, a_srv, a_port = serve_esc(g3(AL.port, b_port))
-    return seen, (BL, BC, AL), (a_srv, b_srv), a_port
+    ups = (Up("b-light", seen), Up("b-coder", seen), Up("a-light", seen))
+    BL, BC, AL = ups
+    srvs = []
+    try:
+        _, b_srv, b_port = serve_esc(g3(BL.port, BC.port), cur=b_current)
+        srvs.append(b_srv)
+        _, a_srv, a_port = serve_esc(g3(AL.port, b_port))
+        srvs.append(a_srv)
+        return seen, ups, (a_srv, b_srv), a_port
+    except Exception:
+        close(*srvs)
+        [u.close() for u in ups]
+        raise
 
 
-def test_reentry_second_hop_through_real_proxy_reaches_one_runtime():
+def test_reentry_second_hop_through_real_proxy_is_refused():
+    """B fail-closes any inbound request with hop >= 1 (MAX_TOOL_HOPS) before routing,
+    so A -> B(current=coder) gets 502 and no runtime sees the tool request."""
     seen, ups, srvs, a_port = _two_proxies(b_current="coder")
     try:
-        assert post(a_port) == "b-coder"
-        assert [s[0] for s in seen] == ["b-coder"]          # exactly one runtime, A's light never
-        body = seen[0][1]
-        assert body["tools"] == TOOLS and body["model"] == "coder-a"
+        with pytest.raises(urllib.error.HTTPError) as ei:
+            post(a_port)
+        assert ei.value.code == 502
+        assert [s[0] for s in seen] == []
         assert post(a_port, tools=False) == "a-light"        # plain chat stays on A
     finally:
         close(*srvs); [u.close() for u in ups]
 
 
-@pytest.mark.xfail(strict=True, reason="BUG-TR-5 (issue pending): one-hop tool_route is enforced only per "
-                   "graph; a forwarded request carries no hop marker, so when the target is itself fronted by "
-                   "an escalation_proxy with a tool_route it is forwarded again (second tool hop)")
 def test_reentry_forwarded_request_is_not_forwarded_again():
     seen, ups, srvs, a_port = _two_proxies(b_current="light")
     try:
@@ -332,10 +359,6 @@ def test_remote_wildcard_bind_is_dialed_at_host_addr(bind):
     assert EP.node_url(_remote(bind), "coder", "h") == "http://peer.example:2/v1"
 
 
-@pytest.mark.xfail(strict=True, reason="BUG-TR-6 (issue pending): escalation_proxy.node_url treats only "
-                   "binds starting '127.' as loopback; a remote node bound to ::1 / [::1] / ::ffff:127.0.0.1 / "
-                   "localhost is dialed at the host addr instead of needing a tunnel (disagrees with "
-                   "validate_graph._loopback)")
 @pytest.mark.parametrize("bind", ["::1", "[::1]", "::ffff:127.0.0.1", "localhost", "LOCALHOST"])
 def test_remote_non_ipv4_loopback_bind_needs_tunnel(bind):
     assert EP.node_url(_remote(bind), "coder", "h") is None

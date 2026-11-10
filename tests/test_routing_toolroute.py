@@ -316,9 +316,9 @@ def test_concurrent_tool_forwards_capped_and_none_leak_to_source():
         while time.monotonic() < end and C.peak < EP.UPSTREAM_CAP:
             time.sleep(0.05)
         time.sleep(0.3)
-        peak = C.peak
         gate.set()
         outs = [f.result(timeout=30) for f in futs]
+        peak = C.peak  # after drain, so a leak during drain shows up (R7 / Race #362 nit)
     finally:
         gate.set(); ex.shutdown(wait=True); close(srv); L.close(); C.close()
     assert outs == ["coder"] * N
