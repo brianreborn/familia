@@ -126,3 +126,20 @@ def test_port_available_uses_requested_port_only():
     try: assert not start_graph.port_available("127.0.0.1", port)
     finally: s.close()
     assert start_graph.port_available("127.0.0.1", port)
+
+
+def test_stop_children_probes_group_once_not_in_a_loop(monkeypatch):
+    """A reaped pgid can be reused; _stop_children must probe it once, never poll it."""
+    probes = []
+    real = os.killpg
+    def spy(pg, sig):
+        if sig == 0: probes.append(pg)
+        return real(pg, sig)
+    monkeypatch.setattr(start_graph.os, "killpg", spy)
+    kids = [start_graph.spawn_child(["sh", "-c", "sleep 30"]) for _ in range(2)]
+    try:
+        start_graph._stop_children([(k, "k") for k in kids])
+    finally:
+        for k in kids:
+            if k.poll() is None: k.kill(); k.wait()
+    assert sorted(probes) == sorted(k.pid for k in kids)       # exactly one probe each
