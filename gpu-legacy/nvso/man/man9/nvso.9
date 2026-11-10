@@ -34,8 +34,8 @@ They are dispatched from
 via
 .Vt struct nvso_methods .
 .Pp
-.Em Rigorous aliases
-(ioctl constant ↔ method):
+Name pairing
+(ioctl constant, and the lowercase macro that expands to that constant):
 .Bl -column "NVSSD_QUEUE_EXPORT" "nvssd_queue_export"
 .It Dv NVSO_DOMAIN_CREATE Ta Fn nvso_domain_create
 .It Dv NVSO_MAP Ta Fn nvso_map
@@ -44,6 +44,17 @@ via
 .It Dv NVSO_DOMAIN_GATE Ta Fn nvso_domain_gate
 .It Dv NVSO_IRQ_ATTACH Ta Fn nvso_irq_attach
 .El
+.Pp
+Those lowercase identifiers in
+.Pa nvso_ioctl.h
+are macros for the ioctl numbers.
+The softc stores function pointers:
+.Fn nvso_soft_domain_create ,
+.Fn nvso_ssd_queue_export ,
+.Fn nvso_gpu_dma_post ,
+and the static gate and irq handlers.
+.Pa nvso_if.h
+is a method-table sketch and is not a generated kobj interface.
 .Pp
 SSD export and GPU DMA backends live in
 .Pa nvso_ssd.c
