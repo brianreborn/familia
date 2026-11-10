@@ -277,6 +277,8 @@ def model_item_for_db(db, used_for):
     link = (f"https://huggingface.co/{repo}/blob/{rev}/{os.path.basename(lf)}" if lf and repo and rev
             else f"https://huggingface.co/{repo}" if repo else None)
     notes = []
+    for t in entry.get("additional_terms") or []:
+        notes.append(f"also: {t.get('name') or t.get('id')} ({t.get('link')})")
     if entry.get("base_model"):
         notes.append(f"base model: {entry['base_model']} (its card may add terms)")
     if not lf:
@@ -284,7 +286,9 @@ def model_item_for_db(db, used_for):
                      + ("" if sdir and os.path.isdir(sdir) else " (snapshot not fetched here)"))
     it = item("model", f"{repo} @ {str(rev)[:12]}" if repo else db, used_for, entry.get("license"),
               text=lf or (card if card and os.path.isfile(card) else None), link=link,
-              notes="; ".join(notes) or None, extra_text=[card])
+              notes="; ".join(notes) or None,
+              extra_text=[card] + [os.path.join(ROOT, t["text"]) for t in entry.get("additional_terms") or []
+                                   if t.get("text")])
     if snap.get("gated"):
         it["flags"].append("gated (you accepted terms on Hugging Face)")
         if it["category"] == "permissive":
@@ -300,8 +304,10 @@ def llama31_item(used_for="Android phone minimum (Brian 2026-11-05)"):
         "Meta Llama 3.1 Community License",
         used_for,
         "Llama 3.1 Community License",
+        text=os.path.join(ROOT, "packaging", "android", "licenses", "LLAMA-3.1-COMMUNITY-LICENSE.txt"),
         link="https://www.llama.com/llama3_1/license/",
         notes="Required phone-minimum license alongside Dolphin3 (llama3.1). Read the full text before redistribution.",
+        extra_text=[os.path.join(ROOT, "packaging", "android", "licenses", "LLAMA-3.1-ACCEPTABLE-USE-POLICY.md")],
         source="declared",
     )
 

@@ -12,7 +12,7 @@
 #   one line:
 #   p=familia && o=brianreborn && h=raw.githubusercontent.com && u=https://$h/$o/$p/main/install/termux/install.sh && curl -fsSLo install-$p.sh $u && sh ./install-$p.sh
 # Default is a THIN CLIENT: no local llama.cpp; the phone opens a Linux/macOS host's Hermes
-# webapp (docs/android.md). --runtime cbl|pkg (or FAMILIA_RUNTIME=cbl|pkg) opts in to a local
+# webapp (docs/android-hermes.md). --runtime cbl|pkg (or FAMILIA_RUNTIME=cbl|pkg) opts in to a local
 # runtime; cbl = code-bootstraps-llama.cpp Android arm64 prebuilt is the runtime kind default.
 # Pin is config/cbl-android-runtime.json (android-b12032-1); verify ONLY against that sha256.
 # android-b11969-1 is an explicit opt-in fallback (TAG+SHA256 env). Download to a named file;
@@ -449,7 +449,7 @@ say "done. familia-start serves the GGUF: FAMILIA_MODEL=/path/to/model.gguf fami
 if [ "$RUNTIME" = 1 ]; then
   say "runtime=$RUNTIME_KIND (cbl prebuilt default kind; --runtime pkg for Termux llama-cpp)"
 else
-  say "thin client: no local runtime; open a Linux/macOS host's Hermes webapp (docs/android.md). Serve locally with --runtime cbl|pkg"
+  say "thin client: no local runtime; open a Linux/macOS host's Hermes webapp (docs/android-hermes.md). Serve locally with --runtime cbl|pkg"
 fi
 say "Hermes webapp one-tap: sh $REPO/install/termux/install-hermes-android.sh  (docs/android-hermes.md)"
 say "what now: run $REPO/familia for the Charm/gum home (Talk to the protomodel). Quick start: $REPO/QUICKSTART.md"

@@ -4,7 +4,29 @@
 and **Office 3D** run on a Linux or macOS host; the phone opens the Hermes webapp
 and may later remote into that host.
 
-## What you get on the phone
+## Thin client (default)
+
+Shape (Brian, 2026-11-05): the phone is a **thin client**. A Linux or macOS host runs
+Hermes (`scripts/hermes.sh --client webapp`, see [hermes-clients.md](hermes-clients.md))
+and the phone browser opens that host's URL. `install/termux/install.sh` installs **no
+local runtime by default**; `--runtime cbl|pkg` (or an explicit `FAMILIA_RUNTIME`) opts
+in. The one-tap path below opts in with `--runtime cbl` because it serves a GGUF on the phone.
+
+- **Smoke test (non-persistent):** `packaging/android/familia-android-smoke.sh --commit SHA --host HOST --port PORT [--https] [--url-file FILE]`.
+  Shows the Llama 3.1 Community License + AUP and the Dolphin 3.0 terms (texts in
+  `packaging/android/licenses/`, sha256-pinned) and needs a typed `ACCEPT` for each; `--yes` is refused.
+  Host and port are validated; the one-use webapp link is read from `--url-file` and never logged.
+  Everything goes in a throwaway prefix removed on exit. `--local-inference` fetches the same
+  cbl prebuilt pinned in `config/cbl-android-runtime.json`, runs `llama-server --version`, removes it.
+- **Termux installer license pre-gate:** before any `pkg install` or `git clone`, `install.sh`
+  asks for a typed `ACCEPT` (or `--yes` / an already-accepted selection); the full
+  `scripts/licenses.py gate` still runs after the clone.
+- **Which host serves the webapp and how the phone reaches it** (non-loopback bind + API key,
+  or an `ssh -L` tunnel) is **not decided yet**. Prefer `--https` or a tunnel; plain http on a
+  LAN is warned about.
+- **Later:** a debug-signed sideload APK (a WebView shell that loads the host's webapp URL).
+
+## One-tap local path (opt-in runtime)
 
 1. Termux:Widget (or `install/termux/install-hermes-android.sh`) one-tap entry.
 2. License gate via `scripts/licenses.py` for the **selected model** (e.g. LFM3
@@ -94,7 +116,7 @@ phone therefore lands in **medium**. Dolphin3 Q2_K (~3 GiB) needs the large tier
 
 | Topic | Docs that said | Code that wins |
 |---|---|---|
-| Termux runtime | `install/termux/install.sh` header and `docs/install.md` said Termux `llama-cpp` pkg is the runtime | Default is now **cbl prebuilt**; pkg is `--runtime pkg` / `FAMILIA_RUNTIME=pkg` |
+| Termux runtime | `install/termux/install.sh` header and `docs/install.md` said Termux `llama-cpp` pkg is the runtime | Default is **no local runtime** (thin client). `--runtime cbl` = cbl prebuilt (default kind); `--runtime pkg` / `FAMILIA_RUNTIME=pkg` = Termux `llama-cpp` |
 | Click-and-go on phones | Some docs implied a finished APK / click path | Shipping path is **Termux:Widget** + scripts; APK is a documented follow-up (`packaging/android/README.md`) |
 | Android release pin | Mental model may still cite b11969 only | Pin file **`config/cbl-android-runtime.json`** is authoritative (**android-b12032-1**); b11969-1 is explicit opt-in fallback |
 | Hermes Desktop on Android | Sprint goal named Desktop + Office 3D on Android | **Not native**; webapp on phone, Desktop/Office 3D on Linux/macOS host |

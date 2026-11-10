@@ -9,7 +9,7 @@ host the phone can reach.
 ## One-tap entry (ships now): Termux:Widget
 
 1. Install Termux from F-Droid or GitHub (not Play Store).
-2. Run the Termux installer once (`install/termux/install.sh` or the raw.githubusercontent.com download-then-run snippet).
+2. Run the Termux installer once (`install/termux/install.sh` or the raw.githubusercontent.com download-then-run snippet). The widget path itself passes `--runtime cbl` when it (re)installs.
 3. Symlink the widget script into Termux:Widget's shortcuts dir:
 
 ```sh
@@ -33,7 +33,8 @@ keystore are available on a build host.
 
 ## Related
 
-- `install/termux/install.sh` — Termux install; **default runtime = cbl prebuilt**
+- `install/termux/install.sh` — Termux install; **thin client by default** (no runtime); `--runtime cbl` (default kind) or `--runtime pkg`
+- `packaging/android/familia-android-smoke.sh` — non-persistent thin-client smoke test (typed ACCEPT for Llama 3.1 + Dolphin 3.0)
 - `install/termux/cbl-runtime.sh` — pin-verified download from `config/cbl-android-runtime.json` (`android-b12032-1`; b11969 opt-in fallback)
 - `install/termux/phone-model-default.py` — RAM-tier default model (adjustable)
 - `docs/android-hermes.md` — product shape, host Desktop/Office 3D, inconsistencies

@@ -68,11 +68,14 @@ def test_url_file_must_match_host(tmp_path):
     assert r.returncode != 0 and "SECRET123" not in r.stderr
 
 
-def test_cbl_pin_matches_installer():
-    s, t = open(SMOKE).read(), open(TERMUX).read()
-    for k in ("CBL_TAR=llama-b11969-bin-android-arm64-cbl1.tar.gz",
-              "158db5deb3e39f20b0e4e26e265dfc242030823e96537df4dfbfe7b0557ffcc9", "android-b11969-1"):
-        assert k in s and k in t
+def test_cbl_pin_matches_repo_pin_file():
+    """Smoke --local-inference mirrors #321's in-repo pin (config/cbl-android-runtime.json)."""
+    import json
+    pin = json.load(open(os.path.join(ROOT, "config", "cbl-android-runtime.json")))
+    s = open(SMOKE).read()
+    assert f"CBL_TAR={pin['asset']}" in s
+    assert f"CBL_SHA={pin['sha256']}" in s
+    assert f"releases/download/{pin['tag']}" in s
 
 
 def test_output_is_ascii_and_no_color_respected(tmp_path):
@@ -105,19 +108,40 @@ def test_termux_license_gate_before_any_download():
     assert "note9" not in s
 
 
-def test_termux_defaults_to_thin_client_and_cbl_runtime():
+def test_termux_defaults_to_thin_client_runtime_opt_in():
     s = open(TERMUX).read()
-    assert "RUNTIME=0;" in s and "--runtime) RUNTIME=1" in s
-    assert "llama-cpp" not in s.split("set -eu", 1)[1]  # no Termux llama-cpp pkg in code
-    assert 'exec "$LLAMA_SERVER"' in s
+    assert "RUNTIME=0;" in s
+    assert '[ -n "${FAMILIA_RUNTIME:-}" ] && RUNTIME=1' in s
+    assert 'RUNTIME_KIND=$1; RUNTIME=1 ;;' in s
+    assert "RUNTIME_KIND=${FAMILIA_RUNTIME:-cbl}" in s
 
 
-def test_termux_dry_run_runtime_uses_cbl(tmp_path):
-    e = dict(os.environ, FAMILIA_PREFIX=str(tmp_path / "p"), HOME=str(tmp_path))
-    r = subprocess.run(["sh", TERMUX, "--dry-run", "--runtime", "--name", "t", "--no-path"],
-                       capture_output=True, text=True, env=e, stdin=subprocess.DEVNULL)
-    assert "android-b11969-1" in r.stderr and "pkg install -y git python getconf" in r.stderr
-    assert "llama-cpp" not in r.stderr
+def _termux_dry(tmp_path, *extra):
+    e = {k: v for k, v in os.environ.items() if k != "FAMILIA_RUNTIME"}
+    e.update(FAMILIA_PREFIX=str(tmp_path / "p"), HOME=str(tmp_path))
+    return subprocess.run(["sh", TERMUX, "--dry-run", "--name", "t", "--no-path", *extra],
+                          capture_output=True, text=True, env=e, stdin=subprocess.DEVNULL)
+
+
+def test_termux_dry_run_default_is_thin_client(tmp_path):
+    r = _termux_dry(tmp_path)
+    assert r.returncode == 0, r.stderr
+    assert "thin client" in r.stderr
+    assert "cbl runtime (dry-run)" not in r.stderr
+    pkg_lines = [ln for ln in r.stderr.splitlines() if "pkg install -y" in ln]
+    assert pkg_lines and all("llama-cpp" not in ln for ln in pkg_lines)
+
+
+def test_termux_dry_run_runtime_cbl_uses_repo_pin(tmp_path):
+    r = _termux_dry(tmp_path, "--runtime", "cbl")
+    assert r.returncode == 0, r.stderr
+    assert "android-b12032-1" in r.stderr and "pkg install -y git python getconf" in r.stderr
+    assert "pkg install -y git python getconf llama-cpp" not in r.stderr
+
+
+def test_hermes_android_one_tap_opts_in_to_runtime():
+    s = open(os.path.join(ROOT, "install", "termux", "install-hermes-android.sh")).read()
+    assert '--runtime ${FAMILIA_RUNTIME:-cbl}' in s
 
 
 def test_dolphin_registry_lists_dolphin_terms():

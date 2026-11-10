@@ -17,7 +17,7 @@
 #                checked), run llama-server --version, remove it. No model (choice by RAM: TBD).
 # Steps: 1 fetch + verify license texts  2 show Llama 3.1 + Dolphin 3.0, type ACCEPT (no --yes)
 #        3 check the host URL answers  4 open it in the phone browser  5 remove the prefix
-# Office 3D: not in brianreborn/familia; not installed or stubbed here.
+# Office 3D: an upstream Hermes plugin for Linux/macOS hosts (docs/android-hermes.md); not on the phone.
 set -eu
 COMMIT=""; HOST=""; PORT=""; SCHEME=http; URL_FILE=""; LOCAL=0; DRY=""; KEEP=0; REMOVE=0
 SMOKE_PREFIX=${FAMILIA_SMOKE_PREFIX:-${TMPDIR:-$HOME/.cache}/familia-smoke}
@@ -25,11 +25,12 @@ RAW=${FAMILIA_RAW_URL:-https://raw.githubusercontent.com/brianreborn/familia}
 LIC_SUMS='bf2eac60b81e5c5f779fc3b4849d3bfacfd63f97f3eb68b44e9c6868c5801712  LLAMA-3.1-COMMUNITY-LICENSE.txt
 f456a3f5b15ab588c84d06cf095a245bfee0bbc1620b48ed00af2cca4a711735  LLAMA-3.1-ACCEPTABLE-USE-POLICY.md
 3f2524c574b24f59a654f845c8a3e927fe8f7f6dc5b89841e0dbc1fe85187534  DOLPHIN-3.0-MODEL-TERMS.txt'
-# cbl = brianreborn/code-bootstraps-llama.cpp release android-b11969-1 (SHA256SUMS asset); b11969 is
-# the llama.cpp pin in cbl config/llama-pin.env + config/llama-release.json at familia pins.txt 88096d1.
-CBL_URL=${FAMILIA_CBL_URL:-https://github.com/brianreborn/code-bootstraps-llama.cpp/releases/download/android-b11969-1}
-CBL_TAR=llama-b11969-bin-android-arm64-cbl1.tar.gz
-CBL_SHA=158db5deb3e39f20b0e4e26e265dfc242030823e96537df4dfbfe7b0557ffcc9
+# cbl = brianreborn/code-bootstraps-llama.cpp Android arm64 prebuilt. Mirrors the in-repo pin
+# config/cbl-android-runtime.json (android-b12032-1); tests/test_android_smoke.py keeps them equal.
+# Inline because this smoke test runs without a familia checkout on the phone.
+CBL_URL=${FAMILIA_CBL_URL:-https://github.com/brianreborn/code-bootstraps-llama.cpp/releases/download/android-b12032-1}
+CBL_TAR=llama-b12032-bin-android-arm64-cbl1.tar.gz
+CBL_SHA=28612783f45e9ed247276f66880fc7077c0d3bedd592ce3c2361f6144ec27024
 
 if [ -t 2 ] && [ -z "${NO_COLOR:-}" ]; then B=$(printf '\033[1m'); R=$(printf '\033[31m'); G=$(printf '\033[32m'); N=$(printf '\033[0m')
 else B=""; R=""; G=""; N=""; fi
