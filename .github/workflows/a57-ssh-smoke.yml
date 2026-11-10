@@ -61,9 +61,11 @@ jobs:
         run: |
           unset A57_SSH_CI_SSH A57_SSH_CI_ALLOW_SSH_OVERRIDE A57_SSH_CI_ALLOW_LOCAL \
             A57_SSH_CI_INVENTORY A57_SSH_CI_BUDGET_SEC A57_SSH_CI_KILL_GRACE_SEC \
-            A57_SSH_CI_LOCK_WAIT_SEC A57_SSH_CI_LOCK_DIR
-          python3 scripts/swarm/a57_ssh_dispatch.py --job python-compile --devices both --sha "$A57_SHA" > "$RUNNER_TEMP/a57-out.txt"
-          rc=$?
+            A57_SSH_CI_LOCK_WAIT_SEC A57_SSH_CI_LOCK_DIR XDG_CONFIG_HOME
+          rc=0
+          python3 scripts/swarm/a57_ssh_dispatch.py \
+            --job python-compile --devices both --sha "$A57_SHA" \
+            > "$RUNNER_TEMP/a57-out.txt" || rc=$?
           if ! grep -q '^overall=' "$RUNNER_TEMP/a57-out.txt"; then
             printf '%s\n' "a57-ssh-ci schema=1" "overall=refused reason=no-summary" > "$RUNNER_TEMP/a57-out.txt"
             rc=2

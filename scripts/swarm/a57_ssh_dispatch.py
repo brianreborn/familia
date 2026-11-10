@@ -30,6 +30,7 @@ import signal
 import stat
 import subprocess
 import sys
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -80,28 +81,35 @@ def _alarm(_signo, _frame):
     raise TimeoutError("alarm")
 
 def main():
-    home = os.path.expanduser("~")
-    if not home or home == "~" or not os.path.isdir(home):
-        print("fail no-home")
-        return 12
-    cache = os.path.join(home, ".cache")
-    os.makedirs(cache, mode=0o700, exist_ok=True)
-    lock_path = os.path.join(cache, "familia-a57-ci.lock")
-    fd = os.open(lock_path, os.O_CREAT | os.O_RDWR, 0o600)
+    signal.signal(signal.SIGALRM, _alarm)
+    signal.alarm(20)
+    fd = None
     held = False
     work = None
     try:
-        os.chmod(lock_path, 0o600)
+        home = os.path.expanduser("~")
+        if not home or home == "~" or not os.path.isdir(home):
+            print("fail no-home")
+            return 12
+        cache = os.path.join(home, ".cache")
+        os.makedirs(cache, mode=0o700, exist_ok=True)
+        lock_path = os.path.join(cache, "familia-a57-ci.lock")
+        fd = os.open(lock_path, os.O_CREAT | os.O_RDWR, 0o600)
+        try:
+            os.fchmod(fd, 0o600)
+        except OSError:
+            os.chmod(lock_path, 0o600)
         try:
             fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
             print("busy")
             return 11
         held = True
-        signal.signal(signal.SIGALRM, _alarm)
-        signal.alarm(20)
         print("python " + sys.version.split()[0])
-        work = tempfile.mkdtemp(prefix="familia-a57-smoke-")
+        tmp = os.environ.get("TMPDIR") or cache
+        if not tmp or not os.path.isdir(tmp):
+            tmp = cache
+        work = tempfile.mkdtemp(prefix="familia-a57-smoke-", dir=tmp)
         src = os.path.join(work, "smoke.py")
         pyc = os.path.join(work, "smoke.pyc")
         with open(src, "w", encoding="utf-8") as fh:
@@ -112,6 +120,7 @@ def main():
             return 12
         print("compile-ok")
         print("pass")
+        signal.alarm(0)
         return 0
     except Exception:
         print("fail smoke")
@@ -125,7 +134,8 @@ def main():
                 fcntl.flock(fd, fcntl.LOCK_UN)
             except OSError:
                 pass
-        os.close(fd)
+        if fd is not None:
+            os.close(fd)
 
 raise SystemExit(main())
 """
@@ -311,9 +321,27 @@ def inventory_path(env: dict, arg: str = "") -> str:
     return os.path.join(home, ".config", "familia", "a57-ssh-ci.yaml")
 
 
+def inventory_file_ok(path: str) -> bool:
+    """True when path is a regular file owned by this user, mode 0600 or 0400."""
+    if not path or any(c in path for c in "\n\r\x00"):
+        return False
+    try:
+        st = os.lstat(path)
+    except OSError:
+        return False
+    if stat.S_ISLNK(st.st_mode) or not stat.S_ISREG(st.st_mode):
+        return False
+    if st.st_uid != os.geteuid() or st.st_size < 1:
+        return False
+    return stat.S_IMODE(st.st_mode) in (0o600, 0o400)
+
+
 def load_inventory(path: str):
-    """Return the devices mapping, or None when the file is absent."""
-    if not path or not os.path.isfile(path):
+    """Return the devices mapping, or None when absent or not safely usable."""
+    if not path or not os.path.lexists(path):
+        return None
+    # Docs promise 0600, owned by the runner user. Fail closed as not-configured.
+    if not inventory_file_ok(path):
         return None
     try:
         import yaml
@@ -330,6 +358,18 @@ def load_inventory(path: str):
     if not isinstance(devices, dict):
         raise DispatchError("bad-inventory")
     return devices
+
+
+def check_unique_endpoints(devices: dict) -> None:
+    """Refuse two inventory entries that share the same (addr, port)."""
+    seen: dict[tuple, str] = {}
+    for name, raw in devices.items():
+        if not isinstance(raw, dict):
+            continue
+        key = (raw.get("addr"), raw.get("port"))
+        if key in seen:
+            raise DispatchError("bad-inventory")
+        seen[key] = name
 
 
 def _shared_temp(path: str) -> bool:
@@ -351,14 +391,12 @@ def lock_dir(env: dict) -> str:
         if not path:
             raise DispatchError("bad-lockdir")
     else:
-        runtime = (env.get("XDG_RUNTIME_DIR") or "").strip()
-        if runtime.startswith("/"):
-            path = os.path.join(runtime, "familia-a57-ssh")
-        else:
-            home = env.get("HOME") or ""
-            if not home:
-                raise DispatchError("bad-lockdir")
-            path = os.path.join(home, ".cache", "familia", "a57-ssh-locks")
+        # One fixed path under $HOME so a login shell and the runner service
+        # share the same locks. Do not default to $XDG_RUNTIME_DIR.
+        home = env.get("HOME") or ""
+        if not home or any(c in home for c in "\n\r\x00"):
+            raise DispatchError("bad-lockdir")
+        path = os.path.join(home, ".cache", "familia", "a57-ssh-locks")
     if _shared_temp(path):
         raise DispatchError("bad-lockdir")
     old = os.umask(0o077)
@@ -388,7 +426,10 @@ def acquire_lock(directory: str, device: str, wait_s: float) -> _Lock | None:
     except OSError as exc:
         raise DispatchError("bad-lockdir") from exc
     try:
-        os.chmod(path, 0o600)
+        try:
+            os.fchmod(fd, 0o600)
+        except OSError:
+            os.chmod(path, 0o600)
         import fcntl
         deadline = time.monotonic() + max(0.0, wait_s)
         while True:
@@ -512,7 +553,17 @@ def child_env(env: dict, secrets: list[str]) -> dict:
     home = env.get("HOME") or ""
     if not home or any(c in home for c in "\n\r\x00") or any(c in path for c in "\n\r\x00"):
         raise DispatchError("bad-env")
-    child = {"PATH": path, "HOME": home, "LANG": "C", "LC_ALL": "C"}
+    tmp = (env.get("TMPDIR") or "").strip()
+    if (not tmp or not tmp.startswith("/") or any(c in tmp for c in "\n\r\x00")
+            or not os.path.isdir(tmp)):
+        tmp = os.path.join(home, ".cache")
+    child = {
+        "PATH": path,
+        "HOME": home,
+        "LANG": "C.UTF-8",
+        "LC_ALL": "C.UTF-8",
+        "TMPDIR": tmp,
+    }
     blob = "\n".join(child.values())
     for secret in secrets:
         if secret and secret in blob:
@@ -562,6 +613,71 @@ def _killpg(pid: int, sig: int) -> None:
         pass
 
 
+_LIVE_PGIDS: set[int] = set()
+_LIVE_GUARD = threading.Lock()
+_KILL_GRACE = 2.0
+
+
+class SignalStop(BaseException):
+    """The dispatcher received SIGTERM, SIGINT, or SIGHUP."""
+
+
+def _register_pgid(pid: int) -> None:
+    with _LIVE_GUARD:
+        _LIVE_PGIDS.add(pid)
+
+
+def _unregister_pgid(pid: int) -> None:
+    with _LIVE_GUARD:
+        _LIVE_PGIDS.discard(pid)
+
+
+def _snapshot_pgids() -> list[int]:
+    with _LIVE_GUARD:
+        return list(_LIVE_PGIDS)
+
+
+def _shutdown_children(grace: float | None = None) -> None:
+    pids = _snapshot_pgids()
+    for pid in pids:
+        _killpg(pid, signal.SIGTERM)
+    wait = _KILL_GRACE if grace is None else grace
+    deadline = time.monotonic() + max(0.0, wait)
+    while time.monotonic() < deadline:
+        alive = False
+        for pid in pids:
+            try:
+                os.kill(pid, 0)
+                alive = True
+            except (ProcessLookupError, PermissionError):
+                pass
+        if not alive:
+            break
+        time.sleep(0.02)
+    for pid in pids:
+        _killpg(pid, signal.SIGKILL)
+
+
+def _handle_stop(_signo, _frame) -> None:
+    _shutdown_children(_KILL_GRACE)
+    raise SignalStop()
+
+
+def _install_stop_handlers() -> None:
+    for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+        try:
+            signal.signal(sig, _handle_stop)
+        except (ValueError, OSError):
+            pass
+
+
+def _fail_signal(secrets: list[str] | None = None, header: str | None = None) -> int:
+    _shutdown_children(_KILL_GRACE)
+    lines = [header or "a57-ssh-ci schema=1", "overall=fail reason=signal"]
+    _emit(render(lines, secrets or []))
+    return 1
+
+
 def run_ssh(argv: list[str], env: dict, budget: float, grace: float) -> tuple[int | None, str, bool]:
     proc = subprocess.Popen(
         argv,
@@ -571,24 +687,28 @@ def run_ssh(argv: list[str], env: dict, budget: float, grace: float) -> tuple[in
         env=env,
         start_new_session=True,
     )
+    _register_pgid(proc.pid)
     timed_out = False
     try:
-        _out, err = proc.communicate(REMOTE_SMOKE.encode(), timeout=budget)
-    except subprocess.TimeoutExpired:
-        timed_out = True
-        _killpg(proc.pid, signal.SIGTERM)
         try:
-            _out, err = proc.communicate(timeout=grace)
+            _out, err = proc.communicate(REMOTE_SMOKE.encode(), timeout=budget)
         except subprocess.TimeoutExpired:
-            _killpg(proc.pid, signal.SIGKILL)
-            _out, err = proc.communicate()
-    captured = b""
-    if err:
-        captured += err
-    if _out:
-        captured += b"\n" + _out
-    text = captured.decode("utf-8", "replace")
-    return proc.returncode, text, timed_out
+            timed_out = True
+            _killpg(proc.pid, signal.SIGTERM)
+            try:
+                _out, err = proc.communicate(timeout=grace)
+            except subprocess.TimeoutExpired:
+                _killpg(proc.pid, signal.SIGKILL)
+                _out, err = proc.communicate()
+        captured = b""
+        if err:
+            captured += err
+        if _out:
+            captured += b"\n" + _out
+        text = captured.decode("utf-8", "replace")
+        return proc.returncode, text, timed_out
+    finally:
+        _unregister_pgid(proc.pid)
 
 
 def _status_for_reason(reason: str) -> str:
@@ -652,6 +772,7 @@ def _refused(reason: str, secrets: list[str] | None = None) -> int:
 
 def dispatch(argv: list[str] | None = None, env: dict | None = None) -> int:
     env = os.environ if env is None else env
+    _install_stop_handlers()
     parser = argparse.ArgumentParser(prog="a57_ssh_dispatch.py", description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--job", default=JOB_PYTHON_COMPILE)
@@ -676,6 +797,10 @@ def dispatch(argv: list[str] | None = None, env: dict | None = None) -> int:
         wait_s = _bounded(env, "A57_SSH_CI_LOCK_WAIT_SEC", 0, 0, 30)
         path = inventory_path(env, args.inventory)
         inv = load_inventory(path)
+        if inv is not None:
+            check_unique_endpoints(inv)
+        global _KILL_GRACE
+        _KILL_GRACE = grace
     except DispatchError as exc:
         return _refused(exc.reason, secrets)
     header = f"a57-ssh-ci schema=1 job={job} trust={why}"
@@ -708,17 +833,20 @@ def dispatch(argv: list[str] | None = None, env: dict | None = None) -> int:
             return _refused(exc.reason, secrets)
     results = []
     workers = max(1, len(devices))
-    with ThreadPoolExecutor(max_workers=workers) as pool:
-        futures = []
-        for name, target in planned:
-            futures.append((name, pool.submit(
-                run_device, name, target, ssh_bin, child, directory, budget, grace, wait_s, secrets,
-            )))
-        for name, fut in futures:
-            try:
-                results.append(fut.result())
-            except Exception:
-                results.append({"device": name, "status": "refused"})
+    try:
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            futures = []
+            for name, target in planned:
+                futures.append((name, pool.submit(
+                    run_device, name, target, ssh_bin, child, directory, budget, grace, wait_s, secrets,
+                )))
+            for name, fut in futures:
+                try:
+                    results.append(fut.result())
+                except Exception:
+                    results.append({"device": name, "status": "refused"})
+    except (KeyboardInterrupt, SignalStop):
+        return _fail_signal(secrets, header)
     by = {r["device"]: r["status"] for r in results}
     lines = [header]
     statuses = []
@@ -739,6 +867,8 @@ def dispatch(argv: list[str] | None = None, env: dict | None = None) -> int:
 def main(argv: list[str] | None = None) -> int:
     try:
         return dispatch(argv)
+    except (KeyboardInterrupt, SignalStop):
+        return _fail_signal()
     except DispatchError as exc:
         return _refused(exc.reason)
     except Exception:

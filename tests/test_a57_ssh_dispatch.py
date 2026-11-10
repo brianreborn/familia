@@ -7,6 +7,7 @@ import json
 import os
 import re
 import shutil
+import signal
 import stat
 import subprocess
 import sys
@@ -318,7 +319,10 @@ def test_pass_records_ssh_policy_and_hides_addr(base):
         assert sha not in joined
         assert sha not in row["stdin"]
         assert row["stdin"] == d.REMOTE_SMOKE
-        assert set(row["env"]) == {"PATH", "HOME", "LANG", "LC_ALL"}
+        assert set(row["env"]) == {"PATH", "HOME", "LANG", "LC_ALL", "TMPDIR"}
+        assert row["env"]["LANG"] == "C.UTF-8"
+        assert row["env"]["LC_ALL"] == "C.UTF-8"
+        assert row["env"]["TMPDIR"].startswith("/")
 
 
 def test_sha_not_sent_and_rerun_is_idempotent(base):
@@ -765,4 +769,190 @@ def test_workflow_shape():
     assert "unset A57_SSH_CI_SSH" in smoke_run
     assert "A57_SSH_CI_INVENTORY" in smoke_run
     assert "A57_SSH_CI_LOCK_DIR" in smoke_run
+    assert "XDG_CONFIG_HOME" in smoke_run
+    assert "rc=0" in smoke_run
+    assert "|| rc=$?" in smoke_run
+    # bash -e would skip a bare rc=$? after a non-zero python exit.
+    assert re.search(r"python3 .*\|\| rc=\$\?", smoke_run, re.S)
     assert "ProxyJump" not in smoke_run
+
+
+def _cleared_workflow_vars():
+    text = open(WF, encoding="utf-8").read()
+    lines = text.splitlines()
+    block = []
+    for line in lines:
+        if re.search(r"\bunset\b", line):
+            block.append(line)
+            if not line.rstrip().endswith("\\"):
+                break
+            continue
+        if block:
+            block.append(line)
+            if not line.rstrip().endswith("\\"):
+                break
+    assert block, "workflow is missing the unset list"
+    joined = " ".join(block)
+    joined = re.sub(r"\bunset\b", " ", joined)
+    return re.findall(r"[A-Z][A-Z0-9_]+", joined)
+
+
+def test_docs_cleared_env_matches_workflow():
+    names = _cleared_workflow_vars()
+    assert names == [
+        "A57_SSH_CI_SSH",
+        "A57_SSH_CI_ALLOW_SSH_OVERRIDE",
+        "A57_SSH_CI_ALLOW_LOCAL",
+        "A57_SSH_CI_INVENTORY",
+        "A57_SSH_CI_BUDGET_SEC",
+        "A57_SSH_CI_KILL_GRACE_SEC",
+        "A57_SSH_CI_LOCK_WAIT_SEC",
+        "A57_SSH_CI_LOCK_DIR",
+        "XDG_CONFIG_HOME",
+    ]
+    doc = open(os.path.join(ROOT, "docs", "ci", "a57-ssh-dispatch.md"), encoding="utf-8").read()
+    for name in names:
+        assert name in doc, name
+    assert "rc=0" in doc and "|| rc=$?" in doc
+    assert "~/.cache/familia/a57-ssh-locks" in doc
+    assert "C.UTF-8" in doc
+    assert "PyYAML" in doc
+
+
+def test_inventory_loose_mode_is_not_configured(base):
+    known, ident = _known(base), _identity(base)
+    inv = _inventory(base, {"galaxy1": ADDR1}, known, ident)
+    os.chmod(inv, 0o644)
+    record = os.path.join(base, "record.jsonl")
+    mock = _mock(base, "ssh", _record_mock(record))
+    r = _run(["--devices", "galaxy1"], _env(base, mock, inv))
+    assert r.returncode == 1
+    assert "device=galaxy1 status=not-configured" in r.stdout
+    assert "overall=fail" in r.stdout
+    assert "status=pass" not in r.stdout
+    assert "reason=bad-inventory" not in r.stdout
+    assert _records(record) == []
+    os.chmod(inv, 0o400)
+    r = _run(["--devices", "galaxy1"], _env(base, mock, inv))
+    assert r.returncode == 0, r.stdout
+    assert "device=galaxy1 status=pass" in r.stdout
+    assert len(_records(record)) == 1
+
+
+def test_inventory_symlink_is_not_configured(base):
+    known, ident = _known(base), _identity(base)
+    real = _inventory(base, {"galaxy1": ADDR1}, known, ident)
+    link = os.path.join(base, "inventory.link.yaml")
+    os.symlink(real, link)
+    record = os.path.join(base, "record.jsonl")
+    mock = _mock(base, "ssh", _record_mock(record))
+    r = _run(["--devices", "galaxy1"], _env(base, mock, link))
+    assert r.returncode == 1
+    assert "device=galaxy1 status=not-configured" in r.stdout
+    assert _records(record) == []
+
+
+def test_inventory_foreign_owner_is_not_configured(base, monkeypatch, capsys):
+    known, ident = _known(base), _identity(base)
+    inv = _inventory(base, {"galaxy1": ADDR1}, known, ident)
+    record = os.path.join(base, "record.jsonl")
+    mock = _mock(base, "ssh", _record_mock(record))
+    env = _env(base, mock, inv)
+    real_euid = os.geteuid()
+    monkeypatch.setattr(d.os, "geteuid", lambda: real_euid + 1)
+    rc = d.dispatch(["--devices", "galaxy1"], env)
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert "device=galaxy1 status=not-configured" in out
+    assert _records(record) == []
+
+
+def test_duplicate_inventory_addr_port_is_refused(base):
+    known, ident = _known(base), _identity(base)
+    path = os.path.join(base, "inventory.yaml")
+    body = {"schema": 1, "devices": {
+        "galaxy1": {
+            "addr": ADDR1, "port": 8022, "user": "phone",
+            "known_hosts": known, "identity_file": ident,
+        },
+        "galaxy2": {
+            "addr": ADDR1, "port": 8022, "user": "phone",
+            "known_hosts": known, "identity_file": ident,
+        },
+    }}
+    _write(path, yaml.safe_dump(body), 0o600)
+    record = os.path.join(base, "record.jsonl")
+    mock = _mock(base, "ssh", _record_mock(record))
+    r = _run(["--devices", "galaxy1"], _env(base, mock, path))
+    assert r.returncode == 2
+    assert "reason=bad-inventory" in r.stdout
+    assert _records(record) == []
+
+
+def test_default_lock_dir_ignores_xdg_runtime_dir(base):
+    known, ident = _known(base), _identity(base)
+    inv = _inventory(base, {"galaxy1": ADDR1}, known, ident)
+    record = os.path.join(base, "record.jsonl")
+    mock = _mock(base, "ssh", _record_mock(record))
+    runtime = os.path.join(base, "runtime")
+    os.makedirs(runtime, mode=0o700)
+    env = _env(base, mock, inv)
+    del env["A57_SSH_CI_LOCK_DIR"]
+    env["XDG_RUNTIME_DIR"] = runtime
+    r = _run(["--devices", "galaxy1"], env)
+    assert r.returncode == 0, r.stdout
+    expected = os.path.join(env["HOME"], ".cache", "familia", "a57-ssh-locks")
+    assert os.path.isdir(expected)
+    assert os.path.isfile(os.path.join(expected, "galaxy1.lock"))
+    assert not os.path.exists(os.path.join(runtime, "familia-a57-ssh"))
+
+
+def test_child_env_passes_explicit_tmpdir(base):
+    known, ident = _known(base), _identity(base)
+    inv = _inventory(base, {"galaxy1": ADDR1}, known, ident)
+    record = os.path.join(base, "record.jsonl")
+    mock = _mock(base, "ssh", _record_mock(record))
+    tmp = os.path.join(base, "explicit-tmp")
+    os.makedirs(tmp, mode=0o700)
+    r = _run(["--devices", "galaxy1"], _env(base, mock, inv, TMPDIR=tmp))
+    assert r.returncode == 0, r.stdout
+    row = _records(record)[0]
+    assert row["env"]["TMPDIR"] == tmp
+    assert row["env"]["LANG"] == "C.UTF-8"
+
+
+def test_sigterm_kills_ssh_process_group_and_releases_lock(base):
+    known, ident = _known(base), _identity(base)
+    inv = _inventory(base, {"galaxy1": ADDR1}, known, ident)
+    record = os.path.join(base, "record.jsonl")
+    mock = _mock(base, "ssh", _record_mock(record, behavior="ignoreterm", sleep=30))
+    env = _env(base, mock, inv, A57_SSH_CI_BUDGET_SEC="20", A57_SSH_CI_KILL_GRACE_SEC="0.3")
+    proc = subprocess.Popen(
+        [sys.executable, SCRIPT, "--devices", "galaxy1"],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env,
+    )
+    deadline = time.time() + 5
+    while time.time() < deadline and not os.path.exists(record):
+        time.sleep(0.02)
+    assert os.path.exists(record), "dispatcher never reached ssh"
+    ssh_pid = _records(record)[0]["pid"]
+    proc.send_signal(signal.SIGTERM)
+    out, err = proc.communicate(timeout=10)
+    assert proc.returncode == 1, err or out
+    assert "overall=fail" in out
+    assert "reason=signal" in out
+    assert "status=pass" not in out
+    deadline = time.time() + 2
+    while time.time() < deadline:
+        try:
+            os.kill(ssh_pid, 0)
+        except ProcessLookupError:
+            break
+        time.sleep(0.05)
+    else:
+        raise AssertionError(f"mock ssh pid {ssh_pid} still alive")
+    fast = _mock(base, "ssh-fast", _record_mock(os.path.join(base, "record-fast.jsonl")))
+    env2 = dict(env, A57_SSH_CI_SSH=fast, A57_SSH_CI_BUDGET_SEC="5")
+    again = _run(["--devices", "galaxy1"], env2)
+    assert again.returncode == 0, again.stdout
+    assert "device=galaxy1 status=pass" in again.stdout
