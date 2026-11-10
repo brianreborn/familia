@@ -1074,7 +1074,7 @@ def _node_role(g, name):
            vg.node_type(g, name), infer_role(name, n, g)}
     if name.endswith("-defender") or name == "defender":
         raw.add("defender")
-    return {r for r in raw if r}
+    return {vg.normalize_role(r) for r in raw if r}
 
 
 def pentest_for_node(g, name):
