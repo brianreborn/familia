@@ -29,24 +29,66 @@ Also mirrored under `/workspace/familia-install-notes/vvram-ssd/` when present.
 | `man/man9/nvso.9` | kernel methods + aliases |
 | `tools/nvsoctl.c` | ABI smoker (`-n`) + soft round-trip |
 
-## Build
+## Build and userspace smoke
 
 ```sh
-# Anywhere (Linux box OK): userspace
+# Linux or anywhere with a C compiler. Does not build nvso.ko.
 make tools
-./tools/nvsoctl -n
-
-# angel FreeBSD (when SSH up):
-make -f Makefile.kmod
-sudo kldload ./nvso.ko   # soft bring-up only
-./tools/nvsoctl          # DOMAIN_CREATE + MAP + GATE round-trip
+./tools/nvsoctl -n          # exit 0: ABI and ioctl numbers
+sh smoke-userspace.sh       # or: make smoke
 ```
+
+`nvsoctl -n` prints the ABI and returns before `open`. A missing device without
+`-n` exits 2. A round-trip step whose ioctl fails, or whose `status` is
+non-zero, exits 3. `-h` exits 0. An unknown option exits 1.
+
+`make all` is the same userspace build as `make tools`. `depend` is a no-op.
+`make -f Makefile.kmod` is the FreeBSD module build. `make kmod` on a host
+without `bsd.kmod.mk` prints a skip and exits 0 without producing `nvso.ko`;
+that exit is not a module build. The userspace smoke does not run either kmod
+target.
+
+Passing `CFLAGS=` on the `make` command line used to drop `-Iinclude` (GNU
+make does not append to command-line variables). The Makefile now forces that
+include path with `override`.
+
+## Evidence
+
+Three different claims stay separate.
+
+**Userspace CI.** `.github/workflows/nvso-userspace-smoke.yml` runs
+`smoke-userspace.sh` on pull requests into `development`. It builds
+`tools/nvsoctl` with `-Wall -Wextra -Werror`, checks `nvsoctl -n` against the
+header ioctl numbers (the FreeBSD `_IOWR` layout for these structs), and
+checks client exit codes. The dry-run is run under a preload that aborts if
+`open` or `ioctl` is called. The non-dry failure checks use a missing path, or
+a regular file whose `ioctl` is answered inside the test process. That is not
+a kernel domain, not `/dev/nvso0`, and not a module load.
+
+**FreeBSD build note.** Commit `c3d9834` (2026-10-26,
+`docs(nvso): note angel FreeBSD 15.1 nvso.ko build success`) records that
+`make -f Makefile.kmod` produced `nvso.ko` on FreeBSD 15.1. The repository
+contains that commit message and the paragraph it added. It does not contain
+the compiler log or a `kldstat` transcript.
+
+**Live integration still pending.** Loading `nvso.ko`, the presence of
+`/dev/nvso0`, and a create→map→gate round-trip against a live softc are not
+established by `c3d9834`. Issue #365 says a module was loaded and a domain was
+created on a FreeBSD host. The issue body does not name the host, the path, or
+the branch, so that report stays unverified. This CI and doc pass does not
+complete #365.
+
+Soft ABI 2 stores domain, map, queue-geometry, and descriptor summaries in the
+softc (`NVSO_POST_SOFT` on the DMA post path). SandForce/Vertex2 firmware and
+GPU↔SSD DMA are not implemented by that bookkeeping.
 
 ## Software track (angel Nanbeige)
 
 Use mmap + swap + spill — see LAYER.md. That path does **not** require `nvso.ko`.
 
-## What returns 0 now (soft)
+## What the FreeBSD sources return 0 for (soft)
+
+These are the in-tree softc handlers. The userspace CI does not execute them.
 
 | Op | Soft behavior |
 |----|---------------|
@@ -70,11 +112,10 @@ Without those entries, compile fails with:
 sys/bus.h: fatal error: 'device_if.h' file not found
 ```
 
-Kernel sources (`/usr/src/sys`) and `bsd.kmod.mk` are required on the build host.
+Kernel sources (`/usr/src/sys`) and `bsd.kmod.mk` are required on the FreeBSD
+build host.
 
-### Verified on angel (FreeBSD 15.1)
-
-`make -f Makefile.kmod` produces `nvso.ko` (soft domains ABI 2). Load with
-`sudo kldload ./nvso.ko` only for ABI bring-up; then `./tools/nvsoctl` for the
-soft create→map→gate round-trip. **Not hardware HVVRAM.**
+The FreeBSD 15.1 `nvso.ko` result recorded in `c3d9834` is a build note. A
+later `kldload` and `nvsoctl` round-trip on that host are live integration,
+still pending, and are not part of the userspace smoke above.
 

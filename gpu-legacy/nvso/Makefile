@@ -1,10 +1,11 @@
 # Dual: GNU make (Linux box) builds tools/; FreeBSD bsd.kmod.mk for kmod on angel.
 # On angel for the module: make -f Makefile.kmod  (or `make kmod` if bsd.kmod.mk present)
 
-.PHONY: all clean tools kmod depend
+.PHONY: all clean tools kmod depend smoke
 
 CFLAGS ?= -O2 -Wall -Wextra
-CFLAGS += -Iinclude
+# override: a command-line CFLAGS= would otherwise drop -Iinclude.
+override CFLAGS += -Iinclude
 
 all: tools
 
@@ -23,6 +24,10 @@ kmod:
 
 depend:
 	@true
+
+# Userspace smoke only. Does not build or load nvso.ko.
+smoke:
+	sh smoke-userspace.sh
 
 clean:
 	rm -f tools/nvsoctl nvso.ko *.o sys/*.o

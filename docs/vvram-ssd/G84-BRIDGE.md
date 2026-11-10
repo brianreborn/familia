@@ -1,13 +1,17 @@
 # G84-BRIDGE — Implementation plan (FreeBSD-first nvso + gpu-legacy)
 
-Status: **soft domain path implemented** (`familia/gpu-legacy/nvso/`, ABI 2). In-kernel domain_create / map / gate / irq_attach + soft queue_export / dma_post return 0 (bookkeeping only). **Real SSD/GPU DMA still later** — see [HVVRAM-ARCHITECTURE.md](./HVVRAM-ARCHITECTURE.md), [FIRMWARE-PLAN.md](./FIRMWARE-PLAN.md), [DESCRIPTOR-FORMAT.md](./DESCRIPTOR-FORMAT.md). Software Nanbeige path is [LAYER.md](./LAYER.md) and does not block on this.
+Status: **in-tree soft bookkeeping (ABI 2)** in `gpu-legacy/nvso/`. The FreeBSD sources return 0 from domain create/map/gate/irq and from soft queue-export / DMA-post bookkeeping. SandForce firmware and GPU↔SSD DMA are still later — see [HVVRAM-ARCHITECTURE.md](./HVVRAM-ARCHITECTURE.md), [FIRMWARE-PLAN.md](./FIRMWARE-PLAN.md), [DESCRIPTOR-FORMAT.md](./DESCRIPTOR-FORMAT.md). The software Nanbeige path is [LAYER.md](./LAYER.md).
 
-Prior status line: scaffolding landed in-repo (`familia/gpu-legacy/nvso/`). Live compile/test waits for angel SSH / qodesh online. Software Nanbeige path is [LAYER.md](./LAYER.md) and does not block on this.
+Evidence stays split, including where an older line in this file disagrees with the code:
+
+- **Userspace CI** (`.github/workflows/nvso-userspace-smoke.yml`) builds `nvsoctl` and checks `nvsoctl -n` plus client exit codes. It does not load a module or open `/dev/nvso0`.
+- **FreeBSD build note:** commit `c3d9834` records that `make -f Makefile.kmod` produced `nvso.ko` on FreeBSD 15.1. The repo has the note, not the compiler log or a `kldstat` transcript.
+- **Live integration pending:** `kldload`, a live `/dev/nvso0`, and a host round-trip are not established by that note. Issue #365 reports a load and a domain create without a host, path, or branch, so the report stays unverified. Older drafts called the driver an empty `#if 0` softc and said `nvsoctl -n` exits 2. The sources use `#ifdef __FreeBSD__` with a softc; `-n` exits 0, and a missing device without `-n` exits 2.
 
 ## Goal chain
 
 1. **Today:** angel Nanbeige via mmap+swap+spill (LAYER).
-2. **Near:** FreeBSD `nvso(4)` kmod + ioctl ABI compiling as stub on angel (headers + empty softc).
+2. **Near:** FreeBSD `nvso(4)` soft bookkeeping is in tree (ABI 2). Live `kldload` and a host round-trip are still pending (see the evidence split above).
 3. **Next paper path:** open SandForce/Vertex2 FW + GPU↔SSD DMA descriptors; OS maps+monitors.
 4. **Bridge:** reuse lessons from `gpu-legacy` sm11_shim (qodesh) and nvidia 340 / CUDA 6.5 ports — **not** full llama CUDA on 256 MiB.
 
@@ -19,13 +23,13 @@ familia/gpu-legacy/nvso/
   include/nvso.h            # userspace + shared ioctl ABI
   include/nvso_ioctl.h      # _IOWR defs
   sys/nvso_if.h             # kernel method table sketch (nvso(9))
-  sys/nvso.c                # stub newbus driver (compiles with #if 0 / empty softc)
-  sys/nvso_ssd.c            # queue export stubs (nvssd_*)
-  sys/nvso_gpu.c            # dma post stubs (nvgpu_*) — G84 peer later
+  sys/nvso.c                # FreeBSD softc + /dev/nvso0; non-FreeBSD TU is an anchor
+  sys/nvso_ssd.c            # soft geom store (nvssd_queue_export)
+  sys/nvso_gpu.c            # soft copyin + summary (nvgpu_dma_post)
   man/man4/nvso.4           # device + ioctls
-  man/man9/nvso.9           # kernel methods + aliases
-  tools/nvsoctl.c           # userspace ioctl smoker (no device → exit 2)
-  Makefile                  # FreeBSD kmod + tools (no-op on Linux with message)
+  man/man9/nvso.9           # kernel method names + ioctl aliases
+  tools/nvsoctl.c           # -n exits 0; missing device without -n exits 2
+  Makefile                  # `all`/`tools` build nvsoctl; kmod is Makefile.kmod
 ```
 
 Install-notes mirrors (this directory): INGEST, LAYER, G84-BRIDGE, BENCH, THREAD-SOURCE.
@@ -43,21 +47,22 @@ Optional pointer: `familia/docs/vvram-ssd/README.md` → these notes + nvso path
 | `nvso_domain_gate` | Power-gate / reconfigure domain |
 | `nvso_irq_attach` | Attach local IRQ / notification |
 
-Man aliases (rigorous): see `nvso.4` / `nvso.9` — e.g. `NVSO_DOMAIN_CREATE` ioctl name ↔ `nvso_domain_create(9)` method.
+`nvso.4` / `nvso.9` pair ioctl names with method names. In the sources the lowercase names in `nvso_ioctl.h` (`nvso_domain_create` and the rest) are macros for the ioctl numbers. The softc stores function pointers (`nvso_soft_domain_create`, `nvso_ssd_queue_export`, `nvso_gpu_dma_post`, and the gate/irq handlers). `nvso_if.h` is a sketch and says it is not a generated kobj interface yet.
 
 ## Next compile steps (when hosts up)
 
 ### angel (FreeBSD) — primary
 
 ```sh
-cd ~/familia/gpu-legacy/nvso   # or repo path
-make -C . depend all           # builds nvso.ko stub + nvsoctl
-# load only when intentional:
-# sudo kldload ./nvso.ko
-./tools/nvsoctl -n             # dry-run: print ioctl numbers; no /dev/nvso → exit 2
+cd gpu-legacy/nvso
+make tools
+./tools/nvsoctl -n             # exit 0: ABI + ioctl numbers; does not open a device
+sh smoke-userspace.sh          # same checks as the development CI job
+# FreeBSD module build (host with bsd.kmod.mk), not this CI job:
+# make -f Makefile.kmod
 ```
 
-Expect: soft driver attaches as `nvso0`; domain/map/gate/irq + soft export/post return 0. Hardware SSD/GPU DMA is still not present.
+`make depend all` does not build `nvso.ko`: `depend` is a no-op and `all` builds `nvsoctl` only. `make kmod` without `bsd.kmod.mk` prints a skip and exits 0 without a module. The FreeBSD sources are written so a loaded soft driver attaches as `nvso0` and the bookkeeping ioctls return 0. This tree does not record that attach. Hardware SSD/GPU DMA is not in the sources.
 
 ### qodesh (Windows, G84) — Worker only when connected
 
