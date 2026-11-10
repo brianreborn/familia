@@ -1,6 +1,6 @@
 # Familia v0.3.0 sprint plan
 
-Updated: 2026-11-10 3:32 PM PT (America/Los_Angeles)
+Updated: 2026-11-10 3:35 PM PT (America/Los_Angeles)
 
 This is the current v0.3.0 sprint plan. It is new on main (SPRINT.md was
 not on main; the 2026-11-02 list lives only on open PR #286 and is stale).
@@ -54,8 +54,8 @@ breaking Linux. Owner for investigation: unassigned swarm runners
   line 455). Greens from that script are untrustworthy until this is
   fixed. The script is not in the repo. Angel's github-act-runner
   jobs run workflow steps (checkout, pytest, and similar), not this
-  script (verified in .github/workflows at this PR head, and in
-  Actions run 42921698653 / angel-smoke.yml). Status: open.
+  script (verified in Actions run 42921698653; angel-smoke.yml is
+  not in this PR or on main). Status: open.
 - #387 parent: FreeBSD 42 test failures block 0.3.0. Status: open.
 - #388 path resolution: familia-start refuses test key files (~15 tests).
 - #389 Windows reserved names not rejected (COM/LPT superscripts,
@@ -65,11 +65,20 @@ breaking Linux. Owner for investigation: unassigned swarm runners
 - #391 missing registry/llama-builds flag tables under FAMILIA_SYNC=0.
 - #392 test_bench_idle nice off-by-one (20 == 19).
 - #393 hostile hop test hits HTTP 502 (related to PR #362). The
-  issue says land on development, and the morning pin predates #362
-  (a4a65b3, now on main at 3934b39). Re-run the test on angel at
-  main before rewriting it.
+  issue now says land on main (0.3.0 work targets main). The
+  morning pin predates #362 (a4a65b3, now on main at 3934b39).
+  Re-run the test on angel at main after #362 before rewriting it.
 - #394 test_hermes_upstream_compat KeyError GITHUB_TOKEN.
 - #395 test_windows Activate.ps1 UTF-8 BOM on host venv.
+- graph.yaml still names Nanbeige4.3-33B Q4_K_M as angel-coder on
+  angel, which conflicts with the no-large-models-on-FreeBSD rule
+  and Brian's choice of Qwen2.5-Coder 3B 4-bit with a 0.5B draft.
+  The sprint line is the intended change; fix graph.yaml in a
+  separate PR.
+- a57-ssh-smoke.yml is still gated to development and needs
+  retargeting to main. 0.3.0 pushes to main will not run that SSH
+  smoke until the workflow is retargeted (or ci/a57-capability-smoke
+  is merged to main). Do not change workflows in this PR.
 
 ## 3. New product work (2026-11-10)
 
@@ -80,15 +89,16 @@ main.
 - #397 App catalog: virtual app store menu item; public search of open
   issues labeled applications, with a local cache.
   https://github.com/brianreborn/familia/issues/397
-  Owner: unassigned. Status: filed, not claimed. Blocker: none
-  (freeze lifted).
+  Owner: grokbot (box). Status: claimed:grokbot at 3:26 PM PT
+  on 2026-11-10. Blocker: none (freeze lifted).
 - #398 Menu: intelligent model picking.
   https://github.com/brianreborn/familia/issues/398
-  Owner: unassigned. Status: filed. Blocker: none (freeze lifted).
+  Owner: grokbot (box). Status: claimed:grokbot at 3:26 PM PT
+  on 2026-11-10. Blocker: none (freeze lifted).
 - #399 Proto model / protograph skill for configuring graph.yaml.
   https://github.com/brianreborn/familia/issues/399
-  Related: #327-331. Owner: unassigned. Status: filed.
-  Blocker: none (freeze lifted).
+  Related: #327-331. Owner: grokbot (box). Status: claimed:grokbot
+  at 3:26 PM PT on 2026-11-10. Blocker: none (freeze lifted).
 - #327-331 per-host menu redesigns (angel, galaxy1, galaxy2,
   reference). Code may start against main; keep one owner per issue
   so two agents do not take the same one.
@@ -159,18 +169,8 @@ Tracker: https://github.com/brianreborn/familia/issues/236
   to the A57s via the #367 dispatcher key. Owner-only GitHub
   settings; details in #236, not in this public file.
   https://github.com/brianreborn/familia/issues/236#issuecomment-6774972991
-  The self-hosted runners went online before those M17 owner
-  settings were applied. Required order is: set the owner
-  protections first, then bring runners online.
-  Workflow check at this PR head (same as main for
-  .github/workflows): no workflow uses pull_request_target.
-  tests.yml, lint-warnings.yml, and codeql.yml use pull_request
-  (fork PRs can start hosted jobs; they do not get secrets).
-  a57-ssh-smoke.yml is gated to brianreborn/familia and
-  refs/heads/development (fork PRs are not a trigger).
-  swarm-worker.yml /run is gated to the repository owner and
-  non-Bot comments. The unmerged a57-capability-smoke.yml (not
-  on main) is push/workflow_dispatch only, never pull_request.
+  M17 status: see #236.
+  Self-hosted workflows merging to main are gated on M17 settings first.
 - TR-3 residual: normalize_role should strip/Cf and reject non-ASCII
   or unknown roles (padded names, zero-width, lookalikes). TR-4
   role-override gap. Status: product issue not filed. Owner:
@@ -333,12 +333,13 @@ List only. Do not wake these bots for 0.3.0 unless Brian asks.
 
 ## 11. Sources
 
-- Main on 2026-11-10: ROADMAP.md is still the v0.2.0 roadmap; no
-  SPRINT.md and no v0.3.0 milestone existed on main. docs/HANDOFF.md
-  is the 2026-10-10 resume index.
+- Main on 2026-11-10: ROADMAP.md is still the v0.2.0 roadmap, and
+  SPRINT.md is still absent on main. The v0.3.0 milestone exists
+  (milestone 1). docs/HANDOFF.md is the 2026-10-10 resume index.
 - Stale plan: PR #286 (docs/current-sprint-2026-11-02, 2026-11-02).
 - Worker transcripts and 2026-11-06 local-transition checkpoints
   under /workspace/session/local-transition-2026-11-06/.
-- Live GitHub issues/PRs and claims as of 2026-11-10 3:32 PM PT.
-- Review fixes from Race and Boundary on PR #400 (comments
-  6782152898 and 6782156531).
+- Live GitHub issues/PRs and claims as of 2026-11-10 3:35 PM PT.
+- Review fixes from Race, Boundary, and Platform on PR #400
+  (comments 6782152898, 6782156531, 6782249291, 6782251389,
+  and 6782273617).
