@@ -104,6 +104,10 @@ def nodes_from_graph(graph, here=None):
 
 
 def _target(cfg, ref, where):
+    # A graph alias named like its own planned/slash-only node (embed -> embed) is not a route
+    # to itself: refuse it (409) instead of resolving to the alias and reporting a cycle (#231).
+    if ref in cfg["refused"] and ref not in cfg["nodes"] and cfg["raw_routes"].get(ref, ref) == ref:
+        raise ConfigError(f"{where}: {cfg['refused'][ref]}")
     if ref in cfg["nodes"] or ref in cfg["raw_routes"]:
         return ref
     if ref in cfg["refused"]:

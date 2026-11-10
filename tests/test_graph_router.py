@@ -356,6 +356,13 @@ def test_examples_compile():
         gr.load(os.path.join(d, f))
 
 
+def test_graph_alias_named_like_its_planned_node_is_refused_not_a_cycle():
+    # #231: graph.yaml embed -> {node: embed} with embed planned used to raise "route cycle"
+    g = _graph(); g["aliases"]["plan"] = {"node": "plan", "gateway": "gw"}
+    cfg = gr.compile_config({}, graph=g, here="here")
+    assert "plan" not in cfg["routes"] and "planned" in cfg["refused_routes"]["plan"]
+
+
 def test_graph_alias_to_planned_node_is_409_not_dropped():
     g = _graph(); g["aliases"]["later"] = {"node": "plan", "gateway": "gw"}
     cfg = gr.compile_config({}, graph=g, here="here")
