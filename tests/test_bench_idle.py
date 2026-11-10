@@ -14,6 +14,8 @@ import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCRIPT = os.path.join(ROOT, "scripts", "swarm", "bench_idle.py")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import safe_temp  # noqa: E402
 sys.path.insert(0, os.path.join(ROOT, "scripts", "swarm"))
 import bench_idle as bi  # noqa: E402
 
@@ -32,9 +34,10 @@ exit ${STUB_RC:-0}
 
 @pytest.fixture
 def base():
-    # User-owned, never /tmp: a private dir inside the repo's gitignored .cache/.
-    parent = os.path.join(ROOT, ".cache")
-    os.makedirs(parent, mode=0o700, exist_ok=True)
+    # User-owned and never under /tmp, /var/tmp or /dev/shm. The repo's
+    # gitignored .cache is used when the checkout is outside those roots;
+    # a /tmp checkout falls back to a real-home cache (see safe_temp).
+    parent = safe_temp.safe_temp_parent()
     d = tempfile.mkdtemp(prefix="test-bench-idle-", dir=parent)
     yield d
     shutil.rmtree(d, ignore_errors=True)
