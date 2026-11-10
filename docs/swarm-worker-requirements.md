@@ -101,7 +101,12 @@ A per-user supervisor keeps the listener up; the Grok CLI is not the supervisor.
 - Linux: `systemd --user` unit running `swarm-run-loop.sh`; `loginctl enable-linger
   <user>` (one root-queue job) to survive logout.
 - FreeBSD / no systemd: crontab `@reboot` loop (as angel-freebsd `install-grok-crontab.sh`).
-- Termux: termux-services `$PREFIX/var/service/`.
+- Termux: the intended supervisor is termux-services `$PREFIX/var/service/`.
+  Today `install/termux/install.sh` does not install a runit service and only
+  holds `termux-wake-lock` (code wins; see Path B install below). Doze and the
+  phantom-process killer can still freeze or kill the agent, so lease expiry
+  and fencing are the recovery path until a supervised unit is actually
+  installed (Brian's per-host OK).
 - Disarm by touching `$HOME/actions-runner/.swarm-disarmed` (japanglify idle stop).
 - `swarm-ping.yml` reports runner status (unknown, not green, when the token cannot read
   runners; set `SWARM_ADMIN_TOKEN` to fix). `swarm-watchdog.yml` comments once when a
@@ -221,7 +226,7 @@ identity is required. Spec only for v1.0.
 | | Linux | FreeBSD | Termux |
 |---|---|---|---|
 | Runner binary | GitHub actions-runner | none official (gap; forgejo-runner builds) | none official (gap) |
-| Supervisor | systemd --user + linger | cron `@reboot` | termux-services |
+| Supervisor | systemd --user + linger | cron `@reboot` | `termux-wake-lock` today; termux-services is aspirational |
 | Root queue shell/group | `/bin/sh`, `root` | `/BSD/sh`, `wheel` | no root; queue unused |
 
 ## Gaps
@@ -247,7 +252,7 @@ until this is implemented.
 There is no swarm brain and no dispatcher host. GitHub (the forge, via the R0
 adapter) is the nexus: the queue, the lease, the result log, and the visible
 status all live there. Every reachable machine is a peer: miryam, the Linux
-laptop, galaxy1 and galaxy2 (A57 phones), angel-bsd (FreeBSD), qodesh, shalom,
+laptop, galaxy1 and galaxy2 (A57 phones), angel (FreeBSD), qodesh, shalom,
 and any other host that can see the forge.
 
 miryam is only a peer with a convenient network position. It does not assign
@@ -266,11 +271,15 @@ not runnable just because it exists.
    or in the issue body as swarm-eligible work).
 2. Brian gives explicit admin approval for that work to enter the pull queue
    (an approval label or an owner `/run` / equivalent forge command, already
-   `owner_only` in `.github/swarm-conductor.json`). The approval is bound to
-   the head SHA (or issue-body revision) it was given for. A later push
-   invalidates it. A peer must check SHA == approved SHA at claim time and
-   again immediately before executing, so a push after `/run` cannot run
-   unapproved code on self-hosted peers.
+   `owner_only` in `.github/swarm-conductor.json`). An approval label is a
+   valid gate only if the peer verifies, from the issue timeline `labeled`
+   event, that the actor who applied it is the repository owner. Bare label
+   presence is not enough: a Path B token on a low-trust phone may have
+   issues:write in order to claim, and must not be able to approve itself.
+   The approval is bound to the head SHA (or issue-body revision) it was
+   given for. A later push invalidates it. A peer must check SHA == approved
+   SHA at claim time and again immediately before executing, so a push after
+   `/run` cannot run unapproved code on self-hosted peers.
 3. Only then may a free peer claim it.
 
 Discovery of open issues can stay open and parallel. Claiming and running are
@@ -289,7 +298,9 @@ API / family, and model-family, plus role labels such as `swarm-bench`. Labels
 are capabilities, not host names. `host:<host>` and `node:<host>-<user>` may
 still exist as optional identity stamps (R2, R10), but workflows must not
 route on them. The peer that is free and matches takes the job. Nobody pushes
-the job to a named machine. Actions assignment is the claim for Path A.
+the job to a named machine. Path A does not have the Path B claim race:
+  the Actions job queue hands each job to exactly one runner, and that
+  assignment is the claim.
 
 **Path B: tiny pull agent (when `actions/runner` is unsupported),** including
 FreeBSD and Android-native / Termux today (see Gaps). The agent polls the
@@ -304,6 +315,26 @@ required set may take it) and all-of on required ones (OS, arch, or a stated
 minimum RAM). A job that needs a phone GPU says `android` + `vulkan` + a
 model-family, not `galaxy1`.
 
+Capability labels are one lowercase ASCII set, `[a-z0-9-]` only. Do not put
+colons in new capability labels: a pull agent may use them in lock, state,
+or cache file names, and `:` is invalid on Windows. Path B matches
+case-insensitively, as Actions does. Official runner auto-labels
+(`Linux`, `X64`, `ARM64`) and `uname` values are mapped into this set.
+`host:` / `node:` stay identity stamps only (R2, R10), not routing labels.
+
+| Source | Capability label |
+|---|---|
+| Actions auto-label `Linux`; Linux `uname -s` | `linux` |
+| FreeBSD `uname -s` | `freebsd` |
+| Termux (its `uname -s` is `Linux`, not `android`) | `android` |
+| `amd64`, `x86_64`, or Actions `X64` | `x64` |
+| `aarch64` or Actions `ARM64` | `arm64` |
+| Vulkan / CUDA present | `vulkan` / `cuda` |
+| Role (existing) | `swarm-bench` |
+
+RAM-class and model-family labels, when added, follow the same alphabet
+(for example `ram-8g`, `qwen35`).
+
 Every task lives in exactly one queue: either a Path A Actions job or a
 Path B labeled-issue / dispatch item, never both. If Actions has already
 queued the job, Path B must not also claim it.
@@ -312,6 +343,30 @@ Polls and claims use jittered backoff and ETag / conditional requests. Each
 peer has a max-concurrent-claims default of 1. HTTP 403 and 429 are backoff,
 not a failure and not a free slot. A burst of peers waking on one approval
 must not treat every "I posted a claim comment" as a win.
+
+**Path B install and supervision** (see also R3 layout and R7 liveness; a
+persistent install still needs Brian's per-host OK):
+
+- Termux: state, lock, and work directories go under Termux `$HOME` (for
+  example `$HOME/.local/state/familia/pull-agent`, with work under the R3
+  `$HOME/swarm-agents/...` tree). Never `/sdcard`, `/storage/*`, or
+  `/data/local/tmp`, which `install/termux/install.sh` already refuses for
+  key files. Hold `termux-wake-lock`, as that installer does. Say plainly
+  that Android's phantom-process killer and Doze can still kill or freeze
+  the agent; lease expiry plus fencing is the recovery path, not the
+  supervisor.
+- FreeBSD: stay rootless, per R6. A crontab `@reboot` entry starting
+  `daemon -r -P $STATE/agent.pid -o $STATE/agent.log <agent>` gives restart
+  supervision without root (`install/freebsd/install-familia.sh` already
+  uses `@reboot`). An `rc.d` script under `/usr/local/etc/rc.d` is a
+  root-queue step.
+- Every node needs a single-instance local lock: a `mkdir`-atomic lock
+  directory holding an owner token (pid plus process start time), reclaimed
+  only when that pid/start pair is gone. Without it, cron or runit can start
+  a second agent on the same node.
+- Supervised daemons are the default for unattended runs. A named `screen`
+  session is for manual or interactive ones (Brian's screen policy, L-screen),
+  not a substitute for the unattended supervisor.
 
 ### Claim, lease, and fencing
 
@@ -325,23 +380,28 @@ A real claim uses one of these CAS mechanisms:
 - Preferred: create a git ref (`POST /git/refs`, for example
   `refs/claims/<issue>-<generation>`). The forge returns 422 if the ref
   already exists; that is the lost race, and the peer looks again.
-- Alternative, when a claims ref namespace is not available: the issue
-  timeline is the authority. The earliest unexpired claim comment, ordered
-  by forge `created_at` and then comment id, wins. After posting, every
-  claimant re-reads the timeline and withdraws if it is not first.
+- Alternative, when a claims ref namespace is not available: the claim is a
+  comment that carries a claim id. After posting, the agent re-reads, and
+  the earliest unexpired claim comment, ordered by forge `created_at` and
+  then comment id, wins. Losers delete or strike their claim comment.
 
 Each successful claim carries a monotonic generation or fencing token (the
-claim ref SHA, or the winning claim comment id). Lease expiry is computed
-from forge server time only (comment `created_at`, or the response `Date`
-header), plus a grace margin. Local wall clocks are never used to stamp or
-to test expiry; a fast-clock reaper must not void a live lease.
+claim ref SHA, or the winning claim comment id). Every result and every reap
+must name that claim id / generation. Lease expiry and renewal use forge
+server time only (comment `created_at`, or the response `Date` header), plus
+a grace margin. Local wall clocks are never used to stamp or to test expiry;
+phones and RTC-less boards drift and jump after sleep, and a fast-clock
+reaper must not void a live lease.
 
 The holder heartbeats (renews) the lease so a long job can outlive the
-initial interval. Before every side effect it re-checks that it still holds
-its generation and aborts if it has lost the claim. Every result and side
-effect carries the fencing token. A result whose token has been superseded
-is marked stale and ignored; last-writer-wins on labels or statuses is not
-enough.
+initial interval. The lease length must cover the renewal interval plus an
+Android or FreeBSD sleep pause, or the agent must re-check before every side
+effect (do both). This is what stops a Doze-paused or phantom-killed phone
+agent from waking after its lease was reaped and posting a result it no
+longer holds. Before every side effect the holder re-reads that its claim is
+still current and aborts if it has lost the generation. A result whose token
+has been superseded is labeled stale, not pass or fail, and is ignored;
+last-writer-wins on labels or statuses is not enough.
 
 Reaping is not "drop the lease label and clear the assignee." Any peer may
 reap, but the reap is conditional on the exact stale generation: reap of
@@ -475,7 +535,7 @@ run long; the first ack must not wait on them.
 A persistent runner, pull agent, or boot service on a host still needs
 Brian's per-host OK before it is installed or left running unattended. This
 section does not grant that OK for miryam, the Linux laptop, the A57 phones,
-angel-bsd, qodesh, shalom, or any other machine.
+angel, qodesh, shalom, or any other machine.
 
 ### Current code that this section would change
 
@@ -493,8 +553,9 @@ not change these files.
   still includes `host:<host>` and `node:<host>-<user>`. R1 and R4 describe
   a conductor that dispatches.
 - Hosted trivial or analysis jobs correctly use `ubuntu-latest` today
-  (`tests.yml`, `lint-warnings.yml`, `codeql.yml`, `nvso-userspace-smoke.yml`,
+  (`tests.yml`, `lint-warnings.yml`, `nvso-userspace-smoke.yml`,
   `swarm-ping.yml`, `swarm-watchdog.yml`, and the A57/swarm gate and report
-  jobs). That remains valid for D1 and for work that must not run on
-  self-hosted peers. It is not a host-name hardcode, but it is also not
-  label-based self-hosted routing.
+  jobs). `codeql.yml` is also hosted, but it picks `macos-latest` for the
+  swift matrix leg and `ubuntu-latest` otherwise. That remains valid for D1
+  and for work that must not run on self-hosted peers. It is not a host-name
+  hardcode, but it is also not label-based self-hosted routing.
