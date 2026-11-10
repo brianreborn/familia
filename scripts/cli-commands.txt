@@ -51,6 +51,7 @@ add-model|raw|scripts/add-model.sh||python scripts\add_model.py|scripts/add-mode
 check|models.check
 graph check|models.check
 graph explain|models.explain
+graph proto|adv.protograph
 graph args|adv.args
 graph generate|hosts.generate
 graph edit|adv.graph-edit

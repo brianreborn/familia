@@ -1,0 +1,20 @@
+# protograph recipe: reuse a host, runtime and model already described in graph.yaml.
+# addr/user are never copied (they live in hosts.local.yaml, #104).
+# Dry run: python3 scripts/protograph.py skills/protograph/examples/from-host.recipe.yaml
+protograph: 1
+host: {from_graph: box}
+runtime: {from_graph: llama-b11374-box-cpu}
+models:
+  draft: {from_graph: qwen35-08b-q4km}
+nodes:
+  - role: coder
+    model: draft
+    ctx: 8192
+    port: 9101
+    kv_type: q8_0
+    flash_attn: true
+    threads: 2
+    override_reasons:
+      ctx: "example recipe: 8192 keeps KV small for a quick smoke; the card's 262144 was not measured here"
+gateway: {port: 8090}
+agent: {kind: hermes-agent, main: coder, min_ctx: 8192}
