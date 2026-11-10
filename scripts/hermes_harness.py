@@ -613,9 +613,26 @@ AMBIENT_SECRET_RE = re.compile(
     r"|[A-Za-z0-9_]*AMQP[A-Za-z0-9_]*_(?:URL|URI)"
     r")$"
 )
-# scheme://userinfo@host… — any userinfo, including token@host with no colon (not only user:pass@).
-# Plain URLs without userinfo (e.g. local llama http://127.0.0.1:8080) do not match.
+# Userinfo forms (applied to the raw value and after percent-decode, so %40 counts as @):
+#   scheme://userinfo@host  (any userinfo, including token@host)
+#   //userinfo@host         (scheme-relative)
+#   user:pass@host          (schemeless, password present)
+#   user@host:port or user@host/path or user@host:path  (scp/ssh-style)
+# A whole-value plain email (alice@example.com) is kept, so harmless vars like ADMIN_EMAIL
+# are not scrubbed. Prefer dropping when the shape is ambiguous.
 CREDENTIAL_URL_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*://[^/\s@]+@")
+CREDENTIAL_SCHEME_RELATIVE_RE = re.compile(r"^//[^/\s@]+@")
+CREDENTIAL_SCHEMELESS_PASS_RE = re.compile(r"^[^/\s:@]+:[^/\s@]*@")
+# user@host:port, user@host:path (git@host:org/repo), or user@host/path
+CREDENTIAL_SCHEMELESS_SCP_RE = re.compile(r"^[^/\s:@]+@[^/\s:@]+(?::[^\s]+|/)")
+# Bare user@host (no scheme, no password, no path). user@localhost drops; emails are
+# skipped earlier by PLAIN_EMAIL_RE.
+CREDENTIAL_SCHEMELESS_USERHOST_RE = re.compile(r"^[^/\s:@]+@[^/\s:@]+$")
+PLAIN_EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
+
+# Schemes whose `scheme:user@host` form is not a credential DSN (mailto:alice@example.com
+# would otherwise look like schemeless user:pass@host).
+HARMLESS_URI_SCHEMES = frozenset({"mailto", "tel", "sms", "urn", "tag", "cid", "mid"})
 # Schemes that are credential DSNs even without userinfo; used only for *_URI value-based drops.
 CREDENTIAL_DSN_SCHEMES = frozenset({
     "postgres", "postgresql", "mysql", "mariadb", "mongodb", "mongodb+srv",
@@ -638,11 +655,48 @@ def _ambient_secret_name(name):
     return name in AMBIENT_SECRET_NAMES or bool(AMBIENT_SECRET_RE.match(name))
 
 
+def _percent_decode_value(val, rounds=3):
+    """Decode %XX sequences a few times so %40 and %2540 surface as @."""
+    s = val
+    for _ in range(rounds):
+        nxt = urllib.parse.unquote(s)
+        if nxt == s:
+            break
+        s = nxt
+    return s
+
+
+def _credential_url_candidates(val):
+    raw = val.strip()
+    out = [raw]
+    dec = _percent_decode_value(raw)
+    if dec != raw:
+        out.append(dec.strip())
+    return out
+
+
 def _credential_url_value(val):
-    """True when *val* looks like scheme://userinfo@… (any userinfo, including token@host)."""
-    if not isinstance(val, str) or "://" not in val:
+    """True when *val* has URL userinfo: scheme://userinfo@, //userinfo@, schemeless
+    user:pass@host, or scp/ssh user@host:path / user@host/path, including after %40
+    decode. A whole-value plain email (alice@example.com) is kept."""
+    if not isinstance(val, str):
         return False
-    return bool(CREDENTIAL_URL_RE.match(val.strip()))
+    for s in _credential_url_candidates(val):
+        if not s:
+            continue
+        if PLAIN_EMAIL_RE.match(s):
+            continue
+        # mailto:alice@example.com (and similar) is not user:pass@host.
+        if "://" not in s and ":" in s:
+            head = s.split(":", 1)[0].lower()
+            if head in HARMLESS_URI_SCHEMES:
+                continue
+        if (CREDENTIAL_URL_RE.match(s) or CREDENTIAL_SCHEME_RELATIVE_RE.match(s)
+                or CREDENTIAL_SCHEMELESS_PASS_RE.match(s)
+                or CREDENTIAL_SCHEMELESS_SCP_RE.match(s)
+                or CREDENTIAL_SCHEMELESS_USERHOST_RE.match(s)):
+            return True
+    return False
 
 
 def _credential_dsn_uri(name, val):
@@ -660,8 +714,10 @@ def scrub_ambient_secrets(env, keep=()):
     Name shapes (matched before keep): GH_TOKEN/…/KUBECONFIG/AMQP_URL/RABBITMQ_URL/CLOUDAMQP_URL/
     *AMQP*_URL/MONGODB_URI/PGPASSWORD/MYSQL_PWD, *_SECRET/*_PASSWORD/*_PWD/*_TOKEN/*_PRIVATE_KEY/
     *_DSN/*_DATABASE_URL/*_DB_URL/*_REDIS_URL, MONGO*/POSTGRES*/MYSQL*/RABBITMQ*_URL/_URI. Also
-    any var whose value has URL userinfo (user:pass@ or token@host). *_URI is value-based: dropped
-    only when the value has userinfo or a known credential DSN scheme (REDIRECT_URI stays).
+    any var whose value has URL userinfo (scheme://userinfo@, //userinfo@, schemeless
+    user:pass@host, or scp/ssh user@host:path, including after %40-decode). A whole-value
+    plain email is kept. *_URI is value-based: dropped only when the value has userinfo or a
+    known credential DSN scheme (REDIRECT_URI stays).
     Keep = caller keep | MCP_ENV_KEEP | HARNESS_ENV_KEEP. Returns the names removed."""
     if env.get(PASS_SECRETS_ENV) == "1":
         return []

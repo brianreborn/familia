@@ -84,8 +84,13 @@ Ambient non-LLM secrets are not carried into hermes (and so not into its termina
 `*_PASSWD`, `*_PWD`, `*_TOKEN`, `*_PRIVATE_KEY`, `*_DSN`, `*_DATABASE_URL`, `*_DB_URL`,
 `*_REDIS_URL`, `*AMQP*_URL`/`_URI`, `MONGO*`/`POSTGRES*`/`MYSQL*`/`RABBITMQ*_URL`/`_URI`.
 Secret-shaped names are matched before any keep list, so `FAMILIA_GH_TOKEN` and `HERMES_TOKEN`
-drop too. Any var whose value has URL userinfo (`scheme://user:pass@…` or `scheme://token@host`,
-no colon required) is also dropped (plain URLs such as a local llama endpoint are kept). `*_URI`
+drop too. Any var whose value has URL userinfo is also dropped: `scheme://userinfo@…`
+(including `token@host`, no colon required), scheme-relative `//userinfo@host`, schemeless
+`user:pass@host`, and scp/ssh `user@host:path` / `user@host/path`. Percent-encoded userinfo
+(`%40` for `@`, including double-encoded `%2540`) is decoded before the check. Plain URLs
+such as a local llama endpoint are kept. A whole-value plain email (`alice@example.com`) is
+also kept so harmless vars like `ADMIN_EMAIL` are not scrubbed; `//alice@example.com` and
+`user@localhost` are not treated as emails and still drop. `*_URI`
 is value-based: dropped only when the value has userinfo or a known credential DSN scheme
 (`postgres://`, `mongodb://`, `redis://`, `amqp://`, …); names like `REDIRECT_URI` stay.
 Graph-declared MCP names and harness control vars (`HERMES_HOME`, `FAMILIA_API_KEY`, …) are kept.

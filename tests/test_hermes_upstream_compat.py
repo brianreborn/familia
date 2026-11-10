@@ -363,6 +363,73 @@ def test_cloudamqp_and_amqp_url_names_drop(tmp_path, monkeypatch):
     assert opted["CLOUDAMQP_URL"] == "amqps://x" and opted["AMQP_BROKER_URL"] == "amqp://z"
 
 
+
+def test_ambient_secret_userinfo_schemeless_scheme_relative_and_percent(tmp_path, monkeypatch):
+    """Boundary #354 nit: schemeless, scheme-relative, and %40 userinfo drop; plain emails stay."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    hh.MCP_ENV_KEEP.clear()
+    drop = {
+        "SCHEMELESS_PASS": "alice:s3cret@db.example:5432/app",
+        "SCHEMELESS_USER_PASS": "deploy:hunter2@ci-host",
+        "SCHEME_RELATIVE": "//alice:s3cret@db.example/app",
+        "SCHEME_RELATIVE_TOKEN": "//s3cret-token@evil.example/x",
+        "PCT_AT": "https://s3cret-token%40evil.example/path",
+        "PCT_COLON": "https://user%3Apass@evil.example/x",
+        "PCT_DOUBLE": "https://s3cret-token%2540evil.example/path",
+        "PCT_SCHEME_RELATIVE": "//user%40evil.example/db",
+        "GIT_SSH": "git@github.com:org/repo.git",
+        "USER_AT_LOCALHOST": "alice@localhost",
+        "USER_AT_HOST_PATH": "deploy@ci-host/app",
+    }
+    keep = {
+        "ADMIN_EMAIL": "alice@example.com",
+        "CONTACT_EMAIL": "bob.smith+ops@example.co.uk",
+        "EMAIL": "carol@example.org",
+        "LLAMA_SERVER_URL": "http://127.0.0.1:8080",
+        "PUBLIC_HOOK": "https://hooks.example/x",
+        "MAILTO": "mailto:alice@example.com",
+        "HERMES_HOME": "/h",
+        "PATH": "/bin",
+    }
+    src = dict(drop, **keep)
+    env = hh.hermes_child_env(environ=src)
+    for k in drop:
+        assert k not in env, k
+    for k, v in keep.items():
+        assert env[k] == v, k
+    opted = hh.hermes_child_env(environ=dict(src, **{hh.PASS_SECRETS_ENV: "1"}))
+    for k, v in drop.items():
+        assert opted[k] == v, k
+
+
+def test_credential_url_value_matrix():
+    """Direct shape checks, including the email-keep tradeoff."""
+    drop = [
+        "alice:s3cret@db.example:5432/app",
+        " //token@evil.example/x ",
+        "https://s3cret-token%40evil.example/path",
+        "https://user%3Apass@evil.example/x",
+        "https://s3cret-token%2540evil.example/path",
+        "git@github.com:org/repo.git",
+        "alice@localhost",
+        "deploy@ci-host/app",
+        "postgres://user@db.example/app",
+    ]
+    keep = [
+        "alice@example.com",
+        "bob.smith+ops@example.co.uk",
+        "http://127.0.0.1:8080",
+        "https://hooks.example/x",
+        "mailto:alice@example.com",
+        "https://example.com/u?email=alice@example.com",
+        "redis://localhost:6379/0",
+    ]
+    for v in drop:
+        assert hh._credential_url_value(v), v
+    for v in keep:
+        assert not hh._credential_url_value(v), v
+
+
 def test_harness_env_keep_has_no_secret_shaped_names():
     """HARNESS_ENV_KEEP must not include names that match the ambient secret patterns."""
     assert hh.HARNESS_ENV_KEEP
