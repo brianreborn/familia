@@ -152,11 +152,13 @@ def test_server_tools_opt_out_on_direct_node():
     assert hh.vg.tool_policy(g, "coder") == []
     r = hh.route_tools(g, "hermes")
     assert r == {"mode": "none", "node": None, "via": None, "reason": "server_tools opt-out"}
-    # Missing key stays direct (even though an off-loopback bind would make policy []).
+    # #345: off-loopback without server_tools is not direct and does not fall through
+    # to discovery (rebinding cannot implicitly forward). Only an explicit tool_route wins.
     g2 = g_main("coder", bind="0.0.0.0")
     assert "server_tools" not in g2["nodes"]["coder"]
     assert hh.vg.tool_policy(g2, "coder") == []
-    assert hh.route_tools(g2, "hermes") == {"mode": "direct", "node": "coder", "via": None}
+    r2 = hh.route_tools(g2, "hermes")
+    assert r2 == {"mode": "none", "node": None, "via": None, "reason": "off-loopback without server_tools"}
 
 
 @pytest.mark.parametrize("node,over", [("miryam-pentest", {}), ("angel-guardian", {}),

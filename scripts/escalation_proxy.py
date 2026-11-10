@@ -126,12 +126,27 @@ def _nothing_sent(e):
 
 def tool_target(g, name):
     """Validated graph `tool_route` target for `name` (validate_graph.tool_route), else None.
+
+    Agrees with Hermes route_tools and tool_policy (#340):
+    - a directly tool-capable source stays direct (no forward), even if it also has tool_route;
+    - an explicit server_tools opt-out (or any empty tool_policy) on the source blocks forward.
     Fails safe to None (no forward) on any graph shape the validator cannot evaluate; the
     validator error is logged, not swallowed."""
     if not (((g.get("nodes") or {}).get(name) or {}).get("tool_route")):
         return None
     try:
         import validate_graph as VG
+        n = (g.get("nodes") or {}).get(name) or {}
+        # Empty source tool_policy blocks forward, even when server_tools is absent
+        # (opt-out, fail-closed, or off-loopback with no grant / no valid tool_route).
+        if VG.tool_policy(g, name) == []:
+            return None
+        # BUG-TR-2: a source that Hermes would treat as direct (loopback default grant, or
+        # an explicit server_tools grant) stays direct even if it also has tool_route.
+        # Off-loopback without server_tools is not direct (#345); an explicit tool_route
+        # (non-empty routed policy) may still forward.
+        if VG.tool_capable(g, name) and ("server_tools" in n or VG._loopback(n.get("bind"))):
+            return None
         return VG.tool_route(g, name)
     except Exception as e:
         print(f"[familia] tool_route for {name}: validate_graph error ({type(e).__name__}: {e}); not forwarding",
@@ -179,6 +194,9 @@ def _pending_path(session_id):
     if not session_id or session_id == DEFAULT_SESSION:
         return PENDING
     safe = re.sub(r"[^A-Za-z0-9._-]+", "_", session_id)[:80]
+    if safe != session_id:   # lossy (non-ASCII, long): keep distinct ids distinct (routing-l10n)
+        import hashlib
+        safe = safe[:60] + "-" + hashlib.sha256(session_id.encode("utf-8")).hexdigest()[:16]
     return os.path.join(STATE, f"escalation-pending-{safe}.json")
 
 class Signals:

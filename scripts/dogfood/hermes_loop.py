@@ -39,11 +39,19 @@ def home_for(mode: str, agent: str, node: str) -> Path:
     return Path(os.path.expanduser(f"~/.cache/familia/hermes-{agent}"))
 
 
-def resolve_agent_bin(*, missing: str = "defaults") -> str:
-    """Return hermes-agent path (snap / FreeBSD / PATH / HERMES_BIN)."""
+def resolve_agent_bin(*, missing: str = "defaults", require_trust: bool = False) -> str:
+    """Return hermes-agent path (snap / FreeBSD / PATH / HERMES_BIN).
+
+    When *require_trust* is true (Boundary N1b exec paths), the resolved absolute path must pass
+    ``hermes_harness.trust_exec`` or ``ValueError`` is raised.
+    """
     import hermes_harness as hh
 
     bin_path, _py, _sp = hh.resolve_hermes(missing=missing)
+    if require_trust:
+        _real, why = hh.trust_exec(bin_path)
+        if why:
+            raise ValueError(f"hermes_bin {bin_path!r} failed trust_exec ({why})")
     return bin_path
 
 
@@ -61,17 +69,32 @@ def build_render_cmd(mode: str, node: str, agent: str = "hermes", *, repo_root=N
     return cmd
 
 
+def _require_trusted_bin(bin_path: str, *, reason: str) -> str:
+    """Return *bin_path* after ``trust_exec``, or raise ValueError (Boundary N1b)."""
+    import hermes_harness as hh
+
+    _real, why = hh.trust_exec(bin_path)
+    if why:
+        raise ValueError(f"{reason}: hermes_bin {bin_path!r} failed trust_exec ({why})")
+    return bin_path
+
+
 def build_agent_cmd(prompt: str, toolsets: str = TOOLSETS, hermes_bin: str | None = None,
                     *, yolo: bool | None = None) -> list:
     """Argv for hermes-agent oneshot inside the task worktree (after render).
 
     ``--yolo`` (skip approvals) is off by default (Boundary N1b). Pass ``yolo=True`` or set
-    ``FAMILIA_HERMES_DOGFOOD_YOLO=1`` to enable it; when a concrete ``hermes_bin`` is given it must
-    also pass ``hermes_harness.trust_exec`` (or yolo is refused).
+    ``FAMILIA_HERMES_DOGFOOD_YOLO=1`` to enable it. Every yolo path (explicit bin *or*
+    ``resolve_agent_bin``) must pass ``hermes_harness.trust_exec``.
     """
-    bin_path = hermes_bin or resolve_agent_bin(missing="defaults")
     if yolo is None:
         yolo = os.environ.get("FAMILIA_HERMES_DOGFOOD_YOLO") == "1"
+    if hermes_bin is None:
+        bin_path = resolve_agent_bin(missing="defaults", require_trust=bool(yolo))
+    else:
+        bin_path = hermes_bin
+        if yolo:
+            _require_trusted_bin(bin_path, reason="--yolo refused")
     cmd = [
         bin_path,
         "-z", prompt,
@@ -80,11 +103,6 @@ def build_agent_cmd(prompt: str, toolsets: str = TOOLSETS, hermes_bin: str | Non
         "--source", "tool",
     ]
     if yolo:
-        if hermes_bin:
-            import hermes_harness as hh
-            _real, why = hh.trust_exec(hermes_bin)
-            if why:
-                raise ValueError(f"--yolo refused: hermes_bin {hermes_bin!r} failed trust_exec ({why})")
         cmd.insert(cmd.index("--accept-hooks"), "--yolo")
     return cmd
 
@@ -114,8 +132,10 @@ def run_oneshot(worktree, prompt: str, home, *, sh, lock_prefix=None,
     """Live hermes-agent oneshot in *worktree*. Returns (rc, out, cmd, env).
 
     *lock_prefix* is prepended when holding ``with-host-lock`` / flock (big.lock).
+    The hermes binary always passes ``trust_exec`` before exec (Boundary N1b).
     """
     cmd = build_agent_cmd(prompt, toolsets=toolsets, hermes_bin=hermes_bin)
+    _require_trusted_bin(cmd[0], reason="run_oneshot refused")
     env = agent_env(home, extra=extra_env)
     locked = list(lock_prefix or []) + cmd
     rc, out = sh(locked, cwd=str(worktree), timeout=timeout, env=env)

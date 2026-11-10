@@ -257,16 +257,17 @@ def test_ambient_secrets_not_carried_unless_opted_in(tmp_path, monkeypatch):
     src = {"GH_TOKEN": "g", "GITHUB_TOKEN": "gt", "DB_PASSWORD": "p", "CLIENT_SECRET": "s", "AWS_X": "a",
            "MY_SECRET_KEY": "k", "SSH_AUTH_SOCK": "/run/ssh", "FAMILIA_ADMIN_PASSWORD": "f", "TERM": "xterm"}
     env = hh.hermes_child_env(environ=src)
-    for k in ("GH_TOKEN", "DB_PASSWORD", "CLIENT_SECRET", "MY_SECRET_KEY", "SSH_AUTH_SOCK"):
+    for k in ("GH_TOKEN", "DB_PASSWORD", "CLIENT_SECRET", "MY_SECRET_KEY", "SSH_AUTH_SOCK",
+              "FAMILIA_ADMIN_PASSWORD"):   # secret shape matched before FAMILIA keep
         assert k not in env, k
     assert env["GITHUB_TOKEN"] == "gt"                    # declared by the gh MCP server
-    assert env["FAMILIA_ADMIN_PASSWORD"] == "f" and env["TERM"] == "xterm"
+    assert env["TERM"] == "xterm"
     opted = hh.hermes_child_env(environ=dict(src, **{hh.PASS_SECRETS_ENV: "1"}))
     assert opted["GH_TOKEN"] == "g" and opted["SSH_AUTH_SOCK"] == "/run/ssh"
 
 
 def test_ambient_secrets_n2a_token_dsn_kubeconfig(tmp_path, monkeypatch):
-    """Boundary N2a: *_TOKEN / *_PRIVATE_KEY / DSN / DB URLs / KUBECONFIG drop unless PASS_SECRETS=1."""
+    """Boundary N2a: *_TOKEN / DSN / DB URLs / KUBECONFIG / FAMILIA_GH_TOKEN drop unless PASS_SECRETS=1."""
     monkeypatch.setenv("HOME", str(tmp_path))
     hh.MCP_ENV_KEEP.clear()
     drop = {
@@ -274,11 +275,27 @@ def test_ambient_secrets_n2a_token_dsn_kubeconfig(tmp_path, monkeypatch):
         "DSN": "mysql://x", "DATABASE_URL": "postgres://db", "PROD_DATABASE_URL": "postgres://p",
         "APP_DB_URL": "postgres://a", "REDIS_URL": "redis://r", "MONGODB_URL": "mongodb://m",
         "POSTGRES_URL": "postgres://pg", "POSTGRESQL_URL": "postgres://pql", "KUBECONFIG": "/home/k",
+        # exemption-order: secret shape wins over FAMILIA_/HERMES_ prefix
+        "FAMILIA_GH_TOKEN": "fg", "HERMES_TOKEN": "ht",
+        # expanded connection / password names
+        "AMQP_URL": "amqp://x", "RABBITMQ_URL": "amqp://y", "CLOUDAMQP_URL": "amqps://z",
+        "MONGODB_URI": "mongodb://m",
+        "CACHE_REDIS_URL": "redis://c", "MONGO_URI": "mongodb://z", "APP_PWD": "pw",
+        "PGPASSWORD": "pg", "MYSQL_PWD": "my",
+        # value-shaped credentials (name is harmless)
+        "SERVICE_ENDPOINT": "postgres://user:s3cret@db.example/app",
+        "TOKEN_ONLY": "https://s3cret-token@evil.example/path",
+        # *_URI value-based: known DSN scheme
+        "APP_URI": "mongodb://localhost/db",
     }
     keep = {
         "PATH": "/usr/bin", "HOME": str(tmp_path), "TERM": "xterm", "HERMES_HOME": "/h",
-        "FAMILIA_API_KEY": "fam", "MAX_TOKENS": "8192", "WEBHOOK_URL": "https://hooks.example/x",
+        "HERMES_BIN": "/usr/bin/hermes", "FAMILIA_API_KEY": "fam", "FAMILIA_SYNC": "0",
+        "MAX_TOKENS": "8192", "WEBHOOK_URL": "https://hooks.example/x",
+        # negative: plain non-credential URL (local llama endpoint)
         "LLAMA_SERVER_URL": "http://127.0.0.1:8080",
+        # *_URI is value-based: harmless redirect stays
+        "REDIRECT_URI": "https://app.example/callback",
     }
     src = dict(drop, **keep)
     env = hh.hermes_child_env(environ=src)
@@ -286,11 +303,71 @@ def test_ambient_secrets_n2a_token_dsn_kubeconfig(tmp_path, monkeypatch):
         assert k not in env, k
     for k, v in keep.items():
         assert env[k] == v, k
-    # negative: bare TOKEN / URL suffixes that are not the secret shapes above
     assert "MAX_TOKENS" in env and "WEBHOOK_URL" in env and "LLAMA_SERVER_URL" in env
     opted = hh.hermes_child_env(environ=dict(src, **{hh.PASS_SECRETS_ENV: "1"}))
     for k, v in drop.items():
         assert opted[k] == v, k
+
+
+def test_ambient_secret_value_credential_url_negative(tmp_path, monkeypatch):
+    """Plain URLs without userinfo stay; any userinfo (user:pass@ or token@host) drops."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    hh.MCP_ENV_KEEP.clear()
+    src = {
+        "LLAMA_SERVER_URL": "http://127.0.0.1:8080",
+        "PUBLIC_HOOK": "https://hooks.example/x",
+        "REDIS_NO_AUTH": "redis://localhost:6379/0",
+        "LEAKY": "https://alice:hunter2@evil.example/path",
+        "TOKEN_USERINFO": "https://s3cret-token@evil.example/path",
+        "HERMES_HOME": "/h", "PATH": "/bin",
+    }
+    env = hh.hermes_child_env(environ=src)
+    assert env["LLAMA_SERVER_URL"] == "http://127.0.0.1:8080"
+    assert env["PUBLIC_HOOK"] == "https://hooks.example/x"
+    assert env["REDIS_NO_AUTH"] == "redis://localhost:6379/0"
+    assert "LEAKY" not in env and "TOKEN_USERINFO" not in env
+
+
+def test_uri_is_value_based_not_a_blanket_name_drop(tmp_path, monkeypatch):
+    """Boundary #352 nit: REDIRECT_URI stays; *_URI drops only with userinfo or a credential DSN scheme."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    hh.MCP_ENV_KEEP.clear()
+    src = {
+        "REDIRECT_URI": "https://app.example/callback",
+        "OAUTH_REDIRECT_URI": "https://app.example/oauth",
+        "APP_URI": "mongodb://localhost/db",
+        "BACKUP_URI": "postgres://localhost/app",
+        "REDIS_URI": "redis://localhost:6379/0",
+        "WEBHOOK_URI": "https://user:pass@hooks.example/x",
+        "HERMES_HOME": "/h", "PATH": "/bin",
+    }
+    env = hh.hermes_child_env(environ=src)
+    assert env["REDIRECT_URI"] == "https://app.example/callback"
+    assert env["OAUTH_REDIRECT_URI"] == "https://app.example/oauth"
+    assert "APP_URI" not in env and "BACKUP_URI" not in env
+    assert "REDIS_URI" not in env and "WEBHOOK_URI" not in env
+    opted = hh.hermes_child_env(environ=dict(src, **{hh.PASS_SECRETS_ENV: "1"}))
+    assert opted["APP_URI"] == "mongodb://localhost/db" and opted["REDIRECT_URI"] == "https://app.example/callback"
+
+
+def test_cloudamqp_and_amqp_url_names_drop(tmp_path, monkeypatch):
+    """CLOUDAMQP_URL and *AMQP*_URL generally drop unless PASS_SECRETS=1."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    hh.MCP_ENV_KEEP.clear()
+    src = {"CLOUDAMQP_URL": "amqps://x", "MY_AMQP_URL": "amqp://y", "AMQP_BROKER_URL": "amqp://z",
+           "HERMES_HOME": "/h", "PATH": "/bin"}
+    env = hh.hermes_child_env(environ=src)
+    for k in ("CLOUDAMQP_URL", "MY_AMQP_URL", "AMQP_BROKER_URL"):
+        assert k not in env, k
+    opted = hh.hermes_child_env(environ=dict(src, **{hh.PASS_SECRETS_ENV: "1"}))
+    assert opted["CLOUDAMQP_URL"] == "amqps://x" and opted["AMQP_BROKER_URL"] == "amqp://z"
+
+
+def test_harness_env_keep_has_no_secret_shaped_names():
+    """HARNESS_ENV_KEEP must not include names that match the ambient secret patterns."""
+    assert hh.HARNESS_ENV_KEEP
+    for n in sorted(hh.HARNESS_ENV_KEEP):
+        assert not hh._ambient_secret_name(n), n
 
 
 def test_mcp_declared_cloud_key_not_readmitted_into_the_whole_env(tmp_path, monkeypatch, capsys):
