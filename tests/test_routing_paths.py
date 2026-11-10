@@ -1,7 +1,7 @@
 """Routing path robustness (platform routing-paths): graph/tool paths with spaces, non-ASCII
 (NFC/NFD), backslashes and Windows reserved names. Windows cases are simulated with ntpath so
 they run on any OS. Correctness tests only."""
-import copy, ntpath, os, subprocess, sys, unicodedata
+import copy, json, ntpath, os, shlex, subprocess, sys, unicodedata
 import pytest
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
@@ -42,36 +42,101 @@ def test_validate_graph_same_verdict_from_unusual_dir(tmp_path, d):
     assert _validate_copy(tmp_path, d) == _validate_copy(tmp_path, "plain")
 
 
-def _serve_split(argv_line):
-    """serve.sh expands `$args` unquoted: sh splits on IFS (space, tab, newline)."""
-    import re
-    return [w for w in re.split(r"[ \t\n]+", argv_line) if w]
-
-
-@pytest.mark.parametrize("gguf", ["/models/my model.gguf", "/models/日本語 モデル.gguf",
-                                  "/models/tab\there.gguf", "/models/plain-ünï.gguf", "/models/back\\slash.gguf"])
-def test_server_args_survive_serve_sh_word_split_or_fail_closed(gguf):
-    """A model path that sh would split must never reach llama-server as a wrong argv."""
+@pytest.mark.parametrize("gguf", ["/models/my model.gguf", "/models/日本語 モデル.gguf", "/models/tab\there.gguf",
+                                  "/models/plain-ünï.gguf", "/models/back\\slash.gguf", "/models/it's.gguf",
+                                  "/models/" + CAFE_NFD + " x.gguf"])
+def test_server_args_keep_unusual_model_path_and_quote_round_trips(gguf):
     x = g(); node = "coder"; x["models"][x["nodes"][node]["model"]]["gguf"] = gguf
-    try:
-        argv = validate_graph.server_args(x, node)
-    except SystemExit as e:
-        assert "whitespace" in str(e)          # fail closed with a clear message
-        assert any(c.isspace() for c in gguf)
-        return
-    assert _serve_split(" ".join(argv)) == argv, "serve.sh would launch llama-server with a split -m path"
+    argv = validate_graph.server_args(x, node)
+    assert argv[argv.index("-m") + 1] == gguf
+    assert shlex.split(shlex.join(argv)) == argv           # what --args prints and serve.sh evals
+
+
+@pytest.mark.parametrize("bad", ["/models/new\nline.gguf", "/models/nul\0.gguf"])
+def test_newline_or_nul_in_launch_arg_still_refused(bad):
+    x = g(); node = "coder"; x["models"][x["nodes"][node]["model"]]["gguf"] = bad
+    with pytest.raises(SystemExit, match="newline or NUL"):
+        validate_graph.server_args(x, node)
+
+
+@pytest.mark.parametrize("spill", ["spill dir", "spill\ttab", "spill\u3000wide", "spill-ñ"])
+def test_slot_save_path_with_spaces_round_trips(tmp_path, spill):
+    spill = str(tmp_path / spill)
+    x = g(); node = "coder"; x["nodes"][node]["spill_path"] = spill
+    argv = validate_graph.server_args(x, node)
+    assert argv[argv.index("--slot-save-path") + 1] == spill
+    assert shlex.split(shlex.join(argv)) == argv
+
+
+def test_validate_graph_cli_args_are_shell_quoted(tmp_path):
+    """`validate_graph.py --args` output (serve.sh input) splits back to the exact -m path."""
+    gguf = "/models/my dir/日本語\tq.gguf"
+    gp = os.path.join(ROOT, "graph.yaml")
+    r = subprocess.run([sys.executable, "-c", (
+        "import sys, yaml; sys.path.insert(0, sys.argv[1]); import validate_graph as vg\n"
+        "g = vg.load(sys.argv[2]); m = g['models'][g['nodes']['coder']['model']]; m['gguf'] = sys.argv[3]\n"
+        "vg.load = lambda p: g\n"
+        "vg.validate = lambda *a, **k: ([], {})   # main's graph has known unrelated errors; test the printer\n"
+        "sys.exit(vg.main(['--graph', sys.argv[2], '--no-files', '--args', 'coder']))"),
+        os.path.join(ROOT, "scripts"), gp, gguf], capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr[-1500:]
+    argv = shlex.split(r.stdout.strip())
     assert argv[argv.index("-m") + 1] == gguf
 
 
-@pytest.mark.parametrize("spill", ["spill dir", "spill\u3000wide", "spill-ñ"])
-def test_slot_save_path_with_whitespace_fails_closed(tmp_path, spill):
-    spill = str(tmp_path / spill)
-    x = g(); node = "coder"; x["nodes"][node]["spill_path"] = spill
-    try:
-        argv = validate_graph.server_args(x, node)
-    except SystemExit as e:
-        assert "whitespace" in str(e); return
-    assert _serve_split(" ".join(argv)) == argv
+STUB_RUNTIME = """#!/usr/bin/env python3
+import json, os, sys
+a = sys.argv[1:]
+log = a[a.index("--log-file") + 1]
+if a[a.index("-ngl") + 1] != "0" and os.environ.get("STUB_VULKAN_FAIL"):
+    open(log, "w").write("ggml_vulkan: error: no device\\n"); sys.exit(1)
+json.dump(a, open(os.environ["STUB_OUT"], "w"))
+"""
+
+
+@pytest.fixture
+def serve_tree(tmp_path):
+    """Real serve.sh + lib/msg.mk; stub validate_graph prints shlex.join(argv); stub runtime dumps argv."""
+    import shutil
+    t = tmp_path / "repo"; (t / "scripts").mkdir(parents=True); (t / "lib").mkdir()
+    shutil.copy(os.path.join(ROOT, "scripts", "serve.sh"), t / "scripts" / "serve.sh")
+    shutil.copy(os.path.join(ROOT, "lib", "msg.mk"), t / "lib" / "msg.mk")
+    (t / "scripts" / "licenses.py").write_text("raise SystemExit(0)\n")
+    rt = tmp_path / "rt dir ü" / "llama-server"; rt.parent.mkdir(); rt.write_text(STUB_RUNTIME); rt.chmod(0o755)
+    out = tmp_path / "argv.json"
+    env = dict(os.environ, FAMILIA_MEMCAP="0", FAMILIA_GUARD="0", FAMILIA_LOG_DIR=str(tmp_path / "logs"),
+               STUB_OUT=str(out))
+    env.pop("FAMILIA_HOST", None)
+
+    def run(model_name, extra=(), ngl="0", vulkan_fail=False, cwd=None):
+        model = tmp_path / "models" / model_name; model.parent.mkdir(exist_ok=True); model.write_bytes(b"GGUF")
+        argv = [str(rt), "-m", str(model), "-ngl", ngl, "--alias", "a b"]
+        (t / "scripts" / "validate_graph.py").write_text(
+            "import shlex\nprint(shlex.join(%r))\n" % (argv,))
+        e = dict(env, **({"STUB_VULKAN_FAIL": "1"} if vulkan_fail else {}))
+        r = subprocess.run(["sh", str(t / "scripts" / "serve.sh"), "coder", *extra], env=e,
+                           cwd=str(cwd or tmp_path), capture_output=True, text=True, timeout=60)
+        assert r.returncode == 0, r.stderr
+        got = json.load(open(out))
+        return argv, got
+    return run
+
+
+@pytest.mark.parametrize("name", ["my model.gguf", "tab\there.gguf", "日本語 モデル.gguf", CAFE_NFD + ".gguf",
+                                  "it's \"q\".gguf", "back\\slash $HOME.gguf"])
+def test_serve_sh_passes_unusual_paths_exactly(serve_tree, name):
+    argv, got = serve_tree(name, extra=["--threads", "2", "--extra arg"])
+    i = got.index("--log-file")
+    assert got[:i] == argv[1:]                               # server args byte-exact, in order
+    assert got[i + 2:] == ["--threads", "2", "--extra arg"]  # caller extras kept as given
+
+
+def test_serve_sh_vulkan_cpu_retry_keeps_paths(serve_tree):
+    argv, got = serve_tree("my model ü.gguf", ngl="7", vulkan_fail=True)
+    assert got[got.index("-m") + 1] == argv[argv.index("-m") + 1]
+    assert got[got.index("-ngl") + 1] == "0"
+    assert got[got.index("--log-file") + 1].endswith(".log.cpu")
+    assert got[got.index("--alias") + 1] == "a b"
 
 
 def _win_reserved(name):
