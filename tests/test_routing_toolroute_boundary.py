@@ -140,7 +140,7 @@ def test_node_role_cannot_launder_fail_closed_model(role):
     assert EP.tool_target(g, "light") is None
 
 
-@pytest.mark.xfail(strict=True, reason="BUG-TR-1 (issue pending): escalation_proxy.tool_target never checks "
+@pytest.mark.xfail(strict=True, reason="BUG-TR-1 (#358): escalation_proxy.tool_target never checks "
                    "the SOURCE node's tool_policy, so a guardian/pentest/defender source (policy []) still "
                    "gets its tool requests forwarded to the tool_route target")
 @pytest.mark.parametrize("role", ["guardian", "pentest", "defender"])

@@ -177,7 +177,7 @@ def test_target_server_tools_opt_out_gets_no_forward(opt):
         close(srv); L.close(); C.close()
 
 
-@pytest.mark.xfail(strict=True, reason="BUG-TR-1: escalation_proxy.tool_target ignores the SOURCE node's "
+@pytest.mark.xfail(strict=True, reason="BUG-TR-1 (#358): escalation_proxy.tool_target ignores the SOURCE node's "
                    "explicit server_tools opt-out; validate_graph.tool_policy says [] (TOOLS-006 'also via "
                    "nexus') but the proxy still forwards tool requests to the tool_route target")
 @pytest.mark.parametrize("opt", [[], "none", False], ids=repr)
@@ -200,7 +200,7 @@ def test_hermes_tool_capable_goes_direct_even_with_route():
     assert HH.route_tools(g, "hermes") == {"mode": "direct", "node": "a", "via": None}
 
 
-@pytest.mark.xfail(strict=True, reason="BUG-TR-2: escalation_proxy forwards tool requests off a directly "
+@pytest.mark.xfail(strict=True, reason="BUG-TR-2 (#359): escalation_proxy forwards tool requests off a directly "
                    "tool_capable node that also has tool_route; Hermes route_tools and tool_policy both treat "
                    "it as direct (it launches with its own --tools), so proxy and Hermes disagree")
 def test_proxy_tool_capable_source_stays_direct():
@@ -254,7 +254,7 @@ def test_off_loopback_target_without_server_tools_gets_no_forward(bind):
     assert EP.tool_target(g, "light") == "coder"     # explicit grant re-opens it
 
 
-@pytest.mark.xfail(strict=True, reason="BUG (filed-draft #2): Hermes route_tools gives mode=direct to an "
+@pytest.mark.xfail(strict=True, reason="#345: Hermes route_tools gives mode=direct to an "
                    "off-loopback tool_capable node with no server_tools key, though tool_policy is [] "
                    "(non-loopback needs explicit server_tools)")
 def test_hermes_off_loopback_direct_without_server_tools_gets_none():
