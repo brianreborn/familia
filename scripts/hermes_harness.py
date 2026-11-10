@@ -1145,21 +1145,33 @@ def route_tools(g, agent):
     """-> {"mode": none|direct|nexus, "node", "via"}.
     Reuses validate_graph.tool_capable / tool_route / tool_policy (#243). Explicit
     nodes.<n>.tool_route wins as the nexus target; same-host then mesh discovery is the
-    Hermes-only fallback when #243 has no route. Never into guardian/pentest/defender."""
+    Hermes-only fallback when #243 has no route, except for an off-loopback tool-capable
+    node with no server_tools (TOOLS-008): that path honours only an explicit tool_route
+    (TOOLS-009 opt-in) and never discovery, so rebinding to 0.0.0.0 cannot implicitly
+    forward. Never into guardian/pentest/defender."""
     _, name, n, _ = node_for(g, agent)
     if tool_free(g, name):
         return {"mode": "none", "node": None, "via": None, "reason": "tool-free node"}
     if vg.tool_capable(g, name):
         # Explicit server_tools opt-out (TOOLS-006): present key whose policy is [] → none.
-        # Missing key stays direct even if policy would be [] for other reasons (e.g. off-loopback).
-        if "server_tools" in n and vg.tool_policy(g, name) == []:
+        # Loopback default, or an explicit server_tools grant, stays direct.
+        # Off-loopback with no server_tools is not direct (#345 / TOOLS-008): honour only
+        # an explicit tool_route (TOOLS-009); do not fall through to discovery.
+        opted = "server_tools" in n
+        if opted and vg.tool_policy(g, name) == []:
             return {"mode": "none", "node": None, "via": None, "reason": "server_tools opt-out"}
-        return {"mode": "direct", "node": name, "via": None}
+        if opted or vg._loopback(n.get("bind")):
+            return {"mode": "direct", "node": name, "via": None}
+        off_loopback_no_st = True
+    else:
+        off_loopback_no_st = False
     # Explicit one-hop from graph (#243). Reject fail-closed and policy-[] targets here too
     # (vg.tool_route already filters policy-[], but keep the check so a [] grant is never used).
     t = vg.tool_route(g, name)
     if t and not tool_free(g, t) and vg.tool_policy(g, t) != []:
         return {"mode": "nexus", "node": t, "via": None, "reason": "tool_route"}
+    if off_loopback_no_st:
+        return {"mode": "none", "node": None, "via": None, "reason": "off-loopback without server_tools"}
     # #243 does not discover a target — Hermes falls back to same-host, then ssh nexus mesh.
     host = n.get("host")
     nodes = g.get("nodes") or {}
@@ -1171,7 +1183,9 @@ def route_tools(g, agent):
         for k in sorted(nodes):
             if nodes[k].get("host") in peers and _discovery_ok(g, name, k):
                 return {"mode": "nexus", "node": k, "via": mesh}
-    return {"mode": "none", "node": None, "via": None, "reason": "no tool-capable node reachable"}
+    reason = ("off-loopback without server_tools" if off_loopback_no_st
+              else "no tool-capable node reachable")
+    return {"mode": "none", "node": None, "via": None, "reason": reason}
 
 
 def node_base(g, k, from_host):
