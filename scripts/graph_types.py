@@ -173,7 +173,18 @@ def check_runtime(g, name, r, errs):
 def slot_ctx(n):
     return n["ctx"] // n["parallel"] if isinstance(n.get("ctx"), int) and isinstance(n.get("parallel"), int) and n["parallel"] > 0 else None
 
+_WIN_RESERVED = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$",
+                 *(f"{p}{i}" for p in ("COM", "LPT") for i in (*"123456789", "\u00b9", "\u00b2", "\u00b3"))}
+
+def windows_unsafe_name(name):
+    """Node names become file names (slots/<node>, serve-<node>.log); Windows refuses reserved
+    device names (CON, NUL.txt, ...) and names ending in a dot or space."""
+    s = str(name)
+    return s != s.rstrip(" .") or s.split(".")[0].rstrip(" ").upper() in _WIN_RESERVED
+
 def check_node(g, name, n, errs):
+    if windows_unsafe_name(name):
+        errs.append(f"nodes.{name}: name is not a valid Windows file name (reserved device name or trailing dot/space)")
     h, r, m = lookup(g, "hosts", n.get("host")), lookup(g, "runtimes", n.get("runtime")), lookup(g, "models", n.get("model"))
     planned = n.get("status") == "planned"
     if h is not None and h.get("measured") is not True and not planned:
@@ -225,7 +236,8 @@ def check_node(g, name, n, errs):
     tr = n.get("tool_route")
     if tr is not None:
         w = f"nodes.{name}.tool_route"
-        _t = n.get("role") or (m or {}).get("role")
+        from validate_graph import normalize_role as _norm_role
+        _t = _norm_role(n.get("role") or (m or {}).get("role"))
         nodes = g.get("nodes") or {}
         tn = nodes.get(tr) if isinstance(tr, str) else None
         if _t in ("guardian", "pentest", "defender"):
@@ -234,7 +246,7 @@ def check_node(g, name, n, errs):
             errs.append(f"{w}: cannot route to itself")
         elif isinstance(tn, dict):
             tm = (g.get("models") or {}).get(tn.get("model")) or {}
-            if (tn.get("role") or tm.get("role")) in ("guardian", "pentest", "defender"):
+            if _norm_role(tn.get("role") or tm.get("role")) in ("guardian", "pentest", "defender"):
                 errs.append(f"{w}: target {tr!r} is a fail-closed TYPE")
             elif tn.get("tool_route"):
                 errs.append(f"{w}: target {tr!r} is itself routed (one hop only)")
@@ -244,7 +256,8 @@ def check_node(g, name, n, errs):
         w = f"nodes.{name}.server_tools"
         # Guardian/pentest/defender tools are governed by the pentest mode ladder, not by a
         # node override; a server_tools override here would bypass it (docs/config/pentest-policy.md).
-        _type = n.get("role") or (m or {}).get("role")
+        from validate_graph import normalize_role as _norm_role, _loopback as _is_loopback
+        _type = _norm_role(n.get("role") or (m or {}).get("role"))
         opt_out = st in ([], "none", False)  # explicit opt-out: no --tools flag (CFG-SPEC-TOOLS-006)
         if opt_out:
             pass
@@ -262,7 +275,7 @@ def check_node(g, name, n, errs):
         else:
             errs.append(f"{w}: expected 'all', [] / none / false (opt-out), or a list of tool names {list(SERVER_TOOL_NAMES)}")
         bind = n.get("bind") or ""
-        if not opt_out and bind not in ("127.0.0.1", "::1", "localhost") and not str(bind).startswith("127."):
+        if not opt_out and not _is_loopback(bind):
             errs.append(f"{w}: only allowed when bind is loopback (got {bind!r}); llama.cpp --tools is host-exec")
 
 # llama-server built-in tools (--tools); llama-ui /tools is 403 without these (M0 tools regression).

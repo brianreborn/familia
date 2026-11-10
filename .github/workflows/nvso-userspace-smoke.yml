@@ -1,0 +1,22 @@
+name: nvso-userspace-smoke
+# Build and smoke-test gpu-legacy/nvso userspace on a development PR.
+# The job does not load nvso.ko, open /dev/nvso0, create a kernel domain,
+# or contact a deployed host.
+on:
+  pull_request:
+    branches: [development]
+  push:
+    branches: [development]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: userspace ABI smoke
+        run: sh gpu-legacy/nvso/smoke-userspace.sh

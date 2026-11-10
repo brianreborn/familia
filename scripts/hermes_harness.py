@@ -47,14 +47,19 @@ FREEBSD_BIN = "/usr/local/bin/hermes-agent"
 FREEBSD_LIB = "/usr/local/lib/hermes-agent"
 
 HERMES_BIN = HERMES_PY = HERMES_SP = None  # set by resolve_hermes() below
+HERMES_EXEC = None   # trusted realpath of HERMES_BIN, set by ensure_hermes(); what is exec'd
+# pip / uv / install.sh layouts ship two console scripts: `hermes` (hermes_cli.main, the full CLI
+# with -z, -t, desktop, webapp) and `hermes-agent` (agent.legacy_cli, a single-query runner that
+# has none of those). Seen in every upstream release from v0.21.7 through v0.22.6.
+LEGACY_RUNNER_MARK = b"agent.legacy_cli"
 
 
 def _path_exists(p):
     return bool(p) and os.path.exists(p)
 
 
-def _read_shebang(path):
-    """Return interpreter from a #! line, or None."""
+def _shebang_parts(path):
+    """Split #! tokens from *path*, or None."""
     try:
         with open(path, "rb") as f:
             line = f.readline(256)
@@ -63,10 +68,27 @@ def _read_shebang(path):
     if not line.startswith(b"#!"):
         return None
     parts = line[2:].decode("utf-8", "replace").strip().split()
+    return parts or None
+
+
+def _is_env_shebang(path):
+    """True when *path*'s shebang is `#!/usr/bin/env CMD` (or any `env CMD`)."""
+    parts = _shebang_parts(path)
+    return bool(parts) and os.path.basename(parts[0]) == "env" and len(parts) >= 2
+
+
+def _read_shebang(path, path_env=None):
+    """Return interpreter from a #! line, or None.
+
+    For `#!/usr/bin/env CMD`, resolve CMD on *path_env* (a PATH string) when given, else the
+    process PATH (Boundary N1a: launch must re-resolve against the child's PATH, which prepends
+    HERMES_HOME/bin).
+    """
+    parts = _shebang_parts(path)
     if not parts:
         return None
     if os.path.basename(parts[0]) == "env" and len(parts) >= 2:
-        return shutil.which(parts[1]) or parts[1]
+        return shutil.which(parts[1], path=path_env) or parts[1]
     return parts[0]
 
 
@@ -123,6 +145,129 @@ def _sp_candidates(bin_path, py, exists=_path_exists):
     return uniq
 
 
+def _is_legacy_runner(path, exists=_path_exists):
+    """True when *path* is upstream's legacy single-query console script (agent.legacy_cli)."""
+    if not path or str(path).startswith("/snap/bin/") or not exists(path):
+        return False
+    try:
+        with open(path, "rb") as f:
+            return LEGACY_RUNNER_MARK in f.read(4096)
+    except OSError:
+        return False
+
+
+def _private_group(gid):
+    """True when *gid* is this user's own primary group with the user's name (user-private group)."""
+    try:
+        import grp, pwd
+        return gid == os.getegid() and grp.getgrgid(gid).gr_name == pwd.getpwuid(os.geteuid()).pw_name
+    except (ImportError, KeyError):
+        return False
+
+
+def _node_problem(p, st, is_dir):
+    """Owner must be root or this user; no group/other write, except a root-owned sticky directory
+    (/tmp) or a user-private group."""
+    import stat
+    if st.st_uid not in (0, os.geteuid()):
+        return f"{p} is owned by uid {st.st_uid}"
+    sticky_root = is_dir and st.st_mode & stat.S_ISVTX and st.st_uid == 0
+    if st.st_mode & stat.S_IWOTH and not sticky_root:
+        return f"{p} is world-writable"
+    if st.st_mode & stat.S_IWGRP and not sticky_root and not _private_group(st.st_gid):
+        return f"{p} is group-writable"
+    return None
+
+
+def _dirs_problem(path):
+    """Every directory from dirname(path) up to / must pass _node_problem (a symlinked directory
+    component is checked for its owner only; its own mode bits mean nothing)."""
+    import stat
+    d = os.path.dirname(path)
+    while True:
+        try:
+            st = os.lstat(d)
+        except OSError as e:
+            return f"cannot stat {d} ({e.strerror or e})"
+        if stat.S_ISLNK(st.st_mode):
+            if st.st_uid not in (0, os.geteuid()):
+                return f"{d} is owned by uid {st.st_uid}"
+        else:
+            why = _node_problem(d, st, True)
+            if why:
+                return why
+        parent = os.path.dirname(d)
+        if parent == d:
+            return None
+        d = parent
+
+
+def trust_exec(path, *, interpreter=True, path_env=None):
+    """(realpath, None) when *path* is safe to exec, else (realpath or None, reason). realpath once:
+    the real file must be regular, executable, owned by root or this user, not group/other
+    writable (user-private group excepted); every parent of both the given path and the realpath
+    likewise; a '#!' interpreter (venv python, /bin/sh, /usr/bin/env) gets the same check. Callers
+    exec the returned realpath (HERMES_EXEC), so nothing outside root's and the user's control can
+    swap the binary between this check and the exec. *path_env* is the PATH used to resolve an
+    `env` shebang (Boundary N1a: pass the child PATH with HERMES_HOME/bin prepended at launch)."""
+    import stat
+    if not path or not os.path.isabs(str(path)):
+        return None, "not an absolute path"
+    path = os.path.normpath(str(path))
+    real = os.path.realpath(path)
+    try:
+        st = os.stat(real)
+    except OSError as e:
+        return real, f"cannot stat ({e.strerror or e})"
+    if not stat.S_ISREG(st.st_mode):
+        return real, "not a regular file"
+    if not os.access(real, os.X_OK):
+        return real, "not executable"
+    why = _node_problem(real, st, False) or _dirs_problem(path) or (real != path and _dirs_problem(real))
+    if why:
+        return real, why
+    if interpreter:
+        interp = _read_shebang(real, path_env=path_env)
+        if interp and os.path.isabs(interp):
+            _r, why = trust_exec(interp, interpreter=False)
+            if why:
+                return real, f"its interpreter {interp}: {why}"
+    return real, None
+
+
+def exec_problem(path):
+    """Why *path* must not be exec'd as hermes (see trust_exec), or None."""
+    return trust_exec(path)[1]
+
+
+def _full_cli_for(bin_path, exists=_path_exists, check=exec_problem):
+    """The full `hermes` CLI next to a legacy `hermes-agent` script, else bin_path unchanged. The
+    sibling is only taken when it passes exec_problem (absolute, regular, executable, not o+w)."""
+    if not _is_legacy_runner(bin_path, exists=exists):
+        return bin_path
+    sibling = os.path.join(os.path.dirname(os.path.abspath(bin_path)), "hermes")
+    if not exists(sibling) or _is_legacy_runner(sibling, exists=exists):
+        return bin_path
+    why = check(sibling)
+    if why:
+        print(f"hermes.sh: warning: not using {sibling} ({why}); keeping {bin_path}", file=sys.stderr)
+        return bin_path
+    return sibling
+
+
+def _snap_sp(exists=_path_exists):
+    """Snap site-packages for whatever python the snap ships (upstream runs on 3.14 now; the
+    snap was 3.12). Highest python3.N first; SNAP_SP when nothing else exists."""
+    def key(p):
+        m = re.search(r"python3\.(\d+)", p)
+        return int(m.group(1)) if m else -1
+    found = sorted(glob.glob("/snap/hermes-agent/current/lib/python3.*/site-packages"), key=key, reverse=True)
+    for cand in found + [SNAP_SP]:
+        if exists(cand):
+            return cand
+    return SNAP_SP
+
+
 def _derive_py(bin_path, exists=_path_exists, which=shutil.which):
     if bin_path and str(bin_path).startswith("/snap/bin/"):
         return SNAP_PY
@@ -136,9 +281,14 @@ def _derive_py(bin_path, exists=_path_exists, which=shutil.which):
     return which("python3") or which("python") or sys.executable
 
 
+def _no_run(*a, **k):
+    """Stand-in for subprocess.run when HERMES_PY failed trust_exec: never execute it."""
+    raise OSError("untrusted HERMES_PY not executed")
+
+
 def _derive_sp(bin_path, py, exists=_path_exists, run=subprocess.run):
     if bin_path and str(bin_path).startswith("/snap/bin/"):
-        return SNAP_SP
+        return _snap_sp(exists=exists)
     for cand in _sp_candidates(bin_path, py, exists=exists):
         if exists(cand) and _can_import_hermes_cli(py, cand, run=run):
             return cand
@@ -155,7 +305,7 @@ def _derive_sp(bin_path, py, exists=_path_exists, run=subprocess.run):
 
 
 def resolve_hermes(environ=None, *, exists=_path_exists, which=shutil.which,
-                   system=None, run=subprocess.run, missing="defaults"):
+                   system=None, run=subprocess.run, missing="defaults", check=exec_problem):
     """Resolve HERMES_BIN / HERMES_PY / HERMES_SP.
 
     Order: explicit env overrides always win per-variable; then Linux snap if
@@ -181,6 +331,7 @@ def resolve_hermes(environ=None, *, exists=_path_exists, which=shutil.which,
             bin_path = SNAP_BIN
         else:
             bin_path = which("hermes-agent") or which("hermes")
+            bin_path = _full_cli_for(bin_path, exists=exists, check=check)
 
     if not bin_path:
         if missing == "die":
@@ -188,7 +339,7 @@ def resolve_hermes(environ=None, *, exists=_path_exists, which=shutil.which,
                 "hermes-agent not found. Set HERMES_BIN to the CLI "
                 "(FreeBSD: pkg install hermes-agent → /usr/local/bin/hermes-agent; "
                 "lib at /usr/local/lib/hermes-agent — no snap). "
-                "Elsewhere: curl installer (https://hermes-agent.nousresearch.com/install.sh) "
+                "Elsewhere: upstream install.sh at the pinned commit (python3 scripts/hermes_pin.py check prints it) "
                 "or a venv, then export HERMES_BIN."
             )
         bin_path, py, sp = SNAP_BIN, py or SNAP_PY, sp or SNAP_SP
@@ -196,8 +347,12 @@ def resolve_hermes(environ=None, *, exists=_path_exists, which=shutil.which,
 
     if not py:
         py = _derive_py(bin_path, exists=exists, which=which)
+    # HERMES_PY is executed (site-packages probe below, toolchain check, selftest/prefix children):
+    # same trust rules as HERMES_BIN (Boundary N1). Launch refuses; import-time resolution only
+    # skips the probe. The snap's python runs inside the snap's own read-only squashfs.
+    py_why = None if str(bin_path).startswith("/snap/bin/") else check(py)
     if not sp:
-        sp = _derive_sp(bin_path, py, exists=exists, run=run)
+        sp = _derive_sp(bin_path, py, exists=exists, run=run if not py_why else _no_run)
     if not sp:
         if missing == "die":
             die(
@@ -205,7 +360,7 @@ def resolve_hermes(environ=None, *, exists=_path_exists, which=shutil.which,
                 "Set HERMES_SP to the directory that contains hermes_cli "
                 "(FreeBSD ports: /usr/local/lib/hermes-agent) and HERMES_PY to that install's python."
             )
-        sp = SNAP_SP if str(bin_path).startswith("/snap/bin/") else (FREEBSD_LIB if exists(FREEBSD_LIB) else SNAP_SP)
+        sp = _snap_sp(exists=exists) if str(bin_path).startswith("/snap/bin/") else (FREEBSD_LIB if exists(FREEBSD_LIB) else SNAP_SP)
 
     if missing == "die" and not exists(bin_path):
         die(
@@ -213,13 +368,77 @@ def resolve_hermes(environ=None, *, exists=_path_exists, which=shutil.which,
             "FreeBSD: pkg install hermes-agent (no snap). "
             "Or set HERMES_BIN to a real hermes-agent/hermes binary."
         )
+    if missing == "die":
+        why = check(bin_path)
+        if why:
+            src = "HERMES_BIN" if env.get("HERMES_BIN") else "hermes"
+            die(f"{src}={bin_path!r}: {why}; refusing to launch it. Point HERMES_BIN at an absolute "
+                "path to the hermes CLI: a regular, executable file owned by root or you, not group/"
+                "world-writable, in directories only root or you can write.")
+        if py_why:
+            src = "HERMES_PY" if env.get("HERMES_PY") else "derived HERMES_PY"
+            die(f"{src}={py!r}: {py_why}; refusing to run it (same rules as HERMES_BIN).")
+    if missing == "die" and _is_legacy_runner(bin_path, exists=exists):
+        print(f"hermes.sh: warning: {bin_path} is hermes-agent's legacy single-query runner "
+              "(no -z/-t/desktop/webapp); point HERMES_BIN at the `hermes` CLI of the same install",
+              file=sys.stderr)
     return bin_path, py, sp
+
+
+def _py_version(py, run=subprocess.run):
+    """(major, minor) of interpreter *py*, or None when it cannot be asked."""
+    try:
+        r = run([py, "-c", "import sys; print('%d.%d' % sys.version_info[:2])"],
+                capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    m = re.fullmatch(r"(\d+)\.(\d+)", (r.stdout or "").strip()) if r.returncode == 0 else None
+    return (int(m.group(1)), int(m.group(2))) if m else None
+
+
+def check_toolchain(bin_path, py, *, run=subprocess.run, environ=None):
+    """Warn when HERMES_PY is older than the pinned hermes' python floor (config/hermes-agent.pins.json:
+    upstream declares its dependencies only for 3.14+). FAMILIA_HERMES_PIN_CHECK=1 also compares
+    `hermes --version` with the channel's pin (offline; =strict refuses a mismatch).
+    FAMILIA_HERMES_TOOLCHAIN_CHECK=0 skips everything. Returns a list of warnings."""
+    env = os.environ if environ is None else environ
+    if env.get("FAMILIA_HERMES_TOOLCHAIN_CHECK", "1") == "0":
+        return []
+    import hermes_pin
+    try:
+        want = hermes_pin.resolve_ref(offline=True, environ=env)
+    except (hermes_pin.PinError, OSError, ValueError) as e:
+        die(f"hermes pin: {e}")
+    warns = []
+    floor = tuple(int(x) for x in str(want.get("python") or "0.0").split(".")[:2])
+    have = None if str(bin_path).startswith("/snap/bin/") else _py_version(py, run=run)
+    if have and have < floor:
+        warns.append(f"HERMES_PY {py} is python {have[0]}.{have[1]}; hermes-agent {want['ref']} needs "
+                     f">= {floor[0]}.{floor[1]} (upstream declares its dependencies only for 3.14+)")
+    mode = env.get("FAMILIA_HERMES_PIN_CHECK", "0")
+    if mode in ("1", "strict"):
+        ver, commit = hermes_pin.installed_version(bin_path, run=run, env=hermes_child_env(environ=env))
+        if not hermes_pin.matches(want, ver, commit):
+            msg = (f"installed hermes {ver or 'unknown'} ({commit or '?'}) is not the {want['channel']} pin "
+                   f"{want['ref']} ({(want.get('commit') or '?')[:12]}); "
+                   f"to install it: {hermes_pin.install_hint(want, bin_path)}")
+            if mode == "strict":
+                die(msg)
+            warns.append(msg)
+    for w in warns:
+        print(f"hermes.sh: warning: {w}", file=sys.stderr)
+    return warns
 
 
 def ensure_hermes():
     """Re-resolve with hard failure; update module globals for prefix/selftest/exec."""
-    global HERMES_BIN, HERMES_PY, HERMES_SP
+    global HERMES_BIN, HERMES_PY, HERMES_SP, HERMES_EXEC
     HERMES_BIN, HERMES_PY, HERMES_SP = resolve_hermes(missing="die")
+    real, why = trust_exec(HERMES_BIN)
+    if why:
+        die(f"hermes {HERMES_BIN!r}: {why}; refusing to launch it")
+    HERMES_EXEC = real   # exec this realpath; argv[0] stays HERMES_BIN (snap dispatches on argv[0])
+    check_toolchain(HERMES_BIN, HERMES_PY)
     return HERMES_BIN, HERMES_PY, HERMES_SP
 
 
@@ -246,7 +465,248 @@ UNSTABLE_LINES = ("Python toolchain:",)   # same line as the small-host floor in
 ENV_PROBE_CACHE_OVERLAY = os.path.join(ROOT, "scripts", "hermes_env_probe_cache")
 AUX_TASKS = ["web_extract", "compression", "skills_hub", "approval", "mcp", "title_generation",
              "memory_query_rewrite", "tts_audio_tags", "triage_specifier", "kanban_decomposer",
-             "profile_describer", "goal_judge", "curator", "monitor"]
+             "profile_describer", "goal_judge", "curator", "monitor",
+             # Text aux tasks upstream added (v0.22.x) that otherwise default to provider "auto":
+             "review", "background_review"]
+# Modality / multi-model aux tasks. Upstream's "auto" for these walks a cloud provider chain (vision)
+# or the built-in MoA preset (openai-codex / openrouter), so prompt content could leave the box when a
+# cloud key is set. Unless FAMILIA_HERMES_ALLOW_CLOUD=1 they are pinned to the local node (a node
+# without vision/voice fails locally instead of falling through to a cloud provider) and MoA is
+# disabled with a local-only preset. See docs/hermes-pin.md.
+MODAL_AUX_TASKS = ("vision", "voice_chat", "moa_reference", "moa_aggregator")
+ALLOW_CLOUD_ENV = "FAMILIA_HERMES_ALLOW_CLOUD"
+# Cloud LLM credentials scrubbed from every hermes child env unless FAMILIA_HERMES_ALLOW_CLOUD=1:
+# any *_API_KEY / *_API_TOKEN (FAMILIA_* kept) plus these. MCP secrets the graph declares
+# (agents.<a>.mcp env_from / headers_from, see mcp_env_allowlist) are always kept.
+CLOUD_KEY_RE = re.compile(r"^(?!FAMILIA_)[A-Za-z0-9_]*_API_(?:KEY|TOKEN)$")
+# Static superset (Boundary B3), used with or without an upstream tree: provider env names upstream
+# hermes-agent v0.22.6 registers (PROVIDER_REGISTRY api_key_env_vars incl. plugin providers) that the
+# regex above misses, OAuth/bearer tokens, and GCP/Vertex/HF credentials. Every AWS_* name is also
+# dropped (boto chain: keys, AWS_PROFILE, AWS_CONFIG_FILE, AWS_SHARED_CREDENTIALS_FILE, web identity...).
+CLOUD_KEY_NAMES = frozenset({
+    "ANTHROPIC_TOKEN", "CLAUDE_CODE_OAUTH_TOKEN", "AZURE_OPENAI_AD_TOKEN", "AWS_BEARER_TOKEN_BEDROCK",
+    "GOOGLE_APPLICATION_CREDENTIALS", "VERTEX_CREDENTIALS_PATH", "HF_TOKEN", "HUGGING_FACE_HUB_TOKEN",
+    "QWEN_API_KEY", "NOUS_API_KEY", "OPENAI_ORG_ID", "OPENAI_ORGANIZATION", "OPENAI_BASE_URL",
+    "OPENAI_API_BASE", "ANTHROPIC_BASE_URL", "CODEX_HOME", "CLOUDSDK_CONFIG"})
+CLOUD_KEY_PREFIXES = ("AWS_",)
+# hermes-agent v0.22.6 PROVIDER_REGISTRY api_key_env_vars (plugin providers included), for hosts
+# where no hermes source tree is found; upstream_provider_env_names() adds whatever is installed.
+REGISTRY_SNAPSHOT = frozenset("""
+ACTUAL_API_KEY AI_GATEWAY_API_KEY ALIBABA_CODING_PLAN_API_KEY ALIBABA_CODING_PLAN_CN_API_KEY
+ALIBABA_TOKEN_PLAN_API_KEY ALIBABA_TOKEN_PLAN_CN_API_KEY ANTHROPIC_API_KEY ANTHROPIC_TOKEN ARCEEAI_API_KEY
+AZURE_FOUNDRY_API_KEY CLAUDE_CODE_OAUTH_TOKEN COMMANDCODE_API_KEY DASHSCOPE_API_KEY DEEPINFRA_API_KEY
+DEEPSEEK_API_KEY FIREWORKS_API_KEY GEMINI_API_KEY GLM_API_KEY GMI_API_KEY GOOGLE_API_KEY HF_TOKEN
+KILOCODE_API_KEY KIMI_API_KEY KIMI_CN_API_KEY KIMI_CODING_API_KEY LM_API_KEY META_API_KEY META_MODEL_API_KEY
+MINIMAX_API_KEY MINIMAX_CN_API_KEY MODEL_API_KEY NEBIUS_API_KEY NEBIUS_TOKEN_FACTORY_API_KEY NOVITA_API_KEY
+NVIDIA_API_KEY OLLAMA_API_KEY OPENAI_API_KEY OPENCODE_GO_API_KEY OPENCODE_ZEN_API_KEY RAMP_ROUTER_API_KEY
+ROUTER_API_KEY STEPFUN_API_KEY TOKENHUB_API_KEY TOKENPLAN_API_KEY UPSTAGE_API_KEY XAI_API_KEY XIAOMI_API_KEY
+ZAI_API_KEY Z_AI_API_KEY OPENROUTER_API_KEY MISTRAL_API_KEY GROQ_API_KEY TOGETHER_API_KEY PERPLEXITY_API_KEY
+COHERE_API_KEY""".split())
+UPSTREAM_ENV_KEYWORDS = ("env_vars", "api_key_env_vars", "base_url_env_var")
+_ENV_NAME_RE = re.compile(r"[A-Z][A-Z0-9_]{1,127}", re.ASCII)
+
+
+def _ast_env_names(path):
+    """Env var names a hermes-agent source file declares for providers: string constants under an
+    env_vars= / api_key_env_vars= / base_url_env_var= keyword, and auth.py _REGISTRY_ROWS tuple rows
+    (id, name, url, (KEYS...), BASE_URL_VAR, ...). Parsed, never imported or executed."""
+    import ast
+    try:
+        tree = ast.parse(open(path, encoding="utf-8").read(), filename=path)
+    except (OSError, SyntaxError, ValueError, UnicodeDecodeError):
+        return set()
+    out = set()
+    def strs(node):
+        return {c.value for c in ast.walk(node) if isinstance(c, ast.Constant) and isinstance(c.value, str)
+                and _ENV_NAME_RE.fullmatch(c.value)}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.keyword) and node.arg in UPSTREAM_ENV_KEYWORDS:
+            out |= strs(node.value)
+        targets = (node.targets if isinstance(node, ast.Assign) else [node.target] if isinstance(node, ast.AnnAssign) else [])
+        if any(getattr(t, "id", None) == "_REGISTRY_ROWS" for t in targets) and isinstance(node.value, ast.Tuple):
+            for row in node.value.elts:
+                if isinstance(row, ast.Tuple):
+                    for el in row.elts[3:5]:
+                        out |= strs(el)
+    return out
+
+
+_UPSTREAM_ENV_CACHE = {}
+
+
+def upstream_provider_env_names(roots=None):
+    """Provider credential / base-url env names of the installed hermes-agent (Boundary B3), read from
+    its source: hermes_cli/auth.py and plugins/model-providers/*/__init__.py under the first root
+    that has hermes_cli (HERMES_SP, FAMILIA_HERMES_SRC, snap, FreeBSD ports). Empty when no tree is
+    found; the static CLOUD_KEY_NAMES / regex / AWS_* superset still applies. Warns (Boundary B3a)
+    when a parsed set is far smaller than REGISTRY_SNAPSHOT (likely a half-parsed auth.py)."""
+    if roots is None:
+        roots = (HERMES_SP, os.environ.get("FAMILIA_HERMES_SRC"), SNAP_SP, FREEBSD_LIB)
+    for root in filter(None, roots):
+        auth = os.path.join(root, "hermes_cli", "auth.py")
+        if not os.path.isfile(auth):
+            continue
+        if root not in _UPSTREAM_ENV_CACHE:
+            names = _ast_env_names(auth)
+            for f in sorted(glob.glob(os.path.join(root, "plugins", "model-providers", "*", "__init__.py"))):
+                names |= _ast_env_names(f)
+            parsed = frozenset(n for n in names if not n.startswith("FAMILIA_"))
+            # Boundary B3a: a real install should be near the snapshot size; half-or-less means the
+            # AST walk likely missed _REGISTRY_ROWS / plugin env_vars.
+            if parsed and len(parsed) * 2 < len(REGISTRY_SNAPSHOT):
+                print(f"hermes.sh: warning: parsed upstream provider env set ({len(parsed)}) is far "
+                      f"smaller than the v0.22.6 snapshot ({len(REGISTRY_SNAPSHOT)}); check {auth}",
+                      file=sys.stderr)
+            _UPSTREAM_ENV_CACHE[root] = parsed
+        return _UPSTREAM_ENV_CACHE[root]
+    return frozenset()
+
+
+def is_llm_provider_key(name, upstream=None):
+    """A cloud LLM provider credential / endpoint name: upstream's registry (installed source or the
+    v0.22.6 snapshot), the static CLOUD_KEY_NAMES, or AWS_*. Not every *_API_KEY (BRAVE_SEARCH_API_KEY
+    is a tool key an MCP server may legitimately need)."""
+    if name.startswith("FAMILIA_"):
+        return False
+    upstream = upstream_provider_env_names() if upstream is None else upstream
+    return (name in CLOUD_KEY_NAMES or name in REGISTRY_SNAPSHOT or name in upstream
+            or name.startswith(CLOUD_KEY_PREFIXES))
+
+
+def is_cloud_key(name, upstream=None):
+    """What the child-env scrub drops: LLM provider names plus any *_API_KEY / *_API_TOKEN."""
+    if name.startswith("FAMILIA_"):
+        return False
+    return is_llm_provider_key(name, upstream) or bool(CLOUD_KEY_RE.match(name))
+
+
+def _no_creds_dir(env, name):
+    """Private empty dir HERMES_HOME/.no-cloud-creds/<name> (0700) when HERMES_HOME is an existing
+    directory (every launch), else os.devnull (probes such as --version / --help)."""
+    home = env.get("HERMES_HOME")
+    if not home or not os.path.isdir(home) or os.path.islink(home):
+        return os.devnull
+    try:
+        ensure_private_dir(os.path.join(home, ".no-cloud-creds"))
+        return ensure_private_dir(os.path.join(home, ".no-cloud-creds", name))
+    except (OSError, SystemExit):
+        return os.devnull
+
+
+# Ambient non-LLM secrets (Boundary N2 / N2a): the hermes terminal tool inherits the child env, so
+# model output running `env` would see them. Dropped unless FAMILIA_HERMES_PASS_SECRETS=1; graph-
+# declared MCP names and harness control vars (HARNESS_ENV_KEEP) are kept. Secret-shaped names are
+# matched first (so FAMILIA_GH_TOKEN / HERMES_TOKEN drop); the keep set is applied after.
+PASS_SECRETS_ENV = "FAMILIA_HERMES_PASS_SECRETS"
+AMBIENT_SECRET_NAMES = frozenset({
+    "GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN",
+    "SSH_AUTH_SOCK", "DSN", "DATABASE_URL", "KUBECONFIG", "REDIS_URL",
+    "AMQP_URL", "RABBITMQ_URL", "CLOUDAMQP_URL", "MONGODB_URI", "PGPASSWORD", "MYSQL_PWD",
+})
+# Name shapes (applied before any FAMILIA_*/HERMES_* keep): *_SECRET/_PASSWORD/_PWD/_TOKEN/…
+# plus DB/cache connection URL names and *AMQP*_URL. *_URI is value-based (see below), not a
+# blanket name drop (REDIRECT_URI and similar stay unless the value is a credential DSN).
+AMBIENT_SECRET_RE = re.compile(
+    r"^(?:"
+    r"[A-Za-z0-9_]*_(?:SECRET|SECRET_KEY|PASSWORD|PASSWD|PWD|TOKEN|PRIVATE_KEY|DSN|DATABASE_URL|DB_URL|REDIS_URL)"
+    r"|(?:MONGO|POSTGRES|MYSQL|MARIADB|RABBITMQ)[A-Za-z0-9_]*_(?:URL|URI)"
+    r"|[A-Za-z0-9_]*AMQP[A-Za-z0-9_]*_(?:URL|URI)"
+    r")$"
+)
+# scheme://userinfo@host… — any userinfo, including token@host with no colon (not only user:pass@).
+# Plain URLs without userinfo (e.g. local llama http://127.0.0.1:8080) do not match.
+CREDENTIAL_URL_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*://[^/\s@]+@")
+# Schemes that are credential DSNs even without userinfo; used only for *_URI value-based drops.
+CREDENTIAL_DSN_SCHEMES = frozenset({
+    "postgres", "postgresql", "mysql", "mariadb", "mongodb", "mongodb+srv",
+    "redis", "rediss", "amqp", "amqps",
+})
+# Harness / launch control vars that must survive scrub even if a future pattern widened.
+HARNESS_ENV_KEEP = frozenset({
+    "HERMES_HOME", "HERMES_BIN", "HERMES_PY", "HERMES_SP", "HERMES_EXEC",
+    "FAMILIA_HERMES_PASS_SECRETS", "FAMILIA_HERMES_ALLOW_CLOUD", "FAMILIA_HERMES_TOOLCHAIN_CHECK",
+    "FAMILIA_HERMES_PIN_CHECK", "FAMILIA_HERMES_SRC", "FAMILIA_HERMES_CLIENT_PROBE",
+    "FAMILIA_HERMES_ENV_PROBE_REFRESH", "FAMILIA_HERMES_DOGFOOD_YOLO", "FAMILIA_HERMES_UPSTREAM_PY",
+    "FAMILIA_HERMES_TEST_PY", "FAMILIA_SYNC", "FAMILIA_API_KEY", "FAMILIA_PREFIX_CHILD",
+    "FAMILIA_WARM_MIN_AVAIL_MIB", "FAMILIA_WARM_TIMEOUT", "FAMILIA_CHANNEL", "FAMILIA_STABLE_DAYS",
+    "FAMILIA_HOST",
+})
+
+
+def _ambient_secret_name(name):
+    """True when *name* is an ambient secret shape (no FAMILIA_/HERMES_ exemption)."""
+    return name in AMBIENT_SECRET_NAMES or bool(AMBIENT_SECRET_RE.match(name))
+
+
+def _credential_url_value(val):
+    """True when *val* looks like scheme://userinfo@… (any userinfo, including token@host)."""
+    if not isinstance(val, str) or "://" not in val:
+        return False
+    return bool(CREDENTIAL_URL_RE.match(val.strip()))
+
+
+def _credential_dsn_uri(name, val):
+    """True for a *_URI whose value is a known credential DSN scheme (postgres://, mongodb://, …)."""
+    if not isinstance(name, str) or not name.endswith("_URI") or not isinstance(val, str):
+        return False
+    if "://" not in val:
+        return False
+    return val.strip().split("://", 1)[0].lower() in CREDENTIAL_DSN_SCHEMES
+
+
+def scrub_ambient_secrets(env, keep=()):
+    """Drop ambient non-LLM secrets from *env* (in place) unless FAMILIA_HERMES_PASS_SECRETS=1.
+
+    Name shapes (matched before keep): GH_TOKEN/…/KUBECONFIG/AMQP_URL/RABBITMQ_URL/CLOUDAMQP_URL/
+    *AMQP*_URL/MONGODB_URI/PGPASSWORD/MYSQL_PWD, *_SECRET/*_PASSWORD/*_PWD/*_TOKEN/*_PRIVATE_KEY/
+    *_DSN/*_DATABASE_URL/*_DB_URL/*_REDIS_URL, MONGO*/POSTGRES*/MYSQL*/RABBITMQ*_URL/_URI. Also
+    any var whose value has URL userinfo (user:pass@ or token@host). *_URI is value-based: dropped
+    only when the value has userinfo or a known credential DSN scheme (REDIRECT_URI stays).
+    Keep = caller keep | MCP_ENV_KEEP | HARNESS_ENV_KEEP. Returns the names removed."""
+    if env.get(PASS_SECRETS_ENV) == "1":
+        return []
+    keep = set(keep) | MCP_ENV_KEEP | HARNESS_ENV_KEEP
+    gone = sorted(
+        k for k, v in env.items()
+        if k not in keep and (_ambient_secret_name(k) or _credential_url_value(v)
+                              or _credential_dsn_uri(k, v))
+    )
+    for k in gone:
+        del env[k]
+    return gone
+
+
+def isolate_file_creds(env):
+    """Point the file-based cloud credential chains hermes would read regardless of HERMES_HOME
+    away from the user's files (unless FAMILIA_HERMES_ALLOW_CLOUD=1): boto (~/.aws -> /dev/null,
+    no EC2/ECS metadata), Codex (CODEX_HOME), gcloud ADC (CLOUDSDK_CONFIG). Files found only via
+    $HOME (~/.qwen/oauth_creds.json, ~/.claude) cannot be redirected without moving HOME."""
+    if allow_cloud(env):
+        return env
+    env.update(AWS_SHARED_CREDENTIALS_FILE=os.devnull, AWS_CONFIG_FILE=os.devnull,
+               AWS_EC2_METADATA_DISABLED="true", CODEX_HOME=_no_creds_dir(env, "codex"),
+               CLOUDSDK_CONFIG=_no_creds_dir(env, "gcloud"))
+    return env
+
+
+MCP_ENV_KEEP = set()   # names declared by the rendered agent's MCP servers (render() fills it)
+
+
+def allow_cloud(environ=None):
+    return (os.environ if environ is None else environ).get(ALLOW_CLOUD_ENV) == "1"
+
+
+def scrub_cloud_keys(env, keep=()):
+    """Drop cloud LLM credentials from *env* (in place) unless FAMILIA_HERMES_ALLOW_CLOUD=1.
+    Returns the sorted names removed (never their values)."""
+    if allow_cloud(env):
+        return []
+    keep = set(keep) | MCP_ENV_KEEP
+    upstream = upstream_provider_env_names()
+    gone = sorted(k for k in env if k not in keep and is_cloud_key(k, upstream))
+    for k in gone:
+        del env[k]
+    return gone
 
 
 def die(msg):
@@ -270,6 +730,75 @@ def client_argv(client, rest=None):
     return [client] + rest
 
 
+CONFIG_HEADER = "# Generated by familia scripts/hermes_harness.py from graph.yaml. Do not edit.\n"
+
+
+def write_private(path, text):
+    """Atomically replace *path* with *text*, mode 0600 from creation: the temp file is opened
+    O_CREAT|O_EXCL|O_NOFOLLOW in the same directory (a planted file or symlink there is refused, not
+    written through), fsynced, then os.replace()d over *path* (a symlink at *path* is replaced, never
+    followed). Used for config.yaml (holds the familia API key) and SOUL.md."""
+    import secrets
+    d = os.path.dirname(os.path.abspath(path))
+    tmp = os.path.join(d, f".{os.path.basename(path)}.familia-{os.getpid()}-{secrets.token_hex(6)}.tmp")
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_CLOEXEC", 0)
+    fd = os.open(tmp, flags, 0o600)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            fd = None
+            f.write(text)
+            f.flush()
+            os.fsync(f.fileno())
+        os.chmod(tmp, 0o600)   # umask can only narrow, but be explicit
+        os.replace(tmp, path)
+        try:   # durability of the rename (Boundary N4); best effort where dirs cannot be opened
+            dfd = os.open(d, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+            try:
+                os.fsync(dfd)
+            finally:
+                os.close(dfd)
+        except OSError:
+            pass
+    finally:
+        if fd is not None:
+            os.close(fd)
+        if os.path.lexists(tmp):
+            os.unlink(tmp)
+    return path
+
+
+def ensure_private_dir(path):
+    """mkdir -p *path* 0700, then make sure it (new or pre-existing) is a real directory owned by
+    this user and tighten it to 0700. A symlink, a non-directory or another owner is refused
+    (SystemExit): sessions, state.db, logs and config.yaml (familia key) live below it. The checks
+    and the chmod go through one O_NOFOLLOW|O_DIRECTORY fd (fstat + fchmod), so a swap between
+    check and chmod cannot redirect the chmod."""
+    import stat
+    try:
+        os.makedirs(path, mode=0o700, exist_ok=True)
+    except FileExistsError:
+        pass   # a non-directory there: refused below
+    st = os.lstat(path)
+    if stat.S_ISLNK(st.st_mode):
+        die(f"refusing {path}: it is a symlink (expected a private directory)")
+    if not stat.S_ISDIR(st.st_mode):
+        die(f"refusing {path}: not a directory")
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        st = os.fstat(fd)
+        if st.st_uid != os.geteuid():
+            die(f"refusing {path}: owned by uid {st.st_uid}, not {os.geteuid()}")
+        if stat.S_IMODE(st.st_mode) != 0o700:
+            os.fchmod(fd, 0o700)
+    finally:
+        os.close(fd)
+    return path
+
+
+def write_config(path, cfg):
+    write_private(path, CONFIG_HEADER + yaml.safe_dump(cfg, sort_keys=False))
+
+
 def ensure_webapp_enabled(home):
     """Set webapp.enabled in the rendered HERMES_HOME config (idempotent)."""
     path = os.path.join(home, "config.yaml")
@@ -281,9 +810,7 @@ def ensure_webapp_enabled(home):
     if w.get("enabled") is True:
         return False
     w["enabled"] = True
-    with open(path, "w") as f:
-        f.write("# Generated by familia scripts/hermes_harness.py from graph.yaml. Do not edit.\n")
-        yaml.safe_dump(cfg, f, sort_keys=False)
+    write_config(path, cfg)
     return True
 
 
@@ -332,10 +859,16 @@ def hermes_child_env(extra=None, environ=None):
     process launches. HERMES_SP still works (children insert it on sys.path themselves).
     Force a fresh probe with FAMILIA_HERMES_ENV_PROBE_REFRESH=1.
     When HERMES_HOME/bin exists (Agent-Reach wrapper from link_reaches), prepend it to PATH.
+    Cloud LLM keys are removed unless FAMILIA_HERMES_ALLOW_CLOUD=1 (scrub_cloud_keys); ambient
+    secrets (name shapes + scheme://userinfo@ values, incl. token@host; FAMILIA_GH_TOKEN/HERMES_TOKEN included)
+    unless FAMILIA_HERMES_PASS_SECRETS=1 (scrub_ambient_secrets).
     """
     env = dict(os.environ if environ is None else environ)
+    scrub_cloud_keys(env)   # before extra: values the harness passes on purpose are kept
+    scrub_ambient_secrets(env)
     if extra:
         env.update(extra)
+    isolate_file_creds(env)
     overlay = ENV_PROBE_CACHE_OVERLAY
     if os.path.isdir(overlay):
         parts = [p for p in (env.get("PYTHONPATH") or "").split(os.pathsep) if p]
@@ -504,6 +1037,184 @@ def link_plugins(agent_cfg, home):
 
 
 
+# ---- tool routing (Brian 2026-10-31): Hermes side of CFG-SPEC-TOOLS-007..010 (#243).
+# Capability / explicit one-hop route / server tool policy live in validate_graph
+# (tool_capable, tool_route, tool_policy) — do not reimplement them here. This module only
+# decides where a Hermes agent sends tool-driving turns, and keeps guardian/pentest/defender
+# closed for Hermes MCP/toolsets (docs/config/pentest-policy.md, CFG-PENT-POL-004).
+#
+# Order in route_tools:
+#   1. tool_free → none (Hermes seatbelt; #243 fail-closed TYPEs plus name/role heuristics)
+#   2. vg.tool_capable → direct
+#   3. vg.tool_route (explicit nodes.<n>.tool_route, one hop, never fail-closed) → nexus
+#   4. same-host then ssh-nexus mesh discovery (NOT in #243; Hermes-only fallback)
+#
+# TODO(pentest-policy): tools-confirm must not open until every tool call (MCP and
+# all toolsets) goes through per-action confirmation; setting approvals.mode=manual
+# alone is not enough. Also needs graph_types accepting `pentests.<p>.policy` (today
+# tests/test_config_spec.py strict-xfails until then). When both land, open tools for
+# mode `tools-confirm` (and `autonomous-lab`) via pentest_tools_allowed() below:
+#   - route_tools → mode=direct on the pentest node
+#   - render sets approvals.mode=manual (no yolo / mode=off) — necessary but not
+#     sufficient; every MCP and toolset call must still confirm per action
+#   - tools = full set (platform toolsets + declared MCP) per CFG-PENT-MODE-004
+# slash-confirm stays tools=none (CFG-PENT-MODE-003 advisory chat). Until then keep
+# closed: tool_free always, never open by default. See tests/test_hermes_tool_routing.py
+# xfail(strict=True) for the expected tools-confirm path.
+# Modes that the SPEC says may carry tools (once preconditions + per-action confirm land).
+PENTEST_TOOLS_MODES = frozenset({"tools-confirm", "autonomous-lab"})
+
+
+def _node_role(g, name):
+    """Roles for Hermes seatbelt. Broader than vg.node_type: also name-based defender and
+    node_role.infer_role, so tests/aliases that stamp defender only in the node name still close."""
+    from node_role import infer_role
+    n = g["nodes"][name]
+    raw = {n.get("role"), ((g.get("models") or {}).get(n.get("model")) or {}).get("role"),
+           vg.node_type(g, name), infer_role(name, n, g)}
+    if name.endswith("-defender") or name == "defender":
+        raw.add("defender")
+    return {vg.normalize_role(r) for r in raw if r}
+
+
+def pentest_for_node(g, name):
+    """First pentests.* entry whose `node` is `name`, or None. Forward-compat for policy mode."""
+    for p in (g.get("pentests") or {}).values():
+        if isinstance(p, dict) and p.get("node") == name:
+            return p
+    return None
+
+
+def pentest_policy_mode(g, name):
+    """Read pentests.<p>.policy.mode when present. graph_types does not accept `policy` yet
+    (CFG-PENT-* SPEC); returns None until an overlay / future schema carries it."""
+    p = pentest_for_node(g, name)
+    if not p:
+        return None
+    pol = p.get("policy")
+    if not isinstance(pol, dict):
+        return None
+    mode = pol.get("mode")
+    return mode if isinstance(mode, str) else None
+
+
+def pentest_tools_allowed(g, name):
+    """Would the pentest-policy ladder grant tools on this node?
+    Closed today: always False. See TODO(pentest-policy) above — gate on
+    pentest_policy_mode in PENTEST_TOOLS_MODES plus per-action confirm wiring."""
+    _ = pentest_policy_mode(g, name)
+    return False
+
+
+def tool_free(g, name):
+    """Guardian / pentest / defender: no Hermes tools (incl. MCP) by default.
+    Aligns with vg.FAIL_CLOSED_TYPES; future tools-confirm opt-in via pentest_tools_allowed."""
+    if not (_node_role(g, name) & set(vg.FAIL_CLOSED_TYPES)):
+        return False
+    if pentest_tools_allowed(g, name):
+        return False
+    return True
+
+
+def tool_capable(g, name):
+    """Hermes view: vg.tool_capable (nodes.*.tool_capable > models.*.tool_calls > TYPE) and
+    not tool_free. Do not re-read the fields here — #243 owns that."""
+    if tool_free(g, name):
+        return False
+    return vg.tool_capable(g, name)
+
+
+def nexus_meshes(g, host):
+    """ssh nexus meshes (meshes.*, type ssh) that `host` is a member of."""
+    return [k for k, m in (g.get("meshes") or {}).items()
+            if (m or {}).get("type") == "ssh" and host in ((m or {}).get("members") or [])]
+
+
+def _discovery_ok(g, src, k):
+    """Same-host / mesh fallback candidate: active, not self, not fail-closed, capable, and
+    vg.tool_policy != [] (#243 / Boundary B1). tool_policy already yields [] for
+    server_tools opt-out (none/[]/false) and for a capable non-loopback peer with no
+    server_tools key — so requiring != [] skips both without a second bind check."""
+    o = (g.get("nodes") or {}).get(k) or {}
+    return (k != src and o.get("status") != "planned"
+            and not tool_free(g, k) and vg.tool_capable(g, k)
+            and vg.tool_policy(g, k) != [])
+
+
+def route_tools(g, agent):
+    """-> {"mode": none|direct|nexus, "node", "via"}.
+    Reuses validate_graph.tool_capable / tool_route / tool_policy (#243). Explicit
+    nodes.<n>.tool_route wins as the nexus target; same-host then mesh discovery is the
+    Hermes-only fallback when #243 has no route, except for an off-loopback tool-capable
+    node with no server_tools (TOOLS-008): that path honours only an explicit tool_route
+    (TOOLS-009 opt-in) and never discovery, so rebinding to 0.0.0.0 cannot implicitly
+    forward. Never into guardian/pentest/defender."""
+    _, name, n, _ = node_for(g, agent)
+    if tool_free(g, name):
+        return {"mode": "none", "node": None, "via": None, "reason": "tool-free node"}
+    if vg.tool_capable(g, name):
+        # Explicit server_tools opt-out (TOOLS-006): present key whose policy is [] → none.
+        # Loopback default, or an explicit server_tools grant, stays direct.
+        # Off-loopback with no server_tools is not direct (#345 / TOOLS-008): honour only
+        # an explicit tool_route (TOOLS-009); do not fall through to discovery.
+        opted = "server_tools" in n
+        if opted and vg.tool_policy(g, name) == []:
+            return {"mode": "none", "node": None, "via": None, "reason": "server_tools opt-out"}
+        if opted or vg._loopback(n.get("bind")):
+            return {"mode": "direct", "node": name, "via": None}
+        off_loopback_no_st = True
+    else:
+        off_loopback_no_st = False
+    # Explicit one-hop from graph (#243). Reject fail-closed and policy-[] targets here too
+    # (vg.tool_route already filters policy-[], but keep the check so a [] grant is never used).
+    t = vg.tool_route(g, name)
+    if t and not tool_free(g, t) and vg.tool_policy(g, t) != []:
+        return {"mode": "nexus", "node": t, "via": None, "reason": "tool_route"}
+    if off_loopback_no_st:
+        return {"mode": "none", "node": None, "via": None, "reason": "off-loopback without server_tools"}
+    # #243 does not discover a target — Hermes falls back to same-host, then ssh nexus mesh.
+    host = n.get("host")
+    nodes = g.get("nodes") or {}
+    for k in sorted(nodes):
+        if nodes[k].get("host") == host and _discovery_ok(g, name, k):
+            return {"mode": "nexus", "node": k, "via": None}
+    for mesh in nexus_meshes(g, host):
+        peers = set(g["meshes"][mesh].get("members") or []) - {host}
+        for k in sorted(nodes):
+            if nodes[k].get("host") in peers and _discovery_ok(g, name, k):
+                return {"mode": "nexus", "node": k, "via": mesh}
+    reason = ("off-loopback without server_tools" if off_loopback_no_st
+              else "no tool-capable node reachable")
+    return {"mode": "none", "node": None, "via": None, "reason": reason}
+
+
+def node_base(g, k, from_host):
+    """OpenAI base URL for node k as seen from from_host (loopback bind only works same-host)."""
+    n = g["nodes"][k]; b = bind(n)
+    if n.get("host") != from_host and (b in ("localhost", "::1") or str(b).startswith("127.")):
+        b = ((g.get("hosts") or {}).get(n.get("host")) or {}).get("addr") or b
+    return f"http://{b}:{n['port']}/v1"
+
+
+def apply_tool_route(g, agent, cfg, route):
+    if route["mode"] == "none":
+        cfg.pop("mcp_servers", None)
+        cfg["platform_toolsets"] = dict(cfg.get("platform_toolsets") or {}, cli=[])
+    elif route["mode"] == "nexus":
+        _, _, n, _ = node_for(g, agent)
+        cfg["model"] = dict(cfg["model"], base_url=node_base(g, route["node"], n.get("host")), default=route["node"])
+    # TODO(pentest-policy): when pentest_tools_allowed opens tools-confirm, force
+    # approvals.mode=manual here (never off / yolo). That alone is not enough —
+    # tools-confirm must not open until every tool call (MCP and all toolsets) goes
+    # through per-action confirmation (docs/config/pentest-policy.md CFG-PENT-MODE-004).
+    _, name, _, _ = node_for(g, agent)
+    if route["mode"] != "none" and pentest_tools_allowed(g, name):
+        appr = dict(cfg.get("approvals") or {})
+        appr["mode"] = "manual"
+        cfg["approvals"] = appr
+    return cfg
+
+
 def render(g, agent, user_cfg_path=os.path.join(USER_HOME, "config.yaml"), base_override=None):
     a, name, n, alias = node_for(g, agent)
     base = base_override or f"http://{bind(n)}:{n['port']}/v1"
@@ -526,7 +1237,30 @@ def render(g, agent, user_cfg_path=os.path.join(USER_HOME, "config.yaml"), base_
     for t in AUX_TASKS:
         aux[t] = {"provider": "custom", "model": alias, "base_url": base, "api_key": familia_auth.api_key() or "local",
                   "timeout": comp.get("aux_timeout", 3600)}
+    local_only = not allow_cloud()
+    if local_only:
+        for t in MODAL_AUX_TASKS:
+            aux[t] = {"provider": "custom", "model": alias, "base_url": base,
+                      "api_key": familia_auth.api_key() or "local", "timeout": comp.get("aux_timeout", 3600)}
+        # Explicit presets map is authoritative upstream (moa_config.apply_user_moa_presets), so this
+        # replaces the built-in cloud preset rather than merging with it; disabled as well.
+        cfg["moa"] = {"default_preset": "default", "active_preset": "",
+                      "presets": {"default": {"enabled": False,
+                                              "reference_models": [{"provider": "custom", "model": alias, "enabled": True}],
+                                              "aggregator": {"provider": "custom", "model": alias}}}}
     cfg["auxiliary"] = aux
+    MCP_ENV_KEEP.clear()
+    declared_env = mcp_env_allowlist(a)
+    # Boundary N3: a graph-declared MCP name that is a cloud LLM provider credential (OPENAI_API_KEY,
+    # AWS_*, a registry name; not tool keys like BRAVE_SEARCH_API_KEY) would re-admit it into hermes' whole env, not only that server's. Local-only
+    # mode does not keep it: the server's ${VAR} stays unset (upstream drops unset refs). hermes
+    # interpolates MCP env from its own process env, so scoping the value to one server would need
+    # it on disk; FAMILIA_HERMES_ALLOW_CLOUD=1 keeps it (whole env) as before.
+    refused = [] if not local_only else [n for n in declared_env if is_llm_provider_key(n)]
+    if refused:
+        print(f"hermes.sh: warning: not passing cloud credential(s) {', '.join(refused)} declared by "
+              f"agents.{agent}.mcp (FAMILIA_HERMES_ALLOW_CLOUD=1 passes them)", file=sys.stderr)
+    MCP_ENV_KEEP.update(n for n in declared_env if n not in refused)
     declared = mcp_servers(a)
     if declared:  # graph-declared MCP wins over a same-named user entry (whose secrets were stripped)
         cfg["mcp_servers"] = dict(cfg.get("mcp_servers") or {}, **declared)
@@ -537,16 +1271,16 @@ def render(g, agent, user_cfg_path=os.path.join(USER_HOME, "config.yaml"), base_
         for t in LEAN_AUX_DROP:
             aux.pop(t, None)
         cfg["auxiliary"] = aux
+    apply_tool_route(g, agent, cfg, route_tools(g, agent))
     # Official / portable Hermes plugins (Agent Plugins v1) live under HERMES_HOME/plugins.
     # Opt-in via agents.<name>.plugins: ["rea"] or ["*"] to link from ~/.hermes/plugins (#92).
     # Self-improve never adds plugins (scripts/self_improve.py gate).
     home = os.path.expanduser(f"~/.cache/familia/hermes-{agent}")
     if os.path.realpath(home) == os.path.realpath(USER_HOME):
         die("refusing to render into ~/.hermes")
-    os.makedirs(home, exist_ok=True)
-    with open(os.path.join(home, "config.yaml"), "w") as f:
-        f.write("# Generated by familia scripts/hermes_harness.py from graph.yaml. Do not edit.\n")
-        yaml.safe_dump(cfg, f, sort_keys=False)
+    ensure_private_dir(os.path.dirname(home))   # ~/.cache/familia (B1: existing dirs too)
+    ensure_private_dir(home)                    # ~/.cache/familia/hermes-<agent>
+    write_config(os.path.join(home, "config.yaml"), cfg)   # 0600: it holds the familia API key
     link_plugins(a, home)
     link_reaches(g, agent, home)
     greet_soul(home)
@@ -571,6 +1305,25 @@ def _default_soul_text():
     return None
 
 
+def _read_nofollow(p):
+    """Text of regular file *p* opened O_NOFOLLOW|O_NONBLOCK (a symlink swapped in after the islink
+    check fails with ELOOP instead of being followed; a FIFO cannot block), or None when absent."""
+    import errno, stat
+    try:
+        fd = os.open(p, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+                     | getattr(os, "O_CLOEXEC", 0))
+    except FileNotFoundError:
+        return None
+    except OSError as e:
+        if e.errno == errno.ELOOP:
+            raise OSError(errno.ELOOP, f"{p} is a symlink (not followed)")
+        raise
+    with os.fdopen(fd, "rb") as f:
+        if not stat.S_ISREG(os.fstat(f.fileno()).st_mode):
+            raise OSError(errno.EINVAL, f"{p} is not a regular file")
+        return f.read().decode("utf-8-sig")
+
+
 def greet_soul(home):
     """Fleet greeting (docs/FLEET-GREETING.md, scripts/fleet_greeting.py) at the start of the rendered
     HERMES_HOME/SOUL.md, hermes' identity slot #1, so it opens the system prompt. Exactly once; the
@@ -583,20 +1336,12 @@ def greet_soul(home):
         if os.path.islink(p):
             print(f"hermes.sh: fleet greeting skipped: {p} is a symlink (not written through)", file=sys.stderr)
             return None
-        cur = open(p, encoding="utf-8-sig").read() if os.path.isfile(p) else None
+        cur = _read_nofollow(p)
         body = cur if cur is not None else (_default_soul_text() or "")
         new = FG.prepend(body)
         if new == (cur if cur is not None else "") or (cur is None and not new):
             return p if cur is not None else None
-        tmp = p + f".familia-{os.getpid()}.tmp"
-        try:
-            with open(tmp, "w", encoding="utf-8") as f:
-                f.write(new)
-            os.chmod(tmp, 0o600)
-            os.replace(tmp, p)
-        finally:
-            if os.path.lexists(tmp):
-                os.unlink(tmp)
+        write_private(p, new)   # O_CREAT|O_EXCL|O_NOFOLLOW temp, 0600, fsync, atomic replace
         return p
     except Exception as e:  # never fail a launch over the greeting
         print(f"hermes.sh: fleet greeting skipped ({e.__class__.__name__}: {e})", file=sys.stderr)
@@ -852,7 +1597,10 @@ def run_escalating(g, agent, light, swap_back, rest, client="cli"):
     warm_prompt(g, light, g["nodes"][light], home)
     print(f"hermes.sh: escalation proxy {base} light={light} targets={g['nodes'][light].get('escalates_to')}", file=sys.stderr)
     argv = prepare_client_launch(home, client, rest)
-    return subprocess.call([HERMES_BIN] + argv, env=hermes_child_env({"HERMES_HOME": home}),
+    launch_env = hermes_child_env({"HERMES_HOME": home})
+    executable, full = hermes_exec_argv(HERMES_BIN, HERMES_EXEC, argv, launch_env)
+    return subprocess.call(full, executable=executable,
+                           env=launch_env,
                            preexec_fn=oom_adj.preexec())
 
 
@@ -898,6 +1646,32 @@ def parse_argv(argv):
     return agent, graph_path, mode, light, swap_back, client, rest
 
 
+def hermes_exec_argv(bin_path, exec_path, argv, env):
+    """Return ``(executable, full_argv)`` for launching hermes (Boundary N1 / N1a).
+
+    Default: trusted realpath (*exec_path*) with argv0=*bin_path*. When the binary has an
+    ``#!/usr/bin/env CMD`` shebang, resolve CMD against the child PATH in *env* (which prepends
+    ``HERMES_HOME/bin``), trust that interpreter, and return it as the executable with the script
+    as argv[1] so the kernel cannot pick a different CMD than the one we checked.
+    """
+    target = exec_path or bin_path
+    if target and _is_env_shebang(target):
+        interp = _read_shebang(target, path_env=(env or {}).get("PATH"))
+        if not interp or not os.path.isabs(str(interp)):
+            die(f"env shebang interpreter for {target!r} not found on child PATH")
+        real_i, why = trust_exec(interp, interpreter=False)
+        if why:
+            die(f"child PATH interpreter {interp!r}: {why}")
+        return real_i, [real_i, target] + list(argv)
+    return target, [bin_path] + list(argv)
+
+
+def exec_hermes(bin_path, exec_path, argv, env):
+    """``os.execv`` hermes using :func:`hermes_exec_argv` (does not return)."""
+    executable, full = hermes_exec_argv(bin_path, exec_path, argv, env)
+    os.execv(executable, full)
+
+
 def main(argv):
     agent, graph_path, mode, light, swap_back, client, rest = parse_argv(argv)
     # Peek hosts for scoped file checks before full validate (other hosts' GGUFs stay optional).
@@ -925,7 +1699,7 @@ def main(argv):
     os.environ.update(launch_env)
     # #112: hermes process is first-to-kill (no longer Popen's llama-server; serve.sh does)
     oom_adj.set_self()
-    os.execv(HERMES_BIN, [HERMES_BIN] + argv)
+    exec_hermes(HERMES_BIN, HERMES_EXEC, argv, launch_env)   # trusted realpath; N1a env-shebang
 
 
 if __name__ == "__main__":

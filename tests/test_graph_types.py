@@ -211,7 +211,27 @@ def test_server_tools_args_and_loopback():
     x["nodes"]["coder"]["server_tools"] = "all"
     x["nodes"]["coder"]["bind"] = "0.0.0.0"
     has(x, "only allowed when bind is loopback")
+    for bind in ("127.0.0.2", "::ffff:127.0.0.1", "[::1]", "LOCALHOST"):
+        x = g(); x["nodes"]["coder"]["server_tools"] = "all"; x["nodes"]["coder"]["bind"] = bind
+        st = [e for e in errs(x) if "server_tools" in e and "loopback" in e]
+        assert st == [], (bind, st)
+    for bind in ("127.evil.example", "lan.example", "::", "0.0.0.0"):
+        x = g(); x["nodes"]["coder"]["server_tools"] = "all"; x["nodes"]["coder"]["bind"] = bind
+        has(x, "only allowed when bind is loopback")
     x = g(); x["nodes"]["coder"]["server_tools"] = ["nope"]; has(x, "unknown tool")
+
+
+def test_fail_closed_roles_are_normalized_in_graph_types():
+    """#340: casefold/NFKC Guardian (etc.) cannot grant server_tools or be a tool_route target."""
+    import unicodedata
+    fw = unicodedata.normalize("NFKC", "ｇｕａｒｄｉａｎ")
+    assert fw == "guardian"
+    for role in ("Guardian", "GUARDIAN", "ｇｕａｒｄｉａｎ"):
+        x = g(); x["nodes"]["coder"]["role"] = role; x["nodes"]["coder"]["server_tools"] = "all"
+        has(x, "not allowed for")
+        x = g(); x["nodes"]["angel-chat"]["tool_route"] = "coder"; x["nodes"]["coder"]["role"] = role
+        has(x, "fail-closed")
+
 
 def test_alias_node_or_fallback_list():
     """CFG-SPEC-ALIAS-001: aliases.<a>.node is one node (unchanged) or a fallback list."""

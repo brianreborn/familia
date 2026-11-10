@@ -55,7 +55,10 @@ class Upstream:
                     self.end_headers(); self.wfile.write(out)
                 finally:
                     with up.mu: up.inflight -= 1
-        self.srv = ThreadingHTTPServer(("127.0.0.1", 0), H)
+        # Fake upstream must not be the bottleneck: default backlog 5 overflows on
+        # FreeBSD under the 64-burst and the proxy then 502s (R7, not R6).
+        srv_cls = type("_UpSrv", (ThreadingHTTPServer,), {"request_queue_size": 128})
+        self.srv = srv_cls(("127.0.0.1", 0), H)
         self.port = self.srv.server_address[1]
         threading.Thread(target=self.srv.serve_forever, daemon=True).start()
 
@@ -434,3 +437,45 @@ def test_r5_fairlock_grants_by_arrival_seq_not_wake_order():
         t.join(5)
         assert not t.is_alive(), "FairLock waiter thread hung"
     assert order == seqs
+
+
+# ---------------- R7 concurrent forwards to one upstream stay capped ----------------
+
+def test_r7_proxy_caps_concurrent_forwards_to_upstream():
+    """R7 regression, covered by the R1 (#244) global upstream cap (FAMILIA_UPSTREAM_CAP, default 6).
+    Deterministic: upstream handlers block on an Event and count in-flight; no backlog/OS reliance."""
+    N, release = 16, threading.Event()
+    st = {"inflight": 0, "max": 0}; mu = threading.Lock()
+
+    class H(BaseHTTPRequestHandler):
+        def log_message(self, *a): pass
+        def do_POST(self):
+            self.rfile.read(int(self.headers["Content-Length"]))
+            with mu:
+                st["inflight"] += 1; st["max"] = max(st["max"], st["inflight"])
+            try:
+                release.wait(10)
+                out = json.dumps({"choices": [{"message": {"role": "assistant", "content": "ok"}}]}).encode()
+                self.send_response(200); self.send_header("Content-Type", "application/json")
+                self.end_headers(); self.wfile.write(out)
+            finally:
+                with mu: st["inflight"] -= 1
+
+    up = type("_UpSrv", (ThreadingHTTPServer,), {"request_queue_size": 128})(("127.0.0.1", 0), H)
+    threading.Thread(target=up.serve_forever, daemon=True).start()
+    _, srv = proxy(graph(up.server_address[1], closed_port()))
+    ex = ThreadPoolExecutor(N)
+    try:
+        futs = [ex.submit(post, srv.server_address[1], f"c{i}", f"s{i}", 15) for i in range(N)]
+        deadline = time.time() + 5  # wait until in-flight stops growing (or all N arrive)
+        last, stable = -1, 0
+        while time.time() < deadline and st["max"] < N:
+            cur = st["max"]; stable = stable + 1 if cur == last else 0; last = cur
+            if stable >= 10 and cur > 0: break
+            time.sleep(0.05)
+        observed = st["max"]
+    finally:
+        release.set()
+        for f in futs: f.result(timeout=15)
+        ex.shutdown(wait=True); srv.shutdown(); srv.server_close(); up.shutdown(); up.server_close()
+    assert 0 < observed <= EP.UPSTREAM_CAP, f"upstream saw {observed} concurrent forwards (cap {EP.UPSTREAM_CAP})"

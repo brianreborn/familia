@@ -30,6 +30,9 @@ dist/*.AppDir.tar.gz
 # Local connection overlay (#104) — never commit real addr/user/port
 /hosts.local.yaml
 /graph.local.yaml
+# A57 SSH CI private inventory and pin (docs/ci/a57-ssh-dispatch.md)
+/a57-ssh-ci.yaml
+/a57-known_hosts
 
 # Logs never go in this repo (they live in brianreborn/familia-private logs/)
 logs/
