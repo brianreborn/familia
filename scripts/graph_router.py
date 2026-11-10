@@ -233,6 +233,17 @@ def load(path, here=None):
 
 # --------------------------------------------------------------- runtime ----
 
+def cleartext_key_warnings(cfg):
+    """L14 (#304): a remote node that gets a bearer key (tools or key_file) is reached over
+    plain http://, so the key crosses the network in cleartext. Warn; loopback is unaffected."""
+    out = []
+    for n, node in sorted(cfg["nodes"].items()):
+        if node["remote"] and (node["tools"] or node.get("key_file")):
+            out.append(f"graph-router: WARNING: node {n} at {node['url']} is remote and gets a bearer key over "
+                       f"plain http; anyone on that network path can read it (use an SSH tunnel or keep it loopback)")
+    return out
+
+
 class Down(Exception):
     """Node unreachable or not ready: the only failure a fallback may skip."""
 
@@ -530,6 +541,8 @@ def main(argv=None):
         cfg = load(a.config, here=a.host_id)
     except ConfigError as e:
         print(f"graph-router: config error: {e}", file=sys.stderr); return 2
+    for w in cleartext_key_warnings(cfg):
+        print(w, file=sys.stderr)
     for r, why in sorted(cfg["refused_routes"].items()):
         print(f"graph-router: route {r} refused (409): {why}", file=sys.stderr)
     for r, rt in sorted(cfg["routes"].items()):

@@ -413,3 +413,22 @@ def test_router_main_creates_instance_key_once(tmp_path, monkeypatch):
     assert gr.main([str(cfgf), "--port", "19999"]) == 0 and started[1] == started[0]
     assert gr.main([str(cfgf), "--port", "19999", "--no-auth"]) == 0 and started[2] is None
     assert gr.main([str(cfgf), "--api-key-file", "/proc/familia-no-such/k"]) == 2   # fail closed
+
+
+def test_remote_node_with_key_warns_cleartext_loopback_does_not():
+    # L14 (#304): bearer keys to remote nodes go over plain http; warn at startup
+    cfg = gr.compile_config({"nodes": {
+        "lo": {"url": "http://127.0.0.1:8081", "tools": True},
+        "far": {"url": "http://192.0.2.7:8082", "remote": True, "key_file": "~/k"},
+        "fartools": {"url": "http://192.0.2.8:8083", "remote": True, "tools": True},
+        "farplain": {"url": "http://192.0.2.9:8084", "remote": True}}})
+    w = gr.cleartext_key_warnings(cfg)
+    assert len(w) == 2 and any("node far " in x for x in w) and any("node fartools " in x for x in w)
+    assert not any("lo " in x or "farplain" in x for x in w)
+
+
+def test_check_prints_cleartext_warning(tmp_path, capsys):
+    p = tmp_path / "r.yaml"
+    p.write_text("version: 1\nnodes:\n  far: {url: http://192.0.2.7:8082, remote: true, tools: true}\n")
+    assert gr.main([str(p), "--check"]) == 0
+    assert "WARNING: node far" in capsys.readouterr().err
