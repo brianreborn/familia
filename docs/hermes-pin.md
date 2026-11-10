@@ -85,9 +85,12 @@ Ambient non-LLM secrets are not carried into hermes (and so not into its termina
 `*_REDIS_URL`, `*AMQP*_URL`/`_URI`, `MONGO*`/`POSTGRES*`/`MYSQL*`/`RABBITMQ*_URL`/`_URI`.
 Secret-shaped names are matched before any keep list, so `FAMILIA_GH_TOKEN` and `HERMES_TOKEN`
 drop too. Any var whose value has URL userinfo is also dropped: `scheme://userinfo@…`
-(including `token@host`, no colon required), scheme-relative `//userinfo@host`, schemeless
-`user:pass@host`, and scp/ssh `user@host:path` / `user@host/path`. Percent-encoded userinfo
-(`%40` for `@`, including double-encoded `%2540`) is decoded before the check. Plain URLs
+(including `token@host`, no colon required), scheme-relative `//userinfo@host`, and schemeless
+`user:pass@host`. Password-less git/ssh remotes are kept (`git@host:path`, `user@host/path`,
+`ssh://git@host/path`, `git+ssh://…`); a password in those forms, including a percent-encoded
+colon (`%3A`), still drops. Percent-encoded `@` and `:` (`%40`, `%3A`, including double-encoded
+`%2540`) are decoded before the check. An encoded slash (`%2F`) is not decoded first, so a
+slash inside a password cannot hide the `@`. Plain URLs
 such as a local llama endpoint are kept. A whole-value plain email (`alice@example.com`) is
 also kept so harmless vars like `ADMIN_EMAIL` are not scrubbed; `//alice@example.com` and
 `user@localhost` are not treated as emails and still drop. `*_URI`

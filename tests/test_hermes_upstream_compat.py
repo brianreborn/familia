@@ -365,7 +365,7 @@ def test_cloudamqp_and_amqp_url_names_drop(tmp_path, monkeypatch):
 
 
 def test_ambient_secret_userinfo_schemeless_scheme_relative_and_percent(tmp_path, monkeypatch):
-    """Boundary #354 nit: schemeless, scheme-relative, and %40 userinfo drop; plain emails stay."""
+    """Schemeless, scheme-relative, and encoded userinfo drop. Password-less git/ssh stays."""
     monkeypatch.setenv("HOME", str(tmp_path))
     hh.MCP_ENV_KEEP.clear()
     drop = {
@@ -376,10 +376,13 @@ def test_ambient_secret_userinfo_schemeless_scheme_relative_and_percent(tmp_path
         "PCT_AT": "https://s3cret-token%40evil.example/path",
         "PCT_COLON": "https://user%3Apass@evil.example/x",
         "PCT_DOUBLE": "https://s3cret-token%2540evil.example/path",
+        "PCT_TRIPLE": "https://s3cret-token%252540evil.example/path",
+        "PCT_SLASH_AT": "https://alice:sec%2Fret%40evil.example/db",
         "PCT_SCHEME_RELATIVE": "//user%40evil.example/db",
-        "GIT_SSH": "git@github.com:org/repo.git",
+        "SSH_WITH_PASS": "ssh://git:s3cret@github.com/org/repo.git",
+        "SSH_PCT_PASS": "ssh://git%3As3cret@github.com/org/repo.git",
+        "SCP_WITH_PASS": "deploy:hunter2@ci-host/app",
         "USER_AT_LOCALHOST": "alice@localhost",
-        "USER_AT_HOST_PATH": "deploy@ci-host/app",
     }
     keep = {
         "ADMIN_EMAIL": "alice@example.com",
@@ -388,6 +391,11 @@ def test_ambient_secret_userinfo_schemeless_scheme_relative_and_percent(tmp_path
         "LLAMA_SERVER_URL": "http://127.0.0.1:8080",
         "PUBLIC_HOOK": "https://hooks.example/x",
         "MAILTO": "mailto:alice@example.com",
+        "GIT_SSH": "git@github.com:org/repo.git",
+        "GIT_SSH_URL": "ssh://git@github.com/org/repo.git",
+        "GIT_PLUS_SSH": "git+ssh://git@github.com/org/repo.git",
+        "USER_AT_HOST_PATH": "deploy@ci-host/app",
+        "PCT_EMAIL_QUERY": "https://example.com/u?email=alice%40example.com",
         "HERMES_HOME": "/h",
         "PATH": "/bin",
     }
@@ -403,16 +411,20 @@ def test_ambient_secret_userinfo_schemeless_scheme_relative_and_percent(tmp_path
 
 
 def test_credential_url_value_matrix():
-    """Direct shape checks, including the email-keep tradeoff."""
+    """Direct shape checks: encoded credentials drop; password-less git/ssh stays."""
     drop = [
         "alice:s3cret@db.example:5432/app",
         " //token@evil.example/x ",
         "https://s3cret-token%40evil.example/path",
         "https://user%3Apass@evil.example/x",
         "https://s3cret-token%2540evil.example/path",
-        "git@github.com:org/repo.git",
+        "https://s3cret-token%252540evil.example/path",
+        "https://alice:sec%2Fret%40evil.example/db",
+        "https://alice:sec%2Fret@evil.example/db",
+        "ssh://git:s3cret@github.com/org/repo.git",
+        "ssh://git%3As3cret@github.com/org/repo.git",
+        "deploy:hunter2@ci-host/app",
         "alice@localhost",
-        "deploy@ci-host/app",
         "postgres://user@db.example/app",
     ]
     keep = [
@@ -422,12 +434,36 @@ def test_credential_url_value_matrix():
         "https://hooks.example/x",
         "mailto:alice@example.com",
         "https://example.com/u?email=alice@example.com",
+        "https://example.com/u?email=alice%40example.com",
         "redis://localhost:6379/0",
+        "git@github.com:org/repo.git",
+        "git@gitlab.com:group/proj.git",
+        "ssh://git@github.com/org/repo.git",
+        "git+ssh://git@github.com/org/repo.git",
+        "deploy@ci-host/app",
+        "org-12345@github.com:org/repo.git",
     ]
     for v in drop:
         assert hh._credential_url_value(v), v
     for v in keep:
         assert not hh._credential_url_value(v), v
+
+
+def test_percent_decode_uses_an_explicit_urllib_parse_import():
+    """Userinfo decoding imports urllib.parse; it must not rely on urllib.request."""
+    import ast
+    path = os.path.join(ROOT, "scripts", "hermes_harness.py")
+    tree = ast.parse(open(path, encoding="utf-8").read())
+    imported = any(
+        isinstance(node, ast.Import) and any(a.name == "urllib.parse" for a in node.names)
+        for node in tree.body
+    )
+    assert imported
+    assert hh.urllib.parse.unquote("%40") == "@"
+    # Full unquote would hide this @ behind the decoded slash; delimiter reveal must not.
+    hidden = "https://alice:sec%2Fret%40evil.example/db"
+    assert "%2F" in hh._reveal_userinfo_delimiters(hidden)
+    assert hh._credential_url_value(hidden)
 
 
 def test_harness_env_keep_has_no_secret_shaped_names():

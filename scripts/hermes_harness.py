@@ -28,7 +28,7 @@ gate: prompts on a terminal; --accept-licenses / --yes or FAMILIA_ACCEPT_LICENSE
 Arguments for hermes-agent itself go after "--"; anything else unknown is an error (exit 2),
 so a typo never renders a config and starts a server.
 """
-import copy, glob, json, os, re, shutil, subprocess, sys, time, urllib.error, urllib.request
+import copy, glob, json, os, re, shutil, subprocess, sys, time, urllib.error, urllib.parse, urllib.request
 import yaml
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -613,26 +613,34 @@ AMBIENT_SECRET_RE = re.compile(
     r"|[A-Za-z0-9_]*AMQP[A-Za-z0-9_]*_(?:URL|URI)"
     r")$"
 )
-# Userinfo forms (applied to the raw value and after percent-decode, so %40 counts as @):
+# Userinfo forms (raw value, and after revealing percent-encoded @ and :):
 #   scheme://userinfo@host  (any userinfo, including token@host)
 #   //userinfo@host         (scheme-relative)
 #   user:pass@host          (schemeless, password present)
-#   user@host:port or user@host/path or user@host:path  (scp/ssh-style)
-# A whole-value plain email (alice@example.com) is kept, so harmless vars like ADMIN_EMAIL
-# are not scrubbed. Prefer dropping when the shape is ambiguous.
+# Password-less git/ssh locators are not secrets: git@host:path, user@host/path,
+# ssh://git@host/path, git+ssh://git@host/path. A password (user:pass@, or a
+# revealed %3A) still drops. %2F is left encoded so a slash inside a password
+# cannot split the authority — full unquote would hide an encoded @ after it.
+# A whole-value plain email (alice@example.com) is kept, so harmless vars like
+# ADMIN_EMAIL are not scrubbed. Prefer dropping when the shape is ambiguous.
 CREDENTIAL_URL_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*://[^/\s@]+@")
 CREDENTIAL_SCHEME_RELATIVE_RE = re.compile(r"^//[^/\s@]+@")
 CREDENTIAL_SCHEMELESS_PASS_RE = re.compile(r"^[^/\s:@]+:[^/\s@]*@")
-# user@host:port, user@host:path (git@host:org/repo), or user@host/path
+# Password-less scp locator (git@host:org/repo or user@host/path). Not a drop by
+# itself; user:pass@host is CREDENTIAL_SCHEMELESS_PASS_RE.
 CREDENTIAL_SCHEMELESS_SCP_RE = re.compile(r"^[^/\s:@]+@[^/\s:@]+(?::[^\s]+|/)")
 # Bare user@host (no scheme, no password, no path). user@localhost drops; emails are
 # skipped earlier by PLAIN_EMAIL_RE.
 CREDENTIAL_SCHEMELESS_USERHOST_RE = re.compile(r"^[^/\s:@]+@[^/\s:@]+$")
 PLAIN_EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
+# %40 (@), %3A (:), and nested %25, so %2540 surfaces as @ without decoding %2F.
+_AUTHORITY_PCT_RE = re.compile(r"(?i)%(?:25)*(?:40|3a)")
 
 # Schemes whose `scheme:user@host` form is not a credential DSN (mailto:alice@example.com
 # would otherwise look like schemeless user:pass@host).
 HARMLESS_URI_SCHEMES = frozenset({"mailto", "tel", "sms", "urn", "tag", "cid", "mid"})
+# Username without a password on these schemes is a remote locator, not a secret.
+GIT_SSH_SCHEMES = frozenset({"ssh", "git", "git+ssh", "ssh+git"})
 # Schemes that are credential DSNs even without userinfo; used only for *_URI value-based drops.
 CREDENTIAL_DSN_SCHEMES = frozenset({
     "postgres", "postgresql", "mysql", "mariadb", "mongodb", "mongodb+srv",
@@ -655,11 +663,15 @@ def _ambient_secret_name(name):
     return name in AMBIENT_SECRET_NAMES or bool(AMBIENT_SECRET_RE.match(name))
 
 
-def _percent_decode_value(val, rounds=3):
-    """Decode %XX sequences a few times so %40 and %2540 surface as @."""
+def _reveal_userinfo_delimiters(val, rounds=3):
+    """Decode percent-encoded @ and : (including %2540 / %253A) via urllib.parse.
+
+    Leaves %2F encoded. Full unquote would turn a slash inside a password into a
+    path separator and the authority regex would miss an encoded @ after it.
+    """
     s = val
     for _ in range(rounds):
-        nxt = urllib.parse.unquote(s)
+        nxt = _AUTHORITY_PCT_RE.sub(lambda m: urllib.parse.unquote(m.group(0)), s)
         if nxt == s:
             break
         s = nxt
@@ -669,31 +681,48 @@ def _percent_decode_value(val, rounds=3):
 def _credential_url_candidates(val):
     raw = val.strip()
     out = [raw]
-    dec = _percent_decode_value(raw)
-    if dec != raw:
-        out.append(dec.strip())
+    revealed = _reveal_userinfo_delimiters(raw).strip()
+    if revealed != raw:
+        out.append(revealed)
     return out
 
 
+def _harmless_git_or_ssh_remote(s):
+    """Password-less git/ssh locator: the username is not a secret by itself."""
+    if "://" in s:
+        scheme, rest = s.split("://", 1)
+        if scheme.lower() not in GIT_SSH_SCHEMES:
+            return False
+        auth = rest.split("/", 1)[0]
+        if "@" not in auth:
+            return True
+        return ":" not in auth.rsplit("@", 1)[0]
+    if CREDENTIAL_SCHEMELESS_SCP_RE.match(s):
+        return ":" not in s.split("@", 1)[0]
+    return False
+
+
 def _credential_url_value(val):
-    """True when *val* has URL userinfo: scheme://userinfo@, //userinfo@, schemeless
-    user:pass@host, or scp/ssh user@host:path / user@host/path, including after %40
-    decode. A whole-value plain email (alice@example.com) is kept."""
+    """True when *val* carries userinfo that can hold a secret.
+
+    Drops scheme://userinfo@ (including token@host), //userinfo@, and schemeless
+    user:pass@. Password-less git/ssh remotes stay. Encoded @ and : are revealed
+    first (%40, %3A, double-encoded %2540); %2F is not, so it cannot mask the
+    authority. A whole-value plain email (alice@example.com) is kept."""
     if not isinstance(val, str):
         return False
     for s in _credential_url_candidates(val):
-        if not s:
-            continue
-        if PLAIN_EMAIL_RE.match(s):
+        if not s or PLAIN_EMAIL_RE.match(s):
             continue
         # mailto:alice@example.com (and similar) is not user:pass@host.
         if "://" not in s and ":" in s:
             head = s.split(":", 1)[0].lower()
             if head in HARMLESS_URI_SCHEMES:
                 continue
+        if _harmless_git_or_ssh_remote(s):
+            continue
         if (CREDENTIAL_URL_RE.match(s) or CREDENTIAL_SCHEME_RELATIVE_RE.match(s)
                 or CREDENTIAL_SCHEMELESS_PASS_RE.match(s)
-                or CREDENTIAL_SCHEMELESS_SCP_RE.match(s)
                 or CREDENTIAL_SCHEMELESS_USERHOST_RE.match(s)):
             return True
     return False
@@ -715,9 +744,9 @@ def scrub_ambient_secrets(env, keep=()):
     *AMQP*_URL/MONGODB_URI/PGPASSWORD/MYSQL_PWD, *_SECRET/*_PASSWORD/*_PWD/*_TOKEN/*_PRIVATE_KEY/
     *_DSN/*_DATABASE_URL/*_DB_URL/*_REDIS_URL, MONGO*/POSTGRES*/MYSQL*/RABBITMQ*_URL/_URI. Also
     any var whose value has URL userinfo (scheme://userinfo@, //userinfo@, schemeless
-    user:pass@host, or scp/ssh user@host:path, including after %40-decode). A whole-value
-    plain email is kept. *_URI is value-based: dropped only when the value has userinfo or a
-    known credential DSN scheme (REDIRECT_URI stays).
+    user:pass@host, including after revealing %40/%3A). Password-less git/ssh remotes
+    are kept. A whole-value plain email is kept. *_URI is value-based: dropped only
+    when the value has userinfo or a known credential DSN scheme (REDIRECT_URI stays).
     Keep = caller keep | MCP_ENV_KEEP | HARNESS_ENV_KEEP. Returns the names removed."""
     if env.get(PASS_SECRETS_ENV) == "1":
         return []
