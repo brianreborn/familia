@@ -73,6 +73,7 @@ name only with the node it targets. A chat + reasoning pair is just two routes (
 | router | `/label text` picks directly; else the router node must answer one exact label | unknown label without `default` -> 502; specialist down -> 503 |
 | remote | any non-loopback url; requires `remote: true` | config error without it |
 | tools | `Authorization: Bearer <node key>`: `key_file`, else the node port's instance key | 503 if no key; nothing is sent |
+| remote + key | the bearer key travels over plain `http://` (L14, #304); startup prints a WARNING per such node | warning only; tunnel it (SSH) or keep the node loopback |
 
 Always: no/wrong caller key -> 401; unknown route -> 404 listing routes; chat vs embeddings
 mismatch -> 400; a graph alias to a planned or slash-only node -> 409 naming the node. Replies carry
