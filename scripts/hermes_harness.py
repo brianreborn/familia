@@ -577,31 +577,64 @@ def _no_creds_dir(env, name):
 
 # Ambient non-LLM secrets (Boundary N2 / N2a): the hermes terminal tool inherits the child env, so
 # model output running `env` would see them. Dropped unless FAMILIA_HERMES_PASS_SECRETS=1; graph-
-# declared MCP names are kept (hermes interpolates them into that server's config). FAMILIA_* and
-# HERMES_* control vars are never matched by the pattern.
+# declared MCP names and harness control vars (HARNESS_ENV_KEEP) are kept. Secret-shaped names are
+# matched first (so FAMILIA_GH_TOKEN / HERMES_TOKEN drop); the keep set is applied after.
 PASS_SECRETS_ENV = "FAMILIA_HERMES_PASS_SECRETS"
-AMBIENT_SECRET_NAMES = frozenset({"GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN",
-                                  "SSH_AUTH_SOCK", "DSN", "DATABASE_URL", "KUBECONFIG", "REDIS_URL"})
-# *_SECRET / *_PASSWORD (N2); *_TOKEN / *_PRIVATE_KEY / *_DSN / *_DATABASE_URL / *_DB_URL and
-# MONGO*_URL / POSTGRES*_URL connection strings (N2a).
+AMBIENT_SECRET_NAMES = frozenset({
+    "GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN", "GITHUB_ENTERPRISE_TOKEN",
+    "SSH_AUTH_SOCK", "DSN", "DATABASE_URL", "KUBECONFIG", "REDIS_URL",
+    "AMQP_URL", "RABBITMQ_URL", "MONGODB_URI", "PGPASSWORD", "MYSQL_PWD",
+})
+# Name shapes (applied before any FAMILIA_*/HERMES_* keep): *_SECRET/_PASSWORD/_PWD/_TOKEN/…
+# plus DB/cache connection URL/URI names. Values matching scheme://user:pass@ also drop.
 AMBIENT_SECRET_RE = re.compile(
-    r"^(?!FAMILIA_|HERMES_)"
-    r"(?:"
-    r"[A-Za-z0-9_]*_(?:SECRET|SECRET_KEY|PASSWORD|PASSWD|TOKEN|PRIVATE_KEY|DSN|DATABASE_URL|DB_URL)"
-    r"|(?:MONGO|POSTGRES)[A-Za-z0-9_]*_URL"
+    r"^(?:"
+    r"[A-Za-z0-9_]*_(?:SECRET|SECRET_KEY|PASSWORD|PASSWD|PWD|TOKEN|PRIVATE_KEY|DSN|DATABASE_URL|DB_URL|REDIS_URL|URI)"
+    r"|(?:MONGO|POSTGRES|MYSQL|MARIADB|AMQP|RABBITMQ)[A-Za-z0-9_]*_(?:URL|URI)"
     r")$"
 )
+# scheme://user:pass@host… (password may be empty; user and @ required). Plain URLs without
+# userinfo (e.g. local llama http://127.0.0.1:8080) do not match.
+CREDENTIAL_URL_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*://[^/\s:@]+:[^/\s@]*@")
+# Harness / launch control vars that must survive scrub even if a future pattern widened.
+HARNESS_ENV_KEEP = frozenset({
+    "HERMES_HOME", "HERMES_BIN", "HERMES_PY", "HERMES_SP", "HERMES_EXEC",
+    "FAMILIA_HERMES_PASS_SECRETS", "FAMILIA_HERMES_ALLOW_CLOUD", "FAMILIA_HERMES_TOOLCHAIN_CHECK",
+    "FAMILIA_HERMES_PIN_CHECK", "FAMILIA_HERMES_SRC", "FAMILIA_HERMES_CLIENT_PROBE",
+    "FAMILIA_HERMES_ENV_PROBE_REFRESH", "FAMILIA_HERMES_DOGFOOD_YOLO", "FAMILIA_HERMES_UPSTREAM_PY",
+    "FAMILIA_HERMES_TEST_PY", "FAMILIA_SYNC", "FAMILIA_API_KEY", "FAMILIA_PREFIX_CHILD",
+    "FAMILIA_WARM_MIN_AVAIL_MIB", "FAMILIA_WARM_TIMEOUT", "FAMILIA_CHANNEL", "FAMILIA_STABLE_DAYS",
+    "FAMILIA_HOST",
+})
+
+
+def _ambient_secret_name(name):
+    """True when *name* is an ambient secret shape (no FAMILIA_/HERMES_ exemption)."""
+    return name in AMBIENT_SECRET_NAMES or bool(AMBIENT_SECRET_RE.match(name))
+
+
+def _credential_url_value(val):
+    """True when *val* looks like scheme://user:pass@… (embedded credentials)."""
+    if not isinstance(val, str) or "://" not in val:
+        return False
+    return bool(CREDENTIAL_URL_RE.match(val.strip()))
 
 
 def scrub_ambient_secrets(env, keep=()):
-    """Drop ambient non-LLM secrets from *env* (in place) unless FAMILIA_HERMES_PASS_SECRETS=1:
-    GH_TOKEN/GITHUB_TOKEN/SSH_AUTH_SOCK/DSN/DATABASE_URL/KUBECONFIG/REDIS_URL, *_SECRET,
-    *_SECRET_KEY, *_PASSWORD, *_TOKEN, *_PRIVATE_KEY, *_DSN, *_DATABASE_URL, *_DB_URL,
-    MONGO*_URL, POSTGRES*_URL. Returns the names removed."""
+    """Drop ambient non-LLM secrets from *env* (in place) unless FAMILIA_HERMES_PASS_SECRETS=1.
+
+    Name shapes (matched before keep): GH_TOKEN/…/KUBECONFIG/AMQP_URL/RABBITMQ_URL/MONGODB_URI/
+    PGPASSWORD/MYSQL_PWD, *_SECRET/*_PASSWORD/*_PWD/*_TOKEN/*_PRIVATE_KEY/*_DSN/*_DATABASE_URL/
+    *_DB_URL/*_REDIS_URL/*_URI, MONGO*/POSTGRES*/MYSQL*/AMQP*/RABBITMQ*_URL/_URI. Also any var
+    whose value matches scheme://user:pass@. Keep = caller keep | MCP_ENV_KEEP | HARNESS_ENV_KEEP.
+    Returns the names removed."""
     if env.get(PASS_SECRETS_ENV) == "1":
         return []
-    keep = set(keep) | MCP_ENV_KEEP
-    gone = sorted(k for k in env if k not in keep and (k in AMBIENT_SECRET_NAMES or AMBIENT_SECRET_RE.match(k)))
+    keep = set(keep) | MCP_ENV_KEEP | HARNESS_ENV_KEEP
+    gone = sorted(
+        k for k, v in env.items()
+        if k not in keep and (_ambient_secret_name(k) or _credential_url_value(v))
+    )
     for k in gone:
         del env[k]
     return gone
@@ -791,8 +824,8 @@ def hermes_child_env(extra=None, environ=None):
     Force a fresh probe with FAMILIA_HERMES_ENV_PROBE_REFRESH=1.
     When HERMES_HOME/bin exists (Agent-Reach wrapper from link_reaches), prepend it to PATH.
     Cloud LLM keys are removed unless FAMILIA_HERMES_ALLOW_CLOUD=1 (scrub_cloud_keys); ambient
-    secrets (GH_TOKEN, *_SECRET/*_PASSWORD/*_TOKEN/*_PRIVATE_KEY, DSN/DATABASE_URL/KUBECONFIG,
-    MONGO*/POSTGRES*_URL, …) unless FAMILIA_HERMES_PASS_SECRETS=1 (scrub_ambient_secrets).
+    secrets (name shapes + scheme://user:pass@ values; FAMILIA_GH_TOKEN/HERMES_TOKEN included)
+    unless FAMILIA_HERMES_PASS_SECRETS=1 (scrub_ambient_secrets).
     """
     env = dict(os.environ if environ is None else environ)
     scrub_cloud_keys(env)   # before extra: values the harness passes on purpose are kept
