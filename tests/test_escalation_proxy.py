@@ -315,6 +315,8 @@ def test_handoff_keeps_tools(monkeypatch, tmp_path):
 
 
 def _tool_graph(pl, pc, route="coder", coder_role="coder"):
+    # Off-loopback light is not direct and must not rely on discovery; tool_route is the
+    # TOOLS-009 opt-in that still forwards (chat + bind 0.0.0.0, no server_tools).
     return {"hosts": {"h": {}}, "aliases": {"coder-a": {"node": "coder"}},
             "models": {"m": {"role": "chat"}, "c": {"role": coder_role, "tool_calls": True}},
             "nodes": {"light": {"host": "h", "port": pl, "model": "m", "bind": "0.0.0.0", "tool_route": route},
