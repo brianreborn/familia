@@ -73,6 +73,13 @@ def serve(g, cur="light"):
     srv = EP.serve(EP.Escalator(g, cur, [], "h", consent={})); return srv, srv.server_address[1]
 
 
+def close(*srvs):
+    """Shut down and server_close() each proxy (None = never started); for finally blocks."""
+    for srv in srvs:
+        if srv is not None:
+            srv.shutdown(); srv.server_close()
+
+
 def post(port, tools=True, timeout=20):
     body = {"model": "x", "messages": [{"role": "user", "content": "list files"}]}
     if tools: body["tools"] = TOOLS
@@ -85,26 +92,26 @@ def post(port, tools=True, timeout=20):
 
 def test_one_hop_forward_lands_on_target_runtime_not_its_proxy():
     seen = []; L, C = Up("light", seen), Up("coder", seen)
+    srv = None
     try:
         srv, p = serve(g3(L.port, C.port))
         assert post(p) == "coder"
         assert [s[0] for s in seen] == ["coder"] and seen[0][1]["model"] == "coder-a"
-        srv.shutdown()
     finally:
-        L.close(); C.close()
+        close(srv); L.close(); C.close()
 
 
 def test_chained_tool_route_is_not_followed():
     """light -> coder -> g: coder is itself routed, so light gets no target (no 2nd hop)."""
     seen = []; L, C, G = Up("light", seen), Up("coder", seen), Up("g", seen)
+    srv = None
     try:
         g = g3(L.port, C.port, G.port, coder={"tool_route": "g"})
         assert VG.tool_route(g, "light") is None and EP.tool_target(g, "light") is None
         srv, p = serve(g)
         assert post(p) == "light" and [s[0] for s in seen] == ["light"]
-        srv.shutdown()
     finally:
-        L.close(); C.close(); G.close()
+        close(srv); L.close(); C.close(); G.close()
 
 
 def test_self_route_is_not_a_target():
@@ -118,6 +125,7 @@ def test_self_route_is_not_a_target():
 @pytest.mark.parametrize("how", ["model_role", "node_role", "node_role+server_tools_all+tool_capable"])
 def test_never_forwards_into_fail_closed_nodes(role, how):
     seen = []; L, C = Up("light", seen), Up("coder", seen)
+    srv = None
     try:
         if how == "model_role":
             g = g3(L.port, C.port, coder_role=role)
@@ -129,9 +137,8 @@ def test_never_forwards_into_fail_closed_nodes(role, how):
         assert VG.tool_policy(g, "coder") == []
         srv, p = serve(g)
         assert post(p) == "light" and all(s[0] != "coder" for s in seen)
-        srv.shutdown()
     finally:
-        L.close(); C.close()
+        close(srv); L.close(); C.close()
 
 
 @pytest.mark.parametrize("role", ["guardian", "pentest", "defender"])
@@ -161,14 +168,14 @@ def test_hermes_tool_free_node_gets_no_tools_even_with_route():
 @pytest.mark.parametrize("opt", OPT_OUTS, ids=repr)
 def test_target_server_tools_opt_out_gets_no_forward(opt):
     seen = []; L, C = Up("light", seen), Up("coder", seen)
+    srv = None
     try:
         g = g3(L.port, C.port, coder={"server_tools": opt})
         assert VG.tool_policy(g, "coder") == [] and EP.tool_target(g, "light") is None
         srv, p = serve(g)
         assert post(p) == "light"
-        srv.shutdown()
     finally:
-        L.close(); C.close()
+        close(srv); L.close(); C.close()
 
 
 @pytest.mark.parametrize("opt", [[], "none", False], ids=repr)
@@ -200,7 +207,7 @@ def test_proxy_tool_capable_source_stays_direct():
         try:
             assert post(p) == "light"
         finally:
-            srv.shutdown()
+            close(srv)
     finally:
         L.close(); C.close()
 
@@ -260,20 +267,21 @@ def test_hermes_off_loopback_direct_without_server_tools_gets_none():
 
 def test_target_down_is_502_and_never_redialed_with_tools():
     seen = []; L = Up("light", seen)
+    srv = None
     try:
         srv, p = serve(g3(L.port, dead_port()))
         with pytest.raises(urllib.error.HTTPError) as ei:
             post(p)
         assert ei.value.code == 502 and seen == []
         assert post(p, tools=False) == "light"            # plain chat still served
-        srv.shutdown()
     finally:
-        L.close()
+        close(srv); L.close()
 
 
 def test_target_slow_past_timeout_is_502_and_not_retried(monkeypatch):
     monkeypatch.setattr(EP, "UPSTREAM_TIMEOUT_S", 0.5)
     seen = []; L, C = Up("light", seen), Up("coder", seen, delay=2.0)
+    srv = None
     try:
         srv, p = serve(g3(L.port, C.port))
         t0 = time.monotonic()
@@ -281,19 +289,18 @@ def test_target_slow_past_timeout_is_502_and_not_retried(monkeypatch):
             post(p)
         assert ei.value.code == 502 and time.monotonic() - t0 < 5
         assert [s[0] for s in seen] == ["coder"]          # one attempt, never light
-        srv.shutdown()
     finally:
-        L.close(); C.close()
+        close(srv); L.close(); C.close()
 
 
 def test_target_slow_within_timeout_is_served():
     seen = []; L, C = Up("light", seen), Up("coder", seen, delay=0.3)
+    srv = None
     try:
         srv, p = serve(g3(L.port, C.port))
         assert post(p) == "coder"
-        srv.shutdown()
     finally:
-        L.close(); C.close()
+        close(srv); L.close(); C.close()
 
 
 # ---------------- concurrent forwards ----------------
@@ -309,11 +316,11 @@ def test_concurrent_tool_forwards_capped_and_none_leak_to_source():
         while time.monotonic() < end and C.peak < EP.UPSTREAM_CAP:
             time.sleep(0.05)
         time.sleep(0.3)
-        peak = C.peak
         gate.set()
         outs = [f.result(timeout=30) for f in futs]
+        peak = C.peak  # after drain, so a leak during drain shows up (R7 / Race #362 nit)
     finally:
-        gate.set(); ex.shutdown(wait=True); srv.shutdown(); L.close(); C.close()
+        gate.set(); ex.shutdown(wait=True); close(srv); L.close(); C.close()
     assert outs == ["coder"] * N
     assert 0 < peak <= EP.UPSTREAM_CAP, peak
     assert {s[0] for s in seen} == {"coder"} and len(seen) == N
