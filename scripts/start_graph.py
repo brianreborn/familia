@@ -461,6 +461,15 @@ def _wait_ready(child, url, label, timeout):
     raise StartupError(f"{label} did not become ready within {timeout:g} seconds")
 
 
+def spawn_child(argv, **kw):
+    """Start a service in its own process group (POSIX) so stopping it also stops what it
+    started: serve.sh does not exec llama-server on the default path (CPU retry), so a plain
+    terminate() of sh orphaned the runtime and kept its port bound (routing-lifetime)."""
+    if os.name == "posix":
+        kw.setdefault("start_new_session", True)
+    return subprocess.Popen(argv, **kw)
+
+
 def _signal_group(child, sig):
     """serve.sh runs llama-server as a child (not exec) so it can retry on the CPU; signal the
     whole process group, or SIGTERM to the shell leaves llama-server holding the port."""
@@ -485,6 +494,20 @@ def _stop_children(children):
                 print(f"familia-graph: {label} did not stop after SIGTERM; sending SIGKILL", file=sys.stderr)
                 _signal_group(child, signal.SIGKILL)
                 child.wait()
+        # the group may outlive its leader (sh died, runtime still exiting): finish it
+        if os.name == "posix":
+            end = min(deadline, time.monotonic() + 5)
+            while time.monotonic() < end:
+                try:
+                    os.killpg(child.pid, 0)
+                except (ProcessLookupError, PermissionError):
+                    break
+                time.sleep(0.05)
+            else:
+                try:
+                    os.killpg(child.pid, signal.SIGKILL)
+                except (ProcessLookupError, PermissionError):
+                    pass
 
 
 def run(args=None):
