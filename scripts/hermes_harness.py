@@ -446,6 +446,8 @@ HERMES_BIN, HERMES_PY, HERMES_SP = resolve_hermes(missing="defaults")
 USER_HOME = os.path.expanduser("~/.hermes")
 SECRET_RE = re.compile(r"(api_?key|token|secret|password|passwd|auth|cookie|credential)", re.I)
 # Sections the harness owns; never inherited from the user's config.
+# When local-only, render() must also WRITE open/local values for these (not
+# only strip them): otherwise hermes-agent fills stock hosted defaults.
 OWNED = {"model", "auxiliary", "compression", "custom_providers", "providers", "smart_model_routing", "fallback_model"}
 # Lean prompt profile (#85): the toolsets a coding agent on a small or old node needs. Long
 # guidance stays reachable through the skills tools (skills_list / skill_view load on demand).
@@ -474,6 +476,9 @@ AUX_TASKS = ["web_extract", "compression", "skills_hub", "approval", "mcp", "tit
 # without vision/voice fails locally instead of falling through to a cloud provider) and MoA is
 # disabled with a local-only preset. See docs/hermes-pin.md.
 MODAL_AUX_TASKS = ("vision", "voice_chat", "moa_reference", "moa_aggregator")
+# hermes-agent v0.22.6 _try_openrouter: free_only plus a non-":free" openrouter_model
+# skips the OpenRouter aux fallback lane (stock default is a hosted SKU).
+OPEN_DEFAULT_OPENROUTER_MODEL = "disabled"
 ALLOW_CLOUD_ENV = "FAMILIA_HERMES_ALLOW_CLOUD"
 # Cloud LLM credentials scrubbed from every hermes child env unless FAMILIA_HERMES_ALLOW_CLOUD=1:
 # any *_API_KEY / *_API_TOKEN (FAMILIA_* kept) plus these. MCP secrets the graph declares
@@ -1248,6 +1253,17 @@ def render(g, agent, user_cfg_path=os.path.join(USER_HOME, "config.yaml"), base_
                       "presets": {"default": {"enabled": False,
                                               "reference_models": [{"provider": "custom", "model": alias, "enabled": True}],
                                               "aggregator": {"provider": "custom", "model": alias}}}}
+        # Skip the stock OpenRouter aux auto-chain (hosted Gemini / :free SKU).
+        # Upstream skips the lane when free_only is on and the model is not :free.
+        aux["free_only"] = True
+        aux["openrouter_model"] = OPEN_DEFAULT_OPENROUTER_MODEL
+        # OWNED provider maps: write empty local-only so wizard/stock cloud
+        # providers cannot fill in. fallback_model and smart_model_routing stay
+        # omitted (disabled in v0.22.6 when absent).
+        cfg["providers"] = {}
+        cfg["custom_providers"] = {}
+        cfg.pop("fallback_model", None)
+        cfg.pop("smart_model_routing", None)
     cfg["auxiliary"] = aux
     MCP_ENV_KEEP.clear()
     declared_env = mcp_env_allowlist(a)

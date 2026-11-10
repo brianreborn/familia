@@ -66,7 +66,11 @@ Then update the channel's entry in `config/hermes-agent.pins.json`.
 `vision`, `voice_chat`, `moa_reference` and `moa_aggregator` are also pinned to the local node, and
 Mixture of Agents is disabled with a local-only `moa.presets.default` (upstream's built-in preset
 uses openai-codex and openrouter). A node without vision or voice fails those tasks locally instead
-of upstream's `auto` falling through to a cloud provider. Cloud LLM credentials are removed from
+of upstream's `auto` falling through to a cloud provider. The same local-only render also sets
+`auxiliary.free_only: true` and `auxiliary.openrouter_model: disabled` so hermes-agent's
+OpenRouter aux auto-chain is skipped (upstream stock default is a hosted SKU such as
+Gemini on OpenRouter). `providers` and `custom_providers` are written empty;
+`fallback_model` and `smart_model_routing` stay omitted so they stay disabled. Cloud LLM credentials are removed from
 the hermes child environment: every env name the installed hermes-agent's provider registry declares
 (`hermes_cli/auth.py` rows and `plugins/model-providers/*` `env_vars`, parsed from its source, never
 imported), plus a static superset (`*_API_KEY`, `*_API_TOKEN`, `ANTHROPIC_TOKEN`,
