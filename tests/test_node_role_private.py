@@ -38,6 +38,12 @@ def test_private_angel_type_names_only():
     assert nodes["chat"]["role"] == "chat"
     for name in nodes:
         assert not nr.is_host_prefixed(name, g)
+    spec = priv["speculative"]
+    assert set(spec) == {"angel-nanbeige-ngram"}
+    assert spec["angel-nanbeige-ngram"]["target"] == "coder"
+    assert spec["angel-nanbeige-ngram"]["status"] == "planned"
+    assert "coder-ngram" not in spec
+    assert "coder-draft" not in spec
 
 
 def test_resolve_model_assign_rejects_typos_and_paths():
@@ -111,3 +117,6 @@ def test_private_miryam_includes_guardian():
     assert "guardian" in priv["nodes"]
     assert priv["nodes"]["guardian"]["role"] == "guardian"
     assert "guardian" in (priv.get("aliases") or {})
+    assert priv["speculative"]["coder-ngram"]["target"] == "coder"
+    assert priv["speculative"]["coder-ngram"]["status"] == "active"
+    assert priv["nodes"]["coder"]["model"] == "qwen35-2b-q4km"
