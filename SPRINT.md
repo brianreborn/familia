@@ -1,6 +1,6 @@
 # Familia v0.3.0 sprint plan
 
-Updated: 2026-11-10 3:23 PM PT (America/Los_Angeles)
+Updated: 2026-11-10 3:32 PM PT (America/Los_Angeles)
 
 This is the current v0.3.0 sprint plan. It is new on main (SPRINT.md was
 not on main; the 2026-11-02 list lives only on open PR #286 and is stale).
@@ -11,10 +11,13 @@ After this PR merges, close #286 as superseded.
 - v0.3.0 work never uses the development branch. All 0.3.0 branches and
   PRs target main only. Open PRs still based on development (#370, #363)
   should be retargeted or reopened against main.
-- Merges need 3+ signed reviews. No force push.
-- Hot-file freeze: do not edit familia_home.sh, proto_chat.sh, open_ui.sh,
-  ui_bridge.py, menus, graph.yaml, FreeBSD/Termux docs, or issues #327-331
-  until Brian lifts the freeze. Track the work here; hold the code.
+- Merges need two valid reviews. Signed reviewer comments count as
+  reviews. Only risky PRs go to Brian. No force push.
+- The hot-file freeze was lifted by Brian at 3:25 PM PT on 2026-11-10.
+  Menu code, graph.yaml, protograph, model picking, and the formerly
+  frozen files (familia_home.sh, proto_chat.sh, open_ui.sh, ui_bridge.py,
+  menus, FreeBSD/Termux docs, and issues #327-331) may proceed against
+  main.
 - ASCII only in this file (plain ASCII glyphs; no Unicode decoration).
 
 ## 1. Landed 2026-11-10 (do not redo)
@@ -23,18 +26,19 @@ After this PR merges, close #286 as superseded.
   https://github.com/brianreborn/familia/pull/380
 - ASCII/ANSI style guide: PR #381 merged to main at 8babfd4.
   https://github.com/brianreborn/familia/pull/381
-- Routing boundary tests: PR #362 merged to development at 6ce6adf
-  (auto-merge to main follows). Residual nits and TR-3/TR-4 still open.
+- Routing boundary tests: PR #362 went through development (merged
+  there at 6ce6adf) before the main-only rule, and is now on main at
+  3934b39. Residual nits and TR-3/TR-4 still open.
   https://github.com/brianreborn/familia/pull/362
-- Self-hosted runners are online and passed smoke jobs:
-  - angel: github-act-runner 0.13.0, runner 23, labels self-hosted, X64,
-    freebsd, amd64, cpu, ram-24g, angel. Screen: screen -r ci-angel.
-    Test: https://github.com/brianreborn/familia/actions/runs/42921698653
-  - galaxy1: familia-a57-qwen, runner 24, labels self-hosted, android,
-    arm64, a57, termux, ram-7g, qwen. Screen: screen -r ci-galaxy1.
-  - galaxy2: familia-a57-lfm, runner 25, same labels except lfm. LFM3
-    kept running. Screen: screen -r ci-galaxy2.
-  Phone job: https://github.com/brianreborn/familia/actions/runs/42921763422
+- Self-hosted runners are online and passed smoke jobs (angel,
+  galaxy1, galaxy2). Runner labels, host inventory, and M17
+  owner-settings detail live in #236, not in this public file.
+  Angel smoke: https://github.com/brianreborn/familia/actions/runs/42921698653
+  Phone smoke: https://github.com/brianreborn/familia/actions/runs/42921763422
+- Phone liveness: the A57s share about 7 GB RAM with a resident
+  model (qwen on galaxy1, LFM3 on galaxy2) plus the #367 SSH smoke.
+  Keep one job per phone. The SSH smoke must take the same per-phone
+  lock. Label a phone as serving when its model is resident.
 - Angel coder selection (not serving yet): Qwen2.5-Coder 3B 4-bit with
   Qwen2.5-Coder 0.5B as the draft model. No large models on FreeBSD.
 
@@ -43,9 +47,15 @@ After this PR merges, close #286 as superseded.
 Parent: https://github.com/brianreborn/familia/issues/387
 Pass condition for each: the test passes on angel's runner without
 breaking Linux. Owner for investigation: unassigned swarm runners
-(prefer angel). Do not edit frozen FreeBSD docs; record fixes in
-issues and code-only PRs against main.
+(prefer angel). Record fixes in issues and PRs against main.
 
+- #396 FIRST: host-local ~/ci/run-familia-ci.sh on angel (tee at
+  lines 164-165 swallows pytest's exit status; START_HUMAN unset at
+  line 455). Greens from that script are untrustworthy until this is
+  fixed. The script is not in the repo. Angel's github-act-runner
+  jobs run workflow steps (checkout, pytest, and similar), not this
+  script (verified in .github/workflows at this PR head, and in
+  Actions run 42921698653 / angel-smoke.yml). Status: open.
 - #387 parent: FreeBSD 42 test failures block 0.3.0. Status: open.
 - #388 path resolution: familia-start refuses test key files (~15 tests).
 - #389 Windows reserved names not rejected (COM/LPT superscripts,
@@ -54,32 +64,34 @@ issues and code-only PRs against main.
   (9 tests).
 - #391 missing registry/llama-builds flag tables under FAMILIA_SYNC=0.
 - #392 test_bench_idle nice off-by-one (20 == 19).
-- #393 hostile hop test hits HTTP 502 (related to PR #362).
+- #393 hostile hop test hits HTTP 502 (related to PR #362). The
+  issue says land on development, and the morning pin predates #362
+  (a4a65b3, now on main at 3934b39). Re-run the test on angel at
+  main before rewriting it.
 - #394 test_hermes_upstream_compat KeyError GITHUB_TOKEN.
 - #395 test_windows Activate.ps1 UTF-8 BOM on host venv.
-- #396 run-familia-ci.sh reports PASS when pytest failed (tee exit
-  code at lines 164-165; START_HUMAN unset at line 455). Status: open.
-  Blocker: none; script lives on angel at ~/ci/run-familia-ci.sh and
-  was not edited when found.
 
 ## 3. New product work (2026-11-10)
 
-Code for menu, protograph, and graph.yaml waits on the hot-file freeze.
+The hot-file freeze was lifted at 3:25 PM PT on 2026-11-10. Menu,
+protograph, graph.yaml, and model-picking work may proceed against
+main.
 
 - #397 App catalog: virtual app store menu item; public search of open
   issues labeled applications, with a local cache.
   https://github.com/brianreborn/familia/issues/397
-  Owner: unassigned. Status: filed, not claimed. Blocker: freeze
-  (menus).
+  Owner: unassigned. Status: filed, not claimed. Blocker: none
+  (freeze lifted).
 - #398 Menu: intelligent model picking.
   https://github.com/brianreborn/familia/issues/398
-  Owner: unassigned. Status: filed. Blocker: freeze (menus).
+  Owner: unassigned. Status: filed. Blocker: none (freeze lifted).
 - #399 Proto model / protograph skill for configuring graph.yaml.
   https://github.com/brianreborn/familia/issues/399
-  Related: #327 (frozen). Owner: unassigned. Status: filed.
-  Blocker: freeze (graph.yaml, menus, #327-331).
-- #328-331 frozen menu redesigns (angel, galaxy1, galaxy2, reference).
-  Do not start code until the freeze lifts.
+  Related: #327-331. Owner: unassigned. Status: filed.
+  Blocker: none (freeze lifted).
+- #327-331 per-host menu redesigns (angel, galaxy1, galaxy2,
+  reference). Code may start against main; keep one owner per issue
+  so two agents do not take the same one.
 
 ## 4. Transport-agnostic swarm (no extra LAN/WAN required)
 
@@ -118,6 +130,10 @@ ask-first.
 
 - Phone runners last only while Termux stays open. Termux Boot is
   needed to survive a reboot; needs Brian's OK. Status: waiting.
+  Liveness (same as section 1): one job per phone; #367 SSH smoke
+  takes the same per-phone lock; label a phone as serving when its
+  model is resident. The phones share about 7 GB with resident
+  LFM3/qwen plus that smoke.
 - ci/a57-capability-smoke branch is unmerged; manual Actions starts
   need that merge (against main).
 - Angel coder is not serving yet. Start in screen session coder-angel
@@ -137,102 +153,107 @@ Tracker: https://github.com/brianreborn/familia/issues/236
   https://github.com/brianreborn/code-bootstraps-llama.cpp/pull/93
 - L14: node keys over plain HTTP; startup warning landed in #374.
 - L15: ui_bridge.py prints unstripped control characters (same class
-  as #303). Code is hot-frozen. Status: open, hold code.
-- M17 (Medium, extends M6): miryam self-hosted runner can reach A57
-  phones via the #367 dispatcher key. Fixes are owner-only settings:
-  approve all external contributor workflows; protect main (and stop
-  using development for 0.3.0); dedicated phone CI key with
-  restrict,command=; ephemeral/containerized runner. Not checked:
-  whether the key is already on miryam.
+  as #303). The hot-file freeze was lifted at 3:25 PM PT; code may
+  proceed against main. Status: open.
+- M17 (Medium, extends M6): miryam self-hosted runner reachability
+  to the A57s via the #367 dispatcher key. Owner-only GitHub
+  settings; details in #236, not in this public file.
   https://github.com/brianreborn/familia/issues/236#issuecomment-6774972991
+  The self-hosted runners went online before those M17 owner
+  settings were applied. Required order is: set the owner
+  protections first, then bring runners online.
+  Workflow check at this PR head (same as main for
+  .github/workflows): no workflow uses pull_request_target.
+  tests.yml, lint-warnings.yml, and codeql.yml use pull_request
+  (fork PRs can start hosted jobs; they do not get secrets).
+  a57-ssh-smoke.yml is gated to brianreborn/familia and
+  refs/heads/development (fork PRs are not a trigger).
+  swarm-worker.yml /run is gated to the repository owner and
+  non-Bot comments. The unmerged a57-capability-smoke.yml (not
+  on main) is push/workflow_dispatch only, never pull_request.
 - TR-3 residual: normalize_role should strip/Cf and reject non-ASCII
   or unknown roles (padded names, zero-width, lookalikes). TR-4
-  role-override gap. Status: product issue not filed. Owner: Boundary
-  Reviewer / Senior Developer. Blocker: none to file the issue.
+  role-override gap. Status: product issue not filed. Owner:
+  Senior Developer (filing). Boundary Reviewer reviews.
 - #362 nits (non-blocking): POSIX skipif in test_race_routing.py
   should be scoped to the fork test only; Windows pytestmark skips
-  the whole race file; R1 fork()s a threaded process.
+  the whole race file; R1 fork()s a threaded process. #362 itself
+  went through development before the main-only rule.
 
 ## 7. Worker line items (familia / 0.3.0)
 
 Format: owner | work | link | status | blocker
 
-- qodesh Worker (0af4492c-5094-462f-b47b-9efcedecf20f) | Read-only
-  PowerShell 5.1 smoke for draft PR #300 (parse install.ps1, dry-run,
-  Uninstall/Purge refuse without marker); post signed results. #305
-  already merged 2026-11-06. Also: confirm /usr/tmp/ctxsmoke cleanup
-  on the A57s; align /workspace/session/android-installer/ with the
-  Hermes Wiring smoke; older #227/#232. | https://github.com/brianreborn/familia/pull/300 | queued | Needs Brian local-exec OK per run; check disk FS state first. Hosts were offline on 2026-11-06; LAN is back.
-- Hermes Wiring (39297cdd-2fca-4a56-b02f-070b835756b0) | Reconcile
-  seven local Android/guardian commits with open PR #321 without
-  overwriting its eight commits (rebase onto #321 or a new draft
-  branch). HVVRAM kernel defects confirmed only by static review;
-  FreeBSD runtime still unverified. | https://github.com/brianreborn/familia/pull/321 | blocked on approach choice | Brian chooses rebase onto #321 vs a separate draft branch. No force push.
-- Continuity (b27d49b9-86e0-42da-85a8-bc9e047235ae) | Keep #300
-  Windows installer moving (draft, closes #32). sysrescue bootmgr
-  repair was completed later by qodesh Worker. | https://github.com/brianreborn/familia/pull/300 | draft open | Needs PS 5.1 results and reviews.
-- Senior Developer (f9fdbeaa-883a-42ab-a4d1-71efac60d295) | Track
-  remaining #236 items (L13/L15/M17) and file the TR-3/TR-4 product
-  issue. Daily 10 AM PT security check-in stays running (Brian said
-  keep it). | https://github.com/brianreborn/familia/issues/236 | open | L15 code frozen; M17 is owner-only GitHub settings.
-- Researcher (74c9df07-f048-493f-85ec-ce9ca100abe0) | Coordinate
-  0.3.0 work onto main; do not start new development branches.
-  Windows-only relocation remains a separate ops thread, not this
-  sprint. | (coordinator) | idle since 2026-11-10 check-in relay | none for sprint coordination.
-- Release Driver (8c5a35ba-0ed7-4068-9712-d651d34dfc26) | A57 chat
-  model chosen 2026-11-06: LFM3-1.7B-Uncensored-AD-Q4_K_M.gguf
-  (install OK was still pending then; galaxy2 now serves LFM3).
-  Help start angel's coder-angel session when llama.cpp is ready.
-  | (host deploy) | partial | Brian per-host install OK if anything new is copied to a phone.
-- Platform Reviewer (6f7997c0-9f0a-401f-b155-741d0e6fbfed) | Review
-  the #380 follow-up docs PR (nits 1-6) and later 0.3.0 PRs against
-  main. Just approved #380 and was re-reviewing #362 (now merged).
-  | https://github.com/brianreborn/familia/pull/380#issuecomment-6781869353 | nits open | familia-claims repo needs Brian OK.
-- Boundary Reviewer (5acb787d-4e99-4757-88bd-1c80027407c1) | File or
-  review the TR-3/TR-4 product issue; review 0.3.0 PRs against main.
-  Approved #362. | https://github.com/brianreborn/familia/pull/362#issuecomment-6781949185 | nits + owed issue | none.
-- Race Reviewer (137401ad-19fa-4b63-9731-b9420ab02287) | #362 nits
-  (Windows pytestmark, R1 fork of a threaded process). Re-review
-  #169/#170 if they stay on main. | https://github.com/brianreborn/familia/pull/362#issuecomment-6781993525 | nits; #169/#170 still open | #169/#170 rebase/push was waiting on Brian; standing review-fix push OK may now cover updates.
-- Fuzz Tester (4fdf3c13-4790-4414-952a-2efb2663f9e5) | #281 nexus
-  localhost tmp fix 8b34e2a needs a real-user run on a disposable
-  host; overlap check. Five unresolved Green-Roomz fuzz bugs remain
-  (null-body hangs, Unicode/speech 500s, null mailbox crashes,
-  env-path expansion). Lockdown/reboot stayed blocked (good).
+- qodesh Worker | Read-only PowerShell 5.1 smoke for draft PR #300
+  (parse install.ps1, dry-run, Uninstall/Purge refuse without
+  marker); post signed results. #305 already merged 2026-11-06.
+  Also: confirm /usr/tmp/ctxsmoke cleanup on the A57s; align
+  /workspace/session/android-installer/ with the Hermes Wiring
+  smoke; older #227/#232. | https://github.com/brianreborn/familia/pull/300 | queued | Needs Brian local-exec OK per run; check disk FS state first. Hosts were offline on 2026-11-06; LAN is back.
+- Hermes Wiring | Reconcile seven local Android/guardian commits
+  with open PR #321 without overwriting its eight commits (rebase
+  onto #321 or a new draft branch). HVVRAM kernel defects confirmed
+  only by static review; FreeBSD runtime still unverified. | https://github.com/brianreborn/familia/pull/321 | blocked on approach choice | Brian chooses rebase onto #321 vs a separate draft branch. No force push.
+- Continuity | Keep #300 Windows installer moving (draft, closes
+  #32). sysrescue bootmgr repair was completed later by qodesh
+  Worker. | https://github.com/brianreborn/familia/pull/300 | draft open | Needs PS 5.1 results and reviews.
+- Senior Developer | Track remaining #236 items (L13/L15/M17) and
+  file the TR-3/TR-4 product issue (Boundary Reviewer reviews it).
+  Daily 10 AM PT security check-in stays running (Brian said keep
+  it). | https://github.com/brianreborn/familia/issues/236 | open | L15 freeze lifted; M17 is owner-only GitHub settings.
+- Researcher | Coordinate 0.3.0 work onto main; do not start new
+  development branches. Windows-only relocation remains a separate
+  ops thread, not this sprint. | (coordinator) | idle since 2026-11-10 check-in relay | none for sprint coordination.
+- Release Driver | A57 chat model chosen 2026-11-06:
+  LFM3-1.7B-Uncensored-AD-Q4_K_M.gguf (install OK was still pending
+  then; galaxy2 now serves LFM3). Help start angel's coder-angel
+  session when llama.cpp is ready. | (host deploy) | partial | Brian per-host install OK if anything new is copied to a phone.
+- Platform Reviewer | Review the #380 follow-up docs PR (nits 1-6)
+  and later 0.3.0 PRs against main. Just approved #380 and was
+  re-reviewing #362 (now merged). | https://github.com/brianreborn/familia/pull/380#issuecomment-6781869353 | nits open | familia-claims repo needs Brian OK.
+- Boundary Reviewer | Review the TR-3/TR-4 product issue (Senior
+  Developer files it); review 0.3.0 PRs against main. Approved
+  #362. | https://github.com/brianreborn/familia/pull/362#issuecomment-6781949185 | nits + owed issue | none.
+- Race Reviewer | #362 nits (Windows pytestmark, R1 fork of a
+  threaded process). Re-review #169/#170 if they stay on main.
+  Update those branches by merging main in (no rebase and no
+  force push). | https://github.com/brianreborn/familia/pull/362#issuecomment-6781993525 | nits; #169/#170 still open | standing review-fix push OK covers merging main in; no rebase/force push.
+- Fuzz Tester | #281 nexus localhost tmp fix 8b34e2a needs a
+  real-user run on a disposable host; overlap check. Five
+  unresolved Green-Roomz fuzz bugs remain (null-body hangs,
+  Unicode/speech 500s, null mailbox crashes, env-path expansion).
+  Lockdown/reboot stayed blocked (good).
   | https://github.com/brianreborn/familia/issues/281 | waiting | Needs a disposable host from Brian.
-- Covert Channel Fixer (42110e92-910d-4254-838e-1077039383c8) | Next
-  green-roomz fix-pack items after SSE/ESC strip (P0b constant-time
-  secureEquals, P0c log/path scrubbing, P1 no cache_prompt reuse
-  across tenants). familia :9931 key-fix review still listed.
+- Covert Channel Fixer | Next green-roomz fix-pack items after
+  SSE/ESC strip (P0b constant-time secureEquals, P0c log/path
+  scrubbing, P1 no cache_prompt reuse across tenants). familia
+  :9931 key-fix review still listed.
   | green-roomz (no open PRs at last check) | local/unpushed as of 2026-11-06 | Brian push OK and which tree is canonical for v0.3.
-- Covert Channel Reviewer (83003a65-0254-4c9d-b0e5-eb4d41c6a549) |
-  Post-land re-check of 8731d03 and tool_calls name/arguments strip.
-  | (review) | idle | Depends on Fixer landing the follow-up.
-- Bootstraps Reviewer (0ba3d3fa-d7fb-43b1-95b9-37d137ab9651) | Review
-  cbl #90/#91/#93 (L13). familia #370 is an approve in draft, not
-  posted (widget unanswered); if kept, retarget #370 to main.
+- Covert Channel Reviewer | Post-land re-check of 8731d03 and
+  tool_calls name/arguments strip. | (review) | idle | Depends on Fixer landing the follow-up.
+- Bootstraps Reviewer | Review cbl #90/#91/#93 (L13). familia #370
+  is an approve in draft, not posted (widget unanswered); if kept,
+  retarget #370 to main.
   | https://github.com/brianreborn/code-bootstraps-llama.cpp/pull/93 | waiting | Brian OK to post the #370 comment; #370 base is development.
-- MeshForge Lead (57ccf1f0-ff2b-4192-bdd0-3b91ac0071d0) | Unpushed
-  familia patches (#32 r5 into #300, and related) as of 2026-11-06;
-  MeshForge research stays outside this sprint except where it
-  supports familia Android thin-client shape.
+- MeshForge Lead | Unpushed familia patches (#32 r5 into #300, and
+  related) as of 2026-11-06; MeshForge research stays outside this
+  sprint except where it supports familia Android thin-client
+  shape.
   | https://github.com/brianreborn/familia/pull/300 | unpushed/check current | Push only with standing review-fix OK or a new OK.
-- Other Grok Bot ASSIST (bb0c43f5-cbb1-443f-8ece-f378a7707a19) |
-  Coordinate worker wakes and keep this plan current. Already
-  handling the 2026-11-10 voice-call workstream.
-  | this PR | in progress | none.
-- code-bootstraps bot (fe440ca2-ce09-4025-96f1-342dbf9c2556) | Land
-  cbl #90/#91/#93 on main (security log redaction; L13).
+- Other Grok Bot ASSIST | Coordinate worker wakes and keep this
+  plan current. Already handling the 2026-11-10 voice-call
+  workstream. | this PR | in progress | none.
+- code-bootstraps bot | Land cbl #90/#91/#93 on main (security log
+  redaction; L13).
   | https://github.com/brianreborn/code-bootstraps-llama.cpp/pull/93 | open | reviews.
-- Bootstraps Coding Evaluator (3484b2c6-d197-4a14-adca-f64c59960cd8)
-  and Click-and-Go Tester (ee12012e-90da-4688-9453-2a2a557e0dfc) |
-  Resume default-set coding/out-of-box tests when the 0.3.0 model
-  matrix (phones + angel coder) is serving. | cbl default set | idle | models must be up; no micro-benchmark sweeps.
-- Note9 Release (2e68a703-783c-45f2-bed9-95a5c9bd7eb8) | Android
-  release track (#203, #321, #277 ALPHA install). | https://github.com/brianreborn/familia/issues/203 | open | #321 needs reconcile; #277 is spec-only.
-- RT Scout (f0b5b48c-9591-43dc-8884-48d0b2ee4b93) | No new 0.3.0
-  implementation work. Two drafted refinement comments (familia #310,
-  green-roomz #44) still need Brian's yes to post. | https://github.com/brianreborn/familia/issues/310 | parked | Brian approval to post.
+- Bootstraps Coding Evaluator and Click-and-Go Tester | Resume
+  default-set coding/out-of-box tests when the 0.3.0 model matrix
+  (phones + angel coder) is serving. | cbl default set | idle | models must be up; no micro-benchmark sweeps.
+- Note9 Release | Android release track (#203, #321, #277 ALPHA
+  install). | https://github.com/brianreborn/familia/issues/203 | open | #321 needs reconcile; #277 is spec-only.
+- RT Scout | No new 0.3.0 implementation work. Two drafted
+  refinement comments (familia #310, green-roomz #44) still need
+  Brian's yes to post. | https://github.com/brianreborn/familia/issues/310 | parked | Brian approval to post.
 
 ## 8. Open PRs still targeting familia (retarget note)
 
@@ -245,8 +266,10 @@ Against main (keep, do not move to development):
 - #250 L-hostloc lessons (docs; left earlier as risky).
 - #249 HVVRAM design-review (draft; do not merge).
 - #200 router no-op tests (draft; #199).
-- #170 speculative-decoding seatbelts.
-- #169 miryam coder CPU prefer + ngram opt-in.
+- #170 speculative-decoding seatbelts. Update by merging main in
+  (no rebase and no force push).
+- #169 miryam coder CPU prefer + ngram opt-in. Update by merging
+  main in (no rebase and no force push).
 - #166 #165 #164 #163 drafts (Harness2, Terminal-RSI, monitor, Jev).
 
 Against development (retarget or reopen onto main for 0.3.0):
@@ -269,8 +292,8 @@ before starting.
 - #199 router no-op R&D (#200 draft).
 - #293 install.sh has no published SHA256SUMS.
 - #295 OOM-killer relax / soft limits; #307 miryam LFM3 thread tuning.
-- #323 FreeBSD RACCT/RCTL proposal (docs freeze if it touches FreeBSD
-  docs).
+- #323 FreeBSD RACCT/RCTL proposal (docs freeze lifted; work against
+  main if it touches FreeBSD docs).
 - #332 Android offline handling.
 - #377 X-interaction intake doc/tracker inconsistencies.
 - #368 / #365 HVVRAM integration (design; do not block the release).
@@ -283,41 +306,28 @@ before starting.
 
 List only. Do not wake these bots for 0.3.0 unless Brian asks.
 
-- Posts Worker (10fcee0f-18f7-4216-9c5d-c52b075dd6b3): read-only X
-  research for papers.
-- Twitter Janitor (12ef3f98-4ad6-43bb-978b-3c59e773c0db): X account
-  hygiene; posting still on HOLD.
-- Writer (455d62af-7580-4148-b940-e92373ee27c3): writing lane.
-- Paper Worker (6ab1c65a-17b4-4677-ba2c-dc8f57ef3d20): water-spinach
-  paper published; linguistics paper is seed-only.
-- Junior Repair A (5ec8ca8d-302e-4bfe-a3a1-5aa326744259) and B
-  (86f37088-5b30-4673-9436-de8cd85cd808): Urara kindness repairs on
-  HOLD.
-- Kindness Protocol (9c51cd1b-c1c1-48f2-81e0-dd6d56132fc2): playbook
-  only; posts need Brian OK.
-- X Bug Cartographer (a24a1b8b-c3ee-4d7a-8f66-3d487959288a): X
-  platform bugs.
-- Hope Wave Scout (c34442d8-dabd-4fae-b7d4-bdc96b4e7c25): pass 2 of
-  the Haru Urara brief not done.
-- Visibility Reciprocity (cc6406c9-190e-48a5-afed-dc66e8efd268): X
-  visibility research.
-- Urara Epitaph (f681daec-f989-4401-b0cc-e56c2ff4206b): epitaph book.
-- X research -> skill (a790aea6-4137-4a2b-8168-05181a156a24): skill
-  work (group channel).
-- Twitch CDN Recoverer (7d7471b8-b92a-4192-8f9a-e1eaef1ec0f5) and
-  Twitch Takedown Tracer (a890371c-a67f-4e56-b011-adb5abda5292):
-  electrobrains VOD forensics (read-only).
-- Forensic Investigator (668ccbda-31b7-415d-857d-afc5904498c0): auth
-  audit v3 PDF ready; sudo -n blocked on miryam/angel; not 0.3.0 code.
-- Emergency Asylum (3c64967a-f171-4eed-b40b-cf887e018d5a): no
-  assignment.
-- New Bot (3d41f1d1-23e1-4b80-b040-7885d840fb6c): no assignment.
-- miryam Camera Watch (e33a056a-abc2-46fb-8737-e8903153cbdf): local
-  camera snapshots.
-- Review Board Viewer (e38088a7-4a21-4068-9712-d651d34dfc26): curate
-  /workspace/reviews (green-roomz #39 still needs Brian policy calls).
-- Security Review (a35c68fe-ed46-4899-8419-6672e4236a23): group
-  channel; no recent 0.3.0 claim found.
+- Posts Worker: read-only X research for papers.
+- Twitter Janitor: X account hygiene; posting still on HOLD.
+- Writer: writing lane.
+- Paper Worker: water-spinach paper published; linguistics paper is
+  seed-only.
+- Junior Repair A and B: Urara kindness repairs on HOLD.
+- Kindness Protocol: playbook only; posts need Brian OK.
+- X Bug Cartographer: X platform bugs.
+- Hope Wave Scout: pass 2 of the Haru Urara brief not done.
+- Visibility Reciprocity: X visibility research.
+- Urara Epitaph: epitaph book.
+- X research -> skill: skill work (group channel).
+- Twitch CDN Recoverer and Twitch Takedown Tracer: electrobrains VOD
+  forensics (read-only).
+- Forensic Investigator: auth audit v3 PDF ready; sudo -n blocked on
+  miryam/angel; not 0.3.0 code.
+- Emergency Asylum: no assignment.
+- New Bot: no assignment.
+- miryam Camera Watch: local camera snapshots.
+- Review Board Viewer: curate /workspace/reviews (green-roomz #39
+  still needs Brian policy calls).
+- Security Review: group channel; no recent 0.3.0 claim found.
 - MeshForge Lead research on NVIDIA OpenShell / office-3d stays in
   the MeshForge repo except as noted in section 7.
 
@@ -329,4 +339,6 @@ List only. Do not wake these bots for 0.3.0 unless Brian asks.
 - Stale plan: PR #286 (docs/current-sprint-2026-11-02, 2026-11-02).
 - Worker transcripts and 2026-11-06 local-transition checkpoints
   under /workspace/session/local-transition-2026-11-06/.
-- Live GitHub issues/PRs and claims as of 2026-11-10 3:23 PM PT.
+- Live GitHub issues/PRs and claims as of 2026-11-10 3:32 PM PT.
+- Review fixes from Race and Boundary on PR #400 (comments
+  6782152898 and 6782156531).
