@@ -7,7 +7,7 @@ live llama-server, no nexus hosts. Rows map to Routing Test Designer's plan:
   R5 mailbox ordering / reply matching
 xfail(strict=True) marks a missing guard; see /workspace/reviews/race-routing.md.
 """
-import json, os, socket, sys, threading, time, urllib.error, urllib.request
+import json, os, signal, socket, sys, threading, time, urllib.error, urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -31,8 +31,8 @@ def _env(monkeypatch, tmp_path):
 
 class Upstream:
     """Mock llama-server. Tracks receipts, in-flight max, and client disconnects."""
-    def __init__(self, name, delay=0.0, drop=False, echo=False):
-        self.name, self.delay, self.drop, self.echo = name, delay, drop, echo
+    def __init__(self, name, delay=0.0, drop=False, echo=False, gate=None):
+        self.name, self.delay, self.drop, self.echo, self.gate = name, delay, drop, echo, gate
         self.seen, self.inflight, self.max_inflight = [], 0, 0
         self.mu = threading.Lock()
         up = self
@@ -45,6 +45,7 @@ class Upstream:
                     up.seen.append(b); up.inflight += 1
                     up.max_inflight = max(up.max_inflight, up.inflight)
                 try:
+                    if up.gate is not None: up.gate.wait(10)   # hang until released
                     if up.delay: time.sleep(up.delay)
                     if up.drop:  # processed, then connection lost before reply
                         self.connection.shutdown(socket.SHUT_RDWR); return
@@ -53,6 +54,8 @@ class Upstream:
                           "content": (last if up.echo else up.name)}}]}).encode()
                     self.send_response(200); self.send_header("Content-Type", "application/json")
                     self.end_headers(); self.wfile.write(out)
+                except (BrokenPipeError, ConnectionResetError):
+                    pass   # caller (the proxy) already gave up, e.g. after its timeout
                 finally:
                     with up.mu: up.inflight -= 1
         # Fake upstream must not be the bottleneck: default backlog 5 overflows on
@@ -132,23 +135,36 @@ def test_r1_wait_budget_refuses_oversubscribe(monkeypatch, tmp_path):
     assert dispatch.wait_budget(3, SPRINT, max_wait=-1) is False    # 7 > 6 refused
 
 
-def _reserve_child(d, q):
+def _reserve_child(d, q, start, hold):
     import dispatch
+    os.setpgid(0, 0)   # own process group, so the parent's finally can killpg the whole group
     os.environ["FAMILIA_BUDGET_DIR"] = d
     dispatch.threads_in_use = lambda: RESIDENT
+    start.wait(20)   # all dispatchers race at once
     q.put(dispatch.reserve_budget(2, SPRINT, max_wait=-1))
-    time.sleep(1.0)  # keep the reservation (pid alive) while siblings check
+    hold.wait(20)    # keep the reservation (pid alive) until the parent has every answer
 
 
 def test_r1_reserve_budget_atomic_across_processes(tmp_path):
-    """#244: N dispatchers racing for the last 2 threads -> exactly one wins (was: all)."""
+    """#244: N dispatchers racing for the last 2 threads -> exactly one wins (was: all).
+    Barrier start + Event hold: the winner's pid stays alive until every sibling has answered,
+    so a slow sibling can never see the winner as a dead owner and reclaim (no sleep)."""
     import multiprocessing as mp
     ctx = mp.get_context("fork")
-    q = ctx.Queue()
-    ps = [ctx.Process(target=_reserve_child, args=(str(tmp_path), q)) for _ in range(6)]
+    n = 6
+    q, start, hold = ctx.Queue(), ctx.Barrier(n), ctx.Event()
+    ps = [ctx.Process(target=_reserve_child, args=(str(tmp_path), q, start, hold)) for _ in range(n)]
     [p.start() for p in ps]
-    got = [q.get(timeout=20) for _ in ps]
-    [p.join(20) for p in ps]
+    try:
+        got = [q.get(timeout=20) for _ in ps]
+    finally:
+        hold.set()
+        [p.join(20) for p in ps]
+        for p in ps:   # on failure/timeout: kill each child's whole process group, not just it
+            if p.is_alive() and p.pid:
+                try: os.killpg(p.pid, signal.SIGKILL)
+                except (ProcessLookupError, PermissionError): p.kill()
+                p.join(5)
     assert got.count(True) == 1, got
 
 
@@ -280,10 +296,37 @@ def test_r4_upstream_error_releases_lock_no_orphan_inflight():
     srv.shutdown(); up.close()
 
 
-def test_r4_proxy_timeout_is_finite_and_bounded():
-    src = open(EP.__file__).read()
-    # Guard against someone dropping the timeout entirely (hang forever).
-    assert src.count("urlopen(req, timeout=") == 2
+def test_r4_proxy_timeout_is_finite_and_bounded(monkeypatch):
+    """Behavioural: a hung upstream (accepts, never answers) is cut off by the proxy's
+    upstream timeout, answered 502 in bounded time, and the session lock is released."""
+    monkeypatch.setattr(EP, "UPSTREAM_TIMEOUT_S", 0.5)
+    gate = threading.Event()
+    up = Upstream("light", gate=gate)
+    esc, srv = proxy(graph(up.port, closed_port()))
+    try:
+        t0 = time.monotonic(); s, _ = post(srv.server_address[1], timeout=10)
+        assert s == 502 and time.monotonic() - t0 < 3, (s, time.monotonic() - t0)
+        assert len(up.seen) == 1                      # one attempt, no retry of a sent request
+        assert esc.lock.acquire(timeout=1); esc.lock.release()
+        gate.set()                                    # upstream healthy again: served
+        assert post(srv.server_address[1], timeout=10) == (200, "light")
+    finally:
+        gate.set(); srv.shutdown(); up.close()
+
+
+def test_r4_retry_path_timeout_is_finite_and_bounded(monkeypatch):
+    """The fallback retry (_retry_once) has its own bounded upstream timeout too."""
+    monkeypatch.setattr(EP, "UPSTREAM_TIMEOUT_S", 0.5)
+    gate = threading.Event()
+    light = Upstream("light", gate=gate)
+    esc, srv = proxy(graph(light.port, closed_port()), current="heavy")   # heavy refused -> retry
+    try:
+        t0 = time.monotonic(); s, _ = post(srv.server_address[1], timeout=10)
+        assert s == 502 and time.monotonic() - t0 < 3, (s, time.monotonic() - t0)
+        assert len(light.seen) == 1 and esc.current == "light"
+        assert esc.lock.acquire(timeout=1); esc.lock.release()
+    finally:
+        gate.set(); srv.shutdown(); light.close()
 
 
 # ---------------- R5 mailbox ordering / reply matching ----------------
@@ -461,21 +504,31 @@ def test_r7_proxy_caps_concurrent_forwards_to_upstream():
             finally:
                 with mu: st["inflight"] -= 1
 
-    up = type("_UpSrv", (ThreadingHTTPServer,), {"request_queue_size": 128})(("127.0.0.1", 0), H)
+    want = min(N, EP.UPSTREAM_CAP)
+    # The cap is process-global: start only once no earlier test still holds an upstream slot.
+    end = time.monotonic() + 10
+    while EP._inflight[0] and time.monotonic() < end: time.sleep(0.02)
+    assert EP._inflight[0] == 0, f"{EP._inflight[0]} upstream slots still held by an earlier test"
+    up = type("_UpSrv", (ThreadingHTTPServer,), {"request_queue_size": 128, "daemon_threads": True})(("127.0.0.1", 0), H)
     threading.Thread(target=up.serve_forever, daemon=True).start()
     _, srv = proxy(graph(up.server_address[1], closed_port()))
     ex = ThreadPoolExecutor(N)
+    futs = []
     try:
-        futs = [ex.submit(post, srv.server_address[1], f"c{i}", f"s{i}", 15) for i in range(N)]
-        deadline = time.time() + 5  # wait until in-flight stops growing (or all N arrive)
-        last, stable = -1, 0
-        while time.time() < deadline and st["max"] < N:
-            cur = st["max"]; stable = stable + 1 if cur == last else 0; last = cur
-            if stable >= 10 and cur > 0: break
-            time.sleep(0.05)
-        observed = st["max"]
-    finally:
+        futs = [ex.submit(post, srv.server_address[1], f"c{i}", f"s{i}", 30) for i in range(N)]
+        end = time.monotonic() + 10   # fill every slot the cap allows ...
+        while time.monotonic() < end and st["inflight"] < want: time.sleep(0.01)
+        time.sleep(0.3)               # ... and give an over-cap forward a chance to show up
         release.set()
-        for f in futs: f.result(timeout=15)
-        ex.shutdown(wait=True); srv.shutdown(); srv.server_close(); up.shutdown(); up.server_close()
-    assert 0 < observed <= EP.UPSTREAM_CAP, f"upstream saw {observed} concurrent forwards (cap {EP.UPSTREAM_CAP})"
+        # Drain first, THEN sample: a cap that leaks while queued requests are let through
+        # (during the drain) must show up in the peak too.
+        res = [f.result(timeout=30) for f in futs]
+    finally:
+        # Servers close even when a request above failed or timed out (no leaked listeners).
+        release.set()
+        ex.shutdown(wait=True)
+        srv.shutdown(); srv.server_close(); up.shutdown(); up.server_close()
+    observed = st["max"]
+    assert [s for s, _ in res] == [200] * N, res
+    # == not <=: a proxy that over-throttles (e.g. one request at a time) must fail too.
+    assert observed == want, f"upstream saw {observed} concurrent forwards (want min(N={N}, cap={EP.UPSTREAM_CAP}))"
