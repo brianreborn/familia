@@ -63,6 +63,11 @@ def comment(body, login="brianreborn", typ="User", when="2026-11-10T20:00:00Z"):
 
 class SwarmPull543(unittest.TestCase):
     def setUp(self):
+        # Restore os.environ after each test; load_mod sets USER/LOGNAME and
+        # SWARM_* that leaked into later test files (test_termux_bind_check).
+        self._env = mock.patch.dict(os.environ)
+        self._env.start()
+        self.addCleanup(self._env.stop)
         self.tmp = tempfile.TemporaryDirectory(prefix="swarm-pull-543-")
         self.home = Path(self.tmp.name)
         self.sp = load_mod(self.home)
@@ -471,6 +476,11 @@ class SwarmPull545Review(unittest.TestCase):
     """Race (6788352601) and Boundary (6788361333) re-review at 0b8ae63."""
 
     def setUp(self):
+        # Restore os.environ after each test; load_mod sets USER/LOGNAME and
+        # SWARM_* that leaked into later test files (test_termux_bind_check).
+        self._env = mock.patch.dict(os.environ)
+        self._env.start()
+        self.addCleanup(self._env.stop)
         self.tmp = tempfile.TemporaryDirectory(prefix="swarm-pull-545-")
         self.home = Path(self.tmp.name)
         self.sp = load_mod(self.home)
