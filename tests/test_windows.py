@@ -25,8 +25,10 @@ def test_scripts_shape():
     assert "E:\\temp\\familia\\models" in bat and "%USERPROFILE%\\familia\\models" in bat
     assert "127.0.0.1" in bat and "AVX" in bat
     assert "--api-key-file" in bat and "bind_auth_guard.py" in bat
-    assert "--extra-start" in bat and '"%FAMILIA_EXTRA%"' in bat
+    assert "--extra-start" in bat and '"%FAMILIA_EXTRA%"' not in bat
+    assert "--extra-start %FAMILIA_EXTRA%" in bat
     assert "set \"LLAMA_API_KEY=\"" in bat
+    assert "for /f" in bat and "set LLAMA_ARG_" in bat
     assert "for %%T in (%FAMILIA_EXTRA%)" not in bat
     ps = open(os.path.join(ROOT, "scripts/windows/install-task.ps1")).read()
     assert "SupportsShouldProcess" in ps and "-AtLogOn" in ps and "RunLevel Limited" in ps
@@ -71,6 +73,23 @@ def test_start_bat_echo_parens_in_blocks_are_escaped():
                     break
                 j += 1
             # do not let echo text change depth
+            # Unquoted %VAR% can expand to a path with ) and close the block.
+            unquoted = payload
+            q = False
+            buf = []
+            j = 0
+            while j < len(unquoted):
+                if unquoted[j] == '"':
+                    q = not q
+                    j += 1
+                    continue
+                if not q:
+                    buf.append(unquoted[j])
+                j += 1
+            rest = "".join(buf)
+            if "%" in rest and rest.find("%") != rest.rfind("%"):
+                bad.append("%s:%d: unquoted %%VAR%% in echo inside a block: %s" % (
+                    "scripts/windows/start.bat", i, stripped))
             continue
         # count unescaped, unquoted parens for block depth
         in_q = False
@@ -100,10 +119,32 @@ def test_start_bat_hands_extra_to_the_guard():
     """Boundary: FAMILIA_EXTRA override check lives in the guard, not a cmd for-loop."""
     import bind_auth_guard as g
     bat = open(os.path.join(ROOT, "scripts/windows/start.bat"), newline="").read()
-    assert "--extra-start \"%FAMILIA_EXTRA%\"" in bat
-    # the three refusals Boundary asked to test include start.bat EXTRA tokens
+    assert "--extra-start %FAMILIA_EXTRA%" in bat
+    assert '"%FAMILIA_EXTRA%"' not in bat
     ok, msg = g.check([
         "llama-server.exe", "--host", "127.0.0.1", "--port", "9941",
         "--api-key-file", "C:\\unused", "--extra-start", "--host=0.0.0.0",
     ])
     assert ok is False and "extra-start" in msg and "--host" in msg
+
+
+def test_unquoted_familia_extra_splits_and_host_is_refused(tmp_path):
+    """Unquoted FAMILIA_EXTRA=-ngl 0 --host 0.0.0.0 must split; --host is refused.
+
+    python.exe and llama-server.exe use the same CRT argv split, so the guard
+    must see the same tokens the server would get. A quoted value is one token
+    and would miss the --host (the 626b88d regression).
+    """
+    import bind_auth_guard as g
+    kf = tmp_path / "api-keys"
+    kf.write_bytes(b"k" * 32 + b"\n")
+    kf.chmod(0o600)
+    base = ["llama-server.exe", "--host", "127.0.0.1", "--port", "9941",
+            "--api-key-file", str(kf), "--extra-start"]
+    extra = "-ngl 0 --host 0.0.0.0".split()
+    assert extra == ["-ngl", "0", "--host", "0.0.0.0"]
+    ok, msg = g.check(base + extra)
+    assert ok is False and "extra-start" in msg and "--host" in msg
+    # the quoted form (one argv token) does not start with --host and would pass
+    ok, msg = g.check(base + ["-ngl 0 --host 0.0.0.0"])
+    assert ok is True, msg

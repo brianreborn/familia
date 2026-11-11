@@ -139,3 +139,17 @@ def test_launch_auth_argv_always_adds_key_path(tmp_path, monkeypatch):
     assert v.launch_auth_argv({"nodes": {"n": n}}, "n") == ["--api-key-file", path]
     src = __import__("inspect").getsource(v.server_args)
     assert "launch_tools_argv(graph, name) or launch_auth_argv(graph, name)" in src
+
+
+def test_ensure_missing_key_is_a_clean_refuse(tmp_path, monkeypatch, capsys):
+    import familia_auth as fa
+    kf = str(tmp_path / "api-keys")
+    def boom(path):
+        raise fa.MissingKey("key file %s is empty" % path)
+    monkeypatch.setattr(fa, "load_or_create_key_file", boom)
+    ok, msg = g.check(["bin", "--api-key-file", kf], ensure=True)
+    assert ok is False and kf in msg and "empty" in msg
+    assert g.main(["--ensure", "--", "bin", "--api-key-file", kf]) == 2
+    err = capsys.readouterr().err
+    assert "familia-auth-guard:" in err and "Traceback" not in err
+    assert err.count("refusing") == 1

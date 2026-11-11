@@ -179,8 +179,22 @@ def load_or_create_key_file(path):
     return _load_or_create_secret(path, "# llama-server API key(s), one per line\n")
 
 
+def _write_all(fd, data, path):
+    """Write data in full; raise on a short or failed write."""
+    off = 0
+    while off < len(data):
+        n = os.write(fd, data[off:])
+        if n <= 0:
+            raise OSError("short write publishing %s" % path)
+        off += n
+
+
 def _publish_secret(tmp, path):
-    """Atomically publish tmp at path: link, or no-clobber create if link is denied."""
+    """Atomically publish tmp at path: link, or no-clobber create if link is denied.
+
+    If the O_EXCL fallback opens the path and then the write or fsync fails, the
+    empty or partial file is unlinked so a later start is not stuck.
+    """
     import errno
     try:
         os.link(tmp, path)
@@ -193,6 +207,7 @@ def _publish_secret(tmp, path):
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
     if getattr(os, "O_NOFOLLOW", 0):
         flags |= os.O_NOFOLLOW
+    fd = None
     try:
         fd = os.open(path, flags, 0o600)
     except FileExistsError:
@@ -200,10 +215,46 @@ def _publish_secret(tmp, path):
     try:
         with open(tmp, "rb") as src:
             data = src.read()
-        os.write(fd, data)
+        _write_all(fd, data, path)
         os.fsync(fd)
+    except Exception:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+        fd = None
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+        raise
     finally:
-        os.close(fd)
+        if fd is not None:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+
+
+def _wait_for_key(path, attempts=5, delay=0.05):
+    """Retry _read briefly so a race loser can see the winner's write."""
+    import time
+    k = _read(path)
+    if k:
+        return k
+    for _ in range(max(0, attempts - 1)):
+        time.sleep(delay)
+        k = _read(path)
+        if k:
+            return k
+    return ""
+
+
+def _empty_regular_file(path):
+    try:
+        return (not os.path.islink(path)) and os.path.isfile(path) and os.path.getsize(path) == 0
+    except OSError:
+        return False
 
 
 def _load_or_create_secret(path, header):
@@ -224,6 +275,15 @@ def _load_or_create_secret(path, header):
         os.close(fd)
         fd = None
         _publish_secret(tmp, path)
+        k = _wait_for_key(path)
+        # A crash mid-write can leave a stuck empty file; unlink once and republish.
+        if not k and _empty_regular_file(path):
+            try:
+                os.unlink(path)
+            except OSError:
+                pass
+            _publish_secret(tmp, path)
+            k = _wait_for_key(path)
     finally:
         if fd is not None:
             try:
@@ -234,7 +294,6 @@ def _load_or_create_secret(path, header):
             os.unlink(tmp)
         except OSError:
             pass
-    k = _read(path)
     if not k:
         raise MissingKey("key file %s is empty" % path)
     return k

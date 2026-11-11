@@ -145,7 +145,7 @@ def parse_key_files(argv):
 def _key_file_bytes_error(path, data):
     """Refuse encodings llama-server b11969 would accept differently."""
     if data.startswith(b"\xef\xbb\xbf"):
-        return "API key file %s has a UTF-8 BOM; refusing" % path
+        return "API key file %s has a UTF-8 BOM" % path
     if b"\r" in data:
         return "API key file %s contains CR / CRLF; use LF line endings" % path
     keys = 0
@@ -155,7 +155,7 @@ def _key_file_bytes_error(path, data):
         if line.startswith(b"#"):
             continue
         if b"," in line or any(c in line for c in b" \t\f\v"):
-            return "API key file %s has a key line with whitespace or comma; refusing" % path
+            return "API key file %s has a key line with whitespace or comma" % path
         keys += 1
     if keys < 1:
         return "API key file %s is empty or has no usable key" % path
@@ -167,7 +167,7 @@ def _key_file_error(path):
     if not path:
         return "no --api-key-file in argv"
     if os.path.islink(path):
-        return "API key file %s is a symlink; refusing" % path
+        return "API key file %s is a symlink" % path
     if not os.path.exists(path):
         return "API key file %s missing" % path
     if not os.path.isfile(path):
@@ -217,6 +217,8 @@ def check(argv, ensure=False):
                 familia_auth.load_or_create_key_file(path)
             except OSError as e:
                 return False, "cannot create API key file %s (%s)" % (path, e.__class__.__name__)
+            except familia_auth.MissingKey as e:
+                return False, "cannot create API key file %s (%s)" % (path, e)
     if not key_files:
         return False, (
             "API key required on every bind (loopback included); "

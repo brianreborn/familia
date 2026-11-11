@@ -315,3 +315,45 @@ def test_publish_falls_back_when_link_is_denied(tmp_path, monkeypatch):
     k1 = fa.load_or_create_key_file(pth)
     assert k1 and open(pth, "rb").read().count(k1.encode()) == 1
     assert fa.load_or_create_key_file(pth) == k1
+
+
+def test_wait_for_key_retries(monkeypatch):
+    import familia_auth as fa
+    calls = {"n": 0}
+    def read(path):
+        calls["n"] += 1
+        return "k" if calls["n"] >= 3 else ""
+    monkeypatch.setattr(fa, "_read", read)
+    assert fa._wait_for_key("x", attempts=5, delay=0) == "k"
+    assert calls["n"] == 3
+
+
+def test_publish_unlinks_on_failed_write(tmp_path, monkeypatch):
+    import errno
+    import familia_auth as fa
+    def boom_link(src, dst):
+        raise OSError(errno.EACCES, "denied")
+    def boom_write(fd, data, path):
+        raise OSError("disk full")
+    monkeypatch.setattr(fa.os, "link", boom_link)
+    monkeypatch.setattr(fa, "_write_all", boom_write)
+    pth = str(tmp_path / "api-keys")
+    try:
+        fa.load_or_create_key_file(pth)
+    except OSError as e:
+        assert "disk full" in str(e)
+    else:
+        raise AssertionError("expected OSError")
+    assert not os.path.exists(pth)
+
+
+def test_empty_leftover_key_file_is_replaced(tmp_path, monkeypatch):
+    """A crash mid-write leaves a size-0 file; the next start must not stay stuck."""
+    import familia_auth as fa
+    monkeypatch.setattr("time.sleep", lambda s: None)
+    pth = str(tmp_path / "api-keys")
+    open(pth, "wb").close()
+    assert os.path.getsize(pth) == 0
+    k = fa.load_or_create_key_file(pth)
+    assert k and os.path.getsize(pth) > 0
+    assert fa.load_or_create_key_file(pth) == k

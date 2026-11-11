@@ -25,9 +25,10 @@ for graph-launched nodes; `familia-start` uses `api.key` instead, and there is n
 migration yet ([#419](https://github.com/brianreborn/familia/issues/419)).
 Python 3 is required for the guard. On Windows the POSIX 0600/0400 mode check is skipped;
 the file lives under the current user's `%APPDATA%`, and no ACL check is performed yet.
-`start.bat` and `serve.sh` unset `LLAMA_API_KEY` and the related `LLAMA_ARG_*` variables
-so they cannot bypass the argv checks. `FAMILIA_EXTRA` is quoted and handed to the
-guard after `--extra-start`.
+`start.bat` and `serve.sh` unset `LLAMA_API_KEY` and every `LLAMA_ARG_*` variable
+(including `LLAMA_ARG_SSL_*`) so they cannot bypass the argv checks. `FAMILIA_EXTRA`
+is passed unquoted after `--extra-start` so the guard and llama-server split the same
+tokens. cmd metacharacters in `FAMILIA_EXTRA` are unsupported.
 
 ## Autostart at logon (opt-in)
 ```
