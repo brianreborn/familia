@@ -5,7 +5,9 @@ Pins come from graph.yaml (sha256 + db id) and registry/models/<db>.json
 (repo, revision, file). Never trust an unverified download. Offline re-run
 reuses a local file whose sha256 already matches the pin. A marker beside the
 file stores sha256 + size + mtime so --cheap / launch-only can skip a full
-re-hash when those are unchanged.
+re-hash when those are unchanged. --dry-run still works when registry/models
+is absent: it reports the graph pin and what it would read from the registry,
+and does not fail.
 
 Usage:
   python3 install/termux/fetch-phone-model.py [--model ID] [--prefix DIR]
@@ -56,7 +58,7 @@ def load_yaml(path: str):
         return yaml.safe_load(fh)
 
 
-def resolve_model(model_id: str) -> dict:
+def resolve_model(model_id: str, *, dry: bool = False) -> dict:
     graph_path = os.path.join(ROOT, "graph.yaml")
     if not os.path.isfile(graph_path):
         die(f"missing {graph_path}")
@@ -71,6 +73,18 @@ def resolve_model(model_id: str) -> dict:
         die(f"graph model {model_id!r} missing sha256 or db pin")
     reg_path = os.path.join(ROOT, "registry", "models", f"{db}.json")
     if not os.path.isfile(reg_path):
+        if dry:
+            return {
+                "model_id": model_id,
+                "db": db,
+                "sha256": want_sha,
+                "repo": None,
+                "revision": None,
+                "file": None,
+                "url": None,
+                "registry_missing": True,
+                "registry_path": reg_path,
+            }
         die(f"missing registry entry {reg_path}")
     reg = json.load(open(reg_path, encoding="utf-8"))
     repo = reg.get("repo")
@@ -176,11 +190,13 @@ def main(argv: list[str]) -> int:
     if not model_id:
         die("pass --model ID or set FAMILIA_PHONE_MODEL")
 
-    info = resolve_model(model_id)
-    dest = os.path.join(prefix, "models", info["file"])
+    info = resolve_model(model_id, dry=dry)
+    fname = info.get("file")
+    dest = os.path.join(prefix, "models", fname if fname else "<file from registry>")
     info["path"] = dest
+    missing_reg = bool(info.get("registry_missing"))
 
-    if cheap and cheap_verified(dest, info):
+    if cheap and not missing_reg and cheap_verified(dest, info):
         say(f"cheap ok {dest} (marker sha + size/mtime unchanged; skipped full re-hash)")
         if as_json:
             print(json.dumps(info, indent=2))
@@ -188,7 +204,7 @@ def main(argv: list[str]) -> int:
             print(dest)
         return 0
 
-    if os.path.isfile(dest):
+    if not missing_reg and os.path.isfile(dest):
         got = sha256_file(dest)
         if got.lower() == info["sha256"]:
             write_marker(dest, info)
@@ -201,7 +217,10 @@ def main(argv: list[str]) -> int:
         say(f"cached file sha mismatch (got {got}, want {info['sha256']}); re-download")
 
     if dry:
-        say(f"[dry-run] would download {info['url']} -> {dest}")
+        if missing_reg:
+            say(f"[dry-run] would read {info['registry_path']} for repo/revision/file")
+        url = info.get("url") or "the pinned file"
+        say(f"[dry-run] would download {url} -> {dest}")
         say(f"[dry-run] would verify sha256 {info['sha256']}")
         if as_json:
             print(json.dumps(info, indent=2))

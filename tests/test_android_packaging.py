@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -278,6 +279,59 @@ def test_fetch_phone_model_reuses_cached_verified(tmp_path):
     assert "would download" in r.stderr.lower()
 
 
+def _sparse_phone_tree(tmp_path):
+    """Checkout-shaped tree with graph pin and no registry/models."""
+    tree = tmp_path / "tree"
+    termux = tree / "install" / "termux"
+    termux.mkdir(parents=True)
+    for name in ("fetch-phone-model.py", "phone-model-default.py", "install-hermes-android.sh"):
+        shutil.copy(os.path.join(TERMUX, name), termux / name)
+    mid = "smollm2-135m-q4-phone"
+    db = "bartowski--SmolLM2-135M-Instruct-GGUF--SmolLM2-135M-Instruct-Q4_0"
+    sha = "bcc3af2849ad6095af57e9b5cd43775256efdc66e306acb529172f92d0c04b03"
+    (tree / "graph.yaml").write_text(
+        "models:\n"
+        f"  {mid}:\n"
+        f"    sha256: {sha}\n"
+        f"    db: {db}\n",
+        encoding="utf-8",
+    )
+    return tree, mid, db, sha
+
+
+def test_fetch_phone_model_dry_run_without_registry(tmp_path):
+    """--dry-run reports the graph pin when registry/models is absent."""
+    tree, mid, db, sha = _sparse_phone_tree(tmp_path)
+    dest_prefix = tmp_path / "prefix"
+    r = subprocess.run(
+        [
+            sys.executable,
+            str(tree / "install" / "termux" / "fetch-phone-model.py"),
+            "--model",
+            mid,
+            "--prefix",
+            str(dest_prefix),
+            "--dry-run",
+            "--json",
+        ],
+        cwd=str(tree),
+        capture_output=True,
+        text=True,
+    )
+    assert r.returncode == 0, r.stdout + r.stderr
+    data = json.loads(r.stdout)
+    assert data["model_id"] == mid
+    assert data["db"] == db
+    assert data["sha256"] == sha
+    assert data["registry_missing"] is True
+    assert data["file"] is None
+    assert data["path"].endswith("<file from registry>")
+    assert "would read" in r.stderr and "registry/models" in r.stderr
+    assert sha in r.stderr
+    assert "would download" in r.stderr
+    assert "error:" not in r.stderr
+
+
 def test_licenses_selected_plus_dolphin_and_llama31():
     r = subprocess.run(
         [
@@ -341,6 +395,42 @@ def test_install_hermes_android_dry_run(tmp_path):
     assert DOLPHIN_DB in hermes
     assert "HERMES_CTX_DEFAULT=65536" in hermes
     assert "required_usable_for_ctx" in hermes
+
+
+def test_install_hermes_android_dry_run_without_registry(tmp_path):
+    """Hermes --dry-run must not fail when registry/models is omitted."""
+    tree, mid, db, sha = _sparse_phone_tree(tmp_path)
+    env = dict(
+        os.environ,
+        FAMILIA_PREFIX=str(tmp_path / "prefix"),
+        FAMILIA_PHONE_MODEL=mid,
+        FAMILIA_RAM_MIB="7570",
+        FAMILIA_RESERVE_MIB="5120",
+    )
+    env.pop("FAMILIA_ACCEPT_LICENSES", None)
+    env.pop("FAMILIA_ACCEPT_UNKNOWN_LICENSES", None)
+    env.pop("INSTALL_ACK", None)
+    r = subprocess.run(
+        ["sh", str(tree / "install" / "termux" / "install-hermes-android.sh"), "--dry-run", "--skip-install"],
+        cwd=str(tree),
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    combined = r.stdout + r.stderr
+    assert r.returncode == 0, combined
+    assert "REFUSE" not in r.stderr
+    assert "64k admit ok" in r.stderr
+    assert "would read" in r.stderr and "registry/models" in r.stderr
+    assert sha in r.stderr
+    assert "could not fetch/verify phone model" not in r.stderr
+    assert "missing registry" not in r.stderr
+    # dry-run reports the license gate without a license --yes
+    license_lines = [ln for ln in r.stderr.splitlines() if "licenses.py" in ln]
+    assert license_lines
+    assert all("--yes" not in ln for ln in license_lines)
+    assert "FAMILIA_ACCEPT_LICENSES" not in r.stderr
 
 
 def test_termux_install_dry_run_cbl_mentions_download(tmp_path):
