@@ -642,9 +642,16 @@ AMBIENT_SECRET_RE = re.compile(
 # scp path share the same user@host:rest shape). Prefer dropping when the
 # shape is ambiguous. npm/pip pkg@1.2.3 specs also drop as bare user@host.
 CREDENTIAL_URL_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*://[^/\s@]+@")
-# scheme:// or vendor:driver://, anywhere in the value (not only at start).
-_EMBEDDED_SCHEME_URL_RE = re.compile(
-    r"(?P<scheme>[A-Za-z][A-Za-z0-9+.-]*(?::[A-Za-z][A-Za-z0-9+.-]*)*)://"
+# Bounded scheme immediately before a str.find("://") hit: up to 4 parts of
+# 32 chars (vendor:driver:…), so a long value with no :// cannot backtrack
+# quadratically. Window is 4*32 + 3 colons.
+_MAX_SCHEME_PART = 32
+_MAX_SCHEME_CHAIN = 4
+_MAX_SCHEME_WINDOW = _MAX_SCHEME_CHAIN * _MAX_SCHEME_PART + (_MAX_SCHEME_CHAIN - 1)
+_SCHEME_BEFORE_RE = re.compile(
+    r"(?:^|(?<=[^A-Za-z0-9+.-]))"
+    r"(?P<scheme>[A-Za-z][A-Za-z0-9+.-]{0,31}"
+    r"(?::[A-Za-z][A-Za-z0-9+.-]{0,31}){0,3})$"
 )
 CREDENTIAL_SCHEME_RELATIVE_RE = re.compile(r"^//[^/\s@]+@")
 CREDENTIAL_SCHEMELESS_PASS_RE = re.compile(r"^[^/\s:@]+:[^/\s@]*@")
@@ -777,9 +784,26 @@ def _userinfo_after_any_scheme(s):
     Catches vendor:driver: prefixes (jdbc:mysql://user:pass@host) and a URI
     that is not the entire value. Authority runs to the next /, ?, #, or
     whitespace. Empty userinfo (https://@host) is not a drop by this path.
+
+    Early-returns when :// is absent. Walks hits with str.find and matches the
+    scheme backwards in a bounded window so a long PEM/PATH-like value (or
+    many ':') stays linear, instead of an unanchored greedy finditer.
+    The git/ssh exemption is per-URL: a later https://user:pass@ in the same
+    value still drops.
     """
-    for m in _EMBEDDED_SCHEME_URL_RE.finditer(s):
-        rest = s[m.end():]
+    if "://" not in s:
+        return False
+    start = 0
+    while True:
+        idx = s.find("://", start)
+        if idx < 0:
+            return False
+        start = idx + 3
+        window = s[max(0, idx - _MAX_SCHEME_WINDOW):idx]
+        m = _SCHEME_BEFORE_RE.search(window)
+        if not m:
+            continue
+        rest = s[idx + 3:]
         auth = re.split(r"[/?#\s]", rest, maxsplit=1)[0]
         if "@" not in auth or not auth.rsplit("@", 1)[0]:
             continue
@@ -787,7 +811,6 @@ def _userinfo_after_any_scheme(s):
         if _harmless_git_or_ssh_remote(loc):
             continue
         return True
-    return False
 
 
 def _credential_url_value(val):
@@ -796,7 +819,8 @@ def _credential_url_value(val):
     Drops scheme://userinfo@ (including token@host, a vendor:driver: prefix,
     and a URI wrapped in quotes / BOM / whitespace), //userinfo@, and
     schemeless user:pass@. Password-less git/ssh remotes with a conventional
-    login stay. Encoded @ and : are revealed first (%40, %3A, double-encoded
+    login stay, but a later userinfo URI in the same value still drops.
+    Encoded @ and : are revealed first (%40, %3A, double-encoded
     %2540, triple-encoded %252540); %2F is not, so it cannot mask the
     authority. If encoded delimiters remain after the three-round cap, the
     value is dropped (fail closed). A whole-value plain email
@@ -825,6 +849,10 @@ def _credential_url_value(val):
                     continue
                 return True
         if _harmless_git_or_ssh_remote(s):
+            # Per-URL exemption only: still scan later :// authorities so
+            # 'ssh://git@host … https://u:p@h' drops.
+            if _userinfo_after_any_scheme(s):
+                return True
             continue
         if (CREDENTIAL_URL_RE.match(s) or CREDENTIAL_SCHEME_RELATIVE_RE.match(s)
                 or CREDENTIAL_SCHEMELESS_PASS_RE.match(s)

@@ -103,7 +103,10 @@ Password-less git/ssh remotes with a conventional login are kept (`git@host:path
 `user@host/path`, `ssh://git@host/path`, `git+ssh://…`, `org-<digits>@host:path`);
 a password in those forms, including a percent-encoded colon (`%3A`), still drops.
 A token-shaped username (`ssh://token@host`, `token@host:path`) is not exempt and
-drops. `user@localhost:22` with a conventional login is kept as the same
+drops. The git/ssh exemption applies per URL, so a value that starts with a
+password-less `ssh://git@host` remote and later carries `https://user:pass@…`
+still drops.
+ `user@localhost:22` with a conventional login is kept as the same
 password-less scp-style shape (host:port and scp path are not distinguished);
 bare `user@localhost` still drops. Percent-encoded `@` and `:` (`%40`, `%3A`,
 including double-encoded `%2540` and triple-encoded `%252540`) are decoded before

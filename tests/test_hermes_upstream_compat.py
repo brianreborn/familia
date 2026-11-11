@@ -6,7 +6,7 @@ the rendered config is then loaded and validated by that hermes itself (config s
 mcp_servers and approvals, toolsets, MCP ${VAR} interpolation, aux tasks, skills discovery,
 the symbols scripts/hermes_harness.py imports in its child processes).
 """
-import copy, json, os, subprocess, sys
+import copy, json, os, subprocess, sys, time
 import pytest, yaml
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -248,7 +248,7 @@ def test_upstream_parse_warns_when_far_smaller_than_snapshot(tmp_path, capsys):
 def test_scrub_static_superset_and_file_creds(tmp_path, monkeypatch):
     monkeypatch.delenv(hh.ALLOW_CLOUD_ENV, raising=False)
     monkeypatch.setattr(hh, "upstream_provider_env_names", lambda roots=None: frozenset())
-    hh.MCP_ENV_KEEP.clear()
+    monkeypatch.setattr(hh, "MCP_ENV_KEEP", set())
     home = tmp_path / "hh"; home.mkdir(mode=0o700)
     src = {k: "v" for k in ("ANTHROPIC_TOKEN", "CLAUDE_CODE_OAUTH_TOKEN", "AWS_PROFILE", "AWS_REGION",
                             "AWS_ACCESS_KEY_ID", "AWS_WEB_IDENTITY_TOKEN_FILE", "HF_TOKEN", "OPENAI_API_KEY",
@@ -291,7 +291,7 @@ def test_every_upstream_registry_env_name_is_scrubbed(tmp_path, monkeypatch):
     assert out["names"], "upstream registry is empty?"
     monkeypatch.delenv(hh.ALLOW_CLOUD_ENV, raising=False)
     monkeypatch.setattr(hh, "HERMES_SP", out["root"])
-    hh.MCP_ENV_KEEP.clear()
+    monkeypatch.setattr(hh, "MCP_ENV_KEEP", set())
     left = hh.hermes_child_env(environ={n: "secret" for n in out["names"]})
     assert sorted(n for n in out["names"] if left.get(n) == "secret") == []
     # and the source parser alone (no regex / static help) sees every registry name
@@ -320,7 +320,7 @@ def test_ambient_secrets_not_carried_unless_opted_in(tmp_path, monkeypatch):
 def test_ambient_secrets_n2a_token_dsn_kubeconfig(tmp_path, monkeypatch):
     """Boundary N2a: *_TOKEN / DSN / DB URLs / KUBECONFIG / FAMILIA_GH_TOKEN drop unless PASS_SECRETS=1."""
     monkeypatch.setenv("HOME", str(tmp_path))
-    hh.MCP_ENV_KEEP.clear()
+    monkeypatch.setattr(hh, "MCP_ENV_KEEP", set())
     drop = {
         "SLACK_BOT_TOKEN": "xoxb", "APP_PRIVATE_KEY": "pem", "SERVICE_DSN": "postgres://x",
         "DSN": "mysql://x", "DATABASE_URL": "postgres://db", "PROD_DATABASE_URL": "postgres://p",
@@ -363,7 +363,7 @@ def test_ambient_secrets_n2a_token_dsn_kubeconfig(tmp_path, monkeypatch):
 def test_ambient_secret_value_credential_url_negative(tmp_path, monkeypatch):
     """Plain URLs without userinfo stay; any userinfo (user:pass@ or token@host) drops."""
     monkeypatch.setenv("HOME", str(tmp_path))
-    hh.MCP_ENV_KEEP.clear()
+    monkeypatch.setattr(hh, "MCP_ENV_KEEP", set())
     src = {
         "LLAMA_SERVER_URL": "http://127.0.0.1:8080",
         "PUBLIC_HOOK": "https://hooks.example/x",
@@ -382,7 +382,7 @@ def test_ambient_secret_value_credential_url_negative(tmp_path, monkeypatch):
 def test_uri_is_value_based_not_a_blanket_name_drop(tmp_path, monkeypatch):
     """Boundary #352 nit: REDIRECT_URI stays; *_URI drops only with userinfo or a credential DSN scheme."""
     monkeypatch.setenv("HOME", str(tmp_path))
-    hh.MCP_ENV_KEEP.clear()
+    monkeypatch.setattr(hh, "MCP_ENV_KEEP", set())
     src = {
         "REDIRECT_URI": "https://app.example/callback",
         "OAUTH_REDIRECT_URI": "https://app.example/oauth",
@@ -404,7 +404,7 @@ def test_uri_is_value_based_not_a_blanket_name_drop(tmp_path, monkeypatch):
 def test_cloudamqp_and_amqp_url_names_drop(tmp_path, monkeypatch):
     """CLOUDAMQP_URL and *AMQP*_URL generally drop unless PASS_SECRETS=1."""
     monkeypatch.setenv("HOME", str(tmp_path))
-    hh.MCP_ENV_KEEP.clear()
+    monkeypatch.setattr(hh, "MCP_ENV_KEEP", set())
     src = {"CLOUDAMQP_URL": "amqps://x", "MY_AMQP_URL": "amqp://y", "AMQP_BROKER_URL": "amqp://z",
            "HERMES_HOME": "/h", "PATH": "/bin"}
     env = hh.hermes_child_env(environ=src)
@@ -418,7 +418,7 @@ def test_cloudamqp_and_amqp_url_names_drop(tmp_path, monkeypatch):
 def test_ambient_secret_userinfo_schemeless_scheme_relative_and_percent(tmp_path, monkeypatch):
     """Schemeless, scheme-relative, and encoded userinfo drop. Password-less git/ssh stays."""
     monkeypatch.setenv("HOME", str(tmp_path))
-    hh.MCP_ENV_KEEP.clear()
+    monkeypatch.setattr(hh, "MCP_ENV_KEEP", set())
     drop = {
         "SCHEMELESS_PASS": "alice:s3cret@db.example:5432/app",
         "SCHEMELESS_USER_PASS": "deploy:hunter2@ci-host",
@@ -548,6 +548,9 @@ def test_credential_url_prefixed_quoted_bom_mailto_token_and_decode_cap():
         "gho_abcdefghijklmnopqrstuvwxyz0123456789@ci-host:org/repo.git",
         "ghp_shorttoken@ci-host/app",
         "pkg@1.2.3",
+        # git/ssh exemption is per-URL; a later userinfo URI still drops
+        "ssh://git@github.com/org/repo.git https://u:p@h",
+        "git+ssh://git@github.com/org/repo.git?next=https://user:pass@evil.example/x",
     ]
     keep = [
         "https://example.com",
@@ -558,6 +561,7 @@ def test_credential_url_prefixed_quoted_bom_mailto_token_and_decode_cap():
         "mailto:alice@example.com",
         "user@localhost:22",
         "jdbc:mysql://localhost:3306/app",
+        "ssh://git@github.com/org/repo.git https://example.com/x",
     ]
     for v in drop:
         assert hh._credential_url_value(v), v
@@ -573,7 +577,59 @@ def test_credential_url_prefixed_quoted_bom_mailto_token_and_decode_cap():
     assert not hh._credential_url_value("\ufeff'https://example.com'")
 
 
+def test_git_ssh_exemption_does_not_hide_a_later_userinfo_uri():
+    """A conventional ssh/git remote must not skip a later ://userinfo in the same value."""
+    assert hh._credential_url_value("ssh://git@github.com/org/repo.git https://u:p@h")
+    assert hh._credential_url_value(
+        "git+ssh://git@github.com/org/repo.git?next=https://user:pass@evil.example/x"
+    )
+    assert not hh._credential_url_value("ssh://git@github.com/org/repo.git")
+    assert not hh._credential_url_value(
+        "ssh://git@github.com/org/repo.git https://example.com/x"
+    )
+
+
+def test_credential_url_value_long_values_are_not_quadratic():
+    """32 KiB values (no ://, and many ://) must scrub in well under 0.5 s.
+
+    Regression for the unanchored scheme finditer, which was quadratic on long
+    values with no :// (32 KiB took ~10.9 s at bdb7f18, ~0.001 s at c60fa82).
+    """
+    size = 32 * 1024
+    no_scheme = "A" * size
+    colon_sep = (":".join(["PATH"] * (size // 5)))[:size]
+    many_plain = ("https://example.com/foo " * ((size // 24) + 1))[:size]
+    many_then_secret = ("https://example.com/foo " * ((size // 24) + 1))[:size - 20] + "https://u:p@h"
+    assert "://" not in no_scheme
+    assert no_scheme.count("://") == 0
+    assert many_plain.count("://") > 1000
+    timings = {}
+    for name, val, expect_drop in (
+        ("no_scheme", no_scheme, False),
+        ("colon_sep", colon_sep, False),
+        ("many_plain", many_plain, False),
+        ("many_then_secret", many_then_secret, True),
+    ):
+        t0 = time.perf_counter()
+        got = hh._credential_url_value(val)
+        elapsed = time.perf_counter() - t0
+        timings[name] = elapsed
+        assert got is expect_drop, (name, got, expect_drop, elapsed)
+        assert elapsed < 0.5, f"{name} took {elapsed:.3f}s on {len(val)} bytes"
+    # Also the launch-path wrapper used by hermes_child_env, one 32 KiB var.
+    env = {"PATH": "/bin", "HERMES_HOME": "/h", "BLOB": no_scheme, "MANY": many_plain}
+    t0 = time.perf_counter()
+    hh.scrub_ambient_secrets(env)
+    elapsed = time.perf_counter() - t0
+    timings["scrub_two_32k"] = elapsed
+    assert env["BLOB"] == no_scheme and env["MANY"] == many_plain
+    assert elapsed < 0.5, f"scrub_ambient_secrets took {elapsed:.3f}s"
+    # Printed so the run report can quote measured times.
+    print("credential_url_long_value_timings_s", {k: round(v, 6) for k, v in timings.items()})
+
+
 def test_percent_decode_uses_an_explicit_urllib_parse_import():
+
     """Userinfo decoding imports urllib.parse; it must not rely on urllib.request."""
     import ast
     path = os.path.join(ROOT, "scripts", "hermes_harness.py")
