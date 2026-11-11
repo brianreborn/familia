@@ -15,12 +15,12 @@ EXAMPLES = sorted(EX.glob("*.yaml"))
 
 
 def load(name):
-    return yaml.safe_load((EX / name).read_text())
+    return yaml.safe_load((EX / name).read_text(encoding="utf-8"))
 
 
 @pytest.mark.parametrize("path", EXAMPLES, ids=lambda p: p.name)
 def test_example_validates(path):
-    errs, _ = vg.validate(yaml.safe_load(path.read_text()), check_files=False)
+    errs, _ = vg.validate(yaml.safe_load(path.read_text(encoding="utf-8")), check_files=False)
     assert errs == []
 
 
@@ -75,13 +75,25 @@ def test_alias_to_unroutable_role_warns_before_start_refuses():
         start_graph.local_topology(g, "h1")
 
 
+@pytest.mark.parametrize("fail_closed_role", ["guardian", "pentest"])
+def test_tr4_fail_closed_role_refuses_proxy_alias(fail_closed_role):
+    # Node role relabelling over a fail-closed model must not launder the model into proxy routing
+    g = load("single-node.yaml")
+    g["models"]["mchat"]["role"] = fail_closed_role
+    # In graph_types, guardian/pentest models allow guardian/pentest node roles
+    # If node role is set to guardian/pentest or if model is fail-closed, start_graph must refuse proxy alias
+    assert any(w.startswith("aliases.chat:") and "fail-closed" in w for w in vg.routing_warnings(g))
+    with pytest.raises(start_graph.StartupError, match="targets fail-closed role"):
+        start_graph.local_topology(g, "h1")
+
+
 @pytest.mark.parametrize("mutate,expect", [
     (lambda g: g["aliases"].__setitem__("x", {"node": "nope", "gateway": "gw"}), "no such nodes entry 'nope'"),
     (lambda g: g["aliases"]["chat"].__setitem__("node", ["chat"]), "expected a nodes name"),
 ])
 def test_start_dry_run_reports_validation_not_traceback(tmp_path, mutate, expect):
     g = load("single-node.yaml"); mutate(g)
-    f = tmp_path / "g.yaml"; f.write_text(yaml.safe_dump(g))
+    f = tmp_path / "g.yaml"; f.write_text(yaml.safe_dump(g), encoding="utf-8")
     p = subprocess.run([sys.executable, str(ROOT / "scripts" / "start_graph.py"), "--graph", str(f),
                         "--host", "h1", "--dry-run", "--fleet"], capture_output=True, text=True, cwd=ROOT,
                        env={**os.environ, "FAMILIA_HOST": ""})

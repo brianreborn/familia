@@ -161,6 +161,12 @@ def local_topology(graph, host):
                 kind = "embedding"
             else:
                 role = graph_validator.node_type(graph, node_name)  # node.role > model.role
+                model_role = (model.get("role") or "").strip().lower()
+                if role in graph_validator.FAIL_CLOSED_TYPES or model_role in graph_validator.FAIL_CLOSED_TYPES:
+                    raise StartupError(
+                        f"alias {alias_name} targets fail-closed role (node {role!r}, model {model_role!r}); "
+                        f"fail-closed models cannot be made proxy-routable"
+                    )
                 if role not in graph_validator.PROXY_ROUTABLE_ROLES:
                     raise StartupError(
                         f"alias {alias_name} targets node role {role!r}; graph-proxy routes "
