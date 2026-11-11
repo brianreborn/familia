@@ -125,19 +125,20 @@ case "$CHOICE" in
     exec sh "$ROOT/scripts/proto_chat.sh"
     ;;
   "Open llama-ui web cockpit")
-    # Switch screen first; then the existing UI opener. Errors and a
-    # finished session return from the menu; only an interrupt aborts
-    # the cockpit entry. No TTY: skip the menu (tests / FAMILIA_NO_TTY
-    # already left earlier) and open the UI as before.
+    # Switch screen first. q (exit 0) returns to this goal menu.
+    # Item "Continue to web cockpit" (exit 4) is the only path to
+    # open_ui.sh. Interrupt 130/143 aborts. No TTY: do not auto-open.
     if [ -t 0 ] && [ -t 1 ]; then
-      sh "$ROOT/scripts/android-cockpit-switches.sh" || {
-        _st=$?
-        if [ "$_st" -eq 130 ] || [ "$_st" -eq 143 ]; then
-          exit "$_st"
-        fi
-      }
+      _st=0
+      sh "$ROOT/scripts/android-cockpit-switches.sh" || _st=$?
+      if [ "$_st" -eq 4 ]; then
+        exec sh "$ROOT/scripts/open_ui.sh"
+      fi
+      if [ "$_st" -eq 130 ] || [ "$_st" -eq 143 ]; then
+        exit "$_st"
+      fi
     fi
-    exec sh "$ROOT/scripts/open_ui.sh"
+    exec sh "$ROOT/scripts/familia_home.sh"
     ;;
   "Find more models")
     exec sh "$ROOT/scripts/find_models.sh"
