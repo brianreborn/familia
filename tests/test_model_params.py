@@ -231,13 +231,17 @@ def _serve_env(tmp_path, args, server_body):
     (d / "scripts").mkdir(parents=True)
     shutil.copy(os.path.join(ROOT, "scripts", "serve.sh"), d / "scripts" / "serve.sh")
     shutil.copytree(os.path.join(ROOT, "lib"), d / "lib")
+    for _n in ("bind_auth_guard.py", "familia_auth.py"):
+        shutil.copy(os.path.join(ROOT, "scripts", _n), d / "scripts" / _n)
     (d / "graph.yaml").write_text("{}\n")
     srv = tmp_path / "fake-server"
     srv.write_text("#!/bin/sh\n" + server_body)
     srv.chmod(srv.stat().st_mode | stat.S_IEXEC)
     model = tmp_path / "m.gguf"
     model.write_text("x")
-    (d / "scripts" / "validate_graph.py").write_text("print(%r)\n" % (str(srv) + " -m " + str(model) + " " + args))
+    kf = tmp_path / "api-keys"; kf.write_text("k" * 32); kf.chmod(0o600)
+    (d / "scripts" / "validate_graph.py").write_text(
+        "print(%r)\n" % (str(srv) + " -m " + str(model) + " " + args + " --api-key-file " + str(kf)))
     # licenses.py stub: exit status from LICENSE_RC (0 = accepted)
     (d / "scripts" / "licenses.py").write_text("import os, sys\nsys.exit(int(os.environ.get('LICENSE_RC', '0')))\n")
     env = dict(os.environ, FAMILIA_MEMCAP="0", FAMILIA_LOG_DIR=str(tmp_path / "logs"), CALLS=str(tmp_path / "calls"))

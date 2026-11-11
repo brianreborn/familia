@@ -14,6 +14,7 @@
 # Runtime comes from Termux's own `llama-cpp` package (pkg verifies package
 # signatures/hashes), so no unverified binary is downloaded here.
 # Flags: --dry-run  --uninstall [--purge]  --name NAME  --sshd (install+start openssh)
+# familia-start: a key (FAMILIA_API_KEY_FILE or ~/.config/familia/api.key, 0600/0400, Termux $HOME, not /sdcard) is required on every bind, loopback included.
 #        --yes (accept the license review; summary still printed)  --accept-unknown
 #        --no-runtime  --force-host  --no-wakelock
 #        --branch BRANCH  select the familia branch (default: checkout branch, else main)
@@ -78,8 +79,8 @@ if [ "$UNINSTALL" = 1 ]; then
     if [ "$DRY" = 1 ]; then sh "$PREFIX_DIR/repo/scripts/install-cli.sh" uninstall --dry-run
     else sh "$PREFIX_DIR/repo/scripts/install-cli.sh" uninstall --yes; fi
   fi
-  if [ "$PURGE" = 1 ]; then run rm -rf "$PREFIX_DIR"
-  else run rm -rf "$PREFIX_DIR/repo"; say "kept $PREFIX_DIR/models (use --purge)"; fi
+  if [ "$PURGE" = 1 ]; then run rm -rf -- "$PREFIX_DIR"
+  else run rm -rf -- "$PREFIX_DIR/repo"; say "kept $PREFIX_DIR/models (use --purge)"; fi
   say "left Termux packages (git python llama-cpp openssh) installed; remove with pkg uninstall if wanted"
   say "uninstalled"; exit 0
 fi
@@ -182,7 +183,8 @@ if [ -f "$REPO/scripts/host_measure.py" ]; then MREPO="$REPO"
 elif [ "$DRY" = 1 ] && [ -n "$SELF_REPO" ] && [ -f "$SELF_REPO/scripts/host_measure.py" ]; then MREPO="$SELF_REPO"
 elif [ "$DRY" = 1 ] && command -v curl >/dev/null 2>&1; then
   # Dry run has no clone; fetch the read-only measurer + graph into a temp dir and delete it after.
-  MTMP=$(mktemp -d "${TMPDIR:-${PREFIX:-}/tmp}/familia-measure.XXXXXX" 2>/dev/null || true)
+  MTMP=$(umask 077; mktemp -d "${TMPDIR:-${PREFIX:-}/tmp}/grz.XXXXXX" 2>/dev/null || true)
+  [ -n "$MTMP" ] && { trap 'rm -rf -- "$MTMP"' EXIT; trap 'exit 130' INT HUP TERM; }
   if [ -n "$MTMP" ] && mkdir -p "$MTMP/scripts" && curl -fsSL "$RAW_URL/$BRANCH/scripts/host_measure.py" -o "$MTMP/scripts/host_measure.py" \
      && curl -fsSL "$RAW_URL/$BRANCH/graph.yaml" -o "$MTMP/graph.yaml"; then MREPO="$MTMP"
   else MREPO=""; say "warning: could not fetch host_measure.py from $BRANCH"; fi
@@ -201,9 +203,20 @@ if [ -n "$MREPO" ]; then
 else
   say "warning: host_measure.py unavailable; host not measured"
 fi
-[ -n "$MTMP" ] && rm -rf "$MTMP"
+[ -n "$MTMP" ] && rm -rf -- "$MTMP"
 
 LAUNCH="${PREFIX:-/data/data/com.termux/files/usr}/bin/familia-start"
+# Phones always require an API key (Brian 2026-11-02), loopback included: generate a 0600 key
+# in ~/.config/familia/api.key once; the launcher uses it unless FAMILIA_API_KEY_FILE is set.
+FAMILIA_KEY_DEFAULT="$HOME/.config/familia/api.key"
+if [ "$DRY" = 1 ]; then say "[dry-run] generate $FAMILIA_KEY_DEFAULT (0600) if missing"
+elif [ ! -e "$FAMILIA_KEY_DEFAULT" ] && [ ! -L "$FAMILIA_KEY_DEFAULT" ]; then
+  if ! { ( umask 077; mkdir -p "$HOME/.config/familia" && _k=$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n') && printf '%s' "$_k" > "$FAMILIA_KEY_DEFAULT.tmp.$$" ) \
+    && chmod 600 "$FAMILIA_KEY_DEFAULT.tmp.$$" && mv -f "$FAMILIA_KEY_DEFAULT.tmp.$$" "$FAMILIA_KEY_DEFAULT"; }; then
+    say "error: could not generate $FAMILIA_KEY_DEFAULT"; exit 1
+  fi
+  say "generated API key $FAMILIA_KEY_DEFAULT (0600); clients send Authorization: Bearer <key>"
+fi
 if [ "$DRY" = 1 ]; then say "[dry-run] write $LAUNCH"
 else
   cat > "$LAUNCH" <<EOS
@@ -221,14 +234,120 @@ if [ -e /system/lib64/libvulkan.so ]; then
   export LD_LIBRARY_PATH="\$VK\${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}"
   NGL="\${FAMILIA_NGL:-99}"
 fi
+# Loopback by default. A key file (0600) is required on EVERY bind, loopback included (other
+# Termux apps / adb on the same phone can reach 127.0.0.1).
+# BEGIN familia-bind-check (extracted by tests/test_termux_bind_check.py)
+is_loopback() {
+  case "\$1" in
+    localhost|::1|'[::1]') return 0 ;;
+    127.*) ;;
+    *) return 1 ;;
+  esac
+  # Strict dotted quad 127.a.b.c, decimal octets 0-255 (127.example / 127.0.0.1.evil are not loopback).
+  _ip="\$1"; _n=0; _rest="\$_ip."
+  while [ -n "\$_rest" ]; do
+    _o="\${_rest%%.*}"; _rest="\${_rest#*.}"; _n=\$((_n+1))
+    case "\$_o" in ''|*[!0-9]*) return 1 ;; esac
+    [ \${#_o} -le 3 ] && [ "\$_o" -le 255 ] || return 1
+  done
+  [ "\$_n" -eq 4 ]
+}
+familia_key_args() { # sets positional-safe FAMILIA_KF or exits
+  B="\${FAMILIA_BIND:-127.0.0.1}"; FAMILIA_KF=""
+  # F-9: llama-server --host takes a bare IPv6 address: [::1] -> ::1.
+  [ "\$B" = '[::1]' ] && B=::1
+  # Brian 2026-11-02: key required on every bind, loopback included.
+  KF="\${FAMILIA_API_KEY_FILE:-\$HOME/.config/familia/api.key}"
+  [ -e "\$KF" ] || [ -L "\$KF" ] || { echo "familia-start: API key file \$KF missing; a key is required on every bind (loopback included); re-run install or set FAMILIA_API_KEY_FILE to a 0600 key file" >&2; exit 2; }
+  [ -L "\$KF" ] && { echo "familia-start: \$KF is a symlink; refusing" >&2; exit 2; }
+  # F-7: resolve first (a symlinked parent dir must not dodge the shared-storage check).
+  _r=\$(realpath -e -- "\$KF" 2>/dev/null) || { echo "familia-start: \$KF does not resolve; refusing" >&2; exit 2; }
+  KF="\$_r"
+  # Same list as green-roomz config/shared-storage-prefixes.txt (duplicated on purpose: the
+  # launcher is standalone; tests/test_termux_bind_check.py keeps them in sync).
+  case "\$KF" in /storage|/storage/*|/sdcard|/sdcard/*|/mnt/sdcard|/mnt/sdcard/*|/mnt/user|/mnt/user/*|/mnt/media_rw|/mnt/media_rw/*|/data/media|/data/media/*|/data/local/tmp|/data/local/tmp/*) echo "familia-start: \$KF (resolved) is on shared/adb storage; refusing" >&2; exit 2 ;; esac
+  [ -f "\$KF" ] || { echo "familia-start: \$KF is not a regular file" >&2; exit 2; }
+  case "\$(stat -c %a "\$KF" 2>/dev/null)" in 600|400) ;; *) echo "familia-start: \$KF must be mode 0600" >&2; exit 2 ;; esac
+  [ "\$(stat -c %u "\$KF" 2>/dev/null)" = "\$(id -u)" ] || { echo "familia-start: \$KF is not owned by you" >&2; exit 2; }
+  # One token: no CR, no LF (incl. trailing newline), no whitespace. llama-server reads one key
+  # per line and does not trim; install writes it with printf '%s'.
+  _all=\$(wc -c < "\$KF"); _tok=\$(tr -d '[:space:]' < "\$KF" | wc -c)
+  [ "\$_tok" -gt 0 ] || { echo "familia-start: \$KF is empty; refusing" >&2; exit 2; }
+  [ "\$_all" -eq "\$_tok" ] || { echo "familia-start: \$KF contains CR/LF/whitespace (write it with printf '%s'); refusing" >&2; exit 2; }
+  FAMILIA_KF="\$KF"
+}
+# F-6 + Boundary Reviewer items: FAMILIA_EXTRA (whitespace-split) and the launcher's own argv ("\$@") are checked
+# token by token. If any token would override bind, port, auth, TLS or a path
+# (--host* --port* --api-key* --ssl* --path*) the whole launch is refused, never stripped.
+# set -f is turned on here and deliberately LEFT ON for the rest of the launcher: the exec
+# below expands \${FAMILIA_EXTRA} unquoted and must not glob. Nothing after this relies on globbing.
+familia_extra_check() {
+  set -f
+  for _t in \${FAMILIA_EXTRA:-} "\$@"; do
+    case "\$_t" in
+      --host*|--port*|--api-key*|--ssl*|--path*) echo "familia-start: token \$_t (FAMILIA_EXTRA or argv) would override bind/port/auth/TLS/path; refusing" >&2; exit 2 ;;
+    esac
+  done
+}
+# llama-server also reads LLAMA_API_KEY, LLAMA_ARG_API_KEY_FILE and every LLAMA_ARG_*: drop them
+# so the caller's environment cannot add or swap a key or flags.
+familia_env_scrub() {
+  unset LLAMA_API_KEY LLAMA_ARG_API_KEY_FILE
+  for _v in \$(env | sed -n 's/^\(LLAMA_ARG_[A-Za-z0-9_]*\)=.*/\1/p'); do unset "\$_v"; done
+}
+# END familia-bind-check
+familia_key_args
+familia_extra_check "\$@"
+familia_env_scrub
+set --
+[ -n "\$FAMILIA_KF" ] || { echo "familia-start: no API key; refusing" >&2; exit 2; }
+set -- --api-key-file "\$FAMILIA_KF"
 # Defaults from the 2026-10-10 A57 sweep (#34): 3 threads, flash-attn on; -ngl 99 on Vulkan (CPU ngl 0 on 0.6.0 collapses to <1 t/s tg).
-exec llama-server -m "\$M" -ngl "\$NGL" -t "\${FAMILIA_THREADS:-3}" -fa "\${FAMILIA_FA:-on}" --host "\${FAMILIA_BIND:-127.0.0.1}" --port "\${FAMILIA_PORT:-9941}" -c "\${FAMILIA_CTX:-2048}" \${FAMILIA_EXTRA:-}
+exec llama-server -m "\$M" -ngl "\$NGL" -t "\${FAMILIA_THREADS:-3}" -fa "\${FAMILIA_FA:-on}" --host "\$B" --port "\${FAMILIA_PORT:-9941}" -c "\${FAMILIA_CTX:-2048}" "\$@" \${FAMILIA_EXTRA:-}
 EOS
   chmod +x "$LAUNCH"
 fi
+# BEGIN familia-sshd-verify (extracted by tests)
+# F-8: after writing the config, ask sshd itself for the effective settings (no restart here).
+familia_sshd_verify() { # cfg
+  # F-8b: evaluate with a connection spec so Match blocks apply (sshd -T alone skips them).
+  # F-8c: once per loopback family (127.0.0.1 and ::1): a Match Address can differ per family.
+  # v0.3 gap (documented, not fixed): Include'd files are not scanned by the awk Match check
+  # below; sshd -T -C does evaluate them for these two specs.
+  for _addr in 127.0.0.1 ::1; do
+    _spec="user=$(id -un),addr=$_addr,host=localhost"
+    _eff=$(sshd -T -C "$_spec" -f "$1" 2>&1) || { echo "error: sshd -T -C $_spec -f $1 failed: $_eff; not starting sshd" >&2; return 1; }
+    printf '%s\n' "$_eff" | grep -qx 'passwordauthentication no' || { echo "error: sshd -T ($_addr): passwordauthentication is not 'no'; not starting sshd" >&2; return 1; }
+    printf '%s\n' "$_eff" | grep -qx 'kbdinteractiveauthentication no' || { echo "error: sshd -T ($_addr): kbdinteractiveauthentication is not 'no'; not starting sshd" >&2; return 1; }
+  done
+  # Any Match block that turns an *Authentication method on (other users/addrs) is refused.
+  # PubkeyAuthentication yes is the intended method and is allowed.
+  _m=$(awk 'tolower($1)=="match"{m=1;next} m && tolower($1) ~ /authentication$/ && tolower($1)!="pubkeyauthentication" && tolower($2)=="yes"{print NR": "$0}' "$1") \
+    || { echo "error: cannot read $1; not starting sshd" >&2; return 1; }
+  [ -z "$_m" ] || { echo "error: Match block in $1 enables auth ($_m); not starting sshd" >&2; return 1; }
+}
+# END familia-sshd-verify
 if [ "$SSHD" = 1 ]; then
+  # Key auth only: disable passwords before sshd starts (idempotent).
+  SSHD_CFG="${PREFIX:-/data/data/com.termux/files/usr}/etc/ssh/sshd_config"
+  if [ "$DRY" = 1 ]; then say "[dry-run] set PasswordAuthentication no in $SSHD_CFG"
+  else
+    [ -f "$SSHD_CFG" ] || { say "error: $SSHD_CFG missing; not starting sshd"; exit 1; }
+    # POSIX: no sed -i. Rewrite via temp + mv (Platform standing rule).
+    _sshd_tmp=$(mktemp "${TMPDIR:-${PREFIX:-}/tmp}/familia-sshd.XXXXXX") \
+      || { say "error: mktemp failed; not starting sshd"; exit 1; }
+    sed -e 's/^[[:space:]#]*PasswordAuthentication[[:space:]].*$/PasswordAuthentication no/' \
+        -e 's/^[[:space:]#]*KbdInteractiveAuthentication[[:space:]].*$/KbdInteractiveAuthentication no/' \
+        "$SSHD_CFG" > "$_sshd_tmp" \
+      || { rm -f "$_sshd_tmp"; say "error: sed rewrite of $SSHD_CFG failed"; exit 1; }
+    mv "$_sshd_tmp" "$SSHD_CFG" || { rm -f "$_sshd_tmp"; say "error: mv onto $SSHD_CFG failed"; exit 1; }
+    grep -q '^PasswordAuthentication no$' "$SSHD_CFG" || printf '\nPasswordAuthentication no\n' >> "$SSHD_CFG"
+    grep -q '^KbdInteractiveAuthentication no$' "$SSHD_CFG" || printf 'KbdInteractiveAuthentication no\n' >> "$SSHD_CFG"
+    familia_sshd_verify "$SSHD_CFG" || exit 1
+  fi
+  # A running sshd keeps its old config; it is not restarted here.
   run sshd
-  say "sshd on port 8022 (key auth: add your key to ~/.ssh/authorized_keys; set a password with passwd only if you want one)"
+  say "sshd on port 8022 (key auth only; PasswordAuthentication no). Add your key to ~/.ssh/authorized_keys"
 fi
 if [ -d "$HOME/.termux/boot" ]; then
   say "Termux:Boot detected; to autostart, create $BOOT that exports FAMILIA_MODEL and runs familia-start"

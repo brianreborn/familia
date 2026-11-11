@@ -138,6 +138,16 @@ def private_topology(graph: dict, host: str) -> dict:
 
     local_keys = set(new_nodes)
     g["nodes"] = new_nodes
+    # Drop speculative rows before rename. Fleet `coder-ngram` targets miryam's
+    # node `coder`. After angel-coder is renamed to `coder`, a post-rename
+    # target filter would keep that row and turn Nanbeige's launch into
+    # miryam's active n-gram spec. Keep only rows whose target is one of this
+    # host's nodes, then rewrite those targets to the type name.
+    local_old = set(local)
+    g["speculative"] = {
+        k: v for k, v in (g.get("speculative") or {}).items()
+        if isinstance(v, dict) and v.get("target") in local_old
+    }
     g = rewrite_refs(g, rename)
 
     # Gateways: keep only this host; if none, synthesize a loopback gateway so
@@ -162,7 +172,8 @@ def private_topology(graph: dict, host: str) -> dict:
         aliases_out[role] = {"node": role, "gateway": gw0}
     # Keep any already-local aliases that still resolve
     for k, v in (g.get("aliases") or {}).items():
-        if isinstance(v, dict) and v.get("node") in local_keys and v.get("gateway") in gateways:
+        if isinstance(v, dict) and v.get("gateway") in gateways and \
+                all(n in local_keys for n in __import__("graph_types").alias_nodes(v) or [None]):
             aliases_out[k] = v
     g["aliases"] = aliases_out
 

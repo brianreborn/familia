@@ -1,4 +1,5 @@
 import os, re, subprocess, sys, shutil, yaml
+import pytest
 from types import SimpleNamespace
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 HM = os.path.join(ROOT, "scripts", "host_measure.py")
@@ -88,6 +89,8 @@ def test_installer_shapes():
     assert not re.search(r"\b[0-9a-f]{64}\b", ps)
     assert not re.search(r"-Verb\s+RunAs|RunAs", ps)  # never elevates
 
+@pytest.mark.skipif(sys.platform.startswith("freebsd"),
+                    reason="install/linux/install.sh refuses FreeBSD by design (source-build only)")
 def test_linux_installer_accepts_branch_and_dry_runs_clone(tmp_path):
     env = dict(os.environ, FAMILIA_PREFIX=str(tmp_path / "prefix"),
                FAMILIA_BIN_DIR=str(tmp_path / "bin"))

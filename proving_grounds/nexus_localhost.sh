@@ -6,7 +6,7 @@ here=$(cd "$(dirname "$0")/.." && pwd); w=/tmp/nexus-test; sudo rm -rf $w; mkdir
 if which useradd; then
   for u in nxhub nxa nxb; do id $u >/dev/null 2>&1 || sudo useradd -m -s /bin/bash $u; sudo usermod -p '*' $u; done  # '*': unlocked but no password exists
 else
-  for u in nxhub nxa nxb; do id $u >/dev/null 2>&1 || sudo pw useradd $u -m -s `which bash`; done  # '*': unlocked but no password exists
+  for u in nxhub nxa nxb; do id $u >/dev/null 2>&1 || sudo pw useradd $u -m -s "$(command -v bash)"; done  # '*': unlocked but no password exists
 fi
 ssh-keygen -q -t ed25519 -N '' -f $w/hostkey
 cat > $w/sshd_config <<C

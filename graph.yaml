@@ -6,6 +6,9 @@
 # Reported numbers go under `reported:` with a source; GPU vram_mib stays null
 # until `measured: true`.
 # Standing rule (2026-10-09 OOM): never aim for high RAM on small hosts — see docs/ram-safety.md.
+# Auth (DESIGN.md Security, CFG-CRED-009): node and gateway listeners require an API key
+# at launch. The key is not a graph field (CFG-CRED-004); launchers pass --api-key-file
+# from a 0600 instance file. Localhost without a key is only for named exceptions in DESIGN.md.
 # Privacy (#104): hosts.*.addr/user and meshes.*.bind are placeholders in the
 # tracked file. Real connection details live in the untracked hosts overlay
 # (~/.config/familia/hosts.local.yaml or repo-root hosts.local.yaml). See
@@ -320,7 +323,7 @@ runtimes:
     bin: code-bootstraps-llama.cpp/bin/llama-b11669-linux-x64-cpu/llama-server
     hosts: [miryam]
     # Preserve every model architecture supported by the existing llama.cpp runtimes.
-    supported_archs: [qwen35, gemma-embedding2, llama, lfm2, qwen2, gemma2, gemma3, nanbeige]
+    supported_archs: [qwen35, gemma-embedding2, llama, lfm2, modern-bert, qwen2, gemma2, gemma3, nanbeige]
     backends: [cpu, vulkan]
     spec_types: [draft-simple, ngram-simple, ngram-map-k, ngram-map-k4v, ngram-mod, ngram-cache]
 
@@ -330,7 +333,7 @@ runtimes:
     commit: 620d2225cc436ab0b001e3200e590e3b286ef9ab
     bin: code-bootstraps-llama.cpp/build-freebsd/bin/llama-server
     hosts: [angel]
-    supported_archs: [qwen35, gemma-embedding2, llama, lfm2, qwen2, gemma2, gemma3, nanbeige]
+    supported_archs: [qwen35, gemma-embedding2, llama, lfm2, modern-bert, qwen2, gemma2, gemma3, nanbeige, gpt-oss]
     backends: [cpu]
     spec_types: [draft-simple, ngram-simple, ngram-map-k, ngram-map-k4v, ngram-mod, ngram-cache]
 
@@ -484,6 +487,16 @@ models:
     notes: "Shipped tested 2026-10-24: local sha256 verified on angel; MTP draft model available but not fetched"
 
 
+
+  gpt-oss-20b-mxfp4:
+    gguf: /home/green/models/gpt-oss-20b-MXFP4.gguf   # on angel; official ggml-org MXFP4
+    sha256: 27cd6c432c7672cb812a92f611cf3ba7bbc35928262bb1e1253ff4ee6ae35901  # sha256 -q on angel 2026-11-10, matches HF LFS oid
+    arch: gpt-oss
+    trained_ctx: 131072          # GGUF gpt-oss.context_length; YaRN x32 in the GGUF
+    role: chat
+    db: ggml-org--gpt-oss-20b-GGUF--gpt-oss-20b-MXFP4
+    notes: "R&D exception (Brian 2026-11-10 voice/chat): install gpt-oss-20b on angel. File is 12109566624 bytes. Harmony format needs --jinja. No node auto-starts this model. Smoke used /usr/local/bin/llama-server (FreeBSD ports llama-cpp-10975), which supports gpt-oss and MXFP4; the registered build-freebsd/bin/llama-server binary is missing, though libllama in that tree (LLAMA_BUILD_NUMBER 11969) also contains gpt-oss/MXFP4."
+
   nanbeige43-33b-q4km:
     gguf: ~/.local/share/gguf/models/general/Nanbeige4.3-33B-UNCENSORED-Q4_K_M.gguf   # on angel; dealignai Q4_K_M ≈18.7 GiB
     sha256: 1136ce66f4be1676a78936a936df012f148236475fb8424c5dea7cd85e165264
@@ -501,7 +514,7 @@ models:
     trained_ctx: 131072         # Llama-3.1-8B family; node ctx stays RAM-bounded
     role: pentest
     notes: Official guardian weight (docs/guardian-weights.md). Q2_K ~3.0 GiB. sha256 is registry HF LFS oid; verify with activate_guardian_weights.py --measure. Fetch before activating miryam-pentest / angel-guardian.
-    db: mradermacher--Dolphin3.0-Llama3.1-8B-abliterated-GGUF--Dolphin3.0-Llama3.1-8B-abliterated.Q2_K
+    db: RavichandranJ--Dolphin3-Cyber-8B-GGUF--Dolphin3.0-Llama3.1-8B-abliterated.Q2_K
 
   # LFM3 family (Brian 2026-10-28): LFM3-1.7B-Uncensored is the headline default; VL / Omni /
   # Audio are opt-in (code-bootstraps fetch-models.sh --pick lfm3-vl|lfm3-omni|lfm3-audio),
@@ -649,7 +662,7 @@ nodes:
     port: 9941
     cache_ram_mib: 1024          # >= per-slot prompt state (~426 MiB KV @ 64K q8_0)
   embed:
-    status: active
+    status: planned
     model: egemma2-q8
     role: embed
     host: miryam

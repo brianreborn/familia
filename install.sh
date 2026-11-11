@@ -22,6 +22,9 @@ Usage:
     --no-start  stop after setup (same as INSTALL_NO_START=1)
     --no-path   do not put `familia` on PATH (default: 2-line shim ~/.local/bin/familia; scripts/install-cli.sh)
     --branch    choose a branch for a new checkout or switch an existing checkout to track it
+    --channel bleeding|stable   release channel (default bleeding = unchanged; FAMILIA_CHANNEL)
+    --stable-days N             stable: most stable release of the last N days, 1..365 (default 30)
+                                (docs/release-channels.md; resolver: scripts/channel.py)
 Preliminary stock (owned by this script): OS packages via install/deps.sh when anything
 base is missing, and Charm gum into ~/.local/bin via scripts/install-gum.sh (no sudo; soft-fail).
 llama.cpp is prebuilt-first: an existing build is reused, else the sha256-checked b11944 release
@@ -54,11 +57,20 @@ while [ $# -gt 0 ]; do
     --accept-unknown) FAMILIA_ACCEPT_UNKNOWN_LICENSES=yes; export FAMILIA_ACCEPT_UNKNOWN_LICENSES ;;
     --no-start) INSTALL_NO_START=1 ;;
     --no-path) INSTALL_NO_PATH=1 ;;
+    --channel) [ $# -ge 2 ] || die "--channel needs bleeding or stable"; shift; FAMILIA_CHANNEL=$1 ;;
+    --stable-days) [ $# -ge 2 ] || die "--stable-days needs a number"; shift; FAMILIA_STABLE_DAYS=$1 ;;
     *) die "unknown option '$1'. Try: sh install.sh --help" ;;
   esac
   shift
 done
+# Release channel: strict allowlist and a plain 1..365 integer (scripts/channel.py re-validates).
+case "${FAMILIA_CHANNEL:-bleeding}" in bleeding|stable) ;; *) die "invalid --channel (use bleeding or stable)" ;; esac
+case "${FAMILIA_STABLE_DAYS:-30}" in ''|*[!0-9]*|0*|????*) die "invalid --stable-days (an integer 1..365)" ;; esac
+[ "${FAMILIA_STABLE_DAYS:-30}" -le 365 ] || die "invalid --stable-days (an integer 1..365)"
+FAMILIA_CHANNEL=${FAMILIA_CHANNEL:-bleeding}; FAMILIA_STABLE_DAYS=${FAMILIA_STABLE_DAYS:-30}
+export FAMILIA_CHANNEL FAMILIA_STABLE_DAYS
 if [ "$DRY" = 1 ]; then
+  echo "install.sh: [dry-run] release channel $FAMILIA_CHANNEL (stable window $FAMILIA_STABLE_DAYS days; used only by stable)" >&2
   echo "install.sh: [dry-run] would clone or update $REPO_URL in $PREFIX${BRANCH:+ on branch $BRANCH}" >&2
   echo "install.sh: [dry-run] would install preliminary stock if missing: sh $PREFIX/install/deps.sh --install (git/curl/python3/…)" >&2
   echo "install.sh: [dry-run] would ensure Charm gum in ~/.local/bin: sh $PREFIX/scripts/install-gum.sh --dry-run" >&2

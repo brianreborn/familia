@@ -1,4 +1,4 @@
-cd E:\temp\gpu-legacy; $env:PATH="E:\temp\tools\mingw64\bin;$env:PATH"; $L="E:\temp\gpu-legacy\progress.log"; $M="E:\temp\models\SmolLM2-135M-Instruct.Q4_0.gguf"
+﻿cd E:\temp\gpu-legacy; $env:PATH="E:\temp\tools\mingw64\bin;$env:PATH"; $L="E:\temp\gpu-legacy\progress.log"; $M="E:\temp\models\SmolLM2-135M-Instruct.Q4_0.gguf"
 "$(Get-Date -f s) MILESTONE e2e MR configs + q8 tex classifier" | Add-Content $L
 $cfgs=[ordered]@{ "base v4MR2+oldq8"=@{SMOL_X="0";SMOL_Q8M="0"}; "v4MR2+q8tex4"=@{SMOL_X="0";SMOL_Q8M="4"}; "X mixed(4,3,5,4)+q8tex4"=@{SMOL_X="1";SMOL_Q8M="4"}; "X all MR4+q8tex4"=@{SMOL_X="1";SMOL_Q8M="4";SMOL_XS1="4,4,3,8";SMOL_XS2="4,8,2,16"}; "X all MR3+q8tex4"=@{SMOL_X="1";SMOL_Q8M="4";SMOL_XS0="3,4,2,16";SMOL_XS2="3,8,2,8";SMOL_XS3="3,4,2,16"} }
 foreach($k in $cfgs.Keys){ foreach($v in "SMOL_X","SMOL_Q8M","SMOL_XS0","SMOL_XS1","SMOL_XS2","SMOL_XS3"){ Remove-Item "Env:$v" -ErrorAction SilentlyContinue }; foreach($e in $cfgs[$k].GetEnumerator()){ Set-Item "Env:$($e.Key)" $e.Value }

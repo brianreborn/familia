@@ -3,6 +3,9 @@ import os, subprocess, sys
 R = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(R, "scripts"))
 import oom_adj  # noqa: E402
+import pytest  # noqa: E402
+LINUX_ONLY = pytest.mark.skipif(not sys.platform.startswith("linux"),
+                                reason="Linux-only: /proc/*/oom_score_adj and earlyoom (GNU sed -i)")
 FX = os.path.join(R, "tests", "fixtures", "oom112")
 
 
@@ -10,6 +13,7 @@ def test_clamp():
     assert oom_adj.clamp(0) == 500 and oom_adj.clamp(2000) == 1000 and oom_adj.clamp(900) == 900
 
 
+@LINUX_ONLY
 def test_child_gets_adj():
     out = subprocess.run(["cat", "/proc/self/oom_score_adj"], capture_output=True, text=True,
                          preexec_fn=oom_adj.preexec(910)).stdout.strip()
@@ -48,6 +52,7 @@ def test_kill_watch_flags_protected(tmp_path):
     assert any("P0-PROTECTED" not in l and "cgroup-memmax" in l and "llama-server" in l for l in lines)
 
 
+@LINUX_ONLY
 def test_earlyoom_args_idempotent(tmp_path):
     eo = tmp_path / "earlyoom"
     eo.write_text(open(os.path.join(FX, "earlyoom.default")).read())

@@ -1,0 +1,90 @@
+{
+ "data": {
+  "repository": {
+   "issue": {
+    "body": "(body trimmed for the fixture)",
+    "createdAt": "2026-11-11T05:31:09Z",
+    "lastEditedAt": null,
+    "number": 543,
+    "timelineItems": {
+     "nodes": [
+      {
+       "__typename": "IssueComment",
+       "author": {
+        "__typename": "User",
+        "databaseId": 159288071,
+        "login": "brianreborn"
+       },
+       "body": "(comment 1 trimmed)",
+       "createdAt": "2026-11-11T05:32:29Z",
+       "databaseId": 6787974027,
+       "lastEditedAt": null,
+       "updatedAt": "2026-11-11T05:32:29Z"
+      },
+      {
+       "__typename": "LabeledEvent",
+       "actor": {
+        "__typename": "User",
+        "databaseId": 159288071,
+        "login": "brianreborn"
+       },
+       "createdAt": "2026-11-11T05:35:42Z",
+       "label": {
+        "name": "claimed:galaxy1"
+       }
+      },
+      {
+       "__typename": "IssueComment",
+       "author": {
+        "__typename": "User",
+        "databaseId": 159288071,
+        "login": "brianreborn"
+       },
+       "body": "(comment 3 trimmed)",
+       "createdAt": "2026-11-11T05:35:43Z",
+       "databaseId": 6788021613,
+       "lastEditedAt": "2026-11-11T05:36:34Z",
+       "updatedAt": "2026-11-11T05:36:34Z"
+      },
+      {
+       "__typename": "IssueComment",
+       "author": {
+        "__typename": "User",
+        "databaseId": 159288071,
+        "login": "brianreborn"
+       },
+       "body": "(comment 4 trimmed)",
+       "createdAt": "2026-11-11T05:36:32Z",
+       "databaseId": 6788034082,
+       "lastEditedAt": null,
+       "updatedAt": "2026-11-11T05:36:32Z"
+      },
+      {
+       "__typename": "UnlabeledEvent",
+       "actor": {
+        "__typename": "User",
+        "databaseId": 159288071,
+        "login": "brianreborn"
+       },
+       "createdAt": "2026-11-11T05:36:35Z",
+       "label": {
+        "name": "claimed:galaxy1"
+       }
+      }
+     ],
+     "pageInfo": {
+      "endCursor": "Y3Vyc29yOnYyOpPPAAABockbprgBqzM1NzY0OTQ1ODc1",
+      "hasNextPage": false
+     }
+    },
+    "title": "swarm-pull: restrict issue intake to owner-vetted issues; drop identifying runner stamp fields",
+    "updatedAt": "2026-11-11T05:36:34Z"
+   },
+   "owner": {
+    "__typename": "User",
+    "databaseId": 159288071,
+    "login": "brianreborn"
+   }
+  }
+ }
+}

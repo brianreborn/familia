@@ -3,7 +3,9 @@
 `catalog.json` is the selection layer over **green-zkillz**, the home for
 bundled skills (the `skills/` tree of
 [brianreborn/green-agentz](https://github.com/brianreborn/green-agentz), pinned
-in `pins.txt`). familia does not keep its own copy of skill files. Use
+in `pins.txt`). Familia's own process skills live in this tree as
+skills/<id>/SKILL.md; catalog.json remains the selection layer for
+bundled green-zkillz skills. Use
 `scripts/skills.py` to work with it (see `docs/skills.md`). JSON is used so
 that old devices without PyYAML can still read it.
 

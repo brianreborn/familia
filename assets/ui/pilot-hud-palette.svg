@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="780" viewBox="0 0 1100 780">
+<title>familia pilot_hud + gum color/glyph palette</title>
+<desc>Color and glyph reference from scripts/pilot_hud.sh. Gum 256 indices and ANSI SGR codes as used in the script.</desc>
+<rect width="1100" height="780" fill="#f7f7f2" stroke="#333" stroke-width="2"/>
+<text x="36" y="32" font-family="DejaVu Sans, Arial, sans-serif" font-size="20" font-weight="bold" fill="#111">familia - pilot HUD palette (scripts/pilot_hud.sh)</text>
+<text x="36" y="52" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#444">Charm gum when present; plain ANSI fallback. Also emits OSC 7501 via scripts/osc7501.sh. ASCII stand-ins for glyphs.</text>
+
+<!-- GUM section -->
+<text x="36" y="90" font-family="DejaVu Sans, Arial, sans-serif" font-size="15" font-weight="bold" fill="#111">gum style (256-color indices)</text>
+
+<rect x="36" y="110" width="240" height="100" rx="8" fill="#00ffff" stroke="#333" stroke-width="1.5"/>
+<text x="52" y="138" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" font-weight="bold" fill="#003333">gum 51  #00ffff</text>
+<text x="52" y="160" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#003333">border-foreground canopy</text>
+<text x="52" y="178" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#003333">+ instruments border</text>
+<text x="52" y="196" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#004444">pilot_canopy / pilot_instruments</text>
+
+<rect x="296" y="110" width="240" height="100" rx="8" fill="#afffff" stroke="#333" stroke-width="1.5"/>
+<text x="312" y="138" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" font-weight="bold" fill="#003333">gum 159  #afffff</text>
+<text x="312" y="160" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#003333">foreground canopy</text>
+<text x="312" y="178" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#003333">+ instruments text</text>
+<text x="312" y="196" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#004444">pilot_canopy / pilot_instruments</text>
+
+<rect x="556" y="110" width="240" height="100" rx="8" fill="#ffaf00" stroke="#333" stroke-width="1.5"/>
+<text x="572" y="138" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" font-weight="bold" fill="#333300">gum 214  #ffaf00</text>
+<text x="572" y="160" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333300">border-foreground strip</text>
+<text x="572" y="178" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333300">pilot_strip status</text>
+<text x="572" y="196" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#444400">amber border</text>
+
+<rect x="816" y="110" width="240" height="100" rx="8" fill="#ffffd7" stroke="#333" stroke-width="1.5"/>
+<text x="832" y="138" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" font-weight="bold" fill="#333300">gum 230  #ffffd7</text>
+<text x="832" y="160" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333300">foreground strip text</text>
+<text x="832" y="178" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#333300">pilot_strip message</text>
+<text x="832" y="196" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#444400">cream text on amber</text>
+
+<!-- ANSI fallback -->
+<text x="36" y="250" font-family="DejaVu Sans, Arial, sans-serif" font-size="15" font-weight="bold" fill="#111">ANSI fallback (_PILOT_* SGR)</text>
+
+<rect x="36" y="270" width="160" height="80" rx="6" fill="#00afaf" stroke="#333"/>
+<text x="52" y="298" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" font-weight="bold" fill="#fff">36 cyan</text>
+<text x="52" y="318" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#e0ffff">_PILOT_CYAN</text>
+<text x="52" y="336" font-family="DejaVu Sans, Arial, sans-serif" font-size="10" fill="#e0ffff">canopy / box draw</text>
+
+<rect x="216" y="270" width="160" height="80" rx="6" fill="#5fd7ff" stroke="#333"/>
+<text x="232" y="298" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" font-weight="bold" fill="#003344">96 bright cyan</text>
+<text x="232" y="318" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#003344">_PILOT_TEAL</text>
+<text x="232" y="336" font-family="DejaVu Sans, Arial, sans-serif" font-size="10" fill="#003344">strip msg / spin</text>
+
+<rect x="396" y="270" width="160" height="80" rx="6" fill="#d7af00" stroke="#333"/>
+<text x="412" y="298" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" font-weight="bold" fill="#222">33 amber</text>
+<text x="412" y="318" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#222">_PILOT_AMBER</text>
+<text x="412" y="336" font-family="DejaVu Sans, Arial, sans-serif" font-size="10" fill="#222">CAUTION / strip</text>
+
+<rect x="576" y="270" width="160" height="80" rx="6" fill="#00af00" stroke="#333"/>
+<text x="592" y="298" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" font-weight="bold" fill="#fff">32 green</text>
+<text x="592" y="318" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#e8ffe8">_PILOT_GREEN</text>
+<text x="592" y="336" font-family="DejaVu Sans, Arial, sans-serif" font-size="10" fill="#e8ffe8">LINK ESTABLISHED</text>
+
+<rect x="756" y="270" width="160" height="80" rx="6" fill="#af0000" stroke="#333"/>
+<text x="772" y="298" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" font-weight="bold" fill="#fff">31 red</text>
+<text x="772" y="318" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#ffe8e8">_PILOT_RED</text>
+<text x="772" y="336" font-family="DejaVu Sans, Arial, sans-serif" font-size="10" fill="#ffe8e8">FRAME FAULT</text>
+
+<!-- status phrases -->
+<text x="36" y="390" font-family="DejaVu Sans, Arial, sans-serif" font-size="15" font-weight="bold" fill="#111">Status phrases (pilot_ok / warn / fail)</text>
+<rect x="36" y="410" width="300" height="44" rx="6" fill="#e8f5e9" stroke="#2e7d32" stroke-width="1.5"/>
+<text x="52" y="438" font-family="DejaVu Sans, Arial, sans-serif" font-size="14" font-weight="bold" fill="#2e7d32">LINK ESTABLISHED</text>
+<rect x="356" y="410" width="300" height="44" rx="6" fill="#fff8e1" stroke="#f9a825" stroke-width="1.5"/>
+<text x="372" y="438" font-family="DejaVu Sans, Arial, sans-serif" font-size="14" font-weight="bold" fill="#f57f17">CAUTION</text>
+<rect x="676" y="410" width="300" height="44" rx="6" fill="#ffebee" stroke="#c62828" stroke-width="1.5"/>
+<text x="692" y="438" font-family="DejaVu Sans, Arial, sans-serif" font-size="14" font-weight="bold" fill="#c62828">FRAME FAULT</text>
+
+<!-- glyphs ASCII stand-ins -->
+<text x="36" y="500" font-family="DejaVu Sans, Arial, sans-serif" font-size="15" font-weight="bold" fill="#111">Glyphs (script uses Unicode; ASCII stand-ins for art)</text>
+<rect x="36" y="520" width="1020" height="100" rx="8" fill="#fff" stroke="#333" stroke-width="1.2"/>
+<text x="52" y="548" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#222">canopy title markers: script U+25C8 (diamond) -&gt; art uses [ ] or *</text>
+<text x="52" y="568" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#222">subtitle: COCKPIT HUD | FRAME SYNC | ORDNANCE PREFETCH  (middot -&gt; |)</text>
+<text x="52" y="588" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#222">instruments box-drawing: +-- FOREGROUND / BACKGROUND (U+2500 lines in script)</text>
+<text x="52" y="608" font-family="DejaVu Sans, Arial, sans-serif" font-size="13" fill="#222">spin prefix: script U+00BB -&gt; art "&gt;&gt;"; ellipsis U+2026 -&gt; "..."</text>
+
+<!-- sample canopy mock -->
+<text x="36" y="660" font-family="DejaVu Sans, Arial, sans-serif" font-size="15" font-weight="bold" fill="#111">Sample canopy (ASCII mock of pilot_canopy)</text>
+<rect x="36" y="678" width="720" height="56" rx="4" fill="#001a1a" stroke="#00ffff" stroke-width="2"/>
+<text x="396" y="702" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-size="14" font-weight="bold" fill="#afffff">* FAMILIA PILOT LINK *</text>
+<text x="396" y="722" text-anchor="middle" font-family="DejaVu Sans, Arial, sans-serif" font-size="12" fill="#afffff">COCKPIT HUD  |  FRAME SYNC  |  ORDNANCE PREFETCH</text>
+
+<text x="36" y="760" font-family="DejaVu Sans, Arial, sans-serif" font-size="11" fill="#777">RGB for gum indices via xterm-256 formula. ANSI swatches are approximate VGA. Source: scripts/pilot_hud.sh. ASCII only.</text>
+</svg>

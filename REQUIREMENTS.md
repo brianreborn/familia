@@ -1,4 +1,4 @@
-﻿# REQUIREMENTS.md
+# REQUIREMENTS.md
 
 > **Status note (2026-10-19):** each item says whether it is **implemented**, **in progress**, or **planned (#N)**. Owner: the familia maintainer.
 
@@ -37,6 +37,18 @@ High-level requirements for the familia topology coordinator: the Linux orchestr
 ## Android node
 - Launch via `android_start.sh` with host, port and user from the graph / environment and key-based SSH (#18). Fleet helpers `with-fleet.sh` and `scripts/pentest-role.json` are on `main` (fixes #15); pentest role remains launch-test only.
 - `watchdog_android.sh` monitoring (implemented): key-only SSH, target from the graph, runs from its own directory and logs to `watchdog_android.log` there.
+- **Platform requirements (Termux aarch64):**
+  - **Vulkan hardware rasterization:** Requires exporting system Vulkan linker paths (`LD_LIBRARY_PATH="/system/lib64:$LD_LIBRARY_PATH"` or local symlinks in `vulkan/` -> `/system/lib64/libvulkan.so`) so the Termux runtime targets physical hardware rather than software llvmpipe fallback.
+  - **Memory & slot budget:** Operating within `reserve_ram_mib: 5120` policy on ~7.4 GiB phones requires single-slot configurations (`-np 1`) and quantized KV caches (`-ctk q8_0 -ctv q8_0`) to prevent low-memory killer (LMK) eviction.
+  - **Speculative execution:** UMA shared-memory bus contention is mitigated via model-free n-gram speculation (`--spec-type ngram-mod --spec-ngram-mod-n-match 24`) with bounded thread counts (`-t 2` or `-t 3`).
+  - **Scratch & logs:** Use `$HOME/` or `$PREFIX/tmp` rather than root `/tmp/` to prevent permission violations.
+
+## FreeBSD node
+- **Platform requirements (FreeBSD amd64):**
+  - **Physical home path resolution:** Home paths must be resolved via physical canonical paths (`realpath "$HOME"`) to prevent drift across `/usr/home` vs `/home` symlinks in child scripts and cache directories.
+  - **Python tooling:** Requires `py3XX-pip`, `py3XX-yaml`, and `py3XX-pytest` packages explicitly or bootstrap through `get-pip.py` since stock pkg Python does not ship standard `ensurepip`.
+  - **Native runtimes:** Uses native Clang-compiled FreeBSD `llama-server` package (`/usr/local/bin/llama-server`) rather than Linux ELF binaries.
+  - **Stdlib tool probing:** Network and readiness probes against `/props` and `/v1/chat/completions` must use Python standard library (`urllib.request`, `json`) rather than assuming external utilities (`jq`, `which`) are installed on minimal base systems.
 
 ## SSH nexus
 - Declarative config in the graph (`hosts` / `meshes`), key-only auth, password auth disabled (implemented as an opt-in proof of concept: `scripts/nexus/nexus.py`, docs/transport-poc.md).

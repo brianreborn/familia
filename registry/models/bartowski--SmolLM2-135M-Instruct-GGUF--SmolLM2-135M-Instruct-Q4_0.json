@@ -9,6 +9,7 @@
  "quant": "Q4_0",
  "arch": "llama",
  "roles": [
+  "chat",
   "decision"
  ],
  "license": "apache-2.0",
@@ -627,13 +628,13 @@
  ],
  "match": "LFS sha256 match",
  "local_check": {
-  "host": "grok-bot-vm-414232872",
+  "host": "miryam",
   "sha256_ok": true,
-  "checked": "2026-10-30"
+  "checked": "2026-11-08"
  },
  "unknown": null,
  "warnings": null,
- "updated": "2026-10-30",
+ "updated": "2026-11-08",
  "by": "scripts/model_db.py",
  "gguf_meta": {
   "general.architecture": "llama",

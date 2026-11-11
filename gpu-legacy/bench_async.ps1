@@ -1,4 +1,4 @@
-$env:PATH = "E:\temp\tools\mingw64\bin;" + $env:PATH   # libgomp for run_sm11 (OpenMP)
+﻿$env:PATH = "E:\temp\tools\mingw64\bin;" + $env:PATH   # libgomp for run_sm11 (OpenMP)
 $ErrorActionPreference = "Continue"
 $root = "E:\temp\gpu-legacy"; Set-Location $root
 $log = Join-Path $root "progress.log"

@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Charm-style goal launcher for Windows (mirrors scripts/familia_home.sh).
   gum.exe on PATH preferred; falls back to Out-Host numbered choose.

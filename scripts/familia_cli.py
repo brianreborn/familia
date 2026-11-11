@@ -154,6 +154,9 @@ def help_one(words, windows=False):
 # ---------- man page ----------
 def esc(s):
     s = s.replace("\\", "\\e").replace("-", "\\-")
+    # non-ASCII -> groff \[uXXXX] so `groff -ww` stays warning-free (arrows, em dash, ², ◆)
+    s = s.replace("\u25c6 ", "").replace("\u25c6", "")  # no groff glyph for ◆
+    s = "".join(c if ord(c) < 128 else "\\[u%04X]" % ord(c) for c in s)
     return ("\\&" + s) if s[:1] in (".", "'") else s
 
 

@@ -1,0 +1,10 @@
+# Node on another host. Any non-loopback URL needs remote: true (explicit consent).
+# The remote llama-server must bind a reachable address (not 127.0.0.1) and should
+# run with --api-key-file; give the router that key via key_file.
+version: 1
+nodes:
+  local:  http://127.0.0.1:8081
+  big:    {url: "http://192.0.2.20:8080", remote: true, key_file: ~/.config/familia/remote-keys/big}
+routes:
+  chat: local
+  big:  big

@@ -136,6 +136,8 @@ familia: graph check failed
 
 **Connection privacy (#104):** tracked `graph.yaml` keeps `hosts.*.addr`/`user` and `meshes.*.bind` as placeholders. Real LAN details live in the hosts overlay — [hosts-overlay.md](hosts-overlay.md).
 
+**API keys (DESIGN.md Security, CFG-CRED-009):** any service that listens on the network requires an API key. The key is not a graph field (CFG-CRED-004); launchers pass `--api-key-file` from a mode 0600 instance file. Localhost-only without a key is allowed only for the named local-development-tool exceptions in DESIGN.md. Node and gateway listeners are not exceptions.
+
 **Private topologies (design law):** node type/role implies capability; placement is `host:`. Prefer `python3 scripts/generate_graph.py HOST` (type-named nodes in `generated/graph-HOST.yaml`) and `modify_graph.py --host HOST --assign-model coder=<models-key>`. Host-prefixed fleet keys (`angel-coder`, …) are transitional — see LESSONS-LEARNED `L-node-type`.
 
 Edit `graph.yaml` by hand, or use `scripts/generate_graph.py HOST` / `scripts/modify_graph.py` for scripted per-host changes, then validate. A visual editor and natural-language configuration are future ideas, not planned yet; if they come, they must produce a declaration that goes through the same validation.

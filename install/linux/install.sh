@@ -17,6 +17,9 @@
 #        --accept-unknown  also accept components whose license could not be found
 #        --allow-root  attest running as root (or FAMILIA_ALLOW_ROOT=yes; interactive: type yes)
 #        --no-path     do not put `familia` on PATH (default: 2-line shim ~/.local/bin/familia, scripts/install-cli.sh)
+#        --channel bleeding|stable  release channel (default bleeding = unchanged behavior; FAMILIA_CHANNEL)
+#        --stable-days N  stable: most stable release of the last N days, 1..365 (default 30; FAMILIA_STABLE_DAYS)
+#                     stable resolves the llama.cpp build with scripts/channel.py unless --build is given
 # Safety: llama.cpp assets are verified against the sha256 digest published by
 # the GitHub release API at install time. No hash is hardcoded. Idempotent.
 # Example: sh install/linux/install.sh --dry-run
@@ -37,6 +40,8 @@ SELECT_BRANCH=0
 { [ -n "${FAMILIA_BRANCH:-}" ] || [ -n "$SOURCE_BRANCH" ]; } && SELECT_BRANCH=1
 API=${FAMILIA_LLAMA_API:-https://api.github.com/repos/ggml-org/llama.cpp/releases}
 DRY=0; UNINSTALL=0; PURGE=0; NAME=""; BUILD=${FAMILIA_LLAMA_BUILD:-b11539}; RUNTIME=1; SYSTEMD=0; FORCE_HOST=""; NOPATH=0
+BUILD_SET=0; [ -n "${FAMILIA_LLAMA_BUILD:-}" ] && BUILD_SET=1
+CHANNEL=${FAMILIA_CHANNEL:-bleeding}; STABLE_DAYS=${FAMILIA_STABLE_DAYS:-30}
 
 say() { echo "familia-install: $*" >&2; }
 die() { say "error: $*"; exit 1; }
@@ -50,7 +55,9 @@ while [ $# -gt 0 ]; do
     --uninstall) UNINSTALL=1 ;;
     --purge) PURGE=1 ;;
     --name) shift; NAME=${1:-} ;;
-    --build) shift; BUILD=${1:-} ;;
+    --build) shift; BUILD=${1:-}; BUILD_SET=1 ;;
+    --channel) shift; CHANNEL=${1:-} ;;
+    --stable-days) shift; STABLE_DAYS=${1:-} ;;
     --no-runtime) RUNTIME=0 ;;
     --systemd) SYSTEMD=1 ;;
     --no-path) NOPATH=1 ;;
@@ -58,13 +65,18 @@ while [ $# -gt 0 ]; do
     --allow-root) FAMILIA_ALLOW_ROOT=yes ;;
     --yes|-y) FAMILIA_ACCEPT_LICENSES=yes; export FAMILIA_ACCEPT_LICENSES; FAMILIA_ALLOW_ROOT=${FAMILIA_ALLOW_ROOT:-yes} ;;
     --accept-unknown) FAMILIA_ACCEPT_UNKNOWN_LICENSES=yes; export FAMILIA_ACCEPT_UNKNOWN_LICENSES ;;
-    -h|--help) sed -n '2,19p' "$0" 2>/dev/null | sed 's/^# \{0,1\}//' || true; exit 0 ;;
+    -h|--help) sed -n '2,22p' "$0" 2>/dev/null | sed 's/^# \{0,1\}//' || true; exit 0 ;;
     *) die "unknown flag: $1 (see --help)" ;;
   esac
   shift
 done
 
 git check-ref-format --branch "$BRANCH" >/dev/null 2>&1 || die "invalid branch name: $BRANCH"
+# Release channel: strict allowlist and a plain 1..365 integer (scripts/channel.py re-validates).
+case "$CHANNEL" in bleeding|stable) ;; *) die "invalid --channel (use bleeding or stable)" ;; esac
+case "$STABLE_DAYS" in ''|*[!0-9]*|0*|????*) die "invalid --stable-days (an integer 1..365)" ;; esac
+[ "$STABLE_DAYS" -le 365 ] || die "invalid --stable-days (an integer 1..365)"
+FAMILIA_CHANNEL=$CHANNEL; FAMILIA_STABLE_DAYS=$STABLE_DAYS; export FAMILIA_CHANNEL FAMILIA_STABLE_DAYS
 
 if [ "$(id -u)" = 0 ]; then
   say "warning: do not run as root; this installer is user-space only"
@@ -92,9 +104,9 @@ if [ "$UNINSTALL" = 1 ]; then
     if [ "$DRY" = 1 ]; then XDG_BIN_HOME=$BIN_DIR sh "$PREFIX/repo/scripts/install-cli.sh" uninstall --dry-run
     else XDG_BIN_HOME=$BIN_DIR sh "$PREFIX/repo/scripts/install-cli.sh" uninstall --yes; fi
   fi
-  if [ "$PURGE" = 1 ]; then run rm -rf "$PREFIX"
+  if [ "$PURGE" = 1 ]; then run rm -rf -- "$PREFIX"
   else
-    run rm -rf "$PREFIX/repo" "$PREFIX/runtime"
+    run rm -rf -- "$PREFIX/repo" "$PREFIX/runtime"
     say "kept $PREFIX/models (use --purge to remove it)"
   fi
   say "uninstalled"; exit 0
@@ -198,6 +210,19 @@ elif [ "$UNINSTALL" != 1 ] && [ -f "$PREFIX/repo/scripts/sync_pins.py" ]; then
 fi
 
 # 2. llama.cpp CPU runtime, sha256 verified against the release API digest
+if [ "$RUNTIME" = 1 ] && [ "$CHANNEL" = stable ] && [ "$BUILD_SET" = 0 ]; then
+  if [ -f "$PREFIX/repo/scripts/channel.py" ]; then
+    BUILD=$(python3 "$PREFIX/repo/scripts/channel.py" resolve llama.cpp --asset-re "$ASSET_RE") ||
+      die "stable channel: could not resolve a llama.cpp build (pass --build bNNNN to choose one)"
+    case "$BUILD" in b[0-9]*) case "$BUILD" in *[!b0-9]*) die "stable channel: unexpected build name" ;; esac ;;
+      *) die "stable channel: unexpected build name" ;; esac
+    say "stable channel ($STABLE_DAYS days): llama.cpp $BUILD"
+  elif [ "$DRY" = 1 ]; then
+    say "[dry-run] would resolve the stable llama.cpp build: python3 scripts/channel.py resolve llama.cpp"
+  else
+    die "stable channel needs scripts/channel.py in $PREFIX/repo"
+  fi
+fi
 if [ "$RUNTIME" = 1 ]; then
   if [ "$BUILD" = latest ]; then URL="$API?per_page=30"; else URL="$API/tags/$BUILD"; fi
   say "querying $URL"
@@ -225,7 +250,8 @@ for r in (j if isinstance(j, list) else [j]):
   elif [ "$DRY" = 1 ]; then
     say "[dry-run] download $AURL, verify sha256 $SHA, extract to $DEST"
   else
-    TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
+    TMP=$(umask 077; mktemp -d "${TMPDIR:-/tmp}/grz.XXXXXX") || die "mktemp failed"
+    trap 'rm -rf -- "$TMP"' EXIT; trap 'exit 130' INT HUP TERM
     curl -fL --retry 3 -o "$TMP/$ANAME" "$AURL"
     if command -v sha256sum >/dev/null 2>&1; then GOT=$(sha256sum "$TMP/$ANAME" | cut -d' ' -f1)
     else GOT=$(shasum -a 256 "$TMP/$ANAME" | cut -d' ' -f1); fi
@@ -268,6 +294,17 @@ else
 fi
 
 # 4. launcher + optional systemd --user unit (not enabled until a model is set)
+# F-10: an API key is required on every bind, loopback included (other local users/processes
+# can reach 127.0.0.1). Generate a 0600 key once, written with printf '%s' (no newline).
+FAMILIA_KEY_DEFAULT="$HOME/.config/familia/api.key"
+if [ "$DRY" = 1 ]; then say "[dry-run] generate $FAMILIA_KEY_DEFAULT (0600) if missing"
+elif [ ! -e "$FAMILIA_KEY_DEFAULT" ] && [ ! -L "$FAMILIA_KEY_DEFAULT" ]; then
+  if ! { ( umask 077; mkdir -p "$HOME/.config/familia" && _k=$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n') && printf '%s' "$_k" > "$FAMILIA_KEY_DEFAULT.tmp.$$" ) \
+    && chmod 600 "$FAMILIA_KEY_DEFAULT.tmp.$$" && mv -f "$FAMILIA_KEY_DEFAULT.tmp.$$" "$FAMILIA_KEY_DEFAULT"; }; then
+    die "could not generate $FAMILIA_KEY_DEFAULT"
+  fi
+  say "generated API key $FAMILIA_KEY_DEFAULT (0600); clients send Authorization: Bearer <key>"
+fi
 LAUNCH="$BIN_DIR/familia-start"
 if [ "$DRY" = 1 ]; then say "[dry-run] write $LAUNCH"
 else
@@ -278,7 +315,47 @@ else
 M="\$FAMILIA_MODEL"; [ -f "\$M" ] || M="$PREFIX/models/\$FAMILIA_MODEL"
 B="$PREFIX/runtime/current/llama-server"; [ -x "\$B" ] || B="$PREFIX/runtime/current/build/bin/llama-server"
 echo "familia-start: logs: this terminal (stdout/stderr; under systemd: journalctl --user -u familia-node)" >&2
-exec "\$B" -m "\$M" --host "\${FAMILIA_BIND:-127.0.0.1}" --port "\${FAMILIA_PORT:-9941}" -c "\${FAMILIA_CTX:-4096}" \${FAMILIA_EXTRA:-}
+# F-6 + Boundary Reviewer items: FAMILIA_EXTRA (whitespace-split) and the launcher's own argv ("\$@") are checked
+# token by token. If any token would override bind, port, auth, TLS or a path
+# (--host* --port* --api-key* --ssl* --path*) the whole launch is refused, never stripped.
+# set -f is turned on here and deliberately LEFT ON for the rest of the launcher: the exec
+# below expands \${FAMILIA_EXTRA} unquoted and must not glob. Nothing after this relies on globbing.
+familia_extra_check() {
+  set -f
+  for _t in \${FAMILIA_EXTRA:-} "\$@"; do
+    case "\$_t" in
+      --host*|--port*|--api-key*|--ssl*|--path*) echo "familia-start: token \$_t (FAMILIA_EXTRA or argv) would override bind/port/auth/TLS/path; refusing" >&2; exit 2 ;;
+    esac
+  done
+}
+# BEGIN familia-linux-key (extracted by tests/test_linux_launcher_key.py)
+familia_key_args() { # F-10: key on every bind, loopback included
+  KF="\${FAMILIA_API_KEY_FILE:-\$HOME/.config/familia/api.key}"; FAMILIA_KF=""
+  [ -e "\$KF" ] || [ -L "\$KF" ] || { echo "familia-start: API key file \$KF missing; a key is required on every bind (loopback included); re-run install or set FAMILIA_API_KEY_FILE to a 0600 key file" >&2; exit 2; }
+  [ -L "\$KF" ] && { echo "familia-start: \$KF is a symlink; refusing" >&2; exit 2; }
+  _r=\$(realpath -e -- "\$KF" 2>/dev/null) || { echo "familia-start: \$KF does not resolve; refusing" >&2; exit 2; }
+  KF="\$_r"
+  [ -f "\$KF" ] || { echo "familia-start: \$KF is not a regular file" >&2; exit 2; }
+  case "\$(stat -c %a "\$KF" 2>/dev/null)" in 600|400) ;; *) echo "familia-start: \$KF must be mode 0600" >&2; exit 2 ;; esac
+  [ "\$(stat -c %u "\$KF" 2>/dev/null)" = "\$(id -u)" ] || { echo "familia-start: \$KF is not owned by you" >&2; exit 2; }
+  _all=\$(wc -c < "\$KF"); _tok=\$(tr -d '[:space:]' < "\$KF" | wc -c)
+  [ "\$_tok" -gt 0 ] || { echo "familia-start: \$KF is empty; refusing" >&2; exit 2; }
+  [ "\$_all" -eq "\$_tok" ] || { echo "familia-start: \$KF contains CR/LF/whitespace (write it with printf '%s'); refusing" >&2; exit 2; }
+  FAMILIA_KF="\$KF"
+}
+# llama-server also reads LLAMA_API_KEY, LLAMA_ARG_API_KEY_FILE and every LLAMA_ARG_*.
+familia_env_scrub() {
+  unset LLAMA_API_KEY LLAMA_ARG_API_KEY_FILE
+  for _v in \$(env | sed -n 's/^\(LLAMA_ARG_[A-Za-z0-9_]*\)=.*/\1/p'); do unset "\$_v"; done
+}
+# END familia-linux-key
+familia_extra_check "\$@"
+familia_key_args
+familia_env_scrub
+[ -n "\$FAMILIA_KF" ] || { echo "familia-start: no API key; refusing" >&2; exit 2; }
+# F-9: llama-server --host takes a bare IPv6 address: [::1] -> ::1.
+H="\${FAMILIA_BIND:-127.0.0.1}"; [ "\$H" = '[::1]' ] && H=::1
+exec "\$B" -m "\$M" --host "\$H" --port "\${FAMILIA_PORT:-9941}" -c "\${FAMILIA_CTX:-4096}" --api-key-file "\$FAMILIA_KF" \${FAMILIA_EXTRA:-}
 EOS
   chmod +x "$LAUNCH"
 fi

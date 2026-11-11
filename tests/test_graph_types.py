@@ -20,13 +20,14 @@ def test_llama_070_runtime_preserves_existing_model_architectures():
     previous_archs = {
         arch
         for name, spec in BASE["runtimes"].items()
-        if name.startswith("llama-b") and name not in {"llama-b11669", "llama-b11669-freebsd"}
+        # only builds older than 0.7.0 (b11669); newer runtimes may add archs (e.g. b11944 lfm3)
+        if name.startswith("llama-b") and int(name[7:].split("-")[0]) < 11669
         for arch in spec["supported_archs"]
     }
     assert runtime["build"] == "b11669 (llama.cpp 0.7.0)"
     assert previous_archs <= set(runtime["supported_archs"])
-    assert BASE["nodes"]["coder"]["runtime"] == "llama-b11669"
-    assert BASE["nodes"]["embed"]["runtime"] == "llama-b11669"
+    assert int(BASE["nodes"]["coder"]["runtime"].split("-b")[1].split("-")[0]) >= 11669  # 0.7.0 or newer
+    assert int(BASE["nodes"]["embed"]["runtime"].split("-b")[1].split("-")[0]) >= 11669  # 0.7.0 or newer
     freebsd = BASE["runtimes"]["llama-b11669-freebsd"]
     assert freebsd["hosts"] == ["angel"]
     assert freebsd["backends"] == ["cpu"]
@@ -174,11 +175,15 @@ def test_speculative_ngram():
     x = g(); x["speculative"]["coder-ngram"]["spec_type"] = "draft-simple"; has(x, "needs an ngram-* spec_type")
     x = g(); x["speculative"]["coder-ngram"]["draft"] = "egemma2-q8"; has(x, "only applies to mode draft")
 
-def test_speculative_vocab_mismatch_and_ram():
+def test_speculative_vocab_mismatch_and_ram(monkeypatch):
+    monkeypatch.setenv("FAMILIA_HOST", "miryam")  # models miryam; validate() scopes to the local host
+    monkeypatch.setattr(validate_graph, "host_swap_total_mib", lambda: None)  # not this machine's swap
     # egemma2 (gemma4 tokenizer) cannot draft for qwen35 (gpt2 tokenizer): file-level check
     x = g(); x["_path"] = os.path.join(ROOT, "graph.yaml")
     x["speculative"]["d"] = spec_draft(status="experimental")
-    if not os.path.isfile(os.path.expanduser(BASE["models"]["egemma2-q8"]["gguf"])): pytest.skip("GGUFs not on this machine")
+    tgt = BASE["models"][BASE["nodes"]["coder"]["model"]]["gguf"]
+    if not all(os.path.isfile(os.path.expanduser(p)) for p in (BASE["models"]["egemma2-q8"]["gguf"], tgt)):
+        pytest.skip("draft and target GGUFs not both on this machine")
     e, tot = validate_graph.validate(x); assert any("tokenizer/vocab mismatch" in m for m in e), e
     _, base = validate_graph.validate(g()); assert tot["miryam"] > base["miryam"] + 290  # draft weights counted
 
@@ -206,11 +211,38 @@ def test_server_tools_args_and_loopback():
     x["nodes"]["coder"]["server_tools"] = "all"
     x["nodes"]["coder"]["bind"] = "0.0.0.0"
     has(x, "only allowed when bind is loopback")
+    for bind in ("127.0.0.2", "::ffff:127.0.0.1", "[::1]", "LOCALHOST"):
+        x = g(); x["nodes"]["coder"]["server_tools"] = "all"; x["nodes"]["coder"]["bind"] = bind
+        st = [e for e in errs(x) if "server_tools" in e and "loopback" in e]
+        assert st == [], (bind, st)
+    for bind in ("127.evil.example", "lan.example", "::", "0.0.0.0"):
+        x = g(); x["nodes"]["coder"]["server_tools"] = "all"; x["nodes"]["coder"]["bind"] = bind
+        has(x, "only allowed when bind is loopback")
     x = g(); x["nodes"]["coder"]["server_tools"] = ["nope"]; has(x, "unknown tool")
 
-def test_alias_exactly_one_node():
-    x = g(); x["aliases"]["coder"]["node"] = ["coder"]; has(x, "expected a nodes name")
+
+def test_fail_closed_roles_are_normalized_in_graph_types():
+    """#340: casefold/NFKC Guardian (etc.) cannot grant server_tools or be a tool_route target."""
+    import unicodedata
+    fw = unicodedata.normalize("NFKC", "ｇｕａｒｄｉａｎ")
+    assert fw == "guardian"
+    for role in ("Guardian", "GUARDIAN", "ｇｕａｒｄｉａｎ"):
+        x = g(); x["nodes"]["coder"]["role"] = role; x["nodes"]["coder"]["server_tools"] = "all"
+        has(x, "not allowed for")
+        x = g(); x["nodes"]["angel-chat"]["tool_route"] = "coder"; x["nodes"]["coder"]["role"] = role
+        has(x, "fail-closed")
+
+
+def test_alias_node_or_fallback_list():
+    """CFG-SPEC-ALIAS-001: aliases.<a>.node is one node (unchanged) or a fallback list."""
     x = g(); x["aliases"]["coder"]["node"] = "auto"; has(x, "no such nodes entry 'auto'")
+    x = g(); x["aliases"]["coder"]["node"] = ["coder"]; assert errs(x) == []
+    x = g(); x["aliases"]["coder"]["node"] = ["coder", "auto"]; has(x, "no such nodes entry 'auto'")
+    x = g(); x["aliases"]["coder"]["node"] = []; has(x, "non-empty list")
+    x = g(); x["aliases"]["coder"]["node"] = ["coder", "coder"]; has(x, "duplicate entries")
+    x = g(); x["aliases"]["coder"]["node"] = ["coder", "embed"]; has(x, "mixes embedding and chat")
+    x = g(); x["aliases"]["coder"]["node"] = 7; has(x, "expected a nodes name or a non-empty list")
+    x = g(); x["aliases"]["coder"]["remote"] = "yes"; has(x, "expected true/false")
 
 def test_duplicate_yaml_keys_rejected(tmp_path):
     p = tmp_path / "g.yaml"; p.write_text("version: 2\naliases:\n  coder: {node: a}\n  coder: {node: b}\n")
@@ -393,8 +425,10 @@ def test_model_role_pentest_allowed():
     assert errs(x) == []
 
 
-def test_ram_safety_reserve_and_small_host_floor():
+def test_ram_safety_reserve_and_small_host_floor(monkeypatch):
     """reserve and small-host floor are provisional guidance -> warnings (docs/ram-safety.md)."""
+    monkeypatch.setenv("FAMILIA_HOST", "miryam")  # models miryam; validate() scopes to the local host
+    monkeypatch.setattr(validate_graph, "host_swap_total_mib", lambda: None)  # not this machine's swap
     coder = os.path.expanduser("~/.local/share/gguf/models/coder/Qwen3.5-2B-Q4_K_M.gguf")
     embed = os.path.expanduser("~/.local/share/gguf/models/embed/embeddinggemma-2-Q8_0.gguf")
     if not (os.path.isfile(coder) and os.path.isfile(embed)):
@@ -435,7 +469,15 @@ def test_qodesh_sm11_decision_accepted():
 def test_host_scoped_validation_skips_remote_artifacts_and_ram():
     errs, totals = validate_graph.validate(g(), check_files=True, host="angel")
     assert errs == []
-    assert totals == {}
+    import start_graph
+    try:
+        local = start_graph.select_host(BASE)
+    except BaseException:
+        local = None
+    if local == "angel":  # on angel the scope is local: only angel's RAM is totalled
+        assert set(totals) <= {"angel"}
+    else:  # elsewhere angel's artifacts and RAM are remote: skipped
+        assert totals == {}
 
 def test_validate_graph_host_option_requires_declared_host():
     assert validate_graph.parse_argv(["--host", "miryam"])["host"] == "miryam"
@@ -540,3 +582,25 @@ def test_server_tools_explicit_opt_out_validates():
         x = g(); x["nodes"]["angel-guardian"]["server_tools"] = opt
         assert [e for e in errs(x) if "server_tools" in e] == [], opt
     x = g(); x["nodes"]["coder"]["server_tools"] = "some"; has(x, "opt-out")
+
+
+def test_quantized_kv_without_fa_forces_fa_on_and_warns():
+    """sysrescue bring-up: kv q8_0 + flash_attn false -> llama-server 'quantized V cache requires flash_attn'."""
+    x = g(); n = x["nodes"]["coder"]; n["kv_type"] = "q8_0"; n["flash_attn"] = False
+    a = validate_graph.server_args(x, "coder")
+    assert a[a.index("-fa") + 1] == "on"
+    assert any(w.startswith("nodes.coder: kv_type q8_0 with flash_attn: false") for w in validate_graph.routing_warnings(x))
+    n["kv_type"] = "f16"
+    assert "-fa" not in validate_graph.server_args(x, "coder")
+    assert not any(w.startswith("nodes.coder: kv_type") for w in validate_graph.routing_warnings(x))
+
+
+def test_server_args_argv0_is_binary_and_threads_from_host():
+    x = g(); rt = x["runtimes"][x["nodes"]["coder"]["runtime"]]
+    rt.pop("bin", None); x["nodes"]["coder"].pop("threads", None)
+    a = validate_graph.server_args(x, "coder")
+    assert a[0] == "llama-server" and a[1] == "-m"            # never a bare "-m ..." argv
+    assert a[a.index("-t") + 1] == str(x["hosts"][x["nodes"]["coder"]["host"]]["threads"])
+    rt["bin"] = "bin/llama-server"; x["nodes"]["coder"]["threads"] = 3
+    a = validate_graph.server_args(x, "coder")
+    assert a[0].endswith("bin/llama-server") and a[a.index("-t") + 1] == "3"   # node.threads wins

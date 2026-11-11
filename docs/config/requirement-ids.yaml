@@ -146,6 +146,9 @@ graph:
     quant:
       id: CFG-GRAPH-MODELS-009
       status: IMPLEMENTED
+    tool_calls:
+      id: CFG-GRAPH-MODELS-010
+      status: IMPLEMENTED
   nodes:
     model:
       id: CFG-GRAPH-NODES-001
@@ -231,6 +234,12 @@ graph:
     role:
       id: CFG-GRAPH-NODES-028
       status: IMPLEMENTED
+    tool_capable:
+      id: CFG-GRAPH-NODES-029
+      status: IMPLEMENTED
+    tool_route:
+      id: CFG-GRAPH-NODES-030
+      status: IMPLEMENTED
   speculative:
     experimental:
       id: CFG-GRAPH-SPECULATIVE-001
@@ -281,12 +290,18 @@ graph:
     port:
       id: CFG-GRAPH-GATEWAYS-003
       status: IMPLEMENTED
+    router:
+      id: CFG-GRAPH-GATEWAYS-004
+      status: IMPLEMENTED
   aliases:
     node:
       id: CFG-GRAPH-ALIASES-001
       status: IMPLEMENTED
     gateway:
       id: CFG-GRAPH-ALIASES-002
+      status: IMPLEMENTED
+    remote:
+      id: CFG-GRAPH-ALIASES-003
       status: IMPLEMENTED
   agents:
     kind:
@@ -731,6 +746,9 @@ other:
   CFG-HERMES-008:
     status: IMPLEMENTED
     doc: docs/config/hermes-config.md
+  CFG-HERMES-009:
+    status: IMPLEMENTED
+    doc: docs/config/hermes-config.md
   CFG-PENT-RISK-001:
     status: SPEC
     doc: docs/config/pentest-policy.md
@@ -843,7 +861,7 @@ other:
     status: IMPLEMENTED
     doc: docs/config/routing-spec.md
   CFG-SPEC-TOOLS-002:
-    status: IMPLEMENTED
+    status: SUPERSEDED
     doc: docs/config/routing-spec.md
   CFG-SPEC-TOOLS-003:
     status: SPEC
@@ -908,6 +926,12 @@ other:
   CFG-FILE-007:
     status: IMPLEMENTED
     doc: docs/config/files.md
+  CFG-FILE-001a:
+    status: IMPLEMENTED
+    doc: docs/config/files.md
+  CFG-FILE-007b:
+    status: IMPLEMENTED
+    doc: docs/config/files.md
   CFG-FILE-008:
     status: IMPLEMENTED
     doc: docs/config/files.md
@@ -953,3 +977,21 @@ other:
   CFG-SPEC-TOOLS-006:
     status: IMPLEMENTED
     doc: docs/config/routing-spec.md
+  CFG-SPEC-TOOLS-007:
+    status: IMPLEMENTED
+    doc: docs/config/routing-spec.md
+  CFG-SPEC-TOOLS-008:
+    status: IMPLEMENTED
+    doc: docs/config/routing-spec.md
+  CFG-SPEC-TOOLS-009:
+    status: IMPLEMENTED
+    doc: docs/config/routing-spec.md
+  CFG-SPEC-TOOLS-010:
+    status: IMPLEMENTED
+    doc: docs/config/routing-spec.md
+  CFG-CRED-009:
+    status: PARTIAL
+    doc: docs/config/credentials.md
+  CFG-GRAPH-NODES-112:
+    status: IMPLEMENTED
+    doc: docs/config/graph/nodes.md

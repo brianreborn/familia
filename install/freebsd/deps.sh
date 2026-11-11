@@ -13,7 +13,7 @@ deps.sh (FreeBSD): List packages useful for familia + code-bootstraps source bui
 Usage: sh install/freebsd/deps.sh [--install] [--yes] [--dry-run] [--profile base|build]
   base:  git curl python3 pyyaml pytest (pkg names below)
   build: base + cmake ninja gcc/llvm toolchain
-getconf: FreeBSD base (no pkg). llama-server: build from code-bootstraps, do not expect a binary pkg.
+getconf: FreeBSD base (no pkg). llama-server: install-familia.sh builds pinned llama.cpp b11969 (c3df4b7) from source; not the llama-cpp pkg.
 Opt-in only: this script never runs pkg without --install.
 USAGE
   exit 0 ;; esac
@@ -38,7 +38,7 @@ have_pytest() {
 have_cxx() { have_cmd c++ || have_cmd clang++ || have_cmd g++; }
 
 missing=""; present=""
-for pair in git:git curl:curl python3:python3 tar:tar; do
+for pair in git:git curl:curl python3:python3; do  # tar: FreeBSD base
   cmd=${pair#*:}; pkg=${pair%%:*}
   if have_cmd "$cmd"; then present="$present $pkg"; else missing="$missing $pkg"; fi
 done
@@ -56,7 +56,8 @@ fi
 say "platform=FreeBSD profile=$PROFILE"
 say "present:${present:- (none)}"
 say "missing:${missing:- (none)}"
-say "pkg names (reference): git curl python3 py311-yaml py311-pytest cmake ninja llvm"
+PYV=311; command -v python3 >/dev/null 2>&1 && PYV=$(python3 -c 'import sys; print("%d%d" % sys.version_info[:2])')
+say "pkg names (reference): git curl python3 py$PYV-pyyaml py$PYV-pytest cmake ninja llvm"
 say "getconf: FreeBSD base — no package"
 say "llama.cpp: BUILD_DIR=build-freebsd GPU=off  (from code-bootstraps-llama.cpp/scripts/build-linux.sh)"
 say "home of the safe-mode *build* AI: pinned code-bootstraps-llama.cpp"
@@ -66,8 +67,8 @@ pkgs=""
 for m in $missing; do
   case "$m" in
     getconf*) ;; # base
-    pyyaml) pkgs="$pkgs py311-yaml" ;;
-    pytest) pkgs="$pkgs py311-pytest" ;;
+    pyyaml) pkgs="$pkgs py$PYV-pyyaml" ;;
+    pytest) pkgs="$pkgs py$PYV-pytest" ;;
     llvm-or-gcc) pkgs="$pkgs llvm" ;;
     *) pkgs="$pkgs $m" ;;
   esac

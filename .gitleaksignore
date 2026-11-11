@@ -1,0 +1,4 @@
+# L5 (security review 2026-10-30): MODEL_KEY in activate_guardian_weights.py is a graph.yaml model id, not a credential.
+# git-history fingerprint and working-tree fingerprint
+ad84cda2068d197a11323c43d9078a95d2887387:scripts/activate_guardian_weights.py:generic-api-key:35
+scripts/activate_guardian_weights.py:generic-api-key:35

@@ -15,6 +15,21 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+@pytest.fixture(autouse=True)
+def _as_miryam(monkeypatch):
+    # These fixtures model miryam's nodes; validate() scopes file/RAM checks to the local host.
+    monkeypatch.setenv("FAMILIA_HOST", "miryam")
+    monkeypatch.setattr(vg, "host_swap_total_mib", lambda: None)  # not this machine's real swap
+    monkeypatch.setattr(vg, "live_ram_mib", lambda: None)  # model miryam's snapshot, not this box (#224)
+
+
+def _totals(errs, totals, host="miryam"):
+    # #224: validate() returns {} when it stops early (schema errors, host scope); show why
+    # instead of a bare KeyError.
+    assert host in totals, (f"no RAM total for {host!r}; validate errors: {errs}; warnings: {vg.WARNINGS}")
+    return totals[host]
+
+
 def _base():
     g = yaml.safe_load(open(os.path.join(ROOT, "graph.yaml")))
     g["_path"] = os.path.join(ROOT, "graph.yaml")
@@ -25,7 +40,7 @@ def test_baseline_fits_raised_reserve():
     errs, totals = vg.validate(_base())
     ram_errs = [e for e in errs if "RAM" in e or "free after" in e or "OOM" in e]
     assert ram_errs == [], ram_errs
-    assert totals["miryam"] < 4000  # coder+embed ~3479
+    assert _totals(errs, totals) < 4000  # coder+embed ~3479
 
 
 @pytest.mark.proving_ground  # depends on local model files / host fleet state
@@ -33,7 +48,9 @@ def test_estimated_plus_reserve_fails():
     g = _base()
     g["hosts"]["miryam"]["reserve_ram_mib"] = 5000  # coder+embed ~3479 + reserve exceeds 7270
     errs, totals = vg.validate(g)
-    assert not any("reserve" in e for e in errs) and any("hosts.miryam" in w and "reserve" in w for w in vg.WARNINGS), (errs, vg.WARNINGS)
+    # A node that no longer fits ram_mib - reserve is a hard error (no silent OOM; LF_NEED_SPILL).
+    assert any("exceeds host 'miryam' usable" in e and "reserve_ram_mib 5000" in e and "OOM" in e
+               for e in errs), (errs, vg.WARNINGS)
 
 
 def test_small_host_free_floor():
@@ -50,3 +67,4 @@ def test_overcommit_is_hard_error():
     g["hosts"]["miryam"]["reserve_ram_mib"] = 0  # else the reserve >= ram_mib check fires first and hides it
     errs, totals = vg.validate(g)
     assert any("overcommit" in e for e in errs), errs
+

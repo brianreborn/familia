@@ -293,7 +293,7 @@ show_match() {  # show_match N KEY NEEDLE MARK
     -v key="$2" -v n="$1" -v mark="$4" -v note="$note" -v color="$c" \
     -v needle="$(printf '%s' "$3" | tr '[:upper:]' '[:lower:]')"
 }
-no_match() { say "No item matches '$1'. Try a shorter word, or a word from a command (e.g. /hermes, /dry-run)."; }
+no_match() { say "No item matches '$1'. Try a shorter word, or a word from a command (e.g. /hermes, /graph)."; }
 print_matches() {  # print_matches TEXT ; returns 1 when nothing matches
   local t=$1 i
   find_matches "$t"
@@ -458,7 +458,13 @@ run_raw() {  # run_raw GATE CMD ARGS...
 }
 cli_help() {  # cli_help [--man | COMMAND...]
   if [ "${1:-}" = --man ]; then
-    if command -v man >/dev/null 2>&1; then man "$ROOT/man/familia.1"; return $?; fi
+    if command -v man >/dev/null 2>&1; then
+      if [ -t 1 ]; then man "$ROOT/man/familia.1"; return $?; fi
+      # Not a terminal: plain text. FreeBSD's mandoc man still emits backspace overstrike
+      # (N\bNA\bA...) when piped; strip it portably (no col(1) dependency).
+      _bs=$(printf '\b')
+      MANPAGER=cat PAGER=cat man "$ROOT/man/familia.1" 2>/dev/null | sed "s/.$_bs//g"; return 0
+    fi
     err "man is not installed here; showing the plain help instead (the page is man/familia.1)."
     $PY scripts/familia_cli.py help; return $?
   fi

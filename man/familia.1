@@ -27,7 +27,7 @@ Commands marked (licenses first) run \fBscripts/licenses.py gate\fR before anyth
 .SS Set up
 .TP
 \fBfirst\-time\fR
-First\-time setup on this machine (deps → licenses → install → PATH).
+First\-time setup on this machine (deps \[u2192] licenses \[u2192] install \[u2192] PATH).
 .br
 Runs: \fBsh scripts/setup_goals.sh first\-time\fR
 .TP
@@ -45,6 +45,11 @@ Runs: \fBpython3 scripts/licenses.py review\fR
 Change launcher settings (terminal).
 .br
 Runs: \fBsh scripts/configure.sh \-\-interactive\fR
+.TP
+\fBandroid\-cockpit\fR
+Android cockpit installer switches (thin client, gate, dry\-run; self\-host 127.0.0.1, HTTPS for remote, key required).
+.br
+Runs: \fBsh scripts/android\-cockpit\-switches.sh\fR
 .TP
 \fBsync\-goal\fR
 Sync pinned parts only (asks preview vs apply) (licenses first).
@@ -186,7 +191,7 @@ Launch a role from graph.yaml (guardian/defender: seatbelts on by default) (lice
 Runs: \fBsh with\-fleet.sh \-\-role <ROLE>\fR
 .TP
 \fBguardian\-launch\-test\fR
-Guardian/defender node: launch\-test (seatbelts on; validate → would\-start → stop).
+Guardian/defender node: launch\-test (seatbelts on; validate \[u2192] would\-start \[u2192] stop).
 .br
 Runs: \fBsh with\-fleet.sh \-\-role guardian \-\-launch\-test\fR
 .TP
@@ -196,12 +201,12 @@ Guardian/defender: operator\-confirmed model start (owned scope; tools empty) (l
 Runs: \fBenv FAMILIA_OPERATOR_CONFIRM=yes sh with\-fleet.sh \-\-role guardian \-\-operator\-start\fR
 .TP
 \fBpentest\-launch\-test\fR
-Legacy id → guardian launch\-test.
+Legacy id \[u2192] guardian launch\-test.
 .br
 Runs: \fBsh with\-fleet.sh \-\-role guardian \-\-launch\-test\fR
 .TP
 \fBpentest\-start\fR
-Legacy id → guardian operator\-start (licenses first).
+Legacy id \[u2192] guardian operator\-start (licenses first).
 .br
 Runs: \fBenv FAMILIA_OPERATOR_CONFIRM=yes sh with\-fleet.sh \-\-role guardian \-\-operator\-start\fR
 .SS Self\-improving harness (Harness2)
@@ -212,7 +217,7 @@ Show which agents have Harness2 and in which mode.
 Runs: \fBpython3 scripts/harness2.py status\fR
 .TP
 \fBharness2 set\fR \fI<AGENT>\fR \fI<MODE>\fR
-Set Harness² mode for any agent (hermes, llama UI, or other; off / propose / apply) (licenses first).
+Set Harness\[u00B2] mode for any agent (hermes, llama UI, or other; off / propose / apply) (licenses first).
 .br
 Runs: \fBpython3 scripts/harness2.py set \-\-agent <AGENT> \-\-mode <MODE>\fR
 .TP
@@ -250,7 +255,7 @@ Runs: \fBpython3 scripts/registry.py summarize\fR
 \fBoffline\-secbench\fR \fI<PLATFORM>\fR \fI<DIR>\fR
 Opt\-in offline security\-model benches (#117); synthetic fixtures only.
 .br
-Runs: \fBenv FAMILIA_OFFLINE_SECBENCH=1 python3 scripts/offline_secbench.py \-\-platform <PLATFORM> \-\-answers\-dir <DIR>\fR
+Runs: \fBpython3 scripts/offline_secbench.py \-\-enable \-\-platform <PLATFORM> \-\-answers\-dir <DIR>\fR
 .SS Hosts
 .TP
 \fBmonitor\fR
@@ -344,6 +349,11 @@ validate_graph: the llama\-server arguments for one node.
 .br
 Runs: \fBpython3 scripts/validate_graph.py \-\-graph graph.yaml \-\-args <NODE>\fR
 .TP
+\fBroutes\fR \fI<ROUTES>\fR
+graph_router (default gateway): check a routes file (single, pair, fallback, chain, router, remote, tools).
+.br
+Runs: \fBpython3 scripts/graph_router.py <ROUTES> \-\-check\fR
+.TP
 \fBmodel verify\fR
 validate_graph: also verify model sha256 and runtimes (slow).
 .br
@@ -380,7 +390,7 @@ llama_flags: does a pinned llama.cpp build have a flag?.
 Runs: \fBpython3 scripts/llama_flags.py show <BUILD> <FLAG>\fR
 .TP
 \fBmodel scale\-down\fR
-Scale\-down (opt\-in smaller models) — apply.
+Scale\-down (opt\-in smaller models) \[u2014] apply.
 .br
 Runs: \fBpython3 scripts/scale_down.py\fR
 .TP
@@ -515,7 +525,7 @@ Runs: \fBsh scripts/install\-cli.sh status\fR
 Low\-level: take familia off PATH (asks first).
 .br
 Runs: \fBsh scripts/install\-cli.sh uninstall\fR
-.SS ◆ Proving grounds (graded)
+.SS Proving grounds (graded)
 .TP
 \fBtest proving\-grounds\fR
 Graded progress on the three top\-level proving grounds (fleet + nexus + bt); not pass/fail.

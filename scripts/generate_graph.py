@@ -27,7 +27,10 @@ REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 import familia_yaml  # DUP-01 loader owner
 BASE_GRAPH = REPO_ROOT / "graph.yaml"
 OVERrides_FILE = REPO_ROOT / "config" / "host-overrides.yaml"
-OUTPUT_DIR = REPO_ROOT / "generated"
+import os
+# FAMILIA_GENERATED_DIR redirects output (tests use tmp; CFG-FILE-007b)
+import config_paths  # noqa: E402
+OUTPUT_DIR = pathlib.Path(config_paths.generated_dir())
 
 
 def load_yaml(path: pathlib.Path):

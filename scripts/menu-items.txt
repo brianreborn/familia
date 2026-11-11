@@ -11,6 +11,7 @@ setup.first-time|Set up|First-time setup on this machine (deps → licenses → 
 setup.update|Set up|Update this checkout (git pull --ff-only, then sync pins)|PY scripts/sync_pins.py --update|lic||python scripts\sync_pins.py --update
 setup.licenses|Set up|Review / accept licenses|PY scripts/licenses.py review|||python scripts\licenses.py review
 setup.settings|Set up|Change launcher settings (terminal)|sh scripts/configure.sh --interactive|||
+setup.android-cockpit|Set up|Android cockpit installer switches (thin client, gate, dry-run; self-host 127.0.0.1, HTTPS for remote, key required)|sh scripts/android-cockpit-switches.sh|||
 setup.sync-goal|Set up|Sync pinned parts only (asks preview vs apply)|sh scripts/setup_goals.sh sync-pins|lic||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\setup-goals.ps1 -Goal sync-pins
 setup.safe-build|Set up|Safe-mode / offline build help|sh scripts/safe-build-help.sh|||powershell -NoProfile -Command "Write-Host (Get-Content -Raw docs\safe-mode-bootstrap.md)"
 setup.logon-task|Set up|Windows: start the model server at logon (registers the task)||||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-task.ps1 -Install -Model {MODEL:model file name, e.g. qwen2.5-0.5b-instruct-q4_0.gguf}
@@ -51,7 +52,7 @@ test.unit|Test & benchmark|Run the unit tests (installs pytest into .cache/pylib
 test.offline|Test & benchmark|Offline test plan (prints live steps; RUN=1 to run them)|bash scripts/offline-test-plan.sh|||
 test.registry|Test & benchmark|Benchmark records: best measured model per host and role|PY scripts/registry.py suggest --host {HOST:host name} --role {ROLE:role, e.g. coder}|||python scripts\registry.py suggest --host {HOST:host name} --role {ROLE:role, e.g. coder}
 test.registry-summary|Test & benchmark|Summary of every benchmark record|PY scripts/registry.py summarize|||python scripts\registry.py summarize
-test.offline-secbench|Test & benchmark|Opt-in offline security-model benches (#117); synthetic fixtures only|env FAMILIA_OFFLINE_SECBENCH=1 PY scripts/offline_secbench.py --platform {PLATFORM:linux} --answers-dir {DIR:answers dir}|||set FAMILIA_OFFLINE_SECBENCH=1&& python scripts\offline_secbench.py --platform {PLATFORM:linux} --answers-dir {DIR:answers dir}
+test.offline-secbench|Test & benchmark|Opt-in offline security-model benches (#117); synthetic fixtures only|PY scripts/offline_secbench.py --enable --platform {PLATFORM:linux} --answers-dir {DIR:answers dir}|||python scripts\offline_secbench.py --enable --platform {PLATFORM:linux} --answers-dir {DIR:answers dir}
 hosts.monitor|Hosts|Monitor hosts over SSH (read-only console; --once for one snapshot)|sh familia-monitor|||python scripts\monitor.py
 hosts.monitor-once|Hosts|One snapshot of every host, then exit|sh familia-monitor --once|||python scripts\monitor.py --once
 hosts.start|Hosts|Start the model server on this machine from graph.yaml|sh start.sh|lic||scripts\windows\start.bat
@@ -70,6 +71,7 @@ hosts.phone-agent-open|Hosts|On this phone: bring Gemini or Bixby to the front (
 hosts.phone-agent-ask|Hosts|On this phone: ask Gemini (CLOUD: your text goes to Google; asks first)|PY scripts/termux/system_agent.py ask --provider gemini --text {TEXT:what to ask}|lic||
 hosts.phone-agent-consent|Hosts|On this phone: allow or withdraw cloud calls to an assistant|PY scripts/termux/system_agent.py consent --provider {PROVIDER:gemini or bixby} {CHOICE:--grant, --revoke or --show}|||
 adv.args|Advanced: models & graph|validate_graph: the llama-server arguments for one node|PY scripts/validate_graph.py --graph graph.yaml --args {NODE:node name, e.g. coder}|||python scripts\validate_graph.py --graph graph.yaml --args {NODE:node name, e.g. coder}
+adv.routes|Advanced: models & graph|graph_router (default gateway): check a routes file (single, pair, fallback, chain, router, remote, tools)|PY scripts/graph_router.py {ROUTES:routes file [examples/graphs/router/fallback.yaml]} --check|||python scripts\graph_router.py {ROUTES:routes file [examples\graphs\router\fallback.yaml]} --check
 adv.verify|Advanced: models & graph|validate_graph: also verify model sha256 and runtimes (slow)|PY scripts/validate_graph.py --graph graph.yaml --verify-sha --check-runtimes|||python scripts\validate_graph.py --graph graph.yaml --verify-sha --check-runtimes
 adv.graph-edit|Advanced: models & graph|modify_graph: assign models: key to a type-named node (prefer --host for private topology)|PY scripts/modify_graph.py --host {HOST:host e.g. angel} --assign-model {ASSIGN:type=models-key e.g. coder=nanbeige43-33b-q4km}|||python scripts\modify_graph.py --host {HOST:host e.g. angel} --assign-model {ASSIGN:type=models-key e.g. coder=nanbeige43-33b-q4km}
 adv.db-list|Advanced: models & graph|Model database: list entries|PY scripts/model_db.py list|||python scripts\model_db.py list

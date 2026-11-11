@@ -70,6 +70,18 @@ do_fetch() {
     echo "prefetch: add_model.py missing; skip"
     return 0
   fi
+  # First run (#190): add_model.py needs the pinned bootstraps manifest, which only
+  # exists after the pins are synced. Sync just the pins (no license prompt, no start).
+  MANIFEST=$ROOT/code-bootstraps-llama.cpp/config/models-manifest.json
+  if [ ! -f "$MANIFEST" ]; then
+    if [ "$DRY" = 1 ]; then
+      echo "prefetch: [dry-run] $PY scripts/sync_pins.py --root $ROOT --license-gate warn (manifest missing: first run)"
+    else
+      echo "prefetch: first run: syncing pinned parts for the model manifest"
+      "$PY" "$ROOT/scripts/sync_pins.py" --root "$ROOT" --license-gate warn \
+        || echo "prefetch: WARN pin sync failed; run scripts/configure.sh (non-fatal)"
+    fi
+  fi
   echo "$MODELS" | while IFS='|' read -r spec file role; do
     [ -n "${spec:-}" ] || continue
     echo "prefetch: ORDNANCE $spec ($file) role=$role"

@@ -44,3 +44,25 @@ def graph_path(explicit=None, environ=None):
     if val and val.strip():
         return _norm(val)
     return default_graph()
+
+
+GENERATED_ENV = "FAMILIA_GENERATED_DIR"
+MODEL_DB_ENV = "FAMILIA_MODEL_DB_DIR"
+
+
+def _env_dir(name, default, environ=None):
+    env = environ if environ is not None else os.environ
+    val = env.get(name)
+    return os.path.realpath(os.path.expanduser(val)) if val else default
+
+
+def generated_dir(environ=None):
+    """Per-host generated graph dir: $FAMILIA_GENERATED_DIR (expanduser+resolve; empty = unset)
+    or <repo>/generated (CFG-FILE-007b)."""
+    return _env_dir(GENERATED_ENV, os.path.join(ROOT, "generated"), environ)
+
+
+def model_db_dir(environ=None):
+    """Model database dir: $FAMILIA_MODEL_DB_DIR (expanduser+resolve; empty = unset)
+    or <repo>/registry/models (CFG-FILE-001a)."""
+    return _env_dir(MODEL_DB_ENV, os.path.join(ROOT, "registry", "models"), environ)

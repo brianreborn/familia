@@ -61,10 +61,13 @@ Default front door is the gum home (`./familia`). This catalog is **fallback onl
 | `setup.update` | Update this checkout (git pull --ff-only, then sync pins) | `python3 scripts/sync_pins.py --update` | `python scripts\sync_pins.py --update` |
 | `setup.licenses` | Review / accept licenses | `python3 scripts/licenses.py review` | `python scripts\licenses.py review` |
 | `setup.settings` | Change launcher settings (terminal) | `sh scripts/configure.sh --interactive` | — |
+| `setup.android-cockpit` | Android cockpit installer switches (thin client, gate, dry-run; self-host 127.0.0.1, HTTPS for remote, key required) | `sh scripts/android-cockpit-switches.sh` | — |
 | `setup.sync-goal` | Sync pinned parts only (asks preview vs apply) | `sh scripts/setup_goals.sh sync-pins` | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\setup-goals.ps1 -Goal sync-pins` |
 | `setup.safe-build` | Safe-mode / offline build help | `sh scripts/safe-build-help.sh` | `powershell -NoProfile -Command "Write-Host (Get-Content -Raw docs\safe-mode-bootstrap.md)"` |
 | `setup.logon-task` | Windows: start the model server at logon (registers the task) | — | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-task.ps1 -Install -Model <MODEL>` |
 | `setup.remove-path` | Remove familia from PATH (danger; ) | `sh scripts/setup_goals.sh remove-path` | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\setup-goals.ps1 -Goal remove-path` |
+
+`setup.android-cockpit` defaults each device to serve its own webapp at `http://127.0.0.1:9941` (loopback; HTTPS may stay off). Thin-client mode starts at that same loopback, never a fixed remote. A remote host is an explicit opt-in and uses HTTPS. An API key file (mode 0600) is always required, including on loopback (`127.0.0.0/8` and `::1`): other Termux apps and adb can reach those addresses. The literal name `localhost` counts as loopback for the HTTPS default only (plain HTTP is OK). Plain HTTP to a remote host is allowed only when the named dev switch `dev: allow plain HTTP` is on (off by default, marked `*` when on), or when `FAMILIA_DEV_ALLOW_HTTP=1`. The warning is shown in the menu, in `--show`/`--dump`, and before the run confirm. `http://` CBL URLs are always rejected.
 
 ### Skills
 
@@ -133,7 +136,7 @@ Default front door is the gum home (`./familia`). This catalog is **fallback onl
 | `test.offline` | Offline test plan (prints live steps; RUN=1 to run them) | `bash scripts/offline-test-plan.sh` | — |
 | `test.registry` | Benchmark records: best measured model per host and role | `python3 scripts/registry.py suggest --host <HOST> --role <ROLE>` | `python scripts\registry.py suggest --host <HOST> --role <ROLE>` |
 | `test.registry-summary` | Summary of every benchmark record | `python3 scripts/registry.py summarize` | `python scripts\registry.py summarize` |
-| `test.offline-secbench` | Opt-in offline security-model benches (#117); synthetic fixtures only | `env FAMILIA_OFFLINE_SECBENCH=1 python3 scripts/offline_secbench.py --platform <PLATFORM> --answers-dir <DIR>` | `set FAMILIA_OFFLINE_SECBENCH=1&& python scripts\offline_secbench.py --platform <PLATFORM> --answers-dir <DIR>` |
+| `test.offline-secbench` | Opt-in offline security-model benches (#117); synthetic fixtures only | `python3 scripts/offline_secbench.py --enable --platform <PLATFORM> --answers-dir <DIR>` | `python scripts\offline_secbench.py --enable --platform <PLATFORM> --answers-dir <DIR>` |
 
 ### Hosts
 
@@ -162,6 +165,7 @@ Default front door is the gum home (`./familia`). This catalog is **fallback onl
 | Key | Label | POSIX | Windows |
 |---|---|---|---|
 | `adv.args` | validate_graph: the llama-server arguments for one node | `python3 scripts/validate_graph.py --graph graph.yaml --args <NODE>` | `python scripts\validate_graph.py --graph graph.yaml --args <NODE>` |
+| `adv.routes` | graph_router (default gateway): check a routes file (single, pair, fallback, chain, router, remote, tools); see docs/graph-recipes.md | `python3 scripts/graph_router.py <ROUTES> --check` | `python scripts\graph_router.py <ROUTES> --check` |
 | `adv.verify` | validate_graph: also verify model sha256 and runtimes (slow) | `python3 scripts/validate_graph.py --graph graph.yaml --verify-sha --check-runtimes` | `python scripts\validate_graph.py --graph graph.yaml --verify-sha --check-runtimes` |
 | `adv.graph-edit` | modify_graph: assign a models: key to a type-named node | `python3 scripts/modify_graph.py --host angel --assign-model coder=nanbeige43-33b-q4km` | `python scripts\modify_graph.py --host angel --assign-model coder=nanbeige43-33b-q4km` |
 | `adv.db-list` | Model database: list entries | `python3 scripts/model_db.py list` | `python scripts\model_db.py list` |
@@ -232,19 +236,51 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | script | why it's not in the menu |
 |---|---|
 | `install.sh` | bootstrap you run before familia is on disk (download, then sh ./install-familia.sh); inside a checkout use Set up -> Install |
+| `scripts/channel.py` | release-channel resolver (docs/release-channels.md); installers and hf_fetch call it, pick the channel with --channel or FAMILIA_CHANNEL |
+| `scripts/fleet_greeting.py` | fleet greeting helper; called by hermes.sh, proto_chat.sh and start_graph at startup |
 | `scripts/windows/familia-menu.ps1` | the Windows menu itself (started by familia.cmd) |
 | `scripts/monitor.sh` | the same console as ./familia-monitor, which the menu runs |
 | `scripts/hermes_harness.py` | always run through scripts/hermes.sh, which the menu runs |
 | `scripts/hermes_modes.py` | the graph/single-model front end scripts/hermes.sh execs; run hermes.sh |
+| `scripts/runtime_dir.py` | helper module the launchers and admission ledger import (private runtime dir); not run directly |
+| `scripts/runtime_dir.sh` | helper sourced by the shell launchers (private runtime dir); not run directly |
 | `install/windows/install.bat` | double-click wrapper for install\windows\install.ps1, which the Windows menu runs |
 | `start-green-roomz.sh` | guard stub; the real one is deployed onto the phone by android_start.sh |
 | `scripts/monitor/probe.py` | read-only probe the monitor pipes to each host over SSH |
 | `scripts/monitor/probe.ps1` | Windows version of the probe the monitor pipes over SSH |
 | `scripts/bench_parse.py` | filter for llama-bench output (pipe llama-bench -o csv into it); nothing to do on its own |
 | `scripts/bench_guard.py` | library for perf/bench drivers: GGUF metadata validation, current llama.cpp flag spellings, encoder ubatch rule, per-run memory cap (`meta FILE`, `memcap PEAK_MIB`) |
+| `scripts/install-gum.sh` | install helper: put Charm gum in ~/.local/bin; called by install.sh / setup_goals |
+| `scripts/pilot_hud.sh` | pilot HUD helpers sourced by familia_home / setup_goals |
+| `scripts/prefetch-first-models.sh` | first-try model fetch kicked by gum home / setup / proto_chat |
+| `scripts/windows/install-gum.ps1` | Windows gum installer called by install.ps1 |
+| `scripts/windows/prefetch-first-models.ps1` | Windows wrapper for prefetch-first-models |
+| `scripts/offline_improve.py` | on-host offline perf loop (docs/offline-improve.md) |
+| `scripts/activate_guardian_weights.py` | guardian weight fetch/measure/activate (Dolphin3-Cyber Q2_K); operator step run via with-fleet.sh, docs/guardian-weights.md |
+| `scripts/activate_guardian_weights.sh` | thin wrapper for scripts/activate_guardian_weights.py |
+| `scripts/config_docs.py` | developer tool: generates/checks docs/config (CFG-* ids); not an end-user action |
+| `scripts/familia_auth.py` | library: per-instance API key headers for proxies and probes |
+| `scripts/bind_auth_guard.py` | pre-start auth guard called by scripts/serve.sh and scripts/windows/start.bat; refuses a launch argv that would bind without a valid --api-key-file (DESIGN.md Security) |
+| `scripts/guardian_ready.py` | offline guardian/defender readiness check (#147); developer/CI helper |
+| `scripts/hosts_overlay.py` | library: local host connection overlay (#104) used by graph loaders |
+| `scripts/offline_improve.sh` | thin wrapper for scripts/offline_improve.py |
+| `scripts/osc7501.sh` | library: emits OSC 7501 status reports; sourced by setup_goals.sh / proto_chat.sh |
+| `scripts/reconnect_selfheal.py` | host probe + reconnect/self-repair loop (seatbelted); operator/daemon helper |
+| `scripts/reconnect_selfheal.sh` | thin wrapper for scripts/reconnect_selfheal.py |
+| `scripts/refuse_soname_skew.py` | pre-start guard called by scripts/serve.sh; fails closed on bin/lib skew |
+| `scripts/sec_assess.py` | operator-authorized security assessment mode (#116); deliberately not one click from the menu |
+| `scripts/swarm/a57_ssh_dispatch.py` | opt-in A57 python/compile smoke over SSH from the miryam swarm runner; not a phone Actions runner; see docs/ci/a57-ssh-dispatch.md |
+| `scripts/swarm/bench.sh` | swarm /run bench entry point (#183); run by swarm workers, not people; see docs/swarm-bench.md |
+| `scripts/swarm/bench_idle.py` | opt-in run-when-idle trigger for scripts/swarm/bench.sh (per host:user, nice 19, CPU only); run by a user timer or crontab; see docs/swarm-bench.md |
+| `scripts/swarm/forge.sh` | swarm forge adapter library; sourced by swarm scripts |
+| `scripts/swarm/forge/forgejo.sh` | Forgejo adapter stub sourced by scripts/swarm/forge.sh |
+| `scripts/swarm/forge/github.sh` | GitHub adapter sourced by scripts/swarm/forge.sh |
+| `scripts/swarm/swarm-bench-runner.sh` | registers this host as a self-hosted swarm worker; one-time operator setup |
+| `scripts/swarm/swarm-bootstrap.sh` | fresh swarm worker checkout; one-time operator setup |
+| `scripts/task_suite_promote.py` | promote gate for model configs (#119); used by bench/CI flows |
+| `scripts/task_suite_runner.py` | fixed task suite runner (#119); used by bench/CI flows |
 | `scripts/prompt_cache.py` | library: prefill an agent's fixed prompt prefix once, save it with llama-server slot save, restore it on later starts (#85); used by hermes.sh |
 | `scripts/system_prompt_check.py` | offline system-prompt path checks (#115); developer/CI helper, not an end-user menu action |
-| `scripts/offline_secbench.py` | opt-in offline security-model benches (#117); synthetic fixtures only; developer helper, not an end-user menu action |
 | `scripts/familia_agent_reach.py` | thin wrapper / library around Agent-Reach; menu uses scripts/agent_reach.py |
 | `scripts/retry_wrapper.py` | library for agent model calls; its main is only a self-demo |
 | `scripts/isolated/hfchat.py` | adapter that graph nodes of kind isolated_remote call; not run by hand |
@@ -292,13 +328,16 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `install/linux/deps.sh` | Linux/macOS OS-deps helper (apt/dnf/pacman/zypper/brew); called via `install/deps.sh` | — | — |
 | `install/termux/deps.sh` | Termux OS-deps helper (`getconf`, pytest, …) | — | — |
 | `install/freebsd/deps.sh` | FreeBSD OS-deps helper (opt-in `pkg install`) | — | — |
+| `install/freebsd/install-familia.sh` | FreeBSD installer, invoked by curl/fetch or sh install-familia.sh | — | — |
 | `install/windows/deps.ps1` | Windows deps check + winget/choco hints | — | `install\windows\deps.ps1` |
 | `scripts/build_appimage.sh` | Operator AppImage packaging (not menu) | — | — |
 | `scripts/perf/box_multi_size_smoke.py` | Perf/dev multi-size smoke (not menu) | — | — |
 | `scripts/familia_home.sh` | Charm/gum front door (`./familia`); legacy catalog is fallback only |
 | `scripts/proto_chat.sh` | protomodel REPL from gum home "Talk to the protomodel" |
+| `scripts/open_ui.sh` | open running llama web UI in default browser | — | — |
+| `scripts/ui_bridge.py` | terminal dashboard bridge inspecting running llama-ui slots and routes | — | — |
 | `scripts/find_models.sh` | guided model fetch from gum home "Find more models" |
 | `scripts/search_x.sh` | X/Twitter search via Agent-Reach from gum home |
 | `scripts/windows/familia-home.ps1` | Windows mirror of familia_home.sh (started by familia.cmd) |
-| `scripts/start_graph.py` | graph dry-run helper; hosts.start-preview twin retired — use hosts.start / start.sh |
+| `scripts/start_graph.py` | graph dry-run helper (prints `via graph_router` = default gateway, or `via graph-proxy` with `router: false`); hosts.start-preview twin retired — use hosts.start / start.sh |
 
