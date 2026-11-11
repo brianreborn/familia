@@ -125,6 +125,18 @@ case "$CHOICE" in
     exec sh "$ROOT/scripts/proto_chat.sh"
     ;;
   "Open llama-ui web cockpit")
+    # Switch screen first; then the existing UI opener. Errors and a
+    # finished session return from the menu; only an interrupt aborts
+    # the cockpit entry. No TTY: skip the menu (tests / FAMILIA_NO_TTY
+    # already left earlier) and open the UI as before.
+    if [ -t 0 ] && [ -t 1 ]; then
+      sh "$ROOT/scripts/android-cockpit-switches.sh" || {
+        _st=$?
+        if [ "$_st" -eq 130 ] || [ "$_st" -eq 143 ]; then
+          exit "$_st"
+        fi
+      }
+    fi
     exec sh "$ROOT/scripts/open_ui.sh"
     ;;
   "Find more models")

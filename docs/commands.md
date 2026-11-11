@@ -61,6 +61,7 @@ Default front door is the gum home (`./familia`). This catalog is **fallback onl
 | `setup.update` | Update this checkout (git pull --ff-only, then sync pins) | `python3 scripts/sync_pins.py --update` | `python scripts\sync_pins.py --update` |
 | `setup.licenses` | Review / accept licenses | `python3 scripts/licenses.py review` | `python scripts\licenses.py review` |
 | `setup.settings` | Change launcher settings (terminal) | `sh scripts/configure.sh --interactive` | — |
+| `setup.android-cockpit` | Android cockpit installer switches (thin client, gate, dry-run) | `sh scripts/android-cockpit-switches.sh` | — |
 | `setup.sync-goal` | Sync pinned parts only (asks preview vs apply) | `sh scripts/setup_goals.sh sync-pins` | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\setup-goals.ps1 -Goal sync-pins` |
 | `setup.safe-build` | Safe-mode / offline build help | `sh scripts/safe-build-help.sh` | `powershell -NoProfile -Command "Write-Host (Get-Content -Raw docs\safe-mode-bootstrap.md)"` |
 | `setup.logon-task` | Windows: start the model server at logon (registers the task) | — | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-task.ps1 -Install -Model <MODEL>` |
