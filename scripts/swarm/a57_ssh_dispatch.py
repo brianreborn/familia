@@ -38,7 +38,7 @@ from pathlib import Path
 DEVICES = ("galaxy1", "galaxy2")
 JOB_PYTHON_COMPILE = "python-compile"
 OFFICIAL_REPO = "brianreborn/familia"
-TRUSTED_REF = "refs/heads/development"
+TRUSTED_REF = "refs/heads/main"
 UNTRUSTED_EVENTS = {
     "pull_request",
     "pull_request_target",
@@ -187,7 +187,7 @@ def render(lines: list[str], secrets: list[str]) -> str:
 
 
 def trust_decision(env: dict) -> tuple[bool, str]:
-    """Refuse fork PRs, pull_request_target, and any ref other than development.
+    """Refuse fork PRs, pull_request_target, and any ref other than main.
 
     A57_SSH_CI_ALLOW_LOCAL=1 permits a manual rerun on the runner host only when
     no GitHub event is set. It does not override an untrusted event.
@@ -211,7 +211,7 @@ def trust_decision(env: dict) -> tuple[bool, str]:
         if ref != TRUSTED_REF:
             return False, "untrusted-ref"
         if event == "push":
-            return True, "push-development"
+            return True, "push-main"
         return True, "workflow-dispatch"
     if event == "" and env.get("A57_SSH_CI_ALLOW_LOCAL") == "1":
         return True, "local-opt-in"

@@ -15,8 +15,8 @@ then the self-hosted worker, then a hosted paste of the worker summary):
 
 | Job | Runner | What it may do |
 |---|---|---|
-| `gate` | `ubuntu-latest` | Accept only `push` to `development`, or `workflow_dispatch` of that ref, in `brianreborn/familia`. Exit 2 otherwise. |
-| `smoke` | `[self-hosted, Linux, swarm-bench, host:miryam]` | Check out that development SHA (`persist-credentials: false`) and run `scripts/swarm/a57_ssh_dispatch.py --job python-compile --devices both`. |
+| `gate` | `ubuntu-latest` | Accept only `push` to `main`, or `workflow_dispatch` of that ref, in `brianreborn/familia`. Exit 2 otherwise. |
+| `smoke` | `[self-hosted, Linux, swarm-bench, host:miryam]` | Check out that main SHA (`persist-credentials: false`) and run `scripts/swarm/a57_ssh_dispatch.py --job python-compile --devices both`. |
 | `report` | `ubuntu-latest` | Paste the worker's status lines into the step summary. It does not SSH and does not reinterpret a failure as a pass. |
 
 The Actions step clears `A57_SSH_CI_SSH`, `A57_SSH_CI_ALLOW_SSH_OVERRIDE`, `A57_SSH_CI_ALLOW_LOCAL`, `A57_SSH_CI_INVENTORY`, `A57_SSH_CI_BUDGET_SEC`, `A57_SSH_CI_KILL_GRACE_SEC`, `A57_SSH_CI_LOCK_WAIT_SEC`, `A57_SSH_CI_LOCK_DIR`, and `XDG_CONFIG_HOME` before the script runs, so CI always uses the default inventory path (`~/.config/familia/a57-ssh-ci.yaml`) and the real `ssh` binary. A manual rerun on the host may set those variables; the workflow does not. The step records the script's exit status as `rc=0; python3 ... || rc=$?` so a failure still writes the summary (`bash -e` would otherwise drop `rc=$?` and skip `GITHUB_OUTPUT`).
@@ -29,7 +29,7 @@ Per phone, SSH uses `ConnectTimeout=10`, the process budget defaults to 35s and 
 
 ## Trust
 
-Fork pull requests and `pull_request_target` are not triggers. The script also refuses those event names, any `GITHUB_REPOSITORY` other than `brianreborn/familia`, any ref other than `refs/heads/development`, and a GitHub event file that says the repository is a fork or the pull-request head is a different repo. `A57_SSH_CI_ALLOW_LOCAL=1` permits a manual rerun on the runner host only when no GitHub event is set. It does not override an untrusted event.
+Fork pull requests and `pull_request_target` are not triggers. The script also refuses those event names, any `GITHUB_REPOSITORY` other than `brianreborn/familia`, any ref other than `refs/heads/main`, and a GitHub event file that says the repository is a fork or the pull-request head is a different repo. `A57_SSH_CI_ALLOW_LOCAL=1` permits a manual rerun on the runner host only when no GitHub event is set. It does not override an untrusted event.
 
 There is no device choice and no ref field in the workflow inputs. `--job` and `--devices` in the workflow file are literals (`python-compile`, `both`). A SHA is taken from `github.sha`, checked as hex, and recorded locally. It is not passed to the phone.
 
@@ -72,14 +72,14 @@ Stdout is one header, one `device=<name> status=<status>` line per phone, and `o
 
 ## Deployment handoff
 
-This change does not SSH, does not copy files onto miryam or the phones, and does not restart services. After it is on `development`, the next push queues the workflow. Until the private inventory exists, the check is red with `not-configured`.
+This change does not SSH, does not copy files onto miryam or the phones, and does not restart services. After it is on `main`, the next push queues the workflow. Until the private inventory exists, the check is red with `not-configured`.
 
 1. Confirm the miryam runner is online and its labels include `self-hosted`, `Linux`, `swarm-bench`, and `host:miryam` (`sh scripts/swarm/forge.sh runners`, or the Swarm ping workflow). If `swarm-bench` or `host:miryam` is absent, the job stays **queued**. Do not add an Android runner, and do not point `runs-on` at an unpublished label to force a pickup.
 2. As the runner user, copy the example to `~/.config/familia/a57-ssh-ci.yaml` (mode `0600`). Fill `addr`, `port`, and `user` from your own records. Direct LAN, port `8022`. Do not commit it.
 3. Point `known_hosts` at a pin file that user can read, mode not group/world-writable, with the existing keys for `[addr]:8022`. Copy the pin you already trust. Do not switch on `accept-new` or `StrictHostKeyChecking=no`.
 4. Point `identity_file` at the existing key that already authenticates from that user, mode `0600` or `0400`. `BatchMode` cannot prompt. The agent is not used. Do not create a new key in the repo.
 5. Do not reboot the phones, restart `sshd`, install packages, download models, or stop the llama servers on port 18112. Phone `sshd` reboot persistence is **unverified**. If `sshd` is down, the status is `unavailable`.
-6. A manual rerun on the runner host, with no GitHub event in the environment, is `A57_SSH_CI_ALLOW_LOCAL=1 python3 scripts/swarm/a57_ssh_dispatch.py`. `workflow_dispatch` from the Actions UI appears once this file is on the repository default branch. Before that, `sh scripts/swarm/forge.sh dispatch a57-ssh-smoke.yml development` targets the `development` ref. Do not dispatch any other ref: GitHub runs the workflow file from the ref you name.
+6. A manual rerun on the runner host, with no GitHub event in the environment, is `A57_SSH_CI_ALLOW_LOCAL=1 python3 scripts/swarm/a57_ssh_dispatch.py`. `workflow_dispatch` from the Actions UI appears once this file is on the repository default branch. Before that, `sh scripts/swarm/forge.sh dispatch a57-ssh-smoke.yml main` targets the `main` ref. Do not dispatch any other ref: GitHub runs the workflow file from the ref you name.
 
 ## Rollback
 
@@ -99,17 +99,17 @@ Tracked behavior wins where it conflicts with an assumption. These were left as 
 - `scripts/swarm/bench.sh` skips when `llama-server` is running. This smoke is not a benchmark and does not call `bench.sh`. It also does not skip, and it does not stop that process.
 - `scripts/swarm/swarm-bench-runner.sh` installs `swarm-runner-<role>.service` (default `swarm-runner-swarm-bench.service`). The unit name reported for the live miryam listener is `swarm-runner-familia.service`. The published note in `.github/swarm-conductor.json` still says the miryam loop was started by hand with no boot service. Neither file was changed. Label match is the contract; the unit name was not re-verified here.
 - Swarm R5 says every result is an issue comment. This push has no issue. The hosted `report` job pastes the worker summary and does not file a comment. R9 (hosted jobs stay trivial) still holds.
-- Swarm R4's triggers are an owner `/run` comment or `workflow_dispatch`. This workflow adds `push` to `development` only. It does not add `pull_request`.
+- Swarm R4's triggers are an owner `/run` comment or `workflow_dispatch`. This workflow adds `push` to `main` only. It does not add `pull_request`.
 - Requirements R2/R7 and the per-OS table: Termux has no official Actions runner. That gap stays. These phones are SSH targets of the miryam worker (a program the worker launches), not runners.
 - `scripts/swarm/swarm-watchdog.yml` only comments when the `bench` job of `swarm-worker.yml` is queued. It does not watch this workflow. A queued smoke job is visible on the Actions run; it is not a pass.
 - Connection fields for the graph belong in `hosts.local.yaml`. This inventory is a separate file because that overlay has no known_hosts or identity path, and loading it would not apply `ProxyJump=none`.
 
 ## Residual risks
 
-- Anyone who can push a workflow to `development` can change this file and run other commands on the miryam runner. The script's trust check only applies when this copy is the one executed. `workflow_dispatch` of a different branch runs that branch's workflow file. Do not dispatch untrusted refs. Fork pull requests do not trigger this workflow.
+- Anyone who can push a workflow to `main` can change this file and run other commands on the miryam runner. The script's trust check only applies when this copy is the one executed. `workflow_dispatch` of a different branch runs that branch's workflow file. Do not dispatch untrusted refs. Fork pull requests do not trigger this workflow.
 - The runner registration token and `GITHUB_TOKEN` remain on the runner. They are not forwarded to the phone. A workflow edit could read them. That is the existing self-hosted-runner boundary, not a new phone credential.
 - If the registered labels are not exactly the four above, the job stays queued until the runner picks it up. Queued is not success.
 - A hard kill of the runner step can skip the remote `finally`. The flock is released by the kernel when the process dies. A temp directory on the phone may remain. No other cleanup runs, and llama servers are not killed to compensate.
 - Host-key mismatch fails closed. The fix is a new pin in the private file, not a weaker SSH option.
-- Until the inventory is installed, development pushes fail this check. Do not mark the check required, and do not treat red as a phone failure, until that file exists.
+- Until the inventory is installed, main pushes fail this check. Do not mark the check required, and do not treat red as a phone failure, until that file exists.
 - Reboot persistence of phone `sshd` was not verified. A phone that comes back without `sshd` reports `unavailable`.

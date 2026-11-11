@@ -180,12 +180,12 @@ def test_help():
     ("pull_request_target", "refs/heads/development", "brianreborn/familia", "1", False, "untrusted-event"),
     ("pull_request_review", "refs/heads/development", "brianreborn/familia", "", False, "untrusted-event"),
     ("issue_comment", "refs/heads/development", "brianreborn/familia", "", False, "untrusted-event"),
-    ("push", "refs/heads/main", "brianreborn/familia", "", False, "untrusted-ref"),
+    ("push", "refs/heads/development", "brianreborn/familia", "", False, "untrusted-ref"),
     ("push", "refs/pull/3/merge", "brianreborn/familia", "", False, "untrusted-ref"),
     ("push", "refs/heads/development", "attacker/familia", "", False, "untrusted-repo"),
     ("workflow_dispatch", "refs/heads/feature", "brianreborn/familia", "", False, "untrusted-ref"),
-    ("push", "refs/heads/development", "brianreborn/familia", "", True, "push-development"),
-    ("workflow_dispatch", "refs/heads/development", "brianreborn/familia", "", True, "workflow-dispatch"),
+    ("push", "refs/heads/main", "brianreborn/familia", "", True, "push-main"),
+    ("workflow_dispatch", "refs/heads/main", "brianreborn/familia", "", True, "workflow-dispatch"),
     ("", "", "", "", False, "no-event"),
     ("", "", "", "1", True, "local-opt-in"),
 ])
@@ -205,7 +205,7 @@ def test_trust_matrix(event, ref, repo, allow, ok, why):
 def test_foreign_head_repo_is_refused():
     ok, why = d.trust_decision({
         "GITHUB_EVENT_NAME": "push",
-        "GITHUB_REF": "refs/heads/development",
+        "GITHUB_REF": "refs/heads/main",
         "GITHUB_REPOSITORY": "brianreborn/familia",
         "GITHUB_HEAD_REPOSITORY": "attacker/familia",
     })
@@ -218,7 +218,7 @@ def test_fork_event_file_is_refused(base):
         json.dump({"repository": {"fork": True}}, fh)
     ok, why = d.trust_decision({
         "GITHUB_EVENT_NAME": "push",
-        "GITHUB_REF": "refs/heads/development",
+        "GITHUB_REF": "refs/heads/main",
         "GITHUB_REPOSITORY": "brianreborn/familia",
         "GITHUB_EVENT_PATH": event,
     })
@@ -753,7 +753,7 @@ def test_workflow_shape():
     trigger = doc.get("on", doc.get(True))
     assert "pull_request" not in trigger
     assert "pull_request_target" not in trigger
-    assert trigger["push"]["branches"] == ["development"]
+    assert trigger["push"]["branches"] == ["main"]
     assert "workflow_dispatch" in trigger
     assert doc["permissions"] == {"contents": "read"}
     assert doc["concurrency"]["cancel-in-progress"] is False
