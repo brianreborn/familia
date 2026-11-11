@@ -1,7 +1,7 @@
-# Testing familia (v0.1.0-rc2)
+# Testing familia (v0.3.0)
 
 This page is for anyone who wants to try familia on their own hardware and report back.
-Everything here works from a plain checkout of `main` (or the `v0.1.0-rc2` tag). File
+Everything here works from a plain checkout of `main` (or the `v0.3.0` tag). File
 issues at https://github.com/brianreborn/familia/issues and include the output of the
 validator and test runs below.
 

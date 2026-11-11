@@ -61,3 +61,4 @@ time, and its generated lists can be rebuilt from GitHub at any time.
 
 - Milestone counts on GitHub include PRs; the notes count issues only.
 - PRs that close milestone issues should also be put on the milestone.
+- Unmilestoned PRs merged to main since previous release tag are tracked under the "Merged to main since <tag>" block.
