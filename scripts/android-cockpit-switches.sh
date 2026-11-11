@@ -26,12 +26,19 @@
 #   sh scripts/android-cockpit-switches.sh --help
 #
 # Secure defaults: thin client, gate ON, --yes refused, dry-run ON,
-# never auto-start. HTTPS is the default for a remote (non-loopback)
-# host. Plain HTTP to a remote host is allowed only when the named
-# dev switch "dev: allow plain HTTP" is on (off by default, marked *
-# when on), or when FAMILIA_DEV_ALLOW_HTTP=1. Loopback stays HTTP-OK.
-# http:// CBL URLs are always rejected. Any network listener still
-# needs an API key.
+# never auto-start. Each device serves its own webapp (Brian,
+# 2026-11-10 11:15 PM PT, "each its own" / self-hosting): on-phone
+# and local modes default the host/URL to http://127.0.0.1:9941
+# (loopback, no key). Thin client starts at that same loopback (or
+# empty), never a fixed remote. A remote host is an explicit opt-in,
+# with HTTPS plus an API key per F2.
+# HTTPS is the default for a remote (non-loopback) host. The literal
+# name localhost counts as loopback for the HTTPS default only (plain
+# HTTP is OK); the API key rule stays IP-only (127.0.0.0/8 and ::1).
+# Plain HTTP to a remote host is allowed only when the named dev
+# switch "dev: allow plain HTTP" is on (off by default, marked * when
+# on), or when FAMILIA_DEV_ALLOW_HTTP=1. http:// CBL URLs are always
+# rejected. Start, or a non-loopback-IP host, still needs an API key.
 # Exit 0 = q (back to familia_home). Exit 4 = continue to open_ui.sh.
 set -eu
 umask 077
@@ -63,8 +70,11 @@ KEEP_PREFIX=0
 START_FAMILIA=0
 HTTPS=0
 DEV_ALLOW_HTTP=0
-HOST=""
-PORT=""
+# Self-host default: this device's webapp (not a fixed remote).
+DEFAULT_HOST=127.0.0.1
+DEFAULT_PORT=9941
+HOST=$DEFAULT_HOST
+PORT=$DEFAULT_PORT
 TIER=""
 LIC_LLAMA31=1
 LIC_DOLPHIN=1
@@ -694,14 +704,55 @@ valid_host() {
 }
 
 # Only real loopback IP addresses (127.0.0.0/8 and ::1). A hostname
-# such as 127.example.com or localhost is not an IP and needs a key.
-# Newline or CR is rejected so grep -Eq cannot match only the first line.
+# such as 127.example.com or localhost is not an IP and needs a key
+# (Boundary: the key rule stays IP-only). Newline or CR is rejected
+# so grep -Eq cannot match only the first line.
 is_loopback() {
   no_ctl_chars "$1" || return 1
   case "$1" in
     \[::1\]|::1) return 0 ;;
   esac
   printf '%s' "$1" | grep -Eq '^127\.([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\.([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\.([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])$'
+}
+
+# Loopback for the HTTPS default only: real loopback IPs plus the
+# literal name localhost (plain HTTP is OK). Not used for the key rule.
+is_https_loopback() {
+  is_loopback "$1" && return 0
+  no_ctl_chars "$1" || return 1
+  case "$1" in
+    localhost) return 0 ;;
+  esac
+  return 1
+}
+
+# Each device serves its own webapp. Fill an empty host/port with the
+# self-host loopback; never invent a remote host.
+apply_self_host_defaults() {
+  [ -n "$HOST" ] || HOST=$DEFAULT_HOST
+  [ -n "$PORT" ] || PORT=$DEFAULT_PORT
+}
+
+webapp_url() {
+  [ -n "$HOST" ] && [ -n "$PORT" ] || return 1
+  _h=$HOST
+  if [ "$HTTPS" = 1 ]; then
+    printf 'https://%s:%s' "$_h" "$PORT"
+  else
+    printf 'http://%s:%s' "$_h" "$PORT"
+  fi
+}
+
+# Same rule as assemble_and: start, or a non-loopback-IP host, needs a key.
+# Loopback IPs do not (localhost still does).
+listener_key_label() {
+  if [ "$START_FAMILIA" = 1 ] || { [ -n "$HOST" ] && ! is_loopback "$HOST"; }; then
+    printf '%s' "listener: key required"
+  elif [ -n "$HOST" ] && is_loopback "$HOST"; then
+    printf '%s' "listener: no key (loopback)"
+  else
+    printf '%s' "listener: key required for a remote host"
+  fi
 }
 
 valid_path() {
@@ -1023,6 +1074,7 @@ load_settings() {
     load_file "$XDG_FILE"
   fi
   apply_dev_http_env
+  apply_self_host_defaults
   apply_https_policy
 }
 
@@ -1090,8 +1142,9 @@ cbl_override_ok() {
 assemble_and() {
   _action=$1
   resolve_installer || true
+  apply_self_host_defaults
   apply_https_policy
-  if [ -n "$HOST" ] && ! is_loopback "$HOST" && [ "$HTTPS" != 1 ] && [ "$DEV_ALLOW_HTTP" != 1 ]; then
+  if [ -n "$HOST" ] && ! is_https_loopback "$HOST" && [ "$HTTPS" != 1 ] && [ "$DEV_ALLOW_HTTP" != 1 ]; then
     err "plain HTTP to a remote host needs dev: allow plain HTTP (or FAMILIA_DEV_ALLOW_HTTP=1)"
     return 1
   fi
@@ -1200,10 +1253,12 @@ assemble_and() {
 }
 
 # Brian F2 (2026-11-10 11:09 PM PT): HTTPS is the default for a remote
-# (non-loopback, by IP) host. Plain HTTP to a remote host is allowed
-# only when the named dev switch is on. Loopback stays HTTP-OK.
+# (non-loopback) host. Plain HTTP to a remote host is allowed only when
+# the named dev switch is on. Loopback IPs and the literal name
+# localhost stay HTTP-OK (localhost still needs a key; that rule is
+# IP-only).
 https_default() {
-  if [ -n "$HOST" ] && ! is_loopback "$HOST"; then
+  if [ -n "$HOST" ] && ! is_https_loopback "$HOST"; then
     printf '%s' 1
   else
     printf '%s' 0
@@ -1219,7 +1274,7 @@ apply_dev_http_env() {
 
 # Force HTTPS on for a remote host unless the dev switch is on.
 apply_https_policy() {
-  if [ -n "$HOST" ] && ! is_loopback "$HOST" && [ "$DEV_ALLOW_HTTP" != 1 ]; then
+  if [ -n "$HOST" ] && ! is_https_loopback "$HOST" && [ "$DEV_ALLOW_HTTP" != 1 ]; then
     HTTPS=1
   fi
 }
@@ -1232,7 +1287,7 @@ plain_http_warning_text() {
 
 warn_plain_http() {
   apply_https_policy
-  if [ -n "$HOST" ] && ! is_loopback "$HOST" && [ "$HTTPS" != 1 ] && [ "$DEV_ALLOW_HTTP" = 1 ]; then
+  if [ -n "$HOST" ] && ! is_https_loopback "$HOST" && [ "$HTTPS" != 1 ] && [ "$DEV_ALLOW_HTTP" = 1 ]; then
     err "$(plain_http_warning_text)"
     return 0
   fi
@@ -1241,6 +1296,7 @@ warn_plain_http() {
 
 dump_settings() {
   resolve_installer || true
+  apply_self_host_defaults
   apply_https_policy
   say "android-cockpit settings (secure defaults unless changed):"
   say "  mode=$(mode_label)  gate=$(onoff "$CTX_GATE")  ctx=${FAMILIA_CTX_VAL:-unset}"
@@ -1250,7 +1306,10 @@ dump_settings() {
   say "  commit=${COMMIT:-unset}  cbl_override=${CBL_TAG:-in-repo pin}  url_file=${URL_FILE:-unset}"
   say "  config=$XDG_FILE"
   say "  prefix=$SMOKE_PREFIX (write-only copy; XDG is loaded)"
-  say "  listener: key required"
+  if _u=$(webapp_url); then
+    say "  url=$_u"
+  fi
+  say "  $(listener_key_label)"
   if installer_available; then
     say "  installer=$INSTALLER ($SCRIPT_KIND)"
   else
@@ -1330,12 +1389,12 @@ paint_status() {
     _inst="installer=not on this commit"
   fi
   if [ "${COMPACT:-0}" = 1 ]; then
-    say_row "  $_inst  key required"
+    say_row "  $_inst  $(listener_key_label)"
   else
     say_row "  status  mode=$(mode_label)$(star_if "$THIN_CLIENT" 1)  gate=$(onoff "$CTX_GATE")$(star_if "$CTX_GATE" 1)  dry-run=$(onoff "$DRY_RUN")$(star_if "$DRY_RUN" 1)  start=$(onoff "$START_FAMILIA")$(star_if "$START_FAMILIA" 0)  HTTPS=$(onoff "$HTTPS")$(star_if "$HTTPS" "$(https_default)")"
-    say_row "  $_inst  listener: key required"
+    say_row "  $_inst  $(listener_key_label)"
   fi
-  if [ -n "$HOST" ] && ! is_loopback "$HOST" && [ "$HTTPS" != 1 ] && [ "$DEV_ALLOW_HTTP" = 1 ]; then
+  if [ -n "$HOST" ] && ! is_https_loopback "$HOST" && [ "$HTTPS" != 1 ] && [ "$DEV_ALLOW_HTTP" = 1 ]; then
     say_row "  $(plain_http_warning_text)"
   fi
   if [ "${COMPACT:-0}" = 1 ]; then
@@ -1412,6 +1471,9 @@ paint_network() {
     say_row "   8) HTTPS    [$(sw_val --https "$(onoff "$HTTPS")")]$(star_if "$HTTPS" "$(https_default)")"
     say_row "   9) Host     [$(host_display)]"
     say_row "  10) Port     [$(port_display)]"
+    if _u=$(webapp_url); then
+      say_row "      url $_u"
+    fi
     say_row "  11) URL file [${URL_FILE:-unset}]"
     if ! flag_ok --url-file; then
       say_row "      [$(na_label)]"
@@ -1423,6 +1485,9 @@ paint_network() {
   say_row "   8) HTTPS                                       [$(sw_val --https "$(onoff "$HTTPS")")]$(star_if "$HTTPS" "$(https_default)")"
   say_row "   9) Host                                        [$(host_display)]"
   say_row "  10) Port                                        [$(port_display)]"
+  if _u=$(webapp_url); then
+    say_row "      url  $_u"
+  fi
   say_row "  11) URL file (--url-file)                        [${URL_FILE:-unset}]"
   if ! flag_ok --url-file; then
     say_row "      [$(na_label)]"
@@ -1500,6 +1565,7 @@ paint_nav() {
 
 paint() {
   resolve_installer || true
+  apply_self_host_defaults
   apply_https_policy
   init_box
   init_color
@@ -1732,8 +1798,8 @@ reset_defaults() {
   START_FAMILIA=0
   HTTPS=0
   DEV_ALLOW_HTTP=0
-  HOST=""
-  PORT=""
+  HOST=$DEFAULT_HOST
+  PORT=$DEFAULT_PORT
   TIER=""
   LIC_LLAMA31=1
   LIC_DOLPHIN=1
@@ -1747,7 +1813,7 @@ reset_defaults() {
   CBL_URL=""
   API_KEY_FILE=""
   RUNTIME_KIND=cbl
-  say "reset to secure defaults (thin client, gate ON, --yes refused, dry-run ON, no auto-start, HTTPS on for remote hosts, plain HTTP only with dev: allow plain HTTP)."
+  say "reset to secure defaults (thin client, gate ON, --yes refused, dry-run ON, no auto-start, self-host http://127.0.0.1:9941, HTTPS on for remote hosts, plain HTTP only with dev: allow plain HTTP)."
 }
 
 do_choice() {
@@ -1767,7 +1833,11 @@ do_choice() {
           say "start turned off (thin client never auto-starts a local server)."
         fi
       fi
+      apply_self_host_defaults
       say "mode=$(mode_label)"
+      if [ -n "$HOST" ] && is_loopback "$HOST"; then
+        say "webapp host $(webapp_url) (this device; a remote host is an explicit opt-in)"
+      fi
       ;;
     2) CTX_GATE=$(toggle "$CTX_GATE"); say "gate=$(onoff "$CTX_GATE")" ;;
     3)
@@ -1806,7 +1876,7 @@ do_choice() {
       fi
       ;;
     8)
-      if [ "$HTTPS" = 1 ] && [ -n "$HOST" ] && ! is_loopback "$HOST" && [ "$DEV_ALLOW_HTTP" != 1 ]; then
+      if [ "$HTTPS" = 1 ] && [ -n "$HOST" ] && ! is_https_loopback "$HOST" && [ "$DEV_ALLOW_HTTP" != 1 ]; then
         err "plain HTTP to a remote host needs 24) dev: allow plain HTTP (or FAMILIA_DEV_ALLOW_HTTP=1); HTTPS left ON"
       else
         HTTPS=$(toggle "$HTTPS")
@@ -1820,8 +1890,9 @@ do_choice() {
         err "host must be a hostname, IPv4 or [IPv6] (no leading '-', no flag injection, no CR/newline); left unchanged"
         HOST=$_old
       fi
+      apply_self_host_defaults
       apply_https_policy
-      if [ -n "$HOST" ] && ! is_loopback "$HOST" && [ "$HTTPS" = 1 ] && [ "$DEV_ALLOW_HTTP" != 1 ]; then
+      if [ -n "$HOST" ] && ! is_https_loopback "$HOST" && [ "$HTTPS" = 1 ] && [ "$DEV_ALLOW_HTTP" != 1 ]; then
         say "HTTPS enabled for remote host (plain HTTP needs 24) dev: allow plain HTTP)"
       fi
       ;;
@@ -1900,7 +1971,7 @@ do_choice() {
         err "warning: dev: allow plain HTTP is ON*; plain HTTP to a remote host is allowed"
       else
         apply_https_policy
-        if [ -n "$HOST" ] && ! is_loopback "$HOST" ]; then
+        if [ -n "$HOST" ] && ! is_https_loopback "$HOST" ]; then
           say "HTTPS enabled for remote host (dev: allow plain HTTP is off)"
         fi
       fi

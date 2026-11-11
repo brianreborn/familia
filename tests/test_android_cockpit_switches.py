@@ -142,7 +142,11 @@ def test_dump_secure_defaults_when_installer_missing(tmp_path):
     assert "start=OFF" in r.stdout
     assert "gate=ON" in r.stdout
     assert "https=OFF" in r.stdout
-    assert "listener: key required" in r.stdout
+    assert "host=127.0.0.1" in r.stdout
+    assert "port=9941" in r.stdout
+    assert "url=http://127.0.0.1:9941" in r.stdout
+    assert "listener: no key (loopback)" in r.stdout
+    assert "example.host" not in r.stdout
     # install/termux/install.sh is already on main; smoke/hermes-android are not.
     assert ("installer=not on this commit" in r.stdout) or ("install.sh" in r.stdout)
 
@@ -269,11 +273,11 @@ def test_host_flag_injection_and_semicolon_rejected(tmp_path):
     r = run_sw(tmp_path, "--dump")
     assert r.returncode == 0, r.stderr
     assert "ignoring invalid HOST" in r.stderr
-    assert "host=unset" in r.stdout
+    assert "host=127.0.0.1" in r.stdout
     write_cfg(tmp_path, "HOST=--allow-yes\n")
     r = run_sw(tmp_path, "--dump")
     assert "ignoring invalid HOST" in r.stderr
-    assert "host=unset" in r.stdout
+    assert "host=127.0.0.1" in r.stdout
 
 
 def test_run_does_not_interpret_metacharacters(tmp_path):
@@ -351,7 +355,7 @@ def test_world_readable_xdg_settings_ignored(tmp_path):
     assert "ignoring settings file" in r.stderr
     assert "dry_run=ON" in r.stdout
     assert "allow_yes=OFF" in r.stdout
-    assert "host=unset" in r.stdout
+    assert "host=127.0.0.1" in r.stdout
 
 
 def test_unreadable_settings_does_not_abort(tmp_path):
@@ -707,8 +711,8 @@ def test_is_loopback_requires_ip_not_hostname(tmp_path):
     assert r.returncode == 0, r.stderr
     assert "command:" in r.stdout
     assert "127.0.0.1" in r.stdout
-    # localhost is a hostname, not an IP.
-    write_cfg(tmp_path, "HOST=localhost\nPORT=8080\nCOMMIT=%s\nDRY_RUN=1\n" % COMMIT)
+    # localhost is a hostname, not an IP: key still required.
+    write_cfg(tmp_path, "HOST=localhost\nPORT=8080\nCOMMIT=%s\nDRY_RUN=1\nHTTPS=0\n" % COMMIT)
     r = run_sw(
         tmp_path,
         "--pipe",
@@ -717,6 +721,17 @@ def test_is_loopback_requires_ip_not_hostname(tmp_path):
     )
     assert r.returncode == 0, r.stderr
     assert "requires an API key file" in r.stderr
+    # But localhost counts as loopback for the HTTPS default: http is OK,
+    # no force-on, no plain-HTTP warning.
+    r = run_sw(tmp_path, "--dump", FAMILIA_ANDROID_INSTALLER=str(stub))
+    assert r.returncode == 0, r.stderr
+    out = r.stdout + r.stderr
+    assert "https=OFF" in r.stdout
+    assert "host=localhost" in r.stdout
+    assert "url=http://localhost:8080" in r.stdout
+    assert "listener: key required" in r.stdout
+    assert "plain HTTP" not in out
+    assert "no key (loopback)" not in r.stdout
 
 
 def test_onphone_ctx_override_refused_when_ram_too_low(tmp_path):
@@ -1204,7 +1219,7 @@ def test_host_url_cr_rejected_on_load(tmp_path):
     err = r.stderr
     assert "ignoring invalid HOST" in err
     assert "ignoring invalid CBL_URL" in err
-    assert "host=unset" in r.stdout
+    assert "host=127.0.0.1" in r.stdout
     assert "malicious.example" not in r.stdout
     assert "https://example.com/x" not in r.stdout
 
@@ -1318,3 +1333,73 @@ def test_dev_allow_plain_http_switch_and_env(tmp_path):
     out = r.stdout + r.stderr
     assert "https=OFF" in r.stdout
     assert not _has(out, warn)
+
+
+def test_self_host_defaults_loopback_no_key(tmp_path):
+    # Brian, 2026-11-10 11:15 PM PT ("each its own" / self-hosting):
+    # each device serves its own webapp at http://127.0.0.1:9941.
+    stub = write_stub(tmp_path, "familia-android-smoke.sh")
+    r = run_sw(tmp_path, "--dump", FAMILIA_ANDROID_INSTALLER=str(stub))
+    assert r.returncode == 0, r.stderr
+    out = r.stdout + r.stderr
+    assert "host=127.0.0.1" in r.stdout
+    assert "port=9941" in r.stdout
+    assert "url=http://127.0.0.1:9941" in r.stdout
+    assert "https=OFF" in r.stdout
+    assert "listener: no key (loopback)" in r.stdout
+    assert "plain HTTP" not in out
+    assert "example.host" not in r.stdout
+    # Show works without an API key for the loopback IP default.
+    write_cfg(tmp_path, "COMMIT=%s\nDRY_RUN=1\n" % COMMIT)
+    r = run_sw(tmp_path, "--show", FAMILIA_ANDROID_INSTALLER=str(stub))
+    assert r.returncode == 0, r.stderr
+    assert "command:" in r.stdout or "--host" in r.stdout
+    assert "127.0.0.1" in r.stdout
+    assert "9941" in r.stdout
+    assert "requires an API key file" not in r.stderr
+    assert "--https" not in r.stdout
+    # Thin client never starts with a fixed remote; reset keeps loopback.
+    r = run_sw(tmp_path, "--pipe", inp="d\nq\n")
+    assert r.returncode == 0, r.stderr
+    cfg = (tmp_path / "xdg" / "familia" / "android-cockpit.env").read_text(encoding="ascii")
+    assert "HOST=127.0.0.1\n" in cfg
+    assert "PORT=9941\n" in cfg
+    assert "HOST=example.host" not in cfg
+
+
+def test_localhost_https_ok_but_key_still_required(tmp_path):
+    # Literal localhost: HTTP is OK (HTTPS default); key rule stays IP-only.
+    stub = write_stub(tmp_path, "familia-android-smoke.sh")
+    write_cfg(
+        tmp_path,
+        "HOST=localhost\nPORT=8080\nCOMMIT=%s\nDRY_RUN=1\nHTTPS=0\n"
+        "DEV_ALLOW_HTTP=0\n" % COMMIT,
+    )
+    r = run_sw(tmp_path, "--dump", FAMILIA_ANDROID_INSTALLER=str(stub))
+    assert r.returncode == 0, r.stderr
+    out = r.stdout + r.stderr
+    assert "https=OFF" in r.stdout
+    assert "url=http://localhost:8080" in r.stdout
+    assert "listener: key required" in r.stdout
+    assert "plain HTTP" not in out
+    r = run_sw(tmp_path, "--show", FAMILIA_ANDROID_INSTALLER=str(stub))
+    assert "requires an API key file" in r.stderr
+    assert "command:" not in r.stdout
+    write_key(tmp_path)
+    r = run_sw(tmp_path, "--show", FAMILIA_ANDROID_INSTALLER=str(stub))
+    assert r.returncode == 0, r.stderr
+    assert "localhost" in r.stdout
+    assert "--https" not in r.stdout
+    assert "plain HTTP" not in (r.stdout + r.stderr)
+    # Contrast: a remote host still wants HTTPS + key (F2).
+    write_cfg(
+        tmp_path,
+        "HOST=example.host\nPORT=8080\nCOMMIT=%s\nDRY_RUN=1\nHTTPS=0\n" % COMMIT,
+    )
+    write_key(tmp_path)
+    r = run_sw(tmp_path, "--dump", FAMILIA_ANDROID_INSTALLER=str(stub))
+    assert r.returncode == 0, r.stderr
+    assert "https=ON" in r.stdout
+    assert "url=https://example.host:8080" in r.stdout
+    assert "listener: key required" in r.stdout
+    assert "--https" in r.stdout
