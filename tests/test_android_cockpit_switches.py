@@ -32,6 +32,7 @@ def _env(tmp_path, **kw):
         "FAMILIA_BIND",
         "FAMILIA_RAM_MIB",
         "FAMILIA_RESERVE_MIB",
+        "FAMILIA_MIN_USABLE_MIB",
         "FAMILIA_MENU_TIMEOUT",
     ):
         e.pop(k, None)
@@ -651,6 +652,7 @@ def test_onphone_bind_pinned_to_loopback(tmp_path):
 
 
 def test_is_loopback_requires_ip_not_hostname(tmp_path):
+    # R2: 127.example.com is a hostname, not 127.0.0.0/8.
     stub = write_stub(tmp_path, "familia-android-smoke.sh")
     write_cfg(tmp_path, "HOST=127.example.com\nPORT=8080\nCOMMIT=%s\nDRY_RUN=1\n" % COMMIT)
     r = run_sw(
@@ -692,7 +694,7 @@ def test_onphone_ctx_override_refused_when_ram_too_low(tmp_path):
         "--pipe",
         inp="3\n64000\n1\n19\nq\n",
         FAMILIA_ANDROID_INSTALLER=str(stub),
-        FAMILIA_RAM_MIB="8000",
+        FAMILIA_RAM_MIB="6500",
         FAMILIA_RESERVE_MIB="5120",
     )
     assert r.returncode == 0, r.stderr
@@ -797,3 +799,123 @@ def test_mksh_tty_timeout_is_not_eof(tmp_path):
     assert "timeout" in out
     assert "exit. settings saved" in out
     assert "stdin closed without an exit pick" not in out
+
+
+def test_tilde_path_expands_to_home(tmp_path):
+    # R1: a typed ~/key must expand to $HOME/key (quoted case patterns).
+    home = tmp_path / "home"
+    home.mkdir()
+    r = run_sw(
+        tmp_path,
+        "--pipe",
+        inp="18\n~/k\nq\n",
+        HOME=str(home),
+    )
+    assert r.returncode == 0, r.stderr
+    cfg = (tmp_path / "xdg" / "familia" / "android-cockpit.env").read_text(encoding="ascii")
+    expected = str(home / "k")
+    assert "API_KEY_FILE=%s\n" % expected in cfg
+    assert "API_KEY_FILE=~/k" not in cfg
+    # Bare tilde alone also expands.
+    r = run_sw(
+        tmp_path,
+        "--pipe",
+        inp="18\n~\nq\n",
+        HOME=str(home),
+    )
+    assert r.returncode == 0, r.stderr
+    cfg = (tmp_path / "xdg" / "familia" / "android-cockpit.env").read_text(encoding="ascii")
+    assert "API_KEY_FILE=%s\n" % home in cfg
+
+
+def test_https_warning_on_dump_show_and_before_run_confirm(tmp_path):
+    stub = write_stub(tmp_path, "familia-android-smoke.sh")
+    write_key(tmp_path)
+    write_cfg(
+        tmp_path,
+        "HOST=example.host\nPORT=8080\nCOMMIT=%s\nDRY_RUN=0\nHTTPS=0\n" % COMMIT,
+    )
+    warn = "HTTPS is OFF for a non-loopback host (plain HTTP)"
+    r = run_sw(tmp_path, "--dump", FAMILIA_ANDROID_INSTALLER=str(stub))
+    assert r.returncode == 0, r.stderr
+    assert warn in (r.stdout + r.stderr)
+    r = run_sw(tmp_path, "--show", FAMILIA_ANDROID_INSTALLER=str(stub))
+    assert r.returncode == 0, r.stderr
+    assert warn in (r.stdout + r.stderr)
+    r = run_sw(
+        tmp_path,
+        "--pipe",
+        inp="20\nnope\nq\n",
+        FAMILIA_ANDROID_INSTALLER=str(stub),
+    )
+    assert r.returncode == 0, r.stderr
+    out = r.stdout + r.stderr
+    assert warn in out
+    assert "type 'run' to proceed" in out
+    assert out.find(warn) < out.find("type 'run' to proceed")
+    assert "not confirmed" in out
+    # Loopback IPs do not warn.
+    write_cfg(tmp_path, "HOST=127.0.0.1\nPORT=8080\nCOMMIT=%s\nDRY_RUN=1\nHTTPS=0\n" % COMMIT)
+    r = run_sw(tmp_path, "--dump", FAMILIA_ANDROID_INSTALLER=str(stub))
+    assert r.returncode == 0, r.stderr
+    assert warn not in (r.stdout + r.stderr)
+
+
+def test_http_cbl_url_rejected_on_load_and_menu(tmp_path):
+    write_cfg(
+        tmp_path,
+        "CBL_TAG=android-b12032-1\nCBL_SHA=%s\nCBL_URL=http://example.com/cbl.tgz\n" % SHA256,
+    )
+    r = run_sw(tmp_path, "--dump")
+    assert r.returncode == 0, r.stderr
+    assert "ignoring invalid CBL_URL" in r.stderr
+    cfg_out = r.stdout + r.stderr
+    assert "http://example.com/cbl.tgz" not in r.stdout
+    # Menu path: typed http URL is also rejected.
+    r = run_sw(
+        tmp_path,
+        "--pipe",
+        inp="16\nandroid-b12032-1\n%s\n\nhttp://example.com/cbl.tgz\nq\n" % SHA256,
+    )
+    assert r.returncode == 0, r.stderr
+    out = r.stdout + r.stderr
+    assert "CBL URL must be https:// only" in out
+    saved = (tmp_path / "xdg" / "familia" / "android-cockpit.env").read_text(encoding="ascii")
+    assert "http://example.com/cbl.tgz" not in saved
+
+
+def test_eight_gb_phone_passes_at_64000_with_default_reserve(tmp_path):
+    # 8 GB phone (~7600 MiB MemTotal) minus #321 reserve 5120 = 2480 usable,
+    # which must clear the 2048 MiB measured floor at ctx 64000.
+    stub = write_stub(tmp_path, "install.sh")
+    r = run_sw(
+        tmp_path,
+        "--pipe",
+        inp="3\n64000\n1\n19\nq\n",
+        FAMILIA_ANDROID_INSTALLER=str(stub),
+        FAMILIA_RAM_MIB="7600",
+    )
+    assert r.returncode == 0, r.stderr
+    out = r.stdout + r.stderr
+    assert "RAM too low" not in out
+    assert "on-phone inference is disabled" not in out
+    assert "mode=on-phone inference" in out
+    # The same phone fails if the operator raises the floor above 2480.
+    r = run_sw(
+        tmp_path,
+        "--pipe",
+        inp="3\n64000\n1\n19\nq\n",
+        FAMILIA_ANDROID_INSTALLER=str(stub),
+        FAMILIA_RAM_MIB="7600",
+        FAMILIA_MIN_USABLE_MIB="3072",
+    )
+    assert r.returncode == 0, r.stderr
+    out = r.stdout + r.stderr
+    assert "RAM too low" in out
+    assert "on-phone inference is disabled" in out or "mode=thin client" in out
+
+
+def test_save_trap_exits_130():
+    text = Path(SCRIPT).read_text(encoding="ascii") if False else open(SCRIPT, encoding="ascii").read()
+    assert "trap 'rm -f \"$_tmp\"; exit 130' INT TERM" in text
+    assert "trap 'rm -f \"$_tmp\"' INT TERM" not in text

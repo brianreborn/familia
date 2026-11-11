@@ -78,9 +78,12 @@ err() { printf 'android-cockpit: %s\n' "$*" >&2; }
 default_key_path() { printf '%s' "$CONFIG_DIR/api.key"; }
 
 expand_tilde() {
+  # Quote the case patterns and the ${1#...} pattern: an unquoted ~ is
+  # itself expanded to $HOME, so a typed ~/key would never match (or
+  # would become $HOME/~/key).
   case "$1" in
-    ~) printf '%s' "$HOME" ;;
-    ~/*) printf '%s' "$HOME/${1#~/}" ;;
+    "~") printf '%s' "$HOME" ;;
+    "~/"*) printf '%s' "$HOME/${1#"~/"}" ;;
     *) printf '%s' "$1" ;;
   esac
 }
@@ -295,9 +298,29 @@ tier_from_usable() {
   fi
 }
 
-# Large-tier scale from phone-model-default.py: 4096 MiB usable holds ctx 8192.
+# Modest per-ctx usable floor, scaled from a measured 64000-ctx point.
+#
+# Measurement: galaxy2 (Samsung A57) ran LFM3-1.7B at ctx 65536 with about
+# 2 GB RSS. A linear scale from the large-tier table (4096 MiB usable at
+# ctx 8192) would demand 32000 MiB usable at 64000 and grey out every real
+# phone, which is wrong.
+#
+# About 3 GiB usable at 64000 would be nicer headroom for the default
+# small/medium model, but that floor is impossible with the reserve
+# phone-model-default.py actually uses. That file is not on main; on
+# #321 (feat/android-packaging @ 283a526) DEFAULT_RESERVE is 5120, and
+# install/termux/install.sh uses the same FAMILIA_RESERVE_MIB:-5120.
+# An 8 GB phone (about 7600 MiB MemTotal) then has only
+# 7600-5120=2480 MiB usable, so a 3072 MiB floor would fail the rule
+# that an 8 GB phone must pass at 64000. Keep reserve 5120 and default
+# FAMILIA_MIN_USABLE_MIB to 2048 (the measured RSS). Override either
+# env if a tighter or looser floor is wanted.
 required_usable_for_ctx() {
-  printf '%s' $(( (4096 * $1 + 8191) / 8192 ))
+  _base=${FAMILIA_MIN_USABLE_MIB:-2048}
+  case "$_base" in
+    ''|*[!0-9]*) _base=2048 ;;
+  esac
+  printf '%s' $(( (_base * $1 + 63999) / 64000 ))
 }
 
 read_total_ram_mib() {
@@ -734,7 +757,7 @@ atomic_write() {
   _dir=$(dirname -- "$_dest")
   mkdir -m 700 -p "$_dir" || { err "could not create $_dir"; return 1; }
   _tmp=$(mktemp "$_dir/android-cockpit.env.XXXXXX") || { err "could not write $_dest"; return 1; }
-  trap 'rm -f "$_tmp"' INT TERM
+  trap 'rm -f "$_tmp"; exit 130' INT TERM
   cat > "$_tmp" || { rm -f "$_tmp"; trap - INT TERM; return 1; }
   chmod 0600 "$_tmp"
   mv "$_tmp" "$_dest"
@@ -951,6 +974,15 @@ assemble_and() {
   esac
 }
 
+# Same text in the menu, --dump, --show, and run_installer (before confirm).
+warn_plain_http() {
+  if [ -n "$HOST" ] && ! is_loopback "$HOST" && [ "$HTTPS" != 1 ]; then
+    err "warning: HTTPS is OFF for a non-loopback host (plain HTTP)"
+    return 0
+  fi
+  return 1
+}
+
 dump_settings() {
   resolve_installer || true
   say "android-cockpit settings (secure defaults unless changed):"
@@ -967,6 +999,7 @@ dump_settings() {
   else
     say "  installer=not on this commit"
   fi
+  warn_plain_http || true
 }
 
 sw_val() {
@@ -1169,6 +1202,10 @@ prompt_val() {
 }
 
 show_command() {
+  # --dump already warned once in dump_settings.
+  if [ "$MODE" != dump ]; then
+    warn_plain_http || true
+  fi
   assemble_and show || return 0
 }
 
@@ -1176,6 +1213,7 @@ run_installer() {
   _preview=$(assemble_and preview) || { return 0; }
   say "running:"
   say "  $_preview"
+  warn_plain_http || true
   if [ "$DRY_RUN" != 1 ]; then
     if [ "$SCRIPT_KIND" = install ] || [ "$SCRIPT_KIND" = hermes ]; then
       err "warning: this is a persistent phone install (writes \$HOME/familia); it is not throwaway like the smoke prefix."
