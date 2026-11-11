@@ -1,5 +1,5 @@
 # Bounded SSH smoke for the two A57 phones. They are not Actions runners.
-# The hosted gate only accepts a push to development, or workflow_dispatch of that
+# The hosted gate only accepts a push to main, or workflow_dispatch of that
 # ref, in brianreborn/familia. Fork pull requests are not a trigger. The smoke
 # job runs on the existing miryam runner (self-hosted, Linux, swarm-bench,
 # host:miryam) and executes scripts/swarm/a57_ssh_dispatch.py. See
@@ -8,7 +8,7 @@ name: A57 SSH smoke
 
 on:
   push:
-    branches: [development]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -34,7 +34,7 @@ jobs:
             push|workflow_dispatch) ;;
             *) echo "refused event" >&2; exit 2 ;;
           esac
-          [ "$REF" = "refs/heads/development" ] || { echo "refused ref" >&2; exit 2; }
+          [ "$REF" = "refs/heads/main" ] || { echo "refused ref" >&2; exit 2; }
           [ "$REPO" = "brianreborn/familia" ] || { echo "refused repo" >&2; exit 2; }
           echo "gate ok"
 
