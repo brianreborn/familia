@@ -100,7 +100,7 @@ def write_stub(tmp_path, name, extra=""):
         "printf 'ARGC=%s\\n' \"$#\" > \"$argvf\"\n"
         "for a in \"$@\"; do printf '%s\\n' \"$a\" >> \"$argvf\"; done\n"
         "env | grep -E '^(FAMILIA_CBL|FAMILIA_BIND|FAMILIA_ACCEPT|FAMILIA_ALLOW_|FAMILIA_RUNTIME|FAMILIA_HERMES)=' >> \"$argvf\" || true\n"
-        "for v in INSTALL_ACK FAMILIA_ACCEPT_LICENSES FAMILIA_ACCEPT_UNKNOWN_LICENSES FAMILIA_LICENSE_ACCEPT_FILE FAMILIA_ALLOW_YES FAMILIA_HERMES_CTX_GATE FAMILIA_BIND FAMILIA_ALLOW_EXTRA; do "
+        "for v in INSTALL_ACK FAMILIA_ACCEPT_LICENSES FAMILIA_ACCEPT_UNKNOWN_LICENSES FAMILIA_LICENSE_ACCEPT_FILE FAMILIA_ALLOW_YES FAMILIA_HERMES_CTX_GATE FAMILIA_BIND FAMILIA_ALLOW_EXTRA FAMILIA_REPO_URL FAMILIA_RAW_URL FAMILIA_BRANCH FAMILIA_PORT FAMILIA_MODEL FAMILIA_PREFIX; do "
         "if printenv \"$v\" >/dev/null 2>&1; then printf 'LEAKED %s=%s\\n' \"$v\" \"$(printenv \"$v\")\" >> \"$argvf\"; "
         "else printf 'SCRUBBED %s\\n' \"$v\" >> \"$argvf\"; fi; done\n"
         "printf 'stub:%s\\n' \"$*\"\n"
@@ -145,7 +145,7 @@ def test_dump_secure_defaults_when_installer_missing(tmp_path):
     assert "host=127.0.0.1" in r.stdout
     assert "port=9941" in r.stdout
     assert "url=http://127.0.0.1:9941" in r.stdout
-    assert "listener: no key (loopback)" in r.stdout
+    assert "listener: loopback only (127.0.0.1), API key not required" in r.stdout
     assert "example.host" not in r.stdout
     # install/termux/install.sh is already on main; smoke/hermes-android are not.
     assert ("installer=not on this commit" in r.stdout) or ("install.sh" in r.stdout)
@@ -731,7 +731,7 @@ def test_is_loopback_requires_ip_not_hostname(tmp_path):
     assert "url=http://localhost:8080" in r.stdout
     assert "listener: key required" in r.stdout
     assert "plain HTTP" not in out
-    assert "no key (loopback)" not in r.stdout
+    assert "API key not required" not in r.stdout
 
 
 def test_onphone_ctx_override_refused_when_ram_too_low(tmp_path):
@@ -1346,7 +1346,7 @@ def test_self_host_defaults_loopback_no_key(tmp_path):
     assert "port=9941" in r.stdout
     assert "url=http://127.0.0.1:9941" in r.stdout
     assert "https=OFF" in r.stdout
-    assert "listener: no key (loopback)" in r.stdout
+    assert "listener: loopback only (127.0.0.1), API key not required" in r.stdout
     assert "plain HTTP" not in out
     assert "example.host" not in r.stdout
     # Show works without an API key for the loopback IP default.
@@ -1403,3 +1403,85 @@ def test_localhost_https_ok_but_key_still_required(tmp_path):
     assert "url=https://example.host:8080" in r.stdout
     assert "listener: key required" in r.stdout
     assert "--https" in r.stdout
+
+
+def test_inherited_source_override_env_is_scrubbed(tmp_path):
+    # P1: every inherited FAMILIA_* is cleared; source/URL leftovers
+    # must not reach the installer.
+    stub = write_stub(tmp_path, "familia-android-smoke.sh")
+    argvf = tmp_path / "argv.txt"
+    write_cfg(
+        tmp_path,
+        "HOST=127.0.0.1\nPORT=8080\nCOMMIT=%s\nDRY_RUN=1\n" % COMMIT,
+    )
+    names = (
+        "FAMILIA_REPO_URL",
+        "FAMILIA_RAW_URL",
+        "FAMILIA_BRANCH",
+        "FAMILIA_PORT",
+        "FAMILIA_MODEL",
+        "FAMILIA_PREFIX",
+    )
+    r = run_sw(
+        tmp_path,
+        "--pipe",
+        inp="22\nq\n",
+        FAMILIA_ANDROID_INSTALLER=str(stub),
+        FAMILIA_ARGV_FILE=str(argvf),
+        FAMILIA_REPO_URL="https://evil.example/repo.git",
+        FAMILIA_RAW_URL="https://evil.example/raw",
+        FAMILIA_BRANCH="attacker-branch",
+        FAMILIA_PORT="12345",
+        FAMILIA_MODEL="attacker-model",
+        FAMILIA_PREFIX="/tmp/should-not-be-used",
+    )
+    assert r.returncode == 0, r.stderr + r.stdout
+    assert argvf.exists(), r.stdout + r.stderr
+    text = argvf.read_text(encoding="ascii")
+    for name in names:
+        assert "SCRUBBED %s\n" % name in text, text
+        assert "LEAKED %s=" % name not in text
+        assert "evil.example" not in text
+        assert "attacker-branch" not in text
+        assert "attacker-model" not in text
+        assert "should-not-be-used" not in text
+        assert not any(ln.startswith(name + "=") for ln in text.splitlines())
+
+
+def test_dev_allow_http_env_is_session_only_not_persisted(tmp_path):
+    # P2: FAMILIA_DEV_ALLOW_HTTP=1 is a session override and must not
+    # be written to the settings file. Only the menu toggle persists.
+    stub = write_stub(tmp_path, "familia-android-smoke.sh")
+    write_cfg(
+        tmp_path,
+        "HOST=example.host\nPORT=8080\nCOMMIT=%s\nDRY_RUN=1\nHTTPS=0\n"
+        "DEV_ALLOW_HTTP=0\n" % COMMIT,
+    )
+    r = run_sw(
+        tmp_path,
+        "--dump",
+        FAMILIA_ANDROID_INSTALLER=str(stub),
+        FAMILIA_DEV_ALLOW_HTTP="1",
+    )
+    assert r.returncode == 0, r.stderr
+    out = r.stdout + r.stderr
+    assert "dev_allow_http=ON" in out
+    assert "(session)" in out
+    # Exiting the menu under the env override must not persist it.
+    r = run_sw(
+        tmp_path,
+        "--pipe",
+        inp="q\n",
+        FAMILIA_ANDROID_INSTALLER=str(stub),
+        FAMILIA_DEV_ALLOW_HTTP="1",
+    )
+    assert r.returncode == 0, r.stderr
+    cfg = (tmp_path / "xdg" / "familia" / "android-cockpit.env").read_text(encoding="ascii")
+    assert "DEV_ALLOW_HTTP=1\n" not in cfg
+    assert "DEV_ALLOW_HTTP=0\n" in cfg
+    # Without the env, a later run uses the saved (off) value.
+    r = run_sw(tmp_path, "--dump", FAMILIA_ANDROID_INSTALLER=str(stub))
+    assert r.returncode == 0, r.stderr
+    assert "dev_allow_http=OFF" in r.stdout
+    assert "(session)" not in r.stdout
+    assert "https=ON" in r.stdout

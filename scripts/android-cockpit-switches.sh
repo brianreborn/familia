@@ -70,6 +70,8 @@ KEEP_PREFIX=0
 START_FAMILIA=0
 HTTPS=0
 DEV_ALLOW_HTTP=0
+DEV_ALLOW_HTTP_SAVED=0
+DEV_ALLOW_HTTP_FROM_ENV=0
 # Self-host default: this device's webapp (not a fixed remote).
 DEFAULT_HOST=127.0.0.1
 DEFAULT_PORT=9941
@@ -106,6 +108,7 @@ expand_tilde() {
   # Quote the case patterns and the ${1#...} pattern: an unquoted ~ is
   # itself expanded to $HOME, so a typed ~/key would never match (or
   # would become $HOME/~/key).
+  # shellcheck disable=SC2088  # literal ~ in a quoted pattern is intended
   case "$1" in
     "~") printf '%s' "$HOME" ;;
     "~/"*) printf '%s' "$HOME/${1#"~/"}" ;;
@@ -154,6 +157,7 @@ probe_read_t() {
   # and times out with rc 1 or 142 from /dev/null. Probe must not
   # consume this script's stdin. Do not depend on the English error text.
   _rc=0
+  # shellcheck disable=SC3045  # probe: dash has no -t and we fall back
   _e=$( ( IFS= read -t 0 -r _probe_x < /dev/null ) 2>&1 ) || _rc=$?
   if [ "$_rc" -eq 2 ] && [ -n "$_e" ]; then
     HAVE_READ_T=0
@@ -162,59 +166,27 @@ probe_read_t() {
   HAVE_READ_T=1
 }
 
-# Same names as #321 install/termux/widget/familia-hermes-android.sh
-# (feat/android-packaging @ 283a526), plus FAMILIA_ALLOW_YES. A leftover
-# export of any of these is treated as typed ACCEPT by install.sh / hermes.
-license_scrub_vars() {
-  # Gate- and override-type names this screen controls, or that weaken
-  # a gate if inherited. assemble_and then sets only what the switches
-  # selected. Also any currently exported FAMILIA_ALLOW_* or
-  # FAMILIA_*ACCEPT* / INSTALL_ACK (see extra_scrub_from_env).
-  #   INSTALL_ACK
-  #   FAMILIA_ACCEPT_LICENSES
-  #   FAMILIA_ACCEPT_UNKNOWN_LICENSES
-  #   FAMILIA_LICENSE_ACCEPT_FILE
-  #   FAMILIA_ALLOW_YES
-  #   FAMILIA_HERMES_CTX_GATE
-  #   FAMILIA_BIND
-  #   FAMILIA_CTX
-  #   FAMILIA_PHONE_MODEL_TIER
-  #   FAMILIA_RUNTIME
-  #   FAMILIA_API_KEY_FILE
-  #   FAMILIA_CBL_ANDROID_TAG
-  #   FAMILIA_CBL_ANDROID_SHA256
-  #   FAMILIA_CBL_ANDROID_ASSET
-  #   FAMILIA_CBL_DOWNLOAD_URL
-  #   FAMILIA_CBL_URL
-  printf '%s\n' \
-    INSTALL_ACK \
-    FAMILIA_ACCEPT_LICENSES \
-    FAMILIA_ACCEPT_UNKNOWN_LICENSES \
-    FAMILIA_LICENSE_ACCEPT_FILE \
-    FAMILIA_ALLOW_YES \
-    FAMILIA_HERMES_CTX_GATE \
-    FAMILIA_BIND \
-    FAMILIA_CTX \
-    FAMILIA_PHONE_MODEL_TIER \
-    FAMILIA_RUNTIME \
-    FAMILIA_API_KEY_FILE \
-    FAMILIA_CBL_ANDROID_TAG \
-    FAMILIA_CBL_ANDROID_SHA256 \
-    FAMILIA_CBL_ANDROID_ASSET \
-    FAMILIA_CBL_DOWNLOAD_URL \
-    FAMILIA_CBL_URL
-}
-
-extra_scrub_from_env() {
+# P1: installer launch is an allowlist. Clear every inherited FAMILIA_*
+# and INSTALL_ACK (prefix match on the current environment), then
+# re-set only what this screen chose. assemble_and may re-export:
+#   FAMILIA_CTX, FAMILIA_PHONE_MODEL_TIER, FAMILIA_CBL_*,
+#   FAMILIA_API_KEY_FILE, FAMILIA_HERMES_CTX_GATE, FAMILIA_RUNTIME,
+#   FAMILIA_BIND (on-phone, pinned to 127.0.0.1).
+# One justified pass-through, re-exported after the scrub:
+#   FAMILIA_ARGV_FILE -- test hook so a child stub can record argv;
+#   not read by install.sh, install-hermes-android.sh, or the smoke
+#   script. Source-override leftovers such as FAMILIA_REPO_URL,
+#   FAMILIA_RAW_URL, FAMILIA_BRANCH, FAMILIA_PORT, FAMILIA_MODEL,
+#   FAMILIA_PREFIX and FAMILIA_EXTRA are not passed through.
+inherited_familia_vars() {
   env 2>/dev/null | awk -F= '
-    /^FAMILIA_ALLOW_[A-Za-z0-9_]+=/ { print $1 }
-    /^FAMILIA_[A-Za-z0-9_]*ACCEPT[A-Za-z0-9_]*=/ { print $1 }
+    /^FAMILIA_[A-Za-z0-9_]+=/ { print $1 }
     /^INSTALL_ACK=/ { print $1 }
   '
 }
 
 all_scrub_vars() {
-  { license_scrub_vars; extra_scrub_from_env; } | awk 'NF && !seen[$0]++'
+  inherited_familia_vars | awk 'NF && !seen[$0]++'
 }
 
 probe_env_u() {
@@ -238,7 +210,8 @@ run_assembled() {
   fi
   shift
   (
-    # Same documented list as license_scrub_vars, plus discovered ALLOW_*/ACCEPT_*.
+    # Allowlist: drop every inherited FAMILIA_* / INSTALL_ACK, then
+    # export only the NAME=val words assemble_and placed on argv.
     _ul=$(all_scrub_vars)
     for _u in $_ul; do
       unset "$_u" 2>/dev/null || true
@@ -246,6 +219,7 @@ run_assembled() {
     while [ $# -gt 0 ]; do
       case "$1" in
         *=*)
+          # shellcheck disable=SC2163  # $1 is a NAME=value word, not a name
           export "$1" || exit 1
           shift
           ;;
@@ -616,13 +590,14 @@ box_bar() {
 }
 box_text() {
   _t=$1
+  _c=${2:-$C1}
   if [ "$USE_BOX" != 1 ]; then
     say_row "$_t"
     return 0
   fi
   _pad=$((WIDTH - 2))
   [ "$_pad" -gt 0 ] || _pad=1
-  printf '  %s %s%-*.*s%s %s\n' "$V" "$C1" "$_pad" "$_pad" "$_t" "$CReset" "$V"
+  printf '  %s %s%-*.*s%s %s\n' "$V" "$_c" "$_pad" "$_pad" "$_t" "$CReset" "$V"
 }
 
 # Wrap at COLUMNS instead of hard-cutting, so Host, Port and status stay
@@ -634,6 +609,7 @@ say_row() {
   printf '%s\n' "$_t" | awk -v n="$_lim" '
     {
       s = $0
+      if (length(s) == 0) { print ""; next }
       first = 1
       while (length(s) > 0) {
         w = n
@@ -749,7 +725,7 @@ listener_key_label() {
   if [ "$START_FAMILIA" = 1 ] || { [ -n "$HOST" ] && ! is_loopback "$HOST"; }; then
     printf '%s' "listener: key required"
   elif [ -n "$HOST" ] && is_loopback "$HOST"; then
-    printf '%s' "listener: no key (loopback)"
+    printf '%s' "listener: loopback only (127.0.0.1), API key not required"
   else
     printf '%s' "listener: key required for a remote host"
   fi
@@ -1017,6 +993,7 @@ atomic_write() {
   # Replaces a symlink at DEST instead of following it. Never uses cp.
   _dest=$1
   _dir=$(dirname -- "$_dest")
+  # shellcheck disable=SC2174  # umask 077 already applies to any parent
   mkdir -m 700 -p "$_dir" || { err "could not create $_dir"; return 1; }
   _tmp=$(mktemp "$_dir/android-cockpit.env.XXXXXX") || { err "could not write $_dest"; return 1; }
   trap 'rm -f "$_tmp"; exit 130' INT TERM
@@ -1028,6 +1005,7 @@ atomic_write() {
 }
 
 save_settings() {
+  # shellcheck disable=SC2174  # umask 077 already applies to any parent
   mkdir -m 700 -p "$CONFIG_DIR" || { err "could not create $CONFIG_DIR"; return 1; }
   if ! {
     printf '# familia android cockpit switches. Do not store API key secrets here, only paths.\n'
@@ -1039,7 +1017,7 @@ save_settings() {
     printf 'KEEP_PREFIX=%s\n' "$KEEP_PREFIX"
     printf 'START_FAMILIA=%s\n' "$START_FAMILIA"
     printf 'HTTPS=%s\n' "$HTTPS"
-    printf 'DEV_ALLOW_HTTP=%s\n' "$DEV_ALLOW_HTTP"
+    printf 'DEV_ALLOW_HTTP=%s\n' "$DEV_ALLOW_HTTP_SAVED"
     printf 'HOST=%s\n' "$HOST"
     printf 'PORT=%s\n' "$PORT"
     printf 'TIER=%s\n' "$TIER"
@@ -1059,7 +1037,8 @@ save_settings() {
     return 1
   fi
   if [ -d "$SMOKE_PREFIX" ] || [ "$KEEP_PREFIX" = 1 ]; then
-    mkdir -m 700 -p "$SMOKE_PREFIX" 2>/dev/null || true
+    # shellcheck disable=SC2174  # umask 077 already applies to any parent
+      mkdir -m 700 -p "$SMOKE_PREFIX" 2>/dev/null || true
     if [ -d "$SMOKE_PREFIX" ]; then
       # Write-only copy for a kept prefix; never loaded back (XDG is source of truth).
       atomic_write "$PREFIX_FILE" < "$XDG_FILE" || true
@@ -1073,6 +1052,10 @@ load_settings() {
   if [ -e "$XDG_FILE" ]; then
     load_file "$XDG_FILE"
   fi
+  # File/menu value is what we persist. FAMILIA_DEV_ALLOW_HTTP is a
+  # session override only (P2) and is never written back.
+  DEV_ALLOW_HTTP_SAVED=$DEV_ALLOW_HTTP
+  DEV_ALLOW_HTTP_FROM_ENV=0
   apply_dev_http_env
   apply_self_host_defaults
   apply_https_policy
@@ -1211,6 +1194,10 @@ assemble_and() {
   if [ "$THIN_CLIENT" != 1 ]; then
     set -- "$@" "FAMILIA_BIND=127.0.0.1"
   fi
+  # Justified pass-through (see inherited_familia_vars): test hook only.
+  if [ -n "${FAMILIA_ARGV_FILE:-}" ]; then
+    set -- "$@" "FAMILIA_ARGV_FILE=$FAMILIA_ARGV_FILE"
+  fi
 
   set -- "$@" sh "$INSTALLER"
   if flag_ok --commit && [ -n "$COMMIT" ]; then set -- "$@" --commit "$COMMIT"; fi
@@ -1267,8 +1254,8 @@ https_default() {
 
 apply_dev_http_env() {
   case "${FAMILIA_DEV_ALLOW_HTTP:-}" in
-    1|yes|YES|true|TRUE|on|ON) DEV_ALLOW_HTTP=1 ;;
-    0|no|NO|false|FALSE|off|OFF) DEV_ALLOW_HTTP=0 ;;
+    1|yes|YES|true|TRUE|on|ON) DEV_ALLOW_HTTP=1; DEV_ALLOW_HTTP_FROM_ENV=1 ;;
+    0|no|NO|false|FALSE|off|OFF) DEV_ALLOW_HTTP=0; DEV_ALLOW_HTTP_FROM_ENV=1 ;;
   esac
 }
 
@@ -1301,7 +1288,11 @@ dump_settings() {
   say "android-cockpit settings (secure defaults unless changed):"
   say "  mode=$(mode_label)  gate=$(onoff "$CTX_GATE")  ctx=${FAMILIA_CTX_VAL:-unset}"
   say "  allow_yes=$(onoff "$ALLOW_YES")  dry_run=$(onoff "$DRY_RUN")  keep=$(onoff "$KEEP_PREFIX")  start=$(onoff "$START_FAMILIA")"
-  say "  https=$(onoff "$HTTPS")  dev_allow_http=$(onoff "$DEV_ALLOW_HTTP")$(star_if "$DEV_ALLOW_HTTP" 0)  host=${HOST:-unset}  port=${PORT:-unset}  tier=${TIER:-auto}"
+  _dev=$(onoff "$DEV_ALLOW_HTTP")$(star_if "$DEV_ALLOW_HTTP" 0)
+  if [ "$DEV_ALLOW_HTTP_FROM_ENV" = 1 ]; then
+    _dev="$_dev (session)"
+  fi
+  say "  https=$(onoff "$HTTPS")  dev_allow_http=$_dev  host=${HOST:-unset}  port=${PORT:-unset}  tier=${TIER:-auto}"
   say "  licenses=$(licenses_csv)  fetch_pyyaml=$(onoff "$FETCH_PYYAML")  runtime=$RUNTIME_KIND"
   say "  commit=${COMMIT:-unset}  cbl_override=${CBL_TAG:-in-repo pin}  url_file=${URL_FILE:-unset}"
   say "  config=$XDG_FILE"
@@ -1417,7 +1408,7 @@ paint_title() {
     return 0
   fi
   box_bar "$TL" "$TR"
-  box_text "FAMILIA  ANDROID COCKPIT  SWITCHES"
+  box_text "FAMILIA  ANDROID COCKPIT  SWITCHES" "$C0"
   box_text "$(banner_state)"
   box_bar "$BL" "$BR"
 }
@@ -1646,6 +1637,7 @@ read_line() {
     fi
   else
     _t0=$(now_s)
+    # shellcheck disable=SC3045  # guarded by HAVE_READ_T; dash never reaches here
     IFS= read -t "$TIMEOUT" -r _v || _rc=$?
     _t1=$(now_s)
     _elapsed=0
@@ -1798,6 +1790,8 @@ reset_defaults() {
   START_FAMILIA=0
   HTTPS=0
   DEV_ALLOW_HTTP=0
+  DEV_ALLOW_HTTP_SAVED=0
+  DEV_ALLOW_HTTP_FROM_ENV=0
   HOST=$DEFAULT_HOST
   PORT=$DEFAULT_PORT
   TIER=""
@@ -1966,12 +1960,15 @@ do_choice() {
     22) run_installer ;;
     24)
       DEV_ALLOW_HTTP=$(toggle "$DEV_ALLOW_HTTP")
+      # Menu toggle is what persists; drop any session env override.
+      DEV_ALLOW_HTTP_SAVED=$DEV_ALLOW_HTTP
+      DEV_ALLOW_HTTP_FROM_ENV=0
       say "dev: allow plain HTTP=$(onoff "$DEV_ALLOW_HTTP")"
       if [ "$DEV_ALLOW_HTTP" = 1 ]; then
         err "warning: dev: allow plain HTTP is ON*; plain HTTP to a remote host is allowed"
       else
         apply_https_policy
-        if [ -n "$HOST" ] && ! is_https_loopback "$HOST" ]; then
+        if [ -n "$HOST" ] && ! is_https_loopback "$HOST"; then
           say "HTTPS enabled for remote host (dev: allow plain HTTP is off)"
         fi
       fi
