@@ -7,13 +7,15 @@ on the server is not enough: every caller, including internal and recursive ones
 Key lookup order (first hit wins):
   1. FAMILIA_API_KEY            explicit override
   2. LLAMA_API_KEY              set by code-bootstraps serve.sh (comma list; first key used)
-  3. API_KEY_FILE               file, one key per line, '#' comments
+  3. API_KEY_FILE or FAMILIA_API_KEY_FILE  (either name; first set wins)
   4. the per-instance key file  ${XDG_CONFIG_HOME:-~/.config}/familia/instances/<port>/api-keys
                                 (%APPDATA%\familia\instances\<port> on Windows; port = FAMILIA_PORT/PORT, 9931)
-  5. legacy <bootstrap root>/.secrets/api-keys for FAMILIA_BOOTSTRAP_ROOT, ROOT/code-bootstraps-llama.cpp,
+                                This is the canonical layout for graph-launched nodes.
+  5. the familia-start installer file  ${XDG_CONFIG_HOME:-~/.config}/familia/api.key
+                                (no migration between this and the per-instance file; see #419)
+  6. legacy <bootstrap root>/.secrets/api-keys for FAMILIA_BOOTSTRAP_ROOT, ROOT/code-bootstraps-llama.cpp,
      ROOT/../code-bootstraps-llama.cpp, ~/code-bootstraps-llama.cpp
-The key is never generated here; serve.sh / serve.ps1 create it once per instance and never rotate it
-(code-bootstraps-llama.cpp docs/api-key-design.md).
+The key is never generated here; serve.sh / start.bat / familia-start create it once and never rotate it.
 
 CLI:  python3 scripts/familia_auth.py curl-config -o FILE
                                                     -> writes 'header = "Authorization: Bearer ..."' to a NEW
@@ -73,19 +75,35 @@ def instance_key_file(port=None, env=None):
     return os.path.join(base, "familia", "instances", port, "api-keys")
 
 
+def installer_key_file(env=None):
+    """Default familia-start key path (~/.config/familia/api.key). Not a migration (#419)."""
+    env = os.environ if env is None else env
+    if os.name == "nt":
+        base = env.get("APPDATA") or os.path.expanduser("~")
+    else:
+        base = env.get("XDG_CONFIG_HOME") or os.path.join(os.path.expanduser("~"), ".config")
+    return os.path.join(base, "familia", "api.key")
+
+
 def candidate_key_files(root=ROOT, env=None):
     env = os.environ if env is None else env
     out = []
-    if env.get("API_KEY_FILE"):
-        out.append(env["API_KEY_FILE"])
-    out.append(instance_key_file(env=env))
+    for name in ("API_KEY_FILE", "FAMILIA_API_KEY_FILE"):
+        v = env.get(name)
+        if v and v not in out:
+            out.append(v)
+    for path in (instance_key_file(env=env), installer_key_file(env=env)):
+        if path not in out:
+            out.append(path)
     roots = [env.get("FAMILIA_BOOTSTRAP_ROOT", ""),
              os.path.join(root, "code-bootstraps-llama.cpp"),
              os.path.join(os.path.dirname(root), "code-bootstraps-llama.cpp"),
              os.path.join(os.path.expanduser("~"), "code-bootstraps-llama.cpp")]
     for r in roots:
         if r:
-            out.append(os.path.join(r, ".secrets", "api-keys"))
+            path = os.path.join(r, ".secrets", "api-keys")
+            if path not in out:
+                out.append(path)
     return out
 
 
@@ -153,10 +171,90 @@ def keys_match(given, expected):
 def load_or_create_key_file(path):
     """Return the instance key at path; create it ONLY if missing.
 
-    First write is atomic and 0600: write a private temp file in the same dir, then link()
-    it into place, which fails if another starter won the race; then everyone reads the
-    winner's key. An existing key is never rotated."""
+    First write is atomic and 0600: write a private temp file in the same dir (LF
+    bytes, no BOM), then link() it into place, which fails if another starter won
+    the race; then everyone reads the winner's key. If link() is denied (Termux
+    SELinux EACCES/EPERM, or ENOSYS/EXDEV), fall back to O_CREAT|O_EXCL|O_NOFOLLOW
+    with mode 0600 (still no-clobber). An existing key is never rotated."""
     return _load_or_create_secret(path, "# llama-server API key(s), one per line\n")
+
+
+def _write_all(fd, data, path):
+    """Write data in full; raise on a short or failed write."""
+    off = 0
+    while off < len(data):
+        n = os.write(fd, data[off:])
+        if n <= 0:
+            raise OSError("short write publishing %s" % path)
+        off += n
+
+
+def _publish_secret(tmp, path):
+    """Atomically publish tmp at path: link, or no-clobber create if link is denied.
+
+    If the O_EXCL fallback opens the path and then the write or fsync fails, the
+    empty or partial file is unlinked so a later start is not stuck.
+    """
+    import errno
+    try:
+        os.link(tmp, path)
+        return
+    except FileExistsError:
+        return
+    except OSError as e:
+        if e.errno not in (errno.EACCES, errno.EPERM, errno.ENOSYS, errno.EXDEV):
+            raise
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    if getattr(os, "O_NOFOLLOW", 0):
+        flags |= os.O_NOFOLLOW
+    fd = None
+    try:
+        fd = os.open(path, flags, 0o600)
+    except FileExistsError:
+        return
+    try:
+        with open(tmp, "rb") as src:
+            data = src.read()
+        _write_all(fd, data, path)
+        os.fsync(fd)
+    except Exception:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+        fd = None
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+        raise
+    finally:
+        if fd is not None:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+
+
+def _wait_for_key(path, attempts=5, delay=0.05):
+    """Retry _read briefly so a race loser can see the winner's write."""
+    import time
+    k = _read(path)
+    if k:
+        return k
+    for _ in range(max(0, attempts - 1)):
+        time.sleep(delay)
+        k = _read(path)
+        if k:
+            return k
+    return ""
+
+
+def _empty_regular_file(path):
+    try:
+        return (not os.path.islink(path)) and os.path.isfile(path) and os.path.getsize(path) == 0
+    except OSError:
+        return False
 
 
 def _load_or_create_secret(path, header):
@@ -166,18 +264,36 @@ def _load_or_create_secret(path, header):
     d = os.path.dirname(path) or "."
     os.makedirs(d, mode=0o700, exist_ok=True)
     tmp = os.path.join(d, ".%s.%d.%s" % (os.path.basename(path), os.getpid(), secrets.token_hex(4)))
-    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    if getattr(os, "O_NOFOLLOW", 0):
+        flags |= os.O_NOFOLLOW
+    fd = os.open(tmp, flags, 0o600)
     try:
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            f.write(header + secrets.token_hex(24) + "\n")
-            f.flush(); os.fsync(f.fileno())
-        try:
-            os.link(tmp, path)
-        except FileExistsError:
-            pass
+        # Binary LF only: text mode on Windows would write CRLF, which the guard rejects.
+        os.write(fd, (header + secrets.token_hex(24) + "\n").encode("ascii"))
+        os.fsync(fd)
+        os.close(fd)
+        fd = None
+        _publish_secret(tmp, path)
+        k = _wait_for_key(path)
+        # A crash mid-write can leave a stuck empty file; unlink once and republish.
+        if not k and _empty_regular_file(path):
+            try:
+                os.unlink(path)
+            except OSError:
+                pass
+            _publish_secret(tmp, path)
+            k = _wait_for_key(path)
     finally:
-        os.unlink(tmp)
-    k = _read(path)
+        if fd is not None:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
     if not k:
         raise MissingKey("key file %s is empty" % path)
     return k

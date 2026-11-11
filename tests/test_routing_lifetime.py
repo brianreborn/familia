@@ -28,11 +28,14 @@ def tree(tmp_path):
     t = tmp_path / "repo"; (t / "scripts").mkdir(parents=True); (t / "lib").mkdir()
     shutil.copy(os.path.join(ROOT, "scripts", "serve.sh"), t / "scripts" / "serve.sh")
     shutil.copy(os.path.join(ROOT, "lib", "msg.mk"), t / "lib" / "msg.mk")
+    for _n in ("bind_auth_guard.py", "familia_auth.py"):
+        shutil.copy(os.path.join(ROOT, "scripts", _n), t / "scripts" / _n)
+    kf = tmp_path / "api-keys"; kf.write_text("k" * 32); kf.chmod(0o600)
     srv = tmp_path / "bin" / "llama-server"; srv.parent.mkdir(); srv.write_text(FAKE_SERVER); srv.chmod(0o755)
     model = tmp_path / "m.gguf"; model.write_bytes(b"GGUF")
     pidfile = tmp_path / "server.pid"
     (t / "scripts" / "validate_graph.py").write_text(
-        f"print({str(srv)!r} + ' -m ' + {str(model)!r} + ' -ngl 0 --tools all --pidfile ' + {str(pidfile)!r})\n")
+        f"print({str(srv)!r} + ' -m ' + {str(model)!r} + ' -ngl 0 --tools all --pidfile ' + {str(pidfile)!r} + ' --api-key-file ' + {str(kf)!r})\n")
     (t / "scripts" / "licenses.py").write_text("raise SystemExit(0)\n")
     env = dict(os.environ, FAMILIA_MEMCAP="0", FAMILIA_GUARD="0", FAMILIA_LOG_DIR=str(tmp_path / "logs"))
     env.pop("FAMILIA_HOST", None)

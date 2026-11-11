@@ -16,6 +16,35 @@ proposed in [Coordinator-free pull swarm](#coordinator-free-pull-swarm-proposed-
 It is design-only. R0-R11 describe the current contract, which still has a
 conductor and a miryam-to-phone SSH smoke path.
 
+## Service authentication (API key default)
+
+New swarm workers and any service they start follow [DESIGN.md Security](../DESIGN.md#security):
+a listener on the network requires an API key. Localhost-only without a key is allowed only
+for the named local-development-tool exceptions listed there, each with a reason. familia
+model servers and gateways are not exceptions: they take `--api-key-file` from a mode 0600
+instance file on every bind, including loopback (`scripts/serve.sh`, `familia-start`,
+CFG-CRED-009). Ident on `127.0.0.1:113` (R10.1) is a kernel identity protocol, not an HTTP
+service, and is not an exception to that HTTP/API-key rule.
+
+## Placement: spare CPU of Grok Bot worker hosts
+
+Recorded from Brian on a live voice call, 10 Nov 2026, 3:42 PM, America/Los_Angeles.
+Also in [DESIGN.md Security](../DESIGN.md#security).
+
+Familia components and workers run on the spare CPU of Grok Bot's own worker
+hosts: miryam, angel-bsd, the Galaxy A57 phones, the box, and other Grok Bot
+worker hosts. They do not run on personal computers in general. This is a
+security requirement as well as a quota saver. Brian's stated rationale is
+that it reduces exposure to timing side-channel attacks.
+
+The rule applies to every decision about where a workload runs, within each
+host's load limits: one job per phone, and miryam's memory gate (see #29).
+Do not publish host addresses here; they live in the untracked hosts overlay.
+
+Brian's own local machines may still take part in the swarm as peers. That
+peer role is described in Coordinator-free pull swarm below. It does not
+move Grok Bot worker processes onto personal computers in general.
+
 ## R0 Forge-agnostic (HARD, v0.3) — N
 
 Every forge-specific call goes through one thin adapter, `scripts/swarm/forge.sh`,
@@ -261,6 +290,37 @@ SSH as a control channel. SSH is only opportunistic access when a peer happens
 to be reachable (a human or a peer checking liveness, copying a log the
 operator asked for, or the transitional A57 fallback below). Control always
 returns to the forge.
+
+### Virtual swarms on each worker host (design only)
+
+Recorded from Brian on a live voice call, 10 Nov 2026, 3:42 PM, America/Los_Angeles.
+Status: design only. Not implemented. No new daemon is introduced here.
+Implementation should be a follow-up issue.
+
+This refines the coordinator-free pull design; it does not replace it.
+GitHub remains the nexus. There is still no swarm brain and no dispatcher
+host.
+
+1. Brian's own local machines are swarm participants. They are peers, not a
+   control plane and not a special class of coordinator.
+2. Each Grok Bot worker host (miryam, angel-bsd, the Galaxy A57 phones, and
+   other Grok Bot worker hosts) runs a virtual swarm. That virtual swarm
+   coordinates its Grok Bot worker process with nearby local machines as
+   peers. "Nearby" is local capacity and locks only (what can run on this
+   host and its immediate local peers). Host addresses are not recorded
+   here.
+3. There is no hierarchy. Every participant, whether a Grok Bot worker or a
+   local machine, discovers and claims work from GitHub directly, using the
+   existing `claimed:<runner>` label, a signed comment, and the lease rules
+   in Claim, lease, and fencing below. The virtual swarm only shares local
+   capacity and locks. It never assigns work, and it never tells a peer
+   what to run.
+
+Labels remain a display cache, not a compare-and-set: a `claimed:<runner>`
+label and a signed claim comment are how a peer shows its claim, and the
+CAS and fencing rules already in this section still decide the winner.
+A virtual swarm must not add a second assignment path, a local queue that
+bypasses the forge, or a new long-running supervisor.
 
 ### Vetted issues, then explicit admin approval
 

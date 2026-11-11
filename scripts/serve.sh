@@ -4,6 +4,8 @@
 # RECOMMENDED model parameter (#51, docs/model-params.md) and exits 1 when one cannot be met;
 # serve.sh then refuses to start. An embedding node must carry --embeddings and --pooling.
 # The licenses of the graph selection must be accepted first (scripts/licenses.py gate).
+# Auth: --api-key-file (0600 or 0400, not group/world readable) is required on every bind, loopback included
+# (DESIGN.md Security; scripts/bind_auth_guard.py refuses a launch without it).
 # Memory cap (docs/ram-safety.md): FAMILIA_MEMCAP=1 wraps the server in a
 # `systemd-run --user --scope` with a headroom MemoryMax (swap allowed) and sets oom_score_adj 800,
 # so on memory pressure the model dies, not the desktop. Default: on for miryam, off elsewhere.
@@ -13,7 +15,7 @@
 # (GGML_VK_VISIBLE_DEVICES=, LESSONS-LEARNED L-vkshm). Any other failure is returned as is.
 set -eu
 case "${1:-}" in
-  ""|-h|--help) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; [ -n "${1:-}" ] && exit 0; exit 2 ;;
+  ""|-h|--help) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; [ -n "${1:-}" ] && exit 0; exit 2 ;;
 esac
 node="$1"; shift
 here="$(cd "$(dirname "$0")/.." && pwd)"
@@ -147,6 +149,29 @@ if printf '%s\n' "$args" | grep -q -E -e '(^|[[:space:]])--embeddings?([[:space:
     exit 1
   fi
 fi
+# llama-server also reads LLAMA_API_KEY and LLAMA_ARG_* even when the flags are
+# not on argv; drop them so a leaked env cannot add a key or override bind/port.
+unset LLAMA_API_KEY LLAMA_ARG_API_KEY_FILE LLAMA_ARG_HOST LLAMA_ARG_PORT || true
+for _v in $(env | sed -n 's/^\(LLAMA_ARG_[A-Za-z0-9_]*\)=.*/\1/p'); do
+  unset "$_v"
+done
+unset _v
+# Auth guard (DESIGN.md Security, CFG-CRED-009): llama-server is not a localhost-without-key
+# exception. The final argv must include a --api-key-file (0600 or 0400, not group/world readable).
+# $1 is a shell-quoted argv without extras. $extra is appended after --extra-start
+# for the check only, so --extra-start never reaches the server. The caller then
+# evals "set -- <argv> $extra" itself: "set --" inside a function does not change
+# the script's positional parameters.
+auth_guard() {
+  if [ ! -f "$here/scripts/bind_auth_guard.py" ]; then
+    say "scripts/bind_auth_guard.py not found; API key guard is required; not starting $node"
+    exit 1
+  fi
+  if ! eval "python3 \"$here/scripts/bind_auth_guard.py\" --ensure -- $1 --extra-start $extra"; then
+    say "auth guard refused node $node (API key required on every bind, loopback included); not starting"
+    exit 2
+  fi
+}
 # Vulkan builds allocate ~1.83 GB of host buffers in shmem even with -ngl 0, counted
 # against the memcap scope (LESSONS-LEARNED L-vkshm). With no GPU layers, hide Vulkan unless set.
 case " $args " in *" -ngl 0 "*)
@@ -168,6 +193,7 @@ if [ "$FAMILIA_MEMCAP" = 1 ] && command -v systemd-run >/dev/null 2>&1; then
     python3 "$here/scripts/launch_status.py" emit LF_OOM_CAP --engine serve --model "$model" --evidence "admission refused for node $node"
     exit 69
   fi
+  auth_guard "$args"
   eval "set -- $args $extra"
   exec systemd-run --user --scope --quiet --unit="familia-$node-$$" \
     ${FAMILIA_MEMHIGH:+-p MemoryHigh="$FAMILIA_MEMHIGH"} -p MemoryMax="$FAMILIA_MEMMAX" \
@@ -186,7 +212,8 @@ log="$logdir/serve-$node.log"
 case "$log" in /*) say "logs: $log" ;; *) say "logs: $PWD/$log" ;; esac
 rc=0
 # shellcheck disable=SC2086
-eval "set -- $args --log-file \"\$log\" $extra"
+auth_guard "$args --log-file $(q "$log")"
+eval "set -- $args --log-file $(q "$log") $extra"
 "$@" || rc=$?
 [ "$rc" -eq 0 ] && exit 0
 # Retry on the CPU only for a Vulkan failure of a GPU launch that was not stopped by a signal.
@@ -196,7 +223,8 @@ if [ "${ngl:-0}" -gt 0 ] && [ "$rc" -lt 128 ] && \
   export GGML_VK_VISIBLE_DEVICES=
   case "$log" in /*) say "logs: $log.cpu" ;; *) say "logs: $PWD/$log.cpu" ;; esac
   # shellcheck disable=SC2086
-  eval "set -- $safe_args --log-file \"\$log.cpu\" $extra"
+  auth_guard "$safe_args --log-file $(q "$log.cpu")"
+  eval "set -- $safe_args --log-file $(q "$log.cpu") $extra"
   exec "$@"
 fi
 exit "$rc"
