@@ -122,13 +122,15 @@ safe_secret_file() {
 }
 
 probe_read_t() {
-  # dash has no read -t (rc 2, "Illegal option -t"). bash accepts it
+  # dash has no read -t (rc 2 + a message on stderr). bash accepts it
   # and times out with rc 1 or 142 from /dev/null. Probe must not
-  # consume this script's stdin.
-  _e=$( ( IFS= read -t 0 -r _probe_x < /dev/null ) 2>&1 ) || true
-  case "$_e" in
-    *[Ii]llegal\ option*) HAVE_READ_T=0; return 0 ;;
-  esac
+  # consume this script's stdin. Do not depend on the English error text.
+  _rc=0
+  _e=$( ( IFS= read -t 0 -r _probe_x < /dev/null ) 2>&1 ) || _rc=$?
+  if [ "$_rc" -eq 2 ] && [ -n "$_e" ]; then
+    HAVE_READ_T=0
+    return 0
+  fi
   HAVE_READ_T=1
 }
 
@@ -218,12 +220,15 @@ resolve_installer() {
   if [ "$THIN_CLIENT" = 1 ]; then
     if [ -f "$_thin" ] && [ -r "$_thin" ]; then _pick=$_thin
     elif [ -f "$_inst" ] && [ -r "$_inst" ]; then _pick=$_inst
-    elif [ -f "$_hermes" ] && [ -r "$_hermes" ]; then _pick=$_hermes
+    elif [ "$START_FAMILIA" = 1 ] && [ -f "$_hermes" ] && [ -r "$_hermes" ]; then _pick=$_hermes
     fi
   else
-    if [ -f "$_hermes" ] && [ -r "$_hermes" ]; then _pick=$_hermes
+    # hermes always starts familia-start (no skip-start flag). Only pick it
+    # when start is ON; otherwise prefer install.sh.
+    if [ "$START_FAMILIA" = 1 ] && [ -f "$_hermes" ] && [ -r "$_hermes" ]; then _pick=$_hermes
     elif [ -f "$_inst" ] && [ -r "$_inst" ]; then _pick=$_inst
     elif [ -f "$_thin" ] && [ -r "$_thin" ]; then _pick=$_thin
+    elif [ -f "$_hermes" ] && [ -r "$_hermes" ]; then _pick=$_hermes
     fi
   fi
   if [ -n "$_pick" ]; then
@@ -272,13 +277,89 @@ tier_ctx() {
   esac
 }
 
-onphone_block_reason() {
-  if phone_gate_ok; then
-    return 1
+tier_min_usable() {
+  case "$1" in
+    tiny) printf '%s' 0 ;;
+    small) printf '%s' 1024 ;;
+    medium) printf '%s' 2048 ;;
+    large) printf '%s' 4096 ;;
+    *) printf '%s' 4096 ;;
+  esac
+}
+
+tier_from_usable() {
+  if [ "$1" -lt 1024 ]; then printf '%s' tiny
+  elif [ "$1" -lt 2048 ]; then printf '%s' small
+  elif [ "$1" -lt 4096 ]; then printf '%s' medium
+  else printf '%s' large
   fi
-  _tc=$(tier_ctx)
-  printf '%s' "phone-tier ctx $_tc < 64000; set FAMILIA_CTX >= 64000 to enable on-phone"
-  return 0
+}
+
+# Large-tier scale from phone-model-default.py: 4096 MiB usable holds ctx 8192.
+required_usable_for_ctx() {
+  printf '%s' $(( (4096 * $1 + 8191) / 8192 ))
+}
+
+read_total_ram_mib() {
+  if [ -n "${FAMILIA_RAM_MIB:-}" ]; then
+    printf '%s' "$FAMILIA_RAM_MIB"
+    return 0
+  fi
+  if [ -r /proc/meminfo ]; then
+    awk '/^MemTotal:/ { print int($2 / 1024); exit }' /proc/meminfo
+    return 0
+  fi
+  return 1
+}
+
+# 0 + reason if RAM cannot hold on-phone at the current ctx/tier.
+ram_block_reason() {
+  _ram=$(read_total_ram_mib) || {
+    printf '%s' "MemTotal unknown; refusing on-phone until FAMILIA_RAM_MIB is set or /proc/meminfo is readable"
+    return 0
+  }
+  case "$_ram" in
+    ''|*[!0-9]*)
+      printf '%s' "MemTotal unreadable; refusing on-phone"
+      return 0
+      ;;
+  esac
+  _res=${FAMILIA_RESERVE_MIB:-5120}
+  case "$_res" in
+    ''|*[!0-9]*) _res=5120 ;;
+  esac
+  _usable=$((_ram - _res))
+  [ "$_usable" -lt 0 ] && _usable=0
+  _tier=$TIER
+  [ -n "$_tier" ] || _tier=$(tier_from_usable "$_usable")
+  _need=$(tier_min_usable "$_tier")
+  if [ -n "$FAMILIA_CTX_VAL" ]; then
+    case "$FAMILIA_CTX_VAL" in
+      *[!0-9]*) ;;
+      *)
+        _cneed=$(required_usable_for_ctx "$FAMILIA_CTX_VAL")
+        [ "$_cneed" -gt "$_need" ] && _need=$_cneed
+        ;;
+    esac
+  fi
+  if [ "$_usable" -lt "$_need" ]; then
+    printf '%s' "RAM too low for on-phone: MemTotal ${_ram} MiB, reserve ${_res} MiB, usable ${_usable} MiB < ${_need} MiB needed for tier ${_tier} (ctx ${FAMILIA_CTX_VAL:-$(tier_ctx)})"
+    return 0
+  fi
+  return 1
+}
+
+onphone_block_reason() {
+  if ! phone_gate_ok; then
+    _tc=$(tier_ctx)
+    printf '%s' "phone-tier ctx $_tc < 64000; set FAMILIA_CTX >= 64000 to enable on-phone"
+    return 0
+  fi
+  if _rr=$(ram_block_reason); then
+    printf '%s' "$_rr"
+    return 0
+  fi
+  return 1
 }
 
 use_color() {
@@ -405,11 +486,13 @@ valid_host() {
   printf '%s' "$1" | grep -Eq '^([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*|\[[0-9A-Fa-f:.]+\])$'
 }
 
+# Only real loopback IP addresses (127.0.0.0/8 and ::1). A hostname
+# such as 127.example.com or localhost is not an IP and needs a key.
 is_loopback() {
   case "$1" in
-    localhost|localhost.|127.*|\[::1\]|::1) return 0 ;;
-    *) return 1 ;;
+    \[::1\]|::1) return 0 ;;
   esac
+  printf '%s' "$1" | grep -Eq '^127\.([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\.([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])\.([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])$'
 }
 
 valid_path() {
@@ -602,7 +685,7 @@ load_file() {
     return 0
   fi
   if ! safe_secret_file "$1"; then
-    err "ignoring settings file that is a symlink, not owned by you, or not mode 0600 (or tighter)"
+    err "ignoring settings file that is a symlink, not owned by you, or not mode 0600 (or tighter). Shared storage or a Windows FS cannot hold 0600; keep it under Termux \$HOME or the XDG config dir."
     return 0
   fi
   _seen=" "
@@ -631,9 +714,11 @@ load_file() {
     err "could not read settings file; using values already loaded or the secure defaults"
     return 0
   }
-  if [ "$THIN_CLIENT" != 1 ] && ! phone_gate_ok; then
-    err "on-phone inference ignored in settings: $(onphone_block_reason)"
-    THIN_CLIENT=1
+  if [ "$THIN_CLIENT" != 1 ]; then
+    if _br=$(onphone_block_reason); then
+      err "on-phone inference ignored in settings: $_br"
+      THIN_CLIENT=1
+    fi
   fi
   if [ -n "$CBL_TAG$CBL_ASSET$CBL_URL" ] && ! valid_sha "$CBL_SHA"; then
     err "CBL override ignored in settings: tag/url/asset requires a 64-hex sha256"
@@ -746,7 +831,7 @@ require_key_file() {
     return 1
   fi
   if ! safe_secret_file "$_kf"; then
-    err "API key file must be a regular file owned by you, mode 0600 or tighter (not a symlink, not group- or world-readable). Path: $_kf. Key is not logged."
+    err "API key file must be a regular file owned by you, mode 0600 or tighter (not a symlink, not group- or world-readable). Shared storage or a Windows FS cannot hold 0600; keep it under Termux \$HOME or the XDG config dir. Path: $_kf. Key is not logged."
     return 1
   fi
   return 0
@@ -773,8 +858,14 @@ assemble_and() {
   if flag_ok --host || flag_ok --port; then
     if [ -z "$HOST" ] || [ -z "$PORT" ]; then err "set host and port first"; return 1; fi
   fi
-  if [ "$THIN_CLIENT" != 1 ] && ! phone_gate_ok; then
-    err "$(onphone_block_reason)"
+  if [ "$THIN_CLIENT" != 1 ]; then
+    if _br=$(onphone_block_reason); then
+      err "$_br"
+      return 1
+    fi
+  fi
+  if [ "$SCRIPT_KIND" = hermes ] && [ "$START_FAMILIA" != 1 ]; then
+    err "install-hermes-android.sh always starts familia-start and has no skip-start flag; turn start ON to run it, or use install.sh"
     return 1
   fi
   if [ "$START_FAMILIA" = 1 ] || { [ -n "$HOST" ] && ! is_loopback "$HOST"; }; then
@@ -810,17 +901,14 @@ assemble_and() {
   if [ -n "$API_KEY_FILE" ] && env_ok FAMILIA_API_KEY_FILE; then
     set -- "$@" "FAMILIA_API_KEY_FILE=$_kf"
   fi
-  if [ "$ALLOW_YES" = 1 ] && env_ok FAMILIA_ALLOW_YES; then
-    set -- "$@" "FAMILIA_ALLOW_YES=yes"
-  fi
-  if [ "$ALLOW_YES" = 1 ] && env_ok FAMILIA_ACCEPT_LICENSES && flag_ok --yes; then
-    set -- "$@" "FAMILIA_ACCEPT_LICENSES=yes"
-  fi
   if [ "$CTX_GATE" != 1 ] && env_ok FAMILIA_HERMES_CTX_GATE && flag_ok --no-ctx-gate; then
     set -- "$@" "FAMILIA_HERMES_CTX_GATE=off"
   fi
   if [ "$THIN_CLIENT" != 1 ] && env_ok FAMILIA_RUNTIME; then
     set -- "$@" "FAMILIA_RUNTIME=$RUNTIME_KIND"
+  fi
+  if [ "$THIN_CLIENT" != 1 ]; then
+    set -- "$@" "FAMILIA_BIND=127.0.0.1"
   fi
 
   set -- "$@" sh "$INSTALLER"
@@ -838,8 +926,6 @@ assemble_and() {
   if [ "$CTX_GATE" != 1 ] && flag_ok --no-ctx-gate && [ "$THIN_CLIENT" != 1 ]; then
     set -- "$@" --no-ctx-gate
   fi
-  if [ "$ALLOW_YES" = 1 ] && flag_ok --allow-yes; then set -- "$@" --allow-yes; fi
-  if [ "$ALLOW_YES" = 1 ] && flag_ok --yes; then set -- "$@" --yes; fi
   if [ "$DRY_RUN" = 1 ] && flag_ok --dry-run; then set -- "$@" --dry-run; fi
   if [ "$KEEP_PREFIX" = 1 ] && flag_ok --keep; then set -- "$@" --keep; fi
   if [ "$START_FAMILIA" = 1 ] && flag_ok --start; then set -- "$@" --start; fi
@@ -934,10 +1020,13 @@ paint() {
   else
     say_row "      $(na_label)"
   fi
-  say_row "   4) Allow --yes                                 [$(sw_val --yes "$(onoff "$ALLOW_YES")")]$(star_if "$ALLOW_YES" 0)"
+  say_row "   4) Allow --yes                                 [$(onoff "$ALLOW_YES")]$(star_if "$ALLOW_YES" 0)"
+  say_row "      [n/a: typed ACCEPT is required; this screen never passes --yes]"
   say_row "   5) Dry-run                                     [$(onoff "$DRY_RUN")]$(star_if "$DRY_RUN" 1)"
   say_row "   7) Start after install                         [$(onoff "$START_FAMILIA")]$(star_if "$START_FAMILIA" 0)"
-  if ! flag_ok --start && ! flag_ok --no-open; then
+  if [ "$SCRIPT_KIND" = hermes ] && [ "$START_FAMILIA" != 1 ]; then
+    say_row "      [n/a: install-hermes-android.sh always starts familia-start; turn start ON to run it]"
+  elif ! flag_ok --start && ! flag_ok --no-open; then
     say_row "      $(na_label)"
   fi
   heading "Network"
@@ -1023,6 +1112,9 @@ read_line() {
         :
       elif [ "$_rc" -ge 128 ] || [ "$_rc" -eq 142 ]; then
         return 1
+      elif [ "$_rc" -eq 1 ] && [ -t 0 ]; then
+        # mksh (Android /system/bin/sh) may return 1 on a timed-out read.
+        return 1
       else
         return 2
       fi
@@ -1085,6 +1177,9 @@ run_installer() {
   say "running:"
   say "  $_preview"
   if [ "$DRY_RUN" != 1 ]; then
+    if [ "$SCRIPT_KIND" = install ] || [ "$SCRIPT_KIND" = hermes ]; then
+      err "warning: this is a persistent phone install (writes \$HOME/familia); it is not throwaway like the smoke prefix."
+    fi
     _conf=""
     _st=0
     read_line "dry-run is OFF; type 'run' to proceed: " _conf || _st=$?
@@ -1186,9 +1281,11 @@ do_choice() {
         err "ctx must be an integer; left unset"
         FAMILIA_CTX_VAL=""
       fi
-      if [ "$THIN_CLIENT" != 1 ] && ! phone_gate_ok; then
-        THIN_CLIENT=1
-        err "on-phone turned off: $(onphone_block_reason)"
+      if [ "$THIN_CLIENT" != 1 ]; then
+        if _br=$(onphone_block_reason); then
+          THIN_CLIENT=1
+          err "on-phone turned off: $_br"
+        fi
       fi
       ;;
     4) ALLOW_YES=$(toggle "$ALLOW_YES"); say "allow --yes=$(onoff "$ALLOW_YES")" ;;

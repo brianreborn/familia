@@ -16,6 +16,7 @@ HOME_SH = os.path.join(ROOT, "scripts", "familia_home.sh")
 COMMIT = "a" * 40
 SHA256 = "b" * 64
 DASH = shutil.which("dash")
+MKSH = shutil.which("mksh")
 
 
 def _env(tmp_path, **kw):
@@ -27,6 +28,11 @@ def _env(tmp_path, **kw):
         "FAMILIA_ALLOW_YES",
         "FAMILIA_START",
         "FAMILIA_LICENSES",
+        "FAMILIA_ACCEPT_LICENSES",
+        "FAMILIA_BIND",
+        "FAMILIA_RAM_MIB",
+        "FAMILIA_RESERVE_MIB",
+        "FAMILIA_MENU_TIMEOUT",
     ):
         e.pop(k, None)
     e["XDG_CONFIG_HOME"] = str(tmp_path / "xdg")
@@ -65,14 +71,14 @@ def write_cfg(tmp_path, body, mode=0o600, crlf=False):
 
 def write_stub(tmp_path, name, extra=""):
     d = tmp_path / "John Doe" / "bin"
-    d.mkdir(parents=True)
+    d.mkdir(parents=True, exist_ok=True)
     stub = d / name
     stub.write_text(
         "#!/bin/sh\n"
         "argvf=${FAMILIA_ARGV_FILE:-/tmp/familia-cockpit-argv}\n"
         "printf 'ARGC=%s\\n' \"$#\" > \"$argvf\"\n"
         "for a in \"$@\"; do printf '%s\\n' \"$a\" >> \"$argvf\"; done\n"
-        "env | grep '^FAMILIA_CBL' >> \"$argvf\" || true\n"
+        "env | grep -E '^(FAMILIA_CBL|FAMILIA_BIND|FAMILIA_ACCEPT|FAMILIA_ALLOW_YES|FAMILIA_RUNTIME)=' >> \"$argvf\" || true\n"
         "printf 'stub:%s\\n' \"$*\"\n"
         + extra,
         encoding="ascii",
@@ -132,7 +138,7 @@ def test_pipe_invalid_input_and_missing_installer_return_to_menu(tmp_path):
 def test_pipe_show_command_with_smoke_stub(tmp_path):
     stub = write_stub(tmp_path, "familia-android-smoke.sh")
     argvf = tmp_path / "argv.txt"
-    inp = "9\nlocalhost\n10\n8080\n17\n%s\n19\nq\n" % COMMIT
+    inp = "9\n127.0.0.1\n10\n8080\n17\n%s\n19\nq\n" % COMMIT
     r = run_sw(
         tmp_path,
         "--pipe",
@@ -145,7 +151,7 @@ def test_pipe_show_command_with_smoke_stub(tmp_path):
     assert "isn't one of the choices" not in out
     assert "installer not available on this commit" not in out
     assert "--commit" in out and COMMIT in out
-    assert "--host" in out and "localhost" in out
+    assert "--host" in out and "127.0.0.1" in out
     assert "--port" in out and "8080" in out
     assert "--dry-run" in out
     cmd = out.split("will run:", 1)[-1] if "will run:" in out else out
@@ -163,6 +169,7 @@ def test_pipe_show_command_with_smoke_stub(tmp_path):
     assert "--licenses" not in q
     assert "--local-inference" not in q
     assert "n/a: familia-android-smoke.sh has no such flag" in out
+    assert "typed ACCEPT is required; this screen never passes --yes" in out
     assert "exit. settings saved" in out
 
 
@@ -243,11 +250,11 @@ def test_run_does_not_interpret_metacharacters(tmp_path):
     stub = write_stub(tmp_path, "familia-android-smoke.sh")
     argvf = tmp_path / "argv.txt"
     marker = tmp_path / "X_should_not_exist"
-    # Valid https URL containing & must be one argv word; host stays localhost.
+    # Valid https URL containing & must be one argv word; host stays 127.0.0.1.
     url = "https://example.com/x?a=1&b=2"
     write_cfg(
         tmp_path,
-        "HOST=localhost\nPORT=8080\nCOMMIT=%s\nCBL_TAG=android-b12032-1\n"
+        "HOST=127.0.0.1\nPORT=8080\nCOMMIT=%s\nCBL_TAG=android-b12032-1\n"
         "CBL_SHA=%s\nCBL_URL=%s\nDRY_RUN=1\n" % (COMMIT, SHA256, url),
     )
     r = run_sw(
@@ -272,7 +279,7 @@ def test_run_does_not_interpret_metacharacters(tmp_path):
     assert any(url in ln for ln in lines) or url in shown
     assert "--dry-run" in lines
     assert "--host" in lines
-    assert "localhost" in lines
+    assert "127.0.0.1" in lines
     assert "--yes" not in lines and "--allow-yes" not in lines
 
 
@@ -378,7 +385,7 @@ def test_cbl_tag_without_sha256_not_exported(tmp_path):
     argvf = tmp_path / "argv.txt"
     write_cfg(
         tmp_path,
-        "HOST=localhost\nPORT=8080\nCOMMIT=%s\nCBL_TAG=android-b12032-1\nCBL_SHA=\nDRY_RUN=1\n"
+        "HOST=127.0.0.1\nPORT=8080\nCOMMIT=%s\nCBL_TAG=android-b12032-1\nCBL_SHA=\nDRY_RUN=1\n"
         % COMMIT,
     )
     r = run_sw(
@@ -420,11 +427,15 @@ def test_onphone_allowed_with_ctx_override_maps_runtime(tmp_path):
         inp="3\n64000\n1\n19\nq\n",
         FAMILIA_ANDROID_INSTALLER=str(stub),
         FAMILIA_ARGV_FILE=str(argvf),
+        FAMILIA_RAM_MIB="40000",
+        FAMILIA_RESERVE_MIB="5120",
     )
     assert r.returncode == 0, r.stderr
     out = r.stdout + r.stderr
     assert "on-phone inference is disabled" not in out
+    assert "RAM too low" not in out
     assert "mode=on-phone inference" in out
+    assert "FAMILIA_BIND=127.0.0.1" in out
     assert "--runtime" in out
     assert "'cbl'" in out or "cbl" in out
     assert "--local-inference" not in out
@@ -437,7 +448,7 @@ def test_url_file_switch_passed_to_smoke(tmp_path):
     argvf = tmp_path / "argv.txt"
     urlf = tmp_path / "link.txt"
     urlf.write_text("http://localhost:8080/\n", encoding="ascii")
-    write_cfg(tmp_path, "HOST=localhost\nPORT=8080\nCOMMIT=%s\nDRY_RUN=1\n" % COMMIT)
+    write_cfg(tmp_path, "HOST=127.0.0.1\nPORT=8080\nCOMMIT=%s\nDRY_RUN=1\n" % COMMIT)
     r = run_sw(
         tmp_path,
         "--pipe",
@@ -463,7 +474,7 @@ def test_url_file_relative_path_rejected(tmp_path):
 def test_dry_run_off_requires_typed_run(tmp_path):
     stub = write_stub(tmp_path, "familia-android-smoke.sh")
     argvf = tmp_path / "argv.txt"
-    write_cfg(tmp_path, "HOST=localhost\nPORT=8080\nCOMMIT=%s\nDRY_RUN=0\n" % COMMIT)
+    write_cfg(tmp_path, "HOST=127.0.0.1\nPORT=8080\nCOMMIT=%s\nDRY_RUN=0\n" % COMMIT)
     r = run_sw(
         tmp_path,
         "--pipe",
@@ -563,3 +574,226 @@ def test_narrow_columns_use_seven_bit_and_stay_in_menu(tmp_path):
     assert r.returncode == 0, r.stderr
     assert "+" in r.stdout
     assert "ANDROID COCKPIT" in r.stdout or "FAMILIA" in r.stdout
+
+def test_yes_never_emitted_to_install_or_hermes(tmp_path):
+    write_key(tmp_path)
+    for name in ("install.sh", "install-hermes-android.sh"):
+        stub = write_stub(tmp_path, name)
+        argvf = tmp_path / ("argv-%s.txt" % name)
+        write_cfg(
+            tmp_path,
+            "THIN_CLIENT=0\nFAMILIA_CTX_VAL=64000\nTIER=large\nALLOW_YES=1\n"
+            "START_FAMILIA=1\nHOST=127.0.0.1\nPORT=8080\nDRY_RUN=1\n",
+        )
+        r = run_sw(
+            tmp_path,
+            "--pipe",
+            inp="20\nq\n",
+            FAMILIA_ANDROID_INSTALLER=str(stub),
+            FAMILIA_ARGV_FILE=str(argvf),
+            FAMILIA_RAM_MIB="40000",
+        )
+        assert r.returncode == 0, name + " " + r.stderr + r.stdout
+        out = r.stdout + r.stderr
+        assert "typed ACCEPT is required; this screen never passes --yes" in out
+        assert argvf.exists(), name + " did not run the stub\n" + out
+        text = argvf.read_text(encoding="ascii")
+        lines = [ln for ln in text.splitlines() if ln and not ln.startswith("ARGC=")]
+        assert "--yes" not in lines
+        assert "--allow-yes" not in lines
+        assert not any(ln.startswith("FAMILIA_ACCEPT_LICENSES") for ln in lines)
+        assert not any(ln.startswith("FAMILIA_ALLOW_YES=") for ln in lines)
+        assert any(ln == "FAMILIA_BIND=127.0.0.1" or "FAMILIA_BIND=127.0.0.1" in ln for ln in lines)
+
+
+def test_hermes_start_off_is_greyed_and_does_not_run(tmp_path):
+    stub = write_stub(tmp_path, "install-hermes-android.sh")
+    argvf = tmp_path / "argv.txt"
+    write_cfg(
+        tmp_path,
+        "THIN_CLIENT=0\nFAMILIA_CTX_VAL=64000\nTIER=large\nSTART_FAMILIA=0\n"
+        "HOST=127.0.0.1\nPORT=8080\nDRY_RUN=1\n",
+    )
+    r = run_sw(
+        tmp_path,
+        "--pipe",
+        inp="19\n20\nq\n",
+        FAMILIA_ANDROID_INSTALLER=str(stub),
+        FAMILIA_ARGV_FILE=str(argvf),
+        FAMILIA_RAM_MIB="40000",
+    )
+    assert r.returncode == 0, r.stderr + r.stdout
+    out = r.stdout + r.stderr
+    assert "always starts familia-start" in out
+    assert "no skip-start flag" in out or "turn start ON" in out
+    assert not argvf.exists()
+
+
+def test_onphone_bind_pinned_to_loopback(tmp_path):
+    stub = write_stub(tmp_path, "install.sh")
+    argvf = tmp_path / "argv.txt"
+    write_cfg(
+        tmp_path,
+        "THIN_CLIENT=0\nFAMILIA_CTX_VAL=64000\nTIER=large\nHOST=127.0.0.1\n"
+        "PORT=8080\nDRY_RUN=1\n",
+    )
+    r = run_sw(
+        tmp_path,
+        "--pipe",
+        inp="19\nq\n",
+        FAMILIA_ANDROID_INSTALLER=str(stub),
+        FAMILIA_ARGV_FILE=str(argvf),
+        FAMILIA_RAM_MIB="40000",
+    )
+    assert r.returncode == 0, r.stderr + r.stdout
+    text = (argvf.read_text(encoding="ascii") if argvf.exists() else "") + r.stdout + r.stderr
+    assert "FAMILIA_BIND=127.0.0.1" in text
+
+
+def test_is_loopback_requires_ip_not_hostname(tmp_path):
+    stub = write_stub(tmp_path, "familia-android-smoke.sh")
+    write_cfg(tmp_path, "HOST=127.example.com\nPORT=8080\nCOMMIT=%s\nDRY_RUN=1\n" % COMMIT)
+    r = run_sw(
+        tmp_path,
+        "--pipe",
+        inp="19\nq\n",
+        FAMILIA_ANDROID_INSTALLER=str(stub),
+    )
+    assert r.returncode == 0, r.stderr
+    assert "requires an API key file" in r.stderr
+    assert "command:" not in r.stdout
+    # 127.0.0.1 is a real loopback IP; no key required when start is OFF.
+    write_cfg(tmp_path, "HOST=127.0.0.1\nPORT=8080\nCOMMIT=%s\nDRY_RUN=1\n" % COMMIT)
+    r = run_sw(
+        tmp_path,
+        "--pipe",
+        inp="19\nq\n",
+        FAMILIA_ANDROID_INSTALLER=str(stub),
+    )
+    assert r.returncode == 0, r.stderr
+    assert "command:" in r.stdout
+    assert "127.0.0.1" in r.stdout
+    # localhost is a hostname, not an IP.
+    write_cfg(tmp_path, "HOST=localhost\nPORT=8080\nCOMMIT=%s\nDRY_RUN=1\n" % COMMIT)
+    r = run_sw(
+        tmp_path,
+        "--pipe",
+        inp="19\nq\n",
+        FAMILIA_ANDROID_INSTALLER=str(stub),
+    )
+    assert r.returncode == 0, r.stderr
+    assert "requires an API key file" in r.stderr
+
+
+def test_onphone_ctx_override_refused_when_ram_too_low(tmp_path):
+    stub = write_stub(tmp_path, "install.sh")
+    r = run_sw(
+        tmp_path,
+        "--pipe",
+        inp="3\n64000\n1\n19\nq\n",
+        FAMILIA_ANDROID_INSTALLER=str(stub),
+        FAMILIA_RAM_MIB="8000",
+        FAMILIA_RESERVE_MIB="5120",
+    )
+    assert r.returncode == 0, r.stderr
+    out = r.stdout + r.stderr
+    assert "RAM too low" in out
+    assert "on-phone inference is disabled" in out or "mode=thin client" in out
+    assert "--runtime" not in out
+
+
+def test_persistent_install_warns_and_still_needs_typed_run(tmp_path):
+    stub = write_stub(tmp_path, "install.sh")
+    argvf = tmp_path / "argv.txt"
+    write_key(tmp_path)
+    write_cfg(
+        tmp_path,
+        "THIN_CLIENT=0\nFAMILIA_CTX_VAL=64000\nTIER=large\nHOST=127.0.0.1\n"
+        "PORT=8080\nDRY_RUN=0\nSTART_FAMILIA=0\n",
+    )
+    r = run_sw(
+        tmp_path,
+        "--pipe",
+        inp="20\nnope\n20\nrun\nq\n",
+        FAMILIA_ANDROID_INSTALLER=str(stub),
+        FAMILIA_ARGV_FILE=str(argvf),
+        FAMILIA_RAM_MIB="40000",
+    )
+    assert r.returncode == 0, r.stderr + r.stdout
+    out = r.stdout + r.stderr
+    assert "persistent phone install" in out
+    assert "not confirmed" in out
+    assert "type 'run' to proceed" in out or "type 'run'" in out
+    assert argvf.exists()
+    text = argvf.read_text(encoding="ascii")
+    assert "--yes" not in text
+    assert "FAMILIA_ACCEPT_LICENSES" not in text
+
+
+@pytest.mark.skipif(MKSH is None, reason="mksh not installed")
+def test_mksh_tty_timeout_is_not_eof(tmp_path):
+    # mksh may return rc 1 on a timed-out read. On a TTY that must count
+    # as a timeout (back to the menu), not EOF.
+    env = _env(tmp_path)
+    env.pop("FAMILIA_NO_TTY", None)
+    env["COLUMNS"] = "80"
+    env["FAMILIA_MENU_TIMEOUT"] = "1"
+    pid, fd = pty.fork()
+    if pid == 0:
+        os.chdir(ROOT)
+        os.execve(MKSH, [MKSH, SCRIPT], env)
+    fl = fcntl.fcntl(fd, fcntl.F_GETFL)
+    fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
+    buf = b""
+    stage = 0
+    deadline = time.time() + 12
+    rc = None
+    while time.time() < deadline:
+        try:
+            buf += os.read(fd, 4096)
+        except BlockingIOError:
+            time.sleep(0.05)
+        except OSError:
+            break
+        if stage == 0 and b"Choose" in buf:
+            stage = 1  # wait for the idle timeout
+        elif stage == 1 and b"timeout" in buf:
+            os.write(fd, b"q\n")
+            stage = 2
+        try:
+            wpid, status = os.waitpid(pid, os.WNOHANG)
+        except ChildProcessError:
+            break
+        if wpid:
+            rc = os.waitstatus_to_exitcode(status)
+            try:
+                while True:
+                    buf += os.read(fd, 4096)
+            except (BlockingIOError, OSError):
+                pass
+            break
+    if rc is None:
+        try:
+            os.write(fd, b"q\n")
+        except OSError:
+            pass
+        time.sleep(0.4)
+        try:
+            wpid, status = os.waitpid(pid, os.WNOHANG)
+            if wpid:
+                rc = os.waitstatus_to_exitcode(status)
+        except ChildProcessError:
+            pass
+    if rc is None:
+        try:
+            os.kill(pid, 9)
+            os.waitpid(pid, 0)
+        except OSError:
+            pass
+        out = buf.decode("utf-8", "replace")
+        raise AssertionError("mksh menu hung:\n" + out[-4000:])
+    out = buf.decode("utf-8", "replace")
+    assert rc == 0, out
+    assert "timeout" in out
+    assert "exit. settings saved" in out
+    assert "stdin closed without an exit pick" not in out
