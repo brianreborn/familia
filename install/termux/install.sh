@@ -45,7 +45,6 @@ SELECT_BRANCH=0
 { [ -n "${FAMILIA_BRANCH:-}" ] || [ -n "$SOURCE_BRANCH" ]; } && SELECT_BRANCH=1
 # Phones: Android + apps leave only ~2-2.6 GiB free on a 7.4 GiB A57 (docs/ram-safety.md); policy, not measured.
 RESERVE_MIB=${FAMILIA_RESERVE_MIB:-5120}
-RAW_URL=${FAMILIA_RAW_URL:-https://raw.githubusercontent.com/brianreborn/familia}
 DRY=0; UNINSTALL=0; PURGE=0; NAME=""; SSHD=0; RUNTIME=0; FORCE_HOST=""; WAKE=1; NOPATH=0
 # Thin client by default (Brian 2026-11-05: webapp-first, phone -> Linux/macOS host).
 # A local runtime is opt-in: --runtime cbl|pkg, or an explicit FAMILIA_RUNTIME=cbl|pkg.
@@ -248,32 +247,18 @@ else
   say "thin client: no local llama.cpp runtime (opt in with --runtime cbl or --runtime pkg)"
 fi
 
-SELF_REPO=$(cd "$(dirname "$0")/../.." 2>/dev/null && pwd || true)
-MTMP=""
-if [ -f "$REPO/scripts/host_measure.py" ]; then MREPO="$REPO"
-elif [ "$DRY" = 1 ] && [ -n "$SELF_REPO" ] && [ -f "$SELF_REPO/scripts/host_measure.py" ]; then MREPO="$SELF_REPO"
-elif [ "$DRY" = 1 ] && command -v curl >/dev/null 2>&1; then
-  # Dry run has no clone; fetch the read-only measurer + graph into a temp dir and delete it after.
-  MTMP=$(mktemp -d "${TMPDIR:-${PREFIX:-}/tmp}/familia-measure.XXXXXX" 2>/dev/null || true)
-  if [ -n "$MTMP" ] && mkdir -p "$MTMP/scripts" && curl -fsSL "$RAW_URL/$BRANCH/scripts/host_measure.py" -o "$MTMP/scripts/host_measure.py" \
-     && curl -fsSL "$RAW_URL/$BRANCH/graph.yaml" -o "$MTMP/graph.yaml"; then MREPO="$MTMP"
-  else MREPO=""; say "warning: could not fetch host_measure.py from $BRANCH"; fi
-NPSPEC=numpy; [ -n "$MREPO" ] && [ -f "$MREPO/scripts/cpu_level.py" ] && NPSPEC=$(python "$MREPO/scripts/cpu_level.py" --numpy-spec 2>/dev/null || echo numpy)
-python -c 'import numpy' 2>/dev/null || run pip install --quiet "$NPSPEC" || say "note: numpy not installed (optional; pkg install python-numpy)"
-else MREPO=""; fi
-if [ -n "$MREPO" ]; then
-  MF=""; [ "$DRY" = 1 ] && MF=--dry-run
-  python3 "$MREPO/scripts/host_measure.py" --name "$NAME" --kind phone --reserve-mib "$RESERVE_MIB" --graph "$MREPO/graph.yaml" $MF $FORCE_HOST || say "warning: host measurement failed"
-  if [ "$DRY" != 1 ] && [ -f "$REPO/scripts/hostname_pin.py" ]; then
+# --dry-run never fetches or runs host_measure.py (no network, no box_archetypes import).
+if [ "$DRY" = 1 ]; then
+  say "[dry-run] would measure host $NAME: python3 scripts/host_measure.py --name $NAME --kind phone --reserve-mib $RESERVE_MIB --graph graph.yaml${FORCE_HOST:+ $FORCE_HOST}"
+elif [ -f "$REPO/scripts/host_measure.py" ]; then
+  python3 "$REPO/scripts/host_measure.py" --name "$NAME" --kind phone --reserve-mib "$RESERVE_MIB" --graph "$REPO/graph.yaml" $FORCE_HOST || say "warning: host measurement failed"
+  if [ -f "$REPO/scripts/hostname_pin.py" ]; then
     python3 "$REPO/scripts/hostname_pin.py" set "$NAME" || say "warning: could not write hostname pin"
   fi
-  if [ "$DRY" != 1 ]; then
-    python3 -c 'import yaml' 2>/dev/null && { python3 "$REPO/scripts/validate_graph.py" --no-files --graph "$REPO/graph.yaml" || say "warning: graph validation reported problems"; }
-  fi
+  python3 -c 'import yaml' 2>/dev/null && { python3 "$REPO/scripts/validate_graph.py" --no-files --graph "$REPO/graph.yaml" || say "warning: graph validation reported problems"; }
 else
   say "warning: host_measure.py unavailable; host not measured"
 fi
-[ -n "$MTMP" ] && rm -rf "$MTMP"
 
 LAUNCH="${PREFIX:-/data/data/com.termux/files/usr}/bin/familia-start"
 # Phones always require an API key (Brian 2026-11-02), loopback included: generate a 0600 key

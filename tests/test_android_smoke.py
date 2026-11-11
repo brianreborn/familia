@@ -172,6 +172,45 @@ def test_termux_dry_run_runtime_cbl_uses_repo_pin(tmp_path):
     assert "android-b12032-1" in r.stderr and "pkg install -y git python getconf" in r.stderr
     assert "pkg install -y git python getconf llama-cpp" not in r.stderr
 
+
+def test_termux_dry_run_does_not_fetch_host_measure(tmp_path):
+    """--dry-run must not curl host_measure.py or warn about box_archetypes."""
+    tree = tmp_path / "tree"
+    inst = tree / "install" / "termux"
+    inst.mkdir(parents=True)
+    shutil.copy(TERMUX, inst / "install.sh")
+    # Also need cbl-runtime.sh only if --runtime cbl; thin-client path does not.
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    curl = bin_dir / "curl"
+    curl.write_text("#!/bin/sh\necho 'curl was invoked: $*' >&2\nexit 1\n", encoding="utf-8")
+    curl.chmod(0o755)
+    e = {k: v for k, v in os.environ.items() if k != "FAMILIA_RUNTIME"}
+    e.update(
+        FAMILIA_PREFIX=str(tmp_path / "p"),
+        HOME=str(tmp_path),
+        PATH=str(bin_dir) + os.pathsep + e.get("PATH", ""),
+        TMPDIR=str(tmp_path / "tmp"),
+    )
+    (tmp_path / "tmp").mkdir()
+    r = subprocess.run(
+        ["sh", str(inst / "install.sh"), "--dry-run", "--name", "t", "--no-path"],
+        capture_output=True,
+        text=True,
+        env=e,
+        stdin=subprocess.DEVNULL,
+    )
+    combined = r.stdout + r.stderr
+    assert r.returncode == 0, combined
+    assert "curl was invoked" not in combined
+    assert "box_archetypes" not in combined
+    assert "No module named" not in combined
+    assert "could not fetch host_measure" not in combined
+    assert "host measurement failed" not in combined
+    assert "would measure host t:" in combined
+    assert "host_measure.py" in combined
+
+
 def test_hermes_android_one_tap_opts_in_to_runtime():
     s = open(os.path.join(ROOT, "install", "termux", "install-hermes-android.sh")).read()
     assert '--runtime ${FAMILIA_RUNTIME:-cbl}' in s
