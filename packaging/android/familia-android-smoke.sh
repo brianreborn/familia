@@ -15,6 +15,7 @@
 #                file so the token never lands in argv, shell history or this script's logs
 #   --local-inference optional: fetch the cbl prebuilt llama.cpp for Android arm64 (pinned, sha256
 #                checked), run llama-server --version, remove it. No model (choice by RAM: TBD).
+#   --dry-run    print those steps and exit before any download, prompt, mkdir, or host check
 # Steps: 1 fetch + verify license texts  2 show Llama 3.1 + Dolphin 3.0, type ACCEPT (no --yes)
 #        3 check the host URL answers  4 open it in the phone browser  5 remove the prefix
 # Office 3D: an upstream Hermes plugin for Linux/macOS hosts (docs/android-hermes.md); not on the phone.
@@ -82,6 +83,21 @@ say "host webapp: $BASE (any path/query/token from --url-file is never logged)"
 case "$HOST" in localhost|127.*|\[::1\]) ;; *)
   [ "$SCHEME" = https ] || say "warning: plain http over the LAN; prefer --https or an ssh tunnel (ssh -L) to the host" ;; esac
 [ -n "${TERMUX_VERSION:-}" ] || [ -n "$DRY" ] || die "not in Termux (use --dry-run elsewhere)"
+# --dry-run must exit before any download, license prompt, prefix mkdir, or host fetch.
+if [ -n "$DRY" ]; then
+  say "[dry-run] would fetch and sha256-verify license texts from $RAW/$COMMIT/packaging/android/licenses/"
+  for f in LLAMA-3.1-COMMUNITY-LICENSE.txt LLAMA-3.1-ACCEPTABLE-USE-POLICY.md DOLPHIN-3.0-MODEL-TERMS.txt; do
+    say "[dry-run]   $f"
+  done
+  say "[dry-run] would show the texts and require typing ACCEPT for Llama 3.1 and Dolphin 3.0 (no --yes)"
+  if [ "$LOCAL" = 1 ]; then
+    say "[dry-run] would fetch $CBL_URL/$CBL_TAR (sha256 $CBL_SHA), extract, and run llama-server --version (no model)"
+  fi
+  say "[dry-run] would check the host webapp at $BASE"
+  say "[dry-run] would open the webapp in the phone browser"
+  say "[dry-run] would remove the throwaway prefix $SMOKE_PREFIX"
+  exit 0
+fi
 [ -r /dev/tty ] || die "no terminal: an interactive license accept is required"
 for c in curl sha256sum; do command -v "$c" >/dev/null 2>&1 || die "$c missing (pkg install curl coreutils)"; done
 

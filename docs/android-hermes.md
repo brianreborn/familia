@@ -22,6 +22,7 @@ local runtime unless you pass `--runtime cbl|pkg` (or set `FAMILIA_RUNTIME`).
 - **Smoke test (non-persistent):** `packaging/android/familia-android-smoke.sh --commit SHA --host HOST --port PORT [--https] [--url-file FILE]`.
   Shows the Llama 3.1 Community License + AUP and the Dolphin 3.0 terms (texts in
   `packaging/android/licenses/`, sha256-pinned) and needs a typed `ACCEPT` for each; `--yes` is refused.
+  `--dry-run` prints those steps and exits before any download, prompt, or host check.
   Host and port are validated; the one-use webapp link is read from `--url-file` and never logged.
   Everything goes in a throwaway prefix removed on exit. `--local-inference` fetches the same
   cbl prebuilt pinned in `config/cbl-android-runtime.json`, runs `llama-server --version`, removes it.
