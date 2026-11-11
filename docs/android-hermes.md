@@ -14,9 +14,10 @@ opts in to a local runtime with `--runtime cbl` and starts `familia-start` on
 loopback port 9941. `install/termux/install.sh` alone still installs **no**
 local runtime unless you pass `--runtime cbl|pkg` (or set `FAMILIA_RUNTIME`).
 
-- **Bind and API key:** default bind is `127.0.0.1`. Any **non-loopback** bind
-  requires an API key file by default (mode 0600, under Termux `$HOME`, not
-  shared storage). Plain http on a LAN is warned about; prefer `--https` or an
+- **Bind and API key:** default bind is `127.0.0.1`. The installer requires an
+  API key file even on loopback (mode 0600, under Termux `$HOME`, not shared
+  storage), because other Termux apps and adb can reach `127.0.0.1` on a phone;
+  any non-loopback bind always requires it. Plain http on a LAN is warned about; prefer `--https` or an
   `ssh -L` tunnel if you ever expose the webapp off-box.
 - **Smoke test (non-persistent):** `packaging/android/familia-android-smoke.sh --commit SHA --host HOST --port PORT [--https] [--url-file FILE]`.
   Shows the Llama 3.1 Community License + AUP and the Dolphin 3.0 terms (texts in
