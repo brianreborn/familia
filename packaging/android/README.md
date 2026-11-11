@@ -3,8 +3,8 @@
 Webapp-first phone front door for Hermes. **Hermes Desktop** and the **Office 3D**
 plugin do not run natively on Android (Office 3D upstream platforms: linux, macos).
 The phone installs familia + the code-bootstraps-llama.cpp Android prebuilt, accepts
-licenses, and opens the Hermes **webapp**. Desktop + Office 3D stay on a Linux/macOS
-host the phone can reach.
+licenses, and serves the Hermes **webapp** to itself on 127.0.0.1 (self-hosted;
+Brian 2026-11-10). Desktop + Office 3D stay on a Linux/macOS host.
 
 ## One-tap entry (ships now): Termux:Widget
 

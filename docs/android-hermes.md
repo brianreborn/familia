@@ -1,30 +1,35 @@
 # Android → Hermes webapp (one-tap)
 
-**Product shape (Brian 2026-11-05):** webapp-first on the phone. Hermes **Desktop**
-and **Office 3D** run on a Linux or macOS host; the phone opens the Hermes webapp
-and may later remote into that host.
+**Product shape (Brian 2026-11-10, "self-hosting"):** the phone serves its own
+Hermes **webapp**, bound to **127.0.0.1** only. Hermes **Desktop** and
+**Office 3D** still run on a Linux or macOS host (not native on Android).
 
 ## Thin client (default)
 
-Shape (Brian, 2026-11-05): the phone is a **thin client**. A Linux or macOS host runs
-Hermes (`scripts/hermes.sh --client webapp`, see [hermes-clients.md](hermes-clients.md))
-and the phone browser opens that host's URL. `install/termux/install.sh` installs **no
-local runtime by default**; `--runtime cbl|pkg` (or an explicit `FAMILIA_RUNTIME`) opts
-in. The one-tap path below opts in with `--runtime cbl` because it serves a GGUF on the phone.
+Shape (Brian, 2026-11-10): **self-hosted**. The phone runs Hermes
+(`scripts/hermes.sh --client webapp`, see [hermes-clients.md](hermes-clients.md))
+and serves that webapp to itself on **127.0.0.1**. No outside host is required
+for the webapp. `install/termux/install-hermes-android.sh` (the one-tap path)
+opts in to a local runtime with `--runtime cbl` and starts `familia-start` on
+loopback port 9941. `install/termux/install.sh` alone still installs **no**
+local runtime unless you pass `--runtime cbl|pkg` (or set `FAMILIA_RUNTIME`).
 
+- **Bind and API key:** default bind is `127.0.0.1`. Any **non-loopback** bind
+  requires an API key file by default (mode 0600, under Termux `$HOME`, not
+  shared storage). Plain http on a LAN is warned about; prefer `--https` or an
+  `ssh -L` tunnel if you ever expose the webapp off-box.
 - **Smoke test (non-persistent):** `packaging/android/familia-android-smoke.sh --commit SHA --host HOST --port PORT [--https] [--url-file FILE]`.
   Shows the Llama 3.1 Community License + AUP and the Dolphin 3.0 terms (texts in
   `packaging/android/licenses/`, sha256-pinned) and needs a typed `ACCEPT` for each; `--yes` is refused.
   Host and port are validated; the one-use webapp link is read from `--url-file` and never logged.
   Everything goes in a throwaway prefix removed on exit. `--local-inference` fetches the same
   cbl prebuilt pinned in `config/cbl-android-runtime.json`, runs `llama-server --version`, removes it.
+  Point `--host` at `127.0.0.1` for the self-hosted path, or at another host to try a remote webapp.
 - **Termux installer license pre-gate:** before any `pkg install` or `git clone`, `install.sh`
   asks for a typed `ACCEPT` (or `--yes` / an already-accepted selection); the full
-  `scripts/licenses.py gate` still runs after the clone.
-- **Which host serves the webapp and how the phone reaches it** (non-loopback bind + API key,
-  or an `ssh -L` tunnel) is **not decided yet**. Prefer `--https` or a tunnel; plain http on a
-  LAN is warned about.
-- **Later:** a debug-signed sideload APK (a WebView shell that loads the host's webapp URL).
+  `scripts/licenses.py gate` still runs after the clone. Widget taps never pass `--yes`.
+- **Later:** a debug-signed sideload APK (a WebView shell that loads the phone's
+  loopback webapp URL).
 
 ## One-tap local path (opt-in runtime)
 
@@ -54,11 +59,18 @@ in. The one-tap path below opts in with `--runtime cbl` because it serves a GGUF
 
    The chosen `.gguf` is downloaded with its graph sha256 pin
    (`install/termux/fetch-phone-model.py`). **`familia-start` loads and serves
-   that GGUF** at that ctx (`FAMILIA_CTX`, loopback port 9941). Hermes webapp
-   requires upstream `MINIMUM_CONTEXT_LENGTH` **64000** — phone tiers are
-   below that, so the one-tap path **refuses Hermes clearly** (see below).
-   Auth on Termux: `~/.config/familia/api.key` (same file familia-start uses).
-   Adjustable via `FAMILIA_PHONE_MODEL` / `FAMILIA_PHONE_MODEL_TIER` / `FAMILIA_CTX`.
+   that GGUF** on loopback port 9941. Hermes webapp requires upstream
+   `MINIMUM_CONTEXT_LENGTH` **64000**. The one-tap path does **not** use the
+   tier chat ctx for Hermes: if `FAMILIA_CTX` is unset, it is raised to
+   **65536** (#125) and the server is started with **q8_0 KV** and **-np 1**
+   (#203 / REQUIREMENTS.md). A phone is admitted when usable RAM
+   (`MemTotal - reserve 5120`) meets the 64k floor (default
+   `FAMILIA_MIN_USABLE_MIB=2048`, measured galaxy2 LFM3 RSS; #548). An
+   explicit `FAMILIA_CTX` below 64000 is still refused; do not lower
+   `min_ctx`. Auth on Termux: `~/.config/familia/api.key` (same file
+   familia-start uses). Adjustable via `FAMILIA_PHONE_MODEL` /
+   `FAMILIA_PHONE_MODEL_TIER` / `FAMILIA_CTX` / `FAMILIA_RAM_MIB` /
+   `FAMILIA_MIN_USABLE_MIB`.
 5. `familia-start` then `bash scripts/hermes.sh --client webapp`, and
    `termux-open-url` on the URL from hermes output / a readiness poll (no sleep
    + guessed port). A second tap reuses 9941 when it already serves the expected
@@ -78,11 +90,29 @@ custom/llama.cpp providers (`agent/agent_init.py`). Maintainer guidance
 (NousResearch/hermes-agent#11096, #8430): `model.context_length` cannot lower
 that floor; the closed `HERMES_MIN_CONTEXT_LENGTH` env PR is not upstream.
 LM Studio has a provider-specific exception — not used on Termux.
+Do **not** lower `agents.hermes.min_ctx` (Brian, #125).
 
-Phone RAM-tier ctx (2048–8192) therefore **cannot** run Hermes webapp. The
-installer fails clearly instead of hanging. `familia-start` can still serve the
-GGUF at the phone ctx for non-Hermes clients. For Hermes Desktop/webapp, use a
-Linux/macOS host with ctx ≥ 64000 (graph `coder` uses 65536).
+Phone RAM-tier *chat* ctx is still 2048–8192 (non-Hermes `familia-start`
+defaults). The Hermes one-tap path applies the in-tree workarounds instead of
+refusing every phone:
+
+1. **Raise ctx to 65536** when `FAMILIA_CTX` is unset — the same window as
+   graph `coder` / `angel-coder` (#125 / #127). An explicit `FAMILIA_CTX`
+   below 64000 is still refused, clearly, before any license or install work.
+2. **Quantized KV + one slot:** `familia-start` passes `-ctk q8_0 -ctv q8_0
+   -np 1` (REQUIREMENTS.md, #203) so 64K can fit under `reserve_ram_mib: 5120`
+   without lowering the reserve or assuming phone swap (Android stays strict
+   in [ram-safety.md](ram-safety.md)).
+3. **Usable-RAM admit:** `MemTotal - 5120` must be at least
+   `FAMILIA_MIN_USABLE_MIB` (default **2048** MiB) at ctx 64000, scaled
+   linearly for other windows. The 2048 figure is the measured galaxy2
+   LFM3-1.7B RSS at 64k (#548). A typical ~7.4–8 GiB phone (usable ~2480
+   MiB) passes; a phone whose usable RAM is 0 after reserve is refused
+   with a RAM message, not a fake "ctx too small" message.
+
+`familia-start` can still serve the GGUF at a smaller ctx for non-Hermes
+clients when the Hermes path is not used. Hermes Desktop / Office 3D stay
+on a Linux/macOS host.
 
 
 ## Host: Hermes Desktop + Office 3D
