@@ -43,12 +43,14 @@ def launcher(tmp_path, request):
         (cwd / decoy).write_bytes(b"")
     out = tmp_path / "argv.json"
 
-    def run(*args, extra=None, ok=True):
+    def run(*args, extra=None, ok=True, bind=None):
         env = {k: v for k, v in os.environ.items() if not k.startswith(("FAMILIA_", "LLAMA_"))}
         env.update(PATH=f"{bindir}:{os.environ['PATH']}", HOME=str(key.parent), FAMILIA_MODEL=str(model),
                    FAMILIA_API_KEY_FILE=str(key), STUB_OUT=str(out))
         if extra is not None:
             env["FAMILIA_EXTRA"] = extra
+        if bind is not None:
+            env["FAMILIA_BIND"] = bind
         r = subprocess.run(["sh", str(script), *args], env=env, cwd=str(cwd), capture_output=True, text=True, timeout=30)
         if not ok:
             return r
@@ -85,6 +87,17 @@ def test_launcher_no_extra(launcher):
 def test_launcher_override_in_argv_still_refused(launcher, argv):
     r = launcher("-t", "2", *argv, ok=False)
     assert r.returncode == 2 and "refusing" in r.stderr, r.stderr
+
+
+@pytest.mark.parametrize("argv,extra", [(["--tools", "all"], None), (["--tools=all"], None), ([], "--tools all")])
+def test_launcher_tools_refused_on_non_loopback_bind(launcher, argv, extra):
+    """llama.cpp --tools is host-exec; same loopback-only rule as graph_types server_tools."""
+    r = launcher(*argv, extra=extra, ok=False, bind="192.168.4.25")
+    assert r.returncode == 2 and "--tools" in r.stderr and "loopback" in r.stderr, r.stderr
+
+
+def test_launcher_tools_allowed_on_loopback_bind(launcher):
+    assert launcher("--tools", "all", bind="127.0.0.1") == ["--tools", "all"]
 
 
 def test_systemd_unit_passes_no_argv_and_no_extra_in_execstart():
