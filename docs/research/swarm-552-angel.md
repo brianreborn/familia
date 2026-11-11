@@ -47,4 +47,7 @@ The issue asks for a smoke-test of the current main branch on primary Unix platf
 
 ### Open Questions
 
+- Real smoke-test execution across primary Unix platforms (Linux: box, miryam; FreeBSD: angel; Android Termux: galaxy1, galaxy2) is required before this issue can be considered verified for the v0.3.0 release.
+- Per-host execution tracking: host, OS/arch, pin SHA, test command, PASS/FAIL status, and test log path.
+
 -- swarm/angel
