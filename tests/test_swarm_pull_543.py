@@ -808,7 +808,7 @@ class SwarmPull545Review(unittest.TestCase):
         self.assertIn("[tty-stripped]", doc)
 
     # ---- Boundary follow-up 5 / Race R2: deliver with git mocked ------
-    def _deliver(self, changed, gate_check=None, pr_list="[]"):
+    def _deliver(self, changed, gate_check=None, pr_list="[]", create_rc=0):
         self._live()
         os.environ["SWARM_REPO_DIR"] = str(self.home / "repo")
         calls = []
@@ -833,6 +833,8 @@ class SwarmPull545Review(unittest.TestCase):
             if "pr" in argv and "list" in argv:
                 return 0, pr_list, ""
             if "pr" in argv and "create" in argv:
+                if create_rc:
+                    return create_rc, "", "HTTP 422"
                 return 0, "https://github.com/brianreborn/familia/pull/1\n", ""
             return 0, "", ""
         with mock.patch.object(self.sp, "git", side_effect=fake_git), \
@@ -2015,6 +2017,67 @@ class SwarmPull550Review(SwarmPull549Followups):
         self.sp.note_orphan_branch("r/x", 2, "swarm/box/2", "h", "x")
         self.sp.orphans_path().write_text("{")
         self.assertEqual([o["number"] for o in self.sp.load_orphans()], [1])
+
+
+    # ---- Boundary #550 review (6790157130) ---------------------------------
+    def test_s1_symlinked_state_is_refused_not_followed(self):
+        victim = self.home / "victim.json"
+        victim.write_text('{"evil": 1}')
+        p = self.sp.state_path()
+        p.parent.mkdir(parents=True, exist_ok=True)
+        if p.exists():
+            p.unlink()
+        os.symlink(str(victim), str(p))
+        self.assertEqual(self.sp.load_state(), {})
+        self.sp.save_state({"n": 1})
+        self.assertEqual(victim.read_text(), '{"evil": 1}')
+        self.assertFalse(os.path.islink(str(p)))
+        self.assertEqual(self.sp.load_state(), {"n": 1})
+
+    def test_s1_migration_tightens_state_files_only(self):
+        import stat as _stat
+        h = self.sp.home_dir()
+        h.mkdir(parents=True, exist_ok=True)
+        for name in ("state.json", "orphans.json"):
+            (h / name).write_text("{}")
+            os.chmod(str(h / name), 0o644)
+        (h / "run-loop.sh").write_text("#!/bin/sh\n")
+        os.chmod(str(h / "run-loop.sh"), 0o755)
+        self.sp.prepare_home()
+        for name in ("state.json", "orphans.json"):
+            self.assertEqual(_stat.S_IMODE(os.stat(str(h / name)).st_mode), 0o600)
+        self.assertEqual(_stat.S_IMODE(os.stat(str(h / "run-loop.sh")).st_mode), 0o755)
+
+    def test_s2_pr_create_failure_records_orphan(self):
+        out, pushes, creates = self._deliver(["docs/research/swarm-7-box.md"], create_rc=1)
+        self.assertIsInstance(out, self.sp.ForgeError)
+        self.assertEqual(len(pushes), 1)
+        self.assertEqual([o["branch"] for o in self.sp.load_orphans()], ["swarm/box/7"])
+
+    def test_s3_log_skips_symlinked_logs_dir(self):
+        h = self.sp.home_dir()
+        h.mkdir(parents=True, exist_ok=True)
+        elsewhere = self.home / "elsewhere-logs"
+        elsewhere.mkdir()
+        logs = h / "logs"
+        if logs.exists():
+            import shutil
+            shutil.rmtree(str(logs))
+        os.symlink(str(elsewhere), str(logs))
+        self.sp.log("hello")
+        self.assertEqual(list(elsewhere.iterdir()), [])
+
+    def test_s3_tighten_file_never_follows_symlink(self):
+        import stat as _stat
+        target = self.home / "t.txt"
+        target.write_text("x")
+        os.chmod(str(target), 0o644)
+        link = self.home / "l.txt"
+        os.symlink(str(target), str(link))
+        self.assertFalse(self.sp.tighten_file(link))
+        self.assertEqual(_stat.S_IMODE(os.stat(str(target)).st_mode), 0o644)
+        self.assertTrue(self.sp.tighten_file(target))
+        self.assertEqual(_stat.S_IMODE(os.stat(str(target)).st_mode), 0o600)
 
 
 # Do not rerun the inherited review tests under the follow-up class.
