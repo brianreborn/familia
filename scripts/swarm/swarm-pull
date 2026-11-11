@@ -24,7 +24,7 @@ from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 
-VERSION = "0.2.4-live"
+VERSION = "0.2.5-live"
 CLAIM_RE = re.compile(
     r"--\s+(\S+)\s+claim\s+gen\s+(\d+)\s+lease-until\s+(\S+)",
     re.IGNORECASE,
@@ -90,6 +90,15 @@ _LAST_HTTP = {
 _API_CALLS = 0
 _API_WINDOW_START = None
 _SERVER_SKEW = 0.0  # forge Date header minus local clock, seconds (Race R16)
+# False when the last forge response had no usable Date header. Lease
+# decisions are then refused for that iteration (fail closed). None means
+# no forge response has been parsed yet in this process.
+_FORGE_DATE_OK = None
+
+
+def require_forge_clock(what="lease decision"):
+    if _FORGE_DATE_OK is False:
+        raise ForgeClockUnknown("no forge Date header; deferring %s" % what)
 
 
 def server_now():
@@ -152,7 +161,7 @@ def api_release_floor():
     """Part of the reserve that claim attempts may not touch, so release
     and heartbeat always have budget (Boundary F1)."""
     try:
-        return max(0, int(env("SWARM_API_RELEASE_FLOOR", "6") or "6"))
+        return max(1, int(env("SWARM_API_RELEASE_FLOOR", "6") or "6"))  # G2
     except Exception:
         return 6
 
@@ -244,7 +253,8 @@ def log(msg):
     sys.stdout.flush()
     try:
         p = home_dir() / "logs" / "swarm-pull.log"
-        p.parent.mkdir(parents=True, exist_ok=True)
+        if not p.parent.is_dir():
+            p.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
         with p.open("a") as f:
             f.write(line + "\n")
     except Exception:
@@ -412,6 +422,12 @@ def wrap_untrusted_issue_body(body, nonce=None):
 # ---- forge (gh) ----------------------------------------------------------
 
 class ForgeError(Exception):
+    pass
+
+
+class ForgeClockUnknown(ForgeError):
+    """The forge sent no Date header; lease decisions are deferred for this
+    iteration instead of using the local clock (Race R16)."""
     pass
 
 
@@ -588,10 +604,13 @@ def parse_gh_include(raw, err, rc):
             forge_dt = forge_dt.astimezone(timezone.utc)
         except Exception:
             forge_dt = None
+    global _SERVER_SKEW, _FORGE_DATE_OK
     if forge_dt is None:
-        forge_dt = datetime.now(timezone.utc)
+        # N9: one clock source. R16: mark it so lease decisions refuse.
+        _FORGE_DATE_OK = False
+        forge_dt = server_now()
     else:
-        global _SERVER_SKEW
+        _FORGE_DATE_OK = True
         _SERVER_SKEW = (forge_dt - datetime.now(timezone.utc)).total_seconds()
     body = body.strip()
     obj = None
@@ -1451,13 +1470,24 @@ def next_gen(comments):
 # ---- outbox -------------------------------------------------------------
 
 def private_dir(p):
-    """mkdir + chmod 0700 (Boundary F2)."""
+    """mkdir + chmod 0700 (Boundary F2). Refuses a symlink (Boundary G1)."""
     p = Path(p)
-    p.mkdir(mode=0o700, parents=True, exist_ok=True)
     try:
-        os.chmod(str(p), 0o700)
-    except OSError:
-        pass
+        st = os.lstat(str(p))
+        if stat.S_ISLNK(st.st_mode):
+            raise ForgeError("refusing symlinked private dir %s" % p)
+        if not stat.S_ISDIR(st.st_mode):
+            raise ForgeError("refusing non-directory private dir %s" % p)
+    except FileNotFoundError:
+        p.mkdir(mode=0o700, parents=True, exist_ok=True)
+    try:
+        os.chmod(str(p), 0o700, follow_symlinks=False)
+    except (OSError, NotImplementedError):
+        try:
+            if not os.path.islink(str(p)):
+                os.chmod(str(p), 0o700)
+        except OSError:
+            pass
     return p
 
 
@@ -1465,18 +1495,21 @@ def prune_dir(p, keep_days=None, keep_files=None, now=None):
     """Drop files older than SWARM_OUTBOX_KEEP_DAYS (30) and beyond the
     newest SWARM_OUTBOX_KEEP_FILES (500). Returns the number removed."""
     p = Path(p)
-    if not p.is_dir():
-        return 0
+    if os.path.islink(str(p)) or not p.is_dir():
+        return 0  # Boundary G1: never prune through a symlink
     try:
         days = float(keep_days if keep_days is not None else (env("SWARM_OUTBOX_KEEP_DAYS", "30") or "30"))
         count = int(keep_files if keep_files is not None else (env("SWARM_OUTBOX_KEEP_FILES", "500") or "500"))
     except Exception:
         days, count = 30.0, 500
+    days = max(1.0, days)    # Boundary G2
+    count = max(1, count)
     now = time.time() if now is None else now
-    files = sorted((f for f in p.iterdir() if f.is_file()), key=lambda f: f.stat().st_mtime, reverse=True)
+    files = sorted((f for f in p.iterdir() if f.is_file() and not f.is_symlink()),
+                   key=lambda f: f.lstat().st_mtime, reverse=True)
     removed = 0
     for i, f in enumerate(files):
-        if i >= count or now - f.stat().st_mtime > days * 86400:
+        if i >= count or now - f.lstat().st_mtime > days * 86400:
             try:
                 f.unlink()
                 removed += 1
@@ -1489,7 +1522,12 @@ def outbox_write(kind, payload):
     d = private_dir(home_dir() / "outbox")
     name = "%s-%s-%s.json" % (iso_z(datetime.now(timezone.utc)).replace(":", ""), kind, os.getpid())
     path = d / name
-    fd = os.open(str(path), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        fd = os.open(str(path), flags, 0o600)
+    except FileExistsError:
+        path = d / ("%s-%s.json" % (path.stem, secrets.token_hex(4)))
+        fd = os.open(str(path), flags, 0o600)
     with os.fdopen(fd, "w") as f:
         f.write(json.dumps(payload, indent=2, sort_keys=True) + "\n")
     log("outbox wrote " + str(path))
@@ -1654,6 +1692,7 @@ def claim_issue(repo, number):
     if not st.ok:
         raise NotApproved("refusing to claim: not owner-approved (%s)" % (st.reason or ""))
     dt2, comments = get_comments(repo, number, uncached=True)
+    require_forge_clock("claim")
     now = dt2 or dt
     live, _ = unexpired_claims(issue, comments, now)
     mine = bool(live) and live[0]["runner"] == rn and (live[0].get("author") or "").lower() == me
@@ -1664,7 +1703,7 @@ def claim_issue(repo, number):
         log("already hold %s#%s gen %s" % (repo, number, live[0]["gen"]))
         return {"ok": True, "number": number, "repo": repo, "gen": live[0]["gen"],
                 "comment_id": live[0]["id"], "until": iso_z(live[0]["until"]) if live[0]["until"] else "",
-                "already": True}
+                "already": True, "claimed_at": iso_z(live[0]["created"]), "idle_heartbeats": 0}
 
     clear_stale_claim_labels(repo, number, issue, live, comments)
     gen = next_gen(comments)
@@ -1751,16 +1790,22 @@ def release_issue(repo, number, reason="released", claim=None):
         del_label(repo, number, label)
     except ForgeError as e:
         log("release label: " + str(e))
+    others_live = None
     try:
         _, issue = get_issue(repo, number, uncached=True)
         _, comments = get_comments(repo, number, uncached=True)
+        require_forge_clock("stale-label sweep")
         live, _ = unexpired_claims(issue, comments, server_now())
+        others_live = [x for x in live if not (x["runner"] == rn and (x.get("author") or "").lower() == me)]
         clear_stale_claim_labels(repo, number, issue, live, comments)
     except ForgeError as e:
         log("release stale-label sweep: " + str(e))
     # Race R13: unassign the owner only if this claim assigned them.
+    # Boundary G5: and never while another live claim relies on it (or
+    # when that could not be checked).
     owner_login = repo_owner_login(repo)
-    if owner_login and isinstance(claim, dict) and claim.get("assigned_owner"):
+    if (owner_login and isinstance(claim, dict) and claim.get("assigned_owner")
+            and others_live == []):
         try:
             del_assignee(repo, number, owner_login)
         except ForgeError as e:
@@ -1796,17 +1841,39 @@ def heartbeat_issue(repo, number, gen, claim=None):
     lease_h = float(env("SWARM_LEASE_HOURS", "2") or "2")
     dt, issue = get_issue(repo, number, uncached=True)
     dt2, comments = get_comments(repo, number, uncached=True)
+    require_forge_clock("heartbeat")
     now = dt2 or dt
     live, _ = unexpired_claims(issue, comments, now)
     if not holds_first_live_claim(live, gen, claim):
         holder = ("%s (%s) gen %s" % (live[0]["runner"], live[0].get("author") or "?", live[0]["gen"])
                   if live else "nobody")
         raise LeaseLost("lease on #%s gen %s lost; first live claim: %s" % (number, gen, holder))
+    cur_until = live[0]["until"]
     until = now + timedelta(hours=lease_h)
     body = stamp_line() + "\n-- %s heartbeat gen %s lease-until %s\n" % (rn, gen, iso_z(until))
-    post_comment(repo, number, body)
+    _, _, obj, _ = post_comment(repo, number, body)
+    # Race P2: readers count a heartbeat only if GitHub created it before
+    # the lease expired. Trust it locally only on the same terms.
+    created = parse_iso((obj or {}).get("created_at") or "") if isinstance(obj, dict) else None
+    if created is None or cur_until is None or created >= cur_until:
+        raise LeaseLost("heartbeat on #%s gen %s landed at %s, lease ended %s" % (
+            number, gen, iso_z(created) if created else "?", iso_z(cur_until) if cur_until else "?"))
+    until = min(until, cap_lease(until, created))
     log("heartbeat %s#%s gen %s until %s" % (repo, number, gen, iso_z(until)))
     return iso_z(until)
+
+
+def require_lease(repo, number, claim):
+    """Re-read and require this host still holds the first live claim
+    (Race N8: between push and pr create). Raises LeaseLost."""
+    if mode() != "live" or not claim:
+        return
+    dt, issue = get_issue(repo, number, uncached=True)
+    dt2, comments = get_comments(repo, number, uncached=True)
+    require_forge_clock("lease check")
+    live, _ = unexpired_claims(issue, comments, dt2 or dt)
+    if not holds_first_live_claim(live, claim.get("gen"), claim):
+        raise LeaseLost("lease on #%s lost before pr create" % number)
 
 
 # ---- probes / work ------------------------------------------------------
@@ -2624,6 +2691,7 @@ def confirm_claim_still_first(repo, number, claim, wait_s=None):
     time.sleep(delay)
     dt, issue = get_issue(repo, number, uncached=True)
     dt2, comments = get_comments(repo, number, uncached=True)
+    require_forge_clock("claim re-read")
     live, _ = unexpired_claims(issue, comments, dt2 or dt)
     if not live:
         return False
@@ -2718,10 +2786,13 @@ def job(repo, number, gen, claim=None):
         if claim and not confirm_claim_still_first(repo, number, claim, wait_s=0):
             raise ForgeError("lost claim before push")
         # Always renew before deliver (re-reads; LeaseLost aborts, no push).
-        keep_lease(repo, number, claim, why="pre-deliver", always=True)
+        if claim and not keep_lease(repo, number, claim, why="pre-deliver", always=True):
+            # Race P1: no renewed lease, no push.
+            raise ForgeError("pre-deliver heartbeat failed; not pushing #%s" % number)
         doc = build_doc(repo, number, approved_issue, report, draft, how, body_sha=expected_sha)
         d = deliver(repo, number, approved_issue, doc,
-                    gate_check=lambda: recheck_gate(repo, number, expected_sha))
+                    gate_check=lambda: (recheck_gate(repo, number, expected_sha),
+                                        require_lease(repo, number, claim)))
         if d.get("new_pr"):
             recheck_gate(repo, number, expected_sha)
             post_comment(repo, number, stamp_line() + "\nFirst pass pushed from %s: branch `%s` @ %s, draft PR %s (base %s).\n\n-- swarm/%s\n" % (
@@ -2908,7 +2979,9 @@ def prejob_lease_min():
         return 45.0
 
 
-NO_PROGRESS = ("load gate", "idle", "budget sleep")
+NO_PROGRESS = ("load gate", "idle", "budget sleep", "pre-job")
+# pre-job counts too (Boundary G3): a job that fails every iteration
+# would otherwise renew forever. A delivered job releases the claim.
 
 
 class HoldExhausted(ForgeError):
@@ -3107,8 +3180,9 @@ def cmd_loop():
                     release_issue(repo, st_l.get("number"),
                                   "lease lost" if isinstance(e, LeaseLost) else "held without progress",
                                   claim=cl_l)
-            except ForgeError as ex:
-                log("release after lease lost: " + str(ex))
+            except Exception as ex:
+                # Boundary G4: budget or anything else must not end the loop.
+                log("release after lease lost: " + redact(str(ex)))
             st_l["number"] = None
             st_l.pop("claim", None)
             st_l.pop("deliver", None)
@@ -3222,7 +3296,7 @@ def cmd_probe():
 
 def main(argv):
     private_dir(home_dir())
-    (home_dir() / "logs").mkdir(exist_ok=True)
+    private_dir(home_dir() / "logs")  # F2: holds local_stamp_line
     private_dir(home_dir() / "outbox")
     (home_dir() / "work").mkdir(exist_ok=True)
     cmd = (argv[1] if len(argv) > 1 else "once").strip().lower()
