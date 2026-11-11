@@ -19,9 +19,12 @@ Tiers (defaults — not a hard cap; operators may override):
 On a ~7.4 GiB Galaxy A57 with reserve 5120, usable is ~2.4 GiB -> medium (LFM3, ctx 4096).
 Negative usable (common below ~6 GiB total with the default reserve) is clamped to 0.
 Dolphin3 Q2_K (~3 GiB) needs the large tier (more RAM or a lower reserve).
-Desktop Hermes agents require min_ctx 64000 (upstream hermes-agent floor). Phones
-stay at these RAM-safe ctx values for familia-start; Hermes webapp is refused clearly
-when FAMILIA_CTX < 64000 (see docs/android-hermes.md).
+Desktop Hermes agents require min_ctx 64000 (upstream hermes-agent floor; do not
+lower it, #125). These tier ctx values stay the non-Hermes familia-start defaults.
+The Hermes one-tap path (install-hermes-android.sh) raises an unset FAMILIA_CTX to
+65536 and serves with q8_0 KV + -np 1 (REQUIREMENTS.md / #203), then admits on
+usable RAM (reserve 5120, FAMILIA_MIN_USABLE_MIB default 2048 at 64k; #548). An
+explicit FAMILIA_CTX below 64000 is still refused. See docs/android-hermes.md.
 
 Usage:
   python3 install/termux/phone-model-default.py [--ram-mib N] [--reserve-mib N]
@@ -117,9 +120,18 @@ def main(argv: list[str]) -> int:
     ctx_override = os.environ.get("FAMILIA_CTX", "").strip()
 
     if ram is None:
-        ram = read_total_ram_mib()
+        env_ram = os.environ.get("FAMILIA_RAM_MIB", "").strip()
+        if env_ram:
+            try:
+                ram = int(env_ram)
+            except ValueError:
+                print(f"phone-model-default: FAMILIA_RAM_MIB must be an int, got {env_ram!r}",
+                      file=sys.stderr)
+                return 2
+        else:
+            ram = read_total_ram_mib()
     if ram is None and not override and not tier_override:
-        print("phone-model-default: could not read MemTotal; pass --ram-mib or set FAMILIA_PHONE_MODEL",
+        print("phone-model-default: could not read MemTotal; pass --ram-mib or set FAMILIA_RAM_MIB or FAMILIA_PHONE_MODEL",
               file=sys.stderr)
         return 2
 

@@ -304,13 +304,15 @@ def test_licenses_selected_plus_dolphin_and_llama31():
 
 
 def test_install_hermes_android_dry_run(tmp_path):
-    """Default phone ctx < 64k: early REFUSE before license/install/fetch/start."""
+    """Unset FAMILIA_CTX is raised to 65536 and a typical 8 GiB phone is admitted."""
     env = dict(
         os.environ,
         FAMILIA_ACCEPT_LICENSES="yes",
         FAMILIA_ACCEPT_UNKNOWN_LICENSES="yes",
         FAMILIA_PREFIX=str(tmp_path / "prefix"),
         FAMILIA_PHONE_MODEL="smollm2-135m-q4-phone",
+        FAMILIA_RAM_MIB="7570",
+        FAMILIA_RESERVE_MIB="5120",
     )
     r = subprocess.run(
         ["sh", os.path.join(TERMUX, "install-hermes-android.sh"), "--dry-run", "--yes", "--skip-install"],
@@ -322,18 +324,23 @@ def test_install_hermes_android_dry_run(tmp_path):
     )
     assert r.returncode == 0, r.stdout + r.stderr
     assert "default phone model tier=" in r.stderr
-    # F-2: refuse right after tier pick — no license gate / fetch / familia-start work.
-    assert "REFUSE" in r.stderr and "64000" in r.stderr
-    assert "licenses.py" not in r.stderr
-    assert "fetch-phone-model" not in r.stderr
-    assert "would: FAMILIA_MODEL=" not in r.stderr
+    assert "raising ctx" in r.stderr and "65536" in r.stderr
+    assert "64k admit ok" in r.stderr
+    assert "REFUSE" not in r.stderr
+    assert "licenses.py" in r.stderr
+    assert "FAMILIA_CTX=65536" in r.stderr
+    assert "FAMILIA_KV=q8_0" in r.stderr
+    assert "FAMILIA_PARALLEL=1" in r.stderr
+    assert "127.0.0.1" in r.stderr
     assert "8642" not in r.stderr  # no guessed port
     hermes = open(os.path.join(TERMUX, "install-hermes-android.sh"), encoding="utf-8").read()
     assert "hermes.sh" in hermes
     assert "CDPATH='' cd" in hermes
     assert "redact" in hermes.lower() or "REDACTED" in hermes
     assert "have_tty" in hermes or "Widget taps do not" in hermes
-    assert DOLPHIN_DB in hermes  # still wired for the ctx>=64k path
+    assert DOLPHIN_DB in hermes
+    assert "HERMES_CTX_DEFAULT=65536" in hermes
+    assert "required_usable_for_ctx" in hermes
 
 
 def test_termux_install_dry_run_cbl_mentions_download(tmp_path):
@@ -403,6 +410,11 @@ def test_android_docs_present():
     assert "4096" in doc and "8192" in doc  # phone ctx tiers
     assert "api.key" in doc
     assert "64000" in doc and "MINIMUM_CONTEXT_LENGTH" in doc
+    assert "65536" in doc and "q8_0" in doc
+    assert "127.0.0.1" in doc
+    assert "self-host" in doc.lower()
+    assert "FAMILIA_MIN_USABLE_MIB" in doc
+    assert "non-loopback" in doc.lower()
     assert "PIN_FILE" in doc or "DOWNLOAD_URL" in doc
     assert "note9" not in doc.lower()
 
@@ -595,6 +607,7 @@ sed -E \
 
 
 def test_hermes_refused_when_phone_ctx_below_64000(tmp_path):
+    """Explicit FAMILIA_CTX below the floor is still refused (do not lower min_ctx)."""
     env = dict(
         os.environ,
         FAMILIA_ACCEPT_LICENSES="yes",
@@ -602,6 +615,7 @@ def test_hermes_refused_when_phone_ctx_below_64000(tmp_path):
         FAMILIA_PREFIX=str(tmp_path / "prefix"),
         FAMILIA_PHONE_MODEL="smollm2-135m-q4-phone",
         FAMILIA_CTX="4096",
+        FAMILIA_RAM_MIB="7570",
     )
     r = subprocess.run(
         ["sh", os.path.join(TERMUX, "install-hermes-android.sh"), "--dry-run", "--yes", "--skip-install"],
@@ -611,9 +625,41 @@ def test_hermes_refused_when_phone_ctx_below_64000(tmp_path):
     assert "REFUSE" in r.stderr
     assert "64000" in r.stderr
     assert "MINIMUM_CONTEXT" in r.stderr or "hermes-agent" in r.stderr
-    # Early: nothing past the tier pick runs.
+    assert "raising ctx" not in r.stderr
+    # Early: nothing past the ctx/RAM admit runs.
     assert "licenses.py" not in r.stderr
     assert "familia-start" not in r.stderr or "can still serve" in r.stderr
+
+
+def test_hermes_refused_when_usable_ram_below_64k_floor(tmp_path):
+    """#548 floor: usable (MemTotal-5120) below 2048 MiB at 64k is a RAM refuse."""
+    env = dict(
+        os.environ,
+        FAMILIA_ACCEPT_LICENSES="yes",
+        FAMILIA_ACCEPT_UNKNOWN_LICENSES="yes",
+        FAMILIA_PREFIX=str(tmp_path / "prefix"),
+        FAMILIA_PHONE_MODEL="smollm2-135m-q4-phone",
+        FAMILIA_RAM_MIB="4096",
+        FAMILIA_RESERVE_MIB="5120",
+    )
+    r = subprocess.run(
+        ["sh", os.path.join(TERMUX, "install-hermes-android.sh"), "--dry-run", "--yes", "--skip-install"],
+        cwd=ROOT, env=env, capture_output=True, text=True, timeout=60,
+    )
+    assert r.returncode == 0, r.stderr
+    assert "raising ctx" in r.stderr and "65536" in r.stderr
+    assert "REFUSE" in r.stderr
+    assert "usable RAM 0 MiB" in r.stderr or "usable RAM 0 " in r.stderr
+    assert "FAMILIA_MIN_USABLE_MIB" in r.stderr
+    assert "licenses.py" not in r.stderr
+
+
+def test_termux_familia_start_uses_q8_kv_and_single_slot():
+    """REQUIREMENTS.md / #203: Android familia-start uses -np 1 and q8_0 KV."""
+    text = open(os.path.join(TERMUX, "install.sh"), encoding="utf-8").read()
+    assert r'-np "\${FAMILIA_PARALLEL:-1}"' in text
+    assert r'-ctk "\${FAMILIA_KV:-q8_0}"' in text
+    assert r'-ctv "\${FAMILIA_KV:-q8_0}"' in text
 
 
 def test_widget_clears_license_accept_file():
@@ -629,6 +675,8 @@ def test_dry_run_prints_no_open_only_when_set(tmp_path):
         FAMILIA_PREFIX=str(tmp_path / "prefix"),
         FAMILIA_PHONE_MODEL="smollm2-135m-q4-phone",
         FAMILIA_CTX="65536",  # meet Hermes floor so dry-run reaches open/no-open lines
+        FAMILIA_RAM_MIB="7570",
+        FAMILIA_RESERVE_MIB="5120",
     )
     r = subprocess.run(
         ["sh", os.path.join(TERMUX, "install-hermes-android.sh"), "--dry-run", "--yes", "--skip-install"],

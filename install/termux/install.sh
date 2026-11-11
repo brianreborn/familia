@@ -373,6 +373,8 @@ set --
 [ -n "\$FAMILIA_KF" ] || { echo "familia-start: no API key; refusing" >&2; exit 2; }
 set -- --api-key-file "\$FAMILIA_KF"
 # Defaults from the 2026-10-10 A57 sweep (#34): 3 threads, flash-attn on; -ngl 99 on Vulkan (CPU ngl 0 on 0.6.0 collapses to <1 t/s tg).
+# Memory budget (REQUIREMENTS.md / #203): single slot (-np 1) and q8_0 KV so a 64K
+# Hermes window can fit under reserve_ram_mib 5120 without LMK eviction.
 # Prefer code-bootstraps-llama.cpp Android prebuilt when present; else Termux llama-server on PATH.
 CBL_BIN="$PREFIX_DIR/runtime/current"
 if [ -x "\$CBL_BIN/llama-server" ]; then
@@ -380,9 +382,9 @@ if [ -x "\$CBL_BIN/llama-server" ]; then
   if [ -e /system/lib64/libvulkan.so ]; then
     export LD_LIBRARY_PATH="\$VK:\$LD_LIBRARY_PATH"
   fi
-  exec "\$CBL_BIN/llama-server" -m "\$M" -ngl "\$NGL" -t "\${FAMILIA_THREADS:-3}" -fa "\${FAMILIA_FA:-on}" --host "\$B" --port "\${FAMILIA_PORT:-9941}" -c "\${FAMILIA_CTX:-2048}" "\$@" \${FAMILIA_EXTRA:-}
+  exec "\$CBL_BIN/llama-server" -m "\$M" -ngl "\$NGL" -t "\${FAMILIA_THREADS:-3}" -fa "\${FAMILIA_FA:-on}" --host "\$B" --port "\${FAMILIA_PORT:-9941}" -c "\${FAMILIA_CTX:-2048}" -np "\${FAMILIA_PARALLEL:-1}" -ctk "\${FAMILIA_KV:-q8_0}" -ctv "\${FAMILIA_KV:-q8_0}" "\$@" \${FAMILIA_EXTRA:-}
 fi
-exec llama-server -m "\$M" -ngl "\$NGL" -t "\${FAMILIA_THREADS:-3}" -fa "\${FAMILIA_FA:-on}" --host "\$B" --port "\${FAMILIA_PORT:-9941}" -c "\${FAMILIA_CTX:-2048}" "\$@" \${FAMILIA_EXTRA:-}
+exec llama-server -m "\$M" -ngl "\$NGL" -t "\${FAMILIA_THREADS:-3}" -fa "\${FAMILIA_FA:-on}" --host "\$B" --port "\${FAMILIA_PORT:-9941}" -c "\${FAMILIA_CTX:-2048}" -np "\${FAMILIA_PARALLEL:-1}" -ctk "\${FAMILIA_KV:-q8_0}" -ctv "\${FAMILIA_KV:-q8_0}" "\$@" \${FAMILIA_EXTRA:-}
 EOS
   chmod +x "$LAUNCH"
 fi

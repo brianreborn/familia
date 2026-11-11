@@ -1,19 +1,22 @@
 #!/data/data/com.termux/files/usr/bin/sh
 # One-tap Android path: licenses -> cbl prebuilt runtime -> default phone model ->
-# familia-start (serves the chosen .gguf at a RAM-tier ctx) -> Hermes webapp UI.
-# Webapp-first: opens the Hermes webapp URL on device. Hermes Desktop + Office 3D run on a
-# Linux/macOS host; see docs/android-hermes.md.
+# familia-start (serves the chosen .gguf at Hermes ctx on 127.0.0.1) -> Hermes webapp UI.
+# Self-hosted (Brian 2026-11-10): the phone serves its own Hermes webapp bound to
+# 127.0.0.1. Hermes Desktop + Office 3D still run on a Linux/macOS host; see
+# docs/android-hermes.md.
 # Usage:
 #   sh install/termux/install-hermes-android.sh [--dry-run] [--yes] [--accept-unknown]
 #                                               [--skip-install] [--no-open] [--launch-only]
 # Env:
 #   FAMILIA_ACCEPT_LICENSES=yes / FAMILIA_ACCEPT_UNKNOWN_LICENSES=yes
 #   FAMILIA_PHONE_MODEL / FAMILIA_PHONE_MODEL_TIER / FAMILIA_RESERVE_MIB / FAMILIA_CTX
+#   FAMILIA_RAM_MIB / FAMILIA_MIN_USABLE_MIB / FAMILIA_KV / FAMILIA_PARALLEL
 #   FAMILIA_RUNTIME=cbl (default) | pkg
 #   INSTALL_ACK=yes          alias for license --yes (proto; widget clears this)
 # Never pipe a download into a shell. No sudo. Widget taps must not pass --yes.
 # familia-start serves the GGUF; Hermes webapp is the chat UI. Phone ctx is shared
-# (FAMILIA_CTX == Hermes context_length); see phone-model-default.py --list-tiers.
+# (FAMILIA_CTX == Hermes context_length). Unset FAMILIA_CTX is raised to 65536
+# (do not lower min_ctx, #125) with q8_0 KV and -np 1 (#203 / REQUIREMENTS.md).
 set -eu
 
 HERE=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
@@ -66,21 +69,75 @@ CTX=$(printf '%s' "$MODEL_JSON" | python3 -c 'import json,sys; print(json.load(s
 say "default phone model tier=$TIER model=$MODEL ctx=$CTX (override with FAMILIA_PHONE_MODEL / FAMILIA_CTX)"
 
 # Hermes-agent upstream MINIMUM_CONTEXT_LENGTH is 64000 (agent/model_metadata.py).
-# There is no supported override for custom/llama.cpp providers (LM Studio only).
-# Phone RAM-tier ctx is often far below that — refuse immediately after the tier
-# pick (before license gate, runtime install, model download, familia-start) so
-# nothing is left running. Product shape (host webapp vs local UI vs force 64k)
-# is still Brian's call; this gate only avoids a hang.
+# There is no supported override that lowers the floor for custom/llama.cpp
+# providers (LM Studio only; NousResearch/hermes-agent#11096, #8430). Do not
+# lower min_ctx (#125). Known workarounds already in-tree:
+#   * raise ctx to 65536 (graph coder / angel-coder, #125 / #127)
+#   * q8_0 KV + single slot -np 1 under reserve 5120 (#203, REQUIREMENTS.md)
+#   * usable-RAM floor at 64k: default FAMILIA_MIN_USABLE_MIB=2048 (galaxy2
+#     LFM3-1.7B RSS), scaled by ctx (#548)
+# Apply those after the tier pick and before license / install / fetch / start
+# so a failing admit leaves nothing running.
 HERMES_MIN_CTX=64000
+HERMES_CTX_DEFAULT=65536
 hermes_ctx_ok() { [ "$CTX" -ge "$HERMES_MIN_CTX" ]; }
+
+required_usable_for_ctx() {
+  _base=${FAMILIA_MIN_USABLE_MIB:-2048}
+  case "$_base" in
+    ''|*[!0-9]*) _base=2048 ;;
+  esac
+  printf '%s' $(( (_base * $1 + 63999) / 64000 ))
+}
+
+# Unset FAMILIA_CTX: raise the RAM-tier chat ctx (2048-8192) to the established
+# Hermes window. An explicit FAMILIA_CTX below the floor is still refused.
+if [ -z "${FAMILIA_CTX:-}" ] && [ "$CTX" -lt "$HERMES_MIN_CTX" ]; then
+  say "raising ctx $CTX -> $HERMES_CTX_DEFAULT for hermes-agent MINIMUM_CONTEXT_LENGTH=$HERMES_MIN_CTX (q8_0 KV, -np 1, reserve 5120; #125 #203)"
+  CTX=$HERMES_CTX_DEFAULT
+fi
+
+RAM=$(printf '%s' "$MODEL_JSON" | python3 -c 'import json,sys; v=json.load(sys.stdin).get("total_ram_mib"); print(v if v is not None else "")')
+RESERVE=$(printf '%s' "$MODEL_JSON" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("reserve_mib") or "")')
+USABLE=$(printf '%s' "$MODEL_JSON" | python3 -c 'import json,sys; v=json.load(sys.stdin).get("usable_mib"); print(v if v is not None else "")')
+case "${RESERVE:-}" in ''|*[!0-9]*) RESERVE=${FAMILIA_RESERVE_MIB:-5120} ;; esac
+case "${USABLE:-}" in
+  ''|*[!0-9]*)
+    case "${RAM:-}" in
+      ''|*[!0-9]*) USABLE="" ;;
+      *) USABLE=$((RAM - RESERVE)); [ "$USABLE" -lt 0 ] && USABLE=0 ;;
+    esac
+    ;;
+esac
+
+if hermes_ctx_ok; then
+  if [ -z "$USABLE" ]; then
+    _ram_msg="Hermes webapp refused on this phone: MemTotal unknown; set FAMILIA_RAM_MIB or pass a readable /proc/meminfo before a 64k admit (FAMILIA_MIN_USABLE_MIB, #548). Refusing before license gate / runtime install / model download / familia-start so nothing is left running."
+    if [ "$DRY" = 1 ]; then
+      say "[dry-run] would REFUSE $_ram_msg"
+      exit 0
+    fi
+    die "$_ram_msg"
+  fi
+  NEED=$(required_usable_for_ctx "$CTX")
+  if [ "$USABLE" -lt "$NEED" ]; then
+    _ram_msg="Hermes webapp refused on this phone: usable RAM ${USABLE} MiB (MemTotal ${RAM:-unknown} - reserve ${RESERVE}) is below the ${NEED} MiB floor for ctx=$CTX (FAMILIA_MIN_USABLE_MIB=${FAMILIA_MIN_USABLE_MIB:-2048} at 64000, measured galaxy2 LFM3 RSS; #548). Workarounds already applied: ctx $HERMES_CTX_DEFAULT, q8_0 KV, -np 1, reserve left at ${RESERVE} (do not lower reserve to make room; #125 / #203). Lower FAMILIA_MIN_USABLE_MIB only if you accept less headroom, or run Hermes on a host with more usable RAM. See docs/android-hermes.md."
+    if [ "$DRY" = 1 ]; then
+      say "[dry-run] would REFUSE $_ram_msg"
+      exit 0
+    fi
+    die "$_ram_msg"
+  fi
+  say "64k admit ok: ctx=$CTX usable=${USABLE} MiB need=${NEED} MiB (q8_0 KV, -np 1)"
+fi
 
 if ! hermes_ctx_ok; then
   if [ "$DRY" = 1 ]; then
-    say "[dry-run] would REFUSE Hermes webapp: ctx=$CTX < hermes-agent MINIMUM_CONTEXT_LENGTH=$HERMES_MIN_CTX (no supported override for custom/llama.cpp; see docs/android-hermes.md)"
+    say "[dry-run] would REFUSE Hermes webapp: FAMILIA_CTX=$CTX < hermes-agent MINIMUM_CONTEXT_LENGTH=$HERMES_MIN_CTX (no supported override that lowers the floor for custom/llama.cpp; see docs/android-hermes.md). Unset FAMILIA_CTX to use the $HERMES_CTX_DEFAULT workaround (#125) with q8_0 KV and -np 1."
     say "Office 3D / Hermes Desktop: run on a Linux or macOS host with ctx>=$HERMES_MIN_CTX; phone familia-start can still serve the GGUF when run on its own."
     exit 0
   fi
-  die "Hermes webapp refused on this phone: FAMILIA_CTX=$CTX is below hermes-agent MINIMUM_CONTEXT_LENGTH=$HERMES_MIN_CTX. Upstream hermes-agent (agent/model_metadata.py) hard-rejects smaller windows for custom/llama.cpp providers; model.context_length cannot lower that floor (NousResearch/hermes-agent#11096, #8430). Refusing before license gate / runtime install / model download / familia-start so nothing is left running. Use a Linux/macOS host with ctx>=$HERMES_MIN_CTX for Hermes, or raise FAMILIA_CTX only if the phone has RAM for it (usually not). See docs/android-hermes.md."
+  die "Hermes webapp refused on this phone: FAMILIA_CTX=$CTX is below hermes-agent MINIMUM_CONTEXT_LENGTH=$HERMES_MIN_CTX. Upstream hermes-agent (agent/model_metadata.py) hard-rejects smaller windows for custom/llama.cpp providers; model.context_length cannot lower that floor (NousResearch/hermes-agent#11096, #8430). Do not lower min_ctx (#125). Unset FAMILIA_CTX to raise it to $HERMES_CTX_DEFAULT with q8_0 KV and -np 1 (#203), or set FAMILIA_CTX>=$HERMES_MIN_CTX if the usable-RAM floor admits it. Refusing before license gate / runtime install / model download / familia-start so nothing is left running. See docs/android-hermes.md."
 fi
 
 SELECTED_DB=$(python3 -c '
@@ -185,6 +242,9 @@ HERMES="$ROOT/scripts/hermes.sh"
 export FAMILIA_MODEL="$MODEL_PATH"
 export FAMILIA_CTX="$CTX"
 export FAMILIA_PORT="$PORT"
+export FAMILIA_KV="${FAMILIA_KV:-q8_0}"
+export FAMILIA_PARALLEL="${FAMILIA_PARALLEL:-1}"
+export FAMILIA_BIND="${FAMILIA_BIND:-127.0.0.1}"
 export FAMILIA_HERMES_CONTEXT_LENGTH="$CTX"
 export FAMILIA_HERMES_BASE_URL="http://127.0.0.1:${PORT}/v1"
 # Point Hermes auth at the same key familia-start uses (read the file; do not invent 'local').
@@ -193,7 +253,7 @@ if [ -f "$KEY_FILE" ]; then
 fi
 
 if [ "$DRY" = 1 ]; then
-  say "[dry-run] would: FAMILIA_MODEL=$MODEL_PATH FAMILIA_CTX=$CTX familia-start (serves the chosen .gguf on 127.0.0.1:$PORT)"
+  say "[dry-run] would: FAMILIA_MODEL=$MODEL_PATH FAMILIA_CTX=$CTX FAMILIA_KV=${FAMILIA_KV:-q8_0} FAMILIA_PARALLEL=${FAMILIA_PARALLEL:-1} FAMILIA_BIND=${FAMILIA_BIND:-127.0.0.1} familia-start (serves the chosen .gguf on 127.0.0.1:$PORT)"
   say "[dry-run] would: FAMILIA_HERMES_CONTEXT_LENGTH=$CTX FAMILIA_HERMES_BASE_URL=http://127.0.0.1:${PORT}/v1 bash $HERMES --client webapp --yes"
   say "[dry-run] would poll hermes output for a webapp URL (no sleep+guessed port)"
   [ "$NO_OPEN" = 1 ] && say "[dry-run] --no-open: would not launch a browser"
