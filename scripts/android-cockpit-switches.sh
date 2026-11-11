@@ -29,16 +29,17 @@
 # never auto-start. Each device serves its own webapp (Brian,
 # 2026-11-10 11:15 PM PT, "each its own" / self-hosting): on-phone
 # and local modes default the host/URL to http://127.0.0.1:9941
-# (loopback, no key). Thin client starts at that same loopback (or
-# empty), never a fixed remote. A remote host is an explicit opt-in,
-# with HTTPS plus an API key per F2.
+# (loopback; HTTPS may stay off). Thin client starts at that same
+# loopback (or empty), never a fixed remote. A remote host is an
+# explicit opt-in, with HTTPS plus an API key per F2.
 # HTTPS is the default for a remote (non-loopback) host. The literal
 # name localhost counts as loopback for the HTTPS default only (plain
-# HTTP is OK); the API key rule stays IP-only (127.0.0.0/8 and ::1).
-# Plain HTTP to a remote host is allowed only when the named dev
-# switch "dev: allow plain HTTP" is on (off by default, marked * when
-# on), or when FAMILIA_DEV_ALLOW_HTTP=1. http:// CBL URLs are always
-# rejected. Start, or a non-loopback-IP host, still needs an API key.
+# HTTP is OK). An API key file (mode 0600) is always required, including
+# on 127.0.0.0/8 and ::1: other Termux apps and adb can reach loopback
+# (#321 at 5191f64; Hermes Wiring). Plain HTTP to a remote host is
+# allowed only when the named dev switch "dev: allow plain HTTP" is on
+# (off by default, marked * when on), or when FAMILIA_DEV_ALLOW_HTTP=1.
+# http:// CBL URLs are always rejected.
 # Exit 0 = q (back to familia_home). Exit 4 = continue to open_ui.sh.
 set -eu
 umask 077
@@ -172,12 +173,14 @@ probe_read_t() {
 #   FAMILIA_CTX, FAMILIA_PHONE_MODEL_TIER, FAMILIA_CBL_*,
 #   FAMILIA_API_KEY_FILE, FAMILIA_HERMES_CTX_GATE, FAMILIA_RUNTIME,
 #   FAMILIA_BIND (on-phone, pinned to 127.0.0.1).
-# One justified pass-through, re-exported after the scrub:
-#   FAMILIA_ARGV_FILE -- test hook so a child stub can record argv;
-#   not read by install.sh, install-hermes-android.sh, or the smoke
-#   script. Source-override leftovers such as FAMILIA_REPO_URL,
-#   FAMILIA_RAW_URL, FAMILIA_BRANCH, FAMILIA_PORT, FAMILIA_MODEL,
-#   FAMILIA_PREFIX and FAMILIA_EXTRA are not passed through.
+# FAMILIA_ARGV_FILE is a test hook (child stub records argv). It is
+# re-exported only when FAMILIA_TEST_MODE=1 (the repo's existing
+# test-hook convention; see install/freebsd/install-familia.sh) and
+# the path is an absolute, existing regular file (not a symlink, dir
+# or fifo) with no CR/LF. Not read by install.sh, hermes, or smoke.
+# Source-override leftovers such as FAMILIA_REPO_URL, FAMILIA_RAW_URL,
+# FAMILIA_BRANCH, FAMILIA_PORT, FAMILIA_MODEL, FAMILIA_PREFIX and
+# FAMILIA_EXTRA are not passed through.
 inherited_familia_vars() {
   env 2>/dev/null | awk -F= '
     /^FAMILIA_[A-Za-z0-9_]+=/ { print $1 }
@@ -679,9 +682,10 @@ valid_host() {
   printf '%s' "$1" | grep -Eq '^([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*|\[[0-9A-Fa-f:.]+\])$'
 }
 
-# Only real loopback IP addresses (127.0.0.0/8 and ::1). A hostname
-# such as 127.example.com or localhost is not an IP and needs a key
-# (Boundary: the key rule stays IP-only). Newline or CR is rejected
+# Only real loopback IP addresses (127.0.0.0/8 and ::1). Used for the
+# HTTPS default (http is OK on a loopback IP). A hostname such as
+# 127.example.com or localhost is not an IP. The API key is required
+# for every host, including loopback IPs. Newline or CR is rejected
 # so grep -Eq cannot match only the first line.
 is_loopback() {
   no_ctl_chars "$1" || return 1
@@ -719,16 +723,9 @@ webapp_url() {
   fi
 }
 
-# Same rule as assemble_and: start, or a non-loopback-IP host, needs a key.
-# Loopback IPs do not (localhost still does).
+# A key is always required, including on loopback (#321 / Hermes Wiring).
 listener_key_label() {
-  if [ "$START_FAMILIA" = 1 ] || { [ -n "$HOST" ] && ! is_loopback "$HOST"; }; then
-    printf '%s' "listener: key required"
-  elif [ -n "$HOST" ] && is_loopback "$HOST"; then
-    printf '%s' "listener: loopback only (127.0.0.1), API key not required"
-  else
-    printf '%s' "listener: key required for a remote host"
-  fi
+  printf '%s' "listener: key required (including loopback)"
 }
 
 valid_path() {
@@ -1096,10 +1093,25 @@ key_file_to_use() {
   printf '%s' "$_kf"
 }
 
+# Test-hook path for FAMILIA_ARGV_FILE: absolute existing regular file,
+# not a symlink/dir/fifo, no CR/LF. [ -f ] follows symlinks, so reject
+# -L first.
+argv_file_ok() {
+  [ -n "$1" ] || return 1
+  no_ctl_chars "$1" || return 1
+  case "$1" in
+    /*) ;;
+    *) return 1 ;;
+  esac
+  [ ! -L "$1" ] || return 1
+  [ -f "$1" ] || return 1
+  return 0
+}
+
 require_key_file() {
   _kf=$(key_file_to_use)
   if [ ! -e "$_kf" ]; then
-    err "start / a non-loopback host requires an API key file (set switch 12 or create $(default_key_path)). Key is not logged."
+    err "an API key file is required even on loopback (set switch 12 or create $(default_key_path)). Key is not logged."
     return 1
   fi
   if ! safe_secret_file "$_kf"; then
@@ -1146,9 +1158,9 @@ assemble_and() {
     err "install-hermes-android.sh always starts familia-start and has no skip-start flag; turn start ON to run it, or use install.sh"
     return 1
   fi
-  if [ "$START_FAMILIA" = 1 ] || { [ -n "$HOST" ] && ! is_loopback "$HOST"; }; then
-    require_key_file || return 1
-  fi
+  # Key is always required, including on 127.0.0.0/8 and ::1
+  # (other Termux apps and adb can reach loopback; #321 at 5191f64).
+  require_key_file || return 1
   _lic=$(licenses_csv)
   if flag_ok --licenses && [ -z "$_lic" ]; then err "enable at least one license set"; return 1; fi
 
@@ -1194,8 +1206,8 @@ assemble_and() {
   if [ "$THIN_CLIENT" != 1 ]; then
     set -- "$@" "FAMILIA_BIND=127.0.0.1"
   fi
-  # Justified pass-through (see inherited_familia_vars): test hook only.
-  if [ -n "${FAMILIA_ARGV_FILE:-}" ]; then
+  # Test hook only (P4): FAMILIA_TEST_MODE=1 and a validated path.
+  if [ "${FAMILIA_TEST_MODE:-}" = 1 ] && argv_file_ok "${FAMILIA_ARGV_FILE:-}"; then
     set -- "$@" "FAMILIA_ARGV_FILE=$FAMILIA_ARGV_FILE"
   fi
 

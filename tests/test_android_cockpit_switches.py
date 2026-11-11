@@ -10,6 +10,8 @@ import subprocess
 import sys
 import time
 
+from pathlib import Path
+
 import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -53,6 +55,8 @@ def _env(tmp_path, **kw):
         "FAMILIA_MENU_TIMEOUT",
         "FAMILIA_DEV_ALLOW_HTTP",
         "FAMILIA_COCKPIT_HOOK",
+        "FAMILIA_TEST_MODE",
+        "FAMILIA_ARGV_FILE",
     ):
         e.pop(k, None)
     e["XDG_CONFIG_HOME"] = str(tmp_path / "xdg")
@@ -62,17 +66,26 @@ def _env(tmp_path, **kw):
     e["FAMILIA_NO_TTY"] = "1"
     e["COLUMNS"] = "80"
     e["LINES"] = "50"
+    need_key = kw.pop("need_key", True)
     e.update(kw)
+    # Repo test-hook convention (install/freebsd/install-familia.sh).
+    e.setdefault("FAMILIA_TEST_MODE", "1")
+    if need_key:
+        key = Path(e["XDG_CONFIG_HOME"]) / "familia" / "api.key"
+        if not key.exists():
+            key.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+            key.write_text("test-key-not-a-secret\n", encoding="ascii")
+            os.chmod(key, 0o600)
     return e
 
 
-def run_sw(tmp_path, *args, inp=None, exe="sh", **kw):
+def run_sw(tmp_path, *args, inp=None, exe="sh", need_key=True, **kw):
     return subprocess.run(
         [exe, SCRIPT, *args],
         cwd=ROOT,
         capture_output=True,
         text=True,
-        env=_env(tmp_path, **kw),
+        env=_env(tmp_path, need_key=need_key, **kw),
         input=inp,
         stdin=None if inp is not None else subprocess.DEVNULL,
         timeout=30,
@@ -90,6 +103,12 @@ def write_cfg(tmp_path, body, mode=0o600, crlf=False):
     return path
 
 
+def touch_argv(tmp_path, name="argv.txt"):
+    path = tmp_path / name
+    path.write_text("", encoding="ascii")
+    return path
+
+
 def write_stub(tmp_path, name, extra=""):
     d = tmp_path / "John Doe" / "bin"
     d.mkdir(parents=True, exist_ok=True)
@@ -100,7 +119,7 @@ def write_stub(tmp_path, name, extra=""):
         "printf 'ARGC=%s\\n' \"$#\" > \"$argvf\"\n"
         "for a in \"$@\"; do printf '%s\\n' \"$a\" >> \"$argvf\"; done\n"
         "env | grep -E '^(FAMILIA_CBL|FAMILIA_BIND|FAMILIA_ACCEPT|FAMILIA_ALLOW_|FAMILIA_RUNTIME|FAMILIA_HERMES)=' >> \"$argvf\" || true\n"
-        "for v in INSTALL_ACK FAMILIA_ACCEPT_LICENSES FAMILIA_ACCEPT_UNKNOWN_LICENSES FAMILIA_LICENSE_ACCEPT_FILE FAMILIA_ALLOW_YES FAMILIA_HERMES_CTX_GATE FAMILIA_BIND FAMILIA_ALLOW_EXTRA FAMILIA_REPO_URL FAMILIA_RAW_URL FAMILIA_BRANCH FAMILIA_PORT FAMILIA_MODEL FAMILIA_PREFIX; do "
+        "for v in INSTALL_ACK FAMILIA_ACCEPT_LICENSES FAMILIA_ACCEPT_UNKNOWN_LICENSES FAMILIA_LICENSE_ACCEPT_FILE FAMILIA_ALLOW_YES FAMILIA_HERMES_CTX_GATE FAMILIA_BIND FAMILIA_ALLOW_EXTRA FAMILIA_REPO_URL FAMILIA_RAW_URL FAMILIA_BRANCH FAMILIA_PORT FAMILIA_MODEL FAMILIA_PREFIX FAMILIA_ARGV_FILE FAMILIA_TEST_MODE; do "
         "if printenv \"$v\" >/dev/null 2>&1; then printf 'LEAKED %s=%s\\n' \"$v\" \"$(printenv \"$v\")\" >> \"$argvf\"; "
         "else printf 'SCRUBBED %s\\n' \"$v\" >> \"$argvf\"; fi; done\n"
         "printf 'stub:%s\\n' \"$*\"\n"
@@ -145,7 +164,7 @@ def test_dump_secure_defaults_when_installer_missing(tmp_path):
     assert "host=127.0.0.1" in r.stdout
     assert "port=9941" in r.stdout
     assert "url=http://127.0.0.1:9941" in r.stdout
-    assert "listener: loopback only (127.0.0.1), API key not required" in r.stdout
+    assert "listener: key required (including loopback)" in r.stdout
     assert "example.host" not in r.stdout
     # install/termux/install.sh is already on main; smoke/hermes-android are not.
     assert ("installer=not on this commit" in r.stdout) or ("install.sh" in r.stdout)
@@ -165,7 +184,7 @@ def test_pipe_invalid_input_and_missing_installer_return_to_menu(tmp_path):
 
 def test_pipe_show_command_with_smoke_stub(tmp_path):
     stub = write_stub(tmp_path, "familia-android-smoke.sh")
-    argvf = tmp_path / "argv.txt"
+    argvf = touch_argv(tmp_path)
     inp = "9\n127.0.0.1\n10\n8080\n20\n%s\n21\nq\n" % COMMIT
     r = run_sw(
         tmp_path,
@@ -282,7 +301,7 @@ def test_host_flag_injection_and_semicolon_rejected(tmp_path):
 
 def test_run_does_not_interpret_metacharacters(tmp_path):
     stub = write_stub(tmp_path, "familia-android-smoke.sh")
-    argvf = tmp_path / "argv.txt"
+    argvf = touch_argv(tmp_path)
     marker = tmp_path / "X_should_not_exist"
     # Valid https URL containing & must be one argv word; host stays 127.0.0.1.
     url = "https://example.com/x?a=1&b=2"
@@ -398,6 +417,7 @@ def test_api_key_default_uses_xdg(tmp_path):
         "--pipe",
         inp="21\nq\n",
         FAMILIA_ANDROID_INSTALLER=str(stub),
+        need_key=False,
     )
     assert r.returncode == 0, r.stderr
     # message must mention the xdg path, not a hardcoded ~/.config when XDG is set
@@ -416,7 +436,7 @@ def test_api_key_default_uses_xdg(tmp_path):
 
 def test_cbl_tag_without_sha256_not_exported(tmp_path):
     stub = write_stub(tmp_path, "familia-android-smoke.sh")
-    argvf = tmp_path / "argv.txt"
+    argvf = touch_argv(tmp_path)
     write_cfg(
         tmp_path,
         "HOST=127.0.0.1\nPORT=8080\nCOMMIT=%s\nCBL_TAG=android-b12032-1\nCBL_SHA=\nDRY_RUN=1\n"
@@ -453,7 +473,7 @@ def test_onphone_greyed_without_ctx_override(tmp_path):
 
 def test_onphone_allowed_with_ctx_override_maps_runtime(tmp_path):
     stub = write_stub(tmp_path, "install.sh")
-    argvf = tmp_path / "argv.txt"
+    argvf = touch_argv(tmp_path)
     # item 3 sets ctx 64000, item 1 toggles on-phone, 19 shows
     r = run_sw(
         tmp_path,
@@ -479,7 +499,7 @@ def test_onphone_allowed_with_ctx_override_maps_runtime(tmp_path):
 
 def test_url_file_switch_passed_to_smoke(tmp_path):
     stub = write_stub(tmp_path, "familia-android-smoke.sh")
-    argvf = tmp_path / "argv.txt"
+    argvf = touch_argv(tmp_path)
     urlf = tmp_path / "link.txt"
     urlf.write_text("http://localhost:8080/\n", encoding="ascii")
     write_cfg(tmp_path, "HOST=127.0.0.1\nPORT=8080\nCOMMIT=%s\nDRY_RUN=1\n" % COMMIT)
@@ -616,7 +636,7 @@ def test_yes_never_emitted_to_install_or_hermes(tmp_path):
     write_key(tmp_path)
     for name in ("install.sh", "install-hermes-android.sh"):
         stub = write_stub(tmp_path, name)
-        argvf = tmp_path / ("argv-%s.txt" % name)
+        argvf = touch_argv(tmp_path, "argv-%s.txt" % name)
         write_cfg(
             tmp_path,
             "THIN_CLIENT=0\nFAMILIA_CTX_VAL=64000\nTIER=large\nALLOW_YES=1\n"
@@ -668,7 +688,7 @@ def test_hermes_start_off_is_greyed_and_does_not_run(tmp_path):
 
 def test_onphone_bind_pinned_to_loopback(tmp_path):
     stub = write_stub(tmp_path, "install.sh")
-    argvf = tmp_path / "argv.txt"
+    argvf = touch_argv(tmp_path)
     write_cfg(
         tmp_path,
         "THIN_CLIENT=0\nFAMILIA_CTX_VAL=64000\nTIER=large\nHOST=127.0.0.1\n"
@@ -696,21 +716,24 @@ def test_is_loopback_requires_ip_not_hostname(tmp_path):
         "--pipe",
         inp="21\nq\n",
         FAMILIA_ANDROID_INSTALLER=str(stub),
+        need_key=False,
     )
     assert r.returncode == 0, r.stderr
-    assert "requires an API key file" in r.stderr
+    assert "API key file is required even on loopback" in _flat(r.stderr)
     assert "command:" not in r.stdout
-    # 127.0.0.1 is a real loopback IP; no key required when start is OFF.
+    # 127.0.0.1 is a real loopback IP; a key is still required
+    # (other Termux apps and adb can reach loopback).
     write_cfg(tmp_path, "HOST=127.0.0.1\nPORT=8080\nCOMMIT=%s\nDRY_RUN=1\n" % COMMIT)
     r = run_sw(
         tmp_path,
         "--pipe",
         inp="21\nq\n",
         FAMILIA_ANDROID_INSTALLER=str(stub),
+        need_key=False,
     )
     assert r.returncode == 0, r.stderr
-    assert "command:" in r.stdout
-    assert "127.0.0.1" in r.stdout
+    assert "API key file is required even on loopback" in _flat(r.stderr)
+    assert "command:" not in r.stdout
     # localhost is a hostname, not an IP: key still required.
     write_cfg(tmp_path, "HOST=localhost\nPORT=8080\nCOMMIT=%s\nDRY_RUN=1\nHTTPS=0\n" % COMMIT)
     r = run_sw(
@@ -718,12 +741,13 @@ def test_is_loopback_requires_ip_not_hostname(tmp_path):
         "--pipe",
         inp="21\nq\n",
         FAMILIA_ANDROID_INSTALLER=str(stub),
+        need_key=False,
     )
     assert r.returncode == 0, r.stderr
-    assert "requires an API key file" in r.stderr
+    assert "API key file is required even on loopback" in _flat(r.stderr)
     # But localhost counts as loopback for the HTTPS default: http is OK,
     # no force-on, no plain-HTTP warning.
-    r = run_sw(tmp_path, "--dump", FAMILIA_ANDROID_INSTALLER=str(stub))
+    r = run_sw(tmp_path, "--dump", FAMILIA_ANDROID_INSTALLER=str(stub), need_key=False)
     assert r.returncode == 0, r.stderr
     out = r.stdout + r.stderr
     assert "https=OFF" in r.stdout
@@ -753,7 +777,7 @@ def test_onphone_ctx_override_refused_when_ram_too_low(tmp_path):
 
 def test_persistent_install_warns_and_still_needs_typed_run(tmp_path):
     stub = write_stub(tmp_path, "install.sh")
-    argvf = tmp_path / "argv.txt"
+    argvf = touch_argv(tmp_path)
     write_key(tmp_path)
     write_cfg(
         tmp_path,
@@ -987,7 +1011,7 @@ def test_save_trap_exits_130():
 
 def test_inherited_license_accept_env_is_scrubbed(tmp_path):
     stub = write_stub(tmp_path, "familia-android-smoke.sh")
-    argvf = tmp_path / "argv.txt"
+    argvf = touch_argv(tmp_path)
     write_cfg(
         tmp_path,
         "HOST=127.0.0.1\nPORT=8080\nCOMMIT=%s\nDRY_RUN=1\n" % COMMIT,
@@ -1335,55 +1359,51 @@ def test_dev_allow_plain_http_switch_and_env(tmp_path):
     assert not _has(out, warn)
 
 
-def test_self_host_defaults_loopback_no_key(tmp_path):
+def test_self_host_defaults_loopback_still_requires_key(tmp_path):
     # Brian, 2026-11-10 11:15 PM PT ("each its own" / self-hosting):
     # each device serves its own webapp at http://127.0.0.1:9941.
+    # Hermes Wiring / #321 at 5191f64: a key is still required on loopback.
     stub = write_stub(tmp_path, "familia-android-smoke.sh")
-    r = run_sw(tmp_path, "--dump", FAMILIA_ANDROID_INSTALLER=str(stub))
+    r = run_sw(tmp_path, "--dump", FAMILIA_ANDROID_INSTALLER=str(stub), need_key=False)
     assert r.returncode == 0, r.stderr
     out = r.stdout + r.stderr
     assert "host=127.0.0.1" in r.stdout
     assert "port=9941" in r.stdout
     assert "url=http://127.0.0.1:9941" in r.stdout
     assert "https=OFF" in r.stdout
-    assert "listener: loopback only (127.0.0.1), API key not required" in r.stdout
+    assert "listener: key required (including loopback)" in r.stdout
     assert "plain HTTP" not in out
     assert "example.host" not in r.stdout
-    # Show works without an API key for the loopback IP default.
     write_cfg(tmp_path, "COMMIT=%s\nDRY_RUN=1\n" % COMMIT)
-    r = run_sw(tmp_path, "--show", FAMILIA_ANDROID_INSTALLER=str(stub))
+    r = run_sw(tmp_path, "--show", FAMILIA_ANDROID_INSTALLER=str(stub), need_key=False)
+    assert "API key file is required even on loopback" in _flat(r.stderr)
+    assert "command:" not in r.stdout
+    # With a 0600 key, show works; HTTPS stays off on loopback.
+    r = run_sw(tmp_path, "--show", FAMILIA_ANDROID_INSTALLER=str(stub), need_key=True)
     assert r.returncode == 0, r.stderr
     assert "command:" in r.stdout or "--host" in r.stdout
     assert "127.0.0.1" in r.stdout
     assert "9941" in r.stdout
     assert "requires an API key file" not in r.stderr
     assert "--https" not in r.stdout
-    # Thin client never starts with a fixed remote; reset keeps loopback.
-    r = run_sw(tmp_path, "--pipe", inp="d\nq\n")
-    assert r.returncode == 0, r.stderr
-    cfg = (tmp_path / "xdg" / "familia" / "android-cockpit.env").read_text(encoding="ascii")
-    assert "HOST=127.0.0.1\n" in cfg
-    assert "PORT=9941\n" in cfg
-    assert "HOST=example.host" not in cfg
-
 
 def test_localhost_https_ok_but_key_still_required(tmp_path):
-    # Literal localhost: HTTP is OK (HTTPS default); key rule stays IP-only.
+    # Literal localhost: HTTP is OK (HTTPS default). A key is still required.
     stub = write_stub(tmp_path, "familia-android-smoke.sh")
     write_cfg(
         tmp_path,
         "HOST=localhost\nPORT=8080\nCOMMIT=%s\nDRY_RUN=1\nHTTPS=0\n"
         "DEV_ALLOW_HTTP=0\n" % COMMIT,
     )
-    r = run_sw(tmp_path, "--dump", FAMILIA_ANDROID_INSTALLER=str(stub))
+    r = run_sw(tmp_path, "--dump", FAMILIA_ANDROID_INSTALLER=str(stub), need_key=False)
     assert r.returncode == 0, r.stderr
     out = r.stdout + r.stderr
     assert "https=OFF" in r.stdout
     assert "url=http://localhost:8080" in r.stdout
     assert "listener: key required" in r.stdout
     assert "plain HTTP" not in out
-    r = run_sw(tmp_path, "--show", FAMILIA_ANDROID_INSTALLER=str(stub))
-    assert "requires an API key file" in r.stderr
+    r = run_sw(tmp_path, "--show", FAMILIA_ANDROID_INSTALLER=str(stub), need_key=False)
+    assert "API key file is required even on loopback" in _flat(r.stderr)
     assert "command:" not in r.stdout
     write_key(tmp_path)
     r = run_sw(tmp_path, "--show", FAMILIA_ANDROID_INSTALLER=str(stub))
@@ -1409,7 +1429,7 @@ def test_inherited_source_override_env_is_scrubbed(tmp_path):
     # P1: every inherited FAMILIA_* is cleared; source/URL leftovers
     # must not reach the installer.
     stub = write_stub(tmp_path, "familia-android-smoke.sh")
-    argvf = tmp_path / "argv.txt"
+    argvf = touch_argv(tmp_path)
     write_cfg(
         tmp_path,
         "HOST=127.0.0.1\nPORT=8080\nCOMMIT=%s\nDRY_RUN=1\n" % COMMIT,
@@ -1485,3 +1505,90 @@ def test_dev_allow_http_env_is_session_only_not_persisted(tmp_path):
     assert "dev_allow_http=OFF" in r.stdout
     assert "(session)" not in r.stdout
     assert "https=ON" in r.stdout
+
+
+def test_argv_file_pass_through_requires_test_mode_and_regular_file(tmp_path):
+    # P4: FAMILIA_ARGV_FILE is re-exported only under FAMILIA_TEST_MODE=1
+    # and only if it is an absolute existing regular file (not a symlink,
+    # dir, or fifo) with no CR/LF in the path.
+    side = tmp_path / "child-env.txt"
+    stub = write_stub(
+        tmp_path,
+        "familia-android-smoke.sh",
+        extra='printf \'%%s\\n\' "${FAMILIA_ARGV_FILE-UNSET}" > "%s"\n' % side,
+    )
+    write_cfg(
+        tmp_path,
+        "HOST=127.0.0.1\nPORT=8080\nCOMMIT=%s\nDRY_RUN=1\n" % COMMIT,
+    )
+
+    def _run(argvf, **kw):
+        if side.exists():
+            side.unlink()
+        return run_sw(
+            tmp_path,
+            "--pipe",
+            inp="22\nq\n",
+            FAMILIA_ANDROID_INSTALLER=str(stub),
+            FAMILIA_ARGV_FILE=str(argvf),
+            **kw,
+        )
+
+    def _child_argv():
+        assert side.exists(), "stub did not write child-env"
+        return side.read_text(encoding="ascii").strip()
+
+    # No test gate: even a valid regular file is not passed through.
+    argvf = tmp_path / "argv-prod.txt"
+    argvf.write_text("", encoding="ascii")
+    r = _run(argvf, FAMILIA_TEST_MODE="0")
+    assert r.returncode == 0, r.stderr + r.stdout
+    assert _child_argv() == "UNSET"
+    assert argvf.read_text(encoding="ascii") == ""
+
+    # Test mode + absolute regular file: passed through.
+    argv_ok = tmp_path / "argv-ok.txt"
+    argv_ok.write_text("", encoding="ascii")
+    r = _run(argv_ok, FAMILIA_TEST_MODE="1")
+    assert r.returncode == 0, r.stderr + r.stdout
+    assert _child_argv() == str(argv_ok)
+    text = argv_ok.read_text(encoding="ascii")
+    assert "LEAKED FAMILIA_ARGV_FILE=" + str(argv_ok) in text, text
+    assert "SCRUBBED FAMILIA_ARGV_FILE\n" not in text
+    assert "SCRUBBED FAMILIA_TEST_MODE\n" in text
+
+    # Symlink: rejected even in test mode.
+    real = tmp_path / "real-argv.txt"
+    real.write_text("SENTINEL\n", encoding="ascii")
+    link = tmp_path / "argv-link.txt"
+    os.symlink(real, link)
+    r = _run(link, FAMILIA_TEST_MODE="1")
+    assert r.returncode == 0, r.stderr + r.stdout
+    assert _child_argv() == "UNSET"
+    assert real.read_text(encoding="ascii") == "SENTINEL\n"
+
+    # Directory: rejected.
+    d = tmp_path / "argv-dir"
+    d.mkdir()
+    r = _run(d, FAMILIA_TEST_MODE="1")
+    assert r.returncode == 0, r.stderr + r.stdout
+    assert _child_argv() == "UNSET"
+
+    # FIFO: rejected (and must not hang the child writing to it).
+    fifo = tmp_path / "argv-fifo"
+    os.mkfifo(fifo)
+    r = _run(fifo, FAMILIA_TEST_MODE="1")
+    assert r.returncode == 0, r.stderr + r.stdout
+    assert _child_argv() == "UNSET"
+
+    # Relative path: rejected.
+    rel = "relative-argv.txt"
+    r = _run(rel, FAMILIA_TEST_MODE="1")
+    assert r.returncode == 0, r.stderr + r.stdout
+    assert _child_argv() == "UNSET"
+
+    # CR/LF in the path value: rejected even if the rest looks absolute.
+    cr = str(tmp_path / "argv-cr.txt") + "\n"
+    r = _run(cr, FAMILIA_TEST_MODE="1")
+    assert r.returncode == 0, r.stderr + r.stdout
+    assert _child_argv() == "UNSET"
