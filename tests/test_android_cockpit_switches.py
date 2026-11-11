@@ -29,6 +29,9 @@ def _env(tmp_path, **kw):
         "FAMILIA_START",
         "FAMILIA_LICENSES",
         "FAMILIA_ACCEPT_LICENSES",
+        "FAMILIA_ACCEPT_UNKNOWN_LICENSES",
+        "FAMILIA_LICENSE_ACCEPT_FILE",
+        "INSTALL_ACK",
         "FAMILIA_BIND",
         "FAMILIA_RAM_MIB",
         "FAMILIA_RESERVE_MIB",
@@ -80,6 +83,9 @@ def write_stub(tmp_path, name, extra=""):
         "printf 'ARGC=%s\\n' \"$#\" > \"$argvf\"\n"
         "for a in \"$@\"; do printf '%s\\n' \"$a\" >> \"$argvf\"; done\n"
         "env | grep -E '^(FAMILIA_CBL|FAMILIA_BIND|FAMILIA_ACCEPT|FAMILIA_ALLOW_YES|FAMILIA_RUNTIME)=' >> \"$argvf\" || true\n"
+        "for v in INSTALL_ACK FAMILIA_ACCEPT_LICENSES FAMILIA_ACCEPT_UNKNOWN_LICENSES FAMILIA_LICENSE_ACCEPT_FILE FAMILIA_ALLOW_YES; do "
+        "if printenv \"$v\" >/dev/null 2>&1; then printf 'LEAKED %s=%s\\n' \"$v\" \"$(printenv \"$v\")\" >> \"$argvf\"; "
+        "else printf 'SCRUBBED %s\\n' \"$v\" >> \"$argvf\"; fi; done\n"
         "printf 'stub:%s\\n' \"$*\"\n"
         + extra,
         encoding="ascii",
@@ -729,7 +735,8 @@ def test_persistent_install_warns_and_still_needs_typed_run(tmp_path):
     assert argvf.exists()
     text = argvf.read_text(encoding="ascii")
     assert "--yes" not in text
-    assert "FAMILIA_ACCEPT_LICENSES" not in text
+    assert "LEAKED FAMILIA_ACCEPT_LICENSES=" not in text
+    assert not any(ln.startswith("FAMILIA_ACCEPT_LICENSES=") for ln in text.splitlines())
 
 
 @pytest.mark.skipif(MKSH is None, reason="mksh not installed")
@@ -919,3 +926,55 @@ def test_save_trap_exits_130():
     text = Path(SCRIPT).read_text(encoding="ascii") if False else open(SCRIPT, encoding="ascii").read()
     assert "trap 'rm -f \"$_tmp\"; exit 130' INT TERM" in text
     assert "trap 'rm -f \"$_tmp\"' INT TERM" not in text
+
+
+def test_inherited_license_accept_env_is_scrubbed(tmp_path):
+    stub = write_stub(tmp_path, "familia-android-smoke.sh")
+    argvf = tmp_path / "argv.txt"
+    write_cfg(
+        tmp_path,
+        "HOST=127.0.0.1\nPORT=8080\nCOMMIT=%s\nDRY_RUN=1\n" % COMMIT,
+    )
+    names = (
+        "INSTALL_ACK",
+        "FAMILIA_ACCEPT_LICENSES",
+        "FAMILIA_ACCEPT_UNKNOWN_LICENSES",
+        "FAMILIA_LICENSE_ACCEPT_FILE",
+        "FAMILIA_ALLOW_YES",
+    )
+    r = run_sw(
+        tmp_path,
+        "--pipe",
+        inp="20\nq\n",
+        FAMILIA_ANDROID_INSTALLER=str(stub),
+        FAMILIA_ARGV_FILE=str(argvf),
+        INSTALL_ACK="yes",
+        FAMILIA_ACCEPT_LICENSES="yes",
+        FAMILIA_ACCEPT_UNKNOWN_LICENSES="yes",
+        FAMILIA_LICENSE_ACCEPT_FILE="/tmp/should-not-be-used",
+        FAMILIA_ALLOW_YES="yes",
+    )
+    assert r.returncode == 0, r.stderr + r.stdout
+    assert argvf.exists(), r.stdout + r.stderr
+    text = argvf.read_text(encoding="ascii")
+    for name in names:
+        assert "SCRUBBED %s\n" % name in text, text
+        assert "LEAKED %s=" % name not in text
+        assert "should-not-be-used" not in text
+    # Parent still had the leftover exports; only the child must be clean.
+    out = r.stdout + r.stderr
+    assert "FAMILIA_ACCEPT_LICENSES=yes" not in out.split("command:", 1)[-1] if "command:" in out else True
+    assert "--yes" not in [ln for ln in text.splitlines() if not ln.startswith("SCRUBBED") and not ln.startswith("LEAKED") and not ln.startswith("ARGC=") and not ln.startswith("FAMILIA_CBL") and not ln.startswith("FAMILIA_BIND") and not ln.startswith("FAMILIA_RUNTIME")]
+
+
+def test_allow_yes_switch_is_visible_but_inert(tmp_path):
+    write_cfg(tmp_path, "ALLOW_YES=1\n")
+    r = run_sw(tmp_path, "--pipe", inp="4\nq\n")
+    assert r.returncode == 0, r.stderr
+    out = r.stdout + r.stderr
+    assert "4) Allow --yes" in out
+    assert "typed ACCEPT is required; this screen never passes --yes" in out
+    assert "allow --yes=ON" not in out
+    cfg = (tmp_path / "xdg" / "familia" / "android-cockpit.env").read_text(encoding="ascii")
+    assert "ALLOW_YES=1" not in cfg
+    assert "ALLOW_YES=0" in cfg

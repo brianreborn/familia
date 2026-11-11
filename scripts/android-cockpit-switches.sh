@@ -137,6 +137,51 @@ probe_read_t() {
   HAVE_READ_T=1
 }
 
+# Same names as #321 install/termux/widget/familia-hermes-android.sh
+# (feat/android-packaging @ 283a526), plus FAMILIA_ALLOW_YES. A leftover
+# export of any of these is treated as typed ACCEPT by install.sh / hermes.
+license_scrub_vars() {
+  printf '%s
+'     INSTALL_ACK     FAMILIA_ACCEPT_LICENSES     FAMILIA_ACCEPT_UNKNOWN_LICENSES     FAMILIA_LICENSE_ACCEPT_FILE     FAMILIA_ALLOW_YES
+}
+
+probe_env_u() {
+  # GNU and BSD env support -u. Some POSIX env do not. Probe must not
+  # depend on help text.
+  HAVE_ENV_U=0
+  _e=$(
+    _FAMILIA_ENV_U_PROBE=1
+    export _FAMILIA_ENV_U_PROBE
+    env -u _FAMILIA_ENV_U_PROBE sh -c 'printf %s "${_FAMILIA_ENV_U_PROBE+set}"' 2>/dev/null
+  ) && [ -z "$_e" ] && HAVE_ENV_U=1
+  return 0
+}
+
+# Clear inherited license-accept env. Use env -u when the probe passed;
+# otherwise unset in a subshell, export our NAME=val words, then exec.
+run_assembled() {
+  if [ "$HAVE_ENV_U" = 1 ]; then
+    "$@"
+    return $?
+  fi
+  shift
+  (
+    unset INSTALL_ACK FAMILIA_ACCEPT_LICENSES FAMILIA_ACCEPT_UNKNOWN_LICENSES FAMILIA_LICENSE_ACCEPT_FILE FAMILIA_ALLOW_YES 2>/dev/null || true
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        *=*)
+          export "$1" || exit 1
+          shift
+          ;;
+        *)
+          break
+          ;;
+      esac
+    done
+    exec "$@"
+  )
+}
+
 kind_of_path() {
   case "${1##*/}" in
     familia-android-smoke.sh) printf '%s' smoke ;;
@@ -898,6 +943,12 @@ assemble_and() {
   if flag_ok --licenses && [ -z "$_lic" ]; then err "enable at least one license set"; return 1; fi
 
   set -- env
+  if [ "$HAVE_ENV_U" = 1 ]; then
+    _scrub=$(license_scrub_vars)
+    for _u in $_scrub; do
+      set -- "$@" -u "$_u"
+    done
+  fi
   if [ -n "$FAMILIA_CTX_VAL" ] && env_ok FAMILIA_CTX; then
     set -- "$@" "FAMILIA_CTX=$FAMILIA_CTX_VAL"
   fi
@@ -963,7 +1014,7 @@ assemble_and() {
       return 0
       ;;
     run)
-      "$@"
+      run_assembled "$@"
       return $?
       ;;
     preview)
@@ -1036,7 +1087,7 @@ paint() {
   else
     _inst="installer=not on this commit"
   fi
-  say_row "  ${C0}status${CReset}  mode=$(mode_label)$(star_if "$THIN_CLIENT" 1)  gate=$(onoff "$CTX_GATE")$(star_if "$CTX_GATE" 1)  yes=$(onoff "$ALLOW_YES")$(star_if "$ALLOW_YES" 0)  dry-run=$(onoff "$DRY_RUN")$(star_if "$DRY_RUN" 1)  start=$(onoff "$START_FAMILIA")$(star_if "$START_FAMILIA" 0)"
+  say_row "  ${C0}status${CReset}  mode=$(mode_label)$(star_if "$THIN_CLIENT" 1)  gate=$(onoff "$CTX_GATE")$(star_if "$CTX_GATE" 1)  dry-run=$(onoff "$DRY_RUN")$(star_if "$DRY_RUN" 1)  start=$(onoff "$START_FAMILIA")$(star_if "$START_FAMILIA" 0)"
   say_row "  $_inst  listener: key required"
   if [ -n "$HOST" ] && ! is_loopback "$HOST" && [ "$HTTPS" != 1 ]; then
     say_row "  warning: HTTPS is OFF for a non-loopback host (plain HTTP)"
@@ -1053,7 +1104,7 @@ paint() {
   else
     say_row "      $(na_label)"
   fi
-  say_row "   4) Allow --yes                                 [$(onoff "$ALLOW_YES")]$(star_if "$ALLOW_YES" 0)"
+  say_row "   4) Allow --yes"
   say_row "      [n/a: typed ACCEPT is required; this screen never passes --yes]"
   say_row "   5) Dry-run                                     [$(onoff "$DRY_RUN")]$(star_if "$DRY_RUN" 1)"
   say_row "   7) Start after install                         [$(onoff "$START_FAMILIA")]$(star_if "$START_FAMILIA" 0)"
@@ -1326,7 +1377,9 @@ do_choice() {
         fi
       fi
       ;;
-    4) ALLOW_YES=$(toggle "$ALLOW_YES"); say "allow --yes=$(onoff "$ALLOW_YES")" ;;
+    4)
+      err "allow --yes is n/a: typed ACCEPT is required; this screen never passes --yes"
+      ;;
     5) DRY_RUN=$(toggle "$DRY_RUN"); say "dry-run=$(onoff "$DRY_RUN")" ;;
     6)
       KEEP_PREFIX=$(toggle "$KEEP_PREFIX")
@@ -1473,7 +1526,9 @@ while [ $# -gt 0 ]; do
 done
 
 probe_read_t
+probe_env_u
 load_settings
+ALLOW_YES=0
 resolve_installer || true
 
 case "$MODE" in
