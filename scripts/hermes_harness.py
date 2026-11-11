@@ -28,7 +28,7 @@ gate: prompts on a terminal; --accept-licenses / --yes or FAMILIA_ACCEPT_LICENSE
 Arguments for hermes-agent itself go after "--"; anything else unknown is an error (exit 2),
 so a typo never renders a config and starts a server.
 """
-import copy, glob, json, os, re, shutil, subprocess, sys, time, urllib.error, urllib.request
+import copy, glob, json, os, re, shutil, subprocess, sys, time, urllib.error, urllib.parse, urllib.request
 import yaml
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -619,9 +619,74 @@ AMBIENT_SECRET_RE = re.compile(
     r"|[A-Za-z0-9_]*AMQP[A-Za-z0-9_]*_(?:URL|URI)"
     r")$"
 )
-# scheme://userinfo@host… — any userinfo, including token@host with no colon (not only user:pass@).
-# Plain URLs without userinfo (e.g. local llama http://127.0.0.1:8080) do not match.
+# Userinfo forms (raw value, and after revealing percent-encoded @ and :):
+#   scheme://userinfo@host  (any userinfo, including token@host; also after a
+#                           vendor:driver: prefix, e.g. jdbc:mysql://user:pass@host)
+#   //userinfo@host         (scheme-relative)
+#   user:pass@host          (schemeless, password present)
+# Surrounding whitespace, a leading BOM (U+FEFF), and matched surrounding quotes
+# are stripped before the check. Password-less git/ssh locators with a
+# conventional login are not secrets: git@host:path, user@host/path,
+# ssh://git@host/path, git+ssh://git@host/path, org-<digits>@host:path. A
+# password (user:pass@, or a revealed %3A) still drops. A token-shaped or
+# otherwise non-conventional username (ssh://token@host, token@host:path) drops.
+# %2F is left encoded so a slash inside a password cannot split the authority —
+# full unquote would hide an encoded @ after it. Percent-decode of @ and : is
+# capped at three unquote rounds; if another round would still change the value
+# (four or more %25 layers), the value is dropped (fail closed on depth).
+# A whole-value plain email (alice@example.com) is kept, so harmless vars like
+# ADMIN_EMAIL are not scrubbed. mailto:alice@example.com is kept; mailto:user:pass@
+# (and tag:pw@host / tel:…@… / other HARMLESS_URI_SCHEMES with userinfo) drop.
+# user@localhost (bare) drops. user@localhost:22 with a conventional login is
+# kept as a password-less scp-style remote (documented tradeoff: host:port and
+# scp path share the same user@host:rest shape). Prefer dropping when the
+# shape is ambiguous. npm/pip pkg@1.2.3 specs also drop as bare user@host.
 CREDENTIAL_URL_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*://[^/\s@]+@")
+# Bounded scheme immediately before a str.find("://") hit: up to 4 parts of
+# 32 chars (vendor:driver:…), so a long value with no :// cannot backtrack
+# quadratically. Window is 4*32 + 3 colons.
+_MAX_SCHEME_PART = 32
+_MAX_SCHEME_CHAIN = 4
+_MAX_SCHEME_WINDOW = _MAX_SCHEME_CHAIN * _MAX_SCHEME_PART + (_MAX_SCHEME_CHAIN - 1)
+_SCHEME_BEFORE_RE = re.compile(
+    r"(?:^|(?<=[^A-Za-z0-9+.-]))"
+    r"(?P<scheme>[A-Za-z][A-Za-z0-9+.-]{0,31}"
+    r"(?::[A-Za-z][A-Za-z0-9+.-]{0,31}){0,3})$"
+)
+CREDENTIAL_SCHEME_RELATIVE_RE = re.compile(r"^//[^/\s@]+@")
+CREDENTIAL_SCHEMELESS_PASS_RE = re.compile(r"^[^/\s:@]+:[^/\s@]*@")
+# Password-less scp locator (git@host:org/repo or user@host/path). Not a drop by
+# itself when the username is a conventional login; user:pass@host is
+# CREDENTIAL_SCHEMELESS_PASS_RE. The regex already forbids ':' in the user part,
+# so a colon-in-user guard here would be dead — token vs login is decided by
+# CONVENTIONAL_GIT_LOGIN_RE instead. user@localhost:22 matches this shape and
+# is kept when the login is conventional (see _harmless_git_or_ssh_remote).
+CREDENTIAL_SCHEMELESS_SCP_RE = re.compile(r"^[^/\s:@]+@[^/\s:@]+(?::[^\s]+|/)")
+# Bare user@host (no scheme, no password, no path). user@localhost drops; emails are
+# skipped earlier by PLAIN_EMAIL_RE. pkg@1.2.3 (npm/pip specs) also matches and drops.
+CREDENTIAL_SCHEMELESS_USERHOST_RE = re.compile(r"^[^/\s:@]+@[^/\s:@]+$")
+PLAIN_EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
+# Conventional git/ssh login (git, deploy, alice) or GitHub org-<digits>. A long
+# or prefix-shaped token as the username is not exempt.
+CONVENTIONAL_GIT_LOGIN_RE = re.compile(
+    r"^(?:[A-Za-z_][A-Za-z0-9_.-]{0,31}|org-\d+)$"
+)
+# Known token prefixes: even a short ghp_/xoxb-/AKIA… username is not a login.
+_TOKEN_USER_RE = re.compile(
+    r"^(?:gh[pousr]_|github_pat_|glpat-|xox[abprs]-|sk[_-](?:live|test)[_-]?|AKIA)",
+    re.I,
+)
+# %40 (@), %3A (:), and nested %25, so %2540 surfaces as @ without decoding %2F.
+# Three unquote rounds reveal %40, %2540, and %252540; a leftover match after
+# that cap means four or more layers and is treated as suspicious (fail closed).
+_AUTHORITY_PCT_RE = re.compile(r"(?i)%(?:25)*(?:40|3a)")
+_BOM = "\ufeff"
+
+# Schemes whose `scheme:user@host` form is not a credential DSN (mailto:alice@example.com
+# would otherwise look like schemeless user:pass@host).
+HARMLESS_URI_SCHEMES = frozenset({"mailto", "tel", "sms", "urn", "tag", "cid", "mid"})
+# Username without a password on these schemes is a remote locator, not a secret.
+GIT_SSH_SCHEMES = frozenset({"ssh", "git", "git+ssh", "ssh+git"})
 # Schemes that are credential DSNs even without userinfo; used only for *_URI value-based drops.
 CREDENTIAL_DSN_SCHEMES = frozenset({
     "postgres", "postgresql", "mysql", "mariadb", "mongodb", "mongodb+srv",
@@ -644,11 +709,158 @@ def _ambient_secret_name(name):
     return name in AMBIENT_SECRET_NAMES or bool(AMBIENT_SECRET_RE.match(name))
 
 
-def _credential_url_value(val):
-    """True when *val* looks like scheme://userinfo@… (any userinfo, including token@host)."""
-    if not isinstance(val, str) or "://" not in val:
+def _reveal_userinfo_delimiters(val, rounds=3):
+    """Decode percent-encoded @ and : (including %2540 / %253A) via urllib.parse.
+
+    Leaves %2F encoded. Full unquote would turn a slash inside a password into a
+    path separator and the authority regex would miss an encoded @ after it.
+
+    Capped at three unquote rounds: %40, %2540, and %252540 are revealed. If
+    another pass would still change the value (a four-level %25252540 still
+    has an encoded @ or :), the caller must drop the value — the cap fails
+    closed on depth rather than leaving a still-encoded delimiter in place.
+    """
+    s = val
+    for _ in range(rounds):
+        nxt = _AUTHORITY_PCT_RE.sub(lambda m: urllib.parse.unquote(m.group(0)), s)
+        if nxt == s:
+            break
+        s = nxt
+    return s
+
+
+def _encoded_delimiters_remain(s):
+    """True when a further unquote round would still reveal an @ or :."""
+    return bool(_AUTHORITY_PCT_RE.search(s))
+
+
+def _normalize_credential_value(val):
+    """Strip surrounding whitespace, BOM (U+FEFF), and one layer of matched quotes."""
+    s = val.strip().strip(_BOM).strip()
+    if len(s) >= 2 and s[0] == s[-1] and s[0] in "'\"":
+        s = s[1:-1].strip().strip(_BOM).strip()
+    return s
+
+
+def _credential_url_candidates(val):
+    raw = _normalize_credential_value(val)
+    out = [raw] if raw else []
+    revealed = _normalize_credential_value(_reveal_userinfo_delimiters(raw)) if raw else ""
+    if revealed and revealed != raw:
+        out.append(revealed)
+    return out
+
+
+def _conventional_git_login(user):
+    """True for a conventional git/ssh login, not a token-shaped username."""
+    if not user or _TOKEN_USER_RE.match(user):
         return False
-    return bool(CREDENTIAL_URL_RE.match(val.strip()))
+    return bool(CONVENTIONAL_GIT_LOGIN_RE.match(user))
+
+
+def _harmless_git_or_ssh_remote(s):
+    """Password-less git/ssh locator with a conventional login is not a secret."""
+    if "://" in s:
+        scheme, rest = s.split("://", 1)
+        if scheme.lower() not in GIT_SSH_SCHEMES:
+            return False
+        auth = rest.split("/", 1)[0]
+        if "@" not in auth:
+            return True
+        user = auth.rsplit("@", 1)[0]
+        if ":" in user:
+            return False
+        return _conventional_git_login(user)
+    if CREDENTIAL_SCHEMELESS_SCP_RE.match(s):
+        # Colon-in-user is already impossible here (regex). Exemption is only
+        # for a conventional login; token@host:path / token@host/path drop.
+        return _conventional_git_login(s.split("@", 1)[0])
+    return False
+
+
+def _userinfo_after_any_scheme(s):
+    """True when any :// in *s* has userinfo, except conventional git/ssh remotes.
+
+    Catches vendor:driver: prefixes (jdbc:mysql://user:pass@host) and a URI
+    that is not the entire value. Authority runs to the next /, ?, #, or
+    whitespace. Empty userinfo (https://@host) is not a drop by this path.
+
+    Early-returns when :// is absent. Walks hits with str.find and matches the
+    scheme backwards in a bounded window so a long PEM/PATH-like value (or
+    many ':') stays linear, instead of an unanchored greedy finditer.
+    The git/ssh exemption is per-URL: a later https://user:pass@ in the same
+    value still drops.
+    """
+    if "://" not in s:
+        return False
+    start = 0
+    while True:
+        idx = s.find("://", start)
+        if idx < 0:
+            return False
+        start = idx + 3
+        window = s[max(0, idx - _MAX_SCHEME_WINDOW):idx]
+        m = _SCHEME_BEFORE_RE.search(window)
+        if not m:
+            continue
+        rest = s[idx + 3:]
+        auth = re.split(r"[/?#\s]", rest, maxsplit=1)[0]
+        if "@" not in auth or not auth.rsplit("@", 1)[0]:
+            continue
+        loc = m.group("scheme") + "://" + auth
+        if _harmless_git_or_ssh_remote(loc):
+            continue
+        return True
+
+
+def _credential_url_value(val):
+    """True when *val* carries userinfo that can hold a secret.
+
+    Drops scheme://userinfo@ (including token@host, a vendor:driver: prefix,
+    and a URI wrapped in quotes / BOM / whitespace), //userinfo@, and
+    schemeless user:pass@. Password-less git/ssh remotes with a conventional
+    login stay, but a later userinfo URI in the same value still drops.
+    Encoded @ and : are revealed first (%40, %3A, double-encoded
+    %2540, triple-encoded %252540); %2F is not, so it cannot mask the
+    authority. If encoded delimiters remain after the three-round cap, the
+    value is dropped (fail closed). A whole-value plain email
+    (alice@example.com) is kept. mailto:alice@example.com is kept;
+    mailto:user:pass@host and other harmless-scheme values with userinfo
+    drop, regardless of whether the user part looks like tel/tag/urn."""
+    if not isinstance(val, str):
+        return False
+    revealed_once = _reveal_userinfo_delimiters(_normalize_credential_value(val))
+    if revealed_once and _encoded_delimiters_remain(revealed_once):
+        return True
+    for s in _credential_url_candidates(val):
+        if not s or PLAIN_EMAIL_RE.match(s):
+            continue
+        # mailto:alice@example.com is not user:pass@host. Skip only when the
+        # remainder is what that scheme actually carries: a plain email for
+        # mailto, and no '@' for tel/sms/urn/tag/cid/mid. Otherwise drop —
+        # tag:pw@host and mailto:user:pass@host are credentials, even when
+        # the user part looks like a harmless scheme name.
+        if "://" not in s and ":" in s:
+            head, rest = s.split(":", 1)
+            if head.lower() in HARMLESS_URI_SCHEMES:
+                if head.lower() == "mailto" and PLAIN_EMAIL_RE.match(rest.strip()):
+                    continue
+                if head.lower() != "mailto" and "@" not in rest:
+                    continue
+                return True
+        if _harmless_git_or_ssh_remote(s):
+            # Per-URL exemption only: still scan later :// authorities so
+            # 'ssh://git@host … https://u:p@h' drops.
+            if _userinfo_after_any_scheme(s):
+                return True
+            continue
+        if (CREDENTIAL_URL_RE.match(s) or CREDENTIAL_SCHEME_RELATIVE_RE.match(s)
+                or CREDENTIAL_SCHEMELESS_PASS_RE.match(s)
+                or CREDENTIAL_SCHEMELESS_USERHOST_RE.match(s)
+                or CREDENTIAL_SCHEMELESS_SCP_RE.match(s)
+                or _userinfo_after_any_scheme(s)):
+            return True
+    return False
 
 
 def _credential_dsn_uri(name, val):
@@ -666,8 +878,12 @@ def scrub_ambient_secrets(env, keep=()):
     Name shapes (matched before keep): GH_TOKEN/…/KUBECONFIG/AMQP_URL/RABBITMQ_URL/CLOUDAMQP_URL/
     *AMQP*_URL/MONGODB_URI/PGPASSWORD/MYSQL_PWD, *_SECRET/*_PASSWORD/*_PWD/*_TOKEN/*_PRIVATE_KEY/
     *_DSN/*_DATABASE_URL/*_DB_URL/*_REDIS_URL, MONGO*/POSTGRES*/MYSQL*/RABBITMQ*_URL/_URI. Also
-    any var whose value has URL userinfo (user:pass@ or token@host). *_URI is value-based: dropped
-    only when the value has userinfo or a known credential DSN scheme (REDIRECT_URI stays).
+    any var whose value has URL userinfo (scheme://userinfo@, including a
+    vendor:driver: prefix, //userinfo@, schemeless user:pass@host, including
+    after revealing %40/%3A; leftover encoding after the 3-round cap drops).
+    Password-less git/ssh remotes with a conventional login are kept. A
+    whole-value plain email is kept. *_URI is value-based: dropped only
+    when the value has userinfo or a known credential DSN scheme (REDIRECT_URI stays).
     Keep = caller keep | MCP_ENV_KEEP | HARNESS_ENV_KEEP. Returns the names removed."""
     if env.get(PASS_SECRETS_ENV) == "1":
         return []
