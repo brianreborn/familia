@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local tests for swarm-pull 0.2.5-live intake, stamp, and untrusted fence.
+"""Local tests for swarm-pull 0.2.6-live intake, stamp, and untrusted fence.
 
 Follows familia docs/swarm-worker-requirements.md sections
 "Vetted issues, then explicit admin approval" and
@@ -80,7 +80,7 @@ class SwarmPull543(unittest.TestCase):
         line = self.sp.stamp_line()
         self.assertIn("host=testhost", line)
         self.assertIn("role=swarm-pull", line)
-        self.assertIn("prog=swarm-pull@0.2.5-live", line)
+        self.assertIn("prog=swarm-pull@0.2.6-live", line)
         self.assertIn("mode=dry-run", line)
         self.assertFalse(self.sp.note_has_identifying_fields(line))
         self.assertNotIn("user=", line)
@@ -1816,6 +1816,126 @@ class SwarmPull549Final(SwarmPull549Boundary):
         un.assert_not_called()
 
 
+class SwarmPull549Followups(SwarmPull549Final):
+    """Follow-ups from the #549 approvals at 66b6294: Race N10, N11 and
+    Boundary info items."""
+
+    # ---- N10 -----------------------------------------------------------------
+    def test_n10_prefilter_skips_without_forge_clock(self):
+        expired = claim_c(5, "galaxy1", "swarm-b", until="2026-11-10T21:00:00Z", when="2026-11-10T20:00:00Z")
+        self.sp._FORGE_DATE_OK = False
+        try:
+            out, _ = self._candidates([expired])
+            self.assertEqual(out, [])
+        finally:
+            self.sp._FORGE_DATE_OK = None
+        out, _ = self._candidates([expired])
+        self.assertEqual([x["number"] for x in out], [9])
+
+    # ---- N11 -----------------------------------------------------------------
+    def test_n11_orphan_branch_is_logged_and_recorded(self):
+        self.sp.save_state({"runner": "box"})
+        def lost():
+            raise self.sp.LeaseLost("lost")
+        out, pushes, creates = self._deliver(["docs/research/swarm-7-box.md"], gate_check=lost)
+        self.assertIsInstance(out, self.sp.LeaseLost)
+        self.assertEqual((len(pushes), creates), (1, []))
+        st = self.sp.load_state()
+        self.assertEqual(len(st.get("orphans") or []), 1)
+        self.assertTrue(st["orphans"][0]["branch"].startswith("swarm/"))
+        self.assertIn("orphan branch", (self.sp.home_dir() / "logs" / "swarm-pull.log").read_text())
+
+    def test_n11_orphan_list_is_bounded_and_cleared(self):
+        self.sp.save_state({"runner": "box"})
+        for i in range(self.sp.ORPHAN_KEEP + 5):
+            self.sp.note_orphan_branch("r/x", i, "swarm/box/%d" % i, "abc", "why")
+        st = self.sp.load_state()
+        self.assertEqual(len(st["orphans"]), self.sp.ORPHAN_KEEP)
+        self.sp.clear_orphan_branch("swarm/box/%d" % (self.sp.ORPHAN_KEEP + 4))
+        self.assertEqual(len(self.sp.load_state()["orphans"]), self.sp.ORPHAN_KEEP - 1)
+
+    # ---- log() symlinks ------------------------------------------------------
+    def test_log_refuses_symlinked_file_and_dir(self):
+        import stat as _stat
+        logs = self.sp.private_dir(self.sp.home_dir() / "logs")
+        victim = self.home / "victim.txt"
+        victim.write_text("keep\n")
+        lf = logs / "swarm-pull.log"
+        if lf.exists():
+            lf.unlink()
+        os.symlink(str(victim), str(lf))
+        self.sp.log("hello via symlink")
+        self.assertEqual(victim.read_text(), "keep\n")
+        lf.unlink()
+        self.sp.log("hello")
+        self.assertEqual(_stat.S_IMODE(os.lstat(str(lf)).st_mode), 0o600)
+
+    # ---- migrate perms -------------------------------------------------------
+    def test_old_outbox_and_log_files_tightened(self):
+        import stat as _stat
+        ob = self.sp.home_dir() / "outbox"
+        (ob / "sent").mkdir(parents=True, exist_ok=True)
+        (self.sp.home_dir() / "logs").mkdir(parents=True, exist_ok=True)
+        old = [ob / "a.json", ob / "sent" / "b.json", self.sp.home_dir() / "logs" / "swarm-pull.log"]
+        for f in old:
+            f.write_text("{}")
+            os.chmod(str(f), 0o644)
+        target = self.home / "notmine"
+        target.write_text("x")
+        os.chmod(str(target), 0o644)
+        os.symlink(str(target), str(ob / "link.json"))
+        self.sp.prepare_home()
+        for f in old:
+            self.assertEqual(_stat.S_IMODE(os.stat(str(f)).st_mode), 0o600, f)
+        self.assertEqual(_stat.S_IMODE(os.stat(str(target)).st_mode), 0o644)
+        self.assertEqual(_stat.S_IMODE(os.stat(str(ob / "sent")).st_mode), 0o700)
+
+    # ---- clean error ---------------------------------------------------------
+    def test_private_dir_refusal_is_one_line_error(self):
+        import io
+        real = self.home / "realhome"
+        real.mkdir()
+        link = self.home / "linkhome"
+        os.symlink(str(real), str(link))
+        os.environ["SWARM_HOME"] = str(link)
+        err = io.StringIO()
+        with mock.patch.object(self.sp.sys, "stderr", err):
+            rc = self.sp.main(["swarm-pull", "once"])
+        self.assertEqual(rc, 7)
+        self.assertIn("refusing to start", err.getvalue())
+        self.assertNotIn("Traceback", err.getvalue())
+
+    # ---- G5 failure branch ---------------------------------------------------
+    def _release_owner(self, **kw):
+        self._live()
+        os.environ["SWARM_RUNNER"] = "box"
+        now = self.sp.server_now()
+        with mock.patch.object(self.sp, "forge_viewer", return_value={"login": "swarm-a", "id": 7}), \
+             mock.patch.object(self.sp, "get_issue", return_value=(now, {"number": 9, "labels": []})), \
+             mock.patch.object(self.sp, "repo_owner_login", return_value="brianreborn"), \
+             mock.patch.object(self.sp, "del_label"), \
+             mock.patch.object(self.sp, "get_comments", **kw), \
+             mock.patch.object(self.sp, "del_assignee") as un:
+            self.sp.release_issue("brianreborn/familia", 9, "lease lost", claim={"assigned_owner": True})
+        return un
+
+    def test_g5_failed_reread_never_unassigns(self):
+        un = self._release_owner(side_effect=self.sp.ForgeError("HTTP 502"))
+        un.assert_not_called()
+
+    def test_g5_unknown_clock_never_unassigns(self):
+        self.sp._FORGE_DATE_OK = False
+        try:
+            un = self._release_owner(return_value=(self.sp.server_now(), []))
+        finally:
+            self.sp._FORGE_DATE_OK = None
+        un.assert_not_called()
+
+    def test_g5_no_other_claim_does_unassign(self):
+        un = self._release_owner(return_value=(self.sp.server_now(), []))
+        un.assert_called_once()
+
+
 # Do not rerun the inherited review tests under the follow-up class.
 for _name in list(vars(SwarmPull545Review)):
     if _name.startswith("test_") and _name not in vars(SwarmPull545Followups):
@@ -1831,6 +1951,11 @@ for _name in (list(vars(SwarmPull545Review)) + list(vars(SwarmPull545Followups))
               + list(vars(SwarmPull549Review)) + list(vars(SwarmPull549Boundary))):
     if _name.startswith("test_") and _name not in vars(SwarmPull549Final):
         setattr(SwarmPull549Final, _name, None)
+for _name in (list(vars(SwarmPull545Review)) + list(vars(SwarmPull545Followups))
+              + list(vars(SwarmPull549Review)) + list(vars(SwarmPull549Boundary))
+              + list(vars(SwarmPull549Final))):
+    if _name.startswith("test_") and _name not in vars(SwarmPull549Followups):
+        setattr(SwarmPull549Followups, _name, None)
 del _name
 
 

@@ -24,7 +24,7 @@ from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 
-VERSION = "0.2.5-live"
+VERSION = "0.2.6-live"
 CLAIM_RE = re.compile(
     r"--\s+(\S+)\s+claim\s+gen\s+(\d+)\s+lease-until\s+(\S+)",
     re.IGNORECASE,
@@ -253,9 +253,13 @@ def log(msg):
     sys.stdout.flush()
     try:
         p = home_dir() / "logs" / "swarm-pull.log"
+        if os.path.islink(str(p.parent)):
+            return  # Boundary info: never log through a symlinked dir
         if not p.parent.is_dir():
             p.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-        with p.open("a") as f:
+        fd = os.open(str(p), os.O_WRONLY | os.O_APPEND | os.O_CREAT
+                     | getattr(os, "O_NOFOLLOW", 0), 0o600)
+        with os.fdopen(fd, "a") as f:
             f.write(line + "\n")
     except Exception:
         pass
@@ -2607,7 +2611,13 @@ def deliver(repo, number, issue, doc, gate_check=None):
         "-- swarm/%s\n" % (number, runner_name(), base, number, runner_name()))
     if gate_check is not None:
         # Race R2: a revoke between push and PR must not open a PR.
-        gate_check()
+        try:
+            gate_check()
+        except Exception as e:
+            # Race N11: the branch is pushed but gets no PR. Say so and
+            # remember it; a later deliver for the issue reuses it.
+            note_orphan_branch(repo, number, br, head, str(e))
+            raise
     pr_argv = [gh_bin(), "pr", "create", "-R", repo, "--draft", "--base", base,
                "--head", br, "--title",
                "swarm/%s: first pass for #%s" % (runner_name(), number),
@@ -2619,7 +2629,42 @@ def deliver(repo, number, issue, doc, gate_check=None):
         raise ForgeError("gh pr create rc=%s %s" % (rc, cap_text(err, 400)))
     url = out.strip().splitlines()[-1] if out.strip() else ""
     log("opened draft PR %s" % url)
+    clear_orphan_branch(br)
     return {"branch": br, "head": head, "pr": url, "new_pr": True, "path": rel}
+
+
+ORPHAN_KEEP = 50
+
+
+def note_orphan_branch(repo, number, branch, head, why):
+    """Log a pushed swarm branch left without a PR and keep a bounded list
+    in state.json ("orphans") so an operator can sweep them. Never deletes
+    anything on the forge."""
+    log("orphan branch %s (%s) for %s#%s: pushed, no PR (%s)" % (
+        branch, (head or "")[:9], repo, number, cap_text(redact(why), 200)))
+    try:
+        st = load_state()
+        rows = [o for o in (st.get("orphans") or []) if o.get("branch") != branch]
+        rows.append({"repo": repo, "number": number, "branch": branch,
+                     "head": head or "", "at": iso_z(server_now()),
+                     "why": cap_text(redact(why), 200)})
+        st["orphans"] = rows[-ORPHAN_KEEP:]
+        save_state(st)
+    except Exception as e:
+        log("orphan note not saved: %s" % e)
+
+
+def clear_orphan_branch(branch):
+    try:
+        st = load_state()
+        rows = st.get("orphans") or []
+        keep = [o for o in rows if o.get("branch") != branch]
+        if len(keep) != len(rows):
+            st["orphans"] = keep
+            save_state(st)
+            log("orphan branch %s now has a PR" % branch)
+    except Exception:
+        pass
 
 
 def forge_error_retryable(e):
@@ -2936,6 +2981,9 @@ def candidate_issues(repo, limit=None):
                         verifiable_runner_comment(c, CLAIM_RE.search(c.get("body") or "").group(1)))
                        for c in comments or []):
                 continue
+            if _FORGE_DATE_OK is False:
+                log("candidate #%s skipped: no forge Date header" % n)
+                continue
             live, _ = unexpired_claims(it, comments, dt)
             if live:
                 continue
@@ -2945,6 +2993,10 @@ def candidate_issues(repo, limit=None):
                 dt, comments = get_comments(repo, n, uncached=True)
             except ForgeError as e:
                 log("candidate #%s claim check failed closed: %s" % (n, e))
+                continue
+            if _FORGE_DATE_OK is False:
+                # Race N10: no forge clock, no lease decision (fail closed).
+                log("candidate #%s skipped: no forge Date header" % n)
                 continue
             live, _ = unexpired_claims(it, comments, dt)
             if live:
@@ -3294,11 +3346,47 @@ def cmd_probe():
     return 0
 
 
-def main(argv):
+def tighten_files(d):
+    """chmod 0600 regular files written before 0.2.5 (they were 0644).
+    Skips symlinks. Returns the number changed."""
+    d = Path(d)
+    n = 0
+    if os.path.islink(str(d)) or not d.is_dir():
+        return 0
+    for f in d.iterdir():
+        try:
+            st = os.lstat(str(f))
+        except OSError:
+            continue
+        if stat.S_ISREG(st.st_mode) and stat.S_IMODE(st.st_mode) & 0o077:
+            try:
+                os.chmod(str(f), 0o600)
+                n += 1
+            except OSError:
+                pass
+    return n
+
+
+def prepare_home():
     private_dir(home_dir())
     private_dir(home_dir() / "logs")  # F2: holds local_stamp_line
-    private_dir(home_dir() / "outbox")
+    ob = private_dir(home_dir() / "outbox")
+    for sub in ("sent", "dead"):
+        if (ob / sub).exists() or os.path.islink(str(ob / sub)):
+            private_dir(ob / sub)
+    for d in (home_dir() / "logs", ob, ob / "sent", ob / "dead"):
+        tighten_files(d)
     (home_dir() / "work").mkdir(exist_ok=True)
+
+
+def main(argv):
+    try:
+        prepare_home()
+    except (ForgeError, OSError) as e:
+        # Boundary info: a refused private dir is a one-line error, not a
+        # traceback. Still fails closed (nothing runs).
+        sys.stderr.write("swarm-pull: refusing to start: %s\n" % redact(str(e)))
+        return 7
     cmd = (argv[1] if len(argv) > 1 else "once").strip().lower()
     if cmd in ("-h", "--help", "help"):
         sys.stdout.write(
