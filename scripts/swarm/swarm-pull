@@ -2246,18 +2246,94 @@ def state_path():
     return home_dir() / "state.json"
 
 
+def _fsync_dir(d):
+    try:
+        fd = os.open(str(d), os.O_RDONLY)
+    except OSError:
+        return
+    try:
+        os.fsync(fd)
+    except OSError:
+        pass
+    finally:
+        os.close(fd)
+
+
+def _read_json_file(p):
+    """Parsed JSON, or raise. Refuses a symlink."""
+    p = Path(p)
+    if os.path.islink(str(p)):
+        raise ValueError("refusing symlink %s" % p)
+    return json.loads(p.read_text())
+
+
+def atomic_write_json(path, obj):
+    """Write JSON atomically: temp file in the same dir (0600, O_EXCL),
+    fsync, keep the previous good file as <name>.bak, os.replace, fsync
+    the dir. A crash or full disk leaves the old file or the .bak intact."""
+    path = Path(path)
+    data = (json.dumps(obj, indent=2, sort_keys=True) + "\n").encode()
+    tmp = path.with_name(".%s.%s.%s.tmp" % (path.name, os.getpid(), secrets.token_hex(4)))
+    fd = os.open(str(tmp), os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600)
+    try:
+        with os.fdopen(fd, "wb") as f:
+            f.write(data)
+            f.flush()
+            os.fsync(f.fileno())
+        if path.exists() and not os.path.islink(str(path)):
+            try:
+                _read_json_file(path)
+                good = True
+            except Exception:
+                good = False  # never let a corrupt file replace a good .bak
+            if good:
+                bak = path.with_name(path.name + ".bak")
+                btmp = path.with_name(".%s.bak.%s.tmp" % (path.name, secrets.token_hex(4)))
+                bfd = os.open(str(btmp), os.O_WRONLY | os.O_CREAT | os.O_EXCL
+                              | getattr(os, "O_NOFOLLOW", 0), 0o600)
+                with os.fdopen(bfd, "wb") as f:
+                    f.write(path.read_bytes())
+                    f.flush()
+                    os.fsync(f.fileno())
+                os.replace(str(btmp), str(bak))
+        os.replace(str(tmp), str(path))
+        _fsync_dir(path.parent)
+    finally:
+        try:
+            if tmp.exists():
+                tmp.unlink()
+        except OSError:
+            pass
+
+
+def load_json_safe(path, what):
+    """Load JSON; on a missing file return None. On a corrupt file log
+    loudly and fall back to <name>.bak; if that fails too, return None
+    (callers start empty) and leave both files for an operator."""
+    path = Path(path)
+    bak = path.with_name(path.name + ".bak")
+    if not path.exists() and not os.path.islink(str(path)):
+        return None
+    try:
+        return _read_json_file(path)
+    except Exception as e:
+        log("CORRUPT %s %s: %s; trying %s" % (what, path, e, bak.name))
+    try:
+        obj = _read_json_file(bak)
+        log("CORRUPT %s: recovered from %s" % (what, bak))
+        return obj
+    except Exception as e:
+        log("CORRUPT %s: backup unusable too (%s); starting empty, files kept" % (what, e))
+        return None
+
+
 def save_state(obj):
-    state_path().write_text(json.dumps(obj, indent=2, sort_keys=True) + "\n")
+    atomic_write_json(state_path(), obj)
 
 
 def load_state():
-    p = state_path()
-    if not p.exists():
-        return {}
-    try:
-        return json.loads(p.read_text())
-    except Exception:
-        return {}
+    obj = load_json_safe(state_path(), "state")
+    return obj if isinstance(obj, dict) else {}
 
 
 def cmd_once():
@@ -2598,6 +2674,7 @@ def deliver(repo, number, issue, doc, gate_check=None):
     if prs:
         pr = prs[0]
         log("PR already open %s (base %s)" % (pr.get("url"), pr.get("baseRefName")))
+        clear_orphan_branch(repo, br)  # Race O2
         return {"branch": br, "head": head, "pr": pr.get("url"), "new_pr": False, "path": rel}
     body = (
         "First pass for #%s, produced on %s by the swarm pull worker.\n\n"
@@ -2629,42 +2706,55 @@ def deliver(repo, number, issue, doc, gate_check=None):
         raise ForgeError("gh pr create rc=%s %s" % (rc, cap_text(err, 400)))
     url = out.strip().splitlines()[-1] if out.strip() else ""
     log("opened draft PR %s" % url)
-    clear_orphan_branch(br)
+    clear_orphan_branch(repo, br)
     return {"branch": br, "head": head, "pr": url, "new_pr": True, "path": rel}
 
 
 ORPHAN_KEEP = 50
 
 
+def orphans_path():
+    # Race O1: its own file, so state.json rewrites can't wipe or revive it.
+    # Not in outbox/, which the flush treats as pending writes.
+    return home_dir() / "orphans.json"
+
+
+def load_orphans():
+    obj = load_json_safe(orphans_path(), "orphans")
+    rows = (obj or {}).get("orphans") if isinstance(obj, dict) else None
+    return [o for o in (rows or []) if isinstance(o, dict)]
+
+
+def _same_orphan(o, repo, branch):
+    # Race O3: key on (repo, branch); branch names carry no repo.
+    return o.get("branch") == branch and (o.get("repo") or "") == (repo or "")
+
+
 def note_orphan_branch(repo, number, branch, head, why):
     """Log a pushed swarm branch left without a PR and keep a bounded list
-    in state.json ("orphans") so an operator can sweep them. Never deletes
-    anything on the forge."""
+    in orphans.json so an operator can sweep them. Never deletes anything
+    on the forge."""
     log("orphan branch %s (%s) for %s#%s: pushed, no PR (%s)" % (
         branch, (head or "")[:9], repo, number, cap_text(redact(why), 200)))
     try:
-        st = load_state()
-        rows = [o for o in (st.get("orphans") or []) if o.get("branch") != branch]
+        rows = [o for o in load_orphans() if not _same_orphan(o, repo, branch)]
         rows.append({"repo": repo, "number": number, "branch": branch,
                      "head": head or "", "at": iso_z(server_now()),
                      "why": cap_text(redact(why), 200)})
-        st["orphans"] = rows[-ORPHAN_KEEP:]
-        save_state(st)
+        atomic_write_json(orphans_path(), {"orphans": rows[-ORPHAN_KEEP:]})
     except Exception as e:
         log("orphan note not saved: %s" % e)
 
 
-def clear_orphan_branch(branch):
+def clear_orphan_branch(repo, branch):
     try:
-        st = load_state()
-        rows = st.get("orphans") or []
-        keep = [o for o in rows if o.get("branch") != branch]
+        rows = load_orphans()
+        keep = [o for o in rows if not _same_orphan(o, repo, branch)]
         if len(keep) != len(rows):
-            st["orphans"] = keep
-            save_state(st)
+            atomic_write_json(orphans_path(), {"orphans": keep})
             log("orphan branch %s now has a PR" % branch)
-    except Exception:
-        pass
+    except Exception as e:
+        log("orphan clear not saved: %s" % e)
 
 
 def forge_error_retryable(e):

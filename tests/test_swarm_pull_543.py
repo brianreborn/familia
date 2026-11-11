@@ -808,7 +808,7 @@ class SwarmPull545Review(unittest.TestCase):
         self.assertIn("[tty-stripped]", doc)
 
     # ---- Boundary follow-up 5 / Race R2: deliver with git mocked ------
-    def _deliver(self, changed, gate_check=None):
+    def _deliver(self, changed, gate_check=None, pr_list="[]"):
         self._live()
         os.environ["SWARM_REPO_DIR"] = str(self.home / "repo")
         calls = []
@@ -831,7 +831,7 @@ class SwarmPull545Review(unittest.TestCase):
         def fake_run(argv, timeout=20, cwd=None):
             runs.append(list(argv))
             if "pr" in argv and "list" in argv:
-                return 0, "[]", ""
+                return 0, pr_list, ""
             if "pr" in argv and "create" in argv:
                 return 0, "https://github.com/brianreborn/familia/pull/1\n", ""
             return 0, "", ""
@@ -1840,19 +1840,19 @@ class SwarmPull549Followups(SwarmPull549Final):
         out, pushes, creates = self._deliver(["docs/research/swarm-7-box.md"], gate_check=lost)
         self.assertIsInstance(out, self.sp.LeaseLost)
         self.assertEqual((len(pushes), creates), (1, []))
-        st = self.sp.load_state()
-        self.assertEqual(len(st.get("orphans") or []), 1)
-        self.assertTrue(st["orphans"][0]["branch"].startswith("swarm/"))
+        rows = self.sp.load_orphans()
+        self.assertEqual(len(rows), 1)
+        self.assertTrue(rows[0]["branch"].startswith("swarm/"))
+        self.assertNotIn("orphans", self.sp.load_state())
         self.assertIn("orphan branch", (self.sp.home_dir() / "logs" / "swarm-pull.log").read_text())
 
     def test_n11_orphan_list_is_bounded_and_cleared(self):
         self.sp.save_state({"runner": "box"})
         for i in range(self.sp.ORPHAN_KEEP + 5):
             self.sp.note_orphan_branch("r/x", i, "swarm/box/%d" % i, "abc", "why")
-        st = self.sp.load_state()
-        self.assertEqual(len(st["orphans"]), self.sp.ORPHAN_KEEP)
-        self.sp.clear_orphan_branch("swarm/box/%d" % (self.sp.ORPHAN_KEEP + 4))
-        self.assertEqual(len(self.sp.load_state()["orphans"]), self.sp.ORPHAN_KEEP - 1)
+        self.assertEqual(len(self.sp.load_orphans()), self.sp.ORPHAN_KEEP)
+        self.sp.clear_orphan_branch("r/x", "swarm/box/%d" % (self.sp.ORPHAN_KEEP + 4))
+        self.assertEqual(len(self.sp.load_orphans()), self.sp.ORPHAN_KEEP - 1)
 
     # ---- log() symlinks ------------------------------------------------------
     def test_log_refuses_symlinked_file_and_dir(self):
@@ -1936,6 +1936,87 @@ class SwarmPull549Followups(SwarmPull549Final):
         un.assert_called_once()
 
 
+class SwarmPull550Review(SwarmPull549Followups):
+    """Race approval of #550 at 454d733 (6790140836): O1-O3 and atomic
+    state writes."""
+
+    # ---- O1 ------------------------------------------------------------------
+    def test_o1_state_rewrites_do_not_touch_orphans(self):
+        self.sp.save_state({"runner": "box"})
+        stale = self.sp.load_state()
+        self.sp.note_orphan_branch("r/x", 7, "swarm/box/7", "abc", "lease lost")
+        self.sp.save_state(stale)                      # loop saves a stale dict
+        self.sp.save_state({"repo": "r/x", "runner": "box", "done": []})  # rebuilt
+        self.assertEqual([o["branch"] for o in self.sp.load_orphans()], ["swarm/box/7"])
+        self.sp.clear_orphan_branch("r/x", "swarm/box/7")
+        self.sp.save_state(stale)                      # stale save can't revive it
+        self.assertEqual(self.sp.load_orphans(), [])
+
+    def test_o1_orphans_file_not_in_outbox(self):
+        self.assertNotEqual(self.sp.orphans_path().parent.name, "outbox")
+
+    # ---- O2 ------------------------------------------------------------------
+    def test_o2_existing_pr_clears_orphan(self):
+        self.sp.note_orphan_branch("brianreborn/familia", 7, "swarm/box/7", "abc", "lease lost")
+        out, pushes, creates = self._deliver(
+            ["docs/research/swarm-7-box.md"],
+            pr_list=json.dumps([{"number": 5, "url": "u", "baseRefName": "main"}]))
+        self.assertEqual((len(pushes), creates, out["new_pr"]), (1, [], False))
+        self.assertEqual(self.sp.load_orphans(), [])
+
+    # ---- O3 ------------------------------------------------------------------
+    def test_o3_orphans_keyed_by_repo_and_branch(self):
+        self.sp.note_orphan_branch("a/one", 7, "swarm/box/7", "h1", "x")
+        self.sp.note_orphan_branch("b/two", 7, "swarm/box/7", "h2", "x")
+        self.sp.note_orphan_branch("a/one", 7, "swarm/box/7", "h3", "x")
+        rows = self.sp.load_orphans()
+        self.assertEqual(sorted((o["repo"], o["head"]) for o in rows), [("a/one", "h3"), ("b/two", "h2")])
+        self.sp.clear_orphan_branch("b/two", "swarm/box/7")
+        self.assertEqual([o["repo"] for o in self.sp.load_orphans()], ["a/one"])
+
+    # ---- atomic writes -------------------------------------------------------
+    def test_atomic_save_keeps_bak_and_private_mode(self):
+        import stat as _stat
+        self.sp.save_state({"n": 1})
+        self.sp.save_state({"n": 2})
+        p = self.sp.state_path()
+        self.assertEqual(json.loads(p.read_text()), {"n": 2})
+        self.assertEqual(json.loads(p.with_name("state.json.bak").read_text()), {"n": 1})
+        self.assertEqual(_stat.S_IMODE(os.stat(str(p)).st_mode), 0o600)
+        self.assertEqual([f.name for f in p.parent.iterdir() if f.name.endswith(".tmp")], [])
+
+    def test_atomic_save_failure_leaves_old_file(self):
+        self.sp.save_state({"n": 1})
+        with mock.patch.object(self.sp.os, "fsync", side_effect=OSError(28, "No space left on device")):
+            with self.assertRaises(OSError):
+                self.sp.save_state({"n": 2})
+        self.assertEqual(self.sp.load_state(), {"n": 1})
+        self.assertEqual([f.name for f in self.sp.state_path().parent.iterdir() if f.name.endswith(".tmp")], [])
+
+    def test_corrupt_state_falls_back_to_bak_loudly(self):
+        self.sp.save_state({"n": 1})
+        self.sp.save_state({"n": 2})
+        self.sp.state_path().write_text('{"n": 3')       # truncated
+        self.assertEqual(self.sp.load_state(), {"n": 1})
+        logtxt = (self.sp.home_dir() / "logs" / "swarm-pull.log").read_text()
+        self.assertIn("CORRUPT state", logtxt)
+        # a corrupt file is never copied over the good .bak
+        self.sp.save_state({"n": 4})
+        self.assertEqual(json.loads(self.sp.state_path().with_name("state.json.bak").read_text()), {"n": 1})
+
+    def test_corrupt_without_bak_is_empty_and_kept(self):
+        self.sp.state_path().write_text("not json")
+        self.assertEqual(self.sp.load_state(), {})
+        self.assertTrue(self.sp.state_path().exists())
+        self.assertIn("starting empty", (self.sp.home_dir() / "logs" / "swarm-pull.log").read_text())
+
+    def test_corrupt_orphans_fall_back_to_bak(self):
+        self.sp.note_orphan_branch("r/x", 1, "swarm/box/1", "h", "x")
+        self.sp.note_orphan_branch("r/x", 2, "swarm/box/2", "h", "x")
+        self.sp.orphans_path().write_text("{")
+        self.assertEqual([o["number"] for o in self.sp.load_orphans()], [1])
+
+
 # Do not rerun the inherited review tests under the follow-up class.
 for _name in list(vars(SwarmPull545Review)):
     if _name.startswith("test_") and _name not in vars(SwarmPull545Followups):
@@ -1956,6 +2037,11 @@ for _name in (list(vars(SwarmPull545Review)) + list(vars(SwarmPull545Followups))
               + list(vars(SwarmPull549Final))):
     if _name.startswith("test_") and _name not in vars(SwarmPull549Followups):
         setattr(SwarmPull549Followups, _name, None)
+for _name in (list(vars(SwarmPull545Review)) + list(vars(SwarmPull545Followups))
+              + list(vars(SwarmPull549Review)) + list(vars(SwarmPull549Boundary))
+              + list(vars(SwarmPull549Final)) + list(vars(SwarmPull549Followups))):
+    if _name.startswith("test_") and _name not in vars(SwarmPull550Review):
+        setattr(SwarmPull550Review, _name, None)
 del _name
 
 
