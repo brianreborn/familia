@@ -79,26 +79,33 @@ if not defined FAMILIA_API_KEY_FILE (
     set "FAMILIA_API_KEY_FILE=%USERPROFILE%\familia\instances\%FAMILIA_PORT%\api-keys"
   )
 )
-rem Refuse FAMILIA_EXTRA tokens that would override bind/port/auth/TLS/path (same rule as familia-start).
-for %%T in (%FAMILIA_EXTRA%) do (
-  echo %%T| findstr /i /b /c:"--host" /c:"--port" /c:"--api-key" /c:"--ssl" /c:"--path" >nul
-  if not errorlevel 1 (
-    echo familia: token %%T in FAMILIA_EXTRA would override bind/port/auth/TLS/path; refusing 1>&2
-    exit /b 2
-  )
-)
+rem llama-server also reads these when the flags are not on argv; clear them.
+set "LLAMA_API_KEY="
+set "LLAMA_ARG_API_KEY_FILE="
+set "LLAMA_ARG_HOST="
+set "LLAMA_ARG_PORT="
 where python >nul 2>&1
 if errorlevel 1 (
   echo familia: python not found, so the API key file cannot be created or checked. Install Python 3. 1>&2
   exit /b 2
 )
-python "%~dp0..\bind_auth_guard.py" --ensure -- "%BIN%" -m "%MODEL%" --host "%FAMILIA_BIND%" --port "%FAMILIA_PORT%" --api-key-file "%FAMILIA_API_KEY_FILE%" %FAMILIA_EXTRA%
+rem FAMILIA_EXTRA is checked by the guard after --extra-start (no cmd glob). Quote it so
+rem cmd does not interpret & | < >. A space-separated value is one argv token.
+if defined FAMILIA_EXTRA (
+  python "%~dp0..\bind_auth_guard.py" --ensure -- "%BIN%" -m "%MODEL%" --host "%FAMILIA_BIND%" --port "%FAMILIA_PORT%" --api-key-file "%FAMILIA_API_KEY_FILE%" --extra-start "%FAMILIA_EXTRA%"
+) else (
+  python "%~dp0..\bind_auth_guard.py" --ensure -- "%BIN%" -m "%MODEL%" --host "%FAMILIA_BIND%" --port "%FAMILIA_PORT%" --api-key-file "%FAMILIA_API_KEY_FILE%"
+)
 if errorlevel 1 (
-  echo familia: auth guard refused this launch (API key required on every bind, loopback included) 1>&2
+  echo familia: auth guard refused this launch ^(API key required on every bind, loopback included^) 1>&2
   exit /b 2
 )
 echo familia: %BIN% -m "%MODEL%" on %FAMILIA_BIND%:%FAMILIA_PORT% (log %LOG%)
-"%BIN%" -m "%MODEL%" --host "%FAMILIA_BIND%" --port "%FAMILIA_PORT%" -c %FAMILIA_CTX% -t %FAMILIA_THREADS% -np 1 -ctk %FAMILIA_KV% -ctv %FAMILIA_KV% --api-key-file "%FAMILIA_API_KEY_FILE%" %FAMILIA_EXTRA% >> "%LOG%" 2>&1
+if defined FAMILIA_EXTRA (
+  "%BIN%" -m "%MODEL%" --host "%FAMILIA_BIND%" --port "%FAMILIA_PORT%" -c %FAMILIA_CTX% -t %FAMILIA_THREADS% -np 1 -ctk %FAMILIA_KV% -ctv %FAMILIA_KV% --api-key-file "%FAMILIA_API_KEY_FILE%" "%FAMILIA_EXTRA%" >> "%LOG%" 2>&1
+) else (
+  "%BIN%" -m "%MODEL%" --host "%FAMILIA_BIND%" --port "%FAMILIA_PORT%" -c %FAMILIA_CTX% -t %FAMILIA_THREADS% -np 1 -ctk %FAMILIA_KV% -ctv %FAMILIA_KV% --api-key-file "%FAMILIA_API_KEY_FILE%" >> "%LOG%" 2>&1
+)
 exit /b %ERRORLEVEL%
 
 :help

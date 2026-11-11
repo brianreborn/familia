@@ -59,9 +59,9 @@ def extra_overrides_host(extra):
 
 
 def run(a, name, extra, log):
-    import oom_adj  # noqa: E402
     if extra_overrides_host(extra):
         return {"config": name, "args": list(extra), "error": "refusing --host in extra; spec_bench binds 127.0.0.1 only"}
+    import oom_adj  # noqa: E402
     args = [a.bin, "-m", a.target, "-c", str(a.ctx), "-t", str(a.threads), "-ngl", "0", "-np", "1", "--port", str(a.port),
             "--host", "127.0.0.1", "-lm", "none", "--jinja", "-fa", "on"] + extra
     if hasattr(BG, "preflight"): probs, args = BG.preflight(args, BG.summarize(BG.read_gguf(a.target)))

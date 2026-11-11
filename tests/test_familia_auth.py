@@ -268,3 +268,50 @@ def test_with_fleet_hermes_has_key_precheck():
     src = open(os.path.join(FA.ROOT, "with-fleet.sh")).read()
     assert src.index("familia_auth.py\" has-key") < src.index('scripts/hermes.sh" --agent')
 
+
+
+def test_familia_api_key_file_accepted(tmp_path):
+    import familia_auth as fa
+    f = tmp_path / "installer.key"
+    f.write_bytes(b"from-familia-env\n")
+    env = {"XDG_CONFIG_HOME": str(tmp_path / "cfg"), "FAMILIA_API_KEY_FILE": str(f)}
+    assert fa.candidate_key_files(env=env)[0] == str(f)
+    assert fa.api_key(str(tmp_path), env) == "from-familia-env"
+    # both names accepted; API_KEY_FILE wins if both are set
+    g = tmp_path / "api-env.key"
+    g.write_bytes(b"from-api-env\n")
+    env["API_KEY_FILE"] = str(g)
+    assert fa.candidate_key_files(env=env)[0] == str(g)
+    assert fa.api_key(str(tmp_path), env) == "from-api-env"
+
+
+def test_installer_key_file_is_a_fallback(tmp_path):
+    import familia_auth as fa
+    env = {"XDG_CONFIG_HOME": str(tmp_path)}
+    inst = fa.installer_key_file(env=env)
+    assert inst == str(tmp_path / "familia" / "api.key")
+    cands = fa.candidate_key_files(env=env)
+    assert cands[0] == fa.instance_key_file(env=env)
+    assert inst in cands and cands.index(inst) > 0
+
+
+def test_load_or_create_writes_lf_no_bom(tmp_path):
+    import familia_auth as fa
+    pth = str(tmp_path / "api-keys")
+    fa.load_or_create_key_file(pth)
+    data = open(pth, "rb").read()
+    assert not data.startswith(b"\xef\xbb\xbf") and b"\r" not in data
+    assert data.startswith(b"#") and data.endswith(b"\n")
+
+
+def test_publish_falls_back_when_link_is_denied(tmp_path, monkeypatch):
+    """Termux SELinux denies link(2) with EACCES; still no-clobber create."""
+    import errno
+    import familia_auth as fa
+    def boom(src, dst):
+        raise OSError(errno.EACCES, "selinux denies link")
+    monkeypatch.setattr(fa.os, "link", boom)
+    pth = str(tmp_path / "api-keys")
+    k1 = fa.load_or_create_key_file(pth)
+    assert k1 and open(pth, "rb").read().count(k1.encode()) == 1
+    assert fa.load_or_create_key_file(pth) == k1

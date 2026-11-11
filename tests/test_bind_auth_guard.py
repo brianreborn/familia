@@ -38,7 +38,7 @@ def test_last_host_and_equals_form(tmp_path):
 def test_refuses_bad_mode_symlink_empty_missing(tmp_path):
     kf = _key(tmp_path, mode=0o644)
     ok, msg = g.check(["bin", "--api-key-file", kf])
-    assert ok is False and "0600" in msg
+    assert ok is False and "group" in msg
     missing = str(tmp_path / "nope")
     ok, msg = g.check(["bin", "--api-key-file", missing])
     assert ok is False and "missing" in msg
@@ -79,11 +79,53 @@ def test_main_exits_2_on_refuse(tmp_path, capsys):
     assert "familia-auth-guard:" in err and "refusing" in err
 
 
+def test_accepts_0400_key_file(tmp_path):
+    kf = _key(tmp_path, mode=0o400)
+    ok, msg = g.check(["bin", "--host", "127.0.0.1", "--api-key-file", kf])
+    assert ok is True, msg
+
+
+def test_refuses_bom_crlf_comma_and_every_key_file(tmp_path):
+    ok_f = _key(tmp_path, "ok")
+    bom = tmp_path / "bom"
+    bom.write_bytes(b"\xef\xbb\xbf# header\n" + b"k" * 32 + b"\n")
+    bom.chmod(0o600)
+    ok, msg = g.check(["bin", "--api-key-file", str(bom)])
+    assert ok is False and "BOM" in msg
+    # last file ok must not hide a bad earlier file (llama-server appends every file)
+    ok, msg = g.check(["bin", "--api-key-file", str(bom), "--api-key-file", ok_f])
+    assert ok is False and "BOM" in msg
+    crlf = tmp_path / "crlf"
+    crlf.write_bytes(b"k" * 32 + b"\r\n")
+    crlf.chmod(0o600)
+    ok, msg = g.check(["bin", "--api-key-file", str(crlf)])
+    assert ok is False and "CR" in msg
+    comma = tmp_path / "comma"
+    comma.write_bytes(b"a,b\n")
+    comma.chmod(0o600)
+    ok, msg = g.check(["bin", "--api-key-file", str(comma)])
+    assert ok is False and "comma" in msg
+
+
+def test_refuses_extra_start_overrides(tmp_path):
+    kf = _key(tmp_path)
+    base = ["bin", "--host", "127.0.0.1", "--port", "9941", "--api-key-file", kf]
+    ok, msg = g.check(base + ["--extra-start", "--temp", "0.2"])
+    assert ok is True, msg
+    for tok in ("--host", "--host=0.0.0.0", "--port", "--port=80",
+                "--api-key", "--api-key=x", "--api-key-file", "--api-key-file=y",
+                "--ssl", "--ssl-file", "--path", "--path=/tmp"):
+        ok, msg = g.check(base + ["--extra-start", tok])
+        assert ok is False and "extra-start" in msg, (tok, msg)
+
+
 def test_serve_sh_wires_guard():
     src = open(os.path.join(ROOT, "scripts/serve.sh")).read()
     assert "bind_auth_guard.py" in src
-    assert src.count('auth_guard "$@"') == 3
     assert "auth_guard() {" in src
+    assert src.count('auth_guard "$args') + src.count('auth_guard "$safe_args') == 3
+    assert "--extra-start" in src
+    assert "unset LLAMA_API_KEY" in src
 
 
 def test_launch_auth_argv_always_adds_key_path(tmp_path, monkeypatch):
