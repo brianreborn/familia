@@ -20,6 +20,8 @@ import yaml
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCRIPT = os.path.join(ROOT, "scripts", "swarm", "a57_ssh_dispatch.py")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import safe_temp  # noqa: E402
 sys.path.insert(0, os.path.join(ROOT, "scripts", "swarm"))
 import a57_ssh_dispatch as d  # noqa: E402
 
@@ -31,8 +33,9 @@ EXAMPLE = os.path.join(ROOT, "docs", "ci", "a57-ssh-ci.yaml.example")
 
 @pytest.fixture
 def base():
-    parent = os.path.join(ROOT, ".cache")
-    os.makedirs(parent, mode=0o700, exist_ok=True)
+    # Never under /tmp, /var/tmp, /dev/shm: the dispatcher correctly refuses
+    # those roots as lock dirs. A checkout under /tmp must still use a safe base.
+    parent = safe_temp.safe_temp_parent()
     path = tempfile.mkdtemp(prefix="test-a57-ssh-", dir=parent)
     os.chmod(path, 0o700)
     yield path
@@ -141,6 +144,8 @@ def _env(base, mock, inventory, **extra):
         "A57_SSH_CI_KILL_GRACE_SEC": "1",
         "A57_SSH_CI_LOCK_WAIT_SEC": "0",
     }
+    # pip --user PyYAML lives under the real home; a fake HOME would hide it.
+    env.update(safe_temp.child_python_env())
     env.update(extra)
     return env
 
@@ -605,6 +610,21 @@ def test_shared_temp_lock_dir_is_refused(base):
     assert r.returncode == 2
     assert "reason=bad-lockdir" in r.stdout
     assert _records(record) == []
+
+
+def test_child_env_finds_yaml_when_home_overridden(base):
+    known, ident = _known(base), _identity(base)
+    inv = _inventory(base, {"galaxy1": ADDR1}, known, ident)
+    mock = _mock(base, "ssh", "raise SystemExit(0)\n")
+    env = _env(base, mock, inv)
+    assert env["HOME"] != (safe_temp._ORIG_USER_BASE or os.path.expanduser("~"))
+    assert not safe_temp.under_shared_temp(env["A57_SSH_CI_LOCK_DIR"])
+    r = subprocess.run(
+        [sys.executable, "-c", "import yaml; print('ok')"],
+        capture_output=True, text=True, env=env, timeout=20,
+    )
+    assert r.returncode == 0, r.stderr
+    assert "ok" in r.stdout
 
 
 def test_ssh_override_requires_opt_in(base):
