@@ -320,6 +320,8 @@ echo "familia-start: logs: this terminal (stdout/stderr; under systemd: journalc
 # (--host* --port* --api-key* --ssl* --path*) the whole launch is refused, never stripped.
 # set -f is turned on here and deliberately LEFT ON for the rest of the launcher: the exec
 # below expands \${FAMILIA_EXTRA} unquoted and must not glob. Nothing after this relies on globbing.
+# The launcher's own arguments are passed to llama-server exactly ("\$@", after the key, before
+# FAMILIA_EXTRA), once they pass the same check (#279 routing-extra-args).
 familia_extra_check() {
   set -f
   for _t in \${FAMILIA_EXTRA:-} "\$@"; do
@@ -355,7 +357,7 @@ familia_env_scrub
 [ -n "\$FAMILIA_KF" ] || { echo "familia-start: no API key; refusing" >&2; exit 2; }
 # F-9: llama-server --host takes a bare IPv6 address: [::1] -> ::1.
 H="\${FAMILIA_BIND:-127.0.0.1}"; [ "\$H" = '[::1]' ] && H=::1
-exec "\$B" -m "\$M" --host "\$H" --port "\${FAMILIA_PORT:-9941}" -c "\${FAMILIA_CTX:-4096}" --api-key-file "\$FAMILIA_KF" \${FAMILIA_EXTRA:-}
+exec "\$B" -m "\$M" --host "\$H" --port "\${FAMILIA_PORT:-9941}" -c "\${FAMILIA_CTX:-4096}" --api-key-file "\$FAMILIA_KF" "\$@" \${FAMILIA_EXTRA:-}
 EOS
   chmod +x "$LAUNCH"
 fi
