@@ -110,9 +110,9 @@ def build(recipe, recipe_dir=".", ref_graph=None):
         rt = {"kind": r.get("kind", "llama-server"), "build": r["build"], "commit": r["commit"], "hosts": [name],
               "supported_archs": list(r["supported_archs"]), "backends": list(r["backends"]),
               "spec_types": list(r.get("spec_types", []))}
-        for k in ("bin", "url", "sha256"):
-            if k in r:
-                rt[k] = r[k]
+        # bin and url are not accepted from recipe-authored runtimes (must come from from_graph or pins)
+        if "sha256" in r:
+            rt["sha256"] = r["sha256"]
     models = {}
     for key, m in (recipe.get("models") or {}).items():
         if isinstance(m, dict) and "from_graph" in m:
@@ -149,7 +149,15 @@ def build(recipe, recipe_dir=".", ref_graph=None):
             raise RecipeError(f"nodes[{i}]: bind {bind!r} is not loopback; protograph only emits loopback nodes "
                               f"(edit graph.yaml by hand for LAN exposure)")
         node = {"model": n["model"], "host": name, "runtime": rname, "ctx": n["ctx"]}
-        if n["role"] != models[n["model"]].get("role"):
+        model_role = (models[n["model"]].get("role") or "").strip().lower()
+        node_role = (n.get("role") or "").strip().lower()
+        fail_closed = ("guardian", "pentest", "defender")
+        if node_role != model_role:
+            if node_role in fail_closed or model_role in fail_closed:
+                raise RecipeError(
+                    f"nodes[{i}]: role override {node_role!r} over {model_role!r} model refused; "
+                    f"fail-closed models cannot be overridden to routable roles"
+                )
             node["role"] = n["role"]
         for k, d in NODE_DEFAULTS.items():
             node[k] = n.get(k, d)
@@ -167,6 +175,8 @@ def build(recipe, recipe_dir=".", ref_graph=None):
     if not gw:
         gw = {"port": 8080}
         plan.append("gateway: green-roomz on port 8080 (recipe default; the graph needs one)")
+    if gw.get("port") in ports:
+        raise RecipeError(f"gateway port {gw['port']} conflicts with node port")
     if True:
         g["gateways"] = {"gw": {"kind": "green-roomz", "host": name, "port": gw["port"]}}
         g["aliases"] = {k: {"node": k, "gateway": "gw"} for k in nodes}

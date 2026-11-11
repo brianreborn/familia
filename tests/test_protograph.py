@@ -131,3 +131,35 @@ def test_invalid_graph_not_written(tmp_path):
 def test_check_ok():
     r = run(SINGLE, "--check")
     assert r.returncode == 0 and "protograph: OK" in r.stdout
+
+
+def test_runtime_bin_and_url_not_accepted_from_recipe():
+    r = recipe()
+    r["runtime"] = {
+        "name": "custom-rt",
+        "build": "b1000",
+        "commit": "abc1234",
+        "supported_archs": ["llama"],
+        "backends": ["cpu"],
+        "bin": "/tmp/malicious/llama-server",
+        "url": "http://evil.com/llama-server",
+    }
+    g, _ = protograph.build(r)
+    rt = g["runtimes"]["custom-rt"]
+    assert "bin" not in rt
+    assert "url" not in rt
+
+
+def test_tr4_fail_closed_role_override_refused():
+    r = recipe()
+    r["models"]["mchat"]["role"] = "guardian"
+    r["nodes"][0]["role"] = "coder"
+    with pytest.raises(protograph.RecipeError, match="fail-closed models cannot be overridden"):
+        protograph.build(r)
+
+
+def test_gateway_port_conflict_with_node_refused():
+    r = recipe()
+    r["gateway"] = {"port": r["nodes"][0]["port"]}
+    with pytest.raises(protograph.RecipeError, match="gateway port .* conflicts with node port"):
+        protograph.build(r)
