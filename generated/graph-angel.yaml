@@ -387,6 +387,7 @@ runtimes:
     - gemma2
     - gemma3
     - nanbeige
+    - gpt-oss
     backends:
     - cpu
     spec_types:
@@ -568,6 +569,19 @@ models:
     db: TokenTinkerer--Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-GGUF--Qwen3.6-35B-A3B-Uncensored-HauhauCS-Aggressive-TTQ-3.93bpw-Q3_K_M
     notes: 'Shipped tested 2026-10-24: local sha256 verified on angel; MTP draft model
       available but not fetched'
+  gpt-oss-20b-mxfp4:
+    gguf: /home/green/models/gpt-oss-20b-MXFP4.gguf
+    sha256: 27cd6c432c7672cb812a92f611cf3ba7bbc35928262bb1e1253ff4ee6ae35901
+    arch: gpt-oss
+    trained_ctx: 131072
+    role: chat
+    db: ggml-org--gpt-oss-20b-GGUF--gpt-oss-20b-MXFP4
+    notes: 'R&D exception (Brian 2026-11-10 voice/chat): install gpt-oss-20b on angel.
+      File is 12109566624 bytes. Harmony format needs --jinja. No node auto-starts
+      this model. Smoke used /usr/local/bin/llama-server (FreeBSD ports llama-cpp-10975),
+      which supports gpt-oss and MXFP4; the registered build-freebsd/bin/llama-server
+      binary is missing, though libllama in that tree (LLAMA_BUILD_NUMBER 11969) also
+      contains gpt-oss/MXFP4.'
   nanbeige43-33b-q4km:
     gguf: ~/.local/share/gguf/models/general/Nanbeige4.3-33B-UNCENSORED-Q4_K_M.gguf
     sha256: 1136ce66f4be1676a78936a936df012f148236475fb8424c5dea7cd85e165264
