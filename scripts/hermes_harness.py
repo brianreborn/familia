@@ -445,8 +445,11 @@ def ensure_hermes():
 HERMES_BIN, HERMES_PY, HERMES_SP = resolve_hermes(missing="defaults")
 USER_HOME = os.path.expanduser("~/.hermes")
 SECRET_RE = re.compile(r"(api_?key|token|secret|password|passwd|auth|cookie|credential)", re.I)
-# Sections the harness owns; never inherited from the user's config.
-OWNED = {"model", "auxiliary", "compression", "custom_providers", "providers", "smart_model_routing", "fallback_model"}
+# Sections the harness owns; not inherited from the user's config (except
+# fallback_providers, which is inherited only when FAMILIA_HERMES_ALLOW_CLOUD=1).
+# When local-only, render() must also WRITE open/local values for these (not
+# only strip them): otherwise hermes-agent fills stock hosted defaults.
+OWNED = {"model", "auxiliary", "compression", "custom_providers", "providers", "smart_model_routing", "fallback_model", "fallback_providers"}
 # Lean prompt profile (#85): the toolsets a coding agent on a small or old node needs. Long
 # guidance stays reachable through the skills tools (skills_list / skill_view load on demand).
 LEAN_TOOLSETS = ("terminal", "file", "todo", "clarify", "skills")
@@ -474,6 +477,9 @@ AUX_TASKS = ["web_extract", "compression", "skills_hub", "approval", "mcp", "tit
 # without vision/voice fails locally instead of falling through to a cloud provider) and MoA is
 # disabled with a local-only preset. See docs/hermes-pin.md.
 MODAL_AUX_TASKS = ("vision", "voice_chat", "moa_reference", "moa_aggregator")
+# hermes-agent v0.22.6 _try_openrouter: free_only plus a non-":free" openrouter_model
+# skips the OpenRouter aux fallback lane (stock default is a hosted SKU).
+OPEN_DEFAULT_OPENROUTER_MODEL = "disabled"
 ALLOW_CLOUD_ENV = "FAMILIA_HERMES_ALLOW_CLOUD"
 # Cloud LLM credentials scrubbed from every hermes child env unless FAMILIA_HERMES_ALLOW_CLOUD=1:
 # any *_API_KEY / *_API_TOKEN (FAMILIA_* kept) plus these. MCP secrets the graph declares
@@ -1262,7 +1268,7 @@ def _node_role(g, name):
            vg.node_type(g, name), infer_role(name, n, g)}
     if name.endswith("-defender") or name == "defender":
         raw.add("defender")
-    return {r for r in raw if r}
+    return {vg.normalize_role(r) for r in raw if r}
 
 
 def pentest_for_node(g, name):
@@ -1333,21 +1339,33 @@ def route_tools(g, agent):
     """-> {"mode": none|direct|nexus, "node", "via"}.
     Reuses validate_graph.tool_capable / tool_route / tool_policy (#243). Explicit
     nodes.<n>.tool_route wins as the nexus target; same-host then mesh discovery is the
-    Hermes-only fallback when #243 has no route. Never into guardian/pentest/defender."""
+    Hermes-only fallback when #243 has no route, except for an off-loopback tool-capable
+    node with no server_tools (TOOLS-008): that path honours only an explicit tool_route
+    (TOOLS-009 opt-in) and never discovery, so rebinding to 0.0.0.0 cannot implicitly
+    forward. Never into guardian/pentest/defender."""
     _, name, n, _ = node_for(g, agent)
     if tool_free(g, name):
         return {"mode": "none", "node": None, "via": None, "reason": "tool-free node"}
     if vg.tool_capable(g, name):
         # Explicit server_tools opt-out (TOOLS-006): present key whose policy is [] → none.
-        # Missing key stays direct even if policy would be [] for other reasons (e.g. off-loopback).
-        if "server_tools" in n and vg.tool_policy(g, name) == []:
+        # Loopback default, or an explicit server_tools grant, stays direct.
+        # Off-loopback with no server_tools is not direct (#345 / TOOLS-008): honour only
+        # an explicit tool_route (TOOLS-009); do not fall through to discovery.
+        opted = "server_tools" in n
+        if opted and vg.tool_policy(g, name) == []:
             return {"mode": "none", "node": None, "via": None, "reason": "server_tools opt-out"}
-        return {"mode": "direct", "node": name, "via": None}
+        if opted or vg._loopback(n.get("bind")):
+            return {"mode": "direct", "node": name, "via": None}
+        off_loopback_no_st = True
+    else:
+        off_loopback_no_st = False
     # Explicit one-hop from graph (#243). Reject fail-closed and policy-[] targets here too
     # (vg.tool_route already filters policy-[], but keep the check so a [] grant is never used).
     t = vg.tool_route(g, name)
     if t and not tool_free(g, t) and vg.tool_policy(g, t) != []:
         return {"mode": "nexus", "node": t, "via": None, "reason": "tool_route"}
+    if off_loopback_no_st:
+        return {"mode": "none", "node": None, "via": None, "reason": "off-loopback without server_tools"}
     # #243 does not discover a target — Hermes falls back to same-host, then ssh nexus mesh.
     host = n.get("host")
     nodes = g.get("nodes") or {}
@@ -1359,7 +1377,9 @@ def route_tools(g, agent):
         for k in sorted(nodes):
             if nodes[k].get("host") in peers and _discovery_ok(g, name, k):
                 return {"mode": "nexus", "node": k, "via": mesh}
-    return {"mode": "none", "node": None, "via": None, "reason": "no tool-capable node reachable"}
+    reason = ("off-loopback without server_tools" if off_loopback_no_st
+              else "no tool-capable node reachable")
+    return {"mode": "none", "node": None, "via": None, "reason": reason}
 
 
 def node_base(g, k, from_host):
@@ -1395,7 +1415,13 @@ def render(g, agent, user_cfg_path=os.path.join(USER_HOME, "config.yaml"), base_
     user = {}
     if os.path.isfile(user_cfg_path):
         user = yaml.safe_load(open(user_cfg_path)) or {}
-    cfg = {k: strip_secrets(copy.deepcopy(v)) for k, v in user.items() if k not in OWNED}
+    local_only = not allow_cloud()
+    # fallback_providers is cleared in local-only mode; inherited only with the
+    # explicit cloud opt-in (other OWNED keys stay stripped either way).
+    owned = set(OWNED)
+    if not local_only:
+        owned.discard("fallback_providers")
+    cfg = {k: strip_secrets(copy.deepcopy(v)) for k, v in user.items() if k not in owned}
     ctx = a["context_length"]
     comp = a.get("compression") or {}
     cfg["model"] = {"provider": "custom", "base_url": base, "default": alias,
@@ -1411,7 +1437,6 @@ def render(g, agent, user_cfg_path=os.path.join(USER_HOME, "config.yaml"), base_
     for t in AUX_TASKS:
         aux[t] = {"provider": "custom", "model": alias, "base_url": base, "api_key": familia_auth.api_key() or "local",
                   "timeout": comp.get("aux_timeout", 3600)}
-    local_only = not allow_cloud()
     if local_only:
         for t in MODAL_AUX_TASKS:
             aux[t] = {"provider": "custom", "model": alias, "base_url": base,
@@ -1422,6 +1447,20 @@ def render(g, agent, user_cfg_path=os.path.join(USER_HOME, "config.yaml"), base_
                       "presets": {"default": {"enabled": False,
                                               "reference_models": [{"provider": "custom", "model": alias, "enabled": True}],
                                               "aggregator": {"provider": "custom", "model": alias}}}}
+        # Skip the stock OpenRouter aux auto-chain (a hosted OpenRouter SKU;
+        # runtime default a :free Nemotron; Gemini is on the Nous lane).
+        # Upstream skips the lane when free_only is on and the model is not :free.
+        aux["free_only"] = True
+        aux["openrouter_model"] = OPEN_DEFAULT_OPENROUTER_MODEL
+        # OWNED provider maps: write empty local-only so wizard/stock cloud
+        # providers cannot fill in. custom_providers is a list upstream.
+        # fallback_providers: [] is the v0.22.6 disable switch.
+        # fallback_model and smart_model_routing stay omitted (disabled when absent).
+        cfg["providers"] = {}
+        cfg["custom_providers"] = []
+        cfg["fallback_providers"] = []
+        cfg.pop("fallback_model", None)
+        cfg.pop("smart_model_routing", None)
     cfg["auxiliary"] = aux
     MCP_ENV_KEEP.clear()
     declared_env = mcp_env_allowlist(a)

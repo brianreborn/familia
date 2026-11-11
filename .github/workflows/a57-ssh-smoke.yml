@@ -1,0 +1,112 @@
+# Bounded SSH smoke for the two A57 phones. They are not Actions runners.
+# The hosted gate only accepts a push to development, or workflow_dispatch of that
+# ref, in brianreborn/familia. Fork pull requests are not a trigger. The smoke
+# job runs on the existing miryam runner (self-hosted, Linux, swarm-bench,
+# host:miryam) and executes scripts/swarm/a57_ssh_dispatch.py. See
+# docs/ci/a57-ssh-dispatch.md. Do not add a phone runs-on label.
+name: A57 SSH smoke
+
+on:
+  push:
+    branches: [development]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: a57-ssh-smoke
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Refuse untrusted events
+        env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          case "$EVENT" in
+            push|workflow_dispatch) ;;
+            *) echo "refused event" >&2; exit 2 ;;
+          esac
+          [ "$REF" = "refs/heads/development" ] || { echo "refused ref" >&2; exit 2; }
+          [ "$REPO" = "brianreborn/familia" ] || { echo "refused repo" >&2; exit 2; }
+          echo "gate ok"
+
+  smoke:
+    needs: gate
+    if: needs.gate.result == 'success'
+    runs-on:
+      - self-hosted
+      - Linux
+      - swarm-bench
+      - "host:miryam"
+    timeout-minutes: 8
+    outputs:
+      summary: ${{ steps.run.outputs.summary }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          submodules: false
+      - id: run
+        name: Dispatch python-compile smoke
+        env:
+          A57_SHA: ${{ github.sha }}
+        run: |
+          unset A57_SSH_CI_SSH A57_SSH_CI_ALLOW_SSH_OVERRIDE A57_SSH_CI_ALLOW_LOCAL \
+            A57_SSH_CI_INVENTORY A57_SSH_CI_BUDGET_SEC A57_SSH_CI_KILL_GRACE_SEC \
+            A57_SSH_CI_LOCK_WAIT_SEC A57_SSH_CI_LOCK_DIR XDG_CONFIG_HOME
+          rc=0
+          python3 scripts/swarm/a57_ssh_dispatch.py \
+            --job python-compile --devices both --sha "$A57_SHA" \
+            > "$RUNNER_TEMP/a57-out.txt" || rc=$?
+          if ! grep -q '^overall=' "$RUNNER_TEMP/a57-out.txt"; then
+            printf '%s\n' "a57-ssh-ci schema=1" "overall=refused reason=no-summary" > "$RUNNER_TEMP/a57-out.txt"
+            rc=2
+          fi
+          {
+            echo "summary<<A57SSHEND"
+            cat "$RUNNER_TEMP/a57-out.txt"
+            echo "A57SSHEND"
+          } >> "$GITHUB_OUTPUT"
+          if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+            {
+              echo "### A57 SSH smoke"
+              echo
+              echo '```'
+              cat "$RUNNER_TEMP/a57-out.txt"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit "$rc"
+
+  report:
+    needs: [gate, smoke]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Paste worker summary
+        env:
+          GATE: ${{ needs.gate.result }}
+          SMOKE: ${{ needs.smoke.result }}
+          SUM: ${{ needs.smoke.outputs.summary }}
+        run: |
+          {
+            echo "### A57 SSH smoke"
+            echo
+            echo "gate: ${GATE}"
+            echo "smoke job: ${SMOKE}"
+            echo
+            echo "A skipped, queued, or failed smoke job is not a pass. unavailable, timeout, busy, hostkey, not-configured, and fail are not pass."
+            echo
+            echo '```'
+            printf '%s\n' "${SUM:-no worker summary}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

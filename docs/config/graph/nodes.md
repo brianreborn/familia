@@ -16,6 +16,7 @@ Purpose: one model instance (weights × runtime × host). The node TYPE (`role`,
 | CFG-GRAPH-NODES-109 | `escalates_to` / `escalation` per docs/escalation.md (no self, no cycles, known nodes, mode off/suggest/auto) | IMPLEMENTED | escalation.py:36-61 |
 | CFG-GRAPH-NODES-110 | Planned sub-states and slash reachability (see [routing-spec.md](../routing-spec.md) CFG-SPEC-PLAN-*) | SPEC | — |
 | CFG-GRAPH-NODES-111 | Explicit `--tools` per TYPE on every llama-server launch (CFG-SPEC-TOOLS-*) | SPEC | validate_graph.py:418-423 emits only when set |
+| CFG-GRAPH-NODES-112 | Every llama-server launch argv from `validate_graph.py --args` / `server_args` includes `--api-key-file` (path from `familia_auth.instance_key_file`, or `API_KEY_FILE` / `FAMILIA_API_KEY_FILE`; never the key, never a graph.yaml field). The file must be owner-readable and not group- or world-readable (0600 or 0400). Auth is required on every bind, including loopback; localhost without a key is not a node exception (DESIGN.md Security, CFG-CRED-009) | IMPLEMENTED | validate_graph.py launch_auth_argv; bind_auth_guard.py; tests/test_bind_auth_guard.py |
 
 Writers: `modify_graph.py` (assign-model / split-node), `generate_graph.py`, `scale_down.py:219`, `activate_guardian_weights.py:265` (planned→active only by operator).
 
@@ -23,7 +24,7 @@ Writers: `modify_graph.py` (assign-model / split-node), `generate_graph.py`, `sc
 
 <!-- BEGIN GENERATED: fields (scripts/config_docs.py --write) -->
 
-Schema: `scripts/graph_types.py:616` (stable; model instance on host+runtime).
+Schema: `scripts/graph_types.py:629` (stable; model instance on host+runtime).
 Required fields have no defaults (validator: missing required → error). Consumers = static scan of scripts/ and top-level *.sh.
 
 | ID | Field | Req | Type | Allowed / ref | Status | Consumers (static scan) |
@@ -54,9 +55,9 @@ Required fields have no defaults (validator: missing required → error). Consum
 | CFG-GRAPH-NODES-024 | `card_set` | opt | str | — | IMPLEMENTED | `scripts/add_model.py`, `scripts/graph_types.py`, `scripts/model_db.py` |
 | CFG-GRAPH-NODES-025 | `sampling` | opt | map | — | IMPLEMENTED | `scripts/graph_types.py`, `scripts/model_db.py`, `scripts/validate_graph.py` |
 | CFG-GRAPH-NODES-026 | `override_reasons` | opt | map | — | IMPLEMENTED | `scripts/add_model.py`, `scripts/graph_types.py`, `scripts/model_db.py`, `scripts/validate_graph.py` |
-| CFG-GRAPH-NODES-027 | `server_tools` | opt | any | — | IMPLEMENTED | `scripts/graph_types.py`, `scripts/hermes_harness.py`, `scripts/validate_graph.py` |
-| CFG-GRAPH-NODES-029 | `tool_capable` | opt | bool | — | IMPLEMENTED | `scripts/graph_types.py`, `scripts/validate_graph.py` |
-| CFG-GRAPH-NODES-030 | `tool_route` | opt | ref | ref → `nodes` | IMPLEMENTED | `scripts/graph_types.py`, `scripts/validate_graph.py` |
+| CFG-GRAPH-NODES-027 | `server_tools` | opt | any | — | IMPLEMENTED | `scripts/escalation_proxy.py`, `scripts/graph_types.py`, `scripts/hermes_harness.py`, `scripts/validate_graph.py` |
+| CFG-GRAPH-NODES-029 | `tool_capable` | opt | bool | — | IMPLEMENTED | `scripts/escalation_proxy.py`, `scripts/graph_types.py`, `scripts/hermes_harness.py`, `scripts/validate_graph.py` |
+| CFG-GRAPH-NODES-030 | `tool_route` | opt | ref | ref → `nodes` | IMPLEMENTED | `scripts/escalation_proxy.py`, `scripts/graph_types.py`, `scripts/hermes_harness.py`, `scripts/validate_graph.py` |
 | CFG-GRAPH-NODES-028 | `role` | opt | enum | one of `chat`, `coder`, `decision`, `diffusion`, `embed`, `general`, `guardian`, `pentest`, `reasoning`, `vision` | IMPLEMENTED | `scripts/add_model.py`, `scripts/escalation.py`, `scripts/escalation_proxy.py`, `scripts/graph_router.py`, `scripts/graph_types.py`, `scripts/guardian_ready.py` +9 |
 
 <!-- END GENERATED: fields -->

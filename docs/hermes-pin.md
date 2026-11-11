@@ -63,10 +63,21 @@ That loads the rendered HERMES_HOME with that hermes (config schema incl. `mcp_s
 `approvals`, toolsets, MCP `${VAR}` interpolation, aux routing, skills, child-process symbols).
 Then update the channel's entry in `config/hermes-agent.pins.json`.
 
+On every pin bump, re-verify that `_try_openrouter` still returns early when
+`free_only` is set and the model is not `:free` / `stealth/` (v0.22.6:
+`agent/auxiliary_client.py`). If that skip hatch is gone, local-only must not
+rely on it alone.
+
 `vision`, `voice_chat`, `moa_reference` and `moa_aggregator` are also pinned to the local node, and
 Mixture of Agents is disabled with a local-only `moa.presets.default` (upstream's built-in preset
 uses openai-codex and openrouter). A node without vision or voice fails those tasks locally instead
-of upstream's `auto` falling through to a cloud provider. Cloud LLM credentials are removed from
+of upstream's `auto` falling through to a cloud provider. The same local-only render also sets
+`auxiliary.free_only: true` and `auxiliary.openrouter_model: disabled` so hermes-agent's
+OpenRouter aux auto-chain is skipped (upstream stock default is a hosted
+OpenRouter SKU; runtime default a `:free` Nemotron; Gemini is on the Nous lane).
+`providers` is written `{}` and `custom_providers` is written `[]`.
+`fallback_providers: []` is the v0.22.6 disable switch;
+`fallback_model` and `smart_model_routing` stay omitted so they stay disabled. Cloud LLM credentials are removed from
 the hermes child environment: every env name the installed hermes-agent's provider registry declares
 (`hermes_cli/auth.py` rows and `plugins/model-providers/*` `env_vars`, parsed from its source, never
 imported), plus a static superset (`*_API_KEY`, `*_API_TOKEN`, `ANTHROPIC_TOKEN`,

@@ -14,7 +14,7 @@
 # Runtime comes from Termux's own `llama-cpp` package (pkg verifies package
 # signatures/hashes), so no unverified binary is downloaded here.
 # Flags: --dry-run  --uninstall [--purge]  --name NAME  --sshd (install+start openssh)
-# familia-start: loopback by default; FAMILIA_BIND=<non-loopback> requires FAMILIA_API_KEY_FILE (mode 0600, Termux $HOME, not /sdcard).
+# familia-start: a key (FAMILIA_API_KEY_FILE or ~/.config/familia/api.key, 0600/0400, Termux $HOME, not /sdcard) is required on every bind, loopback included.
 #        --yes (accept the license review; summary still printed)  --accept-unknown
 #        --no-runtime  --force-host  --no-wakelock
 #        --branch BRANCH  select the familia branch (default: checkout branch, else main)

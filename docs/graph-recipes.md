@@ -33,6 +33,10 @@ and preview what `familia start` would do with
   created 0600 on first start and never rotated; unreadable -> the router refuses to start. On 9931 that is the
   file familia clients already read (`familia_auth.api_key()`), so they keep working. The caller key is never
   forwarded to nodes; tool nodes get their own key.
+- Node servers follow the same rule (DESIGN.md Security, CFG-GRAPH-NODES-112): `validate_graph.py --args`
+  always includes `--api-key-file`, tools or not. Auth is not a graph.yaml field. Localhost without a
+  key is only for the named exceptions in DESIGN.md; a recipe or example graph must not assume an open
+  listener. New graphs (including a protograph recipe when that skill lands, #399) start from this rule.
 - Down node: graph_router answers 503 within the 3 s connect bound (`FAMILIA_ROUTER_CONNECT_S`; a refused
   port measured 0.001 s on :9931). graph-proxy (`router: false`) retries ECONNREFUSED for 180 s before a 502
   (measured 181.4 s, green-roomz b2a8eac; fixed in its graph-proxy, not settable from the manifest).
@@ -73,6 +77,7 @@ name only with the node it targets. A chat + reasoning pair is just two routes (
 | router | `/label text` picks directly; else the router node must answer one exact label | unknown label without `default` -> 502; specialist down -> 503 |
 | remote | any non-loopback url; requires `remote: true` | config error without it |
 | tools | `Authorization: Bearer <node key>`: `key_file`, else the node port's instance key | 503 if no key; nothing is sent |
+| remote + key | the bearer key travels over plain `http://` (L14, #304); startup prints a WARNING per such node | warning only; tunnel it (SSH) or keep the node loopback |
 
 Always: no/wrong caller key -> 401; unknown route -> 404 listing routes; chat vs embeddings
 mismatch -> 400; a graph alias to a planned or slash-only node -> 409 naming the node. Replies carry

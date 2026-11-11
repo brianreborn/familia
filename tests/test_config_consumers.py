@@ -237,15 +237,35 @@ def test_nexus_route_only_from_validated_config():
 
 
 @pytest.mark.parametrize("bind,ok", [
-    ("127.0.0.1", True), ("127.1.2.3", True), ("localhost", True), ("LOCALHOST", True),
-    ("LocalHost", True), ("::1", True), ("[::1]", True), ("::ffff:127.0.0.1", True),
-    ("0.0.0.0", False), ("", False), (None, False), ("10.0.0.1", False), ("::", False),
-    ("127.evil.example", False), ("localhost.example", False), ("[::1", False),
-    ("::ffff:10.0.0.1", False),
+    ("127.0.0.1", True), ("127.0.0.2", True), ("127.1.2.3", True), ("127.255.255.255", True),
+    ("localhost", True), ("LOCALHOST", True), ("LocalHost", True),
+    ("::1", True), ("[::1]", True), ("::ffff:127.0.0.1", True), ("[::ffff:127.0.0.1]", True),
+    ("::ffff:127.0.0.2", True),
+    ("0.0.0.0", False), ("::", False), ("[::]", False), ("", False), (None, False),
+    ("10.0.0.1", False), ("8.8.8.8", False), ("::2", False),
+    ("::ffff:0.0.0.0", False), ("::ffff:10.0.0.1", False),
+    ("127.evil.example", False), ("localhost.example", False), ("lan.example", False),
+    ("[::1", False),
 ])
 def test_loopback_bind_forms(bind, ok):
     import validate_graph as vg
     assert vg._loopback(bind) is ok
+
+
+def test_loopback_does_not_resolve_dns(monkeypatch):
+    """#345: other DNS names are non-loopback; localhost is a literal, never DNS."""
+    import socket
+    import validate_graph as vg
+    def boom(*a, **k):
+        raise AssertionError("loopback must not resolve DNS")
+    monkeypatch.setattr(socket, "getaddrinfo", boom)
+    monkeypatch.setattr(socket, "gethostbyname", boom)
+    if hasattr(socket, "gethostbyname_ex"):
+        monkeypatch.setattr(socket, "gethostbyname_ex", boom)
+    assert vg._loopback("localhost") is True
+    assert vg._loopback("lan.example") is False
+    assert vg._loopback("127.0.0.2") is True
+    assert vg._loopback("0.0.0.0") is False
 
 
 WRITE_TOOLS = ("exec_shell_command", "write_file", "edit_file")
@@ -282,9 +302,10 @@ def test_h4_tool_enabled_server_requires_api_key(tmp_path, monkeypatch):
         a = v.launch_tools_argv(g, "coder-a")
         assert a[0] == "--tools" and a[-2:] == ["--api-key-file", path] and "--api-key" not in a
     g = _g(); g["nodes"]["coder-a"]["server_tools"] = "none"
-    assert v.launch_tools_argv(g, "coder-a") == []  # no tools -> argv unchanged
+    assert v.launch_tools_argv(g, "coder-a") == []  # no tools here; server_args still adds launch_auth_argv
     import inspect
-    assert "launch_tools_argv(graph, name)" in inspect.getsource(v.server_args)  # the one argv owner
+    src = inspect.getsource(v.server_args)
+    assert "launch_tools_argv(graph, name) or launch_auth_argv(graph, name)" in src
     # fail closed when the key file cannot be created
     monkeypatch.setenv("API_KEY_FILE", "/proc/familia-h4-no-such/api-keys")
     import pytest

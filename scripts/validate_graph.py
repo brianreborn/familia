@@ -19,7 +19,7 @@ Exit 0 when valid, 1 with one line per problem otherwise (2 for a usage error).
                  host swap total MiB is below the budget (SSD/VVRAM ops gate; docs/vvram-ssd/LAYER.md).
 Never guesses or inflates. Schema: scripts/graph_types.py, docs/graph-types.md.
 """
-import hashlib, json, os, struct, sys
+import hashlib, json, os, struct, sys, unicodedata
 import yaml
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from graph_types import validate_types, TYPES  # noqa: E402
@@ -300,18 +300,26 @@ def validate(graph, check_files=True, host=None):
 # Vulkan llama.cpp builds allocate ~1.83 GB of Vulkan host buffers in shmem even with -ngl 0
 # (miryam, b11374), which counts against the memcap scope and stalls the server. With no GPU
 # layers, hide the Vulkan devices. An explicit GGML_VK_VISIBLE_DEVICES in env wins.
-def tool_key_file(n, env=None):
-    """Per-instance key file for a tool-enabled node (created 0600 once, never rotated).
-    Fails closed: no readable key -> SystemExit, the node does not start."""
+def tool_key_path(n, env=None):
+    """Path of the per-instance key file for a node. Never a graph.yaml value.
+    The file is not created here; serve.sh / bind_auth_guard.py --ensure creates it
+    once (0600) at launch if needed."""
     import familia_auth
     env = os.environ if env is None else env
-    path = env.get("API_KEY_FILE") or familia_auth.instance_key_file(port=n["port"], env=env)
+    return env.get("API_KEY_FILE") or familia_auth.instance_key_file(port=n["port"], env=env)
+
+
+def tool_key_file(n, env=None):
+    """Per-instance key file (created 0600 once, never rotated).
+    Fails closed: no readable key -> SystemExit, the node does not start."""
+    import familia_auth
+    path = tool_key_path(n, env)
     try:
         k = familia_auth.load_or_create_key_file(path)
     except OSError as e:
-        raise SystemExit(f"graph: ERROR: tool-enabled node on port {n['port']}: cannot create its API key file ({e.__class__.__name__}); not starting")
+        raise SystemExit(f"graph: ERROR: node on port {n['port']}: cannot create its API key file ({e.__class__.__name__}); not starting")
     if not k:
-        raise SystemExit(f"graph: ERROR: tool-enabled node on port {n['port']}: empty API key file; not starting")
+        raise SystemExit(f"graph: ERROR: node on port {n['port']}: empty API key file; not starting")
     return path
 
 def server_env(graph, name, env=None):
@@ -539,6 +547,19 @@ def check_swap_budgets(graph, host=None):
 # <node>`) is tool-capable via routing. guardian/pentest/defender always fail closed (TOOLS-005);
 # a present `server_tools` key is authoritative (TOOLS-006). "none" is [] -> no --tools flag.
 FAIL_CLOSED_TYPES = ("guardian", "pentest", "defender")
+
+
+def normalize_role(role):
+    """Casefold + NFKC so Guardian / GUARDIAN / fullwidth forms match the TYPE names.
+
+    Applied wherever a role is compared to FAIL_CLOSED_TYPES or TOOL_CAPABLE_BY_TYPE
+    (node_type, tool_policy, Hermes, proxy). Non-ASCII lookalikes that are not NFKC
+    equivalent are not remapped — they simply miss the known TYPE tables (fail safe:
+    no TYPE presumption of tool capability).
+    """
+    if not isinstance(role, str) or not role:
+        return role
+    return unicodedata.normalize("NFKC", role).casefold()
 # TYPE presumption when neither node nor model declares `tool_capable`.
 TOOL_CAPABLE_BY_TYPE = {"coder": True, "chat": True, "general": True, "reasoning": True,
                         "embed": False, "decision": False, "vision": False, "diffusion": False}
@@ -553,14 +574,16 @@ TOOL_POLICY_BY_TYPE.update({t: [] for t in FAIL_CLOSED_TYPES})
 def node_type(graph, name):
     n = graph["nodes"][name]
     if n.get("role"):
-        return n["role"]
+        return normalize_role(n["role"])
     m = (graph.get("models") or {}).get(n.get("model")) or {}
-    return m.get("role")
+    return normalize_role(m.get("role"))
 
 
 def _loopback(bind):
-    """True only for a loopback bind: localhost (any case), 127/8, ::1, [::1],
-    ::ffff:127.x. Anything unparseable is NOT loopback (fail-safe)."""
+    """True only for a loopback bind: localhost (any case, no DNS), 127.0.0.0/8
+    (e.g. 127.0.0.2), ::1, [::1], and IPv4-mapped ::ffff:127.x / [::ffff:127.x].
+    ::, 0.0.0.0, other DNS names, and anything unparseable are NOT loopback
+    (fail-safe). Uses ipaddress only — never resolves names."""
     import ipaddress
     b = str(bind or "").strip()
     if b.lower() == "localhost":
@@ -641,12 +664,20 @@ def tools_argv(graph, name):
     return []
 
 
+def launch_auth_argv(graph, name, env=None):
+    """Always pass --api-key-file (CFG-CRED-009 / CFG-GRAPH-NODES-112). The key FILE is
+    passed, never the key, so it does not show in argv/ps. Path only: the file is created
+    at launch if missing."""
+    return ["--api-key-file", tool_key_path(graph["nodes"][name], env)]
+
+
 def launch_tools_argv(graph, name):
     """--tools plus, on every tool-enabled server, --api-key-file (H4): llama-server then
     requires the per-instance key on every endpoint, /tools included. The key FILE is passed,
-    never the key, so it does not show in argv/ps."""
+    never the key, so it does not show in argv/ps. No-tools launches still get the key
+    from server_args via launch_auth_argv."""
     ta = tools_argv(graph, name)
-    return ta + ["--api-key-file", tool_key_file(graph["nodes"][name])] if ta else []
+    return ta + launch_auth_argv(graph, name) if ta else []
 
 
 def quantized_v_needs_fa(n):
@@ -678,7 +709,8 @@ def server_args(graph, name):
     a += ["--cache-ram", str(n["cache_ram_mib"])]
     # llama-ui Server Tools: /tools is feature_disabled (403) unless --tools is set at launch.
     # DUP-04/CFG-SPEC-TOOLS: explicit per-TYPE decision on every launch (override via server_tools).
-    a += launch_tools_argv(graph, name)
+    # CFG-GRAPH-NODES-112: every llama-server launch also gets --api-key-file, tools or not.
+    a += launch_tools_argv(graph, name) or launch_auth_argv(graph, name)
     # Model parameters (#51): REQUIRED + RECOMMENDED from the model database (cards, configs,
     # GGUF), node.sampling / override_reasons applied. A REQUIRED one that cannot be met is fatal.
     import model_db
@@ -689,6 +721,14 @@ def server_args(graph, name):
     if errs:
         raise SystemExit("\n".join(f"graph: ERROR: nodes.{name}: {x}" for x in errs))
     a = merge_args(a, extra)
+    # serve.sh expands the printed argv unquoted (`$args`), so sh splits on IFS. A path with
+    # space/tab/newline would reach llama-server as a wrong argv; refuse it (routing-paths).
+    # Spaces, tabs, globs and non-ASCII are fine (--args prints shlex-quoted; serve.sh uses "$@").
+    # A newline or NUL cannot round-trip through a command line or a log: refuse those only.
+    bad = [x for x in a if "\n" in x or "\0" in x]
+    if bad:
+        raise SystemExit(f"graph: ERROR: nodes.{name}: argument {bad[0]!r} contains a newline or NUL; "
+                         "rename the file/dir (spaces and non-ASCII are fine)")
     import model_params as mp
     _, build = model_db.runtime_build(graph, n)
     reasons = n.get("override_reasons") or {}
@@ -780,7 +820,8 @@ def main(argv):
         print(f"graph: ERROR: node {o['args']!r} is on host {graph['nodes'][o['args']]['host']!r}, not {o['host']!r}", file=sys.stderr)
         return 1
     if o["args"]:
-        print(" ".join(server_args(graph, o["args"]))); return 0
+        import shlex   # POSIX-sh quoted; plain args print unchanged; serve.sh evals it into "$@"
+        print(shlex.join(server_args(graph, o["args"]))); return 0
     if o["explain"]:
         print("\n".join(explain(graph, o["explain"]))); return 0
     try:  # model registry evidence (docs/model-registry.md): warn only, never fail

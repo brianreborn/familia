@@ -1,7 +1,7 @@
 # HVVRAM architecture — staged design sketch
 
-**Status:** Stages 0–1 shippable — Stage 1 soft domains implemented in `gpu-legacy/nvso` (ABI 2).  
-**Not claimed / does not work yet:** hardware HVVRAM, custom SSD firmware, G84 independent SO domains, or zero-copy GPU↔SSD DMA.
+**Status:** Stage 0 is the software path (LAYER). Stage 1 soft-domain code is in `gpu-legacy/nvso` (ABI 2). Userspace CI runs `nvsoctl -n` and client exit checks. Live `kldload` and a host round-trip are still pending.  
+**Still unimplemented:** hardware HVVRAM, custom SSD firmware, G84 independent SO domains, and zero-copy GPU↔SSD DMA. Soft bookkeeping does not establish those.
 
 ## One picture
 
@@ -15,7 +15,8 @@
 ┌────────────────────────────▼────────────────────────────────────┐
 │ Stage 1 — Soft HVVRAM domains (nvso(4) softc)                   │
 │  Domain table + VA/NVM map records + queue geom + DMA desc log  │
-│  /dev/nvso0 ioctls succeed in soft mode; no peer DMA wire.      │
+│  Soft handlers return 0 in the sources. Live /dev/nvso0         │
+│  is unverified. No peer DMA wire.                               │
 └────────────────────────────┬────────────────────────────────────┘
                              │ needs open FW
 ┌────────────────────────────▼────────────────────────────────────┐
@@ -73,7 +74,7 @@ Docs: [G84-BRIDGE.md](./G84-BRIDGE.md), [FIRMWARE-PLAN.md](./FIRMWARE-PLAN.md), 
 | Stage | Done when |
 |-------|-----------|
 | 0 | angel-coder loads Nanbeige via mmap; swap+spill measured (BENCH) |
-| 1 | `kldload nvso`; `nvsoctl` create→map→gate (+ soft export/post) returns 0 soft — **code landed ABI 2**; angel kmod compile is the remaining host gate |
+| 1 | Live `kldload` and `nvsoctl` create→map→gate (+ soft export/post) return 0. **Code is ABI 2.** FreeBSD 15.1 `nvso.ko` build is the `c3d9834` note. The remaining host gate is the live load and round-trip, which this repo does not record. |
 | 2 | Lab FW exposes ≥1 SQ/CQ pair + LBA window; `nvssd_queue_export` binds real geom |
 | 3 | One posted peer DMA completes without bounce; counters in BENCH |
 | 4 | Emulated or research SO domain isolation metrics published |

@@ -257,6 +257,7 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/activate_guardian_weights.sh` | thin wrapper for scripts/activate_guardian_weights.py |
 | `scripts/config_docs.py` | developer tool: generates/checks docs/config (CFG-* ids); not an end-user action |
 | `scripts/familia_auth.py` | library: per-instance API key headers for proxies and probes |
+| `scripts/bind_auth_guard.py` | pre-start auth guard called by scripts/serve.sh and scripts/windows/start.bat; refuses a launch argv that would bind without a valid --api-key-file (DESIGN.md Security) |
 | `scripts/guardian_ready.py` | offline guardian/defender readiness check (#147); developer/CI helper |
 | `scripts/hosts_overlay.py` | library: local host connection overlay (#104) used by graph loaders |
 | `scripts/offline_improve.sh` | thin wrapper for scripts/offline_improve.py |
@@ -265,6 +266,7 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/reconnect_selfheal.sh` | thin wrapper for scripts/reconnect_selfheal.py |
 | `scripts/refuse_soname_skew.py` | pre-start guard called by scripts/serve.sh; fails closed on bin/lib skew |
 | `scripts/sec_assess.py` | operator-authorized security assessment mode (#116); deliberately not one click from the menu |
+| `scripts/swarm/a57_ssh_dispatch.py` | opt-in A57 python/compile smoke over SSH from the miryam swarm runner; not a phone Actions runner; see docs/ci/a57-ssh-dispatch.md |
 | `scripts/swarm/bench.sh` | swarm /run bench entry point (#183); run by swarm workers, not people; see docs/swarm-bench.md |
 | `scripts/swarm/bench_idle.py` | opt-in run-when-idle trigger for scripts/swarm/bench.sh (per host:user, nice 19, CPU only); run by a user timer or crontab; see docs/swarm-bench.md |
 | `scripts/swarm/forge.sh` | swarm forge adapter library; sourced by swarm scripts |

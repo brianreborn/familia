@@ -1,0 +1,23 @@
+# Private inventory for scripts/swarm/a57_ssh_dispatch.py.
+# Copy to ~/.config/familia/a57-ssh-ci.yaml (mode 0600), or set A57_SSH_CI_INVENTORY.
+# Replace every placeholder before use. Never commit the filled file, the
+# known_hosts pin, or the identity file.
+#
+# The dispatcher refuses this example as-is: documentation TEST-NET addresses,
+# placeholder users, loopback, link-local, and public addresses do not open SSH.
+# Direct LAN only. Do not put the galaxy1/galaxy2 SSH aliases here; those jump
+# through angel. This dispatcher forces ProxyJump=none and ignores ~/.ssh/config.
+schema: 1
+devices:
+  galaxy1:
+    addr: 192.0.2.21
+    port: 8022
+    user: REPLACE_ME
+    known_hosts: ~/.config/familia/a57-known_hosts
+    identity_file: ~/.ssh/id_ed25519
+  galaxy2:
+    addr: 192.0.2.22
+    port: 8022
+    user: REPLACE_ME
+    known_hosts: ~/.config/familia/a57-known_hosts
+    identity_file: ~/.ssh/id_ed25519

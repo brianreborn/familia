@@ -36,7 +36,11 @@ class Nexus:
                   "-o", f"StrictHostKeyChecking={s.t['host_key_policy']}", "-o", "ConnectTimeout=10"]
         if os.environ.get("NEXUS_KNOWN_HOSTS"): s.opts += ["-o", "UserKnownHostsFile=" + os.environ["NEXUS_KNOWN_HOSTS"]]
         s.dest = f"{s.hub['user']}@{s.hub['addr']}"
-    def r(s, path): return path.replace("~", "$HOME", 1) if path.startswith("~") else shlex.quote(path)
+    def r(s, path):
+        """Remote shell path: keep $HOME expandable for a leading ~, quote the rest (#346)."""
+        if path.startswith("~"):
+            return '"$HOME"' + shlex.quote(path[1:])
+        return shlex.quote(path)
     def ssh(s, cmd, inp=None):
         p = subprocess.run(["ssh", *s.opts, s.dest, cmd], input=inp, capture_output=True, text=True)
         if p.returncode: raise SystemExit(f"nexus: ssh {s.dest} failed ({p.returncode}): {p.stderr.strip()}")
@@ -74,7 +78,7 @@ class Nexus:
         got = s.ssh(f"sha256sum {s.r(d)}/{shlex.quote(name)}").split()[0]
         if got != h: raise SystemExit(f"nexus: hub sha256 {got} != local {h}")
         meta = json.dumps(dict(sha256=h, name=name, kind=kind, size=os.path.getsize(f), from_=s.me, ts=int(time.time())))
-        s.ssh(f"cat > {s.r(d)}/meta.json", meta)
+        s.ssh(f"umask 077; cat > {s.r(d)}/meta.json && chmod 600 {s.r(d)}/meta.json", meta)  # umask only covers new files
         print(h)
     def entries(s):
         out = s.ssh(f"for m in {s.r(s.root)}/artifacts/*/meta.json; do [ -f \"$m\" ] && cat \"$m\" && echo; done; true")
