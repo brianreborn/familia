@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local tests for swarm-pull 0.2.3-live intake, stamp, and untrusted fence.
+"""Local tests for swarm-pull 0.2.5-live intake, stamp, and untrusted fence.
 
 Follows familia docs/swarm-worker-requirements.md sections
 "Vetted issues, then explicit admin approval" and
@@ -31,6 +31,7 @@ def load_mod(home):
     os.environ["SWARM_MODE"] = "dry-run"
     os.environ["SWARM_OWNER"] = "brianreborn"
     os.environ["SWARM_APPROVAL_LABELS"] = "swarm-approved"
+    os.environ["SWARM_AMBIGUOUS_WAIT_SEC"] = "0"
     for k in ("SWARM_RUNNER_LOGINS", "SWARM_PIN_ISSUE", "SWARM_MAX_API_CALLS",
               "SWARM_API_WINDOW_SEC"):
         os.environ.pop(k, None)
@@ -79,7 +80,7 @@ class SwarmPull543(unittest.TestCase):
         line = self.sp.stamp_line()
         self.assertIn("host=testhost", line)
         self.assertIn("role=swarm-pull", line)
-        self.assertIn("prog=swarm-pull@0.2.3-live", line)
+        self.assertIn("prog=swarm-pull@0.2.5-live", line)
         self.assertIn("mode=dry-run", line)
         self.assertFalse(self.sp.note_has_identifying_fields(line))
         self.assertNotIn("user=", line)
@@ -923,6 +924,914 @@ class SwarmPull545Review(unittest.TestCase):
         tail = src[src.index('if __name__ == "__main__":'):]
         self.assertIn("main(sys.argv)", tail)
         self.assertNotIn("def _main", tail)
+
+
+
+class SwarmPull545Followups(SwarmPull545Review):
+    """Follow-ups from the #545 approvals at 45a2389: Race N5, R9-R12 and
+    Boundary L1-L3. Inherits setUp/helpers; parent tests are not rerun."""
+
+    def setUp(self):
+        super().setUp()
+        os.environ["SWARM_RUNNER_LOGINS"] = "swarm-a,swarm-b"
+
+    def _claim(self, minutes_left, gen=3):
+        until = self.sp.datetime.now(self.sp.timezone.utc) + self.sp.timedelta(minutes=minutes_left)
+        return {"ok": True, "gen": gen, "until": self.sp.iso_z(until), "comment_id": 1}
+
+    # ---- Race N5 ------------------------------------------------------
+    def test_n5_keep_lease_only_when_low(self):
+        self._live()
+        with mock.patch.object(self.sp, "heartbeat_issue", return_value="2099-01-01T00:00:00Z") as hb:
+            self.assertFalse(self.sp.keep_lease("brianreborn/familia", 9, self._claim(120)))
+            hb.assert_not_called()
+            c = self._claim(10)
+            self.assertTrue(self.sp.keep_lease("brianreborn/familia", 9, c))
+            hb.assert_called_once()
+            self.assertEqual(c["until"], "2099-01-01T00:00:00Z")
+
+    def test_n5_keep_lease_noop_in_dry_run_and_without_claim(self):
+        with mock.patch.object(self.sp, "heartbeat_issue") as hb:
+            self.assertFalse(self.sp.keep_lease("brianreborn/familia", 9, self._claim(1)))
+            self._live()
+            self.assertFalse(self.sp.keep_lease("brianreborn/familia", 9, {}))
+        hb.assert_not_called()
+
+    def _loop_once(self, **patches):
+        """Run one cmd_loop iteration with a held, low lease."""
+        self._live()
+        self.sp.save_state({"repo": "brianreborn/familia", "number": 9, "runner": "box",
+                            "claim": self._claim(10)})
+        disarmed = self.sp.home_dir() / "disarmed"
+        approved = self.sp.ApprovalResult(True, reason="approved", body="b", title="t")
+        base = {
+            "flush_outbox": mock.DEFAULT,
+            "get_issue": (None, {"number": 9, "labels": []}),
+            "issue_admin_approved": True,
+            "confirm_claim_still_first": True,
+            "load_gate": "",
+            "heartbeat_issue": "2099-01-01T00:00:00Z",
+        }
+        base.update(patches)
+        ctx = []
+        for k, v in base.items():
+            if callable(v) and not isinstance(v, mock.Mock) and v is not mock.DEFAULT:
+                ctx.append(mock.patch.object(self.sp, k, side_effect=v))
+            elif v is mock.DEFAULT:
+                ctx.append(mock.patch.object(self.sp, k))
+            else:
+                ctx.append(mock.patch.object(self.sp, k, return_value=v))
+        ctx.append(mock.patch.object(self.sp.time, "sleep", side_effect=lambda s: disarmed.write_text("x")))
+        mocks = {}
+        for c in ctx:
+            m = c.start()
+            self.addCleanup(c.stop)
+        mocks = {k: getattr(self.sp, k) for k in base}
+        self.sp.cmd_loop()
+        return mocks
+
+    def test_n5_heartbeat_on_load_gate_path(self):
+        m = self._loop_once(load_gate="load1 9 >= 6", job=mock.DEFAULT)
+        m["heartbeat_issue"].assert_called_once()
+        m["job"].assert_not_called()
+
+    def test_n5_heartbeat_before_job(self):
+        order = []
+        m = self._loop_once(
+            heartbeat_issue=lambda *a, **k: (order.append("hb"), "2099-01-01T00:00:00Z")[1],
+            job=lambda *a, **k: (order.append("job"), {"ok": False})[1])
+        self.assertEqual(order[:2], ["hb", "job"])
+
+    def test_n5_heartbeat_on_budget_sleep_path(self):
+        os.environ["SWARM_MAX_API_CALLS"] = "5"
+        m = self._loop_once(load_gate=lambda: (_ for _ in ()).throw(self.sp.ApiBudgetExhausted("spent")))
+        m["heartbeat_issue"].assert_called_once()
+
+    # ---- Race R9 ------------------------------------------------------
+    def test_r9_stale_claim_label_detected(self):
+        issue = {"labels": [{"name": "claimed:galaxy1"}, {"name": "claimed:box"}, {"name": "swarm-approved"}]}
+        expired = [claim_c(5, "galaxy1", "swarm-b", until="2026-11-10T21:00:00Z")]
+        self.assertEqual(self.sp.stale_claim_labels(issue, [{"runner": "box"}], expired), ["claimed:galaxy1"])
+
+    def _candidates(self, comments, limit=None, approved=True, extra=None):
+        issues = [{"number": 9, "created_at": "2026-11-10T20:00:00Z",
+                   "labels": [{"name": "swarm-approved"}, {"name": "claimed:galaxy1"}],
+                   "assignees": [{"login": "brianreborn"}]}] + (extra or [])
+        dt = self.sp.parse_iso("2026-11-10T23:00:00Z")
+        with mock.patch.object(self.sp, "gh_api_pages", return_value=(dt, issues)), \
+             mock.patch.object(self.sp, "gh_api", return_value=(dt, 200, {"items": []}, "")), \
+             mock.patch.object(self.sp, "open_pr_refs", return_value=set()), \
+             mock.patch.object(self.sp, "repo_owner_login", return_value="brianreborn"), \
+             mock.patch.object(self.sp, "get_comments", return_value=(dt, comments)), \
+             mock.patch.object(self.sp, "issue_admin_approved", return_value=approved) as ap:
+            out = self.sp.candidate_issues("brianreborn/familia", limit=limit)
+        return out, ap
+
+    def test_r9_expired_claimed_label_does_not_wedge(self):
+        expired = claim_c(5, "galaxy1", "swarm-b", until="2026-11-10T21:00:00Z", when="2026-11-10T20:00:00Z")
+        out, _ = self._candidates([expired])
+        self.assertEqual([i["number"] for i in out], [9])
+
+    def test_r9_live_claimed_label_still_blocks(self):
+        live = claim_c(5, "galaxy1", "swarm-b", until="2026-11-10T23:30:00Z", when="2026-11-10T22:00:00Z")
+        out, _ = self._candidates([live])
+        self.assertEqual(out, [])
+
+    def test_r9_release_clears_stale_labels(self):
+        self._live()
+        issue = {"number": 9, "labels": [{"name": "claimed:box"}, {"name": "claimed:galaxy1"}]}
+        deleted = []
+        with mock.patch.object(self.sp, "forge_viewer", return_value={"login": "swarm-a", "id": 7}), \
+             mock.patch.object(self.sp, "get_comments", return_value=(None, [
+                 claim_c(5, "galaxy1", "swarm-b", until="2026-11-10T21:00:00Z")])), \
+             mock.patch.object(self.sp, "get_issue", return_value=(None, issue)), \
+             mock.patch.object(self.sp, "repo_owner_login", return_value="brianreborn"), \
+             mock.patch.object(self.sp, "del_assignee"), \
+             mock.patch.object(self.sp, "edit_comment"), \
+             mock.patch.object(self.sp, "del_label", side_effect=lambda r, n, l: deleted.append(l)):
+            self.sp.release_issue("brianreborn/familia", 9)
+        self.assertIn("claimed:box", deleted)
+        self.assertIn("claimed:galaxy1", deleted)
+
+    # ---- Race R10 -----------------------------------------------------
+    def test_r10_duplicate_own_claim_is_adopted(self):
+        self._live()
+        os.environ["SWARM_RUNNER"] = "box"
+        dt = self.sp.parse_iso("2026-11-10T20:30:00Z")
+        ok = self.sp.ApprovalResult(True, reason="approved", body="b", title="t")
+        first = claim_c(1, "box", "swarm-a", until="2026-11-10T22:00:00Z", when="2026-11-10T20:30:00Z")
+        dup = claim_c(2, "box", "swarm-a", until="2026-11-10T22:00:00Z", when="2026-11-10T20:30:01Z")
+        edits = []
+        with mock.patch.object(self.sp, "ensure_label"), \
+             mock.patch.object(self.sp, "forge_viewer", return_value={"login": "swarm-a", "id": 7}), \
+             mock.patch.object(self.sp, "repo_owner_login", return_value="brianreborn"), \
+             mock.patch.object(self.sp, "get_issue", return_value=(dt, {"number": 9, "labels": []})), \
+             mock.patch.object(self.sp, "approval_status", return_value=ok), \
+             mock.patch.object(self.sp, "get_comments", side_effect=[(dt, []), (dt, [first, dup])]), \
+             mock.patch.object(self.sp, "add_assignee"), mock.patch.object(self.sp, "add_label"), \
+             mock.patch.object(self.sp, "post_comment", return_value=(dt, 201, {"id": 2}, "")), \
+             mock.patch.object(self.sp, "edit_comment", side_effect=lambda r, c, b: edits.append(c)), \
+             mock.patch.object(self.sp, "del_label") as dl, \
+             mock.patch.object(self.sp.time, "sleep"):
+            out = self.sp.claim_issue("brianreborn/familia", 9)
+        self.assertTrue(out.get("ok"))
+        self.assertEqual(out["comment_id"], 1)
+        self.assertEqual(edits, [2])
+        dl.assert_not_called()
+
+    def test_r10_ambiguous_post_waits_before_lookup(self):
+        self._live()
+        os.environ["SWARM_AMBIGUOUS_WAIT_SEC"] = "2"
+        body = "stamp v=1 host=h role=swarm-pull\nhello\n"
+        order = []
+        with mock.patch.object(self.sp, "gh_api", side_effect=self.sp.AmbiguousWrite("reset")), \
+             mock.patch.object(self.sp, "forge_viewer", return_value={"login": "swarm-a", "id": 7}), \
+             mock.patch.object(self.sp, "get_comments",
+                               side_effect=lambda *a, **k: (order.append("lookup"), (None, [{"id": 3, "body": body, "user": {"login": "swarm-a"}}]))[1]), \
+             mock.patch.object(self.sp.time, "sleep", side_effect=lambda s: order.append(("sleep", s))):
+            self.sp.post_comment("brianreborn/familia", 1, body)
+        self.assertEqual(order, [("sleep", 2.0), "lookup"])
+
+    # ---- Race R11 / Boundary L1 ---------------------------------------
+    def test_r11_bot_viewer_is_dry_run(self):
+        os.environ["SWARM_RUNNER_LOGINS"] = "swarm-app[bot]"
+        rec = {"login": "brianreborn", "id": 159288071, "fetched": True}
+        self.assertEqual(self._identity({"login": "swarm-app[bot]", "id": 9, "type": "Bot"}, rec,
+                                        logins="swarm-app[bot]"), "dry-run")
+
+    def test_l1_owner_in_runner_logins_is_dry_run(self):
+        rec = {"login": "brianreborn", "id": 159288071, "fetched": True}
+        self.assertEqual(self._identity({"login": "swarm-a", "id": 7}, rec,
+                                        logins="swarm-a,BrianReborn"), "dry-run")
+
+    def test_l1_owner_comment_is_never_a_claim(self):
+        os.environ["SWARM_RUNNER_LOGINS"] = "swarm-a,brianreborn"
+        self.sp._OWNER_CACHE["brianreborn/familia"] = {"login": "brianreborn", "id": 1, "fetched": True}
+        now = self.sp.parse_iso("2026-11-10T20:30:00Z")
+        live, _ = self.sp.unexpired_claims({}, [claim_c(5, "box", "brianreborn")], now)
+        self.assertEqual(live, [])
+
+    # ---- Race R12 / Boundary L2: outbox --------------------------------
+    def _outbox(self, *bodies):
+        d = self.sp.home_dir() / "outbox"
+        d.mkdir(parents=True, exist_ok=True)
+        paths = []
+        for i, b in enumerate(bodies):
+            p = d / ("2026-11-10T2000%02dZ-comment-1.json" % i)
+            p.write_text(json.dumps({"repo": "brianreborn/familia", "number": 9, "body": b}))
+            paths.append(p)
+        return d, paths
+
+    def test_l2_refused_item_moves_to_dead_and_rest_flushes(self):
+        self._live()
+        os.environ["SWARM_REPOS"] = "brianreborn/familia"
+        d, paths = self._outbox("bad", "good")
+        posted = []
+
+        def fake_post(repo, n, body):
+            if body == "bad":
+                raise self.sp.ForgeError("refusing to post a comment that still has identifying stamp fields")
+            posted.append(body)
+        with mock.patch.object(self.sp, "post_comment", side_effect=fake_post):
+            self.sp.flush_outbox()
+        self.assertEqual(posted, ["good"])
+        self.assertTrue((d / "dead" / paths[0].name).exists())
+        self.assertTrue((d / "sent" / paths[1].name).exists())
+
+    def test_l2_network_error_defers_and_keeps_items(self):
+        self._live()
+        os.environ["SWARM_REPOS"] = "brianreborn/familia"
+        d, paths = self._outbox("a", "b")
+        with mock.patch.object(self.sp, "post_comment",
+                               side_effect=self.sp.AmbiguousWrite("connection reset")) as pc:
+            self.sp.flush_outbox()
+        self.assertEqual(pc.call_count, 1)
+        self.assertTrue(all(p.exists() for p in paths))
+        self.assertEqual(list((d / "dead").glob("*")) if (d / "dead").exists() else [], [])
+
+    def test_l2_retryable_classifier(self):
+        r = self.sp.forge_error_retryable
+        self.assertTrue(r(self.sp.ForgeError("HTTP 502 bad gateway")))
+        self.assertTrue(r(self.sp.ForgeError("HTTP 403 API rate limit exceeded")))
+        self.assertTrue(r(self.sp.ForgeError("gh api timeout")))
+        self.assertFalse(r(self.sp.ForgeError("HTTP 422 Validation Failed")))
+        self.assertFalse(r(self.sp.ForgeError("refusing comment on x/y: not in SWARM_REPOS")))
+
+    def test_r12_outbox_stops_on_budget(self):
+        self._live()
+        os.environ["SWARM_REPOS"] = "brianreborn/familia"
+        d, paths = self._outbox("a", "b")
+        with mock.patch.object(self.sp, "post_comment",
+                               side_effect=self.sp.ApiBudgetExhausted("spent")) as pc:
+            with self.assertRaises(self.sp.ApiBudgetExhausted):
+                self.sp.flush_outbox()
+        self.assertEqual(pc.call_count, 1)
+        self.assertTrue(all(p.exists() for p in paths))
+
+    # ---- Boundary L3: reserve + lazy approval ---------------------------
+    def test_l3_reserve_only_for_lease_calls(self):
+        os.environ["SWARM_MAX_API_CALLS"] = "2"
+        os.environ["SWARM_API_RESERVE"] = "2"
+        self.sp.reset_api_budget(now=10.0)
+        self.sp._api_budget_take(now=10.0)
+        self.sp._api_budget_take(now=10.0)
+        with self.assertRaises(self.sp.ApiBudgetExhausted):
+            self.sp._api_budget_take(now=10.0)
+        with self.sp.essential_api():
+            self.sp._api_budget_take(now=10.0)
+            self.sp._api_budget_take(now=10.0)
+            with self.assertRaises(self.sp.ApiBudgetExhausted):
+                self.sp._api_budget_take(now=10.0)
+        os.environ.pop("SWARM_API_RESERVE", None)
+
+    def test_l3_lease_functions_are_essential(self):
+        seen = []
+        now = self.sp.datetime.now(self.sp.timezone.utc)
+        mine = claim_c(1, "box", "swarm-a", until="2099-01-01T00:00:00Z",
+                       when=self.sp.iso_z(now - self.sp.timedelta(minutes=10)))
+        with mock.patch.object(self.sp, "get_issue",
+                               side_effect=lambda *a, **k: (seen.append(self.sp._ESSENTIAL_DEPTH), (now, {}))[1]), \
+             mock.patch.object(self.sp, "get_comments", return_value=(now, [mine])), \
+             mock.patch.object(self.sp, "forge_viewer", return_value={"login": "swarm-a", "id": 7}), \
+             mock.patch.object(self.sp, "post_comment", return_value=(now, 201, {"id": 9, "created_at": self.sp.iso_z(now)}, "")):
+            self.sp.heartbeat_issue("brianreborn/familia", 9, 1)
+        self.assertEqual(seen, [1])
+        self.assertEqual(self.sp._ESSENTIAL_DEPTH, 0)
+
+    def test_l3_candidates_stop_checking_approval_at_limit(self):
+        extra = [{"number": n, "created_at": "2026-11-10T2%d:00:00Z" % (n % 10), "labels": [{"name": "swarm-approved"}],
+                  "assignees": []} for n in (11, 12, 13, 14)]
+        out, ap = self._candidates([], limit=2, extra=extra)
+        self.assertEqual(len(out), 2)
+        self.assertEqual(ap.call_count, 2)
+
+    def test_r9_human_assignee_still_skips(self):
+        extra = [{"number": 20, "created_at": "2026-11-10T19:00:00Z", "labels": [{"name": "swarm-approved"}],
+                  "assignees": [{"login": "someone"}]}]
+        expired = claim_c(5, "galaxy1", "swarm-b", until="2026-11-10T21:00:00Z", when="2026-11-10T20:00:00Z")
+        out, _ = self._candidates([expired], extra=extra)
+        self.assertNotIn(20, [i["number"] for i in out])
+
+
+class SwarmPull549Review(SwarmPull545Followups):
+    """Race review of #549 at 3e94823 (issuecomment-6789230894): H1, H2,
+    R13-R16 and the unconditional pre-deliver heartbeat."""
+
+    def _hb(self, cid, runner, login, until, when, gen=1):
+        return {"id": cid, "body": "stamp v=1 host=h role=swarm-pull\n-- %s heartbeat gen %s lease-until %s\n" % (runner, gen, until),
+                "created_at": when, "user": {"login": login, "type": "User"}}
+
+    def _a_claim(self):
+        # A: claim gen 1 at 20:00, lease capped at 22:00.
+        return claim_c(1, "box", "swarm-a", until="2026-11-10T22:00:00Z", when="2026-11-10T20:00:00Z")
+
+    def _b_claim(self):
+        # B: claims gen 2 at 22:30 after A expired.
+        c = claim_c(5, "miryam", "swarm-b", until="2026-11-11T00:30:00Z", when="2026-11-10T22:30:00Z")
+        c["body"] = c["body"].replace("gen 1", "gen 2")
+        return c
+
+    # ---- H1 (a): claim reader ------------------------------------------
+    def test_h1_late_heartbeat_does_not_revive_expired_claim(self):
+        late = self._hb(9, "box", "swarm-a", "2026-11-11T00:40:00Z", "2026-11-10T22:40:00Z")
+        now = self.sp.parse_iso("2026-11-10T22:45:00Z")
+        live, _ = self.sp.unexpired_claims({}, [self._a_claim(), self._b_claim(), late], now)
+        self.assertEqual([(e["runner"], e["id"]) for e in live], [("miryam", 5)])
+
+    def test_h1_timely_heartbeat_chain_extends(self):
+        hb1 = self._hb(6, "box", "swarm-a", "2026-11-10T23:50:00Z", "2026-11-10T21:50:00Z")
+        hb2 = self._hb(7, "box", "swarm-a", "2026-11-11T01:30:00Z", "2026-11-10T23:30:00Z")
+        now = self.sp.parse_iso("2026-11-11T00:00:00Z")
+        live, _ = self.sp.unexpired_claims({}, [self._a_claim(), hb2, hb1], now)
+        self.assertEqual(live[0]["id"], 1)
+        self.assertEqual(live[0]["until"], self.sp.parse_iso("2026-11-11T01:30:00Z"))
+
+    def test_h1_heartbeat_after_gap_stays_dead(self):
+        # hb1 extends to 23:50; hb2 posted at 23:55 (after expiry) is ignored.
+        hb1 = self._hb(6, "box", "swarm-a", "2026-11-10T23:50:00Z", "2026-11-10T21:50:00Z")
+        hb2 = self._hb(7, "box", "swarm-a", "2026-11-11T01:55:00Z", "2026-11-10T23:55:00Z")
+        now = self.sp.parse_iso("2026-11-11T00:00:00Z")
+        live, _ = self.sp.unexpired_claims({}, [self._a_claim(), hb1, hb2], now)
+        self.assertEqual(live, [])
+
+    # ---- H1 (b): heartbeat re-reads ------------------------------------
+    def _forge(self, comments, now):
+        return [mock.patch.object(self.sp, "get_issue", return_value=(now, {"number": 9, "labels": []})),
+                mock.patch.object(self.sp, "get_comments", return_value=(now, comments)),
+                mock.patch.object(self.sp, "forge_viewer", return_value={"login": "swarm-a", "id": 7})]
+
+    def test_h1_heartbeat_refuses_when_lease_lost(self):
+        self._live()
+        os.environ["SWARM_RUNNER"] = "box"
+        now = self.sp.parse_iso("2026-11-10T22:45:00Z")
+        ps = self._forge([self._a_claim(), self._b_claim()], now)
+        for p in ps:
+            p.start()
+            self.addCleanup(p.stop)
+        with mock.patch.object(self.sp, "post_comment") as post:
+            with self.assertRaises(self.sp.LeaseLost):
+                self.sp.heartbeat_issue("brianreborn/familia", 9, 1, claim={"comment_id": 1})
+        post.assert_not_called()
+
+    def test_h1_heartbeat_posts_while_holding_first_live_claim(self):
+        self._live()
+        os.environ["SWARM_RUNNER"] = "box"
+        now = self.sp.parse_iso("2026-11-10T21:30:00Z")
+        ps = self._forge([self._a_claim()], now)
+        for p in ps:
+            p.start()
+            self.addCleanup(p.stop)
+        with mock.patch.object(self.sp, "post_comment", return_value=(now, 201, {"id": 9, "created_at": "2026-11-10T21:30:01Z"}, "")) as post:
+            until = self.sp.heartbeat_issue("brianreborn/familia", 9, 1, claim={"comment_id": 1})
+        post.assert_called_once()
+        self.assertEqual(until, "2026-11-10T23:30:00Z")
+
+    def test_h1_interleaving_a_expires_b_claims_a_aborts_without_push(self):
+        """A expires, B claims, A's late heartbeat is ignored and A's job
+        aborts before deliver."""
+        self._live()
+        os.environ["SWARM_RUNNER"] = "box"
+        now = self.sp.parse_iso("2026-11-10T22:45:00Z")
+        late = self._hb(9, "box", "swarm-a", "2026-11-11T00:40:00Z", "2026-11-10T22:40:00Z")
+        ps = self._forge([self._a_claim(), self._b_claim(), late], now)
+        for p in ps:
+            p.start()
+            self.addCleanup(p.stop)
+        gate = self.sp.ApprovalResult(True, reason="approved", body="b", title="t")
+        a_claim = {"ok": True, "gen": 1, "comment_id": 1, "until": "2026-11-10T22:00:00Z"}
+        with mock.patch.object(self.sp, "approval_status", return_value=gate), \
+             mock.patch.object(self.sp, "model_draft", return_value=("d\n", "stub")), \
+             mock.patch.object(self.sp, "confirm_claim_still_first", return_value=True), \
+             mock.patch.object(self.sp, "post_comment") as post, \
+             mock.patch.object(self.sp, "deliver") as dl:
+            with self.assertRaises(self.sp.LeaseLost):
+                self.sp.job("brianreborn/familia", 999, 1, claim=a_claim)
+        dl.assert_not_called()
+        post.assert_not_called()
+        self.assertFalse(a_claim["ok"])
+
+    def test_h1_loop_drops_claim_on_lease_lost(self):
+        def lost(*a, **k):
+            raise self.sp.LeaseLost("lost")
+        released = []
+        m = self._loop_once(load_gate="load1 9 >= 6", heartbeat_issue=lost,
+                            release_issue=lambda *a, **k: released.append(a[1]))
+        st = self.sp.load_state()
+        self.assertIsNone(st.get("number"))
+        self.assertNotIn("claim", st)
+        self.assertEqual(released, [9])
+
+    def test_pre_deliver_heartbeat_is_unconditional(self):
+        self._live()
+        gate = self.sp.ApprovalResult(True, reason="approved", body="b", title="t")
+        claim = {"ok": True, "gen": 1, "comment_id": 1,
+                 "until": self.sp.iso_z(self.sp.server_now() + self.sp.timedelta(hours=1, minutes=50))}
+        calls = []
+        with mock.patch.object(self.sp, "get_issue", return_value=(None, {"number": 999, "state": "open"})), \
+             mock.patch.object(self.sp, "approval_status", return_value=gate), \
+             mock.patch.object(self.sp, "model_draft", return_value=("d\n", "stub")), \
+             mock.patch.object(self.sp, "confirm_claim_still_first", return_value=True), \
+             mock.patch.object(self.sp, "heartbeat_issue",
+                               side_effect=lambda *a, **k: (calls.append("hb"), "2099-01-01T00:00:00Z")[1]), \
+             mock.patch.object(self.sp, "deliver",
+                               side_effect=lambda *a, **k: (calls.append("deliver"), {"new_pr": False})[1]):
+            self.sp.job("brianreborn/familia", 999, 1, claim=claim)
+        self.assertEqual(calls, ["hb", "deliver"])
+
+    # ---- H2 ----------------------------------------------------------------
+    def test_h2_keep_lease_swallows_budget(self):
+        self._live()
+        with mock.patch.object(self.sp, "heartbeat_issue",
+                               side_effect=self.sp.ApiBudgetExhausted("reserve spent")):
+            self.assertFalse(self.sp.keep_lease("brianreborn/familia", 9, self._claim(5)))
+
+    def test_h2_budget_sleep_keeps_loop_alive(self):
+        os.environ["SWARM_MAX_API_CALLS"] = "5"
+        m = self._loop_once(load_gate=lambda: (_ for _ in ()).throw(self.sp.ApiBudgetExhausted("spent")),
+                            heartbeat_issue=lambda *a, **k: (_ for _ in ()).throw(self.sp.ApiBudgetExhausted("reserve")))
+        # cmd_loop returned normally (disarmed), not via an escaping exception.
+        self.assertTrue((self.sp.home_dir() / "disarmed").exists())
+
+    # ---- R13 ---------------------------------------------------------------
+    def _release(self, claim):
+        self._live()
+        with mock.patch.object(self.sp, "forge_viewer", return_value={"login": "swarm-a", "id": 7}), \
+             mock.patch.object(self.sp, "get_comments", return_value=(None, [])), \
+             mock.patch.object(self.sp, "get_issue", return_value=(None, {"number": 9, "labels": []})), \
+             mock.patch.object(self.sp, "repo_owner_login", return_value="brianreborn"), \
+             mock.patch.object(self.sp, "del_label"), \
+             mock.patch.object(self.sp, "del_assignee") as un:
+            self.sp.release_issue("brianreborn/familia", 9, claim=claim)
+        return un
+
+    def test_r13_release_keeps_hand_assignment(self):
+        self._release({"ok": True, "assigned_owner": False}).assert_not_called()
+        self._release(None).assert_not_called()
+
+    def test_r13_release_undoes_own_assignment(self):
+        self._release({"ok": True, "assigned_owner": True}).assert_called_once()
+
+    def test_r13_claim_records_whether_it_assigned(self):
+        out, _ = self._claim_issue_with_assignees([{"login": "brianreborn"}])
+        self.assertFalse(out["assigned_owner"])
+        out, _ = self._claim_issue_with_assignees([])
+        self.assertTrue(out["assigned_owner"])
+
+    def _claim_issue_with_assignees(self, assignees):
+        self._live()
+        os.environ["SWARM_RUNNER"] = "box"
+        dt = self.sp.parse_iso("2026-11-10T20:30:00Z")
+        ok = self.sp.ApprovalResult(True, reason="approved", body="b", title="t")
+        mine = claim_c(2, "box", "swarm-a", until="2026-11-10T22:30:00Z", when="2026-11-10T20:30:00Z")
+        with mock.patch.object(self.sp, "ensure_label"), \
+             mock.patch.object(self.sp, "forge_viewer", return_value={"login": "swarm-a", "id": 7}), \
+             mock.patch.object(self.sp, "repo_owner_login", return_value="brianreborn"), \
+             mock.patch.object(self.sp, "get_issue", return_value=(dt, {"number": 9, "labels": [], "assignees": assignees})), \
+             mock.patch.object(self.sp, "approval_status", return_value=ok), \
+             mock.patch.object(self.sp, "get_comments", side_effect=[(dt, []), (dt, [mine])]), \
+             mock.patch.object(self.sp, "add_assignee") as add, mock.patch.object(self.sp, "add_label"), \
+             mock.patch.object(self.sp, "post_comment", return_value=(dt, 201, {"id": 2}, "")), \
+             mock.patch.object(self.sp.time, "sleep"):
+            return self.sp.claim_issue("brianreborn/familia", 9), add
+
+    # ---- R14 ---------------------------------------------------------------
+    def test_r14_label_without_claim_comment_is_not_stale(self):
+        issue = {"labels": [{"name": "claimed:miryam"}]}
+        self.assertEqual(self.sp.stale_claim_labels(issue, [], []), [])
+        expired = [claim_c(5, "miryam", "swarm-b", until="2026-11-10T21:00:00Z")]
+        self.assertEqual(self.sp.stale_claim_labels(issue, [], expired), ["claimed:miryam"])
+
+    # ---- R15 ---------------------------------------------------------------
+    def test_r15_401_defers_flush_and_keeps_items(self):
+        self._live()
+        os.environ["SWARM_REPOS"] = "brianreborn/familia"
+        self.assertTrue(self.sp.forge_error_retryable(self.sp.ForgeError("HTTP 401 Bad credentials")))
+        d, paths = self._outbox("a", "b")
+        with mock.patch.object(self.sp, "post_comment",
+                               side_effect=self.sp.ForgeError("HTTP 401 Bad credentials")) as pc:
+            self.sp.flush_outbox()
+        self.assertEqual(pc.call_count, 1)
+        self.assertTrue(all(p.exists() for p in paths))
+        self.assertEqual(list((d / "dead").glob("*")) if (d / "dead").exists() else [], [])
+
+    # ---- R16 ---------------------------------------------------------------
+    def test_r16_lease_threshold_uses_server_clock(self):
+        local = self.sp.datetime.now(self.sp.timezone.utc)
+        claim = {"until": self.sp.iso_z(local + self.sp.timedelta(minutes=60))}
+        self.sp._SERVER_SKEW = 0.0
+        self.assertGreater(self.sp.lease_left_min(claim), 55)
+        # Forge clock 50 minutes ahead of the local clock.
+        self.sp._SERVER_SKEW = 50 * 60.0
+        self.assertLess(self.sp.lease_left_min(claim), 15)
+        self.sp._SERVER_SKEW = 0.0
+
+    def test_r16_date_header_sets_skew(self):
+        raw = "HTTP/2.0 200 OK\r\nDate: Wed, 11 Nov 2099 06:00:00 GMT\r\n\r\n{}"
+        self.sp.parse_gh_include(raw, "", 0)
+        self.assertGreater(self.sp._SERVER_SKEW, 3600 * 24 * 365)
+        self.sp._SERVER_SKEW = 0.0
+
+
+class SwarmPull549Boundary(SwarmPull549Review):
+    """Boundary approval of #549 at 3e94823 (issuecomment-6789261003):
+    F1-F4."""
+
+    # ---- F1 ----------------------------------------------------------------
+    def test_f1_claim_cannot_spend_the_release_floor(self):
+        os.environ["SWARM_MAX_API_CALLS"] = "2"
+        os.environ["SWARM_API_RESERVE"] = "10"
+        os.environ["SWARM_API_RELEASE_FLOOR"] = "4"
+        self.sp.reset_api_budget(now=10.0)
+        took = 0
+        with self.sp.essential_api("claim"):
+            with self.assertRaises(self.sp.ApiBudgetExhausted):
+                while True:
+                    self.sp._api_budget_take(now=10.0)
+                    took += 1
+        self.assertEqual(took, 2 + 10 - 4)
+        with self.sp.essential_api("lease"):
+            for _ in range(4):
+                self.sp._api_budget_take(now=10.0)
+            with self.assertRaises(self.sp.ApiBudgetExhausted):
+                self.sp._api_budget_take(now=10.0)
+
+    def test_f1_release_inside_claim_uses_full_reserve(self):
+        os.environ["SWARM_MAX_API_CALLS"] = "1"
+        os.environ["SWARM_API_RESERVE"] = "4"
+        os.environ["SWARM_API_RELEASE_FLOOR"] = "4"
+        self.sp.reset_api_budget(now=10.0)
+        with self.sp.essential_api("claim"):
+            self.sp._api_budget_take(now=10.0)
+            with self.assertRaises(self.sp.ApiBudgetExhausted):
+                self.sp._api_budget_take(now=10.0)
+            with self.sp.essential_api("lease"):
+                self.sp._api_budget_take(now=10.0)
+
+    def test_f1_claim_issue_runs_as_claim_kind(self):
+        seen = []
+        with mock.patch.object(self.sp, "get_issue",
+                               side_effect=lambda *a, **k: (seen.append(self.sp._essential_kind()),
+                                                            (None, {"number": 9, "labels": [{"name": "security"}]}))[1]), \
+             mock.patch.object(self.sp, "ensure_label"), \
+             mock.patch.object(self.sp, "forge_viewer", return_value={"login": "swarm-a", "id": 7}), \
+             mock.patch.object(self.sp, "repo_owner_login", return_value="brianreborn"):
+            self._live()
+            with self.assertRaises(self.sp.ForgeError):
+                self.sp.claim_issue("brianreborn/familia", 9)
+        self.assertEqual(seen, ["claim"])
+
+    # ---- F2 ----------------------------------------------------------------
+    def test_f2_outbox_dirs_are_private(self):
+        import stat as _stat
+        self._live()
+        os.environ["SWARM_REPOS"] = "brianreborn/familia"
+        p = self.sp.outbox_write("comment", {"repo": "x/y", "number": 1, "body": "b"})
+        self.assertEqual(_stat.S_IMODE(os.stat(str(p)).st_mode), 0o600)
+        self.sp.flush_outbox()
+        d = self.sp.home_dir() / "outbox"
+        for sub in (d, d / "sent", d / "dead"):
+            self.assertEqual(_stat.S_IMODE(os.stat(str(sub)).st_mode), 0o700, sub)
+
+    def test_f2_prune_by_age_and_count(self):
+        d = self.sp.private_dir(self.home / "prune")
+        now = 1_000_000_000.0
+        for i in range(6):
+            f = d / ("f%d" % i)
+            f.write_text("x")
+            os.utime(str(f), (now - i * 86400, now - i * 86400))
+        # keep 3 newest, and nothing older than 4 days
+        removed = self.sp.prune_dir(d, keep_days=4, keep_files=3, now=now)
+        self.assertEqual(sorted(x.name for x in d.iterdir()), ["f0", "f1", "f2"])
+        self.assertEqual(removed, 3)
+        os.utime(str(d / "f2"), (now - 10 * 86400, now - 10 * 86400))
+        self.sp.prune_dir(d, keep_days=4, keep_files=3, now=now)
+        self.assertEqual(sorted(x.name for x in d.iterdir()), ["f0", "f1"])
+
+    # ---- F3 ----------------------------------------------------------------
+    def test_f3_owner_self_assignment_is_skipped(self):
+        extra = [{"number": 30, "created_at": "2026-11-10T19:00:00Z",
+                  "labels": [{"name": "swarm-approved"}], "assignees": [{"login": "brianreborn"}]}]
+        dt = self.sp.parse_iso("2026-11-10T23:00:00Z")
+        with mock.patch.object(self.sp, "gh_api_pages", return_value=(dt, extra)), \
+             mock.patch.object(self.sp, "gh_api", return_value=(dt, 200, {"items": []}, "")), \
+             mock.patch.object(self.sp, "open_pr_refs", return_value=set()), \
+             mock.patch.object(self.sp, "repo_owner_login", return_value="brianreborn"), \
+             mock.patch.object(self.sp, "get_comments", return_value=(dt, [])), \
+             mock.patch.object(self.sp, "issue_admin_approved", return_value=True):
+            self.assertEqual(self.sp.candidate_issues("brianreborn/familia"), [])
+
+    def test_f3_owner_assigned_by_expired_runner_claim_is_pickable(self):
+        extra = [{"number": 31, "created_at": "2026-11-10T19:00:00Z",
+                  "labels": [{"name": "swarm-approved"}], "assignees": [{"login": "brianreborn"}]}]
+        dt = self.sp.parse_iso("2026-11-10T23:00:00Z")
+        expired = claim_c(5, "galaxy1", "swarm-b", until="2026-11-10T21:00:00Z", when="2026-11-10T19:30:00Z")
+        with mock.patch.object(self.sp, "gh_api_pages", return_value=(dt, extra)), \
+             mock.patch.object(self.sp, "gh_api", return_value=(dt, 200, {"items": []}, "")), \
+             mock.patch.object(self.sp, "open_pr_refs", return_value=set()), \
+             mock.patch.object(self.sp, "repo_owner_login", return_value="brianreborn"), \
+             mock.patch.object(self.sp, "get_comments", return_value=(dt, [expired])), \
+             mock.patch.object(self.sp, "issue_admin_approved", return_value=True):
+            self.assertEqual([i["number"] for i in self.sp.candidate_issues("brianreborn/familia")], [31])
+
+    # ---- F4 ----------------------------------------------------------------
+    def test_f4_idle_heartbeats_are_capped(self):
+        self._live()
+        os.environ["SWARM_MAX_IDLE_HEARTBEATS"] = "2"
+        c = self._claim(5)
+        with mock.patch.object(self.sp, "heartbeat_issue", return_value="2099-01-01T00:00:00Z"):
+            self.assertTrue(self.sp.keep_lease("brianreborn/familia", 9, c, why="load gate"))
+            c["until"] = self._claim(5)["until"]
+            self.assertTrue(self.sp.keep_lease("brianreborn/familia", 9, c, why="load gate"))
+            c["until"] = self._claim(5)["until"]
+            with self.assertRaises(self.sp.HoldExhausted):
+                self.sp.keep_lease("brianreborn/familia", 9, c, why="load gate")
+            # pre-deliver (progress) is not capped; pre-job now is (G3)
+            self.assertTrue(self.sp.keep_lease("brianreborn/familia", 9, c, why="pre-deliver"))
+
+    def test_f4_hold_deadline(self):
+        c = {"claimed_at": "2026-11-10T10:00:00Z", "idle_heartbeats": 0}
+        self.assertTrue(self.sp.hold_exhausted(c, now=self.sp.parse_iso("2026-11-10T16:30:00Z")))
+        self.assertFalse(self.sp.hold_exhausted(c, now=self.sp.parse_iso("2026-11-10T15:00:00Z")))
+
+    def test_f4_min_left_clamped_below_lease(self):
+        self._live()
+        os.environ["SWARM_LEASE_HOURS"] = "0.5"
+        c = self._claim(25)
+        with mock.patch.object(self.sp, "heartbeat_issue", return_value="2099-01-01T00:00:00Z") as hb:
+            # 45-minute default would always fire on a 30-minute lease.
+            self.assertFalse(self.sp.keep_lease("brianreborn/familia", 9, c, why="pre-job"))
+        hb.assert_not_called()
+        os.environ.pop("SWARM_LEASE_HOURS", None)
+
+    def test_f4_loop_releases_issue_held_without_progress(self):
+        os.environ["SWARM_MAX_IDLE_HEARTBEATS"] = "0"
+        released = []
+        self._loop_once(load_gate="load1 9 >= 6",
+                        release_issue=lambda *a, **k: released.append((a[1], a[2])))
+        self.assertEqual(released, [(9, "held without progress")])
+        st = self.sp.load_state()
+        self.assertIsNone(st.get("number"))
+
+
+class SwarmPull549Final(SwarmPull549Boundary):
+    """Race approval at e9ae928 (6789555031: P1, P2, R16/N9, F4, N8, F2
+    logs) and Boundary approval at e9ae928 (6789560160: G1-G5)."""
+
+    def _job_live(self, claim, **patches):
+        self._live()
+        gate = self.sp.ApprovalResult(True, reason="approved", body="b", title="t")
+        base = [mock.patch.object(self.sp, "get_issue", return_value=(None, {"number": 999, "state": "open"})),
+                mock.patch.object(self.sp, "approval_status", return_value=gate),
+                mock.patch.object(self.sp, "model_draft", return_value=("d\n", "stub")),
+                mock.patch.object(self.sp, "confirm_claim_still_first", return_value=True)]
+        for k, v in patches.items():
+            base.append(mock.patch.object(self.sp, k, **v))
+        for p in base:
+            p.start()
+            self.addCleanup(p.stop)
+        return self.sp.job("brianreborn/familia", 999, 1, claim=claim)
+
+    # ---- P1 ----------------------------------------------------------------
+    def test_p1_failed_pre_deliver_heartbeat_aborts_deliver(self):
+        claim = {"ok": True, "gen": 1, "comment_id": 1,
+                 "until": self.sp.iso_z(self.sp.server_now() + self.sp.timedelta(minutes=3))}
+        dl = mock.Mock()
+        with self.assertRaises(self.sp.ForgeError) as cm:
+            self._job_live(claim, heartbeat_issue={"side_effect": self.sp.ForgeError("HTTP 502")},
+                           deliver={"new": dl})
+        self.assertIn("not pushing", str(cm.exception))
+        dl.assert_not_called()
+
+    def test_p1_budget_on_pre_deliver_heartbeat_aborts_deliver(self):
+        claim = {"ok": True, "gen": 1, "comment_id": 1,
+                 "until": self.sp.iso_z(self.sp.server_now() + self.sp.timedelta(minutes=3))}
+        dl = mock.Mock()
+        with self.assertRaises(self.sp.ForgeError):
+            self._job_live(claim, heartbeat_issue={"side_effect": self.sp.ApiBudgetExhausted("spent")},
+                           deliver={"new": dl})
+        dl.assert_not_called()
+
+    # ---- P2 ----------------------------------------------------------------
+    def _hb_post(self, created_at):
+        self._live()
+        os.environ["SWARM_RUNNER"] = "box"
+        now = self.sp.parse_iso("2026-11-10T21:59:58Z")
+        ps = self._forge([self._a_claim()], now)  # A's lease ends 22:00:00
+        for p in ps:
+            p.start()
+            self.addCleanup(p.stop)
+        obj = {"id": 9}
+        if created_at:
+            obj["created_at"] = created_at
+        with mock.patch.object(self.sp, "post_comment", return_value=(now, 201, obj, "")):
+            return self.sp.heartbeat_issue("brianreborn/familia", 9, 1, claim={"comment_id": 1})
+
+    def test_p2_heartbeat_landing_after_expiry_is_lease_lost(self):
+        with self.assertRaises(self.sp.LeaseLost):
+            self._hb_post("2026-11-10T22:00:00Z")
+        with self.assertRaises(self.sp.LeaseLost):
+            self._hb_post("2026-11-10T22:00:03Z")
+
+    def test_p2_heartbeat_without_created_at_is_lease_lost(self):
+        with self.assertRaises(self.sp.LeaseLost):
+            self._hb_post(None)
+
+    def test_p2_heartbeat_in_time_extends_from_created(self):
+        until = self._hb_post("2026-11-10T21:59:59Z")
+        self.assertEqual(until, "2026-11-10T23:59:58Z")
+
+    def test_p2_keep_lease_does_not_extend_on_late_post(self):
+        self._live()
+        claim = {"ok": True, "gen": 1, "comment_id": 1, "until": "2026-11-10T22:00:00Z"}
+        with mock.patch.object(self.sp, "heartbeat_issue", side_effect=self.sp.LeaseLost("late")):
+            with self.assertRaises(self.sp.LeaseLost):
+                self.sp.keep_lease("brianreborn/familia", 9, claim, always=True)
+        self.assertEqual(claim["until"], "2026-11-10T22:00:00Z")
+        self.assertFalse(claim["ok"])
+
+    # ---- R16 / N9 ------------------------------------------------------------
+    def test_r16_missing_date_marks_clock_unknown_and_uses_server_now(self):
+        self.sp._SERVER_SKEW = 3600.0
+        dt, _, _, _ = self.sp.parse_gh_include("HTTP/2.0 200 OK\r\n\r\n{}", "", 0)
+        self.assertIs(self.sp._FORGE_DATE_OK, False)
+        delta = (dt - self.sp.datetime.now(self.sp.timezone.utc)).total_seconds()
+        self.assertGreater(delta, 3500)
+        self.sp.parse_gh_include("HTTP/2.0 200 OK\r\nDate: Wed, 11 Nov 2026 07:00:00 GMT\r\n\r\n{}", "", 0)
+        self.assertIs(self.sp._FORGE_DATE_OK, True)
+        self.sp._SERVER_SKEW = 0.0
+        self.sp._FORGE_DATE_OK = None
+
+    def test_r16_lease_decisions_refused_without_forge_clock(self):
+        self._live()
+        os.environ["SWARM_RUNNER"] = "box"
+        self.sp._FORGE_DATE_OK = False
+        try:
+            now = self.sp.parse_iso("2026-11-10T21:30:00Z")
+            ps = self._forge([self._a_claim()], now)
+            for p in ps:
+                p.start()
+                self.addCleanup(p.stop)
+            with mock.patch.object(self.sp, "post_comment") as post:
+                with self.assertRaises(self.sp.ForgeClockUnknown):
+                    self.sp.heartbeat_issue("brianreborn/familia", 9, 1, claim={"comment_id": 1})
+                with self.assertRaises(self.sp.ForgeClockUnknown):
+                    self.sp.confirm_claim_still_first("brianreborn/familia", 9, {"gen": 1}, wait_s=0)
+                ok = self.sp.ApprovalResult(True, reason="approved", body="b", title="t")
+                with mock.patch.object(self.sp, "ensure_label"), \
+                     mock.patch.object(self.sp, "approval_status", return_value=ok), \
+                     mock.patch.object(self.sp, "repo_owner_login", return_value="brianreborn"), \
+                     mock.patch.object(self.sp.time, "sleep"):
+                    with self.assertRaises(self.sp.ForgeClockUnknown):
+                        self.sp.claim_issue("brianreborn/familia", 9)
+            post.assert_not_called()
+            self.assertTrue(issubclass(self.sp.ForgeClockUnknown, self.sp.ForgeError))
+        finally:
+            self.sp._FORGE_DATE_OK = None
+
+    # ---- F4 adopted claim ----------------------------------------------------
+    def test_f4_adopted_claim_gets_claim_time(self):
+        out, post = self._claim_with([claim_c(5, "box", "swarm-a", until="2026-11-10T21:00:00Z",
+                                              when="2026-11-10T20:00:00Z")], "box")
+        self.assertTrue(out.get("already"))
+        self.assertEqual(out["claimed_at"], "2026-11-10T20:00:00Z")
+        self.assertTrue(self.sp.hold_exhausted(out, now=self.sp.parse_iso("2026-11-11T02:30:00Z")))
+
+    # ---- N8 ------------------------------------------------------------------
+    def test_n8_lease_checked_between_push_and_pr_create(self):
+        claim = {"ok": True, "gen": 1, "comment_id": 1,
+                 "until": self.sp.iso_z(self.sp.server_now() + self.sp.timedelta(minutes=90))}
+        seen = []
+
+        def fake_deliver(repo, number, issue, doc, gate_check=None):
+            gate_check()
+            seen.append("pr")
+            return {"new_pr": False}
+        with self.assertRaises(self.sp.LeaseLost):
+            self._job_live(claim, heartbeat_issue={"return_value": "2099-01-01T00:00:00Z"},
+                           recheck_gate={"return_value": None},
+                           require_lease={"side_effect": self.sp.LeaseLost("lost")},
+                           deliver={"side_effect": fake_deliver})
+        self.assertEqual(seen, [])
+
+    def test_n8_require_lease_rereads(self):
+        self._live()
+        os.environ["SWARM_RUNNER"] = "box"
+        now = self.sp.parse_iso("2026-11-10T22:45:00Z")
+        ps = self._forge([self._a_claim(), self._b_claim()], now)
+        for p in ps:
+            p.start()
+            self.addCleanup(p.stop)
+        with self.assertRaises(self.sp.LeaseLost):
+            self.sp.require_lease("brianreborn/familia", 9, {"gen": 1, "comment_id": 1})
+
+    # ---- F2 logs -------------------------------------------------------------
+    def test_f2_logs_dir_is_private(self):
+        import stat as _stat
+        self.sp.main(["swarm-pull", "help"])
+        self.assertEqual(_stat.S_IMODE(os.stat(str(self.sp.home_dir() / "logs")).st_mode), 0o700)
+
+    # ---- G1 ------------------------------------------------------------------
+    def test_g1_private_dir_refuses_symlink(self):
+        target = self.home / "shared"
+        target.mkdir(mode=0o755)
+        link = self.home / "linkdir"
+        os.symlink(str(target), str(link))
+        with self.assertRaises(self.sp.ForgeError):
+            self.sp.private_dir(link)
+        import stat as _stat
+        self.assertEqual(_stat.S_IMODE(os.stat(str(target)).st_mode), 0o755)
+
+    def test_g1_prune_never_follows_symlinks(self):
+        target = self.home / "elsewhere"
+        target.mkdir()
+        for i in range(3):
+            f = target / ("k%d" % i)
+            f.write_text("x")
+            os.utime(str(f), (1, 1))
+        link = self.home / "sentlink"
+        os.symlink(str(target), str(link))
+        self.assertEqual(self.sp.prune_dir(link, keep_days=1, keep_files=1), 0)
+        d = self.sp.private_dir(self.home / "real")
+        os.symlink(str(target / "k0"), str(d / "ln"))
+        self.sp.prune_dir(d, keep_days=1, keep_files=1)
+        self.assertEqual(len(list(target.iterdir())), 3)
+
+    def test_g1_outbox_write_is_exclusive(self):
+        with mock.patch.object(self.sp, "iso_z", return_value="2026-11-10T20:00:00Z"):
+            a = self.sp.outbox_write("comment", {"n": 1})
+            b = self.sp.outbox_write("comment", {"n": 2})
+        self.assertNotEqual(a, b)
+        self.assertIn('"n": 1', a.read_text())
+
+    # ---- G2 ------------------------------------------------------------------
+    def test_g2_limits_clamped(self):
+        d = self.sp.private_dir(self.home / "clamp")
+        now = time_now = 2_000_000_000.0
+        f = d / "new"
+        f.write_text("x")
+        os.utime(str(f), (now - 60, now - 60))
+        self.sp.prune_dir(d, keep_days=0, keep_files=0, now=now)
+        self.assertTrue(f.exists())
+        os.environ["SWARM_API_RELEASE_FLOOR"] = "0"
+        self.assertEqual(self.sp.api_release_floor(), 1)
+
+    # ---- G3 ------------------------------------------------------------------
+    def test_g3_pre_job_heartbeats_count_toward_cap(self):
+        self._live()
+        os.environ["SWARM_MAX_IDLE_HEARTBEATS"] = "1"
+        c = self._claim(5)
+        with mock.patch.object(self.sp, "heartbeat_issue", return_value="2099-01-01T00:00:00Z"):
+            self.assertTrue(self.sp.keep_lease("brianreborn/familia", 9, c, why="pre-job"))
+            c["until"] = self._claim(5)["until"]
+            with self.assertRaises(self.sp.HoldExhausted):
+                self.sp.keep_lease("brianreborn/familia", 9, c, why="pre-job")
+
+    # ---- G4 ------------------------------------------------------------------
+    def test_g4_budget_in_lost_lease_release_keeps_loop_alive(self):
+        def lost(*a, **k):
+            raise self.sp.LeaseLost("lost")
+
+        def broke(*a, **k):
+            raise self.sp.ApiBudgetExhausted("spent")
+        self._loop_once(load_gate="load1 9 >= 6", heartbeat_issue=lost, release_issue=broke)
+        st = self.sp.load_state()
+        self.assertIsNone(st.get("number"))
+        self.assertTrue((self.sp.home_dir() / "disarmed").exists())
+
+    # ---- G5 ------------------------------------------------------------------
+    def test_g5_no_unassign_while_newer_claim_is_live(self):
+        self._live()
+        os.environ["SWARM_RUNNER"] = "box"
+        now = self.sp.server_now()
+        newer = claim_c(5, "miryam", "swarm-b",
+                        until=self.sp.iso_z(now + self.sp.timedelta(hours=1)),
+                        when=self.sp.iso_z(now - self.sp.timedelta(minutes=5)))
+        with mock.patch.object(self.sp, "forge_viewer", return_value={"login": "swarm-a", "id": 7}), \
+             mock.patch.object(self.sp, "get_comments", return_value=(now, [newer])), \
+             mock.patch.object(self.sp, "get_issue", return_value=(now, {"number": 9, "labels": []})), \
+             mock.patch.object(self.sp, "repo_owner_login", return_value="brianreborn"), \
+             mock.patch.object(self.sp, "del_label"), \
+             mock.patch.object(self.sp, "del_assignee") as un:
+            self.sp.release_issue("brianreborn/familia", 9, "lease lost", claim={"assigned_owner": True})
+        un.assert_not_called()
+
+
+# Do not rerun the inherited review tests under the follow-up class.
+for _name in list(vars(SwarmPull545Review)):
+    if _name.startswith("test_") and _name not in vars(SwarmPull545Followups):
+        setattr(SwarmPull545Followups, _name, None)
+for _name in list(vars(SwarmPull545Review)) + list(vars(SwarmPull545Followups)):
+    if _name.startswith("test_") and _name not in vars(SwarmPull549Review):
+        setattr(SwarmPull549Review, _name, None)
+for _name in (list(vars(SwarmPull545Review)) + list(vars(SwarmPull545Followups))
+              + list(vars(SwarmPull549Review))):
+    if _name.startswith("test_") and _name not in vars(SwarmPull549Boundary):
+        setattr(SwarmPull549Boundary, _name, None)
+for _name in (list(vars(SwarmPull545Review)) + list(vars(SwarmPull545Followups))
+              + list(vars(SwarmPull549Review)) + list(vars(SwarmPull549Boundary))):
+    if _name.startswith("test_") and _name not in vars(SwarmPull549Final):
+        setattr(SwarmPull549Final, _name, None)
+del _name
 
 
 if __name__ == "__main__":
