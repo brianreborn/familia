@@ -426,6 +426,30 @@ def test_credential_url_value_matrix():
         "deploy:hunter2@ci-host/app",
         "alice@localhost",
         "postgres://user@db.example/app",
+        # Bounded decode: 4 and 5 %25 layers still have an encoded @ after the
+        # 3-round cap and fail closed (drop), rather than being kept.
+        "https://s3cret-token%25252540evil.example/path",
+        "https://s3cret-token%2525252540evil.example/path",
+        # Prefixed / quoted / BOM / whitespace / mailto password / harmless-scheme userinfo
+        "jdbc:mysql://u:p@h",
+        "jdbc:mysql://user:pass@host:3306/app",
+        "'https://u:p@h'",
+        '"https://u:p@h"',
+        "\ufeffhttps://u:p@h",
+        " https://u:p@h",
+        "mailto:u:p@h",
+        "mailto:alice:s3cret@example.com",
+        "tag:pw@db.example",
+        "tel:secret@example.com",
+        "urn:user:pass@example.com",
+        # Token-shaped usernames are not conventional git/ssh logins
+        # (long >32, or a known prefix such as ghp_/gho_/xoxb-).
+        "ssh://gho_abcdefghijklmnopqrstuvwxyz0123456789@github.com/org/repo.git",
+        "gho_abcdefghijklmnopqrstuvwxyz0123456789@github.com:org/repo.git",
+        "ghp_shorttoken@ci-host/app",
+        "xoxb-1234567890@ci-host:org/repo.git",
+        # npm/pip pkg@1.2.3 matches bare user@host and drops (fail closed; on record)
+        "pkg@1.2.3",
     ]
     keep = [
         "alice@example.com",
@@ -442,11 +466,60 @@ def test_credential_url_value_matrix():
         "git+ssh://git@github.com/org/repo.git",
         "deploy@ci-host/app",
         "org-12345@github.com:org/repo.git",
+        # Plain host, no userinfo; conventional login at host:port (scp-style tradeoff)
+        "https://example.com",
+        "https://hooks.example/x/path",
+        "jdbc:mysql://localhost:3306/app",
+        "user@localhost:22",
+        "alice@localhost:22",
+        "tel:+15551212",
+        "urn:uuid:123e4567-e89b-12d3-a456-426614174000",
     ]
     for v in drop:
         assert hh._credential_url_value(v), v
     for v in keep:
         assert not hh._credential_url_value(v), v
+
+
+def test_credential_url_prefixed_quoted_bom_mailto_token_and_decode_cap():
+    """Boundary/Race #363 review-fix: prefix, quotes, BOM, mailto password, tokens, cap."""
+    drop = [
+        "jdbc:mysql://u:p@h",
+        "'https://u:p@h'",
+        '"https://user:pass@evil.example/x"',
+        "\ufeffhttps://user:pass@evil.example/x",
+        "  https://user:pass@evil.example/x  ",
+        "mailto:u:p@h",
+        "tag:pw@db.example",
+        "https://s3cret-token%25252540evil.example/path",
+        "https://s3cret-token%2525252540evil.example/path",
+        "ssh://gho_abcdefghijklmnopqrstuvwxyz0123456789@github.com/org/repo.git",
+        "gho_abcdefghijklmnopqrstuvwxyz0123456789@ci-host:org/repo.git",
+        "ghp_shorttoken@ci-host/app",
+        "pkg@1.2.3",
+    ]
+    keep = [
+        "https://example.com",
+        "git@github.com:org/repo.git",
+        "ssh://git@github.com/org/repo.git",
+        "git+ssh://git@github.com/org/repo.git",
+        "org-12345@github.com:org/repo.git",
+        "mailto:alice@example.com",
+        "user@localhost:22",
+        "jdbc:mysql://localhost:3306/app",
+    ]
+    for v in drop:
+        assert hh._credential_url_value(v), v
+    for v in keep:
+        assert not hh._credential_url_value(v), v
+    # Four-layer encoding is dropped as leftover depth, not because it decoded.
+    four = "https://s3cret-token%25252540evil.example/path"
+    revealed = hh._reveal_userinfo_delimiters(four)
+    assert "%40" in revealed or "%25" in revealed
+    assert hh._encoded_delimiters_remain(revealed)
+    # BOM + quotes + jdbc still drop once normalized; plain https://host does not.
+    assert hh._credential_url_value("\ufeff'jdbc:mysql://u:p@h'")
+    assert not hh._credential_url_value("\ufeff'https://example.com'")
 
 
 def test_percent_decode_uses_an_explicit_urllib_parse_import():
