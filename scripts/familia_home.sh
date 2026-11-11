@@ -130,6 +130,8 @@ case "$CHOICE" in
     # open_ui.sh. Interrupt 130/143 aborts. No TTY: do not auto-open.
     if [ -t 0 ] && [ -t 1 ]; then
       _st=0
+      FAMILIA_COCKPIT_HOOK=1
+      export FAMILIA_COCKPIT_HOOK
       sh "$ROOT/scripts/android-cockpit-switches.sh" || _st=$?
       if [ "$_st" -eq 4 ]; then
         exec sh "$ROOT/scripts/open_ui.sh"

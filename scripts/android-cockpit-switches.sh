@@ -7,7 +7,9 @@
 # A prefix copy may be written for a kept prefix but is never read back.
 # The menu exits ONLY on an explicit exit pick (q/quit/exit). Errors,
 # finished actions, invalid input and timeouts return to the menu.
-# "Continue to web cockpit" (c/22) is the only path that opens open_ui.sh.
+# "Continue to web cockpit" (c/23) opens open_ui.sh from the familia_home
+# hook (exit 4). From the legacy catalog it says so, or opens open_ui.sh
+# when not in --pipe.
 #
 # Installer discovery (PR #321 paths; degrade if absent):
 #   thin client: packaging/android/familia-android-smoke.sh
@@ -24,7 +26,12 @@
 #   sh scripts/android-cockpit-switches.sh --help
 #
 # Secure defaults: thin client, gate ON, --yes refused, dry-run ON,
-# never auto-start, HTTPS off. Any network listener still needs an API key.
+# never auto-start. HTTPS is the default for a remote (non-loopback)
+# host. Plain HTTP to a remote host is allowed only when the named
+# dev switch "dev: allow plain HTTP" is on (off by default, marked *
+# when on), or when FAMILIA_DEV_ALLOW_HTTP=1. Loopback stays HTTP-OK.
+# http:// CBL URLs are always rejected. Any network listener still
+# needs an API key.
 # Exit 0 = q (back to familia_home). Exit 4 = continue to open_ui.sh.
 set -eu
 umask 077
@@ -37,7 +44,12 @@ PIPE=0
 MODE=menu
 TIMEOUT=${FAMILIA_MENU_TIMEOUT:-60}
 HAVE_READ_T=0
+HAVE_ENV_U=0
 WIDTH=68
+USE_BOX=1
+COMPACT=0
+PAGE=1
+PAGES=4
 NARROW=0
 
 # Secure defaults (cockpit). The installer CLI still treats --dry-run as opt-in;
@@ -50,6 +62,7 @@ DRY_RUN=1
 KEEP_PREFIX=0
 START_FAMILIA=0
 HTTPS=0
+DEV_ALLOW_HTTP=0
 HOST=""
 PORT=""
 TIER=""
@@ -72,8 +85,10 @@ XDG_FILE="$CONFIG_DIR/android-cockpit.env"
 SMOKE_PREFIX=${FAMILIA_SMOKE_PREFIX:-${TMPDIR:-$HOME/.cache}/familia-smoke}
 PREFIX_FILE="$SMOKE_PREFIX/android-cockpit.env"
 
-say() { printf '%s\n' "$*"; }
-err() { printf 'android-cockpit: %s\n' "$*" >&2; }
+# Wrap at COLUMNS so no emitted line is wider than the terminal
+# (including the "exit. settings saved to ..." path).
+say() { say_row "$*"; }
+err() { say_row "android-cockpit: $*" >&2; }
 
 default_key_path() { printf '%s' "$CONFIG_DIR/api.key"; }
 
@@ -141,8 +156,55 @@ probe_read_t() {
 # (feat/android-packaging @ 283a526), plus FAMILIA_ALLOW_YES. A leftover
 # export of any of these is treated as typed ACCEPT by install.sh / hermes.
 license_scrub_vars() {
-  printf '%s
-'     INSTALL_ACK     FAMILIA_ACCEPT_LICENSES     FAMILIA_ACCEPT_UNKNOWN_LICENSES     FAMILIA_LICENSE_ACCEPT_FILE     FAMILIA_ALLOW_YES
+  # Gate- and override-type names this screen controls, or that weaken
+  # a gate if inherited. assemble_and then sets only what the switches
+  # selected. Also any currently exported FAMILIA_ALLOW_* or
+  # FAMILIA_*ACCEPT* / INSTALL_ACK (see extra_scrub_from_env).
+  #   INSTALL_ACK
+  #   FAMILIA_ACCEPT_LICENSES
+  #   FAMILIA_ACCEPT_UNKNOWN_LICENSES
+  #   FAMILIA_LICENSE_ACCEPT_FILE
+  #   FAMILIA_ALLOW_YES
+  #   FAMILIA_HERMES_CTX_GATE
+  #   FAMILIA_BIND
+  #   FAMILIA_CTX
+  #   FAMILIA_PHONE_MODEL_TIER
+  #   FAMILIA_RUNTIME
+  #   FAMILIA_API_KEY_FILE
+  #   FAMILIA_CBL_ANDROID_TAG
+  #   FAMILIA_CBL_ANDROID_SHA256
+  #   FAMILIA_CBL_ANDROID_ASSET
+  #   FAMILIA_CBL_DOWNLOAD_URL
+  #   FAMILIA_CBL_URL
+  printf '%s\n' \
+    INSTALL_ACK \
+    FAMILIA_ACCEPT_LICENSES \
+    FAMILIA_ACCEPT_UNKNOWN_LICENSES \
+    FAMILIA_LICENSE_ACCEPT_FILE \
+    FAMILIA_ALLOW_YES \
+    FAMILIA_HERMES_CTX_GATE \
+    FAMILIA_BIND \
+    FAMILIA_CTX \
+    FAMILIA_PHONE_MODEL_TIER \
+    FAMILIA_RUNTIME \
+    FAMILIA_API_KEY_FILE \
+    FAMILIA_CBL_ANDROID_TAG \
+    FAMILIA_CBL_ANDROID_SHA256 \
+    FAMILIA_CBL_ANDROID_ASSET \
+    FAMILIA_CBL_DOWNLOAD_URL \
+    FAMILIA_CBL_URL
+}
+
+extra_scrub_from_env() {
+  env 2>/dev/null | awk -F= '
+    /^FAMILIA_ALLOW_[A-Za-z0-9_]+=/ { print $1 }
+    /^FAMILIA_[A-Za-z0-9_]*ACCEPT[A-Za-z0-9_]*=/ { print $1 }
+    /^INSTALL_ACK=/ { print $1 }
+  '
+}
+
+all_scrub_vars() {
+  { license_scrub_vars; extra_scrub_from_env; } | awk 'NF && !seen[$0]++'
 }
 
 probe_env_u() {
@@ -166,7 +228,11 @@ run_assembled() {
   fi
   shift
   (
-    unset INSTALL_ACK FAMILIA_ACCEPT_LICENSES FAMILIA_ACCEPT_UNKNOWN_LICENSES FAMILIA_LICENSE_ACCEPT_FILE FAMILIA_ALLOW_YES 2>/dev/null || true
+    # Same documented list as license_scrub_vars, plus discovered ALLOW_*/ACCEPT_*.
+    _ul=$(all_scrub_vars)
+    for _u in $_ul; do
+      unset "$_u" 2>/dev/null || true
+    done
     while [ $# -gt 0 ]; do
       case "$1" in
         *=*)
@@ -303,9 +369,9 @@ need_installer() {
 
 na_label() {
   if [ -n "$SCRIPT_BASE" ]; then
-    printf '%s' "[n/a: $SCRIPT_BASE has no such flag]"
+    printf '%s' "n/a: $SCRIPT_BASE has no such flag"
   else
-    printf '%s' "[n/a: installer not on this commit]"
+    printf '%s' "n/a: installer not on this commit"
   fi
 }
 
@@ -458,22 +524,58 @@ term_cols() {
     fi
   fi
   case "$_cols" in ''|*[!0-9]*) _cols=80 ;; esac
+  [ "$_cols" -lt 8 ] && _cols=8
   printf '%s' "$_cols"
+}
+
+term_rows() {
+  _rows=""
+  if [ -n "${LINES:-}" ]; then
+    _rows=$LINES
+  else
+    _rows=$(tput lines 2>/dev/null) || _rows=""
+    if [ -z "$_rows" ]; then
+      _rows=$(stty size 2>/dev/null | cut -d' ' -f1) || _rows=""
+    fi
+  fi
+  case "$_rows" in ''|*[!0-9]*) _rows=24 ;; esac
+  [ "$_rows" -lt 8 ] && _rows=8
+  printf '%s' "$_rows"
+}
+
+# Paged/compact when the terminal is under 30 rows, or when a full
+# paint would not fit LINES. Full paint is about 42 lines.
+need_pages() {
+  _rows=$(term_rows)
+  if [ "$_rows" -lt 30 ]; then
+    return 0
+  fi
+  [ "$_rows" -lt 42 ]
 }
 
 init_box() {
   _cols=$(term_cols)
+  # WIDTH tracks the inner bar; the drawn box is two spaces + corners
+  # (COLUMNS-4). No 40-column floor: a 40-column terminal gets WIDTH=36.
   _w=$((_cols - 4))
   [ "$_w" -gt 68 ] && _w=68
-  [ "$_w" -lt 40 ] && _w=40
+  [ "$_w" -lt 8 ] && _w=8
   WIDTH=$_w
   NARROW=0
   [ "$_cols" -lt 68 ] && NARROW=1
-  if [ "$NARROW" != 1 ] && utf8_tty; then
+  # No box borders under 48 columns, or when the compact/paged
+  # layout is in use, so the frame cannot wrap or steal rows.
+  USE_BOX=1
+  COMPACT=0
+  if [ "$_cols" -lt 48 ] || need_pages; then
+    USE_BOX=0
+    COMPACT=1
+  fi
+  if [ "$USE_BOX" = 1 ] && [ "$NARROW" != 1 ] && utf8_tty; then
     TL=$(printf '\342\225\224'); TR=$(printf '\342\225\227')
     BL=$(printf '\342\225\232'); BR=$(printf '\342\225\235')
     H=$(printf '\342\225\220');  V=$(printf '\342\225\221')
-  elif [ "$NARROW" != 1 ] && cp437_tty; then
+  elif [ "$USE_BOX" = 1 ] && [ "$NARROW" != 1 ] && cp437_tty; then
     TL=$(printf '\311'); TR=$(printf '\273')
     BL=$(printf '\310'); BR=$(printf '\274')
     H=$(printf '\315');  V=$(printf '\272')
@@ -494,6 +596,9 @@ init_color() {
 }
 
 box_bar() {
+  if [ "$USE_BOX" != 1 ]; then
+    return 0
+  fi
   _l=$1; _r=$2
   printf '  %s' "$_l"
   _i=0; while [ "$_i" -lt "$WIDTH" ]; do printf '%s' "$H"; _i=$((_i + 1)); done
@@ -501,17 +606,50 @@ box_bar() {
 }
 box_text() {
   _t=$1
+  if [ "$USE_BOX" != 1 ]; then
+    say_row "$_t"
+    return 0
+  fi
   _pad=$((WIDTH - 2))
   [ "$_pad" -gt 0 ] || _pad=1
   printf '  %s %s%-*.*s%s %s\n' "$V" "$C1" "$_pad" "$_pad" "$_t" "$CReset" "$V"
 }
 
+# Wrap at COLUMNS instead of hard-cutting, so Host, Port and status stay
+# visible on a 40-column terminal. No emitted line is longer than COLUMNS.
 say_row() {
   _t=$1
   _lim=$(term_cols)
-  [ "$_lim" -gt 2 ] || _lim=40
-  _lim=$((_lim - 1))
-  printf '%s\n' "$_t" | awk -v n="$_lim" '{ if (length($0) > n) print substr($0, 1, n); else print }'
+  [ "$_lim" -ge 8 ] || _lim=8
+  printf '%s\n' "$_t" | awk -v n="$_lim" '
+    {
+      s = $0
+      first = 1
+      while (length(s) > 0) {
+        w = n
+        prefix = ""
+        if (first == 0) {
+          prefix = "    "
+          w = n - length(prefix)
+          if (w < 8) { prefix = ""; w = n }
+        }
+        if (length(s) <= w) { print prefix s; break }
+        chunk = substr(s, 1, w)
+        sp = 0
+        for (i = length(chunk); i > int(w / 2); i--) {
+          if (substr(chunk, i, 1) == " ") { sp = i; break }
+        }
+        if (sp > 1) {
+          print prefix substr(s, 1, sp - 1)
+          s = substr(s, sp + 1)
+        } else {
+          print prefix chunk
+          s = substr(s, w + 1)
+        }
+        first = 0
+      }
+    }
+  '
 }
 
 heading() { say_row "  -- $1 --"; }
@@ -551,12 +689,15 @@ valid_host() {
   case "$1" in
     ""|-*) return 1 ;;
   esac
+  no_ctl_chars "$1" || return 1
   printf '%s' "$1" | grep -Eq '^([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*|\[[0-9A-Fa-f:.]+\])$'
 }
 
 # Only real loopback IP addresses (127.0.0.0/8 and ::1). A hostname
 # such as 127.example.com or localhost is not an IP and needs a key.
+# Newline or CR is rejected so grep -Eq cannot match only the first line.
 is_loopback() {
+  no_ctl_chars "$1" || return 1
   case "$1" in
     \[::1\]|::1) return 0 ;;
   esac
@@ -596,7 +737,7 @@ valid_cbl_asset() {
 
 known_key() {
   case "$1" in
-    THIN_CLIENT|CTX_GATE|FAMILIA_CTX_VAL|ALLOW_YES|DRY_RUN|KEEP_PREFIX|START_FAMILIA|HTTPS|HOST|PORT|TIER|LIC_LLAMA31|LIC_DOLPHIN|LIC_LFM|FETCH_PYYAML|COMMIT|URL_FILE|CBL_TAG|CBL_SHA|CBL_ASSET|CBL_URL|API_KEY_FILE|RUNTIME_KIND) return 0 ;;
+    THIN_CLIENT|CTX_GATE|FAMILIA_CTX_VAL|ALLOW_YES|DRY_RUN|KEEP_PREFIX|START_FAMILIA|HTTPS|DEV_ALLOW_HTTP|HOST|PORT|TIER|LIC_LLAMA31|LIC_DOLPHIN|LIC_LFM|FETCH_PYYAML|COMMIT|URL_FILE|CBL_TAG|CBL_SHA|CBL_ASSET|CBL_URL|API_KEY_FILE|RUNTIME_KIND) return 0 ;;
     *) return 1 ;;
   esac
 }
@@ -604,7 +745,7 @@ known_key() {
 secure_default_for() {
   case "$1" in
     THIN_CLIENT|CTX_GATE|DRY_RUN|LIC_LLAMA31|LIC_DOLPHIN) printf '%s' 1 ;;
-    ALLOW_YES|KEEP_PREFIX|START_FAMILIA|HTTPS|LIC_LFM|FETCH_PYYAML) printf '%s' 0 ;;
+    ALLOW_YES|KEEP_PREFIX|START_FAMILIA|HTTPS|DEV_ALLOW_HTTP|LIC_LFM|FETCH_PYYAML) printf '%s' 0 ;;
     RUNTIME_KIND) printf '%s' cbl ;;
     *) printf '%s' "" ;;
   esac
@@ -620,7 +761,7 @@ apply_key() {
   _k=$1
   _v=$2
   case "$_k" in
-    THIN_CLIENT|CTX_GATE|ALLOW_YES|DRY_RUN|KEEP_PREFIX|START_FAMILIA|HTTPS|LIC_LLAMA31|LIC_DOLPHIN|LIC_LFM|FETCH_PYYAML)
+    THIN_CLIENT|CTX_GATE|ALLOW_YES|DRY_RUN|KEEP_PREFIX|START_FAMILIA|HTTPS|DEV_ALLOW_HTTP|LIC_LLAMA31|LIC_DOLPHIN|LIC_LFM|FETCH_PYYAML)
       if valid_bool "$_v"; then
         case "$_k" in
           THIN_CLIENT) THIN_CLIENT=$_v ;;
@@ -630,6 +771,7 @@ apply_key() {
           KEEP_PREFIX) KEEP_PREFIX=$_v ;;
           START_FAMILIA) START_FAMILIA=$_v ;;
           HTTPS) HTTPS=$_v ;;
+          DEV_ALLOW_HTTP) DEV_ALLOW_HTTP=$_v ;;
           LIC_LLAMA31) LIC_LLAMA31=$_v ;;
           LIC_DOLPHIN) LIC_DOLPHIN=$_v ;;
           LIC_LFM) LIC_LFM=$_v ;;
@@ -646,6 +788,7 @@ apply_key() {
         KEEP_PREFIX) KEEP_PREFIX=0 ;;
         START_FAMILIA) START_FAMILIA=0 ;;
         HTTPS) HTTPS=0 ;;
+        DEV_ALLOW_HTTP) DEV_ALLOW_HTTP=0 ;;
         LIC_LLAMA31) LIC_LLAMA31=1 ;;
         LIC_DOLPHIN) LIC_DOLPHIN=1 ;;
         LIC_LFM) LIC_LFM=0 ;;
@@ -758,6 +901,21 @@ load_file() {
   fi
   _seen=" "
   while IFS= read -r _line || [ -n "$_line" ]; do
+    _raw=$_line
+    _crless=$(printf '%s' "$_raw" | tr -d '\r')
+    _one_cr=$(printf '%s\r' "$_crless")
+    if [ "$_raw" != "$_crless" ] && [ "$_raw" != "$_one_cr" ]; then
+      _peek=$(strip_cr "$_raw")
+      _peek=$(trim "$_peek")
+      _pk=${_peek%%=*}
+      _pk=$(trim "$_pk")
+      case "$_pk" in
+        HOST|CBL_URL|URL_FILE)
+          err "ignoring invalid $_pk in settings (CR or newline in the value); using secure default"
+          continue
+          ;;
+      esac
+    fi
     _line=$(strip_cr "$_line")
     _line=$(trim "$_line")
     case "$_line" in ""|\#*) continue ;; esac
@@ -766,6 +924,14 @@ load_file() {
     _k=$(trim "$_k")
     _v=$(trim "$_v")
     known_key "$_k" || continue
+    case "$_k" in
+      HOST|CBL_URL|URL_FILE)
+        if ! no_ctl_chars "$_v"; then
+          err "ignoring invalid $_k in settings (CR or newline in the value); using secure default"
+          continue
+        fi
+        ;;
+    esac
     case "$_seen" in
       *" $_k "*)
         err "duplicate settings key $_k; keeping the first value"
@@ -822,6 +988,7 @@ save_settings() {
     printf 'KEEP_PREFIX=%s\n' "$KEEP_PREFIX"
     printf 'START_FAMILIA=%s\n' "$START_FAMILIA"
     printf 'HTTPS=%s\n' "$HTTPS"
+    printf 'DEV_ALLOW_HTTP=%s\n' "$DEV_ALLOW_HTTP"
     printf 'HOST=%s\n' "$HOST"
     printf 'PORT=%s\n' "$PORT"
     printf 'TIER=%s\n' "$TIER"
@@ -855,6 +1022,8 @@ load_settings() {
   if [ -e "$XDG_FILE" ]; then
     load_file "$XDG_FILE"
   fi
+  apply_dev_http_env
+  apply_https_policy
 }
 
 licenses_csv() {
@@ -895,7 +1064,7 @@ key_file_to_use() {
 require_key_file() {
   _kf=$(key_file_to_use)
   if [ ! -e "$_kf" ]; then
-    err "start / a non-loopback host requires an API key file (set switch 18 or create $(default_key_path)). Key is not logged."
+    err "start / a non-loopback host requires an API key file (set switch 12 or create $(default_key_path)). Key is not logged."
     return 1
   fi
   if ! safe_secret_file "$_kf"; then
@@ -921,6 +1090,11 @@ cbl_override_ok() {
 assemble_and() {
   _action=$1
   resolve_installer || true
+  apply_https_policy
+  if [ -n "$HOST" ] && ! is_loopback "$HOST" && [ "$HTTPS" != 1 ] && [ "$DEV_ALLOW_HTTP" != 1 ]; then
+    err "plain HTTP to a remote host needs dev: allow plain HTTP (or FAMILIA_DEV_ALLOW_HTTP=1)"
+    return 1
+  fi
   need_installer || return 1
   if flag_ok --commit && [ -z "$COMMIT" ]; then err "set a 40-hex --commit first"; return 1; fi
   if flag_ok --host || flag_ok --port; then
@@ -944,7 +1118,7 @@ assemble_and() {
 
   set -- env
   if [ "$HAVE_ENV_U" = 1 ]; then
-    _scrub=$(license_scrub_vars)
+    _scrub=$(all_scrub_vars)
     for _u in $_scrub; do
       set -- "$@" -u "$_u"
     done
@@ -1025,10 +1199,41 @@ assemble_and() {
   esac
 }
 
+# Brian F2 (2026-11-10 11:09 PM PT): HTTPS is the default for a remote
+# (non-loopback, by IP) host. Plain HTTP to a remote host is allowed
+# only when the named dev switch is on. Loopback stays HTTP-OK.
+https_default() {
+  if [ -n "$HOST" ] && ! is_loopback "$HOST"; then
+    printf '%s' 1
+  else
+    printf '%s' 0
+  fi
+}
+
+apply_dev_http_env() {
+  case "${FAMILIA_DEV_ALLOW_HTTP:-}" in
+    1|yes|YES|true|TRUE|on|ON) DEV_ALLOW_HTTP=1 ;;
+    0|no|NO|false|FALSE|off|OFF) DEV_ALLOW_HTTP=0 ;;
+  esac
+}
+
+# Force HTTPS on for a remote host unless the dev switch is on.
+apply_https_policy() {
+  if [ -n "$HOST" ] && ! is_loopback "$HOST" && [ "$DEV_ALLOW_HTTP" != 1 ]; then
+    HTTPS=1
+  fi
+}
+
 # Same text in the menu, --dump, --show, and run_installer (before confirm).
+# Shown only when the dev switch is on and a remote host is on plain HTTP.
+plain_http_warning_text() {
+  printf '%s' "warning: dev: allow plain HTTP is ON*; remote host uses plain HTTP"
+}
+
 warn_plain_http() {
-  if [ -n "$HOST" ] && ! is_loopback "$HOST" && [ "$HTTPS" != 1 ]; then
-    err "warning: HTTPS is OFF for a non-loopback host (plain HTTP)"
+  apply_https_policy
+  if [ -n "$HOST" ] && ! is_loopback "$HOST" && [ "$HTTPS" != 1 ] && [ "$DEV_ALLOW_HTTP" = 1 ]; then
+    err "$(plain_http_warning_text)"
     return 0
   fi
   return 1
@@ -1036,10 +1241,11 @@ warn_plain_http() {
 
 dump_settings() {
   resolve_installer || true
+  apply_https_policy
   say "android-cockpit settings (secure defaults unless changed):"
   say "  mode=$(mode_label)  gate=$(onoff "$CTX_GATE")  ctx=${FAMILIA_CTX_VAL:-unset}"
   say "  allow_yes=$(onoff "$ALLOW_YES")  dry_run=$(onoff "$DRY_RUN")  keep=$(onoff "$KEEP_PREFIX")  start=$(onoff "$START_FAMILIA")"
-  say "  https=$(onoff "$HTTPS")  host=${HOST:-unset}  port=${PORT:-unset}  tier=${TIER:-auto}"
+  say "  https=$(onoff "$HTTPS")  dev_allow_http=$(onoff "$DEV_ALLOW_HTTP")$(star_if "$DEV_ALLOW_HTTP" 0)  host=${HOST:-unset}  port=${PORT:-unset}  tier=${TIER:-auto}"
   say "  licenses=$(licenses_csv)  fetch_pyyaml=$(onoff "$FETCH_PYYAML")  runtime=$RUNTIME_KIND"
   say "  commit=${COMMIT:-unset}  cbl_override=${CBL_TAG:-in-repo pin}  url_file=${URL_FILE:-unset}"
   say "  config=$XDG_FILE"
@@ -1073,96 +1279,279 @@ port_display() {
 }
 
 
-paint() {
-  resolve_installer || true
-  init_box
-  init_color
-  say ""
-  box_bar "$TL" "$TR"
-  box_text "FAMILIA  ANDROID COCKPIT  SWITCHES"
-  box_text "thin client, gate ON, --yes refused, dry-run ON, no auto-start"
-  box_bar "$BL" "$BR"
+banner_state() {
+  _mode=$(mode_label)
+  _start="no auto-start"
+  [ "$START_FAMILIA" = 1 ] && _start="start ON"
+  if [ "${COMPACT:-0}" = 1 ]; then
+    printf '%s gate=%s dry=%s start=%s HTTPS=%s' \
+      "$_mode" "$(onoff "$CTX_GATE")" "$(onoff "$DRY_RUN")" \
+      "$(onoff "$START_FAMILIA")" "$(onoff "$HTTPS")"
+    return 0
+  fi
+  printf '%s, gate %s, --yes refused, dry-run %s, %s, HTTPS %s' \
+    "$_mode" "$(onoff "$CTX_GATE")" "$(onoff "$DRY_RUN")" "$_start" "$(onoff "$HTTPS")"
+}
+
+key_display() {
+  if [ -n "$API_KEY_FILE" ]; then
+    printf '%s' "$API_KEY_FILE"
+  else
+    default_key_path
+  fi
+}
+
+lfm_pin_warning() {
+  if [ "$LIC_LFM" = 1 ]; then
+    if [ "${COMPACT:-0}" = 1 ]; then
+      say_row "  warning: LFM has no pinned license text in packaging/android/licenses; review the LiquidAI LFM3-1.7B LICENSE"
+    else
+      say_row "  warning: LFM has no pinned license text in packaging/android/licenses; review https://huggingface.co/LiquidAI/LFM3-1.7B/blob/main/LICENSE"
+    fi
+  fi
+}
+
+onphone_short_reason() {
+  if ! phone_gate_ok; then
+    printf '%s' "ctx below 64000"
+    return 0
+  fi
+  if ram_block_reason >/dev/null; then
+    printf '%s' "RAM floor"
+    return 0
+  fi
+  return 1
+}
+
+paint_status() {
   if installer_available; then
     _inst="installer=$SCRIPT_BASE"
   else
     _inst="installer=not on this commit"
   fi
-  say_row "  ${C0}status${CReset}  mode=$(mode_label)$(star_if "$THIN_CLIENT" 1)  gate=$(onoff "$CTX_GATE")$(star_if "$CTX_GATE" 1)  dry-run=$(onoff "$DRY_RUN")$(star_if "$DRY_RUN" 1)  start=$(onoff "$START_FAMILIA")$(star_if "$START_FAMILIA" 0)"
-  say_row "  $_inst  listener: key required"
-  if [ -n "$HOST" ] && ! is_loopback "$HOST" && [ "$HTTPS" != 1 ]; then
-    say_row "  warning: HTTPS is OFF for a non-loopback host (plain HTTP)"
+  if [ "${COMPACT:-0}" = 1 ]; then
+    say_row "  $_inst  key required"
+  else
+    say_row "  status  mode=$(mode_label)$(star_if "$THIN_CLIENT" 1)  gate=$(onoff "$CTX_GATE")$(star_if "$CTX_GATE" 1)  dry-run=$(onoff "$DRY_RUN")$(star_if "$DRY_RUN" 1)  start=$(onoff "$START_FAMILIA")$(star_if "$START_FAMILIA" 0)  HTTPS=$(onoff "$HTTPS")$(star_if "$HTTPS" "$(https_default)")"
+    say_row "  $_inst  listener: key required"
   fi
-  if _br=$(onphone_block_reason); then
-    say_row "  on-phone: [n/a: $_br]"
+  if [ -n "$HOST" ] && ! is_loopback "$HOST" && [ "$HTTPS" != 1 ] && [ "$DEV_ALLOW_HTTP" = 1 ]; then
+    say_row "  $(plain_http_warning_text)"
   fi
+  if [ "${COMPACT:-0}" = 1 ]; then
+    if _br=$(onphone_short_reason); then
+      say_row "  on-phone n/a: $_br"
+    fi
+  else
+    if _br=$(onphone_block_reason); then
+      say_row "  on-phone: [n/a: $_br]"
+    fi
+  fi
+  lfm_pin_warning
+}
+
+paint_title() {
   say ""
-  say_row "   1) Mode (thin client / on-phone inference)     [$(mode_label)]$(star_if "$THIN_CLIENT" 1)"
+  if [ "${COMPACT:-0}" = 1 ] || [ "$USE_BOX" != 1 ]; then
+    say_row "FAMILIA ANDROID COCKPIT SWITCHES"
+    say_row "$(banner_state)"
+    return 0
+  fi
+  box_bar "$TL" "$TR"
+  box_text "FAMILIA  ANDROID COCKPIT  SWITCHES"
+  box_text "$(banner_state)"
+  box_bar "$BL" "$BR"
+}
+
+# Sequential items 1-24. n/a reasons are wrapped on the next line.
+paint_safety() {
   heading "Safety"
+  if [ "${COMPACT:-0}" = 1 ]; then
+    say_row "   1) Mode     [$(mode_label)]$(star_if "$THIN_CLIENT" 1)"
+    say_row "   2) Gate     [$(onoff "$CTX_GATE")]$(star_if "$CTX_GATE" 1)"
+    if flag_ok --no-ctx-gate || env_ok FAMILIA_HERMES_CTX_GATE; then
+      :
+    else
+      say_row "      [$(na_label)]"
+    fi
+    say_row "   3) CTX      [${FAMILIA_CTX_VAL:-unset}]"
+    say_row "   4) --yes    [n/a: ACCEPT required]"
+    say_row "   5) Dry-run  [$(onoff "$DRY_RUN")]$(star_if "$DRY_RUN" 1)"
+    say_row "   6) Keep     [$(sw_val --keep "$(onoff "$KEEP_PREFIX")")]$(star_if "$KEEP_PREFIX" 0)"
+    say_row "   7) Start    [$(onoff "$START_FAMILIA")]$(star_if "$START_FAMILIA" 0)"
+    if [ "$SCRIPT_KIND" = hermes ] && [ "$START_FAMILIA" != 1 ]; then
+      say_row "      [n/a: hermes always starts]"
+    elif ! flag_ok --start && ! flag_ok --no-open; then
+      say_row "      [$(na_label)]"
+    fi
+    return 0
+  fi
+  say_row "   1) Mode (thin client / on-phone inference)     [$(mode_label)]$(star_if "$THIN_CLIENT" 1)"
   say_row "   2) Context gate 64000                          [$(onoff "$CTX_GATE")]$(star_if "$CTX_GATE" 1)"
   if flag_ok --no-ctx-gate || env_ok FAMILIA_HERMES_CTX_GATE; then
     :
   else
-    say_row "      $(na_label)"
+    say_row "      [$(na_label)]"
   fi
+  say_row "   3) Context override FAMILIA_CTX                [${FAMILIA_CTX_VAL:-unset}]"
   say_row "   4) Allow --yes"
   say_row "      [n/a: typed ACCEPT is required; this screen never passes --yes]"
   say_row "   5) Dry-run                                     [$(onoff "$DRY_RUN")]$(star_if "$DRY_RUN" 1)"
+  say_row "   6) Keep prefix (leaves the prefix on disk)     [$(sw_val --keep "$(onoff "$KEEP_PREFIX")")]$(star_if "$KEEP_PREFIX" 0)"
   say_row "   7) Start after install                         [$(onoff "$START_FAMILIA")]$(star_if "$START_FAMILIA" 0)"
   if [ "$SCRIPT_KIND" = hermes ] && [ "$START_FAMILIA" != 1 ]; then
     say_row "      [n/a: install-hermes-android.sh always starts familia-start; turn start ON to run it]"
   elif ! flag_ok --start && ! flag_ok --no-open; then
-    say_row "      $(na_label)"
+    say_row "      [$(na_label)]"
   fi
+}
+
+paint_network() {
   heading "Network"
-  say_row "   8) HTTPS                                       [$(sw_val --https "$(onoff "$HTTPS")")]$(star_if "$HTTPS" 0)"
+  if [ "${COMPACT:-0}" = 1 ]; then
+    say_row "   8) HTTPS    [$(sw_val --https "$(onoff "$HTTPS")")]$(star_if "$HTTPS" "$(https_default)")"
+    say_row "   9) Host     [$(host_display)]"
+    say_row "  10) Port     [$(port_display)]"
+    say_row "  11) URL file [${URL_FILE:-unset}]"
+    if ! flag_ok --url-file; then
+      say_row "      [$(na_label)]"
+    fi
+    say_row "  12) API key  [$(key_display)]"
+    say_row "  24) dev: allow plain HTTP [$(onoff "$DEV_ALLOW_HTTP")]$(star_if "$DEV_ALLOW_HTTP" 0)"
+    return 0
+  fi
+  say_row "   8) HTTPS                                       [$(sw_val --https "$(onoff "$HTTPS")")]$(star_if "$HTTPS" "$(https_default)")"
   say_row "   9) Host                                        [$(host_display)]"
   say_row "  10) Port                                        [$(port_display)]"
-  say_row "  21) URL file (--url-file)                        [${URL_FILE:-unset}]"
+  say_row "  11) URL file (--url-file)                        [${URL_FILE:-unset}]"
   if ! flag_ok --url-file; then
-    say_row "      $(na_label)"
+    say_row "      [$(na_label)]"
   fi
-  say_row "  18) API key file (path only, never the key)     [${API_KEY_FILE:-default}]"
+  say_row "  12) API key file (path only, never the key)     [$(key_display)]"
+  say_row "  24) dev: allow plain HTTP                       [$(onoff "$DEV_ALLOW_HTTP")]$(star_if "$DEV_ALLOW_HTTP" 0)"
+}
+
+paint_models() {
   heading "Models"
-  say_row "   3) Context override FAMILIA_CTX                [${FAMILIA_CTX_VAL:-unset}]"
-  say_row "  11) Model tier (auto|tiny|small|medium|large)   [${TIER:-auto}]"
-  say_row "  23) On-phone runtime (cbl|pkg)                  [$RUNTIME_KIND]"
+  if [ "${COMPACT:-0}" = 1 ]; then
+    say_row "  13) Tier     [${TIER:-auto}]"
+    say_row "  14) Runtime  [$RUNTIME_KIND]"
+    if ! flag_ok --runtime && ! env_ok FAMILIA_RUNTIME; then
+      say_row "      [$(na_label)]"
+    fi
+    say_row "  15) Llama    [$(onoff "$LIC_LLAMA31")]"
+    say_row "  16) Dolphin  [$(onoff "$LIC_DOLPHIN")]"
+    say_row "  17) LFM      [$(onoff "$LIC_LFM")]$(star_if "$LIC_LFM" 0)"
+    if ! flag_ok --licenses; then
+      say_row "      [$(na_label)]"
+    fi
+    return 0
+  fi
+  say_row "  13) Model tier (auto|tiny|small|medium|large)   [${TIER:-auto}]"
+  say_row "  14) On-phone runtime (cbl|pkg)                  [$RUNTIME_KIND]"
   if ! flag_ok --runtime && ! env_ok FAMILIA_RUNTIME; then
-    say_row "      $(na_label)"
+    say_row "      [$(na_label)]"
   fi
-  say_row "  12) License set: Llama 3.1                      [$(onoff "$LIC_LLAMA31")]"
-  say_row "  13) License set: Dolphin                        [$(onoff "$LIC_DOLPHIN")]"
-  say_row "  14) License set: LFM                            [$(onoff "$LIC_LFM")]$(star_if "$LIC_LFM" 0)"
+  say_row "  15) License set: Llama 3.1                      [$(onoff "$LIC_LLAMA31")]"
+  say_row "  16) License set: Dolphin                        [$(onoff "$LIC_DOLPHIN")]"
+  say_row "  17) License set: LFM                            [$(onoff "$LIC_LFM")]$(star_if "$LIC_LFM" 0)"
   if ! flag_ok --licenses; then
-    say_row "      $(na_label)"
+    say_row "      [$(na_label)]"
   fi
+}
+
+paint_advanced() {
   heading "Advanced"
-  say_row "   6) Keep prefix (leaves the prefix on disk)     [$(sw_val --keep "$(onoff "$KEEP_PREFIX")")]$(star_if "$KEEP_PREFIX" 0)"
-  say_row "  15) Fetch PyYAML if missing (pip --user)        [$(sw_val --fetch-pyyaml "$(onoff "$FETCH_PYYAML")")]$(star_if "$FETCH_PYYAML" 0)"
-  say_row "  16) CBL pin override (tag + sha256)             [${CBL_TAG:-in-repo pin}]"
-  say_row "  17) Commit (40-hex)                             [${COMMIT:-unset}]"
-  say_row "  19) Show installer command"
-  say_row "  20) Run installer (then return here)"
-  say_row "  22) Continue to web cockpit"
+  if [ "${COMPACT:-0}" = 1 ]; then
+    say_row "  18) PyYAML   [$(sw_val --fetch-pyyaml "$(onoff "$FETCH_PYYAML")")]$(star_if "$FETCH_PYYAML" 0)"
+    say_row "  19) CBL pin  [${CBL_TAG:-in-repo pin}]"
+    say_row "  20) Commit   [${COMMIT:-unset}]"
+    say_row "  21) Show installer command"
+    say_row "  22) Run installer (then return here)"
+    say_row "  23) Continue to web cockpit"
+    say_row "   d) Reset to secure defaults"
+    say_row "   q) Exit (back to familia home)"
+    return 0
+  fi
+  say_row "  18) Fetch PyYAML if missing (pip --user)        [$(sw_val --fetch-pyyaml "$(onoff "$FETCH_PYYAML")")]$(star_if "$FETCH_PYYAML" 0)"
+  say_row "  19) CBL pin override (tag + sha256)             [${CBL_TAG:-in-repo pin}]"
+  say_row "  20) Commit (40-hex)                             [${COMMIT:-unset}]"
+  say_row "  21) Show installer command"
+  say_row "  22) Run installer (then return here)"
+  say_row "  23) Continue to web cockpit"
   say_row "   d) Reset to secure defaults"
   say_row "   q) Exit (back to familia home)"
-  say ""
+}
+
+paint_will_run() {
   _prev=$(assemble_and preview 2>/dev/null) || _prev=""
   if [ -n "$_prev" ]; then
     say_row "  will run: $_prev"
   elif installer_available; then
-    say_row "  will run: (set required fields, then 19/20)"
+    say_row "  will run: (set required fields, then 21/22)"
   else
     say_row "  will run: installer not available on this commit"
   fi
+}
+
+paint_nav() {
+  say_row "  n next  p prev  c continue  d reset  q exit  (page $PAGE/$PAGES)"
+}
+
+paint() {
+  resolve_installer || true
+  apply_https_policy
+  init_box
+  init_color
+  case "$PAGE" in
+    ''|*[!0-9]*) PAGE=1 ;;
+  esac
+  [ "$PAGE" -lt 1 ] && PAGE=1
+  [ "$PAGE" -gt "$PAGES" ] && PAGE=$PAGES
+  paint_title
+  paint_status
+  if need_pages; then
+    case "$PAGE" in
+      1) paint_safety ;;
+      2) paint_network ;;
+      3) paint_models ;;
+      4) paint_advanced; say ""; paint_will_run ;;
+    esac
+    paint_nav
+  else
+    paint_safety
+    paint_network
+    paint_models
+    paint_advanced
+    say ""
+    paint_will_run
+  fi
   say ""
 }
+
 
 toggle() {
   if [ "$1" = 1 ]; then say 0; else say 1; fi
 }
 
+# Epoch seconds, portable to dash and mksh (no $SECONDS).
+now_s() {
+  date +%s 2>/dev/null || printf '%s' 0
+}
+
 # read_line PROMPT VAR ; 0 ok, 1 timeout, 2 EOF
 # HAVE_READ_T is probed once. dash (Debian/Termux sh) has no -t.
+#
+# Real A57 data (galaxy1, 2026-11-10; Brian OK'd the test; via ssh from
+# miryam, read-only). /system/bin/sh is MIRBSD KSH R59 2020/10/31 Android:
+#   read -t 2 on a TTY that times out returns rc=142 after 2s.
+#   read -t 2 </dev/null (EOF) returns rc=1.
+# So on Android mksh, rc 1 means EOF, not a timeout (Platform's premise
+# that a TTY timeout used rc 1 was wrong). Classification:
+#   rc > 128 (142, like bash) is a timeout;
+#   rc 1 is EOF, with the N1 elapsed guard as a safety net (rc 1
+#   counts as a timeout only if elapsed >= the timeout window);
+#   two EOFs stop.
 assign_var() {
   case "$1" in
     choice) choice=$2 ;;
@@ -1190,15 +1579,31 @@ read_line() {
       fi
     fi
   else
+    _t0=$(now_s)
     IFS= read -t "$TIMEOUT" -r _v || _rc=$?
+    _t1=$(now_s)
+    _elapsed=0
+    case "$_t0" in *[!0-9]*) _t0=0 ;; esac
+    case "$_t1" in *[!0-9]*) _t1=0 ;; esac
+    [ "$_t1" -ge "$_t0" ] && _elapsed=$((_t1 - _t0))
     if [ "$_rc" -ne 0 ]; then
       if [ -n "$_v" ]; then
         :
-      elif [ "$_rc" -ge 128 ] || [ "$_rc" -eq 142 ]; then
+      elif [ "$_rc" -gt 128 ] || [ "$_rc" -eq 142 ]; then
+        # galaxy1 mksh and bash: TTY timeout is rc 142 (>128).
         return 1
       elif [ "$_rc" -eq 1 ] && [ -t 0 ]; then
-        # mksh (Android /system/bin/sh) may return 1 on a timed-out read.
-        return 1
+        # galaxy1 mksh: rc 1 is EOF (also what read -t </dev/null
+        # returns). Keep the N1 elapsed guard as a safety net in
+        # case some other ksh uses rc 1 for a TTY timeout too.
+        # An immediate rc 1 (Ctrl-D / hangup) is EOF; two EOFs stop.
+        _need=$TIMEOUT
+        [ "$_need" -gt 1 ] && _need=$((TIMEOUT - 1))
+        [ "$_need" -lt 1 ] && _need=1
+        if [ "$_elapsed" -ge "$_need" ]; then
+          return 1
+        fi
+        return 2
       else
         return 2
       fi
@@ -1309,10 +1714,11 @@ edit_cbl() {
     err "asset name rejected; left empty"
     CBL_ASSET=""
   fi
+  _cbl_url_old=$CBL_URL
   prompt_val "CBL https URL (empty=default github releases)" CBL_URL
   if [ -n "$CBL_URL" ] && ! valid_https_url "$CBL_URL"; then
-    err "CBL URL must be https:// only; left empty"
-    CBL_URL=""
+    err "CBL URL must be https:// only (no http://, no CR/newline); left unchanged"
+    CBL_URL=$_cbl_url_old
   fi
 }
 
@@ -1325,6 +1731,7 @@ reset_defaults() {
   KEEP_PREFIX=0
   START_FAMILIA=0
   HTTPS=0
+  DEV_ALLOW_HTTP=0
   HOST=""
   PORT=""
   TIER=""
@@ -1340,7 +1747,7 @@ reset_defaults() {
   CBL_URL=""
   API_KEY_FILE=""
   RUNTIME_KIND=cbl
-  say "reset to secure defaults (thin client, gate ON, --yes refused, dry-run ON, no auto-start, HTTPS off)."
+  say "reset to secure defaults (thin client, gate ON, --yes refused, dry-run ON, no auto-start, HTTPS on for remote hosts, plain HTTP only with dev: allow plain HTTP)."
 }
 
 do_choice() {
@@ -1364,11 +1771,13 @@ do_choice() {
       ;;
     2) CTX_GATE=$(toggle "$CTX_GATE"); say "gate=$(onoff "$CTX_GATE")" ;;
     3)
+      _old=$FAMILIA_CTX_VAL
       prompt_val "FAMILIA_CTX integer (or 'clear')" FAMILIA_CTX_VAL
-      if [ "$FAMILIA_CTX_VAL" = clear ] || [ "$FAMILIA_CTX_VAL" = unset ]; then FAMILIA_CTX_VAL=""; fi
-      if [ -n "$FAMILIA_CTX_VAL" ] && ! valid_ctx "$FAMILIA_CTX_VAL"; then
-        err "ctx must be an integer; left unset"
+      if [ "$FAMILIA_CTX_VAL" = clear ] || [ "$FAMILIA_CTX_VAL" = unset ]; then
         FAMILIA_CTX_VAL=""
+      elif [ -n "$FAMILIA_CTX_VAL" ] && ! valid_ctx "$FAMILIA_CTX_VAL"; then
+        err "ctx must be an integer; left unchanged"
+        FAMILIA_CTX_VAL=$_old
       fi
       if [ "$THIN_CLIENT" != 1 ]; then
         if _br=$(onphone_block_reason); then
@@ -1396,75 +1805,128 @@ do_choice() {
         say "start=$(onoff "$START_FAMILIA")"
       fi
       ;;
-    8) HTTPS=$(toggle "$HTTPS"); say "https=$(onoff "$HTTPS")" ;;
+    8)
+      if [ "$HTTPS" = 1 ] && [ -n "$HOST" ] && ! is_loopback "$HOST" && [ "$DEV_ALLOW_HTTP" != 1 ]; then
+        err "plain HTTP to a remote host needs 24) dev: allow plain HTTP (or FAMILIA_DEV_ALLOW_HTTP=1); HTTPS left ON"
+      else
+        HTTPS=$(toggle "$HTTPS")
+        say "https=$(onoff "$HTTPS")"
+      fi
+      ;;
     9)
+      _old=$HOST
       prompt_val "host (hostname, IPv4, or [IPv6])" HOST
       if [ -n "$HOST" ] && ! valid_host "$HOST"; then
-        err "host must be a hostname, IPv4 or [IPv6] (no leading '-', no flag injection); left unset"
-        HOST=""
+        err "host must be a hostname, IPv4 or [IPv6] (no leading '-', no flag injection, no CR/newline); left unchanged"
+        HOST=$_old
+      fi
+      apply_https_policy
+      if [ -n "$HOST" ] && ! is_loopback "$HOST" && [ "$HTTPS" = 1 ] && [ "$DEV_ALLOW_HTTP" != 1 ]; then
+        say "HTTPS enabled for remote host (plain HTTP needs 24) dev: allow plain HTTP)"
       fi
       ;;
     10)
+      _old=$PORT
       prompt_val "port (1-65535)" PORT
       if [ -n "$PORT" ] && ! valid_port "$PORT"; then
-        err "port must be 1-65535; left unset"
-        PORT=""
+        err "port must be 1-65535; left unchanged"
+        PORT=$_old
       fi
       ;;
     11)
-      prompt_val "tier (auto|tiny|small|medium|large)" TIER
-      if [ "$TIER" = auto ]; then TIER=""; fi
-      if [ -n "$TIER" ] && ! valid_tier "$TIER"; then
-        err "unknown tier; left auto"
-        TIER=""
-      fi
-      ;;
-    12) LIC_LLAMA31=$(toggle "$LIC_LLAMA31"); say "llama31=$(onoff "$LIC_LLAMA31")" ;;
-    13) LIC_DOLPHIN=$(toggle "$LIC_DOLPHIN"); say "dolphin=$(onoff "$LIC_DOLPHIN")" ;;
-    14) LIC_LFM=$(toggle "$LIC_LFM"); say "lfm=$(onoff "$LIC_LFM")" ;;
-    15) FETCH_PYYAML=$(toggle "$FETCH_PYYAML"); say "fetch-pyyaml=$(onoff "$FETCH_PYYAML")" ;;
-    16) edit_cbl ;;
-    17)
-      prompt_val "40-hex commit" COMMIT
-      if [ -n "$COMMIT" ] && ! valid_commit "$COMMIT"; then
-        err "commit must be a full 40-hex sha; left unset"
-        COMMIT=""
-      fi
-      ;;
-    18)
-      prompt_val "API key file path (not the key itself)" API_KEY_FILE
-      if [ -n "$API_KEY_FILE" ]; then
-        API_KEY_FILE=$(expand_tilde "$API_KEY_FILE")
-        if ! valid_path "$API_KEY_FILE"; then
-          err "API key path must be absolute (or start with ~/); left unset"
-          API_KEY_FILE=""
-        fi
-      fi
-      ;;
-    19) show_command ;;
-    20) run_installer ;;
-    21)
+      _old=$URL_FILE
       prompt_val "absolute path to --url-file (one-use host link)" URL_FILE
       if [ -n "$URL_FILE" ]; then
         URL_FILE=$(expand_tilde "$URL_FILE")
         if ! valid_path "$URL_FILE"; then
-          err "url-file path must be absolute (or start with ~/), no newline; left unset"
-          URL_FILE=""
+          err "url-file path must be absolute (or start with ~/), no CR/newline; left unchanged"
+          URL_FILE=$_old
         fi
       fi
       ;;
-    22|c|C) return 4 ;;
-    23)
+    12)
+      _old=$API_KEY_FILE
+      prompt_val "API key file path (not the key itself)" API_KEY_FILE
+      if [ -n "$API_KEY_FILE" ]; then
+        API_KEY_FILE=$(expand_tilde "$API_KEY_FILE")
+        if ! valid_path "$API_KEY_FILE"; then
+          err "API key path must be absolute (or start with ~/); left unchanged"
+          API_KEY_FILE=$_old
+        fi
+      fi
+      ;;
+    13)
+      _old=$TIER
+      prompt_val "tier (auto|tiny|small|medium|large)" TIER
+      if [ "$TIER" = auto ]; then TIER=""; fi
+      if [ -n "$TIER" ] && ! valid_tier "$TIER"; then
+        err "unknown tier; left unchanged"
+        TIER=$_old
+      fi
+      ;;
+    14)
+      _old=$RUNTIME_KIND
       prompt_val "on-phone runtime (cbl|pkg)" RUNTIME_KIND
       if ! valid_runtime "$RUNTIME_KIND"; then
-        err "runtime must be cbl or pkg; left as cbl"
-        RUNTIME_KIND=cbl
+        err "runtime must be cbl or pkg; left unchanged"
+        RUNTIME_KIND=$_old
       fi
+      ;;
+    15) LIC_LLAMA31=$(toggle "$LIC_LLAMA31"); say "llama31=$(onoff "$LIC_LLAMA31")" ;;
+    16) LIC_DOLPHIN=$(toggle "$LIC_DOLPHIN"); say "dolphin=$(onoff "$LIC_DOLPHIN")" ;;
+    17)
+      LIC_LFM=$(toggle "$LIC_LFM")
+      say "lfm=$(onoff "$LIC_LFM")"
+      if [ "$LIC_LFM" = 1 ]; then
+        lfm_pin_warning
+      fi
+      ;;
+    18) FETCH_PYYAML=$(toggle "$FETCH_PYYAML"); say "fetch-pyyaml=$(onoff "$FETCH_PYYAML")" ;;
+    19) edit_cbl ;;
+    20)
+      _old=$COMMIT
+      prompt_val "40-hex commit" COMMIT
+      if [ -n "$COMMIT" ] && ! valid_commit "$COMMIT"; then
+        err "commit must be a full 40-hex sha; left unchanged"
+        COMMIT=$_old
+      fi
+      ;;
+    21) show_command ;;
+    22) run_installer ;;
+    24)
+      DEV_ALLOW_HTTP=$(toggle "$DEV_ALLOW_HTTP")
+      say "dev: allow plain HTTP=$(onoff "$DEV_ALLOW_HTTP")"
+      if [ "$DEV_ALLOW_HTTP" = 1 ]; then
+        err "warning: dev: allow plain HTTP is ON*; plain HTTP to a remote host is allowed"
+      else
+        apply_https_policy
+        if [ -n "$HOST" ] && ! is_loopback "$HOST" ]; then
+          say "HTTPS enabled for remote host (dev: allow plain HTTP is off)"
+        fi
+      fi
+      ;;
+    23|c|C)
+      if [ "${FAMILIA_COCKPIT_HOOK:-}" = 1 ]; then
+        return 4
+      fi
+      err "the web cockpit opens from the familia home menu (Open llama-ui web cockpit)."
+      if [ "$PIPE" = 1 ]; then
+        return 0
+      fi
+      if [ -f "$ROOT/scripts/open_ui.sh" ] && [ -r "$ROOT/scripts/open_ui.sh" ]; then
+        if save_settings; then
+          say "opening scripts/open_ui.sh. settings saved to $XDG_FILE"
+        else
+          err "settings not saved (see above); opening scripts/open_ui.sh anyway."
+        fi
+        exec sh "$ROOT/scripts/open_ui.sh"
+      fi
+      return 0
       ;;
     d|D) reset_defaults ;;
     q|Q|quit|exit) return 3 ;;
     *)
-      err "'$_c' isn't one of the choices. Type a number from 1 to 23, c, d, or q to exit."
+      err "'$_c' isn't one of the choices. Type a number from 1 to 24, n, p, c, d, or q to exit."
       ;;
   esac
   return 0
@@ -1476,7 +1938,18 @@ menu_loop() {
     paint
     _st=0
     choice=""
-    read_line "Choose 1-23, c, d, or q to exit: " choice || _st=$?
+    if need_pages; then
+      _prompt="Choose 1-24, n, p, c, d, q: "
+    else
+      _prompt="Choose 1-24, c, d, or q to exit: "
+    fi
+    # Keep the prompt itself within COLUMNS.
+    _cols=$(term_cols)
+    _plen=$(printf '%s' "$_prompt" | wc -c)
+    if [ "$_plen" -gt "$_cols" ]; then
+      _prompt="Choose 1-24, n, p, q: "
+    fi
+    read_line "$_prompt" choice || _st=$?
     if [ "$_st" -eq 1 ]; then
       err "timeout; back to the menu."
       _eof=0
@@ -1493,16 +1966,42 @@ menu_loop() {
     fi
     _eof=0
     [ -n "$choice" ] || { err "empty choice; back to the menu."; continue; }
+    case "$choice" in
+      n|N)
+        if need_pages; then
+          PAGE=$((PAGE + 1))
+          [ "$PAGE" -gt "$PAGES" ] && PAGE=1
+        else
+          err "paging is only used on short terminals; back to the menu."
+        fi
+        continue
+        ;;
+      p|P)
+        if need_pages; then
+          PAGE=$((PAGE - 1))
+          [ "$PAGE" -lt 1 ] && PAGE=$PAGES
+        else
+          err "paging is only used on short terminals; back to the menu."
+        fi
+        continue
+        ;;
+    esac
     _dc=0
     do_choice "$choice" || _dc=$?
     if [ "$_dc" -eq 3 ]; then
-      save_settings || err "settings not saved (see above); exiting anyway because you picked exit."
-      say "exit. settings saved to $XDG_FILE"
+      if save_settings; then
+        say "exit. settings saved to $XDG_FILE"
+      else
+        err "settings not saved (see above); exiting anyway because you picked exit."
+      fi
       return 0
     fi
     if [ "$_dc" -eq 4 ]; then
-      save_settings || err "settings not saved (see above); continuing anyway because you picked continue."
-      say "continue to web cockpit. settings saved to $XDG_FILE"
+      if save_settings; then
+        say "continue to web cockpit. settings saved to $XDG_FILE"
+      else
+        err "settings not saved (see above); continuing anyway because you picked continue."
+      fi
       return 4
     fi
     save_settings || err "settings not saved; back to the menu."
@@ -1511,6 +2010,7 @@ menu_loop() {
     fi
   done
 }
+
 
 usage() { sed -n '2,/^set -eu$/p' "$0" | sed '/^set -eu$/d;s/^# \{0,1\}//'; }
 
