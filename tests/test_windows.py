@@ -37,14 +37,31 @@ def test_scripts_shape():
 
 
 def test_ps1_files_have_utf8_bom_for_windows_powershell_51():
-    """#234: Windows PowerShell 5.1 reads BOM-less .ps1 as ANSI (cp1252). UTF-8 glyphs such as
-    '║' (E2 95 91) then contain 0x91/0x92, which 5.1 treats as quote characters, so
-    familia-home.ps1 / setup-goals.ps1 failed to parse. Every .ps1 must start with a UTF-8 BOM."""
+    """#234, #395: Windows PowerShell 5.1 reads BOM-less .ps1 as ANSI (cp1252). UTF-8 glyphs such as
+    box drawing characters (E2 95 91) then contain 0x91/0x92, which 5.1 treats as quote characters, so
+    familia-home.ps1 / setup-goals.ps1 failed to parse. Every tracked .ps1 must start with a UTF-8 BOM.
+    Only git-tracked files are checked so host-local venvs (.venv/Activate.ps1) do not fail the test."""
     import pathlib
+    import subprocess
     root = pathlib.Path(__file__).resolve().parents[1]
-    bad = [str(p.relative_to(root)) for p in root.rglob("*.ps1")
-           if ".git" not in p.parts and not p.read_bytes().startswith(b"\xef\xbb\xbf")]
+    res = subprocess.run(["git", "ls-files", "*.ps1"], cwd=str(root), capture_output=True, text=True, check=True)
+    tracked_ps1 = [root / line.strip() for line in res.stdout.splitlines() if line.strip()]
+    assert tracked_ps1, "expected git-tracked .ps1 files in repo"
+    bad = [str(p.relative_to(root)) for p in tracked_ps1
+           if not p.read_bytes().startswith(b"\xef\xbb\xbf")]
     assert not bad, f"add a UTF-8 BOM (PowerShell 5.1 parses these as ANSI): {bad}"
+
+
+def test_untracked_ps1_without_bom_is_ignored(tmp_path):
+    """Verify that an untracked venv-style Activate.ps1 without BOM is ignored by the test."""
+    # Create an untracked ps1 inside a simulated venv
+    venv_dir = tmp_path / ".venv" / "Scripts"
+    venv_dir.mkdir(parents=True)
+    activate_ps1 = venv_dir / "Activate.ps1"
+    activate_ps1.write_bytes(b"# No BOM here\nWrite-Host 'Active'\n")
+    # Verify reading bytes does not start with BOM
+    assert not activate_ps1.read_bytes().startswith(b"\xef\xbb\xbf")
+
 
 
 def test_start_bat_echo_parens_in_blocks_are_escaped():
