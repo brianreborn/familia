@@ -30,6 +30,9 @@ param(
   [switch]$DryRun,
   [switch]$Uninstall,
   [switch]$Purge,
+  [switch]$PurgeExternalModels,
+  [switch]$AdoptInstall,
+  [switch]$ConfirmAdopt,
   [string]$Prefix = (Join-Path $env:LOCALAPPDATA 'familia'),
   [string]$Name = ($env:COMPUTERNAME).ToLower(),
   [string]$Build = 'b11539',
@@ -51,30 +54,187 @@ $dry = [bool]$WhatIfPreference
 function Say([string]$m) { Write-Host "familia-install: $m" }
 [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 
+# -Prefix guard: never operate on a drive root, a system dir, or a user/profile root (#32 review)
+function Norm([string]$p) {
+  if ([string]::IsNullOrWhiteSpace($p)) { return '' }
+  try { $f = [IO.Path]::GetFullPath($p) } catch { return '' }
+  $r = [IO.Path]::GetPathRoot($f)
+  if ($f.Length -gt $r.Length) { $f = $f.TrimEnd('\', '/') }
+  return $f.ToLowerInvariant()
+}
+function Protected-Reason([string]$p) {
+  $n = Norm $p
+  if (-not $n) { return 'invalid path' }
+  if ($n -eq (Norm ([IO.Path]::GetPathRoot([IO.Path]::GetFullPath($p))))) { return 'drive/filesystem root' }
+  $sys = @($HOME, $env:USERPROFILE, $env:APPDATA, $env:LOCALAPPDATA, $env:SystemRoot, $env:ProgramFiles,
+           ${env:ProgramFiles(x86)}, $env:ProgramData, $env:TEMP)
+  if ($env:SystemRoot) { $sys += (Join-Path $env:SystemRoot 'System32') }
+  foreach ($bad in $sys) { $nb = Norm $bad; if ($nb -and $n -eq $nb) { return "user, profile or system dir ($bad)" } }
+  return $null
+}
+$nPrefix = Norm $Prefix
+$why = Protected-Reason $Prefix
+if ($why) { throw "refusing -Prefix '$Prefix': $why" }
+$pi = if (Test-Path -LiteralPath $Prefix) { Get-Item -LiteralPath $Prefix -Force -ErrorAction Stop } else { $null }
+if ($pi -and ($pi.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw "refusing -Prefix '$Prefix': it is a junction/symlink" }
 $repo = Join-Path $Prefix 'repo'
 $runtimeRoot = Join-Path $Prefix 'runtime'
-if (-not $ModelsPath) {
-  if (Test-Path 'E:\temp\') { $ModelsPath = 'E:\temp\familia\models' } else { $ModelsPath = Join-Path $Prefix 'models' }
+$prefixModels = Join-Path $Prefix 'models'
+$marker = Join-Path $Prefix '.familia-install'  # familia_install=1, prefix=, models_path= (UTF-8)
+function Read-Marker {
+  if (-not (Test-Path -LiteralPath $marker -PathType Leaf)) { return $null }
+  $h = @{}
+  foreach ($l in Get-Content -LiteralPath $marker -Encoding utf8) {
+    $l = $l.TrimStart([char]0xFEFF)
+    if ($l -match '^([a-z_]+)=(.*)$') { $h[$Matches[1]] = $Matches[2] }
+  }
+  if ($h['familia_install'] -ne '1' -or (Norm $h['prefix']) -ne $nPrefix) { return $null }  # copied/foreign marker
+  return $h
+}
+function Write-Marker([string]$models, [string[]]$extra = @()) {
+  $lines = @('familia_install=1', "prefix=$([IO.Path]::GetFullPath($Prefix))") + $extra + @("models_path=$([IO.Path]::GetFullPath($models))")
+  Set-Content -Encoding utf8 -LiteralPath $marker $lines
+}
+# A recorded models_path may be deleted only if it is $Prefix\models, or not protected and ends in \familia\models.
+function Models-Path-Ok([string]$p) {
+  $n = Norm $p
+  if (-not $n) { return $false }
+  if ($n -eq (Norm $prefixModels)) { return $true }
+  if (Protected-Reason $p) { return $false }
+  return (($n -replace '/', '\') -like '*\familia\models')
+}
+# Long paths on Windows PowerShell 5.1 (.NET Framework): use the \\?\ form for the raw deletes.
+function LP([string]$p) {
+  if ($PSVersionTable.PSEdition -ne 'Desktop' -or $p.StartsWith('\\?\')) { return $p }
+  if ($p.StartsWith('\\')) { return '\\?\UNC\' + $p.Substring(2) }
+  return '\\?\' + $p
+}
+# Delete a tree without ever following a junction/symlink: links are removed as links only.
+# ReadOnly is cleared first (git marks .git\objects read-only on Windows).
+function Remove-Safe([string]$p) {
+  $it = Get-Item -LiteralPath $p -Force -ErrorAction SilentlyContinue
+  if (-not $it) { return }
+  $full = LP $it.FullName
+  if ($it.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+    if ($it.PSIsContainer) { [IO.Directory]::Delete($full, $false) } else { [IO.File]::Delete($full) }
+    return
+  }
+  if ($it.Attributes -band [IO.FileAttributes]::ReadOnly) { $it.Attributes = $it.Attributes -band -bnot [IO.FileAttributes]::ReadOnly }
+  if ($it.PSIsContainer) {
+    foreach ($c in @(Get-ChildItem -LiteralPath $full -Force))  # \\?\ form on PS 5.1 (best effort)
+    { Remove-Safe $c.FullName }
+    [IO.Directory]::Delete($full, $false)
+  } else { [IO.File]::Delete($full) }
+}
+$explicitModels = [bool]$ModelsPath
+if (-not $ModelsPath) { $ModelsPath = $prefixModels }  # external models only via explicit -ModelsPath
+elseif (Protected-Reason $ModelsPath) { throw "refusing -ModelsPath '$ModelsPath': $(Protected-Reason $ModelsPath)" }
+
+# One-time, narrow: mark an older (pre-marker) install. Only writes the marker; never deletes.
+if ($AdoptInstall) {
+  if ($Purge -or $Uninstall) { throw '-AdoptInstall only writes the marker; run -Uninstall/-Purge separately afterwards' }
+  $nl = Norm $env:LOCALAPPDATA
+  if (-not $nl -or -not ($nPrefix.StartsWith($nl + [IO.Path]::DirectorySeparatorChar))) { throw "refusing -AdoptInstall: '$Prefix' is not under LOCALAPPDATA ($env:LOCALAPPDATA)" }
+  if (Read-Marker) { Say "marker already present: $marker"; return }
+  if (-not ((Test-Path -LiteralPath (Join-Path $repo '.git')) -and (Test-Path -LiteralPath $runtimeRoot -PathType Container))) {
+    throw "refusing -AdoptInstall: '$Prefix' does not look like a familia install (needs repo\.git and runtime\)"
+  }
+  $allowed = @('repo', 'runtime', 'models', '.familia-install')
+  foreach ($e in @(Get-ChildItem -LiteralPath $Prefix -Force)) {
+    if ($allowed -notcontains $e.Name.ToLowerInvariant()) { throw "refusing -AdoptInstall: unexpected entry in '$Prefix': $($e.Name)" }
+    if ($e.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw "refusing -AdoptInstall: $($e.Name) is a junction/symlink" }
+  }
+  $gd = Get-Item -LiteralPath (Join-Path $repo '.git') -Force -ErrorAction Stop
+  if ($gd.Attributes -band [IO.FileAttributes]::ReparsePoint) { throw "refusing -AdoptInstall: repo\.git is a junction/symlink" }
+  if (-not $gd.PSIsContainer) { throw "refusing -AdoptInstall: repo\.git is a file (gitdir: link), not a directory" }
+  $origins = @()
+  if (Get-Command git -ErrorAction SilentlyContinue) {
+    # git present: trust only git; any failure refuses (no fallback to the file parser)
+    $out = @(& git -C $repo config --get-all remote.origin.url 2>$null)
+    if ($LASTEXITCODE -ne 0) { throw "refusing -AdoptInstall: git config failed (exit $LASTEXITCODE) reading repo origin" }
+    $origins = @($out | Where-Object { $_ -and $_.Trim() } | ForEach-Object { $_.Trim() })
+  } else {
+    $cfg = Join-Path $gd.FullName 'config'
+    if (Test-Path -LiteralPath $cfg -PathType Leaf) {
+      $inO = $false
+      foreach ($l in Get-Content -LiteralPath $cfg) {
+        if ($l -match '^\s*\[') { $inO = ($l -match '^\s*\[remote\s+"origin"\]\s*$') }
+        elseif ($inO -and $l -match '^\s*url\s*=\s*(\S+)\s*$') { $origins += $Matches[1] }
+      }
+    }
+  }
+  if ($origins.Count -ne 1) { throw "refusing -AdoptInstall: expected exactly one repo origin url, found $($origins.Count)" }
+  $origin = $origins[0]
+  if ($origin -notmatch '^(https://|ssh://git@|git@)github\.com[/:]brianreborn/familia(\.git)?/?$') {
+    throw "refusing -AdoptInstall: repo origin '$origin' is not github.com/brianreborn/familia"
+  }
+  $ok = $false
+  if ($ConfirmAdopt) { $ok = $true }
+  elseif (-not $dry -and [Environment]::UserInteractive -and -not [Console]::IsInputRedirected) {
+    $ans = Read-Host "Mark '$Prefix' as a familia install (models: $prefixModels)? [y/N]"
+    $ok = ($ans -match '^(y|yes)$')
+  } else { throw "refusing -AdoptInstall non-interactively; re-run with -ConfirmAdopt to confirm '$Prefix'" }
+  if (-not $ok) { Say 'not adopted (no marker written)'; return }
+  if ($PSCmdlet.ShouldProcess($marker, 'write familia install marker (adopt)')) {
+    Write-Marker $prefixModels @('adopted=1')  # never records an external models dir
+    Say "adopted: wrote $marker"
+    Say 'note: older installs may have kept models in an external folder (old default: E:\temp\familia\models). That folder is NOT recorded and -Purge will not remove it; delete it manually if you no longer want it.'
+  }
+  return
 }
 
+if ($Purge) { $Uninstall = $true }  # -Purge alone must never fall through to an install
 if ($Uninstall) {
+  if (-not (Test-Path -LiteralPath $Prefix)) { Say "nothing installed at $Prefix"; return }
+  $mk = Read-Marker
+  if ($null -eq $mk) { throw "refusing to uninstall: no valid familia marker file ($marker) for -Prefix '$Prefix'. If this is an older familia install, run once: install.ps1 -Prefix '$Prefix' -AdoptInstall (add -ConfirmAdopt when non-interactive), then retry" }
+  # Models location comes from the install record, not from guessing.
+  if (-not $explicitModels -and $mk['models_path']) { $ModelsPath = $mk['models_path'] }
   $task = Join-Path $repo 'scripts\windows\install-task.ps1'
   if (Test-Path $task) { & $task -Uninstall -WhatIf:$dry }
   $cli = Join-Path $repo 'scripts\windows\install-cli.ps1'
   if (Test-Path $cli) { & $cli -Uninstall -WhatIf:$dry }  # shim + PATH entry, exactly what it recorded
   foreach ($p in @($repo, $runtimeRoot)) {
-    if ((Test-Path $p) -and $PSCmdlet.ShouldProcess($p, 'Remove')) { Remove-Item -Recurse -Force $p }
+    if ((Test-Path -LiteralPath $p) -and $PSCmdlet.ShouldProcess($p, 'Remove')) { Remove-Safe $p }
   }
-  if ($Purge -and (Test-Path $Prefix) -and $PSCmdlet.ShouldProcess($Prefix, 'Remove (purge)')) { Remove-Item -Recurse -Force $Prefix }
-  Say "uninstalled (models in $ModelsPath kept)"
+  if ($Purge) {
+    $kept = @()
+    $nModels = Norm $ModelsPath
+    $internal = ($nModels -eq (Norm $prefixModels)) -or $nModels.StartsWith($nPrefix + [IO.Path]::DirectorySeparatorChar)
+    if (-not $internal -and (Test-Path -LiteralPath $ModelsPath)) {
+      $recorded = $mk['models_path'] -and ((Norm $mk['models_path']) -eq $nModels)
+      $ok = $false
+      if (-not $recorded) { Say "external models dir $ModelsPath was not recorded at install; keeping it" }
+      elseif (-not (Models-Path-Ok $ModelsPath)) { Say "recorded models dir $ModelsPath is protected or not a ...\familia\models dir; keeping it" }
+      elseif ($PurgeExternalModels) { $ok = $true }
+      elseif (-not $dry -and [Environment]::UserInteractive -and -not [Console]::IsInputRedirected) {
+        $ans = Read-Host "Also delete external models dir $ModelsPath ? [y/N]"
+        $ok = ($ans -match '^(y|yes)$')
+      } else { Say "external models dir $ModelsPath kept (pass -PurgeExternalModels to delete it)" }
+      if ($ok -and $PSCmdlet.ShouldProcess($ModelsPath, 'Remove external models (purge)')) { Remove-Safe $ModelsPath }
+      if (Test-Path -LiteralPath $ModelsPath) { $kept += $ModelsPath }
+    }
+    if ($PSCmdlet.ShouldProcess($Prefix, 'Remove (purge, includes prefix models)')) { Remove-Safe $Prefix }
+    if (Test-Path -LiteralPath $Prefix) { $kept += $Prefix }
+    if ($kept.Count) { Say "uninstalled and purged; kept: $($kept -join ', ')" }
+    else { Say 'uninstalled and purged (models removed)' }
+  } else { Say "uninstalled (models in $ModelsPath kept)" }
   return
 }
+
+# Install: never take over an existing non-empty folder that has no marker; keep the recorded models_path.
+$mk = Read-Marker
+if ((Test-Path -LiteralPath $Prefix) -and $null -eq $mk -and @(Get-ChildItem -LiteralPath $Prefix -Force).Count -gt 0) {
+  throw "refusing to install into existing non-empty '$Prefix' without a familia marker (older install? run -AdoptInstall once)"
+}
+if ($mk -and $mk['models_path'] -and -not $explicitModels) { $ModelsPath = $mk['models_path'] }
 
 if ($Name -notmatch '^[a-z0-9][a-z0-9_-]*$') { throw "invalid -Name '$Name' (use [a-z0-9_-])" }
 Say "prefix $Prefix, host $Name, models $ModelsPath, dry-run=$dry"
 foreach ($d in @($Prefix, $runtimeRoot, $ModelsPath)) {
   if (-not (Test-Path $d) -and $PSCmdlet.ShouldProcess($d, 'Create directory')) { New-Item -ItemType Directory -Force $d | Out-Null }
 }
+if ($PSCmdlet.ShouldProcess($marker, 'write familia install marker')) { Write-Marker $ModelsPath }
 
 # Preliminary stock (owned here): OS tools via deps.ps1 when anything base is missing,
 # Charm gum.exe → %LOCALAPPDATA%\Programs\familia\bin (no admin). Soft-fail gum.
