@@ -27,7 +27,7 @@ FAMILIA_REF=1c5cba46e6f3b4cc1f010e72dbe6fc9a11ab51b2
 REF=$FAMILIA_REF
 # Pinned llama.cpp source from the brianreborn tracking fork (b12032 base).
 LLAMA_TAG=b12032
-LLAMA_SHA=2c7a252e01cc5a97fa9ab653f8bc7a3c2ee0f0be
+LLAMA_SHA=dde879bc4f954b809892fd0d660515f42536394a
 LLAMA_URL=${FAMILIA_LLAMA_URL:-https://github.com/brianreborn/llama.cpp.git}
 LLAMA_BUILD_NUMBER=12032
 DRY=0; AUTO_DEPS=0; YES=0; UNINSTALL=0
