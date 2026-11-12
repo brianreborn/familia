@@ -7,10 +7,10 @@ REPO = Path(__file__).resolve().parents[1]
 SCRIPT = REPO / "install" / "freebsd" / "install-familia.sh"
 DEPS = REPO / "install" / "freebsd" / "deps.sh"
 HELP_OK = "--api-key-file FNAME"
-LLAMA_SHA = "c3df4b7e22a1ac38da663552d19e649dd97ca936"
+LLAMA_SHA = "2c7a252e01cc5a97fa9ab653f8bc7a3c2ee0f0be"
 
 
-def _env(tmp_path, help_text=HELP_OK, with_llama=True, version="version: 11969 (c3df4b7)", built_sha=LLAMA_SHA):
+def _env(tmp_path, help_text=HELP_OK, with_llama=True, version=f"version: 12032 ({LLAMA_SHA[:7]})", built_sha=LLAMA_SHA):
     log = tmp_path / "calls.log"
     shim = tmp_path / "bin"; shim.mkdir()
     for name in ("sudo", "doas", "pkg"):
@@ -18,7 +18,7 @@ def _env(tmp_path, help_text=HELP_OK, with_llama=True, version="version: 11969 (
         p.write_text(f'#!/bin/sh\necho "{name} $*" >> "{log}"\nexit 99\n'); p.chmod(0o755)
     home = tmp_path / "home"; home.mkdir()
     if with_llama:  # reuse-existing-build path (skill §4); no real llama.cpp build on the box
-        rt = home / ".local/share/familia/runtime/b11969"; rt.mkdir(parents=True)
+        rt = home / ".local/share/familia/runtime/b12032"; rt.mkdir(parents=True)
         p = rt / "llama-server"
         (rt / ".built-sha").write_text(built_sha + "\n")
         p.write_text('#!/bin/sh\nif [ "${1:-}" = --help ]; then echo "' + help_text + '"; exit 0; fi\n'
@@ -111,8 +111,29 @@ def test_pinned_ref_missing_refused(tmp_path):
 
 def test_script_pins_constants():
     t = SCRIPT.read_text()
-    assert "LLAMA_TAG=b11969" in t and "LLAMA_SHA=c3df4b7e22a1ac38da663552d19e649dd97ca936" in t
+    assert "LLAMA_TAG=b12032" in t and f"LLAMA_SHA={LLAMA_SHA}" in t
+    assert "github.com/brianreborn/llama.cpp.git" in t and "github.com/ggml-org/llama.cpp" not in t
     assert "\nFAMILIA_REF=" in t and "llama-cpp" not in t.split("Pinned llama.cpp")[1].split("\n")[0]
+
+def test_build_dependencies_use_doas_for_pkg_install(tmp_path):
+    log = tmp_path / "calls.log"
+    shim = tmp_path / "bin"
+    shim.mkdir()
+    (shim / "id").write_text("#!/bin/sh\necho 1000\n")
+    (shim / "python3").write_text(
+        '#!/bin/sh\ncase "$*" in *sys.version_info*) echo 312 ;; *) exit 1 ;; esac\n')
+    (shim / "doas").write_text(f'#!/bin/sh\necho "doas $*" >> "{log}"\nexit 0\n')
+    (shim / "pkg").write_text(f'#!/bin/sh\necho "pkg $*" >> "{log}"\nexit 99\n')
+    for name in ("id", "python3", "doas", "pkg"):
+        (shim / name).chmod(0o755)
+    for name in ("sed", "grep"):
+        (shim / name).symlink_to(shutil.which(name))
+    r = subprocess.run(["/bin/sh", str(DEPS), "--install", "--yes", "--profile", "build"],
+                       env={**os.environ, "PATH": str(shim)},
+                       capture_output=True, text=True)
+    assert r.returncode == 0, r.stdout + r.stderr
+    lines = log.read_text().splitlines()
+    assert len(lines) == 1 and lines[0].startswith("doas pkg install -y ")
 
 
 @pytest.mark.parametrize("prefix", ["/tmp/a b", "/tmp/a$(x)", "/tmp/a`x`", "/tmp/../etc", "rel/dir", "/tmp/a\"b"])
