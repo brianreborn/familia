@@ -320,6 +320,8 @@ echo "familia-start: logs: this terminal (stdout/stderr; under systemd: journalc
 # (--host* --port* --api-key* --ssl* --path*) the whole launch is refused, never stripped.
 # set -f is turned on here and deliberately LEFT ON for the rest of the launcher: the exec
 # below expands \${FAMILIA_EXTRA} unquoted and must not glob. Nothing after this relies on globbing.
+# The launcher's own arguments are passed to llama-server exactly ("\$@", after the key, before
+# FAMILIA_EXTRA), once they pass the same check (#279 routing-extra-args).
 familia_extra_check() {
   set -f
   for _t in \${FAMILIA_EXTRA:-} "\$@"; do
@@ -355,7 +357,17 @@ familia_env_scrub
 [ -n "\$FAMILIA_KF" ] || { echo "familia-start: no API key; refusing" >&2; exit 2; }
 # F-9: llama-server --host takes a bare IPv6 address: [::1] -> ::1.
 H="\${FAMILIA_BIND:-127.0.0.1}"; [ "\$H" = '[::1]' ] && H=::1
-exec "\$B" -m "\$M" --host "\$H" --port "\${FAMILIA_PORT:-9941}" -c "\${FAMILIA_CTX:-4096}" --api-key-file "\$FAMILIA_KF" \${FAMILIA_EXTRA:-}
+# Same rule as graph_types server_tools: llama.cpp --tools is host-exec, so FAMILIA_EXTRA/argv
+# may enable it only on a loopback bind (Boundary Reviewer, #541).
+familia_tools_check() {
+  _h="\$1"; shift
+  case "\$_h" in 127.0.0.1|localhost|::1) return 0 ;; esac
+  for _t in \${FAMILIA_EXTRA:-} "\$@"; do
+    case "\$_t" in --tools*) echo "familia-start: --tools (host-exec) is allowed only on a loopback bind; refusing" >&2; exit 2 ;; esac
+  done
+}
+familia_tools_check "\$H" "\$@"
+exec "\$B" -m "\$M" --host "\$H" --port "\${FAMILIA_PORT:-9941}" -c "\${FAMILIA_CTX:-4096}" --api-key-file "\$FAMILIA_KF" "\$@" \${FAMILIA_EXTRA:-}
 EOS
   chmod +x "$LAUNCH"
 fi

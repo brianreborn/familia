@@ -101,3 +101,6 @@ scripts/runtime_dir.sh|helper sourced by the shell launchers (private runtime di
 install/freebsd/install-familia.sh|FreeBSD installer, invoked by curl/fetch or sh install-familia.sh
 scripts/open_ui.sh|open running llama web UI in default browser
 scripts/ui_bridge.py|terminal dashboard bridge inspecting running llama-ui slots and routes
+scripts/bfcl_adapter.py|BFCL -> task-suite adapter and scorer (bench-adapters); used by bench/CI flows
+scripts/routerbench_pickle_to_parquet.py|one-time RouterBench pickle -> parquet converter; operator data prep
+scripts/routerbench_scorer.py|offline RouterBench routing-policy scorer (bench-adapters); used by bench/CI flows
