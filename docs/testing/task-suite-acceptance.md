@@ -75,6 +75,10 @@ Exit codes: runner `--record` returns `1` when `gate.passed` is false; promote `
 - Offline unit tests: `tests/test_task_suite_gate.py` (no live models).
 - Existing active nodes on older revisions are grandfathered until their next radical change; the promote CLI still refuses a new promotion without evidence.
 
+## Routing acceptance (#199)
+
+Router/alias changes must also pass `tests/test_router_199.py` (offline fake-server routing per node type). Known no-op cases are strict xfails; see [router-199-findings.md](router-199-findings.md).
+
 ## Related
 
 - Routing / escalation design and earlier harness matrix: reuse ideas from the routing test plan and [docs/perf/config-search-plan.md](../perf/config-search-plan.md) (launch-status protocol, name+version labels).
