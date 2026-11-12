@@ -7,7 +7,7 @@ REPO = Path(__file__).resolve().parents[1]
 SCRIPT = REPO / "install" / "freebsd" / "install-familia.sh"
 DEPS = REPO / "install" / "freebsd" / "deps.sh"
 HELP_OK = "--api-key-file FNAME"
-LLAMA_SHA = "2c7a252e01cc5a97fa9ab653f8bc7a3c2ee0f0be"
+LLAMA_SHA = "dde879bc4f954b809892fd0d660515f42536394a"
 
 
 def _env(tmp_path, help_text=HELP_OK, with_llama=True, version=f"version: 12032 ({LLAMA_SHA[:7]})", built_sha=LLAMA_SHA):
