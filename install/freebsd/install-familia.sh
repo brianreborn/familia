@@ -25,10 +25,11 @@ REPO_URL=${FAMILIA_REPO_URL:-https://github.com/brianreborn/familia.git}
 # Pinned familia release commit; bump together with this file's published SHA256.
 FAMILIA_REF=1c5cba46e6f3b4cc1f010e72dbe6fc9a11ab51b2
 REF=$FAMILIA_REF
-# Pinned llama.cpp (familia v0.2): tag b11969, built from source (no FreeBSD prebuilt).
-LLAMA_TAG=b11969
-LLAMA_SHA=c3df4b7e22a1ac38da663552d19e649dd97ca936
-LLAMA_URL=${FAMILIA_LLAMA_URL:-https://github.com/ggml-org/llama.cpp.git}
+# Pinned llama.cpp source from the brianreborn tracking fork (b12032 base).
+LLAMA_TAG=b12032
+LLAMA_SHA=2c7a252e01cc5a97fa9ab653f8bc7a3c2ee0f0be
+LLAMA_URL=${FAMILIA_LLAMA_URL:-https://github.com/brianreborn/llama.cpp.git}
+LLAMA_BUILD_NUMBER=12032
 DRY=0; AUTO_DEPS=0; YES=0; UNINSTALL=0
 KEY="$HOME/.config/familia/api.key"
 
@@ -86,7 +87,7 @@ PY=""; for c in python3 python3.11; do have "$c" && { PY=$c; break; }; done
 have git || missing="$missing git"
 [ -n "$PY" ] || missing="$missing python3"
 RT="$PREFIX/runtime/$LLAMA_TAG"; LS="$RT/llama-server"
-# L2: reuse a build only if .built-sha matches the pin and --version names b11969/c3df4b7.
+# L2: reuse a build only if .built-sha matches the pin and --version names the tag or pinned commit.
 llama_ok() {
   [ -x "$LS" ] && [ "$(cat "$RT/.built-sha" 2>/dev/null)" = "$LLAMA_SHA" ] &&
     "$LS" --version 2>&1 | grep -Eq "${LLAMA_TAG#b}|$(printf %.7s "$LLAMA_SHA")"
@@ -142,7 +143,7 @@ else
   git -C "$SRC" -c advice.detachedHead=false checkout -q --detach "$LLAMA_SHA" || die "could not check out llama.cpp $LLAMA_SHA"
   [ "$(git -C "$SRC" rev-parse HEAD)" = "$LLAMA_SHA" ] || die "llama.cpp HEAD is not pinned $LLAMA_SHA"
   J=$(getconf NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)
-  cmake -S "$SRC" -B "$SRC/build" -DCMAKE_BUILD_TYPE=Release -DLLAMA_CURL=OFF -DGGML_NATIVE=OFF >&2 || die "cmake configure failed"
+  cmake -S "$SRC" -B "$SRC/build" -DCMAKE_BUILD_TYPE=Release -DLLAMA_BUILD_NUMBER="$LLAMA_BUILD_NUMBER" -DLLAMA_CURL=OFF -DGGML_NATIVE=OFF >&2 || die "cmake configure failed"
   cmake --build "$SRC/build" --target llama-server -j "$J" >&2 || die "llama.cpp build failed"
   { cp "$SRC/build/bin/llama-server" "$LS.tmp.$$" && mv "$LS.tmp.$$" "$LS"; } || die "could not install $LS"
   printf '%s\n' "$LLAMA_SHA" > "$RT/.built-sha"

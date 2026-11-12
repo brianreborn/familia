@@ -89,6 +89,20 @@ def test_installer_shapes():
     assert not re.search(r"\b[0-9a-f]{64}\b", ps)
     assert not re.search(r"-Verb\s+RunAs|RunAs", ps)  # never elevates
 
+def test_first_time_setup_routes_freebsd_into_source_build(tmp_path):
+    shim = tmp_path / "bin"
+    shim.mkdir()
+    uname = shim / "uname"
+    uname.write_text("#!/bin/sh\necho FreeBSD\n")
+    uname.chmod(0o755)
+    env = dict(os.environ, PATH=f"{shim}:{os.environ['PATH']}", FAMILIA_NO_TTY="1")
+    r = subprocess.run(["sh", os.path.join(ROOT, "scripts/setup_goals.sh"),
+                        "first-time", "--dry-run"], cwd=ROOT, env=env,
+                       capture_output=True, text=True, timeout=30)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert f"[dry-run] sh {ROOT}/install/deps.sh --install --profile build" in r.stdout
+    assert f"[dry-run] would run: sh {ROOT}/install/freebsd/install-familia.sh" in r.stdout
+
 @pytest.mark.skipif(sys.platform.startswith("freebsd"),
                     reason="install/linux/install.sh refuses FreeBSD by design (source-build only)")
 def test_linux_installer_accepts_branch_and_dry_runs_clone(tmp_path):
