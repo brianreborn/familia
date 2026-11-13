@@ -35,3 +35,11 @@ def test_speech_and_coder_options():
     o = BASE["options"]
     assert o["whistle-stt"]["role"] == "stt" and o["paradee-tts"]["role"] == "tts"
     assert o["qwen35-9b-coder"]["candidate_hosts"] == ["qodesh"]
+
+def test_lfm_decision_option_is_available_to_freebsd_cpu():
+    option = BASE["options"]["lfm25-350m-q4km"]
+    runtime = BASE["runtimes"]["llama-b11669-freebsd"]
+    assert "angel" in option["candidate_hosts"]
+    assert "lfm2" in runtime["supported_archs"]
+    assert option["db"] == "LiquidAI--LFM2.5-350M-GGUF--LFM2.5-350M-Q4_K_M"
+    assert "lfm1.0" in option["placement_note"]
