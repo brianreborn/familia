@@ -904,10 +904,12 @@ options:
     size_note: Laya-Q8_0.gguf 449397600 bytes (~429 MiB); apache-2.0; miryam local_check
       sha256_ok 2026-10-19
     gpu_candidate: false
-    placement_note: CPU decision/chat candidate; fits miryam/qodesh RAM. No node yet.
+    placement_note: CPU decision/chat candidate; fits miryam/qodesh/angel RAM. FreeBSD
+      angel's llama-b11669-freebsd runtime lists modern-bert support. No node yet.
     candidate_hosts:
     - miryam
     - qodesh
+    - angel
   lfm25-350m-q4km:
     role: decision
     unverified: true
