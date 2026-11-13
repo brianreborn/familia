@@ -20,6 +20,7 @@ planning rule of thumb that it doesn't check.
 |---|---|---|---|---|
 | miryam | 7270 | 3072 | ~4198 MiB | coder + embed est. 3479 MiB, leaving ~700 MiB |
 | qodesh | 16379 | 4096 | ~9827 MiB (60% cap) | CPU coder + GPU decision (8600 GT, 256 MB VRAM) |
+| angel (FreeBSD) | 24442 | 4096 | ~14665 MiB (60% cap) | Nanbeige4.3-33B is active; do not co-start another model without checking swap/RAM |
 | a57 phones (phone7/phone8) | ~7.4 GB measured | not set | ~4.4 GB (60%) | none |
 | note9, pixel8, shalom, godslove | unmeasured | | unknown | |
 
@@ -41,7 +42,7 @@ linked issue is working on it. **candidate** = an `options:` entry only.
 | drex-1.1 | decision | diffusion LM | unknown (maybe [nace-ai/drex-dlm](https://huggingface.co/nace-ai/drex-dlm), 8.19B, cc-by-nc-4.0, not confirmed) | drex-dlm / `llama-server__nace-ai__edlm` pin | qodesh CPU if 8B | candidate | [RT](https://x.com/BrianReborn_alt/status/2107800181316141401) |
 | k2-type-0.9b | decision | unknown | 0.9B; ~0.5 GB Q4 (estimate) | unknown | qodesh GPU (heavy quant), miryam | planned #24 | [RT](https://x.com/BrianReborn_alt/status/2106354389611094041) |
 | laya-q8 | decision | unknown | Laya-Q8_0 ~429 MiB (apache-2.0) | llama-server | miryam/qodesh | candidate (options+db) | #53/#78 · [HF](https://huggingface.co/ggml-org/Laya-GGUF) |
-| lfm25-350m-q4km | decision | lfm2 | LFM2.5-350M Q4_K_M ~219 MiB (lfm1.0) | llama-server | phones/miryam/qodesh | candidate (options+db; license gate) | #78 · [HF](https://huggingface.co/LiquidAI/LFM2.5-350M-GGUF) |
+| lfm25-350m-q4km | decision | lfm2 | LFM2.5-350M Q4_K_M ~219 MiB (lfm1.0) | llama-server | phones/miryam/qodesh; angel FreeBSD CPU when Nanbeige is stopped | candidate (options+db; license gate) | #78 · [HF](https://huggingface.co/LiquidAI/LFM2.5-350M-GGUF) |
 | glide | decision | unknown | unknown | unknown | unknown | candidate | [RT](https://x.com/BrianReborn_alt/status/2107815038589567062) |
 | cloudflare-clef | decision | unknown | unknown | unknown | unknown | candidate | [RT](https://x.com/BrianReborn_alt/status/2106238504938377271) |
 | gev-26b-decide | decision | unknown | 26B; ~15 GB Q4 (estimate) | unknown | none | candidate (catalog only) | [RT](https://x.com/BrianReborn_alt/status/2107731560246215067) |
