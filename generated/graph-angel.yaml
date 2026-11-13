@@ -892,13 +892,15 @@ options:
       (read LICENSE before enable)
     gpu_candidate: true
     gpu_host: qodesh
-    placement_note: Small enough for always-on consideration; license gate required
-      (lfm1.0). No node yet.
+    placement_note: Small CPU decision candidate for qodesh, miryam, phones, and FreeBSD
+      angel (llama-b11669-freebsd supports lfm2). Review/accept lfm1.0 before fetching;
+      do not co-start with angel's Nanbeige node.
     candidate_hosts:
     - qodesh
     - miryam
     - phone7
     - phone8
+    - angel
   glide:
     role: decision
     unverified: true
