@@ -119,6 +119,24 @@ Default front door is the gum home (`./familia`). This catalog is **fallback onl
 | `agents.pentest-launch-test` | Legacy id → guardian launch-test | `sh with-fleet.sh --role guardian --launch-test` | — |
 | `agents.pentest-start` | Legacy id → guardian operator-start | `env FAMILIA_OPERATOR_CONFIRM=yes sh with-fleet.sh --role guardian --operator-start` | — |
 
+### App catalog
+
+The virtual app store (#397): `scripts/app_catalog.py`. It lists every app familia can run (menu apps by reference, and the gum-home tools the legacy catalog leaves out: web UI, ui_bridge dashboard, find models, X search, protomodel chat), and searches open issues labeled `applications` across public brianreborn repositories with a cache (`$XDG_CACHE_HOME/familia/app-catalog.json`, 45 min TTL, `FAMILIA_APP_CATALOG_TTL`; ETag revalidation when GitHub sends one; stale cache shown offline). The phone assistant rows moved here from Hosts; their keys are unchanged.
+
+| Key | Label | POSIX | Windows |
+|---|---|---|---|
+| `apps.catalog` | Virtual app store: every app familia can run, plus open "applications" issues (cached search) | `python3 scripts/app_catalog.py menu` | `python scripts\app_catalog.py menu` |
+| `apps.list` | List the apps (menu apps and the gum-home tools) and their ids | `python3 scripts/app_catalog.py list` | `python scripts\app_catalog.py list` |
+| `apps.search` | Search open "applications" issues across brianreborn (public; cached, 45 min TTL) | `python3 scripts/app_catalog.py search <WORDS>` | `python scripts\app_catalog.py search <WORDS>` |
+| `apps.refresh` | Refresh the app search cache now (one GitHub request) | `python3 scripts/app_catalog.py search --refresh` | `python scripts\app_catalog.py search --refresh` |
+| `apps.run` | Run one app by id (see apps.list) | `python3 scripts/app_catalog.py run <APP>` | `python scripts\app_catalog.py run <APP>` |
+| `hosts.phone-agents` | Phone assistants (Bixby, Gemini): which are set up and what leaves the phone | `python3 scripts/system_agents.py status` | `python scripts\system_agents.py status` |
+| `hosts.phone-agents-licenses` | Phone assistants: Shizuku license and the terms each assistant brings | `python3 scripts/system_agents.py licenses` | `python scripts\system_agents.py licenses` |
+| `hosts.phone-agent-probe` | On this phone (Termux): is Shizuku running, which assistants are installed | `python3 scripts/termux/system_agent.py probe` | — |
+| `hosts.phone-agent-open` | On this phone: bring Gemini or Bixby to the front (sends nothing) | `python3 scripts/termux/system_agent.py open --provider <PROVIDER>` | — |
+| `hosts.phone-agent-ask` | On this phone: ask Gemini (CLOUD: your text goes to Google; asks first) | `python3 scripts/termux/system_agent.py ask --provider gemini --text <TEXT>` | — |
+| `hosts.phone-agent-consent` | On this phone: allow or withdraw cloud calls to an assistant | `python3 scripts/termux/system_agent.py consent --provider <PROVIDER> <CHOICE>` | — |
+
 ### Self-improving harness (Harness2)
 
 | Key | Label | POSIX | Windows |
@@ -154,12 +172,6 @@ Default front door is the gum home (`./familia`). This catalog is **fallback onl
 | `hosts.android` | Start the node on an Android phone over SSH | `bash android_start.sh <HOST>` | — |
 | `hosts.phones` | Start every phone listed in graph.yaml | `bash android_multi_start.sh` | — |
 | `hosts.watchdog` | Keep a phone's node running (restart it if it stops answering) | `bash watchdog_android.sh <HOST>` | — |
-| `hosts.phone-agents` | Phone assistants (Bixby, Gemini): which are set up and what leaves the phone | `python3 scripts/system_agents.py status` | `python scripts\system_agents.py status` |
-| `hosts.phone-agents-licenses` | Phone assistants: Shizuku license and the terms each assistant brings | `python3 scripts/system_agents.py licenses` | `python scripts\system_agents.py licenses` |
-| `hosts.phone-agent-probe` | On this phone (Termux): is Shizuku running, which assistants are installed | `python3 scripts/termux/system_agent.py probe` | — |
-| `hosts.phone-agent-open` | On this phone: bring Gemini or Bixby to the front (sends nothing) | `python3 scripts/termux/system_agent.py open --provider <PROVIDER>` | — |
-| `hosts.phone-agent-ask` | On this phone: ask Gemini (CLOUD: your text goes to Google; asks first) | `python3 scripts/termux/system_agent.py ask --provider gemini --text <TEXT>` | — |
-| `hosts.phone-agent-consent` | On this phone: allow or withdraw cloud calls to an assistant | `python3 scripts/termux/system_agent.py consent --provider <PROVIDER> <CHOICE>` | — |
 
 ### Advanced: models & graph
 

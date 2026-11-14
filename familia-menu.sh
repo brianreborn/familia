@@ -81,6 +81,7 @@ group_desc() {
     "Reach tools (Agent-Reach)") echo "opt agents into Agent-Reach web tools" ;;
     "Models") echo "add models, check the graph, see launch parameters" ;;
     "Agents (hermes)") echo "run hermes on one model or the whole graph" ;;
+    "App catalog") echo "virtual app store: apps, phone assistants, open applications issues" ;;
     "Self-improving harness (Harness2)") echo "opt-in; attach to any agent, review every change" ;;
     "Test & benchmark") echo "unit tests, offline plan, benchmark records" ;;
     "Hosts") echo "start servers, measure machines, phones" ;;

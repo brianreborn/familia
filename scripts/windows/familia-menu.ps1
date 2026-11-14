@@ -50,7 +50,7 @@ foreach ($line in (Get-Content $itemsFile)) {
 $groupDesc = @{
   'Set up' = 'first-time, update, licenses, settings'; 'Skills' = 'pick the skills your agents use (green-zkillz)';
   'Models' = 'add models, check the graph, see launch parameters'; 'Self-improving harness (Harness2)' = 'opt-in; review every change';
-  'Agents (hermes)' = 'run hermes on one model or the whole graph'; 'Test & benchmark' = 'benchmark records'; 'Hosts' = 'start this node, measure, monitor';
+  'Agents (hermes)' = 'run hermes on one model or the whole graph'; 'App catalog' = 'virtual app store: apps and open applications issues'; 'Test & benchmark' = 'benchmark records'; 'Hosts' = 'start this node, measure, monitor';
   'Advanced: models & graph' = 'model database, launch arguments, graph edits'; 'Advanced: agents' = 'skill folders, escalation';
   'Advanced: hosts & benchmarks' = 'low-level setup, benchmarks, CPU level, uninstall, logon task'; 'Reach tools (Agent-Reach)' = 'opt agents into Agent-Reach web tools'; 'Help' = 'quick start, search, the full command list, what the menu leaves out'
 }

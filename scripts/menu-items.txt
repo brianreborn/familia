@@ -45,6 +45,17 @@ agents.guardian-launch-test|Agents (hermes)|Guardian/defender node: launch-test 
 agents.guardian-start|Agents (hermes)|Guardian/defender: operator-confirmed model start (owned scope; tools empty)|env FAMILIA_OPERATOR_CONFIRM=yes sh with-fleet.sh --role guardian --operator-start|lic||
 agents.pentest-launch-test|Agents (hermes)|Legacy id → guardian launch-test|sh with-fleet.sh --role guardian --launch-test|||
 agents.pentest-start|Agents (hermes)|Legacy id → guardian operator-start|env FAMILIA_OPERATOR_CONFIRM=yes sh with-fleet.sh --role guardian --operator-start|lic||
+apps.catalog|App catalog|Virtual app store: every app familia can run, plus open "applications" issues (cached search)|PY scripts/app_catalog.py menu|||python scripts\app_catalog.py menu
+apps.list|App catalog|List the apps (menu apps and the gum-home tools) and their ids|PY scripts/app_catalog.py list|||python scripts\app_catalog.py list
+apps.search|App catalog|Search open "applications" issues across brianreborn (public; cached, 45 min TTL)|PY scripts/app_catalog.py search {WORDS:words to look for [all]}|||python scripts\app_catalog.py search {WORDS:words to look for [all]}
+apps.refresh|App catalog|Refresh the app search cache now (one GitHub request)|PY scripts/app_catalog.py search --refresh|||python scripts\app_catalog.py search --refresh
+apps.run|App catalog|Run one app by id (see apps.list)|PY scripts/app_catalog.py run {APP:app id, e.g. web-ui}|||python scripts\app_catalog.py run {APP:app id, e.g. web-ui}
+hosts.phone-agents|App catalog|Phone assistants (Bixby, Gemini): which are set up and what leaves the phone|PY scripts/system_agents.py status|||python scripts\system_agents.py status
+hosts.phone-agents-licenses|App catalog|Phone assistants: Shizuku license and the terms each assistant brings|PY scripts/system_agents.py licenses|||python scripts\system_agents.py licenses
+hosts.phone-agent-probe|App catalog|On this phone (Termux): is Shizuku running, which assistants are installed|PY scripts/termux/system_agent.py probe|||
+hosts.phone-agent-open|App catalog|On this phone: bring Gemini or Bixby to the front (sends nothing)|PY scripts/termux/system_agent.py open --provider {PROVIDER:gemini or bixby}|||
+hosts.phone-agent-ask|App catalog|On this phone: ask Gemini (CLOUD: your text goes to Google; asks first)|PY scripts/termux/system_agent.py ask --provider gemini --text {TEXT:what to ask}|lic||
+hosts.phone-agent-consent|App catalog|On this phone: allow or withdraw cloud calls to an assistant|PY scripts/termux/system_agent.py consent --provider {PROVIDER:gemini or bixby} {CHOICE:--grant, --revoke or --show}|||
 harness2.status|Self-improving harness (Harness2)|Show which agents have Harness2 and in which mode|PY scripts/harness2.py status||file:scripts/harness2.py|python scripts\harness2.py status
 harness2.set|Self-improving harness (Harness2)|Set Harness² mode for any agent (hermes, llama UI, or other; off / propose / apply)|PY scripts/harness2.py set --agent {AGENT:agent name} --mode {MODE:off, propose or apply}|lic|file:scripts/harness2.py|python scripts\harness2.py set --agent {AGENT:agent name} --mode {MODE:off, propose or apply}
 harness2.review|Self-improving harness (Harness2)|Review proposals: list, accept or revert|PY scripts/harness2.py review||file:scripts/harness2.py|python scripts\harness2.py review
@@ -65,12 +76,6 @@ hosts.generate|Hosts|Write a per-host graph to generated/graph-HOST.yaml|PY scri
 hosts.android|Hosts|Start the node on an Android phone over SSH|bash android_start.sh {HOST:phone host, e.g. phone7}|lic||
 hosts.phones|Hosts|Start every phone listed in graph.yaml|bash android_multi_start.sh|lic||
 hosts.watchdog|Hosts|Keep a phone's node running (restart it if it stops answering)|bash watchdog_android.sh {HOST:phone host, e.g. phone7}|lic||
-hosts.phone-agents|Hosts|Phone assistants (Bixby, Gemini): which are set up and what leaves the phone|PY scripts/system_agents.py status|||python scripts\system_agents.py status
-hosts.phone-agents-licenses|Hosts|Phone assistants: Shizuku license and the terms each assistant brings|PY scripts/system_agents.py licenses|||python scripts\system_agents.py licenses
-hosts.phone-agent-probe|Hosts|On this phone (Termux): is Shizuku running, which assistants are installed|PY scripts/termux/system_agent.py probe|||
-hosts.phone-agent-open|Hosts|On this phone: bring Gemini or Bixby to the front (sends nothing)|PY scripts/termux/system_agent.py open --provider {PROVIDER:gemini or bixby}|||
-hosts.phone-agent-ask|Hosts|On this phone: ask Gemini (CLOUD: your text goes to Google; asks first)|PY scripts/termux/system_agent.py ask --provider gemini --text {TEXT:what to ask}|lic||
-hosts.phone-agent-consent|Hosts|On this phone: allow or withdraw cloud calls to an assistant|PY scripts/termux/system_agent.py consent --provider {PROVIDER:gemini or bixby} {CHOICE:--grant, --revoke or --show}|||
 adv.args|Advanced: models & graph|validate_graph: the llama-server arguments for one node|PY scripts/validate_graph.py --graph graph.yaml --args {NODE:node name, e.g. coder}|||python scripts\validate_graph.py --graph graph.yaml --args {NODE:node name, e.g. coder}
 adv.routes|Advanced: models & graph|graph_router (default gateway): check a routes file (single, pair, fallback, chain, router, remote, tools)|PY scripts/graph_router.py {ROUTES:routes file [examples/graphs/router/fallback.yaml]} --check|||python scripts\graph_router.py {ROUTES:routes file [examples\graphs\router\fallback.yaml]} --check
 adv.verify|Advanced: models & graph|validate_graph: also verify model sha256 and runtimes (slow)|PY scripts/validate_graph.py --graph graph.yaml --verify-sha --check-runtimes|||python scripts\validate_graph.py --graph graph.yaml --verify-sha --check-runtimes
