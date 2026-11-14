@@ -1,6 +1,6 @@
-# v0.2.0 Roadmap
+# v0.3.0 Roadmap
 
-**Version:** v0.2.0  
+**Version:** v0.3.0  
 **Platform:** FreeBSD  
 **Status:** In Progress
 
