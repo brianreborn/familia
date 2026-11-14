@@ -341,4 +341,6 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/search_x.sh` | X/Twitter search via Agent-Reach from gum home |
 | `scripts/windows/familia-home.ps1` | Windows mirror of familia_home.sh (started by familia.cmd) |
 | `scripts/start_graph.py` | graph dry-run helper (prints `via graph_router` = default gateway, or `via graph-proxy` with `router: false`); hosts.start-preview twin retired — use hosts.start / start.sh |
+| `scripts/hermes-escalation-config.sh` | default environment settings for escalation-ready hermes runs |
+| `scripts/watchdog_test.sh` | test helper running a command under a timeout watchdog for CI/local testing |
 

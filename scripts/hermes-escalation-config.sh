@@ -1,3 +1,5 @@
+#!/bin/sh
+# shellcheck shell=sh
 # HERMES ESCALATION-READY CONFIGURATION
 # Default effort level: ESCALATED (handles wishy-washy models with hand-holding)
 #

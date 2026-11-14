@@ -1,0 +1,32 @@
+# Shareable hardware profile. No hostnames, IPs, usernames or keys.
+id: microsoft-surface-pro-7-i5-1035g4-linux
+identity:
+  device_model: Microsoft Surface Pro 7
+  soc: Intel Core i5-1035G4 (Ice Lake, 4C/8T, 1.10 GHz base up to 3.70 GHz, 15 W)
+  cpu_match: ['i5-1035G4', 'Ice Lake']
+  gpu: Intel Iris Plus Graphics G4 (Ice Lake GT1.5, integrated, shared RAM)
+  gpu_driver: Mesa Intel Iris / Vulkan
+  os: linux
+  ram_mib: 7536
+  runtime_tested: []
+known_good_setup:
+  - "Surface Linux kernel (linux-surface) installed and active."
+  - "Reserve ~3 GiB for host / desktop environment; keep MemAvailable >= 2 GiB."
+best_settings:
+  decision:
+    backend: cpu
+    threads: 4
+    model: "LFM2.5-350M-Instruct Q4_K_M"
+  coder:
+    backend: cpu
+    threads: 4
+    ubatch: 256
+    model: "qwen2.5-coder-0.5b-instruct-q4_k_m.gguf"
+    load_mode: none
+gotchas:
+  - "Iris Plus Graphics G4 shares package TDP and DDR4 memory bandwidth with CPU cores."
+  - "Under 8 GiB RAM - keep reserve >= 2.5 GiB free; prefer -lm none to avoid double-mapped memory."
+power:
+  package_tdp_w: {value: 15, cTDP_down_w: 12, cTDP_up_w: 25}
+  igpu: "shares the 15 W package budget with CPU cores"
+records: {hardware_profile: microsoft-surface-pro-7-i5-1035g4-linux}
