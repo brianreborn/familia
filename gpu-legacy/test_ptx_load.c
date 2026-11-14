@@ -1,14 +1,21 @@
-#include <windows.h>
+#include "sm11_compat.h"
 #include <stdio.h>
 #include <stdlib.h>
 typedef int CUresult; typedef void* CUmodule; typedef void* CUfunction; typedef void* CUcontext; typedef int CUdevice;
 int main(){
-  HMODULE h=LoadLibraryA("nvcuda.dll");
-  CUresult (__stdcall *cuInit)(unsigned)= (void*)GetProcAddress(h,"cuInit");
-  CUresult (__stdcall *cuDeviceGet)(CUdevice*,int)=(void*)GetProcAddress(h,"cuDeviceGet");
-  CUresult (__stdcall *cuCtxCreate)(CUcontext*,unsigned,CUdevice)=(void*)GetProcAddress(h,"cuCtxCreate_v2");
-  CUresult (__stdcall *cuModuleLoadDataEx)(CUmodule*,const void*,unsigned,int*,void**)=(void*)GetProcAddress(h,"cuModuleLoadDataEx");
-  CUresult (__stdcall *cuModuleGetFunction)(CUfunction*,CUmodule,const char*)=(void*)GetProcAddress(h,"cuModuleGetFunction");
+#ifdef _WIN32
+  sm11_lib_t h = sm11_dlopen("nvcuda.dll");
+#else
+  sm11_lib_t h = sm11_dlopen("libcuda.so.1");
+  if (!h) h = sm11_dlopen("libcuda.so");
+  if (!h) h = sm11_dlopen("/usr/local/lib/libcuda.so.1");
+#endif
+  if (!h) { fprintf(stderr, "libcuda.so / nvcuda.dll not found\n"); return 1; }
+  CUresult (SM11_API *cuInit)(unsigned) = (void*)sm11_dlsym(h,"cuInit");
+  CUresult (SM11_API *cuDeviceGet)(CUdevice*,int) = (void*)sm11_dlsym(h,"cuDeviceGet");
+  CUresult (SM11_API *cuCtxCreate)(CUcontext*,unsigned,CUdevice) = (void*)sm11_dlsym(h,"cuCtxCreate_v2");
+  CUresult (SM11_API *cuModuleLoadDataEx)(CUmodule*,const void*,unsigned,int*,void**) = (void*)sm11_dlsym(h,"cuModuleLoadDataEx");
+  CUresult (SM11_API *cuModuleGetFunction)(CUfunction*,CUmodule,const char*) = (void*)sm11_dlsym(h,"cuModuleGetFunction");
   FILE*f=fopen("kernels.ptx","rb"); fseek(f,0,SEEK_END); long n=ftell(f); fseek(f,0,SEEK_SET);
   char*buf=malloc(n+1); fread(buf,1,n,f); buf[n]=0; fclose(f);
   CUdevice d; CUcontext c; CUmodule m; char log[8192]={0}; int opts[2]={5,6}; void*vals[2]={log,(void*)(sizeof log)};

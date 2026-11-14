@@ -293,7 +293,7 @@ show_match() {  # show_match N KEY NEEDLE MARK
     -v key="$2" -v n="$1" -v mark="$4" -v note="$note" -v color="$c" \
     -v needle="$(printf '%s' "$3" | tr '[:upper:]' '[:lower:]')"
 }
-no_match() { say "No item matches '$1'. Try a shorter word, or a word from a command (e.g. /hermes, /dry-run)."; }
+no_match() { say "No item matches '$1'. Try a shorter word, or a word from a command (e.g. /hermes, /graph)."; }
 print_matches() {  # print_matches TEXT ; returns 1 when nothing matches
   local t=$1 i
   find_matches "$t"

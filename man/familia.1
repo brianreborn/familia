@@ -46,6 +46,11 @@ Change launcher settings (terminal).
 .br
 Runs: \fBsh scripts/configure.sh \-\-interactive\fR
 .TP
+\fBandroid\-cockpit\fR
+Android cockpit installer switches (thin client, gate, dry\-run; self\-host 127.0.0.1, HTTPS for remote, key required).
+.br
+Runs: \fBsh scripts/android\-cockpit\-switches.sh\fR
+.TP
 \fBsync\-goal\fR
 Sync pinned parts only (asks preview vs apply) (licenses first).
 .br
@@ -138,6 +143,11 @@ Runs: \fBpython3 scripts/hf_fetch.py <REPO> \-\-damp\-run\fR
 Show one model's license and what it obliges you to.
 .br
 Runs: \fBpython3 scripts/model_license.py show <ID>\fR
+.TP
+\fBmodel pick\fR \fI<HOST>\fR \fI<ROLE>\fR
+Pick a model for this host: full catalog, search, Enter = host default; previews a host graph (writes generated/ only with \-\-write).
+.br
+Runs: \fBpython3 scripts/model_pick.py menu \-\-host <HOST> \-\-role <ROLE>\fR
 .TP
 \fBmodel check\fR
 Check graph.yaml: models, RAM budget, required launch parameters.

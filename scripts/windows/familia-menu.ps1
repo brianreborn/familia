@@ -179,7 +179,7 @@ function ShowMatch($num, $i, $t, $mark) {
   Write-Host ('{0}{1,2}) ' -f $mark, $num) -NoNewline; WriteHl $i.Group $t; Write-Host ' > ' -NoNewline; WriteHl $i.Label $t; Write-Host $note
   Write-Host '       key: ' -NoNewline; WriteHl $i.Key $t; Write-Host '   runs: ' -NoNewline; WriteHl (Shown $i.Cmd) $t; Write-Host ''
 }
-function NoMatch($t) { Write-Host "No item matches '$t'. Try a shorter word, or a word from a command (e.g. /hermes, /dry-run)." }
+function NoMatch($t) { Write-Host "No item matches '$t'. Try a shorter word, or a word from a command (e.g. /hermes, /graph)." }
 function PrintMatches($t) {
   $m = FindMatches $t
   if ($m.Count -eq 0) { NoMatch $t; return 1 }

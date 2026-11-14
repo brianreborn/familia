@@ -36,6 +36,7 @@ model add|models.add
 model fetch|models.fetch
 model cards|models.cards
 model license|models.license
+model pick|models.pick
 model check|models.check
 model params|models.explain
 model args|adv.args

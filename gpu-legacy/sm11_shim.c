@@ -1,7 +1,7 @@
 /* Full forward pass on GeForce 8600 GT (sm_11) via CUDA driver API + hand-written PTX.
  * Activations + KV stay on device; host copies only logits. Designed as the sm11
  * implementation of legacy_gpu.h for always-active decision/draft models and partial offload. */
-#include <windows.h>
+#include "sm11_compat.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,45 +10,45 @@
 
 typedef int CUresult; typedef int CUdevice; typedef void* CUcontext; typedef void* CUmodule; typedef void* CUfunction;
 typedef unsigned long long CUdeviceptr;
-static CUresult (__stdcall *p_cuInit)(unsigned);
-static CUresult (__stdcall *p_cuDeviceGet)(CUdevice*, int);
-static CUresult (__stdcall *p_cuDeviceGetName)(char*, int, CUdevice);
-static CUresult (__stdcall *p_cuDeviceComputeCapability)(int*, int*, CUdevice);
-static CUresult (__stdcall *p_cuCtxCreate)(CUcontext*, unsigned, CUdevice);
-static CUresult (__stdcall *p_cuModuleLoadDataEx)(CUmodule*, const void*, unsigned, int*, void**);
-static CUresult (__stdcall *p_cuModuleGetFunction)(CUfunction*, CUmodule, const char*);
-static CUresult (__stdcall *p_cuMemAlloc)(CUdeviceptr*, size_t);
-static CUresult (__stdcall *p_cuMemFree)(CUdeviceptr);
-static CUresult (__stdcall *p_cuMemGetInfo)(size_t*, size_t*);
-static CUresult (__stdcall *p_cuMemcpyHtoD)(CUdeviceptr, const void*, size_t);
-static CUresult (__stdcall *p_cuMemcpyDtoH)(void*, CUdeviceptr, size_t);
-static CUresult (__stdcall *p_cuMemcpyDtoD)(CUdeviceptr, CUdeviceptr, size_t);
-static CUresult (__stdcall *p_cuLaunchKernel)(CUfunction, unsigned, unsigned, unsigned, unsigned, unsigned, unsigned, unsigned, void*, void**, void**);
-static CUresult (__stdcall *p_cuCtxSynchronize)(void);
+static CUresult (SM11_API *p_cuInit)(unsigned);
+static CUresult (SM11_API *p_cuDeviceGet)(CUdevice*, int);
+static CUresult (SM11_API *p_cuDeviceGetName)(char*, int, CUdevice);
+static CUresult (SM11_API *p_cuDeviceComputeCapability)(int*, int*, CUdevice);
+static CUresult (SM11_API *p_cuCtxCreate)(CUcontext*, unsigned, CUdevice);
+static CUresult (SM11_API *p_cuModuleLoadDataEx)(CUmodule*, const void*, unsigned, int*, void**);
+static CUresult (SM11_API *p_cuModuleGetFunction)(CUfunction*, CUmodule, const char*);
+static CUresult (SM11_API *p_cuMemAlloc)(CUdeviceptr*, size_t);
+static CUresult (SM11_API *p_cuMemFree)(CUdeviceptr);
+static CUresult (SM11_API *p_cuMemGetInfo)(size_t*, size_t*);
+static CUresult (SM11_API *p_cuMemcpyHtoD)(CUdeviceptr, const void*, size_t);
+static CUresult (SM11_API *p_cuMemcpyDtoH)(void*, CUdeviceptr, size_t);
+static CUresult (SM11_API *p_cuMemcpyDtoD)(CUdeviceptr, CUdeviceptr, size_t);
+static CUresult (SM11_API *p_cuLaunchKernel)(CUfunction, unsigned, unsigned, unsigned, unsigned, unsigned, unsigned, unsigned, void*, void**, void**);
+static CUresult (SM11_API *p_cuCtxSynchronize)(void);
 
 
 /* ---- async completion: pinned staging + event polling (no cuCtxSynchronize in hot paths) ----
    One CUDA context, default stream: work is ordered on the device. The host never blocks in the
    driver; it records an event and polls cuEventQuery, yielding the core between polls. */
 typedef void* CUevent_;
-static CUresult (__stdcall *p_cuMemHostAlloc)(void**, size_t, unsigned);
-static CUresult (__stdcall *p_cuMemcpyHtoDAsync)(CUdeviceptr, const void*, size_t, void*);
-static CUresult (__stdcall *p_cuMemcpyDtoHAsync)(void*, CUdeviceptr, size_t, void*);
-static CUresult (__stdcall *p_cuEventCreate)(CUevent_*, unsigned);
-static CUresult (__stdcall *p_cuEventRecord)(CUevent_, void*);
-static CUresult (__stdcall *p_cuEventQuery)(CUevent_);
-static CUresult (__stdcall *p_cuEventSynchronize)(CUevent_);
+static CUresult (SM11_API *p_cuMemHostAlloc)(void**, size_t, unsigned);
+static CUresult (SM11_API *p_cuMemcpyHtoDAsync)(CUdeviceptr, const void*, size_t, void*);
+static CUresult (SM11_API *p_cuMemcpyDtoHAsync)(void*, CUdeviceptr, size_t, void*);
+static CUresult (SM11_API *p_cuEventCreate)(CUevent_*, unsigned);
+static CUresult (SM11_API *p_cuEventRecord)(CUevent_, void*);
+static CUresult (SM11_API *p_cuEventQuery)(CUevent_);
+static CUresult (SM11_API *p_cuEventSynchronize)(CUevent_);
 static CUevent_ g_fev; static int g_async = 0;
 static unsigned char* g_pin; static size_t g_pinsz = 0, g_pinoff = 0;
 volatile long long g_sm11_polls = 0, g_sm11_fences = 0;
-static void async_init(HMODULE h) {
-    p_cuMemHostAlloc = (void*)GetProcAddress(h, "cuMemHostAlloc");
-    p_cuMemcpyHtoDAsync = (void*)GetProcAddress(h, "cuMemcpyHtoDAsync_v2");
-    p_cuMemcpyDtoHAsync = (void*)GetProcAddress(h, "cuMemcpyDtoHAsync_v2");
-    p_cuEventCreate = (void*)GetProcAddress(h, "cuEventCreate");
-    p_cuEventRecord = (void*)GetProcAddress(h, "cuEventRecord");
-    p_cuEventQuery = (void*)GetProcAddress(h, "cuEventQuery");
-    p_cuEventSynchronize = (void*)GetProcAddress(h, "cuEventSynchronize");
+static void async_init(sm11_lib_t h) {
+    p_cuMemHostAlloc = (void*)sm11_dlsym(h, "cuMemHostAlloc");
+    p_cuMemcpyHtoDAsync = (void*)sm11_dlsym(h, "cuMemcpyHtoDAsync_v2");
+    p_cuMemcpyDtoHAsync = (void*)sm11_dlsym(h, "cuMemcpyDtoHAsync_v2");
+    p_cuEventCreate = (void*)sm11_dlsym(h, "cuEventCreate");
+    p_cuEventRecord = (void*)sm11_dlsym(h, "cuEventRecord");
+    p_cuEventQuery = (void*)sm11_dlsym(h, "cuEventQuery");
+    p_cuEventSynchronize = (void*)sm11_dlsym(h, "cuEventSynchronize");
     if (!p_cuMemHostAlloc || !p_cuMemcpyHtoDAsync || !p_cuMemcpyDtoHAsync || !p_cuEventCreate || !p_cuEventRecord || !p_cuEventQuery) return;
     if (getenv("SM11_SYNC") && atoi(getenv("SM11_SYNC"))) return;      /* opt-out: legacy blocking path */
     g_pinsz = (size_t)1 << 20;   /* 1 MiB pinned staging (x in, y out) */
@@ -62,7 +62,7 @@ static int sm11_fence(void) {
     if (p_cuEventRecord(g_fev, 0)) return -1;
     CUresult r; g_sm11_fences++;
     int k = 0;
-    while ((r = p_cuEventQuery(g_fev)) == 600 /*NOT_READY*/) { g_sm11_polls++; if (++k > 64 && p_cuEventSynchronize) { r = p_cuEventSynchronize(g_fev); break; } YieldProcessor(); }
+    while ((r = p_cuEventQuery(g_fev)) == 600 /*NOT_READY*/) { g_sm11_polls++; if (++k > 64 && p_cuEventSynchronize) { r = p_cuEventSynchronize(g_fev); break; } sm11_yield(); }
     g_pinoff = 0;                     /* all staged copies have completed */
     return r ? -1 : 0;
 }
@@ -117,7 +117,7 @@ static char* load_ptx(void) {
     return NULL;
 }
 
-#define LOAD(n, s) do { *(FARPROC*)&p_##n = GetProcAddress(h, s); if (!p_##n) { fprintf(stderr, "sm11: missing %s\n", s); return -1; } } while (0)
+#define LOAD(n, s) do { p_##n = (void*)sm11_dlsym(h, s); if (!p_##n) { fprintf(stderr, "sm11: missing %s\n", s); return -1; } } while (0)
 #define CK(e) do { CUresult _r = (e); if (_r) { fprintf(stderr, "sm11: %s -> %d\n", #e, _r); return -1; } } while (0)
 
 static CUfunction f_matvec, f_rmsnorm, f_add, f_silu, f_rope, f_copy, f_ascores, f_softmax, f_avalue, f_attn_fused, f_q4, f_q8, f_batch;
@@ -168,8 +168,14 @@ static int matvec_d(CUdeviceptr dy, CUdeviceptr dx, const float* hw, int n, int 
 }
 
 int sm11_register(const void* base, size_t nbytes) {
-    HMODULE h = LoadLibraryA("nvcuda.dll");
-    if (!h) { fprintf(stderr, "sm11: nvcuda.dll not found\n"); return -1; }
+#ifdef _WIN32
+    sm11_lib_t h = sm11_dlopen("nvcuda.dll");
+#else
+    sm11_lib_t h = sm11_dlopen("libcuda.so.1");
+    if (!h) h = sm11_dlopen("libcuda.so");
+    if (!h) h = sm11_dlopen("/usr/local/lib/libcuda.so.1");
+#endif
+    if (!h) { fprintf(stderr, "sm11: CUDA driver library not found (nvcuda.dll / libcuda.so)\n"); return -1; }
     LOAD(cuInit, "cuInit"); LOAD(cuDeviceGet, "cuDeviceGet"); LOAD(cuDeviceGetName, "cuDeviceGetName");
     LOAD(cuDeviceComputeCapability, "cuDeviceComputeCapability"); LOAD(cuCtxCreate, "cuCtxCreate_v2");
     LOAD(cuModuleLoadDataEx, "cuModuleLoadDataEx"); LOAD(cuModuleGetFunction, "cuModuleGetFunction");

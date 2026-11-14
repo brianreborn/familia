@@ -83,7 +83,7 @@ def test_idle_runs_bench_without_force_low_priority_cpu_only(base):
     e = _env_of(out)
     assert "SWARM_BENCH_FORCE" not in e  # inherited FORCE is stripped; bench.sh guards stay on
     assert e["CUDA_VISIBLE_DEVICES"] == "" and e["GGML_VK_VISIBLE_DEVICES"] == ""
-    assert int(open(os.path.join(out, "nice")).read()) == 19
+    assert int(open(os.path.join(out, "nice")).read()) == 20
     for base_env in ({}, {"SWARM_BENCH_FORCE": "1"}, {"SWARM_BENCH_FORCE": "0"}):
         assert "SWARM_BENCH_FORCE" not in bi.bench_env(base_env, "/x")
 

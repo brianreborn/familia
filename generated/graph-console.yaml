@@ -1,0 +1,87 @@
+# Console/embedded security graph
+# Constrained host: limited RAM, no tools, strict startup
+# Use case: consoles, embedded devices, single-purpose hosts
+
+version: 2
+
+hosts:
+  miryam:
+    kind: laptop
+    measured: true
+    addr: REPLACE_ME
+    user: REPLACE_ME
+    port: 22
+    os: linux
+    cpu: Intel Core i5-7200U
+    threads: 4
+    ram_mib: 4096
+    reserve_ram_mib: 256
+    
+  safe-start:
+    kind: embedded
+    measured: false
+    addr: REPLACE_ME
+    user: REPLACE_ME
+    port: 22
+    os: linux
+    cpu: ARM Cortex-A53
+    threads: 2
+    ram_mib: 512
+    reserve_ram_mib: 128
+    # FAMILIA_OPERATOR_CONFIRM=yes required for start
+    # No auto-start without operator confirmation
+
+  coder:
+    kind: minimal
+    measured: true
+    addr: REPLACE_ME
+    user: REPLACE_ME
+    port: 22
+    os: linux
+    cpu: ARM Cortex-A53
+    threads: 2
+    ram_mib: 1024
+    reserve_ram_mib: 256
+    # Minimal coder — only approved tasks
+
+graphs:
+  default: graph.yaml
+
+models:
+  - name: Qwen2.5-0.5B-Instruct-Q4_0
+    repository: Qwen/Qwen2.5-0.5B-Instruct-GGUF
+    revision: placeholder
+    quant: Q4_0
+    role: chat
+    tools:
+      allow: []
+    # Pure conversation only — no tool execution
+
+  - name: Phi-3-mini-4K-Q2_0
+    repository: microsoft/Phi-3-mini-4K-Q2-000L
+    revision: placeholder
+    quant: Q2_0
+    role: safe-start
+    tools:
+      allow: []
+    # Safe startup — operator confirmed only
+
+  - name: Qwen2.5-Coder-3B-Q4_0
+    repository: Qwen/Qwen2.5-Coder-GGUF
+    revision: placeholder
+    quant: Q4_0
+    role: coder
+    tools:
+      allow: []
+    # Minimal coder — only approved tasks
+
+runtimes:
+  - backend: llama.cpp
+    model_blacklist: null
+    unrecognized_behavior: null
+
+options:
+  enforce_tools_disabled: true
+  seatbelt_mode: on_by_default
+  strict_startup: true
+  operator_confirmation_required: true
