@@ -4,8 +4,7 @@
 .PHONY: all clean tools kmod depend smoke
 
 CFLAGS ?= -O2 -Wall -Wextra
-# override: a command-line CFLAGS= would otherwise drop -Iinclude.
-override CFLAGS += -Iinclude
+CFLAGS += -Iinclude
 
 all: tools
 
