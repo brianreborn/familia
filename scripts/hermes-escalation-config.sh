@@ -23,32 +23,29 @@ export HERMES_NO_SWAP_BACK=1      # --no-swap-back: keep model context between r
 
 # FUNCTION: run hermes with escalation-ready defaults
 hermes_escalation_ready() {
-    local flags="--mode graph"
+    set -- --mode graph "$@"
     
     # Always add escalation if in graph mode
     if [ "${HERMES_ESCALATE:-0}" = "1" ]; then
-        flags="$flags --escalate"
+        set -- "$@" --escalate
     fi
     
     # Always auto-accept licenses
     if [ "${HERMES_ACCEPT_LICENSES:-0}" = "1" ]; then
-        flags="$flags --accept-licenses"
+        set -- "$@" --accept-licenses
     fi
     
     # Add no-swap-back if enabled
     if [ "${HERMES_NO_SWAP_BACK:-0}" = "1" ]; then
-        flags="$flags --no-swap-back"
+        set -- "$@" --no-swap-back
     fi
     
     # Add light model if specified
     if [ -n "${HERMES_LIGHT_MODEL:-}" ]; then
-        flags="$flags --light ${HERMES_LIGHT_MODEL}"
+        set -- "$@" --light "${HERMES_LIGHT_MODEL}"
     fi
     
-    # Pass through any additional args
-    local extra_args=("$@")
-    
-    exec python3 scripts/hermes_modes.py $flags "${extra_args[@]}"
+    exec python3 scripts/hermes_modes.py "$@"
 }
 
 # Example usages (source this file then run):
