@@ -2,9 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <windows.h>
 #include "sm11_shim.h"
-static double ms(void){static LARGE_INTEGER f;static int i;LARGE_INTEGER c;if(!i){QueryPerformanceFrequency(&f);i=1;}QueryPerformanceCounter(&c);return 1000.0*c.QuadPart/f.QuadPart;}
+#include "sm11_compat.h"
+#define ms() sm11_time_ms()
 static unsigned short f2h(float v){union{float f;unsigned u;}u;u.f=v;unsigned s=(u.u>>16)&0x8000,e=(u.u>>23)&0xff,m=(u.u>>13)&0x3ff;int ne=(int)e-127+15;if(ne<=0)return s;if(ne>=31)return s|0x7c00;return s|(ne<<10)|m;}
 static float h2f(unsigned short h){unsigned s=(h&0x8000)<<16,e=(h>>10)&0x1f,m=h&0x3ff;union{float f;unsigned u;}u;if(!e){u.u=s;return u.f;}u.u=s|((e+112)<<23)|(m<<13);return u.f;}
 static void run(int n,int d){

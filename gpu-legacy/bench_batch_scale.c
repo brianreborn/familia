@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <windows.h>
 #include "sm11_shim.h"
-static double qpc_ms(void){static LARGE_INTEGER f;static int i;LARGE_INTEGER c;if(!i){QueryPerformanceFrequency(&f);i=1;}QueryPerformanceCounter(&c);return 1000.0*(double)c.QuadPart/(double)f.QuadPart;}
+#include "sm11_compat.h"
+#define qpc_ms() sm11_time_ms()
 int main(void){
   int n=288,d=768,iters=100,warmup=5;
   size_t wb=(size_t)n*d*4; float*w=malloc(wb); float*x=malloc(n*4u);
