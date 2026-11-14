@@ -1,0 +1,87 @@
+# Drone/embedded security graph
+# Ultra-constrained: minimal RAM, no tools, specific purpose
+# Use case: drones, embedded systems, single-task hosts
+
+version: 2
+
+hosts:
+  miryam:
+    kind: drone
+    measured: true
+    addr: REPLACE_ME
+    user: REPLACE_ME
+    port: 22
+    os: linux
+    cpu: Qualcomm Snapdragon 845
+    threads: 2
+    ram_mib: 2048
+    reserve_ram_mib: 256
+    
+  coder:
+    kind: embedded
+    measured: true
+    addr: REPLACE_ME
+    user: REPLACE_ME
+    port: 22
+    os: linux
+    cpu: ARM Cortex-A72
+    threads: 2
+    ram_mib: 1024
+    reserve_ram_mib: 256
+    # Only one specific task, then shut down
+
+  sensor:
+    kind: embedded
+    measured: true
+    addr: REPLACE_ME
+    user: REPLACE_ME
+    port: 22
+    os: linux
+    cpu: ARM Cortex-M4
+    threads: 1
+    ram_mib: 256
+    reserve_ram_mib: 128
+    # Sensor data processor only
+
+graphs:
+  default: graph.yaml
+
+models:
+  - name: NanoGPT-160M.gguf
+    repository: unnamed/NanoGPT
+    revision: placeholder
+    quant: placeholder
+    role: coder
+    tools:
+      allow: []
+    # Only one specific task, then shut down
+
+  - name: tiny-llama-1B-Q2_0.gguf
+    repository: unnamed/tiny-llama
+    revision: placeholder
+    quant: Q2_0
+    role: sensor
+    tools:
+      allow: []
+    # Process sensor data only
+
+  - name: Qwen2.5-0.5B-Instruct-Q4_0
+    repository: Qwen/Qwen2.5-0.5B-Instruct-GGUF
+    revision: placeholder
+    quant: Q4_0
+    role: status
+    tools:
+      allow: []
+    # Status and monitoring only
+
+runtimes:
+  - backend: llama.cpp
+    model_blacklist: null
+    unrecognized_behavior: null
+
+options:
+  enforce_tools_disabled: true
+  seatbelt_mode: on_by_default
+  strict_startup: true
+  operator_confirmation_required: false
+  # No operator confirmation needed for drone — auto-shutdown after task

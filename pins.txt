@@ -1,6 +1,6 @@
 # name <tab> revision <tab> origin <tab> role
 # Revisions are the commits present when this file was written. They are pins, not submodules.
-code-bootstraps-llama.cpp	6ab58d7f16af1d0be1de48993fdcc0868e8f4204	https://github.com/brianreborn/code-bootstraps-llama.cpp.git	models and the agent
+code-bootstraps-llama.cpp	b1b770d90d94cad9e9ea5b993bdbc383a522fb28	https://github.com/brianreborn/code-bootstraps-llama.cpp.git	models and the agent
 agent-reach	a19a171fa980a0785849596492e0af4db800c82f	https://github.com/Panniantong/Agent-Reach.git	reach tools; not vendored
 green-roomz	b6029b7c373b8a15826118935ed0f5f9b317cf0c	https://github.com/brianreborn/green-roomz.git	alias gateway
 green-agentz	f94430ff624847a1aaed6f1db348f974a82d2592	https://github.com/brianreborn/green-agentz.git	fleet

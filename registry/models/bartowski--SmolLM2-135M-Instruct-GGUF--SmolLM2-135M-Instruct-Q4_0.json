@@ -630,11 +630,11 @@
  "local_check": {
   "host": "angel",
   "sha256_ok": true,
-  "checked": "2026-11-12"
+  "checked": "2026-11-14"
  },
  "unknown": null,
  "warnings": null,
- "updated": "2026-11-12",
+ "updated": "2026-11-14",
  "by": "scripts/model_db.py",
  "gguf_meta": {
   "general.architecture": "llama",

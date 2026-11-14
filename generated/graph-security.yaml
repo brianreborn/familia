@@ -1,0 +1,90 @@
+# Security-hardened graph variant
+# Models with restricted capabilities, tool denial, elevated seatbelts
+# Use case: Appliance, console, drone, watch, or any host where
+# tool use is a security risk
+
+version: 2
+
+hosts:
+  miryam:
+    kind: laptop
+    measured: true
+    addr: REPLACE_ME
+    user: REPLACE_ME
+    port: 22
+    os: linux
+    cpu: Intel Core i5-7200U
+    threads: 4
+    ram_mib: 7270
+    # Standing rule: never aim for high RAM on small hosts
+    reserve_ram_mib: 2048
+    
+  guardian:
+    kind: embedded
+    measured: true
+    addr: REPLACE_ME
+    user: REPLACE_ME
+    port: 22
+    os: linux
+    cpu: ARM Cortex-A53
+    threads: 2
+    ram_mib: 1024
+    reserve_ram_mib: 256
+
+  coder:
+    kind: desktop
+    measured: true
+    addr: REPLACE_ME
+    user: REPLACE_ME
+    port: 22
+    os: linux
+    cpu: AMD Ryzen 7 5800H
+    threads: 8
+    ram_mib: 16000
+    reserve_ram_mib: 4096
+
+graphs:
+  default: graph.yaml
+
+models:
+  - name: Nanbeige4.3-33B-UNCENSORED-Q4_K_M
+    repository: dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF
+    revision: 48e83e05611ef35d343ae5232f0078d85ff516e3
+    quant: Q4_K_M
+    role: coder
+    # CRITICAL: tools.allow is EMPTY — no tool execution for hardened models
+    tools:
+      allow: []
+    # Seatbelts on by default for automation
+    # validate → would-start → stop pattern enforced
+    # No live scans, exploits, or network probes
+
+  - name: Mimir13B-Q4_K_M
+    repository: dealignai/Mimir13B-UNCENSORED-GGUF
+    revision: placeholder
+    quant: Q4_K_M
+    role: guardian
+    tools:
+      allow: []
+    # Guardian/defender: seatbelts on by default
+
+  - name: Qwen2.5-0.5B-Instruct-Q4_0
+    repository: Qwen/Qwen2.5-0.5B-Instruct-GGUF
+    revision: placeholder
+    quant: Q4_0
+    role: chat
+    tools:
+      allow: []
+    # Pure conversation only — no tool execution
+
+runtimes:
+  - backend: llama.cpp
+    model_blacklist: null
+    unrecognized_behavior: null
+
+# Security-specific settings
+options:
+  enforce_tools_disabled: true
+  seatbelt_mode: on_by_default
+  strict_startup: true
+  operator_confirmation_required: true
