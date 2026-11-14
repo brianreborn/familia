@@ -9,6 +9,8 @@ import hashlib
 import json
 import os
 import re
+
+MIN_DRAFT_LEN = 200  # Minimum draft length in characters
 import secrets
 import shlex
 import shutil
@@ -2518,7 +2520,44 @@ def model_cli(gguf, prompt, max_tokens):
             pass
 
 
-def model_draft(prompt, max_tokens=700):
+
+
+def validate_draft(draft: str, nonce: str) -> None:
+    """Validate a generated draft before it is pushed.
+
+    Checks performed (per Issue #580):
+    * Draft must not contain the job ``nonce`` string.
+    * Draft must not contain untrusted fence markers ``BEGIN UNTRUSTED`` or ``END UNTRUSTED``.
+    * Draft must not contain the prompt preamble (the large instruction block that is
+      passed to the model).  This is detected by searching for the phrase
+      "You are a careful engineer" which appears in all prompts.
+    * Triple‑backtick fences must be balanced (even number).
+    * Draft length must be at least ``MIN_DRAFT_LEN`` characters.
+
+    Raises:
+        ForgeError: if any validation fails.
+    """
+    # 1. Nonce check – the nonce is injected into the prompt; it should never appear in the draft.
+    if nonce and nonce in draft:
+        raise ForgeError("draft contains job nonce")
+
+    # 2. Untrusted fence markers.
+    if "BEGIN UNTRUSTED" in draft or "END UNTRUSTED" in draft:
+        raise ForgeError("draft contains untrusted fence markers")
+
+    # 3. Prompt preamble detection – look for a characteristic phrase from the prompt.
+    if "You are a careful engineer" in draft:
+        raise ForgeError("draft contains prompt preamble")
+
+    # 4. Balanced triple‑backtick fences.
+    fence_count = draft.count("```")
+    if fence_count % 2 != 0:
+        raise ForgeError("draft contains unbalanced markdown fences")
+
+    # 5. Minimum length.
+    if len(draft.strip()) < MIN_DRAFT_LEN:
+        raise ForgeError(f"draft too short ({len(draft.strip())} chars) < {MIN_DRAFT_LEN}")
+
     """Local open model only. HTTP to a localhost endpoint (SWARM_MODEL_URL)
     or a one-shot llama-completion on SWARM_MODEL_GGUF (no listener)."""
     url = env("SWARM_MODEL_URL")
@@ -2916,6 +2955,7 @@ def job(repo, number, gen, claim=None):
                 raise ForgeError("no model draft and no probe; not opening an empty PR")
             draft, how = "(local model unavailable: %s)\n" % e, "none"
         (work / "draft.md").write_text(draft)
+
         if mode() != "live":
             return {"ok": True, "dry": True, "path": str(work / "draft.md")}
         # Recheck approval, body hash, and claim before push / PR / comment.
