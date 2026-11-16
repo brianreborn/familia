@@ -1,4 +1,37 @@
-# v0.3.0 Roadmap
+# v0.4.0 Release Checklist
+
+**Version:** v0.4.0  
+**Platform:** Linux is the tested platform (FreeBSD/Windows partial)  
+**Status:** In progress (not released)
+
+## Overview
+
+Current release target is **v0.4.0**. This checklist is the live plan. The older v0.3.0 / v0.2.0 text is kept below as historical backlog and is not the current target.
+
+Draft release notes: [docs/releases/v0.4.0.md](docs/releases/v0.4.0.md). The v0.3.0 draft remains at [docs/releases/v0.3.0.md](docs/releases/v0.3.0.md).
+
+## v0.4.0 must-land
+
+- [ ] **Pin coherence** — `pins.txt` must name a commit that exists on `brianreborn/code-bootstraps-llama.cpp`. PR #604 restores `6ab58d7` after `b1b770d` was written here by mistake (`b1b770d` is ggml-org/llama.cpp `v1.0.0`, not a code-bootstraps commit).
+- [ ] **Main CI green** — including `tests/test_swarm_pull_580_validation.py` (#605). Do not merge release PRs on red CI.
+- [ ] **llama.cpp v1.0.0 in code-bootstraps** — bump the `llama.cpp` submodule to official ggml-org `v1.0.0` (`b1b770d90d94cad9e9ea5b993bdbc383a522fb28`), then re-pin familia. Do not retarget `pins.txt` at that SHA directly. `brianreborn/llama.cpp` has no `v1.0.0` tag (latest version tag is `v0.9.0`). Issue #599 described the broken pin as already done; that is not the integration path.
+- [x] **Server Tools / safe-mode waiver** — `--tools` is launch-only; waived for v0.4.0 in [docs/known-issues.md](docs/known-issues.md) unless a persist-across-restart fix lands first.
+- [x] **LFM3 default honesty** — README now distinguishes the single-node LFM3-1.7B-Uncensored default from `nodes.coder` on miryam (`qwen35-2b-q4km`). Wiring LFM3 into that node is still open (model entry is `role: chat`; 64k budgets were measured on Qwen3.5-2B).
+- [x] **Version labels** — README, this roadmap, and `docs/releases/v0.4.0.md` say v0.4.0 is the current target.
+
+## Deferred past v0.4.0
+
+- LFM3 VL / Omni / Audio as default graph nodes
+- BitTorrent transport beyond the existing PoC
+- Coordinator-free swarm
+- FreeBSD / macOS / AppImage installer depth
+- Safe-build CPU node / SOUL glue
+- PQFreeBSD + green-roomz nexus audit
+- Remaining items in the historical v0.3.0 / v0.2.0 sections below
+
+---
+
+# Historical: v0.3.0 Roadmap (superseded)
 
 **Version:** v0.3.0  
 **Platform:** FreeBSD  
@@ -165,7 +198,7 @@ successful result stored under `~/.cache/familia/hermes-env-probe/<hostname>`
 - Boss Agent API endpoints need validation
 - Should validate against upstream master
 
-**Fix Applied (v0.4.0):**
+**Fix Applied (v0.2.0):**
 - Boss Agent CLI integration completed (#403-#407)
 - API endpoints now validated against upstream master
 - Integration locked to upstream release
@@ -346,3 +379,4 @@ successful result stored under `~/.cache/familia/hermes-env-probe/<hostname>`
 - [Issue #405](https://github.com/brianreborn/familia/issues/405) - Harness2 live status
 - [Issue #406](https://github.com/brianreborn/familia/issues/406) - Harness2 self-test
 - [Issue #407](https://github.com/brianreborn/familia/issues/407) - Boss API validation
+
