@@ -1,5 +1,9 @@
 # Known issues
 
+- **v0.4.0: Windows, FreeBSD and macOS are unverified**
+  - **Windows / PowerShell:** untested for v0.4.0. The Windows test hosts (qodesh, shalom) were offline, so the llama `b12359` Windows archives (including CUDA 13.5) and the `.ps1` scripts have not been run. `start.bat` also lacks the F-6 refusal of `--host` / `--port` / `--api-key` overrides that the Linux start path enforces.
+  - **FreeBSD / macOS:** the llama.cpp v1.0.0 pin (code-bootstraps `223bd358`, build `b12359`) has only been built on Linux (CPU and Vulkan). Treat FreeBSD and macOS as untested until a build there is recorded.
+
 - **hermes fails with HTTP 400 or "below the 64K minimum"**
   - **Cause:** running stock `hermes` with `~/.hermes`. That config has compression off and points at models with small contexts (for example an 8,192-token `general` server), so a long turn overflows the slot and nothing compacts it (seen again 2026-10-18; first in [#19](https://github.com/brianreborn/familia/issues/19)).
   - **Fix:** run `scripts/hermes.sh`. It renders its own config with `context_length` equal to the node's per-slot context (65,536 on `coder`) and compression on. See [QUICKSTART.md](../QUICKSTART.md#always-run-hermes-through-the-harness).
@@ -43,5 +47,6 @@
     fix is deferred. After a crash, a hand-start, or a stale `generated/graph-*.yaml`, check
     live argv and `GET /tools` before treating Server Tools as available. `server_tools` in
     `graph.yaml` is necessary but not sufficient. See LESSONS-LEARNED `L-server-tools`.
+    Do not grant `--tools` on a node where the live `tool_policy` would refuse that tool.
 
 
