@@ -121,7 +121,7 @@ hosts:
     - gabriel.local
     notes: 'Nanbeige4.3-33B Q4_K_M (~18.7 GiB) active via nanbeige-coder (nanbeige-chat
       stays planned; do not co-start). Before activate: measure SSD swap (target ~24
-      GiB familia swap or proven RSS) + mkdir ~/.cache/familia/spill/nanbeige-{coder,chat}.
+      GiB familia swap or proven RSS) + mkdir ~/.cache/familia/spill/angel-{coder,chat}.
       Software VVRAM: load_mode mmap (see install-notes/vvram-ssd/LAYER.md). FreeBSD
       nvso scaffold in gpu-legacy/nvso (stubs; not required for Nanbeige). Do not
       co-start nanbeige-coder and nanbeige-chat.'
@@ -668,7 +668,7 @@ nodes:
       card_set: 'coder/agentic role: base-card Agentic and tool-use (temp 1.0 top_p
         0.95); distinct from nanbeige-chat soft default'
     slot_save: true
-    spill_path: ~/.cache/familia/spill/nanbeige-coder
+    spill_path: ~/.cache/familia/spill/angel-coder
     swap_budget_mib: 24576
     note: 'threads:2 on 4-core angel; do not co-start with nanbeige-chat on 24 GiB.
       SSD/VVRAM: load_mode mmap + spill_path + swap_budget_mib (docs/vvram-ssd/LAYER.md).
@@ -698,7 +698,7 @@ nodes:
       ctx: same RAM budget as nanbeige-coder; heavy ctx relative to host, not full
         512K
     slot_save: false
-    spill_path: ~/.cache/familia/spill/nanbeige-chat
+    spill_path: ~/.cache/familia/spill/angel-chat
     swap_budget_mib: 24576
     note: 'card_set soft default (Reasoning and chat); do not co-start with nanbeige-coder
       on 24 GiB. SSD/VVRAM: same mmap + spill_path + swap_budget_mib as nanbeige-coder

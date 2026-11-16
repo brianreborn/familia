@@ -134,7 +134,8 @@ def private_topology(graph: dict, host: str) -> dict:
             )
         node = dict(node)
         node["role"] = role
-        # Spill paths may still say nanbeige-coder; keep as declared for live compat.
+        # Spill paths stay as declared (angel-coder / angel-chat). Renaming the
+        # node must not empty the slot cache the next launch restores.
         new_nodes[role] = node
         rename[old_name] = role
 

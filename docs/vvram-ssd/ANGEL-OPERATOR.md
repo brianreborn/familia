@@ -36,7 +36,7 @@ git fetch origin main && git pull --ff-only origin main
 python3 scripts/generate_graph.py angel
 python3 scripts/validate_graph.py --graph generated/graph-angel.yaml --no-files
 python3 scripts/validate_graph.py --host angel --fleet   # or against private graph
-mkdir -p ~/.cache/familia/spill/nanbeige-coder
+mkdir -p ~/.cache/familia/spill/angel-coder
 swapinfo -k
 ./start.sh --host angel --yes
 curl -sS http://127.0.0.1:18200/health   # coder only

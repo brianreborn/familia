@@ -52,7 +52,7 @@ mdconfig -a -t vnode -f /usr/swap/familia-nanbeige.swap   # or swapctl -a path p
 Spill directory (userspace “VRAM spill” — slot/prompt cache on SSD):
 
 ```sh
-mkdir -p ~/.cache/familia/spill/nanbeige-coder
+mkdir -p ~/.cache/familia/spill/angel-coder
 # When activating with slot_save, point --slot-save-path there (graph slot_save: true)
 ```
 
@@ -65,7 +65,7 @@ See `/workspace/familia-install-notes/swap-box.md` and `docs/ram-safety.md`: zra
 Node fields in `graph_types.py` / `graph.yaml`:
 
 ```yaml
-spill_path: ~/.cache/familia/spill/nanbeige-coder   # → llama-server --slot-save-path
+spill_path: ~/.cache/familia/spill/angel-coder   # → llama-server --slot-save-path (dir name stays; node id is nanbeige-coder)
 swap_budget_mib: 24576                           # ops gate: validate_graph --check-swap
 slot_save: true                                  # or just set spill_path (either enables argv)
 # cache_type_v: q8_0                             # not first-class yet; kv_type applies to K+V

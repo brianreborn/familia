@@ -121,7 +121,7 @@ hosts:
     - gabriel.local
     notes: 'Nanbeige4.3-33B Q4_K_M (~18.7 GiB) active via nanbeige-coder (nanbeige-chat
       stays planned; do not co-start). Before activate: measure SSD swap (target ~24
-      GiB familia swap or proven RSS) + mkdir ~/.cache/familia/spill/nanbeige-{coder,chat}.
+      GiB familia swap or proven RSS) + mkdir ~/.cache/familia/spill/angel-{coder,chat}.
       Software VVRAM: load_mode mmap (see install-notes/vvram-ssd/LAYER.md). FreeBSD
       nvso scaffold in gpu-legacy/nvso (stubs; not required for Nanbeige). Do not
       co-start nanbeige-coder and nanbeige-chat.'
