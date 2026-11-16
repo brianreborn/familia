@@ -347,4 +347,6 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/start_graph.py` | graph dry-run helper (prints `via graph_router` = default gateway, or `via graph-proxy` with `router: false`); hosts.start-preview twin retired — use hosts.start / start.sh |
 | `scripts/hermes-escalation-config.sh` | default environment settings for escalation-ready hermes runs |
 | `scripts/watchdog_test.sh` | test helper running a command under a timeout watchdog for CI/local testing |
+| `scripts/check_design_impedance.py` | dev checker that reports doc identifiers missing from scripts (issue #580); not an end-user menu action |
+| `scripts/hvvram_task.sh` | operator placeholder that sleeps for a long hvvram task; not an end-user menu action |
 

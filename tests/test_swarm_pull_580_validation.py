@@ -1,12 +1,15 @@
 # tests for draft validation (issue #580)
-import pathlib
+import importlib.machinery
 import importlib.util
+import pathlib
 
-# Load the swarm-pull module
-module_path = pathlib.Path(__file__).resolve().parents[2] / "scripts" / "swarm" / "swarm-pull"
-spec = importlib.util.spec_from_file_location("sp", module_path)
+# swarm-pull has no .py suffix, so spec_from_file_location returns None.
+# Same loader as tests/test_swarm_pull_543.py.
+module_path = pathlib.Path(__file__).resolve().parents[1] / "scripts" / "swarm" / "swarm-pull"
+loader = importlib.machinery.SourceFileLoader("sp", str(module_path))
+spec = importlib.util.spec_from_loader("sp", loader)
 sp = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(sp)
+loader.exec_module(sp)
 
 ForgeError = sp.ForgeError
 validate_draft = sp.validate_draft
@@ -60,13 +63,14 @@ def test_draft_too_short():
         assert False, "ForgeError not raised for short draft"
 
 def test_good_draft_passes():
-    draft = """Here is a proper draft.
-
-```python
-print(\"hello\")
-```
-
-Additional explanatory text that exceeds the minimum length requirement.
-"""
-    # Should not raise any exception
+    draft = (
+        "Here is a proper draft of a design note.\n\n"
+        "```python\n"
+        "print(\"hello\")\n"
+        "```\n\n"
+        "Additional explanatory text that exceeds the minimum length requirement. "
+        "The note covers feasibility, a root-free path, how the claim and lease "
+        "envelopes map onto this channel, and the open questions that remain.\n"
+    )
+    assert len(draft.strip()) >= 200
     validate_draft(draft, "")

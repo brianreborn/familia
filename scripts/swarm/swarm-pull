@@ -2556,8 +2556,10 @@ def validate_draft(draft: str, nonce: str) -> None:
 
     # 5. Minimum length.
     if len(draft.strip()) < MIN_DRAFT_LEN:
-        raise ForgeError(f"draft too short ({len(draft.strip())} chars) < {MIN_DRAFT_LEN}")
+        raise ForgeError("draft too short (%s chars) < %s" % (len(draft.strip()), MIN_DRAFT_LEN))
 
+
+def model_draft(prompt, max_tokens=700):
     """Local open model only. HTTP to a localhost endpoint (SWARM_MODEL_URL)
     or a one-shot llama-completion on SWARM_MODEL_GGUF (no listener)."""
     url = env("SWARM_MODEL_URL")
