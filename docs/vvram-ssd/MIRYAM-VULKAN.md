@@ -8,7 +8,7 @@ MachineId `509c2b46-f11b-42c4-9f89-b2f43b827730`.
 - **SmolLM2-135M-Instruct-Q4_0.gguf** at `~/models/` (sha `bcc3af2849ad6095af57e9b5cd43775256efdc66e306acb529172f92d0c04b03`, fetched 2026-10-26 ~21:00 PT)
 - RAM ~7.1 GiB; often ~1.3–1.5 GiB available + swap in use — keep loads light
 
-## Missing (blocks `miryam-gpu-decision` -ngl 99)
+## Missing (blocks `vulkan-igpu-decision` -ngl 99)
 - **No vulkan `llama-server`** at `~/repositories/llama-vulkan-b11541/llama-b11541/llama-server` (graph `runtimes.llama-b11541-linux-vulkan`).
 - edlm fork `~/llama-server__nace-ai__edlm/build/bin/llama-server` is not the graph vulkan runtime.
 

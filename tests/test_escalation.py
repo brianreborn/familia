@@ -91,7 +91,7 @@ def test_handoff_is_compact():
 def test_real_graph_valid_and_qodesh_prefers_miryam():
     gr = yaml.safe_load(open(os.path.join(ROOT, "graph.yaml")))
     assert not [e for e in validate_types(gr) if "escalat" in e]
-    t = [x["node"] for x in E.targets(gr, "qodesh-smol-cpu")]
-    assert t[:2] == ["coder", "qodesh-resident"]
-    d = E.decide(gr, "qodesh-smol-cpu", {"failures": 9}, RECS, {})
+    t = [x["node"] for x in E.targets(gr, "cpu-smol-decision")]
+    assert t[:2] == ["coder", "cpu-resident-coder"]
+    d = E.decide(gr, "cpu-smol-decision", {"failures": 9}, RECS, {})
     assert d["decision"] == "suggest" and d["target"] == "coder"

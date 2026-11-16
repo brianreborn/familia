@@ -204,7 +204,7 @@ flowchart LR
   coder["node coder<br/>local model server"]
   embed["node embed<br/>local model server"]
   pent["node pentest<br/>(planned)"]
-  dec["node gpu-decision<br/>(planned)"]
+  dec["node vulkan-igpu-decision<br/>(planned)"]
   heavy["escalates_to target node<br/>(ranked by measured t/s)"]
   troute["tool_route target<br/>(tool-capable node)"]
 
@@ -418,7 +418,7 @@ flowchart TB
   end
   subgraph win["Windows node"]
     q_res["resident node (CPU)"]
-    q_gpu["gpu-decision node<br/>legacy-GPU node runs llama2.c (no GGUF)"]
+    q_gpu["cuda-sm11-decision<br/>legacy-GPU node runs llama2.c (no GGUF)"]
   end
   lin["Linux node<br/>test loop"]
   ci["Linux CI / test node<br/>decision, coder nodes"]
@@ -426,7 +426,7 @@ flowchart TB
 
   m_hub <-->|"lan-nexus"| win
   m_hub <-->|"lan-nexus / lan-bt"| phones
-  win -.->|"smol-cpu node (planned) escalates_to coder"| m_coder
+  win -.->|"cpu-smol-decision (planned) escalates_to coder"| m_coder
 ```
 
 `graph.yaml` lists the Android phones under both legacy and fleet host names; `registry/hosts.yaml` maps all of them to one hardware profile. The legacy-GPU node runs llama2.c (no GGUF).
@@ -482,7 +482,7 @@ Everything below is on `main`. "Planned (#N)" means tracked in that issue and no
 | Feature | Status |
 |---|---|
 | Declarative graph `graph.yaml` (typed schema v2, multi-host, GPU fields, speculative edges, `pentests` launch-test-only type) + `scripts/validate_graph.py` | Implemented. Fails on schema, runtime, GGUF arch, `context_length`, prompt-cache size and RAM overcommit; the RAM reserve and small-host floor are warnings ([docs/ram-safety.md](docs/ram-safety.md)) |
-| Model selection: `selection: default\|fallback` per node | Implemented (`qodesh-resident`, Qwen3.5-2B, is a user-selectable fallback; SmolLM2 stays the qodesh default) |
+| Model selection: `selection: default\|fallback` per node | Implemented (`cpu-resident-coder`, Qwen3.5-2B, is a user-selectable fallback; SmolLM2 stays the qodesh default) |
 | hermes harness `scripts/hermes.sh` / `hermes_harness.py` | Implemented, with graph mode (default) and single-model mode (`--model NODE`, 64K floor); live `--selftest-compaction` on miryam planned ([#42](https://github.com/brianreborn/familia/issues/42)) |
 | Self-improving harnesses: Harness² + Terminal-RSI over `harnesses:` / `self_improve:`, `scripts/harness2.py`, `scripts/self_improve_attach.py` | Experimental, off by default; attach from hermes, graph start / llama UI, or CLI. Any model role is allowed; pentest agents remain excluded. See [docs/harness2.md](docs/harness2.md) ([#65](https://github.com/brianreborn/familia/issues/65), [#88](https://github.com/brianreborn/familia/issues/88)) |
 | Official Hermes plugins (MCP + Skill) bridged into rendered HERMES_HOME | Opt-in `agents.<name>.plugins`; see [docs/hermes-plugins.md](docs/hermes-plugins.md) ([#92](https://github.com/brianreborn/familia/issues/92)) |

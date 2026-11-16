@@ -6,10 +6,9 @@ Usage:
   ./scripts/generate_graph.py <host> --fleet-merge   # legacy: full fleet dump + overrides
 
 Default (--private): only nodes with host=<host>, renamed to type/role keys
-(coder, chat, embed, …). Placement stays on node.host. This is the design law:
-type implies capability; no angel-coder-style fake unique names in the operator
-graph. Fleet graph.yaml may still use transitional host-prefixed keys until the
-fleet map is reshaped.
+(coder, chat, embed, …). Placement stays on node.host. Fleet graph.yaml uses
+capability names (nanbeige-coder, cuda-sm11-decision); this script collapses
+them to the type name on the private graph. Host-prefixed ids are legacy.
 
 Writes generated/graph-<host>.yaml (comments from fleet graph are not preserved;
 edit graph.yaml then regenerate).
