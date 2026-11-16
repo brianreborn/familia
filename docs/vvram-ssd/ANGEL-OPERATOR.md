@@ -9,8 +9,8 @@ host-prefixed ids. On angel the private graph is:
 
 | Type key | Fleet transitional key | Model | Status | Port |
 |----------|------------------------|-------|--------|------|
-| `coder` | `angel-coder` | `nanbeige43-33b-q4km` | active | 18200 |
-| `chat` | `angel-chat` | `nanbeige43-33b-q4km` | planned | 18201 |
+| `coder` | `nanbeige-coder` | `nanbeige43-33b-q4km` | active | 18200 |
+| `chat` | `nanbeige-chat` | `nanbeige43-33b-q4km` | planned | 18201 |
 
 ```sh
 python3 scripts/generate_graph.py angel          # → generated/graph-angel.yaml
@@ -36,7 +36,7 @@ git fetch origin main && git pull --ff-only origin main
 python3 scripts/generate_graph.py angel
 python3 scripts/validate_graph.py --graph generated/graph-angel.yaml --no-files
 python3 scripts/validate_graph.py --host angel --fleet   # or against private graph
-mkdir -p ~/.cache/familia/spill/angel-coder
+mkdir -p ~/.cache/familia/spill/nanbeige-coder
 swapinfo -k
 ./start.sh --host angel --yes
 curl -sS http://127.0.0.1:18200/health   # coder only
@@ -58,7 +58,7 @@ Spill/mmap: [LAYER.md](./LAYER.md).
 ```sh
 cd ~/familia
 scripts/hermes.sh --model coder --render-only   # private type name after generate
-# transitional fleet: scripts/hermes.sh --model angel-coder --render-only
+# transitional fleet: scripts/hermes.sh --model nanbeige-coder --render-only
 ```
 
 **min_ctx:** `agents.hermes.min_ctx` is 64000. Angel `coder` ctx is **65536** (Brian #125).

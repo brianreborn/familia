@@ -124,10 +124,10 @@ hosts:
     gpus: null                   # inventory unknown; measure GPUs before GPU offload
     local_names: [gabriel, Gabriel, uriel, Uriel, angel.local, uriel.local, gabriel.local]
     notes: >-
-      Nanbeige4.3-33B Q4_K_M (~18.7 GiB) active via angel-coder (angel-chat stays planned; do not co-start). Before activate: measure SSD swap
-      (target ~24 GiB familia swap or proven RSS) + mkdir ~/.cache/familia/spill/angel-{coder,chat}.
+      Nanbeige4.3-33B Q4_K_M (~18.7 GiB) active via nanbeige-coder (nanbeige-chat stays planned; do not co-start). Before activate: measure SSD swap
+      (target ~24 GiB familia swap or proven RSS) + mkdir ~/.cache/familia/spill/nanbeige-{coder,chat}.
       Software VVRAM: load_mode mmap (see install-notes/vvram-ssd/LAYER.md). FreeBSD nvso scaffold
-      in gpu-legacy/nvso (stubs; not required for Nanbeige). Do not co-start angel-coder and angel-chat.
+      in gpu-legacy/nvso (stubs; not required for Nanbeige). Do not co-start nanbeige-coder and nanbeige-chat.
   macmini:
     kind: desktop
     measured: true
@@ -261,7 +261,7 @@ hosts:
       (multi-core workstation-class RAM), not a rack unit.
 
 transports:
-  miryam-local: {kind: local, from: miryam, to: miryam}
+  local-loopback: {kind: local, from: miryam, to: miryam}
 
 meshes:
   # Transport PoC (#5, #22). Phones: Termux sshd on :8022, key-only.
@@ -338,7 +338,7 @@ runtimes:
     spec_types: [draft-simple, ngram-simple, ngram-map-k, ngram-map-k4v, ngram-mod, ngram-cache]
 
 
-  sm11-legacy-qodesh:
+  sm11-legacy:
     kind: sm11-legacy
     build: "gpu-legacy run_sm11 + kernels.ptx (CUDA driver API, sm_11)"
     commit: 7dc2b734db35e6bbbe8da3dcef4fb12eb55f865a
@@ -392,7 +392,7 @@ runtimes:
     quants: [littlebit]          # the only runtime that may load .lbit.gguf files
 
 
-  llama-b11374-box-cpu:
+  llama-b11374-linux-cpu:
     kind: llama-server
     build: b11374 linux-x64-cpu (prebuilt; dogfood box)
     commit: b92761a515ea31e852e7fbc1fad5f874b46f3718
@@ -428,21 +428,21 @@ models:
     trained_ctx: 8192
     role: decision
     db: QuantFactory--SmolLM2-135M-Instruct-GGUF--SmolLM2-135M-Instruct.Q4_0
-  smollm2-135m-q4-miryam:
+  smollm2-135m-q4-linux:
     gguf: ~/models/SmolLM2-135M-Instruct-Q4_0.gguf
     sha256: bcc3af2849ad6095af57e9b5cd43775256efdc66e306acb529172f92d0c04b03   # measured on miryam 2026-10-10; same file on phone8
     arch: llama
     trained_ctx: 8192
     role: decision
     db: bartowski--SmolLM2-135M-Instruct-GGUF--SmolLM2-135M-Instruct-Q4_0
-  smollm2-135m-q4-phone:
+  smollm2-135m-q4-termux:
     gguf: ~/familia/models/SmolLM2-135M-Instruct-Q4_0.gguf   # phones; bartowski/SmolLM2-135M-Instruct-GGUF
     sha256: bcc3af2849ad6095af57e9b5cd43775256efdc66e306acb529172f92d0c04b03
     arch: llama
     trained_ctx: 8192
     role: decision
     db: bartowski--SmolLM2-135M-Instruct-GGUF--SmolLM2-135M-Instruct-Q4_0
-  qwen25-05b-q4km-phone:
+  qwen25-05b-q4km-termux:
     gguf: ~/familia/models/Qwen2.5-0.5B-Instruct-Q4_K_M.gguf  # bartowski/Qwen2.5-0.5B-Instruct-GGUF
     sha256: 6eb923e7d26e9cea28811e1a8e852009b21242fb157b26149d3b188f3a8c8653
     arch: qwen2
@@ -502,7 +502,7 @@ models:
     sha256: 1136ce66f4be1676a78936a936df012f148236475fb8424c5dea7cd85e165264
     arch: llama                  # GGUF general.architecture; llama.cpp also knows nanbeige (aliased in validator)
     trained_ctx: 524288
-    role: coder                  # also used for chat via angel-chat card_set; roles in db: coder+chat
+    role: coder                  # also used for chat via nanbeige-chat card_set; roles in db: coder+chat
     notes: "Prize on angel (FreeBSD). damp-run on box 2026-10-26; weights stay on angel. Dual coder+chat via card_set. Needs measured SSD swap/spill before activate (vvram-ssd/LAYER.md)."
     db: dealignai--Nanbeige4.3-33B-UNCENSORED-GGUF--Nanbeige4.3-33B-UNCENSORED-Q4_K_M
 
@@ -513,7 +513,7 @@ models:
     arch: llama
     trained_ctx: 131072         # Llama-3.1-8B family; node ctx stays RAM-bounded
     role: pentest
-    notes: Official guardian weight (docs/guardian-weights.md). Q2_K ~3.0 GiB. sha256 is registry HF LFS oid; verify with activate_guardian_weights.py --measure. Fetch before activating miryam-pentest / angel-guardian.
+    notes: Official guardian weight (docs/guardian-weights.md). Q2_K ~3.0 GiB. sha256 is registry HF LFS oid; verify with activate_guardian_weights.py --measure. Fetch before activating fleet-guardian / freebsd-guardian.
     db: RavichandranJ--Dolphin3-Cyber-8B-GGUF--Dolphin3.0-Llama3.1-8B-abliterated.Q2_K
 
   # LFM3 family (Brian 2026-10-28): LFM3-1.7B-Uncensored is the headline default; VL / Omni /
@@ -554,11 +554,11 @@ models:
 
 nodes:
 
-  qodesh-gpu-decision:
+  cuda-sm11-decision:
     model: stories15m-fp32
     role: decision
     host: qodesh
-    runtime: sm11-legacy-qodesh
+    runtime: sm11-legacy
     ctx: 256
     parallel: 1
     kv_type: f32
@@ -569,7 +569,7 @@ nodes:
     cache_ram_mib: 64
     status: active
 
-  qodesh-smol-cpu:
+  cpu-smol-decision:
     model: smollm2-135m-q4
     role: decision
     host: qodesh
@@ -586,11 +586,11 @@ nodes:
     port: 18101
     cache_ram_mib: 256
     status: planned
-    escalates_to: [coder, qodesh-resident]   # docs/escalation.md: fastest measured first (miryam coder 17.4 t/s vs 0.91 here)
+    escalates_to: [coder, cpu-resident-coder]   # docs/escalation.md: fastest measured first (miryam coder 17.4 t/s vs 0.91 here)
     escalation: {mode: suggest}              # coder crosses host: needs first-time consent
 
-  miryam-gpu-decision:
-    model: smollm2-135m-q4-miryam
+  vulkan-igpu-decision:
+    model: smollm2-135m-q4-linux
     role: decision
     host: miryam
     runtime: llama-b11541-linux-vulkan
@@ -608,8 +608,8 @@ nodes:
     escalates_to: [coder]                    # same host; docs/escalation.md
     escalation: {mode: suggest}
 
-  phone7-decision:
-    model: smollm2-135m-q4-phone    # Q4_0 fastest tg on Xclipse 550 (102 vs 83 Q4_K_M vs 89 Q8_0 t/s, phone8 2026-10-10)
+  vulkan-handset-decision:
+    model: smollm2-135m-q4-termux    # Q4_0 fastest tg on Xclipse 550 (102 vs 83 Q4_K_M vs 89 Q8_0 t/s, phone8 2026-10-10)
     role: decision
     host: phone7
     runtime: termux-llama-cpp-0.6.0
@@ -625,8 +625,8 @@ nodes:
     cache_ram_mib: 64            # tiny; phone7 reserve_ram_mib 5120 leaves ~2.3 GiB
     status: planned              # launch via familia-start once the node is wired into the fleet
 
-  phone8-general:
-    model: qwen25-05b-q4km-phone
+  vulkan-handset-general:
+    model: qwen25-05b-q4km-termux
     role: general
     host: phone8
     runtime: termux-llama-cpp-0.6.0
@@ -676,7 +676,7 @@ nodes:
     port: 9951
     embeddings: true
     cache_ram_mib: 0             # embedding servers keep no prompt cache
-  qodesh-resident:
+  cpu-resident-coder:
     # Pencilled in: green-roomz's resident 0.5B chat path on qodesh (#18).
     # Planned nodes are schema-checked only; no placement, file or RAM checks.
     status: active
@@ -700,12 +700,12 @@ nodes:
 
 
   # --- dogfood box multi-size topology (2026-10-26): tiny decision + mid coder.
-  # Prize large model is Nanbeige4.3-33B on angel (angel-coder / angel-chat), not on box.
-  box-decision:
-    model: smollm2-135m-q4-miryam
+  # Prize large model is Nanbeige4.3-33B on angel (nanbeige-coder / nanbeige-chat), not on box.
+  dogfood-decision:
+    model: smollm2-135m-q4-linux
     role: decision
     host: box
-    runtime: llama-b11374-box-cpu
+    runtime: llama-b11374-linux-cpu
     ctx: 2048
     parallel: 1
     kv_type: q8_0
@@ -718,13 +718,13 @@ nodes:
     load_mode: mmap
     status: active
     override_reasons:
-      ctx: 'decision prompts are short; 2048 keeps KV small beside box-coder on 16 GiB'
+      ctx: 'decision prompts are short; 2048 keeps KV small beside dogfood-coder on 16 GiB'
 
-  box-coder:
+  dogfood-coder:
     model: qwen35-2b-q4km
     role: coder
     host: box
-    runtime: llama-b11374-box-cpu
+    runtime: llama-b11374-linux-cpu
     ctx: 8192
     parallel: 1
     kv_type: q8_0
@@ -741,8 +741,8 @@ nodes:
 
   # angel Nanbeige4.3-33B Q4_K_M — planned until GGUF path verified on angel and RAM/ctx measured.
   # One weight file; two role views (distinct card_set). Activate one at a time on 24 GiB (+swap).
-  # Speculative: prefer ngram (no extra weights) or a small draft later; see speculative.angel-nanbeige-ngram.
-  angel-coder:
+  # Speculative: prefer ngram (no extra weights) or a small draft later; see speculative.nanbeige-ngram.
+  nanbeige-coder:
     model: nanbeige43-33b-q4km
     role: coder
     host: angel
@@ -765,17 +765,17 @@ nodes:
     server_tools: all
     override_reasons:
       ctx: '65536 meets hermes-agent MINIMUM_CONTEXT_LENGTH 64000; KV ~2× vs 32K; mmap + spill_path + swap_budget_mib 24576; Brian accepted heavier SSD spill (#125)'
-      card_set: 'coder/agentic role: base-card Agentic and tool-use (temp 1.0 top_p 0.95); distinct from angel-chat soft default'
+      card_set: 'coder/agentic role: base-card Agentic and tool-use (temp 1.0 top_p 0.95); distinct from nanbeige-chat soft default'
     slot_save: true              # SSD/VVRAM spill via spill_path (--slot-save-path)
-    spill_path: ~/.cache/familia/spill/angel-coder
+    spill_path: ~/.cache/familia/spill/nanbeige-coder
     swap_budget_mib: 24576       # validate_graph --check-swap --host angel (LAYER.md)
     note: >-
-      threads:2 on 4-core angel; do not co-start with angel-chat on 24 GiB.
+      threads:2 on 4-core angel; do not co-start with nanbeige-chat on 24 GiB.
       SSD/VVRAM: load_mode mmap + spill_path + swap_budget_mib (docs/vvram-ssd/LAYER.md).
       Activate only after swapinfo OK; mkdir -p spill_path before start.
 
 
-  angel-chat:
+  nanbeige-chat:
     model: nanbeige43-33b-q4km
     role: chat
     host: angel
@@ -793,17 +793,17 @@ nodes:
     status: planned
     card_set: "Reasoning and chat tasks"
     override_reasons:
-      ctx: 'same RAM budget as angel-coder; heavy ctx relative to host, not full 512K'
+      ctx: 'same RAM budget as nanbeige-coder; heavy ctx relative to host, not full 512K'
     slot_save: false             # flip true when activating; spill_path already set
-    spill_path: ~/.cache/familia/spill/angel-chat
+    spill_path: ~/.cache/familia/spill/nanbeige-chat
     swap_budget_mib: 24576
     note: >-
-      card_set soft default (Reasoning and chat); do not co-start with angel-coder on 24 GiB.
-      SSD/VVRAM: same mmap + spill_path + swap_budget_mib as angel-coder (vvram-ssd/LAYER.md).
+      card_set soft default (Reasoning and chat); do not co-start with nanbeige-coder on 24 GiB.
+      SSD/VVRAM: same mmap + spill_path + swap_budget_mib as nanbeige-coder (vvram-ssd/LAYER.md).
 
 
 
-  miryam-pentest:
+  fleet-guardian:
     model: dolphin3-cyber-8b-q2k
     role: guardian              # public type; model catalog role remains pentest (synonym)
     host: miryam
@@ -830,7 +830,7 @@ nodes:
       (menus: agents.guardian-launch-test / agents.guardian-start).
 
 
-  angel-guardian:
+  freebsd-guardian:
     model: dolphin3-cyber-8b-q2k
     role: guardian
     host: angel
@@ -877,11 +877,11 @@ speculative:
     spec_type: ngram-simple      # model-free lookup decoding; no extra weights. miryam 2026-10-10, -t 2, repeat-code
                                  # prompt: 17.4 t/s vs 8.7 none (ngram-mod 16.3). Real hermes-style full-file edits: 17.9-18.4 vs 8.2-8.4 (2.2x).
 
-  angel-nanbeige-ngram:
+  nanbeige-ngram:
     experimental: true
-    status: planned              # enable when angel-coder is active; no extra weights
+    status: planned              # enable when nanbeige-coder is active; no extra weights
     mode: ngram
-    target: angel-coder
+    target: nanbeige-coder
     spec_type: ngram-simple
 
 
@@ -889,7 +889,7 @@ speculative:
 pentests:
   fleet:
     name: fleet
-    node: miryam-pentest        # public type guardian; transitional fleet key
+    node: fleet-guardian        # capability name; private graph key is guardian
     agent: pentest-ops
     scope:
       # Owned-fleet allowlist only (default-deny home appliances). Prefer angel/galaxy* names.
@@ -906,9 +906,9 @@ pentests:
       Automation: sh with-fleet.sh --role guardian --launch-test (aliases: fleet, pentest, defender).
       Operator model start: FAMILIA_OPERATOR_CONFIRM=yes sh with-fleet.sh --role guardian --operator-start.
       tools.allow stays empty until the operator expands it; no live scans while empty.
-  angel:
-    name: angel
-    node: angel-guardian
+  freebsd-guardian:
+    name: freebsd-guardian
+    node: freebsd-guardian
     agent: pentest-ops
     scope:
       allow: [angel, galaxy1, galaxy2, miryam, phone7, phone8, box, centos10-bigram, qodesh, shalom, godslove]
@@ -920,8 +920,8 @@ pentests:
     launch_test_only: true
     status: planned
     notes: >-
-      Guardian on angel (FreeBSD). Same seatbelts as pentests.fleet. Launch-test:
-      sh with-fleet.sh --role angel --launch-test
+      Guardian on the FreeBSD host (host id angel). Same seatbelts as pentests.fleet.
+      Launch-test: sh with-fleet.sh --role freebsd-guardian --launch-test
 
 gateways:
   roomz:
@@ -934,16 +934,16 @@ gateways:
 
 aliases:
   coder: {node: coder, gateway: roomz}
-  guardian: {node: miryam-pentest, gateway: roomz}
-  pentest: {node: miryam-pentest, gateway: roomz}   # legacy alias → guardian node
-  defender: {node: miryam-pentest, gateway: roomz}  # synonym
+  guardian: {node: fleet-guardian, gateway: roomz}
+  pentest: {node: fleet-guardian, gateway: roomz}   # legacy alias → guardian node
+  defender: {node: fleet-guardian, gateway: roomz}  # synonym
   general: {node: coder, gateway: roomz}
   embed: {node: embed, gateway: roomz}
   # safe-build: tiny *build helper* (docs/safe-mode-bootstrap.md, harness/safe-build/).
   # code-bootstraps pin (decision/route): Laya-Q8_0.gguf (ggml-org/Laya-GGUF; /v1/systemone).
   # Chat face: SmolLM2-135M decision-size — Laya cannot chat about deps/builds.
   # Optional follow-up: dedicated always-on CPU node (planned → active).
-  safe-build: {node: miryam-gpu-decision, gateway: roomz}  # SmolLM chat stand-in; planned OK
+  safe-build: {node: vulkan-igpu-decision, gateway: roomz}  # SmolLM chat stand-in; planned OK
 
 
 agents:
@@ -994,7 +994,7 @@ kv_channels:
     experimental: true
     status: planned
     from: coder
-    to: qodesh-resident          # placeholder peer: runtime and ctx differ today, so this cannot go active as-is
+    to: cpu-resident-coder          # placeholder peer: runtime and ctx differ today, so this cannot go active as-is
     via: nexus
     notes: Placeholder to exercise the type. See docs/c2c-stage1.md.
 

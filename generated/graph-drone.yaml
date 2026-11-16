@@ -5,7 +5,7 @@
 version: 2
 
 hosts:
-  miryam:
+  edge-drone:
     kind: drone
     measured: true
     addr: REPLACE_ME

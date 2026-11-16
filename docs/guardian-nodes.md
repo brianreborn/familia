@@ -72,8 +72,8 @@ Menus: `agents.guardian-launch-test`, `agents.guardian-start` (legacy
 ## Graph hooks
 
 - Model catalog role may still say `pentest`; public node type is `guardian`
-- Fleet node key: `miryam-pentest` (transitional); private topology renames to `guardian`
-- Planned: `angel-guardian` → private key `guardian` on angel
+- Fleet node key: `fleet-guardian` (transitional); private topology renames to `guardian`
+- Planned: `freebsd-guardian` → private key `guardian` on angel
 - Section name `pentests:` remains the schema type; UX name is guardian/defender
 
 Weights / placement details: [pentest-models.md](pentest-models.md).

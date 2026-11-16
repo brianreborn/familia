@@ -11,7 +11,7 @@ MODES = SPEC["modes"]
 LAB = {"kind": "isolated", "members": ["lab-target-1"], "cidrs": ["192.0.2.0/24"], "egress": "none",
        "verify": {"no_default_route": True, "no_lan_route": True, "dns_lab_only": True, "max_age_s": 3600}}
 
-def check_policy(p, labs, escalation_targets=(), node="miryam-pentest", verify_age_s=0):
+def check_policy(p, labs, escalation_targets=(), node="fleet-guardian", verify_age_s=0):
     """Reference validator for CFG-PENT-POL/LAB/AUD rules. Returns error list."""
     e, pol = [], p.get("policy") or {}
     mode = pol.get("mode", "planned")
@@ -39,7 +39,7 @@ def check_policy(p, labs, escalation_targets=(), node="miryam-pentest", verify_a
     return e
 
 def pent(mode, **kw):
-    p = {"node": "miryam-pentest", "requires_operator_confirm": True, "scope": {"allow": ["lab-target-1"]},
+    p = {"node": "fleet-guardian", "requires_operator_confirm": True, "scope": {"allow": ["lab-target-1"]},
          "policy": {"enabled": mode not in ("off", "planned"), "mode": mode, "tools": "none" if mode in ("off", "planned", "slash-confirm") else "all",
                     "autonomy": "autonomous" if mode == "autonomous-lab" else "confirm-each-action", "audit": "on"}}
     if mode == "autonomous-lab": p["policy"]["lab"] = "range1"
@@ -68,7 +68,7 @@ def test_autonomy_only_in_lab_mode():
     assert "autonomy" in check_policy(pent("tools-confirm", autonomy="autonomous"), {})
 
 def test_never_escalation_target():
-    assert "escalation-target" in check_policy(pent("slash-confirm"), {}, escalation_targets={"miryam-pentest"})
+    assert "escalation-target" in check_policy(pent("slash-confirm"), {}, escalation_targets={"fleet-guardian"})
 
 def test_examples_use_documentation_ranges_only():
     import ipaddress, re

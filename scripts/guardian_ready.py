@@ -4,7 +4,7 @@
 Fail-closed. Never flips graph status planned→active. Never fetches weights.
 No network calls.
 
-Reads graph.yaml pentests + guardian nodes (miryam-pentest / angel-guardian /
+Reads graph.yaml pentests + guardian nodes (fleet-guardian / freebsd-guardian /
 private key guardian) and:
 
   1. Verifies dual-disable seatbelts (tools.allow empty, launch_test_only true,
@@ -39,7 +39,7 @@ ROLE_JSONS = (
     os.path.join(ROOT, "scripts", "guardian-role.json"),
     os.path.join(ROOT, "scripts", "pentest-role.json"),
 )
-GUARDIAN_NODE_KEYS = ("miryam-pentest", "angel-guardian", "guardian")
+GUARDIAN_NODE_KEYS = ("fleet-guardian", "freebsd-guardian", "guardian")
 
 
 def _load_graph(path: str) -> dict:
@@ -305,7 +305,7 @@ def run_check(graph_path: str) -> dict:
     gnodes = collect_guardian_nodes(g)
     if not gnodes:
         report["errors"].append(
-            "no guardian nodes found (expected miryam-pentest / angel-guardian)"
+            "no guardian nodes found (expected fleet-guardian / freebsd-guardian)"
         )
 
     weight_msgs = []

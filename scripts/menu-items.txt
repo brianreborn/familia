@@ -26,6 +26,7 @@ reach.enable|Reach tools (Agent-Reach)|Opt an agent into Agent-Reach (writes rea
 reach.disable|Reach tools (Agent-Reach)|Remove an agent from Agent-Reach|PY scripts/agent_reach.py disable --agent {AGENT:agent name [hermes]}|||python scripts\agent_reach.py disable --agent {AGENT:agent name [hermes]}
 reach.link|Reach tools (Agent-Reach)|Link Agent-Reach skill + CLI wrapper into an agent's HERMES_HOME|PY scripts/agent_reach.py link --agent {AGENT:agent name [hermes]}|||python scripts\agent_reach.py link --agent {AGENT:agent name [hermes]}
 reach.mcp|Reach tools (Agent-Reach)|Print mcpServers JSON for llama UI / code-bootstraps|PY scripts/agent_reach.py mcp-example|||python scripts\agent_reach.py mcp-example
+models.list-all|Models|List every graph model, unplaced option, and model-database entry|PY scripts/catalog.py models|||python scripts\catalog.py models
 models.add|Models|Add a model from a Hugging Face folder or a .gguf|scripts/add-model.sh {PATH:model folder or .gguf file}|||python scripts\add_model.py {PATH:model folder or .gguf file}
 models.lfm3|Models|LFM3 family: download an optional LFM3 model (lfm3 lfm3-qad lfm3-vl lfm3-omni lfm3-audio; vision/audio use --mmproj; media picks Linux/macOS only for now)|sh code-bootstraps-llama.cpp/scripts/fetch-models.sh --pick {PICK:LFM3 pick (lfm3 lfm3-qad lfm3-vl lfm3-omni lfm3-audio) [lfm3-vl]}|lic|file:code-bootstraps-llama.cpp/scripts/fetch-models.sh|powershell -NoProfile -ExecutionPolicy Bypass -File code-bootstraps-llama.cpp\scripts\fetch-models.ps1 -Pick {PICK:LFM3 pick (lfm3 lfm3-qad lfm3-vl lfm3-omni lfm3-audio) [lfm3-vl]}
 models.fetch|Models|Download and add a model from Hugging Face (asks you to accept its license)|scripts/add-model.sh --fetch {REPO:Hugging Face repo ORG/NAME[@REV]} --quant {QUANT:quant [Q4_K_M]}|||python scripts\add_model.py --fetch {REPO:Hugging Face repo ORG/NAME[@REV]} --quant {QUANT:quant [Q4_K_M]}
@@ -35,6 +36,8 @@ models.pick|Models|Pick a model for this host: full catalog, search, Enter = hos
 models.check|Models|Check graph.yaml: models, RAM budget, required launch parameters|PY scripts/validate_graph.py --graph graph.yaml|||python scripts\validate_graph.py --graph graph.yaml
 models.explain|Models|Show the exact launch parameters for one node|PY scripts/validate_graph.py --graph graph.yaml --explain {NODE:node name, e.g. coder}|||python scripts\validate_graph.py --graph graph.yaml --explain {NODE:node name, e.g. coder}
 models.licenses|Models|List model, skill and engine licenses (records nothing)|PY scripts/licenses.py list|||python scripts\licenses.py list
+graphs.list|Graphs|List every graph and the command that configures it|PY scripts/catalog.py graphs|||python scripts\catalog.py graphs
+graphs.configure|Graphs|Show nodes on one graph and the edit command (writes nothing)|PY scripts/catalog.py configure {GRAPH:graph path or host [graph.yaml]}|||python scripts\catalog.py configure {GRAPH:graph path or host [graph.yaml]}
 agents.hermes-model|Agents (hermes)|Hermes: single model (pick model)|scripts/hermes.sh --model {MODEL:model or node [coder]}|lic|grep:scripts/hermes_modes.py:"--model"|
 agents.hermes-graph|Agents (hermes)|Hermes: full graph|scripts/hermes.sh --graph-mode|lic|grep:scripts/hermes_modes.py:--graph-mode|
 agents.hermes|Agents (hermes)|Hermes on the graph coder node (64K context)|scripts/hermes.sh|lic||

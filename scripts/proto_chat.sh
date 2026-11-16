@@ -80,7 +80,7 @@ import json, os, sys, urllib.request
 sys.path.insert(0, os.environ["FAMILIA_SCRIPTS"]); import familia_auth
 url = sys.argv[1].rstrip("/") + "/v1/models"
 hint = (sys.argv[2] or "").strip()
-prefer = ["general-text", "general-text-speculator", "chat", "safe-build", "miryam-gpu-decision"]
+prefer = ["general-text", "general-text-speculator", "chat", "safe-build", "vulkan-igpu-decision"]
 try:
     with familia_auth.open_url(url, timeout=3) as r:
         data = json.load(r)

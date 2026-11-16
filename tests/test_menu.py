@@ -10,7 +10,7 @@ import pytest
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MENU = os.path.join(ROOT, "familia-menu.sh")
 ITEMS_FILE = os.path.join(ROOT, "scripts", "menu-items.txt")
-GROUPS = ["Set up", "Skills", "Reach tools (Agent-Reach)", "Models", "Agents (hermes)",
+GROUPS = ["Set up", "Skills", "Reach tools (Agent-Reach)", "Models", "Graphs", "Agents (hermes)",
           "Self-improving harness (Harness2)", "Test & benchmark", "Hosts",
           "Advanced: models & graph", "Advanced: agents", "Advanced: hosts & benchmarks",
           "◆ Proving grounds (graded)", "Help"]
@@ -106,7 +106,7 @@ def test_local_host_measure_menu_uses_short_hostname_as_default(tmp_path):
     state = tmp_path / "state"
     state.mkdir()
     hostname = subprocess.check_output(["hostname"], text=True).strip().split(".", 1)[0].lower()
-    r = menu("--pipe", "--dry-run", inp="8\n5\n\nlaptop\nq\n", XDG_STATE_HOME=str(state))
+    r = menu("--pipe", "--dry-run", inp="9\n5\n\nlaptop\nq\n", XDG_STATE_HOME=str(state))
     assert r.returncode == 0, (r.stdout, r.stderr)
     assert f"local graph host [{hostname}]" in r.stderr
     assert f"--name {hostname}" in r.stdout
@@ -117,7 +117,7 @@ def test_local_host_measure_menu_prefers_hostname_pin(tmp_path):
     fam = state / "familia"
     fam.mkdir(parents=True)
     (fam / "hostname").write_text("phone7\n", encoding="utf-8")
-    r = menu("--pipe", "--dry-run", inp="8\n5\n\nlaptop\nq\n", XDG_STATE_HOME=str(state))
+    r = menu("--pipe", "--dry-run", inp="9\n5\n\nlaptop\nq\n", XDG_STATE_HOME=str(state))
     assert r.returncode == 0, (r.stdout, r.stderr)
     assert "local graph host [phone7]" in r.stderr
     assert "--name phone7" in r.stdout
@@ -259,7 +259,7 @@ def test_search_choice_accepts_environment_assignments_and_forwarded_arguments()
 
 def test_long_group_is_paged_instead_of_showing_a_wall_of_items():
     # Hosts has 17 items after preview-twin retirement (page_size 7). Set up is ~7 goals (one page).
-    r = menu("--pipe", "--dry-run", inp="8\n>\n<\nb\nq\n")
+    r = menu("--pipe", "--dry-run", inp="9\n>\n<\nb\nq\n")
     assert r.returncode == 0, r.stderr
     assert "Page 1 of 3 (items 1-7 of 17)" in r.stdout
     assert "Page 2 of 3 (items 8-14 of 17)" in r.stdout
@@ -330,7 +330,8 @@ def test_familia_home_list_goals():
     r = subprocess.run(["sh", home, "--list-goals"], cwd=ROOT, capture_output=True, text=True, env=env())
     assert r.returncode == 0, r.stderr
     out = r.stdout
-    for goal in ("Talk to the protomodel", "Find more models", "Search my X / Twitter posts",
+    for goal in ("Talk to the protomodel", "Find more models", "List all models",
+                 "Configure all graphs", "Search my X / Twitter posts",
                  "Install / first-time setup", "Proving grounds", "Legacy menu"):
         assert goal in out, goal
     r2 = subprocess.run(["sh", os.path.join(ROOT, "familia")], cwd=ROOT, capture_output=True, text=True,

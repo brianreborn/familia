@@ -2,7 +2,7 @@
 # familia_home.sh: Charm/gum front door. Old familia-menu.sh is legacy fallback only.
 # Usage:
 #   sh scripts/familia_home.sh              interactive gum launcher
-#   sh scripts/familia_home.sh --list-goals  print the six goals (non-interactive / tests)
+#   sh scripts/familia_home.sh --list-goals  print the home goals (non-interactive / tests)
 #   FAMILIA_NO_TTY=1 sh scripts/familia_home.sh   lists goals and exits 0
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
@@ -32,6 +32,8 @@ done
 GOALS="Talk to the protomodel
 Open llama-ui web cockpit
 Find more models
+List all models
+Configure all graphs
 Search my X / Twitter posts
 Install / first-time setup
 ◆ Proving grounds (graded)
@@ -74,7 +76,7 @@ else
     "familia" "Talk to the protomodel first — old menus are legacy"
 fi
 
-CHOICE=$(printf '%s\n' "$GOALS" | gum choose --header "What do you want to do?" --height 10) || {
+CHOICE=$(printf '%s\n' "$GOALS" | gum choose --header "What do you want to do?" --height 12) || {
   printf 'familia-home: cancelled\n'
   exit 0
 }
@@ -144,6 +146,12 @@ case "$CHOICE" in
     ;;
   "Find more models")
     exec sh "$ROOT/scripts/find_models.sh"
+    ;;
+  "List all models")
+    exec python3 "$ROOT/scripts/catalog.py" models
+    ;;
+  "Configure all graphs")
+    exec python3 "$ROOT/scripts/catalog.py" graphs
     ;;
   "Search my X / Twitter posts")
     exec sh "$ROOT/scripts/search_x.sh"

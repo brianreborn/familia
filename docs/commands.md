@@ -93,6 +93,7 @@ Default front door is the gum home (`./familia`). This catalog is **fallback onl
 
 | Key | Label | POSIX | Windows |
 |---|---|---|---|
+| `models.list-all` | List every graph model, unplaced option, and model-database entry | `python3 scripts/catalog.py models` | `python scripts\catalog.py models` |
 | `models.add` | Add a model from a Hugging Face folder or a .gguf | `scripts/add-model.sh <PATH>` | `python scripts\add_model.py <PATH>` |
 | `models.fetch` | Download and add a model from Hugging Face (asks you to accept its license) | `scripts/add-model.sh --fetch <REPO> --quant <QUANT>` | `python scripts\add_model.py --fetch <REPO> --quant <QUANT>` |
 | `models.lfm3` | LFM3 family: download an optional LFM3 model (lfm3, lfm3-qad, lfm3-vl, lfm3-omni, lfm3-audio; vision/audio served with --mmproj; `lfm3-vl`/`lfm3-omni`/`lfm3-audio` are Linux/macOS only for now, Windows TODO #190) | `sh code-bootstraps-llama.cpp/scripts/fetch-models.sh --pick <PICK>` | `powershell -File code-bootstraps-llama.cpp\scripts\fetch-models.ps1 -Pick <PICK>` |
@@ -102,6 +103,13 @@ Default front door is the gum home (`./familia`). This catalog is **fallback onl
 | `models.check` | Check graph.yaml: models, RAM budget, required launch parameters | `python3 scripts/validate_graph.py --graph graph.yaml` | `python scripts\validate_graph.py --graph graph.yaml` |
 | `models.explain` | Show the exact launch parameters for one node | `python3 scripts/validate_graph.py --graph graph.yaml --explain <NODE>` | `python scripts\validate_graph.py --graph graph.yaml --explain <NODE>` |
 | `models.licenses` | List model, skill and engine licenses (records nothing) | `python3 scripts/licenses.py list` | `python scripts\licenses.py list` |
+
+### Graphs
+
+| Key | Label | POSIX | Windows |
+|---|---|---|---|
+| `graphs.list` | List every graph and the command that configures it | `python3 scripts/catalog.py graphs` | `python scripts\catalog.py graphs` |
+| `graphs.configure` | Show nodes on one graph and the edit command (writes nothing) | `python3 scripts/catalog.py configure <GRAPH>` | `python scripts\catalog.py configure <GRAPH>` |
 
 ### Agents (hermes)
 
