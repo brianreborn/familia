@@ -13,7 +13,7 @@ deps.sh (FreeBSD): List packages useful for familia + code-bootstraps source bui
 Usage: sh install/freebsd/deps.sh [--install] [--yes] [--dry-run] [--profile base|build]
   base:  git curl python3 pyyaml pytest (pkg names below)
   build: base + cmake ninja gcc/llvm toolchain
-getconf: FreeBSD base (no pkg). install-familia.sh builds pinned fork source b12032; not the llama-cpp pkg.
+getconf: FreeBSD base (no pkg). install-familia.sh builds pinned fork source b12359; not the llama-cpp pkg.
 Opt-in only: this script never runs pkg without --install.
 USAGE
   exit 0 ;; esac

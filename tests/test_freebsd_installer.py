@@ -7,10 +7,10 @@ REPO = Path(__file__).resolve().parents[1]
 SCRIPT = REPO / "install" / "freebsd" / "install-familia.sh"
 DEPS = REPO / "install" / "freebsd" / "deps.sh"
 HELP_OK = "--api-key-file FNAME"
-LLAMA_SHA = "dde879bc4f954b809892fd0d660515f42536394a"
+LLAMA_SHA = "2a8600387b40f2820d17973067020ce11377904d"
 
 
-def _env(tmp_path, help_text=HELP_OK, with_llama=True, version=f"version: 12032 ({LLAMA_SHA[:7]})", built_sha=LLAMA_SHA):
+def _env(tmp_path, help_text=HELP_OK, with_llama=True, version=f"version: 12359 ({LLAMA_SHA[:7]})", built_sha=LLAMA_SHA):
     log = tmp_path / "calls.log"
     shim = tmp_path / "bin"; shim.mkdir()
     for name in ("sudo", "doas", "pkg"):
@@ -18,7 +18,7 @@ def _env(tmp_path, help_text=HELP_OK, with_llama=True, version=f"version: 12032 
         p.write_text(f'#!/bin/sh\necho "{name} $*" >> "{log}"\nexit 99\n'); p.chmod(0o755)
     home = tmp_path / "home"; home.mkdir()
     if with_llama:  # reuse-existing-build path (skill §4); no real llama.cpp build on the box
-        rt = home / ".local/share/familia/runtime/b12032"; rt.mkdir(parents=True)
+        rt = home / ".local/share/familia/runtime/b12359"; rt.mkdir(parents=True)
         p = rt / "llama-server"
         (rt / ".built-sha").write_text(built_sha + "\n")
         p.write_text('#!/bin/sh\nif [ "${1:-}" = --help ]; then echo "' + help_text + '"; exit 0; fi\n'
@@ -111,7 +111,7 @@ def test_pinned_ref_missing_refused(tmp_path):
 
 def test_script_pins_constants():
     t = SCRIPT.read_text()
-    assert "LLAMA_TAG=b12032" in t and f"LLAMA_SHA={LLAMA_SHA}" in t
+    assert "LLAMA_TAG=b12359" in t and f"LLAMA_SHA={LLAMA_SHA}" in t
     assert "github.com/brianreborn/llama.cpp.git" in t and "github.com/ggml-org/llama.cpp" not in t
     assert "\nFAMILIA_REF=" in t and "llama-cpp" not in t.split("Pinned llama.cpp")[1].split("\n")[0]
 
