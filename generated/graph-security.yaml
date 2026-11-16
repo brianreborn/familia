@@ -6,7 +6,7 @@
 version: 2
 
 hosts:
-  miryam:
+  security-laptop:
     kind: laptop
     measured: true
     addr: REPLACE_ME

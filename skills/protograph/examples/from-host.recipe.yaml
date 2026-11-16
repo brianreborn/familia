@@ -3,7 +3,7 @@
 # Dry run: python3 scripts/protograph.py skills/protograph/examples/from-host.recipe.yaml
 protograph: 1
 host: {from_graph: box}
-runtime: {from_graph: llama-b11374-box-cpu}
+runtime: {from_graph: llama-b11374-linux-cpu}
 models:
   draft: {from_graph: qwen35-08b-q4km}
 nodes:

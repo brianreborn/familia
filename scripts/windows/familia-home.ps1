@@ -16,6 +16,8 @@ Set-Location $root
 $goals = @(
   'Talk to the protomodel',
   'Find more models',
+  'List all models',
+  'Configure all graphs',
   'Search my X / Twitter posts',
   'Install / first-time setup',
   '◆ Proving grounds (graded)',
@@ -51,7 +53,7 @@ if (-not $gum) {
   exit 2
 }
 Write-PilotCanopy 'FAMILIA PILOT LINK'
-$choice = $goals | & gum choose --header 'What do you want to do?' --height 10
+$choice = $goals | & gum choose --header 'What do you want to do?' --height 12
 if (-not $choice) { Write-Host 'familia-home: cancelled'; exit 0 }
 switch ($choice) {
   'Talk to the protomodel' {
@@ -67,6 +69,12 @@ switch ($choice) {
   }
   'Find more models' {
     & bash "$root\scripts\find_models.sh"
+  }
+  'List all models' {
+    & python "$root\scripts\catalog.py" models
+  }
+  'Configure all graphs' {
+    & python "$root\scripts\catalog.py" graphs
   }
   'Search my X / Twitter posts' {
     & bash "$root\scripts\search_x.sh"

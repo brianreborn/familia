@@ -36,13 +36,13 @@ Pinned GGUF (code-bootstraps-llama.cpp decision / route):
   (~449 MB Q8_0; POST /v1/systemone — routing, not chat)
 
 Chat face for deps/build Q&A (familia graph):
-  alias safe-build → node miryam-gpu-decision (SmolLM2-135M-Instruct Q4_0)
+  alias safe-build → node vulkan-igpu-decision (SmolLM2-135M-Instruct Q4_0)
   prompt: harness/safe-build/systemprompt.md
 
 Next steps:
   1) sh install/deps.sh --install [--profile build]   # or menu setup.deps
   2) ./start.sh --bootstrap                           # code-bootstraps router
-  3) Graph gateway: use alias "safe-build" once miryam-gpu-decision is active
+  3) Graph gateway: use alias "safe-build" once vulkan-igpu-decision is active
 
 Docs: docs/safe-mode-bootstrap.md
 Home: pinned code-bootstraps-llama.cpp (pins.txt) — not a parallel familia stack.

@@ -93,21 +93,21 @@ def main() -> int:
     rows = []
     rows.append(
         {
-            "node": "box-decision",
+            "node": "dogfood-decision",
             "port": args.decision_port,
             **chat(args.decision_port, "In one sentence, what is a decision?", thinking=None),
         }
     )
     rows.append(
         {
-            "node": "box-coder",
+            "node": "dogfood-coder",
             "port": args.coder_port,
             **chat(args.coder_port, "In one sentence, what is a box coder?", thinking=False),
         }
     )
     rows.append(
         {
-            "node": "box-coder-think",
+            "node": "dogfood-coder-think",
             "port": args.coder_port,
             **chat(
                 args.coder_port,

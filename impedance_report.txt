@@ -16,7 +16,7 @@ restrict,command="python3 ~/.local/share/familia/monitor-probe.py --forced",no-p
 - ## Build on this machine
 - ## C. Vulkan ngl0 shmem (#40)
 - ## D. Escalation proxy unit + dry hermes (#39)
-- ## E. qodesh-resident (#44)
+- ## E. cpu-resident-coder (#44)
 - ## F. Pre-existing failures (#45, closed)
 - ## Integration Steps
 1. **Add the wrapper script** (
@@ -1476,9 +1476,9 @@ Apache-2.0 and shows up in the review once it is on.
 - android_start.sh
 - android_start.sh --role pentest --manifest scripts/pentest-role.json
 - angel
-- angel-chat
-- angel-coder
-- angel-guardian
+- nanbeige-chat
+- nanbeige-coder
+- freebsd-guardian
 - anonymous
 - answers the question for scripts. If you have
 - appends the measurement to
@@ -2519,8 +2519,8 @@ graph TD
 - metrics
 - min_ctx
 - min_p 0.01
-- miryam-gpu-decision
-- miryam-pentest
+- vulkan-igpu-decision
+- fleet-guardian
 - miryam-smollm2-smoke.meta.txt
 - miryam:green
 - missing-weights
@@ -2627,8 +2627,8 @@ it is rebuilt.
 - nodes.<n>.tool_capable
 - nodes.<n>.tool_route: <node>
 - nodes.<name>.server_tools: all
-- nodes.angel-coder
-- nodes.miryam-pentest
+- nodes.nanbeige-coder
+- nodes.fleet-guardian
 - nodes:
 - none
 - none | all | [names]
@@ -2815,7 +2815,7 @@ launcher refuse a llama-server whose
 - posix_fadvise(DONTNEED)
 - powersave
 - powershell
-# Windows: start qodesh-resident; one completion; then co-run with GPU SmolLM2; watch free RAM
+# Windows: start cpu-resident-coder; one completion; then co-run with GPU SmolLM2; watch free RAM
 - powershell -ExecutionPolicy Bypass -File install\windows\install.ps1
 - powershell -ExecutionPolicy Bypass -File scripts\windows\install-task.ps1 -Install -Model your-model.gguf
 powershell -ExecutionPolicy Bypass -File scripts\windows\install-task.ps1 -Uninstall
@@ -2865,8 +2865,8 @@ ref = channel.resolve("hermes-agent", channel=None, days=None)   # -> ResolvedRe
 ref.ref, ref.kind, ref.release, ref.published_at, ref.fallback, ref.reason
 - python produce_tiny.py --gguf stories15M.gguf --upstream LittleBit --out ck --eff-bit 0.1 --use-itq --qat-steps 300 --lr 2e-3 --threads 4
 python convert.py --checkpoint ck --base-gguf stories15M.gguf --out s15m-qat-0.1.lbit.gguf
-- python scripts/escalate.py decide --node qodesh-smol-cpu --signals s.json [--reachable qodesh,miryam]
-python scripts/escalate.py consent --node qodesh-smol-cpu --target coder
+- python scripts/escalate.py decide --node cpu-smol-decision --signals s.json [--reachable qodesh,miryam]
+python scripts/escalate.py consent --node cpu-smol-decision --target coder
 python scripts/escalate.py handoff --signals s.json
 python scripts/escalate.py accept       # accept the pending suggestion from the proxy
 - python-compile
@@ -2894,9 +2894,9 @@ python3 scripts/registry.py lint                                    # profiles c
 - python3 scripts/validate_graph.py examples/graphs/<file>.yaml --no-files
 - q4_0
 - q8_0
-- qodesh-resident
-- qodesh-smol-cpu
-- qodesh-smol-cpu threads: 1
+- cpu-resident-coder
+- cpu-smol-decision
+- cpu-smol-decision threads: 1
 - quantization/hub.py
 - quantize_bin
 - quants
@@ -3769,7 +3769,7 @@ that has (or can get) a
 - y = ((((x ⊙ v2) · sign(V)ᵀ) ⊙ (v1 ⊙ u2)) · sign(U)ᵀ) ⊙ u1
 - yaml
 - yaml
-escalates_to: [coder, qodesh-resident]   # ordered fallback list; may be on other hosts
+escalates_to: [coder, cpu-resident-coder]   # ordered fallback list; may be on other hosts
 escalation:
   mode: suggest        # off | suggest (default) | auto
   triggers:            # all optional; defaults shown
@@ -3807,7 +3807,7 @@ labs:
            verify: {no_default_route: true, no_lan_route: true, dns_lab_only: true, max_age_s: 3600}}
 pentests:
   fleet:
-    node: miryam-pentest
+    node: fleet-guardian
     status: planned
     launch_test_only: true            # current seatbelt; modes above planned need false + confirm
     requires_operator_confirm: true
@@ -3815,7 +3815,7 @@ pentests:
     policy: {enabled: true, mode: tools-confirm, tools: all, autonomy: confirm-each-action, audit: on}
     # autonomous: policy: {mode: autonomous-lab, autonomy: autonomous, lab: range1, tools: all, audit: on}
 - yaml
-spill_path: ~/.cache/familia/spill/angel-coder   # → llama-server --slot-save-path
+spill_path: ~/.cache/familia/spill/nanbeige-coder   # → llama-server --slot-save-path
 swap_budget_mib: 24576                           # ops gate: validate_graph --check-swap
 slot_save: true                                  # or just set spill_path (either enables argv)
 # cache_type_v: q8_0                             # not first-class yet; kv_type applies to K+V

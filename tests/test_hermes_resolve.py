@@ -180,8 +180,8 @@ def test_single_agent_render_allows_below_min_ctx(capsys, monkeypatch):
     import yaml
     import hermes_modes as hm
     g = yaml.safe_load(open(os.path.join(ROOT, "graph.yaml")))
-    # Synthetic node below hermes min_ctx 64000 (angel-coder is now 65536 / #125).
-    base = g["nodes"].get("angel-coder") or g["nodes"]["coder"]
+    # Synthetic node below hermes min_ctx 64000 (nanbeige-coder is now 65536 / #125).
+    base = g["nodes"].get("nanbeige-coder") or g["nodes"]["coder"]
     g["nodes"]["small-ctx"] = dict(copy.deepcopy(base), ctx=32768, parallel=1, port=19999, status="active")
     # single_agent refuses nodes on another fleet host; pretend we run on the node's host.
     monkeypatch.setattr(hm.socket, "gethostname", lambda: g["nodes"]["small-ctx"]["host"])
@@ -195,16 +195,16 @@ def test_single_agent_render_allows_below_min_ctx(capsys, monkeypatch):
 
 
 def test_angel_coder_meets_hermes_min_ctx(monkeypatch):
-    """#125: angel-coder.ctx 65536 clears agents.hermes.min_ctx 64000."""
+    """#125: nanbeige-coder.ctx 65536 clears agents.hermes.min_ctx 64000."""
     import yaml
     import hermes_modes as hm
     g = yaml.safe_load(open(os.path.join(ROOT, "graph.yaml")))
-    if "angel-coder" not in g.get("nodes", {}):
-        pytest.skip("no angel-coder in graph")
-    assert hm.slot(g["nodes"]["angel-coder"]) >= g["agents"]["hermes"]["min_ctx"]
-    monkeypatch.setattr(hm.socket, "gethostname", lambda: g["nodes"]["angel-coder"]["host"])
-    g2, name = hm.single_agent(g, "hermes", "angel-coder", enforce_min_ctx=True)
-    assert name == "hermes@angel-coder"
+    if "nanbeige-coder" not in g.get("nodes", {}):
+        pytest.skip("no nanbeige-coder in graph")
+    assert hm.slot(g["nodes"]["nanbeige-coder"]) >= g["agents"]["hermes"]["min_ctx"]
+    monkeypatch.setattr(hm.socket, "gethostname", lambda: g["nodes"]["nanbeige-coder"]["host"])
+    g2, name = hm.single_agent(g, "hermes", "nanbeige-coder", enforce_min_ctx=True)
+    assert name == "hermes@nanbeige-coder"
     assert g2["agents"][name]["context_length"] == 65536
 
 

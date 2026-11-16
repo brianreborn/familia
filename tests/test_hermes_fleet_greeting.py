@@ -1,7 +1,7 @@
 """hermes.sh render: the fleet greeting opens HERMES_HOME/SOUL.md for every agent, exactly once.
 
 Covers graph agents (hermes, hermes-lab), the pentest agent (pentest-ops -> guardian alias ->
-miryam-pentest), single-model mode on a guardian node, the harness2-managed SOUL.md body, the
+fleet-guardian), single-model mode on a guardian node, the harness2-managed SOUL.md body, the
 missing-file fallback, and harness2 never seeing the greeting as editable text. tmp_path HOME only.
 """
 import copy, os, subprocess, sys

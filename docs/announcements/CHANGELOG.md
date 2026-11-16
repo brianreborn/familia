@@ -15,7 +15,7 @@ Landed on `main` after `v0.1.0-rc2`.
 - Model database (`registry/models/`, `scripts/model_db.py`, `scripts/hf_fetch.py`): one entry per model from its full Hugging Face repo pinned to a commit; model-card sampling becomes the launch default and the validator fails on unexplained differences. (#51)
 - `add-model.sh` takes a Hugging Face snapshot directory, explicit flags or a lone GGUF, picks up auxiliary models (`--aux`, mmproj/draft/MTP files), and infers the role.
 - Semi-automatic light-to-heavy escalation: `escalates_to` / `escalation` node fields, `scripts/escalate.py`, and `scripts/hermes.sh --escalate` with a localhost proxy. Default mode `suggest`; cross-host targets need recorded consent. (#39 tracks the router hookup and live swap.)
-- `selection: default|fallback` node field; `qodesh-resident` (Qwen3.5-2B) is a user-selectable fallback on qodesh.
+- `selection: default|fallback` node field; `cpu-resident-coder` (Qwen3.5-2B) is a user-selectable fallback on qodesh.
 - Pentest launch-test rule: tools disabled two independent ways.
 
 ### Fixed

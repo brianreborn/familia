@@ -210,7 +210,7 @@ Agents and automation must **never** start llama-server / familia graph servers 
 
 ## L-server-tools. `--tools` is launch-only; git fix ≠ live argv (2026-10-27)
 
-M0 empty llama-ui Server Tools was fixed in `15d67b1` by setting `angel-coder.server_tools: all` so `validate_graph --args` / `serve.sh` emit `--tools all`. **It came back after that commit** whenever angel-coder exited and the replacement process was started without that flag (crash + emergency hand-start, starting from a stale `generated/graph-*.yaml` that predates `server_tools` / omits `angel-coder`, or judging “fixed” from graph.yaml while the running argv still lacked `--tools`).
+M0 empty llama-ui Server Tools was fixed in `15d67b1` by setting `nanbeige-coder.server_tools: all` so `validate_graph --args` / `serve.sh` emit `--tools all`. **It came back after that commit** whenever nanbeige-coder exited and the replacement process was started without that flag (crash + emergency hand-start, starting from a stale `generated/graph-*.yaml` that predates `server_tools` / omits `nanbeige-coder`, or judging “fixed” from graph.yaml while the running argv still lacked `--tools`).
 
 - **Symptom:** llama-ui Server Tools panel empty; `GET /tools` → 403 `feature_disabled`. `/v1/models` staying `capabilities:["completion"]` is normal and is not the check.
 - **Why:** llama.cpp enables server tools only at process start. Graph YAML does not hot-patch a live or crashed server.
@@ -220,20 +220,20 @@ M0 empty llama-ui Server Tools was fixed in `15d67b1` by setting `angel-coder.se
 
 Early fleet `graph.yaml` used **host-prefixed unique node ids** (`angel-coder`,
 `box-coder`, `miryam-pentest`, `qodesh-smol-cpu`, …). That was a fundamental design
-error: the node **type/role** (coder, chat, embed, decision, pentest) should imply
+error: the node **type/role** (coder, chat, embed, decision, guardian) should imply
 what the node has; **placement** is the `host:` field (plus bind/port), not the key.
 
 Schema today still uses a unique-key map, so one fleet file cannot hold two `coder`
-entries. The operator path is **private topologies**:
+entries. Fleet keys are capability names (`nanbeige-coder`, `dogfood-coder`,
+`fleet-guardian`, `cpu-smol-decision`). The operator path is **private topologies**:
 `python3 scripts/generate_graph.py HOST` → `generated/graph-HOST.yaml` with
 type-named nodes only (`coder`, `chat`, …) for that host. `start.sh --host HOST`
-prefers that private graph (pass `--fleet` for the transitional fleet file).
+prefers that private graph (pass `--fleet` for the fleet file).
 `modify_graph.py --host HOST --assign-model coder=<models-key>` assigns by type
 and syncs the matching fleet key when present.
 
 Do not invent new host-prefixed node names. Prefer `role:` on nodes and private
-graphs. Full fleet reshape (type+host identity without fake unique names) is the
-follow-on schema change.
+graphs.
 
 
 ## L-box-archetypes. Form factor, not virtualization (2026-10-27)

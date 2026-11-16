@@ -70,7 +70,7 @@ breaking Linux. Owner for investigation: unassigned swarm runners
   Re-run the test on angel at main after #362 before rewriting it.
 - #394 test_hermes_upstream_compat KeyError GITHUB_TOKEN.
 - #395 test_windows Activate.ps1 UTF-8 BOM on host venv.
-- graph.yaml still names Nanbeige4.3-33B Q4_K_M as angel-coder on
+- graph.yaml still names Nanbeige4.3-33B Q4_K_M as nanbeige-coder on
   angel, which conflicts with the no-large-models-on-FreeBSD rule
   and Brian's choice of Qwen2.5-Coder 3B 4-bit with a 0.5B draft.
   The sprint line is the intended change; fix graph.yaml in a
