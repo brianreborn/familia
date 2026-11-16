@@ -10,7 +10,7 @@ import pytest
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MENU = os.path.join(ROOT, "familia-menu.sh")
 ITEMS_FILE = os.path.join(ROOT, "scripts", "menu-items.txt")
-GROUPS = ["Set up", "Skills", "Reach tools (Agent-Reach)", "Models", "Agents (hermes)",
+GROUPS = ["Set up", "Skills", "Reach tools (Agent-Reach)", "Models", "Agents (hermes)", "App catalog",
           "Self-improving harness (Harness2)", "Test & benchmark", "Hosts",
           "Advanced: models & graph", "Advanced: agents", "Advanced: hosts & benchmarks",
           "◆ Proving grounds (graded)", "Help"]
@@ -106,7 +106,7 @@ def test_local_host_measure_menu_uses_short_hostname_as_default(tmp_path):
     state = tmp_path / "state"
     state.mkdir()
     hostname = subprocess.check_output(["hostname"], text=True).strip().split(".", 1)[0].lower()
-    r = menu("--pipe", "--dry-run", inp="8\n5\n\nlaptop\nq\n", XDG_STATE_HOME=str(state))
+    r = menu("--pipe", "--dry-run", inp="9\n5\n\nlaptop\nq\n", XDG_STATE_HOME=str(state))
     assert r.returncode == 0, (r.stdout, r.stderr)
     assert f"local graph host [{hostname}]" in r.stderr
     assert f"--name {hostname}" in r.stdout
@@ -117,7 +117,7 @@ def test_local_host_measure_menu_prefers_hostname_pin(tmp_path):
     fam = state / "familia"
     fam.mkdir(parents=True)
     (fam / "hostname").write_text("phone7\n", encoding="utf-8")
-    r = menu("--pipe", "--dry-run", inp="8\n5\n\nlaptop\nq\n", XDG_STATE_HOME=str(state))
+    r = menu("--pipe", "--dry-run", inp="9\n5\n\nlaptop\nq\n", XDG_STATE_HOME=str(state))
     assert r.returncode == 0, (r.stdout, r.stderr)
     assert "local graph host [phone7]" in r.stderr
     assert "--name phone7" in r.stdout
@@ -258,15 +258,15 @@ def test_search_choice_accepts_environment_assignments_and_forwarded_arguments()
 
 
 def test_long_group_is_paged_instead_of_showing_a_wall_of_items():
-    # Hosts has 17 items after preview-twin retirement (page_size 7). Set up is ~7 goals (one page).
-    r = menu("--pipe", "--dry-run", inp="8\n>\n<\nb\nq\n")
+    # Hosts has 11 items after the phone assistants moved to App catalog (#397; page_size 7).
+    r = menu("--pipe", "--dry-run", inp="9\n>\n<\nb\nq\n")
     assert r.returncode == 0, r.stderr
-    assert "Page 1 of 3 (items 1-7 of 17)" in r.stdout
-    assert "Page 2 of 3 (items 8-14 of 17)" in r.stdout
-    first = r.stdout.split("Page 1 of 3", 1)[1].split("Page 2 of 3", 1)[0]
+    assert "Page 1 of 2 (items 1-7 of 11)" in r.stdout
+    assert "Page 2 of 2 (items 8-11 of 11)" in r.stdout
+    first = r.stdout.split("Page 1 of 2", 1)[1].split("Page 2 of 2", 1)[0]
     assert len(re.findall(r"^  \d+\) ", first, re.M)) == 7
     assert ">) Next page" in first
-    assert "<) Previous page" in r.stdout.split("Page 2 of 3", 1)[1]
+    assert "<) Previous page" in r.stdout.split("Page 2 of 2", 1)[1]
 
 
 def test_license_gate_blocks_without_terminal(tmp_path):
