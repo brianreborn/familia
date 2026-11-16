@@ -82,12 +82,12 @@ Probe whether 340.108 can bind (nouveau conflict). Linux prototype for partition
 
 ## miryam Vulkan unstick (iGPU hang — parallel, not VVRAM)
 
-Last probe: Intel HD 620 ICD present; **vulkan** `llama-server` binary and SmolLM path for `miryam-gpu-decision` missing; existing server listed 0 devices (CPU-only build).
+Last probe: Intel HD 620 ICD present; **vulkan** `llama-server` binary and SmolLM path for `vulkan-igpu-decision` missing; existing server listed 0 devices (CPU-only build).
 
 Plan:
 
 1. Locate or restore `llama-b11374-linux-x64-vulkan` / `llama-b11539-linux-x64-vulkan` under `code-bootstraps-llama.cpp/bin/`.
-2. Place SmolLM2-135M Q4 under path in `models.smollm2-135m-q4-miryam`.
+2. Place SmolLM2-135M Q4 under path in `models.smollm2-135m-q4-linux`.
 3. Short smoke: `-ngl 99` on decision node; compare to CPU (historically Vulkan slower on HD 620 for SmolLM — still hang for coverage).
 4. If `vulkaninfo` needs sudo: note blocker; use existing ICD path from prior verified runs.
 

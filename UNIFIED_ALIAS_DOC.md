@@ -43,9 +43,9 @@ PURPOSE: Documents all alias mappings, route names, and hermes configuration
    | `coder`   | node: coder    | roomz    |
    | `general` | node: coder    | roomz    |
    | `embed`   | node: embed    | roomz    |
-   | `guardian`| node: miryam-pentest | roomz |
-   | `pentest` | node: miryam-pentest | roomz  |
-   | `defender`| node: miryam-pentest | roomz  |
+   | `guardian`| node: fleet-guardian | roomz |
+   | `pentest` | node: fleet-guardian | roomz  |
+   | `defender`| node: fleet-guardian | roomz  |
 
    NOTE: `general` alias maps to the `coder` node — this is intentional.
    The `general` section name is different from the `general` route name.

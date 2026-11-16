@@ -624,7 +624,7 @@
  },
  "found_in": [
   "add-model.sh --fetch",
-  "graph.yaml models.smollm2-135m-q4-miryam"
+  "graph.yaml models.smollm2-135m-q4-linux"
  ],
  "match": "LFS sha256 match",
  "local_check": {

@@ -31,7 +31,7 @@
     and default `chat_format: Content-only` are normal without an active tools request —
     not the regression by themselves.
   - **Fix:** set `nodes.<name>.server_tools: all` (or a tool-name list) on loopback-bound
-    nodes; `validate_graph`/`serve.sh` emit `--tools …`. `angel-coder` has this. Restart
+    nodes; `validate_graph`/`serve.sh` emit `--tools …`. `nanbeige-coder` has this. Restart
     the node (DETACH_MODE=screen-attached) after changing the graph.
   - **Recurrence (2026-10-27):** `--tools` is launch-only. After a crash/restart, an argv
     without `--tools` (hand-start, or stale `generated/graph-*.yaml`) empties the panel again

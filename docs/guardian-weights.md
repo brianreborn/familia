@@ -47,8 +47,8 @@ python3 scripts/activate_guardian_weights.py
    python3 scripts/activate_guardian_weights.py --activate --write
    ```
 
-   Touches: `nodes.miryam-pentest`, `nodes.angel-guardian`, and on a private graph
-   `nodes.guardian`; `pentests.fleet`, `pentests.angel`. Leaves `tools.allow: []`
+   Touches: `nodes.fleet-guardian`, `nodes.freebsd-guardian`, and on a private graph
+   `nodes.guardian`; `pentests.fleet`, `pentests.freebsd-guardian`. Leaves `tools.allow: []`
    and `launch_test_only: true`.
 
 4. **Regenerate** private topologies:
@@ -69,7 +69,7 @@ python3 scripts/activate_guardian_weights.py
    ```sh
    bash scripts/hermes.sh --agent pentest-ops
    # private angel: bash scripts/hermes.sh --graph generated/graph-angel.yaml --model guardian
-   # fleet single:  bash scripts/hermes.sh --model miryam-pentest
+   # fleet single:  bash scripts/hermes.sh --model fleet-guardian
    ```
 
 `agents.pentest-ops` already aliases `main`/`auxiliary` → `guardian` with

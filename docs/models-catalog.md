@@ -31,12 +31,12 @@ linked issue is working on it. **candidate** = an `options:` entry only.
 
 | Graph key | Role | Arch | Size and quant | Runtime | Fits | Status | Source |
 |---|---|---|---|---|---|---|---|
-| qwen35-2b-q4km | coder | qwen35 | Qwen3.5-2B Q4_K_M (est. ~2.9 GiB at 64k ctx) | llama-server pinned build | miryam (`coder`), qodesh (`qodesh-resident`, fallback, ~0.91 t/s) | in graph | — |
+| qwen35-2b-q4km | coder | qwen35 | Qwen3.5-2B Q4_K_M (est. ~2.9 GiB at 64k ctx) | llama-server pinned build | miryam (`coder`), qodesh (`cpu-resident-coder`, fallback, ~0.91 t/s) | in graph | — |
 | egemma2-q8 | embed | gemma-embedding2 | EmbeddingGemma 2 Q8_0 | llama-server | miryam (tight) | in graph, deferred #38 | [RT](https://x.com/BrianReborn_alt/status/2107564534047395851) |
 | stories15m-fp32 | decision | llama2c | 15M fp32 | qodesh legacy-GPU runtime | qodesh 8600 GT | in graph | — |
-| smollm2-135m-q4 | decision | llama | SmolLM2-135M-Instruct Q4_0, 87 MiB | qodesh CPU b11540 (`qodesh-smol-cpu`, default) | qodesh | in graph | — |
-| smollm2-135m-q4-miryam, -phone, -q4km | decision | llama | SmolLM2-135M-Instruct Q4_0 / Q4_K_M | Vulkan builds | miryam iGPU, phones | in graph (planned nodes) | — |
-| qwen25-05b-q4km-phone | chat | qwen2 | Qwen2.5-0.5B-Instruct Q4_K_M | Termux llama-cpp + Vulkan | phone8 | in graph (planned node) | — |
+| smollm2-135m-q4 | decision | llama | SmolLM2-135M-Instruct Q4_0, 87 MiB | qodesh CPU b11540 (`cpu-smol-decision`, default) | qodesh | in graph | — |
+| smollm2-135m-q4-linux, -termux, -q4km | decision | llama | SmolLM2-135M-Instruct Q4_0 / Q4_K_M | Vulkan builds | miryam iGPU, phones | in graph (planned nodes) | — |
+| qwen25-05b-q4km-termux | chat | qwen2 | Qwen2.5-0.5B-Instruct Q4_K_M | Termux llama-cpp + Vulkan | phone8 | in graph (planned node) | — |
 | qwen35-9b-coder | coder | qwen35 | khazarai Q8_0 9.53 GB (apache-2.0); Q4 estimate ~5.5 GB | llama-server | qodesh only | planned #26 (options+db) | [RT](https://x.com/BrianReborn_alt/status/2108600815808336061) · [HF](https://huggingface.co/khazarai/Qwen3.5-9B-Kimi-k3-Distilled-GGUF) |
 | drex-1.5 | decision | Qwen3_5ForCausalLM | 8.95B; [Q8_0](https://huggingface.co/nace-ai/drex-v1.5-Q8_0) 9.53 GB; [Q4_K_M](https://huggingface.co/mradermacher/drex-v1.5-GGUF) 5.63 GB; Q2_K 3.83 GB; extra `head.pt` | llama-server (qwen35) + decision head support unverified | qodesh CPU (Q4); **not** the 256 MB GPU | planned #24 | [RT](https://x.com/BrianReborn_alt/status/2108691502864163123) · [HF](https://huggingface.co/nace-ai/drex-v1.5) |
 | drex-1.1 | decision | diffusion LM | unknown (maybe [nace-ai/drex-dlm](https://huggingface.co/nace-ai/drex-dlm), 8.19B, cc-by-nc-4.0, not confirmed) | drex-dlm / `llama-server__nace-ai__edlm` pin | qodesh CPU if 8B | candidate | [RT](https://x.com/BrianReborn_alt/status/2107800181316141401) |

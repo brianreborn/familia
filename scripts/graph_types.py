@@ -194,7 +194,7 @@ def check_node(g, name, n, errs):
     # Design law: optional node.role should match models[model].role (chat view of a
     # coder-weight may set role: chat explicitly — allowed when roles differ).
     if n.get("role") and m is not None and m.get("role") and n.get("role") != m.get("role"):
-        # chat/general views of coder weights are intentional (angel-chat / phone general)
+        # chat/general views of coder weights are intentional (nanbeige-chat / phone general)
         allowed = (
             (n.get("role") in ("chat", "general") and m.get("role") == "coder")
             or (n.get("role") == "general" and m.get("role") == "chat")

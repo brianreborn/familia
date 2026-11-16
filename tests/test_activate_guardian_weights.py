@@ -27,8 +27,8 @@ def test_dry_run_status_shows_expected_sha():
     r = run()
     assert r.returncode == 0, r.stderr
     assert EXPECTED in r.stdout
-    assert "miryam-pentest" in r.stdout
-    assert "angel-guardian" in r.stdout
+    assert "fleet-guardian" in r.stdout
+    assert "freebsd-guardian" in r.stdout
     assert "Boundary ready-check field: models.dolphin3-cyber-8b-q2k.sha256" in r.stdout
     assert "galaxy1" in r.stdout and "galaxy2" in r.stdout
 
@@ -40,15 +40,15 @@ def test_graph_pins_expected_sha_still_planned():
 
     g = familia_yaml.loads((ROOT / "graph.yaml").read_text(encoding="utf-8"))
     assert g["models"]["dolphin3-cyber-8b-q2k"]["sha256"] == EXPECTED
-    assert g["nodes"]["miryam-pentest"]["status"] == "planned"
-    assert g["nodes"]["angel-guardian"]["status"] == "planned"
+    assert g["nodes"]["fleet-guardian"]["status"] == "planned"
+    assert g["nodes"]["freebsd-guardian"]["status"] == "planned"
     assert g["pentests"]["fleet"]["status"] == "planned"
-    assert g["pentests"]["angel"]["status"] == "planned"
+    assert g["pentests"]["freebsd-guardian"]["status"] == "planned"
     # seatbelts untouched
     assert g["pentests"]["fleet"]["tools"]["allow"] == []
     assert g["pentests"]["fleet"]["launch_test_only"] is True
-    assert g["pentests"]["angel"]["tools"]["allow"] == []
-    assert g["pentests"]["angel"]["launch_test_only"] is True
+    assert g["pentests"]["freebsd-guardian"]["tools"]["allow"] == []
+    assert g["pentests"]["freebsd-guardian"]["launch_test_only"] is True
 
 
 def test_activate_refuses_without_weights():
@@ -115,10 +115,10 @@ def test_activate_flips_status_when_gguf_present(tmp_path):
     r = run("--graph", str(gpath), "--activate", "--write")
     assert r.returncode == 0, r.stderr
     g = familia_yaml.loads(gpath.read_text(encoding="utf-8"))
-    assert g["nodes"]["miryam-pentest"]["status"] == "active"
-    assert g["nodes"]["angel-guardian"]["status"] == "active"
+    assert g["nodes"]["fleet-guardian"]["status"] == "active"
+    assert g["nodes"]["freebsd-guardian"]["status"] == "active"
     assert g["pentests"]["fleet"]["status"] == "active"
-    assert g["pentests"]["angel"]["status"] == "active"
+    assert g["pentests"]["freebsd-guardian"]["status"] == "active"
     # seatbelts untouched
     assert g["pentests"]["fleet"]["tools"]["allow"] == []
     assert g["pentests"]["fleet"]["launch_test_only"] is True
@@ -151,5 +151,5 @@ def test_private_angel_guardian_flip(tmp_path):
     assert r.returncode == 0, r.stderr
     g = fy.loads(gpath.read_text(encoding="utf-8"))
     assert g["nodes"]["guardian"]["status"] == "active"
-    assert g["pentests"]["angel"]["status"] == "active"
-    assert g["pentests"]["angel"]["tools"]["allow"] == []
+    assert g["pentests"]["freebsd-guardian"]["status"] == "active"
+    assert g["pentests"]["freebsd-guardian"]["tools"]["allow"] == []

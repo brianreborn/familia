@@ -28,11 +28,11 @@ def cfg_of(g, tmp_path, monkeypatch, user=None):
 
 
 def test_non_tool_capable_reaches_tool_via_nexus(tmp_path, monkeypatch):
-    # phone7-decision: decision model (no tool calls), no tool-capable node on phone7;
+    # vulkan-handset-decision: decision model (no tool calls), no tool-capable node on phone7;
     # phone7 shares the lan-nexus ssh mesh with miryam/qodesh, so tools route there.
-    g = g_main("phone7-decision", status="active")
+    g = g_main("vulkan-handset-decision", status="active")
     g["agents"]["hermes"]["prompt_profile"] = "full"
-    assert not hh.tool_capable(g, "phone7-decision")
+    assert not hh.tool_capable(g, "vulkan-handset-decision")
     r = hh.route_tools(g, "hermes")
     assert r["mode"] == "nexus" and r["via"] == "lan-nexus"
     assert g["nodes"][r["node"]]["host"] in g["meshes"]["lan-nexus"]["members"]
@@ -41,13 +41,13 @@ def test_non_tool_capable_reaches_tool_via_nexus(tmp_path, monkeypatch):
     cfg = cfg_of(g, tmp_path, monkeypatch)
     assert cfg["model"]["default"] == r["node"]
     assert cfg["model"]["base_url"] == f"http://10.9.9.9:{g['nodes'][r['node']]['port']}/v1"
-    assert cfg["auxiliary"]["compression"]["model"] == "phone7-decision"  # aux stays on the own node
+    assert cfg["auxiliary"]["compression"]["model"] == "vulkan-handset-decision"  # aux stays on the own node
 
 
 def test_non_tool_capable_prefers_same_host():
-    g = g_main("qodesh-gpu-decision")
+    g = g_main("cuda-sm11-decision")
     r = hh.route_tools(g, "hermes")
-    assert r == {"mode": "nexus", "node": "qodesh-resident", "via": None}
+    assert r == {"mode": "nexus", "node": "cpu-resident-coder", "via": None}
 
 
 def test_tool_capable_gets_all_tools_by_default(tmp_path, monkeypatch):
@@ -63,21 +63,21 @@ def test_tool_capable_gets_all_tools_by_default(tmp_path, monkeypatch):
 
 def test_explicit_capability_flags_win():
     # Final fields from #243: nodes.<n>.tool_capable and models.<m>.tool_calls (via vg.tool_capable).
-    g = g_main("qodesh-gpu-decision", tool_capable=True)
+    g = g_main("cuda-sm11-decision", tool_capable=True)
     assert hh.route_tools(g, "hermes")["mode"] == "direct"
     g = g_main("coder", tool_capable=False)
     assert hh.route_tools(g, "hermes")["mode"] == "nexus"
-    g = g_main("qodesh-gpu-decision")
-    g["models"][g["nodes"]["qodesh-gpu-decision"]["model"]]["tool_calls"] = True
+    g = g_main("cuda-sm11-decision")
+    g["models"][g["nodes"]["cuda-sm11-decision"]["model"]]["tool_calls"] = True
     assert hh.route_tools(g, "hermes")["mode"] == "direct"
 
 
 def test_explicit_tool_route_wins_over_discovery(tmp_path, monkeypatch):
     # nodes.<n>.tool_route (one hop, #243) is the nexus target; skip same-host preference.
-    g = g_main("qodesh-gpu-decision")
-    # Same-host discovery would pick qodesh-resident; explicit route forces coder instead.
-    g["nodes"]["qodesh-gpu-decision"]["tool_route"] = "coder"
-    assert hh.vg.tool_route(g, "qodesh-gpu-decision") == "coder"
+    g = g_main("cuda-sm11-decision")
+    # Same-host discovery would pick cpu-resident-coder; explicit route forces coder instead.
+    g["nodes"]["cuda-sm11-decision"]["tool_route"] = "coder"
+    assert hh.vg.tool_route(g, "cuda-sm11-decision") == "coder"
     r = hh.route_tools(g, "hermes")
     assert r["mode"] == "nexus" and r["node"] == "coder" and r.get("reason") == "tool_route"
     g["hosts"]["miryam"]["addr"] = "10.1.1.1"
@@ -88,29 +88,29 @@ def test_explicit_tool_route_wins_over_discovery(tmp_path, monkeypatch):
 
 def test_explicit_tool_route_to_guardian_is_ignored():
     # #243 tool_route() rejects fail-closed targets; Hermes must not use them either.
-    g = g_main("qodesh-gpu-decision")
-    g["nodes"]["qodesh-gpu-decision"]["tool_route"] = "miryam-pentest"
-    g["nodes"]["miryam-pentest"]["status"] = "active"
-    assert hh.vg.tool_route(g, "qodesh-gpu-decision") is None
+    g = g_main("cuda-sm11-decision")
+    g["nodes"]["cuda-sm11-decision"]["tool_route"] = "fleet-guardian"
+    g["nodes"]["fleet-guardian"]["status"] = "active"
+    assert hh.vg.tool_route(g, "cuda-sm11-decision") is None
     r = hh.route_tools(g, "hermes")
-    assert r["node"] != "miryam-pentest"
-    # Falls back to same-host discovery (qodesh-resident), not the invalid route.
-    assert r == {"mode": "nexus", "node": "qodesh-resident", "via": None}
+    assert r["node"] != "fleet-guardian"
+    # Falls back to same-host discovery (cpu-resident-coder), not the invalid route.
+    assert r == {"mode": "nexus", "node": "cpu-resident-coder", "via": None}
 
 
 def test_discovery_skips_same_host_server_tools_none():
     # Boundary B1: same-host peer with server_tools: none → tool_policy [] → skipped.
-    g = g_main("qodesh-gpu-decision")
+    g = g_main("cuda-sm11-decision")
     # Make resident the only same-host candidate, then opt it out.
     for k, n in g["nodes"].items():
-        if n.get("host") == "qodesh" and k not in ("qodesh-gpu-decision", "qodesh-resident"):
+        if n.get("host") == "qodesh" and k not in ("cuda-sm11-decision", "cpu-resident-coder"):
             if not hh.tool_free(g, k):
                 n["status"] = "planned"
-    g["nodes"]["qodesh-resident"]["server_tools"] = "none"
-    assert hh.vg.tool_policy(g, "qodesh-resident") == []
+    g["nodes"]["cpu-resident-coder"]["server_tools"] = "none"
+    assert hh.vg.tool_policy(g, "cpu-resident-coder") == []
     # Plan mesh peers too so the only would-be target is the opted-out resident.
     for k, n in g["nodes"].items():
-        if n.get("host") != "qodesh" and k != "qodesh-gpu-decision" and not hh.tool_free(g, k):
+        if n.get("host") != "qodesh" and k != "cuda-sm11-decision" and not hh.tool_free(g, k):
             n["status"] = "planned"
     r = hh.route_tools(g, "hermes")
     assert r["mode"] == "none" and r["node"] is None
@@ -120,9 +120,9 @@ def test_discovery_skips_off_loopback_mesh_peer_without_server_tools():
     # Boundary B1: off-loopback mesh peer, no server_tools key → vg.tool_policy already
     # returns [] (capable + non-loopback + no key / no route). _discovery_ok requires
     # policy != [], so that peer is skipped. (No extra bind check needed in harness.)
-    g = g_main("phone7-decision", status="active")
+    g = g_main("vulkan-handset-decision", status="active")
     for k, n in g["nodes"].items():
-        if k != "phone7-decision" and not hh.tool_free(g, k):
+        if k != "vulkan-handset-decision" and not hh.tool_free(g, k):
             n["status"] = "planned"
     peer = "coder"
     g["nodes"][peer]["status"] = "active"
@@ -136,10 +136,10 @@ def test_discovery_skips_off_loopback_mesh_peer_without_server_tools():
 
 def test_explicit_tool_route_skipped_when_target_policy_empty():
     # Explicit route to a server_tools:none target must not be used (policy []).
-    g = g_main("qodesh-gpu-decision")
-    g["nodes"]["qodesh-gpu-decision"]["tool_route"] = "coder"
+    g = g_main("cuda-sm11-decision")
+    g["nodes"]["cuda-sm11-decision"]["tool_route"] = "coder"
     g["nodes"]["coder"]["server_tools"] = "none"
-    assert hh.vg.tool_route(g, "qodesh-gpu-decision") is None  # #243 filters
+    assert hh.vg.tool_route(g, "cuda-sm11-decision") is None  # #243 filters
     assert hh.vg.tool_policy(g, "coder") == []
     r = hh.route_tools(g, "hermes")
     assert r.get("node") != "coder"
@@ -161,7 +161,7 @@ def test_server_tools_opt_out_on_direct_node():
     assert r2 == {"mode": "none", "node": None, "via": None, "reason": "off-loopback without server_tools"}
 
 
-@pytest.mark.parametrize("node,over", [("miryam-pentest", {}), ("angel-guardian", {}),
+@pytest.mark.parametrize("node,over", [("fleet-guardian", {}), ("freebsd-guardian", {}),
                                        ("coder", {"role": "pentest"}), ("coder", {"role": "guardian"})])
 def test_guardian_pentest_get_no_tools(tmp_path, monkeypatch, node, over):
     g = g_main(node, **over)
@@ -181,10 +181,10 @@ def test_defender_node_gets_no_tools():
 
 def test_tool_free_node_is_never_a_nexus_target():
     # Mesh case: only tool-capable candidates left are guardian/pentest → none, not into them.
-    g = g_main("phone7-decision", status="active")
+    g = g_main("vulkan-handset-decision", status="active")
     for k, n in g["nodes"].items():
-        if k != "phone7-decision" and not hh.tool_free(g, k): n["status"] = "planned"
-    for k in ("miryam-pentest", "angel-guardian"): g["nodes"][k]["status"] = "active"
+        if k != "vulkan-handset-decision" and not hh.tool_free(g, k): n["status"] = "planned"
+    for k in ("fleet-guardian", "freebsd-guardian"): g["nodes"][k]["status"] = "active"
     r = hh.route_tools(g, "hermes")
     assert r["mode"] == "none" and r["node"] is None
     assert r.get("reason")
@@ -192,17 +192,17 @@ def test_tool_free_node_is_never_a_nexus_target():
 
 def test_nexus_never_routes_into_guardian_pentest_or_defender_same_host():
     # Only remaining "active" peers are defender/guardian (same host + mesh). Must still be none.
-    g = g_main("qodesh-gpu-decision")
+    g = g_main("cuda-sm11-decision")
     for k, n in list(g["nodes"].items()):
-        if k != "qodesh-gpu-decision" and not hh.tool_free(g, k):
+        if k != "cuda-sm11-decision" and not hh.tool_free(g, k):
             n["status"] = "planned"
     # Inject a same-host defender that *looks* tool-capable by model type but is tool_free by role.
     g["nodes"]["qodesh-defender"] = dict(g["nodes"]["coder"], host="qodesh", port=1, status="active")
     # And a same-host guardian.
-    g["nodes"]["qodesh-guardian"] = dict(g["nodes"]["miryam-pentest"], host="qodesh", port=2, status="active",
+    g["nodes"]["qodesh-guardian"] = dict(g["nodes"]["fleet-guardian"], host="qodesh", port=2, status="active",
                                          role="guardian")
     # Mesh peers that are guardian/pentest also flipped active — still must not be chosen.
-    for k in ("miryam-pentest", "angel-guardian"):
+    for k in ("fleet-guardian", "freebsd-guardian"):
         g["nodes"][k]["status"] = "active"
     r = hh.route_tools(g, "hermes")
     assert r["mode"] == "none" and r["node"] is None, r
@@ -212,11 +212,11 @@ def test_nexus_never_routes_into_guardian_pentest_or_defender_same_host():
 def test_nexus_never_routes_into_pentest_even_when_flagged_tool_capable():
     # Even an explicit tool_capable=True on a pentest/guardian must not make it a nexus target
     # (CFG-PENT-POL-004: never an auto-route target in any mode).
-    g = g_main("phone7-decision", status="active")
+    g = g_main("vulkan-handset-decision", status="active")
     for k, n in g["nodes"].items():
-        if k != "phone7-decision" and not hh.tool_free(g, k): n["status"] = "planned"
-    g["nodes"]["miryam-pentest"]["status"] = "active"
-    g["nodes"]["miryam-pentest"]["tool_capable"] = True
+        if k != "vulkan-handset-decision" and not hh.tool_free(g, k): n["status"] = "planned"
+    g["nodes"]["fleet-guardian"]["status"] = "active"
+    g["nodes"]["fleet-guardian"]["tool_capable"] = True
     r = hh.route_tools(g, "hermes")
     assert r["mode"] == "none" and r["node"] is None
 
@@ -226,14 +226,14 @@ def test_pentest_stays_closed_even_with_tools_confirm_policy_today():
     # gives tool_free == True and route mode none. CFG-PENT-MODE-004: tools-confirm must not
     # open until every tool call (MCP and all toolsets) goes through per-action confirmation;
     # setting approvals.mode=manual alone is not enough.
-    g = g_main("miryam-pentest")
-    g["pentests"] = {"fleet": {"node": "miryam-pentest",
+    g = g_main("fleet-guardian")
+    g["pentests"] = {"fleet": {"node": "fleet-guardian",
                                "policy": {"enabled": True, "mode": "tools-confirm",
                                           "tools": "all", "autonomy": "confirm-each-action",
                                           "audit": "on"}}}
-    assert hh.pentest_policy_mode(g, "miryam-pentest") == "tools-confirm"
-    assert hh.pentest_tools_allowed(g, "miryam-pentest") is False
-    assert hh.tool_free(g, "miryam-pentest") is True
+    assert hh.pentest_policy_mode(g, "fleet-guardian") == "tools-confirm"
+    assert hh.pentest_tools_allowed(g, "fleet-guardian") is False
+    assert hh.tool_free(g, "fleet-guardian") is True
     assert hh.route_tools(g, "hermes")["mode"] == "none"
 
 
@@ -243,18 +243,18 @@ def test_pentest_stays_closed_even_with_tools_confirm_policy_today():
                    "pentests.*.policy. See docs/config/pentest-policy.md CFG-PENT-MODE-004.")
 def test_tools_confirm_grants_full_tools_with_per_action_confirm(tmp_path, monkeypatch):
     # Expected once the TODO lands: mode tools-confirm → direct + full tools + approvals.mode=manual.
-    g = g_main("miryam-pentest")
+    g = g_main("fleet-guardian")
     g["agents"]["hermes"]["prompt_profile"] = "full"
     g["agents"]["hermes"]["mcp"] = {"stub": {"command": sys.executable, "args": [STUB]}}
-    g["pentests"] = {"fleet": {"node": "miryam-pentest",
+    g["pentests"] = {"fleet": {"node": "fleet-guardian",
                                "policy": {"enabled": True, "mode": "tools-confirm",
                                           "tools": "all", "autonomy": "confirm-each-action",
                                           "audit": "on"},
                                "scope": {"allow": ["miryam"], "deny": []}}}
-    assert hh.pentest_tools_allowed(g, "miryam-pentest") is True
-    assert not hh.tool_free(g, "miryam-pentest")
+    assert hh.pentest_tools_allowed(g, "fleet-guardian") is True
+    assert not hh.tool_free(g, "fleet-guardian")
     r = hh.route_tools(g, "hermes")
-    assert r == {"mode": "direct", "node": "miryam-pentest", "via": None}
+    assert r == {"mode": "direct", "node": "fleet-guardian", "via": None}
     cfg = cfg_of(g, tmp_path, monkeypatch)
     assert "stub" in (cfg.get("mcp_servers") or {})
     assert (cfg.get("approvals") or {}).get("mode") == "manual"
