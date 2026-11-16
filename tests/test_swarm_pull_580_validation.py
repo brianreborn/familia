@@ -1,12 +1,14 @@
 # tests for draft validation (issue #580)
 import pathlib
+import importlib.machinery
 import importlib.util
 
-# Load the swarm-pull module
-module_path = pathlib.Path(__file__).resolve().parents[2] / "scripts" / "swarm" / "swarm-pull"
-spec = importlib.util.spec_from_file_location("sp", module_path)
+# swarm-pull has no .py suffix, so spec_from_file_location returns None.
+module_path = pathlib.Path(__file__).resolve().parents[1] / "scripts" / "swarm" / "swarm-pull"
+loader = importlib.machinery.SourceFileLoader("swarm_pull", str(module_path))
+spec = importlib.util.spec_from_loader(loader.name, loader)
 sp = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(sp)
+loader.exec_module(sp)
 
 ForgeError = sp.ForgeError
 validate_draft = sp.validate_draft
@@ -60,13 +62,15 @@ def test_draft_too_short():
         assert False, "ForgeError not raised for short draft"
 
 def test_good_draft_passes():
-    draft = """Here is a proper draft.
+    draft = """Here is a proper draft that explains the change in plain language.
 
 ```python
 print(\"hello\")
 ```
 
 Additional explanatory text that exceeds the minimum length requirement.
+The note covers what changed, why the check exists, and how an operator
+confirms the result without pasting the prompt preamble or a job nonce.
 """
     # Should not raise any exception
     validate_draft(draft, "")
