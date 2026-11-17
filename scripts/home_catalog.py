@@ -77,7 +77,7 @@ APP_ITEMS = (
 )
 def listener_notice():
     """Fixed sentence. No credential value is read or printed."""
-    say("Listeners stay closed here. The instance file is not printed.")
+    say("Network listeners need an API key. This command does not bind a port.")
 
 
 def _windows():
@@ -209,7 +209,6 @@ def save_record(kind, pid, port, cmdline, starttime=None):
         return None
     if not cmdline and ident_cmd:
         cmdline = ident_cmd
-    token = token.encode("ascii", "replace").decode("ascii")
     doc = {
         "pid": int(pid),
         "port": int(port),
@@ -220,7 +219,7 @@ def save_record(kind, pid, port, cmdline, starttime=None):
     path = _state_path(kind)
     tmp = path + ".tmp"
     with open(tmp, "w", encoding="ascii") as fh:
-        fh.write(json.dumps(doc))
+        fh.write(json.dumps(doc, ensure_ascii=True))
         fh.write("\n")
     os.chmod(tmp, 0o600)
     os.replace(tmp, path)
@@ -244,9 +243,12 @@ def _ps_identity(pid):
     if not shutil.which("ps"):
         return None, None
     try:
+        env = dict(os.environ)
+        env["LC_ALL"] = "C"
+        env["TZ"] = "UTC"
         proc = subprocess.run(
             ["ps", "-o", "lstart=,command=", "-p", str(pid)],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True, text=True, timeout=5, env=env,
         )
     except (OSError, subprocess.TimeoutExpired):
         return None, None
@@ -261,7 +263,141 @@ def _ps_identity(pid):
         return None, None
     token = " ".join(parts[:5])
     cmd = parts[5] if len(parts) > 5 else ""
+    fine = _fine_start(pid, token)
+    if fine:
+        token = fine
     return token, cmd
+
+
+def _darwin_start(pid):
+    """macOS start time in seconds.microseconds. Empty when this is not Darwin."""
+    if sys.platform != "darwin":
+        return ""
+    try:
+        import ctypes
+        libc = ctypes.CDLL("/usr/lib/libproc.dylib", use_errno=True)
+    except OSError:
+        return ""
+    PROC_PIDTBSDINFO = 3
+
+    class BSDInfo(ctypes.Structure):
+        _fields_ = [
+            ("pbi_flags", ctypes.c_uint32),
+            ("pbi_status", ctypes.c_uint32),
+            ("pbi_xstatus", ctypes.c_uint32),
+            ("pbi_pid", ctypes.c_uint32),
+            ("pbi_ppid", ctypes.c_uint32),
+            ("pbi_uid", ctypes.c_uint32),
+            ("pbi_gid", ctypes.c_uint32),
+            ("pbi_ruid", ctypes.c_uint32),
+            ("pbi_rgid", ctypes.c_uint32),
+            ("pbi_svuid", ctypes.c_uint32),
+            ("pbi_svgid", ctypes.c_uint32),
+            ("reserved", ctypes.c_uint32),
+            ("pbi_comm", ctypes.c_char * 16),
+            ("pbi_name", ctypes.c_char * 32),
+            ("pbi_nfiles", ctypes.c_uint32),
+            ("pbi_pgid", ctypes.c_uint32),
+            ("pbi_pjobc", ctypes.c_uint32),
+            ("e_tdev", ctypes.c_uint32),
+            ("e_tpgid", ctypes.c_int32),
+            ("pbi_nice", ctypes.c_int32),
+            ("pbi_start_tvsec", ctypes.c_uint64),
+            ("pbi_start_tvusec", ctypes.c_uint64),
+        ]
+
+    info = BSDInfo()
+    try:
+        n = libc.proc_pidinfo(
+            ctypes.c_int(int(pid)), ctypes.c_int(PROC_PIDTBSDINFO),
+            ctypes.c_uint64(0), ctypes.byref(info), ctypes.c_int(ctypes.sizeof(info)),
+        )
+    except (OSError, AttributeError):
+        return ""
+    if n <= 0 or not info.pbi_start_tvsec:
+        return ""
+    return "%d.%06d" % (int(info.pbi_start_tvsec), int(info.pbi_start_tvusec))
+
+
+def _lstart_epoch(token):
+    """UTC epoch seconds for a C-locale ps lstart, or None."""
+    import calendar
+    import time
+    try:
+        return calendar.timegm(time.strptime(token, "%a %b %d %H:%M:%S %Y"))
+    except (TypeError, ValueError):
+        return None
+
+
+def _timeval_usec(blob, sec):
+    """Microseconds of the one int64 timeval in blob whose seconds match sec.
+
+    FreeBSD and macOS kinfo store the start as a timeval. More than one
+    match, or a second that is not the C-locale lstart, is ignored.
+    """
+    import struct
+    if not blob or sec is None or len(blob) < 16:
+        return None
+    hits = []
+    for i in range(0, len(blob) - 15, 8):
+        try:
+            got, usec = struct.unpack_from("qq", blob, i)
+        except struct.error:
+            continue
+        if got == sec and 0 <= usec < 1000000:
+            hits.append(usec)
+    uniq = set(hits)
+    if len(uniq) == 1:
+        return uniq.pop()
+    return None
+
+
+def _kinfo_start(pid, lstart):
+    """seconds.microseconds from kern.proc.pid when it agrees with lstart."""
+    sec = _lstart_epoch(lstart)
+    if sec is None or not shutil.which("sysctl"):
+        return ""
+    try:
+        proc = subprocess.run(
+            ["sysctl", "-b", "kern.proc.pid.%d" % int(pid)],
+            capture_output=True, timeout=5,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    usec = _timeval_usec(proc.stdout or b"", sec)
+    if usec is None:
+        return ""
+    return "%d.%06d" % (sec, usec)
+
+
+def _fine_start(pid, lstart):
+    """Sub-second start token. Empty when this OS cannot prove one."""
+    darwin = _darwin_start(pid)
+    if darwin:
+        return darwin
+    if sys.platform.startswith("freebsd") or sys.platform == "darwin":
+        return _kinfo_start(pid, lstart)
+    return ""
+
+
+def _wait_server_pid(pidfile, parent, seconds=15):
+    """Pid start.bat wrote, or the llama-server child, within a bounded wait.
+
+    The lookup used to run once, while start.bat was still in the license
+    and auth guard, so it recorded nothing.
+    """
+    import time
+    deadline = time.time() + seconds
+    while True:
+        written = _read_pidfile(pidfile)
+        if written and written != parent:
+            return written
+        child = _windows_server_pid(parent)
+        if child and child != parent:
+            return child
+        if time.time() >= deadline:
+            return 0
+        time.sleep(0.25)
 
 
 def _windows_server_pid(parent):
@@ -299,7 +435,7 @@ def _windows_identity(pid):
         return None, None
     script = (
         "$p = Get-Process -Id %d -ErrorAction Stop; "
-        "$p.StartTime.ToFileTimeUtc().ToString() + '|' + $p.ProcessName"
+        "$p.StartTime.ToFileTimeUtc().ToString('D', [Globalization.CultureInfo]::InvariantCulture) + '|' + $p.ProcessName"
     ) % pid
     try:
         proc = subprocess.run(
@@ -318,8 +454,10 @@ def _windows_identity(pid):
 def process_identity(pid):
     """(start_token, cmdline). (None, None) when this OS cannot prove identity.
 
-    Linux starttime survives exec. FreeBSD/macOS use ps lstart. Windows uses
-    the process StartTime. Empty means fail closed: do not signal.
+    Linux starttime survives exec. Windows uses the process StartTime.
+    FreeBSD and macOS use ps lstart, and macOS replaces that with the
+    microsecond start from libproc when it is available. Empty means fail
+    closed: do not signal.
     """
     if _windows():
         return _windows_identity(pid)
@@ -446,7 +584,7 @@ def stop_recorded(kind):
         say("identity changed before the signal; nothing signaled")
         return 0
     port = rec.get("port") or 0
-    if not _server_cmdline(cmd) and not _pid_listens(pid, port):
+    if not _may_signal(started, cmd, pid, port):
         say("pid %s is not a server and is not listening; nothing signaled" % pid)
         return 0
     if not _end_process(pid):
@@ -711,18 +849,97 @@ def _server_cmdline(cmd):
     return any(mark in text for mark in _SERVER_MARK)
 
 
+def _coarse_clock(token):
+    """True for a 1-second ps lstart. Tick counts and file times are digits."""
+    text = token or ""
+    if not text:
+        return True
+    return any(ch.isalpha() for ch in text)
+
+
+def _line_is_listener(line, pid, port):
+    """True when a sockstat or lsof line names this pid on this local port."""
+    fields = (line or "").split()
+    if not fields or fields[0] in ("USER", "COMMAND"):
+        return False
+    try:
+        pid_s = str(int(pid))
+        port_s = str(int(port))
+    except (TypeError, ValueError):
+        return False
+    if pid_s not in fields:
+        return False
+    for field in fields:
+        if field.endswith(":" + port_s):
+            return True
+    return False
+
+
+def _tool_listens(pid, port):
+    commands = []
+    if shutil.which("sockstat"):
+        commands.append(["sockstat", "-l", "-P", "tcp", "-p", str(int(port))])
+    if shutil.which("lsof"):
+        commands.append(["lsof", "-nP", "-iTCP:%d" % int(port), "-sTCP:LISTEN"])
+    for argv in commands:
+        try:
+            proc = subprocess.run(argv, capture_output=True, text=True, timeout=5)
+        except (OSError, subprocess.TimeoutExpired):
+            continue
+        for line in (proc.stdout or "").splitlines():
+            if _line_is_listener(line, pid, port):
+                return True
+    return False
+
+
+def _may_signal(token, cmd, pid, port):
+    """A one-second clock plus a cmdline marker is not enough to signal.
+
+    The pid must hold the recorded port, or the start token must be finer
+    than one second and the command must still be a server.
+    """
+    if _pid_listens(pid, port):
+        return True
+    if _server_cmdline(cmd) and not _coarse_clock(token):
+        return True
+    return False
+
+
+def _windows_owns_port(pid, port):
+    """True when Windows says this pid is listening on port."""
+    if not _windows() or not shutil.which("powershell"):
+        return False
+    script = (
+        "$hits = @(Get-NetTCPConnection -LocalPort %d -State Listen "
+        "-ErrorAction SilentlyContinue | Where-Object { $_.OwningProcess -eq %d }); "
+        "if ($hits.Count -gt 0) { 'yes' }"
+    ) % (int(port), int(pid))
+    try:
+        proc = subprocess.run(
+            ["powershell", "-NoProfile", "-Command", script],
+            capture_output=True, text=True, timeout=15,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return proc.returncode == 0 and "yes" in (proc.stdout or "")
+
+
 def _pid_listens(pid, port):
     """True when this pid holds a TCP listener on port. False if we cannot see one."""
     if not pid or not port:
         return False
+    if _windows():
+        return _windows_owns_port(pid, port)
     port_hex = "%04X" % int(port)
     inodes = set()
+    saw_proc = False
     for name in ("tcp", "tcp6"):
         path = "/proc/net/%s" % name
         try:
             lines = open(path, encoding="ascii", errors="replace").read().splitlines()
         except OSError:
             continue
+        saw_proc = True
         for line in lines[1:]:
             fields = line.split()
             if len(fields) < 10:
@@ -733,6 +950,8 @@ def _pid_listens(pid, port):
             if fields[3] != "0A":  # LISTEN
                 continue
             inodes.add(fields[9])
+    if not saw_proc:
+        return _tool_listens(pid, port)
     if not inodes:
         return False
     fd_dir = "/proc/%d/fd" % pid
@@ -750,16 +969,25 @@ def _pid_listens(pid, port):
     return False
 
 
-def _adopt(kind, pid, port):
-    """Record pid only when this launch's process is a server or holds the port."""
+def _adopt(kind, pid, port, seconds=2, need_port=False):
+    """Record pid only when this launch's process is a server or holds the port.
+
+    seconds bounds the wait. Windows passes need_port so a slow listener is
+    recorded when the port opens, not after a fixed two-second glance.
+    """
     import time
     saved = None
     saw = False
-    for _ in range(8):
+    deadline = time.time() + seconds
+    while True:
         started, cmd = process_identity(pid)
-        if started and (_server_cmdline(cmd) or _pid_listens(pid, port)):
+        listening = _pid_listens(pid, port)
+        ready = listening or (not need_port and _may_signal(started, cmd, pid, port))
+        if started and ready:
             saw = True
             saved = save_record(kind, pid, port, cmd or "", starttime=started)
+            break
+        if time.time() >= deadline:
             break
         time.sleep(0.25)
     if not saved:
@@ -770,25 +998,6 @@ def _adopt(kind, pid, port):
         return None
     say("recorded pid %s port %s" % (pid, port))
     return saved
-
-
-def _test_launcher():
-    """A test double only when the file itself is marked. The env var alone is not enough."""
-    path = os.environ.get("FAMILIA_HOME_LAUNCHER") or ""
-    if not path:
-        return None
-    try:
-        with open(path, encoding="utf-8") as fh:
-            first = fh.readline()
-            second = fh.readline()
-    except OSError:
-        return None
-    marked = first.startswith("# familia-home-test-launcher") or second.startswith("# familia-home-test-launcher")
-    if not marked:
-        return None
-    if not os.access(path, os.X_OK):
-        return None
-    return path
 
 
 def _pid_from_this_launch(path, begun):
@@ -814,14 +1023,14 @@ def models_start(apply, extra):
         return not_applied(
             "models", "start",
             "Delegates to sh start.sh with DETACH_MODE=nohup (Windows: scripts\\windows\\start.bat, detached). "
-            "The launcher keeps the instance file. License prompts stay on this terminal. "
+            "Network listeners need an API key. License prompts stay on this terminal. "
             "This menu records a pid only when this launch writes one and the process is a server.",
         )
     rest = safe_extras(extra, "start argument")
     if rest is None:
         return 2
     header("models", "start")
-    say("start keeps the instance file (scripts/familia_auth.py).")
+    say("Network listeners need an API key. This command does not bind a port.")
     if _windows():
         bat = os.path.join(ROOT, "scripts", "windows", "start.bat")
         say("running detached: scripts\\windows\\start.bat")
@@ -840,22 +1049,35 @@ def models_start(apply, extra):
         if gate.returncode != 0:
             say("licenses not accepted; nothing started")
             return gate.returncode
+        try:
+            pidfile = os.path.join(_runtime(), "home-models.pid")
+        except OSError as exc:
+            say("no runtime dir for the pid file: %s" % exc)
+            return 1
+        try:
+            os.remove(pidfile)
+        except OSError:
+            pass
         log_path = os.path.join(_runtime(), "start-bat.log")
         flags = 0x00000008 | 0x00000200  # DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
+        env = dict(os.environ)
+        env["FAMILIA_PIDFILE"] = pidfile
         try:
             log = open(log_path, "ab")
             proc = subprocess.Popen(
                 ["cmd", "/c", bat],
-                cwd=ROOT, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
+                cwd=ROOT, env=env, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
                 creationflags=flags, close_fds=True,
             )
         except OSError as exc:
             say("cannot run start.bat: %s" % exc)
             return 1
         say("detached pid %s" % proc.pid)
-        child = _windows_server_pid(proc.pid)
-        target = child or proc.pid
-        if _adopt("models", target, _port()) is None:
+        target = _wait_server_pid(pidfile, proc.pid)
+        if not target:
+            say("llama-server was not visible; nothing recorded")
+            return 0
+        if _adopt("models", target, _port(), seconds=30, need_port=True) is None:
             say("llama-server was not visible; nothing recorded")
             return 0
         return 0
@@ -875,8 +1097,7 @@ def models_start(apply, extra):
     except OSError:
         pass
     env["FAMILIA_PIDFILE"] = pidfile
-    launcher = _test_launcher()
-    argv = [launcher] if launcher else ["sh", os.path.join(ROOT, "start.sh")]
+    argv = ["sh", os.path.join(ROOT, "start.sh")]
     begun = __import__("time").time()
     try:
         proc = subprocess.run(argv + rest, cwd=ROOT, env=env)

@@ -2,6 +2,7 @@
 import os
 import pty
 import select
+import shutil
 import signal
 import subprocess
 import sys
@@ -91,11 +92,11 @@ def test_catalog_list_and_status_are_local_ascii_and_do_not_bind():
     start = run([sys.executable, CATALOG, "models", "start"])
     assert start.returncode == 0
     assert "Not applied" in start.stdout
-    assert "instance file" in start.stdout
+    assert "need an API key" in start.stdout
     mcp = run([sys.executable, CATALOG, "mcp", "start", "--apply"])
     assert mcp.returncode == 0
     assert "Refusing" in mcp.stdout
-    assert "instance file" in mcp.stdout
+    assert "need an API key" in mcp.stdout
     apps = run([sys.executable, CATALOG, "apps", "start", "--apply"])
     assert apps.returncode == 0 and "Refusing" in apps.stdout
     missing = run(
@@ -329,22 +330,32 @@ def test_configure_graphs_returns_to_the_menu(tmp_path):
     assert out.count("six equal items") >= 2
 
 
+def _scratch_tree(tmp_path, start_text):
+    """A copy of the home scripts with this tree's own start.sh. No env override."""
+    tree = tmp_path / "tree"
+    scripts = tree / "scripts"
+    scripts.mkdir(parents=True)
+    for name in ("home_catalog.py", "familia_yaml.py", "runtime_dir.py", "familia_home.sh"):
+        shutil.copy(os.path.join(ROOT, "scripts", name), scripts / name)
+    start = tree / "start.sh"
+    start.write_text(start_text)
+    start.chmod(0o755)
+    return tree
+
+
 def test_sigint_during_action_stays_until_quit(tmp_path):
     bin_dir = str(tmp_path / "bin")
-    hold = tmp_path / "hold.sh"
-    hold.write_text("#!/bin/sh\n# familia-home-test-launcher\necho holding for test\nsleep 30\n")
-    hold.chmod(0o755)
+    tree = _scratch_tree(tmp_path, "#!/bin/sh\necho holding for test\nsleep 30\n")
     _gum(bin_dir, ["Models", "start", "Quit"])
     env = base_env(
         PATH=bin_dir + os.pathsep + "/usr/bin:/bin",
         TERM="dumb",
         NO_COLOR="1",
-        FAMILIA_HOME_LAUNCHER=str(hold),
         FAMILIA_SKIP_GUM_INSTALL="1",
     )
     master, slave = pty.openpty()
     proc = subprocess.Popen(
-        ["sh", HOME], stdin=slave, stdout=slave, stderr=slave,
+        ["sh", str(tree / "scripts" / "familia_home.sh")], stdin=slave, stdout=slave, stderr=slave,
         cwd=ROOT, env=env, close_fds=True, start_new_session=True,
     )
     os.close(slave)
@@ -554,20 +565,17 @@ def test_stale_pidfile_is_not_adopted(tmp_path, monkeypatch):
     pidfile.write_text("%s\n" % victim.pid)
     old = time.time() - 30
     os.utime(pidfile, (old, old))
-    launcher = tmp_path / "reuse.sh"
-    launcher.write_text("#!/bin/sh\n# familia-home-test-launcher\necho reusing it\nexit 0\n")
-    launcher.chmod(0o755)
+    tree = _scratch_tree(tmp_path, "#!/bin/sh\necho reusing it\nexit 0\n")
     env = base_env(
         HOME=str(tmp_path), XDG_RUNTIME_DIR=str(run_dir),
         XDG_CACHE_HOME=str(tmp_path / "cache"),
-        FAMILIA_HOME_LAUNCHER=str(launcher),
     )
     try:
-        started = run([sys.executable, CATALOG, "models", "start", "--apply"], env=env)
+        started = run([sys.executable, str(tree / "scripts" / "home_catalog.py"), "models", "start", "--apply"], env=env)
         assert started.returncode == 0, started.stdout + started.stderr
         assert "did not write a pid file" in started.stdout
         assert victim.poll() is None
-        stopped = run([sys.executable, CATALOG, "models", "stop", "--apply"], env=env)
+        stopped = run([sys.executable, str(tree / "scripts" / "home_catalog.py"), "models", "stop", "--apply"], env=env)
         assert "signaled" not in stopped.stdout
         assert victim.poll() is None
     finally:
@@ -578,23 +586,20 @@ def test_stale_pidfile_is_not_adopted(tmp_path, monkeypatch):
 def test_non_server_pid_from_this_launch_is_not_signaled(tmp_path, monkeypatch):
     run_dir = _private_run(tmp_path, monkeypatch)
     victim = subprocess.Popen(["sleep", "60"])
-    launcher = tmp_path / "write-sleep.sh"
-    launcher.write_text(
-        "#!/bin/sh\n# familia-home-test-launcher\nprintf '%%s\\n' %s > \"$FAMILIA_PIDFILE\"\nexit 0\n"
-        % victim.pid
+    tree = _scratch_tree(
+        tmp_path,
+        "#!/bin/sh\nprintf '%%s\\n' %s > \"$FAMILIA_PIDFILE\"\nexit 0\n" % victim.pid,
     )
-    launcher.chmod(0o755)
     env = base_env(
         HOME=str(tmp_path), XDG_RUNTIME_DIR=str(run_dir),
         XDG_CACHE_HOME=str(tmp_path / "cache"),
-        FAMILIA_HOME_LAUNCHER=str(launcher),
     )
     try:
-        started = run([sys.executable, CATALOG, "models", "start", "--apply"], env=env)
+        started = run([sys.executable, str(tree / "scripts" / "home_catalog.py"), "models", "start", "--apply"], env=env)
         assert started.returncode == 0, started.stdout + started.stderr
         assert "not a server" in started.stdout
         assert victim.poll() is None
-        stopped = run([sys.executable, CATALOG, "models", "stop", "--apply"], env=env)
+        stopped = run([sys.executable, str(tree / "scripts" / "home_catalog.py"), "models", "stop", "--apply"], env=env)
         assert "signaled pid %s" % victim.pid not in stopped.stdout
         assert victim.poll() is None
     finally:
@@ -608,19 +613,16 @@ def test_server_pid_written_by_this_launch_can_be_stopped(tmp_path, monkeypatch)
     server.write_text("#!/usr/bin/env python3\nimport time\ntime.sleep(60)\n")
     server.chmod(0o755)
     proc = subprocess.Popen([str(server)])
-    launcher = tmp_path / "write-server.sh"
-    launcher.write_text(
-        "#!/bin/sh\n# familia-home-test-launcher\nprintf '%%s\\n' %s > \"$FAMILIA_PIDFILE\"\nexit 0\n"
-        % proc.pid
+    tree = _scratch_tree(
+        tmp_path,
+        "#!/bin/sh\nprintf '%%s\\n' %s > \"$FAMILIA_PIDFILE\"\nexit 0\n" % proc.pid,
     )
-    launcher.chmod(0o755)
     env = base_env(
         HOME=str(tmp_path), XDG_RUNTIME_DIR=str(run_dir),
         XDG_CACHE_HOME=str(tmp_path / "cache"),
-        FAMILIA_HOME_LAUNCHER=str(launcher),
     )
     try:
-        started = run([sys.executable, CATALOG, "models", "start", "--apply"], env=env)
+        started = run([sys.executable, str(tree / "scripts" / "home_catalog.py"), "models", "start", "--apply"], env=env)
         assert "recorded pid %s" % proc.pid in started.stdout, started.stdout
         stopped = run([sys.executable, CATALOG, "models", "stop", "--apply"], env=env)
         assert "signaled pid %s" % proc.pid in stopped.stdout, stopped.stdout
@@ -701,7 +703,8 @@ def test_home_test_hold_is_not_a_production_switch():
     shell = open(HOME, encoding="utf-8").read()
     assert "FAMILIA_HOME_TEST_HOLD" not in text
     assert "FAMILIA_HOME_TEST_HOLD" not in shell
-    assert "# familia-home-test-launcher" in text
+    assert "FAMILIA_HOME_LAUNCHER" not in text
+    assert "FAMILIA_HOME_LAUNCHER" not in shell
 
 
 def test_save_record_stores_the_platform_identity_token(monkeypatch, tmp_path):
@@ -718,6 +721,56 @@ def test_save_record_stores_the_platform_identity_token(monkeypatch, tmp_path):
     assert hc.save_record("agents", 51, 9, "llama-server") is None
     assert hc.load_record("agents") is None
     assert hc.load_record("models")["starttime"] == "ps-lstart-token"
+
+
+def test_non_ascii_identity_token_round_trips(monkeypatch, tmp_path):
+    _private_run(tmp_path, monkeypatch)
+    sys.path.insert(0, os.path.join(ROOT, "scripts"))
+    import home_catalog as hc
+    token = "Di 3. M\u00e4rz 2026 12:00:00"
+    doc = hc.save_record("models", 50, 9, "llama-server", starttime=token)
+    assert doc["starttime"] == token
+    assert hc.load_record("models")["starttime"] == token
+    raw = open(hc._state_path("models"), encoding="ascii").read()
+    assert "\\u00e4" in raw
+    assert "?" not in doc["starttime"]
+    monkeypatch.setattr(hc, "process_identity", lambda pid: (token, "llama-server"))
+    monkeypatch.setattr(hc, "_alive", lambda pid: True)
+    assert hc.same_process(hc.load_record("models")) is True
+
+
+def test_ps_identity_uses_c_locale(monkeypatch):
+    sys.path.insert(0, os.path.join(ROOT, "scripts"))
+    import home_catalog as hc
+    seen = {}
+
+    def fake_run(argv, **kw):
+        seen["env"] = kw.get("env") or {}
+        class R:
+            returncode = 0
+            stdout = "Mon Nov 17 00:00:00 2026 /tmp/llama-server\n"
+        return R()
+
+    monkeypatch.setattr(hc.subprocess, "run", fake_run)
+    monkeypatch.setattr(hc.shutil, "which", lambda name: "/bin/ps" if name == "ps" else None)
+    monkeypatch.setattr(hc, "_darwin_start", lambda pid: "")
+    monkeypatch.setattr(hc, "_kinfo_start", lambda pid, lstart: "")
+    token, cmd = hc._ps_identity(1)
+    assert seen["env"]["LC_ALL"] == "C"
+    assert seen["env"]["TZ"] == "UTC"
+    assert token.startswith("Mon Nov 17")
+    assert "llama-server" in cmd
+
+
+def test_kinfo_timeval_is_finer_than_lstart():
+    import struct
+    sys.path.insert(0, os.path.join(ROOT, "scripts"))
+    import home_catalog as hc
+    sec = hc._lstart_epoch("Mon Nov 17 00:00:00 2026")
+    blob = struct.pack("qq", sec, 123456)
+    assert hc._timeval_usec(blob, sec) == 123456
+    assert hc._timeval_usec(blob + blob, sec) == 123456
+    assert hc._timeval_usec(struct.pack("qqqq", sec, 1, sec, 2), sec) is None
 
 
 def test_adopt_does_not_claim_a_record_it_could_not_store(monkeypatch, tmp_path, capsys):
@@ -754,6 +807,10 @@ def test_windows_license_gate_runs_on_the_tty_before_detach(monkeypatch, tmp_pat
 
     def fake_popen(argv, **kw):
         popen.append(kw.get("stdin"))
+        path = (kw.get("env") or {}).get("FAMILIA_PIDFILE")
+        assert path
+        with open(path, "w", encoding="ascii") as fh:
+            fh.write("4242\n")
         class P:
             pid = 77
         return P()
@@ -846,6 +903,154 @@ def test_cockpit_q_returns_to_the_menu(tmp_path):
     rc, out = _pty(["sh", HOME], env, feed=b"q\n", timeout=25)
     assert rc == 0, out
     assert out.count("six equal items") >= 2
+
+
+def test_coarse_clock_needs_the_listening_port(monkeypatch, tmp_path, capsys):
+    _private_run(tmp_path, monkeypatch)
+    sys.path.insert(0, os.path.join(ROOT, "scripts"))
+    import home_catalog as hc
+    victim = subprocess.Popen(["sleep", "30"])
+    coarse = "Tue Nov 17 07:46:01 2026"
+    try:
+        monkeypatch.setattr(hc, "process_identity", lambda pid: (coarse, "/tmp/llama-server"))
+        monkeypatch.setattr(hc, "_pid_listens", lambda pid, port: False)
+        hc.save_record("models", victim.pid, 9931, "/tmp/llama-server", starttime=coarse)
+        assert hc.stop_recorded("models") == 0
+        out = capsys.readouterr().out
+        assert "nothing signaled" in out
+        assert victim.poll() is None
+        monkeypatch.setattr(hc, "_pid_listens", lambda pid, port: True)
+        assert hc.stop_recorded("models") == 0
+        out = capsys.readouterr().out
+        assert "signaled pid %s" % victim.pid in out
+    finally:
+        if victim.poll() is None:
+            victim.kill()
+
+
+def test_sockstat_line_matches_the_listener():
+    sys.path.insert(0, os.path.join(ROOT, "scripts"))
+    import home_catalog as hc
+    line = "user llama-server 4242 6 tcp4 127.0.0.1:9931 *:*"
+    assert hc._line_is_listener(line, 4242, 9931)
+    assert hc._line_is_listener("python 4242 user 3u IPv4 TCP 127.0.0.1:9931 (LISTEN)", 4242, 9931)
+    assert not hc._line_is_listener(line, 99, 9931)
+    assert hc._coarse_clock("Tue Nov 17 07:46:01 2026")
+    assert not hc._coarse_clock("123456.000001")
+    assert hc._darwin_start(1) == ""
+
+
+def test_launch_server_records_the_child_pid(tmp_path):
+    server = tmp_path / "llama-server"
+    server.write_text("#!/usr/bin/env python3\nimport time\ntime.sleep(30)\n")
+    server.chmod(0o755)
+    log = tmp_path / "server.log"
+    pidfile = tmp_path / "server.pid"
+    key = tmp_path / "key"
+    key.write_text("x\n")
+    env = base_env(FAMILIA_PIDFILE=str(pidfile))
+    launcher = os.path.join(ROOT, "scripts", "windows", "launch_server.py")
+    proc = subprocess.Popen(
+        [sys.executable, launcher, str(server), "m.gguf", "127.0.0.1", "9",
+         "512", "1", "q8_0", str(log), str(key)],
+        env=env,
+    )
+    try:
+        child = 0
+        for _ in range(40):
+            if pidfile.exists():
+                child = int(pidfile.read_text().strip())
+                break
+            time.sleep(0.05)
+        assert child and child != proc.pid
+        os.kill(child, 0)
+    finally:
+        if child:
+            try:
+                os.kill(child, signal.SIGKILL)
+            except OSError:
+                pass
+        if proc.poll() is None:
+            proc.kill()
+            proc.wait(timeout=5)
+
+
+def test_single_node_default_writes_the_listener_pid(tmp_path):
+    import socket
+    tree = tmp_path / "tree"
+    (tree / "lib").mkdir(parents=True)
+    (tree / "scripts").mkdir()
+    (tree / "code-bootstraps-llama.cpp").mkdir()
+    shutil.copy(os.path.join(ROOT, "start.sh"), tree / "start.sh")
+    for name in ("msg.mk", "path.mk", "os.mk"):
+        shutil.copy(os.path.join(ROOT, "lib", name), tree / "lib" / name)
+    probe = socket.socket()
+    probe.bind(("127.0.0.1", 0))
+    port = probe.getsockname()[1]
+    probe.close()
+    holder = tmp_path / "holder"
+    real = sys.executable.replace("'", "'\\''")
+    backend = tree / "code-bootstraps-llama.cpp" / "start.sh"
+    backend.write_text(
+        "#!/bin/sh\n"
+        "exec '%s' -c 'import os,socket,time\n"
+        "s=socket.socket(); s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)\n"
+        "s.bind((\"127.0.0.1\", int(os.environ[\"PORT\"]))); s.listen(1)\n"
+        "open(os.environ[\"HOLDER\"], \"w\").write(str(os.getpid()))\n"
+        "time.sleep(30)'\n" % real
+    )
+    backend.chmod(0o755)
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    stub = bin_dir / "python3"
+    stub.write_text(
+        "#!/bin/sh\n"
+        "case \" $* \" in\n"
+        "  *start_graph.py*) printf '%%s\\n' 'is not declared in graph.yaml'; exit 3 ;;\n"
+        "  *licenses.py*|*sync_pins.py*) exit 0 ;;\n"
+        "  *familia_auth.py*) exit 3 ;;\n"
+        "esac\n"
+        "exec '%s' \"$@\"\n" % real
+    )
+    stub.chmod(0o755)
+    pidfile = tmp_path / "home-models.pid"
+    env = base_env(
+        PATH=str(bin_dir) + os.pathsep + "/usr/bin:/bin",
+        HOME=str(tmp_path),
+        PORT=str(port),
+        FAMILIA_PIDFILE=str(pidfile),
+        HOLDER=str(holder),
+        FAMILIA_SINGLE_NODE="1",
+        DETACH_MODE="nohup",
+        FAMILIA_ACCEPT_LICENSES="yes",
+        FAMILIA_LICENSE_ACCEPT_FILE=str(tmp_path / "accept.json"),
+        FAMILIA_SYNC="0",
+    )
+    child = 0
+    try:
+        started = run(["sh", str(tree / "start.sh")], env=env)
+        blob = started.stdout + started.stderr
+        assert started.returncode == 0, blob
+        assert "single-node default" in blob
+        assert "server PID" in blob
+        for _ in range(50):
+            if holder.exists():
+                break
+            time.sleep(0.05)
+        assert holder.exists(), blob
+        child = int(holder.read_text().strip())
+        assert pidfile.read_text().strip() == str(child), blob
+    finally:
+        if child:
+            try:
+                os.kill(child, signal.SIGKILL)
+            except OSError:
+                pass
+        elif pidfile.exists():
+            try:
+                os.kill(int(pidfile.read_text().strip()), signal.SIGKILL)
+            except (OSError, ValueError):
+                pass
 
 
 def test_termux_pkg_is_after_the_prompt():
