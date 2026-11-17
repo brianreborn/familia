@@ -4,9 +4,9 @@ The shortest path from nothing to a running, validated setup. Read [README.md](R
 
 Everything below runs from the root of a familia checkout unless it says otherwise.
 
-**The easy way — Talk to the protomodel:** run `./familia` (Windows: `familia.cmd`). That opens the Charm/gum home. The first goal is **Talk to the protomodel**: a tiny local chat that helps with install/build and with exploring larger models to fetch next (and searching your X/Twitter posts when Agent-Reach is linked). Other home goals: Find more models, Search my X / Twitter posts, Install / first-time setup (traditional tools only — no model gate), ◆ Proving grounds (graded), and Legacy menu.
+**Home menu:** run `./familia` (Windows: `familia.cmd`). Six equal items: Models, Harnesses, Agents, MCP servers, Tool sets, and App store. Each one has install, list, start, stop, and status. The menu stays up until you choose Quit. If gum is missing and cannot be installed, `./familia` opens the legacy catalog instead of exiting. Older goals (Talk to the protomodel, Find more models, Search my X / Twitter posts, Install / first-time setup, Proving grounds) are on the legacy Front door.
 
-**Legacy catalog (fallback only):** `./familia menu` / `./familia --legacy-menu` / `FAMILIA_LEGACY_MENU=1 ./familia` opens the old `familia-menu.sh` item list. Prefer the gum home. Every legacy item is still a CLI command (`./familia help`, `./familia skills list`, `./familia --dry-run model params coder` prints a command without running it). Search: `./familia search WORD`. Details: [docs/commands.md](docs/commands.md).
+**Legacy catalog (fallback and CLI):** `./familia menu` / `./familia --legacy-menu` / `FAMILIA_LEGACY_MENU=1 ./familia` opens `familia-menu.sh`. Every home action is a row there, and every row shows the command it runs (`./familia help`, `./familia skills list`, `./familia home models list`, `./familia --dry-run model params coder`). Search: `./familia search WORD`. Details: [docs/commands.md](docs/commands.md).
 
 **Settings:** terminal only — `./familia settings`.
 

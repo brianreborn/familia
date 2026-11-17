@@ -108,6 +108,39 @@ setup.path-remove|Advanced: hosts & benchmarks|Low-level: remove familia PATH bl
 setup.cli-status|Advanced: hosts & benchmarks|Low-level: show where familia is on PATH|sh scripts/install-cli.sh status|||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-cli.ps1 -Status
 setup.uninstall-cli|Advanced: hosts & benchmarks|Low-level: take familia off PATH (asks first)|sh scripts/install-cli.sh uninstall|||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-cli.ps1 -Uninstall
 test.proving-grounds|◆ Proving grounds (graded)|Graded progress on the three top-level proving grounds (fleet + nexus + bt); not pass/fail|sh scripts/proving_grounds.sh|||
+home.models.install|Models|Home: install models|PY scripts/home_catalog.py models install|||python scripts\home_catalog.py models install
+home.models.list|Models|Home: list models|PY scripts/home_catalog.py models list|||python scripts\home_catalog.py models list
+home.models.start|Models|Home: start models (API key; --apply)|PY scripts/home_catalog.py models start|||python scripts\home_catalog.py models start
+home.models.stop|Models|Home: stop models (--apply)|PY scripts/home_catalog.py models stop|||python scripts\home_catalog.py models stop
+home.models.status|Models|Home: models status|PY scripts/home_catalog.py models status|||python scripts\home_catalog.py models status
+home.harnesses.install|Self-improving harness (Harness2)|Home: install harnesses|PY scripts/home_catalog.py harnesses install|||python scripts\home_catalog.py harnesses install
+home.harnesses.list|Self-improving harness (Harness2)|Home: list harnesses|PY scripts/home_catalog.py harnesses list|||python scripts\home_catalog.py harnesses list
+home.harnesses.start|Self-improving harness (Harness2)|Home: start harnesses (--apply)|PY scripts/home_catalog.py harnesses start|||python scripts\home_catalog.py harnesses start
+home.harnesses.stop|Self-improving harness (Harness2)|Home: stop harnesses (--apply)|PY scripts/home_catalog.py harnesses stop|||python scripts\home_catalog.py harnesses stop
+home.harnesses.status|Self-improving harness (Harness2)|Home: harness status|PY scripts/home_catalog.py harnesses status|||python scripts\home_catalog.py harnesses status
+home.agents.install|Agents (hermes)|Home: install agents|PY scripts/home_catalog.py agents install|||python scripts\home_catalog.py agents install
+home.agents.list|Agents (hermes)|Home: list agents|PY scripts/home_catalog.py agents list|||python scripts\home_catalog.py agents list
+home.agents.start|Agents (hermes)|Home: start agents (API key; --apply)|PY scripts/home_catalog.py agents start|||python scripts\home_catalog.py agents start
+home.agents.stop|Agents (hermes)|Home: stop agents (--apply)|PY scripts/home_catalog.py agents stop|||python scripts\home_catalog.py agents stop
+home.agents.status|Agents (hermes)|Home: agents status|PY scripts/home_catalog.py agents status|||python scripts\home_catalog.py agents status
+home.mcp.install|MCP servers|Home: install MCP servers (no listener)|PY scripts/home_catalog.py mcp install|||python scripts\home_catalog.py mcp install
+home.mcp.list|MCP servers|Home: list MCP servers|PY scripts/home_catalog.py mcp list|||python scripts\home_catalog.py mcp list
+home.mcp.start|MCP servers|Home: start MCP servers (refuses to bind)|PY scripts/home_catalog.py mcp start|||python scripts\home_catalog.py mcp start
+home.mcp.stop|MCP servers|Home: stop MCP servers|PY scripts/home_catalog.py mcp stop|||python scripts\home_catalog.py mcp stop
+home.mcp.status|MCP servers|Home: MCP server status|PY scripts/home_catalog.py mcp status|||python scripts\home_catalog.py mcp status
+home.tools.install|Tool sets|Home: install tool sets|PY scripts/home_catalog.py tools install|||python scripts\home_catalog.py tools install
+home.tools.list|Tool sets|Home: list tool sets|PY scripts/home_catalog.py tools list|||python scripts\home_catalog.py tools list
+home.tools.start|Tool sets|Home: start tool sets (not a process)|PY scripts/home_catalog.py tools start|||python scripts\home_catalog.py tools start
+home.tools.stop|Tool sets|Home: stop tool sets|PY scripts/home_catalog.py tools stop|||python scripts\home_catalog.py tools stop
+home.tools.status|Tool sets|Home: tool set status|PY scripts/home_catalog.py tools status|||python scripts\home_catalog.py tools status
+home.apps.install|App store|Home: install from the app store (no download)|PY scripts/home_catalog.py apps install|||python scripts\home_catalog.py apps install
+home.apps.list|App store|Home: list the app store|PY scripts/home_catalog.py apps list|||python scripts\home_catalog.py apps list
+home.apps.start|App store|Home: start app store (no listener)|PY scripts/home_catalog.py apps start|||python scripts\home_catalog.py apps start
+home.apps.stop|App store|Home: stop the app store|PY scripts/home_catalog.py apps stop|||python scripts\home_catalog.py apps stop
+home.apps.status|App store|Home: app store status|PY scripts/home_catalog.py apps status|||python scripts\home_catalog.py apps status
+home.talk|Front door|Talk to the protomodel|sh scripts/proto_chat.sh|||
+home.find-models|Front door|Find more models|sh scripts/find_models.sh|||
+home.search-x|Front door|Search my X / Twitter posts|sh scripts/search_x.sh|||
 help.quickstart|Help|Read the quick start|PAGER QUICKSTART.md|||more QUICKSTART.md
 help.search|Help|Search every group for a word (in the menu: /word, then n / N)|./familia-menu.sh --search {WORD:word to look for, e.g. model}|||familia.cmd -Search {WORD:word to look for, e.g. model}
 help.cli|Help|Every menu item as a command (same as --list)|./familia-menu.sh --list|||familia.cmd -List

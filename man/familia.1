@@ -526,6 +526,178 @@ Runs: \fBsh scripts/install\-cli.sh uninstall\fR
 Graded progress on the three top\-level proving grounds (fleet + nexus + bt); not pass/fail.
 .br
 Runs: \fBsh scripts/proving_grounds.sh\fR
+.SS Models
+.TP
+\fBhome models install\fR
+Home: install models.
+.br
+Runs: \fBpython3 scripts/home_catalog.py models install\fR
+.TP
+\fBhome models list\fR
+Home: list models.
+.br
+Runs: \fBpython3 scripts/home_catalog.py models list\fR
+.TP
+\fBhome models start\fR
+Home: start models (API key; \-\-apply).
+.br
+Runs: \fBpython3 scripts/home_catalog.py models start\fR
+.TP
+\fBhome models stop\fR
+Home: stop models (\-\-apply).
+.br
+Runs: \fBpython3 scripts/home_catalog.py models stop\fR
+.TP
+\fBhome models status\fR
+Home: models status.
+.br
+Runs: \fBpython3 scripts/home_catalog.py models status\fR
+.SS Self\-improving harness (Harness2)
+.TP
+\fBhome harnesses install\fR
+Home: install harnesses.
+.br
+Runs: \fBpython3 scripts/home_catalog.py harnesses install\fR
+.TP
+\fBhome harnesses list\fR
+Home: list harnesses.
+.br
+Runs: \fBpython3 scripts/home_catalog.py harnesses list\fR
+.TP
+\fBhome harnesses start\fR
+Home: start harnesses (\-\-apply).
+.br
+Runs: \fBpython3 scripts/home_catalog.py harnesses start\fR
+.TP
+\fBhome harnesses stop\fR
+Home: stop harnesses (\-\-apply).
+.br
+Runs: \fBpython3 scripts/home_catalog.py harnesses stop\fR
+.TP
+\fBhome harnesses status\fR
+Home: harness status.
+.br
+Runs: \fBpython3 scripts/home_catalog.py harnesses status\fR
+.SS Agents (hermes)
+.TP
+\fBhome agents install\fR
+Home: install agents.
+.br
+Runs: \fBpython3 scripts/home_catalog.py agents install\fR
+.TP
+\fBhome agents list\fR
+Home: list agents.
+.br
+Runs: \fBpython3 scripts/home_catalog.py agents list\fR
+.TP
+\fBhome agents start\fR
+Home: start agents (API key; \-\-apply).
+.br
+Runs: \fBpython3 scripts/home_catalog.py agents start\fR
+.TP
+\fBhome agents stop\fR
+Home: stop agents (\-\-apply).
+.br
+Runs: \fBpython3 scripts/home_catalog.py agents stop\fR
+.TP
+\fBhome agents status\fR
+Home: agents status.
+.br
+Runs: \fBpython3 scripts/home_catalog.py agents status\fR
+.SS MCP servers
+.TP
+\fBhome mcp install\fR
+Home: install MCP servers (no listener).
+.br
+Runs: \fBpython3 scripts/home_catalog.py mcp install\fR
+.TP
+\fBhome mcp list\fR
+Home: list MCP servers.
+.br
+Runs: \fBpython3 scripts/home_catalog.py mcp list\fR
+.TP
+\fBhome mcp start\fR
+Home: start MCP servers (refuses to bind).
+.br
+Runs: \fBpython3 scripts/home_catalog.py mcp start\fR
+.TP
+\fBhome mcp stop\fR
+Home: stop MCP servers.
+.br
+Runs: \fBpython3 scripts/home_catalog.py mcp stop\fR
+.TP
+\fBhome mcp status\fR
+Home: MCP server status.
+.br
+Runs: \fBpython3 scripts/home_catalog.py mcp status\fR
+.SS Tool sets
+.TP
+\fBhome tools install\fR
+Home: install tool sets.
+.br
+Runs: \fBpython3 scripts/home_catalog.py tools install\fR
+.TP
+\fBhome tools list\fR
+Home: list tool sets.
+.br
+Runs: \fBpython3 scripts/home_catalog.py tools list\fR
+.TP
+\fBhome tools start\fR
+Home: start tool sets (not a process).
+.br
+Runs: \fBpython3 scripts/home_catalog.py tools start\fR
+.TP
+\fBhome tools stop\fR
+Home: stop tool sets.
+.br
+Runs: \fBpython3 scripts/home_catalog.py tools stop\fR
+.TP
+\fBhome tools status\fR
+Home: tool set status.
+.br
+Runs: \fBpython3 scripts/home_catalog.py tools status\fR
+.SS App store
+.TP
+\fBhome apps install\fR
+Home: install from the app store (no download).
+.br
+Runs: \fBpython3 scripts/home_catalog.py apps install\fR
+.TP
+\fBhome apps list\fR
+Home: list the app store.
+.br
+Runs: \fBpython3 scripts/home_catalog.py apps list\fR
+.TP
+\fBhome apps start\fR
+Home: start app store (no listener).
+.br
+Runs: \fBpython3 scripts/home_catalog.py apps start\fR
+.TP
+\fBhome apps stop\fR
+Home: stop the app store.
+.br
+Runs: \fBpython3 scripts/home_catalog.py apps stop\fR
+.TP
+\fBhome apps status\fR
+Home: app store status.
+.br
+Runs: \fBpython3 scripts/home_catalog.py apps status\fR
+.SS Front door
+.TP
+\fBhome talk\fR
+Talk to the protomodel.
+.br
+Runs: \fBsh scripts/proto_chat.sh\fR
+.TP
+\fBhome find\-models\fR
+Find more models.
+.br
+Runs: \fBsh scripts/find_models.sh\fR
+.TP
+\fBhome search\-x\fR
+Search my X / Twitter posts.
+.br
+Runs: \fBsh scripts/search_x.sh\fR
 .SS Help
 .TP
 \fBquickstart\fR
@@ -610,7 +782,7 @@ any registry.py command: add, query, summarize, suggest, match, power, lint.
 Runs: \fBpython3 scripts/registry.py\fR \fIARG\fR...
 .TP
 \fBhome\fR \fIARG\fR...
-.
+six equal home items; legacy menu if gum cannot be installed.
 .br
 Runs: \fBsh scripts/familia_home.sh\fR \fIARG\fR...
 .TP
