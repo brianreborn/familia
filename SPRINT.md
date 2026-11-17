@@ -1,6 +1,6 @@
 # Familia v0.4.0 sprint plan
 
-Updated: 2026-11-16 9:26 PM PT (America/Los_Angeles)
+Updated: 2026-11-16 9:29 PM PT (America/Los_Angeles)
 
 This is the current v0.4.0 sprint plan. It keeps the structure of the
 v0.3.0 plan that landed in PR #400, and retargets the work.
@@ -100,8 +100,8 @@ such and are not given a made-up number.
   in #611 (docs/known-issues.md on that PR would defer a
   persist-across-restart fix and tell operators to check live argv
   and GET /tools after a crash, hand-start, or stale
-  generated/graph-*.yaml). No separate product issue for that fix
-  was found; #611 is the open docs PR that proposed the waiver.
+  generated/graph-*.yaml). Tracking issue: #630.
+  https://github.com/brianreborn/familia/issues/630
   https://github.com/brianreborn/familia/pull/611
 - TR-4 fix across the #408 follow-up, #268, and graph_router.
   #621 is the must-land issue (node.role overrides a fail-closed
@@ -115,15 +115,18 @@ such and are not given a made-up number.
   https://github.com/brianreborn/familia/issues/621
   https://github.com/brianreborn/familia/issues/546
   https://github.com/brianreborn/familia/pull/268
-- start.bat --host/--port/--api-key overrides. No dedicated issue
-  was found. Nearby but not the same: #32 (Windows one-click
+- start.bat --host/--port/--api-key overrides. Tracking issue:
+  #631. Related context, not the same work: #32 (Windows one-click
   installer), #419 (API key file layouts), and closed #17 (docs
-  once cited a missing start.bat).
-- A FreeBSD build and smoke test on llama.cpp b12359. The pin work
-  is #612 (tracker) and open PR #614. No dedicated "FreeBSD b12359
-  smoke" issue was found. The closest open smoke issue is #552
-  (smoke-test main on primary Unix platforms), which is not
+  once cited a missing start.bat). Network listeners require an
+  API key by default (#414).
+  https://github.com/brianreborn/familia/issues/631
+- A FreeBSD build and smoke test on llama.cpp b12359 (FreeBSD is
+  the first reference platform). Tracking issue: #632. Related pin
+  work is #612 and open PR #614. #552 (smoke-test main on primary
+  Unix platforms) is the closest earlier smoke issue and is not
   specific to b12359.
+  https://github.com/brianreborn/familia/issues/632
   https://github.com/brianreborn/familia/issues/612
   https://github.com/brianreborn/familia/pull/614
 - Wire the 83e7562 validate_draft into job(), as a release-blocker.
@@ -464,13 +467,15 @@ The 2026-11-10 assignments are left as recorded.
 
 ## 11. Sources
 
-- This update (2026-11-16 9:26 PM PT): Brian's v0.4.0 must-lands
+- This update (2026-11-16 9:29 PM PT): filed tracking issues #630
+  (--tools persist, no waiver), #631 (start.bat overrides), and
+  #632 (FreeBSD b12359 smoke) on milestone v0.4.0 with the
+  must-land label.
+- Prior update (2026-11-16 9:26 PM PT): Brian's v0.4.0 must-lands
   (9:21 PM PT); PR #629 partial revert of e9145b1; issue/PR reads
   of #17, #32, #408, #419, #546, #552, #580, #605, #606, #611,
-  #612, #614, #616, #620, #621, #624, and #629. No dedicated issues
-  were found for the --tools persist fix (other than #611's waiver
-  text), start.bat --host/--port/--api-key overrides, a FreeBSD
-  b12359 smoke test, or a standalone #408 follow-up issue.
+  #612, #614, #616, #620, #621, #624, and #629. A standalone #408
+  follow-up issue was still not found.
 - Earlier this evening (2026-11-16 8:46 PM PT): GitHub milestones 1
   (v0.3.0) and 2 (v0.4.0); tags v0.3.0-alpha and v0.3.0-alpha.1;
   origin/main at 26d9720; issue/PR reads of #580, #604, #605, #606,
