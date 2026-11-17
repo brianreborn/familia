@@ -1,7 +1,7 @@
 # Known issues
 
 - **v0.4.0: Windows, FreeBSD and macOS are unverified**
-  - **Windows / PowerShell:** untested for v0.4.0. The Windows test hosts (qodesh, shalom) were offline, so the llama `b12359` Windows archives (including CUDA 13.5) and the `.ps1` scripts have not been run. `start.bat` also lacks the F-6 refusal of `--host` / `--port` / `--api-key` overrides that the Linux start path enforces.
+  - **Windows / PowerShell:** untested for v0.4.0. The Windows test hosts (qodesh, shalom) were offline, so the llama `b12359` Windows archives (including CUDA 13.5) and the `.ps1` scripts have not been run. `start.bat` has two F-6 gaps versus the Linux/Termux start path (#631): it ignores its own argv, so `start.bat --host 0.0.0.0` exits 0 instead of being refused with exit 2; and `FAMILIA_BIND=0.0.0.0` with `FAMILIA_EXTRA='--tools all'` starts a LAN-bound server with tools on instead of being refused.
   - **FreeBSD / macOS:** the llama.cpp v1.0.0 pin (code-bootstraps `223bd358`, build `b12359`) has only been built on Linux (CPU and Vulkan). Treat FreeBSD and macOS as untested until a build there is recorded.
 
 - **hermes fails with HTTP 400 or "below the 64K minimum"**
