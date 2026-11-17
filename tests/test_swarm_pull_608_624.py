@@ -170,7 +170,7 @@ class SwarmModes(unittest.TestCase):
              mock.patch.object(self.sp, "model_high_effort",
                                return_value=("class: hollow\nwhy: template\n", "stub")), \
              mock.patch.object(self.sp, "post_comment",
-                               side_effect=lambda *a, **k: posted.append(a) or (None, 201, {}, "")):
+                               side_effect=lambda *a, **k: posted.append(a) or (None, 201, {"id": 1}, "")):
             self.assertEqual(self.sp.triage_one("brianreborn/familia", pr), "posted")
         body = [p[2] for p in posted if "class=" in p[2]][0]
         self.assertIn("class=needs-human", body)
@@ -664,6 +664,27 @@ class SwarmModes(unittest.TestCase):
             held = self.sp.acquire_score_lease("brianreborn/familia", 700, SHA, "review")
         self.assertEqual(held, 5)
         post.assert_not_called()
+
+    def test_lease_without_id_does_not_score(self):
+        self._review()
+        with mock.patch.object(self.sp, "get_comments", return_value=(None, [])), \
+             mock.patch.object(self.sp, "post_comment", return_value=(None, 201, {}, "")):
+            held = self.sp.acquire_score_lease("brianreborn/familia", 700, SHA, "review")
+        self.assertIsNone(held)
+
+    def test_fence_in_issue_text_is_not_a_draft_cooldown(self):
+        os.environ["SWARM_MODE"] = "live"
+        self.sp._FORCED_DRY = False
+        gate = self.sp.ApprovalResult(
+            True, reason="approved", body="see BEGIN UNTRUSTED in the notes", title="t")
+        with mock.patch.object(self.sp, "get_issue", return_value=(None, {"number": 999, "state": "open"})), \
+             mock.patch.object(self.sp, "approval_status", return_value=gate), \
+             mock.patch.object(self.sp, "record_draft_cooldown") as cool, \
+             mock.patch.object(self.sp, "deliver") as dl:
+            with self.assertRaises(self.sp.NotApproved):
+                self.sp.job("brianreborn/familia", 999, 1)
+        cool.assert_not_called()
+        dl.assert_not_called()
 
 
 if __name__ == "__main__":
