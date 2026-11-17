@@ -58,11 +58,12 @@ milestone 2 (same naming style) and was not recreated.
 
 ## v0.4.0 target: llama.cpp v1.0.0
 
-Per #611 and #614 (both open PRs against main as of this update), and
+Per #611 (merged) and #614 (open PR against main), and
 tracker #612.
 
 - #611 docs: v0.4.0 version labels, LFM3 default honesty, and --tools
-  waiver (branch docs/v0.4.0-scope-alignment). Docs only; it does not
+  no-waiver (must-land #630); merged as b942db4 (branch
+  docs/v0.4.0-scope-alignment). Docs only; it does not
   change pins.txt or touch #604 / #605. README status becomes
   "pre-release (targeting v0.4.0)". LFM3-1.7B-Uncensored is the
   single-node default (start.sh when the host has no active topology).

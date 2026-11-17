@@ -352,10 +352,11 @@ successful result stored under `~/.cache/familia/hermes-env-probe/<hostname>`
    - Documented in README.md
    - Build automation verifies mounting
 
-4. **Boss Agent CLI (#403-#407)** - FIXED in v0.2.0
-   - Full integration complete
-   - Plugin API and live status implemented
-   - Self-test command added
+4. **Boss Agent CLI (#403-#407)** - NOT fixed
+   - #407 is open and a v0.4.0 release-blocker; its fix PR #568 is
+     still a draft (see the #407 section above)
+   - As of 2026-11-16, #403, #404, and #406 are open and #405 is
+     closed; this entry is not a record of landed work
 
 ### Future Improvements
 
