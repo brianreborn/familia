@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Local tests for swarm-pull 0.2.6-live intake, stamp, and untrusted fence.
+"""Local tests for swarm-pull intake, stamp, and untrusted fence.
 
 Follows familia docs/swarm-worker-requirements.md sections
 "Vetted issues, then explicit admin approval" and
@@ -62,6 +62,16 @@ def comment(body, login="brianreborn", typ="User", when="2026-11-10T20:00:00Z"):
     return {"body": body, "created_at": when, "user": {"login": login, "type": typ}}
 
 
+# Long enough for the #580 draft gate, and free of prompt-preamble lines.
+PASSING_DRAFT = (
+    "Feasibility: the channel can carry a first pass without root.\n"
+    "Root-free path: use the existing claim comment and a draft branch.\n"
+    "The claim, lease, heartbeat and result envelopes map onto forge comments.\n"
+    "Open questions: lease length on a sleeping phone, and who reaps a stale claim.\n"
+    "No measurements were invented. Unknown values stay unknown until measured.\n"
+)
+
+
 class SwarmPull543(unittest.TestCase):
     def setUp(self):
         # Restore os.environ after each test; load_mod sets USER/LOGNAME and
@@ -80,7 +90,7 @@ class SwarmPull543(unittest.TestCase):
         line = self.sp.stamp_line()
         self.assertIn("host=testhost", line)
         self.assertIn("role=swarm-pull", line)
-        self.assertIn("prog=swarm-pull@0.2.6-live", line)
+        self.assertIn("prog=swarm-pull@0.2.7-live", line)
         self.assertIn("mode=dry-run", line)
         self.assertFalse(self.sp.note_has_identifying_fields(line))
         self.assertNotIn("user=", line)
@@ -639,7 +649,7 @@ class SwarmPull545Review(unittest.TestCase):
 
         def fake_model(p, n):
             prompts.append(p)
-            return "draft\n", "stub"
+            return PASSING_DRAFT, "stub"
         with mock.patch.object(self.sp, "get_issue", return_value=(None, rest)), \
              mock.patch.object(self.sp, "approval_status", return_value=gate), \
              mock.patch.object(self.sp, "model_draft", side_effect=fake_model):
@@ -878,7 +888,7 @@ class SwarmPull545Review(unittest.TestCase):
         rest = {"number": 999, "state": "open", "title": "t", "body": "b1"}
         with mock.patch.object(self.sp, "get_issue", return_value=(None, rest)), \
              mock.patch.object(self.sp, "approval_status", side_effect=[first, second]), \
-             mock.patch.object(self.sp, "model_draft", return_value=("d\n", "stub")), \
+             mock.patch.object(self.sp, "model_draft", return_value=(PASSING_DRAFT, "stub")), \
              mock.patch.object(self.sp, "deliver") as dl:
             with self.assertRaises(self.sp.NotApproved):
                 self.sp.job("brianreborn/familia", 999, 1)
@@ -1302,7 +1312,7 @@ class SwarmPull549Review(SwarmPull545Followups):
         gate = self.sp.ApprovalResult(True, reason="approved", body="b", title="t")
         a_claim = {"ok": True, "gen": 1, "comment_id": 1, "until": "2026-11-10T22:00:00Z"}
         with mock.patch.object(self.sp, "approval_status", return_value=gate), \
-             mock.patch.object(self.sp, "model_draft", return_value=("d\n", "stub")), \
+             mock.patch.object(self.sp, "model_draft", return_value=(PASSING_DRAFT, "stub")), \
              mock.patch.object(self.sp, "confirm_claim_still_first", return_value=True), \
              mock.patch.object(self.sp, "post_comment") as post, \
              mock.patch.object(self.sp, "deliver") as dl:
@@ -1331,7 +1341,7 @@ class SwarmPull549Review(SwarmPull545Followups):
         calls = []
         with mock.patch.object(self.sp, "get_issue", return_value=(None, {"number": 999, "state": "open"})), \
              mock.patch.object(self.sp, "approval_status", return_value=gate), \
-             mock.patch.object(self.sp, "model_draft", return_value=("d\n", "stub")), \
+             mock.patch.object(self.sp, "model_draft", return_value=(PASSING_DRAFT, "stub")), \
              mock.patch.object(self.sp, "confirm_claim_still_first", return_value=True), \
              mock.patch.object(self.sp, "heartbeat_issue",
                                side_effect=lambda *a, **k: (calls.append("hb"), "2099-01-01T00:00:00Z")[1]), \
@@ -1584,7 +1594,7 @@ class SwarmPull549Final(SwarmPull549Boundary):
         gate = self.sp.ApprovalResult(True, reason="approved", body="b", title="t")
         base = [mock.patch.object(self.sp, "get_issue", return_value=(None, {"number": 999, "state": "open"})),
                 mock.patch.object(self.sp, "approval_status", return_value=gate),
-                mock.patch.object(self.sp, "model_draft", return_value=("d\n", "stub")),
+                mock.patch.object(self.sp, "model_draft", return_value=(PASSING_DRAFT, "stub")),
                 mock.patch.object(self.sp, "confirm_claim_still_first", return_value=True)]
         for k, v in patches.items():
             base.append(mock.patch.object(self.sp, k, **v))
