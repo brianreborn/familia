@@ -67,8 +67,8 @@ tracker #612.
   "pre-release (targeting v0.4.0)". LFM3-1.7B-Uncensored is the
   single-node default (start.sh when the host has no active topology).
   The checked-in fleet graph still uses qwen35-2b-q4km for nodes.coder
-  on miryam. #611 still documents a v0.4.0 waiver that --tools stays
-  launch-only; that waiver is no longer accepted (see must-lands).
+  on miryam. #611 no longer documents a --tools waiver; the
+  launch-only limit is must-land #630 (no waiver).
   https://github.com/brianreborn/familia/pull/611
 - #614 Pin code-bootstraps-llama.cpp to llama.cpp v1.0.0 (b12359)
   (branch cursor/repin-llama-cpp-v1.0.0-5cac). Re-pins
@@ -101,11 +101,9 @@ These must land for v0.4.0. Issue numbers below were searched on
 GitHub on 2026-11-16; items without a matching issue are listed as
 such and are not given a made-up number.
 
-- Fix the #611 launch-only --tools limit. Do not accept the waiver
-  in #611 (docs/known-issues.md on that PR would defer a
-  persist-across-restart fix and tell operators to check live argv
-  and GET /tools after a crash, hand-start, or stale
-  generated/graph-*.yaml). Tracking issue: #630.
+- Fix the launch-only --tools limit. There is no waiver; #611 now
+  lists it as must-land and keeps the live argv and GET /tools check
+  only as interim guidance until the fix lands. Tracking issue: #630.
   https://github.com/brianreborn/familia/issues/630
   https://github.com/brianreborn/familia/pull/611
 - TR-4 fix across the #408 follow-up, #268, and graph_router.
