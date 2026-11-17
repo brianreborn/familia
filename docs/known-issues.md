@@ -43,8 +43,9 @@
     not only the graph field. See LESSONS-LEARNED `L-server-tools`.
   - **Harness:** `hermes_harness.ensure_server` will not daemon-spawn a missing node and will
     refuse to adopt a live port when `server_tools` is set but `/tools` is feature_disabled.
-  - **v0.4.0 waiver:** `--tools` stays launch-only for this release. A persist-across-restart
-    fix is deferred. After a crash, a hand-start, or a stale `generated/graph-*.yaml`, check
+  - **No v0.4.0 waiver:** the launch-only `--tools` limit is v0.4.0 must-land
+    [#630](https://github.com/brianreborn/familia/issues/630) and blocks the tag. Until it
+    lands, after a crash, a hand-start, or a stale `generated/graph-*.yaml`, check
     live argv and `GET /tools` before treating Server Tools as available. `server_tools` in
     `graph.yaml` is necessary but not sufficient. See LESSONS-LEARNED `L-server-tools`.
     Do not grant `--tools` on a node where the live `tool_policy` would refuse that tool.
