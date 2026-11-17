@@ -91,11 +91,11 @@ def test_catalog_list_and_status_are_local_ascii_and_do_not_bind():
     start = run([sys.executable, CATALOG, "models", "start"])
     assert start.returncode == 0
     assert "Not applied" in start.stdout
-    assert "API key" in start.stdout
+    assert "instance file" in start.stdout
     mcp = run([sys.executable, CATALOG, "mcp", "start", "--apply"])
     assert mcp.returncode == 0
     assert "Refusing" in mcp.stdout
-    assert "API key" in mcp.stdout
+    assert "instance file" in mcp.stdout
     apps = run([sys.executable, CATALOG, "apps", "start", "--apply"])
     assert apps.returncode == 0 and "Refusing" in apps.stdout
     missing = run(
@@ -309,14 +309,37 @@ def test_failing_gum_with_no_tty_exits_2_not_zero(tmp_path):
     assert blob.count("six equal items") < 8
 
 
+def test_list_all_models_returns_to_the_menu(tmp_path):
+    bin_dir = str(tmp_path / "bin")
+    _gum(bin_dir, ["List all models", "Quit"])
+    env = base_env(PATH=bin_dir + os.pathsep + "/usr/bin:/bin", TERM="dumb", NO_COLOR="1")
+    rc, out = _pty(["sh", HOME], env, timeout=20)
+    assert rc == 0, out
+    assert "stories15m-fp32" in out
+    assert out.count("six equal items") >= 2
+
+
+def test_configure_graphs_returns_to_the_menu(tmp_path):
+    bin_dir = str(tmp_path / "bin")
+    _gum(bin_dir, ["Configure all graphs", "Quit"])
+    env = base_env(PATH=bin_dir + os.pathsep + "/usr/bin:/bin", TERM="dumb", NO_COLOR="1")
+    rc, out = _pty(["sh", HOME], env, timeout=30)
+    assert rc == 0, out
+    assert "Graphs you can configure" in out
+    assert out.count("six equal items") >= 2
+
+
 def test_sigint_during_action_stays_until_quit(tmp_path):
     bin_dir = str(tmp_path / "bin")
+    hold = tmp_path / "hold.sh"
+    hold.write_text("#!/bin/sh\n# familia-home-test-launcher\necho holding for test\nsleep 30\n")
+    hold.chmod(0o755)
     _gum(bin_dir, ["Models", "start", "Quit"])
     env = base_env(
         PATH=bin_dir + os.pathsep + "/usr/bin:/bin",
         TERM="dumb",
         NO_COLOR="1",
-        FAMILIA_HOME_TEST_HOLD="1",
+        FAMILIA_HOME_LAUNCHER=str(hold),
         FAMILIA_SKIP_GUM_INSTALL="1",
     )
     master, slave = pty.openpty()
@@ -403,7 +426,10 @@ def test_stop_follows_recorded_pid_and_agents_stop_leaves_models(tmp_path, monke
     assert refused.returncode == 0, refused.stdout + refused.stderr
     assert "nothing to stop" in refused.stdout
     assert "signaled pid 1" not in refused.stdout
-    ours = subprocess.Popen(["sleep", "60"])
+    server = tmp_path / "llama-server"
+    server.write_text("#!/usr/bin/env python3\nimport time\ntime.sleep(60)\n")
+    server.chmod(0o755)
+    ours = subprocess.Popen([str(server)])
     other = subprocess.Popen(["sleep", "60"])
     try:
         hc.save_record("models", ours.pid, 9931, hc._cmdline(ours.pid))
@@ -432,18 +458,23 @@ def test_exec_keeps_identity_and_stop_signals_that_pid(monkeypatch, tmp_path):
     monkeypatch.setenv("HOME", str(tmp_path))
     sys.path.insert(0, os.path.join(ROOT, "scripts"))
     import home_catalog as hc
-    proc = subprocess.Popen(["sh", "-c", "sleep 0.2; exec sleep 60"])
+    server = tmp_path / "llama-server"
+    server.write_text("#!/usr/bin/env python3\nimport time\ntime.sleep(60)\n")
+    server.chmod(0o755)
+    starter = tmp_path / "start.sh"
+    starter.write_text("#!/bin/sh\nsleep 0.2\nexec %s\n" % server)
+    starter.chmod(0o755)
+    proc = subprocess.Popen([str(starter)])
     try:
         time.sleep(0.05)
         early = hc._cmdline(proc.pid)
-        assert early
+        assert "start.sh" in early
         token, _cmd = hc.process_identity(proc.pid)
         assert token
         hc.save_record("models", proc.pid, 9, early)
         time.sleep(0.6)
         later = hc._cmdline(proc.pid)
-        assert "sleep" in later
-        assert "sh" not in later.split()[0] or True
+        assert "llama-server" in later
         assert hc.same_process(hc.load_record("models"))
         env = base_env(HOME=str(tmp_path), XDG_RUNTIME_DIR=str(run_dir))
         stopped = run([sys.executable, CATALOG, "models", "stop", "--apply"], env=env)
@@ -501,6 +532,320 @@ def test_apply_lock_fails_closed(monkeypatch, tmp_path):
     r = run([sys.executable, CATALOG, "models", "stop", "--apply"], env=env)
     assert r.returncode == 1
     assert "lock failed" in r.stdout
+
+
+def _private_run(tmp_path, monkeypatch):
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    os.chmod(run_dir, 0o700)
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(run_dir))
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
+    return run_dir
+
+
+def test_stale_pidfile_is_not_adopted(tmp_path, monkeypatch):
+    run_dir = _private_run(tmp_path, monkeypatch)
+    victim = subprocess.Popen(["sleep", "60"])
+    state = run_dir / "familia"
+    state.mkdir()
+    os.chmod(state, 0o700)
+    pidfile = state / "home-models.pid"
+    pidfile.write_text("%s\n" % victim.pid)
+    old = time.time() - 30
+    os.utime(pidfile, (old, old))
+    launcher = tmp_path / "reuse.sh"
+    launcher.write_text("#!/bin/sh\n# familia-home-test-launcher\necho reusing it\nexit 0\n")
+    launcher.chmod(0o755)
+    env = base_env(
+        HOME=str(tmp_path), XDG_RUNTIME_DIR=str(run_dir),
+        XDG_CACHE_HOME=str(tmp_path / "cache"),
+        FAMILIA_HOME_LAUNCHER=str(launcher),
+    )
+    try:
+        started = run([sys.executable, CATALOG, "models", "start", "--apply"], env=env)
+        assert started.returncode == 0, started.stdout + started.stderr
+        assert "did not write a pid file" in started.stdout
+        assert victim.poll() is None
+        stopped = run([sys.executable, CATALOG, "models", "stop", "--apply"], env=env)
+        assert "signaled" not in stopped.stdout
+        assert victim.poll() is None
+    finally:
+        if victim.poll() is None:
+            victim.kill()
+
+
+def test_non_server_pid_from_this_launch_is_not_signaled(tmp_path, monkeypatch):
+    run_dir = _private_run(tmp_path, monkeypatch)
+    victim = subprocess.Popen(["sleep", "60"])
+    launcher = tmp_path / "write-sleep.sh"
+    launcher.write_text(
+        "#!/bin/sh\n# familia-home-test-launcher\nprintf '%%s\\n' %s > \"$FAMILIA_PIDFILE\"\nexit 0\n"
+        % victim.pid
+    )
+    launcher.chmod(0o755)
+    env = base_env(
+        HOME=str(tmp_path), XDG_RUNTIME_DIR=str(run_dir),
+        XDG_CACHE_HOME=str(tmp_path / "cache"),
+        FAMILIA_HOME_LAUNCHER=str(launcher),
+    )
+    try:
+        started = run([sys.executable, CATALOG, "models", "start", "--apply"], env=env)
+        assert started.returncode == 0, started.stdout + started.stderr
+        assert "not a server" in started.stdout
+        assert victim.poll() is None
+        stopped = run([sys.executable, CATALOG, "models", "stop", "--apply"], env=env)
+        assert "signaled pid %s" % victim.pid not in stopped.stdout
+        assert victim.poll() is None
+    finally:
+        if victim.poll() is None:
+            victim.kill()
+
+
+def test_server_pid_written_by_this_launch_can_be_stopped(tmp_path, monkeypatch):
+    run_dir = _private_run(tmp_path, monkeypatch)
+    server = tmp_path / "llama-server"
+    server.write_text("#!/usr/bin/env python3\nimport time\ntime.sleep(60)\n")
+    server.chmod(0o755)
+    proc = subprocess.Popen([str(server)])
+    launcher = tmp_path / "write-server.sh"
+    launcher.write_text(
+        "#!/bin/sh\n# familia-home-test-launcher\nprintf '%%s\\n' %s > \"$FAMILIA_PIDFILE\"\nexit 0\n"
+        % proc.pid
+    )
+    launcher.chmod(0o755)
+    env = base_env(
+        HOME=str(tmp_path), XDG_RUNTIME_DIR=str(run_dir),
+        XDG_CACHE_HOME=str(tmp_path / "cache"),
+        FAMILIA_HOME_LAUNCHER=str(launcher),
+    )
+    try:
+        started = run([sys.executable, CATALOG, "models", "start", "--apply"], env=env)
+        assert "recorded pid %s" % proc.pid in started.stdout, started.stdout
+        stopped = run([sys.executable, CATALOG, "models", "stop", "--apply"], env=env)
+        assert "signaled pid %s" % proc.pid in stopped.stdout, stopped.stdout
+        proc.wait(timeout=3)
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+
+
+def test_listener_on_the_recorded_port_is_signaled(tmp_path, monkeypatch):
+    run_dir = _private_run(tmp_path, monkeypatch)
+    portf = tmp_path / "port"
+    code = (
+        "import socket,sys,time\n"
+        "s=socket.socket(); s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)\n"
+        "s.bind(('127.0.0.1', 0)); s.listen(1)\n"
+        "open(sys.argv[1],'w').write(str(s.getsockname()[1]))\n"
+        "time.sleep(60)\n"
+    )
+    proc = subprocess.Popen([sys.executable, "-c", code, str(portf)])
+    try:
+        for _ in range(50):
+            if portf.exists():
+                break
+            time.sleep(0.05)
+        port = int(portf.read_text())
+        sys.path.insert(0, os.path.join(ROOT, "scripts"))
+        import home_catalog as hc
+        hc.save_record("models", proc.pid, port, hc._cmdline(proc.pid))
+        env = base_env(HOME=str(tmp_path), XDG_RUNTIME_DIR=str(run_dir),
+                       XDG_CACHE_HOME=str(tmp_path / "cache"))
+        stopped = run([sys.executable, CATALOG, "models", "stop", "--apply"], env=env)
+        assert "signaled pid %s" % proc.pid in stopped.stdout, stopped.stdout
+        proc.wait(timeout=3)
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+
+
+def test_windows_stop_uses_taskkill_tree(monkeypatch, tmp_path):
+    run_dir = _private_run(tmp_path, monkeypatch)
+    sys.path.insert(0, os.path.join(ROOT, "scripts"))
+    import home_catalog as hc
+    calls = []
+
+    def fake_run(argv, **_kw):
+        calls.append(list(argv))
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    monkeypatch.setattr(hc, "_windows", lambda: True)
+    monkeypatch.setattr(hc.subprocess, "run", fake_run)
+    assert hc._end_process(4242) is True
+    assert calls and calls[0][:4] == ["taskkill", "/T", "/PID", "4242"]
+    text = open(CATALOG, encoding="utf-8").read()
+    assert "llama-server.exe" in text
+    assert run_dir.is_dir()
+
+
+def test_apply_error_is_not_called_a_lock_failure(monkeypatch, tmp_path):
+    _private_run(tmp_path, monkeypatch)
+    sys.path.insert(0, os.path.join(ROOT, "scripts"))
+    import home_catalog as hc
+
+    def boom(_apply, _extra):
+        raise OSError("real failure")
+
+    monkeypatch.setitem(hc.ACTIONS["tools"], "stop", boom)
+    try:
+        hc.main(["tools", "stop", "--apply"])
+    except OSError as exc:
+        assert "real failure" in str(exc)
+    else:
+        raise AssertionError("the action error was swallowed")
+
+
+def test_home_test_hold_is_not_a_production_switch():
+    text = open(CATALOG, encoding="utf-8").read()
+    shell = open(HOME, encoding="utf-8").read()
+    assert "FAMILIA_HOME_TEST_HOLD" not in text
+    assert "FAMILIA_HOME_TEST_HOLD" not in shell
+    assert "# familia-home-test-launcher" in text
+
+
+def test_save_record_stores_the_platform_identity_token(monkeypatch, tmp_path):
+    _private_run(tmp_path, monkeypatch)
+    sys.path.insert(0, os.path.join(ROOT, "scripts"))
+    import home_catalog as hc
+    monkeypatch.setattr(hc, "_starttime", lambda pid: "")
+    monkeypatch.setattr(hc, "process_identity", lambda pid: ("ps-lstart-token", "llama-server"))
+    doc = hc.save_record("models", 50, 9, "")
+    assert doc is not None
+    assert doc["starttime"] == "ps-lstart-token"
+    assert hc.load_record("models")["starttime"] == "ps-lstart-token"
+    monkeypatch.setattr(hc, "process_identity", lambda pid: (None, None))
+    assert hc.save_record("agents", 51, 9, "llama-server") is None
+    assert hc.load_record("agents") is None
+    assert hc.load_record("models")["starttime"] == "ps-lstart-token"
+
+
+def test_adopt_does_not_claim_a_record_it_could_not_store(monkeypatch, tmp_path, capsys):
+    _private_run(tmp_path, monkeypatch)
+    sys.path.insert(0, os.path.join(ROOT, "scripts"))
+    import home_catalog as hc
+    server = tmp_path / "llama-server"
+    server.write_text("#!/usr/bin/env python3\nimport time\ntime.sleep(30)\n")
+    server.chmod(0o755)
+    proc = subprocess.Popen([str(server)])
+    monkeypatch.setattr(hc, "save_record", lambda *a, **k: None)
+    try:
+        assert hc._adopt("models", proc.pid, 9) is None
+        out = capsys.readouterr().out
+        assert "recorded pid" not in out
+        assert "could not be stored" in out
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+
+
+def test_windows_license_gate_runs_on_the_tty_before_detach(monkeypatch, tmp_path):
+    local = tmp_path / "local"
+    local.mkdir()
+    monkeypatch.setenv("LOCALAPPDATA", str(local))
+    monkeypatch.setenv("HOME", str(tmp_path))
+    sys.path.insert(0, os.path.join(ROOT, "scripts"))
+    import home_catalog as hc
+    monkeypatch.setattr(hc, "_windows", lambda: True)
+    popen = []
+
+    def fake_run(argv, **kw):
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    def fake_popen(argv, **kw):
+        popen.append(kw.get("stdin"))
+        class P:
+            pid = 77
+        return P()
+
+    monkeypatch.setattr(hc.subprocess, "run", fake_run)
+    monkeypatch.setattr(hc.subprocess, "Popen", fake_popen)
+    monkeypatch.setattr(hc, "_windows_server_pid", lambda _parent: 0)
+    monkeypatch.setattr(hc, "_adopt", lambda *a, **k: {"pid": 77})
+    assert hc.models_start(True, []) == 0
+    assert popen == [subprocess.DEVNULL]
+    body = open(CATALOG, encoding="utf-8").read().split("def models_start", 1)[1].split("def models_stop", 1)[0]
+    assert "HERMES_ACCEPT_LICENSES" not in body
+    assert body.find("licenses.py") < body.find("DETACHED_PROCESS")
+
+    def refuse(argv, **kw):
+        return subprocess.CompletedProcess(argv, 1, "", "")
+
+    monkeypatch.setattr(hc.subprocess, "run", refuse)
+    popen.clear()
+    assert hc.models_start(True, []) == 1
+    assert popen == []
+
+
+def test_bootstrap_reuse_writes_the_listener_pid(tmp_path):
+    import socket
+    sock = socket.socket()
+    sock.bind(("127.0.0.1", 0))
+    sock.listen(1)
+    port = sock.getsockname()[1]
+    holder = tmp_path / "hold.py"
+    holder.write_text(
+        "import socket,sys,time\n"
+        "s=socket.socket(); s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)\n"
+        "s.bind(('127.0.0.1', int(sys.argv[1]))); s.listen(1)\n"
+        "time.sleep(30)\n"
+    )
+    sock.close()
+    proc = subprocess.Popen([sys.executable, str(holder), str(port)])
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    real_py = sys.executable.replace("'", "'\\''")
+    stub = bin_dir / "python3"
+    stub.write_text(
+        "#!/bin/sh\n"
+        "case \" $* \" in\n"
+        "  *familia_auth.py*) exit 0 ;;\n"
+        "esac\n"
+        "exec '%s' \"$@\"\n" % real_py
+    )
+    stub.chmod(0o755)
+    pidfile = tmp_path / "home-models.pid"
+    env = base_env(
+        PATH=str(bin_dir) + os.pathsep + "/usr/bin:/bin",
+        HOME=str(tmp_path),
+        PORT=str(port),
+        FAMILIA_PIDFILE=str(pidfile),
+        FAMILIA_ACCEPT_LICENSES="yes",
+        FAMILIA_LICENSE_ACCEPT_FILE=str(tmp_path / "accept.json"),
+        FAMILIA_SYNC="0",
+    )
+    try:
+        bound = False
+        for _ in range(50):
+            if proc.poll() is not None:
+                break
+            try:
+                probe = socket.socket()
+                probe.settimeout(0.2)
+                probe.connect(("127.0.0.1", port))
+                probe.close()
+                bound = True
+                break
+            except OSError:
+                time.sleep(0.05)
+        assert bound, "listener did not bind"
+        started = run(["sh", os.path.join(ROOT, "start.sh"), "--bootstrap"], env=env)
+        blob = started.stdout + started.stderr
+        assert started.returncode == 0, blob
+        assert "reusing it" in blob
+        assert pidfile.read_text().strip() == str(proc.pid)
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+
+
+def test_cockpit_q_returns_to_the_menu(tmp_path):
+    bin_dir = str(tmp_path / "bin")
+    _gum(bin_dir, ["Open llama-ui web cockpit", "Quit"])
+    env = base_env(PATH=bin_dir + os.pathsep + "/usr/bin:/bin", TERM="dumb", NO_COLOR="1")
+    rc, out = _pty(["sh", HOME], env, feed=b"q\n", timeout=25)
+    assert rc == 0, out
+    assert out.count("six equal items") >= 2
 
 
 def test_termux_pkg_is_after_the_prompt():

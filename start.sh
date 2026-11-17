@@ -141,24 +141,75 @@ if [ ! -f "$BACKEND_START" ] && [ -f "$ROOT/../code-bootstraps-llama.cpp/start.s
   BACKEND_START="$ROOT/../code-bootstraps-llama.cpp/start.sh"
 fi
 
-if [ ! -f "$BACKEND_START" ]; then
-  say "the model server launcher (code-bootstraps-llama.cpp/start.sh) is missing."
-  say "Next: run sh scripts/configure.sh to fetch it, then sh start.sh again."
-  exit 1
-fi
-
-
 # One instance per port (docs/api-key-design.md): probe it WITH the instance key first.
 #   up (0)            -> already running: reuse it, do not bootstrap a second one
 #   key rejected (4)  -> a server is there but rejects our key: misconfiguration, stop loudly
 #   nothing there (3) -> start it
+# Reuse does not need the backend checkout. Record the listener so stop can signal it.
+_write_reused_pid() {
+  [ -n "${FAMILIA_PIDFILE:-}" ] || return 0
+  _lport=${PORT:-9931}
+  _lpid=$(PORT="$_lport" python3 -c '
+import os
+port = int(os.environ.get("PORT") or "9931")
+want = "%04X" % port
+inodes = set()
+for name in ("tcp", "tcp6"):
+    path = "/proc/net/" + name
+    try:
+        lines = open(path, encoding="ascii", errors="replace")
+    except OSError:
+        continue
+    for line in lines:
+        fields = line.split()
+        if len(fields) < 10 or fields[0] == "sl":
+            continue
+        if not fields[1].endswith(":" + want) or fields[3] != "0A":
+            continue
+        inodes.add(fields[9])
+if not inodes:
+    raise SystemExit(0)
+for name in os.listdir("/proc"):
+    if not name.isdigit():
+        continue
+    fd_dir = "/proc/" + name + "/fd"
+    try:
+        fds = os.listdir(fd_dir)
+    except OSError:
+        continue
+    for fd in fds:
+        try:
+            target = os.readlink(os.path.join(fd_dir, fd))
+        except OSError:
+            continue
+        if target.startswith("socket:[") and target[8:-1] in inodes:
+            print(name)
+            raise SystemExit(0)
+' ) || _lpid=
+  if [ -z "${_lpid:-}" ] && command -v sockstat >/dev/null 2>&1; then
+    _lpid=$(sockstat -l -P tcp -p "$_lport" 2>/dev/null | awk 'NR>1 { print $3; exit }') || _lpid=
+  fi
+  if [ -z "${_lpid:-}" ]; then
+    say "reusing the server on :${_lport} but its pid could not be recorded"
+    return 0
+  fi
+  _stage=${FAMILIA_PIDFILE}.tmp.$$
+  printf '%s\n' "$_lpid" > "$_stage" && mv -f "$_stage" "$FAMILIA_PIDFILE"
+  say "recorded reused server pid $_lpid"
+}
 if [ "${FAMILIA_FORCE_BOOTSTRAP:-0}" != 1 ]; then
   probe_rc=0
   python3 "$ROOT/scripts/familia_auth.py" probe "http://127.0.0.1:${PORT:-9931}" || probe_rc=$?
   case "$probe_rc" in
-    0) say "a server already answers on :${PORT:-9931} with this instance's key; reusing it (FAMILIA_FORCE_BOOTSTRAP=1 to start anyway)"; exit 0 ;;
+    0) say "a server already answers on :${PORT:-9931} with this instance's key; reusing it (FAMILIA_FORCE_BOOTSTRAP=1 to start anyway)"; _write_reused_pid; exit 0 ;;
     4) say "ERROR: :${PORT:-9931} is running but rejects this instance's API key. Not starting another server. Check ${XDG_CONFIG_HOME:-$HOME/.config}/familia/instances/${PORT:-9931}/api-keys"; exit 4 ;;
   esac
+fi
+
+if [ ! -f "$BACKEND_START" ]; then
+  say "the model server launcher (code-bootstraps-llama.cpp/start.sh) is missing."
+  say "Next: run sh scripts/configure.sh to fetch it, then sh start.sh again."
+  exit 1
 fi
 
 # DETACH_MODE support. screen-attached is the default (attached + reattachable via

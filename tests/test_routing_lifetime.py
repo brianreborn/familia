@@ -73,6 +73,26 @@ def _spawn(argv, **kw):
     return f(argv, **kw) if f else subprocess.Popen(argv, start_new_session=True, **kw)
 
 
+def test_sigterm_to_serve_sh_reaps_the_server_child(tree):
+    """SIGTERM to the serve.sh pid alone, during the server run, must not orphan it."""
+    t, pidfile, env = tree
+    child = subprocess.Popen(
+        ["sh", str(t / "scripts" / "serve.sh"), "coder"], cwd=str(t), env=env,
+    )
+    pid = None
+    try:
+        pid, _port = _wait_pidfile(pidfile)
+        os.kill(child.pid, signal.SIGTERM)
+        assert child.wait(timeout=8) == 143
+        assert _gone(pid), "llama-server stand-in survived SIGTERM to serve.sh"
+    finally:
+        if child.poll() is None:
+            child.kill()
+            child.wait()
+        if pid and _alive(pid):
+            os.kill(pid, signal.SIGKILL)
+
+
 def test_stop_children_reaps_serve_sh_runtime_and_frees_port(tree):
     t, pidfile, env = tree
     child = _spawn(["sh", str(t / "scripts" / "serve.sh"), "coder"], cwd=str(t), env=env)

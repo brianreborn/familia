@@ -312,28 +312,28 @@ submenu() {
 legacy_goal() {
   case "$1" in
   "Open llama-ui web cockpit")
-    # Switch screen first. q (exit 0) returns to this goal menu.
+    # Switch screen first. q (exit 0) returns to this menu.
     # Item "Continue to web cockpit" (exit 4) is the only path to
-    # open_ui.sh. Interrupt 130/143 aborts. No TTY: do not auto-open.
+    # open_ui.sh. Both stay children of this shell. Interrupt stays here.
+    # No TTY: do not auto-open. Quit is the only exit.
     if [ -t 0 ] && [ -t 1 ]; then
       _st=0
       FAMILIA_COCKPIT_HOOK=1
       export FAMILIA_COCKPIT_HOOK
       sh "$ROOT/scripts/android-cockpit-switches.sh" || _st=$?
       if [ "$_st" -eq 4 ]; then
-        exec sh "$ROOT/scripts/open_ui.sh"
-      fi
-      if [ "$_st" -eq 130 ] || [ "$_st" -eq 143 ]; then
-        exit "$_st"
+        sh "$ROOT/scripts/open_ui.sh" || true
       fi
     fi
-    exec sh "$ROOT/scripts/familia_home.sh"
+    return 0
     ;;
   "List all models")
-    exec python3 "$ROOT/scripts/catalog.py" models
+    "$PY" "$ROOT/scripts/catalog.py" models || true
+    return 0
     ;;
   "Configure all graphs")
-    exec python3 "$ROOT/scripts/catalog.py" graphs
+    "$PY" "$ROOT/scripts/catalog.py" graphs || true
+    return 0
     ;;
   *)
     return 1
