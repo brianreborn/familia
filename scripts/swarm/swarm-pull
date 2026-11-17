@@ -241,13 +241,24 @@ def _commit_fetch_room():
 # only a COMMENT review (pull-requests:write). Dismiss, merge, and
 # contents writes are refused.
 _FORBIDDEN_WRITE_RE = re.compile(
-    r"(?i)(/dismissals\b|/merge\b|/contents/|pulls/\d+/reviews/\d+/events)")
+    r"(?i)(/dismissals\b|/merges\b|/merge\b|/contents/|"
+    r"pulls/\d+/reviews/\d+/events|git/refs(?:/|$))")
+_PATCH_PULL_RE = re.compile(r"(?i)(?:^|/)pulls/\d+(?:$|\?)")
 
 
 def _refuse_outside_token_scope(method, path):
-    if (method or "").upper() in ("GET", "HEAD"):
+    method = (method or "").upper()
+    path = path or ""
+    if method in ("GET", "HEAD"):
         return
-    if _FORBIDDEN_WRITE_RE.search(path or ""):
+    if _FORBIDDEN_WRITE_RE.search(path):
+        raise ForgeError(
+            "refusing %s %s: outside issues:write and COMMENT reviews" % (method, path))
+    # PATCH /pulls/N can close or retarget the PR. Comment reviews are POST.
+    if method == "PATCH" and _PATCH_PULL_RE.search(path):
+        raise ForgeError(
+            "refusing %s %s: outside issues:write and COMMENT reviews" % (method, path))
+    if method == "DELETE" and re.search(r"(?i)git/refs(?:/|$)", path):
         raise ForgeError(
             "refusing %s %s: outside issues:write and COMMENT reviews" % (method, path))
 
@@ -4013,7 +4024,10 @@ def fetch_commit(repo, sha):
         _dt, _st, obj, _raw = gh_api(
             "GET", "repos/%s/%s/commits/%s" % (owner, name, sha), uncached=True)
     except ForgeError as e:
-        _COMMIT_CACHE[key] = e
+        # A 5xx or a dropped connection can succeed on the next call.
+        # Cache refusals and budget deferrals only.
+        if not forge_error_retryable(e):
+            _COMMIT_CACHE[key] = e
         raise
     if not isinstance(obj, dict):
         err = ForgeError("commit %s not an object" % sha[:9])
@@ -5438,13 +5452,18 @@ def cmd_triage():
 
 
 def _comment_edited(comment):
-    """True when updated_at is later than created_at. GitHub sets them
-    equal on a fresh comment. An edit must not refresh a lease TTL."""
+    """True when the comment was edited, or created_at is missing.
+
+    GitHub sets created_at and updated_at equal on a fresh comment.
+    Any later updated_at is an edit, including one a second after create.
+    A payload with only updated_at can refresh a TTL, so it is edited."""
     created = parse_iso((comment or {}).get("created_at") or (comment or {}).get("createdAt") or "")
     updated = parse_iso((comment or {}).get("updated_at") or (comment or {}).get("updatedAt") or "")
-    if created is None or updated is None:
+    if created is None:
+        return True
+    if updated is None:
         return False
-    return (updated - created).total_seconds() > 2
+    return updated > created
 
 
 def review_exists(reviews, head):

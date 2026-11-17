@@ -157,6 +157,7 @@ class SwarmModes(unittest.TestCase):
                                return_value=("class: useful-notes\nwhy: real notes\n", "stub")), \
              mock.patch.object(self.sp, "post_comment",
                                side_effect=lambda *a, **k: posted.append(a) or (None, 201, {"id": 1}, "")), \
+             mock.patch.object(self.sp, "release_score_lease") as drop_lease, \
              mock.patch.object(self.sp, "del_label") as unlabel, \
              mock.patch.object(self.sp, "deliver") as deliver, \
              mock.patch.object(self.sp, "claim_issue") as claim, \
@@ -171,6 +172,7 @@ class SwarmModes(unittest.TestCase):
         self.assertIn("host=testhost", body)
         body.encode("ascii")
         self.assertFalse(self.sp.note_has_identifying_fields(body))
+        drop_lease.assert_called()
         unlabel.assert_not_called()
         deliver.assert_not_called()
         claim.assert_not_called()
@@ -202,8 +204,10 @@ class SwarmModes(unittest.TestCase):
              mock.patch.object(self.sp, "model_high_effort",
                                return_value=("class: hollow\nwhy: template\n", "stub")), \
              mock.patch.object(self.sp, "post_comment",
-                               side_effect=lambda *a, **k: posted.append(a) or (None, 201, {"id": 1}, "")):
+                               side_effect=lambda *a, **k: posted.append(a) or (None, 201, {"id": 1}, "")), \
+             mock.patch.object(self.sp, "release_score_lease") as drop_lease:
             self.assertEqual(self.sp.triage_one("brianreborn/familia", pr), "posted")
+        drop_lease.assert_called()
         body = [p[2] for p in posted if "class=" in p[2]][0]
         self.assertIn("class=needs-human", body)
         self.assertNotIn("class=hollow", body)
@@ -696,6 +700,7 @@ class SwarmModes(unittest.TestCase):
             "id": 5,
             "body": "swarm-lease v=1 head=%s kind=review runner=box\n" % SHA,
             "user": _user("swarm-bot"),
+            "created_at": "2099-01-01T00:00:00Z",
             "updated_at": "2099-01-01T00:00:00Z",
         }
         with mock.patch.object(self.sp, "get_comments", return_value=(None, [lease])), \
@@ -734,6 +739,7 @@ class SwarmModes(unittest.TestCase):
             "id": 5,
             "body": "swarm-lease v=1 head=%s kind=review runner=galaxy1\n" % SHA,
             "user": _user("swarm-bot"),
+            "created_at": "2099-01-01T00:00:00Z",
             "updated_at": "2099-01-01T00:00:00Z",
         }
         with mock.patch.object(self.sp, "get_comments", return_value=(None, [lease])), \
@@ -888,8 +894,10 @@ class SwarmModes(unittest.TestCase):
              mock.patch.object(self.sp, "model_high_effort",
                                return_value=("class: useful-notes\nwhy: ignored\n", "stub")), \
              mock.patch.object(self.sp, "post_comment",
-                               side_effect=lambda *a, **k: posted.append(a) or (None, 201, {"id": len(posted)}, "")):
+                               side_effect=lambda *a, **k: posted.append(a) or (None, 201, {"id": len(posted)}, "")), \
+             mock.patch.object(self.sp, "release_score_lease") as drop_lease:
             self.assertEqual(self.sp.triage_one("brianreborn/familia", pr), "posted")
+        drop_lease.assert_called()
         hollow = [p for p in posted if "swarm-hollow v=1" in p[2]]
         self.assertEqual(len(hollow), 1)
         self.assertEqual(hollow[0][1], 616)
@@ -1038,6 +1046,15 @@ class SwarmModes(unittest.TestCase):
         self.assertEqual(held, 9)
         self.assertIn(6, [c.args[1] for c in strike.call_args_list])
         post.assert_called()
+        self.assertTrue(self.sp._comment_edited({"updated_at": "2099-01-01T00:00:00Z"}))
+        self.assertTrue(self.sp._comment_edited({
+            "created_at": "2099-01-01T00:00:00Z",
+            "updated_at": "2099-01-01T00:00:01Z",
+        }))
+        self.assertFalse(self.sp._comment_edited({
+            "created_at": "2099-01-01T00:00:00Z",
+            "updated_at": "2099-01-01T00:00:00Z",
+        }))
 
     def test_hollow_marker_checks_issue_and_sha_end(self):
         comment = {"body": "swarm-hollow v=1 issue=999 head=%s runner=box\n" % SHA,
@@ -1071,6 +1088,20 @@ class SwarmModes(unittest.TestCase):
             with self.assertRaises(self.sp.ForgeError):
                 self.sp.fetch_commit("brianreborn/familia", SHA)
         api.assert_not_called()
+        self.sp.reset_api_budget()
+        calls = {"n": 0}
+
+        def down(*_a, **_k):
+            calls["n"] += 1
+            raise self.sp.ForgeError("HTTP 500 down")
+
+        with mock.patch.object(self.sp, "fetch_commit", self._real_fetch), \
+             mock.patch.object(self.sp, "gh_api", side_effect=down):
+            with self.assertRaises(self.sp.ForgeError):
+                self.sp.fetch_commit("brianreborn/familia", OTHER)
+            with self.assertRaises(self.sp.ForgeError):
+                self.sp.fetch_commit("brianreborn/familia", OTHER)
+        self.assertEqual(calls["n"], 2)
 
     def test_dismiss_and_merge_are_outside_the_token_scope(self):
         with self.assertRaises(self.sp.ForgeError):
@@ -1078,6 +1109,12 @@ class SwarmModes(unittest.TestCase):
                 "PUT", "repos/brianreborn/familia/pulls/1/reviews/2/dismissals")
         with self.assertRaises(self.sp.ForgeError):
             self.sp.gh_api("PUT", "repos/brianreborn/familia/pulls/1/merge")
+        with self.assertRaises(self.sp.ForgeError):
+            self.sp.gh_api("POST", "repos/brianreborn/familia/merges")
+        with self.assertRaises(self.sp.ForgeError):
+            self.sp.gh_api("PATCH", "repos/brianreborn/familia/pulls/1", data={"state": "closed"})
+        with self.assertRaises(self.sp.ForgeError):
+            self.sp.gh_api("DELETE", "repos/brianreborn/familia/git/refs/heads/swarm/box/1")
 
     def test_candidate_reads_comments_once(self):
         issue = {"number": 616, "created_at": "2026-11-10T20:00:00Z",
