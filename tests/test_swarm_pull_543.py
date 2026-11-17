@@ -39,6 +39,10 @@ def load_mod(home):
     os.environ.pop("TERMUX_VERSION", None)
     os.environ["USER"] = "leakyuser"
     os.environ["LOGNAME"] = "leakyuser"
+    # Keep tests on SWARM_RUNNER_LOGINS. The repo file is the host pin.
+    empty_allow = Path(home) / "runner-logins.txt"
+    empty_allow.write_text("# test override, no logins\n")
+    os.environ["SWARM_RUNNER_LOGINS_FILE"] = str(empty_allow)
     name = "swarm_pull_under_test"
     loader = importlib.machinery.SourceFileLoader(name, str(SCRIPT))
     spec = importlib.util.spec_from_loader(name, loader)
