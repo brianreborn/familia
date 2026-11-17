@@ -191,10 +191,14 @@ function Invoke-Verb([string]$area, [string]$verb) {
       if (-not $extra[0]) { return }
     }
   }
+  $script:Interrupted = $false
   if ($apply) {
     & $script:PyExe (Join-Path $root 'scripts\home_catalog.py') $area $verb '--apply' @extra
   } else {
     & $script:PyExe (Join-Path $root 'scripts\home_catalog.py') $area $verb
+  }
+  if ($script:Interrupted) {
+    Write-Host 'familia-home: interrupted; staying in the menu. Choose Quit to leave.'
   }
   if ($LASTEXITCODE -ne 0) {
     Write-Host "familia-home: $area $verb exited $LASTEXITCODE. Staying in the menu."

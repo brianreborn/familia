@@ -102,9 +102,9 @@ def _port_wait_seconds():
     try:
         n = int(raw)
     except ValueError:
-        n = 120
+        return 120
     if n < 1:
-        return 1
+        return 120
     if n > 600:
         return 600
     return n
@@ -195,10 +195,18 @@ def _starttime(pid):
 
 
 def _alive(pid):
-    if not pid:
+    """True when pid is still the process we can name.
+
+    On Windows os.kill(pid, 0) is not a probe: it can deliver CTRL_C_EVENT
+    or terminate the process. Identity (StartTime / proc token) is the check.
+    """
+    if not pid or int(pid) <= 0:
         return False
+    if _windows():
+        token, _cmd = process_identity(pid)
+        return bool(token)
     try:
-        os.kill(pid, 0)
+        os.kill(int(pid), 0)
     except ProcessLookupError:
         return False
     except PermissionError:
@@ -397,37 +405,71 @@ def _fine_start(pid, lstart):
 def _follow_windows_server(proc, pidfile, port):
     """Record the server as soon as its pid is known. Do not leave the tree running.
 
-    start.bat can still be in the license gate, sync, or a model fetch after
-    detach, and the listen port can open long after the pid exists. The wait
-    lasts while the launcher is alive, up to FAMILIA_HOME_PORT_WAIT. On that
-    bound a live tree is taskkill'd. 'nothing recorded' is only for a launcher
-    that has already exited.
+    The launcher handle's poll() is the liveness check. os.kill(pid, 0) is not
+    used. Elapsed time is printed. Ctrl-C keeps a recorded pid, or taskkills
+    the verified launcher tree, then returns to the menu.
     """
     import time
-    deadline = time.time() + _port_wait_seconds()
-    target = 0
-    while True:
-        written = _read_pidfile(pidfile)
-        if written and written != proc.pid:
-            target = written
-        else:
-            child = _windows_server_pid(proc.pid)
-            target = child if child and child != proc.pid else 0
-        if target:
-            saved = _adopt("models", target, port, seconds=2, need_port=False)
-            if saved:
+    limit = _port_wait_seconds()
+    started_at = time.time()
+    deadline = started_at + limit
+    launcher_token = None
+    if _windows():
+        launcher_token, _cmd = process_identity(proc.pid)
+    shown = -1
+    try:
+        while True:
+            elapsed = int(time.time() - started_at)
+            if elapsed != shown:
+                say("waiting %ss of %ss" % (elapsed, limit))
+                shown = elapsed
+            written = _read_pidfile(pidfile)
+            if written and written != proc.pid:
+                target = written
+            else:
+                child = _windows_server_pid(proc.pid)
+                target = child if child and child != proc.pid else 0
+            if target:
+                saved = _adopt("models", target, port, seconds=2, need_port=False)
+                if saved:
+                    return 0
+            if proc.poll() is not None and not target:
+                say("llama-server was not visible; nothing recorded")
                 return 0
-        if not _alive(proc.pid) and not target:
-            say("llama-server was not visible; nothing recorded")
+            if time.time() >= deadline:
+                break
+            time.sleep(0.25)
+    except KeyboardInterrupt:
+        say("interrupted")
+        rec = load_record("models")
+        if rec and same_process(rec):
+            say("recorded pid kept")
             return 0
-        if time.time() >= deadline:
-            break
-        time.sleep(0.25)
-    say("server did not become recordable in time; stopping the detached tree")
-    _end_process(proc.pid)
-    if target:
-        _end_process(target)
+        if proc.poll() is None:
+            _taskkill_launcher(proc, launcher_token)
+        say("interrupted; staying in the menu")
+        return 0
+    if proc.poll() is not None:
+        say("llama-server was not visible; nothing recorded")
+        return 0
+    if _taskkill_launcher(proc, launcher_token):
+        say("server did not become recordable in time; stopping the detached tree")
+    else:
+        say("launcher identity could not be verified; not signaling")
     return 1
+
+
+def _taskkill_launcher(proc, token):
+    """taskkill /T only while this Popen is still the launcher we started."""
+    if proc.poll() is not None:
+        return False
+    if _windows():
+        now, _cmd = process_identity(proc.pid)
+        if not token or now != token:
+            say("pid %s identity changed; not signaling" % proc.pid)
+            return False
+        return _end_process(proc.pid, expect_token=token)
+    return _end_process(proc.pid)
 
 
 def _wait_server_pid(pidfile, parent, seconds=15):
@@ -587,12 +629,19 @@ def descendants(pid):
     return out
 
 
-def _end_process(pid):
-    """Stop pid. On Windows, stop the process tree so llama-server.exe dies with cmd.exe."""
+def _end_process(pid, expect_token=None):
+    """Stop pid. On Windows, taskkill /T only after the start token still matches."""
     if _windows():
+        now, _cmd = process_identity(pid)
+        if not now:
+            say("pid %s identity could not be verified; not signaling" % pid)
+            return False
+        if expect_token is not None and now != expect_token:
+            say("pid %s identity changed; not signaling" % pid)
+            return False
         try:
             proc = subprocess.run(
-                ["taskkill", "/T", "/PID", str(pid), "/F"],
+                ["taskkill", "/T", "/PID", str(int(pid)), "/F"],
                 capture_output=True, text=True, timeout=15,
             )
         except (OSError, subprocess.TimeoutExpired) as exc:
@@ -637,20 +686,21 @@ def stop_recorded(kind):
     if not _may_signal(started, cmd, pid, port):
         say("pid %s is not a server and is not listening; nothing signaled" % pid)
         return 0
-    extras = _extra_stop_targets(pid, port)
-    if not _end_process(pid):
+    extras = _extra_stop_targets(pid, port, started)
+    if not _end_process(pid, expect_token=started):
         return 1
     _signal_group(pid)
-    for extra in extras:
+    for extra, extra_token in extras:
         if extra == pid:
             continue
-        if _windows():
-            _end_process(extra)
-        else:
-            try:
-                os.kill(extra, signal.SIGTERM)
-            except OSError:
-                pass
+        now, _cmd = process_identity(extra)
+        if not now or now != extra_token:
+            say("pid %s identity changed; not signaling" % extra)
+            continue
+        try:
+            os.kill(extra, signal.SIGTERM)
+        except OSError:
+            pass
     say("signaled pid %s" % pid)
     if port and _port_still_open(port, seconds=5):
         owner = _listen_owner(port) or pid
@@ -669,33 +719,48 @@ def stop_recorded(kind):
     return 0
 
 
-def _extra_stop_targets(pid, port):
-    """Server children and the listen owner, collected before the parent is signaled.
+def _extra_stop_targets(pid, port, recorded_token):
+    """Descendants of this launch, and the port owner only if it is that launch.
 
-    setsid'd llama-server is not in the parent's process group, so a group
-    signal does not reach it. The port owner is signaled only when its
-    command is still a server.
+    A server-named process on the port with a different start token is not
+    this menu's process. Each descendant is signaled later only if its own
+    start token is unchanged.
     """
     found = []
+    seen = set()
     if not _windows():
         for child in descendants(pid):
-            started, cmd = process_identity(child)
-            if started and _server_cmdline(cmd):
-                found.append(child)
+            token, _cmd = process_identity(child)
+            if token and child not in seen:
+                found.append((child, token))
+                seen.add(child)
     owner = _listen_owner(port)
-    if owner and owner != pid and owner not in found:
-        started, cmd = process_identity(owner)
-        if started and _server_cmdline(cmd):
-            found.append(owner)
+    if owner and owner != pid and owner not in seen:
+        token, _cmd = process_identity(owner)
+        if token and token == recorded_token:
+            found.append((owner, token))
     return found
 
 
 def _signal_group(pid):
+    """Signal the recorded leader's group, never pid 1 and never our own group."""
     if _windows():
         return
     try:
-        if os.getpgid(pid) == pid:
-            os.killpg(pid, signal.SIGTERM)
+        pid = int(pid)
+    except (TypeError, ValueError):
+        return
+    if pid <= 1:
+        return
+    try:
+        pgid = os.getpgid(pid)
+        mine = os.getpgrp()
+    except OSError:
+        return
+    if pgid <= 1 or pgid == mine or pgid != pid:
+        return
+    try:
+        os.killpg(pgid, signal.SIGTERM)
     except OSError:
         return
 

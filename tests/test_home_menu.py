@@ -675,8 +675,11 @@ def test_windows_stop_uses_taskkill_tree(monkeypatch, tmp_path):
         return subprocess.CompletedProcess(argv, 0, "", "")
 
     monkeypatch.setattr(hc, "_windows", lambda: True)
+    monkeypatch.setattr(hc, "process_identity", lambda pid: ("100", "llama-server"))
     monkeypatch.setattr(hc.subprocess, "run", fake_run)
-    assert hc._end_process(4242) is True
+    assert hc._end_process(4242, expect_token="999") is False
+    assert calls == []
+    assert hc._end_process(4242, expect_token="100") is True
     assert calls and calls[0][:4] == ["taskkill", "/T", "/PID", "4242"]
     text = open(CATALOG, encoding="utf-8").read()
     assert "llama-server.exe" in text
@@ -993,6 +996,10 @@ def test_windows_timeout_stops_a_live_tree_instead_of_abandoning_it(monkeypatch,
     try:
         class Proc:
             pid = child.pid
+
+            def poll(self):
+                return child.poll()
+
         rc = hc._follow_windows_server(Proc(), str(tmp_path / "pid"), 9)
         out = capsys.readouterr().out
         assert rc == 1
@@ -1021,6 +1028,9 @@ def test_windows_records_a_known_pid_without_waiting_for_the_port(monkeypatch, t
     class Proc:
         pid = 77
 
+        def poll(self):
+            return None
+
     assert hc._follow_windows_server(Proc(), str(tmp_path / "pid"), 9) == 0
     assert calls and calls[0][0] == 4242 and calls[0][1] is False
 
@@ -1034,6 +1044,69 @@ def test_port_wait_is_bounded_and_configurable(monkeypatch):
     assert hc._port_wait_seconds() == 45
     monkeypatch.setenv("FAMILIA_HOME_PORT_WAIT", "9999")
     assert hc._port_wait_seconds() == 600
+    for bad in ("0", "-5", "nope", ""):
+        monkeypatch.setenv("FAMILIA_HOME_PORT_WAIT", bad)
+        assert hc._port_wait_seconds() == 120, bad
+
+
+def test_ctrl_c_during_windows_wait_stops_an_unrecorded_tree(monkeypatch, tmp_path, capsys):
+    sys.path.insert(0, os.path.join(ROOT, "scripts"))
+    import home_catalog as hc
+    killed = []
+
+    def fake_end(pid, expect_token=None):
+        killed.append(pid)
+        return True
+
+    def interrupt(_seconds):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(hc, "_read_pidfile", lambda path: 0)
+    monkeypatch.setattr(hc, "_windows_server_pid", lambda parent: 0)
+    monkeypatch.setattr(hc, "_port_wait_seconds", lambda: 30)
+    monkeypatch.setattr(hc, "_end_process", fake_end)
+    import time as time_mod
+    monkeypatch.setattr(time_mod, "sleep", interrupt)
+
+    class Proc:
+        pid = 4242
+
+        def poll(self):
+            return None
+
+    rc = hc._follow_windows_server(Proc(), str(tmp_path / "pid"), 9)
+    out = capsys.readouterr().out
+    assert rc == 0, out
+    assert killed == [4242]
+    assert "interrupted; staying in the menu" in out
+    assert "nothing recorded" not in out
+    assert "waiting 0s of 30s" in out
+
+
+def test_group_signal_refuses_pid_one_and_our_own_group(monkeypatch):
+    sys.path.insert(0, os.path.join(ROOT, "scripts"))
+    import home_catalog as hc
+    calls = []
+    monkeypatch.setattr(hc.os, "killpg", lambda pgid, sig: calls.append(pgid))
+    monkeypatch.setattr(hc, "_windows", lambda: False)
+    hc._signal_group(1)
+    hc._signal_group(0)
+    monkeypatch.setattr(hc.os, "getpgid", lambda pid: os.getpgrp())
+    monkeypatch.setattr(hc.os, "getpgrp", os.getpgrp)
+    hc._signal_group(os.getpid())
+    assert calls == []
+
+
+def test_port_owner_with_a_different_start_token_is_not_signaled(monkeypatch):
+    sys.path.insert(0, os.path.join(ROOT, "scripts"))
+    import home_catalog as hc
+    monkeypatch.setattr(hc, "_windows", lambda: False)
+    monkeypatch.setattr(hc, "descendants", lambda pid: [])
+    monkeypatch.setattr(hc, "_listen_owner", lambda port: 50)
+    monkeypatch.setattr(hc, "process_identity", lambda pid: ("other-token", "llama-server"))
+    assert hc._extra_stop_targets(10, 9931, "recorded-token") == []
+    monkeypatch.setattr(hc, "process_identity", lambda pid: ("recorded-token", "llama-server"))
+    assert hc._extra_stop_targets(10, 9931, "recorded-token") == [(50, "recorded-token")]
 
 
 def test_sockstat_line_matches_the_listener():
