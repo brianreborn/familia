@@ -49,5 +49,3 @@
     live argv and `GET /tools` before treating Server Tools as available. `server_tools` in
     `graph.yaml` is necessary but not sufficient. See LESSONS-LEARNED `L-server-tools`.
     Do not grant `--tools` on a node where the live `tool_policy` would refuse that tool.
-
-

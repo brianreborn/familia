@@ -16,6 +16,7 @@ Draft release notes: [docs/releases/v0.4.0.md](docs/releases/v0.4.0.md). The v0.
 - [ ] **Main CI green** — including `tests/test_swarm_pull_580_validation.py` (#605). Do not merge release PRs on red CI.
 - [ ] **llama.cpp v1.0.0 in code-bootstraps** — bump the `llama.cpp` submodule to official ggml-org `v1.0.0` (`b1b770d90d94cad9e9ea5b993bdbc383a522fb28`), then re-pin familia. Do not retarget `pins.txt` at that SHA directly. `brianreborn/llama.cpp` has no `v1.0.0` tag (latest version tag is `v0.9.0`). Issue #599 described the broken pin as already done; that is not the integration path.
 - [ ] **Server Tools launch-only fix** — `--tools` is launch-only today; fixing it is v0.4.0 must-land [#630](https://github.com/brianreborn/familia/issues/630). No waiver.
+- [ ] **Windows start.bat F-6 parity** — refuse its own argv and a non-loopback bind with `--tools` (exit 2), matching Linux/Termux; must-land [#631](https://github.com/brianreborn/familia/issues/631).
 - [x] **LFM3 default honesty** — README now distinguishes the single-node LFM3-1.7B-Uncensored default from `nodes.coder` on miryam (`qwen35-2b-q4km`). Wiring LFM3 into that node is still open (model entry is `role: chat`; 64k budgets were measured on Qwen3.5-2B).
 - [x] **Version labels** — README, this roadmap, and `docs/releases/v0.4.0.md` say v0.4.0 is the current target.
 
@@ -379,4 +380,3 @@ successful result stored under `~/.cache/familia/hermes-env-probe/<hostname>`
 - [Issue #405](https://github.com/brianreborn/familia/issues/405) - Harness2 live status
 - [Issue #406](https://github.com/brianreborn/familia/issues/406) - Harness2 self-test
 - [Issue #407](https://github.com/brianreborn/familia/issues/407) - Boss API validation
-
