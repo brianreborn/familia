@@ -1,6 +1,6 @@
 # Familia v0.4.0 sprint plan
 
-Updated: 2026-11-16 9:29 PM PT (America/Los_Angeles)
+Updated: 2026-11-16 9:33 PM PT (America/Los_Angeles)
 
 This is the current v0.4.0 sprint plan. It keeps the structure of the
 v0.3.0 plan that landed in PR #400, and retargets the work.
@@ -14,8 +14,9 @@ The v0.3.0 alphas stand as v0.3.0. There will be no final v0.3.0 tag.
 
 All remaining open v0.3.0-milestone work moved to v0.4.0 on 2026-11-16.
 Count: 71 open items (70 issues and 1 open PR). Closed v0.3.0 items were
-left alone, including #580 (closed completed; draft validator on main at
-83e7562 and 7592864; CI collection path tracked by #605).
+left alone, including #580 (closed completed; the draft validator from
+83e7562 and 7592864 is on main but is not wired into job(), so it is
+not done; see #616 and #624). The CI collection path is tracked by #605.
 
 Moved PR: #412.
 
@@ -49,6 +50,10 @@ milestone 2 (same naming style) and was not recreated.
 - Tests: use a strategic subset during work (for example
   tests/test_install*.py and other targeted files), and run one full
   clean-install validation at the end.
+- Menus exit only on explicit user exit.
+- No known issues ship.
+- Network listeners require an API key by default. Localhost
+  no-key is only for named local dev tools (see #414).
 - ASCII only in this file (plain ASCII glyphs; no Unicode decoration).
 
 ## v0.4.0 target: llama.cpp v1.0.0
@@ -115,29 +120,60 @@ such and are not given a made-up number.
   https://github.com/brianreborn/familia/issues/621
   https://github.com/brianreborn/familia/issues/546
   https://github.com/brianreborn/familia/pull/268
-- start.bat --host/--port/--api-key overrides. Tracking issue:
-  #631. Related context, not the same work: #32 (Windows one-click
-  installer), #419 (API key file layouts), and closed #17 (docs
-  once cited a missing start.bat). Network listeners require an
-  API key by default (#414).
+- start.bat must refuse --host/--port/--api-key argv overrides
+  (F-6 parity with familia-start on Linux and Termux). Bind, port,
+  and key come only from FAMILIA_BIND, FAMILIA_PORT, and
+  FAMILIA_API_KEY_FILE (scripts/windows/start.bat:10-13, :22-23,
+  :75-81). start.bat:94 already runs scripts/bind_auth_guard.py
+  --ensure with --extra-start so extras cannot override bind, port,
+  auth, TLS, or path (guard _is_extra_override at :56-70 and check
+  at :195-203); start.bat:84-85 also clears LLAMA_API_KEY and
+  LLAMA_ARG_*. Must-land #631 is to verify and test that refusal
+  on Windows, and to document the env-var config. Brian confirmed
+  this at 9:33 PM PT on 2026-11-16. Related context: #32, #419,
+  and closed #17. The sprint-wide API-key rule is in Rules (#414).
   https://github.com/brianreborn/familia/issues/631
 - A FreeBSD build and smoke test on llama.cpp b12359 (FreeBSD is
   the first reference platform). Tracking issue: #632. Related pin
   work is #612 and open PR #614. #552 (smoke-test main on primary
   Unix platforms) is the closest earlier smoke issue and is not
-  specific to b12359.
+  specific to b12359. #614's llama.cpp pin must be a tagged or
+  main-reachable commit in brianreborn/llama.cpp before the FreeBSD
+  b12359 build and smoke test counts.
   https://github.com/brianreborn/familia/issues/632
   https://github.com/brianreborn/familia/issues/612
   https://github.com/brianreborn/familia/pull/614
-- Wire the 83e7562 validate_draft into job(), as a release-blocker.
-  #616 is that issue: validate_draft exists on main but job() never
+- #616 and #624 (release-blockers): wire the 83e7562 validate_draft
+  into job(), and cover the #580 gaps that #616 alone does not
+  (truncation check, reject/release/backoff path, preamble and
+  fence coverage). validate_draft exists on main but job() never
   calls it, so #580's protection is dead code and model drafts can
-  still reach PRs unchecked. Related open follow-up: #624 (#580
-  gaps beyond #616: truncation check, reject/release/backoff,
-  preamble and fence coverage). #605 (CI collection path) remains
-  open even though the path fix is already on main.
+  still reach PRs unchecked. Both #616 and #624 must land before
+  the swarm resumes (#608). #605 (CI collection path) remains open
+  even though the path fix is already on main.
   https://github.com/brianreborn/familia/issues/616
   https://github.com/brianreborn/familia/issues/624
+
+## Also open on v0.4.0 (filed 2026-11-16)
+
+These are not must-lands unless listed above. They are here so they
+are not lost under the "no known issues ship" rule.
+
+- #617 hermes-escalation-config.sh execs a CWD-relative script.
+  License-default is out of scope there; HERMES_ACCEPT_LICENSES=1
+  stays the default (see Rules).
+  https://github.com/brianreborn/familia/issues/617
+- #618 generated/graph-{console,drone,security,tool-handler}.yaml
+  claim tool-denial controls the schema does not implement.
+  https://github.com/brianreborn/familia/issues/618
+- #619 registry/models: sha256_ok re-stamped without evidence;
+  local username in license path.
+  https://github.com/brianreborn/familia/issues/619
+- #622 gpu-legacy: Windows LoadLibraryA DLL search order; nvso
+  Makefile lost the CFLAGS override.
+  https://github.com/brianreborn/familia/issues/622
+- #623 scripts/watchdog_test.sh never times out.
+  https://github.com/brianreborn/familia/issues/623
 
 ## 1. Landed 2026-11-10 (do not redo)
 
@@ -281,9 +317,11 @@ Tracker: https://github.com/brianreborn/familia/issues/236
 - L13: tmp-file issue; open until code-bootstraps-llama.cpp #93 merges.
   https://github.com/brianreborn/code-bootstraps-llama.cpp/pull/93
 - L14: node keys over plain HTTP; startup warning landed in #374.
-- L15: ui_bridge.py prints unstripped control characters (same class
-  as #303). The hot-file freeze was lifted at 3:25 PM PT; code may
-  proceed against main. Status: open.
+- L15: ui_bridge.py printed unstripped control characters (same
+  class as #303). Fixed by #547 (merged to main at f49e3be on
+  2026-11-11; ui_bridge sanitizes server strings and gates ANSI
+  on TTY). Status: landed.
+  https://github.com/brianreborn/familia/pull/547
 - M17 (Medium, extends M6): miryam self-hosted runner reachability
   to the A57s via the #367 dispatcher key. Owner-only GitHub
   settings; details in #236, not in this public file.
@@ -317,10 +355,10 @@ list. Swarm stays paused until #608 is settled.
 - Continuity | Keep #300 Windows installer moving (draft, closes
   #32). sysrescue bootmgr repair was completed later by qodesh
   Worker. | https://github.com/brianreborn/familia/pull/300 | draft open | Needs PS 5.1 results and reviews.
-- Senior Developer | Track remaining #236 items (L13/L15/M17) and
-  file the TR-3/TR-4 product issue (Boundary Reviewer reviews it).
-  Daily 10 AM PT security check-in stays running (Brian said keep
-  it). | https://github.com/brianreborn/familia/issues/236 | open | L15 freeze lifted; M17 is owner-only GitHub settings. #546 now exists for TR-3/TR-4.
+- Senior Developer | Track remaining #236 items (L13/M17; L15
+  landed in #547) and file the TR-3/TR-4 product issue (Boundary
+  Reviewer reviews it). Daily 10 AM PT security check-in stays
+  running (Brian said keep it). | https://github.com/brianreborn/familia/issues/236 | open | L15 landed in #547; M17 is owner-only GitHub settings. #546 now exists for TR-3/TR-4.
 - Researcher | Coordinate 0.4.0 work onto main; do not start new
   development branches. Windows-only relocation remains a separate
   ops thread, not this sprint. | (coordinator) | idle since 2026-11-10 check-in relay | swarm paused until #608.
@@ -467,7 +505,21 @@ The 2026-11-10 assignments are left as recorded.
 
 ## 11. Sources
 
-- This update (2026-11-16 9:29 PM PT): filed tracking issues #630
+- This update (2026-11-16 9:33 PM PT): Race review of PR #615 at
+  66cd77e (https://github.com/brianreborn/familia/pull/615#pullrequestreview-5933451733)
+  and Boundary comment
+  https://github.com/brianreborn/familia/pull/615#issuecomment-6939558429.
+  B2: #614 pin must be tagged or main-reachable before the FreeBSD
+  b12359 smoke counts (#632). B3: #624 is a release-blocker with
+  #616, both required before swarm resumes (#608). #580 is not
+  done (validator unwired; #616/#624). L15 landed in #547
+  (f49e3be). B1 resolved by Brian at 9:33 PM PT: start.bat must
+  refuse argv overrides; #631 rescoped to verify the existing
+  F-6 guard and document FAMILIA_BIND / FAMILIA_PORT /
+  FAMILIA_API_KEY_FILE. Rules now include menus-exit-only, no
+  known issues ship, and API key on network listeners. Also
+  listed: #617, #618, #619, #622, #623.
+- Prior update (2026-11-16 9:29 PM PT): filed tracking issues #630
   (--tools persist, no waiver), #631 (start.bat overrides), and
   #632 (FreeBSD b12359 smoke) on milestone v0.4.0 with the
   must-land label.
