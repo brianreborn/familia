@@ -5,9 +5,21 @@ Status: scripts shipped, **not yet run end to end on qodesh**. The one-click ins
 ## Requirements
 - Windows 10 x64. **No AVX required**: the official ggml-org `llama-*-bin-win-cpu-x64.zip` selects its CPU
   backend at runtime and ran on qodesh's Athlon II X2 B24 (SSE only) on 2026-10-09.
-- Unzip the release into `runtime\` at the repo root (or set `FAMILIA_RUNTIME`).
-- Models: `E:\temp\familia\models` when `E:\temp` exists (C: has ~4.6 GiB free), else `%USERPROFILE%\familia\models`,
-  or set `FAMILIA_MODELS`.
+- Installer prefix (override `-Prefix`): `%LOCALAPPDATA%\familia`. The installer puts the llama.cpp
+  build in `%LOCALAPPDATA%\familia\runtime` (`$Prefix\runtime`). For a manual unzip without the
+  installer, `scripts\windows\start.bat` still defaults `FAMILIA_RUNTIME` to `runtime\` at the repo
+  root; after an installer run, set `FAMILIA_RUNTIME` to the prefix runtime dir.
+- Models default to `$Prefix\models` (`%LOCALAPPDATA%\familia\models` unless you pass `-Prefix`).
+  External models are used only when you pass `-ModelsPath`. Older installs may still have files
+  under `E:\temp\familia\models`; that path is not the default. `-AdoptInstall` never records
+  an external models dir, and `-Purge` will not remove that folder (delete it manually if you
+  no longer want it). After an installer run, set `FAMILIA_MODELS` when using `start.bat` (if
+  unset, start.bat still probes `E:\temp` then `%USERPROFILE%\familia\models`, which will
+  miss the prefix models dir).
+- Uninstall and purge require a `.familia-install` marker under the prefix
+  (`install.ps1 -Uninstall` / `-Purge`). For a pre-marker install, run `install.ps1 -AdoptInstall`
+  once (add `-ConfirmAdopt` when non-interactive). `-Purge` does not delete an unrecorded external
+  models dir; use `-PurgeExternalModels` (or confirm) only for a models path recorded at install.
 
 ## Run once
 ```
