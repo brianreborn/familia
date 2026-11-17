@@ -133,6 +133,43 @@ def test_backtick_run_counts_as_one():
     validate_draft(matched, "")
 
 
+def test_cli_off_by_one_is_truncated(tmp_path, monkeypatch):
+    # b12359 samples the first token from prompt-eval logits, so -n 700
+    # reports 699 eval runs when the cap is hit.
+    monkeypatch.setenv("SWARM_HOME", str(tmp_path))
+    monkeypatch.setenv("SWARM_MODE", "dry-run")
+    monkeypatch.delenv("SWARM_MODEL_URL", raising=False)
+    monkeypatch.setenv("SWARM_MODEL_GGUF", str(tmp_path / "m.gguf"))
+    monkeypatch.setattr(sp, "model_cli", lambda *a, **k: ("y" * 250, 699))
+    with pytest.raises(DraftRejected) as ei:
+        sp.model_draft("prompt", 700)
+    assert ei.value.reason == "truncated"
+
+
+def test_unknown_token_count_is_truncated_in_live(tmp_path, monkeypatch):
+    monkeypatch.setenv("SWARM_HOME", str(tmp_path))
+    monkeypatch.setenv("SWARM_MODE", "live")
+    monkeypatch.setenv("SWARM_MODEL_URL", "http://127.0.0.1:9")
+    monkeypatch.setattr(
+        sp, "model_http",
+        lambda url, prompt, max_tokens, thinking=False: ("x" * 300, "", None))
+    with pytest.raises(DraftRejected) as ei:
+        sp.model_draft("prompt", 700)
+    assert "unknown" in str(ei.value)
+
+
+def test_completion_tokens_when_finish_reason_missing(tmp_path, monkeypatch):
+    monkeypatch.setenv("SWARM_HOME", str(tmp_path))
+    monkeypatch.setenv("SWARM_MODE", "dry-run")
+    monkeypatch.setenv("SWARM_MODEL_URL", "http://127.0.0.1:9")
+    monkeypatch.setattr(
+        sp, "model_http",
+        lambda url, prompt, max_tokens, thinking=False: ("x" * 300, "", 31))
+    with pytest.raises(DraftRejected) as ei:
+        sp.model_draft("prompt", 32)
+    assert ei.value.reason == "truncated"
+
+
 def test_cli_generated_tokens_ignores_prompt_eval():
     err = (
         "prompt eval time = 1.00 ms / 10 tokens\n"
@@ -166,8 +203,12 @@ def test_truncated_cli_tokens(tmp_path, monkeypatch):
 
 def test_gate_off_allows_truncated(tmp_path, monkeypatch):
     monkeypatch.setenv("SWARM_HOME", str(tmp_path))
+    monkeypatch.setenv("SWARM_MODE", "live")
+    monkeypatch.setenv("SWARM_RUNNER", "box")
     monkeypatch.setenv("SWARM_DRAFT_GATE", "0")
+    monkeypatch.setenv("SWARM_DRAFT_GATE_OFF_I_KNOW", "box")
     monkeypatch.setenv("SWARM_MODEL_URL", "http://127.0.0.1:9")
+    sp._GATE_LOGGED = False
     monkeypatch.setattr(
         sp, "model_http",
         lambda url, prompt, max_tokens, thinking=False: ("x" * 300, "length"))

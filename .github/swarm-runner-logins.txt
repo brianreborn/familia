@@ -1,0 +1,6 @@
+# Pinned swarm runner allowlist (one GitHub login per line).
+# These are non-owner machine users. brianreborn must not be listed.
+# When this file has at least one login, every host uses it and ignores
+# SWARM_RUNNER_LOGINS, so the nine runners cannot drift.
+# Leave it empty of logins to fall back to SWARM_RUNNER_LOGINS.
+# Lines starting with # are comments.
