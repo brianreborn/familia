@@ -115,6 +115,13 @@ def test_fence_markers_are_case_insensitive():
     assert "untrusted" in str(ei.value).lower()
 
 
+def test_fence_markers_allow_more_than_one_space():
+    for text in ("begin  untrusted", "end\tuntrusted", "BEGIN\nUNTRUSTED"):
+        with pytest.raises(DraftRejected) as ei:
+            validate_draft(_long(text), "")
+        assert ei.value.reason == "fence"
+
+
 def test_tilde_fence_unclosed():
     with pytest.raises(DraftRejected) as ei:
         validate_draft(_long("~~~\ncode"), "")

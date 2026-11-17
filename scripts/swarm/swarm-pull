@@ -306,8 +306,14 @@ def redact(s):
 
 def scrub_leak(text):
     """Drop home paths and the local username before probe output, a
-    traceback, or a model error is stored or posted."""
+    traceback, or a model error is stored or posted.
+
+    The username is a whole path segment. github.com/brianreborn and
+    brian-7b do not match user brian. Input is capped first: a long run
+    of slashes must not stall the runner."""
     text = text or ""
+    if len(text) > 12000:
+        text = text[:12000]
     try:
         home = str(Path.home())
     except Exception:
@@ -331,16 +337,16 @@ def scrub_leak(text):
         user = (user or "").strip()
         if not user or user.lower() in seen or user.lower() in ("root", "unknown"):
             continue
+        if len(user) < 2:
+            continue
         seen.add(user.lower())
-        # Any absolute path that contains the username, including ones
-        # outside $HOME (/srv/<user>, /opt/<user>, ...).
+        esc = re.escape(user)
+        # One path segment, linear. No nested slash repeat.
+        text = re.sub(r"(?i)/" + esc + r"(?=/|\s|$)", "/[home]", text)
+        text = re.sub(r"(?i)\\" + esc + r"(?=\\|\s|$)", r"\\[home]", text)
         text = re.sub(
-            r"(?i)(?:/[^/\s]*)*/%s(?:/[^/\s]*)*" % re.escape(user),
-            "[home]", text)
-        text = re.sub(
-            r"(?i)[A-Za-z]:[\\/](?:[^\\/\s]+[\\/])*%s(?:[\\/][^\\/\s]*)*" % re.escape(user),
-            "[home]", text)
-        text = re.sub(r"(?i)\b" + re.escape(user) + r"\b", "[user]", text)
+            r"(?i)(?<![A-Za-z0-9._-])" + esc + r"(?![A-Za-z0-9._-])",
+            "[user]", text)
     return text
 
 
@@ -1449,7 +1455,9 @@ def _logins_from_file(path):
 
 
 # Branch names swarm/<runner>/<issue>. These are host ids, not GitHub logins.
-DEFAULT_RUNNER_NAMES = ("galaxy1", "galaxy2", "miryam", "angel", "box")
+# box2 and box3 have open swarm/* PRs. surface1 is a current host.
+DEFAULT_RUNNER_NAMES = (
+    "galaxy1", "galaxy2", "miryam", "angel", "box", "box2", "box3", "surface1")
 
 
 def known_author_logins():
@@ -2055,9 +2063,9 @@ def cmd_block(title, argv, timeout=15):
         shown = " ".join(argv)
     lines = ["### " + title, "$ " + shown, "rc=%s" % rc]
     if out.strip():
-        lines.append(cap_text(scrub_leak(out), 2500))
+        lines.append(cap_text(scrub_leak(cap_text(out, 8000)), 2500))
     if err.strip():
-        lines.append("stderr:\n" + cap_text(scrub_leak(err), 800))
+        lines.append("stderr:\n" + cap_text(scrub_leak(cap_text(err, 8000)), 800))
     lines.append("")
     return "\n".join(lines)
 
@@ -2851,7 +2859,9 @@ def validate_draft(draft, nonce, expected_sha="", min_len=None):
     low = text.lower()
     if nonce and str(nonce).lower() in low:
         raise DraftRejected("nonce", "draft contains job nonce", text=text)
-    if re.search(r"(?i)begin untrusted|end untrusted", text):
+    # Same shape as wrap_untrusted: any run of non-word characters, not
+    # only a single space. "begin  untrusted" and "end\tuntrusted" reject.
+    if re.search(r"(?i)begin\W*untrusted|end\W*untrusted", text):
         raise DraftRejected("fence", "draft contains untrusted fence markers", text=text)
     for snip in PREAMBLE_SNIPPETS:
         if snip in low:
@@ -2958,9 +2968,12 @@ def model_high_effort(instructions, max_tokens=400, untrusted="", kind="DATA"):
     thinking = _model_thinking_on()
     budget = _effort_budget(max_tokens, thinking)
     lead = _think_lead(thinking)
-    fenced, nonce = ("", secrets.token_hex(8))
+    # One nonce for the whole pass (live, triage, and review). A withheld
+    # fence does not mint a second token.
+    nonce = secrets.token_hex(8)
+    fenced = ""
     if untrusted:
-        fenced, nonce = _fenced_or_withheld(untrusted, kind)
+        fenced, nonce = _fenced_or_withheld(untrusted, kind, nonce=nonce)
     first, how = model_draft(
         lead + (instructions or "") + ("\n\n" + fenced if fenced else ""),
         budget, thinking=thinking)
@@ -3096,6 +3109,7 @@ def deliver(repo, number, issue, doc, gate_check=None):
     try:
         git(["push", "--quiet", "origin", "HEAD:refs/heads/" + br], wt, timeout=300)
         log("pushed %s %s from %s" % (br, head[:9], runner_name()))
+        record_pushed_sha(repo, number, head)
     except ForgeError as e:
         # Fallback: leave a patch for the miryam relay to fetch over ssh.
         rc, patch, _ = run_cmd(["git", "format-patch", "--stdout", "origin/" + base + "..HEAD"], cwd=str(wt), timeout=60)
@@ -3623,14 +3637,15 @@ def _fleet_reject_active(comments, now=None):
 
 def cooldown_active(repo, number, now=None, comments=None):
     """Fleet cooldown from signed reject comments, else the local file.
-    A forge read error blocks the issue (fail closed) for this check."""
+    A forge read error blocks the issue (fail closed). The local file is
+    not a way around an unreadable forge."""
     local = _local_cooldown_active(repo, number, now)
     if comments is None:
         try:
             _, comments = get_comments(repo, number, uncached=True)
         except ForgeError as e:
-            log("fleet cooldown #%s unreadable, using local file: %s" % (number, e))
-            return local
+            log("fleet cooldown #%s unreadable, blocking: %s" % (number, e))
+            return True
     return bool(_fleet_reject_active(comments, now) or local)
 
 
@@ -3658,10 +3673,15 @@ _TRIAGE_CLASS_RE = re.compile(
     r"(?:\s+checks=(pass|fail))?")
 _REVIEW_HEAD_RE = re.compile(r"(?im)^swarm-review\s+v=1\s+head=([0-9a-f]{40})\b")
 _HOLLOW_ISSUE_RE = re.compile(
-    r"(?im)^swarm-hollow\s+v=1\s+issue=(\d+)\s+head=([0-9a-f]{40})\b")
+    r"(?im)^swarm-hollow\s+v=1\s+issue=(\d+)\s+head=([0-9a-f]{40})"
+    r"(?:\s+runner=([a-z0-9][a-z0-9-]{0,31}))?")
 _REJECT_MARK_RE = re.compile(r"(?im)^superseded\s+draft rejected:\s*([a-z0-9_-]+)")
 _LEASE_RE = re.compile(
-    r"(?im)^swarm-lease\s+v=1\s+head=([0-9a-f]{40})\s+kind=(triage|review)\b")
+    r"(?im)^swarm-lease\s+v=1\s+head=([0-9a-f]{40})\s+kind=(triage|review)\b"
+    r"(?:\s+runner=([a-z0-9][a-z0-9-]{0,31}))?")
+_MARKER_LINE_RE = re.compile(
+    r"(?i)^\s*swarm-(triage|review|lease|hollow)\s+v=1\b")
+_RUNNER_LINE_RE = re.compile(r"(?i)^runner=([a-z0-9][a-z0-9-]{0,31})\s*$")
 # Distinct hollow heads. One head may be re-picked; a second hollow head stops.
 HOLLOW_HEAD_CAP = 2
 
@@ -3733,64 +3753,143 @@ def _branch_runner(ref):
     return m.group(1), int(m.group(2))
 
 
-def collect_hollow_heads(comments):
-    """Every distinct head a trusted hollow comment names, not only the
-    PR's current head. checks=fail counts immediately. Two runners on the
-    same head also count."""
-    heads = set()
-    runners_by_head = {}
+def _unfenced_lines(body):
+    """Lines outside a markdown fence. A fence interior is not a marker."""
+    out = []
+    fence_char = ""
+    fence_len = 0
+    for raw in (body or "").splitlines():
+        line = raw.strip()
+        if fence_char:
+            m = re.match(r"^([`~]+)\s*$", line)
+            if m and m.group(1)[0] == fence_char and len(m.group(1)) >= fence_len:
+                fence_char = ""
+                fence_len = 0
+            continue
+        m = re.match(r"^([`~]{3,})(?:\s+\S.*)?$", line)
+        if m:
+            fence_char = m.group(1)[0]
+            fence_len = len(m.group(1))
+            continue
+        out.append(line)
+    return out
+
+
+def note_marker_lines(body):
+    """swarm-* v=1 lines that are the note's own marker, not quoted text."""
+    return [line for line in _unfenced_lines(body) if _MARKER_LINE_RE.match(line)]
+
+
+def _runner_line(body):
+    for line in _unfenced_lines(body):
+        m = _RUNNER_LINE_RE.match(line.strip())
+        if m:
+            return m.group(1).lower()
+    return ""
+
+
+def collect_hollow_rows(comments):
+    """(sha, runner) from the note's own marker line only.
+    A swarm-hollow line inside a fenced why is not a head.
+    checks=fail counts immediately. Two different logins on one head
+    also count. runner is the runner= line, not the shared GitHub login."""
+    qualified = {}
+    login_hits = {}
     for c in comments or []:
-        if (c.get("body") or "").lstrip().lower().startswith("superseded"):
+        body = c.get("body") or ""
+        if body.lstrip().lower().startswith("superseded"):
             continue
         if not runner_comment_trusted(c):
             continue
-        body = c.get("body") or ""
-        m = _HOLLOW_ISSUE_RE.search(body)
-        if m:
-            heads.add(m.group(2).lower())
-        m = _triage_match(c)
-        if not m or m.group(2) != "hollow":
-            continue
-        sha = m.group(1).lower()
-        checks = m.group(3) or ""
-        if checks == "fail":
-            heads.add(sha)
+        who = _runner_line(body)
+        for line in note_marker_lines(body):
+            m = _HOLLOW_ISSUE_RE.search(line)
+            if m:
+                sha = _full_sha(m.group(2))
+                runner = (m.group(3) or who or "").lower()
+                if sha:
+                    qualified.setdefault(sha, set()).add(runner)
+                continue
+            m = _TRIAGE_CLASS_RE.search(line)
+            if not m or m.group(2) != "hollow":
+                continue
+            sha = _full_sha(m.group(1))
+            if not sha:
+                continue
+            checks = m.group(3) or ""
+            if checks == "fail":
+                qualified.setdefault(sha, set()).add(who)
+            else:
+                login = comment_author_login(c).lower()
+                if login:
+                    login_hits.setdefault(sha, set()).add(login)
+    for sha, logins in login_hits.items():
+        if len([r for r in logins if r]) >= 2:
+            qualified.setdefault(sha, set()).add("")
+    rows = []
+    for sha, runners in qualified.items():
+        if not runners:
+            rows.append((sha, ""))
         else:
-            login = comment_author_login(c).lower()
-            if login:
-                runners_by_head.setdefault(sha, set()).add(login)
-    for sha, runners in runners_by_head.items():
-        if len([r for r in runners if r]) >= 2:
-            heads.add(sha)
-    return heads
+            for runner in runners:
+                rows.append((sha, runner))
+    return rows
 
 
-def _hollow_key(repo, number):
-    return "hollow:%s:%s" % (_cooldown_key(repo, number), runner_name())
+def collect_hollow_heads(comments):
+    """Distinct hollow head SHAs. See collect_hollow_rows."""
+    return set(sha for sha, _runner in collect_hollow_rows(comments))
+
+
+def _hollow_issue_key(repo, number):
+    return "hollow-issue:%s" % _cooldown_key(repo, number)
+
+
+def _hollow_rows_from_file(repo, number):
+    row = load_cooldowns().get(_hollow_issue_key(repo, number))
+    if not isinstance(row, dict):
+        return []
+    out = []
+    for item in row.get("heads") or []:
+        if isinstance(item, dict):
+            sha = _full_sha(item.get("sha"))
+            who = (item.get("runner") or "").strip().lower()
+        else:
+            sha = _full_sha(item)
+            who = ""
+        if sha:
+            out.append((sha, who))
+    return out
 
 
 def local_hollow_heads(repo, number):
-    row = load_cooldowns().get(_hollow_key(repo, number))
-    if not isinstance(row, dict):
-        return set()
-    return set(h for h in (_full_sha(x) for x in (row.get("heads") or [])) if h)
+    return set(sha for sha, _who in _hollow_rows_from_file(repo, number))
 
 
-def record_hollow_head(repo, number, sha):
-    """Remember a hollow head for this issue across PR closes."""
+def local_runner_hollow_heads(repo, number, runner=None):
+    who = (runner or runner_name()).strip().lower()
+    return set(sha for sha, r in _hollow_rows_from_file(repo, number) if r == who)
+
+
+def record_hollow_head(repo, number, sha, runner=""):
+    """Remember a hollow head for this issue after the PR is closed.
+    The cap is per issue (every runner) and per runner."""
     sha = _full_sha(sha)
-    if not sha:
+    if not sha or not repo:
         return set()
+    who = (runner or "").strip().lower()
     data = load_cooldowns()
-    key = _hollow_key(repo, number)
-    row = data.get(key) if isinstance(data.get(key), dict) else {}
-    heads = [h for h in (row.get("heads") or []) if _full_sha(h)]
-    if sha not in heads:
-        heads.append(sha)
-    row = {"heads": heads[-20:], "count": len(set(heads))}
-    data[key] = row
+    key = _hollow_issue_key(repo, number)
+    rows = _hollow_rows_from_file(repo, number)
+    if not any(h == sha and r == who for h, r in rows):
+        rows.append((sha, who))
+    rows = rows[-40:]
+    data[key] = {
+        "heads": [{"sha": h, "runner": r} for h, r in rows],
+        "count": len(set(h for h, _r in rows)),
+    }
     atomic_write_json(cooldowns_path(), data)
-    return set(heads)
+    return set(h for h, _r in rows)
 
 
 def hollow_from_collab():
@@ -3800,21 +3899,92 @@ def hollow_from_collab():
         "1", "true", "yes", "on")
 
 
-def head_commit_owned(pr):
+def pushed_shas_path():
+    return home_dir() / "pushed-shas.json"
+
+
+def record_pushed_sha(repo, number, sha):
+    """SHA this runner pushed. Email-mapped commit authors cannot fake it."""
+    sha = _full_sha(sha)
+    if not sha or not repo:
+        return
+    data = load_json_safe(pushed_shas_path(), "pushed")
+    if not isinstance(data, dict):
+        data = {}
+    key = "%s#%s" % (repo, int(number))
+    rows = [h for h in (data.get(key) or []) if _full_sha(h)]
+    if sha not in rows:
+        rows.append(sha)
+    data[key] = rows[-20:]
+    atomic_write_json(pushed_shas_path(), data)
+
+
+def pushed_sha_owned(repo, sha):
+    sha = _full_sha(sha)
+    if not sha or not repo:
+        return False
+    data = load_json_safe(pushed_shas_path(), "pushed")
+    if not isinstance(data, dict):
+        return False
+    prefix = "%s#" % repo
+    for key, rows in data.items():
+        if not str(key).startswith(prefix):
+            continue
+        if sha in [_full_sha(h) for h in (rows or [])]:
+            return True
+    return False
+
+
+def _gh_login(obj):
+    if not isinstance(obj, dict):
+        return ""
+    return (obj.get("login") or "").strip().lower()
+
+
+def _pr_target_repo(pr):
+    base = (pr or {}).get("base") if isinstance(pr, dict) else None
+    repo = base.get("repo") if isinstance(base, dict) else None
+    if isinstance(repo, dict) and (repo.get("full_name") or "").strip():
+        return (repo.get("full_name") or "").strip()
+    return pr_head_repo(pr)
+
+
+def fetch_commit(repo, sha):
+    """GET /repos/{owner}/{repo}/commits/{sha}. Pulls JSON has no commit author."""
+    sha = _full_sha(sha)
+    if not sha:
+        raise ForgeError("commit sha is not full")
+    owner, name = split_repo(repo)
+    _dt, _st, obj, _raw = gh_api(
+        "GET", "repos/%s/%s/commits/%s" % (owner, name, sha), uncached=True)
+    if not isinstance(obj, dict):
+        raise ForgeError("commit %s not an object" % sha[:9])
+    return obj
+
+
+def head_commit_owned(repo, pr):
     """True when this head may feed a hollow re-pick.
-    Default: author and committer are allowlisted and match the PR author.
-    Missing commit identity fails closed."""
+
+    A SHA this runner pushed is enough. Otherwise the commits API
+    author.login and committer.login must be allowlisted and the author
+    must match the PR author. GET /pulls does not carry head.commit.
+    Missing identity fails closed. SWARM_HOLLOW_FROM_COLLAB stays off
+    unless Brian sets it."""
     if hollow_from_collab():
         return True
-    head = (pr or {}).get("head") if isinstance(pr, dict) else None
-    commit = {}
-    if isinstance(head, dict):
-        commit = head.get("commit") or {}
-    if not commit:
-        commit = (pr or {}).get("head_commit") or {}
-    author = ((commit.get("author") or {}).get("login") or "").strip().lower()
-    committer = ((commit.get("committer") or {}).get("login") or "").strip().lower()
-    pr_author = (((pr or {}).get("user") or {}).get("login") or "").strip().lower()
+    sha = _full_sha(_pr_head_ref_sha(pr or {})[1])
+    if not sha or not repo:
+        return False
+    if pushed_sha_owned(repo, sha):
+        return True
+    try:
+        commit = fetch_commit(repo, sha)
+    except ForgeError as e:
+        log("hollow re-pick skipped: commit %s: %s" % (sha[:9], e))
+        return False
+    author = _gh_login(commit.get("author"))
+    committer = _gh_login(commit.get("committer"))
+    pr_author = _gh_login((pr or {}).get("user"))
     allowed = known_runner_logins()
     if not author or author not in allowed:
         return False
@@ -3826,14 +3996,21 @@ def head_commit_owned(pr):
 
 
 def hollow_repick_ok(number, prs, comments_for, now=None, extra_heads=None):
-    """True when every open PR for number is a qualified hollow swarm draft
-    on this runner's own branch, fewer than HOLLOW_HEAD_CAP distinct hollow
-    heads have ever been recorded for the issue, and the fleet cooldown has
-    elapsed. extra_heads carries heads from closed PRs and the local file.
-    A collaborator head does not count unless SWARM_HOLLOW_FROM_COLLAB=1."""
+    """True when every open same-repo PR for number is a qualified hollow
+    swarm draft, this runner owns one of those branches, fewer than
+    HOLLOW_HEAD_CAP distinct hollow heads exist for the issue (every
+    runner) and for this runner, and the fleet cooldown has elapsed.
+    Seeing a hollow head records it, so closing the PR does not reset
+    the cap. A collaborator head does not drive a re-pick unless
+    SWARM_HOLLOW_FROM_COLLAB=1."""
+    target = ""
     related = []
     for pr in prs or []:
         if not isinstance(pr, dict):
+            continue
+        if not target:
+            target = _pr_target_repo(pr)
+        if target and not pr_same_repo(pr, target):
             continue
         ref, _sha = _pr_head_ref_sha(pr)
         nums = referenced_issue_numbers(pr.get("title"), pr.get("body"), ref)
@@ -3844,7 +4021,11 @@ def hollow_repick_ok(number, prs, comments_for, now=None, extra_heads=None):
             related.append(pr)
     if not related:
         return False
-    heads = set(extra_heads or [])
+    issue_heads = set(extra_heads or [])
+    mine = set()
+    if target:
+        issue_heads |= local_hollow_heads(target, number)
+        mine |= local_runner_hollow_heads(target, number)
     times = []
     for pr in related:
         try:
@@ -3855,27 +4036,90 @@ def hollow_repick_ok(number, prs, comments_for, now=None, extra_heads=None):
             return False
         ref, sha = _pr_head_ref_sha(pr)
         sha = _full_sha(sha)
-        if _branch_runner(ref)[0] != runner_name():
-            continue
-        if not head_commit_owned(pr):
-            log("hollow re-pick skipped: head commit is not the runner identity")
-            return False
-        heads |= collect_hollow_heads(comments)
+        who = _branch_runner(ref)[0]
+        found = set(collect_hollow_heads(comments))
         if sha:
-            heads.add(sha)
+            found.add(sha)
+        issue_heads |= found
+        if target:
+            for h in found:
+                record_hollow_head(target, number, h, runner=who)
+        if who == runner_name():
+            if not head_commit_owned(target, pr):
+                log("hollow re-pick skipped: head commit is not the runner identity")
+                return False
+            mine |= found
         for c in comments or []:
             when = _comment_when(c)
-            if when and (_triage_match(c) or _HOLLOW_ISSUE_RE.search(c.get("body") or "")):
-                times.append(when)
-    if len(heads) >= HOLLOW_HEAD_CAP:
-        log("hollow re-pick cap %s reached for #%s (%s heads)" % (
-            HOLLOW_HEAD_CAP, number, len(heads)))
+            if not when:
+                continue
+            for line in note_marker_lines(c.get("body") or ""):
+                if _TRIAGE_CLASS_RE.search(line) or _HOLLOW_ISSUE_RE.search(line):
+                    times.append(when)
+                    break
+    if len(issue_heads) >= HOLLOW_HEAD_CAP or len(mine) >= HOLLOW_HEAD_CAP:
+        log("hollow re-pick cap %s reached for #%s (%s issue heads, %s ours)" % (
+            HOLLOW_HEAD_CAP, number, len(issue_heads), len(mine)))
         return False
     if times and _fleet_window_active(times, now):
         return False
     ours = runner_name()
     if not any(_branch_runner(_pr_head_ref_sha(pr)[0])[0] == ours for pr in related):
         return False
+    return True
+
+
+def hollow_cap_blocks(repo, number):
+    """True when this issue already has HOLLOW_HEAD_CAP hollow heads.
+    Used when no open PR remains, so closing a PR cannot reset the cap.
+    An unreadable issue comment list blocks (fail closed)."""
+    heads = set(local_hollow_heads(repo, number))
+    mine = set(local_runner_hollow_heads(repo, number))
+    try:
+        _, comments = get_comments(repo, number, uncached=True)
+    except ForgeError as e:
+        log("hollow cap #%s unreadable, blocking: %s" % (number, e))
+        return True
+    for sha, who in collect_hollow_rows(comments):
+        heads.add(sha)
+        record_hollow_head(repo, number, sha, runner=who)
+        if who == runner_name():
+            mine.add(sha)
+    if len(heads) >= HOLLOW_HEAD_CAP or len(mine) >= HOLLOW_HEAD_CAP:
+        log("hollow cap %s blocks #%s (%s heads)" % (HOLLOW_HEAD_CAP, number, len(heads)))
+        return True
+    return False
+
+
+def post_hollow_marker(repo, issue, sha):
+    """Signed swarm-hollow comment on the issue, plus the local record.
+    The comment outlives the PR. A second post for the same head is skipped."""
+    sha = _full_sha(sha)
+    if not sha:
+        return False
+    issue = int(issue)
+    who = runner_name()
+    record_hollow_head(repo, issue, sha, runner=who)
+    marker = "swarm-hollow v=1 issue=%s head=%s runner=%s" % (issue, sha, who)
+    try:
+        _, comments = get_comments(repo, issue, uncached=True)
+    except ForgeError as e:
+        log("hollow marker unread on #%s: %s" % (issue, e))
+        return False
+    for c in comments or []:
+        body = c.get("body") or ""
+        if body.lstrip().lower().startswith("superseded"):
+            continue
+        if not runner_comment_trusted(c):
+            continue
+        for line in note_marker_lines(body):
+            m = _HOLLOW_ISSUE_RE.search(line)
+            if m and _full_sha(m.group(2)) == sha:
+                return False
+    if not comments_allowed():
+        return False
+    post_comment(repo, issue, signed_note(marker, "hollow head"))
+    log("hollow marker issue #%s head %s" % (issue, sha[:9]))
     return True
 
 
@@ -3975,6 +4219,9 @@ def candidate_issues(repo, limit=None):
         # #608: an issue whose open PRs are all triage-hollow swarm drafts
         # can be picked again. Any other open PR still blocks it.
         if n in refs and n not in hollow_ok:
+            continue
+        if n not in refs and hollow_cap_blocks(repo, n):
+            log("candidate #%s skipped: hollow head cap" % n)
             continue
         if n in hollow_ok:
             log("candidate #%s eligible: open PR classified hollow" % n)
@@ -4569,37 +4816,80 @@ def parse_why(text):
 
 
 _URL_RE = re.compile(r"(?i)\bhttps?://\S+")
-_MARKER_LINE_RE = re.compile(r"(?i)^\s*swarm-(triage|review|lease)\s+v=1\b")
 
 
-def sanitize_public_model_text(text, one_line=False, limit=160):
-    """Neutralize mentions, links, and forged marker lines in model text."""
+def _sanitize_unfenced(text, strip_markup):
+    """Mentions, links, and forged marker lines. Markup characters are
+    stripped only for a one-line why. A fenced block is left alone."""
     text = strip_think(text or "")
     text = text.replace("@", "(at)")
     text = _URL_RE.sub("[link]", text)
     text = text.replace("](", "] (")
-    text = text.replace("![", "[")
     text = re.sub(r"(?i)<https?://", "<link ", text)
-    text = text.replace("<", "(").replace(">", ")")
     text = re.sub(r"(?i)\bwww\.", "www ", text)
-    text = text.replace("//", "/ /")
     text = re.sub(
         r"\b([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)#(\d+)\b",
         r"\1 \2 #\3", text)
-    text = text.replace("*", "")
-    text = text.replace("_", " ")
-    text = text.replace("[", "(").replace("]", ")")
+    if strip_markup:
+        text = text.replace("![", "[")
+        text = text.replace("<", "(").replace(">", ")")
+        text = text.replace("//", "/ /")
+        text = text.replace("*", "")
+        text = text.replace("_", " ")
+        text = text.replace("[", "(").replace("]", ")")
     kept = []
     for line in text.splitlines():
         if _MARKER_LINE_RE.match(line):
             continue
         kept.append(line)
-    text = "\n".join(kept)
+    return "\n".join(kept)
+
+
+def sanitize_public_model_text(text, one_line=False, limit=160, strip_markup=None):
+    """Neutralize mentions and links. Strip _ * [ ] < > only on a one-line
+    why or other unfenced text when strip_markup is set. Fence interiors
+    stay intact, because the fence already makes them inert."""
+    if strip_markup is None:
+        strip_markup = bool(one_line)
+    text = text or ""
     if one_line:
+        text = _sanitize_unfenced(text, True)
         text = " ".join(text.split())
         if limit:
             text = text[:limit]
-    return ascii_clean(redact(text))
+        return ascii_clean(redact(text))
+    lines_out = []
+    pending = []
+    fence_char = ""
+    fence_len = 0
+
+    def flush_pending():
+        if not pending:
+            return
+        cleaned = _sanitize_unfenced("\n".join(pending), strip_markup)
+        if cleaned:
+            lines_out.extend(cleaned.split("\n"))
+        pending.clear()
+
+    for raw in text.splitlines():
+        line = raw.strip()
+        if fence_char:
+            lines_out.append(raw)
+            m = re.match(r"^([`~]+)\s*$", line)
+            if m and m.group(1)[0] == fence_char and len(m.group(1)) >= fence_len:
+                fence_char = ""
+                fence_len = 0
+            continue
+        m = re.match(r"^([`~]{3,})(?:\s+\S.*)?$", line)
+        if m:
+            flush_pending()
+            fence_char = m.group(1)[0]
+            fence_len = len(m.group(1))
+            lines_out.append(raw)
+            continue
+        pending.append(raw)
+    flush_pending()
+    return ascii_clean(redact("\n".join(lines_out)))
 
 
 def fence_unclosable(text):
@@ -4614,8 +4904,12 @@ def fence_unclosable(text):
 
 def guard_model_text(text, nonce, min_len=None):
     """Sanitize, then run the draft gate. Raises DraftRejected on a hit.
-    min_len 0 skips the length check (a one-line why)."""
-    clean = sanitize_public_model_text(text or "", one_line=(min_len == 0), limit=160 if min_len == 0 else 0)
+    min_len 0 is a one-line why and strips markup. A longer body keeps
+    underscores and brackets; the caller fences it."""
+    one_line = min_len == 0
+    clean = sanitize_public_model_text(
+        text or "", one_line=one_line, limit=160 if one_line else 0,
+        strip_markup=one_line)
     validate_draft(clean, nonce or "", "", min_len=0 if min_len == 0 else min_len)
     return clean
 
@@ -4717,14 +5011,16 @@ def rotate_work(items):
     return items[i:] + items[:i]
 
 
-def _fenced_or_withheld(text, kind="DRAFT"):
+def _fenced_or_withheld(text, kind="DRAFT", nonce=None):
     """Fence untrusted text. A marker or nonce inside it is withheld
-    instead of failing the whole pass."""
+    instead of failing the whole pass. The nonce is the pass nonce."""
     shown = cap_text(text or "", _int_env("SWARM_TRIAGE_CHARS", 12000))
     try:
-        return wrap_untrusted(kind, shown)
+        return wrap_untrusted(kind, shown, nonce=nonce)
     except DraftRejected:
-        return "(untrusted %s withheld: fence or nonce)\n" % kind, secrets.token_hex(8)
+        if not nonce:
+            nonce = secrets.token_hex(8)
+        return "(untrusted %s withheld: fence or nonce)\n" % kind, nonce
 
 
 def _comment_id(comment):
@@ -4751,7 +5047,9 @@ def strike_own_comment(repo, comment_id, body):
         log("strike comment %s: %s" % (comment_id, e))
 
 
-def _earlier_matches(comments, head, kind, regex, my_id):
+def _earlier_matches(comments, head, kind, regex, my_id, max_age_sec=None, now=None):
+    """Earlier trusted markers for this head. max_age_sec ignores a stale
+    lease so a dead comment cannot delete the one we just posted."""
     want = (head or "").lower()
     found = []
     for c in comments or []:
@@ -4764,6 +5062,13 @@ def _earlier_matches(comments, head, kind, regex, my_id):
             continue
         if not runner_comment_trusted(c):
             continue
+        if max_age_sec is not None:
+            when = _comment_when(c)
+            if when is None:
+                continue
+            age = ((now or server_now()) - when).total_seconds()
+            if age >= max_age_sec:
+                continue
         cid = _comment_id(c)
         if my_id and cid and cid < int(my_id):
             found.append(c)
@@ -4797,16 +5102,30 @@ def _viewer_login():
     return ""
 
 
+def _lease_runner(match):
+    if not match or not match.lastindex or match.lastindex < 3:
+        return ""
+    return (match.group(3) or "").strip().lower()
+
+
 def acquire_score_lease(repo, number, head, kind):
-    """Lease for one head. A fresh lease of ours is reused. A stale lease
-    is struck so a dead runner cannot hold the head. Returns the comment
-    id we hold, or None if another fresh lease wins."""
+    """Lease for one head, keyed by runner= not by the shared GitHub login.
+
+    A fresh lease of this runner is reused. Another runner's fresh lease
+    is a loss, and this pass does not delete it. A stale lease is struck
+    so it cannot win the post-then-compare step. Returns the comment id
+    this pass holds, or None."""
     if mode() not in ("triage", "review"):
         return None
     _, comments = get_comments(repo, number, uncached=True)
-    me = _viewer_login()
+    try:
+        require_forge_clock("score lease")
+    except ForgeClockUnknown as e:
+        log("score lease deferred: %s" % e)
+        return None
     now = server_now()
     ttl = _lease_ttl_sec()
+    me = runner_name()
     for c in comments or []:
         body = c.get("body") or ""
         if body.lstrip().lower().startswith("superseded"):
@@ -4819,23 +5138,25 @@ def acquire_score_lease(repo, number, head, kind):
         when = _comment_when(c)
         age = (now - when).total_seconds() if when else None
         stale = age is None or age >= ttl
-        author = comment_author_login(c).lower()
-        if me and author == me:
+        held_by = _lease_runner(m)
+        if held_by == me:
             if not stale:
                 log("reusing %s lease %s on #%s" % (kind, c.get("id"), number))
                 return c.get("id")
             strike_own_comment(repo, c.get("id"), body)
             continue
         if not stale:
-            log("lost %s lease on #%s to %s" % (kind, number, author or "?"))
+            log("lost %s lease on #%s to runner %s" % (kind, number, held_by or "?"))
             return None
+        strike_own_comment(repo, c.get("id"), body)
     lease_jitter()
-    marker = "swarm-lease v=1 head=%s kind=%s" % (head, kind)
+    marker = "swarm-lease v=1 head=%s kind=%s runner=%s" % (head, kind, me)
     body = signed_note(marker, "scoring lease")
     _dt, _st, obj, _raw = post_comment(repo, number, body)
     my_id = obj.get("id") if isinstance(obj, dict) else None
     _, comments = get_comments(repo, number, uncached=True)
-    if _earlier_matches(comments, head, kind, _LEASE_RE, my_id):
+    if _earlier_matches(
+            comments, head, kind, _LEASE_RE, my_id, max_age_sec=ttl, now=now):
         strike_own_comment(repo, my_id, body)
         log("lost %s lease on #%s" % (kind, number))
         return None
@@ -4846,8 +5167,7 @@ def acquire_score_lease(repo, number, head, kind):
 
 
 def release_score_lease(repo, comment_id):
-    """Drop a lease we hold. Skip paths must call this so the next pass
-    can score instead of posting and deleting forever."""
+    """Drop the lease this pass holds. Never called with another runner's id."""
     if not comment_id or comment_id is True:
         return
     strike_own_comment(repo, comment_id, "swarm-lease released")
@@ -5011,6 +5331,13 @@ def _triage_score(repo, pr, number, sha, ref):
     my_id = obj.get("id") if isinstance(obj, dict) else None
     if not dedup_posted_marker(repo, number, sha, _TRIAGE_HEAD_RE, my_id, body):
         return "skip"
+    if scored["class"] == "hollow":
+        issue_n = _branch_runner(ref)[1]
+        if issue_n:
+            try:
+                post_hollow_marker(repo, issue_n, sha)
+            except ForgeError as e:
+                log("hollow marker not posted for #%s: %s" % (issue_n, e))
     log("triage posted #%s %s" % (number, marker))
     return "posted"
 
@@ -5148,43 +5475,15 @@ def _review_score(repo, pr, number, sha, base):
     marker = "swarm-review v=1 head=%s event=COMMENT" % sha
     extra = "base: %s\nvia: %s\n\n%s" % (base, how, fence_unclosable(cap_text(guarded, 6000)))
     body = signed_note(marker, extra)
-    posted = post_pr_review(repo, number, sha, body)
-    review_id = None
-    if isinstance(posted, tuple) and isinstance(posted[2], dict):
-        review_id = posted[2].get("id")
-    if review_id and _earlier_review(get_pr_reviews(repo, number), sha, review_id):
-        _dismiss_review(repo, number, review_id)
-        log("dropped duplicate review on #%s" % number)
+    # COMMENT reviews cannot be dismissed, and the dismissals endpoint is
+    # a different token scope. The lease plus this last check stop a second
+    # post. Do not PUT .../reviews/{id}/events.
+    if review_exists(get_pr_reviews(repo, number), sha):
+        log("review skip #%s: reviewed before post" % number)
         return "skip"
+    post_pr_review(repo, number, sha, body)
     log("review posted #%s %s" % (number, marker))
     return "posted"
-
-
-def _earlier_review(reviews, head, my_id):
-    want = (head or "").lower()
-    try:
-        mine = int(my_id)
-    except (TypeError, ValueError):
-        return False
-    for rev in reviews or []:
-        m = _REVIEW_HEAD_RE.search(rev.get("body") or "")
-        if not m or m.group(1).lower() != want:
-            continue
-        if not runner_comment_trusted(rev):
-            continue
-        if _comment_id(rev) and _comment_id(rev) < mine:
-            return True
-    return False
-
-
-def _dismiss_review(repo, number, review_id):
-    owner, name = split_repo(repo)
-    try:
-        gh_api("PUT", "repos/%s/%s/pulls/%s/reviews/%s/events" % (
-            owner, name, int(number), int(review_id)),
-            data={"event": "DISMISS", "message": "superseded duplicate"})
-    except ForgeError as e:
-        log("dismiss duplicate review %s: %s" % (review_id, e))
 
 
 def _review_targets(repo):

@@ -3,6 +3,7 @@
 from __future__ import print_function
 
 import os
+import re
 import unittest
 from unittest import mock
 
@@ -19,8 +20,29 @@ def _user(login, typ="User"):
     return {"login": login, "type": typ}
 
 
+def _gh_commit(sha, login):
+    """Shape of GET /repos/{owner}/{repo}/commits/{sha}. author.login is
+    top-level. commit.author is name and email, and has no login."""
+    person = None if not login else {"login": login, "id": 9, "type": "User"}
+    return {
+        "sha": sha,
+        "html_url": "https://github.com/brianreborn/familia/commit/" + sha,
+        "commit": {
+            "message": "swarm/box: first pass\n",
+            "author": {"name": "Swarm", "email": "s@example.com", "date": "2026-11-17T00:00:00Z"},
+            "committer": {"name": "Swarm", "email": "s@example.com", "date": "2026-11-17T00:00:00Z"},
+        },
+        "author": person,
+        "committer": person,
+        "parents": [],
+    }
+
+
 def _pr(number=700, sha=SHA, draft=True, ref="swarm/box/616", title=None, body=None,
         repo="brianreborn/familia", login="swarm-bot"):
+    """Shape of GET /repos/{owner}/{repo}/pulls. head has no commit object.
+    head.user is the head repo owner, not the commit author."""
+    owner = repo.split("/")[0]
     return {
         "number": number,
         "draft": draft,
@@ -28,15 +50,18 @@ def _pr(number=700, sha=SHA, draft=True, ref="swarm/box/616", title=None, body=N
         "body": body or "Refs #616\n",
         "user": _user(login),
         "head": {
+            "label": "%s:%s" % (owner, ref),
             "ref": ref,
             "sha": sha,
-            "repo": {"full_name": repo},
-            "commit": {
-                "author": {"login": login},
-                "committer": {"login": login},
-            },
+            "user": _user(owner),
+            "repo": {"full_name": repo, "name": repo.split("/")[-1], "private": False},
         },
-        "base": {"ref": "main", "sha": BASE},
+        "base": {
+            "label": "brianreborn:main",
+            "ref": "main",
+            "sha": BASE,
+            "repo": {"full_name": "brianreborn/familia", "name": "familia", "private": False},
+        },
     }
 
 
@@ -58,6 +83,13 @@ class SwarmModes(unittest.TestCase):
         os.environ["SWARM_RUNNER_LOGINS"] = "swarm-bot,box"
         os.environ["SWARM_LEASE_JITTER_SEC"] = "0"
         self.sp._FORCED_DRY = False
+        self.sp._FORGE_DATE_OK = True
+        self._real_fetch = self.sp.fetch_commit
+        self._fetch = mock.patch.object(
+            self.sp, "fetch_commit",
+            side_effect=lambda repo, sha: _gh_commit(sha, "swarm-bot"))
+        self._fetch.start()
+        self.addCleanup(self._fetch.stop)
         self.sp._VIEWER_CACHE.clear()
         self.sp._OWNER_CACHE["brianreborn/familia"] = {
             "login": "brianreborn", "id": 1, "fetched": True}
@@ -638,32 +670,36 @@ class SwarmModes(unittest.TestCase):
 
     def test_collaborator_head_does_not_repick(self):
         pr = _pr()
-        pr["head"]["commit"] = {
-            "author": {"login": "collaborator"},
-            "committer": {"login": "collaborator"},
-        }
+        self.assertNotIn("commit", pr["head"])
         hollow = {
-            "body": "swarm-triage v=1 head=%s class=hollow checks=fail\n" % SHA,
+            "body": "swarm-triage v=1 head=%s class=hollow checks=fail\nrunner=box\n" % SHA,
             "user": _user("swarm-bot"),
         }
-        self.assertFalse(self.sp.hollow_repick_ok(616, [pr], lambda n: [hollow]))
+        with mock.patch.object(
+                self.sp, "fetch_commit",
+                side_effect=lambda repo, sha: _gh_commit(sha, "collaborator")):
+            self.assertFalse(self.sp.hollow_repick_ok(616, [pr], lambda n: [hollow]))
         os.environ["SWARM_HOLLOW_FROM_COLLAB"] = "1"
         self.assertTrue(self.sp.hollow_repick_ok(616, [pr], lambda n: [hollow]))
+        os.environ.pop("SWARM_HOLLOW_FROM_COLLAB", None)
+        self.assertFalse(self.sp.hollow_from_collab())
 
     def test_fresh_own_lease_is_reused(self):
         self._review()
         self.sp._VIEWER_CACHE.update({"login": "swarm-bot", "id": 9})
         lease = {
             "id": 5,
-            "body": "swarm-lease v=1 head=%s kind=review\n" % SHA,
+            "body": "swarm-lease v=1 head=%s kind=review runner=box\n" % SHA,
             "user": _user("swarm-bot"),
             "updated_at": "2099-01-01T00:00:00Z",
         }
         with mock.patch.object(self.sp, "get_comments", return_value=(None, [lease])), \
-             mock.patch.object(self.sp, "post_comment") as post:
+             mock.patch.object(self.sp, "post_comment") as post, \
+             mock.patch.object(self.sp, "strike_own_comment") as strike:
             held = self.sp.acquire_score_lease("brianreborn/familia", 700, SHA, "review")
         self.assertEqual(held, 5)
         post.assert_not_called()
+        strike.assert_not_called()
 
     def test_lease_without_id_does_not_score(self):
         self._review()
@@ -685,6 +721,271 @@ class SwarmModes(unittest.TestCase):
                 self.sp.job("brianreborn/familia", 999, 1)
         cool.assert_not_called()
         dl.assert_not_called()
+
+    def test_other_runner_lease_is_not_ours(self):
+        self._review()
+        self.sp._VIEWER_CACHE.update({"login": "swarm-bot", "id": 9})
+        lease = {
+            "id": 5,
+            "body": "swarm-lease v=1 head=%s kind=review runner=galaxy1\n" % SHA,
+            "user": _user("swarm-bot"),
+            "updated_at": "2099-01-01T00:00:00Z",
+        }
+        with mock.patch.object(self.sp, "get_comments", return_value=(None, [lease])), \
+             mock.patch.object(self.sp, "post_comment") as post, \
+             mock.patch.object(self.sp, "strike_own_comment") as strike:
+            held = self.sp.acquire_score_lease("brianreborn/familia", 700, SHA, "review")
+        self.assertIsNone(held)
+        post.assert_not_called()
+        strike.assert_not_called()
+
+    def test_stale_other_lease_does_not_delete_ours(self):
+        self._review()
+        self.sp._VIEWER_CACHE.update({"login": "swarm-bot", "id": 9})
+        stale = {
+            "id": 1,
+            "body": "swarm-lease v=1 head=%s kind=review runner=galaxy1\n" % SHA,
+            "user": _user("swarm-bot"),
+            "updated_at": "2020-01-01T00:00:00Z",
+        }
+        calls = {"n": 0}
+
+        def comments(*_a, **_k):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                return (None, [stale])
+            return (None, [stale, {
+                "id": 8,
+                "body": "swarm-lease v=1 head=%s kind=review runner=box\n" % SHA,
+                "user": _user("swarm-bot"),
+                "updated_at": "2099-01-01T00:00:00Z",
+            }])
+
+        with mock.patch.object(self.sp, "get_comments", side_effect=comments), \
+             mock.patch.object(self.sp, "post_comment", return_value=(None, 201, {"id": 8}, "")) as post, \
+             mock.patch.object(self.sp, "strike_own_comment") as strike:
+            held = self.sp.acquire_score_lease("brianreborn/familia", 700, SHA, "review")
+        self.assertEqual(held, 8)
+        body = post.call_args[0][2]
+        self.assertIn("swarm-lease v=1 head=%s kind=review runner=box" % SHA, body)
+        struck = [c.args[1] for c in strike.call_args_list]
+        self.assertIn(1, struck)
+        self.assertNotIn(8, struck)
+
+    def test_missing_forge_clock_does_not_treat_lease_as_stale(self):
+        self._review()
+        self.sp._FORGE_DATE_OK = False
+        lease = {
+            "id": 5,
+            "body": "swarm-lease v=1 head=%s kind=review runner=box\n" % SHA,
+            "user": _user("swarm-bot"),
+            "updated_at": "2099-01-01T00:00:00Z",
+        }
+        with mock.patch.object(self.sp, "get_comments", return_value=(None, [lease])), \
+             mock.patch.object(self.sp, "post_comment") as post, \
+             mock.patch.object(self.sp, "strike_own_comment") as strike:
+            held = self.sp.acquire_score_lease("brianreborn/familia", 700, SHA, "review")
+        self.assertIsNone(held)
+        post.assert_not_called()
+        strike.assert_not_called()
+
+    def test_commit_api_not_pulls_head(self):
+        pr = _pr(login="swarm-bot")
+        self.assertNotIn("commit", pr["head"])
+        self.assertEqual(pr["head"]["user"]["login"], "brianreborn")
+        seen = []
+
+        def api(method, path, **_k):
+            seen.append((method, path))
+            return (None, 200, _gh_commit(SHA, "swarm-bot"), "")
+
+        with mock.patch.object(self.sp, "fetch_commit", self._real_fetch), \
+             mock.patch.object(self.sp, "gh_api", side_effect=api):
+            self.assertTrue(self.sp.head_commit_owned("brianreborn/familia", pr))
+        self.assertEqual(seen, [("GET", "repos/brianreborn/familia/commits/" + SHA)])
+        nameless = _gh_commit(SHA, None)
+        nameless["commit"]["author"]["name"] = "swarm-bot"
+
+        def api_name(method, path, **_k):
+            return (None, 200, nameless, "")
+
+        with mock.patch.object(self.sp, "fetch_commit", self._real_fetch), \
+             mock.patch.object(self.sp, "gh_api", side_effect=api_name):
+            self.assertFalse(self.sp.head_commit_owned("brianreborn/familia", pr))
+
+    def test_pushed_sha_owns_the_head(self):
+        pr = _pr()
+        with mock.patch.object(self.sp, "fetch_commit", side_effect=self.sp.ForgeError("no")):
+            self.assertFalse(self.sp.head_commit_owned("brianreborn/familia", pr))
+            self.sp.record_pushed_sha("brianreborn/familia", 616, SHA)
+            self.assertTrue(self.sp.head_commit_owned("brianreborn/familia", pr))
+
+    def test_hollow_cap_counts_other_runners_and_records(self):
+        ours = _pr()
+        other = _pr(number=701, sha=OTHER, ref="swarm/galaxy1/616",
+                    title="swarm/galaxy1: first pass for #616")
+        mark = {
+            SHA: {"body": "swarm-triage v=1 head=%s class=hollow checks=fail\nrunner=box\n" % SHA,
+                  "user": _user("swarm-bot")},
+            OTHER: {"body": "swarm-triage v=1 head=%s class=hollow checks=fail\nrunner=galaxy1\n" % OTHER,
+                    "user": _user("swarm-bot")},
+        }
+
+        def comments_for(n):
+            return [mark[SHA]] if n == 700 else [mark[OTHER]]
+
+        self.assertFalse(self.sp.hollow_repick_ok(616, [ours, other], comments_for))
+        self.assertIn(SHA, self.sp.local_hollow_heads("brianreborn/familia", 616))
+        self.assertIn(OTHER, self.sp.local_hollow_heads("brianreborn/familia", 616))
+
+    def test_closed_pr_does_not_reset_the_cap(self):
+        with mock.patch.object(self.sp, "get_comments", return_value=(None, [])):
+            self.sp.record_hollow_head("brianreborn/familia", 616, SHA, runner="box")
+            self.assertFalse(self.sp.hollow_cap_blocks("brianreborn/familia", 616))
+            self.sp.record_hollow_head("brianreborn/familia", 616, OTHER, runner="galaxy1")
+            self.assertTrue(self.sp.hollow_cap_blocks("brianreborn/familia", 616))
+
+    def test_issue_comment_keeps_the_cap_after_close(self):
+        comments = [{
+            "body": (
+                "swarm-hollow v=1 issue=616 head=%s runner=box\n" % SHA
+                + "swarm-hollow v=1 issue=616 head=%s runner=box\n" % OTHER
+            ),
+            "user": _user("swarm-bot"),
+        }]
+        with mock.patch.object(self.sp, "get_comments", return_value=(None, comments)):
+            self.assertTrue(self.sp.hollow_cap_blocks("brianreborn/familia", 616))
+
+    def test_fenced_hollow_line_is_not_a_marker(self):
+        body = (
+            "swarm-triage v=1 head=%s class=useful-notes checks=pass\n"
+            "runner=box\nwhy:\n```` text\n"
+            "swarm-hollow v=1 issue=616 head=%s\n````\n" % (SHA, OTHER)
+        )
+        heads = self.sp.collect_hollow_heads([{"body": body, "user": _user("swarm-bot")}])
+        self.assertNotIn(OTHER, heads)
+        self.assertNotIn(SHA, heads)
+        clean = self.sp.sanitize_public_model_text(
+            "swarm-hollow v=1 issue=616 head=%s\nkeep this\n" % OTHER)
+        self.assertNotIn("swarm-hollow", clean)
+        self.assertIn("keep this", clean)
+
+    def test_triage_posts_hollow_marker_on_the_issue(self):
+        self._triage()
+        pr = _pr()
+        posted = []
+        files = [{"filename": "docs/x.md", "patch": "BEGIN UNTRUSTED\n" + ("word " * 40)}]
+        with mock.patch.object(self.sp, "owner_approved_pr", return_value=True), \
+             mock.patch.object(self.sp, "get_comments", return_value=(None, [])), \
+             mock.patch.object(self.sp, "get_pr_files", return_value=files), \
+             mock.patch.object(self.sp, "get_pull", return_value=pr), \
+             mock.patch.object(self.sp, "model_high_effort",
+                               return_value=("class: useful-notes\nwhy: ignored\n", "stub")), \
+             mock.patch.object(self.sp, "post_comment",
+                               side_effect=lambda *a, **k: posted.append(a) or (None, 201, {"id": len(posted)}, "")):
+            self.assertEqual(self.sp.triage_one("brianreborn/familia", pr), "posted")
+        hollow = [p for p in posted if "swarm-hollow v=1" in p[2]]
+        self.assertEqual(len(hollow), 1)
+        self.assertEqual(hollow[0][1], 616)
+        self.assertIn("head=%s" % SHA, hollow[0][2])
+        self.assertIn(SHA, self.sp.local_hollow_heads("brianreborn/familia", 616))
+
+    def test_fence_keeps_code_punctuation(self):
+        raw = "look at `_reject_truncated` and a * b and left[i]\n"
+        fenced = self.sp.fence_unclosable(raw)
+        clean = self.sp.sanitize_public_model_text("why:\n" + fenced, strip_markup=False)
+        self.assertIn("_reject_truncated", clean)
+        self.assertIn("a * b", clean)
+        self.assertIn("left[i]", clean)
+        why = self.sp.sanitize_public_model_text("**bold** _name_ <img>", one_line=True)
+        self.assertNotIn("*", why)
+        self.assertNotIn("_", why)
+        self.assertNotIn("<", why)
+
+    def test_review_does_not_dismiss(self):
+        self._review()
+        pr = _pr()
+        calls = {"n": 0}
+
+        def reviews(*_a, **_k):
+            calls["n"] += 1
+            if calls["n"] < 3:
+                return []
+            return [{
+                "id": 4,
+                "body": "swarm-review v=1 head=%s event=COMMENT\n" % SHA,
+                "user": _user("swarm-bot"),
+                "commit_id": SHA,
+            }]
+
+        with mock.patch.object(self.sp, "owner_approved_pr", return_value=True), \
+             mock.patch.object(self.sp, "get_pr_reviews", side_effect=reviews), \
+             mock.patch.object(self.sp, "get_comments", return_value=(None, [])), \
+             mock.patch.object(self.sp, "post_comment", return_value=(None, 201, {"id": 1}, "")), \
+             mock.patch.object(self.sp, "fetch_exact_diff", return_value="diff\n"), \
+             mock.patch.object(self.sp, "model_high_effort",
+                               return_value=(("word " * 80), "stub", "abc")), \
+             mock.patch.object(self.sp, "get_pull", return_value=pr), \
+             mock.patch.object(self.sp, "gh_api") as api, \
+             mock.patch.object(self.sp, "post_pr_review") as post:
+            self.assertEqual(self.sp.review_one("brianreborn/familia", pr), "skip")
+        post.assert_not_called()
+        for c in api.call_args_list:
+            path = str(c.args[1]) if len(c.args) > 1 else ""
+            self.assertNotIn("/events", path)
+            self.assertNotIn("/dismissals", path)
+
+    def test_cooldown_read_error_blocks(self):
+        with mock.patch.object(self.sp, "get_comments", side_effect=self.sp.ForgeError("HTTP 500")):
+            self.assertTrue(self.sp.cooldown_active("brianreborn/familia", 616))
+
+    def test_scrub_does_not_eat_urls_or_stall(self):
+        import time
+        with mock.patch("getpass.getuser", return_value="brian"):
+            os.environ["USER"] = "brian"
+            os.environ["LOGNAME"] = "brian"
+            text = self.sp.scrub_leak(
+                "https://github.com/brianreborn/familia/x /opt/models/brian-7b.gguf"
+            )
+        self.assertIn("github.com/brianreborn/familia", text)
+        self.assertIn("brian-7b.gguf", text)
+        t0 = time.time()
+        self.sp.scrub_leak("/" * 40000)
+        self.assertLess(time.time() - t0, 1.0)
+
+    def test_pinned_runners_include_the_fleet(self):
+        from pathlib import Path
+        for name in ("box", "box2", "box3", "miryam", "angel", "galaxy1", "galaxy2", "surface1"):
+            self.assertIn(name, self.sp.known_runner_names())
+        path = Path(__file__).resolve().parents[1] / ".github" / "swarm-runner-logins.txt"
+        text = path.read_text()
+        for name in ("box", "box2", "box3", "miryam", "angel", "galaxy1", "galaxy2", "surface1"):
+            self.assertIn("runner %s" % name, text)
+        os.environ["SWARM_RUNNER_LOGINS_FILE"] = str(path)
+        os.environ["SWARM_RUNNER_LOGINS"] = "electrobrian"
+        pr = _pr(ref="swarm/box2/605", login="electrobrian",
+                 title="swarm/box2: first pass for #605")
+        self.assertTrue(self.sp.pr_branch_trusted(pr))
+        pr616 = _pr(ref="swarm/box2/616", login="electrobrian",
+                    title="swarm/box2: first pass for #616")
+        self.assertTrue(self.sp.pr_branch_trusted(pr616))
+
+    def test_one_nonce_for_the_pass(self):
+        prompts = []
+
+        def fake(prompt, max_tokens=700, thinking=False):
+            prompts.append(prompt)
+            return "class: useful-notes\nwhy: fine\n", "stub"
+
+        with mock.patch.object(self.sp, "model_draft", side_effect=fake):
+            _text, _how, nonce = self.sp.model_high_effort(
+                "INSTRUCTION-LINE", 40, untrusted="BEGIN  UNTRUSTED\nstuff", kind="DRAFT")
+        self.assertTrue(nonce)
+        found = set()
+        for prompt in prompts:
+            found.update(re.findall(r"nonce=([0-9a-fA-F]+)", prompt))
+        self.assertEqual(found, {nonce})
+        self.assertIn("withheld", prompts[0])
 
 
 if __name__ == "__main__":

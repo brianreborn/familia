@@ -12,3 +12,6 @@ runner galaxy2
 runner miryam
 runner angel
 runner box
+runner box2
+runner box3
+runner surface1
