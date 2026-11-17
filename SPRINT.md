@@ -1,6 +1,6 @@
 # Familia v0.4.0 sprint plan
 
-Updated: 2026-11-16 8:46 PM PT (America/Los_Angeles)
+Updated: 2026-11-16 9:26 PM PT (America/Los_Angeles)
 
 This is the current v0.4.0 sprint plan. It keeps the structure of the
 v0.3.0 plan that landed in PR #400, and retargets the work.
@@ -36,6 +36,9 @@ milestone 2 (same naming style) and was not recreated.
 - Merges need two valid reviews of the exact PR head SHA. Signed
   reviewer comments count as reviews when they name that SHA. Only
   risky PRs go to Brian. No force push and no history rewrite.
+- main is branch-protected: PRs are required (admins included), and
+  force pushes are not allowed.
+- HERMES_ACCEPT_LICENSES=1 stays the default.
 - Swarm is paused until #608 (triage policy for the swarm draft PR
   flood) is settled. Do not start, resume, or trigger swarm workers,
   cron, or the fleet coordinator until that policy is set.
@@ -59,8 +62,8 @@ tracker #612.
   "pre-release (targeting v0.4.0)". LFM3-1.7B-Uncensored is the
   single-node default (start.sh when the host has no active topology).
   The checked-in fleet graph still uses qwen35-2b-q4km for nodes.coder
-  on miryam. --tools stays launch-only in v0.4.0 (documented waiver);
-  a persist-across-restart fix is deferred.
+  on miryam. #611 still documents a v0.4.0 waiver that --tools stays
+  launch-only; that waiver is no longer accepted (see must-lands).
   https://github.com/brianreborn/familia/pull/611
 - #614 Pin code-bootstraps-llama.cpp to llama.cpp v1.0.0 (b12359)
   (branch cursor/repin-llama-cpp-v1.0.0-5cac). Re-pins
@@ -76,16 +79,62 @@ tracker #612.
   point pins.txt at b1b770d directly (that SHA is the ggml-org tag, not
   a code-bootstraps commit; see #604 and #612).
 
-Related open item, not done in this sprint-doc PR: #606 asks for a
-revert of direct-to-main commit e9145b1 (message: chore auto-format
-bash scripts via shfmt; the commit added gpu-legacy binaries and
-impedance_report material). A `git revert --no-edit e9145b1` on
-origin/main at 26d9720 did not apply cleanly. Conflicting file:
-impedance_report.txt (modify/delete; later edited in 493634f / PR
-#610). The automatic graph.yaml portion of that revert would also
-roll the llama-b11669-freebsd runtime build line from b12032 back to
-b11669, while install/freebsd/install-familia.sh on main still pins
-LLAMA_TAG=b12032. No revert PR was opened.
+Partial revert of e9145b1 (refs #606): PR #629
+(https://github.com/brianreborn/familia/pull/629), branch
+revert/e9145b1-partial, head 60057a4. It deletes the six gpu-legacy
+binaries, impedance_report.txt, scripts/check_design_impedance.py,
+and scripts/hvvram_task.sh, and drops the later catalog rows for
+those two scripts. graph.yaml is left as on main so the
+llama-b11669-freebsd build line stays at b12032, matching
+install/freebsd/install-familia.sh LLAMA_TAG=b12032. Brian approved
+the partial revert at 9:21 PM PT on 2026-11-16. Related description
+of the junk commit: #620.
+
+## v0.4.0 must-lands (Brian, 2026-11-16 9:21 PM PT)
+
+These must land for v0.4.0. Issue numbers below were searched on
+GitHub on 2026-11-16; items without a matching issue are listed as
+such and are not given a made-up number.
+
+- Fix the #611 launch-only --tools limit. Do not accept the waiver
+  in #611 (docs/known-issues.md on that PR would defer a
+  persist-across-restart fix and tell operators to check live argv
+  and GET /tools after a crash, hand-start, or stale
+  generated/graph-*.yaml). No separate product issue for that fix
+  was found; #611 is the open docs PR that proposed the waiver.
+  https://github.com/brianreborn/familia/pull/611
+- TR-4 fix across the #408 follow-up, #268, and graph_router.
+  #621 is the must-land issue (node.role overrides a fail-closed
+  model for tools and routing; graph_router.nodes_from_graph has
+  the same gap). #546 is the earlier TR-3 residual / TR-4 product
+  issue. #268 is the open routing-graph UX PR (node_type override).
+  #408 itself is already merged (protograph skill). #621 also calls
+  out a #408 follow-up (recipe graph: overriding --graph, so
+  runtime.from_graph bin becomes argv[0] unchecked); no separate
+  issue with that follow-up as its title was found.
+  https://github.com/brianreborn/familia/issues/621
+  https://github.com/brianreborn/familia/issues/546
+  https://github.com/brianreborn/familia/pull/268
+- start.bat --host/--port/--api-key overrides. No dedicated issue
+  was found. Nearby but not the same: #32 (Windows one-click
+  installer), #419 (API key file layouts), and closed #17 (docs
+  once cited a missing start.bat).
+- A FreeBSD build and smoke test on llama.cpp b12359. The pin work
+  is #612 (tracker) and open PR #614. No dedicated "FreeBSD b12359
+  smoke" issue was found. The closest open smoke issue is #552
+  (smoke-test main on primary Unix platforms), which is not
+  specific to b12359.
+  https://github.com/brianreborn/familia/issues/612
+  https://github.com/brianreborn/familia/pull/614
+- Wire the 83e7562 validate_draft into job(), as a release-blocker.
+  #616 is that issue: validate_draft exists on main but job() never
+  calls it, so #580's protection is dead code and model drafts can
+  still reach PRs unchecked. Related open follow-up: #624 (#580
+  gaps beyond #616: truncation check, reject/release/backoff,
+  preamble and fence coverage). #605 (CI collection path) remains
+  open even though the path fix is already on main.
+  https://github.com/brianreborn/familia/issues/616
+  https://github.com/brianreborn/familia/issues/624
 
 ## 1. Landed 2026-11-10 (do not redo)
 
@@ -323,11 +372,15 @@ list. Swarm stays paused until #608 is settled.
 
 ## 8. Open PRs still targeting familia (retarget note)
 
-Checked 2026-11-16 against GitHub. Against main (keep, do not move
-to development):
+Checked 2026-11-16 against GitHub, plus PRs opened later that day.
+Against main (keep, do not move to development):
 
+- #629 partial revert of e9145b1 (open; keep graph.yaml at b12032;
+  refs #606).
+- #615 this sprint-doc PR (open).
 - #614 llama.cpp v1.0.0 pin (open; see the target section above).
-- #611 v0.4.0 docs alignment (open; docs only).
+- #611 v0.4.0 docs alignment (open; docs only; --tools waiver is
+  not accepted, see must-lands).
 - #412 App catalog (draft; #397).
 - #321 Android packaging (needs reconcile; see Hermes Wiring).
 - #300 Windows Uninstall/Purge (draft; closes #32).
@@ -411,11 +464,18 @@ The 2026-11-10 assignments are left as recorded.
 
 ## 11. Sources
 
-- This update (2026-11-16 8:46 PM PT): GitHub milestones 1 (v0.3.0)
-  and 2 (v0.4.0); tags v0.3.0-alpha and v0.3.0-alpha.1; origin/main
-  at 26d9720; issue/PR reads of #580, #604, #605, #606, #608, #611,
-  #612, and #614; PR state checks for #163-#170, #200, #249, #250,
-  #268, #286, #300, #321, #363, #370, #412.
+- This update (2026-11-16 9:26 PM PT): Brian's v0.4.0 must-lands
+  (9:21 PM PT); PR #629 partial revert of e9145b1; issue/PR reads
+  of #17, #32, #408, #419, #546, #552, #580, #605, #606, #611,
+  #612, #614, #616, #620, #621, #624, and #629. No dedicated issues
+  were found for the --tools persist fix (other than #611's waiver
+  text), start.bat --host/--port/--api-key overrides, a FreeBSD
+  b12359 smoke test, or a standalone #408 follow-up issue.
+- Earlier this evening (2026-11-16 8:46 PM PT): GitHub milestones 1
+  (v0.3.0) and 2 (v0.4.0); tags v0.3.0-alpha and v0.3.0-alpha.1;
+  origin/main at 26d9720; issue/PR reads of #580, #604, #605, #606,
+  #608, #611, #612, and #614; PR state checks for #163-#170, #200,
+  #249, #250, #268, #286, #300, #321, #363, #370, #412.
 - Prior plan on main: PR #400 (docs: v0.3.0 sprint plan from the
   2026-11-10 worker sweep).
 - Stale earlier plan: PR #286 (docs/current-sprint-2026-11-02),
