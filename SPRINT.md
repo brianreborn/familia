@@ -1,6 +1,6 @@
 # Familia v0.4.0 sprint plan
 
-Updated: 2026-11-16 9:33 PM PT (America/Los_Angeles)
+Updated: 2026-11-16 9:45 PM PT (America/Los_Angeles)
 
 This is the current v0.4.0 sprint plan. It keeps the structure of the
 v0.3.0 plan that landed in PR #400, and retargets the work.
@@ -38,7 +38,9 @@ milestone 2 (same naming style) and was not recreated.
   reviewer comments count as reviews when they name that SHA. Only
   risky PRs go to Brian. No force push and no history rewrite.
 - main is branch-protected: PRs are required (admins included), and
-  force pushes are not allowed.
+  force pushes are not allowed. GitHub requires a PR but 0 approvals
+  and no status checks, so the two-review rule and green CI are
+  enforced by reviewers and process, not by branch protection.
 - HERMES_ACCEPT_LICENSES=1 stays the default.
 - Swarm is paused until #608 (triage policy for the swarm draft PR
   flood) is settled. Do not start, resume, or trigger swarm workers,
@@ -85,13 +87,16 @@ tracker #612.
   a code-bootstraps commit; see #604 and #612).
 
 Partial revert of e9145b1 (refs #606): PR #629
-(https://github.com/brianreborn/familia/pull/629), branch
-revert/e9145b1-partial, head 60057a4. It deletes the six gpu-legacy
+(https://github.com/brianreborn/familia/pull/629), merged as 9344bd1;
+it closed #620. It deletes the six gpu-legacy
 binaries, impedance_report.txt, scripts/check_design_impedance.py,
 and scripts/hvvram_task.sh, and drops the later catalog rows for
 those two scripts. graph.yaml is left as on main so the
-llama-b11669-freebsd build line stays at b12032, matching
-install/freebsd/install-familia.sh LLAMA_TAG=b12032. Brian approved
+llama-b11669-freebsd build line stays on the same b12032 build as
+install/freebsd/install-familia.sh LLAMA_TAG=b12032. The commits
+differ: graph.yaml names code-bootstraps fork commit e529969 (the
+6ab58d7 LLAMA_COMMIT), while the installer uses the ggml-org b12032
+tag (dde879b). Brian approved
 the partial revert at 9:21 PM PT on 2026-11-16. Related description
 of the junk commit: #620.
 
@@ -174,6 +179,19 @@ are not lost under the "no known issues ship" rule.
   https://github.com/brianreborn/familia/issues/622
 - #623 scripts/watchdog_test.sh never times out.
   https://github.com/brianreborn/familia/issues/623
+- #625 hermes-escalation-config.sh: exec in a sourced function kills
+  the caller's shell; caller flags lose to env defaults (beyond #617).
+  https://github.com/brianreborn/familia/issues/625
+- #626 ec08176 leftovers beyond #618/#619/#623: fabricated
+  measured: true hosts in generated graphs; stale UNIFIED_ALIAS_DOC.md.
+  https://github.com/brianreborn/familia/issues/626
+- #627 gpu-legacy POSIX port (beyond #622): unbounded fence spin,
+  FreeBSD libcuda claim, ms-truncated timer, no OpenMP, fake latency
+  on timeout.
+  https://github.com/brianreborn/familia/issues/627
+- #628 pins.txt: enforce full 40-hex SHAs and verify every pin exists
+  upstream in CI.
+  https://github.com/brianreborn/familia/issues/628
 
 ## 1. Landed 2026-11-10 (do not redo)
 
@@ -416,8 +434,8 @@ list. Swarm stays paused until #608 is settled.
 Checked 2026-11-16 against GitHub, plus PRs opened later that day.
 Against main (keep, do not move to development):
 
-- #629 partial revert of e9145b1 (open; keep graph.yaml at b12032;
-  refs #606).
+- #629 partial revert of e9145b1 (merged as 9344bd1; graph.yaml kept
+  on the b12032 build; refs #606; closed #620).
 - #615 this sprint-doc PR (open).
 - #614 llama.cpp v1.0.0 pin (open; see the target section above).
 - #611 v0.4.0 docs alignment (open; docs only; --tools waiver is
@@ -470,8 +488,10 @@ milestone.
 - Team A->B handoffs still open in v0.4.0: #277, #280, #281, #283.
   Already closed (leave them alone): #278, #279, #282. Re-audit
   before starting; do not assume branches are current.
-- cbl #90/#91/#93 as above. Older cbl Android leftovers (#13) and
-  Windows parity (#11, #14, #32) may still apply.
+- cbl #90/#91/#93 as above. Older cbl Android leftovers
+  (code-bootstraps-llama.cpp#13) and Windows parity
+  (code-bootstraps-llama.cpp#11, code-bootstraps-llama.cpp#14, and
+  familia #32) may still apply.
 
 ## 10. Non-familia work found (not in this sprint)
 
