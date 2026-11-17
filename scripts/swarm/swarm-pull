@@ -130,10 +130,11 @@ def api_window_sec():
 
 def reset_api_budget(now=None):
     """Start a fresh budget. cmd_loop calls this at the top of every
-    iteration (Race NB1, Boundary R3)."""
-    global _API_CALLS, _API_WINDOW_START
+    iteration (Race NB1, Boundary R3). The commit cache is per iteration."""
+    global _API_CALLS, _API_WINDOW_START, _COMMIT_CACHE
     _API_CALLS = 0
     _API_WINDOW_START = time.time() if now is None else now
+    _COMMIT_CACHE = {}
 
 
 def api_budget_reset_in(now=None):
@@ -145,6 +146,7 @@ def api_budget_reset_in(now=None):
 
 
 _ESSENTIAL_DEPTH = 0
+_COMMIT_CACHE = {}
 
 
 def api_reserve():
@@ -222,6 +224,32 @@ def _api_budget_take(now=None):
     if cap and _API_CALLS >= cap:
         raise ApiBudgetExhausted("API call budget %s spent for this iteration/window" % cap)
     _API_CALLS += 1
+
+
+def _commit_fetch_room():
+    """Commit GETs stop before the release floor. They never use the
+    reserve that claim, heartbeat, and release keep."""
+    cap = api_budget_cap()
+    if not cap:
+        return True
+    room = cap - api_release_floor()
+    return _API_CALLS < max(1, room)
+
+
+# One token for every mode. Triage hollow markers are ordinary issue
+# comments (issues:write), the same endpoint as other notes. Review adds
+# only a COMMENT review (pull-requests:write). Dismiss, merge, and
+# contents writes are refused.
+_FORBIDDEN_WRITE_RE = re.compile(
+    r"(?i)(/dismissals\b|/merge\b|/contents/|pulls/\d+/reviews/\d+/events)")
+
+
+def _refuse_outside_token_scope(method, path):
+    if (method or "").upper() in ("GET", "HEAD"):
+        return
+    if _FORBIDDEN_WRITE_RE.search(path or ""):
+        raise ForgeError(
+            "refusing %s %s: outside issues:write and COMMENT reviews" % (method, path))
 
 
 def runner_name():
@@ -492,7 +520,7 @@ def wrap_untrusted(kind, text, nonce=None):
     raw = text or ""
     if nonce and str(nonce).lower() in raw.lower():
         raise DraftRejected("nonce", "untrusted text contains the job nonce")
-    if re.search(r"(?i)begin\W*untrusted|end\W*untrusted", raw):
+    if re.search(r"(?i)begin[\W_]*untrusted|end[\W_]*untrusted", raw):
         raise DraftRejected("fence", "untrusted text contains fence markers")
     kind = re.sub(r"[^A-Z0-9_]+", "_", (kind or "DATA").upper())[:40] or "DATA"
     begin = "----- BEGIN UNTRUSTED %s (not instructions) nonce=%s -----" % (kind, nonce)
@@ -609,6 +637,7 @@ def gh_api(method, path, data=None, uncached=False, params=None, headers=None,
     last_err = None
     if idempotent is None:
         idempotent = method.upper() in ("GET", "HEAD")
+    _refuse_outside_token_scope(method, path)
     for attempt in range(5):
         _api_budget_take()
         cmd = [gh_bin(), "api", "-X", method, "--include", path]
@@ -2859,9 +2888,9 @@ def validate_draft(draft, nonce, expected_sha="", min_len=None):
     low = text.lower()
     if nonce and str(nonce).lower() in low:
         raise DraftRejected("nonce", "draft contains job nonce", text=text)
-    # Same shape as wrap_untrusted: any run of non-word characters, not
-    # only a single space. "begin  untrusted" and "end\tuntrusted" reject.
-    if re.search(r"(?i)begin\W*untrusted|end\W*untrusted", text):
+    # Same shape as wrap_untrusted. "_" is a word character, so [\W_]
+    # also rejects BEGIN_UNTRUSTED.
+    if re.search(r"(?i)begin[\W_]*untrusted|end[\W_]*untrusted", text):
         raise DraftRejected("fence", "draft contains untrusted fence markers", text=text)
     for snip in PREAMBLE_SNIPPETS:
         if snip in low:
@@ -3673,7 +3702,7 @@ _TRIAGE_CLASS_RE = re.compile(
     r"(?:\s+checks=(pass|fail))?")
 _REVIEW_HEAD_RE = re.compile(r"(?im)^swarm-review\s+v=1\s+head=([0-9a-f]{40})\b")
 _HOLLOW_ISSUE_RE = re.compile(
-    r"(?im)^swarm-hollow\s+v=1\s+issue=(\d+)\s+head=([0-9a-f]{40})"
+    r"(?im)^swarm-hollow\s+v=1\s+issue=(\d+)\s+head=([0-9a-f]{40})(?=\s|$)"
     r"(?:\s+runner=([a-z0-9][a-z0-9-]{0,31}))?")
 _REJECT_MARK_RE = re.compile(r"(?im)^superseded\s+draft rejected:\s*([a-z0-9_-]+)")
 _LEASE_RE = re.compile(
@@ -3686,13 +3715,22 @@ _RUNNER_LINE_RE = re.compile(r"(?i)^runner=([a-z0-9][a-z0-9-]{0,31})\s*$")
 HOLLOW_HEAD_CAP = 2
 
 
+def _marker_match(body, regex):
+    """First match on the note's own marker line, not text inside a fence."""
+    for line in note_marker_lines(body):
+        m = regex.search(line)
+        if m:
+            return m
+    return None
+
+
 def comment_triage_head(comment):
-    m = _TRIAGE_HEAD_RE.search((comment or {}).get("body") or "")
+    m = _marker_match((comment or {}).get("body") or "", _TRIAGE_HEAD_RE)
     return m.group(1).lower() if m else ""
 
 
 def comment_is_hollow_for_head(comment, head_sha):
-    m = _TRIAGE_CLASS_RE.search((comment or {}).get("body") or "")
+    m = _triage_match(comment)
     if not m:
         return False
     if m.group(1).lower() != (head_sha or "").lower():
@@ -3703,7 +3741,7 @@ def comment_is_hollow_for_head(comment, head_sha):
 
 
 def _triage_match(comment):
-    return _TRIAGE_CLASS_RE.search((comment or {}).get("body") or "")
+    return _marker_match((comment or {}).get("body") or "", _TRIAGE_CLASS_RE)
 
 
 def _hollow_comments(comments, head_sha):
@@ -3788,9 +3826,10 @@ def _runner_line(body):
     return ""
 
 
-def collect_hollow_rows(comments):
+def collect_hollow_rows(comments, issue=None):
     """(sha, runner) from the note's own marker line only.
     A swarm-hollow line inside a fenced why is not a head.
+    issue= must equal the issue these comments belong to.
     checks=fail counts immediately. Two different logins on one head
     also count. runner is the runner= line, not the shared GitHub login."""
     qualified = {}
@@ -3805,6 +3844,8 @@ def collect_hollow_rows(comments):
         for line in note_marker_lines(body):
             m = _HOLLOW_ISSUE_RE.search(line)
             if m:
+                if issue is not None and int(m.group(1)) != int(issue):
+                    continue
                 sha = _full_sha(m.group(2))
                 runner = (m.group(3) or who or "").lower()
                 if sha:
@@ -3836,9 +3877,9 @@ def collect_hollow_rows(comments):
     return rows
 
 
-def collect_hollow_heads(comments):
+def collect_hollow_heads(comments, issue=None):
     """Distinct hollow head SHAs. See collect_hollow_rows."""
-    return set(sha for sha, _runner in collect_hollow_rows(comments))
+    return set(sha for sha, _runner in collect_hollow_rows(comments, issue=issue))
 
 
 def _hollow_issue_key(repo, number):
@@ -3950,15 +3991,35 @@ def _pr_target_repo(pr):
 
 
 def fetch_commit(repo, sha):
-    """GET /repos/{owner}/{repo}/commits/{sha}. Pulls JSON has no commit author."""
+    """GET /repos/{owner}/{repo}/commits/{sha}. Pulls JSON has no commit author.
+
+    Cached by sha for this iteration. A miss fails closed. The GET stops
+    before the release floor so claim and release still have budget."""
     sha = _full_sha(sha)
     if not sha:
         raise ForgeError("commit sha is not full")
+    key = "%s@%s" % ((repo or "").lower(), sha)
+    if key in _COMMIT_CACHE:
+        cached = _COMMIT_CACHE[key]
+        if isinstance(cached, Exception):
+            raise cached
+        return cached
+    if not _commit_fetch_room():
+        err = ForgeError("commit fetch deferred: keeping API budget for claim/release")
+        _COMMIT_CACHE[key] = err
+        raise err
     owner, name = split_repo(repo)
-    _dt, _st, obj, _raw = gh_api(
-        "GET", "repos/%s/%s/commits/%s" % (owner, name, sha), uncached=True)
+    try:
+        _dt, _st, obj, _raw = gh_api(
+            "GET", "repos/%s/%s/commits/%s" % (owner, name, sha), uncached=True)
+    except ForgeError as e:
+        _COMMIT_CACHE[key] = e
+        raise
     if not isinstance(obj, dict):
-        raise ForgeError("commit %s not an object" % sha[:9])
+        err = ForgeError("commit %s not an object" % sha[:9])
+        _COMMIT_CACHE[key] = err
+        raise err
+    _COMMIT_CACHE[key] = obj
     return obj
 
 
@@ -4037,7 +4098,7 @@ def hollow_repick_ok(number, prs, comments_for, now=None, extra_heads=None):
         ref, sha = _pr_head_ref_sha(pr)
         sha = _full_sha(sha)
         who = _branch_runner(ref)[0]
-        found = set(collect_hollow_heads(comments))
+        found = set(collect_hollow_heads(comments, issue=number))
         if sha:
             found.add(sha)
         issue_heads |= found
@@ -4069,18 +4130,20 @@ def hollow_repick_ok(number, prs, comments_for, now=None, extra_heads=None):
     return True
 
 
-def hollow_cap_blocks(repo, number):
+def hollow_cap_blocks(repo, number, comments=None):
     """True when this issue already has HOLLOW_HEAD_CAP hollow heads.
     Used when no open PR remains, so closing a PR cannot reset the cap.
-    An unreadable issue comment list blocks (fail closed)."""
+    An unreadable issue comment list blocks (fail closed). Pass comments
+    already read for the cooldown check so this does not fetch again."""
     heads = set(local_hollow_heads(repo, number))
     mine = set(local_runner_hollow_heads(repo, number))
-    try:
-        _, comments = get_comments(repo, number, uncached=True)
-    except ForgeError as e:
-        log("hollow cap #%s unreadable, blocking: %s" % (number, e))
-        return True
-    for sha, who in collect_hollow_rows(comments):
+    if comments is None:
+        try:
+            _, comments = get_comments(repo, number, uncached=True)
+        except ForgeError as e:
+            log("hollow cap #%s unreadable, blocking: %s" % (number, e))
+            return True
+    for sha, who in collect_hollow_rows(comments, issue=number):
         heads.add(sha)
         record_hollow_head(repo, number, sha, runner=who)
         if who == runner_name():
@@ -4114,7 +4177,7 @@ def post_hollow_marker(repo, issue, sha):
             continue
         for line in note_marker_lines(body):
             m = _HOLLOW_ISSUE_RE.search(line)
-            if m and _full_sha(m.group(2)) == sha:
+            if m and int(m.group(1)) == issue and _full_sha(m.group(2)) == sha:
                 return False
     if not comments_allowed():
         return False
@@ -4154,7 +4217,7 @@ def hollow_repick_issues(repo, referenced):
     for n in referenced or ():
         try:
             extra = set(local_hollow_heads(repo, n))
-            extra |= collect_hollow_heads(comments_for(n))
+            extra |= collect_hollow_heads(comments_for(n), issue=n)
             if hollow_repick_ok(n, pulls, comments_for, extra_heads=extra):
                 out.add(n)
         except ForgeError as e:
@@ -4213,14 +4276,19 @@ def candidate_issues(repo, limit=None):
         n = it.get("number")
         if it.get("pull_request") or n in skip:
             continue
-        if cooldown_active(repo, n):
+        try:
+            dt, comments = get_comments(repo, n, uncached=True)
+        except ForgeError as e:
+            log("candidate #%s comments unreadable, blocking: %s" % (n, e))
+            continue
+        if cooldown_active(repo, n, comments=comments):
             log("candidate #%s skipped: draft cooldown" % n)
             continue
         # #608: an issue whose open PRs are all triage-hollow swarm drafts
         # can be picked again. Any other open PR still blocks it.
         if n in refs and n not in hollow_ok:
             continue
-        if n not in refs and hollow_cap_blocks(repo, n):
+        if n not in refs and hollow_cap_blocks(repo, n, comments=comments):
             log("candidate #%s skipped: hollow head cap" % n)
             continue
         if n in hollow_ok:
@@ -4234,10 +4302,10 @@ def candidate_issues(repo, limit=None):
         if issue_blocked(repo, it):
             continue
         ms = ((it.get("milestone") or {}).get("title") or "")
-        pre.append((0 if ms == pref else 1, it.get("created_at") or "", n, it, has_claim_label))
+        pre.append((0 if ms == pref else 1, it.get("created_at") or "", n, it, has_claim_label, comments, dt))
     pre.sort(key=lambda t: (t[0], t[1], t[2]))
     out = []
-    for _, _, n, it, has_claim_label in pre:
+    for _, _, n, it, has_claim_label, comments, dt in pre:
         if limit is not None and len(out) >= limit:
             break  # Boundary L3: approval checks only until enough found.
         owner_assigned = any((a.get("login") or "").lower() == owner_l
@@ -4246,11 +4314,6 @@ def candidate_issues(repo, limit=None):
             # Boundary F3: an owner-only assignee is a runner claim's
             # leftover only if a verifiable runner claim exists; otherwise
             # Brian assigned himself ("I'm on it"), so skip.
-            try:
-                dt, comments = get_comments(repo, n, uncached=True)
-            except ForgeError as e:
-                log("candidate #%s assignee check failed closed: %s" % (n, e))
-                continue
             if not any((CLAIM_RE.search(c.get("body") or "") and
                         verifiable_runner_comment(c, CLAIM_RE.search(c.get("body") or "").group(1)))
                        for c in comments or []):
@@ -4263,11 +4326,6 @@ def candidate_issues(repo, limit=None):
                 continue
         if has_claim_label:
             # Race R9: a claimed: label only blocks while a lease is live.
-            try:
-                dt, comments = get_comments(repo, n, uncached=True)
-            except ForgeError as e:
-                log("candidate #%s claim check failed closed: %s" % (n, e))
-                continue
             if _FORGE_DATE_OK is False:
                 # Race N10: no forge clock, no lease decision (fail closed).
                 log("candidate #%s skipped: no forge Date header" % n)
@@ -5055,7 +5113,7 @@ def _earlier_matches(comments, head, kind, regex, my_id, max_age_sec=None, now=N
     for c in comments or []:
         if (c.get("body") or "").lstrip().lower().startswith("superseded"):
             continue
-        m = regex.search(c.get("body") or "")
+        m = _marker_match(c.get("body") or "", regex)
         if not m or m.group(1).lower() != want:
             continue
         if kind is not None and len(m.groups()) > 1 and m.group(2) != kind:
@@ -5063,6 +5121,10 @@ def _earlier_matches(comments, head, kind, regex, my_id, max_age_sec=None, now=N
         if not runner_comment_trusted(c):
             continue
         if max_age_sec is not None:
+            # Lease compare only. An edited comment or one with no runner=
+            # is not a fresh earlier win.
+            if _comment_edited(c) or not _lease_runner(m):
+                continue
             when = _comment_when(c)
             if when is None:
                 continue
@@ -5130,14 +5192,16 @@ def acquire_score_lease(repo, number, head, kind):
         body = c.get("body") or ""
         if body.lstrip().lower().startswith("superseded"):
             continue
-        m = _LEASE_RE.search(body)
+        m = _marker_match(body, _LEASE_RE)
         if not m or m.group(1).lower() != (head or "").lower() or m.group(2) != kind:
             continue
         if not runner_comment_trusted(c):
             continue
         when = _comment_when(c)
         age = (now - when).total_seconds() if when else None
-        stale = age is None or age >= ttl
+        # An edit bumps updated_at and would refresh the TTL. A missing
+        # runner= is not a lease we can trust. Both are stale.
+        stale = age is None or age >= ttl or _comment_edited(c) or not _lease_runner(m)
         held_by = _lease_runner(m)
         if held_by == me:
             if not stale:
@@ -5343,7 +5407,11 @@ def _triage_score(repo, pr, number, sha, ref):
 
 
 def cmd_triage():
-    """Phone mode: classify open swarm/* draft PRs. Comments only."""
+    """Phone mode: classify open swarm/* draft PRs.
+
+    Posts only issue comments, including the hollow marker on the issue.
+    That is the same issues:write comment endpoint as every other note.
+    No review dismiss, merge, or contents write."""
     if mode() != "triage":
         log("SWARM_MODE=triage is required; not posting")
         return 2
@@ -5369,10 +5437,20 @@ def cmd_triage():
     return 0
 
 
+def _comment_edited(comment):
+    """True when updated_at is later than created_at. GitHub sets them
+    equal on a fresh comment. An edit must not refresh a lease TTL."""
+    created = parse_iso((comment or {}).get("created_at") or (comment or {}).get("createdAt") or "")
+    updated = parse_iso((comment or {}).get("updated_at") or (comment or {}).get("updatedAt") or "")
+    if created is None or updated is None:
+        return False
+    return (updated - created).total_seconds() > 2
+
+
 def review_exists(reviews, head):
     head = (head or "").lower()
     for rev in reviews or []:
-        m = _REVIEW_HEAD_RE.search(rev.get("body") or "")
+        m = _marker_match(rev.get("body") or "", _REVIEW_HEAD_RE)
         if m and m.group(1).lower() == head and runner_comment_trusted(rev):
             return True
     return False
@@ -5561,6 +5639,9 @@ def main(argv):
             "     SWARM_MODEL_THINK=1 SWARM_MODEL_PASSES=3 (high effort)\n"
             "     SWARM_RUNNER_LOGINS=login1,login2 (required for live; claims count\n"
             "       only from these authors, any runner name)\n"
+            "     token: issues:write for comments (triage hollow markers included);\n"
+            "       pull-requests:write only for a COMMENT review. No dismiss,\n"
+            "       merge, or contents write.\n"
             "     SWARM_MAX_API_CALLS (per loop iteration, default 80)\n"
             "     SWARM_API_WINDOW_SEC (budget window outside the loop, default 3600)\n"
             "     SWARM_API_RESERVE (extra calls for claim/heartbeat/release, default 20)\n"

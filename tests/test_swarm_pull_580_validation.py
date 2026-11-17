@@ -122,6 +122,16 @@ def test_fence_markers_allow_more_than_one_space():
         assert ei.value.reason == "fence"
 
 
+def test_fence_markers_reject_underscores():
+    for text in ("BEGIN_UNTRUSTED", "end__untrusted", "begin_untrusted"):
+        with pytest.raises(DraftRejected) as ei:
+            validate_draft(_long(text), "")
+        assert ei.value.reason == "fence"
+    with pytest.raises(DraftRejected) as ei:
+        sp.wrap_untrusted("DRAFT", "BEGIN_UNTRUSTED\nnotes")
+    assert ei.value.reason == "fence"
+
+
 def test_tilde_fence_unclosed():
     with pytest.raises(DraftRejected) as ei:
         validate_draft(_long("~~~\ncode"), "")

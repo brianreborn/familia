@@ -366,10 +366,14 @@ class SwarmModes(unittest.TestCase):
         now = self.sp.parse_iso("2026-11-17T00:00:00Z")
         row = self.sp.record_draft_cooldown("brianreborn/familia", 616, "nonce", now=now)
         self.assertEqual(row["delay_h"], 6)
-        self.assertTrue(self.sp.cooldown_active(
-            "brianreborn/familia", 616, now=now + self.sp.timedelta(hours=5)))
-        self.assertFalse(self.sp.cooldown_active(
-            "brianreborn/familia", 616, now=now + self.sp.timedelta(hours=7)))
+        with mock.patch.object(self.sp, "get_comments", return_value=(None, [])) as fetched:
+            self.assertTrue(self.sp.cooldown_active(
+                "brianreborn/familia", 616, now=now + self.sp.timedelta(hours=5),
+                comments=[]))
+            self.assertFalse(self.sp.cooldown_active(
+                "brianreborn/familia", 616, now=now + self.sp.timedelta(hours=7),
+                comments=[]))
+            self.assertEqual(fetched.call_count, 0)
         self.assertEqual(
             self.sp.record_draft_cooldown("brianreborn/familia", 616, "nonce", now=now)["delay_h"], 12)
         self.assertEqual(
@@ -379,7 +383,8 @@ class SwarmModes(unittest.TestCase):
         self.assertEqual(
             self.sp.record_draft_cooldown("brianreborn/familia", 616, "short", now=now)["delay_h"], 48)
         self.sp.record_draft_cooldown("brianreborn/familia", 616, "short")
-        with mock.patch.object(self.sp, "candidate_issues", return_value=[{"number": 616}]), \
+        with mock.patch.object(self.sp, "get_comments", return_value=(None, [])), \
+             mock.patch.object(self.sp, "candidate_issues", return_value=[{"number": 616}]), \
              mock.patch.object(self.sp, "claim_issue") as claim:
             n, _c = self.sp.pick_next("brianreborn/familia")
         self.assertIsNone(n)
@@ -803,6 +808,7 @@ class SwarmModes(unittest.TestCase):
              mock.patch.object(self.sp, "gh_api", side_effect=api):
             self.assertTrue(self.sp.head_commit_owned("brianreborn/familia", pr))
         self.assertEqual(seen, [("GET", "repos/brianreborn/familia/commits/" + SHA)])
+        self.sp.reset_api_budget()
         nameless = _gh_commit(SHA, None)
         nameless["commit"]["author"]["name"] = "swarm-bot"
 
@@ -986,6 +992,114 @@ class SwarmModes(unittest.TestCase):
             found.update(re.findall(r"nonce=([0-9a-fA-F]+)", prompt))
         self.assertEqual(found, {nonce})
         self.assertIn("withheld", prompts[0])
+
+    def test_parsers_ignore_fenced_markers(self):
+        fenced = (
+            "``` text\n"
+            "swarm-triage v=1 head=%s class=hollow checks=fail\n"
+            "swarm-review v=1 head=%s\n"
+            "swarm-lease v=1 head=%s kind=review runner=box\n"
+            "```\n" % (SHA, SHA, SHA)
+        )
+        comment = {"body": fenced, "user": _user("swarm-bot")}
+        self.assertEqual(self.sp.comment_triage_head(comment), "")
+        self.assertIsNone(self.sp._triage_match(comment))
+        self.assertFalse(self.sp.review_exists([comment], SHA))
+        real = {"body": "swarm-triage v=1 head=%s class=hollow checks=fail\n" % SHA,
+                "user": _user("swarm-bot")}
+        self.assertEqual(self.sp.comment_triage_head(real), SHA)
+
+    def test_edited_or_runnerless_lease_is_stale(self):
+        self._review()
+        edited = {
+            "id": 5,
+            "body": "swarm-lease v=1 head=%s kind=review runner=box\n" % SHA,
+            "user": _user("swarm-bot"),
+            "created_at": "2020-01-01T00:00:00Z",
+            "updated_at": "2099-01-01T00:00:00Z",
+        }
+        with mock.patch.object(self.sp, "get_comments", return_value=(None, [edited])), \
+             mock.patch.object(self.sp, "post_comment", return_value=(None, 201, {"id": 8}, "")) as post, \
+             mock.patch.object(self.sp, "strike_own_comment") as strike:
+            held = self.sp.acquire_score_lease("brianreborn/familia", 700, SHA, "review")
+        self.assertEqual(held, 8)
+        self.assertIn(5, [c.args[1] for c in strike.call_args_list])
+        post.assert_called()
+        missing = {
+            "id": 6,
+            "body": "swarm-lease v=1 head=%s kind=review\n" % SHA,
+            "user": _user("swarm-bot"),
+            "updated_at": "2099-01-01T00:00:00Z",
+        }
+        with mock.patch.object(self.sp, "get_comments", return_value=(None, [missing])), \
+             mock.patch.object(self.sp, "post_comment", return_value=(None, 201, {"id": 9}, "")) as post, \
+             mock.patch.object(self.sp, "strike_own_comment") as strike:
+            held = self.sp.acquire_score_lease("brianreborn/familia", 700, SHA, "review")
+        self.assertEqual(held, 9)
+        self.assertIn(6, [c.args[1] for c in strike.call_args_list])
+        post.assert_called()
+
+    def test_hollow_marker_checks_issue_and_sha_end(self):
+        comment = {"body": "swarm-hollow v=1 issue=999 head=%s runner=box\n" % SHA,
+                   "user": _user("swarm-bot")}
+        self.assertEqual(self.sp.collect_hollow_rows([comment], issue=616), [])
+        self.assertEqual(
+            self.sp.collect_hollow_rows([comment], issue=999)[0][0], SHA)
+        longer = SHA + "ab"
+        bad = {"body": "swarm-hollow v=1 issue=616 head=%s runner=box\n" % longer,
+               "user": _user("swarm-bot")}
+        self.assertEqual(self.sp.collect_hollow_rows([bad], issue=616), [])
+
+    def test_commit_fetch_is_cached_and_leaves_release_budget(self):
+        self.sp.reset_api_budget()
+        seen = []
+
+        def api(method, path, **_k):
+            seen.append(path)
+            return (None, 200, _gh_commit(SHA, "swarm-bot"), "")
+
+        pr = _pr()
+        with mock.patch.object(self.sp, "fetch_commit", self._real_fetch), \
+             mock.patch.object(self.sp, "gh_api", side_effect=api):
+            self.assertTrue(self.sp.head_commit_owned("brianreborn/familia", pr))
+            self.assertTrue(self.sp.head_commit_owned("brianreborn/familia", pr))
+        self.assertEqual(len(seen), 1)
+        self.sp.reset_api_budget()
+        self.sp._API_CALLS = self.sp.api_budget_cap() - self.sp.api_release_floor()
+        with mock.patch.object(self.sp, "fetch_commit", self._real_fetch), \
+             mock.patch.object(self.sp, "gh_api") as api:
+            with self.assertRaises(self.sp.ForgeError):
+                self.sp.fetch_commit("brianreborn/familia", SHA)
+        api.assert_not_called()
+
+    def test_dismiss_and_merge_are_outside_the_token_scope(self):
+        with self.assertRaises(self.sp.ForgeError):
+            self.sp.gh_api(
+                "PUT", "repos/brianreborn/familia/pulls/1/reviews/2/dismissals")
+        with self.assertRaises(self.sp.ForgeError):
+            self.sp.gh_api("PUT", "repos/brianreborn/familia/pulls/1/merge")
+
+    def test_candidate_reads_comments_once(self):
+        issue = {"number": 616, "created_at": "2026-11-10T20:00:00Z",
+                 "labels": [{"name": "swarm-approved"}], "assignees": [],
+                 "title": "gate", "body": "body"}
+        dt = self.sp.parse_iso("2026-11-17T00:00:00Z")
+        calls = {"n": 0}
+
+        def comments(*_a, **_k):
+            calls["n"] += 1
+            return (dt, [])
+
+        with mock.patch.object(self.sp, "gh_api_pages", return_value=(dt, [issue])), \
+             mock.patch.object(self.sp, "gh_api", return_value=(dt, 200, {"items": []}, "")), \
+             mock.patch.object(self.sp, "open_pr_refs", return_value=set()), \
+             mock.patch.object(self.sp, "get_comments", side_effect=comments), \
+             mock.patch.object(self.sp, "repo_owner_login", return_value="brianreborn"), \
+             mock.patch.object(self.sp, "issue_admin_approved", return_value=True):
+            self.assertEqual(
+                [i["number"] for i in self.sp.candidate_issues("brianreborn/familia")],
+                [616])
+        self.assertEqual(calls["n"], 1)
 
 
 if __name__ == "__main__":
