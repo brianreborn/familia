@@ -1,7 +1,7 @@
 #!/bin/sh
 # FAMILIA: FreeBSD deps helper (honest listing + opt-in pkg install).
-# Angel / Uriel: runtime installer is unsupported; build llama.cpp from the
-# pinned code-bootstraps-llama.cpp with:
+# The FreeBSD installer builds llama.cpp from the pinned brianreborn fork.
+# For a direct code-bootstraps build:
 #   BUILD_DIR=build-freebsd GPU=off scripts/build-linux.sh
 # getconf is in the FreeBSD base system (no package).
 # Usage:
@@ -13,7 +13,7 @@ deps.sh (FreeBSD): List packages useful for familia + code-bootstraps source bui
 Usage: sh install/freebsd/deps.sh [--install] [--yes] [--dry-run] [--profile base|build]
   base:  git curl python3 pyyaml pytest (pkg names below)
   build: base + cmake ninja gcc/llvm toolchain
-getconf: FreeBSD base (no pkg). llama-server: install-familia.sh builds pinned llama.cpp b11969 (c3df4b7) from source; not the llama-cpp pkg.
+getconf: FreeBSD base (no pkg). install-familia.sh builds pinned fork source b12032; not the llama-cpp pkg.
 Opt-in only: this script never runs pkg without --install.
 USAGE
   exit 0 ;; esac
@@ -80,8 +80,23 @@ if [ -z "$pkgs" ]; then
   exit 0
 fi
 
-CMD="pkg install -y $pkgs"
+if [ "$(id -u)" = 0 ]; then
+  ESC=""
+elif have_cmd doas; then
+  ESC=doas
+elif have_cmd sudo; then
+  ESC=sudo
+else
+  say "pkg install needs root; install manually: pkg install -y $pkgs"
+  exit 1
+fi
+CMD="${ESC:+$ESC }pkg install -y $pkgs"
 deps_confirm "$CMD" "run pkg install for missing packages now?" ". Angel: opt-in only."
-# shellcheck disable=SC2086
-pkg install -y $pkgs
+if [ -n "$ESC" ]; then
+  # shellcheck disable=SC2086
+  $ESC pkg install -y $pkgs
+else
+  # shellcheck disable=SC2086
+  pkg install -y $pkgs
+fi
 say "done"

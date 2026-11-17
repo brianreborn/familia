@@ -79,7 +79,8 @@ group_desc() {
     "Set up") echo "first-time, update, licenses, settings" ;;
     "Skills") echo "pick the skills your agents use (green-zkillz)" ;;
     "Reach tools (Agent-Reach)") echo "opt agents into Agent-Reach web tools" ;;
-    "Models") echo "add models, check the graph, see launch parameters" ;;
+    "Models") echo "list every model, add models, check the graph" ;;
+    "Graphs") echo "list every graph and configure fleet, host, or example graphs" ;;
     "Agents (hermes)") echo "run hermes on one model or the whole graph" ;;
     "Self-improving harness (Harness2)") echo "opt-in; attach to any agent, review every change" ;;
     "Test & benchmark") echo "unit tests, offline plan, benchmark records" ;;
@@ -104,6 +105,7 @@ workflow_paths() {
   say "  Existing graph node: models.check -> hosts.serve <NODE>"
   say "  Add a model: models.fetch -> add its node to graph.yaml ->"
   say "               models.check -> hosts.serve <NODE>"
+  say "  All models: models.list-all    All graphs: graphs.list -> graphs.configure"
   say "  Hermes: models.check -> agents.hermes (license-gated)"
   say "  ◆ Proving grounds: test.proving-grounds  (fleet + nexus + bt; graded, not pass/fail)"
   say "NOT DONE YET - FreeBSD llama.cpp 0.7.0 on angel: neither a FreeBSD build nor a"
@@ -307,7 +309,7 @@ show_match() {  # show_match N KEY NEEDLE MARK
     -v key="$2" -v n="$1" -v mark="$4" -v note="$note" -v color="$c" \
     -v needle="$(printf '%s' "$3" | tr '[:upper:]' '[:lower:]')"
 }
-no_match() { say "No item matches '$1'. Try a shorter word, or a word from a command (e.g. /hermes, /dry-run)."; }
+no_match() { say "No item matches '$1'. Try a shorter word, or a word from a command (e.g. /hermes, /graph)."; }
 print_matches() {  # print_matches TEXT ; returns 1 when nothing matches
   local t=$1 i
   find_matches "$t"

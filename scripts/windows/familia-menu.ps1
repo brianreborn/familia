@@ -49,7 +49,7 @@ foreach ($line in (Get-Content $itemsFile)) {
 }
 $groupDesc = @{
   'Set up' = 'first-time, update, licenses, settings'; 'Skills' = 'pick the skills your agents use (green-zkillz)';
-  'Models' = 'add models, check the graph, see launch parameters'; 'Self-improving harness (Harness2)' = 'opt-in; review every change';
+  'Models' = 'list every model, add models, check the graph'; 'Graphs' = 'list every graph and configure fleet, host, or example graphs'; 'Self-improving harness (Harness2)' = 'opt-in; review every change';
   'Agents (hermes)' = 'run hermes on one model or the whole graph'; 'Test & benchmark' = 'benchmark records'; 'Hosts' = 'start this node, measure, monitor';
   'Advanced: models & graph' = 'model database, launch arguments, graph edits'; 'Advanced: agents' = 'skill folders, escalation';
   'Advanced: hosts & benchmarks' = 'low-level setup, benchmarks, CPU level, uninstall, logon task'; 'Reach tools (Agent-Reach)' = 'opt agents into Agent-Reach web tools';
@@ -182,7 +182,7 @@ function ShowMatch($num, $i, $t, $mark) {
   Write-Host ('{0}{1,2}) ' -f $mark, $num) -NoNewline; WriteHl $i.Group $t; Write-Host ' > ' -NoNewline; WriteHl $i.Label $t; Write-Host $note
   Write-Host '       key: ' -NoNewline; WriteHl $i.Key $t; Write-Host '   runs: ' -NoNewline; WriteHl (Shown $i.Cmd) $t; Write-Host ''
 }
-function NoMatch($t) { Write-Host "No item matches '$t'. Try a shorter word, or a word from a command (e.g. /hermes, /dry-run)." }
+function NoMatch($t) { Write-Host "No item matches '$t'. Try a shorter word, or a word from a command (e.g. /hermes, /graph)." }
 function PrintMatches($t) {
   $m = FindMatches $t
   if ($m.Count -eq 0) { NoMatch $t; return 1 }

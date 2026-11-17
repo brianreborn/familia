@@ -6,7 +6,7 @@ Public-safe resume index after the 2026-10-10 sprint (Grok Bot credits exhausted
 - Pentest launch-test rule; README/PGO docs; registry records through ~53.
 - Prompt-cache sizing (code-bootstraps #16) + familia pin.
 - Vulkan `-ngl 0` shmem fix (`GGML_VK_VISIBLE_DEVICES=`).
-- `qodesh-resident` Qwen3.5-2B selectable fallback (~0.91 t/s coarse).
+- `cpu-resident-coder` Qwen3.5-2B selectable fallback (~0.91 t/s coarse).
 - Escalation schema + hermes `--escalate` proxy (`docs/escalation.md`).
 
 ## Open issues filed this handoff
@@ -17,7 +17,7 @@ Public-safe resume index after the 2026-10-10 sprint (Grok Bot credits exhausted
 | [#41](https://github.com/brianreborn/familia/issues/41) | Live-verify prompt-cache reuse (#16) |
 | [#42](https://github.com/brianreborn/familia/issues/42) | Live hermes `--selftest-compaction` |
 | [#43](https://github.com/brianreborn/familia/issues/43) | miryam disk swap / 4G swapfile behind zram |
-| [#44](https://github.com/brianreborn/familia/issues/44) | qodesh-resident live server + GPU co-run |
+| [#44](https://github.com/brianreborn/familia/issues/44) | cpu-resident-coder live server + GPU co-run |
 | [#45](https://github.com/brianreborn/familia/issues/45) | Pre-existing test failures (closed; `test_overcommit_is_hard_error` still fails) |
 | [#46](https://github.com/brianreborn/familia/issues/46) | Phones: resume phone7 + llama.cpp version match |
 | [#47](https://github.com/brianreborn/familia/issues/47) | Small-model research unknowns |

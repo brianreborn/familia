@@ -299,9 +299,16 @@ familia_env_scrub() {
 familia_key_args
 familia_extra_check "\$@"
 familia_env_scrub
-set --
+# Same rule as graph_types server_tools: llama.cpp --tools is host-exec, so FAMILIA_EXTRA/argv
+# may enable it only on a loopback bind (Boundary Reviewer, #541).
+if ! is_loopback "\$B"; then
+  for _t in \${FAMILIA_EXTRA:-} "\$@"; do
+    case "\$_t" in --tools*) echo "familia-start: --tools (host-exec) is allowed only on a loopback bind; refusing" >&2; exit 2 ;; esac
+  done
+fi
+# The launcher's own arguments (checked above) follow the key, exactly as given (#279 routing-extra-args).
 [ -n "\$FAMILIA_KF" ] || { echo "familia-start: no API key; refusing" >&2; exit 2; }
-set -- --api-key-file "\$FAMILIA_KF"
+set -- --api-key-file "\$FAMILIA_KF" "\$@"
 # Defaults from the 2026-10-10 A57 sweep (#34): 3 threads, flash-attn on; -ngl 99 on Vulkan (CPU ngl 0 on 0.6.0 collapses to <1 t/s tg).
 exec llama-server -m "\$M" -ngl "\$NGL" -t "\${FAMILIA_THREADS:-3}" -fa "\${FAMILIA_FA:-on}" --host "\$B" --port "\${FAMILIA_PORT:-9941}" -c "\${FAMILIA_CTX:-2048}" "\$@" \${FAMILIA_EXTRA:-}
 EOS

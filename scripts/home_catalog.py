@@ -24,8 +24,14 @@ import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
+
+try:
+    import fcntl
+except ImportError:  # Windows
+    fcntl = None
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
@@ -48,6 +54,8 @@ LEGACY_GOALS = (
     "Talk to the protomodel",
     "Open llama-ui web cockpit",
     "Find more models",
+    "List all models",
+    "Configure all graphs",
     "Search my X / Twitter posts",
     "Install / first-time setup",
     "Proving grounds (graded)",
@@ -70,6 +78,234 @@ APP_KEYS = (
 API_KEY = (
     "Network listeners need an API key. This command does not bind a port."
 )
+
+
+def _windows():
+    return os.name == "nt" or sys.platform == "win32"
+
+
+def _have_sh():
+    return shutil.which("sh") is not None
+
+
+def _port():
+    raw = os.environ.get("FAMILIA_PORT") or os.environ.get("PORT") or "9931"
+    try:
+        return int(raw)
+    except ValueError:
+        return 9931
+
+
+def _runtime():
+    import runtime_dir
+    return runtime_dir.runtime_dir()
+
+
+def _state_path(kind):
+    return os.path.join(_runtime(), "home-%s.json" % kind)
+
+
+class _ApplyLock(object):
+    """Serialize --apply for one area. The lock drops when this process exits."""
+
+    def __init__(self, name):
+        self.name = name
+        self.fd = None
+
+    def __enter__(self):
+        if fcntl is None:
+            return self
+        try:
+            import runtime_dir
+            self.fd = runtime_dir.open_lock(os.path.join(_runtime(), "home-apply-%s.lock" % self.name))
+            fcntl.flock(self.fd, fcntl.LOCK_EX)
+        except OSError as exc:
+            say("apply lock %s: %s" % (self.name, exc))
+        return self
+
+    def __exit__(self, *_a):
+        if self.fd is None or fcntl is None:
+            return False
+        try:
+            fcntl.flock(self.fd, fcntl.LOCK_UN)
+        finally:
+            os.close(self.fd)
+            self.fd = None
+        return False
+
+
+def _cmdline(pid):
+    path = "/proc/%d/cmdline" % pid
+    try:
+        with open(path, "rb") as fh:
+            return fh.read().replace(b"\0", b" ").decode("utf-8", "replace")
+    except OSError:
+        return ""
+
+
+def _starttime(pid):
+    """Linux starttime from /proc/pid/stat (field 22). Empty when /proc is absent."""
+    try:
+        with open("/proc/%d/stat" % pid, "r", encoding="ascii", errors="replace") as fh:
+            data = fh.read()
+    except OSError:
+        return ""
+    cut = data.rfind(")")
+    if cut < 0:
+        return ""
+    fields = data[cut + 2:].split()
+    if len(fields) < 20:
+        return ""
+    return fields[19]
+
+
+def _alive(pid):
+    if not pid:
+        return False
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except OSError:
+        return False
+    return True
+
+
+def save_record(kind, pid, port, cmdline):
+    doc = {
+        "pid": int(pid),
+        "port": int(port),
+        "starttime": _starttime(pid),
+        "cmdline": (cmdline or "")[:240],
+        "kind": kind,
+    }
+    path = _state_path(kind)
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="ascii") as fh:
+        fh.write(json.dumps(doc))
+        fh.write("\n")
+    os.chmod(tmp, 0o600)
+    os.replace(tmp, path)
+    return doc
+
+
+def load_record(kind):
+    path = _state_path(kind)
+    try:
+        with open(path, encoding="ascii") as fh:
+            doc = json.load(fh)
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(doc, dict):
+        return None
+    return doc
+
+
+def same_process(rec):
+    """True only when pid is alive, starttime matches, and cmdline still matches.
+
+    A reused pid fails the starttime check, so stop will not signal it.
+    """
+    if not rec:
+        return False
+    try:
+        pid = int(rec.get("pid") or 0)
+    except (TypeError, ValueError):
+        return False
+    if not _alive(pid):
+        return False
+    started = rec.get("starttime") or ""
+    if started and _starttime(pid) != started:
+        return False
+    stored = rec.get("cmdline") or ""
+    current = _cmdline(pid)
+    if stored and stored[:80] not in current and not current.startswith(stored[:80]):
+        return False
+    return True
+
+
+def _children():
+    kids = {}
+    try:
+        names = os.listdir("/proc")
+    except OSError:
+        return kids
+    for name in names:
+        if not name.isdigit():
+            continue
+        try:
+            with open("/proc/%s/status" % name, encoding="ascii", errors="replace") as fh:
+                text = fh.read()
+        except OSError:
+            continue
+        ppid = None
+        for line in text.splitlines():
+            if line.startswith("PPid:"):
+                try:
+                    ppid = int(line.split()[1])
+                except (IndexError, ValueError):
+                    ppid = None
+                break
+        if ppid is not None:
+            kids.setdefault(ppid, []).append(int(name))
+    return kids
+
+
+def descendants(pid):
+    kids = _children()
+    out = []
+    stack = list(kids.get(pid, []))
+    seen = set()
+    while stack:
+        child = stack.pop()
+        if child in seen:
+            continue
+        seen.add(child)
+        out.append(child)
+        stack.extend(kids.get(child, []))
+    return out
+
+
+def stop_recorded(kind):
+    """Signal the recorded process and its children. Never a different pid."""
+    rec = load_record(kind)
+    if not same_process(rec):
+        say("nothing to stop")
+        if rec:
+            say("recorded pid %s port %s is not the process this menu started" % (
+                rec.get("pid"), rec.get("port")))
+        else:
+            say("no %s process recorded by this menu" % kind)
+        return 0
+    pid = int(rec["pid"])
+    victims = [pid] + descendants(pid)
+    for target in victims:
+        try:
+            os.kill(target, signal.SIGTERM)
+            say("signaled pid %s" % target)
+        except OSError as exc:
+            say("pid %s: %s" % (target, exc))
+    try:
+        os.remove(_state_path(kind))
+    except OSError:
+        pass
+    say("stopped %s pid %s port %s" % (kind, pid, rec.get("port")))
+    return 0
+
+
+def describe_record(kind):
+    rec = load_record(kind)
+    if not rec:
+        say("no %s process recorded by this menu" % kind)
+        return
+    pid = rec.get("pid")
+    port = rec.get("port")
+    if same_process(rec):
+        say("recorded pid %s port %s alive" % (pid, port))
+    else:
+        say("recorded pid %s port %s is not running as the process this menu started" % (pid, port))
 
 
 def ascii_fold(text):
@@ -219,43 +455,106 @@ def models_status(_apply, _extra):
     if doc is None:
         return 1
     say("count: %d" % len(section(doc, "models")))
-    say("screen familia-server: %s" % screen_session())
+    describe_record("models")
+    say("screen familia-server: %s (informational; stop follows the recorded pid and port)" % screen_session())
     log_lines()
     say(API_KEY)
     return 0
+
+
+def _run_checked(argv):
+    """Run argv. A missing interpreter is a message, not a traceback."""
+    if not argv or not shutil.which(argv[0]):
+        say("cannot run %s: program not on PATH" % (argv[0] if argv else "?"))
+        return 1
+    try:
+        proc = subprocess.run(argv, cwd=ROOT)
+    except OSError as exc:
+        say("cannot run %s: %s" % (argv[0], exc))
+        return 1
+    return proc.returncode
 
 
 def models_install(apply, extra):
     if not apply:
         return not_applied(
             "models", "install",
-            "Installs one Hugging Face repo via scripts/add-model.sh --fetch REPO.",
+            "Installs one Hugging Face repo. The menu asks for ORG/NAME.",
         )
     if not extra:
         header("models", "install")
         say("Need a repo: --apply ORG/NAME")
         return 2
     header("models", "install")
+    if _windows():
+        say("running: python scripts\\add_model.py --fetch %s" % extra[0])
+        return _run_checked([sys.executable, os.path.join(ROOT, "scripts", "add_model.py"),
+                             "--fetch", extra[0], *extra[1:]])
     say("running: scripts/add-model.sh --fetch %s" % extra[0])
-    proc = subprocess.run(
-        ["sh", os.path.join(ROOT, "scripts", "add-model.sh"), "--fetch", extra[0], *extra[1:]],
-        cwd=ROOT,
-    )
-    return proc.returncode
+    return _run_checked(["sh", os.path.join(ROOT, "scripts", "add-model.sh"),
+                         "--fetch", extra[0], *extra[1:]])
+
+
+def _remember_started(blob, kind):
+    match = re.search(r"PID:\s*(\d+)", blob)
+    if not match:
+        say("no PID in launcher output; nothing recorded")
+        return
+    pid = int(match.group(1))
+    cmd = _cmdline(pid) or kind
+    save_record(kind, pid, _port(), cmd)
+    say("recorded pid %s port %s" % (pid, _port()))
 
 
 def models_start(apply, extra):
     if not apply:
         return not_applied(
             "models", "start",
-            "Delegates to sh start.sh with DETACH_MODE=nohup. start.sh requires the instance API key.",
+            "Delegates to sh start.sh with DETACH_MODE=nohup (Windows: scripts\\windows\\start.bat). "
+            "The launcher requires the instance API key. This menu records that pid and port.",
         )
+    if os.environ.get("FAMILIA_HOME_TEST_HOLD") == "1":
+        header("models", "start")
+        say("holding for test")
+        import time
+        time.sleep(30)
+        return 0
     header("models", "start")
+    say("start requires the instance API key (scripts/familia_auth.py).")
+    if _windows():
+        bat = os.path.join(ROOT, "scripts", "windows", "start.bat")
+        say("running: scripts\\windows\\start.bat")
+        if not os.path.isfile(bat):
+            say("start.bat is missing")
+            return 1
+        try:
+            proc = subprocess.run(["cmd", "/c", bat, *extra], cwd=ROOT, capture_output=True, text=True)
+        except OSError as exc:
+            say("cannot run start.bat: %s" % exc)
+            return 1
+        say(proc.stdout or "")
+        say(proc.stderr or "")
+        if proc.returncode == 0:
+            _remember_started((proc.stdout or "") + (proc.stderr or ""), "models")
+        return proc.returncode
     say("running: DETACH_MODE=nohup sh start.sh")
-    say("start.sh requires the instance API key (scripts/familia_auth.py).")
     env = dict(os.environ)
     env["DETACH_MODE"] = "nohup"
-    proc = subprocess.run(["sh", os.path.join(ROOT, "start.sh"), *extra], cwd=ROOT, env=env)
+    if not _have_sh():
+        say("sh is not on PATH. On Windows run scripts\\windows\\start.bat.")
+        return 1
+    try:
+        proc = subprocess.run(
+            ["sh", os.path.join(ROOT, "start.sh"), *extra],
+            cwd=ROOT, env=env, capture_output=True, text=True,
+        )
+    except OSError as exc:
+        say("cannot run start.sh: %s" % exc)
+        return 1
+    blob = (proc.stdout or "") + "\n" + (proc.stderr or "")
+    say(blob)
+    if proc.returncode == 0:
+        _remember_started(blob, "models")
     return proc.returncode
 
 
@@ -263,20 +562,11 @@ def models_stop(apply, _extra):
     if not apply:
         return not_applied(
             "models", "stop",
-            "Quits the screen session named familia-server when that session exists.",
+            "Signals the pid this menu recorded for the model server, after checking starttime and cmdline. "
+            "It does not quit every familia-server screen session.",
         )
     header("models", "stop")
-    state = screen_session()
-    say("screen familia-server: %s" % state)
-    if state != "present":
-        say("nothing to stop")
-        return 0
-    proc = subprocess.run(["screen", "-S", "familia-server", "-X", "quit"], cwd=ROOT)
-    if proc.returncode != 0:
-        say("screen quit failed")
-        return proc.returncode
-    say("quit familia-server")
-    return 0
+    return stop_recorded("models")
 
 
 # --- harnesses --------------------------------------------------------------
@@ -403,11 +693,10 @@ def agents_install(apply, extra):
             "Renders hermes config and starts nothing: scripts/hermes.sh --render-only.",
         )
     header("agents", "install")
-    proc = subprocess.run(
-        ["sh", os.path.join(ROOT, "scripts", "hermes.sh"), "--render-only", *extra],
-        cwd=ROOT,
-    )
-    return proc.returncode
+    if not _have_sh():
+        say("sh is not on PATH, so scripts/hermes.sh was not started.")
+        return 1
+    return _run_checked(["sh", os.path.join(ROOT, "scripts", "hermes.sh"), "--render-only", *extra])
 
 
 def agents_start(apply, extra):
@@ -418,7 +707,19 @@ def agents_start(apply, extra):
         )
     header("agents", "start")
     say(API_KEY)
-    proc = subprocess.run(["sh", os.path.join(ROOT, "scripts", "hermes.sh"), *extra], cwd=ROOT)
+    if not _have_sh():
+        say("sh is not on PATH, so scripts/hermes.sh was not started.")
+        return 1
+    try:
+        proc = subprocess.run(
+            ["sh", os.path.join(ROOT, "scripts", "hermes.sh"), *extra],
+            cwd=ROOT, capture_output=True, text=True,
+        )
+    except OSError as exc:
+        say("cannot run hermes.sh: %s" % exc)
+        return 1
+    blob = (proc.stdout or "") + "\n" + (proc.stderr or "")
+    say(blob)
     return proc.returncode
 
 
@@ -426,9 +727,11 @@ def agents_stop(apply, _extra):
     if not apply:
         return not_applied(
             "agents", "stop",
-            "Agents are not a standing listener. Stop is a no-op unless a familia-server screen session is up.",
+            "Stops only an agent process this menu recorded. It does not stop model servers.",
         )
-    return models_stop(True, [])
+    header("agents", "stop")
+    say("agents stop does not stop model servers")
+    return stop_recorded("agents")
 
 
 # --- MCP --------------------------------------------------------------------
@@ -688,6 +991,9 @@ def main(argv=None):
             return 0
         else:
             extra.append(arg)
+    if apply:
+        with _ApplyLock(argv[0]):
+            return ACTIONS[argv[0]][argv[1]](apply, extra)
     return ACTIONS[argv[0]][argv[1]](apply, extra)
 
 

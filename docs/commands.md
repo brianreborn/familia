@@ -61,10 +61,13 @@ Default front door is the six-item home (`./familia`). This catalog is the fallb
 | `setup.update` | Update this checkout (git pull --ff-only, then sync pins) | `python3 scripts/sync_pins.py --update` | `python scripts\sync_pins.py --update` |
 | `setup.licenses` | Review / accept licenses | `python3 scripts/licenses.py review` | `python scripts\licenses.py review` |
 | `setup.settings` | Change launcher settings (terminal) | `sh scripts/configure.sh --interactive` | — |
+| `setup.android-cockpit` | Android cockpit installer switches (thin client, gate, dry-run; self-host 127.0.0.1, HTTPS for remote, key required) | `sh scripts/android-cockpit-switches.sh` | — |
 | `setup.sync-goal` | Sync pinned parts only (asks preview vs apply) | `sh scripts/setup_goals.sh sync-pins` | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\setup-goals.ps1 -Goal sync-pins` |
 | `setup.safe-build` | Safe-mode / offline build help | `sh scripts/safe-build-help.sh` | `powershell -NoProfile -Command "Write-Host (Get-Content -Raw docs\safe-mode-bootstrap.md)"` |
 | `setup.logon-task` | Windows: start the model server at logon (registers the task) | — | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-task.ps1 -Install -Model <MODEL>` |
 | `setup.remove-path` | Remove familia from PATH (danger; ) | `sh scripts/setup_goals.sh remove-path` | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\setup-goals.ps1 -Goal remove-path` |
+
+`setup.android-cockpit` defaults each device to serve its own webapp at `http://127.0.0.1:9941` (loopback; HTTPS may stay off). Thin-client mode starts at that same loopback, never a fixed remote. A remote host is an explicit opt-in and uses HTTPS. An API key file (mode 0600) is always required, including on loopback (`127.0.0.0/8` and `::1`): other Termux apps and adb can reach those addresses. The literal name `localhost` counts as loopback for the HTTPS default only (plain HTTP is OK). Plain HTTP to a remote host is allowed only when the named dev switch `dev: allow plain HTTP` is on (off by default, marked `*` when on), or when `FAMILIA_DEV_ALLOW_HTTP=1`. The warning is shown in the menu, in `--show`/`--dump`, and before the run confirm. `http://` CBL URLs are always rejected.
 
 ### Skills
 
@@ -90,11 +93,13 @@ Default front door is the six-item home (`./familia`). This catalog is the fallb
 
 | Key | Label | POSIX | Windows |
 |---|---|---|---|
+| `models.list-all` | List every graph model, unplaced option, and model-database entry | `python3 scripts/catalog.py models` | `python scripts\catalog.py models` |
 | `models.add` | Add a model from a Hugging Face folder or a .gguf | `scripts/add-model.sh <PATH>` | `python scripts\add_model.py <PATH>` |
 | `models.fetch` | Download and add a model from Hugging Face (asks you to accept its license) | `scripts/add-model.sh --fetch <REPO> --quant <QUANT>` | `python scripts\add_model.py --fetch <REPO> --quant <QUANT>` |
 | `models.lfm3` | LFM3 family: download an optional LFM3 model (lfm3, lfm3-qad, lfm3-vl, lfm3-omni, lfm3-audio; vision/audio served with --mmproj; `lfm3-vl`/`lfm3-omni`/`lfm3-audio` are Linux/macOS only for now, Windows TODO #190) | `sh code-bootstraps-llama.cpp/scripts/fetch-models.sh --pick <PICK>` | `powershell -File code-bootstraps-llama.cpp\scripts\fetch-models.ps1 -Pick <PICK>` |
 | `models.cards` | Fetch only a model's card, config and license (no weights) | `python3 scripts/hf_fetch.py <REPO> --damp-run` | `python scripts\hf_fetch.py <REPO> --damp-run` |
 | `models.license` | Show one model's license and what it obliges you to | `python3 scripts/model_license.py show <ID>` | `python scripts\model_license.py show <ID>` |
+| `models.pick` | Pick a model for this host: full catalog, search, Enter = host default; previews a host graph (writes generated/ only with --write) | `python3 scripts/model_pick.py menu --host <HOST> --role <ROLE>` | `python scripts\model_pick.py menu --host <HOST> --role <ROLE>` |
 | `models.check` | Check graph.yaml: models, RAM budget, required launch parameters | `python3 scripts/validate_graph.py --graph graph.yaml` | `python scripts\validate_graph.py --graph graph.yaml` |
 | `models.explain` | Show the exact launch parameters for one node | `python3 scripts/validate_graph.py --graph graph.yaml --explain <NODE>` | `python scripts\validate_graph.py --graph graph.yaml --explain <NODE>` |
 | `models.licenses` | List model, skill and engine licenses (records nothing) | `python3 scripts/licenses.py list` | `python scripts\licenses.py list` |
@@ -103,6 +108,13 @@ Default front door is the six-item home (`./familia`). This catalog is the fallb
 | `home.models.start` | Home: start models (API key; --apply) | `python3 scripts/home_catalog.py models start` | `python scripts\home_catalog.py models start` |
 | `home.models.stop` | Home: stop models (--apply) | `python3 scripts/home_catalog.py models stop` | `python scripts\home_catalog.py models stop` |
 | `home.models.status` | Home: models status | `python3 scripts/home_catalog.py models status` | `python scripts\home_catalog.py models status` |
+
+### Graphs
+
+| Key | Label | POSIX | Windows |
+|---|---|---|---|
+| `graphs.list` | List every graph and the command that configures it | `python3 scripts/catalog.py graphs` | `python scripts\catalog.py graphs` |
+| `graphs.configure` | Show nodes on one graph and the edit command (writes nothing) | `python3 scripts/catalog.py configure <GRAPH>` | `python scripts\catalog.py configure <GRAPH>` |
 
 ### Agents (hermes)
 
@@ -180,6 +192,7 @@ Default front door is the six-item home (`./familia`). This catalog is the fallb
 | `adv.routes` | graph_router (default gateway): check a routes file (single, pair, fallback, chain, router, remote, tools); see docs/graph-recipes.md | `python3 scripts/graph_router.py <ROUTES> --check` | `python scripts\graph_router.py <ROUTES> --check` |
 | `adv.verify` | validate_graph: also verify model sha256 and runtimes (slow) | `python3 scripts/validate_graph.py --graph graph.yaml --verify-sha --check-runtimes` | `python scripts\validate_graph.py --graph graph.yaml --verify-sha --check-runtimes` |
 | `adv.graph-edit` | modify_graph: assign a models: key to a type-named node | `python3 scripts/modify_graph.py --host angel --assign-model coder=nanbeige43-33b-q4km` | `python scripts\modify_graph.py --host angel --assign-model coder=nanbeige43-33b-q4km` |
+| `adv.protograph` | protograph: recipe -> graph.yaml (dry run; skills/protograph/SKILL.md) | `python3 scripts/protograph.py <RECIPE>` | `python scripts\protograph.py <RECIPE>` |
 | `adv.db-list` | Model database: list entries | `python3 scripts/model_db.py list` | `python scripts\model_db.py list` |
 | `adv.db-show` | Model database: show one entry | `python3 scripts/model_db.py show <ID>` | `python scripts\model_db.py show <ID>` |
 | `adv.db-damp` | Model database: add a repo without weights (damp) | `python3 scripts/model_db.py damp <REPO>` | `python scripts\model_db.py damp <REPO>` |
@@ -329,6 +342,9 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/swarm/swarm-bootstrap.sh` | fresh swarm worker checkout; one-time operator setup |
 | `scripts/task_suite_promote.py` | promote gate for model configs (#119); used by bench/CI flows |
 | `scripts/task_suite_runner.py` | fixed task suite runner (#119); used by bench/CI flows |
+| `scripts/bfcl_adapter.py` | BFCL -> task-suite adapter and scorer (bench-adapters); used by bench/CI flows |
+| `scripts/routerbench_pickle_to_parquet.py` | one-time RouterBench pickle -> parquet converter; operator data prep |
+| `scripts/routerbench_scorer.py` | offline RouterBench routing-policy scorer (bench-adapters); used by bench/CI flows |
 | `scripts/prompt_cache.py` | library: prefill an agent's fixed prompt prefix once, save it with llama-server slot save, restore it on later starts (#85); used by hermes.sh |
 | `scripts/system_prompt_check.py` | offline system-prompt path checks (#115); developer/CI helper, not an end-user menu action |
 | `scripts/familia_agent_reach.py` | thin wrapper / library around Agent-Reach; menu uses scripts/agent_reach.py |
@@ -387,4 +403,6 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/ui_bridge.py` | terminal dashboard bridge inspecting running llama-ui slots and routes | — | — |
 | `scripts/windows/familia-home.ps1` | Windows mirror of familia_home.sh (started by familia.cmd) |
 | `scripts/start_graph.py` | graph dry-run helper (prints `via graph_router` = default gateway, or `via graph-proxy` with `router: false`); hosts.start-preview twin retired — use hosts.start / start.sh |
+| `scripts/hermes-escalation-config.sh` | default environment settings for escalation-ready hermes runs |
+| `scripts/watchdog_test.sh` | test helper running a command under a timeout watchdog for CI/local testing |
 

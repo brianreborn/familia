@@ -172,7 +172,7 @@ From `graph.yaml` on 2026-10-19. Addresses, users and ports live in the graph, n
 | angel | freebsd | unknown (`gpus: null`) | cpu (llama.cpp 0.7.0 via build-linux.sh) | measured (~24 GiB); Nanbeige planned | planned |
 | phone7, phone8 | android 16 (Galaxy A57) | Samsung Xclipse 550, shared RAM, Vulkan 1.4.304 (driver 25.4.7) | vulkan (OpenCL blocked) | verified | yes |
 
-qodesh is worth having for its 16 GB of RAM: it can hold bigger CPU-only models than miryam. `nodes.qodesh-resident` (Qwen3.5-2B on the non-AVX b11540 CPU build) is `active` but marked `selection: fallback`: user-selectable, about 0.91 tok/s (coarse binary search), while SmolLM2 stays the qodesh default. The phone nodes stay `planned` while the phones are out of range ([#46](https://github.com/brianreborn/familia/issues/46)).
+qodesh is worth having for its 16 GB of RAM: it can hold bigger CPU-only models than miryam. `nodes.cpu-resident-coder` (Qwen3.5-2B on the non-AVX b11540 CPU build) is `active` but marked `selection: fallback`: user-selectable, about 0.91 tok/s (coarse binary search), while SmolLM2 stays the qodesh default. The phone nodes stay `planned` while the phones are out of range ([#46](https://github.com/brianreborn/familia/issues/46)).
 
 ## Guardian / pentest (authorized fleet testing)
 

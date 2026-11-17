@@ -4,8 +4,8 @@
 #include <string.h>
 #include <time.h>
 #include "sm11_shim.h"
-#include <windows.h>
-static long time_in_ms(void){ return (long)GetTickCount(); }
+#include "sm11_compat.h"
+#define time_in_ms() (long)sm11_time_ms()
 static void cpu_matvec(float* y, const float* x, const float* w, int n, int d){
   for(int i=0;i<d;i++){ float v=0; for(int j=0;j<n;j++) v+=w[i*n+j]*x[j]; y[i]=v; }
 }

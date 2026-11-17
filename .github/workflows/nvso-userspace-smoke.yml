@@ -1,12 +1,12 @@
 name: nvso-userspace-smoke
-# Build and smoke-test gpu-legacy/nvso userspace on a development PR.
+# Build and smoke-test gpu-legacy/nvso userspace on a main PR.
 # The job does not load nvso.ko, open /dev/nvso0, create a kernel domain,
 # or contact a deployed host.
 on:
   pull_request:
-    branches: [development]
+    branches: [main]
   push:
-    branches: [development]
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read

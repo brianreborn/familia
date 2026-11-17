@@ -46,6 +46,11 @@ Change launcher settings (terminal).
 .br
 Runs: \fBsh scripts/configure.sh \-\-interactive\fR
 .TP
+\fBandroid\-cockpit\fR
+Android cockpit installer switches (thin client, gate, dry\-run; self\-host 127.0.0.1, HTTPS for remote, key required).
+.br
+Runs: \fBsh scripts/android\-cockpit\-switches.sh\fR
+.TP
 \fBsync\-goal\fR
 Sync pinned parts only (asks preview vs apply) (licenses first).
 .br
@@ -114,6 +119,11 @@ Print mcpServers JSON for llama UI / code\-bootstraps.
 Runs: \fBpython3 scripts/agent_reach.py mcp\-example\fR
 .SS Models
 .TP
+\fBlist\-all\fR
+List every graph model, unplaced option, and model\-database entry.
+.br
+Runs: \fBpython3 scripts/catalog.py models\fR
+.TP
 \fBmodel add\fR \fI<PATH>\fR
 Add a model from a Hugging Face folder or a .gguf.
 .br
@@ -139,6 +149,11 @@ Show one model's license and what it obliges you to.
 .br
 Runs: \fBpython3 scripts/model_license.py show <ID>\fR
 .TP
+\fBmodel pick\fR \fI<HOST>\fR \fI<ROLE>\fR
+Pick a model for this host: full catalog, search, Enter = host default; previews a host graph (writes generated/ only with \-\-write).
+.br
+Runs: \fBpython3 scripts/model_pick.py menu \-\-host <HOST> \-\-role <ROLE>\fR
+.TP
 \fBmodel check\fR
 Check graph.yaml: models, RAM budget, required launch parameters.
 .br
@@ -153,6 +168,17 @@ Runs: \fBpython3 scripts/validate_graph.py \-\-graph graph.yaml \-\-explain <NOD
 List model, skill and engine licenses (records nothing).
 .br
 Runs: \fBpython3 scripts/licenses.py list\fR
+.SS Graphs
+.TP
+\fBgraphs list\fR
+List every graph and the command that configures it.
+.br
+Runs: \fBpython3 scripts/catalog.py graphs\fR
+.TP
+\fBgraphs configure\fR \fI<GRAPH>\fR
+Show nodes on one graph and the edit command (writes nothing).
+.br
+Runs: \fBpython3 scripts/catalog.py configure <GRAPH>\fR
 .SS Agents (hermes)
 .TP
 \fBhermes model\fR \fI<MODEL>\fR
@@ -358,6 +384,11 @@ Runs: \fBpython3 scripts/validate_graph.py \-\-graph graph.yaml \-\-verify\-sha 
 modify_graph: assign models: key to a type\-named node (prefer \-\-host for private topology).
 .br
 Runs: \fBpython3 scripts/modify_graph.py \-\-host <HOST> \-\-assign\-model <ASSIGN>\fR
+.TP
+\fBgraph proto\fR \fI<RECIPE>\fR
+protograph: recipe \-> graph.yaml (dry run; skills/protograph/SKILL.md).
+.br
+Runs: \fBpython3 scripts/protograph.py <RECIPE>\fR
 .TP
 \fBmodel db list\fR
 Model database: list entries.

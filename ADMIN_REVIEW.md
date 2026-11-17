@@ -108,14 +108,14 @@ See [#226](https://github.com/brianreborn/familia/issues/226): a later comment s
 
 **Decision asked.** Close [#226](https://github.com/brianreborn/familia/issues/226), or keep it open. If you close it, [#283](https://github.com/brianreborn/familia/issues/283)'s confirmation on `512804f` is likely moot.
 
-### [#221 — test: nodes miryam-pentest / angel-guardian card_set '5. Recommended settings' matches 0 card sets](https://github.com/brianreborn/familia/issues/221)
+### [#221 — test: nodes fleet-guardian / freebsd-guardian card_set '5. Recommended settings' matches 0 card sets](https://github.com/brianreborn/familia/issues/221)
 
 - **Labels:** `from-other-grokbot`
 - **Author:** brianreborn
 - **Opened:** 2026-10-31
 - **Updated:** 2026-11-01
 
-**Summary.** `harness2.py review` reported that `nodes.miryam-pentest` and `nodes.angel-guardian` used card set `5. Recommended settings`, which matched no sets on the linked card.
+**Summary.** `harness2.py review` reported that `nodes.fleet-guardian` and `nodes.freebsd-guardian` used card set `5. Recommended settings`, which matched no sets on the linked card.
 
 **Latest comment (2026-11-01, Hermes Wiring).** Already fixed on `main` (`6f4c36b`). The mradermacher model entry has no card sets; since `4723d0a` the nodes resolve to the RavichandranJ entry, which has that set. `python3 scripts/harness2.py --graph graph.yaml review` exited 0. Suggests closing. This is Brian's call.
 

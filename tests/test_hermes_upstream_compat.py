@@ -6,7 +6,7 @@ the rendered config is then loaded and validated by that hermes itself (config s
 mcp_servers and approvals, toolsets, MCP ${VAR} interpolation, aux tasks, skills discovery,
 the symbols scripts/hermes_harness.py imports in its child processes).
 """
-import copy, json, os, subprocess, sys
+import copy, json, os, subprocess, sys, time
 import pytest, yaml
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -248,7 +248,7 @@ def test_upstream_parse_warns_when_far_smaller_than_snapshot(tmp_path, capsys):
 def test_scrub_static_superset_and_file_creds(tmp_path, monkeypatch):
     monkeypatch.delenv(hh.ALLOW_CLOUD_ENV, raising=False)
     monkeypatch.setattr(hh, "upstream_provider_env_names", lambda roots=None: frozenset())
-    hh.MCP_ENV_KEEP.clear()
+    monkeypatch.setattr(hh, "MCP_ENV_KEEP", set())
     home = tmp_path / "hh"; home.mkdir(mode=0o700)
     src = {k: "v" for k in ("ANTHROPIC_TOKEN", "CLAUDE_CODE_OAUTH_TOKEN", "AWS_PROFILE", "AWS_REGION",
                             "AWS_ACCESS_KEY_ID", "AWS_WEB_IDENTITY_TOKEN_FILE", "HF_TOKEN", "OPENAI_API_KEY",
@@ -291,7 +291,7 @@ def test_every_upstream_registry_env_name_is_scrubbed(tmp_path, monkeypatch):
     assert out["names"], "upstream registry is empty?"
     monkeypatch.delenv(hh.ALLOW_CLOUD_ENV, raising=False)
     monkeypatch.setattr(hh, "HERMES_SP", out["root"])
-    hh.MCP_ENV_KEEP.clear()
+    monkeypatch.setattr(hh, "MCP_ENV_KEEP", set())
     left = hh.hermes_child_env(environ={n: "secret" for n in out["names"]})
     assert sorted(n for n in out["names"] if left.get(n) == "secret") == []
     # and the source parser alone (no regex / static help) sees every registry name
@@ -320,7 +320,7 @@ def test_ambient_secrets_not_carried_unless_opted_in(tmp_path, monkeypatch):
 def test_ambient_secrets_n2a_token_dsn_kubeconfig(tmp_path, monkeypatch):
     """Boundary N2a: *_TOKEN / DSN / DB URLs / KUBECONFIG / FAMILIA_GH_TOKEN drop unless PASS_SECRETS=1."""
     monkeypatch.setenv("HOME", str(tmp_path))
-    hh.MCP_ENV_KEEP.clear()
+    monkeypatch.setattr(hh, "MCP_ENV_KEEP", set())
     drop = {
         "SLACK_BOT_TOKEN": "xoxb", "APP_PRIVATE_KEY": "pem", "SERVICE_DSN": "postgres://x",
         "DSN": "mysql://x", "DATABASE_URL": "postgres://db", "PROD_DATABASE_URL": "postgres://p",
@@ -363,7 +363,7 @@ def test_ambient_secrets_n2a_token_dsn_kubeconfig(tmp_path, monkeypatch):
 def test_ambient_secret_value_credential_url_negative(tmp_path, monkeypatch):
     """Plain URLs without userinfo stay; any userinfo (user:pass@ or token@host) drops."""
     monkeypatch.setenv("HOME", str(tmp_path))
-    hh.MCP_ENV_KEEP.clear()
+    monkeypatch.setattr(hh, "MCP_ENV_KEEP", set())
     src = {
         "LLAMA_SERVER_URL": "http://127.0.0.1:8080",
         "PUBLIC_HOOK": "https://hooks.example/x",
@@ -382,7 +382,7 @@ def test_ambient_secret_value_credential_url_negative(tmp_path, monkeypatch):
 def test_uri_is_value_based_not_a_blanket_name_drop(tmp_path, monkeypatch):
     """Boundary #352 nit: REDIRECT_URI stays; *_URI drops only with userinfo or a credential DSN scheme."""
     monkeypatch.setenv("HOME", str(tmp_path))
-    hh.MCP_ENV_KEEP.clear()
+    monkeypatch.setattr(hh, "MCP_ENV_KEEP", set())
     src = {
         "REDIRECT_URI": "https://app.example/callback",
         "OAUTH_REDIRECT_URI": "https://app.example/oauth",
@@ -404,7 +404,7 @@ def test_uri_is_value_based_not_a_blanket_name_drop(tmp_path, monkeypatch):
 def test_cloudamqp_and_amqp_url_names_drop(tmp_path, monkeypatch):
     """CLOUDAMQP_URL and *AMQP*_URL generally drop unless PASS_SECRETS=1."""
     monkeypatch.setenv("HOME", str(tmp_path))
-    hh.MCP_ENV_KEEP.clear()
+    monkeypatch.setattr(hh, "MCP_ENV_KEEP", set())
     src = {"CLOUDAMQP_URL": "amqps://x", "MY_AMQP_URL": "amqp://y", "AMQP_BROKER_URL": "amqp://z",
            "HERMES_HOME": "/h", "PATH": "/bin"}
     env = hh.hermes_child_env(environ=src)
@@ -412,6 +412,238 @@ def test_cloudamqp_and_amqp_url_names_drop(tmp_path, monkeypatch):
         assert k not in env, k
     opted = hh.hermes_child_env(environ=dict(src, **{hh.PASS_SECRETS_ENV: "1"}))
     assert opted["CLOUDAMQP_URL"] == "amqps://x" and opted["AMQP_BROKER_URL"] == "amqp://z"
+
+
+
+def test_ambient_secret_userinfo_schemeless_scheme_relative_and_percent(tmp_path, monkeypatch):
+    """Schemeless, scheme-relative, and encoded userinfo drop. Password-less git/ssh stays."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setattr(hh, "MCP_ENV_KEEP", set())
+    drop = {
+        "SCHEMELESS_PASS": "alice:s3cret@db.example:5432/app",
+        "SCHEMELESS_USER_PASS": "deploy:hunter2@ci-host",
+        "SCHEME_RELATIVE": "//alice:s3cret@db.example/app",
+        "SCHEME_RELATIVE_TOKEN": "//s3cret-token@evil.example/x",
+        "PCT_AT": "https://s3cret-token%40evil.example/path",
+        "PCT_COLON": "https://user%3Apass@evil.example/x",
+        "PCT_DOUBLE": "https://s3cret-token%2540evil.example/path",
+        "PCT_TRIPLE": "https://s3cret-token%252540evil.example/path",
+        "PCT_SLASH_AT": "https://alice:sec%2Fret%40evil.example/db",
+        "PCT_SCHEME_RELATIVE": "//user%40evil.example/db",
+        "SSH_WITH_PASS": "ssh://git:s3cret@github.com/org/repo.git",
+        "SSH_PCT_PASS": "ssh://git%3As3cret@github.com/org/repo.git",
+        "SCP_WITH_PASS": "deploy:hunter2@ci-host/app",
+        "USER_AT_LOCALHOST": "alice@localhost",
+    }
+    keep = {
+        "ADMIN_EMAIL": "alice@example.com",
+        "CONTACT_EMAIL": "bob.smith+ops@example.co.uk",
+        "EMAIL": "carol@example.org",
+        "LLAMA_SERVER_URL": "http://127.0.0.1:8080",
+        "PUBLIC_HOOK": "https://hooks.example/x",
+        "MAILTO": "mailto:alice@example.com",
+        "GIT_SSH": "git@github.com:org/repo.git",
+        "GIT_SSH_URL": "ssh://git@github.com/org/repo.git",
+        "GIT_PLUS_SSH": "git+ssh://git@github.com/org/repo.git",
+        "USER_AT_HOST_PATH": "deploy@ci-host/app",
+        "PCT_EMAIL_QUERY": "https://example.com/u?email=alice%40example.com",
+        "HERMES_HOME": "/h",
+        "PATH": "/bin",
+    }
+    src = dict(drop, **keep)
+    env = hh.hermes_child_env(environ=src)
+    for k in drop:
+        assert k not in env, k
+    for k, v in keep.items():
+        assert env[k] == v, k
+    opted = hh.hermes_child_env(environ=dict(src, **{hh.PASS_SECRETS_ENV: "1"}))
+    for k, v in drop.items():
+        assert opted[k] == v, k
+
+
+def test_credential_url_value_matrix():
+    """Direct shape checks: encoded credentials drop; password-less git/ssh stays."""
+    drop = [
+        "alice:s3cret@db.example:5432/app",
+        " //token@evil.example/x ",
+        "https://s3cret-token%40evil.example/path",
+        "https://user%3Apass@evil.example/x",
+        "https://s3cret-token%2540evil.example/path",
+        "https://s3cret-token%252540evil.example/path",
+        "https://alice:sec%2Fret%40evil.example/db",
+        "https://alice:sec%2Fret@evil.example/db",
+        "ssh://git:s3cret@github.com/org/repo.git",
+        "ssh://git%3As3cret@github.com/org/repo.git",
+        "deploy:hunter2@ci-host/app",
+        "alice@localhost",
+        "postgres://user@db.example/app",
+        # Bounded decode: 4 and 5 %25 layers still have an encoded @ after the
+        # 3-round cap and fail closed (drop), rather than being kept.
+        "https://s3cret-token%25252540evil.example/path",
+        "https://s3cret-token%2525252540evil.example/path",
+        # Prefixed / quoted / BOM / whitespace / mailto password / harmless-scheme userinfo
+        "jdbc:mysql://u:p@h",
+        "jdbc:mysql://user:pass@host:3306/app",
+        "'https://u:p@h'",
+        '"https://u:p@h"',
+        "\ufeffhttps://u:p@h",
+        " https://u:p@h",
+        "mailto:u:p@h",
+        "mailto:alice:s3cret@example.com",
+        "tag:pw@db.example",
+        "tel:secret@example.com",
+        "urn:user:pass@example.com",
+        # Token-shaped usernames are not conventional git/ssh logins
+        # (long >32, or a known prefix such as ghp_/gho_/xoxb-).
+        "ssh://gho_abcdefghijklmnopqrstuvwxyz0123456789@github.com/org/repo.git",
+        "gho_abcdefghijklmnopqrstuvwxyz0123456789@github.com:org/repo.git",
+        "ghp_shorttoken@ci-host/app",
+        "xoxb-1234567890@ci-host:org/repo.git",
+        # npm/pip pkg@1.2.3 matches bare user@host and drops (fail closed; on record)
+        "pkg@1.2.3",
+    ]
+    keep = [
+        "alice@example.com",
+        "bob.smith+ops@example.co.uk",
+        "http://127.0.0.1:8080",
+        "https://hooks.example/x",
+        "mailto:alice@example.com",
+        "https://example.com/u?email=alice@example.com",
+        "https://example.com/u?email=alice%40example.com",
+        "redis://localhost:6379/0",
+        "git@github.com:org/repo.git",
+        "git@gitlab.com:group/proj.git",
+        "ssh://git@github.com/org/repo.git",
+        "git+ssh://git@github.com/org/repo.git",
+        "deploy@ci-host/app",
+        "org-12345@github.com:org/repo.git",
+        # Plain host, no userinfo; conventional login at host:port (scp-style tradeoff)
+        "https://example.com",
+        "https://hooks.example/x/path",
+        "jdbc:mysql://localhost:3306/app",
+        "user@localhost:22",
+        "alice@localhost:22",
+        "tel:+15551212",
+        "urn:uuid:123e4567-e89b-12d3-a456-426614174000",
+    ]
+    for v in drop:
+        assert hh._credential_url_value(v), v
+    for v in keep:
+        assert not hh._credential_url_value(v), v
+
+
+def test_credential_url_prefixed_quoted_bom_mailto_token_and_decode_cap():
+    """Boundary/Race #363 review-fix: prefix, quotes, BOM, mailto password, tokens, cap."""
+    drop = [
+        "jdbc:mysql://u:p@h",
+        "'https://u:p@h'",
+        '"https://user:pass@evil.example/x"',
+        "\ufeffhttps://user:pass@evil.example/x",
+        "  https://user:pass@evil.example/x  ",
+        "mailto:u:p@h",
+        "tag:pw@db.example",
+        "https://s3cret-token%25252540evil.example/path",
+        "https://s3cret-token%2525252540evil.example/path",
+        "ssh://gho_abcdefghijklmnopqrstuvwxyz0123456789@github.com/org/repo.git",
+        "gho_abcdefghijklmnopqrstuvwxyz0123456789@ci-host:org/repo.git",
+        "ghp_shorttoken@ci-host/app",
+        "pkg@1.2.3",
+        # git/ssh exemption is per-URL; a later userinfo URI still drops
+        "ssh://git@github.com/org/repo.git https://u:p@h",
+        "git+ssh://git@github.com/org/repo.git?next=https://user:pass@evil.example/x",
+    ]
+    keep = [
+        "https://example.com",
+        "git@github.com:org/repo.git",
+        "ssh://git@github.com/org/repo.git",
+        "git+ssh://git@github.com/org/repo.git",
+        "org-12345@github.com:org/repo.git",
+        "mailto:alice@example.com",
+        "user@localhost:22",
+        "jdbc:mysql://localhost:3306/app",
+        "ssh://git@github.com/org/repo.git https://example.com/x",
+    ]
+    for v in drop:
+        assert hh._credential_url_value(v), v
+    for v in keep:
+        assert not hh._credential_url_value(v), v
+    # Four-layer encoding is dropped as leftover depth, not because it decoded.
+    four = "https://s3cret-token%25252540evil.example/path"
+    revealed = hh._reveal_userinfo_delimiters(four)
+    assert "%40" in revealed or "%25" in revealed
+    assert hh._encoded_delimiters_remain(revealed)
+    # BOM + quotes + jdbc still drop once normalized; plain https://host does not.
+    assert hh._credential_url_value("\ufeff'jdbc:mysql://u:p@h'")
+    assert not hh._credential_url_value("\ufeff'https://example.com'")
+
+
+def test_git_ssh_exemption_does_not_hide_a_later_userinfo_uri():
+    """A conventional ssh/git remote must not skip a later ://userinfo in the same value."""
+    assert hh._credential_url_value("ssh://git@github.com/org/repo.git https://u:p@h")
+    assert hh._credential_url_value(
+        "git+ssh://git@github.com/org/repo.git?next=https://user:pass@evil.example/x"
+    )
+    assert not hh._credential_url_value("ssh://git@github.com/org/repo.git")
+    assert not hh._credential_url_value(
+        "ssh://git@github.com/org/repo.git https://example.com/x"
+    )
+
+
+def test_credential_url_value_long_values_are_not_quadratic():
+    """32 KiB values (no ://, and many ://) must scrub in well under 0.5 s.
+
+    Regression for the unanchored scheme finditer, which was quadratic on long
+    values with no :// (32 KiB took ~10.9 s at bdb7f18, ~0.001 s at c60fa82).
+    """
+    size = 32 * 1024
+    no_scheme = "A" * size
+    colon_sep = (":".join(["PATH"] * (size // 5)))[:size]
+    many_plain = ("https://example.com/foo " * ((size // 24) + 1))[:size]
+    many_then_secret = ("https://example.com/foo " * ((size // 24) + 1))[:size - 20] + "https://u:p@h"
+    assert "://" not in no_scheme
+    assert no_scheme.count("://") == 0
+    assert many_plain.count("://") > 1000
+    timings = {}
+    for name, val, expect_drop in (
+        ("no_scheme", no_scheme, False),
+        ("colon_sep", colon_sep, False),
+        ("many_plain", many_plain, False),
+        ("many_then_secret", many_then_secret, True),
+    ):
+        t0 = time.perf_counter()
+        got = hh._credential_url_value(val)
+        elapsed = time.perf_counter() - t0
+        timings[name] = elapsed
+        assert got is expect_drop, (name, got, expect_drop, elapsed)
+        assert elapsed < 0.5, f"{name} took {elapsed:.3f}s on {len(val)} bytes"
+    # Also the launch-path wrapper used by hermes_child_env, one 32 KiB var.
+    env = {"PATH": "/bin", "HERMES_HOME": "/h", "BLOB": no_scheme, "MANY": many_plain}
+    t0 = time.perf_counter()
+    hh.scrub_ambient_secrets(env)
+    elapsed = time.perf_counter() - t0
+    timings["scrub_two_32k"] = elapsed
+    assert env["BLOB"] == no_scheme and env["MANY"] == many_plain
+    assert elapsed < 0.5, f"scrub_ambient_secrets took {elapsed:.3f}s"
+    # Printed so the run report can quote measured times.
+    print("credential_url_long_value_timings_s", {k: round(v, 6) for k, v in timings.items()})
+
+
+def test_percent_decode_uses_an_explicit_urllib_parse_import():
+
+    """Userinfo decoding imports urllib.parse; it must not rely on urllib.request."""
+    import ast
+    path = os.path.join(ROOT, "scripts", "hermes_harness.py")
+    tree = ast.parse(open(path, encoding="utf-8").read())
+    imported = any(
+        isinstance(node, ast.Import) and any(a.name == "urllib.parse" for a in node.names)
+        for node in tree.body
+    )
+    assert imported
+    assert hh.urllib.parse.unquote("%40") == "@"
+    # Full unquote would hide this @ behind the decoded slash; delimiter reveal must not.
+    hidden = "https://alice:sec%2Fret%40evil.example/db"
+    assert "%2F" in hh._reveal_userinfo_delimiters(hidden)
+    assert hh._credential_url_value(hidden)
 
 
 def test_harness_env_keep_has_no_secret_shaped_names():

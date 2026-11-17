@@ -6,6 +6,8 @@
 #
 # Only addr / user / port (and optional meshes.*.bind) belong here.
 # Never commit this file. Override path with $FAMILIA_HOSTS_OVERLAY.
+# Keys stay host-oriented (miryam, qodesh, phone7, phone8). That is the overlay's
+# job: real machines. Node, model, and runtime ids in graph.yaml are capability names.
 #
 # Values below use TEST-NET documentation addresses — replace with your LAN.
 
