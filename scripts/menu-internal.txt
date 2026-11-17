@@ -63,10 +63,7 @@ scripts/build_appimage.sh|operator AppImage packaging for milestones; not an end
 scripts/perf/box_multi_size_smoke.py|perf/dev smoke hitting decision+coder ports; run by operators on a box, not menu
 scripts/familia_agent_reach.py|thin wrapper / library around Agent-Reach; menu uses scripts/agent_reach.py
 scripts/system_prompt_check.py|offline system-prompt path checks (#115); developer/CI helper, not an end-user menu action
-scripts/familia_home.sh|Charm/gum front door (./familia); not a legacy catalog row
-scripts/proto_chat.sh|protomodel REPL from gum home "Talk to the protomodel"
-scripts/find_models.sh|guided fetch from gum home "Find more models"
-scripts/search_x.sh|X/Twitter search from gum home via Agent-Reach
+scripts/familia_home.sh|interactive home (six equal items); actions are legacy rows via scripts/home_catalog.py
 scripts/windows/familia-home.ps1|Windows mirror of familia_home.sh
 scripts/start_graph.py|graph dry-run helper; preview twin retired — use hosts.start / start.sh
 scripts/install-gum.sh|install helper: put Charm gum in ~/.local/bin; called by install.sh / setup_goals, not a menu item
@@ -74,6 +71,7 @@ scripts/pilot_hud.sh|Charm/ANSI mecha pilot HUD helpers sourced by familia_home 
 scripts/prefetch-first-models.sh|background first-try model fetch kicked by gum home / setup / proto_chat; not a menu item
 scripts/windows/install-gum.ps1|Windows install helper for gum.exe into %LOCALAPPDATA%\Programs\familia\bin; called by install.ps1
 scripts/windows/prefetch-first-models.ps1|Windows Start-Job wrapper for prefetch-first-models; kicked by familia-home / setup-goals
+scripts/windows/launch_server.py|Windows helper that start.bat runs after the license gate; writes the llama-server pid and waits. Not a menu item.
 scripts/offline_improve.py|on-host offline perf loop when fleet peers unreachable (docs/offline-improve.md); Continuity gum: optional setup.goals hook later — do not collide Continuity-owned rows
 scripts/activate_guardian_weights.py|guardian weight fetch/measure/activate (Dolphin3-Cyber Q2_K); operator step run via with-fleet.sh, docs/guardian-weights.md
 scripts/activate_guardian_weights.sh|thin wrapper for scripts/activate_guardian_weights.py

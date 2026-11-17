@@ -97,7 +97,7 @@ if errorlevel 1 (
   exit /b 2
 )
 echo familia: %BIN% -m "%MODEL%" on %FAMILIA_BIND%:%FAMILIA_PORT% (log %LOG%)
-"%BIN%" -m "%MODEL%" --host "%FAMILIA_BIND%" --port "%FAMILIA_PORT%" -c %FAMILIA_CTX% -t %FAMILIA_THREADS% -np 1 -ctk %FAMILIA_KV% -ctv %FAMILIA_KV% --api-key-file "%FAMILIA_API_KEY_FILE%" %FAMILIA_EXTRA% >> "%LOG%" 2>&1
+python "%~dp0launch_server.py" "%BIN%" "%MODEL%" "%FAMILIA_BIND%" "%FAMILIA_PORT%" "%FAMILIA_CTX%" "%FAMILIA_THREADS%" "%FAMILIA_KV%" "%LOG%" "%FAMILIA_API_KEY_FILE%" %FAMILIA_EXTRA%
 exit /b %ERRORLEVEL%
 
 :help

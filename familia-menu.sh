@@ -88,12 +88,17 @@ group_desc() {
     "Advanced: models & graph") echo "model database, launch arguments, graph edits, scale-down" ;;
     "Advanced: agents") echo "skill folders, hermes self-test and escalation" ;;
     "Advanced: hosts & benchmarks") echo "low-level setup, benchmarks, power, uninstall, FreeBSD" ;;
+    "MCP servers") echo "graph MCP entries; this menu does not bind a port" ;;
+    "Tool sets") echo "skill and tool catalogs on this machine" ;;
+    "App store") echo "local app catalog; public search stays cached" ;;
+    "Front door") echo "older home goals: protomodel, model finder, X search" ;;
     "Help") echo "quick start, search, the full command list, what the menu leaves out" ;;
   esac
 }
 
 workflow_paths() {
-  say "LEGACY CATALOG (fallback). Prefer: ./familia  → Talk to the protomodel."
+  say "HOME: Models, Harnesses, Agents, MCP servers, Tool sets, App store."
+  say "LEGACY CATALOG (fallback). Talk to the protomodel stays on Front door."
   say "GOALS (pick one; Set up group has the same first-time path as a single choice):"
   say "  New checkout: setup.first-time  (deps -> licenses -> configure -> install -> PATH)"
   say "                then ./familia → Talk to the protomodel  (or hosts.start)"
@@ -135,6 +140,15 @@ read_line() {  # read_line PROMPT VAR ; returns 1 on EOF
   printf '%s' "$__p" >&2
   IFS= read -r __v || { [ -n "$__v" ] || return 1; }
   printf -v "$2" '%s' "$__v"
+}
+# Menus leave only on q/quit/exit. EOF on a terminal asks again.
+# EOF on a pipe is not a successful quit (return 2).
+closed_input() {
+  say "familia: input closed. Menus exit only when you type q."
+  if [ -t 0 ]; then
+    return 0
+  fi
+  return 2
 }
 
 MENU_CHOICE=""
@@ -330,11 +344,14 @@ search_ui() {  # search_ui OP TEXT ; OP is / ? n N. Returns 3 to quit the menu.
       show_match $((SCUR+1)) "${SK[$SCUR]}" "$t" "> " ;;
   esac
   while true; do
-    read_line "Choose 1-${#SK[@]} to run, n/N next/previous match, /word to search again, b back: " choice || return 3
+    if ! read_line "Choose 1-${#SK[@]} to run, n/N next/previous match, /word to search again, b back: " choice; then
+      closed_input || return 4
+      continue
+    fi
     parse_menu_input "$choice"; choice=$MENU_CHOICE
     case "$choice" in
       b|B|back|"") return 0 ;;
-      q|Q) return 3 ;;
+      q|Q|quit|exit) return 3 ;;
       n|N) search_ui "$choice" ""; return $? ;;
       /*|\?*) search_ui "${choice:0:1}" "${choice:1}"; return $? ;;
     esac
@@ -345,11 +362,13 @@ search_ui() {  # search_ui OP TEXT ; OP is / ? n N. Returns 3 to quit the menu.
     item_args=("${PENDING_ARGS[@]}" "${MENU_ARGS[@]}")
     PENDING_ARGS=()
     run_item "${SK[$SCUR]}" "${item_args[@]}" || say "(that step exited with status $?)"
-    [ "$PIPE" = 1 ] || read_line "Press Enter to go back to the menu..." choice || return 3
+    if [ "$PIPE" != 1 ] && ! read_line "Press Enter to go back to the menu..." choice; then
+      closed_input || return 4
+    fi
     return 0
   done
 }
-search_key() {  # handle /x ?x n N typed at any menu prompt; returns 0 handled (stay), 3 quit, 1 not a search
+search_key() {  # 0 handled (stay), 3 quit, 4 stdin closed (not a quit), 1 not a search
   case "$1" in
     /*|\?*) search_ui "${1:0:1}" "${1:1}" || return $? ;;
     n|N) search_ui "$1" "" || return $? ;;
@@ -369,12 +388,15 @@ menu() {
 $(groups)
 EOF2
     say "  q) Quit      /word search every group (n/N next/previous match)"
-    read_line "Choose 1-$n, /search or q: " choice || { say ""; return 0; }
+    if ! read_line "Choose 1-$n, /search or q: " choice; then
+      closed_input || return 2
+      continue
+    fi
     parse_menu_input "$choice"; choice=$MENU_CHOICE
     [ -n "$choice" ] || continue
     case "$choice" in q|Q|quit|exit) return 0 ;; esac
     local rc=0; search_key "$choice" || rc=$?
-    case $rc in 0) continue ;; 3) return 0 ;; esac
+    case $rc in 0) continue ;; 3) return 0 ;; 4) return 2 ;; esac
     if ! [[ $choice =~ ^[0-9]+$ ]] || [ "$choice" -lt 1 ] || [ "$choice" -gt "$n" ]; then
       say "'$choice' isn't one of the choices. Type a number from 1 to $n, /word to search, or q."; continue
     fi
@@ -407,19 +429,25 @@ EOF2
       fi
       say "  b) Back      /word search every group (n/N next/previous match)"
       if [ "$pages" -gt 1 ]; then
-        read_line "Choose 1-$n, </> page, /search or b: " choice || return 0
+        if ! read_line "Choose 1-$n, </> page, /search or b: " choice; then
+          closed_input || return 2
+          continue
+        fi
       else
-        read_line "Choose 1-$n, /search or b: " choice || return 0
+        if ! read_line "Choose 1-$n, /search or b: " choice; then
+          closed_input || return 2
+          continue
+        fi
       fi
       parse_menu_input "$choice"; choice=$MENU_CHOICE
       [ -n "$choice" ] || continue
-      case "$choice" in b|B|back|"") break ;; q|Q) return 0 ;; esac
+      case "$choice" in b|B|back|"") break ;; q|Q|quit|exit) return 0 ;; esac
       case "$choice" in
         '>'|next) if [ "$page" -lt "$((pages-1))" ]; then page=$((page+1)); fi; continue ;;
         '<'|prev) if [ "$page" -gt 0 ]; then page=$((page-1)); fi; continue ;;
       esac
       local rc=0; search_key "$choice" || rc=$?
-      case $rc in 0) continue ;; 3) return 0 ;; esac
+      case $rc in 0) continue ;; 3) return 0 ;; 4) return 2 ;; esac
       if ! [[ $choice =~ ^[0-9]+$ ]] || [ "$choice" -lt 1 ] || [ "$choice" -gt "$n" ]; then
         if [ "$pages" -gt 1 ]; then
           say "'$choice' isn't one of the choices. Type a number from 1 to $n, </> page, /word to search, or b."
@@ -431,7 +459,10 @@ EOF2
       local -a item_args=("${PENDING_ARGS[@]}" "${MENU_ARGS[@]}")
       PENDING_ARGS=()
       run_item "${items[$((choice-1))]}" "${item_args[@]}" || say "(that step exited with status $?)"
-      [ "$PIPE" = 1 ] || read_line "Press Enter to go back to the menu..." choice || return 0
+      if [ "$PIPE" != 1 ] && ! read_line "Press Enter to go back to the menu..." choice; then
+        closed_input || return 2
+        continue
+      fi
     done
   done
 }

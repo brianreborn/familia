@@ -1,7 +1,7 @@
 @echo off
-rem familia on Windows: Charm/gum home by default; legacy menu via -LegacyMenu or "menu".
-rem   familia.cmd                       gum home (Talk to the protomodel first)
-rem   familia.cmd -LegacyMenu | menu    old catalog
+rem familia on Windows: six equal home items by default; legacy menu via -LegacyMenu or "menu".
+rem   familia.cmd                       Models, Harnesses, Agents, MCP servers, Tool sets, App store
+rem   familia.cmd -LegacyMenu | menu    old catalog (fallback and CLI)
 rem   familia.cmd COMMAND ...           CLI (scripts\cli-commands.txt)
 setlocal
 if "%~1"=="" (

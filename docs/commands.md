@@ -1,6 +1,6 @@
 # Every familia command
 
-This page mirrors `scripts/menu-items.txt` (legacy catalog). Default `./familia` opens the Charm/gum home (`scripts/familia_home.sh`); use `./familia menu` / `--legacy-menu` for this catalog. `tests/test_menu.py` checks this page lists every item.
+This page mirrors `scripts/menu-items.txt` (legacy catalog). Default `./familia` opens the home menu (`scripts/familia_home.sh`): six equal items (Models, Harnesses, Agents, MCP servers, Tool sets, App store), each with install, list, start, stop and status. It exits only on Quit. If gum is missing and cannot be installed, it falls back to this catalog instead of exiting. Use `./familia menu` / `--legacy-menu` for the catalog directly. `tests/test_menu.py` checks this page lists every item.
 Run any row from the legacy menu, as a command (`./familia COMMAND`, below), or with `./familia run KEY [ARG...]` (Windows: `familia.cmd run KEY`). Add `--dry-run` before a command to print it without running (CLI mode only — items themselves are real runs).
 `<NAME>` is asked for when you pick the item. "licenses first" means `scripts/licenses.py gate` runs before it ([licenses.md](licenses.md)).
 
@@ -51,7 +51,7 @@ The interactive menu and `--list` show these paths before the command groups. Fo
 
 ## Menu items by group (legacy catalog)
 
-Default front door is the gum home (`./familia`). This catalog is **fallback only**.
+Default front door is the six-item home (`./familia`). This catalog is the fallback and the CLI for every home action.
 
 ### Set up
 
@@ -103,6 +103,11 @@ Default front door is the gum home (`./familia`). This catalog is **fallback onl
 | `models.check` | Check graph.yaml: models, RAM budget, required launch parameters | `python3 scripts/validate_graph.py --graph graph.yaml` | `python scripts\validate_graph.py --graph graph.yaml` |
 | `models.explain` | Show the exact launch parameters for one node | `python3 scripts/validate_graph.py --graph graph.yaml --explain <NODE>` | `python scripts\validate_graph.py --graph graph.yaml --explain <NODE>` |
 | `models.licenses` | List model, skill and engine licenses (records nothing) | `python3 scripts/licenses.py list` | `python scripts\licenses.py list` |
+| `home.models.install` | Home: install models | `python3 scripts/home_catalog.py models install` | `python scripts\home_catalog.py models install` |
+| `home.models.list` | Home: list models | `python3 scripts/home_catalog.py models list` | `python scripts\home_catalog.py models list` |
+| `home.models.start` | Home: start models (API key; --apply) | `python3 scripts/home_catalog.py models start` | `python scripts\home_catalog.py models start` |
+| `home.models.stop` | Home: stop models (--apply) | `python3 scripts/home_catalog.py models stop` | `python scripts\home_catalog.py models stop` |
+| `home.models.status` | Home: models status | `python3 scripts/home_catalog.py models status` | `python scripts\home_catalog.py models status` |
 
 ### Graphs
 
@@ -126,6 +131,11 @@ Default front door is the gum home (`./familia`). This catalog is **fallback onl
 | `agents.guardian-weights` | Guardian: dry-run fetch/measure/activate path (Dolphin3 Q2_K; no seatbelt edits) | `python3 scripts/activate_guardian_weights.py` | — |
 | `agents.pentest-launch-test` | Legacy id → guardian launch-test | `sh with-fleet.sh --role guardian --launch-test` | — |
 | `agents.pentest-start` | Legacy id → guardian operator-start | `env FAMILIA_OPERATOR_CONFIRM=yes sh with-fleet.sh --role guardian --operator-start` | — |
+| `home.agents.install` | Home: install agents | `python3 scripts/home_catalog.py agents install` | `python scripts\home_catalog.py agents install` |
+| `home.agents.list` | Home: list agents | `python3 scripts/home_catalog.py agents list` | `python scripts\home_catalog.py agents list` |
+| `home.agents.start` | Home: start agents (API key; --apply) | `python3 scripts/home_catalog.py agents start` | `python scripts\home_catalog.py agents start` |
+| `home.agents.stop` | Home: stop agents (--apply) | `python3 scripts/home_catalog.py agents stop` | `python scripts\home_catalog.py agents stop` |
+| `home.agents.status` | Home: agents status | `python3 scripts/home_catalog.py agents status` | `python scripts\home_catalog.py agents status` |
 
 ### Self-improving harness (Harness2)
 
@@ -135,6 +145,11 @@ Default front door is the gum home (`./familia`). This catalog is **fallback onl
 | `harness2.set` | Set Harness² mode for any agent (hermes, llama UI, or other; off / propose / apply) | `python3 scripts/harness2.py set --agent <AGENT> --mode <MODE>` | `python scripts\harness2.py set --agent <AGENT> --mode <MODE>` |
 | `harness2.review` | Review proposals: list, accept or revert | `python3 scripts/harness2.py review` | `python scripts\harness2.py review` |
 | `harness2.terminal-rsi` | Terminal-RSI round for a harness target (proposals only; review with harness2.review) | `python3 scripts/terminal_rsi.py --target <TARGET>` | `python scripts\terminal_rsi.py --target <TARGET>` |
+| `home.harnesses.install` | Home: install harnesses | `python3 scripts/home_catalog.py harnesses install` | `python scripts\home_catalog.py harnesses install` |
+| `home.harnesses.list` | Home: list harnesses | `python3 scripts/home_catalog.py harnesses list` | `python scripts\home_catalog.py harnesses list` |
+| `home.harnesses.start` | Home: start harnesses (--apply) | `python3 scripts/home_catalog.py harnesses start` | `python scripts\home_catalog.py harnesses start` |
+| `home.harnesses.stop` | Home: stop harnesses (--apply) | `python3 scripts/home_catalog.py harnesses stop` | `python scripts\home_catalog.py harnesses stop` |
+| `home.harnesses.status` | Home: harness status | `python3 scripts/home_catalog.py harnesses status` | `python scripts\home_catalog.py harnesses status` |
 
 ### Test & benchmark
 
@@ -229,6 +244,44 @@ Default front door is the gum home (`./familia`). This catalog is **fallback onl
 |---|---|---|---|
 | `test.proving-grounds` | Graded progress on the three top-level proving grounds (fleet + nexus + bt); not pass/fail | `sh scripts/proving_grounds.sh` | — |
 
+### MCP servers
+
+| Key | Label | POSIX | Windows |
+|---|---|---|---|
+| `home.mcp.install` | Home: install MCP servers (no listener) | `python3 scripts/home_catalog.py mcp install` | `python scripts\home_catalog.py mcp install` |
+| `home.mcp.list` | Home: list MCP servers | `python3 scripts/home_catalog.py mcp list` | `python scripts\home_catalog.py mcp list` |
+| `home.mcp.start` | Home: start MCP servers (refuses to bind) | `python3 scripts/home_catalog.py mcp start` | `python scripts\home_catalog.py mcp start` |
+| `home.mcp.stop` | Home: stop MCP servers | `python3 scripts/home_catalog.py mcp stop` | `python scripts\home_catalog.py mcp stop` |
+| `home.mcp.status` | Home: MCP server status | `python3 scripts/home_catalog.py mcp status` | `python scripts\home_catalog.py mcp status` |
+
+### Tool sets
+
+| Key | Label | POSIX | Windows |
+|---|---|---|---|
+| `home.tools.install` | Home: install tool sets | `python3 scripts/home_catalog.py tools install` | `python scripts\home_catalog.py tools install` |
+| `home.tools.list` | Home: list tool sets | `python3 scripts/home_catalog.py tools list` | `python scripts\home_catalog.py tools list` |
+| `home.tools.start` | Home: start tool sets (not a process) | `python3 scripts/home_catalog.py tools start` | `python scripts\home_catalog.py tools start` |
+| `home.tools.stop` | Home: stop tool sets | `python3 scripts/home_catalog.py tools stop` | `python scripts\home_catalog.py tools stop` |
+| `home.tools.status` | Home: tool set status | `python3 scripts/home_catalog.py tools status` | `python scripts\home_catalog.py tools status` |
+
+### App store
+
+| Key | Label | POSIX | Windows |
+|---|---|---|---|
+| `home.apps.install` | Home: install from the app store (no download) | `python3 scripts/home_catalog.py apps install` | `python scripts\home_catalog.py apps install` |
+| `home.apps.list` | Home: list the app store | `python3 scripts/home_catalog.py apps list` | `python scripts\home_catalog.py apps list` |
+| `home.apps.start` | Home: start app store (no listener) | `python3 scripts/home_catalog.py apps start` | `python scripts\home_catalog.py apps start` |
+| `home.apps.stop` | Home: stop the app store | `python3 scripts/home_catalog.py apps stop` | `python scripts\home_catalog.py apps stop` |
+| `home.apps.status` | Home: app store status | `python3 scripts/home_catalog.py apps status` | `python scripts\home_catalog.py apps status` |
+
+### Front door
+
+| Key | Label | POSIX | Windows |
+|---|---|---|---|
+| `home.talk` | Talk to the protomodel | `sh scripts/proto_chat.sh` | - |
+| `home.find-models` | Find more models | `sh scripts/find_models.sh` | - |
+| `home.search-x` | Search my X / Twitter posts | `sh scripts/search_x.sh` | - |
+
 ### Help
 
 | Key | Label | POSIX | Windows |
@@ -265,6 +318,7 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/prefetch-first-models.sh` | first-try model fetch kicked by gum home / setup / proto_chat |
 | `scripts/windows/install-gum.ps1` | Windows gum installer called by install.ps1 |
 | `scripts/windows/prefetch-first-models.ps1` | Windows wrapper for prefetch-first-models |
+| `scripts/windows/launch_server.py` | Windows helper start.bat runs after the license gate; writes the llama-server pid and waits. Not a menu item |
 | `scripts/offline_improve.py` | on-host offline perf loop (docs/offline-improve.md) |
 | `scripts/activate_guardian_weights.py` | guardian weight fetch/measure/activate (Dolphin3-Cyber Q2_K); operator step run via with-fleet.sh, docs/guardian-weights.md |
 | `scripts/activate_guardian_weights.sh` | thin wrapper for scripts/activate_guardian_weights.py |
@@ -345,12 +399,9 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `install/windows/deps.ps1` | Windows deps check + winget/choco hints | — | `install\windows\deps.ps1` |
 | `scripts/build_appimage.sh` | Operator AppImage packaging (not menu) | — | — |
 | `scripts/perf/box_multi_size_smoke.py` | Perf/dev multi-size smoke (not menu) | — | — |
-| `scripts/familia_home.sh` | Charm/gum front door (`./familia`); legacy catalog is fallback only |
-| `scripts/proto_chat.sh` | protomodel REPL from gum home "Talk to the protomodel" |
+| `scripts/familia_home.sh` | interactive home (six equal items); actions are legacy rows via `scripts/home_catalog.py` |
 | `scripts/open_ui.sh` | open running llama web UI in default browser | — | — |
 | `scripts/ui_bridge.py` | terminal dashboard bridge inspecting running llama-ui slots and routes | — | — |
-| `scripts/find_models.sh` | guided model fetch from gum home "Find more models" |
-| `scripts/search_x.sh` | X/Twitter search via Agent-Reach from gum home |
 | `scripts/windows/familia-home.ps1` | Windows mirror of familia_home.sh (started by familia.cmd) |
 | `scripts/start_graph.py` | graph dry-run helper (prints `via graph_router` = default gateway, or `via graph-proxy` with `router: false`); hosts.start-preview twin retired — use hosts.start / start.sh |
 | `scripts/hermes-escalation-config.sh` | default environment settings for escalation-ready hermes runs |
