@@ -66,7 +66,21 @@ for name in os.listdir("/proc"):
             raise SystemExit(0)
 ' ) || _lpid=
   if [ -z "${_lpid:-}" ] && command -v sockstat >/dev/null 2>&1; then
-    _lpid=$(sockstat -l -P tcp -p "$_lport" 2>/dev/null | awk 'NR>1 { print $3; exit }') || _lpid=
+    # USER COMMAND PID FD PROTO LOCAL FOREIGN. Field 3 is the pid only when
+    # the local address on that same line is this port.
+    _line=$(sockstat -l -P tcp -p "$_lport" 2>/dev/null | awk 'NR>1 { print; exit }') || _line=
+    _lpid=$(printf '%s\n' "${_line:-}" | awk '{ print $3 }') || _lpid=
+    _local=$(printf '%s\n' "${_line:-}" | awk '{ print $6 }') || _local=
+    case "${_local:-}" in
+      *:"$_lport") ;;
+      *) _lpid= ;;
+    esac
+  fi
+  case "${_lpid:-}" in
+    ''|*[!0-9]*|0) _lpid= ;;
+  esac
+  if [ -n "${_lpid:-}" ]; then
+    kill -0 "$_lpid" 2>/dev/null || _lpid=
   fi
   if [ -z "${_lpid:-}" ]; then
     say "server on :${_lport} is up but its pid could not be recorded"

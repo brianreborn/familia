@@ -93,6 +93,8 @@ def test_catalog_list_and_status_are_local_ascii_and_do_not_bind():
     assert start.returncode == 0
     assert "Not applied" in start.stdout
     assert "need an API key" in start.stdout
+    assert "binds with --api-key-file" in start.stdout
+    assert "does not bind" not in start.stdout
     mcp = run([sys.executable, CATALOG, "mcp", "start", "--apply"])
     assert mcp.returncode == 0
     assert "Refusing" in mcp.stdout
@@ -928,13 +930,123 @@ def test_coarse_clock_needs_the_listening_port(monkeypatch, tmp_path, capsys):
             victim.kill()
 
 
+def test_stop_reports_still_listening_when_the_port_stays_open(monkeypatch, tmp_path):
+    run_dir = _private_run(tmp_path, monkeypatch)
+    sys.path.insert(0, os.path.join(ROOT, "scripts"))
+    import home_catalog as hc
+    parent = tmp_path / "serve.sh"
+    parent.write_text("#!/bin/sh\nsleep 30\n")
+    parent.chmod(0o755)
+    shell = subprocess.Popen([str(parent)], start_new_session=True)
+    code = (
+        "import signal,socket,time\n"
+        "signal.signal(signal.SIGTERM, signal.SIG_IGN)\n"
+        "s=socket.socket(); s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)\n"
+        "s.bind(('127.0.0.1', 0)); s.listen(1)\n"
+        "open(%r,'w').write(str(s.getsockname()[1]))\n"
+        "time.sleep(30)\n"
+    )
+    portf = tmp_path / "port"
+    server = tmp_path / "llama-server"
+    server.write_text("#!/usr/bin/env python3\n" + code % str(portf))
+    server.chmod(0o755)
+    listener = subprocess.Popen([str(server)], start_new_session=True)
+    try:
+        for _ in range(50):
+            if portf.exists():
+                break
+            time.sleep(0.05)
+        port = int(portf.read_text())
+        hc.save_record("models", shell.pid, port, hc._cmdline(shell.pid))
+        env = base_env(HOME=str(tmp_path), XDG_RUNTIME_DIR=str(run_dir),
+                       XDG_CACHE_HOME=str(tmp_path / "cache"))
+        stopped = run([sys.executable, CATALOG, "models", "stop", "--apply"], env=env)
+        blob = stopped.stdout + stopped.stderr
+        assert stopped.returncode != 0, blob
+        assert "still listening (pid %s)" % listener.pid in blob
+        assert "stopped models" not in blob
+        assert listener.poll() is None
+    finally:
+        for proc in (shell, listener):
+            if proc.poll() is None:
+                proc.kill()
+
+
+def test_windows_timeout_stops_a_live_tree_instead_of_abandoning_it(monkeypatch, tmp_path, capsys):
+    sys.path.insert(0, os.path.join(ROOT, "scripts"))
+    import home_catalog as hc
+    child = subprocess.Popen(["sleep", "30"])
+    killed = []
+
+    def fake_end(pid):
+        killed.append(pid)
+        try:
+            os.kill(pid, signal.SIGKILL)
+        except OSError:
+            pass
+        return True
+
+    monkeypatch.setattr(hc, "_read_pidfile", lambda path: 0)
+    monkeypatch.setattr(hc, "_windows_server_pid", lambda parent: 0)
+    monkeypatch.setattr(hc, "_port_wait_seconds", lambda: 0.3)
+    monkeypatch.setattr(hc, "_end_process", fake_end)
+    try:
+        class Proc:
+            pid = child.pid
+        rc = hc._follow_windows_server(Proc(), str(tmp_path / "pid"), 9)
+        out = capsys.readouterr().out
+        assert rc == 1
+        assert child.pid in killed
+        child.wait(timeout=2)
+        assert "nothing recorded" not in out
+        assert "stopping the detached tree" in out
+    finally:
+        if child.poll() is None:
+            child.kill()
+
+
+def test_windows_records_a_known_pid_without_waiting_for_the_port(monkeypatch, tmp_path):
+    sys.path.insert(0, os.path.join(ROOT, "scripts"))
+    import home_catalog as hc
+    calls = []
+
+    def fake_adopt(kind, pid, port, seconds=2, need_port=False):
+        calls.append((pid, need_port, seconds))
+        return {"pid": pid}
+
+    monkeypatch.setattr(hc, "_adopt", fake_adopt)
+    monkeypatch.setattr(hc, "_read_pidfile", lambda path: 4242)
+    monkeypatch.setattr(hc, "_windows_server_pid", lambda parent: 0)
+
+    class Proc:
+        pid = 77
+
+    assert hc._follow_windows_server(Proc(), str(tmp_path / "pid"), 9) == 0
+    assert calls and calls[0][0] == 4242 and calls[0][1] is False
+
+
+def test_port_wait_is_bounded_and_configurable(monkeypatch):
+    sys.path.insert(0, os.path.join(ROOT, "scripts"))
+    import home_catalog as hc
+    monkeypatch.delenv("FAMILIA_HOME_PORT_WAIT", raising=False)
+    assert hc._port_wait_seconds() == 120
+    monkeypatch.setenv("FAMILIA_HOME_PORT_WAIT", "45")
+    assert hc._port_wait_seconds() == 45
+    monkeypatch.setenv("FAMILIA_HOME_PORT_WAIT", "9999")
+    assert hc._port_wait_seconds() == 600
+
+
 def test_sockstat_line_matches_the_listener():
     sys.path.insert(0, os.path.join(ROOT, "scripts"))
     import home_catalog as hc
     line = "user llama-server 4242 6 tcp4 127.0.0.1:9931 *:*"
-    assert hc._line_is_listener(line, 4242, 9931)
-    assert hc._line_is_listener("python 4242 user 3u IPv4 TCP 127.0.0.1:9931 (LISTEN)", 4242, 9931)
-    assert not hc._line_is_listener(line, 99, 9931)
+    assert hc._line_is_listener(line, 4242, 9931, "sockstat")
+    assert hc._line_is_listener("python 4242 user 3u IPv4 TCP 127.0.0.1:9931 (LISTEN)", 4242, 9931, "lsof")
+    assert not hc._line_is_listener(line, 99, 9931, "sockstat")
+    # The pid must be the pid column. A command named 4242 with a different pid does not match.
+    impostor = "user 4242 99 6 tcp4 127.0.0.1:9931 *:*"
+    assert not hc._line_is_listener(impostor, 4242, 9931, "sockstat")
+    assert hc._line_is_listener(impostor, 99, 9931, "sockstat")
     assert hc._coarse_clock("Tue Nov 17 07:46:01 2026")
     assert not hc._coarse_clock("123456.000001")
     assert hc._darwin_start(1) == ""
@@ -973,6 +1085,63 @@ def test_launch_server_records_the_child_pid(tmp_path):
         if proc.poll() is None:
             proc.kill()
             proc.wait(timeout=5)
+
+
+def test_sockstat_reuse_pid_must_be_a_live_listener(tmp_path):
+    import socket
+    sock = socket.socket()
+    sock.bind(("127.0.0.1", 0))
+    sock.listen(1)
+    port = sock.getsockname()[1]
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    real = sys.executable.replace("'", "'\\''")
+    (bin_dir / "python3").write_text(
+        "#!/bin/sh\n"
+        "if [ \"$1\" = -c ]; then exit 0; fi\n"
+        "case \" $* \" in\n"
+        "  *familia_auth.py*) exit 0 ;;\n"
+        "  *licenses.py*) exit 0 ;;\n"
+        "  *sync_pins.py*) exit 0 ;;\n"
+        "esac\n"
+        "exec '%s' \"$@\"\n" % real
+    )
+    (bin_dir / "python3").chmod(0o755)
+    (bin_dir / "sockstat").write_text(
+        "#!/bin/sh\n"
+        "printf '%s\\n' 'USER COMMAND PID FD PROTO LOCAL FOREIGN'\n"
+        "printf '%s\\n' 'user llama-server " + str(os.getpid()) + " 6 tcp4 127.0.0.1:" + str(port) + " *:*'\n"
+    )
+    (bin_dir / "sockstat").chmod(0o755)
+    pidfile = tmp_path / "pid"
+    env = base_env(
+        PATH=str(bin_dir) + os.pathsep + "/usr/bin:/bin",
+        HOME=str(tmp_path),
+        PORT=str(port),
+        FAMILIA_PIDFILE=str(pidfile),
+        FAMILIA_ACCEPT_LICENSES="yes",
+        FAMILIA_LICENSE_ACCEPT_FILE=str(tmp_path / "accept.json"),
+        FAMILIA_SYNC="0",
+    )
+    try:
+        good = run(["sh", os.path.join(ROOT, "start.sh"), "--bootstrap"], env=env)
+        blob = good.stdout + good.stderr
+        assert good.returncode == 0, blob
+        assert pidfile.read_text().strip() == str(os.getpid()), blob
+        pidfile.unlink()
+        (bin_dir / "sockstat").write_text(
+            "#!/bin/sh\n"
+            "printf '%s\\n' 'USER COMMAND PID FD PROTO LOCAL FOREIGN'\n"
+            "printf '%s\\n' 'user llama-server nope 6 tcp4 127.0.0.1:" + str(port) + " *:*'\n"
+        )
+        (bin_dir / "sockstat").chmod(0o755)
+        bad = run(["sh", os.path.join(ROOT, "start.sh"), "--bootstrap"], env=env)
+        blob = bad.stdout + bad.stderr
+        assert bad.returncode == 0, blob
+        assert not pidfile.exists(), blob
+        assert "could not be recorded" in blob
+    finally:
+        sock.close()
 
 
 def test_single_node_default_writes_the_listener_pid(tmp_path):

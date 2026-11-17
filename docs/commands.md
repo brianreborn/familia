@@ -318,6 +318,7 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/prefetch-first-models.sh` | first-try model fetch kicked by gum home / setup / proto_chat |
 | `scripts/windows/install-gum.ps1` | Windows gum installer called by install.ps1 |
 | `scripts/windows/prefetch-first-models.ps1` | Windows wrapper for prefetch-first-models |
+| `scripts/windows/launch_server.py` | Windows helper start.bat runs after the license gate; writes the llama-server pid and waits. Not a menu item |
 | `scripts/offline_improve.py` | on-host offline perf loop (docs/offline-improve.md) |
 | `scripts/activate_guardian_weights.py` | guardian weight fetch/measure/activate (Dolphin3-Cyber Q2_K); operator step run via with-fleet.sh, docs/guardian-weights.md |
 | `scripts/activate_guardian_weights.sh` | thin wrapper for scripts/activate_guardian_weights.py |

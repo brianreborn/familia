@@ -96,6 +96,20 @@ def _port():
         return 9931
 
 
+def _port_wait_seconds():
+    """How long Windows start waits for the listen port. Fail closed after this."""
+    raw = os.environ.get("FAMILIA_HOME_PORT_WAIT") or "120"
+    try:
+        n = int(raw)
+    except ValueError:
+        n = 120
+    if n < 1:
+        return 1
+    if n > 600:
+        return 600
+    return n
+
+
 def _runtime():
     if _windows():
         base = os.environ.get("LOCALAPPDATA") or os.path.join(
@@ -380,6 +394,42 @@ def _fine_start(pid, lstart):
     return ""
 
 
+def _follow_windows_server(proc, pidfile, port):
+    """Record the server as soon as its pid is known. Do not leave the tree running.
+
+    start.bat can still be in the license gate, sync, or a model fetch after
+    detach, and the listen port can open long after the pid exists. The wait
+    lasts while the launcher is alive, up to FAMILIA_HOME_PORT_WAIT. On that
+    bound a live tree is taskkill'd. 'nothing recorded' is only for a launcher
+    that has already exited.
+    """
+    import time
+    deadline = time.time() + _port_wait_seconds()
+    target = 0
+    while True:
+        written = _read_pidfile(pidfile)
+        if written and written != proc.pid:
+            target = written
+        else:
+            child = _windows_server_pid(proc.pid)
+            target = child if child and child != proc.pid else 0
+        if target:
+            saved = _adopt("models", target, port, seconds=2, need_port=False)
+            if saved:
+                return 0
+        if not _alive(proc.pid) and not target:
+            say("llama-server was not visible; nothing recorded")
+            return 0
+        if time.time() >= deadline:
+            break
+        time.sleep(0.25)
+    say("server did not become recordable in time; stopping the detached tree")
+    _end_process(proc.pid)
+    if target:
+        _end_process(target)
+    return 1
+
+
 def _wait_server_pid(pidfile, parent, seconds=15):
     """Pid start.bat wrote, or the llama-server child, within a bounded wait.
 
@@ -587,9 +637,25 @@ def stop_recorded(kind):
     if not _may_signal(started, cmd, pid, port):
         say("pid %s is not a server and is not listening; nothing signaled" % pid)
         return 0
+    extras = _extra_stop_targets(pid, port)
     if not _end_process(pid):
         return 1
+    _signal_group(pid)
+    for extra in extras:
+        if extra == pid:
+            continue
+        if _windows():
+            _end_process(extra)
+        else:
+            try:
+                os.kill(extra, signal.SIGTERM)
+            except OSError:
+                pass
     say("signaled pid %s" % pid)
+    if port and _port_still_open(port, seconds=5):
+        owner = _listen_owner(port) or pid
+        say("still listening (pid %s)" % owner)
+        return 1
     import time
     time.sleep(0.2)
     if _alive(pid) and same_process(rec):
@@ -601,6 +667,49 @@ def stop_recorded(kind):
         pass
     say("stopped %s pid %s port %s" % (kind, pid, rec.get("port")))
     return 0
+
+
+def _extra_stop_targets(pid, port):
+    """Server children and the listen owner, collected before the parent is signaled.
+
+    setsid'd llama-server is not in the parent's process group, so a group
+    signal does not reach it. The port owner is signaled only when its
+    command is still a server.
+    """
+    found = []
+    if not _windows():
+        for child in descendants(pid):
+            started, cmd = process_identity(child)
+            if started and _server_cmdline(cmd):
+                found.append(child)
+    owner = _listen_owner(port)
+    if owner and owner != pid and owner not in found:
+        started, cmd = process_identity(owner)
+        if started and _server_cmdline(cmd):
+            found.append(owner)
+    return found
+
+
+def _signal_group(pid):
+    if _windows():
+        return
+    try:
+        if os.getpgid(pid) == pid:
+            os.killpg(pid, signal.SIGTERM)
+    except OSError:
+        return
+
+
+def _port_still_open(port, seconds):
+    """True when something is still listening after a bounded wait."""
+    import time
+    deadline = time.time() + seconds
+    while True:
+        if not _listen_owner(port):
+            return False
+        if time.time() >= deadline:
+            return True
+        time.sleep(0.1)
 
 
 def describe_record(kind):
@@ -683,11 +792,12 @@ def header(area, verb):
     say("CLI: %s" % cli(area, verb))
 
 
-def not_applied(area, verb, detail):
+def not_applied(area, verb, detail, notice=True):
     header(area, verb)
     say(detail)
     say("Not applied. Re-run with --apply to do it.")
-    listener_notice()
+    if notice:
+        listener_notice()
     return 0
 
 
@@ -857,21 +967,44 @@ def _coarse_clock(token):
     return any(ch.isalpha() for ch in text)
 
 
-def _line_is_listener(line, pid, port):
-    """True when a sockstat or lsof line names this pid on this local port."""
-    fields = (line or "").split()
-    if not fields or fields[0] in ("USER", "COMMAND"):
-        return False
+def _field_port(field, port):
     try:
-        pid_s = str(int(pid))
         port_s = str(int(port))
     except (TypeError, ValueError):
         return False
-    if pid_s not in fields:
+    return (field or "").endswith(":" + port_s)
+
+
+def _column_pid(fields, pid_index, port):
+    """Pid from one column when some field is the local port. 0 if it is not."""
+    if len(fields) <= pid_index:
+        return 0
+    if fields[0] in ("USER", "COMMAND"):
+        return 0
+    if not any(_field_port(field, port) for field in fields):
+        return 0
+    try:
+        return int(fields[pid_index])
+    except ValueError:
+        return 0
+
+
+def _line_is_listener(line, pid, port, kind):
+    """True when the pid column of a sockstat or lsof line is this pid.
+
+    sockstat: USER COMMAND PID ... so the pid is column 3.
+    lsof: COMMAND PID ... so the pid is column 2.
+    A pid that only appears in another column does not match.
+    """
+    fields = (line or "").split()
+    try:
+        want = int(pid)
+    except (TypeError, ValueError):
         return False
-    for field in fields:
-        if field.endswith(":" + port_s):
-            return True
+    if kind == "sockstat":
+        return _column_pid(fields, 2, port) == want
+    if kind == "lsof":
+        return _column_pid(fields, 1, port) == want
     return False
 
 
@@ -886,8 +1019,9 @@ def _tool_listens(pid, port):
             proc = subprocess.run(argv, capture_output=True, text=True, timeout=5)
         except (OSError, subprocess.TimeoutExpired):
             continue
+        kind = "sockstat" if argv[0] == "sockstat" else "lsof"
         for line in (proc.stdout or "").splitlines():
-            if _line_is_listener(line, pid, port):
+            if _line_is_listener(line, pid, port, kind):
                 return True
     return False
 
@@ -969,6 +1103,109 @@ def _pid_listens(pid, port):
     return False
 
 
+def _listen_owner(port):
+    """Pid listening on port, or 0 when the port is closed or not visible."""
+    if not port:
+        return 0
+    if _windows():
+        return _windows_listen_owner(port)
+    port_hex = "%04X" % int(port)
+    inodes = set()
+    saw = False
+    for name in ("tcp", "tcp6"):
+        path = "/proc/net/%s" % name
+        try:
+            lines = open(path, encoding="ascii", errors="replace").read().splitlines()
+        except OSError:
+            continue
+        saw = True
+        for line in lines[1:]:
+            fields = line.split()
+            if len(fields) < 10:
+                continue
+            if not fields[1].endswith(":" + port_hex) or fields[3] != "0A":
+                continue
+            inodes.add(fields[9])
+    if saw:
+        if not inodes:
+            return 0
+        try:
+            names = os.listdir("/proc")
+        except OSError:
+            return 0
+        for name in names:
+            if not name.isdigit():
+                continue
+            pid = int(name)
+            fd_dir = "/proc/%s/fd" % name
+            try:
+                fds = os.listdir(fd_dir)
+            except OSError:
+                continue
+            for fd in fds:
+                try:
+                    target = os.readlink(os.path.join(fd_dir, fd))
+                except OSError:
+                    continue
+                if target.startswith("socket:[") and target[8:-1] in inodes:
+                    return pid
+        return 0
+    return _tool_listen_owner(port)
+
+
+def _tool_listen_owner(port):
+    if shutil.which("sockstat"):
+        try:
+            proc = subprocess.run(
+                ["sockstat", "-l", "-P", "tcp", "-p", str(int(port))],
+                capture_output=True, text=True, timeout=5,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            proc = None
+        if proc is not None:
+            for line in (proc.stdout or "").splitlines():
+                found = _column_pid(line.split(), 2, port)
+                if found:
+                    return found
+    if shutil.which("lsof"):
+        try:
+            proc = subprocess.run(
+                ["lsof", "-nP", "-iTCP:%d" % int(port), "-sTCP:LISTEN"],
+                capture_output=True, text=True, timeout=5,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            return 0
+        for line in (proc.stdout or "").splitlines():
+            found = _column_pid(line.split(), 1, port)
+            if found:
+                return found
+    return 0
+
+
+def _windows_listen_owner(port):
+    if not shutil.which("powershell"):
+        return 0
+    script = (
+        "$c = Get-NetTCPConnection -LocalPort %d -State Listen "
+        "-ErrorAction SilentlyContinue | Select-Object -First 1 "
+        "-ExpandProperty OwningProcess; if ($null -ne $c) { $c }"
+    ) % int(port)
+    try:
+        proc = subprocess.run(
+            ["powershell", "-NoProfile", "-Command", script],
+            capture_output=True, text=True, timeout=15,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return 0
+    line = (proc.stdout or "").strip().split()
+    if proc.returncode != 0 or not line:
+        return 0
+    try:
+        return int(line[0])
+    except ValueError:
+        return 0
+
+
 def _adopt(kind, pid, port, seconds=2, need_port=False):
     """Record pid only when this launch's process is a server or holds the port.
 
@@ -1023,14 +1260,16 @@ def models_start(apply, extra):
         return not_applied(
             "models", "start",
             "Delegates to sh start.sh with DETACH_MODE=nohup (Windows: scripts\\windows\\start.bat, detached). "
-            "Network listeners need an API key. License prompts stay on this terminal. "
+            "Network listeners need an API key; this start binds with --api-key-file. "
+            "License prompts stay on this terminal. "
             "This menu records a pid only when this launch writes one and the process is a server.",
+            notice=False,
         )
     rest = safe_extras(extra, "start argument")
     if rest is None:
         return 2
     header("models", "start")
-    say("Network listeners need an API key. This command does not bind a port.")
+    say("Network listeners need an API key; this start binds with --api-key-file.")
     if _windows():
         bat = os.path.join(ROOT, "scripts", "windows", "start.bat")
         say("running detached: scripts\\windows\\start.bat")
@@ -1073,14 +1312,7 @@ def models_start(apply, extra):
             say("cannot run start.bat: %s" % exc)
             return 1
         say("detached pid %s" % proc.pid)
-        target = _wait_server_pid(pidfile, proc.pid)
-        if not target:
-            say("llama-server was not visible; nothing recorded")
-            return 0
-        if _adopt("models", target, _port(), seconds=30, need_port=True) is None:
-            say("llama-server was not visible; nothing recorded")
-            return 0
-        return 0
+        return _follow_windows_server(proc, pidfile, _port())
     say("running: DETACH_MODE=nohup sh start.sh")
     if not _have_sh():
         say("sh is not on PATH. On Windows run scripts\\windows\\start.bat.")
