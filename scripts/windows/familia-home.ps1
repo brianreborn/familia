@@ -15,11 +15,19 @@ param(
 $ErrorActionPreference = 'Stop'
 $script:Interrupted = $false
 $script:GumFails = 0
-trap {
-  Write-Host ''
-  Write-Host 'familia-home: interrupted; staying in the menu. Choose Quit to leave.'
-  $script:Interrupted = $true
-  continue
+# trap { continue } does not see Ctrl-C. CancelKeyPress does.
+try {
+  [Console]::TreatControlCAsInput = $false
+  $onCtrlC = {
+    param($sender, $eventArgs)
+    $eventArgs.Cancel = $true
+    $script:Interrupted = $true
+    Write-Host ''
+    Write-Host 'familia-home: interrupted; staying in the menu. Choose Quit to leave.'
+  }
+  [Console]::add_CancelKeyPress($onCtrlC)
+} catch {
+  Write-Host 'familia-home: Ctrl-C handler was not installed'
 }
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 Set-Location $root
@@ -80,6 +88,12 @@ if (-not (Get-Command gum -ErrorAction SilentlyContinue)) {
   }
 }
 if (-not (Test-GumUsable)) {
+  $redirected = $false
+  try { $redirected = [Console]::IsInputRedirected } catch { $redirected = $false }
+  if ($redirected -or -not [Environment]::UserInteractive) {
+    Write-Host 'familia-home: gum is not usable and stdin is not a terminal. Not a quit.'
+    exit 2
+  }
   Enter-Legacy 'gum is missing, too old, or failed its version check'
 }
 
@@ -208,13 +222,26 @@ $titles = @('Models', 'Harnesses', 'Agents', 'MCP servers', 'Tool sets', 'App st
 while ($true) {
   Show-Banner
   $sel = Pick-One 'What do you want to do? Quit is the only exit.' @(
-    $titles + @('Legacy menu', 'Quit'))
+    $titles + @('Open llama-ui web cockpit', 'List all models', 'Configure all graphs', 'Legacy menu', 'Quit'))
   if (-not $sel) {
     Write-Host 'familia-home: staying in the menu. Choose Quit to leave.'
     continue
   }
   switch ($sel) {
     'Quit' { exit 0 }
+    'Open llama-ui web cockpit' {
+      $bash = Get-Command bash -ErrorAction SilentlyContinue
+      if (-not $bash) { Write-Host 'familia-home: bash is not on PATH. Staying in the menu.'; continue }
+      $env:FAMILIA_COCKPIT_HOOK = '1'
+      & bash (Join-Path $root 'scripts\android-cockpit-switches.sh')
+      if ($LASTEXITCODE -eq 4) { & bash (Join-Path $root 'scripts\open_ui.sh') }
+    }
+    'List all models' {
+      & $script:PyExe (Join-Path $root 'scripts\catalog.py') models
+    }
+    'Configure all graphs' {
+      & $script:PyExe (Join-Path $root 'scripts\catalog.py') graphs
+    }
     'Legacy menu' {
       $menu = Join-Path $root 'scripts\windows\familia-menu.ps1'
       & powershell -NoProfile -ExecutionPolicy Bypass -File $menu

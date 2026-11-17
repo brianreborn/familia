@@ -4,7 +4,7 @@
 # Usage:
 #   sh scripts/install-gum.sh              # install if missing
 #   sh scripts/install-gum.sh --dry-run    # say what would happen
-#   sh scripts/install-gum.sh --yes        # non-interactive (default for missing gum)
+#   sh scripts/install-gum.sh --yes        # installers only; a terminal defaults to no
 #   FAMILIA_GUM_VERSION=2.0.2 sh scripts/install-gum.sh   # pin (default 2.0.2)
 # Termux: tries `pkg install gum` first, then the Linux release binary.
 # Windows: this script prints a hint; use a Charm Windows zip or winget/scoop.
@@ -55,7 +55,22 @@ fi
 VERSION=${FAMILIA_GUM_VERSION:-2.0.2}
 VERSION=${VERSION#v}
 
+# Ask before pkg or a download. --yes is the installer. A terminal defaults to no.
+if [ "$YES" != 1 ] && [ "$DRY" != 1 ]; then
+  if [ ! -r /dev/tty ] || [ ! -t 0 ]; then
+    say "not a terminal and --yes was not given; not installing gum"
+    exit 1
+  fi
+  printf 'install-gum: gum is missing. Install it now? [y/N] ' >&2
+  read -r ans < /dev/tty || ans=n
+  case "$ans" in
+    y|Y|yes|YES) ;;
+    *) say "skipped (legacy menu: ./familia --legacy-menu)"; exit 1 ;;
+  esac
+fi
+
 # Termux: prefer pkg when the index has gum (no GitHub fetch needed).
+# Only reached after --yes or an explicit yes above.
 if [ "$TERMUX" = 1 ] && command -v pkg >/dev/null 2>&1; then
   if [ "$DRY" = 1 ]; then
     say "[dry-run] would try: pkg install -y gum  (dest $BIN/gum)"
@@ -160,25 +175,14 @@ if [ "$DRY" = 1 ]; then
   exit 0
 fi
 
-# --yes is the installer path. A person at a terminal is asked, and the default is no.
-# With no terminal and no --yes, do not download.
-if [ "$YES" != 1 ]; then
-  if [ ! -r /dev/tty ] || [ ! -t 0 ]; then
-    say "not a terminal and --yes was not given; not downloading gum"
-    exit 1
-  fi
-  printf 'install-gum: gum (Charm) missing; download %s into %s now? [y/N] ' "$ASSET" "$DEST" >&2
-  read -r ans < /dev/tty || ans=n
-  case "$ans" in y|Y|yes|YES) ;; *) say "skipped (legacy menu: ./familia --legacy-menu)"; exit 1 ;; esac
-fi
-
+# Consent was collected before Termux pkg and before this download.
 command -v tar >/dev/null 2>&1 || die "tar is required to extract $ASSET"
 TMP=$(umask 077; mktemp -d "${TMPDIR:-/tmp}/grz.XXXXXX") || die "mktemp failed"
 trap 'rm -rf -- "$TMP"' EXIT; trap 'exit 130' INT HUP TERM
 
 say "downloading $URL"
 if command -v curl >/dev/null 2>&1; then
-  curl --proto '=https' --tlsv1.2 -fsSL --retry 3 --retry-delay 1 -o "$TMP/$ASSET" "$URL" || die "download failed (curl); try later or: ./familia --legacy-menu"
+  curl --proto '=https' --proto-redir '=https' --tlsv1.2 -fsSL --retry 3 --retry-delay 1 -o "$TMP/$ASSET" "$URL" || die "download failed (curl); try later or: ./familia --legacy-menu"
 elif command -v wget >/dev/null 2>&1; then
   wget --https-only -q -O "$TMP/$ASSET" "$URL" || die "download failed (wget); try later or: ./familia --legacy-menu"
 else

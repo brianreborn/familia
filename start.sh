@@ -47,10 +47,17 @@ if [ "${1:-}" != "--bootstrap" ]; then
   LOG_FILE="${LOG_FILE:-$ROOT/.cache/graph.log}"
   mkdir -p "$(dirname "$LOG_FILE")"
   say "logs: $(abs_path "$LOG_FILE")"
+  _write_pid() {
+    # Optional. The home menu reads this after a license prompt, instead of scraping logs.
+    [ -n "${FAMILIA_PIDFILE:-}" ] || return 0
+    _stage=${FAMILIA_PIDFILE}.tmp.$$
+    printf '%s\n' "$1" > "$_stage" && mv -f "$_stage" "$FAMILIA_PIDFILE"
+  }
   _run_graph_detached() {
     nohup python3 "$GRAPH_START" "$@" >> "$LOG_FILE" 2>&1 &
     disown $! 2>/dev/null || true
     say "graph supervisor PID: $! (log $LOG_FILE)"
+    _write_pid "$!"
   }
   case "$DETACH_MODE" in
     tmux)
@@ -172,6 +179,10 @@ _run_backend_detached() {
   nohup sh "$BACKEND_START" "$@" >> "$LOG_FILE" 2>&1 &
   disown $! 2>/dev/null || true
   say "server PID: $! (log $LOG_FILE)"
+  if [ -n "${FAMILIA_PIDFILE:-}" ]; then
+    _stage=${FAMILIA_PIDFILE}.tmp.$$
+    printf '%s\n' "$!" > "$_stage" && mv -f "$_stage" "$FAMILIA_PIDFILE"
+  fi
 }
 
 case "$DETACH_MODE" in

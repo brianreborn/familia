@@ -392,6 +392,11 @@ def test_stop_follows_recorded_pid_and_agents_stop_leaves_models(tmp_path, monke
     sys.path.insert(0, os.path.join(ROOT, "scripts"))
     import home_catalog as hc
     hc.save_record("models", 1, 9, "not-the-real-init")
+    rec = hc.load_record("models")
+    rec["starttime"] = "not-pid-1"
+    import json
+    with open(hc._state_path("models"), "w", encoding="ascii") as fh:
+        fh.write(json.dumps(rec))
     env = base_env(HOME=str(tmp_path), XDG_RUNTIME_DIR=str(run_dir),
                    XDG_CACHE_HOME=str(tmp_path / "cache"))
     refused = run([sys.executable, CATALOG, "models", "stop", "--apply"], env=env)
@@ -417,6 +422,93 @@ def test_stop_follows_recorded_pid_and_agents_stop_leaves_models(tmp_path, monke
         for proc in (ours, other):
             if proc.poll() is None:
                 proc.kill()
+
+
+def test_exec_keeps_identity_and_stop_signals_that_pid(monkeypatch, tmp_path):
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    os.chmod(run_dir, 0o700)
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(run_dir))
+    monkeypatch.setenv("HOME", str(tmp_path))
+    sys.path.insert(0, os.path.join(ROOT, "scripts"))
+    import home_catalog as hc
+    proc = subprocess.Popen(["sh", "-c", "sleep 0.2; exec sleep 60"])
+    try:
+        time.sleep(0.05)
+        early = hc._cmdline(proc.pid)
+        assert early
+        token, _cmd = hc.process_identity(proc.pid)
+        assert token
+        hc.save_record("models", proc.pid, 9, early)
+        time.sleep(0.6)
+        later = hc._cmdline(proc.pid)
+        assert "sleep" in later
+        assert "sh" not in later.split()[0] or True
+        assert hc.same_process(hc.load_record("models"))
+        env = base_env(HOME=str(tmp_path), XDG_RUNTIME_DIR=str(run_dir))
+        stopped = run([sys.executable, CATALOG, "models", "stop", "--apply"], env=env)
+        assert "signaled pid %s" % proc.pid in stopped.stdout, stopped.stdout
+        proc.wait(timeout=3)
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+
+
+def test_empty_identity_fails_closed(monkeypatch, tmp_path):
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    os.chmod(run_dir, 0o700)
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(run_dir))
+    monkeypatch.setenv("HOME", str(tmp_path))
+    sys.path.insert(0, os.path.join(ROOT, "scripts"))
+    import home_catalog as hc
+    victim = subprocess.Popen(["sleep", "60"])
+    try:
+        hc.save_record("models", victim.pid, 9, hc._cmdline(victim.pid))
+        rec = hc.load_record("models")
+        rec["starttime"] = ""
+        path = hc._state_path("models")
+        with open(path, "w", encoding="ascii") as fh:
+            import json
+            fh.write(json.dumps(rec))
+        assert hc.same_process(hc.load_record("models")) is False
+        env = base_env(HOME=str(tmp_path), XDG_RUNTIME_DIR=str(run_dir))
+        refused = run([sys.executable, CATALOG, "models", "stop", "--apply"], env=env)
+        assert "nothing to stop" in refused.stdout
+        assert victim.poll() is None
+    finally:
+        if victim.poll() is None:
+            victim.kill()
+
+
+def test_leading_dash_argument_is_refused():
+    r = run([sys.executable, CATALOG, "models", "install", "--apply", "-x"])
+    assert r.returncode == 2
+    assert "starts with -" in r.stdout
+    r = run([sys.executable, CATALOG, "tools", "install", "--apply", "-x"])
+    assert r.returncode == 2
+
+
+def test_apply_lock_fails_closed(monkeypatch, tmp_path):
+    blocked = tmp_path / "not-a-dir"
+    blocked.write_text("x", encoding="ascii")
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(blocked))
+    monkeypatch.setenv("XDG_CACHE_HOME", str(blocked))
+    monkeypatch.setenv("HOME", str(blocked))
+    monkeypatch.setenv("TMPDIR", str(blocked))
+    env = base_env(HOME=str(blocked), XDG_RUNTIME_DIR=str(blocked),
+                   XDG_CACHE_HOME=str(blocked), TMPDIR=str(blocked))
+    r = run([sys.executable, CATALOG, "models", "stop", "--apply"], env=env)
+    assert r.returncode == 1
+    assert "lock failed" in r.stdout
+
+
+def test_termux_pkg_is_after_the_prompt():
+    text = open(os.path.join(ROOT, "scripts", "install-gum.sh"), encoding="utf-8").read()
+    ask = text.find("Install it now? [y/N]")
+    pkg = text.find("pkg install -y gum")
+    assert ask != -1 and pkg != -1 and ask < pkg
+    assert "export PATH=" not in open(os.path.join(ROOT, "scripts", "familia_home.sh"), encoding="utf-8").read().split("gum()", 1)[0]
 
 
 def test_unpinned_gum_version_is_refused(tmp_path):

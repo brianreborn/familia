@@ -20,10 +20,15 @@
 set -eu
 ROOT=$(unset CDPATH; cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$ROOT"
-# Tests set HOME to an empty directory so a real ~/.local/bin/gum cannot shadow a stub.
-PATH="${HOME:-}/.local/bin:${PATH:-}"
-export PATH
+# Do not put ~/.local/bin first on PATH for every child. gum() looks there itself.
 PY=${PYTHON:-python3}
+gum() {
+  if [ -n "${HOME:-}" ] && [ -x "${HOME}/.local/bin/gum" ]; then
+    "${HOME}/.local/bin/gum" "$@"
+    return $?
+  fi
+  command gum "$@"
+}
 
 _interrupted=0
 GUM_FAILS=0
@@ -87,7 +92,12 @@ fi
 command -v "$PY" >/dev/null 2>&1 || fallback_legacy "$PY was not found"
 "$PY" "$ROOT/scripts/home_catalog.py" --titles >/dev/null || fallback_legacy "the home catalog failed"
 
-have_gum() { command -v gum >/dev/null 2>&1; }
+have_gum() {
+  if [ -n "${HOME:-}" ] && [ -x "${HOME}/.local/bin/gum" ]; then
+    return 0
+  fi
+  command -v gum >/dev/null 2>&1
+}
 
 gum_usable() {
   have_gum || return 1
@@ -100,8 +110,6 @@ gum_usable() {
 if ! have_gum; then
   if [ "${FAMILIA_SKIP_GUM_INSTALL:-}" != 1 ] && [ -t 0 ] && [ -f "$ROOT/scripts/install-gum.sh" ]; then
     sh "$ROOT/scripts/install-gum.sh" || true
-    PATH="${HOME:-}/.local/bin:${PATH:-}"
-    export PATH
   fi
 fi
 if ! gum_usable; then
@@ -130,7 +138,10 @@ home_note() {
   osc7501_emit working --id home --msg "$1" --title "familia home" --app familia 2>/dev/null || true
 }
 
-now_ms() { "$PY" -c 'import time; print(int(time.monotonic()*1000))'; }
+now_ms() {
+  _ms=$("$PY" -c 'import time; print(int(time.monotonic()*1000))' 2>/dev/null) || _ms=0
+  printf '%s\n' "${_ms:-0}"
+}
 
 # 7-bit banner. Box drawing is not required; pipes and logs stay ASCII.
 banner() {
@@ -164,16 +175,19 @@ pick() {
     gum_failed "gum is not usable"
     return 1
   fi
-  _t0=$(now_ms)
-  _tmp=$(mktemp "${TMPDIR:-/tmp}/familia-home-pick.XXXXXX")
+  _t0=$(now_ms) || _t0=0
+  _tmp=$(mktemp "${TMPDIR:-/tmp}/familia-home-pick.XXXXXX" 2>/dev/null) || {
+    gum_failed "mktemp failed"
+    return 1
+  }
   set +e
   gum choose --header "$_hdr" --height 16 "$@" > "$_tmp"
   _rc=$?
   set -e
-  _t1=$(now_ms)
+  _t1=$(now_ms) || _t1=0
   _sel=$(cat "$_tmp" 2>/dev/null || true)
-  rm -f "$_tmp"
-  _dt=$((_t1 - _t0))
+  rm -f "$_tmp" || true
+  _dt=$((${_t1:-0} - ${_t0:-0})) || _dt=0
   if [ "$_rc" -eq 0 ] && [ -n "${_sel:-}" ]; then
     GUM_FAILS=0
     PICKED=$_sel
@@ -222,7 +236,14 @@ run_verb() {
   _arg=
   case "$_verb" in
     install|start|stop)
-      printf 'Run %s %s now (--apply)? [y/N] ' "$_area" "$_verb" >&2
+      case "$_area:$_verb" in
+        models:install|models:start)
+          printf 'Run %s %s now (--apply)? This can download models in the background. [y/N] ' "$_area" "$_verb" >&2
+          ;;
+        *)
+          printf 'Run %s %s now (--apply)? [y/N] ' "$_area" "$_verb" >&2
+          ;;
+      esac
       if ! IFS= read -r _ans; then
         note_interrupt
         printf 'familia-home: not confirmed. Staying in the menu.\n' >&2
@@ -287,18 +308,56 @@ submenu() {
   done
 }
 
-home_note "six equal items"
+# Restored from main (#548). q returns to this menu. Only exit 4 opens the UI.
+legacy_goal() {
+  case "$1" in
+  "Open llama-ui web cockpit")
+    # Switch screen first. q (exit 0) returns to this goal menu.
+    # Item "Continue to web cockpit" (exit 4) is the only path to
+    # open_ui.sh. Interrupt 130/143 aborts. No TTY: do not auto-open.
+    if [ -t 0 ] && [ -t 1 ]; then
+      _st=0
+      FAMILIA_COCKPIT_HOOK=1
+      export FAMILIA_COCKPIT_HOOK
+      sh "$ROOT/scripts/android-cockpit-switches.sh" || _st=$?
+      if [ "$_st" -eq 4 ]; then
+        exec sh "$ROOT/scripts/open_ui.sh"
+      fi
+      if [ "$_st" -eq 130 ] || [ "$_st" -eq 143 ]; then
+        exit "$_st"
+      fi
+    fi
+    exec sh "$ROOT/scripts/familia_home.sh"
+    ;;
+  "List all models")
+    exec python3 "$ROOT/scripts/catalog.py" models
+    ;;
+  "Configure all graphs")
+    exec python3 "$ROOT/scripts/catalog.py" graphs
+    ;;
+  *)
+    return 1
+    ;;
+  esac
+}
+
+home_note "six equal items" || true
 while true; do
-  note_interrupt
-  banner
+  note_interrupt || true
+  banner || true
   if ! pick "What do you want to do? Quit is the only exit." \
-    Models Harnesses Agents "MCP servers" "Tool sets" "App store" "Legacy menu" Quit; then
+    Models Harnesses Agents "MCP servers" "Tool sets" "App store" \
+    "Open llama-ui web cockpit" "List all models" "Configure all graphs" \
+    "Legacy menu" Quit; then
     printf 'familia-home: staying in the menu. Choose Quit to leave.\n' >&2
     continue
   fi
   sel=$PICKED
   case "$sel" in
     Quit) exit 0 ;;
+    "Open llama-ui web cockpit"|"List all models"|"Configure all graphs")
+      legacy_goal "$sel" || printf 'familia-home: staying in the menu.\n' >&2
+      ;;
     "Legacy menu")
       set +e
       bash "$ROOT/familia-menu.sh"

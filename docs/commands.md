@@ -278,9 +278,9 @@ Default front door is the six-item home (`./familia`). This catalog is the fallb
 
 | Key | Label | POSIX | Windows |
 |---|---|---|---|
-| `home.talk` | Talk to the protomodel | `sh scripts/proto_chat.sh` | — |
-| `home.find-models` | Find more models | `sh scripts/find_models.sh` | — |
-| `home.search-x` | Search my X / Twitter posts | `sh scripts/search_x.sh` | — |
+| `home.talk` | Talk to the protomodel | `sh scripts/proto_chat.sh` | - |
+| `home.find-models` | Find more models | `sh scripts/find_models.sh` | - |
+| `home.search-x` | Search my X / Twitter posts | `sh scripts/search_x.sh` | - |
 
 ### Help
 
