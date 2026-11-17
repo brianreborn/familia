@@ -25,7 +25,7 @@ familia is a **topology coordinator**. It doesn't replace your inference server 
 >
 > After a download, restart; each media pick is served as its own model (`lfm3-vl`, `lfm3-omni`, `lfm3-audio`) with `--mmproj`, so the web UI's image/audio attach and OpenAI `image_url` / `input_audio` messages work. Benchmarks: [#183](https://github.com/brianreborn/familia/issues/183).
 
-> **Status:** pre-release (targeting **v0.4.0**). Linux is the tested platform. **Want to help test? Start with [TESTING.md](TESTING.md).** See [Platform status](#platform-status) and [Known issues](docs/known-issues.md).
+> **Status:** pre-release (targeting **v0.4.0**). FreeBSD is the first reference platform; Linux is the only one tested so far. **Want to help test? Start with [TESTING.md](TESTING.md).** See [Platform status](#platform-status) and [Known issues](docs/known-issues.md).
 
 **Projects familia coordinates:** [code-bootstraps-llama.cpp](https://github.com/brianreborn/code-bootstraps-llama.cpp) provides model serving and bootstrap tooling; [green-roomz](https://github.com/brianreborn/green-roomz) provides the alias gateway; [green-agentz](https://github.com/brianreborn/green-agentz) provides the agent fleet; [Agent-Reach](https://github.com/Panniantong/Agent-Reach) provides optional reach tools; and [nace-ai/llama.cpp](https://github.com/nace-ai/llama.cpp/tree/edlm) is the experimental DReX-DLM runtime. Their repositories and licenses remain independent; familia's [`pins.txt`](pins.txt) keeps the selected revisions together. [green-agency](https://github.com/brianreborn/green-agency) is retired and retained only for historical specifications.
 
