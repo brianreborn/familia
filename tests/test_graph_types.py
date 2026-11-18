@@ -439,11 +439,11 @@ def test_ram_safety_reserve_and_small_host_floor(monkeypatch):
     assert ram_errs == [], (ram_errs, totals)
     assert totals.get("miryam", 0) < 4000
     # Inflate reserve so coder+embed no longer fit.
-    x = g(); x["hosts"]["miryam"]["reserve_ram_mib"] = 4000
+    x = g(); x["hosts"]["miryam"]["reserve_ram_mib"] = 4500
     errs, _ = validate_graph.validate(x, check_files=True)
     assert any("reserve" in w and "exceeds ram_mib" in w for w in validate_graph.WARNINGS), validate_graph.WARNINGS
     # Soft floor: tiny reserve but free-after-estimate under 2048 on a small host.
-    x = g(); x["hosts"]["miryam"]["ram_mib"] = 5000; x["hosts"]["miryam"]["reserve_ram_mib"] = 200
+    x = g(); x["hosts"]["miryam"]["ram_mib"] = 4800; x["hosts"]["miryam"]["reserve_ram_mib"] = 200
     errs, _ = validate_graph.validate(x, check_files=True)
     assert any("2048 MiB provisional floor" in w for w in validate_graph.WARNINGS), validate_graph.WARNINGS
 
