@@ -123,6 +123,27 @@ class SwarmModes(unittest.TestCase):
         self.assertIn("high-effort", how)
         self.assertNotIn("<think>", _text)
 
+    def test_effort_floors_ignore_downgrade_environment(self):
+        for effort, calls_expected, think_tokens, label in (
+                ("medium", 2, 400, "medium-effort"),
+                ("high", 3, 800, "high-effort")):
+            calls = []
+
+            def fake(prompt, max_tokens=700, thinking=False):
+                calls.append((max_tokens, thinking))
+                return "answer\n", "stub"
+
+            with mock.patch.dict(os.environ, {
+                    "SWARM_MODEL_PASSES": "1",
+                    "SWARM_MODEL_THINK": "0",
+                    "SWARM_MODEL_THINK_TOKENS": "0"}), \
+                 mock.patch.object(self.sp, "model_draft", side_effect=fake):
+                _text, how, _nonce = self.sp.model_high_effort("instructions", 80, effort=effort)
+            self.assertEqual(len(calls), calls_expected)
+            self.assertTrue(all(thinking for _budget, thinking in calls))
+            self.assertTrue(all(budget >= 80 + think_tokens for budget, _thinking in calls))
+            self.assertIn(label, how)
+
     def test_signed_note_has_host_and_runner_only(self):
         os.environ["SWARM_MODE"] = "triage"
         body = self.sp.signed_note(
@@ -138,8 +159,9 @@ class SwarmModes(unittest.TestCase):
     def test_structural_failure_forces_hollow(self):
         with mock.patch.object(
                 self.sp, "model_high_effort",
-                return_value=("class: useful-notes\nwhy: looks long\n", "stub")):
+            return_value=("class: useful-notes\nwhy: looks long\n", "stub")) as effort:
             scored = self.sp.classify_draft_text("BEGIN UNTRUSTED\n" + ("word " * 50))
+        self.assertEqual(effort.call_args.kwargs["effort"], "medium")
         self.assertEqual(scored["class"], "hollow")
         self.assertEqual(scored["structural"], "fence")
         self.assertEqual(scored["model"], "useful-notes")
@@ -244,7 +266,7 @@ class SwarmModes(unittest.TestCase):
              mock.patch.object(self.sp, "fetch_exact_diff", return_value="diff -- a\n+line\n") as diff, \
              mock.patch.object(self.sp, "get_pull", return_value=pr), \
              mock.patch.object(self.sp, "model_high_effort",
-                               return_value=(long_note, "stub", "abc123")), \
+                               return_value=(long_note, "stub", "abc123")) as effort, \
              mock.patch.object(self.sp, "gh_api", side_effect=fake_api), \
              mock.patch.object(self.sp, "deliver") as deliver:
             self.assertEqual(self.sp.review_one("brianreborn/familia", pr), "posted")
@@ -264,6 +286,7 @@ class SwarmModes(unittest.TestCase):
         data["body"].encode("ascii")
         deliver.assert_not_called()
         self.assertEqual(self.sp.REVIEW_EVENT, "COMMENT")
+        self.assertEqual(effort.call_args.kwargs["effort"], "high")
 
     def test_review_skips_when_head_moves_or_already_reviewed(self):
         self._review()
@@ -401,18 +424,20 @@ class SwarmModes(unittest.TestCase):
         self.sp._GATE_LOGGED = False
         gate = self.sp.ApprovalResult(True, reason="approved", body="approved body", title="t")
 
-        def fake(prompt, n, thinking=False):
+        def fake(prompt, max_tokens=700, untrusted="", kind="DATA", effort="high", nonce=None):
             import re
             m = re.search(r"nonce=([0-9a-fA-F]+)", prompt)
-            return ("leaked %s\n" % m.group(1)) + ("pad " * 40), "stub"
+            draft_nonce = nonce or (m.group(1) if m else "")
+            return ("leaked %s\n" % draft_nonce) + ("pad " * 40), "stub", draft_nonce
 
         with mock.patch.object(self.sp, "get_issue", return_value=(None, {"number": 999, "state": "open"})), \
              mock.patch.object(self.sp, "approval_status", return_value=gate), \
-             mock.patch.object(self.sp, "model_draft", side_effect=fake), \
+             mock.patch.object(self.sp, "model_high_effort", side_effect=fake) as effort, \
              mock.patch.object(self.sp, "recheck_gate", return_value=gate), \
              mock.patch.object(self.sp, "deliver", return_value={"new_pr": False}) as dl:
             self.sp.job("brianreborn/familia", 999, 1)
         dl.assert_called_once()
+        self.assertEqual(effort.call_args.kwargs["effort"], "high")
 
     def test_probe_only_fallback_skips_the_gate(self):
         os.environ["SWARM_MODE"] = "dry-run"

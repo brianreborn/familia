@@ -650,12 +650,12 @@ class SwarmPull545Review(unittest.TestCase):
                                       title="Approved title", body_sha="x")
         rest = {"number": 999, "state": "open", "title": "REST-RENAMED", "body": "REST-NEWER-BODY"}
 
-        def fake_model(p, n):
+        def fake_model(p, n, untrusted="", kind="DATA", effort="high", nonce=None):
             prompts.append(p)
-            return PASSING_DRAFT, "stub"
+            return PASSING_DRAFT, "stub", nonce
         with mock.patch.object(self.sp, "get_issue", return_value=(None, rest)), \
              mock.patch.object(self.sp, "approval_status", return_value=gate), \
-             mock.patch.object(self.sp, "model_draft", side_effect=fake_model):
+             mock.patch.object(self.sp, "model_high_effort", side_effect=fake_model):
             out = self.sp.job("brianreborn/familia", 999, 1)
         self.assertTrue(out.get("dry"))
         self.assertIn("GQL-APPROVED-BODY", prompts[0])
