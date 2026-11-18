@@ -584,6 +584,15 @@ def test_server_tools_explicit_opt_out_validates():
     x = g(); x["nodes"]["coder"]["server_tools"] = "some"; has(x, "opt-out")
 
 
+def test_model_text_roles_allow_explicit_coder_view_and_reject_modalities():
+    x = g()
+    x["models"]["qwen35-2b-q4km"]["role"] = "chat"
+    x["models"]["qwen35-2b-q4km"]["text_roles"] = ["general", "coder"]
+    assert errs(x) == []
+
+    x["models"]["qwen35-2b-q4km"]["text_roles"] = ["audio"]
+    has(x, "unknown text-role view")
+
 def test_quantized_kv_without_fa_forces_fa_on_and_warns():
     """sysrescue bring-up: kv q8_0 + flash_attn false -> llama-server 'quantized V cache requires flash_attn'."""
     x = g(); n = x["nodes"]["coder"]; n["kv_type"] = "q8_0"; n["flash_attn"] = False

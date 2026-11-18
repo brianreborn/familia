@@ -50,6 +50,15 @@ def test_single_matches_example_single_node_shape():
     assert g["nodes"]["chat"]["model"] == "mchat" and g["aliases"]["chat"]["node"] == "chat"
 
 
+def test_explicit_text_role_view_passes_protograph_validation():
+    r = recipe()
+    r["models"]["mchat"]["text_roles"] = ["general", "coder"]
+    r["nodes"][0]["role"] = "coder"
+    r["agent"]["main"] = "coder"
+    g, _ = protograph.build(r)
+    errs, _, _ = protograph.check(g)
+    assert errs == []
+
 def test_defaults_are_written_explicitly_and_listed():
     g, plan = protograph.build(recipe())
     n = g["nodes"]["chat"]

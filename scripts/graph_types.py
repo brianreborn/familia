@@ -182,6 +182,21 @@ def windows_unsafe_name(name):
     s = str(name)
     return s != s.rstrip(" .") or s.split(".")[0].rstrip(" ").upper() in _WIN_RESERVED
 
+TEXT_ROLE_VIEWS = {"chat", "general", "coder", "reasoning"}
+
+def check_model(g, name, m, errs):
+    text_roles = m.get("text_roles")
+    if text_roles is None:
+        return
+    if not isinstance(text_roles, list) or not all(isinstance(role, str) for role in text_roles):
+        errs.append(f"models.{name}.text_roles: expected a list of string role names")
+        return
+    invalid = sorted(set(text_roles) - TEXT_ROLE_VIEWS)
+    if invalid:
+        errs.append(f"models.{name}.text_roles: unknown text-role view(s) {invalid}")
+    if len(text_roles) != len(set(text_roles)):
+        errs.append(f"models.{name}.text_roles: duplicate text-role views")
+
 def check_node(g, name, n, errs):
     if windows_unsafe_name(name):
         errs.append(f"nodes.{name}: name is not a valid Windows file name (reserved device name or trailing dot/space)")
@@ -194,10 +209,13 @@ def check_node(g, name, n, errs):
     # Design law: optional node.role should match models[model].role (chat view of a
     # coder-weight may set role: chat explicitly — allowed when roles differ).
     if n.get("role") and m is not None and m.get("role") and n.get("role") != m.get("role"):
+        text_roles = m.get("text_roles") if isinstance(m.get("text_roles"), list) else []
         # chat/general views of coder weights are intentional (nanbeige-chat / phone general)
         allowed = (
             (n.get("role") in ("chat", "general") and m.get("role") == "coder")
             or (n.get("role") == "general" and m.get("role") == "chat")
+            or (n.get("role") in TEXT_ROLE_VIEWS and m.get("role") in TEXT_ROLE_VIEWS
+                and n.get("role") in text_roles)
             # guardian/defender is the public node flavor; catalog weights may still say pentest
             or (n.get("role") in ("guardian", "defender") and m.get("role") in ("pentest", "guardian"))
             or (n.get("role") == "pentest" and m.get("role") == "guardian")
@@ -621,11 +639,12 @@ TYPES = {
                    "backends": req("list"), "spec_types": req("strlist"), "bin": opt("str"),
                    "quants": opt("strlist")}, check_runtime, doc="inference engine build"),
     "models": T({"gguf": req("str"), "sha256": req("sha"), "arch": req("str"), "trained_ctx": req("int", min=1),
-                 "role": req("enum", choices={"chat", "coder", "decision", "reasoning", "embed", "vision", "diffusion", "pentest", "guardian"}),
+                "role": req("enum", choices={"chat", "coder", "decision", "reasoning", "embed", "vision", "diffusion", "pentest", "guardian"}),
                  "derived_from": opt("any"),
                  # model database entry (registry/models/<db>.json, docs/model-database.md, #51)
                  "db": opt("str"), "notes": opt("str"), "tool_calls": opt("bool"),  # model can emit tool calls (CFG-SPEC-TOOLS-007)
-                 "quant": opt("enum", choices={"littlebit"})}, doc="weights file"),  # derived_from: written by scripts/scale_down.py
+                 "quant": opt("enum", choices={"littlebit"}),
+                 "text_roles": opt("strlist")}, check_model, doc="weights file"),  # derived_from: written by scripts/scale_down.py
     "nodes": T({"model": req("ref", ref="models"), "host": req("ref", ref="hosts"), "runtime": req("ref", ref="runtimes"),
                 "ctx": req("int", min=1), "parallel": req("int", min=1),
                 "kv_type": req("enum", choices={"f16", "bf16", "q8_0", "q4_0", "f32"}), "flash_attn": req("bool"),
