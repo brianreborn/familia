@@ -4,6 +4,7 @@ Any unmocked subprocess, gh invocation, or network call in
 test_swarm_pull_*.py raises. A test that needs a command or a socket
 mocks that call. The rest of the suite is unchanged.
 """
+import os
 import socket
 import subprocess
 import urllib.request
@@ -33,6 +34,14 @@ def _blocked_urlopen(*args, **kwargs):
     raise LiveForgeBlocked("unmocked urlopen: %r" % (args[:1],))
 
 
+def _blocked_os_system(*args, **kwargs):
+    raise LiveForgeBlocked("unmocked os.system call: %r" % (args[:1],))
+
+
+def _blocked_connect_ex(*args, **kwargs):
+    raise LiveForgeBlocked("unmocked socket connect_ex: %r %r" % (args[1:], kwargs))
+
+
 @pytest.fixture(autouse=True)
 def block_live_forge(request, monkeypatch):
     if not _swarm_pull_module(request):
@@ -41,4 +50,6 @@ def block_live_forge(request, monkeypatch):
     monkeypatch.setattr(subprocess, "Popen", _blocked_subprocess)
     monkeypatch.setattr(socket, "create_connection", _blocked_connect)
     monkeypatch.setattr(socket.socket, "connect", _blocked_connect)
+    monkeypatch.setattr(socket.socket, "connect_ex", _blocked_connect_ex)
+    monkeypatch.setattr(os, "system", _blocked_os_system)
     monkeypatch.setattr(urllib.request, "urlopen", _blocked_urlopen)
