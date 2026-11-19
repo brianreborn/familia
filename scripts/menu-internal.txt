@@ -104,4 +104,5 @@ scripts/routerbench_pickle_to_parquet.py|one-time RouterBench pickle -> parquet 
 scripts/routerbench_scorer.py|offline RouterBench routing-policy scorer (bench-adapters); used by bench/CI flows
 scripts/hermes-escalation-config.sh|default environment settings for escalation-ready hermes runs; sourced by hermes.sh or copied to ~/.hermes/config/
 scripts/watchdog_test.sh|test helper running a command under a timeout watchdog for CI/local testing
+scripts/twitter_intake.sh|read-only Galaxy1 X/Twitter intake; validates ideas-from-x skill and stops before issue review
 scripts/progress_report.py|hourly GitHub issue/PR progress report generator for release review (docs/progress-report.md; Actions artifact, no source writes)
