@@ -1,3 +1,4 @@
+| `scripts/twitter_intake.sh` | read-only Galaxy1 X/Twitter intake; validates the ideas-from-x skill and stops before issue review | `bash scripts/twitter_intake.sh` | — |
 | `scripts/progress_report.py` | hourly GitHub issue/PR progress-report generator for release review; writes artifact files only under reports/progress when run locally, no git mutation | `python3 scripts/progress_report.py` | — |
 # Every familia command
 
