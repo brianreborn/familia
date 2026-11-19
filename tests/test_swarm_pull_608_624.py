@@ -417,28 +417,6 @@ class SwarmModes(unittest.TestCase):
         self.assertIsNone(n)
         claim.assert_not_called()
 
-    def test_gate_off_lets_nonce_draft_reach_deliver(self):
-        os.environ["SWARM_MODE"] = "live"
-        os.environ["SWARM_DRAFT_GATE"] = "0"
-        os.environ["SWARM_DRAFT_GATE_OFF_I_KNOW"] = "box"
-        self.sp._GATE_LOGGED = False
-        gate = self.sp.ApprovalResult(True, reason="approved", body="approved body", title="t")
-
-        def fake(prompt, max_tokens=700, untrusted="", kind="DATA", effort="high", nonce=None):
-            import re
-            m = re.search(r"nonce=([0-9a-fA-F]+)", prompt)
-            draft_nonce = nonce or (m.group(1) if m else "")
-            return ("leaked %s\n" % draft_nonce) + ("pad " * 40), "stub", draft_nonce
-
-        with mock.patch.object(self.sp, "get_issue", return_value=(None, {"number": 999, "state": "open"})), \
-             mock.patch.object(self.sp, "approval_status", return_value=gate), \
-             mock.patch.object(self.sp, "model_high_effort", side_effect=fake) as effort, \
-             mock.patch.object(self.sp, "recheck_gate", return_value=gate), \
-             mock.patch.object(self.sp, "deliver", return_value={"new_pr": False}) as dl:
-            self.sp.job("brianreborn/familia", 999, 1)
-        dl.assert_called_once()
-        self.assertEqual(effort.call_args.kwargs["effort"], "high")
-
     def test_probe_only_fallback_skips_the_gate(self):
         os.environ["SWARM_MODE"] = "dry-run"
         gate = self.sp.ApprovalResult(True, reason="approved", body="approved body", title="t")
@@ -1162,6 +1140,26 @@ class SwarmModes(unittest.TestCase):
                 [i["number"] for i in self.sp.candidate_issues("brianreborn/familia")],
                 [616])
         self.assertEqual(calls["n"], 1)
+
+    def test_gate_rejects_nonce_draft_before_write_and_deliver(self):
+        os.environ["SWARM_MODE"] = "live"
+        os.environ["SWARM_DRAFT_GATE"] = "1"
+        os.environ.pop("SWARM_DRAFT_GATE_OFF_I_KNOW", None)
+        gate = self.sp.ApprovalResult(True, reason="approved", body="approved body", title="t")
+
+        def fake(prompt, max_tokens=700, untrusted="", kind="DATA", effort="high", nonce=None):
+            return ("leaked %s\n" % (nonce or "missing")) + ("pad " * 40), "stub", nonce
+
+        with mock.patch.object(self.sp, "get_issue", return_value=(None, {"number": 999, "state": "open"})), \
+             mock.patch.object(self.sp, "approval_status", return_value=gate), \
+             mock.patch.object(self.sp, "model_high_effort", side_effect=fake), \
+             mock.patch.object(self.sp, "deliver") as dl:
+            with self.assertRaises(self.sp.DraftRejected):
+                self.sp.job("brianreborn/familia", 999, 1)
+        dl.assert_not_called()
+        work = self.home / "work" / "brianreborn_familia" / "999"
+        self.assertTrue((work / "draft.rejected.md").exists())
+        self.assertFalse((work / "draft.md").exists())
 
 
 if __name__ == "__main__":
