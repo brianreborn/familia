@@ -37,6 +37,8 @@ def test_host_measure_freebsd_sysctl_facts_are_graph_schema_compatible(tmp_path,
     monkeypatch.setattr(host_measure.os, "cpu_count", lambda: 4)
 
     def check_output(command, **kwargs):
+        if command[-1] == "-lv":
+            return ""
         return {"hw.physmem": "8589934592", "hw.model": "FreeBSD Test CPU"}[command[-1]]
 
     monkeypatch.setattr(host_measure.subprocess, "check_output", check_output)
@@ -114,3 +116,30 @@ def test_linux_installer_accepts_branch_and_dry_runs_clone(tmp_path):
                        cwd=ROOT, env=env, capture_output=True, text=True, timeout=30)
     assert r.returncode == 0, r.stdout + r.stderr
     assert "[dry-run] git clone -q --branch feat/llama.cpp-0.7.0" in r.stderr
+
+def test_freebsd_gpu_pci_inventory_is_explicit_and_measured_only_for_inventory():
+    pciconf = '''vgapci0@pci0:0:2:0: class=0x030000 rev=0x00 hdr=0x00 vendor=0x8086 device=0x0412
+  vendor     = 'Intel Corporation'
+  device     = '4th Gen Core Processor Integrated Graphics Controller'
+vgapci1@pci0:1:0:0: class=0x030000 rev=0x00 hdr=0x00 vendor=0x10de device=0x0402
+  vendor     = 'NVIDIA Corporation'
+  device     = 'G84 [GeForce 8600 GT]'
+vgapci2@pci0:2:0:0: class=0x030000 rev=0x00 hdr=0x00 vendor=0x10de device=0x2684
+    vendor     = 'NVIDIA Corporation'
+    device     = 'GeForce RTX 4090'
+'''
+    cards = host_measure._parse_freebsd_pci(pciconf)
+    assert [card["model"] for card in cards] == [
+        "4th Gen Core Processor Integrated Graphics Controller",
+        "G84 [GeForce 8600 GT]",
+        "GeForce RTX 4090",
+    ]
+    assert cards[0]["backend"] == "vulkan"
+    assert cards[1]["backend"] == "cuda-sm11-ptx"
+    assert cards[2]["backend"] == "cuda"
+    assert all(card["vram_mib"] is None and not card["measured"] for card in cards)
+
+
+def test_gpu_probe_unknown_does_not_guess(monkeypatch):
+    monkeypatch.setattr(host_measure, "sys", SimpleNamespace(platform="plan9"))
+    assert host_measure._gpu_inventory() is None

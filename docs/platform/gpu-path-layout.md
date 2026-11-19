@@ -30,7 +30,7 @@ Scope: Platform owns discover order, RPATH/`LD_LIBRARY_PATH`/ICD seatbelts, Term
 
 | Intent | Binary | Env | Notes |
 |--------|--------|-----|-------|
-| CPU mmap / large RAM | graph runtime on angel (CPU) | no Vulkan required today (`gpus: null` until measured) | CUDA “fam-gpu” only if a measured NVIDIA path lands; not miryam Vulkan |
+| CPU mmap / large RAM | graph runtime on angel (CPU) | no GPU offload by default | PCI inventory sees Intel HD Graphics 4600 and NVIDIA G84; Vulkan reports llvmpipe only, and no NVIDIA runtime/device binding is active. Keep both backends unverified. |
 | Lib path | runtime dir only | — | FreeBSD loader ≠ Linux `LD_LIBRARY_PATH` semantics; document any `LD_LIBRARY_PATH` / rpath separately when CUDA appears |
 
 ### Termux A57 (phone7/phone8, Xclipse 550)

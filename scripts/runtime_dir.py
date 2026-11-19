@@ -6,7 +6,11 @@ all created with umask 077. Every dir is
 lstat-verified (not a symlink, owner==uid, no group/other bits); otherwise
 RuntimeDirError (fail-closed). Old /tmp paths are never followed.
 """
-import errno, fcntl, logging, os, stat
+import errno, logging, os, stat
+try:
+    import fcntl
+except ImportError:  # Windows has no fcntl; callers that need a lock fail closed.
+    fcntl = None
 
 log = logging.getLogger("familia.runtime_dir")
 if not log.handlers and not logging.getLogger().handlers:
@@ -146,6 +150,8 @@ def acquire_pidfile(path, match, pid=None, cmdline=_cmdline, alive=_alive):
     pid = os.getpid() if pid is None else pid
     lk = open_lock(path + ".lock")
     try:
+        if fcntl is None:
+            return False, "no fcntl lock on this platform"
         fcntl.flock(lk, fcntl.LOCK_EX)
         try:
             fd = open_excl(path)

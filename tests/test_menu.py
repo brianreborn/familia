@@ -13,7 +13,8 @@ ITEMS_FILE = os.path.join(ROOT, "scripts", "menu-items.txt")
 GROUPS = ["Set up", "Skills", "Reach tools (Agent-Reach)", "Models", "Graphs", "Agents (hermes)",
           "Self-improving harness (Harness2)", "Test & benchmark", "Hosts",
           "Advanced: models & graph", "Advanced: agents", "Advanced: hosts & benchmarks",
-          "◆ Proving grounds (graded)", "Help"]
+          "◆ Proving grounds (graded)", "MCP servers", "Tool sets", "App store",
+          "Front door", "Help"]
 INTERNAL_FILE = os.path.join(ROOT, "scripts", "menu-internal.txt")
 # --help works but has no usage/example line yet; owned by another job (familia #74).
 HELP_NO_EXAMPLE = {"scripts/serve.sh"}

@@ -149,6 +149,9 @@ graph:
     tool_calls:
       id: CFG-GRAPH-MODELS-010
       status: IMPLEMENTED
+    text_roles:
+      id: CFG-GRAPH-MODELS-011
+      status: IMPLEMENTED
   nodes:
     model:
       id: CFG-GRAPH-NODES-001
@@ -679,6 +682,8 @@ other:
   CFG-GRAPH-MODELS-103:
     status: IMPLEMENTED
   CFG-GRAPH-MODELS-104:
+    status: IMPLEMENTED
+  CFG-GRAPH-MODELS-105:
     status: IMPLEMENTED
   CFG-CRED-001:
     status: IMPLEMENTED

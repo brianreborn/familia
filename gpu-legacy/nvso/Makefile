@@ -4,14 +4,14 @@
 .PHONY: all clean tools kmod depend smoke
 
 CFLAGS ?= -O2 -Wall -Wextra
-CFLAGS += -Iinclude
+NVSO_CPPFLAGS = -Iinclude
 
 all: tools
 
 tools: tools/nvsoctl
 
 tools/nvsoctl: tools/nvsoctl.c include/nvso.h include/nvso_ioctl.h
-	$(CC) $(CFLAGS) -o $@ tools/nvsoctl.c
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(NVSO_CPPFLAGS) -o $@ tools/nvsoctl.c
 
 kmod:
 	@if [ -f /usr/share/mk/bsd.kmod.mk ]; then \

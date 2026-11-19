@@ -14,6 +14,21 @@
 # (in its --log-file) is retried once on the CPU (-ngl 0) with Vulkan hidden
 # (GGML_VK_VISIBLE_DEVICES=, LESSONS-LEARNED L-vkshm). Any other failure is returned as is.
 set -eu
+# Forward stop to the server child from the start, including during model load.
+# Without this, SIGTERM kills this shell and leaves llama-server holding the port.
+_srv_pid=
+_forward_stop() {
+  _sig=$1
+  _rc=$2
+  if [ -n "${_srv_pid:-}" ]; then
+    kill -s "$_sig" "$_srv_pid" 2>/dev/null || true
+    wait "$_srv_pid" 2>/dev/null || true
+  fi
+  exit "$_rc"
+}
+trap '_forward_stop TERM 143' TERM
+trap '_forward_stop INT 130' INT
+trap '_forward_stop HUP 129' HUP
 case "${1:-}" in
   ""|-h|--help) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'; [ -n "${1:-}" ] && exit 0; exit 2 ;;
 esac
@@ -214,7 +229,10 @@ rc=0
 # shellcheck disable=SC2086
 auth_guard "$args --log-file $(q "$log")"
 eval "set -- $args --log-file $(q "$log") $extra"
-"$@" || rc=$?
+"$@" &
+_srv_pid=$!
+wait "$_srv_pid" || rc=$?
+_srv_pid=
 [ "$rc" -eq 0 ] && exit 0
 # Retry on the CPU only for a Vulkan failure of a GPU launch that was not stopped by a signal.
 if [ "${ngl:-0}" -gt 0 ] && [ "$rc" -lt 128 ] && \
@@ -225,6 +243,11 @@ if [ "${ngl:-0}" -gt 0 ] && [ "$rc" -lt 128 ] && \
   # shellcheck disable=SC2086
   auth_guard "$safe_args --log-file $(q "$log.cpu")"
   eval "set -- $safe_args --log-file $(q "$log.cpu") $extra"
-  exec "$@"
+  rc=0
+  "$@" &
+  _srv_pid=$!
+  wait "$_srv_pid" || rc=$?
+  _srv_pid=
+  exit "$rc"
 fi
 exit "$rc"

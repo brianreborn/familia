@@ -216,7 +216,7 @@ def test_nc_python311_fallback(tmp_path):
         if not os.path.isdir(d):
             continue
         for n in os.listdir(d):
-            if n.startswith("python") or (lim / n).exists():
+            if n.startswith("python") or os.path.lexists(lim / n):
                 continue
             (lim / n).symlink_to(os.path.join(d, n))
     (lim / "python3.11").symlink_to(py)
