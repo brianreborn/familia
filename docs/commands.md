@@ -1,3 +1,4 @@
+| `scripts/progress_report.py` | hourly GitHub issue/PR progress-report generator for release review; writes artifact files only under reports/progress when run locally, no git mutation | `python3 scripts/progress_report.py` | — |
 # Every familia command
 
 This page mirrors `scripts/menu-items.txt` (legacy catalog). Default `./familia` opens the home menu (`scripts/familia_home.sh`): six equal items (Models, Harnesses, Agents, MCP servers, Tool sets, App store), each with install, list, start, stop and status. It exits only on Quit. If gum is missing and cannot be installed, it falls back to this catalog instead of exiting. Use `./familia menu` / `--legacy-menu` for the catalog directly. `tests/test_menu.py` checks this page lists every item.
