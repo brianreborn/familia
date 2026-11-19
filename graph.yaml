@@ -121,7 +121,25 @@ hosts:
     threads: 4
     ram_mib: 24442
     reserve_ram_mib: 4096                # policy (installer default), not measured; see docs/ram-safety.md
-    gpus: null                   # inventory unknown; measure GPUs before GPU offload
+    gpus:
+      - vendor: Intel Corporation
+        model: Xeon E3-1200 v3/4th Gen Core Processor Integrated Graphics Controller
+        vram_mib: null
+        backend: vulkan
+        backend_status: tbd
+        compute_capability: null
+        driver: null
+        measured: false
+        notes: PCI inventory measured 2026-11-18; i915kms loaded; Vulkan probe found only llvmpipe, not a physical Intel ICD
+      - vendor: NVIDIA Corporation
+        model: G84 [GeForce 8600 GT]
+        vram_mib: null
+        backend: cuda-sm11-ptx
+        backend_status: tbd
+        compute_capability: "1.1"
+        driver: null
+        measured: false
+        notes: PCI inventory measured 2026-11-18; CUDA 6.5/NVIDIA 341 support set is operator-reported but not verified as a FreeBSD runtime on Angel
     local_names: [gabriel, Gabriel, uriel, Uriel, angel.local, uriel.local, gabriel.local]
     notes: >-
       Nanbeige4.3-33B Q4_K_M (~18.7 GiB) active via nanbeige-coder (nanbeige-chat stays planned; do not co-start). Before activate: measure SSD swap
@@ -308,7 +326,7 @@ runtimes:
 
   llama-b11944:
     kind: llama-server
-    build: b11944 (code-bootstraps pin; config/llama-release.json + llama-pin.env)
+    build: b11944 (legacy tested release; exact upstream tag commit retained)
     commit: 1b4554eff124a8f0033bc09b3f708a5e51cbda15
     bin: code-bootstraps-llama.cpp/bin/llama-b11944-linux-x64-cpu/llama-server
     hosts: [miryam]
@@ -525,8 +543,10 @@ models:
     arch: lfm3
     trained_ctx: 262144
     role: chat
+    text_roles: [general, coder]
     db: AtomicChat--LFM3-1.7B-Uncensored-GGUF--LFM3-1.7B-Uncensored-AD-Q4_K_M
-    notes: "familia default model (general + coder). llama-bench b11944 box x86_64 CPU 8t: pp512 184, tg128 22 t/s (#183)."
+    notes: >-
+      Text-role evidence: code-bootstraps-llama.cpp@6ab58d7 config/model-sets.json and config/models-manifest.json map this same GGUF to general and coder profiles. This does not declare audio or vision capability. llama-bench b11944 box x86_64 CPU 8t: pp512 184, tg128 22 t/s (#183).
   lfm3-vl-2b-q4km:
     gguf: ~/.local/share/gguf/models-optional/lfm3-vl/LFM3-VL-2B-Q4_K_M.gguf
     sha256: 56dac2e192ff0d9ab8507f4f1aeb4aed0463449bbbefaac79497f041c95f21eb   # LiquidAI/LFM3-VL-2B-GGUF@017b19d
@@ -718,7 +738,7 @@ nodes:
     load_mode: mmap
     status: active
     override_reasons:
-      ctx: 'decision prompts are short; 2048 keeps KV small beside dogfood-coder on 16 GiB'
+      ctx: 'decision prompts are short; 2048 keeps KV small beside dogfood-coder on 16 GiB (+swap)'
 
   dogfood-coder:
     model: qwen35-2b-q4km
