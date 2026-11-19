@@ -347,8 +347,8 @@ runtimes:
 
   llama-b11669-freebsd:
     kind: llama-server
-    build: b12032 (llama.cpp 0.9.0-dev, native FreeBSD CPU build via build-linux.sh)
-    commit: e529969a1a5710ff7631fcd92118165aea278a0a
+    build: b12359 (llama.cpp 1.0.0, native FreeBSD CPU build via build-linux.sh)
+    commit: 2a8600387b40f2820d17973067020ce11377904d
     bin: code-bootstraps-llama.cpp/build-freebsd/bin/llama-server
     hosts: [angel]
     supported_archs: [qwen35, gemma-embedding2, llama, lfm2, modern-bert, qwen2, gemma2, gemma3, nanbeige, gpt-oss]
