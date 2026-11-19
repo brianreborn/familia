@@ -770,11 +770,35 @@ def _port_still_open(port, seconds):
     import time
     deadline = time.time() + seconds
     while True:
-        if not _listen_owner(port):
+        linux_listener = _linux_port_listening(port)
+        if linux_listener is not None:
+            if not linux_listener:
+                return False
+        elif not _listen_owner(port):
             return False
         if time.time() >= deadline:
             return True
         time.sleep(0.1)
+
+
+def _linux_port_listening(port):
+    """Return whether Linux reports a LISTEN socket, independent of PID visibility."""
+    if not sys.platform.startswith("linux") or not port:
+        return None
+    port_hex = "%04X" % int(port)
+    saw_table = False
+    for name in ("tcp", "tcp6"):
+        try:
+            with open("/proc/net/%s" % name, encoding="ascii", errors="replace") as fh:
+                lines = fh.read().splitlines()
+        except OSError:
+            continue
+        saw_table = True
+        for line in lines[1:]:
+            fields = line.split()
+            if len(fields) >= 4 and fields[1].endswith(":" + port_hex) and fields[3] == "0A":
+                return True
+    return False if saw_table else None
 
 
 def describe_record(kind):

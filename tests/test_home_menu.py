@@ -937,10 +937,6 @@ def test_stop_reports_still_listening_when_the_port_stays_open(monkeypatch, tmp_
     run_dir = _private_run(tmp_path, monkeypatch)
     sys.path.insert(0, os.path.join(ROOT, "scripts"))
     import home_catalog as hc
-    parent = tmp_path / "serve.sh"
-    parent.write_text("#!/bin/sh\nsleep 30\n")
-    parent.chmod(0o755)
-    shell = subprocess.Popen([str(parent)], start_new_session=True)
     code = (
         "import signal,socket,time\n"
         "signal.signal(signal.SIGTERM, signal.SIG_IGN)\n"
@@ -953,14 +949,17 @@ def test_stop_reports_still_listening_when_the_port_stays_open(monkeypatch, tmp_
     server = tmp_path / "llama-server"
     server.write_text("#!/usr/bin/env python3\n" + code % str(portf))
     server.chmod(0o755)
-    listener = subprocess.Popen([str(server)], start_new_session=True)
+    parent = tmp_path / "serve.sh"
+    parent.write_text("#!/bin/sh\nexec %s\n" % server)
+    parent.chmod(0o755)
+    listener = subprocess.Popen([str(parent)], start_new_session=True)
     try:
         for _ in range(50):
             if portf.exists():
                 break
             time.sleep(0.05)
         port = int(portf.read_text())
-        hc.save_record("models", shell.pid, port, hc._cmdline(shell.pid))
+        hc.save_record("models", listener.pid, port, hc._cmdline(listener.pid))
         env = base_env(HOME=str(tmp_path), XDG_RUNTIME_DIR=str(run_dir),
                        XDG_CACHE_HOME=str(tmp_path / "cache"))
         stopped = run([sys.executable, CATALOG, "models", "stop", "--apply"], env=env)
@@ -970,9 +969,17 @@ def test_stop_reports_still_listening_when_the_port_stays_open(monkeypatch, tmp_
         assert "stopped models" not in blob
         assert listener.poll() is None
     finally:
-        for proc in (shell, listener):
-            if proc.poll() is None:
-                proc.kill()
+        if listener.poll() is None:
+            listener.kill()
+
+
+def test_port_still_open_when_linux_hides_listener_owner(monkeypatch):
+    sys.path.insert(0, os.path.join(ROOT, "scripts"))
+    import home_catalog as hc
+    monkeypatch.setattr(hc.sys, "platform", "linux")
+    monkeypatch.setattr(hc, "_linux_port_listening", lambda port: True)
+    monkeypatch.setattr(hc, "_listen_owner", lambda port: 0)
+    assert hc._port_still_open(9931, seconds=0)
 
 
 def test_windows_timeout_stops_a_live_tree_instead_of_abandoning_it(monkeypatch, tmp_path, capsys):
