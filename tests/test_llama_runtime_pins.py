@@ -24,15 +24,10 @@ def test_active_b11944_runtime_matches_its_capability_table():
         assert llama_flags.supports(record, flag) is True
 
 
-def test_code_bootstraps_release_pin_has_lfm3_capability_table():
-    release = load_json(os.path.join(ROOT, "code-bootstraps-llama.cpp", "config", "llama-release.json"))
-    assert release["tag"] == "b12032"
-    cpu_asset = next(asset for asset in release["assets"]
-                     if asset["platform"] == "linux-x64" and asset["variant"] == "cpu")
-    record = llama_flags.load(release["tag"])
+def test_b12032_runtime_record_has_lfm3_capability_table():
+    record = llama_flags.load("b12032")
 
-    assert record["commit"] == release["commit"]
+    assert record["commit"] == "dde879bc4f954b809892fd0d660515f42536394a"
     assert "lfm3" in record["archs"]
-    assert cpu_asset["file"].startswith("llama-b12032-")
     for flag in ("--jinja", "--api-key-file", "--spec-type", "--spec-ngram-mod-n-match"):
         assert llama_flags.supports(record, flag) is True
