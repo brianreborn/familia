@@ -62,7 +62,7 @@ install/freebsd/deps.sh|FreeBSD helper behind install/deps.sh (opt-in pkg); not 
 scripts/build_appimage.sh|operator AppImage packaging for milestones; not an end-user menu task
 scripts/perf/box_multi_size_smoke.py|perf/dev smoke hitting decision+coder ports; run by operators on a box, not menu
 scripts/familia_agent_reach.py|thin wrapper / library around Agent-Reach; menu uses scripts/agent_reach.py
-scripts/system_prompt_check.py|offline system-prompt path checks (#115); developer/CI helper, not an end-user menu action
+scripts/system_prompt_check.py|developer tool: generates/checks docs/config (CFG-* ids); not an end-user action
 scripts/familia_home.sh|Charm/gum front door (./familia); not a legacy catalog row
 scripts/proto_chat.sh|protomodel REPL from gum home "Talk to the protomodel"
 scripts/find_models.sh|guided fetch from gum home "Find more models"
@@ -106,3 +106,4 @@ scripts/routerbench_pickle_to_parquet.py|one-time RouterBench pickle -> parquet 
 scripts/routerbench_scorer.py|offline RouterBench routing-policy scorer (bench-adapters); used by bench/CI flows
 scripts/hermes-escalation-config.sh|default environment settings for escalation-ready hermes runs; sourced by hermes.sh or copied to ~/.hermes/config/
 scripts/watchdog_test.sh|test helper running a command under a timeout watchdog for CI/local testing
+scripts/twitter_intake.sh|read-only Galaxy1 X/Twitter intake; validates ideas-from-x skill and stops before issue review
