@@ -186,6 +186,30 @@ def _key_file_error(path):
     return _key_file_bytes_error(path, data)
 
 
+def _is_loopback_host(host):
+    """Fail closed for bind hosts: only literal loopback forms are accepted."""
+    import ipaddress
+    b = str(host or "").strip()
+    if b.lower() == "localhost":
+        return True
+    if b.startswith("[") and b.endswith("]"):
+        b = b[1:-1]
+    try:
+        ip = ipaddress.ip_address(b)
+    except ValueError:
+        return False
+    mapped = getattr(ip, "ipv4_mapped", None)
+    return (mapped or ip).is_loopback
+
+
+def _has_tools_flag(tokens):
+    for a in tokens:
+        s = str(a).strip().lower()
+        if s == "--tools" or s.startswith("--tools="):
+            return True
+    return False
+
+
 def check(argv, ensure=False):
     """Validate argv. Return (ok: bool, message: str)."""
     import familia_auth
@@ -228,6 +252,11 @@ def check(argv, ensure=False):
         err = _key_file_error(path)
         if err:
             return False, err
+    if _has_tools_flag(extra if "--extra-start" in str_args else main_args) and not _is_loopback_host(host):
+        return False, (
+            "--tools enables host-exec and is allowed only on loopback binds "
+            "(host %s)" % (host or "?")
+        )
     return True, "ok"
 
 

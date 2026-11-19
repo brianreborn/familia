@@ -8,7 +8,7 @@ Your models and data stay on your machines. A file, context, or result moves acr
 
 familia is a **topology coordinator**. It doesn't replace your inference server or your agents. It pins them, checks them out side by side, and wires them into one graph you control: llama.cpp model servers, the green-roomz alias gateway, the green-agentz fleet, and agents such as hermes-agent, across the machines you own.
 
-> **Headline model: LFM3-1.7B-Uncensored** ([AtomicChat/LFM3-1.7B-Uncensored-GGUF](https://huggingface.co/AtomicChat/LFM3-1.7B-Uncensored-GGUF), base LiquidAI LFM3-1.7B, 256k context, tool calling). It is the default on every platform: one 1.13 GB file served as both `general` and `coder`. No safety tuning; you are responsible for its output. License `lfm1.0`: commercial use only for organisations under US$10M annual revenue. Want to iterate on it? Swap quants or sampling in [`code-bootstraps-llama.cpp/config/models-manifest.json`](https://github.com/brianreborn/code-bootstraps-llama.cpp/blob/main/config/models-manifest.json), or try the official LiquidAI builds with `scripts/fetch-models.sh --pick lfm3` / `--pick lfm3-qad` (opt-in downloads only).
+> **Headline model: LFM3-1.7B-Uncensored** ([AtomicChat/LFM3-1.7B-Uncensored-GGUF](https://huggingface.co/AtomicChat/LFM3-1.7B-Uncensored-GGUF), base LiquidAI LFM3-1.7B, 256k context, tool calling). It is the single-node default (`start.sh` when this host has no active topology): one 1.13 GB file served as both `general` and `coder`. The checked-in fleet graph is not there yet: `nodes.coder` on miryam still uses `qwen35-2b-q4km` at 64k context (measured for Hermes). LFM3-VL/Omni/Audio stay opt-in. No safety tuning; you are responsible for its output. License `lfm1.0`: commercial use only for organisations under US$10M annual revenue. Want to iterate on it? Swap quants or sampling in [`code-bootstraps-llama.cpp/config/models-manifest.json`](https://github.com/brianreborn/code-bootstraps-llama.cpp/blob/main/config/models-manifest.json), or try the official LiquidAI builds with `scripts/fetch-models.sh --pick lfm3` / `--pick lfm3-qad` (opt-in downloads only).
 
 > **The LFM3 family: try them all.** Every pick is an opt-in, sha256-pinned download (never fetched by default), licensed `lfm1.0`. From the familia menu: **Models → LFM3 family** (`./familia --run models.lfm3 lfm3-vl`), or directly `sh code-bootstraps-llama.cpp/scripts/fetch-models.sh --pick NAME`:
 >
@@ -25,7 +25,7 @@ familia is a **topology coordinator**. It doesn't replace your inference server 
 >
 > After a download, restart; each media pick is served as its own model (`lfm3-vl`, `lfm3-omni`, `lfm3-audio`) with `--mmproj`, so the web UI's image/audio attach and OpenAI `image_url` / `input_audio` messages work. Benchmarks: [#183](https://github.com/brianreborn/familia/issues/183).
 
-> **Status:** pre-release (`v0.1.0-rc2`). Linux is the tested platform. **Want to help test? Start with [TESTING.md](TESTING.md).** See [Platform status](#platform-status) and [Known issues](docs/known-issues.md).
+> **Status:** pre-release (targeting **v0.4.0**). FreeBSD is the first reference platform; Linux is the only one tested so far. **Want to help test? Start with [TESTING.md](TESTING.md).** See [Platform status](#platform-status) and [Known issues](docs/known-issues.md).
 
 **Projects familia coordinates:** [code-bootstraps-llama.cpp](https://github.com/brianreborn/code-bootstraps-llama.cpp) provides model serving and bootstrap tooling; [green-roomz](https://github.com/brianreborn/green-roomz) provides the alias gateway; [green-agentz](https://github.com/brianreborn/green-agentz) provides the agent fleet; [Agent-Reach](https://github.com/Panniantong/Agent-Reach) provides optional reach tools; and [nace-ai/llama.cpp](https://github.com/nace-ai/llama.cpp/tree/edlm) is the experimental DReX-DLM runtime. Their repositories and licenses remain independent; familia's [`pins.txt`](pins.txt) keeps the selected revisions together. [green-agency](https://github.com/brianreborn/green-agency) is retired and retained only for historical specifications.
 
@@ -93,7 +93,7 @@ p=familia && o=brianreborn && h=raw.githubusercontent.com && u=https://$h/$o/$p/
 sh ./install-familia.sh --dry-run
 ```
 
-llama.cpp is **prebuilt-first**: the installer reuses an existing build, else downloads the sha256-checked b11944 release binary for your OS/arch (Linux, macOS, Windows), and builds from source only when none fits (FreeBSD, Termux) or you set `BUILD=1`.
+llama.cpp is **prebuilt-first**: the installer reuses an existing build, else downloads the sha256-checked b12359 release binary for your OS/arch (Linux, macOS, Windows), and builds from source only when none fits (FreeBSD, Termux) or you set `BUILD=1`.
 
 For the ordered checklist (measure host, place a model, validate, start), see [QUICKSTART.md — What you actually need](QUICKSTART.md#what-you-actually-need). That clones familia into `~/familia`, shows the license review, syncs the pinned sub-projects and starts the active local topology declared in `graph.yaml`. You type `yes` once to acknowledge the voluntary contribution notice (`INSTALL_ACK=yes` for unattended installs); paying is never required. The graph gateway is loopback-only at **http://127.0.0.1:9931**; use `GET /v1/models` to see the local aliases.
 
@@ -204,7 +204,7 @@ flowchart LR
   coder["node coder<br/>local model server"]
   embed["node embed<br/>local model server"]
   pent["node pentest<br/>(planned)"]
-  dec["node gpu-decision<br/>(planned)"]
+  dec["node vulkan-igpu-decision<br/>(planned)"]
   heavy["escalates_to target node<br/>(ranked by measured t/s)"]
   troute["tool_route target<br/>(tool-capable node)"]
 
@@ -418,7 +418,7 @@ flowchart TB
   end
   subgraph win["Windows node"]
     q_res["resident node (CPU)"]
-    q_gpu["gpu-decision node<br/>legacy-GPU node runs llama2.c (no GGUF)"]
+    q_gpu["cuda-sm11-decision<br/>legacy-GPU node runs llama2.c (no GGUF)"]
   end
   lin["Linux node<br/>test loop"]
   ci["Linux CI / test node<br/>decision, coder nodes"]
@@ -426,7 +426,7 @@ flowchart TB
 
   m_hub <-->|"lan-nexus"| win
   m_hub <-->|"lan-nexus / lan-bt"| phones
-  win -.->|"smol-cpu node (planned) escalates_to coder"| m_coder
+  win -.->|"cpu-smol-decision (planned) escalates_to coder"| m_coder
 ```
 
 `graph.yaml` lists the Android phones under both legacy and fleet host names; `registry/hosts.yaml` maps all of them to one hardware profile. The legacy-GPU node runs llama2.c (no GGUF).
@@ -482,7 +482,7 @@ Everything below is on `main`. "Planned (#N)" means tracked in that issue and no
 | Feature | Status |
 |---|---|
 | Declarative graph `graph.yaml` (typed schema v2, multi-host, GPU fields, speculative edges, `pentests` launch-test-only type) + `scripts/validate_graph.py` | Implemented. Fails on schema, runtime, GGUF arch, `context_length`, prompt-cache size and RAM overcommit; the RAM reserve and small-host floor are warnings ([docs/ram-safety.md](docs/ram-safety.md)) |
-| Model selection: `selection: default\|fallback` per node | Implemented (`qodesh-resident`, Qwen3.5-2B, is a user-selectable fallback; SmolLM2 stays the qodesh default) |
+| Model selection: `selection: default\|fallback` per node | Implemented (`cpu-resident-coder`, Qwen3.5-2B, is a user-selectable fallback; SmolLM2 stays the qodesh default) |
 | hermes harness `scripts/hermes.sh` / `hermes_harness.py` | Implemented, with graph mode (default) and single-model mode (`--model NODE`, 64K floor); live `--selftest-compaction` on miryam planned ([#42](https://github.com/brianreborn/familia/issues/42)) |
 | Self-improving harnesses: Harness² + Terminal-RSI over `harnesses:` / `self_improve:`, `scripts/harness2.py`, `scripts/self_improve_attach.py` | Experimental, off by default; attach from hermes, graph start / llama UI, or CLI. Any model role is allowed; pentest agents remain excluded. See [docs/harness2.md](docs/harness2.md) ([#65](https://github.com/brianreborn/familia/issues/65), [#88](https://github.com/brianreborn/familia/issues/88)) |
 | Official Hermes plugins (MCP + Skill) bridged into rendered HERMES_HOME | Opt-in `agents.<name>.plugins`; see [docs/hermes-plugins.md](docs/hermes-plugins.md) ([#92](https://github.com/brianreborn/familia/issues/92)) |

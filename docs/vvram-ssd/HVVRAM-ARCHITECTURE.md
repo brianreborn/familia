@@ -73,7 +73,7 @@ Docs: [G84-BRIDGE.md](./G84-BRIDGE.md), [FIRMWARE-PLAN.md](./FIRMWARE-PLAN.md), 
 
 | Stage | Done when |
 |-------|-----------|
-| 0 | angel-coder loads Nanbeige via mmap; swap+spill measured (BENCH) |
+| 0 | nanbeige-coder loads Nanbeige via mmap; swap+spill measured (BENCH) |
 | 1 | Live `kldload` and `nvsoctl` create→map→gate (+ soft export/post) return 0. **Code is ABI 2.** FreeBSD 15.1 `nvso.ko` build is the `c3d9834` note. The remaining host gate is the live load and round-trip, which this repo does not record. |
 | 2 | Lab FW exposes ≥1 SQ/CQ pair + LBA window; `nvssd_queue_export` binds real geom |
 | 3 | One posted peer DMA completes without bounce; counters in BENCH |

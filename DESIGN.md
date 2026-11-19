@@ -34,7 +34,7 @@ grew more layers around that component; it does not invent a parallel stack.
 - **Pinned GGUF (decision/route):** `Laya-Q8_0.gguf` in the code-bootstraps
   models manifest (`pick=default`, role `decision` / alias `route`).
 - **Familia dispatch:** `install/deps.sh` + menu `setup.deps` / `setup.safe-build`;
-  graph alias `safe-build` → SmolLM2-135M chat face (`miryam-gpu-decision`) because
+  graph alias `safe-build` → SmolLM2-135M chat face (`vulkan-igpu-decision`) because
   Laya is `/v1/systemone` only; prompt in `harness/safe-build/systemprompt.md`.
 - **Doc:** [docs/safe-mode-bootstrap.md](docs/safe-mode-bootstrap.md).
 

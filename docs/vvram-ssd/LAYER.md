@@ -11,11 +11,11 @@ No new silicon. Goal: run **one** Nanbeige4.3-33B Q4_K_M (~18.7 GiB) node on ang
 | Usable for llama | ~20346 |
 | Weights Q4_K_M | ~19149 (18.7 GiB) |
 | KV @ ctx 65536, q8_0, parallel 1 | ~2× vs 32K (measure on activate; heavier SSD spill) |
-| `cache_ram_mib` (graph) | >= per-slot KV (angel-coder: 3584 baseline; advisory ~2× at 64K) |
+| `cache_ram_mib` (graph) | >= per-slot KV (nanbeige-coder: 3584 baseline; advisory ~2× at 64K) |
 
 Weights alone nearly fill usable RAM → **mmap load + measured swap/spill required before `status: active`.**
 
-Do **not** co-activate `angel-coder` and `angel-chat`.
+Do **not** co-activate `nanbeige-coder` and `nanbeige-chat`.
 
 ## Knobs that exist in graph today
 
@@ -65,7 +65,7 @@ See `/workspace/familia-install-notes/swap-box.md` and `docs/ram-safety.md`: zra
 Node fields in `graph_types.py` / `graph.yaml`:
 
 ```yaml
-spill_path: ~/.cache/familia/spill/angel-coder   # → llama-server --slot-save-path
+spill_path: ~/.cache/familia/spill/angel-coder   # → llama-server --slot-save-path (dir name stays; node id is nanbeige-coder)
 swap_budget_mib: 24576                           # ops gate: validate_graph --check-swap
 slot_save: true                                  # or just set spill_path (either enables argv)
 # cache_type_v: q8_0                             # not first-class yet; kv_type applies to K+V
@@ -78,7 +78,7 @@ slot_save: true                                  # or just set spill_path (eithe
 
 ## Coherent 64K / RAM policy (fleet)
 
-Hermes `MINIMUM_CONTEXT_LENGTH` is **64000**. Nodes that serve hermes must set `ctx >= 64000` (miryam `coder` and angel `angel-coder` use **65536**).
+Hermes `MINIMUM_CONTEXT_LENGTH` is **64000**. Nodes that serve hermes must set `ctx >= 64000` (miryam `coder` and angel `nanbeige-coder` use **65536**).
 
 | Situation | Required path | Launch outcome |
 |-----------|---------------|----------------|
@@ -101,5 +101,5 @@ Labels stay model+quant (never a hash). Status lines follow `docs/protocol/launc
 1. Verify GGUF path + sha256 (`nanbeige43-33b-q4km`).
 2. `swapinfo` shows ≥ ~20–24 GiB usable swap on SSD (or measured smaller with proven RSS).
 3. Spill dir exists (`mkdir -p` spill_path); `slot_save: true` or spill_path set.
-4. Activate **one** of `angel-coder` / `angel-chat`.
+4. Activate **one** of `nanbeige-coder` / `nanbeige-chat`.
 5. Smoke with `enable_thinking` appropriate to card; record pp/tg + RSS + swap in registry.

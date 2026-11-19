@@ -27,7 +27,7 @@ Usage:
                                 (docs/release-channels.md; resolver: scripts/channel.py)
 Preliminary stock (owned by this script): OS packages via install/deps.sh when anything
 base is missing, and Charm gum into ~/.local/bin via scripts/install-gum.sh (no sudo; soft-fail).
-llama.cpp is prebuilt-first: an existing build is reused, else the sha256-checked b11944 release
+llama.cpp is prebuilt-first: an existing build is reused, else the sha256-checked b12359 release
 binary for this OS/arch; it builds from source only when none fits (FreeBSD, Termux) or BUILD=1.
 Example:
   p=familia                          && \

@@ -28,7 +28,28 @@ int main(void){ setvbuf(stdout,0,_IONBF,0);
   unsigned n=256; void* a[]={&dp,&dy,&n}; r=launch(f_add,2,128,a); CUresult s2=p_cuCtxSynchronize();
   printf("kernel add into mapped: launch=%d sync=%d hp[0]=%.1f hp[255]=%.1f (expect 3.0)\n",(int)r,(int)s2,hp[0],hp[255]);
   /* latency: tiny kernel + host spin on mapped value vs event */
-  double t=qn(); for(int k=0;k<200;k++){ hp[0]=0; launch(f_add,1,128,a); double t1=qn(); while(((volatile float*)hp)[0]==0.0f){ sm11_yield(); if(qn()-t1>0.2){ printf("mapped flag never became visible (iter %d)\n",k); k=999; break; } } } double tm=(qn()-t)/200*1e3;
-  t=qn(); for(int k=0;k<200;k++){ launch(f_add,1,128,a); sm11_fence(); } double te=(qn()-t)/200*1e3;
-  printf("round trip: mapped-flag spin %.3f ms, event fence %.3f ms\n",tm,te);
+  double t=qn(); int mapped_completed=0;
+  for(int k=0;k<200;k++){
+    hp[0]=0;
+    if(launch(f_add,1,128,a)){ printf("mapped launch failed (iter %d)\n",k); break; }
+    double t1=qn();
+    int timed_out=0;
+    while(((volatile float*)hp)[0]==0.0f){
+      sm11_yield();
+      if(qn()-t1>0.2){ printf("mapped flag never became visible (iter %d)\n",k); timed_out=1; break; }
+    }
+    if(timed_out) break;
+    mapped_completed++;
+  }
+  double mapped_ms=mapped_completed==200?(qn()-t)/mapped_completed*1e3:0;
+  t=qn(); int event_completed=0;
+  for(int k=0;k<200;k++){
+    if(launch(f_add,1,128,a) || sm11_fence()){ printf("event fence failed (iter %d)\n",k); break; }
+    event_completed++;
+  }
+  double event_ms=event_completed==200?(qn()-t)/event_completed*1e3:0;
+  printf("round trip: mapped-flag spin ");
+  if(mapped_completed==200) printf("%.3f ms",mapped_ms); else printf("n/a (%d/200 complete)",mapped_completed);
+  printf(", event fence ");
+  if(event_completed==200) printf("%.3f ms\n",event_ms); else printf("n/a (%d/200 complete)\n",event_completed);
   return 0; }

@@ -52,7 +52,7 @@ Report the disagreement instead of working around it.
    ```yaml
    protograph: 1
    host: {from_graph: box}                 # or name/kind/os/cpu/threads/ram_mib/reserve_ram_mib
-   runtime: {from_graph: llama-b11374-box-cpu}   # or name/build/commit/supported_archs/backends
+   runtime: {from_graph: llama-b11374-linux-cpu}   # or name/build/commit/supported_archs/backends
    models:
      draft: {from_graph: qwen35-08b-q4km}  # or gguf/sha256/arch/trained_ctx/role/db
    nodes:

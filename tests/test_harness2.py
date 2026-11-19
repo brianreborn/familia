@@ -217,7 +217,7 @@ def test_mode_argument_errors(argv, msg, capsys):
 def test_graph_mode_auto_proxy(tmp_path, monkeypatch):
     hm = modes(); import hermes_harness as hh; seen = {}
     monkeypatch.setattr(hh, "main", lambda a: seen.setdefault("argv", a) and 0)
-    g = copy.deepcopy(GRAPH); g["nodes"]["coder"]["escalates_to"] = ["qodesh-resident"]; gp = write_graph(tmp_path, g)
+    g = copy.deepcopy(GRAPH); g["nodes"]["coder"]["escalates_to"] = ["cpu-resident-coder"]; gp = write_graph(tmp_path, g)
     hm.main(["--graph", gp]); assert "--escalate" in seen["argv"]
     seen.clear(); hm.main(["--graph", gp, "--no-escalate"]); assert "--escalate" not in seen["argv"]
     seen.clear(); hm.main(["--graph", write_graph(tmp_path, GRAPH), "--escalate", "--light", "coder", "--", "-x"])

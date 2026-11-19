@@ -1,15 +1,47 @@
 #!/bin/sh
-# familia_home.sh: Charm/gum front door. Old familia-menu.sh is legacy fallback only.
+# familia_home.sh: six equal top-level items. The legacy menu is the fallback
+# and the CLI for every action (scripts/home_catalog.py via familia-menu.sh).
 # Usage:
-#   sh scripts/familia_home.sh              interactive gum launcher
-#   sh scripts/familia_home.sh --list-goals  print the six goals (non-interactive / tests)
-#   FAMILIA_NO_TTY=1 sh scripts/familia_home.sh   lists goals and exits 0
+#   sh scripts/familia_home.sh                 interactive home
+#   sh scripts/familia_home.sh --list-goals    print the six items (tests)
+#   FAMILIA_NO_TTY=1 sh scripts/familia_home.sh
+# List mode (no tty, FAMILIA_NO_TTY, or --list-goals) prints and exits 0.
+# The interactive menu exits only on Quit.
+#
+# Ctrl-C (INT) stays in the menu. HUP and TERM leave, because the terminal is gone.
+# An ignored INT is not used: a child action must still be interruptible.
+# gum exit 1 or 130 after 0.2s is a cancel. Anything else, or a cancel faster
+# than 0.2s, counts as a failure. After 3 failures the legacy menu opens.
+# If stdin is not a terminal at that point, exit 2 (closed input, not a quit).
+# FAMILIA_HOME_FORCE_MENU=1 enters the loop even when stdin is not a terminal.
+#
+# gum is not installed unless you say yes. The default answer is no, and no
+# falls back to the legacy menu. install-gum.sh verifies the pinned sha256.
 set -eu
-ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+ROOT=$(unset CDPATH; cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$ROOT"
-# Prefer user-local Charm gum (box installs land in ~/.local/bin).
-PATH="${HOME:-}/.local/bin:${PATH:-}"
-export PATH
+# Do not put ~/.local/bin first on PATH for every child. gum() looks there itself.
+PY=${PYTHON:-python3}
+gum() {
+  if [ -n "${HOME:-}" ] && [ -x "${HOME}/.local/bin/gum" ]; then
+    "${HOME}/.local/bin/gum" "$@"
+    return $?
+  fi
+  command gum "$@"
+}
+
+_interrupted=0
+GUM_FAILS=0
+on_int() {
+  _interrupted=1
+  printf '\n' >&2
+  if [ -t 0 ]; then
+    stty sane 2>/dev/null || true
+  fi
+}
+trap on_int INT
+trap 'printf "familia-home: terminal closed\n" >&2; exit 129' HUP
+trap 'printf "familia-home: stopped\n" >&2; exit 143' TERM
 
 LIST_ONLY=0
 while [ $# -gt 0 ]; do
@@ -19,9 +51,13 @@ while [ $# -gt 0 ]; do
       cat <<'USAGE'
 Usage: sh scripts/familia_home.sh [--list-goals]
 
-Charm/gum goal launcher (default ./familia front door).
-Requires gum on PATH for interactive use. Legacy catalog:
+Six equal items: Models, Harnesses, Agents, MCP servers, Tool sets, App store.
+Each has install, list, start, stop and status.
+The menu exits only on Quit. Ctrl-C stays in the menu.
+If gum is missing you are asked before any download (default no). No, or a gum
+that keeps failing, opens the legacy menu:
   ./familia menu | ./familia --legacy-menu | FAMILIA_LEGACY_MENU=1 ./familia
+example: sh scripts/familia_home.sh --list-goals
 USAGE
       exit 0 ;;
     *) printf 'familia-home: unknown arg %s\n' "$1" >&2; exit 2 ;;
@@ -29,137 +65,315 @@ USAGE
   shift
 done
 
-GOALS="Talk to the protomodel
-Open llama-ui web cockpit
-Find more models
-Search my X / Twitter posts
-Install / first-time setup
-◆ Proving grounds (graded)
-Legacy menu"
+fallback_legacy() {
+  printf 'familia-home: %s\n' "$1" >&2
+  printf 'familia-home: falling back to the legacy menu. Type q to quit.\n' >&2
+  exec bash "$ROOT/familia-menu.sh"
+}
+
+note_interrupt() {
+  if [ "$_interrupted" = 1 ]; then
+    _interrupted=0
+    printf 'familia-home: interrupted; staying in the menu. Choose Quit to leave.\n' >&2
+  fi
+}
 
 print_goals() {
-  printf '%s\n' "familia home — goals (Charm/gum):"
-  printf '%s\n' "$GOALS" | awk '{printf "  %d) %s\n", NR, $0}'
-  printf 'Legacy fallback: ./familia --legacy-menu\n'
+  "$PY" "$ROOT/scripts/home_catalog.py" --list-home
 }
 
-if [ "$LIST_ONLY" = 1 ] || [ "${FAMILIA_NO_TTY:-}" = 1 ] || [ ! -t 0 ]; then
-  print_goals
-  exit 0
-fi
-
-if ! command -v gum >/dev/null 2>&1; then
-  if [ -f "$ROOT/scripts/osc7501.sh" ]; then
-    # soft: blocked:auth-ish — gum missing
-    # shellcheck disable=SC1091
-    . "$ROOT/scripts/osc7501.sh"
-    osc7501_emit blocked --id home --kind question --app familia \
-      --msg "gum missing; install via scripts/install-gum.sh or use --legacy-menu" 2>/dev/null || true
+if [ "${FAMILIA_HOME_FORCE_MENU:-}" != 1 ]; then
+  if [ "$LIST_ONLY" = 1 ] || [ "${FAMILIA_NO_TTY:-}" = 1 ] || [ ! -t 0 ]; then
+    print_goals
+    exit 0
   fi
-  printf 'familia-home: gum (Charm) is required for the new front door.\n' >&2
-  printf 'Install (user-local, no sudo):  sh scripts/install-gum.sh\n' >&2
-  printf '     or re-run:                 sh install.sh --yes --no-start\n' >&2
-  printf 'Legacy menu (no gum):  ./familia --legacy-menu\n' >&2
-  exit 2
 fi
 
-# Pilot canopy — mecha HUD framing for the home.
-if [ -f "$ROOT/scripts/pilot_hud.sh" ]; then
-  # shellcheck disable=SC1091
-  . "$ROOT/scripts/pilot_hud.sh"
-  pilot_canopy "FAMILIA PILOT LINK"
-else
-  gum style --border double --border-foreground 51 --foreground 159 --bold \
-    --align center --width 64 --padding "0 2" \
-    "familia" "Talk to the protomodel first — old menus are legacy"
-fi
+command -v "$PY" >/dev/null 2>&1 || fallback_legacy "$PY was not found"
+"$PY" "$ROOT/scripts/home_catalog.py" --titles >/dev/null || fallback_legacy "the home catalog failed"
 
-CHOICE=$(printf '%s\n' "$GOALS" | gum choose --header "What do you want to do?" --height 10) || {
-  printf 'familia-home: cancelled\n'
-  exit 0
+have_gum() {
+  if [ -n "${HOME:-}" ] && [ -x "${HOME}/.local/bin/gum" ]; then
+    return 0
+  fi
+  command -v gum >/dev/null 2>&1
 }
 
-# Background ordnance prefetch when entering build/talk paths (UI-owned overlap).
+gum_usable() {
+  have_gum || return 1
+  gum --version >/dev/null 2>&1 || return 1
+  gum choose --help 2>&1 | grep -q -- '--header' || return 1
+  gum choose --help 2>&1 | grep -q -- '--height' || return 1
+}
+
+# Ask before any download. install-gum.sh defaults to no and checks sha256.
+if ! have_gum; then
+  if [ "${FAMILIA_SKIP_GUM_INSTALL:-}" != 1 ] && [ -t 0 ] && [ -f "$ROOT/scripts/install-gum.sh" ]; then
+    sh "$ROOT/scripts/install-gum.sh" || true
+  fi
+fi
+if ! gum_usable; then
+  if [ ! -t 0 ]; then
+    printf 'familia-home: gum is not usable and stdin is not a terminal. Not a quit.\n' >&2
+    exit 2
+  fi
+  fallback_legacy "gum is missing, too old, or failed its version check"
+fi
+
+# Background first-try models. Failure does not leave the menu.
 kick_prefetch() {
   [ -f "$ROOT/scripts/prefetch-first-models.sh" ] || return 0
-  if [ -f "$ROOT/scripts/pilot_hud.sh" ]; then
-    pilot_strip "PREFETCHING ORDNANCE" "first-try models in background (logs: $ROOT/.cache/prefetch-first-models.log)"
-  else
-    printf 'familia-home: prefetching first-try model in background… logs: %s\n' "$ROOT/.cache/prefetch-first-models.log" >&2
-  fi
+  printf 'familia-home: PREFETCHING ORDNANCE in the background\n' >&2
   sh "$ROOT/scripts/prefetch-first-models.sh" --background >/dev/null 2>&1 || true
 }
 
-# Protographs (née Protomodel) profile selector
-choose_protograph() {
-  if ! command -v gum >/dev/null 2>&1; then
+# scripts/osc7501.sh status. Skipped for pipes, logs, NO_COLOR, and dumb terminals.
+home_note() {
+  [ -t 1 ] || return 0
+  [ -z "${NO_COLOR:-}" ] || return 0
+  [ "${TERM:-dumb}" != dumb ] || return 0
+  [ -f "$ROOT/scripts/osc7501.sh" ] || return 0
+  # shellcheck disable=SC1091
+  . "$ROOT/scripts/osc7501.sh"
+  osc7501_emit working --id home --msg "$1" --title "familia home" --app familia 2>/dev/null || true
+}
+
+now_ms() {
+  _ms=$("$PY" -c 'import time; print(int(time.monotonic()*1000))' 2>/dev/null) || _ms=0
+  printf '%s\n' "${_ms:-0}"
+}
+
+# 7-bit banner. Box drawing is not required; pipes and logs stay ASCII.
+banner() {
+  printf '%s\n' '  +------------------------------------------------------------------+'
+  printf '%s\n' '  | familia   six equal items   Quit is the only exit               |'
+  printf '%s\n' '  +------------------------------------------------------------------+'
+}
+
+gum_failed() {
+  GUM_FAILS=$((GUM_FAILS + 1))
+  if [ "$GUM_FAILS" -ge 3 ]; then
+    if [ ! -t 0 ]; then
+      printf 'familia-home: input closed. Not a quit.\n' >&2
+      exit 2
+    fi
+    fallback_legacy "gum failed ${GUM_FAILS} times"
+  fi
+  sleep 1 || true
+  printf 'familia-home: %s; retry %s of 3\n' "$1" "$GUM_FAILS" >&2
+  return 1
+}
+
+# pick HEADER ITEM... sets PICKED. Returns 1 on cancel (not a quit).
+# Not called in a command substitution: GUM_FAILS has to survive the call.
+pick() {
+  _hdr=$1
+  shift
+  PICKED=
+  note_interrupt
+  if ! gum_usable; then
+    gum_failed "gum is not usable"
+    return 1
+  fi
+  _t0=$(now_ms) || _t0=0
+  _tmp=$(mktemp "${TMPDIR:-/tmp}/familia-home-pick.XXXXXX" 2>/dev/null) || {
+    gum_failed "mktemp failed"
+    return 1
+  }
+  set +e
+  gum choose --header "$_hdr" --height 16 "$@" > "$_tmp"
+  _rc=$?
+  set -e
+  _t1=$(now_ms) || _t1=0
+  _sel=$(cat "$_tmp" 2>/dev/null || true)
+  rm -f "$_tmp" || true
+  _dt=$((${_t1:-0} - ${_t0:-0})) || _dt=0
+  if [ "$_rc" -eq 0 ] && [ -n "${_sel:-}" ]; then
+    GUM_FAILS=0
+    PICKED=$_sel
     return 0
   fi
-  PROFILES="1) Coder-speculative (Qwen3.5-2B @ 64k, ngram-simple) [Default / Most Reliable]
-2) Uncensored-speculative (LFM3-1.7B, ngram-mod) [High-speed / Unrestricted]
-3) Dual-node c2c escalation (Router + Coder via c2c / kv_channels)
-4) Connect to existing running server (port auto-detect)"
-  
-  PCHOICE=$(printf '%s\n' "$PROFILES" | gum choose --header "Protographs (née Protomodel) — Choose Configuration:" --height 8) || return 0
-  case "$PCHOICE" in
-    1*|"")
-      export FAMILIA_PROTO_MODEL="coder"
-      ;;
-    2*)
-      export FAMILIA_PROTO_MODEL="general"
-      ;;
-    3*)
-      export FAMILIA_PROTO_MODEL="coder"
-      export FAMILIA_C2C_ESCALATE=1
-      ;;
-    4*)
-      # Leave unset for automatic detection
-      ;;
+  # exit 1 is Esc. exit 130 is Ctrl-C while gum owns the terminal.
+  if { [ "$_rc" -eq 1 ] || [ "$_rc" -eq 130 ]; } && [ "$_dt" -ge 200 ]; then
+    GUM_FAILS=0
+    return 1
+  fi
+  gum_failed "gum exited ${_rc}"
+  return 1
+}
+
+area_of() {
+  case "$1" in
+    Models) printf '%s\n' models ;;
+    Harnesses) printf '%s\n' harnesses ;;
+    Agents) printf '%s\n' agents ;;
+    "MCP servers") printf '%s\n' mcp ;;
+    "Tool sets") printf '%s\n' tools ;;
+    "App store") printf '%s\n' apps ;;
+    *) return 1 ;;
   esac
 }
 
-case "$CHOICE" in
-  "Talk to the protomodel")
-    kick_prefetch
-    choose_protograph
-    exec sh "$ROOT/scripts/proto_chat.sh"
-    ;;
+read_required() {
+  _prompt=$1
+  printf '%s' "$_prompt" >&2
+  if ! IFS= read -r _got; then
+    note_interrupt
+    printf 'familia-home: not confirmed. Staying in the menu.\n' >&2
+    return 1
+  fi
+  if [ -z "$_got" ]; then
+    printf 'familia-home: not confirmed. Staying in the menu.\n' >&2
+    return 1
+  fi
+  printf '%s\n' "$_got"
+}
+
+run_verb() {
+  _area=$1
+  _verb=$2
+  _apply=0
+  _arg=
+  case "$_verb" in
+    install|start|stop)
+      case "$_area:$_verb" in
+        models:install|models:start)
+          printf 'Run %s %s now (--apply)? This can download models in the background. [y/N] ' "$_area" "$_verb" >&2
+          ;;
+        *)
+          printf 'Run %s %s now (--apply)? [y/N] ' "$_area" "$_verb" >&2
+          ;;
+      esac
+      if ! IFS= read -r _ans; then
+        note_interrupt
+        printf 'familia-home: not confirmed. Staying in the menu.\n' >&2
+        return 0
+      fi
+      case "$_ans" in
+        y|Y|yes|YES) _apply=1 ;;
+        *) printf 'familia-home: not confirmed. Staying in the menu.\n' >&2; return 0 ;;
+      esac
+      case "$_area:$_verb" in
+        models:install)
+          _arg=$(read_required 'Hugging Face repo ORG/NAME (empty cancels): ') || return 0
+          ;;
+        harnesses:start|harnesses:stop)
+          _arg=$(read_required 'Agent name (empty cancels): ') || return 0
+          ;;
+        tools:install)
+          _arg=$(read_required 'Skill id (empty cancels): ') || return 0
+          ;;
+      esac
+      case "$_area:$_verb" in
+        models:install|models:start) kick_prefetch ;;
+      esac
+      ;;
+  esac
+  set +e
+  if [ "$_apply" = 1 ]; then
+    if [ -n "$_arg" ]; then
+      "$PY" "$ROOT/scripts/home_catalog.py" "$_area" "$_verb" --apply "$_arg"
+    else
+      "$PY" "$ROOT/scripts/home_catalog.py" "$_area" "$_verb" --apply
+    fi
+  else
+    "$PY" "$ROOT/scripts/home_catalog.py" "$_area" "$_verb"
+  fi
+  _rc=$?
+  set -e
+  note_interrupt
+  if [ "$_rc" != 0 ]; then
+    printf 'familia-home: %s %s exited %s. Staying in the menu.\n' "$_area" "$_verb" "$_rc" >&2
+  fi
+  return 0
+}
+
+submenu() {
+  _area=$1
+  _title=$2
+  while true; do
+    note_interrupt
+    if ! pick "$_title: install, list, start, stop, status. Quit leaves." \
+      install list start stop status Back Quit; then
+      printf 'familia-home: staying in %s. Choose Back or Quit.\n' "$_title" >&2
+      continue
+    fi
+    _sel=$PICKED
+    case "$_sel" in
+      Quit) exit 0 ;;
+      Back) return 0 ;;
+      install|list|start|stop|status) run_verb "$_area" "$_sel" ;;
+      *) printf 'familia-home: unknown choice %s. Staying in the menu.\n' "$_sel" >&2 ;;
+    esac
+  done
+}
+
+# Restored from main (#548). q returns to this menu. Only exit 4 opens the UI.
+legacy_goal() {
+  case "$1" in
   "Open llama-ui web cockpit")
-    # Switch screen first. q (exit 0) returns to this goal menu.
+    # Switch screen first. q (exit 0) returns to this menu.
     # Item "Continue to web cockpit" (exit 4) is the only path to
-    # open_ui.sh. Interrupt 130/143 aborts. No TTY: do not auto-open.
+    # open_ui.sh. Both stay children of this shell. Interrupt stays here.
+    # No TTY: do not auto-open. Quit is the only exit.
     if [ -t 0 ] && [ -t 1 ]; then
       _st=0
       FAMILIA_COCKPIT_HOOK=1
       export FAMILIA_COCKPIT_HOOK
       sh "$ROOT/scripts/android-cockpit-switches.sh" || _st=$?
       if [ "$_st" -eq 4 ]; then
-        exec sh "$ROOT/scripts/open_ui.sh"
-      fi
-      if [ "$_st" -eq 130 ] || [ "$_st" -eq 143 ]; then
-        exit "$_st"
+        sh "$ROOT/scripts/open_ui.sh" || true
       fi
     fi
-    exec sh "$ROOT/scripts/familia_home.sh"
+    return 0
     ;;
-  "Find more models")
-    exec sh "$ROOT/scripts/find_models.sh"
+  "List all models")
+    "$PY" "$ROOT/scripts/catalog.py" models || true
+    return 0
     ;;
-  "Search my X / Twitter posts")
-    exec sh "$ROOT/scripts/search_x.sh"
-    ;;
-  "Install / first-time setup")
-    kick_prefetch
-    exec sh "$ROOT/scripts/setup_goals.sh" first-time
-    ;;
-  "◆ Proving grounds (graded)")
-    exec sh "$ROOT/scripts/proving_grounds.sh"
-    ;;
-  "Legacy menu")
-    exec bash "$ROOT/familia-menu.sh"
+  "Configure all graphs")
+    "$PY" "$ROOT/scripts/catalog.py" graphs || true
+    return 0
     ;;
   *)
-    printf 'familia-home: unknown choice %s\n' "$CHOICE" >&2
-    exit 2
+    return 1
     ;;
-esac
+  esac
+}
+
+home_note "six equal items" || true
+while true; do
+  note_interrupt || true
+  banner || true
+  if ! pick "What do you want to do? Quit is the only exit." \
+    Models Harnesses Agents "MCP servers" "Tool sets" "App store" \
+    "Open llama-ui web cockpit" "List all models" "Configure all graphs" \
+    "Legacy menu" Quit; then
+    printf 'familia-home: staying in the menu. Choose Quit to leave.\n' >&2
+    continue
+  fi
+  sel=$PICKED
+  case "$sel" in
+    Quit) exit 0 ;;
+    "Open llama-ui web cockpit"|"List all models"|"Configure all graphs")
+      legacy_goal "$sel" || printf 'familia-home: staying in the menu.\n' >&2
+      ;;
+    "Legacy menu")
+      set +e
+      bash "$ROOT/familia-menu.sh"
+      _rc=$?
+      set -e
+      note_interrupt
+      if [ "$_rc" != 0 ]; then
+        printf 'familia-home: legacy menu exited %s. Staying in the menu.\n' "$_rc" >&2
+      fi
+      ;;
+    *)
+      if ! area=$(area_of "$sel"); then
+        printf 'familia-home: unknown choice %s. Staying in the menu.\n' "$sel" >&2
+        continue
+      fi
+      submenu "$area" "$sel"
+      ;;
+  esac
+done

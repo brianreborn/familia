@@ -119,6 +119,18 @@ def test_refuses_extra_start_overrides(tmp_path):
         assert ok is False and "extra-start" in msg, (tok, msg)
 
 
+def test_refuses_tools_on_non_loopback_but_allows_loopback(tmp_path):
+    kf = _key(tmp_path)
+    for host in ("127.0.0.1", "localhost", "::1", "[::1]"):
+        ok, msg = g.check(["bin", "--host", host, "--api-key-file", kf, "--extra-start", "--tools", "all"])
+        assert ok is True, (host, msg)
+    for host in ("0.0.0.0", "192.168.4.25"):
+        ok, msg = g.check(["bin", "--host", host, "--api-key-file", kf, "--extra-start", "--tools", "all"])
+        assert ok is False and "--tools" in msg and "loopback" in msg
+        ok, msg = g.check(["bin", "--host", host, "--api-key-file", kf, "--tools=all"])
+        assert ok is False and "--tools" in msg and "loopback" in msg
+
+
 def test_serve_sh_wires_guard():
     src = open(os.path.join(ROOT, "scripts/serve.sh")).read()
     assert "bind_auth_guard.py" in src
