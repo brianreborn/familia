@@ -121,7 +121,25 @@ hosts:
     threads: 4
     ram_mib: 24442
     reserve_ram_mib: 4096                # policy (installer default), not measured; see docs/ram-safety.md
-    gpus: null                   # inventory unknown; measure GPUs before GPU offload
+    gpus:
+      - vendor: Intel Corporation
+        model: Xeon E3-1200 v3/4th Gen Core Processor Integrated Graphics Controller
+        vram_mib: null
+        backend: vulkan
+        backend_status: tbd
+        compute_capability: null
+        driver: null
+        measured: false
+        notes: PCI inventory measured 2026-11-18; i915kms loaded; Vulkan probe found only llvmpipe, not a physical Intel ICD
+      - vendor: NVIDIA Corporation
+        model: G84 [GeForce 8600 GT]
+        vram_mib: null
+        backend: cuda-sm11-ptx
+        backend_status: tbd
+        compute_capability: "1.1"
+        driver: null
+        measured: false
+        notes: PCI inventory measured 2026-11-18; CUDA 6.5/NVIDIA 341 support set is operator-reported but not verified as a FreeBSD runtime on Angel
     local_names: [gabriel, Gabriel, uriel, Uriel, angel.local, uriel.local, gabriel.local]
     notes: >-
       Nanbeige4.3-33B Q4_K_M (~18.7 GiB) active via nanbeige-coder (nanbeige-chat stays planned; do not co-start). Before activate: measure SSD swap
@@ -720,7 +738,7 @@ nodes:
     load_mode: mmap
     status: active
     override_reasons:
-      ctx: 'decision prompts are short; 2048 keeps KV small beside dogfood-coder on 16 GiB'
+      ctx: 'decision prompts are short; 2048 keeps KV small beside dogfood-coder on 16 GiB (+swap)'
 
   dogfood-coder:
     model: qwen35-2b-q4km

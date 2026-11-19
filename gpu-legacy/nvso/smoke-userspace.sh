@@ -11,7 +11,8 @@ die() {
 }
 
 command -v gcc >/dev/null 2>&1 || die "gcc is required"
-command -v make >/dev/null 2>&1 || die "make is required"
+MAKE=${MAKE:-make}
+command -v "$MAKE" >/dev/null 2>&1 || die "$MAKE is required"
 command -v timeout >/dev/null 2>&1 || die "timeout (coreutils) is required"
 
 had_dev=0
@@ -22,10 +23,8 @@ fi
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 
-# Environment CFLAGS is appended with -Iinclude. A make-command-line CFLAGS=
-# is not, so the include path is forced with override in the Makefile too.
-CFLAGS='-O2 -Wall -Wextra -Werror -Wmissing-prototypes' make clean
-CFLAGS='-O2 -Wall -Wextra -Werror -Wmissing-prototypes' make tools
+"$MAKE" clean
+"$MAKE" CFLAGS='-O2 -Wall -Wextra -Werror -Wmissing-prototypes' tools
 [ -x tools/nvsoctl ] || die "tools/nvsoctl missing after build"
 if [ -e nvso.ko ]; then
   die "userspace build produced nvso.ko"
