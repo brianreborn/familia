@@ -28,6 +28,10 @@ if not defined FAMILIA_KV set "FAMILIA_KV=q8_0"
 if /i "%~1"=="--help" goto :help
 if /i "%~1"=="-h" goto :help
 if /i "%~1"=="/?" goto :help
+if not "%~1"=="" (
+  echo familia: start.bat refuses argv overrides; use FAMILIA_BIND, FAMILIA_PORT, FAMILIA_API_KEY_FILE, and FAMILIA_EXTRA 1>&2
+  exit /b 2
+)
 if not defined FAMILIA_MODEL (
   echo familia: set FAMILIA_MODEL to a GGUF in "%FAMILIA_MODELS%" first. Example: set FAMILIA_MODEL=qwen2.5-0.5b-instruct-q4_0.gguf 1>&2
   exit /b 2
