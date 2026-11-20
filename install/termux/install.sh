@@ -324,8 +324,8 @@ familia_sshd_verify() { # cfg
   for _addr in 127.0.0.1 ::1; do
     _spec="user=$(id -un),addr=$_addr,host=localhost"
     _eff=$(sshd -T -C "$_spec" -f "$1" 2>&1) || { echo "error: sshd -T -C $_spec -f $1 failed: $_eff; not starting sshd" >&2; return 1; }
-    printf '%s\n' "$_eff" | grep -qx 'passwordauthentication no' || { echo "error: sshd -T ($_addr): passwordauthentication is not 'no'; not starting sshd" >&2; return 1; }
-    printf '%s\n' "$_eff" | grep -qx 'kbdinteractiveauthentication no' || { echo "error: sshd -T ($_addr): kbdinteractiveauthentication is not 'no'; not starting sshd" >&2; return 1; }
+    printf '%s\n' "$_eff" | grep -Eiq '^passwordauthentication[[:space:]]+no$' || { echo "error: sshd -T ($_addr): passwordauthentication is not 'no'; not starting sshd" >&2; return 1; }
+    printf '%s\n' "$_eff" | grep -Eiq '^kbdinteractiveauthentication[[:space:]]+no$' || { echo "error: sshd -T ($_addr): kbdinteractiveauthentication is not 'no'; not starting sshd" >&2; return 1; }
   done
   # Any Match block that turns an *Authentication method on (other users/addrs) is refused.
   # PubkeyAuthentication yes is the intended method and is allowed.
