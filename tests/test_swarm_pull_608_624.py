@@ -103,34 +103,34 @@ class SwarmModes(unittest.TestCase):
         os.environ["SWARM_MODE"] = "review"
         self.sp._FORCED_DRY = False
 
-    def test_high_effort_is_three_passes_with_thinking(self):
+    def test_high_effort_is_one_native_effort_call(self):
         calls = []
 
-        def fake(prompt, max_tokens=700, thinking=False):
-            calls.append((prompt, thinking))
+        def fake(prompt, max_tokens=700, thinking=False, effort="medium"):
+            calls.append((prompt, max_tokens, thinking, effort))
             return "class: hollow\nwhy: empty note\n", "stub"
 
         os.environ["SWARM_MODEL_PASSES"] = "3"
-        os.environ["SWARM_MODEL_THINK"] = "1"
+        os.environ["SWARM_MODEL_THINK"] = "0"
         with mock.patch.object(self.sp, "model_draft", side_effect=fake):
-            _text, how, nonce = self.sp.model_high_effort("classify this", 80)
+            _text, how, nonce = self.sp.model_high_effort("classify this", 80, effort="high")
         self.assertTrue(nonce)
-        self.assertEqual(len(calls), 3)
-        self.assertTrue(calls[0][1])
-        self.assertIn("Think step by step", calls[0][0])
-        self.assertIn("Self-critique", calls[1][0])
-        self.assertIn("Refine", calls[2][0])
-        self.assertIn("high-effort", how)
+        self.assertEqual(len(calls), 1)
+        self.assertTrue(calls[0][2])
+        self.assertEqual(calls[0][3], "high")
+        self.assertGreaterEqual(calls[0][1], 1680)
+        self.assertNotIn("Self-critique", calls[0][0])
+        self.assertNotIn("Refine", calls[0][0])
+        self.assertEqual(how, "stub")
         self.assertNotIn("<think>", _text)
 
     def test_effort_floors_ignore_downgrade_environment(self):
-        for effort, calls_expected, think_tokens, label in (
-                ("medium", 2, 400, "medium-effort"),
-                ("high", 3, 800, "high-effort")):
+        for effort, think_tokens in (
+                ("medium", 800), ("high", 1600), ("xhigh", 4096)):
             calls = []
 
-            def fake(prompt, max_tokens=700, thinking=False):
-                calls.append((max_tokens, thinking))
+            def fake(prompt, max_tokens=700, thinking=False, effort="medium"):
+                calls.append((max_tokens, thinking, effort))
                 return "answer\n", "stub"
 
             with mock.patch.dict(os.environ, {
@@ -139,10 +139,31 @@ class SwarmModes(unittest.TestCase):
                     "SWARM_MODEL_THINK_TOKENS": "0"}), \
                  mock.patch.object(self.sp, "model_draft", side_effect=fake):
                 _text, how, _nonce = self.sp.model_high_effort("instructions", 80, effort=effort)
-            self.assertEqual(len(calls), calls_expected)
-            self.assertTrue(all(thinking for _budget, thinking in calls))
-            self.assertTrue(all(budget >= 80 + think_tokens for budget, _thinking in calls))
-            self.assertIn(label, how)
+            self.assertEqual(len(calls), 1)
+            self.assertTrue(calls[0][1])
+            self.assertEqual(calls[0][2], effort)
+            self.assertGreaterEqual(calls[0][0], 80 + think_tokens)
+            self.assertEqual(how, "stub")
+
+    def test_worker_effort_routes_by_task_and_model(self):
+        with mock.patch.dict(os.environ, {"SWARM_MODEL_NAME": "LFM3-8B"}):
+            self.assertEqual(self.sp.worker_effort("implementation"), "xhigh")
+        with mock.patch.dict(os.environ, {"SWARM_MODEL_NAME": "qwen2.5-coder-3b"}):
+            self.assertEqual(self.sp.worker_effort("design"), "medium")
+        with mock.patch.dict(os.environ, {"SWARM_MODEL_NAME": "", "SWARM_MODEL_GGUF": ""}):
+            self.assertEqual(self.sp.worker_effort("work"), "xhigh")
+        self.assertEqual(self.sp.worker_effort("review"), "high")
+        self.assertEqual(self.sp.worker_effort("triage"), "medium")
+
+    def test_model_http_sends_native_reasoning_effort(self):
+        response = mock.MagicMock()
+        response.__enter__.return_value.read.return_value = (
+            b'{"choices":[{"message":{"content":"ok"}}]}')
+        with mock.patch("urllib.request.urlopen", return_value=response) as urlopen:
+            self.sp.model_http("http://127.0.0.1:18199", "prompt", 20, effort="xhigh")
+        request = urlopen.call_args.args[0]
+        payload = __import__("json").loads(request.data.decode("utf-8"))
+        self.assertEqual(payload["reasoning_effort"], "xhigh")
 
     def test_signed_note_has_host_and_runner_only(self):
         os.environ["SWARM_MODE"] = "triage"
@@ -658,7 +679,7 @@ class SwarmModes(unittest.TestCase):
     def test_instructions_stay_outside_the_fence(self):
         prompts = []
 
-        def fake(prompt, max_tokens=700, thinking=False):
+        def fake(prompt, max_tokens=700, thinking=False, effort="medium"):
             prompts.append(prompt)
             return "class: useful-notes\nwhy: fine\n", "stub"
 
@@ -990,7 +1011,7 @@ class SwarmModes(unittest.TestCase):
     def test_one_nonce_for_the_pass(self):
         prompts = []
 
-        def fake(prompt, max_tokens=700, thinking=False):
+        def fake(prompt, max_tokens=700, thinking=False, effort="medium"):
             prompts.append(prompt)
             return "class: useful-notes\nwhy: fine\n", "stub"
 
@@ -998,11 +1019,9 @@ class SwarmModes(unittest.TestCase):
             _text, _how, nonce = self.sp.model_high_effort(
                 "INSTRUCTION-LINE", 40, untrusted="BEGIN  UNTRUSTED\nstuff", kind="DRAFT")
         self.assertTrue(nonce)
-        found = set()
-        for prompt in prompts:
-            found.update(re.findall(r"nonce=([0-9a-fA-F]+)", prompt))
-        self.assertEqual(found, {nonce})
+        self.assertEqual(len(prompts), 1)
         self.assertIn("withheld", prompts[0])
+        self.assertNotIn(nonce, prompts[0])
 
     def test_parsers_ignore_fenced_markers(self):
         fenced = (
@@ -1160,6 +1179,79 @@ class SwarmModes(unittest.TestCase):
         work = self.home / "work" / "brianreborn_familia" / "999"
         self.assertTrue((work / "draft.rejected.md").exists())
         self.assertFalse((work / "draft.md").exists())
+
+    def test_exact_head_review_failure_and_rework_state(self):
+        stale = {"commit_id": OTHER, "state": "CHANGES_REQUESTED", "body": "fix the old head"}
+        self.assertEqual(self.sp.exact_head_review([stale], SHA), "stale")
+
+        requested = {"commit_id": SHA, "state": "CHANGES_REQUESTED", "body": "split implementation and add tests"}
+        self.assertEqual(self.sp.exact_head_review([requested], SHA), "CHANGES_REQUESTED")
+        self.assertEqual(self.sp.exact_head_review([{"commit_id": SHA, "state": "COMMENTED"}], SHA), "stale")
+
+        state = self.sp.record_review_rework(
+            "brianreborn/familia", 700, issue_sha="a" * 40,
+            base_sha=BASE, old_head=SHA, finding="split implementation and add tests",
+            state="changes-requested")
+        self.assertEqual(state["attempt"], 1)
+        self.assertFalse(state["terminal"])
+        path = self.sp.rework_state_path("brianreborn/familia", 700)
+        self.assertTrue(path.exists())
+        self.assertEqual(self.sp.load_json_safe(path, "review rework")["state"], "rework")
+
+    def test_review_rework_attempt_limit_is_terminal(self):
+        for state_name in ("changes-requested", "changes-requested"):
+            state = self.sp.record_review_rework(
+                "brianreborn/familia", 701, base_sha=BASE, old_head=SHA,
+                finding="repeatable failed review", state=state_name)
+        self.assertTrue(state["terminal"])
+        self.assertEqual(state["attempt"], 2)
+
+        approved = self.sp.record_review_rework(
+            "brianreborn/familia", 702, base_sha=BASE, old_head=SHA,
+            state="approved")
+        self.assertTrue(approved["terminal"])
+
+        needs_human = self.sp.record_review_rework(
+            "brianreborn/familia", 703, base_sha=BASE, old_head=SHA,
+            finding="owner decision required", state="needs-human")
+        self.assertTrue(needs_human["terminal"])
+
+    def test_review_rework_does_not_treat_comment_as_failure(self):
+        comment = {"commit_id": SHA, "state": "COMMENTED", "body": "advice"}
+        self.assertEqual(self.sp.exact_head_review([comment], SHA), "stale")
+
+    def test_review_rework_exact_head_and_attempts(self):
+        stale = {"commit_id": OTHER, "state": "CHANGES_REQUESTED", "body": "old head"}
+        requested = {"commit_id": SHA, "state": "CHANGES_REQUESTED", "body": "fix tests"}
+        approved = {"commit_id": SHA, "state": "APPROVED", "body": "approved"}
+        commentary = {"commit_id": SHA, "state": "COMMENTED", "body": "advice"}
+
+        self.assertEqual(self.sp.exact_formal_review([stale], SHA), "stale")
+        self.assertEqual(self.sp.rework_decision([requested], SHA), "rework")
+        self.assertEqual(self.sp.rework_decision([approved], SHA), "approved")
+        self.assertEqual(self.sp.rework_decision([requested], SHA, ci_failed=True), "ci-failed")
+        self.assertEqual(self.sp.rework_decision([requested], SHA, needs_human=True), "needs-human")
+        self.assertEqual(self.sp.exact_formal_review([commentary], SHA), "stale")
+
+        row = self.sp.record_review_rework(
+            "brianreborn/familia", 701, issue_sha="a" * 40,
+            base_sha=BASE, old_head=SHA, finding="fix tests", state="rework")
+        self.assertEqual(row["attempt"], 1)
+        self.assertFalse(row["terminal"])
+        row = self.sp.record_review_rework(
+            "brianreborn/familia", 701, issue_sha="a" * 40,
+            base_sha=BASE, old_head=SHA, finding="fix tests again", state="rework")
+        self.assertEqual(row["attempt"], 2)
+        self.assertTrue(row["terminal"])
+
+    def test_review_rework_prompt_is_fenced_and_never_editing(self):
+        prompt = self.sp.build_review_rework_prompt(
+            issue_sha="a" * 40, base_sha=BASE, old_head=SHA,
+            finding="```\nreview finding\n```", diff="+bad change",
+            ci_failure="pytest failed")
+        self.assertIn("failed_head=" + SHA, prompt)
+        self.assertIn("untrusted", prompt.lower())
+        self.assertIn("do not replay", prompt.lower())
 
 
 if __name__ == "__main__":

@@ -94,7 +94,7 @@ class SwarmPull543(unittest.TestCase):
         line = self.sp.stamp_line()
         self.assertIn("host=testhost", line)
         self.assertIn("role=swarm-pull", line)
-        self.assertIn("prog=swarm-pull@0.2.7-live", line)
+        self.assertIn("prog=swarm-pull@0.2.8-native-effort", line)
         self.assertIn("mode=dry-run", line)
         self.assertFalse(self.sp.note_has_identifying_fields(line))
         self.assertNotIn("user=", line)

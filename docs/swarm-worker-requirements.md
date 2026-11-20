@@ -233,6 +233,26 @@ bench job). The other layers are spec-only for v1.0.
 For local IPC (root queue, mailbox rings, cockpit and serve local endpoints), a
 self-reported identity is not enough. The receiving side reads the peer's credentials
 from the kernel and records them in the stamp as `peer_uid= peer_gid= peer_pid=`. This
+
+## Model reasoning effort policy
+
+Swarm worker model calls use one router request with the native
+`reasoning_effort` field; do not emulate effort with repeated draft,
+self-critique, and refinement calls. The task floors are:
+
+| Task | Model | Minimum effort |
+|---|---|---|
+| Design or implementation | LFM3 | `xhigh` |
+| Design or implementation | Other named model | `medium` |
+| Review | Any model | `high` |
+| Triage/classification or other task | Any model | `medium` |
+
+`SWARM_MODEL_NAME` should identify the routed model; when absent, the worker
+uses the configured GGUF filename as its model identity. If both are missing,
+the worker fails toward `xhigh` for substantive design/implementation work. The
+router/CLI fallback must not silently discard the requested native effort; if
+the router is unavailable, the task fails rather than reverting to a
+multi-pass approximation.
 is mandatory wherever familia needs the login-type identity (R10). An endpoint that
 cannot read peer creds must refuse, or fall back to a filesystem-permission check that
 the kernel enforces (for example the root queue's mode 1770 `pending/`, owned by the

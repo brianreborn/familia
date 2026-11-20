@@ -110,7 +110,27 @@ hosts:
     threads: 4
     ram_mib: 24442
     reserve_ram_mib: 4096
-    gpus: null
+    gpus:
+    - vendor: Intel Corporation
+      model: Xeon E3-1200 v3/4th Gen Core Processor Integrated Graphics Controller
+      vram_mib: null
+      backend: vulkan
+      backend_status: tbd
+      compute_capability: null
+      driver: null
+      measured: false
+      notes: PCI inventory measured 2026-11-18; i915kms loaded; Vulkan probe found
+        only llvmpipe, not a physical Intel ICD
+    - vendor: NVIDIA Corporation
+      model: G84 [GeForce 8600 GT]
+      vram_mib: null
+      backend: cuda-sm11-ptx
+      backend_status: tbd
+      compute_capability: '1.1'
+      driver: null
+      measured: false
+      notes: PCI inventory measured 2026-11-18; CUDA 6.5/NVIDIA 341 support set is
+        operator-reported but not verified as a FreeBSD runtime on Angel
     local_names:
     - gabriel
     - Gabriel
@@ -119,12 +139,9 @@ hosts:
     - angel.local
     - uriel.local
     - gabriel.local
-    notes: 'Nanbeige4.3-33B Q4_K_M (~18.7 GiB) active via nanbeige-coder (nanbeige-chat
-      stays planned; do not co-start). Before activate: measure SSD swap (target ~24
-      GiB familia swap or proven RSS) + mkdir ~/.cache/familia/spill/angel-{coder,chat}.
-      Software VVRAM: load_mode mmap (see install-notes/vvram-ssd/LAYER.md). FreeBSD
-      nvso scaffold in gpu-legacy/nvso (stubs; not required for Nanbeige). Do not
-      co-start nanbeige-coder and nanbeige-chat.'
+    notes: 'Nanbeige4.3-33B Q4_K_M (~18.7 GiB) is officially ruled out of contention
+      because it causes unacceptable paging. Planned-only catalog entry: do not place
+      or launch. Re-enable requires explicit memory/paging approval.'
   macmini:
     kind: desktop
     measured: true
@@ -318,7 +335,7 @@ runtimes:
     - ngram-cache
   llama-b11944:
     kind: llama-server
-    build: b11944 (code-bootstraps pin; config/llama-release.json + llama-pin.env)
+    build: b11944 (legacy tested release; exact upstream tag commit retained)
     commit: 1b4554eff124a8f0033bc09b3f708a5e51cbda15
     bin: code-bootstraps-llama.cpp/bin/llama-b11944-linux-x64-cpu/llama-server
     hosts:
@@ -372,8 +389,8 @@ runtimes:
     - ngram-cache
   llama-b11669-freebsd:
     kind: llama-server
-    build: b12032 (llama.cpp 0.9.0-dev, native FreeBSD CPU build via build-linux.sh)
-    commit: e529969a1a5710ff7631fcd92118165aea278a0a
+    build: b12359 (llama.cpp 1.0.0, native FreeBSD CPU build via build-linux.sh)
+    commit: 2a8600387b40f2820d17973067020ce11377904d
     bin: code-bootstraps-llama.cpp/build-freebsd/bin/llama-server
     hosts:
     - angel
@@ -588,9 +605,9 @@ models:
     arch: llama
     trained_ctx: 524288
     role: coder
-    notes: Prize on angel (FreeBSD). damp-run on box 2026-10-26; weights stay on angel.
-      Dual coder+chat via card_set. Needs measured SSD swap/spill before activate
-      (vvram-ssd/LAYER.md).
+    notes: 'OFFICIAL MEMORY EXCLUSION: Nanbeige4.3-33B is ruled out of fleet contention
+      because it is ~18.7 GiB and caused unacceptable paging. Keep catalogued, but
+      do not place or launch until memory paging evidence is explicitly re-approved.'
     db: dealignai--Nanbeige4.3-33B-UNCENSORED-GGUF--Nanbeige4.3-33B-UNCENSORED-Q4_K_M
   dolphin3-cyber-8b-q2k:
     gguf: ~/.local/share/gguf/models/pentest/Dolphin3.0-Llama3.1-8B-abliterated.Q2_K.gguf
@@ -608,8 +625,13 @@ models:
     arch: lfm3
     trained_ctx: 262144
     role: chat
+    text_roles:
+    - general
+    - coder
     db: AtomicChat--LFM3-1.7B-Uncensored-GGUF--LFM3-1.7B-Uncensored-AD-Q4_K_M
-    notes: 'familia default model (general + coder). llama-bench b11944 box x86_64
+    notes: 'Text-role evidence: code-bootstraps-llama.cpp@6ab58d7 config/model-sets.json
+      and config/models-manifest.json map this same GGUF to general and coder profiles.
+      This does not declare audio or vision capability. llama-bench b11944 box x86_64
       CPU 8t: pp512 184, tg128 22 t/s (#183).'
   lfm3-vl-2b-q4km:
     gguf: ~/.local/share/gguf/models-optional/lfm3-vl/LFM3-VL-2B-Q4_K_M.gguf
@@ -727,7 +749,7 @@ nodes:
     bind: 127.0.0.1
     port: 18202
     cache_ram_mib: 1024
-    status: planned
+    status: active
     card_set: 5. Recommended settings
     override_reasons:
       ctx: 8B Q2_K advisory node; 8192 keeps KV small beside coder:9941 on miryam
@@ -779,7 +801,7 @@ pentests:
     report_to: familia-issues
     requires_operator_confirm: true
     launch_test_only: true
-    status: planned
+    status: active
     notes: 'Guardian/defender node flavor (owned-fleet). Seatbelts on by default.
       Automation: sh with-fleet.sh --role guardian --launch-test (aliases: fleet,
       pentest, defender). Operator model start: FAMILIA_OPERATOR_CONFIRM=yes sh with-fleet.sh
@@ -791,17 +813,17 @@ gateways:
     host: miryam
     port: 9931
 aliases:
-  decision:
-    node: decision
-    gateway: roomz
   coder:
     node: coder
     gateway: roomz
-  embed:
-    node: embed
-    gateway: roomz
   guardian:
     node: guardian
+    gateway: roomz
+  decision:
+    node: decision
+    gateway: roomz
+  embed:
+    node: embed
     gateway: roomz
   general:
     node: coder
