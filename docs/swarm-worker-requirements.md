@@ -233,6 +233,26 @@ bench job). The other layers are spec-only for v1.0.
 For local IPC (root queue, mailbox rings, cockpit and serve local endpoints), a
 self-reported identity is not enough. The receiving side reads the peer's credentials
 from the kernel and records them in the stamp as `peer_uid= peer_gid= peer_pid=`. This
+
+## Model reasoning effort policy
+
+Swarm worker model calls use one router request with the native
+`reasoning_effort` field; do not emulate effort with repeated draft,
+self-critique, and refinement calls. The task floors are:
+
+| Task | Model | Minimum effort |
+|---|---|---|
+| Design or implementation | LFM3 | `xhigh` |
+| Design or implementation | Other named model | `medium` |
+| Review | Any model | `high` |
+| Triage/classification or other task | Any model | `medium` |
+
+`SWARM_MODEL_NAME` should identify the routed model; when absent, the worker
+uses the configured GGUF filename as its model identity. If both are missing,
+the worker fails toward `xhigh` for substantive design/implementation work. The
+router/CLI fallback must not silently discard the requested native effort; if
+the router is unavailable, the task fails rather than reverting to a
+multi-pass approximation.
 is mandatory wherever familia needs the login-type identity (R10). An endpoint that
 cannot read peer creds must refuse, or fall back to a filesystem-permission check that
 the kernel enforces (for example the root queue's mode 1770 `pending/`, owned by the
@@ -343,6 +363,23 @@ not runnable just because it exists.
    OID, not by re-checking out a branch name, so a push after `/run` cannot
    change what executes on self-hosted peers.
 3. Only then may a free peer claim it.
+
+### Formal review rework
+
+An exact-head `CHANGES_REQUESTED` review on a trusted, same-repository swarm
+draft is picked up by the existing `SWARM_MODE=triage` loop before classification;
+`SWARM_MODE=rework` (or `swarm-pull rework`) runs the same queue explicitly and
+is the only mode that may push review rework. Advisory comments and stale-head
+reviews are not rework items. The worker rechecks the issue's current owner
+approval, PR trust, review state, and head SHA before writing. It generates a
+bounded unified diff for existing source/test files, rejects protected paths,
+pytest harness changes, file creation/deletion, renames, and mode changes, then
+runs the repository's fixed full pytest suite before a non-force push to the
+originating runner branch. Failed tests do not push. At most two attempts are
+allowed per issue/base approval. General approved issue jobs in `SWARM_MODE=live`
+use the same implementation pipeline by default; `SWARM_JOB_KIND=note` opts in
+to the legacy research-note path. The worker never dismisses a review, merges,
+closes, or changes labels.
 
 Discovery of open issues can stay open and parallel. Claiming and running are
 side effects, so they wait on that admin gate (see Approval gates below, and

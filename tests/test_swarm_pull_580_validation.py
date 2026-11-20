@@ -150,17 +150,26 @@ def test_backtick_run_counts_as_one():
     validate_draft(matched, "")
 
 
-def test_cli_off_by_one_is_truncated(tmp_path, monkeypatch):
-    # b12359 samples the first token from prompt-eval logits, so -n 700
-    # reports 699 eval runs when the cap is hit.
+def test_gguf_cli_fallback_refuses_native_effort(tmp_path, monkeypatch):
     monkeypatch.setenv("SWARM_HOME", str(tmp_path))
     monkeypatch.setenv("SWARM_MODE", "dry-run")
     monkeypatch.delenv("SWARM_MODEL_URL", raising=False)
     monkeypatch.setenv("SWARM_MODEL_GGUF", str(tmp_path / "m.gguf"))
-    monkeypatch.setattr(sp, "model_cli", lambda *a, **k: ("y" * 250, 699))
-    with pytest.raises(DraftRejected) as ei:
-        sp.model_draft("prompt", 700)
-    assert ei.value.reason == "truncated"
+    with mock.patch.object(sp, "model_cli") as cli:
+        with pytest.raises(ForgeError, match="cannot honor it"):
+            sp.model_draft("prompt", 700)
+    cli.assert_not_called()
+
+
+def test_router_failure_does_not_fall_back_to_gguf(tmp_path, monkeypatch):
+    monkeypatch.setenv("SWARM_HOME", str(tmp_path))
+    monkeypatch.setenv("SWARM_MODEL_URL", "http://127.0.0.1:9")
+    monkeypatch.setenv("SWARM_MODEL_GGUF", str(tmp_path / "m.gguf"))
+    with mock.patch.object(sp, "model_http", side_effect=OSError("router unavailable")), \
+         mock.patch.object(sp, "model_cli") as cli:
+        with pytest.raises(ForgeError, match="refusing fallback"):
+            sp.model_draft("prompt", 700, effort="xhigh")
+    cli.assert_not_called()
 
 
 def test_unknown_token_count_is_truncated_in_live(tmp_path, monkeypatch):
@@ -169,7 +178,7 @@ def test_unknown_token_count_is_truncated_in_live(tmp_path, monkeypatch):
     monkeypatch.setenv("SWARM_MODEL_URL", "http://127.0.0.1:9")
     monkeypatch.setattr(
         sp, "model_http",
-        lambda url, prompt, max_tokens, thinking=False: ("x" * 300, "", None))
+        lambda url, prompt, max_tokens, thinking=False, effort="medium": ("x" * 300, "", None))
     with pytest.raises(DraftRejected) as ei:
         sp.model_draft("prompt", 700)
     assert "unknown" in str(ei.value)
@@ -181,7 +190,7 @@ def test_completion_tokens_when_finish_reason_missing(tmp_path, monkeypatch):
     monkeypatch.setenv("SWARM_MODEL_URL", "http://127.0.0.1:9")
     monkeypatch.setattr(
         sp, "model_http",
-        lambda url, prompt, max_tokens, thinking=False: ("x" * 300, "", 31))
+        lambda url, prompt, max_tokens, thinking=False, effort="medium": ("x" * 300, "", 31))
     with pytest.raises(DraftRejected) as ei:
         sp.model_draft("prompt", 32)
     assert ei.value.reason == "truncated"
@@ -200,22 +209,11 @@ def test_truncated_finish_reason(tmp_path, monkeypatch):
     monkeypatch.setenv("SWARM_MODEL_URL", "http://127.0.0.1:9")
     monkeypatch.setattr(
         sp, "model_http",
-        lambda url, prompt, max_tokens, thinking=False: ("x" * 300, "length"))
+        lambda url, prompt, max_tokens, thinking=False, effort="medium": ("x" * 300, "length"))
     with pytest.raises(DraftRejected) as ei:
         sp.model_draft("prompt", 32)
     assert ei.value.reason == "truncated"
     assert "length" in str(ei.value)
-
-
-def test_truncated_cli_tokens(tmp_path, monkeypatch):
-    monkeypatch.setenv("SWARM_HOME", str(tmp_path))
-    monkeypatch.delenv("SWARM_MODEL_URL", raising=False)
-    monkeypatch.setenv("SWARM_MODEL_GGUF", str(tmp_path / "m.gguf"))
-    monkeypatch.setattr(sp, "model_cli", lambda *a, **k: ("y" * 250, 700))
-    with pytest.raises(DraftRejected) as ei:
-        sp.model_draft("prompt", 700)
-    assert ei.value.reason == "truncated"
-    assert "700" in str(ei.value)
 
 
 def test_gate_off_allows_truncated(tmp_path, monkeypatch):
@@ -228,7 +226,7 @@ def test_gate_off_allows_truncated(tmp_path, monkeypatch):
     sp._GATE_LOGGED = False
     monkeypatch.setattr(
         sp, "model_http",
-        lambda url, prompt, max_tokens, thinking=False: ("x" * 300, "length"))
+        lambda url, prompt, max_tokens, thinking=False, effort="medium": ("x" * 300, "length"))
     text, _how = sp.model_draft("prompt", 32)
     assert "xxx" in text
 
@@ -239,10 +237,11 @@ def test_job_nonce_never_reaches_deliver(tmp_path, monkeypatch):
     monkeypatch.setenv("SWARM_HOST", "testhost")
     monkeypatch.setenv("SWARM_RUNNER", "box")
     monkeypatch.setenv("SWARM_JOB_LOCK", str(tmp_path / "job.lock"))
+    monkeypatch.setenv("SWARM_JOB_KIND", "note")
     sp._FORCED_DRY = False
     gate = sp.ApprovalResult(True, reason="approved", body="approved body", title="approved title")
 
-    def fake_model(prompt, n, thinking=False):
+    def fake_model(prompt, n, thinking=False, effort="medium"):
         m = re.search(r"nonce=([0-9a-fA-F]+)", prompt)
         if m:
             return ("leaked nonce %s\n" % m.group(1)) + ("pad " * 60), "stub"

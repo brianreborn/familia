@@ -182,6 +182,7 @@ def _sshd_t(tmp_path, out, rc=0, cfg="PasswordAuthentication no\nKbdInteractiveA
 
 @pytest.mark.parametrize("out,ok", [
     ("port 8022\npasswordauthentication no\nkbdinteractiveauthentication no", True),
+    ("port 8022\nPasswordAuthentication no\nKbdInteractiveAuthentication no", True),
     ("passwordauthentication yes\nkbdinteractiveauthentication no", False),
     ("passwordauthentication no\nkbdinteractiveauthentication yes", False),
     ("passwordauthentication no", False),

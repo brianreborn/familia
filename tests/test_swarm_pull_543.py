@@ -29,6 +29,7 @@ def load_mod(home):
     os.environ["SWARM_HOST"] = "testhost"
     os.environ["SWARM_RUNNER"] = "box"
     os.environ["SWARM_MODE"] = "dry-run"
+    os.environ["SWARM_JOB_KIND"] = "note"
     os.environ["SWARM_OWNER"] = "brianreborn"
     os.environ["SWARM_APPROVAL_LABELS"] = "swarm-approved"
     os.environ["SWARM_AMBIGUOUS_WAIT_SEC"] = "0"
@@ -94,7 +95,7 @@ class SwarmPull543(unittest.TestCase):
         line = self.sp.stamp_line()
         self.assertIn("host=testhost", line)
         self.assertIn("role=swarm-pull", line)
-        self.assertIn("prog=swarm-pull@0.2.7-live", line)
+        self.assertIn("prog=swarm-pull@0.2.8-native-effort", line)
         self.assertIn("mode=dry-run", line)
         self.assertFalse(self.sp.note_has_identifying_fields(line))
         self.assertNotIn("user=", line)
