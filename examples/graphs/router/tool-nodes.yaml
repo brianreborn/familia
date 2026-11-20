@@ -1,0 +1,11 @@
+# Tool nodes: a tools: true node gets ITS OWN key on every forwarded request
+# (Authorization: Bearer). Default key: the per-port instance key that the H4
+# launcher writes (~/.config/familia/instances/<port>/api-keys, #264); override
+# with key_file. No key -> 503, nothing is sent. Non-tool nodes get no key.
+version: 1
+nodes:
+  coder-tools: {url: http://127.0.0.1:8081, tools: true}
+  chat:        http://127.0.0.1:8082
+routes:
+  code: coder-tools
+  chat: chat

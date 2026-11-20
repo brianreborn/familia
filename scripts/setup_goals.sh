@@ -91,6 +91,11 @@ run_step() {
 }
 
 installer() {
+  if [ "$(uname -s 2>/dev/null || echo unknown)" = FreeBSD ] &&
+     [ -f "$ROOT/install/freebsd/install-familia.sh" ]; then
+    printf '%s\n' "$ROOT/install/freebsd/install-familia.sh"
+    return
+  fi
   if [ -f "$ROOT/install/linux/install.sh" ]; then
     printf '%s\n' "$ROOT/install/linux/install.sh"
   elif [ -f "$ROOT/install/termux/install.sh" ]; then
@@ -124,7 +129,12 @@ goal_first_time() {
     sh "$ROOT/scripts/prefetch-first-models.sh" --background || say "prefetch: soft-fail (non-fatal)"
   fi
 
-  run_step "SYNCING FRAME — OS packages" sh "$ROOT/install/deps.sh" --install
+  case "$(uname -s 2>/dev/null || echo unknown):$YES" in
+    FreeBSD:1) run_step "SYNCING FRAME — OS packages" sh "$ROOT/install/deps.sh" --install --profile build --yes ;;
+    FreeBSD:*) run_step "SYNCING FRAME — OS packages" sh "$ROOT/install/deps.sh" --install --profile build ;;
+    *:1) run_step "SYNCING FRAME — OS packages" sh "$ROOT/install/deps.sh" --install --yes ;;
+    *) run_step "SYNCING FRAME — OS packages" sh "$ROOT/install/deps.sh" --install ;;
+  esac
   # Ensure gum for the home (user-local); soft-fail.
   if [ -f "$ROOT/scripts/install-gum.sh" ]; then
     if [ "$DRY" = 1 ]; then

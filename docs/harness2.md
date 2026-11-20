@@ -174,6 +174,11 @@ hermes injects `SOUL.md` as its system prompt. Guardrails and memory become sect
 because hermes has no separate files for them. To run without accepted changes, revert
 (`harness2.py revert --target hermes-lab --to 0000`).
 
+At launch, `scripts/hermes.sh` puts the fleet greeting (`docs/FLEET-GREETING.md`, path override
+`FAMILIA_FLEET_GREETING`; `scripts/fleet_greeting.py`) at the very start of the rendered `SOUL.md`,
+once, ahead of the harness2 text. It is not part of the editable harness: harness2 never reads it
+into a version, and a missing greeting file only prints a warning.
+
 ## Without hermes
 
 Point a descriptor at any folder and leave `agent` out:

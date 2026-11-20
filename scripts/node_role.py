@@ -2,9 +2,10 @@
 """Node role / private-topology helpers.
 
 Design law (2026-10-27, Brian): node TYPE implies capability. Placement is
-hosts via the host: field — not host-prefixed node ids (angel-coder, …).
-Fleet graph.yaml still carries transitional host-prefixed keys (unique map);
-private per-host graphs (generated/graph-HOST.yaml) use type names only.
+hosts via the host: field. Fleet graph.yaml keys are capability names
+(nanbeige-coder, cuda-sm11-decision, fleet-guardian), not hostnames.
+Private per-host graphs (generated/graph-HOST.yaml) collapse those to the
+type name only (coder, chat, guardian). Host-prefixed ids are legacy.
 """
 from __future__ import annotations
 
@@ -63,13 +64,13 @@ def infer_role(name: str, node: dict, graph: dict) -> str:
             p = h + sep
             if name.startswith(p) and len(name) > len(p):
                 rest = name[len(p) :]
-                # qodesh-gpu-decision → prefer decision if suffix ends with a role
+                # cuda-sm11-decision → prefer decision if suffix ends with a role
                 for role in sorted(NODE_ROLES, key=len, reverse=True):
                     if rest == role or rest.endswith("-" + role) or rest.endswith("_" + role):
                         return role
                 if rest in NODE_ROLES:
                     return prefer_public_role(rest)
-                # qodesh-smol-cpu / qodesh-resident: not pure roles — keep rest
+                # cpu-smol-decision / cpu-resident-coder: not pure roles — keep rest
                 return rest
     if name in NODE_ROLES:
         return prefer_public_role(name)
@@ -111,7 +112,8 @@ def private_topology(graph: dict, host: str) -> dict:
 
     Schema still uses a unique-key map — uniqueness holds *inside* one private
     topology (one coder per host). Same role on another host lives in that
-    host's private graph, not as angel-coder / box-coder fake names.
+    host's private graph. Fleet keys stay capability names (nanbeige-coder,
+    dogfood-coder) so two coders can share one fleet file.
     """
     import copy
 
@@ -132,12 +134,23 @@ def private_topology(graph: dict, host: str) -> dict:
             )
         node = dict(node)
         node["role"] = role
-        # Spill paths may still say angel-coder; keep as declared for live compat.
+        # Spill paths stay as declared (angel-coder / angel-chat). Renaming the
+        # node must not empty the slot cache the next launch restores.
         new_nodes[role] = node
         rename[old_name] = role
 
     local_keys = set(new_nodes)
     g["nodes"] = new_nodes
+    # Drop speculative rows before rename. Fleet `coder-ngram` targets miryam's
+    # node `coder`. After nanbeige-coder is renamed to `coder`, a post-rename
+    # target filter would keep that row and turn Nanbeige's launch into
+    # miryam's active n-gram spec. Keep only rows whose target is one of this
+    # host's nodes, then rewrite those targets to the type name.
+    local_old = set(local)
+    g["speculative"] = {
+        k: v for k, v in (g.get("speculative") or {}).items()
+        if isinstance(v, dict) and v.get("target") in local_old
+    }
     g = rewrite_refs(g, rename)
 
     # Gateways: keep only this host; if none, synthesize a loopback gateway so
@@ -162,7 +175,8 @@ def private_topology(graph: dict, host: str) -> dict:
         aliases_out[role] = {"node": role, "gateway": gw0}
     # Keep any already-local aliases that still resolve
     for k, v in (g.get("aliases") or {}).items():
-        if isinstance(v, dict) and v.get("node") in local_keys and v.get("gateway") in gateways:
+        if isinstance(v, dict) and v.get("gateway") in gateways and \
+                all(n in local_keys for n in __import__("graph_types").alias_nodes(v) or [None]):
             aliases_out[k] = v
     g["aliases"] = aliases_out
 

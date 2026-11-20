@@ -9,8 +9,8 @@ host-prefixed ids. On angel the private graph is:
 
 | Type key | Fleet transitional key | Model | Status | Port |
 |----------|------------------------|-------|--------|------|
-| `coder` | `angel-coder` | `nanbeige43-33b-q4km` | active | 18200 |
-| `chat` | `angel-chat` | `nanbeige43-33b-q4km` | planned | 18201 |
+| `coder` | `nanbeige-coder` | `nanbeige43-33b-q4km` | active | 18200 |
+| `chat` | `nanbeige-chat` | `nanbeige43-33b-q4km` | planned | 18201 |
 
 ```sh
 python3 scripts/generate_graph.py angel          # → generated/graph-angel.yaml
@@ -58,7 +58,7 @@ Spill/mmap: [LAYER.md](./LAYER.md).
 ```sh
 cd ~/familia
 scripts/hermes.sh --model coder --render-only   # private type name after generate
-# transitional fleet: scripts/hermes.sh --model angel-coder --render-only
+# transitional fleet: scripts/hermes.sh --model nanbeige-coder --render-only
 ```
 
 **min_ctx:** `agents.hermes.min_ctx` is 64000. Angel `coder` ctx is **65536** (Brian #125).

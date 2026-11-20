@@ -29,7 +29,9 @@ STATE = os.environ.get("FAMILIA_SYSTEM_AGENT_STATE") or os.path.join(HOME, ".cac
 CONSENT = os.environ.get("FAMILIA_SYSTEM_AGENT_CONSENT") or os.path.join(HOME, ".config", "familia", "system-agent-consent.json")
 GEMINI_PKG = "com.google.android.apps.bard"
 AICORE_PKG = "com.google.android.aicore"
-DUMP = "/data/local/tmp/familia-ui.xml"
+# Genuine adb-shell path: dump/cat/rm run as the shell uid via rish, never the Termux uid;
+# random per-call name avoids a predictable file in the shared drop zone.
+DUMP_DIR = "/data/local/tmp"
 MAX_TEXT = 4000
 CLOUD_WHAT = {"gemini": "your text goes to Google's Gemini service under the phone's Google account",
               "bixby": "your request goes to Samsung (and Perplexity for web answers)"}
@@ -150,7 +152,10 @@ def ask_consent(provider, yes_cloud):
 
 
 def ui_dump(sh):
-    out = sh.run(f"uiautomator dump {DUMP} >/dev/null && cat {DUMP}; rm -f {DUMP}", timeout=30)
+    import secrets
+    dump = f"{DUMP_DIR}/familia-ui.{secrets.token_hex(8)}.xml"
+    q = shlex.quote(dump)
+    out = sh.run(f"uiautomator dump {q} >/dev/null && cat {q}; rm -f {q}", timeout=30)
     return out or ""
 
 

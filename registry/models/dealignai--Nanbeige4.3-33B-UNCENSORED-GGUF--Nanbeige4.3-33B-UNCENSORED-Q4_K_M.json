@@ -666,6 +666,7 @@
   }
  },
  "found_in": [
+  "add-model.sh --fetch",
   "add-model.sh --fetch --damp-run",
   "graph.yaml models.nanbeige43-33b-q4km"
  ],
@@ -673,14 +674,11 @@
  "local_check": {
   "host": "angel",
   "sha256_ok": true,
-  "checked": "2026-10-24",
-  "path": "~/.local/share/gguf/models/general/Nanbeige4.3-33B-UNCENSORED-Q4_K_M.gguf",
-  "bytes": 20051495968,
-  "note": "operator/graph notes: shipped tested on angel; box damp never downloaded weights"
+  "checked": "2026-11-14"
  },
  "unknown": null,
  "warnings": null,
- "updated": "2026-10-30",
+ "updated": "2026-11-14",
  "by": "scripts/model_db.py",
  "weights": "present (angel, sha256 checked 2026-10-24)",
  "gguf_meta": {
@@ -1124,7 +1122,7 @@
   "texts": [
    {
     "file": "dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF@48e83e05611e/LICENSE.md",
-    "path": "/home/box/.local/share/gguf/hf-meta/dealignai--Nanbeige4.3-33B-UNCENSORED-GGUF/48e83e05611ef35d343ae5232f0078d85ff516e3/LICENSE.md",
+    "path": "/home/green/.local/share/gguf/hf-meta/dealignai--Nanbeige4.3-33B-UNCENSORED-GGUF/48e83e05611ef35d343ae5232f0078d85ff516e3/LICENSE.md",
     "url": "https://huggingface.co/dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF/blob/48e83e05611ef35d343ae5232f0078d85ff516e3/LICENSE.md",
     "sha256": "c5c3e56eb7127a0676a6d6637ee23c72015f6e53af4bb66f066458494f458095",
     "bytes": 22765,

@@ -1,4 +1,4 @@
-import os, sys, threading, json, subprocess
+import os, stat, sys, threading, json, subprocess
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 import familia_auth as FA
@@ -54,11 +54,55 @@ def test_open_url_against_keyed_server(monkeypatch):
         srv.shutdown()
 
 
-def test_cli_curl_config(monkeypatch):
-    env = dict(os.environ, FAMILIA_API_KEY="zz")
-    out = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "familia_auth.py"), "curl-config"],
-                         capture_output=True, text=True, env=env).stdout
-    assert out.strip() == 'header = "Authorization: Bearer zz"'
+def _cli(*args, env):
+    return subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "familia_auth.py"), *args],
+                          capture_output=True, text=True, env=env)
+
+
+def test_cli_curl_config_writes_private_file_not_stdout(tmp_path):
+    env = dict(os.environ, FAMILIA_API_KEY="zz", XDG_CONFIG_HOME=str(tmp_path / "cfg"))
+    out = tmp_path / "curl.cfg"
+    r = _cli("curl-config", "-o", str(out), env=env)
+    assert r.returncode == 0 and "zz" not in r.stdout and "zz" not in r.stderr
+    assert out.read_text() == 'header = "Authorization: Bearer zz"\n'
+    if os.name != "nt":
+        assert stat.S_IMODE(os.stat(out).st_mode) == 0o600
+
+
+def test_cli_curl_config_refuses_stdout_overwrite_symlink_and_no_key(tmp_path):
+    env = dict(os.environ, FAMILIA_API_KEY="zz", XDG_CONFIG_HOME=str(tmp_path / "cfg"))
+    r = _cli("curl-config", env=env)          # old stdout form is gone
+    assert r.returncode == 2 and "zz" not in r.stdout + r.stderr
+    existing = tmp_path / "exists"; existing.write_text("keep\n")
+    r = _cli("curl-config", "-o", str(existing), env=env)
+    assert r.returncode == 2 and existing.read_text() == "keep\n"
+    if os.name != "nt":
+        target = tmp_path / "victim"; link = tmp_path / "link"; os.symlink(target, link)
+        r = _cli("curl-config", "-o", str(link), env=env)
+        assert r.returncode == 2 and not target.exists()
+    missing = tmp_path / "missing.cfg"
+    assert FA.curl_config(["-o", str(missing)], "") == 1 and not missing.exists()
+
+
+def test_fingerprint_is_salted_hmac_and_stable_per_instance(tmp_path, monkeypatch):
+    import hashlib
+    monkeypatch.setattr(FA, "_process_salt", None)
+    env = {"XDG_CONFIG_HOME": str(tmp_path), "FAMILIA_PORT": "9931"}
+    d = os.path.dirname(FA.instance_key_file(env=env))
+    # no instance dir: nothing is written, a per-process salt is used
+    s0 = FA.fingerprint_salt(env=env)
+    assert not os.path.exists(d) and s0 == FA.fingerprint_salt(env=env)
+    os.makedirs(d)
+    s1 = FA.fingerprint_salt(env=env)
+    salt_file = os.path.join(d, FA.SALT_NAME)
+    assert os.path.isfile(salt_file) and s1 == FA.fingerprint_salt(env=env) and s1 != s0
+    if os.name != "nt":
+        assert stat.S_IMODE(os.stat(salt_file).st_mode) == 0o600
+    fp = FA.fingerprint("abc", salt=s1)
+    assert fp.startswith("hmac-sha256:") and len(fp) == len("hmac-sha256:") + 8
+    assert fp == FA.fingerprint("abc", salt=s1) != FA.fingerprint("abc", salt=b"other")
+    assert fp.split(":")[1] != hashlib.sha256(b"abc").hexdigest()[:8]   # not the old bare sha256
+    assert FA.fingerprint("", salt=s1) == "none"
 
 
 def test_no_bare_9931_callers():
@@ -96,8 +140,8 @@ def test_fail_closed_and_fingerprint():
     import pytest
     with pytest.raises(FA.MissingKey):
         FA.auth_headers({}, key="", required=True)
-    fp = FA.fingerprint("abc")
-    assert fp.startswith("sha256:") and "abc" not in fp
+    fp = FA.fingerprint("abc", salt=b"test-salt")   # no write into the real instance dir
+    assert fp.startswith("hmac-sha256:") and "abc" not in fp
     assert FA.keys_match("k", "k") and not FA.keys_match("k", "kk") and not FA.keys_match("", "")
 
 
@@ -224,3 +268,92 @@ def test_with_fleet_hermes_has_key_precheck():
     src = open(os.path.join(FA.ROOT, "with-fleet.sh")).read()
     assert src.index("familia_auth.py\" has-key") < src.index('scripts/hermes.sh" --agent')
 
+
+
+def test_familia_api_key_file_accepted(tmp_path):
+    import familia_auth as fa
+    f = tmp_path / "installer.key"
+    f.write_bytes(b"from-familia-env\n")
+    env = {"XDG_CONFIG_HOME": str(tmp_path / "cfg"), "FAMILIA_API_KEY_FILE": str(f)}
+    assert fa.candidate_key_files(env=env)[0] == str(f)
+    assert fa.api_key(str(tmp_path), env) == "from-familia-env"
+    # both names accepted; API_KEY_FILE wins if both are set
+    g = tmp_path / "api-env.key"
+    g.write_bytes(b"from-api-env\n")
+    env["API_KEY_FILE"] = str(g)
+    assert fa.candidate_key_files(env=env)[0] == str(g)
+    assert fa.api_key(str(tmp_path), env) == "from-api-env"
+
+
+def test_installer_key_file_is_a_fallback(tmp_path):
+    import familia_auth as fa
+    env = {"XDG_CONFIG_HOME": str(tmp_path)}
+    inst = fa.installer_key_file(env=env)
+    assert inst == str(tmp_path / "familia" / "api.key")
+    cands = fa.candidate_key_files(env=env)
+    assert cands[0] == fa.instance_key_file(env=env)
+    assert inst in cands and cands.index(inst) > 0
+
+
+def test_load_or_create_writes_lf_no_bom(tmp_path):
+    import familia_auth as fa
+    pth = str(tmp_path / "api-keys")
+    fa.load_or_create_key_file(pth)
+    data = open(pth, "rb").read()
+    assert not data.startswith(b"\xef\xbb\xbf") and b"\r" not in data
+    assert data.startswith(b"#") and data.endswith(b"\n")
+
+
+def test_publish_falls_back_when_link_is_denied(tmp_path, monkeypatch):
+    """Termux SELinux denies link(2) with EACCES; still no-clobber create."""
+    import errno
+    import familia_auth as fa
+    def boom(src, dst):
+        raise OSError(errno.EACCES, "selinux denies link")
+    monkeypatch.setattr(fa.os, "link", boom)
+    pth = str(tmp_path / "api-keys")
+    k1 = fa.load_or_create_key_file(pth)
+    assert k1 and open(pth, "rb").read().count(k1.encode()) == 1
+    assert fa.load_or_create_key_file(pth) == k1
+
+
+def test_wait_for_key_retries(monkeypatch):
+    import familia_auth as fa
+    calls = {"n": 0}
+    def read(path):
+        calls["n"] += 1
+        return "k" if calls["n"] >= 3 else ""
+    monkeypatch.setattr(fa, "_read", read)
+    assert fa._wait_for_key("x", attempts=5, delay=0) == "k"
+    assert calls["n"] == 3
+
+
+def test_publish_unlinks_on_failed_write(tmp_path, monkeypatch):
+    import errno
+    import familia_auth as fa
+    def boom_link(src, dst):
+        raise OSError(errno.EACCES, "denied")
+    def boom_write(fd, data, path):
+        raise OSError("disk full")
+    monkeypatch.setattr(fa.os, "link", boom_link)
+    monkeypatch.setattr(fa, "_write_all", boom_write)
+    pth = str(tmp_path / "api-keys")
+    try:
+        fa.load_or_create_key_file(pth)
+    except OSError as e:
+        assert "disk full" in str(e)
+    else:
+        raise AssertionError("expected OSError")
+    assert not os.path.exists(pth)
+
+
+def test_empty_leftover_key_file_is_replaced(tmp_path, monkeypatch):
+    """A crash mid-write leaves a size-0 file; the next start must not stay stuck."""
+    import familia_auth as fa
+    monkeypatch.setattr("time.sleep", lambda s: None)
+    pth = str(tmp_path / "api-keys")
+    open(pth, "wb").close()
+    assert os.path.getsize(pth) == 0
+    k = fa.load_or_create_key_file(pth)
+    assert k and os.path.getsize(pth) > 0
+    assert fa.load_or_create_key_file(pth) == k

@@ -1,7 +1,7 @@
-# Testing familia (v0.1.0-rc2)
+# Testing familia (v0.3.0)
 
 This page is for anyone who wants to try familia on their own hardware and report back.
-Everything here works from a plain checkout of `main` (or the `v0.1.0-rc2` tag). File
+Everything here works from a plain checkout of `main` (or the `v0.3.0` tag). File
 issues at https://github.com/brianreborn/familia/issues and include the output of the
 validator and test runs below.
 
@@ -26,8 +26,18 @@ From a checkout instead:
 
 ```sh
 git clone https://github.com/brianreborn/familia && cd familia
-python3 -m pip install --user pyyaml pytest      # plus gguf and "$(python3 scripts/cpu_level.py --numpy-spec)" for the LittleBit tests
+python3 -m pip install --user -r requirements-dev.txt      # plus gguf and "$(python3 scripts/cpu_level.py --numpy-spec)" for the LittleBit tests
 ```
+
+`pip install --user` puts PyYAML in the user site under your real home. The
+suite keeps that visible to child processes even when a test overrides `HOME`
+(it sets `PYTHONUSERBASE` and `PYTHONPATH`). If you run a script yourself with
+a fake `HOME`, set `PYTHONUSERBASE` to your real user base, or use a venv.
+
+A checkout under `/tmp` (or `/var/tmp`, `/dev/shm`) is supported. The A57
+dispatch and bench-idle tests use a user-owned cache outside those shared temp
+roots for lock and state directories, because the production code correctly
+refuses lock/state dirs there.
 
 ## 2. Validator and tests
 

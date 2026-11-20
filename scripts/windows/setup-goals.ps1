@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Goal-oriented Set up flows for the familia Windows menu (mirrors scripts/setup_goals.sh).
 .DESCRIPTION

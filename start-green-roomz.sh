@@ -12,6 +12,7 @@ Example: see issue #15 and #21
 USAGE
   exit 0 ;; esac
 echo "start-green-roomz.sh: not deployed here." >&2
+# /data/local/tmp is the adb-shell drop path (shell uid via adb), not a Termux runtime path.
 echo "start-green-roomz.sh: on Android, deploy green-roomz's launcher to /data/local/tmp/start-green-roomz.sh" >&2
 echo "start-green-roomz.sh: pin is in pins.txt (green-roomz); see issue #15 and #21." >&2
 exit 1

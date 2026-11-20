@@ -39,7 +39,6 @@
 1 scripts/proto_chat.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
 1 scripts/proto_chat.sh SC1010  # `done` parsed as a word (pre-existing, unreviewed)
 1 scripts/reconnect_selfheal.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
-1 scripts/required_checks.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
 1 scripts/run-tests.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
 1 scripts/safe-build-help.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
 1 scripts/search_x.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
@@ -55,7 +54,5 @@
 1 scripts/tune/linux-memory.sh SC2166  # `-a`/`-o` inside [ ] (pre-existing, unreviewed)
 1 start.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
 2 start.sh SC3044  # `disown` is not POSIX sh (pre-existing, unreviewed)
-1 tests/test_nexus_localhost.sh SC2046  # unquoted command substitution (pre-existing, unreviewed)
-1 tests/test_with_fleet.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command
 1 watchdog_android.sh SC2164  # cd without `|| exit` (pre-existing, unreviewed)
 1 with-fleet.sh SC1007  # `CDPATH= cd` idiom: intentional empty CDPATH for one command

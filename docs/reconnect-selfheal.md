@@ -46,7 +46,7 @@ State: `~/.local/state/familia/reconnect-selfheal/<host>/`
 Local checks (fail soft, short timeout, **no LLM**):
 
 1. Default route (`ip route show default` / `route -n get default`)
-2. DNS resolve of `FAMILIA_RECONNECT_DNS` (default `1.1.1.1`)
+2. DNS resolve of `FAMILIA_RECONNECT_DNS` (default `localhost`; never an external/public target in mesh-only mode)
 3. Optional loopback `GET /health` from `FAMILIA_RECONNECT_HEALTH_URLS` and/or
    `graph.yaml` nodes on this host
 4. Fleet: same `ssh -o BatchMode=yes PEER 'echo familia-fleet-ok'` as offline_improve

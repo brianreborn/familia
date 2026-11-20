@@ -1,6 +1,43 @@
-# v0.2.0 Roadmap
+# v0.4.0 Release Checklist
 
-**Version:** v0.2.0  
+**Version:** v0.4.0  
+**Platform:** FreeBSD is the first reference platform; Linux is the only one tested so far (FreeBSD/Windows/macOS unverified)  
+**Status:** In progress (not released)
+
+## Overview
+
+Current release target is **v0.4.0**. This checklist is the live plan. The older v0.3.0 / v0.2.0 text is kept below as historical backlog and is not the current target.
+
+Draft release notes: [docs/releases/v0.4.0.md](docs/releases/v0.4.0.md). The v0.3.0 draft remains at [docs/releases/v0.3.0.md](docs/releases/v0.3.0.md).
+
+## v0.4.0 must-land
+
+- [x] **Pin coherence** - `pins.txt` must name a commit that exists on `brianreborn/code-bootstraps-llama.cpp`. PR #604 (merged as `eccc593`) restored `6ab58d7` after `b1b770d` was written here by mistake (`b1b770d` is ggml-org/llama.cpp `v1.0.0`, not a code-bootstraps commit).
+- [x] **Main CI green** - including `tests/test_swarm_pull_580_validation.py`: the swarm-pull path fix (#605) is on main (`e6176b8`). Issue #605 itself is still open until someone closes it against that fix. Do not merge release PRs on red CI.
+- [ ] **llama.cpp v1.0.0 in code-bootstraps** - bump the `llama.cpp` submodule to official ggml-org `v1.0.0` (`b1b770d90d94cad9e9ea5b993bdbc383a522fb28`), then re-pin familia. The re-pin is open PR [#614](https://github.com/brianreborn/familia/pull/614) (code-bootstraps `223bd358`, build `b12359`); until it merges, main's `pins.txt` stays at `6ab58d7`. Do not retarget `pins.txt` at that SHA directly. `brianreborn/llama.cpp` has no `v1.0.0` tag (latest version tag is `v0.9.0`). Issue #599 described the broken pin as already done; that is not the integration path.
+- [ ] **Server Tools launch-only fix** - `--tools` is launch-only today; fixing it is v0.4.0 must-land [#630](https://github.com/brianreborn/familia/issues/630). No waiver.
+- [ ] **Windows start.bat F-6 parity** - refuse its own `--host`, `--port` and `--api-key` argv overrides and a non-loopback bind with `--tools` (exit 2), matching Linux/Termux; must-land [#631](https://github.com/brianreborn/familia/issues/631).
+- [ ] **swarm-pull draft validator wired** - call the `83e7562` `validate_draft` (#580) from `job()` so model drafts can't reach PRs unchecked ([#616](https://github.com/brianreborn/familia/issues/616)), and cover the remaining #580 gaps: truncation check, reject/release/backoff path, preamble and fence coverage ([#624](https://github.com/brianreborn/familia/issues/624)).
+- [ ] **TR-4 at the graph layer** - `node.role` must not override a fail-closed model for tools and routing; must-land [#621](https://github.com/brianreborn/familia/issues/621) (#408 follow-up; routing PR #268 is still open).
+- [ ] **FreeBSD b12359 build and smoke test** - build and smoke-test llama.cpp `b12359` on FreeBSD; must-land [#632](https://github.com/brianreborn/familia/issues/632). FreeBSD verification is not deferred.
+- [x] **LFM3 default honesty** - README now distinguishes the single-node LFM3-1.7B-Uncensored default from `nodes.coder` on miryam (`qwen35-2b-q4km`). Wiring LFM3 into that node is still open (model entry is `role: chat`; 64k budgets were measured on Qwen3.5-2B).
+- [x] **Version labels** - README, this roadmap, and `docs/releases/v0.4.0.md` say v0.4.0 is the current target.
+
+## Deferred past v0.4.0
+
+- LFM3 VL / Omni / Audio as default graph nodes
+- BitTorrent transport beyond the existing PoC
+- Coordinator-free swarm
+- Installer depth beyond v0.4.0 must-lands (extra FreeBSD / macOS / AppImage installer features). FreeBSD build and smoke verification on `b12359` is must-land #632, not deferred.
+- Safe-build CPU node / SOUL glue
+- PQFreeBSD + green-roomz nexus audit
+- Remaining items in the historical v0.3.0 / v0.2.0 sections below
+
+---
+
+# Historical: v0.3.0 Roadmap (superseded)
+
+**Version:** v0.3.0  
 **Platform:** FreeBSD  
 **Status:** In Progress
 
@@ -159,21 +196,13 @@ successful result stored under `~/.cache/familia/hermes-env-probe/<hostname>`
 ---
 
 #### Issue #407: Boss Agent API Validation
-**Status:** In Progress
+**Status:** Open. #407 ("Security MCPs for 0.3.0: inventory, tool boundaries, and allowlist") is an open v0.4.0 release-blocker. No fix has landed: its swarm first pass, PR #568, is still an open draft.
 
 **Description:**
 - Boss Agent API endpoints need validation
 - Should validate against upstream master
 
-**Fix Applied (v0.4.0):**
-- Boss Agent CLI integration completed (#403-#407)
-- API endpoints now validated against upstream master
-- Integration locked to upstream release
-
-**Testing:**
-- Verified boss-agent-cli integration complete
-- Confirmed API endpoints validated
-- Tested with upstream release
+**Fix Applied:** none yet. An earlier version of this section claimed a v0.2.0 fix and testing; that claim was wrong and has been removed.
 
 ---
 
@@ -323,10 +352,11 @@ successful result stored under `~/.cache/familia/hermes-env-probe/<hostname>`
    - Documented in README.md
    - Build automation verifies mounting
 
-4. **Boss Agent CLI (#403-#407)** - FIXED in v0.2.0
-   - Full integration complete
-   - Plugin API and live status implemented
-   - Self-test command added
+4. **Boss Agent CLI (#403-#407)** - NOT fixed
+   - #407 is open and a v0.4.0 release-blocker; its fix PR #568 is
+     still a draft (see the #407 section above)
+   - As of 2026-11-16, #403, #404, and #406 are open and #405 is
+     closed; this entry is not a record of landed work
 
 ### Future Improvements
 

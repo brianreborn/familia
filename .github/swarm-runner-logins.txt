@@ -1,0 +1,17 @@
+# Pinned swarm allowlists. Hosts read this file from the checked-out SHA.
+# A line "author <login>" is a GitHub account that may open swarm PRs
+# and whose comments count as runner comments.
+# A line "runner <name>" is a host id used in swarm/<name>/<issue>.
+# These are different sets: electrobrian authors PRs on swarm/galaxy1/N.
+# brianreborn is the owner and must not be an author here.
+
+author electrobrian
+
+runner galaxy1
+runner galaxy2
+runner miryam
+runner angel
+runner box
+runner box2
+runner box3
+runner surface1

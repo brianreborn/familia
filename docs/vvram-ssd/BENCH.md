@@ -14,7 +14,7 @@ Record per run (JSONL under `~/perf/logs/` or install-notes `perf/`):
 
 | Field | Example |
 |-------|---------|
-| host / node | angel / angel-coder |
+| host / node | angel / nanbeige-coder |
 | load_mode | mmap |
 | swap_used_mib before/after | from `swapinfo` |
 | RSS / VSZ peak | `ps` / `top` |
@@ -33,8 +33,8 @@ Protocol:
 
 ## nvso / soft HVVRAM (angel)
 
-1. `nvsoctl -n` → ABI + ioctl numbers (no device OK).
-2. After `kldload`: `nvsoctl` create→map→gate soft round-trip (expect status 0 soft); record ioctl latency_us.
+1. `nvsoctl -n` → ABI + ioctl numbers, exit 0. No device. This is the userspace CI smoke.
+2. After a confirmed live `kldload`: `nvsoctl` create→map→gate soft round-trip (expect status 0 soft); record ioctl latency_us. No such measurement is in this repo, and the userspace CI does not perform it.
 3. Soft `NVGPU_DMA_POST`: desc counts only — not zero-copy proof.
 4. When **custom FW** exists ([FIRMWARE-PLAN.md](./FIRMWARE-PLAN.md)): queue export + map; compare bounce vs peer DMA counters.
 

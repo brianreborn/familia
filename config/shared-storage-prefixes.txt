@@ -1,0 +1,12 @@
+# Android shared / adb-writable storage. DUPLICATE of green-roomz config/shared-storage-prefixes.txt
+# (same format). familia's Termux launcher (install/termux/install.sh) inlines these as a case
+# list because it is standalone; tests/test_termux_bind_check.py keeps the three in sync.
+# Compared against fully resolved (realpath) paths: a path is refused if it equals a prefix
+# (minus trailing slash) or lies under it.
+/storage/
+/sdcard
+/mnt/sdcard
+/mnt/user/
+/mnt/media_rw/
+/data/media/
+/data/local/tmp

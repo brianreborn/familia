@@ -1,0 +1,33 @@
+name: Progress report
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Generate hourly progress report
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python scripts/progress_report.py --out-dir reports/progress
+      - uses: actions/upload-artifact@v4
+        with:
+          name: familia-progress-${{ github.run_id }}
+          path: reports/progress/
+          if-no-files-found: error
+          retention-days: 30

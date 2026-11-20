@@ -4,9 +4,9 @@ The shortest path from nothing to a running, validated setup. Read [README.md](R
 
 Everything below runs from the root of a familia checkout unless it says otherwise.
 
-**The easy way — Talk to the protomodel:** run `./familia` (Windows: `familia.cmd`). That opens the Charm/gum home. The first goal is **Talk to the protomodel**: a tiny local chat that helps with install/build and with exploring larger models to fetch next (and searching your X/Twitter posts when Agent-Reach is linked). Other home goals: Find more models, Search my X / Twitter posts, Install / first-time setup (traditional tools only — no model gate), ◆ Proving grounds (graded), and Legacy menu.
+**Home menu:** run `./familia` (Windows: `familia.cmd`). Six equal items: Models, Harnesses, Agents, MCP servers, Tool sets, and App store. Each one has install, list, start, stop, and status. The menu stays up until you choose Quit. If gum is missing you are asked before any download (the default is no); no, or a gum that cannot be installed, opens the legacy catalog instead of exiting. Older goals (Talk to the protomodel, Find more models, List all models, Configure all graphs, Search my X / Twitter posts, Install / first-time setup, Proving grounds) stay on the legacy menu. List all models is `models.list-all`. Configure all graphs is `graphs.list` / `graphs.configure`.
 
-**Legacy catalog (fallback only):** `./familia menu` / `./familia --legacy-menu` / `FAMILIA_LEGACY_MENU=1 ./familia` opens the old `familia-menu.sh` item list. Prefer the gum home. Every legacy item is still a CLI command (`./familia help`, `./familia skills list`, `./familia --dry-run model params coder` prints a command without running it). Search: `./familia search WORD`. Details: [docs/commands.md](docs/commands.md).
+**Legacy catalog (fallback and CLI):** `./familia menu` / `./familia --legacy-menu` / `FAMILIA_LEGACY_MENU=1 ./familia` opens `familia-menu.sh`. Every home action is a row there, and every row shows the command it runs (`./familia help`, `./familia skills list`, `./familia home models list`, `./familia --dry-run model params coder`). Search: `./familia search WORD`. Details: [docs/commands.md](docs/commands.md).
 
 **Settings:** terminal only — `./familia settings`.
 
@@ -83,14 +83,14 @@ On Windows use `python` instead of `python3` and set `$env:PYTHONUTF8 = '1'` fir
 | Goal | Command |
 |---|---|
 | Active local graph topology (POSIX) | `./start.sh` (or `./start.sh --host miryam`); current gateway aliases are listed at `http://127.0.0.1:9931/v1/models` |
-| Legacy standalone bootstrap UI/router | `./start.sh --bootstrap`, then open http://127.0.0.1:9931/?model=chat and paste its API key |
+| Legacy standalone bootstrap UI/router | `./start.sh --bootstrap`, then open http://127.0.0.1:9931/?model=chat (the first time, the page shows Access denied: click **Enter API Key** and paste the instance key once: the key line itself, not a `#` comment line, from `${XDG_CONFIG_HOME:-~/.config}/familia/instances/9931/api-keys`. The browser keeps it in the UI settings (localStorage); never put the key in the URL. See [docs/api-key-design.md](docs/api-key-design.md). The log cockpit, `python3 scripts/cockpit.py` in code-bootstraps-llama.cpp, reads the key and attaches it server-side, so it needs no paste) |
 | One graph node's llama-server (Linux) | `sh scripts/serve.sh coder` |
 | One node on Windows | `$env:FAMILIA_MODEL = 'your-model.gguf'; .\scripts\windows\start.bat` |
 | hermes-agent against the graph | `scripts/hermes.sh` |
 
 `./start.sh --host miryam` defaults to `DETACH_MODE=screen-attached`: visible `familia-server` screen session with 10,000 lines of scrollback. Use `Ctrl-A`, then `D` to detach and `screen -r familia-server` to resume. Other modes (`screen`, `tmux`, `nohup`, `foreground`) are opt-in. See [MANUAL.md](MANUAL.md#backgrounding-and-detaching).
 
-The FreeBSD graph host `angel` is **measured** (`hosts.angel.measured: true`, ~24 GiB RAM) and **`angel-coder` is active** (Nanbeige4.3-33B Q4_K_M; `angel-chat` stays `planned` — do not co-start). `./start.sh --dry-run --host angel` reports this without starting or contacting anything. FreeBSD currently uses a source build only—install no packages and do not run `familia install`. Run the pinned llama.cpp build/version test from `code-bootstraps-llama.cpp` with `BUILD_DIR=build-freebsd GPU=off scripts/build-linux.sh`; graph serving requires measured host facts and explicit active-node placement. Before flipping `angel-coder` / `angel-chat` to `active`, measure SSD swap (≈24 GiB target) and create `~/.cache/familia/spill/angel-*` — see `docs/vvram-ssd/README.md` and install-notes `vvram-ssd/LAYER.md`. Do not co-activate both on 24 GiB.
+The FreeBSD graph host `angel` is **measured** (`hosts.angel.measured: true`, ~24 GiB RAM) and **`nanbeige-coder` is active** (Nanbeige4.3-33B Q4_K_M; `nanbeige-chat` stays `planned` — do not co-start). `./start.sh --dry-run --host angel` reports this without starting or contacting anything. FreeBSD currently uses a source build only—install no packages and do not run `familia install`. Run the pinned llama.cpp build/version test from `code-bootstraps-llama.cpp` with `BUILD_DIR=build-freebsd GPU=off scripts/build-linux.sh`; graph serving requires measured host facts and explicit active-node placement. Before flipping `nanbeige-coder` / `nanbeige-chat` to `active`, measure SSD swap (≈24 GiB target) and create `~/.cache/familia/spill/angel-*` — see `docs/vvram-ssd/README.md` and install-notes `vvram-ssd/LAYER.md`. Do not co-activate both on 24 GiB.
 
 ### Always run hermes through the harness
 
@@ -123,7 +123,7 @@ an error. `--no-escalate` turns the automatic proxy off. Self-improving harnesse
 are a separate, optional layer that hermes picks up when the graph enables it:
 [docs/harness2.md](docs/harness2.md).
 
-The harness resolves hermes-agent automatically: Linux snap (`/snap/bin/hermes-agent`) when present; FreeBSD ports (`/usr/local/bin/hermes-agent`, packages under `/usr/local/lib/hermes-agent`, not site-packages); otherwise `PATH`. Override with `HERMES_BIN` / `HERMES_PY` / `HERMES_SP`. On angel (FreeBSD): `pkg install hermes-agent` then `scripts/hermes.sh --model angel-coder --render-only` (host-scoped; no box GGUFs). Launch still needs a node whose per-slot ctx ≥ agent `min_ctx` (64K hermes-agent floor) — `angel-coder` is 32K today; see docs/vvram-ssd/ANGEL-OPERATOR.md.
+The harness resolves hermes-agent automatically: Linux snap (`/snap/bin/hermes-agent`) when present; FreeBSD ports (`/usr/local/bin/hermes-agent`, packages under `/usr/local/lib/hermes-agent`, not site-packages); otherwise `PATH`. Override with `HERMES_BIN` / `HERMES_PY` / `HERMES_SP`. On angel (FreeBSD): `pkg install hermes-agent` then `scripts/hermes.sh --model nanbeige-coder --render-only` (host-scoped; no box GGUFs). Launch still needs a node whose per-slot ctx ≥ agent `min_ctx` (64K hermes-agent floor) — `nanbeige-coder` is 32K today; see docs/vvram-ssd/ANGEL-OPERATOR.md.
 
 ## 5. Add a model
 

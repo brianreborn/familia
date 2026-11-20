@@ -1,4 +1,4 @@
-cd E:\temp\gpu-legacy; $env:PATH="E:\temp\tools\mingw64\bin;$env:PATH"; $L="E:\temp\gpu-legacy\progress.log"; $M="E:\temp\models\SmolLM2-135M-Instruct.Q4_0.gguf"; $env:SMOL_V5=0
+﻿cd E:\temp\gpu-legacy; $env:PATH="E:\temp\tools\mingw64\bin;$env:PATH"; $L="E:\temp\gpu-legacy\progress.log"; $M="E:\temp\models\SmolLM2-135M-Instruct.Q4_0.gguf"; $env:SMOL_V5=0
 function Coder(){ $o=(& E:\temp\llama-cpu\llama-bench.exe -m E:\temp\llama-cpu\stories15M-q4_0.gguf -t 1 -p 0 -n 64 -r 2 2>$null | Out-String); ([regex]::Match($o,'tg64\s*\|\s*([0-9.]+)')).Groups[1].Value }
 "$(Get-Date -f s) MILESTONE wait-mode A/B (0=spin64+block, 1=work+spin+block, 2=pure spin)" | Add-Content $L
 [Diagnostics.Process]::GetCurrentProcess().ProcessorAffinity=1; "WMB coder alone t/s=$(Coder)" | Add-Content $L

@@ -1,0 +1,48 @@
+# Tiny tool-handling graph example
+# Demonstrates: taking tool calls and interpreting them meaningfully
+# Even with limited tool support, the alias system routes meaningfully
+
+graph:
+  # Main alias - the entry point
+  coder:
+    name: coder
+    node: coder
+    model: Nanbeige4.3-33B-UNCENSORED-Q4_K_M.gguf
+    context_length: 65536
+    min_ctx: 64000
+    # Tools available to this node
+    tools:
+      - search
+      - calculate
+      - write_file
+    # Per-slot context must equal main alias ctx
+    # This is enforced by hermes-agent validation
+    
+  # Auxiliary node - handles overflow/expansion
+  assistant:
+    name: assistant
+    node: assistant
+    model: Mimir13B-Q4_K_M.gguf
+    context_length: 32768
+    min_ctx: 32000
+    tools:
+      - explain
+      - summarize
+    
+  # Escalation node - for when main node can't handle
+  resolver:
+    name: resolver
+    node: resolver
+    model: Qwen2.5-Coder-3B-Q4_0.gguf
+    context_length: 32768
+    min_ctx: 32000
+    escalates_to: coder
+    escalation_mode: suggest
+    
+  # Simple model for demo purposes
+  general:
+    name: general
+    node: general
+    model: Qwen2.5-0.5B-Instruct-Q4_0.gguf
+    context_length: 16384
+    min_ctx: 16000

@@ -210,7 +210,7 @@ Agents and automation must **never** start llama-server / familia graph servers 
 
 ## L-server-tools. `--tools` is launch-only; git fix ≠ live argv (2026-10-27)
 
-M0 empty llama-ui Server Tools was fixed in `15d67b1` by setting `angel-coder.server_tools: all` so `validate_graph --args` / `serve.sh` emit `--tools all`. **It came back after that commit** whenever angel-coder exited and the replacement process was started without that flag (crash + emergency hand-start, starting from a stale `generated/graph-*.yaml` that predates `server_tools` / omits `angel-coder`, or judging “fixed” from graph.yaml while the running argv still lacked `--tools`).
+M0 empty llama-ui Server Tools was fixed in `15d67b1` by setting `nanbeige-coder.server_tools: all` so `validate_graph --args` / `serve.sh` emit `--tools all`. **It came back after that commit** whenever nanbeige-coder exited and the replacement process was started without that flag (crash + emergency hand-start, starting from a stale `generated/graph-*.yaml` that predates `server_tools` / omits `nanbeige-coder`, or judging “fixed” from graph.yaml while the running argv still lacked `--tools`).
 
 - **Symptom:** llama-ui Server Tools panel empty; `GET /tools` → 403 `feature_disabled`. `/v1/models` staying `capabilities:["completion"]` is normal and is not the check.
 - **Why:** llama.cpp enables server tools only at process start. Graph YAML does not hot-patch a live or crashed server.
@@ -220,20 +220,20 @@ M0 empty llama-ui Server Tools was fixed in `15d67b1` by setting `angel-coder.se
 
 Early fleet `graph.yaml` used **host-prefixed unique node ids** (`angel-coder`,
 `box-coder`, `miryam-pentest`, `qodesh-smol-cpu`, …). That was a fundamental design
-error: the node **type/role** (coder, chat, embed, decision, pentest) should imply
+error: the node **type/role** (coder, chat, embed, decision, guardian) should imply
 what the node has; **placement** is the `host:` field (plus bind/port), not the key.
 
 Schema today still uses a unique-key map, so one fleet file cannot hold two `coder`
-entries. The operator path is **private topologies**:
+entries. Fleet keys are capability names (`nanbeige-coder`, `dogfood-coder`,
+`fleet-guardian`, `cpu-smol-decision`). The operator path is **private topologies**:
 `python3 scripts/generate_graph.py HOST` → `generated/graph-HOST.yaml` with
 type-named nodes only (`coder`, `chat`, …) for that host. `start.sh --host HOST`
-prefers that private graph (pass `--fleet` for the transitional fleet file).
+prefers that private graph (pass `--fleet` for the fleet file).
 `modify_graph.py --host HOST --assign-model coder=<models-key>` assigns by type
 and syncs the matching fleet key when present.
 
 Do not invent new host-prefixed node names. Prefer `role:` on nodes and private
-graphs. Full fleet reshape (type+host identity without fake unique names) is the
-follow-on schema change.
+graphs.
 
 
 ## L-box-archetypes. Form factor, not virtualization (2026-10-27)
@@ -266,3 +266,83 @@ Source: [#190](https://github.com/brianreborn/familia/issues/190), PRs #186/#187
    *Rule:* track the baseline in an issue with the failing list. It may shrink but never grow, and a change to it must be called out.
 6. **Box restarts lose work.** An end-to-end source-build run on the box was lost when the box restarted, so `BUILD=1` was not re-verified for the tag.
    *Rule:* write long runs' logs and results to a persistent path (familia-private or the repo) and not to scratch, and note what was not re-run.
+
+## L-hostloc. The G84 is in angel: hardware location drifted across docs and agents (2026-10-31)
+Source: #249 (9897e36 -> ad3a734)
+
+**What was wrong.** The HVVRAM design review ([#249](https://github.com/brianreborn/familia/pull/249), first revision 9897e36) said angel's G84 "is an Athlon II box (no usable AMD-Vi)". It concluded IOMMU enforcement (P4) was blocked because "the VT-d box has no G84". Two reviewers on #249 repeated this as a High finding. **Brian: the G84 is in angel.** Brian says this class of mistake keeps happening.
+
+**Root-cause chain (oldest first):**
+
+1. **angel-freebsd [b81c1fe](https://github.com/brianreborn/angel-freebsd/commit/b81c1fe) (private) (2026-09-26):** `Projects/cuda-8600gt/NOTES.md` and `cuda-8600gt-requirements.md` describe "FreeBSD 15.1 -- AMD Athlon II (no x86-64-v2)" with `nvidia0: <GeForce 8600 GT>`.
+   - These were true for the machine of that session. They are in a repo *named* angel, but they never say the notes are host-specific or dated.
+2. **familia 666368c / c3d3a32 (2026-10-19):** `centos10-bigram` is recorded as an i5-4570, 23 GiB box with an 8600 GT (`docs/perf/centos-bigram-models.md`).
+   - The same CPU/RAM/GPU later shows up as angel on FreeBSD. Nothing links the two names.
+3. **familia [fa819e1](https://github.com/brianreborn/familia/commit/fa819e1) / [9c5a11a](https://github.com/brianreborn/familia/commit/9c5a11a) (2026-10-26, `docs/vvram-ssd`):** host tables list angel as "FreeBSD, i5-4570, 24 GiB" with **no GPU**.
+   - They place the G84 on qodesh and "centos10-bigram (same G84 profile)" as separate hosts.
+4. **X, 2026-10-25:** @grok wrote "CPU-only FreeBSD on the i5-4570 -- rules out GPU offload".
+   - That was archived in familia-private [3fbb1c2](https://github.com/brianreborn/familia-private/commit/3fbb1c2) (private) `x-discussion.md`. An outside model's assumption entered the record as context.
+5. **familia-private [3fbb1c2](https://github.com/brianreborn/familia-private/commit/3fbb1c2) (private) HANDOFF.md section 2 (2026-10-27):** copies the docs table (angel without a GPU; G84 on qodesh). It also cites the angel-freebsd NOTES' "Athlon II" line under "FreeBSD CUDA build located".
+6. **#249 (9897e36, 2026-10-31):** the executor merged items 3 and 5 into "the G84 board is an Athlon II box" without asking Brian. That's an inference stated as a fact.
+7. **#249 reviewers** (Senior Developer, independent review, both 2026-10-31 ~01:29 PT) repeated it. One flagged that the topology was "unclear" but still took the claim as given.
+
+**Why it recurs:**
+- Hardware facts were copied between docs, memory and chats as if they were permanent, so each copy kept whatever was true when it was written.
+- Hosts were reinstalled, renamed, or had cards moved (centos10-bigram <-> angel?) without a dated update.
+- A repo's name (angel-freebsd) was taken to mean its notes describe angel today.
+- Agents trust the handoff and each other. Reviewers check the reasoning, not the premises.
+- L9 ("same hardware is not same software") and L11 (registry) covered the software side. Nothing covered *location*.
+
+**Fixes (2026-10-31):**
+- #249 commit ad3a734 corrects the design review, rewrites the P4 feasibility, and fixes `HVVRAM-ARCHITECTURE.md` and `INGEST.md`.
+
+**Prevention (keep it light).** These are computers; components move all the time.
+1. Hardware location in docs, memory, repo names or past chats is a hint, not a fact. There is no master hardware list.
+2. Machine fingerprints and dated snapshots are welcome (store under `docs/perf/<host>-hw-<date>.txt` or `familia-private`). Examples: `pciconf -lv` / `lspci`, `sysctl hw.model`, `dmesg`, host name as reported by the machine (`hostname`, `sysctl kern.hostname`) plus a date. Record them as "as of <date>".
+3. Before a **hardware-dependent action** (kernel module load or test, disk wipe, firmware flash, BIOS change), take a fresh probe or ask Brian. The script itself must resolve hardware by a live identifier (serial, PCI id) and live membership (`zpool status -LP`, `glabel status`), never by `adaN` or a doc table, and refuse on mismatch.
+4. When a conclusion hinges on where a part is and nobody has looked recently, say so and ask. Don't assert it.
+
+## L-2026-11-10. Approval gates, swarm concurrency, host probes, diagnostic logs, and flow latency (2026-11-10)
+Source: Brian voice session, 2026-11-10.
+
+1. **Approval gates should filter side effects, not discovery.** Using one
+   approval as a synchronization point for all work is a degenerate waiter,
+   like a condition variable that only lets one thing through. Read-only
+   discovery and parallel probes should not wait on a global lock.
+   *Rule:* gate writes, reboots, installs, and other side effects. Do not use
+   a single approval as a barrier that serializes independent read-only or
+   parallel work.
+
+2. **Independent jobs should run as a swarm, not a queue.** Skill pulls, PR
+   sweeps, CI audits, phone checks, and the testdisk investigation did not
+   depend on each other, but running them one after another hid latency and
+   wasted the session.
+   *Rule:* start independent jobs concurrently. Serialize only where there is
+   a real data or side-effect dependency.
+
+3. **Host inventory goes stale.** App-reported connection status (connected or
+   disconnected in the machine list) lagged behind reality. Reachability has
+   to be measured on the hosts themselves.
+   *Rule:* refresh inventory by probing hosts directly (SSH, ping, or
+   equivalent). Do not trust app-reported status as the live picture. See
+   also L-memcap: agent "offline" drops can be the app connection while local
+   jobs keep running.
+
+4. **Read-only diagnostics must not write the target disk, but must keep
+   progress off-target.** testdisk on angel kept progress only in memory and
+   had no log file, so about 23 hours of work disappeared. Reporting what is
+   wrong is not enough if the run cannot be resumed or audited.
+   *Rule:* do not write to the disk under test. Always pass testdisk `/log`
+   (or the tool's equivalent) to a file on a different disk, and run the job
+   inside a named screen session (see L-screen and L-190 item 6 on persistent
+   logs).
+
+5. **Keep interactive feedback under about 400 ms.** The ideas-from-x item
+   (likely @lauriewired's post https://x.com/lauriewired/status/2120209911527412081
+   citing IBM's ~400 ms flow threshold; attribution not yet verified from the
+   image) applies to swarm and system design: if the operator or an
+   interactive path waits longer than that, the work leaves the feeling of
+   flow.
+   *Rule:* design interactive swarm feedback and operator-facing status to
+   land under about 400 ms. Treat the IBM / Laurie Wired citation as
+   unverified until the source image is checked.

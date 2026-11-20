@@ -114,6 +114,7 @@ Every installer ends by putting `familia` on your PATH for your user only (no ro
 | Familia branch | `--branch BRANCH` | `--branch BRANCH` | `-Branch BRANCH` |
 | Skip runtime | `--no-runtime` | `--no-runtime` | `-NoRuntime` |
 | Don't put `familia` on PATH | `--no-path` | `--no-path` | `-NoPath` |
+| Release channel ([release-channels.md](release-channels.md)) | `--channel bleeding\|stable`, `--stable-days N` | not yet (env `FAMILIA_CHANNEL`) | not yet |
 
 Safety: no secrets are read or written; downloads are checksum-verified;
 nothing runs as root/admin; installers are idempotent. Measuring a host only

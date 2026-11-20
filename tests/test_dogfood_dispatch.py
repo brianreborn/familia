@@ -26,7 +26,8 @@ def test_hermes_render_cmd_single_and_graph():
     assert "--render-only" in graph
 
 
-def test_hermes_agent_cmd_oneshot_limited_tools():
+def test_hermes_agent_cmd_oneshot_limited_tools(monkeypatch):
+    monkeypatch.delenv("FAMILIA_HERMES_DOGFOOD_YOLO", raising=False)
     cmd = dd.build_hermes_agent_cmd("fix the bug")
     assert "-z" in cmd
     assert cmd[cmd.index("-z") + 1] == "fix the bug"
@@ -34,7 +35,7 @@ def test_hermes_agent_cmd_oneshot_limited_tools():
     tools = cmd[cmd.index("-t") + 1]
     assert "file" in tools and "terminal" in tools
     assert "web" not in tools and "search" not in tools and "browser" not in tools
-    assert "--yolo" in cmd
+    assert "--yolo" not in cmd   # Boundary N1b: off unless FAMILIA_HERMES_DOGFOOD_YOLO=1
 
 
 def test_harness2_cmd_smoke_uses_real_propose_dry_run():

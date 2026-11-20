@@ -11,7 +11,11 @@ def _tree(tmp_path, binpath):
     s.mkdir()
     shutil.copy(os.path.join(ROOT, "scripts", "serve.sh"), s / "serve.sh")
     shutil.copytree(os.path.join(ROOT, "lib"), tmp_path / "lib")
-    (s / "validate_graph.py").write_text("print(%r)\n" % (binpath + " -m " + str(tmp_path / "m.gguf") + " -ngl 0"))
+    for _n in ("bind_auth_guard.py", "familia_auth.py"):
+        shutil.copy(os.path.join(ROOT, "scripts", _n), s / _n)
+    kf = tmp_path / "api-keys"; kf.write_text("k" * 32); kf.chmod(0o600)
+    (s / "validate_graph.py").write_text(
+        "print(%r)\n" % (binpath + " -m " + str(tmp_path / "m.gguf") + " -ngl 0 --api-key-file " + str(kf)))
     (s / "licenses.py").write_text("")
     (tmp_path / "m.gguf").write_bytes(b"GGUF")
     (tmp_path / "graph.yaml").write_text("")
@@ -34,3 +38,37 @@ def test_present_runtime_is_started(tmp_path):
     p = subprocess.run(["sh", str(sh), "coder"], capture_output=True, text=True,
                        env=dict(os.environ, FAMILIA_MEMCAP="0"), timeout=60)
     assert "started" in p.stdout, (p.stdout, p.stderr)
+
+
+def test_missing_pinned_cpu_runtime_uses_native_build(tmp_path, monkeypatch):
+    """A missing llama-b11944 CPU pack falls back to a same-version native build."""
+    home = tmp_path / "home"
+    native = home / "code-bootstraps-llama.cpp" / "build-linux-x86_64-cpu-b11944" / "bin" / "llama-server"
+    native.parent.mkdir(parents=True)
+    native.write_text("#!/bin/sh\necho started-native\n")
+    native.chmod(0o755)
+    monkeypatch.setenv("HOME", str(home))
+    missing = tmp_path / "code-bootstraps-llama.cpp" / "bin" / "llama-b11944-linux-x64-cpu" / "llama-server"
+    sh = _tree(tmp_path, str(missing))
+    p = subprocess.run(["sh", str(sh), "coder"], capture_output=True, text=True,
+                       env=dict(os.environ, FAMILIA_MEMCAP="0", HOME=str(home)), timeout=60)
+    assert p.returncode == 0 and "started-native" in p.stdout, (p.stdout, p.stderr)
+    assert "using" in p.stderr and str(native) in p.stderr, p.stderr
+
+
+def test_missing_pinned_cpu_runtime_uses_b11669_prebuilt(tmp_path, monkeypatch):
+    """If the native same-version build is absent, use the b11669 CPU prebuilt."""
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+    pre = tmp_path / "code-bootstraps-llama.cpp" / "bin" / "llama-b11669-linux-x64-cpu" / "llama-server"
+    pre.parent.mkdir(parents=True)
+    pre.write_text("#!/bin/sh\necho started-prebuilt\n")
+    pre.chmod(0o755)
+    missing = tmp_path / "code-bootstraps-llama.cpp" / "bin" / "llama-b11944-linux-x64-cpu" / "llama-server"
+    sh = _tree(tmp_path, str(missing))
+    p = subprocess.run(["sh", str(sh), "coder"], capture_output=True, text=True,
+                       env=dict(os.environ, FAMILIA_MEMCAP="0", HOME=str(home)), timeout=60)
+    assert p.returncode == 0 and "started-prebuilt" in p.stdout, (p.stdout, p.stderr)
+    assert "using" in p.stderr and str(pre) in p.stderr, p.stderr
+

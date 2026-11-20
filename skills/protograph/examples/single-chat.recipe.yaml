@@ -1,0 +1,13 @@
+# protograph recipe: one chat node behind a gateway, plus a hermes agent.
+# Placeholder host and paths; same shape as examples/graphs/single-node.yaml.
+# Dry run: python3 scripts/protograph.py skills/protograph/examples/single-chat.recipe.yaml
+protograph: 1
+host: {name: h1, kind: desktop, measured: true, os: linux, cpu: x, threads: 4, ram_mib: 16000, reserve_ram_mib: 2000}
+runtime: {name: rt, build: b1, commit: abcdef1, supported_archs: [llama, gemma-embedding2], backends: [cpu]}
+models:
+  mchat: {gguf: /m/chat.gguf, sha256: bcc3af2849ad6095af57e9b5cd43775256efdc66e306acb529172f92d0c04b03, arch: llama,
+          trained_ctx: 8192, role: chat, db: bartowski--SmolLM2-135M-Instruct-GGUF--SmolLM2-135M-Instruct-Q4_0}
+nodes:
+  - {role: chat, model: mchat, ctx: 8192, port: 9001}
+gateway: {port: 8080}
+agent: {kind: hermes-agent, main: chat, min_ctx: 1024}
