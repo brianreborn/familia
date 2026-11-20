@@ -368,16 +368,17 @@ not runnable just because it exists.
 
 An exact-head `CHANGES_REQUESTED` review on a trusted, same-repository swarm
 draft is picked up by the existing `SWARM_MODE=triage` loop before classification;
-`SWARM_MODE=rework` (or `swarm-pull rework`) runs the same queue explicitly.
-Advisory comments and stale-head reviews are not rework items. The worker does
-not claim general issues in either mode. It rechecks the issue's current owner
-approval, PR trust, review state, and head SHA before writing. Rework is limited
-to the originating runner and the existing
-`docs/research/swarm-<issue>-<runner>.md` file; any PR containing other paths is
-left for a human. Findings that explicitly require implementation, tests, or CI
-are recorded as `needs-human`; the worker must not answer those requests with
-another note-only commit. Pushes are non-force, and at most two attempts are
-allowed per issue/base approval. The worker never dismisses a review, merges,
+`SWARM_MODE=rework` (or `swarm-pull rework`) runs the same queue explicitly and
+is the only mode that may push review rework. Advisory comments and stale-head
+reviews are not rework items. The worker rechecks the issue's current owner
+approval, PR trust, review state, and head SHA before writing. It generates a
+bounded unified diff for existing source/test files, rejects protected paths,
+pytest harness changes, file creation/deletion, renames, and mode changes, then
+runs the repository's fixed full pytest suite before a non-force push to the
+originating runner branch. Failed tests do not push. At most two attempts are
+allowed per issue/base approval. General approved issue jobs in `SWARM_MODE=live`
+use the same implementation pipeline by default; `SWARM_JOB_KIND=note` opts in
+to the legacy research-note path. The worker never dismisses a review, merges,
 closes, or changes labels.
 
 Discovery of open issues can stay open and parallel. Claiming and running are

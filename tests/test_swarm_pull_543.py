@@ -29,6 +29,7 @@ def load_mod(home):
     os.environ["SWARM_HOST"] = "testhost"
     os.environ["SWARM_RUNNER"] = "box"
     os.environ["SWARM_MODE"] = "dry-run"
+    os.environ["SWARM_JOB_KIND"] = "note"
     os.environ["SWARM_OWNER"] = "brianreborn"
     os.environ["SWARM_APPROVAL_LABELS"] = "swarm-approved"
     os.environ["SWARM_AMBIGUOUS_WAIT_SEC"] = "0"

@@ -237,6 +237,7 @@ def test_job_nonce_never_reaches_deliver(tmp_path, monkeypatch):
     monkeypatch.setenv("SWARM_HOST", "testhost")
     monkeypatch.setenv("SWARM_RUNNER", "box")
     monkeypatch.setenv("SWARM_JOB_LOCK", str(tmp_path / "job.lock"))
+    monkeypatch.setenv("SWARM_JOB_KIND", "note")
     sp._FORCED_DRY = False
     gate = sp.ApprovalResult(True, reason="approved", body="approved body", title="approved title")
 

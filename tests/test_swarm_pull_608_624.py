@@ -169,6 +169,128 @@ class SwarmModes(unittest.TestCase):
         payload = __import__("json").loads(request.data.decode("utf-8"))
         self.assertEqual(payload["reasoning_effort"], "xhigh")
 
+    def test_implementation_patch_parser_accepts_existing_source_diff(self):
+        patch = (
+            "```diff\n"
+            "diff --git a/src/core.py b/src/core.py\n"
+            "index 1111111..2222222 100644\n"
+            "--- a/src/core.py\n+++ b/src/core.py\n"
+            "@@ -1 +1 @@\n-old_value = 1\n+new_value = 2\n"
+            "```\n")
+        parsed, paths = self.sp.extract_implementation_patch(patch)
+        self.assertIn("diff --git a/src/core.py", parsed)
+        self.assertEqual(paths, ["src/core.py"])
+
+    def test_implementation_patch_parser_rejects_unsafe_operations(self):
+        patches = (
+            "diff --git a/.github/workflows/test.yml b/.github/workflows/test.yml\n",
+            "diff --git a/../outside.py b/../outside.py\n",
+            "diff --git a/src/new.py b/src/new.py\nnew file mode 100644\n",
+            "diff --git a/tests/conftest.py b/tests/conftest.py\n",
+            "diff --git a/src/core.py b/src/core.py\nold mode 100644\nnew mode 100755\n",
+            "explanation\ndiff --git a/src/core.py b/src/core.py\n",
+        )
+        for patch in patches:
+            with self.subTest(patch=patch), self.assertRaises(self.sp.DraftRejected):
+                self.sp.extract_implementation_patch(patch)
+
+    def test_implementation_context_uses_only_tracked_source_files(self):
+        root = self.home / "context-repo"
+        (root / "src").mkdir(parents=True)
+        (root / "src" / "cache.py").write_text("def cache_lookup():\n    return None\n")
+        (root / "config").mkdir()
+        (root / "config" / "secret.py").write_text("TOKEN = 'not-context'\n")
+        def fake_run(argv, cwd=None, timeout=20):
+            if argv[:2] == ["git", "ls-files"]:
+                return 0, "src/cache.py\nconfig/secret.py\n", ""
+            if argv[0] == "rg":
+                return 0, "src/cache.py\n", ""
+            return 1, "", "unexpected command"
+        with mock.patch.object(self.sp, "run_cmd", side_effect=fake_run):
+            context = self.sp.implementation_context(root, "cache lookup behavior")
+        self.assertIn("src/cache.py", context)
+        self.assertIn("def cache_lookup", context)
+        self.assertNotIn("not-context", context)
+
+    def test_apply_implementation_patch_checks_and_applies_only_declared_file(self):
+        root = self.home / "patch-repo"
+        (root / "src").mkdir(parents=True)
+        source = root / "src" / "core.py"
+        source.write_text("value = 1\n")
+        patch = (
+            "diff --git a/src/core.py b/src/core.py\n"
+            "index 1111111..2222222 100644\n"
+            "--- a/src/core.py\n+++ b/src/core.py\n"
+            "@@ -1 +1 @@\n-value = 1\n+value = 2\n")
+        def fake_run(argv, cwd=None, timeout=20):
+            if argv[:3] == ["git", "apply", "--check"]:
+                return 0, "", ""
+            if argv[:2] == ["git", "apply"]:
+                source.write_text("value = 2\n")
+                return 0, "", ""
+            return 1, "", "unexpected command"
+        with mock.patch.object(self.sp, "run_cmd", side_effect=fake_run), \
+             mock.patch.object(self.sp, "git", return_value="src/core.py\n"):
+            changed = self.sp.apply_implementation_patch(root, patch, ["src/core.py"])
+        self.assertEqual(changed, ["src/core.py"])
+        self.assertEqual(source.read_text(), "value = 2\n")
+
+    def test_implementation_tests_use_fixed_pytest_command(self):
+        with mock.patch.object(self.sp, "run_cmd", return_value=(0, "2 passed", "")) as run:
+            self.assertEqual(self.sp.run_implementation_tests(self.home), "2 passed")
+        argv = run.call_args.args[0]
+        self.assertEqual(argv[1:5], ["-m", "pytest", "-q", "-p"])
+        self.assertNotIn("shell", argv[0])
+
+    def test_implementation_job_never_delivers_when_tests_fail(self):
+        os.environ["SWARM_MODE"] = "live"
+        self.sp._FORCED_DRY = False
+        patch = "diff --git a/src/core.py b/src/core.py\n"
+        with mock.patch.object(self.sp, "prepare_issue_worktree",
+                               return_value=(self.home / "repo", self.home / "wt", "swarm/box/999", "main", [])), \
+             mock.patch.object(self.sp, "generate_implementation_patch", return_value=(patch, ["src/core.py"])), \
+             mock.patch.object(self.sp, "apply_implementation_patch", return_value=["src/core.py"]), \
+             mock.patch.object(self.sp, "run_implementation_tests", side_effect=self.sp.ForgeError("tests failed")), \
+             mock.patch.object(self.sp, "deliver_implementation") as deliver:
+            with self.assertRaises(self.sp.ForgeError):
+                self.sp.implementation_job("brianreborn/familia", 999,
+                                          {"number": 999}, "a" * 64)
+        deliver.assert_not_called()
+
+    def test_implementation_job_delivers_only_after_tests_pass(self):
+        os.environ["SWARM_MODE"] = "live"
+        self.sp._FORCED_DRY = False
+        worktree = self.home / "wt"
+        expected = {"pr": "https://example.test/pr/999", "new_pr": True}
+        with mock.patch.object(self.sp, "prepare_issue_worktree",
+                               return_value=(self.home / "repo", worktree, "swarm/box/999", "main", [])), \
+             mock.patch.object(self.sp, "generate_implementation_patch",
+                               return_value=("diff --git a/src/core.py b/src/core.py\n", ["src/core.py"])), \
+             mock.patch.object(self.sp, "apply_implementation_patch", return_value=["src/core.py"]), \
+             mock.patch.object(self.sp, "run_implementation_tests", return_value="12 passed"), \
+             mock.patch.object(self.sp, "recheck_gate") as gate, \
+             mock.patch.object(self.sp, "deliver_implementation", return_value=expected) as deliver:
+            result = self.sp.implementation_job(
+                "brianreborn/familia", 999, {"number": 999}, "a" * 64)
+        gate.assert_called_once_with("brianreborn/familia", 999, "a" * 64)
+        deliver.assert_called_once()
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["pr"], expected["pr"])
+
+    def test_approved_issue_jobs_default_to_implementation(self):
+        os.environ.pop("SWARM_JOB_KIND", None)
+        gate = self.sp.ApprovalResult(
+            True, reason="approved", body="approved body", title="approved title")
+        with mock.patch.object(self.sp, "get_issue", return_value=(None, {"number": 999, "state": "open"})), \
+             mock.patch.object(self.sp, "approval_status", return_value=gate), \
+             mock.patch.object(self.sp, "implementation_job", return_value={"ok": True, "dry": True}) as implement:
+            result = self.sp.job("brianreborn/familia", 999, 1)
+        implement.assert_called_once_with(
+            "brianreborn/familia", 999,
+            {"number": 999, "title": gate.title, "body": gate.body},
+            gate.content_sha, claim=None)
+        self.assertTrue(result["ok"])
+
     def test_rework_lease_marker_is_recognized(self):
         marker = "swarm-lease v=1 head=%s kind=rework runner=box" % SHA
         match = self.sp._LEASE_RE.match(marker)
@@ -1324,7 +1446,23 @@ class SwarmModes(unittest.TestCase):
                  mock.patch.object(self.sp, "load_json_safe", return_value=saved_state):
                 self.assertEqual(self.sp.review_rework_candidates("brianreborn/familia"), [])
 
-    def test_requested_rework_updates_only_existing_note_and_never_force_pushes(self):
+    def test_implementation_required_handoff_is_requeued(self):
+        pr = _pr(number=700, sha=SHA, ref="swarm/box/700")
+        review = {"commit_id": SHA, "state": "CHANGES_REQUESTED", "body": "This draft does not implement the issue; add concrete code/tests and CI-green behavior."}
+        previous = {
+            "state": "needs-human", "terminal": True, "attempt": 0,
+            "old_head": SHA, "finding": review["body"],
+        }
+        with mock.patch.object(self.sp, "iter_swarm_drafts", return_value=[pr]), \
+             mock.patch.object(self.sp, "owner_approved_pr", return_value=True), \
+             mock.patch.object(self.sp, "_branch_runner", return_value=("box", 700)), \
+             mock.patch.object(self.sp, "get_pr_reviews", return_value=[review]), \
+             mock.patch.object(self.sp, "load_json_safe", return_value=previous):
+            candidates = self.sp.review_rework_candidates("brianreborn/familia")
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0]["head"], SHA)
+
+    def test_requested_rework_uses_implementation_pipeline_and_records_head(self):
         issue_number = 700
         repo = "brianreborn/familia"
         rel = "docs/research/swarm-700-box.md"
@@ -1332,24 +1470,6 @@ class SwarmModes(unittest.TestCase):
         review = {"commit_id": SHA, "state": "CHANGES_REQUESTED", "body": "address the missing test"}
         new_head = "12" * 20
         repo_dir = self.home / "repo"
-        worktree = self.home / "work" / "wt" / str(issue_number)
-        note = worktree / rel
-        note.parent.mkdir(parents=True)
-        note.write_text("old note\n")
-        (worktree / ".git").write_text("gitdir: test\n")
-        pushes = []
-
-        def fake_git(args, cwd, timeout=180):
-            if args[0] == "push":
-                pushes.append(args)
-            if args[:2] == ["rev-parse", "refs/remotes/origin/swarm/box/700"]:
-                return SHA
-            if args[:2] == ["rev-parse", "HEAD"]:
-                return new_head
-            if args[0] == "diff":
-                return rel + "\n"
-            return ""
-
         approval = SimpleNamespace(
             ok=True, content_sha="ab" * 32, title="Approved", body="Approved body")
         candidate = {
@@ -1368,22 +1488,19 @@ class SwarmModes(unittest.TestCase):
              mock.patch.object(self.sp, "get_pr_review_comments", return_value=[]), \
              mock.patch.object(self.sp, "get_pr_files", return_value=[{"filename": rel}]), \
              mock.patch.object(self.sp, "fetch_exact_diff", return_value="diff"), \
-             mock.patch.object(self.sp, "model_high_effort", return_value=("draft " * 50, "stub", "nonce")), \
-             mock.patch.object(self.sp, "validate_draft"), \
-             mock.patch.object(self.sp, "build_doc", return_value="updated note\n"), \
-             mock.patch.object(self.sp, "git", side_effect=fake_git), \
-             mock.patch.object(self.sp, "git_ident", return_value=[]), \
-             mock.patch.object(self.sp, "recheck_gate"), \
-             mock.patch.object(self.sp, "stamp_line", return_value="stamp"):
+             mock.patch.object(self.sp, "implementation_job",
+                               return_value={"ok": True, "head": new_head}) as implement:
             result = self.sp.rework_requested_pr(repo, candidate)
 
         self.assertTrue(result["ok"])
-        self.assertEqual(note.read_text(), "updated note\n")
-        self.assertEqual(len(pushes), 1)
-        self.assertNotIn("--force", pushes[0])
+        call = implement.call_args
+        self.assertIn("address the missing test", call.kwargs["review_evidence"])
+        self.assertIn("Exact-head diff:\ndiff", call.kwargs["review_evidence"])
+        self.assertTrue(call.kwargs["rework_gate"])
         saved = self.sp.load_json_safe(self.sp.rework_state_path(repo, issue_number), "review rework")
         self.assertEqual(saved["state"], "submitted")
         self.assertEqual(saved["attempt"], 1)
+        self.assertEqual(saved["new_head"], new_head)
 
     def test_review_rework_prompt_is_fenced_and_never_editing(self):
         prompt = self.sp.build_review_rework_prompt(
