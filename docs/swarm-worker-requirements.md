@@ -364,6 +364,22 @@ not runnable just because it exists.
    change what executes on self-hosted peers.
 3. Only then may a free peer claim it.
 
+### Formal review rework
+
+An exact-head `CHANGES_REQUESTED` review on a trusted, same-repository swarm
+draft is picked up by the existing `SWARM_MODE=triage` loop before classification;
+`SWARM_MODE=rework` (or `swarm-pull rework`) runs the same queue explicitly.
+Advisory comments and stale-head reviews are not rework items. The worker does
+not claim general issues in either mode. It rechecks the issue's current owner
+approval, PR trust, review state, and head SHA before writing. Rework is limited
+to the originating runner and the existing
+`docs/research/swarm-<issue>-<runner>.md` file; any PR containing other paths is
+left for a human. Findings that explicitly require implementation, tests, or CI
+are recorded as `needs-human`; the worker must not answer those requests with
+another note-only commit. Pushes are non-force, and at most two attempts are
+allowed per issue/base approval. The worker never dismisses a review, merges,
+closes, or changes labels.
+
 Discovery of open issues can stay open and parallel. Claiming and running are
 side effects, so they wait on that admin gate (see Approval gates below, and
 LESSONS-LEARNED `L-2026-11-10`, merged in #379). A bot must not approve, and

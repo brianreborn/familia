@@ -293,10 +293,8 @@ def mode():
 
 
 def comments_allowed():
-    """live, triage, and review may post a signed comment.
-    They still may not push, merge, close, or drop a label from triage
-    or review. dry-run posts nothing."""
-    return mode() in ("live", "triage", "review")
+    """Modes allowed to post signed comments; rework has its own write fence."""
+    return mode() in ("live", "triage", "review", "rework")
 
 
 def force_dry_run(reason):
@@ -1098,7 +1096,7 @@ def enforce_live_identity(repo=None):
     Path B peers must use a non-owner identity (docs Security / Path B
     identity). If no such identity exists on this host, force dry-run.
     """
-    if mode() not in ("live", "triage", "review"):
+    if mode() not in ("live", "triage", "review", "rework"):
         return "dry-run"
     repo = repo or env("SWARM_PIN_REPO", default_repo())
     try:
@@ -2994,7 +2992,7 @@ def _effort_budget(max_tokens, thinking, effort="medium"):
 
 
 def _configured_model_name():
-    name = (env("SWARM_MODEL_NAME") or "").strip()
+    name = (env("SWARM_MODEL_FAMILY") or env("SWARM_MODEL_NAME") or "").strip()
     if not name:
         name = os.path.basename(env("SWARM_MODEL_GGUF") or "")
     return name.lower()
@@ -3060,7 +3058,7 @@ def branch_name(number):
     return "swarm/%s/%s" % (runner_name(), number)
 
 
-def build_doc(repo, number, issue, report, draft, how, body_sha=""):
+def build_doc(repo, number, issue, report, draft, how, body_sha="", rework=False):
     title = sanitize_title(ascii_clean((issue or {}).get("title") or ("issue %s" % number)))
     lines = [
         "# %s" % title,
@@ -3071,9 +3069,11 @@ def build_doc(repo, number, issue, report, draft, how, body_sha=""):
         "Approved-content-sha256: %s" % (body_sha or content_sha256(
             (issue or {}).get("title") or "", (issue or {}).get("body") or "")),
         "",
-        "Status: rough first pass by the swarm pull worker. Section 1 is a read-only",
-        "probe run on the runner host (measured). Section 2 is a draft from a small",
-        "local open model (%s); treat it as unverified until reviewed." % how,
+        ("Status: bounded rework for a formal review request. Section 1 records the evidence."
+         if rework else "Status: rough first pass by the swarm pull worker. Section 1 is a read-only"),
+        ("Section 2 is a new unverified draft from a small local open model (%s)." % how
+         if rework else "probe run on the runner host (measured). Section 2 is a draft from a small"),
+        ("" if rework else "local open model (%s); treat it as unverified until reviewed." % how),
         "",
         "## 1. Read-only probe (measured on %s)" % runner_name(),
         "",
@@ -3200,6 +3200,132 @@ def deliver(repo, number, issue, doc, gate_check=None):
     log("opened draft PR %s" % url)
     clear_orphan_branch(repo, br)
     return {"branch": br, "head": head, "pr": url, "new_pr": True, "path": rel}
+
+
+def rework_requested_pr(repo, candidate):
+    """Regenerate the existing swarm note for one exact-head formal request."""
+    pr = candidate["pr"]
+    number = int(pr["number"])
+    issue_number = candidate["issue"]
+    head = candidate["head"]
+    base = candidate["base"]
+    branch = candidate["branch"]
+    path = rework_state_path(repo, issue_number)
+    lease_id = acquire_score_lease(repo, number, head, "rework")
+    if not lease_id:
+        return {"ok": False, "skipped": "lease-held"}
+
+    state = load_json_safe(path, "review rework")
+    state = state if isinstance(state, dict) else {}
+    expected_issue_sha = state.get("issue_sha") or ""
+    work = Path(env("SWARM_REPO_DIR", str(Path.home() / "familia"))).expanduser()
+    wt = home_dir() / "work" / "wt" / str(issue_number)
+    rel = "docs/research/swarm-%s-%s.md" % (issue_number, candidate["runner"])
+    try:
+        if mode() not in ("triage", "rework"):
+            log("dry-run would rework PR #%s head %s" % (number, head[:9]))
+            return {"ok": True, "dry": True, "pr": number, "head": head}
+        if not base or not pr_branch_trusted(pr) or not owner_approved_pr(repo, pr):
+            raise NotApproved("PR lost trust or owner approval")
+        if candidate["runner"] != runner_name():
+            raise NotApproved("PR branch belongs to runner %s" % candidate["runner"])
+        approval = approval_status(repo, issue_number)
+        if not approval.ok:
+            raise NotApproved("issue approval unavailable: %s" % (approval.reason or ""))
+        expected_issue_sha = approval.content_sha
+        fresh = get_pull(repo, number)
+        if _full_sha(_pr_head_ref_sha(fresh)[1]) != head:
+            raise ForgeError("PR head moved before rework")
+        reviews = get_pr_reviews(repo, number)
+        review = exact_formal_review_row(reviews, head)
+        if not review or str(review.get("state") or "").upper() != "CHANGES_REQUESTED":
+            raise ForgeError("exact-head change request is no longer active")
+        finding = review_finding_text(review, get_pr_review_comments(repo, number), head)
+        if not finding.strip():
+            finding = "The exact PR head has a formal CHANGES_REQUESTED review with no textual findings. Inspect the fenced exact-head diff and do not infer owner decisions."
+        if review_requires_implementation(finding):
+            row = record_review_rework(
+                repo, issue_number, issue_sha=approval.content_sha,
+                base_sha=base, old_head=head, finding=finding, state="needs-human")
+            log("rework requires implementation-capable worker PR #%s issue #%s; no note-only push (state=%s)" % (
+                number, issue_number, row.get("state")))
+            return {"ok": False, "needs_human": True, "pr": number}
+        rel = "docs/research/swarm-%s-%s.md" % (issue_number, candidate["runner"])
+        changed_paths = sorted({str(item.get("filename") or "") for item in get_pr_files(repo, number)})
+        if changed_paths != [rel]:
+            raise ForgeError("rework requires a note-only PR; found paths %s" % changed_paths)
+        record_review_rework(
+            repo, issue_number, issue_sha=expected_issue_sha,
+            base_sha=base, old_head=head, finding=finding, state="working")
+        diff = fetch_exact_diff(repo, base, head)
+        prompt = build_review_rework_prompt(
+            issue_sha=expected_issue_sha, base_sha=base, old_head=head,
+            finding=finding, diff=diff)
+        report = stamp_line() + "\n\nReview-requested rework for PR #%s, head %s.\n" % (number, head)
+        work.mkdir(parents=True, exist_ok=True)
+        evidence_dir = home_dir() / "work" / repo.replace("/", "_") / str(issue_number)
+        evidence_dir.mkdir(parents=True, exist_ok=True)
+        (evidence_dir / "review-rework-prompt.md").write_text(prompt)
+        draft, how, nonce = model_high_effort(
+            prompt, int(env("SWARM_MODEL_MAX_TOKENS", "700")),
+            effort=worker_effort("implementation"))
+        validate_draft(draft, nonce, expected_issue_sha)
+        doc = build_doc(
+            repo, issue_number,
+            {"number": issue_number, "title": approval.title, "body": approval.body},
+            report, draft, how, body_sha=expected_issue_sha, rework=True)
+        git(["fetch", "--quiet", "origin", base], work, timeout=300)
+        git(["fetch", "--quiet", "origin", "+refs/heads/%s:refs/remotes/origin/%s" % (branch, branch)],
+            work, timeout=300)
+        if git(["rev-parse", "refs/remotes/origin/%s" % branch], work).strip() != head:
+            raise ForgeError("remote branch moved before rework checkout")
+        if not (wt / ".git").exists():
+            wt.parent.mkdir(parents=True, exist_ok=True)
+            git(["worktree", "add", "--quiet", "-B", branch, str(wt), "origin/" + branch],
+                work, timeout=300)
+        else:
+            if git(["status", "--porcelain"], wt).strip():
+                git(["stash", "push", "--include-untracked", "-m", "swarm-pull rework autostash"], wt)
+            git(["checkout", "--quiet", "-B", branch, "origin/" + branch], wt)
+        note_path = wt / rel
+        if not note_path.is_file():
+            raise ForgeError("expected swarm note missing: %s" % rel)
+        note_path.write_text(doc)
+        git(["add", rel], wt)
+        changed = [item.strip() for item in git(["diff", "--cached", "--name-only"], wt).splitlines()
+                   if item.strip()]
+        if changed != [rel]:
+            raise ForgeError("rework may change only %s (got %s)" % (rel, changed))
+        git(git_ident() + ["commit", "--quiet", "-m",
+                           "swarm/%s: address requested changes for #%s" % (runner_name(), issue_number)], wt)
+        committed_paths = [item.strip() for item in git(
+            ["diff", "--name-only", "origin/" + base + "...HEAD"], wt).splitlines() if item.strip()]
+        if committed_paths != [rel]:
+            raise ForgeError("rework may push only %s (got %s)" % (rel, committed_paths))
+        recheck_gate(repo, issue_number, expected_issue_sha)
+        fresh = get_pull(repo, number)
+        if _full_sha(_pr_head_ref_sha(fresh)[1]) != head:
+            raise ForgeError("PR head moved during rework")
+        if exact_formal_review(get_pr_reviews(repo, number), head) != "CHANGES_REQUESTED":
+            raise ForgeError("change request changed during rework")
+        current = git(["rev-parse", "HEAD"], wt).strip()
+        git(["push", "--quiet", "origin", "HEAD:refs/heads/" + branch], wt, timeout=300)
+        row = record_review_rework(
+            repo, issue_number, issue_sha=expected_issue_sha, base_sha=base,
+            old_head=head, finding=finding, state="submitted")
+        row.update({"new_head": current, "pr": number})
+        atomic_write_json(path, row)
+        log("rework pushed PR #%s %s -> %s" % (number, head[:9], current[:9]))
+        return {"ok": True, "pr": number, "old_head": head, "head": current}
+    except Exception as error:
+        row = record_review_rework(
+            repo, issue_number, issue_sha=expected_issue_sha,
+            base_sha=base, old_head=head, finding=str(error), state="failed")
+        log("rework failed PR #%s attempt=%s/%s: %s" % (
+            number, row.get("attempt"), REWORK_ATTEMPT_MAX, error))
+        raise
+    finally:
+        release_score_lease(repo, lease_id)
 
 
 ORPHAN_KEEP = 50
@@ -3615,22 +3741,60 @@ def rework_state_path(repo, number):
 
 def exact_formal_review(reviews, head_sha):
     """Return exact-head formal review state; comments and stale reviews do not count."""
+    row = exact_formal_review_row(reviews, head_sha)
+    return str(row.get("state") or "").upper() if row else "stale"
+
+
+def exact_formal_review_row(reviews, head_sha):
+    """Return the latest formal review for this exact head SHA."""
     head = _full_sha(head_sha)
     if not head:
-        return "stale"
+        return None
     for review in reversed(reviews or []):
         if not isinstance(review, dict):
             continue
         commit = _full_sha(review.get("commit_id") or review.get("submittedCommitId") or "")
         state = str(review.get("state") or "").upper()
         if commit == head and state in ("APPROVED", "CHANGES_REQUESTED", "DISMISSED"):
-            return state
-    return "stale"
+            return review
+    return None
 
 
 def exact_head_review(reviews, head_sha):
     """Compatibility name for exact_formal_review."""
     return exact_formal_review(reviews, head_sha)
+
+
+def review_finding_text(review, comments, head_sha):
+    """Combine the formal review body and its exact-head inline findings."""
+    review_id = review.get("id") if isinstance(review, dict) else None
+    lines = []
+    body = str((review or {}).get("body") or "").strip()
+    if body:
+        lines.append("Formal review:\n" + body)
+    for comment in comments or []:
+        if not isinstance(comment, dict):
+            continue
+        if review_id is not None and comment.get("pull_request_review_id") != review_id:
+            continue
+        if _full_sha(comment.get("commit_id") or "") != _full_sha(head_sha):
+            continue
+        finding = str(comment.get("body") or "").strip()
+        if not finding:
+            continue
+        path = str(comment.get("path") or "")
+        line = comment.get("line") or comment.get("original_line") or "?"
+        lines.append("Inline finding (%s:%s):\n%s" % (path or "file", line, finding))
+    return "\n\n".join(lines)
+
+
+def review_requires_implementation(finding):
+    text = (finding or "").lower()
+    signals = (
+        "does not implement", "implementation pr", "concrete code",
+        "code/tests", "ci-green", "acceptance evidence",
+    )
+    return any(signal in text for signal in signals)
 
 
 def rework_decision(reviews, head_sha, ci_failed=False, needs_human=False):
@@ -3655,7 +3819,8 @@ def record_review_rework(repo, number, issue_sha="", base_sha="", old_head="",
     state = str(state or "rework").strip().lower().replace("_", "-")
     if state == "changes-requested":
         state = "rework"
-    if state not in ("rework", "ci-failed", "approved", "needs-human", "stale"):
+    if state not in ("rework", "ci-failed", "approved", "needs-human", "stale",
+                     "working", "submitted", "failed"):
         raise ValueError("unknown review rework state %r" % state)
 
     path = rework_state_path(repo, number)
@@ -3675,7 +3840,7 @@ def record_review_rework(repo, number, issue_sha="", base_sha="", old_head="",
     except (TypeError, ValueError):
         attempt = 0
     terminal = bool(current.get("terminal")) and not identity_changed
-    if not terminal and state in ("rework", "ci-failed"):
+    if not terminal and state in ("rework", "ci-failed", "working"):
         attempt = min(REWORK_ATTEMPT_MAX, attempt + 1)
     row = {
         "version": 1,
@@ -3828,7 +3993,7 @@ _HOLLOW_ISSUE_RE = re.compile(
     r"(?:\s+runner=([a-z0-9][a-z0-9-]{0,31}))?")
 _REJECT_MARK_RE = re.compile(r"(?im)^superseded\s+draft rejected:\s*([a-z0-9_-]+)")
 _LEASE_RE = re.compile(
-    r"(?im)^swarm-lease\s+v=1\s+head=([0-9a-f]{40})\s+kind=(triage|review)\b"
+    r"(?im)^swarm-lease\s+v=1\s+head=([0-9a-f]{40})\s+kind=(triage|review|rework)\b"
     r"(?:\s+runner=([a-z0-9][a-z0-9-]{0,31}))?")
 _MARKER_LINE_RE = re.compile(
     r"(?i)^\s*swarm-(triage|review|lease|hollow)\s+v=1\b")
@@ -4571,6 +4736,8 @@ def cmd_loop():
         return cmd_mode_loop(cmd_triage, "triage")
     if mode() == "review":
         return cmd_mode_loop(cmd_review, "review")
+    if mode() == "rework":
+        return cmd_mode_loop(cmd_rework_and_triage, "rework")
     import random
     disarmed = home_dir() / "disarmed"
     repo = env("SWARM_PIN_REPO", default_repo())
@@ -4914,6 +5081,14 @@ def get_pr_reviews(repo, number):
         "GET", "repos/%s/%s/pulls/%s/reviews?per_page=100" % (owner, name, int(number)),
         uncached=True)
     return [r for r in (items or []) if isinstance(r, dict)]
+
+
+def get_pr_review_comments(repo, number):
+    owner, name = split_repo(repo)
+    _, items = gh_api_pages(
+        "GET", "repos/%s/%s/pulls/%s/comments?per_page=100" % (owner, name, int(number)),
+        uncached=True)
+    return [comment for comment in (items or []) if isinstance(comment, dict)]
 
 
 def fetch_exact_diff(repo, base_sha, head_sha):
@@ -5302,7 +5477,7 @@ def acquire_score_lease(repo, number, head, kind):
     is a loss, and this pass does not delete it. A stale lease is struck
     so it cannot win the post-then-compare step. Returns the comment id
     this pass holds, or None."""
-    if mode() not in ("triage", "review"):
+    if mode() not in ("triage", "review", "rework"):
         return None
     _, comments = get_comments(repo, number, uncached=True)
     try:
@@ -5533,13 +5708,12 @@ def _triage_score(repo, pr, number, sha, ref):
 
 
 def cmd_triage():
-    """Phone mode: classify open swarm/* draft PRs.
+    """Classify open swarm/* draft PRs and process formal change requests.
 
-    Posts only issue comments, including the hollow marker on the issue.
-    That is the same issues:write comment endpoint as every other note.
-    No review dismiss, merge, or contents write."""
-    if mode() != "triage":
-        log("SWARM_MODE=triage is required; not posting")
+    Rework only updates the existing approved swarm note after exact-head and
+    approval checks. No review dismiss, merge, or general issue claim."""
+    if mode() not in ("triage", "rework"):
+        log("SWARM_MODE=triage or rework is required; not posting")
         return 2
     repo = env("SWARM_PIN_REPO", default_repo())
     limit = _int_env("SWARM_TRIAGE_LIMIT", 8)
@@ -5547,6 +5721,7 @@ def cmd_triage():
     prs = rotate_work(iter_swarm_drafts(repo))
     if want:
         prs = [p for p in prs if str(p.get("number")) == want]
+    cmd_rework()
     posted = 0
     for pr in prs:
         if posted >= limit:
@@ -5702,6 +5877,59 @@ def _review_targets(repo):
     return iter_swarm_drafts(repo)
 
 
+def review_rework_candidates(repo, prs=None, limit=None):
+    """Find owner-approved swarm draft PRs with a new exact-head change request."""
+    candidates = []
+    for pr in iter_swarm_drafts(repo) if prs is None else prs:
+        number = pr.get("number")
+        ref, head = _pr_head_ref_sha(pr)
+        head = _full_sha(head)
+        runner, issue_number = _branch_runner(ref)
+        if not number or not head or not issue_number:
+            continue
+        if runner != runner_name():
+            continue
+        if not _pr_is_draft(pr) or not pr_same_repo(pr, repo) or not owner_approved_pr(repo, pr):
+            continue
+        reviews = get_pr_reviews(repo, number)
+        review = exact_formal_review_row(reviews, head)
+        if not review or str(review.get("state") or "").upper() != "CHANGES_REQUESTED":
+            continue
+        state = load_json_safe(rework_state_path(repo, issue_number), "review rework")
+        state = state if isinstance(state, dict) else {}
+        same_head = _full_sha(state.get("old_head")) == head
+        if same_head and state.get("state") in ("submitted", "needs-human", "approved"):
+            log("rework skip PR #%s: exact head already recorded as %s" % (
+                number, state.get("state")))
+            continue
+        if same_head and state.get("state") == "working":
+            started = parse_iso(state.get("updated_at") or "")
+            if started is None or (server_now() - started).total_seconds() < _lease_ttl_sec():
+                log("rework skip PR #%s: another attempt is still active" % number)
+                continue
+        if state.get("terminal") or int(state.get("attempt", 0) or 0) >= REWORK_ATTEMPT_MAX:
+            log("rework skip PR #%s: attempt limit reached" % number)
+            continue
+        candidates.append({
+            "pr": pr,
+            "review": review,
+            "head": head,
+            "base": _full_sha(_pr_base_sha(pr)),
+            "branch": ref,
+            "runner": runner,
+            "issue": int(issue_number),
+        })
+        if limit is not None and len(candidates) >= limit:
+            break
+    return candidates
+
+
+def _rework_targets(repo):
+    want = (env("SWARM_REWORK_PR", "") or "").strip()
+    prs = [get_pull(repo, int(want))] if want else None
+    return review_rework_candidates(repo, prs=prs)
+
+
 def cmd_review():
     """Bigger-host mode: exact-head COMMENT reviews. No merge and no push."""
     if mode() != "review":
@@ -5723,6 +5951,34 @@ def cmd_review():
             log("review skip #%s: %s" % (pr.get("number"), e))
     log("review done posted=%s" % posted)
     return 0
+
+
+def cmd_rework():
+    """Apply bounded formal review requests to the existing swarm note branch."""
+    if mode() not in ("triage", "rework"):
+        log("SWARM_MODE=triage or rework is required; not pushing")
+        return 2
+    repo = env("SWARM_PIN_REPO", default_repo())
+    limit = _int_env("SWARM_REWORK_LIMIT", 1)
+    processed = 0
+    for candidate in _rework_targets(repo):
+        if processed >= limit:
+            break
+        try:
+            result = rework_requested_pr(repo, candidate)
+            if result.get("ok"):
+                processed += 1
+        except ApiBudgetExhausted:
+            raise
+        except (ForgeError, OSError, ValueError) as error:
+            log("rework skip PR #%s: %s" % (candidate["pr"].get("number"), error))
+    log("rework done processed=%s" % processed)
+    return 0
+
+
+def cmd_rework_and_triage():
+    """Keep PR classification active while processing formal change requests."""
+    return cmd_triage()
 
 
 def cmd_mode_loop(fn, label):
@@ -5760,21 +6016,23 @@ def main(argv):
     cmd = (argv[1] if len(argv) > 1 else "once").strip().lower()
     if cmd in ("-h", "--help", "help"):
         sys.stdout.write(
-            "usage: swarm-pull [once|loop|claim|work|probe|triage|review]\n"
-            "env: SWARM_RUNNER SWARM_MODE=live|dry-run|triage|review\n"
+            "usage: swarm-pull [once|loop|claim|work|probe|triage|review|rework]\n"
+            "env: SWARM_RUNNER SWARM_MODE=live|dry-run|triage|review|rework\n"
             "     SWARM_PIN_ISSUE SWARM_REPOS\n"
             "     SWARM_DRAFT_GATE=0 is refused in live mode unless\n"
             "       SWARM_DRAFT_GATE_OFF_I_KNOW equals SWARM_RUNNER\n"
             "     SWARM_TRIAGE_LIMIT (default 8) SWARM_TRIAGE_PR\n"
             "     SWARM_REVIEW_LIMIT (default 3) SWARM_REVIEW_PR\n"
+            "     SWARM_REWORK_LIMIT (default 1) SWARM_REWORK_PR\n"
             "     SWARM_MODEL_NAME identifies the routed model for task effort\n"
+            "     SWARM_MODEL_FAMILY optionally identifies the model family\n"
             "     one router request per task: LFM3 design/implementation=xhigh,\n"
             "       review=high, other tasks=medium; no self-critique multipass\n"
             "     SWARM_RUNNER_LOGINS=login1,login2 (required for live; claims count\n"
             "       only from these authors, any runner name)\n"
-            "     token: issues:write for comments (triage hollow markers included);\n"
-            "       pull-requests:write only for a COMMENT review. No dismiss,\n"
-            "       merge, or contents write.\n"
+            "     token: issues:write for comments; pull-requests:write for COMMENT reviews;\n"
+            "       contents:write only for bounded rework of an existing approved swarm note.\n"
+            "       No dismiss or merge.\n"
             "     SWARM_MAX_API_CALLS (per loop iteration, default 80)\n"
             "     SWARM_API_WINDOW_SEC (budget window outside the loop, default 3600)\n"
             "     SWARM_API_RESERVE (extra calls for claim/heartbeat/release, default 20)\n"
@@ -5807,6 +6065,8 @@ def main(argv):
             return cmd_triage()
         if cmd == "review":
             return cmd_review()
+        if cmd == "rework":
+            return cmd_rework()
         if cmd == "claim":
             return cmd_claim()
         if cmd == "work":

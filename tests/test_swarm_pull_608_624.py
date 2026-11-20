@@ -5,6 +5,7 @@ from __future__ import print_function
 import os
 import re
 import unittest
+from types import SimpleNamespace
 from unittest import mock
 
 import pytest
@@ -154,6 +155,9 @@ class SwarmModes(unittest.TestCase):
             self.assertEqual(self.sp.worker_effort("work"), "xhigh")
         self.assertEqual(self.sp.worker_effort("review"), "high")
         self.assertEqual(self.sp.worker_effort("triage"), "medium")
+        with mock.patch.dict(os.environ, {
+                "SWARM_MODEL_NAME": "coder", "SWARM_MODEL_FAMILY": "lfm3-1.7b"}):
+            self.assertEqual(self.sp.worker_effort("implementation"), "xhigh")
 
     def test_model_http_sends_native_reasoning_effort(self):
         response = mock.MagicMock()
@@ -164,6 +168,12 @@ class SwarmModes(unittest.TestCase):
         request = urlopen.call_args.args[0]
         payload = __import__("json").loads(request.data.decode("utf-8"))
         self.assertEqual(payload["reasoning_effort"], "xhigh")
+
+    def test_rework_lease_marker_is_recognized(self):
+        marker = "swarm-lease v=1 head=%s kind=rework runner=box" % SHA
+        match = self.sp._LEASE_RE.match(marker)
+        self.assertIsNotNone(match)
+        self.assertEqual(match.group(2), "rework")
 
     def test_signed_note_has_host_and_runner_only(self):
         os.environ["SWARM_MODE"] = "triage"
@@ -1232,7 +1242,6 @@ class SwarmModes(unittest.TestCase):
         self.assertEqual(self.sp.rework_decision([requested], SHA, ci_failed=True), "ci-failed")
         self.assertEqual(self.sp.rework_decision([requested], SHA, needs_human=True), "needs-human")
         self.assertEqual(self.sp.exact_formal_review([commentary], SHA), "stale")
-
         row = self.sp.record_review_rework(
             "brianreborn/familia", 701, issue_sha="a" * 40,
             base_sha=BASE, old_head=SHA, finding="fix tests", state="rework")
@@ -1243,6 +1252,138 @@ class SwarmModes(unittest.TestCase):
             base_sha=BASE, old_head=SHA, finding="fix tests again", state="rework")
         self.assertEqual(row["attempt"], 2)
         self.assertTrue(row["terminal"])
+
+    def test_review_finding_text_includes_only_exact_head_inline_comments(self):
+        review = {"id": 88, "body": ""}
+        comments = [
+            {"pull_request_review_id": 88, "commit_id": SHA, "path": "src/a.py", "line": 12,
+             "body": "add a boundary test"},
+            {"pull_request_review_id": 88, "commit_id": OTHER, "path": "src/b.py", "line": 4,
+             "body": "stale note"},
+            {"pull_request_review_id": 89, "commit_id": SHA, "path": "src/c.py", "line": 7,
+             "body": "different review"},
+        ]
+        finding = self.sp.review_finding_text(review, comments, SHA)
+        self.assertIn("src/a.py:12", finding)
+        self.assertIn("add a boundary test", finding)
+        self.assertNotIn("stale note", finding)
+        self.assertNotIn("different review", finding)
+
+    def test_review_findings_requiring_code_are_handed_off(self):
+        self.assertTrue(self.sp.review_requires_implementation(
+            "This draft does not implement the issue; add concrete code/tests and CI-green behavior."))
+        self.assertFalse(self.sp.review_requires_implementation(
+            "Please clarify the measured result in the research note."))
+
+    def test_change_request_enters_rework_queue(self):
+        pr = _pr(number=700, sha=SHA, ref="swarm/box/700")
+        review = {"commit_id": SHA, "state": "CHANGES_REQUESTED", "body": "fix this"}
+        with mock.patch.object(self.sp, "iter_swarm_drafts", return_value=[pr]), \
+             mock.patch.object(self.sp, "owner_approved_pr", return_value=True), \
+             mock.patch.object(self.sp, "_branch_runner", return_value=("box", 700)), \
+             mock.patch.object(self.sp, "get_pr_reviews", return_value=[review]):
+            candidates = self.sp.review_rework_candidates("brianreborn/familia")
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0]["head"], SHA)
+        self.assertEqual(candidates[0]["review"], review)
+        self.assertEqual(candidates[0]["issue"], 700)
+
+    def test_triage_mode_processes_rework_queue(self):
+        order = []
+        pr = _pr(number=700, sha=SHA, ref="swarm/box/700")
+        with mock.patch.dict(os.environ, {"SWARM_MODE": "triage"}), \
+             mock.patch.object(self.sp, "iter_swarm_drafts", return_value=[pr]), \
+             mock.patch.object(self.sp, "cmd_rework", side_effect=lambda: order.append("rework")), \
+             mock.patch.object(self.sp, "triage_one", side_effect=lambda *_: order.append("triage")):
+            self.assertEqual(self.sp.cmd_triage(), 0)
+        self.assertEqual(order, ["rework", "triage"])
+
+    def test_rework_command_accepts_triage_mode(self):
+        candidate = {"pr": {"number": 700}}
+        with mock.patch.dict(os.environ, {"SWARM_MODE": "triage"}), \
+             mock.patch.object(self.sp, "_rework_targets", return_value=[candidate]), \
+             mock.patch.object(self.sp, "rework_requested_pr", return_value={"ok": True}) as run:
+            self.assertEqual(self.sp.cmd_rework(), 0)
+        run.assert_called_once_with("brianreborn/familia", candidate)
+
+    def test_change_request_queue_skips_stale_comments_unapproved_and_capped(self):
+        pr = _pr(number=700, sha=SHA, ref="swarm/box/700")
+        cases = (
+            ([{"commit_id": OTHER, "state": "CHANGES_REQUESTED"}], True, None),
+            ([{"commit_id": SHA, "state": "COMMENTED"}], True, None),
+            ([{"commit_id": SHA, "state": "CHANGES_REQUESTED"}], False, None),
+            ([{"commit_id": SHA, "state": "CHANGES_REQUESTED"}], True,
+             {"attempt": self.sp.REWORK_ATTEMPT_MAX, "old_head": OTHER}),
+        )
+        for reviews, approved, saved_state in cases:
+            with self.subTest(reviews=reviews, approved=approved, saved_state=saved_state), \
+                 mock.patch.object(self.sp, "iter_swarm_drafts", return_value=[pr]), \
+                 mock.patch.object(self.sp, "owner_approved_pr", return_value=approved), \
+                 mock.patch.object(self.sp, "_branch_runner", return_value=("box", 700)), \
+                 mock.patch.object(self.sp, "get_pr_reviews", return_value=reviews), \
+                 mock.patch.object(self.sp, "load_json_safe", return_value=saved_state):
+                self.assertEqual(self.sp.review_rework_candidates("brianreborn/familia"), [])
+
+    def test_requested_rework_updates_only_existing_note_and_never_force_pushes(self):
+        issue_number = 700
+        repo = "brianreborn/familia"
+        rel = "docs/research/swarm-700-box.md"
+        pr = _pr(number=issue_number, sha=SHA, ref="swarm/box/700")
+        review = {"commit_id": SHA, "state": "CHANGES_REQUESTED", "body": "address the missing test"}
+        new_head = "12" * 20
+        repo_dir = self.home / "repo"
+        worktree = self.home / "work" / "wt" / str(issue_number)
+        note = worktree / rel
+        note.parent.mkdir(parents=True)
+        note.write_text("old note\n")
+        (worktree / ".git").write_text("gitdir: test\n")
+        pushes = []
+
+        def fake_git(args, cwd, timeout=180):
+            if args[0] == "push":
+                pushes.append(args)
+            if args[:2] == ["rev-parse", "refs/remotes/origin/swarm/box/700"]:
+                return SHA
+            if args[:2] == ["rev-parse", "HEAD"]:
+                return new_head
+            if args[0] == "diff":
+                return rel + "\n"
+            return ""
+
+        approval = SimpleNamespace(
+            ok=True, content_sha="ab" * 32, title="Approved", body="Approved body")
+        candidate = {
+            "pr": pr, "review": review, "head": SHA, "base": BASE,
+            "branch": "swarm/box/700", "runner": "box", "issue": issue_number,
+        }
+        with mock.patch.dict(os.environ, {
+                "SWARM_MODE": "rework", "SWARM_REPO_DIR": str(repo_dir)}), \
+             mock.patch.object(self.sp, "acquire_score_lease", return_value=77), \
+             mock.patch.object(self.sp, "release_score_lease"), \
+             mock.patch.object(self.sp, "pr_branch_trusted", return_value=True), \
+             mock.patch.object(self.sp, "owner_approved_pr", return_value=True), \
+             mock.patch.object(self.sp, "approval_status", return_value=approval), \
+             mock.patch.object(self.sp, "get_pull", return_value=pr), \
+             mock.patch.object(self.sp, "get_pr_reviews", return_value=[review]), \
+             mock.patch.object(self.sp, "get_pr_review_comments", return_value=[]), \
+             mock.patch.object(self.sp, "get_pr_files", return_value=[{"filename": rel}]), \
+             mock.patch.object(self.sp, "fetch_exact_diff", return_value="diff"), \
+             mock.patch.object(self.sp, "model_high_effort", return_value=("draft " * 50, "stub", "nonce")), \
+             mock.patch.object(self.sp, "validate_draft"), \
+             mock.patch.object(self.sp, "build_doc", return_value="updated note\n"), \
+             mock.patch.object(self.sp, "git", side_effect=fake_git), \
+             mock.patch.object(self.sp, "git_ident", return_value=[]), \
+             mock.patch.object(self.sp, "recheck_gate"), \
+             mock.patch.object(self.sp, "stamp_line", return_value="stamp"):
+            result = self.sp.rework_requested_pr(repo, candidate)
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(note.read_text(), "updated note\n")
+        self.assertEqual(len(pushes), 1)
+        self.assertNotIn("--force", pushes[0])
+        saved = self.sp.load_json_safe(self.sp.rework_state_path(repo, issue_number), "review rework")
+        self.assertEqual(saved["state"], "submitted")
+        self.assertEqual(saved["attempt"], 1)
 
     def test_review_rework_prompt_is_fenced_and_never_editing(self):
         prompt = self.sp.build_review_rework_prompt(
