@@ -283,9 +283,23 @@ def local_topology(graph, host):
                 if members[0].get("tools"):
                     aliases[alias_name]["tools"] = True  # graph_router must send the node's per-port key
             else:
-                # fallback list and/or remote member: served by scripts/graph_router.py, not graph-proxy
-                aliases[alias_name] = {"kind": kinds.pop(), "members": members}
-        aliases.update(_cascade_routes(graph, gateway_name, aliases, alias_members))
+                role = graph_validator.node_type(graph, node_name)  # node.role > model.role
+                model_role = (model.get("role") or "").strip().lower()
+                if role in graph_validator.FAIL_CLOSED_TYPES or model_role in graph_validator.FAIL_CLOSED_TYPES:
+                    raise StartupError(
+                        f"alias {alias_name} targets fail-closed role (node {role!r}, model {model_role!r}); "
+                        f"fail-closed models cannot be made proxy-routable"
+                    )
+                if role not in graph_validator.PROXY_ROUTABLE_ROLES:
+                    raise StartupError(
+                        f"alias {alias_name} targets node role {role!r}; graph-proxy routes "
+                        f"{', '.join(graph_validator.PROXY_ROUTABLE_ROLES)} as chat, plus embeddings"
+                    )
+                kind = "chat"
+            aliases[alias_name] = {
+                "kind": kind,
+                "url": f"http://127.0.0.1:{node['port']}",
+            }
         if aliases:
             gateways.append((gateway_name, gateway, aliases))
     return nodes, remote_nodes, gateways, omitted_aliases, remote_gateways
