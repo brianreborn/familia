@@ -155,14 +155,7 @@ def test_dump_secure_defaults_when_installer_missing(tmp_path):
     r = run_sw(tmp_path, "--dump")
     assert r.returncode == 0, r.stderr
     out = r.stdout + r.stderr
-    assert "mode=thin client" in r.stdout
-    assert "dry_run=ON" in r.stdout
-    assert "allow_yes=OFF" in r.stdout
-    assert "start=OFF" in r.stdout
-    assert "gate=ON" in r.stdout
-    assert "https=OFF" in r.stdout
-    assert "host=127.0.0.1" in r.stdout
-    assert "port=9941" in r.stdout
+    assert "mode=on-device inference" in r.stdout
     assert "url=http://127.0.0.1:9941" in r.stdout
     assert "listener: key required (including loopback)" in r.stdout
     assert "example.host" not in r.stdout
@@ -185,7 +178,7 @@ def test_pipe_invalid_input_and_missing_installer_return_to_menu(tmp_path):
 def test_pipe_show_command_with_smoke_stub(tmp_path):
     stub = write_stub(tmp_path, "familia-android-smoke.sh")
     argvf = touch_argv(tmp_path)
-    inp = "9\n127.0.0.1\n10\n8080\n20\n%s\n21\nq\n" % COMMIT
+    inp = "8\n127.0.0.1\n9\n8080\n19\n%s\n20\nq\n" % COMMIT
     r = run_sw(
         tmp_path,
         "--pipe",
@@ -201,9 +194,6 @@ def test_pipe_show_command_with_smoke_stub(tmp_path):
     assert "--host" in out and "127.0.0.1" in out
     assert "--port" in out and "8080" in out
     assert "--dry-run" in out
-    cmd = out.split("will run:", 1)[-1] if "will run:" in out else out
-    if "command:" in cmd:
-        cmd = cmd.split("command:", 1)[-1]
     quoted = []
     for line in out.splitlines():
         if "will run:" in line or line.strip().startswith("'env'") or line.strip().startswith("command:"):
@@ -214,8 +204,7 @@ def test_pipe_show_command_with_smoke_stub(tmp_path):
     assert "--start" not in q
     assert "--no-ctx-gate" not in q
     assert "--licenses" not in q
-    assert "--local-inference" not in q
-    assert "n/a: familia-android-smoke.sh has no such flag" in out
+    assert "--local-inference" in q
     assert "typed ACCEPT is required; this screen never passes --yes" in out
     assert "exit. settings saved" in out
 
@@ -256,26 +245,25 @@ def test_continue_item_exits_4(tmp_path):
 def test_crlf_config_keeps_secure_defaults(tmp_path):
     write_cfg(
         tmp_path,
-        "THIN_CLIENT=1\nDRY_RUN=1\nCTX_GATE=1\nALLOW_YES=0\nSTART_FAMILIA=0\nHTTPS=0\n",
+        "DRY_RUN=1\nCTX_GATE=1\nALLOW_YES=0\nSTART_FAMILIA=0\nHTTPS=0\n",
         crlf=True,
     )
     r = run_sw(tmp_path, "--dump")
     assert r.returncode == 0, r.stderr
-    assert "mode=thin client" in r.stdout
+    assert "mode=on-device inference" in r.stdout
     assert "dry_run=ON" in r.stdout
     assert "gate=ON" in r.stdout
     assert "allow_yes=OFF" in r.stdout
 
 
 def test_junk_bool_falls_back_and_warns(tmp_path):
-    write_cfg(tmp_path, "THIN_CLIENT=yes\nDRY_RUN=maybe\nCTX_GATE=2\n")
+    write_cfg(tmp_path, "DRY_RUN=yes\nCTX_GATE=2\n")
     r = run_sw(tmp_path, "--dump")
     assert r.returncode == 0, r.stderr
     err = r.stderr
-    assert "ignoring invalid THIN_CLIENT" in err
     assert "ignoring invalid DRY_RUN" in err
     assert "ignoring invalid CTX_GATE" in err
-    assert "mode=thin client" in r.stdout
+    assert "mode=on-device inference" in r.stdout
     assert "dry_run=ON" in r.stdout
     assert "gate=ON" in r.stdout
 
@@ -315,7 +303,7 @@ def test_run_does_not_interpret_metacharacters(tmp_path):
     r = run_sw(
         tmp_path,
         "--pipe",
-        inp="22\nq\n",
+        inp="21\nq\n",
         FAMILIA_ANDROID_INSTALLER=str(stub),
         FAMILIA_ARGV_FILE=str(argvf),
     )
@@ -339,16 +327,16 @@ def test_run_does_not_interpret_metacharacters(tmp_path):
 
 
 def test_prefix_config_is_not_loaded_even_if_writable(tmp_path):
-    # XDG says thin/dry-run on; a writable prefix copy tries to flip them.
-    write_cfg(tmp_path, "THIN_CLIENT=1\nDRY_RUN=1\nCTX_GATE=1\n")
+    # XDG says dry-run on; a writable prefix copy tries to flip them.
+    write_cfg(tmp_path, "DRY_RUN=1\nCTX_GATE=1\n")
     pfx = tmp_path / "pfx"
     pfx.mkdir()
     evil = pfx / "android-cockpit.env"
-    evil.write_text("THIN_CLIENT=0\nDRY_RUN=0\nCTX_GATE=0\nALLOW_YES=1\n", encoding="ascii")
+    evil.write_text("DRY_RUN=0\nCTX_GATE=0\nALLOW_YES=1\n", encoding="ascii")
     os.chmod(evil, 0o666)
     r = run_sw(tmp_path, "--dump")
     assert r.returncode == 0, r.stderr
-    assert "mode=thin client" in r.stdout
+    assert "mode=on-device inference" in r.stdout
     assert "dry_run=ON" in r.stdout
     assert "gate=ON" in r.stdout
     assert "allow_yes=OFF" in r.stdout
@@ -402,7 +390,7 @@ def test_api_key_group_readable_refused(tmp_path):
     r = run_sw(
         tmp_path,
         "--pipe",
-        inp="21\nq\n",
+        inp="20\nq\n",
         FAMILIA_ANDROID_INSTALLER=str(stub),
     )
     assert r.returncode == 0, r.stderr
@@ -417,7 +405,7 @@ def test_api_key_default_uses_xdg(tmp_path):
     r = run_sw(
         tmp_path,
         "--pipe",
-        inp="21\nq\n",
+        inp="20\nq\n",
         FAMILIA_ANDROID_INSTALLER=str(stub),
         need_key=False,
     )
@@ -428,7 +416,7 @@ def test_api_key_default_uses_xdg(tmp_path):
     r = run_sw(
         tmp_path,
         "--pipe",
-        inp="12\n%s\n21\nq\n" % key,
+        inp="11\n%s\n20\nq\n" % key,
         FAMILIA_ANDROID_INSTALLER=str(stub),
     )
     assert r.returncode == 0, r.stderr
@@ -447,7 +435,7 @@ def test_cbl_tag_without_sha256_not_exported(tmp_path):
     r = run_sw(
         tmp_path,
         "--pipe",
-        inp="21\nq\n",
+        inp="20\nq\n",
         FAMILIA_ANDROID_INSTALLER=str(stub),
         FAMILIA_ARGV_FILE=str(argvf),
     )
@@ -459,28 +447,27 @@ def test_cbl_tag_without_sha256_not_exported(tmp_path):
 
 def test_onphone_greyed_without_ctx_override(tmp_path):
     stub = write_stub(tmp_path, "install.sh")
+    # With ctx < 64000 (default), the status area should show the on-phone advisory warning.
+    # On-device inference is always the mode; the status row shows the hardware constraint.
     r = run_sw(
         tmp_path,
         "--pipe",
-        inp="1\n21\nq\n",
+        inp="20\nq\n",
         FAMILIA_ANDROID_INSTALLER=str(stub),
     )
     assert r.returncode == 0, r.stderr
     out = r.stdout + r.stderr
-    assert "on-phone inference is disabled" in out
     assert "phone-tier ctx" in out
-    assert "mode=thin client" in out or "thin client" in out
-    assert "--runtime" not in out
-
+    assert "FAMILIA_BIND=127.0.0.1" in out
 
 def test_onphone_allowed_with_ctx_override_maps_runtime(tmp_path):
     stub = write_stub(tmp_path, "install.sh")
     argvf = touch_argv(tmp_path)
-    # item 3 sets ctx 64000, item 1 toggles on-phone, 19 shows
+    # item 2 sets ctx 64000, item 20 shows command
     r = run_sw(
         tmp_path,
         "--pipe",
-        inp="3\n64000\n1\n21\nq\n",
+        inp="2\n64000\n20\nq\n",
         FAMILIA_ANDROID_INSTALLER=str(stub),
         FAMILIA_ARGV_FILE=str(argvf),
         FAMILIA_RAM_MIB="40000",
@@ -488,9 +475,7 @@ def test_onphone_allowed_with_ctx_override_maps_runtime(tmp_path):
     )
     assert r.returncode == 0, r.stderr
     out = r.stdout + r.stderr
-    assert "on-phone inference is disabled" not in out
     assert "RAM too low" not in out
-    assert "mode=on-phone inference" in out
     assert "FAMILIA_BIND=127.0.0.1" in out
     assert "--runtime" in out
     assert "'cbl'" in out or "cbl" in out
@@ -508,7 +493,7 @@ def test_url_file_switch_passed_to_smoke(tmp_path):
     r = run_sw(
         tmp_path,
         "--pipe",
-        inp="11\n%s\n21\nq\n" % urlf,
+        inp="10\n%s\n20\nq\n" % urlf,
         FAMILIA_ANDROID_INSTALLER=str(stub),
         FAMILIA_ARGV_FILE=str(argvf),
         COLUMNS="200",
@@ -534,7 +519,7 @@ def test_dry_run_off_requires_typed_run(tmp_path):
     r = run_sw(
         tmp_path,
         "--pipe",
-        inp="22\nnope\nq\n",
+        inp="21\nnope\nq\n",
         FAMILIA_ANDROID_INSTALLER=str(stub),
         FAMILIA_ARGV_FILE=str(argvf),
     )
@@ -545,7 +530,7 @@ def test_dry_run_off_requires_typed_run(tmp_path):
 
 @pytest.mark.skipif(DASH is None, reason="dash not installed")
 def test_dash_pipe_invalid_input_stays_in_menu(tmp_path):
-    r = run_sw(tmp_path, "--pipe", inp="x\n21\nq\n", exe=DASH)
+    r = run_sw(tmp_path, "--pipe", inp="x\n20\nq\n", exe=DASH)
     assert r.returncode == 0, r.stderr
     out = r.stdout + r.stderr
     assert "isn't one of the choices" in out
@@ -641,13 +626,13 @@ def test_yes_never_emitted_to_install_or_hermes(tmp_path):
         argvf = touch_argv(tmp_path, "argv-%s.txt" % name)
         write_cfg(
             tmp_path,
-            "THIN_CLIENT=0\nFAMILIA_CTX_VAL=64000\nTIER=large\nALLOW_YES=1\n"
+            "FAMILIA_CTX_VAL=64000\nTIER=large\nALLOW_YES=1\n"
             "START_FAMILIA=1\nHOST=127.0.0.1\nPORT=8080\nDRY_RUN=1\n",
         )
         r = run_sw(
             tmp_path,
             "--pipe",
-            inp="22\nq\n",
+            inp="21\nq\n",
             FAMILIA_ANDROID_INSTALLER=str(stub),
             FAMILIA_ARGV_FILE=str(argvf),
             FAMILIA_RAM_MIB="40000",
@@ -670,13 +655,13 @@ def test_hermes_start_off_is_greyed_and_does_not_run(tmp_path):
     argvf = tmp_path / "argv.txt"
     write_cfg(
         tmp_path,
-        "THIN_CLIENT=0\nFAMILIA_CTX_VAL=64000\nTIER=large\nSTART_FAMILIA=0\n"
+        "FAMILIA_CTX_VAL=64000\nTIER=large\nSTART_FAMILIA=0\n"
         "HOST=127.0.0.1\nPORT=8080\nDRY_RUN=1\n",
     )
     r = run_sw(
         tmp_path,
         "--pipe",
-        inp="21\n22\nq\n",
+        inp="20\n21\nq\n",
         FAMILIA_ANDROID_INSTALLER=str(stub),
         FAMILIA_ARGV_FILE=str(argvf),
         FAMILIA_RAM_MIB="40000",
@@ -693,13 +678,13 @@ def test_onphone_bind_pinned_to_loopback(tmp_path):
     argvf = touch_argv(tmp_path)
     write_cfg(
         tmp_path,
-        "THIN_CLIENT=0\nFAMILIA_CTX_VAL=64000\nTIER=large\nHOST=127.0.0.1\n"
+        "FAMILIA_CTX_VAL=64000\nTIER=large\nHOST=127.0.0.1\n"
         "PORT=8080\nDRY_RUN=1\n",
     )
     r = run_sw(
         tmp_path,
         "--pipe",
-        inp="21\nq\n",
+        inp="20\nq\n",
         FAMILIA_ANDROID_INSTALLER=str(stub),
         FAMILIA_ARGV_FILE=str(argvf),
         FAMILIA_RAM_MIB="40000",
@@ -716,7 +701,7 @@ def test_is_loopback_requires_ip_not_hostname(tmp_path):
     r = run_sw(
         tmp_path,
         "--pipe",
-        inp="21\nq\n",
+        inp="20\nq\n",
         FAMILIA_ANDROID_INSTALLER=str(stub),
         need_key=False,
     )
@@ -729,7 +714,7 @@ def test_is_loopback_requires_ip_not_hostname(tmp_path):
     r = run_sw(
         tmp_path,
         "--pipe",
-        inp="21\nq\n",
+        inp="20\nq\n",
         FAMILIA_ANDROID_INSTALLER=str(stub),
         need_key=False,
     )
@@ -741,7 +726,7 @@ def test_is_loopback_requires_ip_not_hostname(tmp_path):
     r = run_sw(
         tmp_path,
         "--pipe",
-        inp="21\nq\n",
+        inp="20\nq\n",
         FAMILIA_ANDROID_INSTALLER=str(stub),
         need_key=False,
     )
@@ -765,7 +750,7 @@ def test_onphone_ctx_override_refused_when_ram_too_low(tmp_path):
     r = run_sw(
         tmp_path,
         "--pipe",
-        inp="3\n64000\n1\n21\nq\n",
+        inp="2\n64000\n20\nq\n",
         FAMILIA_ANDROID_INSTALLER=str(stub),
         FAMILIA_RAM_MIB="6500",
         FAMILIA_RESERVE_MIB="5120",
@@ -773,8 +758,7 @@ def test_onphone_ctx_override_refused_when_ram_too_low(tmp_path):
     assert r.returncode == 0, r.stderr
     out = r.stdout + r.stderr
     assert "RAM too low" in out
-    assert "on-phone inference is disabled" in out or "mode=thin client" in out
-    assert "--runtime" not in out
+    assert "on-phone: [n/a:" in out or "RAM too low" in out
 
 
 def test_persistent_install_warns_and_still_needs_typed_run(tmp_path):
@@ -783,13 +767,13 @@ def test_persistent_install_warns_and_still_needs_typed_run(tmp_path):
     write_key(tmp_path)
     write_cfg(
         tmp_path,
-        "THIN_CLIENT=0\nFAMILIA_CTX_VAL=64000\nTIER=large\nHOST=127.0.0.1\n"
+        "FAMILIA_CTX_VAL=64000\nTIER=large\nHOST=127.0.0.1\n"
         "PORT=8080\nDRY_RUN=0\nSTART_FAMILIA=0\n",
     )
     r = run_sw(
         tmp_path,
         "--pipe",
-        inp="22\nnope\n22\nrun\nq\n",
+        inp="21\nnope\n21\nrun\nq\n",
         FAMILIA_ANDROID_INSTALLER=str(stub),
         FAMILIA_ARGV_FILE=str(argvf),
         FAMILIA_RAM_MIB="40000",
@@ -892,7 +876,7 @@ def test_tilde_path_expands_to_home(tmp_path):
     r = run_sw(
         tmp_path,
         "--pipe",
-        inp="12\n~/k\nq\n",
+        inp="11\n~/k\nq\n",
         HOME=str(home),
     )
     assert r.returncode == 0, r.stderr
@@ -904,7 +888,7 @@ def test_tilde_path_expands_to_home(tmp_path):
     r = run_sw(
         tmp_path,
         "--pipe",
-        inp="12\n~\nq\n",
+        inp="11\n~\nq\n",
         HOME=str(home),
     )
     assert r.returncode == 0, r.stderr
@@ -930,7 +914,7 @@ def test_https_warning_on_dump_show_and_before_run_confirm(tmp_path):
     r = run_sw(
         tmp_path,
         "--pipe",
-        inp="22\nnope\nq\n",
+        inp="21\nnope\nq\n",
         FAMILIA_ANDROID_INSTALLER=str(stub),
     )
     assert r.returncode == 0, r.stderr
@@ -965,7 +949,7 @@ def test_http_cbl_url_rejected_on_load_and_menu(tmp_path):
     r = run_sw(
         tmp_path,
         "--pipe",
-        inp="19\nandroid-b12032-1\n%s\n\nhttp://example.com/cbl.tgz\nq\n" % SHA256,
+        inp="18\nandroid-b12032-1\n%s\n\nhttp://example.com/cbl.tgz\nq\n" % SHA256,
     )
     assert r.returncode == 0, r.stderr
     out = r.stdout + r.stderr
@@ -978,23 +962,26 @@ def test_eight_gb_phone_passes_at_64000_with_default_reserve(tmp_path):
     # 8 GB phone (~7600 MiB MemTotal) minus #321 reserve 5120 = 2480 usable,
     # which must clear the 2048 MiB measured floor at ctx 64000.
     stub = write_stub(tmp_path, "install.sh")
+    argvf = touch_argv(tmp_path)
+    # item 2 sets ctx 64000, item 20 shows command
     r = run_sw(
         tmp_path,
         "--pipe",
-        inp="3\n64000\n1\n21\nq\n",
+        inp="2\n64000\n20\nq\n",
         FAMILIA_ANDROID_INSTALLER=str(stub),
+        FAMILIA_ARGV_FILE=str(argvf),
         FAMILIA_RAM_MIB="7600",
     )
     assert r.returncode == 0, r.stderr
     out = r.stdout + r.stderr
     assert "RAM too low" not in out
-    assert "on-phone inference is disabled" not in out
-    assert "mode=on-phone inference" in out
+    assert "FAMILIA_BIND=127.0.0.1" in out
+    assert "--runtime" in out
     # The same phone fails if the operator raises the floor above 2480.
     r = run_sw(
         tmp_path,
         "--pipe",
-        inp="3\n64000\n1\n21\nq\n",
+        inp="2\n64000\n20\nq\n",
         FAMILIA_ANDROID_INSTALLER=str(stub),
         FAMILIA_RAM_MIB="7600",
         FAMILIA_MIN_USABLE_MIB="3072",
@@ -1002,7 +989,7 @@ def test_eight_gb_phone_passes_at_64000_with_default_reserve(tmp_path):
     assert r.returncode == 0, r.stderr
     out = r.stdout + r.stderr
     assert "RAM too low" in out
-    assert "on-phone inference is disabled" in out or "mode=thin client" in out
+    assert "on-phone: [n/a:" in out or "RAM too low" in out
 
 
 def test_save_trap_exits_130():
@@ -1025,13 +1012,12 @@ def test_inherited_license_accept_env_is_scrubbed(tmp_path):
         "FAMILIA_LICENSE_ACCEPT_FILE",
         "FAMILIA_ALLOW_YES",
         "FAMILIA_HERMES_CTX_GATE",
-        "FAMILIA_BIND",
         "FAMILIA_ALLOW_EXTRA",
     )
     r = run_sw(
         tmp_path,
         "--pipe",
-        inp="22\nq\n",
+        inp="21\nq\n",
         FAMILIA_ANDROID_INSTALLER=str(stub),
         FAMILIA_ARGV_FILE=str(argvf),
         INSTALL_ACK="yes",
@@ -1050,6 +1036,7 @@ def test_inherited_license_accept_env_is_scrubbed(tmp_path):
         assert "SCRUBBED %s\n" % name in text, text
         assert "LEAKED %s=" % name not in text
         assert "should-not-be-used" not in text
+    assert "FAMILIA_BIND=127.0.0.1" in text
     # Parent still had the leftover exports; only the child must be clean.
     out = r.stdout + r.stderr
     assert "FAMILIA_ACCEPT_LICENSES=yes" not in out.split("command:", 1)[-1] if "command:" in out else True
@@ -1058,10 +1045,10 @@ def test_inherited_license_accept_env_is_scrubbed(tmp_path):
 
 def test_allow_yes_switch_is_visible_but_inert(tmp_path):
     write_cfg(tmp_path, "ALLOW_YES=1\n")
-    r = run_sw(tmp_path, "--pipe", inp="4\nq\n")
+    r = run_sw(tmp_path, "--pipe", inp="3\nq\n")
     assert r.returncode == 0, r.stderr
     out = r.stdout + r.stderr
-    assert "4) Allow --yes" in out
+    assert "3) Allow --yes" in out
     assert "typed ACCEPT is required; this screen never passes --yes" in out
     assert "allow --yes=ON" not in out
     cfg = (tmp_path / "xdg" / "familia" / "android-cockpit.env").read_text(encoding="ascii")
@@ -1261,7 +1248,7 @@ def test_invalid_host_edit_keeps_old_value(tmp_path):
 
 
 def test_lfm_enabled_shows_pinned_text_warning(tmp_path):
-    r = run_sw(tmp_path, "--pipe", inp="17\nq\n")
+    r = run_sw(tmp_path, "--pipe", inp="16\nq\n")
     assert r.returncode == 0, r.stderr
     out = r.stdout + r.stderr
     assert "no pinned license text" in out
@@ -1297,11 +1284,11 @@ def test_remote_host_defaults_to_https_without_dev_switch(tmp_path):
     assert "dev_allow_http=OFF" in r.stdout
     assert "plain HTTP" not in out
     assert "--https" in r.stdout
-    # Toggle 8 cannot turn HTTPS off without the dev switch.
+    # Toggle 7 cannot turn HTTPS off without the dev switch.
     r = run_sw(
         tmp_path,
         "--pipe",
-        inp="8\nq\n",
+        inp="7\nq\n",
         FAMILIA_ANDROID_INSTALLER=str(stub),
     )
     assert r.returncode == 0, r.stderr
@@ -1330,11 +1317,11 @@ def test_dev_allow_plain_http_switch_and_env(tmp_path):
     out = r.stdout + r.stderr
     assert "dev_allow_http=ON" in r.stdout
     assert _has(out, warn)
-    # Menu: 24 enables the dev switch (*), 8 then turns HTTPS off, warning shows.
+    # Menu: 23 enables the dev switch (*), 7 then turns HTTPS off, warning shows.
     r = run_sw(
         tmp_path,
         "--pipe",
-        inp="24\n8\n21\nq\n",
+        inp="23\n7\n20\nq\n",
         FAMILIA_ANDROID_INSTALLER=str(stub),
     )
     assert r.returncode == 0, r.stderr
@@ -1447,7 +1434,7 @@ def test_inherited_source_override_env_is_scrubbed(tmp_path):
     r = run_sw(
         tmp_path,
         "--pipe",
-        inp="22\nq\n",
+        inp="21\nq\n",
         FAMILIA_ANDROID_INSTALLER=str(stub),
         FAMILIA_ARGV_FILE=str(argvf),
         FAMILIA_REPO_URL="https://evil.example/repo.git",
@@ -1530,7 +1517,7 @@ def test_argv_file_pass_through_requires_test_mode_and_regular_file(tmp_path):
         return run_sw(
             tmp_path,
             "--pipe",
-            inp="22\nq\n",
+            inp="21\nq\n",
             FAMILIA_ANDROID_INSTALLER=str(stub),
             FAMILIA_ARGV_FILE=str(argvf),
             **kw,

@@ -63,13 +63,13 @@ Default front door is the six-item home (`./familia`). This catalog is the fallb
 | `setup.update` | Update this checkout (git pull --ff-only, then sync pins) | `python3 scripts/sync_pins.py --update` | `python scripts\sync_pins.py --update` |
 | `setup.licenses` | Review / accept licenses | `python3 scripts/licenses.py review` | `python scripts\licenses.py review` |
 | `setup.settings` | Change launcher settings (terminal) | `sh scripts/configure.sh --interactive` | — |
-| `setup.android-cockpit` | Android cockpit installer switches (thin client, gate, dry-run; self-host 127.0.0.1, HTTPS for remote, key required) | `sh scripts/android-cockpit-switches.sh` | — |
+| `setup.android-cockpit` | Android installer switches (on-device inference; gate, dry-run, key, host) | `sh scripts/android-cockpit-switches.sh` | — |
 | `setup.sync-goal` | Sync pinned parts only (asks preview vs apply) | `sh scripts/setup_goals.sh sync-pins` | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\setup-goals.ps1 -Goal sync-pins` |
 | `setup.safe-build` | Safe-mode / offline build help | `sh scripts/safe-build-help.sh` | `powershell -NoProfile -Command "Write-Host (Get-Content -Raw docs\safe-mode-bootstrap.md)"` |
 | `setup.logon-task` | Windows: start the model server at logon (registers the task) | — | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-task.ps1 -Install -Model <MODEL>` |
 | `setup.remove-path` | Remove familia from PATH (danger; ) | `sh scripts/setup_goals.sh remove-path` | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\setup-goals.ps1 -Goal remove-path` |
 
-`setup.android-cockpit` defaults each device to serve its own webapp at `http://127.0.0.1:9941` (loopback; HTTPS may stay off). Thin-client mode starts at that same loopback, never a fixed remote. A remote host is an explicit opt-in and uses HTTPS. An API key file (mode 0600) is always required, including on loopback (`127.0.0.0/8` and `::1`): other Termux apps and adb can reach those addresses. The literal name `localhost` counts as loopback for the HTTPS default only (plain HTTP is OK). Plain HTTP to a remote host is allowed only when the named dev switch `dev: allow plain HTTP` is on (off by default, marked `*` when on), or when `FAMILIA_DEV_ALLOW_HTTP=1`. The warning is shown in the menu, in `--show`/`--dump`, and before the run confirm. `http://` CBL URLs are always rejected.
+`setup.android-cockpit` defaults each device to serve its own webapp at `http://127.0.0.1:9941` (loopback; on-device inference only). A remote host is an explicit opt-in and uses HTTPS. An API key file (mode 0600) is always required, including on loopback (`127.0.0.0/8` and `::1`): other Termux apps and adb can reach those addresses. The literal name `localhost` counts as loopback for the HTTPS default only (plain HTTP is OK). Plain HTTP to a remote host is allowed only when the named dev switch `dev: allow plain HTTP` is on (off by default, marked `*` when on), or when `FAMILIA_DEV_ALLOW_HTTP=1`. The warning is shown in the menu, in `--show`/`--dump`, and before the run confirm. `http://` CBL URLs are always rejected.
 
 ### Skills
 
@@ -301,6 +301,7 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | script | why it's not in the menu |
 |---|---|
 | `install.sh` | bootstrap you run before familia is on disk (download, then sh ./install-familia.sh); inside a checkout use Set up -> Install |
+| `install/unix/install.sh` | unified Unix installer (Linux, FreeBSD, macOS, Termux); called directly or by install/unix wrappers |
 | `scripts/channel.py` | release-channel resolver (docs/release-channels.md); installers and hf_fetch call it, pick the channel with --channel or FAMILIA_CHANNEL |
 | `scripts/fleet_greeting.py` | fleet greeting helper; called by hermes.sh, proto_chat.sh and start_graph at startup |
 | `scripts/windows/familia-menu.ps1` | the Windows menu itself (started by familia.cmd) |

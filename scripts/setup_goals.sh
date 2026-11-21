@@ -96,6 +96,10 @@ installer() {
     printf '%s\n' "$ROOT/install/freebsd/install-familia.sh"
     return
   fi
+  if [ -f "$ROOT/install/unix/install.sh" ]; then
+    printf '%s\n' "$ROOT/install/unix/install.sh"
+    return
+  fi
   if [ -f "$ROOT/install/linux/install.sh" ]; then
     printf '%s\n' "$ROOT/install/linux/install.sh"
   elif [ -f "$ROOT/install/termux/install.sh" ]; then
