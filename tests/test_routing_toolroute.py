@@ -579,3 +579,26 @@ def test_hostile_hop_zero_cannot_reset_and_widen():
     finally:
         L.close(); C.close()
 
+
+
+def test_tr4_fail_closed_override_refused_everywhere():
+    """TR-4 (#621): node.role cannot override a fail-closed model, and is_fail_closed catches it."""
+    import validate_graph as VG, graph_router as GR
+    # Case 1: model is guardian, node claims role coder
+    g = {"nodes": {"test-node": {"model": "guard-model", "role": "coder", "bind": "127.0.0.1", "port": 18001, "status": "active"}},
+         "models": {"guard-model": {"role": "guardian", "tool_calls": True}}}
+    assert VG.is_fail_closed(g, "test-node") is True
+    assert VG.tool_policy(g, "test-node") == []
+    assert VG.tool_route(g, "test-node") is None
+    routable, refused = GR.nodes_from_graph(g)
+    assert "test-node" not in routable
+    assert "test-node" in refused
+
+    # Case 2: mixed-case and lookalike forms
+    g2 = {"nodes": {"test-node2": {"model": "guard-model2", "role": "Chat", "bind": "127.0.0.1", "port": 18002, "status": "active"}},
+          "models": {"guard-model2": {"role": "Guardian", "tool_calls": True}}}
+    assert VG.is_fail_closed(g2, "test-node2") is True
+    assert VG.tool_policy(g2, "test-node2") == []
+    routable2, refused2 = GR.nodes_from_graph(g2)
+    assert "test-node2" not in routable2
+    assert "test-node2" in refused2

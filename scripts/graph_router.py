@@ -77,11 +77,13 @@ def nodes_from_graph(graph, here=None):
     hosts = graph.get("hosts") or {}
     models = graph.get("models") or {}
     for name, n in (graph.get("nodes") or {}).items():
-        role = n.get("role") or (models.get(n.get("model")) or {}).get("role")
+        import validate_graph as vg
         if n.get("status") != "active":
             refused[name] = f"node {name} is {n.get('status') or 'not active'}; not auto-routable"; continue
-        if role in SLASH_ONLY:
-            refused[name] = f"node {name} is TYPE {role} (slash-only); not routable here"; continue
+        node_role = vg.normalize_role(n.get("role"))
+        model_role = vg.normalize_role((models.get(n.get("model")) or {}).get("role"))
+        if node_role in SLASH_ONLY or model_role in SLASH_ONLY or vg.is_fail_closed(graph, name):
+            refused[name] = f"node {name} is TYPE {node_role or model_role} (slash-only); not routable here"; continue
         h = n.get("host")
         local = here is None or h == here
         if local:
