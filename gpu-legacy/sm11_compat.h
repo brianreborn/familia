@@ -6,7 +6,7 @@
 #include <windows.h>
 #define SM11_API __stdcall
 typedef HMODULE sm11_lib_t;
-#define sm11_dlopen(name) LoadLibraryA(name)
+#define sm11_dlopen(name) LoadLibraryExA((name), NULL, LOAD_LIBRARY_SEARCH_SYSTEM32)
 #define sm11_dlsym(handle, sym) GetProcAddress((HMODULE)(handle), sym)
 #define sm11_dlclose(handle) FreeLibrary((HMODULE)(handle))
 #define sm11_yield() YieldProcessor()
