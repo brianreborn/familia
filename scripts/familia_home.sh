@@ -60,7 +60,7 @@ if ! command -v gum >/dev/null 2>&1; then
   fi
   printf 'familia-home: gum (Charm) is required for the new front door.\n' >&2
   printf 'Install (user-local, no sudo):  sh scripts/install-gum.sh\n' >&2
-  printf '     or re-run:                 sh install.sh --yes --no-start\n' >&2
+  printf '     or re-run:                 sh install/unix/install.sh --yes --no-runtime\n' >&2
   printf 'Legacy menu (no gum):  ./familia --legacy-menu\n' >&2
   exit 2
 fi

@@ -1,4 +1,5 @@
 #!/data/data/com.termux/files/usr/bin/sh
+# Legacy platform installer. Prefer install/unix/install.sh for new installs.
 # familia one-click installer: Android via Termux (F-Droid or GitHub build, not Play Store).
 # Usage: sh install/termux/install.sh [flags]   (flags below)
 # Add-ons must match Termux's signing key: with Termux from GitHub releases, get Termux:API from
