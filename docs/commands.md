@@ -301,6 +301,7 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | script | why it's not in the menu |
 |---|---|
 | `install.sh` | bootstrap you run before familia is on disk (download, then sh ./install-familia.sh); inside a checkout use Set up -> Install |
+| `install/unix/install.sh` | unified Unix installer (Linux, FreeBSD, macOS, Termux); called directly or by install/unix wrappers |
 | `scripts/channel.py` | release-channel resolver (docs/release-channels.md); installers and hf_fetch call it, pick the channel with --channel or FAMILIA_CHANNEL |
 | `scripts/fleet_greeting.py` | fleet greeting helper; called by hermes.sh, proto_chat.sh and start_graph at startup |
 | `scripts/windows/familia-menu.ps1` | the Windows menu itself (started by familia.cmd) |
