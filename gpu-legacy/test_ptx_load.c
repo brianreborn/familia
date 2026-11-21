@@ -16,7 +16,9 @@ int main(){
   CUresult (SM11_API *cuCtxCreate)(CUcontext*,unsigned,CUdevice) = (void*)sm11_dlsym(h,"cuCtxCreate_v2");
   CUresult (SM11_API *cuModuleLoadDataEx)(CUmodule*,const void*,unsigned,int*,void**) = (void*)sm11_dlsym(h,"cuModuleLoadDataEx");
   CUresult (SM11_API *cuModuleGetFunction)(CUfunction*,CUmodule,const char*) = (void*)sm11_dlsym(h,"cuModuleGetFunction");
-  FILE*f=fopen("kernels.ptx","rb"); fseek(f,0,SEEK_END); long n=ftell(f); fseek(f,0,SEEK_SET);
+  FILE*f=fopen("kernels.ptx","rb");
+  if (!f) { fprintf(stderr, "failed to open kernels.ptx\n"); return 1; }
+  fseek(f,0,SEEK_END); long n=ftell(f); fseek(f,0,SEEK_SET);
   char*buf=malloc(n+1); fread(buf,1,n,f); buf[n]=0; fclose(f);
   CUdevice d; CUcontext c; CUmodule m; char log[8192]={0}; int opts[2]={5,6}; void*vals[2]={log,(void*)(sizeof log)};
   printf("init %d\n", cuInit(0)); printf("dev %d\n", cuDeviceGet(&d,0)); printf("ctx %d\n", cuCtxCreate(&c,0,d));
