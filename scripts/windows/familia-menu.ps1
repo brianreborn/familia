@@ -52,7 +52,10 @@ $groupDesc = @{
   'Models' = 'list every model, add models, check the graph'; 'Graphs' = 'list every graph and configure fleet, host, or example graphs'; 'Self-improving harness (Harness2)' = 'opt-in; review every change';
   'Agents (hermes)' = 'run hermes on one model or the whole graph'; 'Test & benchmark' = 'benchmark records'; 'Hosts' = 'start this node, measure, monitor';
   'Advanced: models & graph' = 'model database, launch arguments, graph edits'; 'Advanced: agents' = 'skill folders, escalation';
-  'Advanced: hosts & benchmarks' = 'low-level setup, benchmarks, CPU level, uninstall, logon task'; 'Reach tools (Agent-Reach)' = 'opt agents into Agent-Reach web tools'; 'Help' = 'quick start, search, the full command list, what the menu leaves out'
+  'Advanced: hosts & benchmarks' = 'low-level setup, benchmarks, CPU level, uninstall, logon task'; 'Reach tools (Agent-Reach)' = 'opt agents into Agent-Reach web tools';
+  'MCP servers' = 'graph MCP entries; this menu does not bind a port'; 'Tool sets' = 'skill and tool catalogs on this machine';
+  'App store' = 'local app catalog; public search stays cached'; 'Front door' = 'older home goals: protomodel, model finder, X search';
+  'Help' = 'quick start, search, the full command list, what the menu leaves out'
 }
 $groups = @(); foreach ($i in $items) { if (-not ($groups -contains $i.Group)) { $groups += $i.Group } }
 
@@ -365,8 +368,19 @@ while ($true) {
   Write-Host 'familia: what do you want to do?'
   for ($n = 0; $n -lt $groups.Count; $n++) { Write-Host ('  {0}) {1,-36} {2}' -f ($n + 1), $groups[$n], $groupDesc[$groups[$n]]) }
   Write-Host '  q) Quit      /word search every group (n/N next/previous match)'
-  $c = Read-Host "Choose 1-$($groups.Count), /search or q"
-  if ($c -eq $null -or $c -eq 'q') { exit 0 }
+  try {
+    $c = Read-Host "Choose 1-$($groups.Count), /search or q"
+  } catch {
+    Write-Host 'familia: input closed. Menus exit only when you type q.'
+    if (InputRedirected) { exit 2 }
+    continue
+  }
+  if ($null -eq $c) {
+    Write-Host 'familia: input closed. Menus exit only when you type q.'
+    if (InputRedirected) { exit 2 }
+    continue
+  }
+  if ($c -eq 'q' -or $c -eq 'Q' -or $c -eq 'quit' -or $c -eq 'exit') { exit 0 }
   $sr = SearchKey $c; if ($sr -eq 'quit') { exit 0 }; if ($sr -eq 'done') { continue }
   if (-not ($c -match '^\d+$') -or [int]$c -lt 1 -or [int]$c -gt $groups.Count) { Write-Host "'$c' isn't one of the choices. Type a number, /word to search, or q."; continue }
   $g = $groups[[int]$c - 1]
@@ -388,10 +402,21 @@ while ($true) {
       if ($page -lt ($pages - 1)) { Write-Host '  >) Next page' }
     }
     Write-Host '  b) Back      /word search every group (n/N next/previous match)'
-    if ($pages -gt 1) { $c = Read-Host "Choose 1-$($end - $start), </> page, /search or b" }
-    else { $c = Read-Host "Choose 1-$($gi.Count), /search or b" }
-    if ($c -eq $null -or $c -eq 'b' -or $c -eq '') { break }
-    if ($c -eq 'q') { exit 0 }
+    try {
+      if ($pages -gt 1) { $c = Read-Host "Choose 1-$($end - $start), </> page, /search or b" }
+      else { $c = Read-Host "Choose 1-$($gi.Count), /search or b" }
+    } catch {
+      Write-Host 'familia: input closed. Menus exit only when you type q.'
+      if (InputRedirected) { exit 2 }
+      break
+    }
+    if ($null -eq $c) {
+      Write-Host 'familia: input closed. Menus exit only when you type q.'
+      if (InputRedirected) { exit 2 }
+      break
+    }
+    if ($c -eq 'b' -or $c -eq '') { break }
+    if ($c -eq 'q' -or $c -eq 'Q' -or $c -eq 'quit' -or $c -eq 'exit') { exit 0 }
     if ($c -eq '>' -or $c -eq 'next') { if ($page -lt ($pages - 1)) { $page++ }; continue }
     if ($c -eq '<' -or $c -eq 'prev') { if ($page -gt 0) { $page-- }; continue }
     $sr = SearchKey $c; if ($sr -eq 'quit') { exit 0 }; if ($sr -eq 'done') { continue }

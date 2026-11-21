@@ -148,3 +148,10 @@ def test_unquoted_familia_extra_splits_and_host_is_refused(tmp_path):
     # the quoted form (one argv token) does not start with --host and would pass
     ok, msg = g.check(base + ["-ngl 0 --host 0.0.0.0"])
     assert ok is True, msg
+
+
+def test_start_bat_refuses_argv_overrides():
+    bat = open(os.path.join(ROOT, "scripts/windows/start.bat"), newline="").read()
+    assert 'if not "%~1"=="" (' in bat
+    assert "start.bat refuses argv overrides" in bat
+    assert "exit /b 2" in bat

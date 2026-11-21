@@ -49,7 +49,7 @@ static void async_init(sm11_lib_t h) {
     p_cuEventRecord = (void*)sm11_dlsym(h, "cuEventRecord");
     p_cuEventQuery = (void*)sm11_dlsym(h, "cuEventQuery");
     p_cuEventSynchronize = (void*)sm11_dlsym(h, "cuEventSynchronize");
-    if (!p_cuMemHostAlloc || !p_cuMemcpyHtoDAsync || !p_cuMemcpyDtoHAsync || !p_cuEventCreate || !p_cuEventRecord || !p_cuEventQuery) return;
+    if (!p_cuMemHostAlloc || !p_cuMemcpyHtoDAsync || !p_cuMemcpyDtoHAsync || !p_cuEventCreate || !p_cuEventRecord || !p_cuEventQuery || !p_cuEventSynchronize) return;
     if (getenv("SM11_SYNC") && atoi(getenv("SM11_SYNC"))) return;      /* opt-out: legacy blocking path */
     g_pinsz = (size_t)1 << 20;   /* 1 MiB pinned staging (x in, y out) */
     if (p_cuMemHostAlloc((void**)&g_pin, g_pinsz, 0) || p_cuEventCreate(&g_fev, 2 /*DISABLE_TIMING*/)) { g_pin = 0; return; }

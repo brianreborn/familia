@@ -220,13 +220,15 @@ def test_familia_home_q_does_not_open_ui_continue_does():
     arm = text.split('"Open llama-ui web cockpit")', 1)[1].split(";;", 1)[0]
     assert "scripts/android-cockpit-switches.sh" in arm
     assert "scripts/open_ui.sh" in arm
-    assert "scripts/familia_home.sh" in arm
     code = "\n".join(ln for ln in arm.splitlines() if not ln.lstrip().startswith("#"))
     assert code.find("android-cockpit-switches.sh") < code.find("open_ui.sh")
-    # q / other statuses re-exec home; only status 4 opens the UI.
+    # q returns to this loop. Only status 4 runs open_ui, as a child.
+    # Quit is the only exit; 130/143 do not leave the menu.
     assert "-eq 4" in code
     assert "FAMILIA_COCKPIT_HOOK" in code
-    assert code.find("open_ui.sh") < code.find('familia_home.sh')
+    assert "exec " not in code
+    assert "exit " not in code
+    assert "return 0" in code
 
 
 def test_continue_item_exits_4(tmp_path):

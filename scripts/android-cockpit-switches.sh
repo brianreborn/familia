@@ -1735,7 +1735,7 @@ run_installer() {
 
 edit_cbl() {
   say "CBL override needs BOTH tag and sha256 (PR #321). Empty tag clears the override."
-  say "In-repo pin example: android-b12032-1 (android-b11969-1 is opt-in fallback only)."
+  say "In-repo pin is b12359 (llama.cpp v1.0.0). No Android prebuilt for it yet; android-b12032-1 is an older override (android-b11969-1 is opt-in fallback only)."
   prompt_val "CBL tag (e.g. android-b12032-1, empty=in-repo pin)" CBL_TAG
   if [ -z "$CBL_TAG" ]; then
     CBL_SHA=""; CBL_ASSET=""; CBL_URL=""

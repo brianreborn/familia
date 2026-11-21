@@ -44,8 +44,9 @@ llvm). Without `--auto-deps` the installer halts and lists them.
 
 Pins: familia is checked out at the `FAMILIA_REF` sha baked into the
 script and `git rev-parse HEAD` is verified. llama.cpp is built from
-source at tag b11969 (`c3df4b7e22a1ac38da663552d19e649dd97ca936`, verified)
-into `~/.local/share/familia/runtime/b11969/` (an existing build there is
+source at tag b12359 (`2a8600387b40f2820d17973067020ce11377904d`, the
+brianreborn/llama.cpp fork commit for official v1.0.0)
+into `~/.local/share/familia/runtime/b12359/` (an existing build there is
 reused); the FreeBSD `llama-cpp` pkg is not used. The installer and
 launcher refuse a llama-server whose `--help` lacks `--api-key-file`.
 
@@ -57,8 +58,8 @@ FAMILIA_MODEL a bare name in models/ or an absolute existing file (no `..`),
 an unset or C/POSIX locale gets LC_CTYPE=C.UTF-8 (and LANG=C.UTF-8;
 LC_ALL=C/POSIX is dropped so it cannot mask LC_CTYPE).
 
-Rebuild guard: a reused llama-server must have `runtime/b11969/.built-sha`
-equal to the pinned sha and a `--version` naming 11969 or c3df4b7, else
+Rebuild guard: a reused llama-server must have `runtime/b12359/.built-sha`
+equal to the pinned sha and a `--version` naming 12359 or 2a86003, else
 it is rebuilt. `FAMILIA_REF_OVERRIDE` is test-only: honored with
 `--dry-run` or `FAMILIA_TEST_MODE=1`, refused otherwise.
 
