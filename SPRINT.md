@@ -154,6 +154,19 @@ ask-first.
   Charts/PR intended in familia-private under bench/2026-11-10/.
   In progress on miryam (screen bench-report), low priority.
   Target around 3:48 PM PT, partial results marked if needed.
+- Miryam swarm runners and cron state (stopped 2026-11-20):
+  * User crontab cleared (previously ran ~/.local/bin/swarm-runners-ensure.sh
+    at @reboot and every 10 min).
+  * Runners disarmed with ~/.swarm-disarmed in ~/actions-runner and
+    ~/actions-runner-cbl.
+  * Hermes agent user service stopped and disabled (hermes-agent.service).
+  * Re-establishment steps:
+    1. Re-enable hermes agent: systemctl --user enable --now hermes-agent.service
+    2. Re-arm runners: rm -f ~/actions-runner/.swarm-disarmed ~/actions-runner-cbl/.swarm-disarmed
+    3. Re-add crontab: crontab -e
+       @reboot sleep 30; $HOME/.local/bin/swarm-runners-ensure.sh
+       */10 * * * * $HOME/.local/bin/swarm-runners-ensure.sh
+    4. Trigger ensure script: sh $HOME/.local/bin/swarm-runners-ensure.sh
 
 ## 6. Security and review follow-ups
 
