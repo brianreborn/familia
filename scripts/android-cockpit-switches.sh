@@ -61,7 +61,6 @@ NARROW=0
 
 # Secure defaults (cockpit). The installer CLI still treats --dry-run as opt-in;
 # this menu passes --dry-run unless the user turns the switch off.
-THIN_CLIENT=0
 CTX_GATE=1
 FAMILIA_CTX_VAL=""
 ALLOW_YES=0
@@ -1767,7 +1766,6 @@ edit_cbl() {
 }
 
 reset_defaults() {
-  THIN_CLIENT=0
   CTX_GATE=1
   FAMILIA_CTX_VAL=""
   ALLOW_YES=0

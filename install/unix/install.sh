@@ -40,7 +40,7 @@ PREFIX=${INSTALL_PREFIX:-${FAMILIA_PREFIX:-$DEFAULT_PREFIX}}
 REPO_URL=${FAMILIA_REPO_URL:-${FEELD_REPO_URL:-https://github.com/brianreborn/familia.git}}
 SOURCE_BRANCH=""
 if [ -f "$0" ]; then
-  SOURCE_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." 2>/dev/null && pwd || true)
+  SOURCE_ROOT=$(CDPATH='' cd -- "$(dirname -- "$0")/../.." 2>/dev/null && pwd || true)
   if [ -n "$SOURCE_ROOT" ] && git -C "$SOURCE_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     SOURCE_BRANCH=$(git -C "$SOURCE_ROOT" branch --show-current 2>/dev/null || true)
   fi
@@ -48,12 +48,14 @@ fi
 BRANCH=${FAMILIA_BRANCH:-${SOURCE_BRANCH:-}}
 SELECT_BRANCH=0
 { [ -n "${FAMILIA_BRANCH:-}" ] || [ -n "$SOURCE_BRANCH" ]; } && SELECT_BRANCH=1
+export SELECT_BRANCH
 
 API=${FAMILIA_LLAMA_API:-https://api.github.com/repos/ggml-org/llama.cpp/releases}
 DRY=0; UNINSTALL=0; PURGE=0; NAME=""; BUILD=${FAMILIA_LLAMA_BUILD:-b11539}
 RUNTIME=1; PGO=1; HERMES=1; SYSTEMD=0; FORCE_HOST=""; NOPATH=0; WAKELOCK=1; SSHD=0; NO_START=0
 AUTO_DEPS=${AUTO_DEPS:-0}
 BUILD_SET=0; [ -n "${FAMILIA_LLAMA_BUILD:-}" ] && BUILD_SET=1
+export BUILD_SET
 CHANNEL=${FAMILIA_CHANNEL:-bleeding}; STABLE_DAYS=${FAMILIA_STABLE_DAYS:-30}
 
 [ "${INSTALL_NO_START:-0}" = 1 ] && NO_START=1
@@ -246,8 +248,8 @@ if [ "$PREFIX" = "$DEFAULT_PREFIX" ]; then
 fi
 
 # Ensure dependencies via install/deps.sh
-SCRIPT_SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-REPO_ROOT_SRC=$(CDPATH= cd -- "$SCRIPT_SELF_DIR/../.." 2>/dev/null && pwd || true)
+SCRIPT_SELF_DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+REPO_ROOT_SRC=$(CDPATH='' cd -- "$SCRIPT_SELF_DIR/../.." 2>/dev/null && pwd || true)
 DEPS_SH=""
 if [ -f "$REPO_ROOT_SRC/install/deps.sh" ]; then DEPS_SH="$REPO_ROOT_SRC/install/deps.sh";
 elif [ -f "$PREFIX/install/deps.sh" ]; then DEPS_SH="$PREFIX/install/deps.sh";
@@ -426,7 +428,8 @@ except Exception:
 ' 2>/dev/null || true)
       if [ -n "$SEL" ]; then
         set -- $SEL
-        TAG=$1; ANAME=$2; AURL=$3; SHA=${4:-}
+        _tag=$1; ANAME=$2; AURL=$3; SHA=${4:-}
+        : "$_tag"
         TMP=$(umask 077; mktemp -d "${TMPDIR:-/tmp}/llama-bin.XXXXXX") || die "mktemp failed"
         if curl -fL --retry 3 -o "$TMP/$ANAME" "$AURL" 2>/dev/null; then
           if [ -n "$SHA" ]; then
