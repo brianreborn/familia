@@ -172,6 +172,8 @@ def _alias_member(graph, host, alias_name, alias, node_name):
             raise StartupError(f"alias {alias_name} marks a non-embedding model as embeddings")
         kind = "embedding"
     else:
+        if graph_validator.is_fail_closed(graph, node_name):
+            raise StartupError(f"alias {alias_name} targets fail-closed node {node_name!r}")
         role = graph_validator.node_type(graph, node_name)  # node.role > model.role
         if role not in graph_validator.PROXY_ROUTABLE_ROLES:
             raise StartupError(
