@@ -245,9 +245,11 @@ def test_path_prefers_full_cli_over_legacy_runner(tmp_path):
     interp = _safe_interp(tmp_path)
     legacy = _write(tmp_path / "bin" / "hermes-agent", _legacy(interp))
     full = _write(tmp_path / "bin" / "hermes", _full(interp))
+    # Exclude snap paths so the test exercises the PATH / which() branch.
+    _exists = lambda p: (os.path.exists(p) and not str(p).startswith("/snap/")) or p in ("/v/bin/python3", "/v/lib")
     b, _py, _sp = hh.resolve_hermes(
         environ={"HERMES_PY": "/v/bin/python3", "HERMES_SP": "/v/lib"},
-        exists=lambda p: os.path.exists(p) or p in ("/v/bin/python3", "/v/lib"),
+        exists=_exists,
         which=lambda n: {"hermes-agent": legacy, "hermes": full}.get(n),
         system="Linux", missing="defaults")
     assert b == full
@@ -258,9 +260,11 @@ def test_path_keeps_non_legacy_hermes_agent(tmp_path):
     interp = _safe_interp(tmp_path)
     wrapper = _write(tmp_path / "bin" / "hermes-agent", "#!/bin/sh\nexec python3 -m hermes_cli.main \"$@\"\n")
     _write(tmp_path / "bin" / "hermes", _full(interp))
+    # Exclude snap paths so the test exercises the PATH / which() branch.
+    _exists = lambda p: (os.path.exists(p) and not str(p).startswith("/snap/")) or p in ("/v/bin/python3", "/v/lib")
     b, _py, _sp = hh.resolve_hermes(
         environ={"HERMES_PY": "/v/bin/python3", "HERMES_SP": "/v/lib"},
-        exists=lambda p: os.path.exists(p) or p in ("/v/bin/python3", "/v/lib"),
+        exists=_exists,
         which=lambda n: wrapper if n == "hermes-agent" else None,
         system="Linux", missing="defaults")
     assert b == wrapper
@@ -327,9 +331,11 @@ def test_sibling_hermes_not_taken_when_world_writable(tmp_path, capsys):
     interp = _safe_interp(tmp_path)
     legacy = _write(tmp_path / "bin" / "hermes-agent", _legacy(interp))
     _write(tmp_path / "bin" / "hermes", _full(interp), mode=0o777)
+    # Exclude snap paths so the test exercises the PATH / which() branch.
+    _exists = lambda p: (os.path.exists(p) and not str(p).startswith("/snap/")) or p in ("/v/bin/python3", "/v/lib")
     b, _py, _sp = hh.resolve_hermes(
         environ={"HERMES_PY": "/v/bin/python3", "HERMES_SP": "/v/lib"},
-        exists=lambda p: os.path.exists(p) or p in ("/v/bin/python3", "/v/lib"),
+        exists=_exists,
         which=lambda n: legacy if n == "hermes-agent" else None, system="Linux", missing="defaults")
     assert b == legacy
     assert "world-writable" in capsys.readouterr().err
