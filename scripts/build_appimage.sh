@@ -42,7 +42,7 @@ mkdir -p "$APPDIR/usr/share/familia" "$APPDIR/usr/bin" \
 
 if command -v rsync >/dev/null 2>&1; then
   rsync -a \
-    --exclude '.git' --exclude 'dist' --exclude '__pycache__' --exclude '*.pyc' \
+    --exclude '.git' --exclude 'dist' --exclude '.cache' --exclude '__pycache__' --exclude '*.pyc' \
     --exclude '.venv' --exclude 'node_modules' --exclude '*.gguf' \
     --exclude 'green-roomz/data' --exclude 'agent-tools' \
     "$ROOT/" "$APPDIR/usr/share/familia/"
@@ -121,6 +121,9 @@ pack_tar() {
   tar -C "$(dirname -- "$STAGED")" -czf "$tar_out" "$(basename -- "$STAGED")"
   echo "wrote $tar_out (extract and run ./AppRun; install file+squashfs-tools for a real .AppImage)"
 }
+
+chmod -R a+rX "$APPDIR"
+chmod a+rx "$APPDIR/AppRun"
 
 if [ -n "$TOOL" ]; then
   echo "familia AppImage: packing with $TOOL"
