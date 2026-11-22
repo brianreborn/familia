@@ -15,6 +15,10 @@ Purpose: one physical box. A host is placement only. A node's TYPE carries capab
 
 Writers: `scripts/host_measure.py:205` (installers call it), `scripts/modify_graph.py:242`, `scripts/generate_graph.py:145`.
 
+On Android, `host_measure.py` falls back to readable system properties when
+Termux cannot read a useful CPU model from `/proc/cpuinfo`; the selected
+property name and value are kept together in the measured `cpu` field.
+
 ## Field reference
 
 <!-- BEGIN GENERATED: fields (scripts/config_docs.py --write) -->
