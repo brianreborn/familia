@@ -820,7 +820,7 @@ nodes:
     port: 18201
     cache_ram_mib: 512
     load_mode: mmap
-    status: active               # P0 2026-11-22: planned is required (Brian); see docs/planned-to-active.md
+    status: planned              # deferred 2026-11-22 (Brian, #682): current hardware cannot support the 33B model
     card_set: "Reasoning and chat tasks"
     override_reasons:
       ctx: 'same RAM budget as nanbeige-coder; heavy ctx relative to host, not full 512K'
