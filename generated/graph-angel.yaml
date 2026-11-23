@@ -336,7 +336,7 @@ runtimes:
     kind: llama-server
     build: b11944 (legacy tested release; exact upstream tag commit retained)
     commit: 1b4554eff124a8f0033bc09b3f708a5e51cbda15
-    bin: code-bootstraps-llama.cpp/bin/llama-b11944-linux-x64-cpu/llama-server
+    bin: /home/green/code-bootstraps-llama.cpp/build-linux-x86_64-cpu-b11944/bin/llama-server
     hosts:
     - miryam
     supported_archs:
