@@ -181,7 +181,7 @@ def test_single_agent_render_allows_below_min_ctx(capsys, monkeypatch):
     import hermes_modes as hm
     g = yaml.safe_load(open(os.path.join(ROOT, "graph.yaml")))
     # Synthetic node below hermes min_ctx 64000, cloned from the active coder (the 33B
-    # nanbeige model is deferred for hardware limits and is not required here).
+    # obsolete large-model is deferred for hardware limits and is not required here).
     base = g["nodes"]["coder"]
 
     g["nodes"]["small-ctx"] = dict(copy.deepcopy(base), ctx=32768, parallel=1, port=19999, status="active")
@@ -198,7 +198,7 @@ def test_single_agent_render_allows_below_min_ctx(capsys, monkeypatch):
 
 def test_active_coder_meets_hermes_min_ctx(monkeypatch):
     """#125: the active coder (ctx 65536) clears agents.hermes.min_ctx 64000.
-    Does not use the 33B nanbeige-coder: it is deferred for hardware limits."""
+    Does not use the obsolete large coder: it is deferred for hardware limits."""
     import yaml
     import hermes_modes as hm
     g = yaml.safe_load(open(os.path.join(ROOT, "graph.yaml")))
