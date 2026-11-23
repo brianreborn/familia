@@ -10,9 +10,9 @@ tool_route (TOOLS-009), and a discovery-only off-loopback source stays none.
 After #355 those two, and a fail-closed source (BUG-TR-1 / #358), are current
 behavior and asserted directly. Development 79d3d84 / #364 also closed BUG-TR-5, BUG-TR-6,
 and the case/fullwidth half of BUG-TR-3 (normalize_role NFKC + casefold); those are
-now asserted directly. #679 closed BUG-TR-4 (node.role cannot override a
-fail-closed model role), so that case is asserted directly. xfail(strict=True)
-marks the still-open BUG-TR-3 cases (whitespace, Cyrillic/Greek, ZWSP)."""
+now asserted directly. xfail(strict=True) marks the remaining BUG-TR-3 gaps
+(whitespace, Cyrillic/Greek, and ZWSP). BUG-TR-4 was fixed and is asserted
+directly below."""
 import copy, json, os, socket, sys, threading, urllib.error, urllib.request
 
 import pytest
@@ -154,7 +154,6 @@ def test_indirect_model_role_with_empty_node_role_fails_closed(role, node_role):
 
 @pytest.mark.parametrize("role", ["guardian", "pentest", "defender"])
 def test_node_role_cannot_launder_fail_closed_model(role):
-    """#679 / TR-4: a node-level role (e.g. coder) cannot override a fail-closed model role."""
     g = g3(1, 2, coder_role=role, coder={"role": "coder"})
     assert EP.tool_target(g, "light") is None
 
