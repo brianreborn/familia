@@ -29,8 +29,8 @@ def test_host_selection_requires_an_exact_declared_graph_host(tmp_path):
 
 def test_local_topology_starts_only_local_active_nodes_and_routes():
     nodes, remote, gateways, omitted, remote_gateways = start_graph.local_topology(graph(), "miryam")
-    # embed is planned since 146b712 (#38 defers EmbeddingGemma-2): listed in omitted, not started
-    assert nodes == ["coder"]
+    # P0 2026-11-22 (planned is required): embed and the iGPU decision node start with coder
+    assert nodes == ["coder", "embed", "vulkan-igpu-decision"]
     assert {name for name, _ in remote} >= {"cuda-sm11-decision", "cpu-resident-coder"}
     assert len(gateways) == 1
     name, gateway, aliases = gateways[0]
@@ -39,17 +39,18 @@ def test_local_topology_starts_only_local_active_nodes_and_routes():
     assert aliases == {
         "coder": {"kind": "chat", "url": "http://127.0.0.1:9941", "tools": True},
         "general": {"kind": "chat", "url": "http://127.0.0.1:9941", "tools": True},
+        "embed": {"kind": "embedding", "url": "http://127.0.0.1:9951"},
     }
-    # planned/unbuilt roles on miryam are listed, not started (graph.yaml)
-    assert {role for role, _node, host in omitted} == {"defender", "embed", "guardian", "pentest", "safe-build"}
+    # still-planned guardian seats and the direct-only decision node (safe-build) are listed, not routed
+    assert {role for role, _node, host in omitted} == {"defender", "guardian", "pentest", "safe-build"}
     assert all(host == "miryam" for _r, _n, host in omitted)
     assert remote_gateways == []
 
 
 def test_freebsd_host_runs_its_nodes_without_starting_a_gateway():
-    # nanbeige-coder is active on angel since the Nanbeige prize; the gateway stays on miryam
+    # nanbeige-coder is active on angel since the Nanbeige prize; nanbeige-chat since P0 2026-11-22
     nodes, remote, gateways, omitted, remote_gateways = start_graph.local_topology(graph(), "angel")
-    assert nodes == ["nanbeige-coder"]
+    assert nodes == ["nanbeige-chat", "nanbeige-coder"]
     assert remote
     assert gateways == []
     assert omitted == []

@@ -43,7 +43,7 @@ def test_private_angel_type_names_only():
     assert nodes["coder"]["host"] == "angel"
     assert nodes["coder"]["model"] == "nanbeige43-33b-q4km"
     assert nodes["coder"]["status"] == "active"
-    assert nodes["chat"]["status"] == "planned"
+    assert nodes["chat"]["status"] == "active"  # P0 2026-11-22: planned is required
     assert nodes["coder"]["role"] == "coder"
     assert nodes["chat"]["role"] == "chat"
     for name in nodes:

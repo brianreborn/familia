@@ -78,7 +78,9 @@ def test_box_archetypes_shapes_cover_all_kinds():
 
 def test_measured_host_needs_facts_and_unmeasured_excluded():
     x = g(); del x["hosts"]["miryam"]["ram_mib"]; has(x, "measured host missing required 'ram_mib'")
-    x = g(); x["hosts"]["miryam"]["gpus"] = None; assert errs(x) == []
+    # unknown GPU inventory is fine for the host itself; only the active Vulkan node on it (P0 2026-11-22) is refused
+    x = g(); x["hosts"]["miryam"]["gpus"] = None
+    assert errs(x) == ["nodes.vulkan-igpu-decision.offload: GPU inventory on host 'miryam' is unknown; measure it before enabling offload"]
     x = g(); x["hosts"]["godslove"]["ram_mib"] = 6000; has(x, "measured is false")
     x = g(); x["runtimes"]["llama-b11374"]["hosts"].append("godslove"); x["nodes"]["coder"]["host"] = "godslove"
     has(x, "not measured; unmeasured hosts are excluded")
@@ -454,7 +456,9 @@ def test_decision_role_enum():
     x = g(); x["models"]["stories15m-fp32"]["role"] = "decision"; assert errs(x) == []
 
 def test_cuda_sm11_ptx_backend_allowed():
-    x = g(); x["hosts"]["miryam"]["gpus"][0]["backend"] = "cuda-sm11-ptx"; assert errs(x) == []
+    # the backend enum accepts cuda-sm11-ptx; only the active Vulkan node on that GPU is now a mismatch
+    x = g(); x["hosts"]["miryam"]["gpus"][0]["backend"] = "cuda-sm11-ptx"
+    assert errs(x) == ["nodes.vulkan-igpu-decision.offload: backend 'vulkan' but GPU 0 backend is 'cuda-sm11-ptx'"]
 
 def test_qodesh_sm11_decision_accepted():
     x = g()
@@ -493,7 +497,7 @@ def test_smollm2_catalog_and_measured_notes():
     x = g()
     assert "smollm2-135m-q4" in x["models"]
     assert x["models"]["smollm2-135m-q4"]["role"] == "decision"
-    assert x["nodes"]["cpu-smol-decision"]["status"] == "planned"
+    assert x["nodes"]["cpu-smol-decision"]["status"] == "active"  # P0 2026-11-22: planned is required
     notes = x["hosts"]["qodesh"]["gpus"][0]["notes"]
     assert "34.3" in notes and "SmolLM2" in notes
     assert errs(x) == []
@@ -503,8 +507,10 @@ def test_runtime_pkg_pin_and_phone7_vulkan():
     x = g(); assert x["runtimes"]["termux-llama-cpp-0.6.0"]["commit"] == "pkg:llama-cpp=0.6.0"
     assert x["hosts"]["phone7"]["gpus"][0]["backend_status"] == "verified"
     assert x["hosts"]["phone8"]["gpus"][0]["backend_status"] == "verified"
-    assert x["hosts"]["miryam"]["gpus"][0]["backend_status"] == "verified" and x["nodes"]["vulkan-igpu-decision"]["status"] == "planned"
-    assert x["nodes"]["vulkan-handset-decision"]["status"] == "planned"
+    assert x["hosts"]["miryam"]["gpus"][0]["backend_status"] == "verified" and x["nodes"]["vulkan-igpu-decision"]["status"] == "active"
+    assert x["nodes"]["vulkan-handset-decision"]["status"] == "active"
+    assert x["nodes"]["vulkan-handset-general"]["status"] == "active"
+    assert errs(x) == []  # Xclipse (samsung) is unified memory: vram_mib 0 is valid for ngl 99
     x = g(); x["runtimes"]["termux-llama-cpp-0.6.0"]["commit"] = "main"; has(x, "is not a git sha")
     x = g(); x["runtimes"]["termux-llama-cpp-0.6.0"]["commit"] = "pkg:llama-cpp"; has(x, "is not a git sha")
 
