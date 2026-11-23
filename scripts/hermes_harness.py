@@ -462,7 +462,7 @@ SECRET_RE = re.compile(r"(api_?key|token|secret|password|passwd|auth|cookie|cred
 # fallback_providers, which is inherited only when FAMILIA_HERMES_ALLOW_CLOUD=1).
 # When local-only, render() must also WRITE open/local values for these (not
 # only strip them): otherwise hermes-agent fills stock hosted defaults.
-OWNED = {"model", "auxiliary", "compression", "custom_providers", "providers", "smart_model_routing", "fallback_model", "fallback_providers"}
+OWNED = {"model", "auxiliary", "compression", "custom_providers", "providers", "smart_model_routing", "fallback_model", "fallback_providers", "reasoning_effort"}
 # Lean prompt profile (#85): the toolsets a coding agent on a small or old node needs. Long
 # guidance stays reachable through the skills tools (skills_list / skill_view load on demand).
 LEAN_TOOLSETS = ("terminal", "file", "todo", "clarify", "skills")
