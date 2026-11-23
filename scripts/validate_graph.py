@@ -375,13 +375,19 @@ def routing_warnings(graph):
         if n.get("embeddings"):
             continue
         role = node_type(graph, prim)
-        if role not in PROXY_ROUTABLE_ROLES:
+        model = models.get(n.get("model")) or {}
+        model_role = normalize_role(model.get("role"))
+        if is_fail_closed(graph, prim):
+            out.append(f"aliases.{a}: node {prim!r} has fail-closed role (node {role!r}, model {model_role!r}); "
+                       f"familia start refuses it (fail-closed models cannot be made proxy-routable) -- "
+                       f"reach it directly on its port or drop the alias")
+        elif role not in PROXY_ROUTABLE_ROLES:
             out.append(f"aliases.{a}: node {al['node']!r} has role {role!r}; familia start "
-                       f"refuses it (graph-proxy routes {'/'.join(PROXY_ROUTABLE_ROLES)} and embeddings) — "
+                       f"refuses it (graph-proxy routes {'/'.join(PROXY_ROUTABLE_ROLES)} and embeddings) -- "
                        f"reach it directly on its port or drop the alias")
     for name, n in sorted(nodes.items()):
         if n.get("tool_route") and "server_tools" not in n and tool_capable(graph, name):
-            out.append(f"nodes.{name}.tool_route: ignored for tools — the node is directly tool-capable "
+            out.append(f"nodes.{name}.tool_route: ignored for tools -- the node is directly tool-capable "
                        f"and keeps its own --tools grant; set tool_capable: false to execute tools only on "
                        f"{n['tool_route']!r}")
     return out
