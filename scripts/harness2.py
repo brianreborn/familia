@@ -30,6 +30,7 @@ import yaml
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
+import config_paths  # DUP-02/DUP-10 owner (after sys.path insert)
 import self_improve as SI  # noqa: E402
 import oom_adj  # noqa: E402
 
@@ -80,6 +81,13 @@ def start_node(g, node, yes=False):
         stable = mps.assert_fingerprint_stable(args[0], fp_capture, note_sink=skew_notes)
         if not stable.get("ok"):
             die(f"soname_fingerprint_drift refused {args[0]}: {stable.get('reason')}")
+    except ImportError:
+        pass
+    try:
+        import refuse_soname_skew as rss
+        skew = rss.refuse_soname_skew(args[0])
+        if not skew.get("ok"):
+            die(f"refuse_soname_skew: runtime {args[0]} bin/lib pack mismatch: {skew.get('reason')}; mismatches={skew.get('mismatches')}")
     except ImportError:
         pass
     try:
@@ -347,7 +355,7 @@ def cmd_review(a, g):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="harness2.py", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--graph", default=os.path.join(ROOT, "graph.yaml"))
+    ap.add_argument("--graph", default=None)  # DUP-02: resolved lazily after parse
     ap.add_argument("--state", default=None, help="state dir (default .cache/familia/harness2; env FAMILIA_HARNESS2_STATE)")
     ap.add_argument("--root", default=None, help="replace the target's root directory")
     sp = ap.add_subparsers(dest="cmd", required=True)
@@ -365,6 +373,7 @@ def main(argv=None):
     add("revert").add_argument("--to"); add("consent").add_argument("--revoke", action="store_true")
     add("sync").add_argument("--into")
     a = ap.parse_args(argv)
+    a.graph = config_paths.graph_path(a.graph)  # DUP-02 lazy resolve
     if a.state: SI.STATE_ROOT = a.state
     g = load_graph(a.graph)
     if getattr(a, "target", None) and a.target not in (g.get("harnesses") or {}):

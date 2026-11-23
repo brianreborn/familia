@@ -88,9 +88,9 @@ reachable themselves, except as BitTorrent peers on their aria2c `--listen-port`
 
 ## Tests (run on the box)
 
-* `tests/test_bt_loopback.sh` runs the tracker, a seeder, and a leecher on 127.0.0.1 with a
+* `proving_grounds/bt_loopback.sh` runs the tracker, a seeder, and a leecher on 127.0.0.1 with a
   24 MiB file fetched by key. sha256 matches, and an unregistered infohash is refused.
-* `tests/test_nexus_localhost.sh` runs a throwaway key-only sshd on 127.0.0.1:2222 and
+* `proving_grounds/nexus_localhost.sh` runs a throwaway key-only sshd on 127.0.0.1:2222 and
   three unix users (hub, a, b). It covers register, peers, put, ls, and get with sha256
   matching, and refuses a non-member and a user without an authorized key (publickey only,
   no password prompt). It needs sudo.

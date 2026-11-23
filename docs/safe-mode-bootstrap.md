@@ -50,7 +50,7 @@ and dispatches (`./start.sh --bootstrap`, deps helpers, graph alias).
 
 Laya evaluates the whole prompt in one batch for **routing**; it cannot hold a
 deps/build conversation. For that, graph alias **`safe-build`** points at the
-existing SmolLM2-135M decision-size node **`miryam-gpu-decision`**
+existing SmolLM2-135M decision-size node **`vulkan-igpu-decision`**
 (`SmolLM2-135M-Instruct.Q4_0`, role `decision`) — same size class, already
 verified on miryam/phones. System text:
 [`harness/safe-build/systemprompt.md`](../harness/safe-build/systemprompt.md).
@@ -98,11 +98,11 @@ labels, not `-ngl` targets. See `docs/graph-types.md` and centos10-bigram (#113)
 1. **`setup.deps`** / `sh install/deps.sh --install [--profile build]`
 2. **`setup.safe-build`** — print the Laya pin + SmolLM chat-face notes
 3. Build / serve from the pin: `./start.sh --bootstrap` (code-bootstraps router)
-   or graph gateway alias **`safe-build`** once `miryam-gpu-decision` is active
+   or graph gateway alias **`safe-build`** once `vulkan-igpu-decision` is active
 
 ## Still optional (follow-up)
 
 1. Always-on dedicated `safe-build` **CPU** node (planned → active) on weak hosts —
-   beyond the alias stub → `miryam-gpu-decision`.
+   beyond the alias stub → `vulkan-igpu-decision`.
 2. Cross-link from the **code-bootstraps** README back here if/when the decision
    default GGUF moves off Laya.

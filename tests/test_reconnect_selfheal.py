@@ -60,6 +60,11 @@ def test_decide_state_matrix():
     ) == rs.ProbeState.HEALTHY  # no health configured + fleet up
 
 
+def test_default_dns_is_loopback_only():
+    assert rs.DEFAULT_DNS_TARGET in ("localhost", "127.0.0.1")
+    assert rs.DEFAULT_DNS_TARGET not in ("1.1.1.1", "8.8.8.8", "9.9.9.9")
+
+
 def test_probe_dns_ok_and_fail():
     def ok_res(host, _port):
         return [(0, 0, 0, "", ("1.1.1.1", 0))]
@@ -198,17 +203,19 @@ def test_hook_stub_and_dry_run(monkeypatch):
     assert r2.reason == "echo rejoin"
 
 
-def test_git_fetch_refuses_dirty(monkeypatch, tmp_path):
+def test_git_fetch_not_blocked_by_local_edits(monkeypatch, tmp_path):
+    """familia #181 U10: a local edit never blocks the fetch (fetch does not touch the tree)."""
     monkeypatch.setenv("FAMILIA_RECONNECT_PULL", "1")
 
     def fake_run(cmd, capture_output=True, text=True, timeout=None):
         if "status" in cmd:
+            assert "--ignore-submodules=all" in cmd
             return types.SimpleNamespace(returncode=0, stdout=" M dirty.txt\n", stderr="")
         raise AssertionError(f"unexpected cmd {cmd}")
 
     r = rs.repair_git_fetch_tip(dry_run=True, repo=tmp_path, runner=fake_run)
-    assert r.ok is False
-    assert r.detail == "refused_dirty"
+    assert r.ok is True
+    assert r.detail == "would_run"
 
 
 def test_git_fetch_skipped_without_env(monkeypatch):
@@ -303,3 +310,36 @@ def test_screen_attached_ok_helper(monkeypatch):
     assert rs.screen_attached_ok() is True
     monkeypatch.setenv("FAMILIA_DETACH_MODE", "tmux")
     assert rs.screen_attached_ok() is False
+
+
+def test_mesh_only_probe_never_uses_external_dns_or_health(monkeypatch):
+    """Issue 658 evidence: mesh-only reconnect stays local/private."""
+    seen = {"dns": [], "health": [], "fleet": []}
+
+    def dns_resolver(target, _port):
+        seen["dns"].append(target)
+        if target not in ("localhost", "127.0.0.1"):
+            raise OSError("external DNS prohibited")
+        return [(0, 0, 0, "", ("127.0.0.1", 0))]
+
+    def health_opener(req, timeout=None):
+        url = req.full_url
+        seen["health"].append(url)
+        if not url.startswith(("http://127.0.0.1:", "http://localhost:")):
+            raise OSError("external health URL prohibited")
+        class Resp:
+            status = 200
+        return Resp()
+
+    probe = rs.run_probe(
+        host="angel",
+        peers=["galaxy1", "galaxy2", "surface1"],
+        health_urls=["http://127.0.0.1:18200/health"],
+        dns_target="localhost",
+        timeout=1,
+        dns_resolver=dns_resolver,
+        health_opener=health_opener,
+    )
+    assert seen["dns"] == ["localhost"]
+    assert seen["health"] == ["http://127.0.0.1:18200/health"]
+    assert probe.to_dict()["local_net"]["dns"]["ok"] is True

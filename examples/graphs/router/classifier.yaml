@@ -1,0 +1,13 @@
+# Router fan-out: a small classifier node picks one label; the label picks the
+# specialist. "/code ..." or "/math ..." skips the classifier. With no default,
+# an unknown label is refused (502) instead of guessed.
+version: 1
+nodes:
+  classifier: http://127.0.0.1:8081
+  coder:      http://127.0.0.1:8082
+  mathy:      http://127.0.0.1:8083
+routes:
+  ask:
+    router: classifier
+    routes: {code: coder, math: mathy}
+    # default: coder        # optional: where unknown labels go

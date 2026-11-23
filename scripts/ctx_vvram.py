@@ -47,9 +47,8 @@ def check_vvram_policy(graph, metas=None, *, gguf_meta, kv_mib):
     errs = []
     hosts = graph.get("hosts") or {}
     models = graph.get("models") or {}
-    for name, n in (graph.get("nodes") or {}).items():
-        if n.get("status") == "planned":
-            continue
+    import node_state  # DUP-03
+    for name, n in node_state.placeable_items(graph):
         h = hosts.get(n.get("host")) or {}
         ram = h.get("ram_mib")
         if not isinstance(ram, int):

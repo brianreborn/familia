@@ -134,8 +134,9 @@ def main(argv=None):
     ap.add_argument("--rounds", type=int, default=2); ap.add_argument("--k", type=int, default=2); ap.add_argument("--temp", type=float, default=0.7)
     ap.add_argument("--root-override"); ap.add_argument("--state-root"); ap.add_argument("--json")
     a = ap.parse_args(argv)
-    import yaml
-    g = yaml.safe_load(open(a.graph)); refuse_pentest_agent(g, a.target)
+    import familia_yaml
+    g = familia_yaml.load(a.graph)  # DUP-01
+    refuse_pentest_agent(g, a.target)
     if a.k > 4: raise SystemExit("terminal_rsi: k > 4")
     t = SI.target(g, a.target, a.root_override); st = SI.State(t, a.state_root); st.init()
     ts = load_tasks(a.tasks); leaks = leak_terms(ts); chat = make_chat(a.endpoint or t.endpoint)

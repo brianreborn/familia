@@ -1,0 +1,85 @@
+# Example graph: Explicit tool grants: chat gets a read-only set, coder gets all (loopback only).
+# `r` is a chat-view node that executes tools on `coder` via tool_route (tool_capable: false).
+# Placeholder hosts/paths; copy, then replace gguf paths and the runtime pin with your own.
+# Validate: python3 scripts/validate_graph.py examples/graphs/explicit-tools.yaml --no-files
+version: 2
+hosts:
+  h1:
+    kind: desktop
+    measured: true
+    os: linux
+    cpu: x
+    threads: 4
+    ram_mib: 16000
+    reserve_ram_mib: 2000
+    gpus: []
+runtimes:
+  rt:
+    kind: llama-server
+    build: b1
+    commit: abcdef1
+    hosts: [h1]
+    supported_archs: [llama, gemma-embedding2]
+    backends: [cpu]
+    spec_types: []
+models:
+  mchat: {gguf: /m/chat.gguf, sha256: bcc3af2849ad6095af57e9b5cd43775256efdc66e306acb529172f92d0c04b03, arch: llama,
+    trained_ctx: 8192, role: chat, db: bartowski--SmolLM2-135M-Instruct-GGUF--SmolLM2-135M-Instruct-Q4_0}
+  mcode: {gguf: /m/coder.gguf, sha256: bcc3af2849ad6095af57e9b5cd43775256efdc66e306acb529172f92d0c04b03, arch: llama,
+    trained_ctx: 8192, role: coder, db: bartowski--SmolLM2-135M-Instruct-GGUF--SmolLM2-135M-Instruct-Q4_0}
+nodes:
+  chat:
+    model: mchat
+    host: h1
+    runtime: rt
+    ctx: 8192
+    parallel: 1
+    kv_type: f16
+    flash_attn: false
+    offload: {backend: cpu, ngl: 0, split: none, main_gpu: 0}
+    bind: 127.0.0.1
+    port: 9001
+    cache_ram_mib: 0
+    status: active
+    server_tools: [read_file, grep_search]
+  coder:
+    model: mcode
+    host: h1
+    runtime: rt
+    ctx: 8192
+    parallel: 1
+    kv_type: f16
+    flash_attn: false
+    offload: {backend: cpu, ngl: 0, split: none, main_gpu: 0}
+    bind: 127.0.0.1
+    port: 9002
+    cache_ram_mib: 0
+    status: active
+    server_tools: all
+  r:
+    model: mchat
+    host: h1
+    runtime: rt
+    ctx: 8192
+    parallel: 1
+    kv_type: f16
+    flash_attn: false
+    offload: {backend: cpu, ngl: 0, split: none, main_gpu: 0}
+    bind: 127.0.0.1
+    port: 9003
+    cache_ram_mib: 0
+    status: active
+    tool_route: coder
+    tool_capable: false
+gateways:
+  gw: {kind: green-roomz, host: h1, port: 8080}
+aliases:
+  chat: {node: chat, gateway: gw}
+  coder: {node: coder, gateway: gw}
+agents:
+  ag:
+    kind: hermes-agent
+    host: h1
+    min_ctx: 1024
+    context_length: 8192
+    aliases: {main: chat, auxiliary: coder}

@@ -24,7 +24,7 @@ SCRIPT = os.path.join(ROOT, "scripts", "licenses.py")
     ("unknown", "unknown", "unknown"),
     ("not stated on the model card", "unknown", "unknown"),
     ("", "unknown", "unknown"),
-    ("WTFPL-ish house license", "unknown", "unrecognized license"),
+    ("WTFPL-ish house license", "custom", "unrecognized license: read the text"),
     ("GPL-3.0", "copyleft", "copyleft"),
 ])
 def test_classify(lic, cat, flag):
@@ -145,3 +145,17 @@ def test_set_node_list_keeps_comments():
     assert "    skills: []" in t3 and t3.count("skills:") == 1
     with pytest.raises(KeyError):
         familia_yaml.set_node_list(t, "agents", "nobody", "skills", [])
+
+
+def test_unknown_needs_only_the_one_yes(monkeypatch, tmp_path, capsys):
+    """Unknown licenses get a warning, not a second phrase to type."""
+    monkeypatch.setattr(licenses, "ACCEPT_FILE", str(tmp_path / "acc.json"))
+    asked = []
+    monkeypatch.setattr(licenses, "ask", lambda p: asked.append(p) or "yes")
+    monkeypatch.setattr(licenses, "render", lambda *a, **k: None)
+    recorded = []
+    monkeypatch.setattr(licenses, "record", lambda *a: recorded.append(a))
+    items = [{"category": "unknown", "license": "unknown"}]
+    assert licenses.do_review(items, "d", False, False, False) == 0
+    assert len(asked) == 1 and recorded
+    assert "UNKNOWN" in capsys.readouterr().err

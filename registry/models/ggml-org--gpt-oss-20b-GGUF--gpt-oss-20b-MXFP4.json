@@ -1,0 +1,1503 @@
+{
+ "schema": 2,
+ "id": "ggml-org--gpt-oss-20b-GGUF--gpt-oss-20b-MXFP4",
+ "repo": "ggml-org/gpt-oss-20b-GGUF",
+ "revision": "15dcfc7e7c608c6161507211ed43c5b590801b4b",
+ "file": "gpt-oss-20b-MXFP4.gguf",
+ "sha256": "27cd6c432c7672cb812a92f611cf3ba7bbc35928262bb1e1253ff4ee6ae35901",
+ "bytes": 12109566624,
+ "quant": "MXFP4",
+ "arch": "gpt-oss",
+ "roles": [
+  "chat"
+ ],
+ "license": "apache-2.0",
+ "license_source": "ggml-org/gpt-oss-20b-GGUF card license",
+ "ctx": 131072,
+ "ctx_source": "GGUF gpt-oss.context_length",
+ "card_ctx": null,
+ "card_ctx_source": null,
+ "base_model": "openai/gpt-oss-20b",
+ "base_revision": "6cee5e81ee83917806bbde320786a8fb61efebee",
+ "card_defaults": null,
+ "card_defaults_source": null,
+ "card_default_set": null,
+ "card_defaults_how": "the card and generation_config.json state no sampling values",
+ "card_sampling_modes": null,
+ "card_default_mode": null,
+ "card_default_mode_source": null,
+ "card_sampling_sets": null,
+ "card_commands": [
+  {
+   "source": "ggml-org/gpt-oss-20b-GGUF README.md:L18-18",
+   "file": "README.md",
+   "lines": [
+    18,
+    18
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "llama serve -hf ggml-org/gpt-oss-20b-GGUF",
+   "llama": [
+    {
+     "tool": "llama serve",
+     "raw": "llama serve -hf ggml-org/gpt-oss-20b-GGUF",
+     "flags": [
+      {
+       "flag": "-hf",
+       "canonical": "--hf-repo",
+       "value": "ggml-org/gpt-oss-20b-GGUF",
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    }
+   ],
+   "doc": "card",
+   "doc_sha": "15dcfc7e7c608c6161507211ed43c5b590801b4b",
+   "scope": "model"
+  },
+  {
+   "source": "openai/gpt-oss-20b README.md:L54-54",
+   "file": "README.md",
+   "lines": [
+    54,
+    54
+   ],
+   "lang": null,
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install -U transformers kernels torch ",
+   "doc": "base-card",
+   "doc_sha": "6cee5e81ee83917806bbde320786a8fb61efebee",
+   "scope": "model"
+  },
+  {
+   "source": "openai/gpt-oss-20b README.md:L60-80",
+   "file": "README.md",
+   "lines": [
+    60,
+    80
+   ],
+   "lang": "py",
+   "tool": "transformers",
+   "kind": "code",
+   "text": "from transformers import pipeline\nimport torch\n\nmodel_id = \"openai/gpt-oss-20b\"\n\npipe = pipeline(\n    \"text-generation\",\n    model=model_id,\n    torch_dtype=\"auto\",\n    device_map=\"auto\",\n)\n\nmessages = [\n    {\"role\": \"user\", \"content\": \"Explain quantum mechanics clearly and concisely.\"},\n]\n\noutputs = pipe(\n    messages,\n    max_new_tokens=256,\n)\nprint(outputs[0][\"generated_text\"][-1])",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-n",
+      "value": "256",
+      "from": "max_new_tokens: 256"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "6cee5e81ee83917806bbde320786a8fb61efebee",
+   "scope": "model"
+  },
+  {
+   "source": "openai/gpt-oss-20b README.md:L86-87",
+   "file": "README.md",
+   "lines": [
+    86,
+    87
+   ],
+   "lang": null,
+   "tool": "transformers-serve",
+   "kind": "command",
+   "text": "transformers serve\ntransformers chat localhost:8000 --model-name-or-path openai/gpt-oss-20b",
+   "translation": {
+    "translated": true,
+    "params": [],
+    "untranslatable": [
+     {
+      "arg": "--model-name-or-path openai/gpt-oss-20b",
+      "why": "no llama.cpp mapping known"
+     }
+    ]
+   },
+   "doc": "base-card",
+   "doc_sha": "6cee5e81ee83917806bbde320786a8fb61efebee",
+   "scope": "model"
+  },
+  {
+   "source": "openai/gpt-oss-20b README.md:L97-102",
+   "file": "README.md",
+   "lines": [
+    97,
+    102
+   ],
+   "lang": "bash",
+   "tool": "vllm",
+   "kind": "command",
+   "text": "uv pip install --pre vllm==0.10.1+gptoss \\\n    --extra-index-url https://wheels.vllm.ai/gpt-oss/ \\\n    --extra-index-url https://download.pytorch.org/whl/nightly/cu128 \\\n    --index-strategy unsafe-best-match\n\nvllm serve openai/gpt-oss-20b",
+   "translation": {
+    "translated": true,
+    "params": [],
+    "untranslatable": [
+     {
+      "arg": "--pre vllm==0.10.1+gptoss",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--extra-index-url https://wheels.vllm.ai/gpt-oss/",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--extra-index-url https://download.pytorch.org/whl/nightly/cu128",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--index-strategy unsafe-best-match",
+      "why": "no llama.cpp mapping known"
+     }
+    ]
+   },
+   "doc": "base-card",
+   "doc_sha": "6cee5e81ee83917806bbde320786a8fb61efebee",
+   "scope": "model"
+  },
+  {
+   "source": "openai/gpt-oss-20b README.md:L116-118",
+   "file": "README.md",
+   "lines": [
+    116,
+    118
+   ],
+   "lang": "bash",
+   "tool": "ollama",
+   "kind": "command",
+   "text": "# gpt-oss-20b\nollama pull gpt-oss:20b\nollama run gpt-oss:20b",
+   "translation": {
+    "translated": true,
+    "params": [],
+    "untranslatable": [
+     {
+      "arg": "ollama run gpt-oss:20b",
+      "why": "Ollama pulls and runs the model with its own defaults; no flags to translate"
+     }
+    ]
+   },
+   "doc": "base-card",
+   "doc_sha": "6cee5e81ee83917806bbde320786a8fb61efebee",
+   "scope": "model"
+  },
+  {
+   "source": "openai/gpt-oss-20b README.md:L128-129",
+   "file": "README.md",
+   "lines": [
+    128,
+    129
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "# gpt-oss-20b\nlms get openai/gpt-oss-20b",
+   "doc": "base-card",
+   "doc_sha": "6cee5e81ee83917806bbde320786a8fb61efebee",
+   "scope": "model"
+  },
+  {
+   "source": "openai/gpt-oss-20b README.md:L141-144",
+   "file": "README.md",
+   "lines": [
+    141,
+    144
+   ],
+   "lang": "shell",
+   "tool": "hf-download",
+   "kind": "command",
+   "text": "# gpt-oss-20b\nhuggingface-cli download openai/gpt-oss-20b --include \"original/*\" --local-dir gpt-oss-20b/\npip install gpt-oss\npython -m gpt_oss.chat model/",
+   "doc": "base-card",
+   "doc_sha": "6cee5e81ee83917806bbde320786a8fb61efebee",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/openai/harmony README.md:L16-45",
+   "file": "README.md",
+   "lines": [
+    16,
+    45
+   ],
+   "lang": "text",
+   "tool": "text",
+   "kind": "prompt-format",
+   "text": "<|start|>system<|message|>You are ChatGPT, a large language model trained by OpenAI.\nKnowledge cutoff: 2024-06\nCurrent date: 2025-06-28\n\nReasoning: high\n\n# Valid channels: analysis, commentary, final. Channel must be included for every message.\nCalls to these tools must go to the commentary channel: 'functions'.<|end|>\n\n<|start|>developer<|message|># Instructions\n\nAlways respond in riddles\n\n# Tools\n\n## functions\n\nnamespace functions {\n\n// Gets the location of the user.\ntype get_location = () => any;\n\n// Gets the current weather in the provided location.\ntype get_current_weather = (_: {\n// The city and state, e.g. San Francisco, CA\nlocation: string,\nformat?: \"celsius\" | \"fahrenheit\", // default: celsius\n}) => any;\n\n} // namespace functions<|end|><|start|>user<|message|>What is the weather like in SF?<|end|><|start|>assistant",
+   "doc": "github",
+   "doc_sha": "abd677f7ac962629c808197caa1feb9e3e95d2b0",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/openai/harmony README.md:L65-67",
+   "file": "README.md",
+   "lines": [
+    65,
+    67
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install openai-harmony\n# or if you are using uv\nuv pip install openai-harmony",
+   "doc": "github",
+   "doc_sha": "abd677f7ac962629c808197caa1feb9e3e95d2b0",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/openai/harmony README.md:L73-98",
+   "file": "README.md",
+   "lines": [
+    73,
+    98
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "from openai_harmony import (\n    load_harmony_encoding,\n    HarmonyEncodingName,\n    Role,\n    Message,\n    Conversation,\n    DeveloperContent,\n    SystemContent,\n)\nenc = load_harmony_encoding(HarmonyEncodingName.HARMONY_GPT_OSS)\nconvo = Conversation.from_messages([\n    Message.from_role_and_content(\n        Role.SYSTEM,\n        SystemContent.new(),\n    ),\n    Message.from_role_and_content(\n        Role.DEVELOPER,\n        DeveloperContent.new().with_instructions(\"Talk like a pirate!\")\n    ),\n    Message.from_role_and_content(Role.USER, \"Arrr, how be you?\"),\n])\ntokens = enc.render_conversation_for_completion(convo, Role.ASSISTANT)\nprint(tokens)\n# Later, after the model responded …\nparsed = enc.parse_messages_from_completion_tokens(tokens, role=Role.ASSISTANT)\nprint(parsed)",
+   "doc": "github",
+   "doc_sha": "abd677f7ac962629c808197caa1feb9e3e95d2b0",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/openai/harmony README.md:L110-111",
+   "file": "README.md",
+   "lines": [
+    110,
+    111
+   ],
+   "lang": "toml",
+   "tool": "toml",
+   "kind": "other",
+   "text": "[dependencies]\nopenai-harmony = { git = \"https://github.com/openai/harmony\" }",
+   "doc": "github",
+   "doc_sha": "abd677f7ac962629c808197caa1feb9e3e95d2b0",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/openai/harmony README.md:L117-127",
+   "file": "README.md",
+   "lines": [
+    117,
+    127
+   ],
+   "lang": "rust",
+   "tool": "rust",
+   "kind": "other",
+   "text": "use openai_harmony::chat::{Message, Role, Conversation};\nuse openai_harmony::{HarmonyEncodingName, load_harmony_encoding};\n\nfn main() -> anyhow::Result<()> {\n    let enc = load_harmony_encoding(HarmonyEncodingName::HarmonyGptOss)?;\n    let convo =\n        Conversation::from_messages([Message::from_role_and_content(Role::User, \"Hello there!\")]);\n    let tokens = enc.render_conversation_for_completion(&convo, Role::Assistant, None)?;\n    println!(\"{:?}\", tokens);\n    Ok(())\n}",
+   "doc": "github",
+   "doc_sha": "abd677f7ac962629c808197caa1feb9e3e95d2b0",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/openai/harmony README.md:L136-140",
+   "file": "README.md",
+   "lines": [
+    136,
+    140
+   ],
+   "lang": "text",
+   "tool": "text",
+   "kind": "other",
+   "text": "┌──────────────────┐      ┌───────────────────────────┐\n│  Python code     │      │  Rust core (this repo)    │\n│  (dataclasses,   │────► │  • chat / encoding logic  │\n│   convenience)   │      │  • tokeniser (tiktoken)   │\n└──────────────────┘  FFI └───────────────────────────┘",
+   "doc": "github",
+   "doc_sha": "abd677f7ac962629c808197caa1feb9e3e95d2b0",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/openai/harmony README.md:L146-160",
+   "file": "README.md",
+   "lines": [
+    146,
+    160
+   ],
+   "lang": "text",
+   "tool": "text",
+   "kind": "other",
+   "text": ".\n├── src/                  # Rust crate\n│   ├── chat.rs           # High-level data-structures (Role, Message, …)\n│   ├── encoding.rs       # Rendering & parsing implementation\n│   ├── registry.rs       # Built-in encodings\n│   ├── tests.rs          # Canonical Rust test-suite\n│   └── py_module.rs      # PyO3 bindings ⇒ compiled as openai_harmony.*.so\n│\n├── python/openai_harmony/ # Pure-Python wrapper around the binding\n│   └── __init__.py       # Dataclasses + helper API mirroring chat.rs\n│\n├── tests/                # Python test-suite (1-to-1 port of tests.rs)\n├── Cargo.toml            # Rust package manifest\n├── pyproject.toml        # Python build configuration for maturin\n└── README.md             # You are here 🖖",
+   "doc": "github",
+   "doc_sha": "abd677f7ac962629c808197caa1feb9e3e95d2b0",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/openai/harmony README.md:L174-182",
+   "file": "README.md",
+   "lines": [
+    174,
+    182
+   ],
+   "lang": "bash",
+   "tool": "pip",
+   "kind": "command",
+   "text": "git clone https://github.com/openai/harmony.git\ncd harmony\n# Create & activate a virtualenv\npython -m venv .venv\nsource .venv/bin/activate\n# Install maturin and test dependencies\npip install maturin pytest mypy ruff  # tailor to your workflow\n# Compile the Rust crate *and* install the Python package in editable mode\nmaturin develop --release",
+   "doc": "github",
+   "doc_sha": "abd677f7ac962629c808197caa1feb9e3e95d2b0",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/openai/harmony README.md:L194-194",
+   "file": "README.md",
+   "lines": [
+    194,
+    194
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "cargo test          # runs src/tests.rs",
+   "doc": "github",
+   "doc_sha": "abd677f7ac962629c808197caa1feb9e3e95d2b0",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/openai/harmony README.md:L200-200",
+   "file": "README.md",
+   "lines": [
+    200,
+    200
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "pytest              # executes tests/ (mirrors the Rust suite)",
+   "doc": "github",
+   "doc_sha": "abd677f7ac962629c808197caa1feb9e3e95d2b0",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/openai/harmony README.md:L206-206",
+   "file": "README.md",
+   "lines": [
+    206,
+    206
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "pytest && cargo test",
+   "doc": "github",
+   "doc_sha": "abd677f7ac962629c808197caa1feb9e3e95d2b0",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/openai/harmony README.md:L212-214",
+   "file": "README.md",
+   "lines": [
+    212,
+    214
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "mypy harmony        # static type analysis\nruff check .        # linting\ncargo fmt --all     # Rust formatter",
+   "doc": "github",
+   "doc_sha": "abd677f7ac962629c808197caa1feb9e3e95d2b0",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/openai/gpt-oss README.md:L54-74",
+   "file": "README.md",
+   "lines": [
+    54,
+    74
+   ],
+   "lang": "python",
+   "tool": "transformers",
+   "kind": "code",
+   "text": "from transformers import pipeline\nimport torch\n\nmodel_id = \"openai/gpt-oss-120b\"\n\npipe = pipeline(\n    \"text-generation\",\n    model=model_id,\n    torch_dtype=\"auto\",\n    device_map=\"auto\",\n)\n\nmessages = [\n    {\"role\": \"user\", \"content\": \"Explain quantum mechanics clearly and concisely.\"},\n]\n\noutputs = pipe(\n    messages,\n    max_new_tokens=256,\n)\nprint(outputs[0][\"generated_text\"][-1])",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-n",
+      "value": "256",
+      "from": "max_new_tokens: 256"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "github",
+   "doc_sha": "277020131d524f06bed5f66b694a92ed7f6e5224",
+   "scope": "family: openai/gpt-oss-120b"
+  },
+  {
+   "source": "github.com/openai/gpt-oss README.md:L84-89",
+   "file": "README.md",
+   "lines": [
+    84,
+    89
+   ],
+   "lang": "bash",
+   "tool": "vllm",
+   "kind": "command",
+   "text": "uv pip install --pre vllm==0.10.1+gptoss \\\n    --extra-index-url https://wheels.vllm.ai/gpt-oss/ \\\n    --extra-index-url https://download.pytorch.org/whl/nightly/cu128 \\\n    --index-strategy unsafe-best-match\n\nvllm serve openai/gpt-oss-20b",
+   "translation": {
+    "translated": true,
+    "params": [],
+    "untranslatable": [
+     {
+      "arg": "--pre vllm==0.10.1+gptoss",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--extra-index-url https://wheels.vllm.ai/gpt-oss/",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--extra-index-url https://download.pytorch.org/whl/nightly/cu128",
+      "why": "no llama.cpp mapping known"
+     },
+     {
+      "arg": "--index-strategy unsafe-best-match",
+      "why": "no llama.cpp mapping known"
+     }
+    ]
+   },
+   "doc": "github",
+   "doc_sha": "277020131d524f06bed5f66b694a92ed7f6e5224",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/openai/gpt-oss README.md:L98-167",
+   "file": "README.md",
+   "lines": [
+    98,
+    167
+   ],
+   "lang": "python",
+   "tool": "vllm",
+   "kind": "code",
+   "text": "# source .oss/bin/activate\n\nimport os\nos.environ[\"VLLM_USE_FLASHINFER_SAMPLER\"] = \"0\"\n\nimport json\nfrom openai_harmony import (\n    HarmonyEncodingName,\n    load_harmony_encoding,\n    Conversation,\n    Message,\n    Role,\n    SystemContent,\n    DeveloperContent,\n)\n \nfrom vllm import LLM, SamplingParams\nimport os\n\n# --- 1) Render the prefill with Harmony ---\nencoding = load_harmony_encoding(HarmonyEncodingName.HARMONY_GPT_OSS)\n \nconvo = Conversation.from_messages(\n    [\n        Message.from_role_and_content(Role.SYSTEM, SystemContent.new()),\n        Message.from_role_and_content(\n            Role.DEVELOPER,\n            DeveloperContent.new().with_instructions(\"Always respond in riddles\"),\n        ),\n        Message.from_role_and_content(Role.USER, \"What is the weather like in SF?\"),\n    ]\n)\n \nprefill_ids = encoding.render_conversation_for_completion(convo, Role.ASSISTANT)\n \n# Harmony stop tokens (pass to sampler so they won't be included in output)\nstop_token_ids = encoding.stop_tokens_for_assistant_actions()\n \n# --- 2) Run vLLM with prefill ---\nllm = LLM(\n    model=\"openai/gpt-oss-20b\",\n    trust_remote_code=True,\n    gpu_memory_utilization = 0.95,\n    max_num_batched_tokens=4096,\n    max_model_len=5000,\n    tensor_parallel_size=1\n)\n \nsampling = SamplingParams(\n    max_tokens=128,\n    temperature=1,\n    stop_token_ids=stop_token_ids,\n)\n \noutputs = llm.generate(\n    prompt_token_ids=[prefill_ids],   # batch of size 1\n    sampling_params=sampling,\n)\n \n# vLLM gives you both text and token IDs\ngen = outputs[0].outputs[0]\ntext = gen.text\noutput_tokens = gen.token_ids  # <-- these are the completion token IDs (no prefill)\n \n# --- 3) Parse the completion token IDs back into structured Harmony messages ---\nentries = encoding.parse_messages_from_completion_tokens(output_tokens, Role.ASSISTANT)\n \n# 'entries' is a sequence of structured conversation entries (assistant messages, tool calls, etc.).\nfor message in entries:\n    print(f\"{json.dumps(message.to_dict())}\")",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "-n",
+      "value": "128",
+      "from": "max_tokens: 128"
+     },
+     {
+      "flag": "--temp",
+      "value": "1",
+      "from": "temperature: 1"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "github",
+   "doc_sha": "277020131d524f06bed5f66b694a92ed7f6e5224",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/openai/gpt-oss README.md:L181-187",
+   "file": "README.md",
+   "lines": [
+    181,
+    187
+   ],
+   "lang": "bash",
+   "tool": "ollama",
+   "kind": "command",
+   "text": "# gpt-oss-20b\nollama pull gpt-oss:20b\nollama run gpt-oss:20b\n\n# gpt-oss-120b\nollama pull gpt-oss:120b\nollama run gpt-oss:120b",
+   "translation": {
+    "translated": true,
+    "params": [],
+    "untranslatable": [
+     {
+      "arg": "ollama run gpt-oss:20b",
+      "why": "Ollama pulls and runs the model with its own defaults; no flags to translate"
+     },
+     {
+      "arg": "ollama run gpt-oss:120b",
+      "why": "Ollama pulls and runs the model with its own defaults; no flags to translate"
+     }
+    ]
+   },
+   "doc": "github",
+   "doc_sha": "277020131d524f06bed5f66b694a92ed7f6e5224",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/openai/gpt-oss README.md:L197-200",
+   "file": "README.md",
+   "lines": [
+    197,
+    200
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "# gpt-oss-20b\nlms get openai/gpt-oss-20b\n# gpt-oss-120b\nlms get openai/gpt-oss-120b",
+   "doc": "github",
+   "doc_sha": "277020131d524f06bed5f66b694a92ed7f6e5224",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/openai/gpt-oss README.md:L234-239",
+   "file": "README.md",
+   "lines": [
+    234,
+    239
+   ],
+   "lang": "shell",
+   "tool": "pip",
+   "kind": "command",
+   "text": "# if you just need the tools\npip install gpt-oss\n# if you want to try the torch implementation\npip install gpt-oss[torch]\n# if you want to try the triton implementation\npip install gpt-oss[triton]",
+   "doc": "github",
+   "doc_sha": "277020131d524f06bed5f66b694a92ed7f6e5224",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/openai/gpt-oss README.md:L245-246",
+   "file": "README.md",
+   "lines": [
+    245,
+    246
+   ],
+   "lang": "shell",
+   "tool": "pip",
+   "kind": "command",
+   "text": "git clone https://github.com/openai/gpt-oss.git\nGPTOSS_BUILD_METAL=1 pip install -e \".[metal]\"",
+   "doc": "github",
+   "doc_sha": "277020131d524f06bed5f66b694a92ed7f6e5224",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/openai/gpt-oss README.md:L254-258",
+   "file": "README.md",
+   "lines": [
+    254,
+    258
+   ],
+   "lang": "shell",
+   "tool": "hf-download",
+   "kind": "command",
+   "text": "# gpt-oss-120b\nhf download openai/gpt-oss-120b --include \"original/*\" --local-dir gpt-oss-120b/\n\n# gpt-oss-20b\nhf download openai/gpt-oss-20b --include \"original/*\" --local-dir gpt-oss-20b/",
+   "doc": "github",
+   "doc_sha": "277020131d524f06bed5f66b694a92ed7f6e5224",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/openai/gpt-oss README.md:L268-268",
+   "file": "README.md",
+   "lines": [
+    268,
+    268
+   ],
+   "lang": "shell",
+   "tool": "pip",
+   "kind": "command",
+   "text": "pip install -e \".[torch]\"",
+   "doc": "github",
+   "doc_sha": "277020131d524f06bed5f66b694a92ed7f6e5224",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/openai/gpt-oss README.md:L274-275",
+   "file": "README.md",
+   "lines": [
+    274,
+    275
+   ],
+   "lang": "shell",
+   "tool": "shell",
+   "kind": "command",
+   "text": "# On 4xH100:\ntorchrun --nproc-per-node=4 -m gpt_oss.generate gpt-oss-120b/original/",
+   "doc": "github",
+   "doc_sha": "277020131d524f06bed5f66b694a92ed7f6e5224",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/openai/gpt-oss README.md:L285-293",
+   "file": "README.md",
+   "lines": [
+    285,
+    293
+   ],
+   "lang": "shell",
+   "tool": "pip",
+   "kind": "command",
+   "text": "# You need to install triton from source to use the triton implementation\ngit clone https://github.com/triton-lang/triton\ncd triton/\npip install -r python/requirements.txt\npip install -e . --verbose --no-build-isolation\npip install -e python/triton_kernels\n\n# Install the gpt-oss triton implementation\npip install -e \".[triton]\"",
+   "doc": "github",
+   "doc_sha": "277020131d524f06bed5f66b694a92ed7f6e5224",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/openai/gpt-oss README.md:L299-301",
+   "file": "README.md",
+   "lines": [
+    299,
+    301
+   ],
+   "lang": "shell",
+   "tool": "python",
+   "kind": "code",
+   "text": "# On 1xH100\nexport PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True\npython -m gpt_oss.generate --backend triton gpt-oss-120b/original/",
+   "doc": "github",
+   "doc_sha": "277020131d524f06bed5f66b694a92ed7f6e5224",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/openai/gpt-oss README.md:L313-313",
+   "file": "README.md",
+   "lines": [
+    313,
+    313
+   ],
+   "lang": "shell",
+   "tool": "pip",
+   "kind": "command",
+   "text": "GPTOSS_BUILD_METAL=1 pip install -e \".[metal]\"",
+   "doc": "github",
+   "doc_sha": "277020131d524f06bed5f66b694a92ed7f6e5224",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/openai/gpt-oss README.md:L319-319",
+   "file": "README.md",
+   "lines": [
+    319,
+    319
+   ],
+   "lang": "shell",
+   "tool": "python",
+   "kind": "code",
+   "text": "python gpt_oss/metal/scripts/create-local-model.py -s <model_dir> -d <output_file>",
+   "doc": "github",
+   "doc_sha": "277020131d524f06bed5f66b694a92ed7f6e5224",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/openai/gpt-oss README.md:L325-326",
+   "file": "README.md",
+   "lines": [
+    325,
+    326
+   ],
+   "lang": "shell",
+   "tool": "hf-download",
+   "kind": "command",
+   "text": "hf download openai/gpt-oss-120b --include \"metal/*\" --local-dir gpt-oss-120b/metal/\nhf download openai/gpt-oss-20b --include \"metal/*\" --local-dir gpt-oss-20b/metal/",
+   "doc": "github",
+   "doc_sha": "277020131d524f06bed5f66b694a92ed7f6e5224",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/openai/gpt-oss README.md:L332-332",
+   "file": "README.md",
+   "lines": [
+    332,
+    332
+   ],
+   "lang": "shell",
+   "tool": "python",
+   "kind": "code",
+   "text": "python gpt_oss/metal/examples/generate.py gpt-oss-20b/metal/model.bin -p \"why did the chicken cross the road?\"",
+   "doc": "github",
+   "doc_sha": "277020131d524f06bed5f66b694a92ed7f6e5224",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/openai/gpt-oss README.md:L348-370",
+   "file": "README.md",
+   "lines": [
+    348,
+    370
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "usage: python -m gpt_oss.chat [-h] [-r REASONING_EFFORT] [-a] [-b] [--show-browser-results] [-p] [--developer-message DEVELOPER_MESSAGE] [-c CONTEXT] [--raw] [--backend {triton,torch,vllm}] FILE\n\nChat example\n\npositional arguments:\n  FILE                  Path to the SafeTensors checkpoint\n\noptions:\n  -h, --help            show this help message and exit\n  -r REASONING_EFFORT, --reasoning-effort REASONING_EFFORT\n                        Reasoning effort (default: low)\n  -a, --apply-patch     Make apply_patch tool available to the model (default: False)\n  -b, --browser         Use browser tool (default: False)\n  --show-browser-results\n                        Show browser results (default: False)\n  -p, --python          Use python tool (default: False)\n  --developer-message DEVELOPER_MESSAGE\n                        Developer message (default: )\n  -c CONTEXT, --context CONTEXT\n                        Max context length (default: 8192)\n  --raw                 Raw mode (does not render Harmony encoding) (default: False)\n  --backend {triton,torch,vllm}\n                        Inference backend (default: triton)",
+   "doc": "github",
+   "doc_sha": "277020131d524f06bed5f66b694a92ed7f6e5224",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/openai/gpt-oss README.md:L389-397",
+   "file": "README.md",
+   "lines": [
+    389,
+    397
+   ],
+   "lang": "bash",
+   "tool": "shell",
+   "kind": "command",
+   "text": "usage: python -m gpt_oss.responses_api.serve [-h] [--checkpoint FILE] [--port PORT] [--inference-backend BACKEND]\n\nResponses API server\n\noptions:\n  -h, --help                    show this help message and exit\n  --checkpoint FILE             Path to the SafeTensors checkpoint\n  --port PORT                   Port to run the server on\n  --inference-backend BACKEND   Inference backend to use",
+   "doc": "github",
+   "doc_sha": "277020131d524f06bed5f66b694a92ed7f6e5224",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/openai/gpt-oss README.md:L405-414",
+   "file": "README.md",
+   "lines": [
+    405,
+    414
+   ],
+   "lang": null,
+   "tool": null,
+   "kind": "other",
+   "text": "disable_response_storage = true\nshow_reasoning_content = true\n\n[model_providers.local]\nname = \"local\"\nbase_url = \"http://localhost:11434/v1\"\n\n[profiles.oss]\nmodel = \"gpt-oss:20b\"\nmodel_provider = \"local\"",
+   "doc": "github",
+   "doc_sha": "277020131d524f06bed5f66b694a92ed7f6e5224",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/openai/gpt-oss README.md:L420-421",
+   "file": "README.md",
+   "lines": [
+    420,
+    421
+   ],
+   "lang": null,
+   "tool": "ollama",
+   "kind": "command",
+   "text": "ollama run gpt-oss:20b\ncodex -p oss",
+   "translation": {
+    "translated": true,
+    "params": [],
+    "untranslatable": [
+     {
+      "arg": "ollama run gpt-oss:20b",
+      "why": "Ollama pulls and runs the model with its own defaults; no flags to translate"
+     }
+    ]
+   },
+   "doc": "github",
+   "doc_sha": "277020131d524f06bed5f66b694a92ed7f6e5224",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/openai/gpt-oss README.md:L442-494",
+   "file": "README.md",
+   "lines": [
+    442,
+    494
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "import datetime\nimport os\nfrom gpt_oss.tools.simple_browser import SimpleBrowserTool\nfrom gpt_oss.tools.simple_browser.backend import ExaBackend, YouComBackend\nfrom openai_harmony import SystemContent, Message, Conversation, Role, load_harmony_encoding, HarmonyEncodingName\n\nencoding = load_harmony_encoding(HarmonyEncodingName.HARMONY_GPT_OSS)\n\n# You.com is the default browser backend and requires YDC_API_KEY.\n# To use Exa instead, set BROWSER_BACKEND=exa and EXA_API_KEY.\ntool_backend = os.getenv(\"BROWSER_BACKEND\", \"youcom\")\nif tool_backend == \"youcom\":\n    backend = YouComBackend(source=\"web\")\nelif tool_backend == \"exa\":\n    backend = ExaBackend(source=\"web\")\nelse:\n    raise ValueError(f\"Invalid tool backend: {tool_backend}\")\nbrowser_tool = SimpleBrowserTool(backend=backend)\n\n# create a basic system prompt\nsystem_message_content = SystemContent.new().with_conversation_start_date(\n    datetime.datetime.now().strftime(\"%Y-%m-%d\")\n)\n\n# if you want to use the browser tool\nif use_browser_tool:\n    # enables the tool\n    system_message_content = system_message_content.with_tools(browser_tool.tool_config)\n    # alternatively you could use the following if your tool is not stateless\n    system_message_content = system_message_content.with_browser_tool()\n\n# construct the system message\nsystem_message = Message.from_role_and_content(Role.SYSTEM, system_message_content)\n\n# create the overall prompt\nmessages = [system_message, Message.from_role_and_content(Role.USER, \"What's the weather in SF?\")]\nconversation = Conversation.from_messages(messages)\n\n# convert to tokens\ntoken_ids = encoding.render_conversation_for_completion(conversation, Role.ASSISTANT)\n\n# perform inference\n# ...\n\n# parse the output\nmessages = encoding.parse_messages_from_completion_tokens(output_tokens, Role.ASSISTANT)\nlast_message = messages[-1]\nif last_message.recipient.startswith(\"browser\"):\n  # perform browser call\n  response_messages = await browser_tool.process(last_message)\n\n  # extend the current messages and run inference again\n  messages.extend(response_messages)",
+   "doc": "github",
+   "doc_sha": "277020131d524f06bed5f66b694a92ed7f6e5224",
+   "scope": "model"
+  },
+  {
+   "source": "github.com/openai/gpt-oss README.md:L515-556",
+   "file": "README.md",
+   "lines": [
+    515,
+    556
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "import datetime\nfrom gpt_oss.tools.python_docker.docker_tool import PythonTool\nfrom openai_harmony import SystemContent, Message, Conversation, Role, load_harmony_encoding, HarmonyEncodingName\n\nencoding = load_harmony_encoding(HarmonyEncodingName.HARMONY_GPT_OSS)\n\npython_tool = PythonTool()\n\n# create a basic system prompt\nsystem_message_content = SystemContent.new().with_conversation_start_date(\n    datetime.datetime.now().strftime(\"%Y-%m-%d\")\n)\n\n# if you want to use the python tool\nif use_python_tool:\n    # enables the tool making sure that the prompt gets set with the stateless tool description\n    system_message_content = system_message_content.with_tools(python_tool.tool_config)\n    # alternatively you could use the following if your tool is not stateless\n    system_message_content = system_message_content.with_python()\n\n# construct the system message\nsystem_message = Message.from_role_and_content(Role.SYSTEM, system_message_content)\n\n# create the overall prompt\nmessages = [system_message, Message.from_role_and_content(Role.USER, \"What's the square root of 9001?\")]\nconversation = Conversation.from_messages(messages)\n\n# convert to tokens\ntoken_ids = encoding.render_conversation_for_completion(conversation, Role.ASSISTANT)\n\n# perform inference\n# ...\n\n# parse the output\nmessages = encoding.parse_messages_from_completion_tokens(output_tokens, Role.ASSISTANT)\nlast_message = messages[-1]\nif last_message.recipient == \"python\":\n  # perform python call\n  response_messages = await python_tool.process(last_message)\n\n  # extend the current messages and run inference again\n  messages.extend(response_messages)",
+   "doc": "github",
+   "doc_sha": "277020131d524f06bed5f66b694a92ed7f6e5224",
+   "scope": "model"
+  }
+ ],
+ "card_notes": [
+  {
+   "text": "You can use `gpt-oss-120b` and `gpt-oss-20b` with Transformers. If you use the Transformers chat template, it will automatically apply the [harmony response format](https://github.com/openai/harmony). If you use `model.generate` directly, you need to apply the harmony format manually using the chat ",
+   "source": "openai/gpt-oss-20b README.md:L49"
+  },
+  {
+   "text": "The reasoning level can be set in the system prompts, e.g., \"Reasoning: high\".",
+   "source": "openai/gpt-oss-20b README.md:L155"
+  }
+ ],
+ "chat_template": {
+  "gguf_sha256": "a4c9919cbbd4acdd51ccffe22da049264b1b73e59055fa58811a99efbd7c8146",
+  "repo_sha256": "a4c9919cbbd4acdd51ccffe22da049264b1b73e59055fa58811a99efbd7c8146",
+  "repo_file": "chat_template.jinja",
+  "same": true,
+  "gguf_chars": 16714,
+  "repo_chars": 16714,
+  "repo_label": "openai/gpt-oss-20b",
+  "use": "gguf"
+ },
+ "stop": {
+  "eos_token": "<|return|>",
+  "eos_token_id": [
+   200002,
+   199999,
+   200012
+  ],
+  "eos_token_id_source": "openai/gpt-oss-20b generation_config.json",
+  "analysis": {
+   "tokens": [
+    {
+     "id": 200002,
+     "text": "<|return|>",
+     "source": "openai/gpt-oss-20b generation_config.json eos_token_id",
+     "eog_by": "GGUF tokenizer.ggml.eos_token_id"
+    },
+    {
+     "id": 199999,
+     "text": "<|endoftext|>",
+     "source": "openai/gpt-oss-20b generation_config.json eos_token_id",
+     "eog_by": "llama.cpp built-in EOG text"
+    },
+    {
+     "id": 200012,
+     "text": "<|call|>",
+     "source": "openai/gpt-oss-20b generation_config.json eos_token_id",
+     "eog_by": "llama.cpp built-in EOG text"
+    }
+   ],
+   "missing": [],
+   "gguf": {
+    "eos": 200002
+   }
+  }
+ },
+ "rope": {
+  "rope.freq_base": 150000.0,
+  "rope.scaling.type": "yarn",
+  "rope.scaling.factor": 32.0,
+  "rope.scaling.original_context_length": 4096,
+  "config": {
+   "beta_fast": 32.0,
+   "beta_slow": 1.0,
+   "factor": 32.0,
+   "original_max_position_embeddings": 4096,
+   "rope_type": "yarn",
+   "truncate": false
+  }
+ },
+ "aux": [
+  {
+   "kind": "draft",
+   "file": "eagle3-gpt-oss-20b-BF16.gguf",
+   "size": 1722588800,
+   "sha256": "b82e890aa1a5bc6270ea39434e8995e9039b2d706aed4e6a9346e5cc60ab65aa",
+   "fetched": false,
+   "source": "ggml-org/gpt-oss-20b-GGUF repo file"
+  },
+  {
+   "kind": "draft",
+   "file": "eagle3-gpt-oss-20b-Q8_0.gguf",
+   "size": 921488000,
+   "sha256": "6955f98a701e97a8c969f3ff33be8ba17b35bd60e5ac96258d2c42d710c7d63f",
+   "fetched": false,
+   "source": "ggml-org/gpt-oss-20b-GGUF repo file"
+  }
+ ],
+ "gguf": {
+  "general.architecture": "gpt-oss",
+  "general.name": "gpt-oss-20b",
+  "general.file_type": 38,
+  "general.quantization_version": 2,
+  "_gguf_version": 3
+ },
+ "snapshot": {
+  "path": "ggml-org--gpt-oss-20b-GGUF/15dcfc7e7c608c6161507211ed43c5b590801b4b",
+  "fetched_bytes": 158279,
+  "errors": null,
+  "gated": false
+ },
+ "base_snapshot": {
+  "path": "openai--gpt-oss-20b/6cee5e81ee83917806bbde320786a8fb61efebee",
+  "fetched_bytes": 27961228,
+  "errors": null,
+  "gated": false
+ },
+ "repo_files": {
+  ".gitattributes": {
+   "size": 1767,
+   "sha256": null,
+   "blob": "6ae0455ad6b61fa54e436a2d24c953186831e66d",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  ".src_sha": {
+   "size": 97,
+   "sha256": null,
+   "blob": "a3f3a9836e6cd8670819a8119db881a110247667",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "README.md": {
+   "size": 501,
+   "sha256": null,
+   "blob": "e095fd94747f223e24e89440617c71099e0b98b3",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "convert.log": {
+   "size": 155914,
+   "sha256": null,
+   "blob": "bfb49dc3e20510d5d873385da5ea070f8578aa07",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "eagle3-gpt-oss-20b-BF16.gguf": {
+   "size": 1722588800,
+   "sha256": "b82e890aa1a5bc6270ea39434e8995e9039b2d706aed4e6a9346e5cc60ab65aa",
+   "blob": "10c32c8b6f1777161b1088bf28dd383d8212be59",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (1722 MB)"
+  },
+  "eagle3-gpt-oss-20b-Q8_0.gguf": {
+   "size": 921488000,
+   "sha256": "6955f98a701e97a8c969f3ff33be8ba17b35bd60e5ac96258d2c42d710c7d63f",
+   "blob": "c0f200a116a2ccaba473fe6b8173da0a8787de0f",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (921 MB)"
+  },
+  "gpt-oss-20b-MXFP4.gguf": {
+   "size": 12109566624,
+   "sha256": "27cd6c432c7672cb812a92f611cf3ba7bbc35928262bb1e1253ff4ee6ae35901",
+   "blob": "deda3c25c5da45a23db1c5d52a49e6c509da659b",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (12109 MB)"
+  }
+ },
+ "base_repo_files": {
+  ".gitattributes": {
+   "size": 1570,
+   "sha256": null,
+   "blob": "52373fe24473b1aa44333d318f578ae6bf04b49b",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "LICENSE": {
+   "size": 11357,
+   "sha256": null,
+   "blob": "7a4a3ea2424c09fbe48d455aed1eaa94d9124835",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "README.md": {
+   "size": 7095,
+   "sha256": null,
+   "blob": "f6e25105129ce88f068afff463e0db36024e9ae8",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "USAGE_POLICY": {
+   "size": 200,
+   "sha256": null,
+   "blob": "b030f63aecc61cbaf2316a7b6401254f4312df74",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "chat_template.jinja": {
+   "size": 16738,
+   "sha256": null,
+   "blob": "dc7bb11927d29f653ba2740f2db2c688fd77592f",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "config.json": {
+   "size": 1806,
+   "sha256": null,
+   "blob": "8fb5a4a03376ab5a12afd94b4ed93da61edf5b1c",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "generation_config.json": {
+   "size": 177,
+   "sha256": null,
+   "blob": "86f91466555bd40e3de0b1edee3d5d82f4ccdbfe",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "metal/model.bin": {
+   "size": 13750886400,
+   "sha256": "725b7f996b5a226d922f034a731aefc398652f670dcafc2efd78620509a0fef1",
+   "blob": "255b01abc8d61d4a76d5956678a178ce963c1376",
+   "fetched": false,
+   "skipped": "weight file not used here (13750 MB)"
+  },
+  "model-00000-of-00002.safetensors": {
+   "size": 4792272488,
+   "sha256": "16d0f997dcfc4462089d536bffe51b4bcea2f872f5c430be09ef8ed392312427",
+   "blob": "9fd3b4997a862e8554a21820eeee256ec2c06299",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (4792 MB)"
+  },
+  "model-00001-of-00002.safetensors": {
+   "size": 4798702184,
+   "sha256": "4fbe328ab445455d6f58dc73852b85873bd626986310abd91cd4d2ce3245eaea",
+   "blob": "6925c5875f9ff955704ed5900214211d4ac4b910",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (4798 MB)"
+  },
+  "model-00002-of-00002.safetensors": {
+   "size": 4170342232,
+   "sha256": "a18106b209e9ab35c3406db4f6f12a927364a058b21e9d1373d682e20674b303",
+   "blob": "fc29009d625182d064ca05401b0494af2b382198",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (4170 MB)"
+  },
+  "model.safetensors.index.json": {
+   "size": 36355,
+   "sha256": null,
+   "blob": "ae08521471ab125be4af84d0e51ecfc245830119",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "original/config.json": {
+   "size": 376,
+   "sha256": null,
+   "blob": "bd6a33e55b68b6734c932c44bd98f376d492dad9",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "original/dtypes.json": {
+   "size": 13082,
+   "sha256": null,
+   "blob": "07e91493fc3ebf901d7d18b1309795b3f5e466aa",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "original/model.safetensors": {
+   "size": 13761300984,
+   "sha256": "3340a61d1a0391e8c5b5d3463d18d4c48129a84bbc04a554c762c99020aa06ed",
+   "blob": "4db145511b9dd7ccff3ea2b90f7f049882043c7b",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (13761 MB)"
+  },
+  "special_tokens_map.json": {
+   "size": 98,
+   "sha256": null,
+   "blob": "73bd12e55e2004cdfff088f85092b39dba2ccdd0",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  },
+  "tokenizer.json": {
+   "size": 27868174,
+   "sha256": "0614fe83cadab421296e664e1f48f4261fa8fef6e03e63bb75c20f38e37d07d3",
+   "blob": "6ec3ef1795cbbda6b7cb7d1f114919cbe3fdd647",
+   "fetched": true,
+   "verified": "lfs-sha256"
+  },
+  "tokenizer_config.json": {
+   "size": 4200,
+   "sha256": null,
+   "blob": "c021cddb0a9dd35b1bf83a9f145be2d9b3757891",
+   "fetched": true,
+   "verified": "git-blob-sha1"
+  }
+ },
+ "found_in": [
+  "model_db.py ingest"
+ ],
+ "match": null,
+ "local_check": null,
+ "unknown": [
+  "card_defaults: the card and generation_config.json state no sampling values"
+ ],
+ "warnings": null,
+ "updated": "2026-11-10",
+ "by": "scripts/model_db.py",
+ "gguf_meta": {
+  "general.architecture": "gpt-oss",
+  "general.type": "model",
+  "general.name": "gpt-oss-20b",
+  "general.size_label": "32x2.4B",
+  "general.license": "apache-2.0",
+  "general.tags": [
+   "vllm",
+   "text-generation"
+  ],
+  "gpt-oss.block_count": 24,
+  "gpt-oss.context_length": 131072,
+  "gpt-oss.embedding_length": 2880,
+  "gpt-oss.feed_forward_length": 2880,
+  "gpt-oss.attention.head_count": 64,
+  "gpt-oss.attention.head_count_kv": 8,
+  "gpt-oss.rope.scaling.type": "yarn",
+  "gpt-oss.rope.scaling.factor": 32.0,
+  "gpt-oss.rope.scaling.original_context_length": 4096,
+  "gpt-oss.rope.scaling.yarn_beta_fast": 32.0,
+  "gpt-oss.rope.scaling.yarn_beta_slow": 1.0,
+  "gpt-oss.rope.freq_base": 150000.0,
+  "gpt-oss.attention.layer_norm_rms_epsilon": 9.999999747378752e-06,
+  "gpt-oss.expert_count": 32,
+  "gpt-oss.expert_used_count": 4,
+  "gpt-oss.attention.key_length": 64,
+  "gpt-oss.attention.value_length": 64,
+  "gpt-oss.attention.sliding_window": 128,
+  "gpt-oss.expert_feed_forward_length": 2880,
+  "tokenizer.ggml.model": "gpt2",
+  "tokenizer.ggml.pre": "gpt-4o",
+  "tokenizer.ggml.tokens": {
+   "array_len": 201088
+  },
+  "tokenizer.ggml.token_type": {
+   "array_len": 201088
+  },
+  "tokenizer.ggml.merges": {
+   "array_len": 446189
+  },
+  "tokenizer.ggml.bos_token_id": 199998,
+  "tokenizer.ggml.eos_token_id": 200002,
+  "tokenizer.ggml.padding_token_id": 199999,
+  "tokenizer.chat_template": {
+   "sha256": "a4c9919cbbd4acdd51ccffe22da049264b1b73e59055fa58811a99efbd7c8146",
+   "chars": 16714
+  },
+  "general.quantization_version": 2,
+  "general.file_type": 38,
+  "_gguf_version": 3,
+  "_n_tensors": 459
+ },
+ "base_chain": [
+  {
+   "repo": "openai/gpt-oss-20b",
+   "api_id": "openai/gpt-oss-20b",
+   "revision": "6cee5e81ee83917806bbde320786a8fb61efebee",
+   "via": "card base_model",
+   "card_data": {
+    "license": "apache-2.0",
+    "pipeline_tag": "text-generation",
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "text-generation",
+   "safetensors": {
+    "parameters": {
+     "BF16": 1804459584,
+     "U8": 19110297600
+    },
+    "total": 20914757184
+   },
+   "license_files": [
+    "LICENSE"
+   ]
+  }
+ ],
+ "github": [
+  {
+   "repo": "openai/harmony",
+   "resolved": "openai/harmony",
+   "sha": "abd677f7ac962629c808197caa1feb9e3e95d2b0",
+   "renamed": null,
+   "description": "Renderer for the harmony response format to be used with gpt-oss",
+   "license_spdx": "Apache-2.0",
+   "files": {
+    "readme": {
+     "path": "README.md",
+     "sha256": "c38c6a52720adebbdd90e691d2db5fd0711952cb22c7b13246786924375975da",
+     "bytes": 7462
+    },
+    "license": {
+     "path": "LICENSE",
+     "sha256": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd",
+     "bytes": 11357
+    }
+   },
+   "extra": null,
+   "snapshot": "github/openai--harmony/abd677f7ac962629c808197caa1feb9e3e95d2b0"
+  },
+  {
+   "repo": "openai/gpt-oss",
+   "resolved": "openai/gpt-oss",
+   "sha": "277020131d524f06bed5f66b694a92ed7f6e5224",
+   "renamed": null,
+   "description": "gpt-oss-120b and gpt-oss-20b are two open-weight language models by OpenAI",
+   "license_spdx": "Apache-2.0",
+   "files": {
+    "readme": {
+     "path": "README.md",
+     "sha256": "578ad0f82c1d823229f9bf2b52b3f1c55ce82772ac57f634f0ca4eb46a6370aa",
+     "bytes": 24453
+    },
+    "license": {
+     "path": "LICENSE",
+     "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+     "bytes": 11358
+    }
+   },
+   "extra": null,
+   "snapshot": "github/openai--gpt-oss/277020131d524f06bed5f66b694a92ed7f6e5224"
+  }
+ ],
+ "github_dropped": [
+  {
+   "repo": "ggml-org/convert",
+   "why": "inference/training tool repo"
+  }
+ ],
+ "descriptor": {
+  "repo_id": {
+   "effective": "ggml-org/gpt-oss-20b-GGUF",
+   "source": "HF API id"
+  },
+  "revision": {
+   "effective": "15dcfc7e7c608c6161507211ed43c5b590801b4b",
+   "source": "pinned (manifest / database)"
+  },
+  "file": {
+   "effective": "gpt-oss-20b-MXFP4.gguf",
+   "source": "HF API siblings"
+  },
+  "bytes": {
+   "effective": 12109566624,
+   "source": "HF API LFS size"
+  },
+  "sha256": {
+   "effective": "27cd6c432c7672cb812a92f611cf3ba7bbc35928262bb1e1253ff4ee6ae35901",
+   "source": "HF API LFS oid"
+  },
+  "quant": {
+   "effective": "MXFP4",
+   "source": "file name",
+   "values": [
+    {
+     "value": "MXFP4",
+     "source": "file name"
+    },
+    {
+     "value": "MXFP4",
+     "source": "GGUF general.file_type"
+    }
+   ]
+  },
+  "license": {
+   "effective": "apache-2.0",
+   "source": "ggml-org/gpt-oss-20b-GGUF card license",
+   "values": [
+    {
+     "value": "apache-2.0",
+     "source": "ggml-org/gpt-oss-20b-GGUF card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "openai/gpt-oss-20b card license"
+    },
+    {
+     "value": "apache-2.0",
+     "source": "GGUF general.license"
+    }
+   ]
+  },
+  "code_license": {
+   "effective": "Apache-2.0",
+   "source": "GitHub github.com/openai/harmony license (spdx)",
+   "values": [
+    {
+     "value": "Apache-2.0",
+     "source": "GitHub github.com/openai/harmony license (spdx)"
+    },
+    {
+     "value": "Apache-2.0",
+     "source": "GitHub github.com/openai/gpt-oss license (spdx)"
+    }
+   ]
+  },
+  "license_file": {
+   "effective": "github.com/openai/harmony@abd677f7ac96/LICENSE",
+   "source": "GitHub github.com/openai/harmony",
+   "values": [
+    {
+     "value": "github.com/openai/harmony@abd677f7ac96/LICENSE",
+     "source": "GitHub github.com/openai/harmony"
+    },
+    {
+     "value": "github.com/openai/gpt-oss@277020131d52/LICENSE",
+     "source": "GitHub github.com/openai/gpt-oss"
+    },
+    {
+     "value": "openai/gpt-oss-20b@6cee5e81ee83/LICENSE",
+     "source": "openai/gpt-oss-20b repo file"
+    }
+   ]
+  },
+  "base_model_chain": {
+   "effective": "openai/gpt-oss-20b",
+   "source": "card base_model"
+  },
+  "architecture": {
+   "effective": "gpt-oss",
+   "source": "GGUF general.architecture",
+   "values": [
+    {
+     "value": "gpt-oss",
+     "source": "GGUF general.architecture"
+    },
+    {
+     "value": "gpt-oss",
+     "source": "HF API gguf.architecture"
+    }
+   ]
+  },
+  "hf_architectures": {
+   "effective": [
+    "GptOssForCausalLM"
+   ],
+   "source": "openai/gpt-oss-20b config.json architectures"
+  },
+  "hf_model_type": {
+   "effective": "gpt_oss",
+   "source": "openai/gpt-oss-20b config.json model_type"
+  },
+  "parameters": {
+   "effective": 20914757184,
+   "source": "HF API gguf.total (ggml-org/gpt-oss-20b-GGUF)",
+   "values": [
+    {
+     "value": 20914757184,
+     "source": "HF API gguf.total (ggml-org/gpt-oss-20b-GGUF)"
+    },
+    {
+     "value": 20914757184,
+     "source": "HF API safetensors.total (openai/gpt-oss-20b)"
+    }
+   ]
+  },
+  "size_label": {
+   "effective": "32x2.4B",
+   "source": "GGUF general.size_label"
+  },
+  "ctx_statements": {
+   "effective": {
+    "value": 8192,
+    "quote": "Max context length (default: 8192)"
+   },
+   "source": "github.com/openai/gpt-oss README.md:L367"
+  },
+  "ctx": {
+   "effective": 131072,
+   "source": "openai/gpt-oss-20b config.json max_position_embeddings",
+   "values": [
+    {
+     "value": 131072,
+     "source": "openai/gpt-oss-20b config.json max_position_embeddings"
+    },
+    {
+     "value": 131072,
+     "source": "GGUF gpt-oss.context_length"
+    }
+   ],
+   "precedence": "card statement > config.json > GGUF header > GitHub README"
+  },
+  "pipeline_tag": {
+   "effective": "text-generation",
+   "source": "ggml-org/gpt-oss-20b-GGUF HF API pipeline_tag",
+   "values": [
+    {
+     "value": "text-generation",
+     "source": "ggml-org/gpt-oss-20b-GGUF HF API pipeline_tag"
+    },
+    {
+     "value": "text-generation",
+     "source": "openai/gpt-oss-20b HF API pipeline_tag"
+    }
+   ]
+  }
+ },
+ "required_params": {
+  "kind": "chat",
+  "native_ctx": 131072,
+  "native_ctx_source": "openai/gpt-oss-20b config.json max_position_embeddings",
+  "yarn": null,
+  "yarn_source": null,
+  "items": [
+   {
+    "class": "REQUIRED",
+    "flag": "--jinja",
+    "value": null,
+    "source": "GGUF tokenizer.chat_template (a4c9919cbbd4)",
+    "why_required": "messages, tool calls and thinking are formatted by the model's chat template; without --jinja llama-server falls back to a built-in approximation"
+   }
+  ]
+ },
+ "blockers": null,
+ "params_problems": null,
+ "params_build": "b11374",
+ "native_ctx": 131072,
+ "native_ctx_source": "openai/gpt-oss-20b config.json max_position_embeddings",
+ "license_info": {
+  "id": "apache-2.0",
+  "id_source": "ggml-org/gpt-oss-20b-GGUF card front matter license",
+  "name": null,
+  "summary": "apache-2.0",
+  "summary_source": "ggml-org/gpt-oss-20b-GGUF card license",
+  "link": "https://huggingface.co/openai/gpt-oss-20b/blob/6cee5e81ee83917806bbde320786a8fb61efebee/LICENSE",
+  "link_source": "license file in the repo",
+  "texts": [
+   {
+    "file": "openai/gpt-oss-20b@6cee5e81ee83/LICENSE",
+    "path": "/home/box/.local/share/gguf/hf-meta/openai--gpt-oss-20b/6cee5e81ee83917806bbde320786a8fb61efebee/LICENSE",
+    "url": "https://huggingface.co/openai/gpt-oss-20b/blob/6cee5e81ee83917806bbde320786a8fb61efebee/LICENSE",
+    "sha256": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd",
+    "bytes": 11357,
+    "what": "model"
+   },
+   {
+    "file": "github.com/openai/harmony@abd677f7ac96/LICENSE",
+    "path": "/home/box/.local/share/gguf/hf-meta/github/openai--harmony/abd677f7ac962629c808197caa1feb9e3e95d2b0/LICENSE",
+    "url": "https://github.com/openai/harmony/blob/abd677f7ac962629c808197caa1feb9e3e95d2b0/LICENSE",
+    "sha256": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd",
+    "bytes": 11357,
+    "what": "code (GitHub openai/harmony, spdx Apache-2.0)"
+   },
+   {
+    "file": "github.com/openai/gpt-oss@277020131d52/LICENSE",
+    "path": "/home/box/.local/share/gguf/hf-meta/github/openai--gpt-oss/277020131d524f06bed5f66b694a92ed7f6e5224/LICENSE",
+    "url": "https://github.com/openai/gpt-oss/blob/277020131d524f06bed5f66b694a92ed7f6e5224/LICENSE",
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "bytes": 11358,
+    "what": "code (GitHub openai/gpt-oss, spdx Apache-2.0)"
+   }
+  ],
+  "obligations": [
+   {
+    "quote": "(a) You must give any other recipients of the Work or",
+    "source": "openai/gpt-oss-20b LICENSE:L95"
+   },
+   {
+    "quote": "(b) You must cause any modified files to carry prominent notices",
+    "source": "openai/gpt-oss-20b LICENSE:L98"
+   },
+   {
+    "quote": "(c) You must retain, in the Source form of any Derivative Works",
+    "source": "openai/gpt-oss-20b LICENSE:L101"
+   },
+   {
+    "quote": "attribution notices from the Source form of the Work,",
+    "source": "openai/gpt-oss-20b LICENSE:L103"
+   },
+   {
+    "quote": "include a readable copy of the attribution notices contained",
+    "source": "openai/gpt-oss-20b LICENSE:L109"
+   },
+   {
+    "quote": "within such NOTICE file, excluding those notices that do not",
+    "source": "openai/gpt-oss-20b LICENSE:L110"
+   },
+   {
+    "quote": "of the NOTICE file are for informational purposes only and",
+    "source": "openai/gpt-oss-20b LICENSE:L117"
+   },
+   {
+    "quote": "do not modify the License. You may add Your own attribution",
+    "source": "openai/gpt-oss-20b LICENSE:L118"
+   }
+  ],
+  "gated": false,
+  "unknown": false,
+  "seen": [
+   {
+    "value": "apache-2.0",
+    "source": "ggml-org/gpt-oss-20b-GGUF card license"
+   },
+   {
+    "value": "apache-2.0",
+    "source": "openai/gpt-oss-20b card license"
+   },
+   {
+    "value": "apache-2.0",
+    "source": "GGUF general.license"
+   }
+  ]
+ }
+}

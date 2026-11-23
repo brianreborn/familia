@@ -1,4 +1,4 @@
-cd E:\temp\gpu-legacy; $env:PATH="E:\temp\tools\mingw64\bin;$env:PATH"; $L="E:\temp\gpu-legacy\progress.log"; $M="E:\temp\models\SmolLM2-135M-Instruct.Q4_0.gguf"; $B="E:\temp\llama-cpu\llama-bench.exe"
+﻿cd E:\temp\gpu-legacy; $env:PATH="E:\temp\tools\mingw64\bin;$env:PATH"; $L="E:\temp\gpu-legacy\progress.log"; $M="E:\temp\models\SmolLM2-135M-Instruct.Q4_0.gguf"; $B="E:\temp\llama-cpu\llama-bench.exe"
 gcc -O2 -march=native -o out\smol_sm11.exe smol_sm11.c -lm *>> $L; if($LASTEXITCODE){ "BUILD FAILED" | Add-Content $L; exit }
 "$(Get-Date -f s) MILESTONE job13 replay: attn/rope share + q8 classifier tiles" | Add-Content $L
 $env:SMOL_KBENCH=1; $env:SMOL_KB_REPLAY=1; & .\out\smol_sm11.exe $M "1,2,3" 2 gpu 2>&1 | Select-String "^REPLAY|cu err" | % Line | Add-Content $L

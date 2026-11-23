@@ -39,7 +39,7 @@ def _write_graph(tmp_path, gguf_path: str, sha: str, *, tools_allow=None, launch
             trained_ctx: 8192
             role: pentest
         nodes:
-          miryam-pentest:
+          fleet-guardian:
             model: dolphin-fixture
             role: guardian
             host: miryam
@@ -56,7 +56,7 @@ def _write_graph(tmp_path, gguf_path: str, sha: str, *, tools_allow=None, launch
         pentests:
           fleet:
             name: fleet
-            node: miryam-pentest
+            node: fleet-guardian
             agent: pentest-ops
             scope:
               allow: [miryam, angel]
@@ -88,10 +88,10 @@ def test_live_graph_seatbelts_ok_weights_not_ready():
     assert report["weights_ready"] is False
     assert report["exit_hint"] == 2
     states = {n["node"]: (n.get("weight") or {}).get("state") for n in report["nodes"]}
-    assert "miryam-pentest" in states
-    assert "angel-guardian" in states
-    assert states["miryam-pentest"] in ("MISSING", "UNMEASURED")
-    assert states["angel-guardian"] in ("MISSING", "UNMEASURED")
+    assert "fleet-guardian" in states
+    assert "freebsd-guardian" in states
+    assert states["fleet-guardian"] in ("MISSING", "UNMEASURED")
+    assert states["freebsd-guardian"] in ("MISSING", "UNMEASURED")
 
 
 def test_cli_live_graph_exit_2():

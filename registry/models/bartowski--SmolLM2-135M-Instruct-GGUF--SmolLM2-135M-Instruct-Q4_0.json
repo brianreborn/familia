@@ -9,6 +9,7 @@
  "quant": "Q4_0",
  "arch": "llama",
  "roles": [
+  "chat",
   "decision"
  ],
  "license": "apache-2.0",
@@ -24,12 +25,17 @@
   "top-p": 0.9
  },
  "card_defaults_source": {
-  "temp": "HuggingFaceTB/SmolLM2-135M-Instruct HuggingFaceTB/SmolLM2-135M-Instruct README.md:L57 (code example)",
-  "top-p": "HuggingFaceTB/SmolLM2-135M-Instruct HuggingFaceTB/SmolLM2-135M-Instruct README.md:L57 (code example)"
+  "temp": "HuggingFaceTB/SmolLM2-135M-Instruct HuggingFaceTB/SmolLM2-135M-Instruct README.md:L57 (example)",
+  "top-p": "HuggingFaceTB/SmolLM2-135M-Instruct HuggingFaceTB/SmolLM2-135M-Instruct README.md:L57 (example)"
  },
  "card_default_set": "example: Transformers",
  "card_defaults_how": "the card's only code example with sampling values",
- "card_sampling_modes": null,
+ "card_sampling_modes": {
+  "Transformers": {
+   "temp": 0.2,
+   "top-p": 0.9
+  }
+ },
  "card_default_mode": null,
  "card_default_mode_source": null,
  "card_sampling_sets": [
@@ -618,17 +624,17 @@
  },
  "found_in": [
   "add-model.sh --fetch",
-  "graph.yaml models.smollm2-135m-q4-miryam"
+  "graph.yaml models.smollm2-135m-q4-linux"
  ],
  "match": "LFS sha256 match",
  "local_check": {
-  "host": "grok-bot-vm-414232872",
+  "host": "angel",
   "sha256_ok": true,
-  "checked": "2026-10-26"
+  "checked": "2026-11-14"
  },
  "unknown": null,
  "warnings": null,
- "updated": "2026-10-26",
+ "updated": "2026-11-14",
  "by": "scripts/model_db.py",
  "gguf_meta": {
   "general.architecture": "llama",
@@ -950,14 +956,14 @@
     "class": "RECOMMENDED",
     "flag": "--temp",
     "value": "0.2",
-    "source": "HuggingFaceTB/SmolLM2-135M-Instruct HuggingFaceTB/SmolLM2-135M-Instruct README.md:L57 (code example)",
+    "source": "HuggingFaceTB/SmolLM2-135M-Instruct HuggingFaceTB/SmolLM2-135M-Instruct README.md:L57 (example)",
     "why_required": "the card's recommended sampling (example: Transformers)"
    },
    {
     "class": "RECOMMENDED",
     "flag": "--top-p",
     "value": "0.9",
-    "source": "HuggingFaceTB/SmolLM2-135M-Instruct HuggingFaceTB/SmolLM2-135M-Instruct README.md:L57 (code example)",
+    "source": "HuggingFaceTB/SmolLM2-135M-Instruct HuggingFaceTB/SmolLM2-135M-Instruct README.md:L57 (example)",
     "why_required": "the card's recommended sampling (example: Transformers)"
    }
   ]

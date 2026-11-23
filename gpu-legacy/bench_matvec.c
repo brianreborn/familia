@@ -4,8 +4,8 @@
 #include <string.h>
 #include <time.h>
 #include "sm11_shim.h"
-#include <windows.h>
-static long time_in_ms(void){ return (long)GetTickCount(); }
+#include "sm11_compat.h"
+#define time_in_ms() sm11_time_ms()
 static void cpu_matvec(float* y, const float* x, const float* w, int n, int d){
   for(int i=0;i<d;i++){ float v=0; for(int j=0;j<n;j++) v+=w[i*n+j]*x[j]; y[i]=v; }
 }
@@ -21,12 +21,12 @@ int main(){
   for(int s=0;s<ns;s++){
     int n=shapes[s][0], d=shapes[s][1];
     int iters = (n*d < 200000) ? 200 : 20;
-    long t0=time_in_ms();
+    double t0=time_in_ms();
     for(int i=0;i<iters;i++) cpu_matvec(y0,x,blob,n,d);
-    long t1=time_in_ms();
-    int gok=1; long t2=time_in_ms();
+    double t1=time_in_ms();
+    int gok=1; double t2=time_in_ms();
     for(int i=0;i<iters;i++) if(sm11_matmul(y1,x,blob,n,d)!=0){ gok=0; break; }
-    long t3=time_in_ms();
+    double t3=time_in_ms();
     float err=0; if(gok) for(int i=0;i<d;i++){ float e=y0[i]-y1[i]; if(e<0)e=-e; if(e>err)err=e; }
     double c=(t1-t0)/(double)iters, g=gok?(t3-t2)/(double)iters:-1;
     printf("%d\t%d\t%.3f\t%.3f\t%.2f\t%g\n", n,d,c,g, (g>0?c/g:0), err);

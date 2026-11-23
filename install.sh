@@ -2,7 +2,14 @@
 # FAMILIA: Top-level super-project installer.
 # Pure POSIX /bin/sh.
 # Two clicks:
-#   curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install.sh | sh
+#   p=familia                          && \
+#   o=brianreborn                      && \
+#   h=raw.githubusercontent.com        && \
+#   u=https://$h/$o/$p/main/install.sh && \
+#   curl -fsSLo install-$p.sh $u       && \
+#   sh        ./install-$p.sh
+#   one line:
+#   p=familia && o=brianreborn && h=raw.githubusercontent.com && u=https://$h/$o/$p/main/install.sh && curl -fsSLo install-$p.sh $u && sh ./install-$p.sh
 # Click 1 is running the command. Click 2 is the donation tap-through.
 set -eu
 case "${1:-}" in -h|--help) cat <<'USAGE'
@@ -10,13 +17,27 @@ install.sh: Install familia into ~/familia (or $INSTALL_PREFIX), sync the pinned
 Usage:
   sh install.sh [--dry-run] [--yes] [--no-start] [--no-path] [--branch BRANCH]
     --dry-run   say what would happen; change nothing
+    --auto-deps install missing OS packages after one confirmation (AUTO_DEPS=1); without it the exact command is printed
     --yes       non-interactive: acknowledge the notice and accept licenses (the summary is still printed)
     --no-start  stop after setup (same as INSTALL_NO_START=1)
     --no-path   do not put `familia` on PATH (default: 2-line shim ~/.local/bin/familia; scripts/install-cli.sh)
     --branch    choose a branch for a new checkout or switch an existing checkout to track it
+    --channel bleeding|stable   release channel (default bleeding = unchanged; FAMILIA_CHANNEL)
+    --stable-days N             stable: most stable release of the last N days, 1..365 (default 30)
+                                (docs/release-channels.md; resolver: scripts/channel.py)
 Preliminary stock (owned by this script): OS packages via install/deps.sh when anything
 base is missing, and Charm gum into ~/.local/bin via scripts/install-gum.sh (no sudo; soft-fail).
-Example: curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install.sh | sh -s -- --yes --no-start
+llama.cpp is prebuilt-first: an existing build is reused, else the sha256-checked b12359 release
+binary for this OS/arch; it builds from source only when none fits (FreeBSD, Termux) or BUILD=1.
+Example:
+  p=familia                          && \
+  o=brianreborn                      && \
+  h=raw.githubusercontent.com        && \
+  u=https://$h/$o/$p/main/install.sh && \
+  curl -fsSLo install-$p.sh $u       && \
+  sh        ./install-$p.sh --yes --no-start
+  one line:
+  p=familia && o=brianreborn && h=raw.githubusercontent.com && u=https://$h/$o/$p/main/install.sh && curl -fsSLo install-$p.sh $u && sh ./install-$p.sh --yes --no-start
 USAGE
   exit 0 ;; esac
 
@@ -32,14 +53,24 @@ while [ $# -gt 0 ]; do
     --dry-run|-n) DRY=1 ;;
     --branch) [ $# -ge 2 ] || die "--branch needs a branch name"; shift; BRANCH=$1 ;;
     --yes|-y) INSTALL_ACK=yes; FAMILIA_ACCEPT_LICENSES=yes; export INSTALL_ACK FAMILIA_ACCEPT_LICENSES ;;
+    --auto-deps) AUTO_DEPS=1; export AUTO_DEPS ;;
     --accept-unknown) FAMILIA_ACCEPT_UNKNOWN_LICENSES=yes; export FAMILIA_ACCEPT_UNKNOWN_LICENSES ;;
     --no-start) INSTALL_NO_START=1 ;;
     --no-path) INSTALL_NO_PATH=1 ;;
+    --channel) [ $# -ge 2 ] || die "--channel needs bleeding or stable"; shift; FAMILIA_CHANNEL=$1 ;;
+    --stable-days) [ $# -ge 2 ] || die "--stable-days needs a number"; shift; FAMILIA_STABLE_DAYS=$1 ;;
     *) die "unknown option '$1'. Try: sh install.sh --help" ;;
   esac
   shift
 done
+# Release channel: strict allowlist and a plain 1..365 integer (scripts/channel.py re-validates).
+case "${FAMILIA_CHANNEL:-bleeding}" in bleeding|stable) ;; *) die "invalid --channel (use bleeding or stable)" ;; esac
+case "${FAMILIA_STABLE_DAYS:-30}" in ''|*[!0-9]*|0*|????*) die "invalid --stable-days (an integer 1..365)" ;; esac
+[ "${FAMILIA_STABLE_DAYS:-30}" -le 365 ] || die "invalid --stable-days (an integer 1..365)"
+FAMILIA_CHANNEL=${FAMILIA_CHANNEL:-bleeding}; FAMILIA_STABLE_DAYS=${FAMILIA_STABLE_DAYS:-30}
+export FAMILIA_CHANNEL FAMILIA_STABLE_DAYS
 if [ "$DRY" = 1 ]; then
+  echo "install.sh: [dry-run] release channel $FAMILIA_CHANNEL (stable window $FAMILIA_STABLE_DAYS days; used only by stable)" >&2
   echo "install.sh: [dry-run] would clone or update $REPO_URL in $PREFIX${BRANCH:+ on branch $BRANCH}" >&2
   echo "install.sh: [dry-run] would install preliminary stock if missing: sh $PREFIX/install/deps.sh --install (git/curl/python3/…)" >&2
   echo "install.sh: [dry-run] would ensure Charm gum in ~/.local/bin: sh $PREFIX/scripts/install-gum.sh --dry-run" >&2
@@ -93,10 +124,10 @@ else
     fi
     git -C "$PREFIX" branch --set-upstream-to="origin/$BRANCH" "$BRANCH" ||
       die "could not set $BRANCH to track origin/$BRANCH"
-    git -C "$PREFIX" merge --ff-only "origin/$BRANCH" ||
+    git -C "$PREFIX" merge --ff-only --autostash "origin/$BRANCH" ||
       die "could not fast-forward $BRANCH; local changes were preserved"
   else
-    git -C "$PREFIX" pull --ff-only ||
+    git -C "$PREFIX" pull --ff-only --autostash ||
       die "could not fast-forward the current branch from its configured upstream; local changes were preserved"
   fi
 fi
@@ -109,11 +140,27 @@ if [ -f "$PREFIX/install/deps.sh" ]; then
   if sh "$PREFIX/install/deps.sh" >/dev/null 2>&1; then
     echo "install.sh: preliminary OS packages look present" >&2
   else
-    echo "install.sh: preliminary stock missing; running install/deps.sh --install…" >&2
-    if [ "${INSTALL_ACK:-}" = yes ] || [ "${FAMILIA_ACCEPT_LICENSES:-}" = yes ]; then
-      sh "$PREFIX/install/deps.sh" --install --yes || die "deps install failed; see docs/safe-mode-bootstrap.md"
+    echo "install.sh: preliminary OS packages missing" >&2
+    if [ "${AUTO_DEPS:-0}" != 1 ]; then
+      # No root without an explicit --auto-deps: print the packages and the command only.
+      sh "$PREFIX/install/deps.sh" || true
+      if ! python3 -c 'import yaml' >/dev/null 2>&1; then
+        echo "install.sh: trying PyYAML without root: python3 -m pip install --user pyyaml" >&2
+        python3 -m pip install --user --quiet pyyaml >/dev/null 2>&1 \
+          || python3 -m pip install --user --break-system-packages --quiet pyyaml >/dev/null 2>&1 || true
+      fi
+      if sh "$PREFIX/install/deps.sh" >/dev/null 2>&1; then
+        echo "install.sh: preliminary packages satisfied without root" >&2
+      else
+        die "install the packages with the command above, or re-run with --auto-deps (or AUTO_DEPS=1) to install them (needs root)"
+      fi
     else
-      sh "$PREFIX/install/deps.sh" --install || die "deps install failed or declined; see: sh $PREFIX/install/deps.sh --help"
+      echo "install.sh: WARNING: the next step installs OS packages AS ROOT (sudo / package manager)." >&2
+      if [ "${INSTALL_ACK:-}" = yes ]; then
+        sh "$PREFIX/install/deps.sh" --install --yes || die "deps install failed; see docs/safe-mode-bootstrap.md"
+      else
+        sh "$PREFIX/install/deps.sh" --install || die "deps install failed or declined; see: sh $PREFIX/install/deps.sh --help"
+      fi
     fi
   fi
 fi
@@ -133,7 +180,11 @@ fi
 
 # Licenses before anything is fetched or run (docs/licenses.md).
 command -v python3 >/dev/null 2>&1 || die "python3 is required (Debian/Ubuntu: sudo apt install python3; Termux: pkg install python; or: sh $PREFIX/install/deps.sh --install)."
+[ "${INSTALL_ACK:-}" = yes ] && { FAMILIA_ACCEPT_LICENSES=yes; export FAMILIA_ACCEPT_LICENSES; }
 python3 "$PREFIX/scripts/licenses.py" gate || die "licenses not accepted; stopped before fetching anything. Review: python3 $PREFIX/scripts/licenses.py review (or re-run with --yes, plus --accept-unknown for unknown licenses)"
+# Accepted once for this run: start.sh and anything it runs reuse that answer (the summary
+# is still printed if the selection grows after the pinned parts are fetched).
+FAMILIA_ACCEPT_LICENSES=yes; FAMILIA_ACCEPT_UNKNOWN_LICENSES=yes; export FAMILIA_ACCEPT_LICENSES FAMILIA_ACCEPT_UNKNOWN_LICENSES
 
 # Run configuration shell (syncs every pin in pins.txt together).
 # A leftover empty gitlink dir for a pin (from an old .gitmodules) used to stop

@@ -19,7 +19,8 @@ def _sysctl(name):
         return None
 
 def _meminfo_mib():
-    if sys.platform.startswith("linux"):
+    # CPython 3.13+ reports sys.platform == "android" (Termux etc.); it has /proc/meminfo too.
+    if sys.platform.startswith("linux") or sys.platform == "android":
         try:
             with open("/proc/meminfo") as f:
                 for line in f:
@@ -107,7 +108,8 @@ def measure(kind, reserve):
         raise ValueError("could not measure physical RAM on this host")
     out.append(("ram_mib", str(ram)))
     out.append(("reserve_ram_mib", "%d                # policy (installer default), not measured; see docs/ram-safety.md" % reserve))
-    out.append(("gpus", "null                   # inventory unknown; measure GPUs before GPU offload"))
+    gpus = _gpu_inventory()
+    out.append(("gpus", _gpu_yaml(gpus)))
     return out
 
 def render(name, fields):
@@ -159,6 +161,70 @@ def default_reserve(ram):
     if not ram:
         return 3072
     return 3072 if ram < 12288 else 4096
+
+def _command_output(args):
+    try:
+        return subprocess.check_output(args, text=True, stderr=subprocess.DEVNULL).strip()
+    except (OSError, subprocess.CalledProcessError):
+        return None
+
+
+def _gpu_inventory():
+    """Return graph GPU inventory, [] for a measured no-GPU result, or None for unknown."""
+    if sys.platform.startswith("freebsd"):
+        out = _command_output(["pciconf", "-lv"])
+        if out is None:
+            return None
+        return _parse_freebsd_pci(out)
+    return None
+
+
+def _parse_freebsd_pci(out):
+    cards = []
+    blocks = []
+    current = []
+    for line in out.splitlines():
+        if line and not line.startswith((" ", "\t")):
+            if current:
+                blocks.append("\n".join(current))
+            current = [line]
+        elif current:
+            current.append(line)
+    if current:
+        blocks.append("\n".join(current))
+
+    for block in blocks:
+        header = block.splitlines()[0].lower()
+        if not re.search(r"\bclass=0x03[0-9a-f]{4}\b", header):
+            continue
+        vendor_match = re.search(r"^\s*vendor\s*=\s*['\"]([^'\"]+)['\"]", block, re.I | re.M)
+        device_match = re.search(r"^\s*device\s*=\s*['\"]([^'\"]+)['\"]", block, re.I | re.M)
+        if not vendor_match or not device_match:
+            continue
+        vendor = vendor_match.group(1).strip()
+        model = device_match.group(1).strip()
+        low_vendor = vendor.lower()
+        if low_vendor.startswith("nvidia"):
+            backend = "cuda-sm11-ptx" if re.search(r"\bG84\b|GeForce\s+8600", model, re.I) else "cuda"
+        elif low_vendor.startswith("intel"):
+            backend = "vulkan"
+        elif low_vendor.startswith(("amd", "ati")) or "advanced micro devices" in low_vendor:
+            backend = "rocm"
+        else:
+            backend = "none"
+        cards.append({"vendor": vendor, "model": model, "vram_mib": None,
+                      "backend": backend, "backend_status": "tbd",
+                      "compute_capability": None, "driver": None,
+                      "measured": False,
+                      "notes": "PCI inventory measured; VRAM and runtime backend not measured"})
+    return cards
+
+
+def _gpu_yaml(gpus):
+    if gpus is None:
+        return "null                   # inventory unknown; measure GPUs before GPU offload"
+    import json
+    return json.dumps(gpus, ensure_ascii=False, separators=(",", ":"))
 
 def main():
     ap = argparse.ArgumentParser()

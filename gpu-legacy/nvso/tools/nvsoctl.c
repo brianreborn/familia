@@ -26,10 +26,11 @@ usage(const char *argv0)
 {
         fprintf(stderr,
             "usage: %s [-n] [-d /dev/nvso0]\n"
-            "  -n   dry-run: print ABI and ioctl numbers only\n"
-            "  -d   device path (default /dev/nvso0)\n"
+            "  -n   dry-run: print ABI and ioctl numbers, then exit 0\n"
+            "  -d   device path (default /dev/nvso0); ignored with -n\n"
             "Without -n: DOMAIN_CREATE + MAP + GATE (+ soft QUEUE_EXPORT/DMA_POST)\n"
-            "round-trip. Soft path only — not hardware HVVRAM.\n", argv0);
+            "round-trip. Missing device exits 2. A failed step exits 3.\n"
+            "Soft bookkeeping only — not hardware HVVRAM or SSD firmware.\n", argv0);
 }
 
 static void
@@ -49,6 +50,17 @@ print_abi(void)
             (unsigned long)NVSO_DOMAIN_GATE);
         printf("  NVSO_IRQ_ATTACH      0x%lx  alias nvso_irq_attach\n",
             (unsigned long)NVSO_IRQ_ATTACH);
+}
+
+/* Close and signal failure. A later step must not look like success. */
+static int
+step_failed(int fd, int rc, uint32_t status)
+{
+        if (rc < 0 || status != 0) {
+                close(fd);
+                return 1;
+        }
+        return 0;
 }
 
 int
@@ -93,10 +105,8 @@ main(int argc, char **argv)
         rc = ioctl(fd, NVSO_DOMAIN_CREATE, &creq);
         printf("DOMAIN_CREATE: ioctl=%d errno=%s status=%u id=%u\n",
             rc, rc < 0 ? strerror(errno) : "0", creq.status, creq.domain_id);
-        if (rc < 0 || creq.status != 0) {
-                close(fd);
+        if (step_failed(fd, rc, creq.status))
                 return 3;
-        }
 
         memset(&mreq, 0, sizeof(mreq));
         mreq.domain_id = creq.domain_id;
@@ -107,10 +117,8 @@ main(int argc, char **argv)
         printf("MAP:            ioctl=%d errno=%s status=%u va=0x%llx size=0x%llx\n",
             rc, rc < 0 ? strerror(errno) : "0", mreq.status,
             (unsigned long long)mreq.va, (unsigned long long)mreq.size);
-        if (rc < 0 || mreq.status != 0) {
-                close(fd);
+        if (step_failed(fd, rc, mreq.status))
                 return 3;
-        }
 
         memset(&greq, 0, sizeof(greq));
         greq.domain_id = creq.domain_id;
@@ -118,10 +126,14 @@ main(int argc, char **argv)
         rc = ioctl(fd, NVSO_DOMAIN_GATE, &greq);
         printf("GATE(off):      ioctl=%d errno=%s status=%u\n",
             rc, rc < 0 ? strerror(errno) : "0", greq.status);
+        if (step_failed(fd, rc, greq.status))
+                return 3;
         greq.enable = 1; /* ungate */
         rc = ioctl(fd, NVSO_DOMAIN_GATE, &greq);
         printf("GATE(on):       ioctl=%d errno=%s status=%u\n",
             rc, rc < 0 ? strerror(errno) : "0", greq.status);
+        if (step_failed(fd, rc, greq.status))
+                return 3;
 
         memset(&ireq, 0, sizeof(ireq));
         ireq.domain_id = creq.domain_id;
@@ -130,6 +142,8 @@ main(int argc, char **argv)
         rc = ioctl(fd, NVSO_IRQ_ATTACH, &ireq);
         printf("IRQ_ATTACH:     ioctl=%d errno=%s status=%u\n",
             rc, rc < 0 ? strerror(errno) : "0", ireq.status);
+        if (step_failed(fd, rc, ireq.status))
+                return 3;
 
         memset(&qreq, 0, sizeof(qreq));
         qreq.domain_id = creq.domain_id;
@@ -142,6 +156,8 @@ main(int argc, char **argv)
         rc = ioctl(fd, NVSSD_QUEUE_EXPORT, &qreq);
         printf("QUEUE_EXPORT:   ioctl=%d errno=%s status=%u (soft geom)\n",
             rc, rc < 0 ? strerror(errno) : "0", qreq.status);
+        if (step_failed(fd, rc, qreq.status))
+                return 3;
 
         memset(descs, 0, sizeof(descs));
         descs[0].src = 0x1000;
@@ -159,6 +175,8 @@ main(int argc, char **argv)
         rc = ioctl(fd, NVGPU_DMA_POST, &preq);
         printf("DMA_POST:       ioctl=%d errno=%s status=%u soft_flags=0x%x\n",
             rc, rc < 0 ? strerror(errno) : "0", preq.status, preq.soft_flags);
+        if (step_failed(fd, rc, preq.status))
+                return 3;
         if (preq.soft_flags & NVSO_POST_SOFT)
                 printf("  (soft bookkeeping only — no hardware DMA)\n");
 

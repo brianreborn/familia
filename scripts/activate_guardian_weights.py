@@ -41,8 +41,8 @@ DEFAULT_GGUF = f"~/.local/share/gguf/models/pentest/{GGUF_NAME}"
 
 # Fleet graph keys that flip planned → active after local weights match sha.
 # Never touch tools.allow / launch_test_only / requires_operator_confirm / scope.
-NODE_KEYS = ("miryam-pentest", "angel-guardian")
-PENTEST_KEYS = ("fleet", "angel")
+NODE_KEYS = ("fleet-guardian", "freebsd-guardian")
+PENTEST_KEYS = ("fleet", "freebsd-guardian")
 
 # Private topology node name after generate_graph.py HOST
 PRIVATE_NODE = "guardian"
@@ -88,7 +88,8 @@ def sha256_file(path: pathlib.Path, progress: bool = False) -> str:
 
 def graph_path(host: str | None) -> pathlib.Path:
     if host:
-        p = ROOT / "generated" / f"graph-{host}.yaml"
+        import config_paths
+        p = pathlib.Path(config_paths.generated_dir()) / f"graph-{host}.yaml"
         if not p.is_file():
             die(f"private graph missing: {p} (run: python3 scripts/generate_graph.py {host})")
         return p
@@ -146,7 +147,7 @@ def print_report(rep: dict) -> None:
     print("  4) Regenerate private graphs: python3 scripts/generate_graph.py miryam && python3 scripts/generate_graph.py angel")
     print("  5) Model-only start: FAMILIA_OPERATOR_CONFIRM=yes sh with-fleet.sh --role guardian --operator-start")
     print("  6) Hermes READY (pentest-ops → guardian aliases): after node READY,")
-    print("     bash scripts/hermes.sh --agent pentest-ops   # or --model miryam-pentest / --model guardian on private graph")
+    print("     bash scripts/hermes.sh --agent pentest-ops   # or --model fleet-guardian / --model guardian on private graph")
     print()
     print("galaxy1 / galaxy2: fleet names for A57 Termux phones (SSH via angel). Prefer them in")
     print("  pentests.*.scope.allow (Boundary owns allowlists). Place guardian weights on miryam/angel")
@@ -196,7 +197,7 @@ def main(argv: list[str] | None = None) -> int:
                     help="set models.dolphin3-cyber-8b-q2k.sha256 from registry HF LFS oid (keeps planned)")
     ap.add_argument("--measure", metavar="GGUF", help="sha256 local GGUF and pin into model entry")
     ap.add_argument("--activate", action="store_true",
-                    help="flip miryam-pentest / angel-guardian (+ private guardian) and pentests.fleet/angel to active when sha matches and gguf exists")
+                    help="flip fleet-guardian / freebsd-guardian (+ private guardian) and pentests.fleet/freebsd-guardian to active when sha matches and gguf exists")
     ap.add_argument("--fetch", action="store_true", help="run add-model.sh --fetch for Q2_K (~3 GiB; host only)")
     ap.add_argument("--json", action="store_true", help="print status as JSON")
     args = ap.parse_args(argv)
