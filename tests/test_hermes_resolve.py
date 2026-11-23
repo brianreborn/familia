@@ -48,7 +48,7 @@ def test_freebsd_ports_layout_preferred():
     # shebang read: fake via exists-only derive — inject HERMES_PY unset, mock _read_shebang
     real_read = hh._read_shebang
 
-    def fake_shebang(path):
+    def fake_shebang(path, **_kwargs):
         if path == hh.FREEBSD_BIN:
             return "/usr/local/bin/python3.12"
         return real_read(path)
@@ -69,6 +69,14 @@ def test_freebsd_ports_layout_preferred():
     assert b == hh.FREEBSD_BIN
     assert py == "/usr/local/bin/python3.12"
     assert sp == hh.FREEBSD_LIB
+
+
+def test_shell_wrapper_derives_execed_python(monkeypatch, tmp_path):
+    wrapper = tmp_path / "hermes-agent"
+    wrapper.write_text("#!/bin/sh\nexec /opt/python3.15 /opt/hermes-agent \"$@\"\n", encoding="ascii")
+    py = "/opt/python3.15"
+    monkeypatch.setattr(hh, "_read_shebang", lambda path: "/bin/sh")
+    assert hh._derive_py(str(wrapper), exists=lambda p: p in {str(wrapper), "/bin/sh", py}) == py
 
 
 def test_freebsd_ignores_snap_path_strings():
