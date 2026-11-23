@@ -4,6 +4,12 @@ Sources: the #199 catalogue, `planned-state-spec.md`, `router-requirements-notes
 Tests: `tests/test_router_199.py` (draft PR #200), `tests/test_config_spec.py` (this PR).
 **SPEC** = required, not implemented yet. **IMPLEMENTED** = in code at the pointer.
 
+Slash command and visible-token naming has a single manifest contract in
+[`docs/slash-command-manifest.md`](../slash-command-manifest.md). CFG-SPEC-PLAN-007
+and CFG-SPEC-GW-004 must use each consumer's exposed names from that contract for
+help and unknown-token responses; graph route aliases are materialized per
+consumer and resolve to canonical `familia-*` operations.
+
 ## Planned state (CFG-SPEC-PLAN)
 A planned node is **excluded from automatic routing only**. It is never dropped or banned, and you reach it explicitly with a slash command (`/pentest`, `/<alias>`, `/<TYPE>`).
 
@@ -15,7 +21,7 @@ A planned node is **excluded from automatic routing only**. It is never dropped 
 | CFG-SPEC-PLAN-004 | Slash on missing-weights / unverified-sha → 409 with node, TYPE, state and the single next command. **No fetch-on-switch.** sha-mismatch → hard refuse. An explicit `/<alias> fetch` with operator confirm may be added | SPEC | — |
 | CFG-SPEC-PLAN-005 | An alias to a planned node is valid, kept in the manifest with `status/substate/auto:false/slash:true`, and never silently dropped | SPEC (today dropped: start_graph.py:147) | — |
 | CFG-SPEC-PLAN-006 | Transitions only by operator command or graph edit: missing-weights →fetch→ unverified-sha →measure→ ready →#119 gate + edit→ active. A slash request never changes status | SPEC (activate_guardian_weights.py implements fetch/measure for guardian) | scripts/activate_guardian_weights.py |
-| CFG-SPEC-PLAN-007 | Errors the user sees (exact texts): auto slash-only → 404 `X is slash-only; use /X`; not ready → 409 `<node> (<type>) is planned/<substate>. Next: <cmd>`; confirm missing → 403; remote → 409 naming the host | SPEC | — |
+| CFG-SPEC-PLAN-007 | Errors the user sees (exact texts): auto slash-only → 404 `X is slash-only; use /X`; not ready → 409 `<node> (<type>) is planned/<substate>. Next: <cmd>`; confirm missing → 403; remote → 409 naming the host; valid tokens come from the consumer's exposed manifest names | SPEC | [slash-command manifest](../slash-command-manifest.md) |
 
 ## Gateway role exposure (CFG-SPEC-GW)
 | ID | Requirement | Status | Pointer |
@@ -23,7 +29,7 @@ A planned node is **excluded from automatic routing only**. It is never dropped 
 | CFG-SPEC-GW-001 | The manifest backend `kind` covers chat, embedding, **guardian, pentest, decision**. Slash-only TYPEs are reachable by explicit slash or exact alias, never by auto TYPE match | SPEC (today refused: start_graph.py:169; graph-proxy.mjs:27) | — |
 | CFG-SPEC-GW-002 | One router per host with an active node, keyed by TYPE; host = placement only | SPEC | — |
 | CFG-SPEC-GW-003 | Manifest entry schema: `{kind, type, url|null, status, substate, auto, slash, seatbelt?}`; `GET /v1/models` lists all of them | SPEC (today `{kind,url}`: start_graph.py:175-178) | — |
-| CFG-SPEC-GW-004 | An unknown TYPE/alias → 404 listing valid slash tokens; never a silent default | IMPLEMENTED for unknown alias (graph-proxy 404); SPEC for the token list | green-roomz src/graph-proxy.mjs:131-135 |
+| CFG-SPEC-GW-004 | An unknown TYPE/alias → 404 listing valid slash tokens from that consumer's exposed manifest names; never a silent default | IMPLEMENTED for unknown alias (graph-proxy 404); SPEC for the token list | green-roomz src/graph-proxy.mjs:131-135; [slash-command manifest](../slash-command-manifest.md) |
 
 ## Alias as a list of nodes (#150) (CFG-SPEC-ALIAS)
 | ID | Requirement | Status |
