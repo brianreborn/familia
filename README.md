@@ -540,6 +540,7 @@ Start with [QUICKSTART.md](QUICKSTART.md), then [MANUAL.md](MANUAL.md).
 | [LESSONS-LEARNED.md](LESSONS-LEARNED.md) | What went wrong before, and the rule that came out of it |
 | [docs/graph-types.md](docs/graph-types.md) | Every `graph.yaml` section and the validator's rules |
 | [docs/configuration-graph.md](docs/configuration-graph.md) | Why the graph exists, what it checks, what is still open |
+| [docs/federated-swarm-architecture.md](docs/federated-swarm-architecture.md) | Multi-enterprise identity, focus/fan-out coordination, integrity, and KV-state transfer design |
 | [docs/model-database.md](docs/model-database.md) | Model entries from the full pinned HF repo |
 | [docs/model-registry.md](docs/model-registry.md) | Measured results and hardware profiles |
 | [docs/models-catalog.md](docs/models-catalog.md) | Every model in use or under consideration |

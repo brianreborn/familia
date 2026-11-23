@@ -1,5 +1,10 @@
 # C2C stage 1: slot KV shipping (#22)
 
+The broader federation, focus, and multi-engine KV-transfer requirements are in
+[Federated swarm architecture](federated-swarm-architecture.md) (#684). This stage
+remains the verified same-model/runtime/context/KV-type baseline; it does not claim
+cross-engine cache portability.
+
 Moves one llama-server slot's KV cache between two nodes that run the **same model**, using stock
 llama-server features only:
 

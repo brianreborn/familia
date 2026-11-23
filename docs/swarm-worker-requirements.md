@@ -4,6 +4,11 @@ Official requirements for a familia swarm worker on any Unix (Linux, FreeBSD, Te
 The first instance is the Linux repair install on `linux-55` (real address only in
 `hosts.local.yaml`, see [hosts-overlay.md](hosts-overlay.md)).
 
+The multi-enterprise identity, focus-block, fan-out, integrity, and KV-state
+requirements are tracked in [Federated swarm architecture](federated-swarm-architecture.md)
+(#684). This is a design contract; it does not replace the current worker/conductor
+behavior below or imply that the proposed coordinator operations are implemented.
+
 Sources:
 - Design (canonical for the green-* layer): [brianreborn/pqfreebsd `docs/swarm-conductor.md`, `docs/swarm-roles.json`](https://github.com/brianreborn/pqfreebsd/blob/main/docs/swarm-conductor.md)
 - Reference implementation: [brianreborn/japanglify `docs/swarm-conductor/`, `.github/workflows/swarm-*.yml`, `scripts/swarm-*`](https://github.com/brianreborn/japanglify/tree/main/docs/swarm-conductor). Only generic mechanics are borrowed; no Japanglify product, linguistics, adb or `/uat` content.

@@ -152,6 +152,7 @@ Edit `graph.yaml` by hand, or use `scripts/generate_graph.py HOST` / `scripts/mo
 
 ## See also
 
+- [Federated swarm architecture](federated-swarm-architecture.md): proposed enterprise/fleet/swarm identity, focus, fan-out, integrity, and KV-transfer contract (#684)
 - [DESIGN.md](../DESIGN.md): the graph, hooks, and the "user owns every edge" rule
 - [pins.txt](../pins.txt): reserved node and transport names
 - [ram-safety.md](ram-safety.md): the reserve rule
