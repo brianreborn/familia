@@ -21,7 +21,7 @@ PURPOSE: Documents all alias mappings, route names, and hermes configuration
    | Agent Type                | Route Name |
    |---------------------------|------------|
    | general, general-text-speculator | `chat`    |
-   | coder, qwenstral-code-speculator | `coder`   |
+   | coder | `coder`   |
    | decision, tool-router-agent  | `route`   |
    | language                  | `translate`|
    | vision-layout-agent       | `vision`   |
