@@ -48,6 +48,9 @@ agents.guardian-launch-test|Agents (hermes)|Guardian/defender node: launch-test 
 agents.guardian-start|Agents (hermes)|Guardian/defender: operator-confirmed model start (owned scope; tools empty)|env FAMILIA_OPERATOR_CONFIRM=yes sh with-fleet.sh --role guardian --operator-start|lic||
 agents.pentest-launch-test|Agents (hermes)|Legacy id → guardian launch-test|sh with-fleet.sh --role guardian --launch-test|||
 agents.pentest-start|Agents (hermes)|Legacy id → guardian operator-start|env FAMILIA_OPERATOR_CONFIRM=yes sh with-fleet.sh --role guardian --operator-start|lic||
+security.status|Agents (hermes)|Security node levels: which guardian/pentest nodes are on and why|PY scripts/security_levels.py status|||python scripts\security_levels.py status
+security.list|Agents (hermes)|List the security levels (off, guardian, pentest, full) and their sets|PY scripts/security_levels.py list|||python scripts\security_levels.py list
+security.level|Agents (hermes)|Set the security level (local override; graph.yaml unchanged; pentest asks you to type a confirmation)|PY scripts/security_levels.py {LEVEL:off, guardian, pentest or full}|||python scripts\security_levels.py {LEVEL:off, guardian, pentest or full}
 harness2.status|Self-improving harness (Harness2)|Show which agents have Harness2 and in which mode|PY scripts/harness2.py status||file:scripts/harness2.py|python scripts\harness2.py status
 harness2.set|Self-improving harness (Harness2)|Set Harness² mode for any agent (hermes, llama UI, or other; off / propose / apply)|PY scripts/harness2.py set --agent {AGENT:agent name} --mode {MODE:off, propose or apply}|lic|file:scripts/harness2.py|python scripts\harness2.py set --agent {AGENT:agent name} --mode {MODE:off, propose or apply}
 harness2.review|Self-improving harness (Harness2)|Review proposals: list, accept or revert|PY scripts/harness2.py review||file:scripts/harness2.py|python scripts\harness2.py review

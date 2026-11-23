@@ -170,6 +170,8 @@ ENV = [
     ("FAMILIA_MENU_PIPE", "1 lets menus read choices from a pipe."),
     ("FAMILIA_GRAPH", "Graph file to use instead of graph.yaml, where the script supports it."),
     ("FAMILIA_HOSTS_OVERLAY", "Path to hosts.local.yaml connection overlay (#104); default ~/.config/familia/hosts.local.yaml."),
+    ("FAMILIA_SECURITY_LEVEL", "Security node level for this run: off, guardian, pentest or full (docs/security\\-levels.md). Wins over the local override; cannot confirm the pentest set."),
+    ("FAMILIA_SECURITY_OVERRIDE", "Path to the security.local.yaml level override; default ~/.config/familia/security.local.yaml."),
     ("PYTHON", "Python interpreter (default python3)."),
     ("PAGER", "Pager for the quick start and other text (default more)."),
     ("HF_TOKEN", "Hugging Face token for gated models. Read from the environment only; never printed or written to logs."),
@@ -186,6 +188,8 @@ FILES = [
     ("~/.local/state/familia/installed.txt", "Every file familia install\\-cli wrote; familia uninstall\\-cli removes exactly those."),
     ("~/.local/state/familia/monitor\\-events.jsonl", "Monitor event log (deaths, OOM kills)."),
     ("registry/models/", "The model database, one JSON file per model file."),
+    ("config/security\\-levels.yaml", "The security levels and sets (data only); familia security reads it."),
+    ("~/.config/familia/security.local.yaml", "Local security level override written by familia security; never committed. graph.yaml is never rewritten."),
     ("pins.txt", "Pinned sub\\-projects that scripts/configure.sh checks out."),
 ]
 
@@ -267,6 +271,7 @@ def man_page():
           "familia hermes \\-\\-graph\\-mode          # hermes on the whole graph",
           "familia harness2 set hermes propose",
           "familia monitor \\-\\-once",
+          "familia security status              # which security nodes are on and why",
           "familia search license",
           ".fi",
           ".SH SEE ALSO",
