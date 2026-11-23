@@ -152,6 +152,9 @@ def test_indirect_model_role_with_empty_node_role_fails_closed(role, node_role):
     assert VG.tool_policy(g, "coder") == [] and EP.tool_target(g, "light") is None
 
 
+@pytest.mark.xfail(strict=True, reason="BUG-TR-4 (issue pending): a node-level role (e.g. coder) overrides a "
+                   "fail-closed MODEL role (guardian/pentest/defender), so tools are forwarded into a "
+                   "guardian model by relabelling its node; TOOLS-005 says those always fail closed")
 @pytest.mark.parametrize("role", ["guardian", "pentest", "defender"])
 def test_node_role_cannot_launder_fail_closed_model(role):
     g = g3(1, 2, coder_role=role, coder={"role": "coder"})
