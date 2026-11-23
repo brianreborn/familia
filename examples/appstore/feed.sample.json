@@ -1,0 +1,77 @@
+{
+  "format": "familia-appstore-feed",
+  "version": 1,
+  "example": true,
+  "note": "Fake example data for tests and the fallback view. Every handle, app and link here is made up.",
+  "items": [
+    {
+      "author_handle": "example_dev_one",
+      "author_name": "Example Dev One",
+      "text": "Shipped v1 of my offline notes app today. No account, no cloud, just a file you own. #buildinpublic",
+      "date": "2026-11-20T17:04:00Z",
+      "url": "https://x.com/example_dev_one/status/1000000000000000001",
+      "app_name": "PaperNote (example)",
+      "app_pitch": "Offline-first notes that live in one plain file.",
+      "app_link": "https://example.com/papernote",
+      "platform": "Android",
+      "media": [
+        {
+          "type": "image",
+          "path": "media/papernote.svg",
+          "alt": "PaperNote example icon"
+        }
+      ]
+    },
+    {
+      "author_handle": "example_maker_two",
+      "author_name": "Example Maker Two",
+      "text": "Tiny CLI that turns your shell history into a weekly time report. Free and open source.",
+      "date": "2026-11-19T09:30:00Z",
+      "url": "https://x.com/example_maker_two/status/1000000000000000002",
+      "app_name": "histotime (example)",
+      "app_pitch": "Weekly time report from your shell history.",
+      "app_link": "https://example.com/histotime",
+      "platform": "Linux"
+    },
+    {
+      "author_handle": "example_studio_three",
+      "author_name": "Example Studio 3",
+      "text": "Our habit tracker <b>finally</b> has widgets & dark mode. \"Small\" update, big feels.",
+      "date": "2026-11-18T21:12:00Z",
+      "url": "https://x.com/example_studio_three/status/1000000000000000003",
+      "app_name": "Streakly (example)",
+      "app_pitch": "A habit tracker with home-screen widgets.",
+      "app_link": "https://example.com/streakly",
+      "platform": "iOS",
+      "media": [
+        {
+          "type": "image",
+          "path": "media/streakly.svg",
+          "alt": "Streakly example icon"
+        }
+      ]
+    },
+    {
+      "author_handle": "example_hacker_four",
+      "author_name": "Example Hacker Four",
+      "text": "Built a local-LLM recipe helper that runs on a phone. Ask what to cook with what's in the fridge.",
+      "date": "2026-11-17T12:00:00Z",
+      "url": "https://x.com/example_hacker_four/status/1000000000000000004",
+      "app_name": "FridgeChef (example)",
+      "app_pitch": "Recipe ideas from what you have, on-device.",
+      "app_link": "https://example.com/fridgechef",
+      "platform": "Android"
+    },
+    {
+      "author_handle": "example_web_five",
+      "author_name": "Example Web Five",
+      "text": "Launched a browser tab that shows your calendar as a single line. That's it. That's the app.",
+      "date": "2026-11-16T15:45:00Z",
+      "url": "https://x.com/example_web_five/status/1000000000000000005",
+      "app_name": "OneLine Cal (example)",
+      "app_pitch": "Your whole day in one line of text.",
+      "app_link": "https://example.com/onelinecal",
+      "platform": "Web"
+    }
+  ]
+}

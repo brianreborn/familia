@@ -293,8 +293,17 @@ submenu() {
   _title=$2
   while true; do
     note_interrupt
-    if ! pick "$_title: install, list, start, stop, status. Quit leaves." \
-      install list start stop status Back Quit; then
+    if [ "$_area" = apps ]; then
+      # App store extras: tweet cards (gum) and the static web page.
+      _ok=0
+      pick "$_title: install, list, start, stop, status. Quit leaves." \
+        browse "web page" install list start stop status Back Quit || _ok=$?
+    else
+      _ok=0
+      pick "$_title: install, list, start, stop, status. Quit leaves." \
+        install list start stop status Back Quit || _ok=$?
+    fi
+    if [ "$_ok" != 0 ]; then
       printf 'familia-home: staying in %s. Choose Back or Quit.\n' "$_title" >&2
       continue
     fi
@@ -303,6 +312,10 @@ submenu() {
       Quit) exit 0 ;;
       Back) return 0 ;;
       install|list|start|stop|status) run_verb "$_area" "$_sel" ;;
+      browse)
+        set +e; sh "$ROOT/scripts/appstore.sh"; set -e; note_interrupt ;;
+      "web page")
+        set +e; sh "$ROOT/scripts/appstore.sh" --html; set -e; note_interrupt ;;
       *) printf 'familia-home: unknown choice %s. Staying in the menu.\n' "$_sel" >&2 ;;
     esac
   done
