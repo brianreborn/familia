@@ -142,10 +142,8 @@ hosts:
         notes: PCI inventory measured 2026-11-18; CUDA 6.5/NVIDIA 341 support set is operator-reported but not verified as a FreeBSD runtime on Angel
     local_names: [gabriel, Gabriel, uriel, Uriel, angel.local, uriel.local, gabriel.local]
     notes: >-
-      Nanbeige4.3-33B Q4_K_M (~18.7 GiB) active via nanbeige-coder (nanbeige-chat stays planned; do not co-start). Before activate: measure SSD swap
-      (target ~24 GiB familia swap or proven RSS) + mkdir ~/.cache/familia/spill/angel-{coder,chat}.
-      Software VVRAM: load_mode mmap (see install-notes/vvram-ssd/LAYER.md). FreeBSD nvso scaffold
-      in gpu-legacy/nvso (stubs; not required for Nanbeige). Do not co-start nanbeige-coder and nanbeige-chat.
+      Angel is a constrained FreeBSD host. Keep its active coder placement within
+      measured RAM and leave oversized research placements inactive.
   macmini:
     kind: desktop
     measured: true
@@ -330,7 +328,7 @@ runtimes:
     commit: 1b4554eff124a8f0033bc09b3f708a5e51cbda15
     bin: code-bootstraps-llama.cpp/bin/llama-b11944-linux-x64-cpu/llama-server
     hosts: [miryam]
-    supported_archs: [qwen35, gemma-embedding2, llama, lfm2, lfm3, qwen2, gemma2, gemma3, nanbeige]
+    supported_archs: [qwen35, gemma-embedding2, llama, lfm2, lfm3, qwen2, gemma2, gemma3]
     backends: [cpu, vulkan]
     spec_types: [draft-simple, ngram-simple, ngram-map-k, ngram-map-k4v, ngram-mod, ngram-cache]
 
@@ -341,7 +339,7 @@ runtimes:
     bin: code-bootstraps-llama.cpp/bin/llama-b11669-linux-x64-cpu/llama-server
     hosts: [miryam]
     # Preserve every model architecture supported by the existing llama.cpp runtimes.
-    supported_archs: [qwen35, gemma-embedding2, llama, lfm2, modern-bert, qwen2, gemma2, gemma3, nanbeige]
+    supported_archs: [qwen35, gemma-embedding2, llama, lfm2, modern-bert, qwen2, gemma2, gemma3]
     backends: [cpu, vulkan]
     spec_types: [draft-simple, ngram-simple, ngram-map-k, ngram-map-k4v, ngram-mod, ngram-cache]
 
@@ -351,7 +349,7 @@ runtimes:
     commit: 2a8600387b40f2820d17973067020ce11377904d
     bin: code-bootstraps-llama.cpp/build-freebsd/bin/llama-server
     hosts: [angel]
-    supported_archs: [qwen35, gemma-embedding2, llama, lfm2, modern-bert, qwen2, gemma2, gemma3, nanbeige, gpt-oss]
+    supported_archs: [qwen35, gemma-embedding2, llama, lfm2, modern-bert, qwen2, gemma2, gemma3, gpt-oss]
     backends: [cpu]
     spec_types: [draft-simple, ngram-simple, ngram-map-k, ngram-map-k4v, ngram-mod, ngram-cache]
 
@@ -416,7 +414,7 @@ runtimes:
     commit: b92761a515ea31e852e7fbc1fad5f874b46f3718
     bin: /workspace/code-bootstraps-llama.cpp/bin/llama-b11374-linux-x64-cpu/llama-server
     hosts: [box]
-    supported_archs: [llama, qwen2, qwen35, gemma2, gemma3, gemma-embedding2, modern-bert, lfm2, nanbeige]
+    supported_archs: [llama, qwen2, qwen35, gemma2, gemma3, gemma-embedding2, modern-bert, lfm2]
     backends: [cpu]
     spec_types: [draft-simple, ngram-simple, ngram-map-k, ngram-map-k4v, ngram-mod, ngram-cache]
 
@@ -514,16 +512,6 @@ models:
     role: chat
     db: ggml-org--gpt-oss-20b-GGUF--gpt-oss-20b-MXFP4
     notes: "R&D exception (Brian 2026-11-10 voice/chat): install gpt-oss-20b on angel. File is 12109566624 bytes. Harmony format needs --jinja. No node auto-starts this model. Smoke used /usr/local/bin/llama-server (FreeBSD ports llama-cpp-10975), which supports gpt-oss and MXFP4; the registered build-freebsd/bin/llama-server binary is missing, though libllama in that tree (LLAMA_BUILD_NUMBER 11969) also contains gpt-oss/MXFP4."
-
-  nanbeige43-33b-q4km:
-    gguf: ~/.local/share/gguf/models/general/Nanbeige4.3-33B-UNCENSORED-Q4_K_M.gguf   # on angel; dealignai Q4_K_M ≈18.7 GiB
-    sha256: 1136ce66f4be1676a78936a936df012f148236475fb8424c5dea7cd85e165264
-    arch: llama                  # GGUF general.architecture; llama.cpp also knows nanbeige (aliased in validator)
-    trained_ctx: 524288
-    role: coder                  # also used for chat via nanbeige-chat card_set; roles in db: coder+chat
-    notes: "Prize on angel (FreeBSD). damp-run on box 2026-10-26; weights stay on angel. Dual coder+chat via card_set. Needs measured SSD swap/spill before activate (vvram-ssd/LAYER.md)."
-    db: dealignai--Nanbeige4.3-33B-UNCENSORED-GGUF--Nanbeige4.3-33B-UNCENSORED-Q4_K_M
-
 
   dolphin3-cyber-8b-q2k:
     gguf: ~/.local/share/gguf/models/pentest/Dolphin3.0-Llama3.1-8B-abliterated.Q2_K.gguf
@@ -720,7 +708,27 @@ nodes:
 
 
   # --- dogfood box multi-size topology (2026-10-26): tiny decision + mid coder.
-  # Prize large model is Nanbeige4.3-33B on angel (nanbeige-coder / nanbeige-chat), not on box.
+  # Angel's active coder is a measured small model; oversized candidates remain absent.
+  angel-coder:
+    model: qwen35-2b-q4km
+    role: coder
+    host: angel
+    runtime: llama-b11669-freebsd
+    ctx: 65536
+    parallel: 1
+    kv_type: q8_0
+    flash_attn: true
+    threads: 2
+    offload: {backend: cpu, ngl: 0, split: none, main_gpu: 0}
+    bind: 127.0.0.1
+    port: 18200
+    cache_ram_mib: 1024
+    load_mode: mmap
+    status: active
+    server_tools: all
+    override_reasons:
+      ctx: 'bounded angel coder profile; installed and verified small coder model; larger candidates are excluded'
+    note: 'Keep Angel on the measured small coder path.'
   dogfood-decision:
     model: smollm2-135m-q4-linux
     role: decision
@@ -758,69 +766,6 @@ nodes:
     status: active
     override_reasons:
       ctx: 'box dogfood mid-size coder; 8192 fits with SmolLM decision co-resident under 16 GiB - 4 GiB reserve; full 262144 not measured here'
-
-  # angel Nanbeige4.3-33B Q4_K_M — planned until GGUF path verified on angel and RAM/ctx measured.
-  # One weight file; two role views (distinct card_set). Activate one at a time on 24 GiB (+swap).
-  # Speculative: prefer ngram (no extra weights) or a small draft later; see speculative.nanbeige-ngram.
-  nanbeige-coder:
-    model: nanbeige43-33b-q4km
-    role: coder
-    host: angel
-    runtime: llama-b11669-freebsd
-    ctx: 65536                   # Hermes min_ctx 64000; Brian #125 accept mmap/SSD spill (trained 512K)
-    parallel: 1
-    kv_type: q8_0
-    flash_attn: true
-    threads: 2                   # few threads (Brian); angel has 4 cores
-    offload: {backend: cpu, ngl: 0, split: none, main_gpu: 0}
-    bind: 127.0.0.1
-    port: 18200
-    cache_ram_mib: 3584         # baseline for 32K (~3536 MiB KV); at 64K expect ~2× (advisory; mmap+swap)
-    load_mode: mmap              # SSD-friendly for 18.7 GiB weights
-    status: active
-    card_set: "Agentic and tool-use tasks"
-    # llama-ui Server Tools: without --tools, /tools returns 403 feature_disabled and the
-    # UI shows no tools (capabilities stay completion-only; default chat_format Content-only).
-    # Loopback-only (check_node). Restores agentic dogfood for Nanbeige on angel.
-    server_tools: all
-    override_reasons:
-      ctx: '65536 meets hermes-agent MINIMUM_CONTEXT_LENGTH 64000; KV ~2× vs 32K; mmap + spill_path + swap_budget_mib 24576; Brian accepted heavier SSD spill (#125)'
-      card_set: 'coder/agentic role: base-card Agentic and tool-use (temp 1.0 top_p 0.95); distinct from nanbeige-chat soft default'
-    slot_save: true              # SSD/VVRAM spill via spill_path (--slot-save-path)
-    spill_path: ~/.cache/familia/spill/angel-coder   # keep the existing slot cache; node id is nanbeige-coder
-    swap_budget_mib: 24576       # validate_graph --check-swap --host angel (LAYER.md)
-    note: >-
-      threads:2 on 4-core angel; do not co-start with nanbeige-chat on 24 GiB.
-      SSD/VVRAM: load_mode mmap + spill_path + swap_budget_mib (docs/vvram-ssd/LAYER.md).
-      Activate only after swapinfo OK; mkdir -p spill_path before start.
-
-
-  nanbeige-chat:
-    model: nanbeige43-33b-q4km
-    role: chat
-    host: angel
-    runtime: llama-b11669-freebsd
-    ctx: 32768
-    parallel: 1
-    kv_type: q8_0
-    flash_attn: true
-    threads: 2
-    offload: {backend: cpu, ngl: 0, split: none, main_gpu: 0}
-    bind: 127.0.0.1
-    port: 18201
-    cache_ram_mib: 512
-    load_mode: mmap
-    status: planned
-    card_set: "Reasoning and chat tasks"
-    override_reasons:
-      ctx: 'same RAM budget as nanbeige-coder; heavy ctx relative to host, not full 512K'
-    slot_save: false             # flip true when activating; spill_path already set
-    spill_path: ~/.cache/familia/spill/angel-chat    # keep the existing slot cache; node id is nanbeige-chat
-    swap_budget_mib: 24576
-    note: >-
-      card_set soft default (Reasoning and chat); do not co-start with nanbeige-coder on 24 GiB.
-      SSD/VVRAM: same mmap + spill_path + swap_budget_mib as nanbeige-coder (vvram-ssd/LAYER.md).
-
 
 
   fleet-guardian:
@@ -867,7 +812,7 @@ nodes:
     status: planned
     card_set: "5. Recommended settings"
     override_reasons:
-      ctx: "guardian advisory node on angel; 8192 keeps KV modest beside Nanbeige when not co-started"
+      ctx: "guardian advisory node on angel; 8192 keeps KV modest beside the active coder"
       card_set: "same Recommended settings card as Ubuntu guardian node"
     note: >-
       Guardian/defender on angel (FreeBSD jump). Planned until weights on angel + measured sha.
@@ -896,15 +841,6 @@ speculative:
     target: coder
     spec_type: ngram-simple      # model-free lookup decoding; no extra weights. miryam 2026-10-10, -t 2, repeat-code
                                  # prompt: 17.4 t/s vs 8.7 none (ngram-mod 16.3). Real hermes-style full-file edits: 17.9-18.4 vs 8.2-8.4 (2.2x).
-
-  nanbeige-ngram:
-    experimental: true
-    status: planned              # enable when nanbeige-coder is active; no extra weights
-    mode: ngram
-    target: nanbeige-coder
-    spec_type: ngram-simple
-
-
 
 pentests:
   fleet:
@@ -1068,7 +1004,7 @@ options:
     size_note: "LFM2.5-350M-Q4_K_M.gguf 229312224 bytes (~219 MiB); license lfm1.0 (read LICENSE before enable)"
     gpu_candidate: true
     gpu_host: qodesh
-    placement_note: "Small CPU decision candidate for qodesh, miryam, phones, and FreeBSD angel (llama-b11669-freebsd supports lfm2). Review/accept lfm1.0 before fetching; do not co-start with angel's Nanbeige node."
+    placement_note: "Small CPU decision candidate for qodesh, miryam, phones, and FreeBSD angel (llama-b11669-freebsd supports lfm2). Review/accept lfm1.0 before fetching; "
     candidate_hosts: [qodesh, miryam, phone7, phone8, angel]
   glide:
     role: decision
