@@ -325,7 +325,7 @@ runtimes:
     kind: llama-server
     build: b11944 (legacy tested release; exact upstream tag commit retained)
     commit: 1b4554eff124a8f0033bc09b3f708a5e51cbda15
-    bin: /home/green/code-bootstraps-llama.cpp/build-linux-x86_64-cpu-b11944/llama-server
+    bin: /home/green/code-bootstraps-llama.cpp/build-linux-x86_64-cpu-b11944/bin/llama-server
     hosts: [miryam]
     supported_archs: [qwen35, gemma-embedding2, llama, lfm2, lfm3, qwen2, gemma2, gemma3]
     backends: [cpu, vulkan]
