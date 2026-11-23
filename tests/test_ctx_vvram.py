@@ -16,7 +16,7 @@ def _graph():
 
 def test_vvram_spill_configured_angel_coder():
     g = _graph()
-    assert cv.vvram_spill_configured(g["nodes"]["nanbeige-coder"]) is True
+    assert cv.vvram_spill_configured(g["nodes"]["removed-large-coder"]) is True
     assert cv.vvram_spill_configured(g["nodes"]["coder"]) is False
 
 

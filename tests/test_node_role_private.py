@@ -27,8 +27,8 @@ def test_fleet_keys_are_capability_names_not_hostnames():
 
 def test_infer_role_angel_chat_vs_coder():
     g = _fleet()
-    assert nr.infer_role("nanbeige-coder", g["nodes"]["nanbeige-coder"], g) == "coder"
-    assert nr.infer_role("nanbeige-chat", g["nodes"]["nanbeige-chat"], g) == "chat"
+    assert nr.infer_role("removed-large-coder", g["nodes"]["removed-large-coder"], g) == "coder"
+    assert nr.infer_role("removed-large-chat", g["nodes"]["removed-large-chat"], g) == "chat"
     assert nr.infer_role("coder", g["nodes"]["coder"], g) == "coder"
 
 
@@ -41,17 +41,18 @@ def test_private_angel_type_names_only():
     assert nodes["guardian"]["role"] == "guardian"
     assert nodes["guardian"]["status"] == "planned"
     assert nodes["coder"]["host"] == "angel"
-    assert nodes["coder"]["model"] == "nanbeige43-33b-q4km"
-    assert nodes["coder"]["status"] == "planned"  # 33B nanbeige deferred (hardware limits, #682)
+    assert nodes["coder"]["model"] == "qwen35-2b-model"
+    assert nodes["coder"]["status"] == "active"
+
     assert nodes["chat"]["status"] == "planned"
     assert nodes["coder"]["role"] == "coder"
     assert nodes["chat"]["role"] == "chat"
     for name in nodes:
         assert not nr.is_host_prefixed(name, g)
     spec = priv["speculative"]
-    assert set(spec) == {"nanbeige-ngram"}
-    assert spec["nanbeige-ngram"]["target"] == "coder"
-    assert spec["nanbeige-ngram"]["status"] == "planned"
+    assert set(spec) == {"removed-large-ngram"}
+    assert spec["removed-large-ngram"]["target"] == "coder"
+    assert spec["removed-large-ngram"]["status"] == "planned"
     assert "coder-ngram" not in spec
     assert "coder-draft" not in spec
 
@@ -80,7 +81,7 @@ def test_generate_graph_cli_angel(tmp_path):
         text=True,
     )
     assert r.returncode == 0, r.stderr + r.stdout
-    assert "nanbeige-coder→coder" in r.stdout or "nanbeige-coder->coder" in r.stdout or "→coder" in r.stdout
+    assert "removed-large-coder→coder" in r.stdout or "removed-large-coder->coder" in r.stdout or "→coder" in r.stdout
     out = os.path.join(str(tmp_path), "graph-angel.yaml")
     g = familia_yaml.loads(open(out, encoding="utf-8").read())
     assert set(g["nodes"]) == {"coder", "chat", "guardian"}
@@ -103,7 +104,7 @@ def test_modify_graph_host_list_and_bad_model(tmp_path):
     )
     assert r.returncode == 0, r.stderr
     assert "coder:" in r.stdout and "host=angel" in r.stdout
-    assert "nanbeige-coder" not in r.stdout
+    assert "removed-large-coder" not in r.stdout
     bad = subprocess.run(env=env, args=
         [sys.executable, os.path.join(ROOT, "scripts", "modify_graph.py"),
          "--host", "angel", "--assign-model", "coder=qwen35-2b", "--dry-run"],

@@ -28,9 +28,9 @@ def test_models_lists_fleet_and_database():
     r = _run("models")
     assert r.returncode == 0, r.stderr
     assert "qwen35-2b-q4km" in r.stdout
-    assert "nanbeige43-33b-q4km" in r.stdout
+    assert "removed-large-model" in r.stdout
     assert "Model database" in r.stdout
-    assert "dealignai--Nanbeige4.3-33B-UNCENSORED-GGUF--Nanbeige4.3-33B-UNCENSORED-Q4_K_M" in r.stdout
+    assert "dealignai--large model-UNCENSORED-GGUF--large model-UNCENSORED-Q4_K_M" in r.stdout
     # Hostname is placement (host:), not the model key.
     assert "smollm2-135m-q4-miryam" not in r.stdout
     assert "smollm2-135m-q4-linux" in r.stdout
@@ -49,7 +49,7 @@ def test_graphs_lists_fleet_private_and_examples():
 def test_configure_fleet_is_read_only_and_shows_nodes():
     r = _run("configure", "graph.yaml")
     assert r.returncode == 0, r.stderr
-    assert "nanbeige-coder" in r.stdout
+    assert "removed-large-coder" in r.stdout
     assert "fleet-guardian" in r.stdout
     assert "Nothing was written." in r.stdout
     assert "angel-coder" not in r.stdout

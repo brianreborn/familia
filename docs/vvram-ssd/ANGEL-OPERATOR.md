@@ -1,4 +1,4 @@
-# Angel / Uriel operator path — Nanbeige multi-node (not limp mode)
+# Angel / Uriel operator path — named large model multi-node (not limp mode)
 
 **Coordinator:** FreeBSD host `angel` (aka **Uriel**; SSH `Host angel gabriel` → `192.168.4.25`).
 
@@ -9,13 +9,13 @@ host-prefixed ids. On angel the private graph is:
 
 | Type key | Fleet transitional key | Model | Status | Port |
 |----------|------------------------|-------|--------|------|
-| `coder` | `nanbeige-coder` | `nanbeige43-33b-q4km` | active | 18200 |
-| `chat` | `nanbeige-chat` | `nanbeige43-33b-q4km` | planned | 18201 |
+| `coder` | `removed-large-coder` | `removed-large-model` | active | 18200 |
+| `chat` | `removed-large-chat` | `removed-large-model` | planned | 18201 |
 
 ```sh
 python3 scripts/generate_graph.py angel          # → generated/graph-angel.yaml
 python3 scripts/modify_graph.py --host angel --list
-python3 scripts/modify_graph.py --host angel --assign-model coder=nanbeige43-33b-q4km
+python3 scripts/modify_graph.py --host angel --assign-model coder=removed-large-model
 ./start.sh --host angel --dry-run                # uses private topology (type names)
 ./start.sh --host angel --fleet --dry-run        # transitional fleet keys
 ```
@@ -24,7 +24,7 @@ Do **not** co-start `coder` and `chat` on 24 GiB. Multi-node **fleet** shape is
 box + angel + miryam graphs — not limp `--model` single-node mode.
 
 ## Prefer the graph, not limp mode
-Default is **multi-node fleet**: box (decision+coder) + **one** Nanbeige role on
+Default is **multi-node fleet**: box (decision+coder) + **one** named large model role on
 angel (`coder` XOR `chat`) + miryam coder/embed.  
 `hermes --model NODE` / single-model mode is a **last resort**, not the restart path.
 
@@ -58,7 +58,7 @@ Spill/mmap: [LAYER.md](./LAYER.md).
 ```sh
 cd ~/familia
 scripts/hermes.sh --model coder --render-only   # private type name after generate
-# transitional fleet: scripts/hermes.sh --model nanbeige-coder --render-only
+# transitional fleet: scripts/hermes.sh --model removed-large-coder --render-only
 ```
 
 **min_ctx:** `agents.hermes.min_ctx` is 64000. Angel `coder` ctx is **65536** (Brian #125).
@@ -72,6 +72,6 @@ If angel loses fleet SSH peers, keep it busy with the offline improve loop
 python3 scripts/offline_improve.py --host angel --loop
 ```
 
-Does not start Nanbeige; benches a small GGUF + host RAM, persists under
+Does not start named large model; benches a small GGUF + host RAM, persists under
 `~/.local/state/familia/offline-improve/angel/`, retries reconnect with backoff.
 

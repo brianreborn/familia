@@ -157,7 +157,7 @@ def validate(graph, check_files=True, host=None):
         try: meta = gguf_meta(path)
         except Exception as e: errs.append(f"nodes.{name}: cannot read GGUF: {e}"); continue
         arch = meta.get("general.architecture")
-        _ARCH_ALIAS = {"llama": "nanbeige", "nanbeige": "llama"}
+        _ARCH_ALIAS = {"llama": "large-model", "large-model": "llama"}
         if arch != m["arch"] and _ARCH_ALIAS.get(arch) != m["arch"] and _ARCH_ALIAS.get(m["arch"]) != arch:
             errs.append(f"models.{n['model']}: GGUF architecture is {arch!r}, graph says {m['arch']!r}")
         fq, mq = meta.get("familia.quant"), m.get("quant")  # LittleBit (docs/littlebit.md)
@@ -218,7 +218,7 @@ def validate(graph, check_files=True, host=None):
                 WARNINGS.append(msg + " (non-Android: advisory; raise cache_ram_mib when you want prompt cache)")
         weight_mib = os.path.getsize(path) / 2**20
         # Software VVRAM (docs/vvram-ssd/LAYER.md): mmap + swap_budget means weights are
-        # file/swap-backed; counting the full GGUF as RAM hard-fails Nanbeige on 24 GiB hosts.
+        # file/swap-backed; counting the full GGUF as RAM hard-fails named large model on 24 GiB hosts.
         # Still charge KV + cache_ram + overhead; warn so operators keep swap measured.
         if n.get("load_mode") == "mmap" and n.get("swap_budget_mib"):
             WARNINGS.append(
