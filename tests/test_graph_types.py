@@ -319,10 +319,11 @@ def _pentest(**kw):
     d.update(kw)
     return d
 
-def test_pentest_baseline_planned():
-    """Fleet ships a planned guardian entry; seatbelts on by default."""
+def test_pentest_baseline_active_seatbelts_on():
+    """Fleet ships an active guardian seat (P0 2026-11-22, Brian confirmed); seatbelts on by default."""
     assert "fleet" in BASE.get("pentests", {})
-    assert BASE["pentests"]["fleet"]["status"] == "planned"
+    assert BASE["pentests"]["fleet"]["status"] == "active"
+    assert BASE["pentests"]["fleet"]["requires_operator_confirm"] is True
     assert BASE["pentests"]["fleet"]["launch_test_only"] is True
     assert BASE["pentests"]["fleet"]["tools"]["allow"] == []
     assert BASE["nodes"]["fleet-guardian"]["role"] == "guardian"
