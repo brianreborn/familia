@@ -5,6 +5,7 @@
 #   ./scripts/build_appimage.sh
 #   ./scripts/build_appimage.sh --out dist/familia-dev-x86_64.AppImage
 #   ./scripts/build_appimage.sh --skip-tool-download
+#   ./scripts/build_appimage.sh --stage-only DIR   (copy the staged AppDir to DIR; no pack)
 #
 # Produces: dist/familia-<version>-x86_64.AppImage
 # Needs: bash, rsync or cp, curl/wget for appimagetool; `file` + squashfs-tools for packing.
@@ -15,12 +16,14 @@ cd "$ROOT"
 
 OUT=""
 SKIP_DL=0
+STAGE_ONLY=""
 ARCH=x86_64
 while [ $# -gt 0 ]; do
   case "$1" in
     --out) OUT=$2; shift 2 ;;
     --skip-tool-download) SKIP_DL=1; shift ;;
-    -h|--help) sed -n '2,14p' "$0"; exit 0 ;;
+    --stage-only) STAGE_ONLY=$2; shift 2 ;;
+    -h|--help) sed -n '2,12p' "$0"; exit 0 ;;
     *) echo "unknown arg: $1" >&2; exit 2 ;;
   esac
 done
@@ -32,7 +35,8 @@ APPDIR=$(mktemp -d "${TMPDIR:-/tmp}/familia-AppDir.XXXXXX")
 STAGED=""
 cleanup() {
   rm -rf "$APPDIR"
-  [ -n "$STAGED" ] && rm -rf "$STAGED"
+  # An if (not &&) so an empty STAGED does not turn exit 0 into exit 1.
+  if [ -n "$STAGED" ]; then rm -rf "$STAGED"; fi
 }
 trap cleanup EXIT
 
@@ -49,6 +53,18 @@ if command -v rsync >/dev/null 2>&1; then
 else
   tar -C "$ROOT" --exclude=.git --exclude=dist --exclude='*.gguf' -cf - . \
     | tar -C "$APPDIR/usr/share/familia" -xf -
+fi
+
+# App store data rides in the release package (appstore/data: feed.json + media/).
+if ! python3 "$ROOT/scripts/appstore.py" checksums --verify --data "$APPDIR/usr/share/familia/appstore/data"; then
+  echo "familia AppImage: appstore/data missing or SHA256SUMS mismatch" >&2
+  exit 1
+fi
+if [ -n "$STAGE_ONLY" ]; then
+  rm -rf "$STAGE_ONLY"
+  cp -a "$APPDIR" "$STAGE_ONLY"
+  echo "staged AppDir -> $STAGE_ONLY (not packed)"
+  exit 0
 fi
 
 install -m 0755 "$ROOT/packaging/appimage/AppRun" "$APPDIR/AppRun"
