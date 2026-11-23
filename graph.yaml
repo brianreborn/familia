@@ -142,7 +142,8 @@ hosts:
         notes: PCI inventory measured 2026-11-18; CUDA 6.5/NVIDIA 341 support set is operator-reported but not verified as a FreeBSD runtime on Angel
     local_names: [gabriel, Gabriel, uriel, Uriel, angel.local, uriel.local, gabriel.local]
     notes: >-
-      4.3-33B Q4_K_M (~18.7 GiB) is a research candidate only; Angel cannot support it as a usable model.
+      Angel is a constrained FreeBSD host. Keep its active coder placement within
+      measured RAM and leave oversized research placements inactive.
   macmini:
     kind: desktop
     measured: true
@@ -325,7 +326,7 @@ runtimes:
     kind: llama-server
     build: b11944 (legacy tested release; exact upstream tag commit retained)
     commit: 1b4554eff124a8f0033bc09b3f708a5e51cbda15
-    bin: /home/green/code-bootstraps-llama.cpp/build-linux-x86_64-cpu-b11944/bin/llama-server
+    bin: code-bootstraps-llama.cpp/bin/llama-b11944-linux-x64-cpu/llama-server
     hosts: [miryam]
     supported_archs: [qwen35, gemma-embedding2, llama, lfm2, lfm3, qwen2, gemma2, gemma3]
     backends: [cpu, vulkan]
@@ -346,7 +347,7 @@ runtimes:
     kind: llama-server
     build: b12359 (llama.cpp 1.0.0, native FreeBSD CPU build via build-linux.sh)
     commit: 2a8600387b40f2820d17973067020ce11377904d
-    bin: /home/green/familia/generated/code-bootstraps-llama.cpp-1.0.0/build-freebsd-v12359/bin/llama-server
+    bin: code-bootstraps-llama.cpp/build-freebsd/bin/llama-server
     hosts: [angel]
     supported_archs: [qwen35, gemma-embedding2, llama, lfm2, modern-bert, qwen2, gemma2, gemma3, gpt-oss]
     backends: [cpu]
@@ -707,7 +708,27 @@ nodes:
 
 
   # --- dogfood box multi-size topology (2026-10-26): tiny decision + mid coder.
-  # 4.3-33B is a research candidate only; it is not deployable on angel or box.
+  # Angel's active coder is a measured small model; oversized candidates remain absent.
+  angel-coder:
+    model: qwen35-2b-q4km
+    role: coder
+    host: angel
+    runtime: llama-b11669-freebsd
+    ctx: 65536
+    parallel: 1
+    kv_type: q8_0
+    flash_attn: true
+    threads: 2
+    offload: {backend: cpu, ngl: 0, split: none, main_gpu: 0}
+    bind: 127.0.0.1
+    port: 18200
+    cache_ram_mib: 1024
+    load_mode: mmap
+    status: active
+    server_tools: all
+    override_reasons:
+      ctx: 'bounded angel coder profile; installed and verified small coder model; larger candidates are excluded'
+    note: 'Keep Angel on the measured small coder path.'
   dogfood-decision:
     model: smollm2-135m-q4-linux
     role: decision
@@ -746,26 +767,6 @@ nodes:
     override_reasons:
       ctx: 'box dogfood mid-size coder; 8192 fits with SmolLM decision co-resident under 16 GiB - 4 GiB reserve; full 262144 not measured here'
 
-  angel-coder:
-    model: qwen35-2b-q4km
-    role: coder
-    host: angel
-    runtime: llama-b11669-freebsd
-    ctx: 65536
-    parallel: 1
-    kv_type: q8_0
-    flash_attn: true
-    threads: 2
-    offload: {backend: cpu, ngl: 0, split: none, main_gpu: 0}
-    bind: 127.0.0.1
-    port: 18200
-    cache_ram_mib: 1024
-    load_mode: mmap
-    status: active
-    server_tools: all
-    override_reasons:
-      ctx: 'bounded angel coder profile; Qwen3.5-2B is installed and verified, while larger candidates are excluded from this host'
-    note: 'Angel default is a small, verified coder model. Keep the graph explicit and license-gated.'
 
   fleet-guardian:
     model: dolphin3-cyber-8b-q2k
@@ -811,7 +812,7 @@ nodes:
     status: planned
     card_set: "5. Recommended settings"
     override_reasons:
-      ctx: "guardian advisory node on angel; 8192 keeps KV modest beside  when not co-started"
+      ctx: "guardian advisory node on angel; 8192 keeps KV modest beside the active coder"
       card_set: "same Recommended settings card as Ubuntu guardian node"
     note: >-
       Guardian/defender on angel (FreeBSD jump). Planned until weights on angel + measured sha.
@@ -1003,7 +1004,7 @@ options:
     size_note: "LFM2.5-350M-Q4_K_M.gguf 229312224 bytes (~219 MiB); license lfm1.0 (read LICENSE before enable)"
     gpu_candidate: true
     gpu_host: qodesh
-    placement_note: "Small CPU decision candidate for qodesh, miryam, phones, and FreeBSD angel (llama-b11669-freebsd supports lfm2). Review/accept lfm1.0 before fetching; do not co-start with angel's  node."
+    placement_note: "Small CPU decision candidate for qodesh, miryam, phones, and FreeBSD angel (llama-b11669-freebsd supports lfm2). Review/accept lfm1.0 before fetching; "
     candidate_hosts: [qodesh, miryam, phone7, phone8, angel]
   glide:
     role: decision

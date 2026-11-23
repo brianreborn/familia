@@ -413,7 +413,7 @@ flowchart TB
     m_hub["lan-nexus hub + lan-bt tracker"]
   end
   subgraph fbsd["FreeBSD node"]
-    a_coder["coder node<br/>large model, server_tools all"]
+    a_coder["coder node<br/>measured small coder, server_tools all"]
     a_plan["chat, guardian nodes (planned)"]
   end
   subgraph win["Windows node"]
