@@ -196,7 +196,7 @@ def test_server_args_spec_flags():
 
 
 def test_server_tools_args_and_loopback():
-    """nanbeige-coder-style server_tools emits --tools; non-loopback bind is rejected."""
+    """removed-large-coder-style server_tools emits --tools; non-loopback bind is rejected."""
     import graph_types
     x = g()
     x["nodes"]["coder"]["server_tools"] = "all"
@@ -229,7 +229,7 @@ def test_fail_closed_roles_are_normalized_in_graph_types():
     for role in ("Guardian", "GUARDIAN", "ｇｕａｒｄｉａｎ"):
         x = g(); x["nodes"]["coder"]["role"] = role; x["nodes"]["coder"]["server_tools"] = "all"
         has(x, "not allowed for")
-        x = g(); x["nodes"]["nanbeige-chat"]["tool_route"] = "coder"; x["nodes"]["coder"]["role"] = role
+        x = g(); x["nodes"]["removed-large-chat"]["tool_route"] = "coder"; x["nodes"]["coder"]["role"] = role
         has(x, "fail-closed")
 
 

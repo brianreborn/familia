@@ -1,5 +1,15 @@
 # Known issues
 
+- **Historical trap: Nanbeige deployment records (retired 2026-11-23)**
+  - The model name was kept in active graph, generated-host, catalog, test, and
+    operator records after repeated direction that Angel could not support it.
+    That made the keyword act as a poison path: regeneration resurrected a
+    deployment that should have been impossible, and the launch path reached a
+    license gate instead of a useful host configuration.
+  - The model and all active records are purged. This entry is retained only as
+    an incident warning. Do not reintroduce the model name, model key, node key,
+    or deployment recipe into active configuration.
+
 - **v0.4.0: Windows, FreeBSD and macOS are unverified**
   - **Windows / PowerShell:** untested for v0.4.0. The Windows test hosts (qodesh, shalom) were offline, so the llama `b12359` Windows archives (including CUDA 13.5) and the `.ps1` scripts have not been run. `start.bat` has two F-6 gaps versus the Linux/Termux start path (#631): it ignores its own argv (`--host`, `--port`, `--api-key`), so `start.bat --host 0.0.0.0` exits 0 instead of being refused with exit 2; and `FAMILIA_BIND=0.0.0.0` with `FAMILIA_EXTRA` set to `--tools all` (in cmd.exe: `set "FAMILIA_EXTRA=--tools all"`; single quotes would stay in the value) starts a LAN-bound server with tools on instead of being refused.
   - **FreeBSD / macOS:** the llama.cpp v1.0.0 pin proposed in open PR #614 (code-bootstraps `223bd358`, build `b12359`; main's `pins.txt` is still `6ab58d7` until #614 lands) has only been built on Linux (CPU and Vulkan). Treat FreeBSD and macOS as untested until a build there is recorded; the FreeBSD build and smoke test is must-land #632.

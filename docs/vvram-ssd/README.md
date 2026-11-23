@@ -1,6 +1,6 @@
 # SSD → VVRAM / HVVRAM notes
 
-Honest staged R&D for Nanbeige-on-angel (software) and G84+open-FW DMA (hardware).
+Honest staged R&D for named large model-on-angel (software) and G84+open-FW DMA (hardware).
 
 | Doc | Role |
 |-----|------|

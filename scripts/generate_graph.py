@@ -7,7 +7,7 @@ Usage:
 
 Default (--private): only nodes with host=<host>, renamed to type/role keys
 (coder, chat, embed, …). Placement stays on node.host. Fleet graph.yaml uses
-capability names (nanbeige-coder, cuda-sm11-decision); this script collapses
+capability names (removed-large-coder, cuda-sm11-decision); this script collapses
 them to the type name on the private graph. Host-prefixed ids are legacy.
 
 Writes generated/graph-<host>.yaml (comments from fleet graph are not preserved;

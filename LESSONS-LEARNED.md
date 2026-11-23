@@ -5,6 +5,29 @@
 ## L1. Renames leave a long tail (#16)
 Renaming feeldznutts → familia left the installer, docs, log prefixes and the logo pointing at the old name. Grep for the old name in code *and* docs, and replace assets in the same change.
 
+## L0. Nanbeige was a release-engineering trap (incident, 2026-11-23)
+
+The Nanbeige model was explicitly known to be unusable on Angel, yet its model
+entry, planned nodes, generated private graph, registry record, operator notes,
+tests, and launcher documentation remained in the repository. A regenerated
+private graph consequently selected the stale model path. This was an avoidable
+release failure: the team treated a warning comment as sufficient while leaving
+the identifier executable through graph generation.
+
+The launch attempt also exposed a second failure. The graph launcher reached a
+license review and, because the noninteractive run had not supplied an explicit
+acceptance, stopped before starting. That gate was not surfaced as a tracked
+issue or converted into a clear preflight result before the stale graph was
+presented as launchable. The combination made the model name a poison keyword:
+mentioning it pulled obsolete placement, memory, and license assumptions back
+into the active workflow.
+
+Corrective rule: an unsupported model must have no active model key, node key,
+generated graph, registry entry, launcher recipe, or test fixture. Historical
+incident text may name it only to explain the failure. Regeneration must be
+followed by a repository-wide forbidden-name scan, graph validation, and a
+license preflight whose result is recorded before any start command.
+
 ## L2. Agent context must match the server slot (#19)
 hermes-agent with compression off sent ~18–21k-token requests to a 16,384-token `coder` slot and looped on HTTP 400. Fix: declare both in `graph.yaml`, require `context_length` == per-slot ctx, and launch hermes through `scripts/hermes.sh` with compression on.
 

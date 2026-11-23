@@ -105,7 +105,7 @@ PY
 )
   if [ -n "$NODE_HOST" ]; then
     # Launch-test seatbelt: schema + host scope without requiring sibling hosts' GGUFs
-    # (e.g. angel Nanbeige absent on Ubuntu laptop must not barricade guardian smoke).
+    # (e.g. angel named large model absent on Ubuntu laptop must not barricade guardian smoke).
     if [ "$LAUNCH_TEST" = 1 ] || [ "$launch_only" = 1 ]; then
       echo "with-fleet.sh: launch-test artifact check for host $NODE_HOST (node $node; --no-files)" >&2
       python3 "$ROOT/scripts/validate_graph.py" --graph "$GRAPH" --host "$NODE_HOST" --no-files || {
