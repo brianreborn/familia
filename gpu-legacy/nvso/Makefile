@@ -4,7 +4,6 @@
 .PHONY: all clean tools kmod depend smoke
 
 CFLAGS ?= -O2 -Wall -Wextra
-override CFLAGS += -Iinclude
 NVSO_CPPFLAGS = -Iinclude
 
 all: tools
