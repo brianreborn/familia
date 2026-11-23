@@ -1,0 +1,100 @@
+name: Propose code-bootstraps pin updates
+
+on:
+  schedule:
+    - cron: '23 9 * * 1'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  propose:
+    if: github.repository == 'brianreborn/familia' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Find and verify upstream default-branch commit
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          work="$(mktemp -d)"
+          askpass="$work/askpass"
+          cleanup() { rm -rf "$work"; }
+          trap cleanup EXIT
+
+          repo='brianreborn/code-bootstraps-llama.cpp'
+          metadata="$(curl --fail --silent --show-error \
+            -H 'Accept: application/vnd.github+json' \
+            'https://api.github.com/repos/brianreborn/code-bootstraps-llama.cpp')"
+          default_branch="$(jq -er '.default_branch | select(type == "string" and length > 0)' <<<"$metadata")"
+          ref="$(curl --fail --silent --show-error \
+            -H 'Accept: application/vnd.github+json' \
+            "https://api.github.com/repos/${repo}/commits/${default_branch}")"
+          sha="$(jq -er '.sha | select(test("^[0-9a-f]{40}$"))' <<<"$ref")"
+          case "$sha" in
+            b1b770d*) echo 'Refusing forbidden b1b770d revision' >&2; exit 1 ;;
+          esac
+
+          git init -q "$work/repo"
+          git -C "$work/repo" remote add upstream "https://github.com/${repo}.git"
+          git -C "$work/repo" fetch --quiet --depth=1 upstream "$sha"
+          git -C "$work/repo" cat-file -e "${sha}^{commit}"
+
+          git clone --quiet --depth=1 --branch main \
+            'https://github.com/brianreborn/familia.git' "$work/familia"
+          current="$(awk -F '\t' '$1 == "code-bootstraps-llama.cpp" { print $2 }' "$work/familia/pins.txt")"
+          if [[ "$current" == "$sha" ]]; then
+            echo 'Upstream pin is already current.'
+            exit 0
+          fi
+          [[ "$(awk -F '\t' '$1 == "code-bootstraps-llama.cpp" { count++ } END { print count+0 }' "$work/familia/pins.txt")" -eq 1 ]]
+          sed -i "s/^code-bootstraps-llama\.cpp\t${current}\t/code-bootstraps-llama.cpp\t${sha}\t/" "$work/familia/pins.txt"
+          awk -F '\t' -v sha="$sha" -v repo="$repo" \
+            '$1 == "code-bootstraps-llama.cpp" && $2 == sha && $3 == "https://github.com/" repo ".git" { found=1 } END { exit !found }' \
+            "$work/familia/pins.txt"
+
+          branch="automation/repin-code-bootstraps-${sha}"
+          branch_exists=false
+          if git ls-remote --exit-code --heads \
+              'https://github.com/brianreborn/familia.git' "refs/heads/$branch" >/dev/null; then
+            branch_exists=true
+            existing_pulls="$(curl --fail --silent --show-error \
+              -H 'Accept: application/vnd.github+json' \
+              "https://api.github.com/repos/brianreborn/familia/pulls?head=brianreborn%3A${branch}&state=all")"
+            if [[ "$(jq 'length' <<<"$existing_pulls")" -gt 0 ]]; then
+              echo "A pull request already exists for $branch; leaving it for its reviewers."
+              exit 0
+            fi
+          fi
+
+          if [[ "$branch_exists" == false ]]; then
+            git -C "$work/familia" config user.name 'github-actions[bot]'
+            git -C "$work/familia" config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git -C "$work/familia" checkout -qb "$branch"
+            git -C "$work/familia" add pins.txt
+            git -C "$work/familia" commit -qm "chore: propose code-bootstraps pin ${sha}"
+            git -C "$work/familia" remote set-url origin 'https://github.com/brianreborn/familia.git'
+
+            printf '%s\n' '#!/bin/sh' 'case "$1" in' \
+              '*Username*) printf "%s\\n" "x-access-token" ;;' \
+              '*Password*) printf "%s\\n" "$GH_TOKEN" ;;' \
+              '*) exit 1 ;;' 'esac' > "$askpass"
+            chmod 700 "$askpass"
+            GIT_ASKPASS="$askpass" GIT_TERMINAL_PROMPT=0 \
+              git -C "$work/familia" push origin "$branch"
+          fi
+          body="$(jq -n --arg sha "$sha" --arg current "$current" \
+            --arg workflow "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+            '{title:("chore: propose code-bootstraps pin " + $sha), head:"automation/repin-code-bootstraps-" + $sha, base:"main", body:("Automated proposal only; this workflow never merges.\n\n- Candidate: `" + $sha + "`\n- Previous pin: `" + $current + "`\n- Candidate source: `brianreborn/code-bootstraps-llama.cpp` default branch\n- Independently verified by depth-1 fetch of the exact commit SHA.\n- Workflow run: " + $workflow + "\n\nReview the upstream changes and CI before merging. Requires human review and Brian approval." )}')"
+          response="$(curl --fail --silent --show-error \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            -H 'Content-Type: application/json' \
+            -d "$body" \
+            'https://api.github.com/repos/brianreborn/familia/pulls')"
+          jq -er '.html_url' <<<"$response"
