@@ -20,7 +20,7 @@
   - **Rule:** keep ~2+ GiB free on hosts under 8 GiB; miryam `reserve_ram_mib` is 3072. The validator fails on a clear overcommit and warns when the reserve or the 2048 MiB small-host floor would be broken. earlyoom and zram are deployed; the disk swap is still only 16 MiB ([#43](https://github.com/brianreborn/familia/issues/43)). See [ram-safety.md](ram-safety.md).
 
 - **Embedding node deferred**
-  - The `embed` node (EmbeddingGemma-2) is still declared in `graph.yaml` but deferred until further notice ([#38](https://github.com/brianreborn/familia/issues/38)). Don't run it next to the coder on miryam.
+  - The `embed` node (EmbeddingGemma-2) is active since the 2026-11-22 P0 (planned is required), overriding the [#38](https://github.com/brianreborn/familia/issues/38) deferral. RAM next to the coder on miryam is still unmeasured; see [planned-to-active](planned-to-active.md) for what each formerly planned node still needs.
 
 - **Transient errors from remote models**
   - **Symptom:** a remote model occasionally returns an empty response, HTTP 503 or a timeout.

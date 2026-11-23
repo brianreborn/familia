@@ -39,7 +39,7 @@ def test_private_angel_type_names_only():
     assert set(nodes) == {"coder", "chat", "guardian"}
     assert nodes["guardian"]["host"] == "angel"
     assert nodes["guardian"]["role"] == "guardian"
-    assert nodes["guardian"]["status"] == "planned"
+    assert nodes["guardian"]["status"] == "active"  # P0 2026-11-22, Brian confirmed
     assert nodes["coder"]["host"] == "angel"
     assert nodes["coder"]["model"] == "nanbeige43-33b-q4km"
     assert nodes["coder"]["status"] == "active"
