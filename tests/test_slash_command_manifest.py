@@ -69,3 +69,15 @@ def test_help_must_refer_to_a_registered_consumer_name():
     manifest_data["consumers"]["gateway"]["help"].append("missing")
     with pytest.raises(scm.ManifestError, match="not registered"):
         scm.parse_manifest(manifest_data)
+
+
+def test_schema_version_and_resolution_inputs_are_strict():
+    manifest_data = data()
+    manifest_data["schema_version"] = True
+    with pytest.raises(scm.ManifestError, match="schema_version must be 1"):
+        scm.parse_manifest(manifest_data)
+    manifest = scm.load_manifest(FIXTURE)
+    with pytest.raises(scm.ManifestError, match="consumer name must be a string"):
+        scm.resolve(manifest, [], "/begin")
+    with pytest.raises(scm.ManifestError, match="slash command must be a string"):
+        scm.resolve(manifest, "gateway", None)

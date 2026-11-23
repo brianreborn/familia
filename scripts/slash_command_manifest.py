@@ -47,7 +47,8 @@ def _require(condition: bool, message: str) -> None:
 def parse_manifest(data: Any) -> Manifest:
     """Validate JSON-shaped manifest data and return a resolved registry."""
     _require(isinstance(data, dict), "manifest must be an object")
-    _require(data.get("schema_version") == 1, "schema_version must be 1")
+    _require(type(data.get("schema_version")) is int and
+             data["schema_version"] == 1, "schema_version must be 1")
     command_rows = data.get("commands")
     consumer_rows = data.get("consumers")
     _require(isinstance(command_rows, list) and command_rows,
@@ -117,6 +118,8 @@ def load_manifest(path: str | Path) -> Manifest:
 
 def resolve(manifest: Manifest, consumer: str, name: str) -> Invocation:
     """Resolve a canonical name or consumer alias, accepting `/name` syntax."""
+    _require(isinstance(consumer, str), "consumer name must be a string")
+    _require(isinstance(name, str), "slash command must be a string")
     if name.startswith("/"):
         name = name[1:]
     _require(bool(name) and "/" not in name and not any(ch.isspace() for ch in name),
