@@ -28,7 +28,7 @@ def test_llama_070_runtime_preserves_existing_model_architectures():
     assert previous_archs <= set(runtime["supported_archs"])
     assert int(BASE["nodes"]["coder"]["runtime"].split("-b")[1].split("-")[0]) >= 11669  # 0.7.0 or newer
     assert int(BASE["nodes"]["embed"]["runtime"].split("-b")[1].split("-")[0]) >= 11669  # 0.7.0 or newer
-    freebsd = BASE["runtimes"]["llama-b11669-freebsd"]
+    freebsd = BASE["runtimes"]["llama-b12359-freebsd"]
     assert freebsd["hosts"] == ["angel"]
     assert freebsd["backends"] == ["cpu"]
     assert previous_archs <= set(freebsd["supported_archs"])
@@ -229,7 +229,7 @@ def test_fail_closed_roles_are_normalized_in_graph_types():
     for role in ("Guardian", "GUARDIAN", "ｇｕａｒｄｉａｎ"):
         x = g(); x["nodes"]["coder"]["role"] = role; x["nodes"]["coder"]["server_tools"] = "all"
         has(x, "not allowed for")
-        x = g(); x["nodes"]["nanbeige-chat"]["tool_route"] = "coder"; x["nodes"]["coder"]["role"] = role
+        x = g(); x["nodes"]["angel-chat"]["tool_route"] = "coder"; x["nodes"]["coder"]["role"] = role
         has(x, "fail-closed")
 
 

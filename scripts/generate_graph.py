@@ -45,6 +45,37 @@ def merge_dict(base: dict, overrides: dict):
     return base
 
 
+def apply_host_overrides(graph: dict, overrides: dict):
+    """Merge host settings and replace named node/gateway records atomically.
+
+    Model changes must not retain model-specific card, sampling, context or spill
+    fields from the previous node record. A whole-record replacement is explicit
+    and avoids introducing a second deletion language for YAML overrides.
+    """
+    for section, values in overrides.items():
+        if section in ("nodes", "gateways") and isinstance(values, dict):
+            graph.setdefault(section, {}).update(values)
+        elif isinstance(values, dict) and isinstance(graph.get(section), dict):
+            merge_dict(graph[section], values)
+        else:
+            graph[section] = values
+    return graph
+
+
+def prune_private_records(graph: dict):
+    """Drop fleet-only records from a host graph after private topology is built."""
+    used_models = {node.get("model") for node in (graph.get("nodes") or {}).values()}
+    used_runtimes = {node.get("runtime") for node in (graph.get("nodes") or {}).values()}
+    graph["models"] = {
+        key: value for key, value in (graph.get("models") or {}).items()
+        if key in used_models
+    }
+    graph["runtimes"] = {
+        key: value for key, value in (graph.get("runtimes") or {}).items()
+        if key in used_runtimes
+    }
+
+
 def parse_set_args(set_args, graph):
     """Parse node=model_key (models: keys only)."""
     result = {}
@@ -100,7 +131,7 @@ def main():
         all_overrides = load_yaml(OVERrides_FILE)
         host_overrides = all_overrides.get(args.host, {})
         if host_overrides:
-            base = merge_dict(base, host_overrides)
+            base = apply_host_overrides(base, host_overrides)
 
     rename = {}
     if private:
@@ -116,6 +147,7 @@ def main():
             base = private_topology(base, args.host)
         except ValueError as e:
             sys.exit(f"generate_graph: {e}")
+        prune_private_records(base)
 
     if args.set_args:
         try:

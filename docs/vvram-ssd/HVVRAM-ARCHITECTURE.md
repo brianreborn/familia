@@ -9,7 +9,7 @@
 ┌─────────────────────────────────────────────────────────────────┐
 │ Stage 0 — Software VVRAM (LAYER.md)                             │
 │  llama mmap GGUF + OS swap + spill_path slot-save               │
-│  Host: angel Nanbeige. No nvso.ko required.                     │
+│  Historical design only; no Nanbeige deployment is qualified.   │
 └────────────────────────────┬────────────────────────────────────┘
                              │ bookkeeping API
 ┌────────────────────────────▼────────────────────────────────────┐
@@ -58,7 +58,7 @@
 
 | Host | Stages | Notes |
 |------|--------|-------|
-| angel / Uriel | 0 (now), 1 (soft ABI 2 in-tree), 2 (FW lab) | FreeBSD coordinator; 192.168.4.25 |
+| angel / Uriel | 0 (historical software design), 1 (soft ABI 2 in-tree), 2 (FW lab) | FreeBSD coordinator; address in private host inventory |
 | qodesh | 3 bridge experiments only | G84 + gpu-legacy; sole Worker |
 | miryam | Stage 0 adjacent (Vulkan iGPU) | Not HVVRAM |
 | box | Stage 0 dogfood / docs / userspace build | No DRI |
@@ -73,7 +73,7 @@ Docs: [G84-BRIDGE.md](./G84-BRIDGE.md), [FIRMWARE-PLAN.md](./FIRMWARE-PLAN.md), 
 
 | Stage | Done when |
 |-------|-----------|
-| 0 | nanbeige-coder loads Nanbeige via mmap; swap+spill measured (BENCH) |
+| 0 | Historical target: Nanbeige via mmap; not currently qualified or placed. Current model candidates are defined in graph.yaml. |
 | 1 | Live `kldload` and `nvsoctl` create→map→gate (+ soft export/post) return 0. **Code is ABI 2.** FreeBSD 15.1 `nvso.ko` build is the `c3d9834` note. The remaining host gate is the live load and round-trip, which this repo does not record. |
 | 2 | Lab FW exposes ≥1 SQ/CQ pair + LBA window; `nvssd_queue_export` binds real geom |
 | 3 | One posted peer DMA completes without bounce; counters in BENCH |

@@ -14,9 +14,10 @@ def _graph():
     return vg.load(os.path.join(ROOT, "graph.yaml"))
 
 
-def test_vvram_spill_configured_angel_coder():
+def test_angel_candidate_does_not_claim_unmeasured_vvram_spill():
     g = _graph()
-    assert cv.vvram_spill_configured(g["nodes"]["nanbeige-coder"]) is True
+    assert g["nodes"]["angel-coder"]["status"] == "planned"
+    assert cv.vvram_spill_configured(g["nodes"]["angel-coder"]) is False
     assert cv.vvram_spill_configured(g["nodes"]["coder"]) is False
 
 

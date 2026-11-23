@@ -197,7 +197,7 @@ def test_single_agent_render_allows_below_min_ctx(capsys, monkeypatch):
 
 def test_active_coder_meets_hermes_min_ctx(monkeypatch):
     """#125: the active coder (ctx 65536) clears agents.hermes.min_ctx 64000.
-    Does not use the 33B nanbeige-coder: it is deferred for hardware limits."""
+    Does not use Angel's planned coder candidate: its full native context is not qualified on Angel."""
     import yaml
     import hermes_modes as hm
     g = yaml.safe_load(open(os.path.join(ROOT, "graph.yaml")))

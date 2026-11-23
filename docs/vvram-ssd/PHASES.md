@@ -2,7 +2,7 @@
 
 | Phase | Name | Needs custom FW? | Code today | Next concrete artifact |
 |-------|------|------------------|------------|------------------------|
-| 0 | Software VVRAM | No | LAYER + graph spill/swap | nanbeige-coder health + BENCH JSONL |
+| 0 | Software VVRAM | No | Historical Nanbeige research only; not deployed | Capacity-qualified current graph node health + BENCH JSONL |
 | 1 | Soft HVVRAM domains | No | nvso softc + nvsoctl | live create/map/gate/post still pending; userspace `-n` is CI |
 | 2 | Open SSD queues | **Yes** | geom structs only | UART identify FW on donor drive |
 | 3 | Peer DMA | **Yes** + CDC path | desc format | one PEER completion counter |

@@ -760,7 +760,7 @@ TYPES = {
                   "db": opt("str")},
                  check_option, doc="unplaced model option (catalog only; never placed or RAM-counted)"),
 }
-REQUIRED_SECTIONS = ("hosts", "runtimes", "models", "nodes", "gateways", "aliases", "agents")
+REQUIRED_SECTIONS = ("hosts", "runtimes", "models", "nodes", "gateways", "aliases")
 
 def check_skills(g, errs):
     """skills: lists under agents/pentests must name catalog entries; pentests never get tool-adding skills."""

@@ -31,3 +31,15 @@ def test_b12032_runtime_record_has_lfm3_capability_table():
     assert "lfm3" in record["archs"]
     for flag in ("--jinja", "--api-key-file", "--spec-type", "--spec-ngram-mod-n-match"):
         assert llama_flags.supports(record, flag) is True
+
+
+def test_angel_b12359_runtime_has_measured_help_and_source_tables():
+    graph = validate_graph.load(os.path.join(ROOT, "graph.yaml"))
+    runtime = graph["runtimes"]["llama-b12359-freebsd"]
+    record = llama_flags.load("b12359")
+
+    assert runtime["commit"] == record["commit"] == "2a8600387b40f2820d17973067020ce11377904d"
+    assert "gpt-oss" in record["archs"]
+    assert "qwen35" in record["archs"]
+    for flag in ("--jinja", "--api-key-file", "--spec-type", "--chat-template-kwargs"):
+        assert llama_flags.supports(record, flag) is True

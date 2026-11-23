@@ -52,6 +52,41 @@ ready-check only reports; it does not activate.
 
 ## Launch
 
+## Scripted power levels
+
+Use `scripts/guardian_power.py` to move a configured guardian between the levels
+the current runtime can enforce. It defaults to a preview, never fetches weights,
+and never starts a process:
+
+```sh
+python3 scripts/guardian_power.py --role fleet --level disabled
+python3 scripts/guardian_power.py --role fleet --level disabled --write
+python3 scripts/guardian_power.py --role fleet --level model-only
+python3 scripts/guardian_power.py --role fleet --level model-only --write
+```
+
+`disabled` sets the guardian node and policy to `planned`. `model-only` requires
+the local GGUF sha to match the graph, then sets them `active`; launching still
+requires the explicit operator command below. Both levels preserve
+`tools.allow: []`, `launch_test_only: true`, and
+`requires_operator_confirm: true`. Use `--role freebsd-guardian` to target
+Angel's entry. Re-run `python3 scripts/guardian_ready.py` after changes.
+
+Tool-enabled guardian power levels are **not implemented**: Hermes currently
+fails closed for guardian tools, and its `tools-confirm` path is blocked on
+per-action confirmation across toolsets and MCP. The script rejects other level
+names instead of writing a policy that would imply those capabilities work.
+
+After choosing `model-only`, the only launch path remains:
+
+```sh
+FAMILIA_OPERATOR_CONFIRM=yes sh with-fleet.sh --role guardian --operator-start
+```
+
+This starts the model node only; it does not run scans or tool actions.
+
+## Launch-test
+
 ```sh
 # Safe smoke (no model process required for PASS):
 sh with-fleet.sh --role guardian --launch-test

@@ -10,7 +10,7 @@ Evidence stays split, including where an older line in this file disagrees with 
 
 ## Goal chain
 
-1. **Today:** angel Nanbeige via mmap+swap+spill (LAYER).
+1. **Historical software target:** Nanbeige via mmap+swap+spill (LAYER); this was never qualified or placed on Angel.
 2. **Near:** FreeBSD `nvso(4)` soft bookkeeping is in tree (ABI 2). Live `kldload` and a host round-trip are still pending (see the evidence split above).
 3. **Next paper path:** open SandForce/Vertex2 FW + GPU↔SSD DMA descriptors; OS maps+monitors.
 4. **Bridge:** reuse lessons from `gpu-legacy` sm11_shim (qodesh) and nvidia 340 / CUDA 6.5 ports — **not** full llama CUDA on 256 MiB.
@@ -93,7 +93,7 @@ Plan:
 
 ## Separation of tracks
 
-| Track | Blocks Nanbeige? | Owner host |
+| Track | Blocks historical Nanbeige target? | Owner host |
 |-------|------------------|------------|
 | LAYER mmap/swap | **Yes** (ops gate) | angel |
 | nvso stub compile | No | angel |

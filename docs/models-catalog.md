@@ -20,7 +20,7 @@ planning rule of thumb that it doesn't check.
 |---|---|---|---|---|
 | miryam | 7270 | 3072 | ~4198 MiB | coder + embed est. 3479 MiB, leaving ~700 MiB |
 | qodesh | 16379 | 4096 | ~9827 MiB (60% cap) | CPU coder + GPU decision (8600 GT, 256 MB VRAM) |
-| angel (FreeBSD) | 24442 | 4096 | ~14665 MiB (60% cap) | Nanbeige4.3-33B is active; do not co-start another model without checking swap/RAM |
+| angel (FreeBSD) | 24442 | 4096 | capacity is model/context-specific; validate the full native context and swap before activation | Qwen3.5-2B coder at 262144 and GPT-OSS-20B chat at 131072 remain planned; Nanbeige is catalog-only research |
 | a57 phones (phone7/phone8) | ~7.4 GB measured | not set | ~4.4 GB (60%) | none |
 | note9, pixel8, shalom, godslove | unmeasured | | unknown | |
 

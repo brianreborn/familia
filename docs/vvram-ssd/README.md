@@ -1,6 +1,6 @@
 # SSD → VVRAM / HVVRAM notes
 
-Honest staged R&D for Nanbeige-on-angel (software) and G84+open-FW DMA (hardware).
+Honest staged R&D notes for the historical Nanbeige-on-Angel software target and G84+open-FW DMA hardware work. Nanbeige is not a deployable Angel workload; current placements live in `graph.yaml`.
 
 | Doc | Role |
 |-----|------|

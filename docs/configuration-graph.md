@@ -138,7 +138,7 @@ familia: graph check failed
 
 **API keys (DESIGN.md Security, CFG-CRED-009):** any service that listens on the network requires an API key. The key is not a graph field (CFG-CRED-004); launchers pass `--api-key-file` from a mode 0600 instance file. Localhost-only without a key is allowed only for the named local-development-tool exceptions in DESIGN.md. Node and gateway listeners are not exceptions.
 
-**Private topologies (design law):** node type/role implies capability; placement is `host:`. Prefer `python3 scripts/generate_graph.py HOST` (type-named nodes in `generated/graph-HOST.yaml`) and `modify_graph.py --host HOST --assign-model coder=<models-key>`. Fleet keys are capability names (`nanbeige-coder`, `cuda-sm11-decision`, `fleet-guardian`); private graphs collapse those to the type name. See LESSONS-LEARNED `L-node-type`.
+**Private topologies (design law):** node type/role implies capability; placement is `host:`. `python3 scripts/generate_graph.py HOST` creates a self-contained host graph in `generated/graph-HOST.yaml`: only local nodes, referenced models/runtimes, local aliases, and local gateways are retained. Agent placement and fleet authorization stay in canonical `graph.yaml`; private generation never clones an agent from another host. Fleet node IDs remain descriptive placement keys (`angel-coder`, `cuda-sm11-decision`, `fleet-guardian`); private graphs collapse them to the type name. See LESSONS-LEARNED `L-node-type`.
 
 Edit `graph.yaml` by hand, or use `scripts/generate_graph.py HOST` / `scripts/modify_graph.py` for scripted per-host changes, then validate. A visual editor and natural-language configuration are future ideas, not planned yet; if they come, they must produce a declaration that goes through the same validation.
 

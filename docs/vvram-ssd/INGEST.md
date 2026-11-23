@@ -26,7 +26,7 @@ Bench method: [BENCH.md](./BENCH.md)
 
 | Host | Role in this R&D | Today | This scaffold |
 |------|------------------|-------|---------------|
-| **angel** (FreeBSD, i5-4570, 24 GiB, 4T) | Nanbeige4.3-33B Q4_K_M (~18.7 GiB); SSD swap/mmap/spill | Nodes `nanbeige-coder` / `nanbeige-chat` **planned**; runtime `llama-b11669-freebsd` | **Software VVRAM layer** (LAYER.md) + in-tree nvso soft ABI. Userspace `-n` is CI. FreeBSD 15.1 `nvso.ko` build is the `c3d9834` note; a live load is not in that note. |
+| **angel** (FreeBSD, i5-4570, 24 GiB, 4T) | Nanbeige4.3-33B is catalog-only research; not a deployable workload | `angel-coder` Qwen3.5-2B at 262144 and `angel-chat` GPT-OSS-20B at 131072 are **planned** pending full-context RAM/swap qualification; runtime `llama-b12359-freebsd` (llama.cpp 1.0.0) | Historical **software VVRAM design** (LAYER.md) + in-tree nvso soft ABI. Userspace `-n` is CI. FreeBSD 15.1 `nvso.ko` build is the `c3d9834` note; a live load is not in that note. |
 | **gabriel** | Same class FreeBSD desktop (twin / follow-on) | Not in graph yet | Same LAYER policy; share nvso when host facts land |
 | **qodesh** (Win, G84 8600 GT, CC 1.1, ~256 MiB) | Verified `gpu-legacy` sm11 path; CUDA 6.5 / nvidia 340 era | Offline; CPU llama for GGUF; sm11 for stories15M/SmolLM | **G84 bridge** only — do not claim SO domains on stock silicon; queue Worker checklist |
 | **centos10-bigram** | Same G84 profile on Linux | nouveau owns card; 340.108 built but unbound | Linux prototype notes only; FreeBSD-first APIs preferred |

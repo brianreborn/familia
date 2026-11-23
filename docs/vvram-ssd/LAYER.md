@@ -1,6 +1,6 @@
 # LAYER — Software SSD→VVRAM (shippable today)
 
-No new silicon. Goal: run **one** Nanbeige4.3-33B Q4_K_M (~18.7 GiB) node on angel’s **24 GiB RAM** by treating fast SSD as overflow for weights + KV, without pretending we have G84 SO domains.
+No new silicon. Historical goal: run **one** Nanbeige4.3-33B Q4_K_M (~18.7 GiB) node on Angel's 24 GiB RAM using mmap/swap/spill. This workload is not qualified or placed. Never infer that SSD spill makes a model/context safe; follow the current graph and host RAM reserve. The design does not imply G84 SO domains.
 
 ## Budget (angel)
 
@@ -8,14 +8,14 @@ No new silicon. Goal: run **one** Nanbeige4.3-33B Q4_K_M (~18.7 GiB) node on ang
 |------|--------------|
 | Host RAM | 24442 |
 | `reserve_ram_mib` | 4096 |
-| Usable for llama | ~20346 |
-| Weights Q4_K_M | ~19149 (18.7 GiB) |
+| Usable for llama | ~20346 (policy ceiling before runtime/KV headroom) |
+| Nanbeige Q4_K_M weights | ~19149 (18.7 GiB; catalog-only research candidate, not deployable) |
 | KV @ ctx 65536, q8_0, parallel 1 | ~2× vs 32K (measure on activate; heavier SSD spill) |
-| `cache_ram_mib` (graph) | >= per-slot KV (nanbeige-coder: 3584 baseline; advisory ~2× at 64K) |
+| `cache_ram_mib` (historical graph design) | >= per-slot KV (old Nanbeige estimate: 3584 baseline; advisory ~2× at 64K) |
 
 Weights alone nearly fill usable RAM → **mmap load + measured swap/spill required before `status: active`.**
 
-Do **not** co-activate `nanbeige-coder` and `nanbeige-chat`.
+The historical Nanbeige coder/chat pair was never qualified for deployment.
 
 ## Knobs that exist in graph today
 
@@ -65,7 +65,7 @@ See `/workspace/familia-install-notes/swap-box.md` and `docs/ram-safety.md`: zra
 Node fields in `graph_types.py` / `graph.yaml`:
 
 ```yaml
-spill_path: ~/.cache/familia/spill/angel-coder   # → llama-server --slot-save-path (dir name stays; node id is nanbeige-coder)
+spill_path: ~/.cache/familia/spill/angel-coder   # historical example only; not active in Angel's graph
 swap_budget_mib: 24576                           # ops gate: validate_graph --check-swap
 slot_save: true                                  # or just set spill_path (either enables argv)
 # cache_type_v: q8_0                             # not first-class yet; kv_type applies to K+V
@@ -78,14 +78,14 @@ slot_save: true                                  # or just set spill_path (eithe
 
 ## Coherent 64K / RAM policy (fleet)
 
-Hermes `MINIMUM_CONTEXT_LENGTH` is **64000**. Nodes that serve hermes must set `ctx >= 64000` (miryam `coder` and angel `nanbeige-coder` use **65536**).
+Hermes `MINIMUM_CONTEXT_LENGTH` is **64000**. Nodes that serve Hermes must set `ctx >= 64000`; use each node's documented native context, with no reduction to satisfy this historical design.
 
 | Situation | Required path | Launch outcome |
 |-----------|---------------|----------------|
 | Estimated weights+KV+cache+256 ≤ `ram_mib − reserve_ram_mib` | RAM-fit: `load_mode: none` (or mmap) is fine; `spill_path`/`slot_save` optional for prompt cache | READY when server healthy |
 | Estimate exceeds usable RAM | Software VVRAM: **`load_mode: mmap` + (`spill_path` or `slot_save`) + `swap_budget_mib`**, then `validate_graph --check-swap` on that host | Else validate ERROR / `LAUNCH_FAILED` `LF_NEED_SPILL` — never silent OOM |
 
-`scripts/ctx_vvram.py` (via `validate_graph.check_vvram_policy`) enforces the table. `admit_peak_mib` (used by `serve.sh` memcap) charges mmap+swap_budget nodes **KV + cache_ram + 1536 MiB working set**, not the full GGUF, so angel’s Nanbeige does not starve the fleet ledger. **`reserve_ram_mib` stays** (OS + companions); do not lower it to “make room” for mmap spill — spill goes to SSD swap/slot files instead.
+`scripts/ctx_vvram.py` (via `validate_graph.check_vvram_policy`) enforces the table. `admit_peak_mib` (used by `serve.sh` memcap) charges mmap+swap_budget nodes **KV + cache_ram + 1536 MiB working set**, not the full GGUF. **`reserve_ram_mib` stays** (OS + companions); do not lower it to “make room” for mmap spill — spill goes to SSD swap/slot files instead.
 
 Labels stay model+quant (never a hash). Status lines follow `docs/protocol/launch-status.md`.
 
@@ -98,8 +98,6 @@ Labels stay model+quant (never a hash). Status lines follow `docs/protocol/launc
 
 ## Activate checklist (angel)
 
-1. Verify GGUF path + sha256 (`nanbeige43-33b-q4km`).
-2. `swapinfo` shows ≥ ~20–24 GiB usable swap on SSD (or measured smaller with proven RSS).
-3. Spill dir exists (`mkdir -p` spill_path); `slot_save: true` or spill_path set.
-4. Activate **one** of `nanbeige-coder` / `nanbeige-chat`.
-5. Smoke with `enable_thinking` appropriate to card; record pp/tg + RSS + swap in registry.
+1. Treat these steps as historical Nanbeige research only; do not activate this model from this document.
+2. Use `graph.yaml` as the source of truth for current Angel placements.
+3. Validate the selected model at its full native context against the current RAM reserve and measured swap before any activation.

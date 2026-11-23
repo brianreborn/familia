@@ -239,11 +239,9 @@ function ShowWorkflowPaths {
   Write-Host '  Add a model: models.fetch-preview -> models.fetch -> add its node to graph.yaml ->'
   Write-Host '               models.check -> hosts.serve <NODE>'
   Write-Host '  Hermes: models.check -> agents.hermes (license-gated)'
-  Write-Host 'NOT DONE YET - FreeBSD llama.cpp 0.7.0 on angel: neither a FreeBSD build nor a'
-  Write-Host 'model-load smoke test has been run; angel is still unmeasured and cannot host graph nodes.'
-  Write-Host 'After this checkout is available on angel, from code-bootstraps-llama.cpp:'
-  Write-Host '  BUILD_DIR=build-freebsd GPU=off scripts/build-linux.sh'
-  Write-Host 'Then verify build-freebsd/bin/llama-server --version, measure angel, and re-check graph.yaml.'
+  Write-Host 'Angel is pinned to llama.cpp 1.0.0 (b12359) with a FreeBSD CPU runtime.'
+  Write-Host 'Its full-context coder/chat candidates remain planned pending RAM and swap qualification.'
+  Write-Host 'See docs/install-freebsd.md and docs/vvram-ssd/ANGEL-OPERATOR.md before activation.'
   Write-Host ''
 }
 

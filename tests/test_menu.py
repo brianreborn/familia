@@ -227,8 +227,6 @@ def test_guided_paths_are_visible_in_interactive_menu_and_list():
         assert "New checkout: setup.first-time" in r.stdout
         assert "Existing graph node: models.check -> hosts.serve <NODE>" in r.stdout
         assert "Add a model: models.fetch ->" in r.stdout
-        assert "NOT DONE YET - FreeBSD llama.cpp 0.7.0 on angel" in r.stdout
-        assert "angel is still unmeasured" in r.stdout
 
 
 def test_piped_choices():

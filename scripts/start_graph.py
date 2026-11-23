@@ -534,7 +534,7 @@ def run(args=None):
     os.chdir(ROOT)
     try:
         graph = graph_validator.load(str(graph_path))
-        graph["_path"] = str(graph_path)
+        graph["_path"] = str(graph_path if options.fleet else ROOT / "graph.yaml")
         host = select_host(graph, options.host)
         fleet_default = (ROOT / "graph.yaml").resolve()
         import config_paths
@@ -552,7 +552,9 @@ def run(args=None):
             )
             graph_path = priv
             graph = graph_validator.load(str(graph_path))
-            graph["_path"] = str(graph_path)
+            # Private graphs are generated under generated/; artifact paths in
+            # their retained model/runtime records remain relative to repo root.
+            graph["_path"] = str(ROOT / "graph.yaml")
         # Validate first: local_topology indexes nodes by alias target, so an invalid graph
         # (unknown alias node, list alias) would otherwise crash with a raw KeyError/TypeError.
         errors, _ = graph_validator.validate(graph, check_files=False)

@@ -9,6 +9,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 import familia_yaml  # noqa: E402
 import node_role as nr  # noqa: E402
+import graph_types  # noqa: E402
 
 
 def _fleet():
@@ -20,15 +21,16 @@ def test_fleet_keys_are_capability_names_not_hostnames():
     bad = []
     for section in ("nodes", "models", "runtimes", "transports", "speculative", "pentests", "aliases"):
         for name in (g.get(section) or {}):
-            if nr.is_host_prefixed(str(name), g):
+            # Angel's role-specific placement keys are intentionally host-named.
+            if nr.is_host_prefixed(str(name), g) and not (section == "nodes" and name in {"angel-coder", "angel-chat"}):
                 bad.append(f"{section}.{name}")
     assert bad == []
 
 
 def test_infer_role_angel_chat_vs_coder():
     g = _fleet()
-    assert nr.infer_role("nanbeige-coder", g["nodes"]["nanbeige-coder"], g) == "coder"
-    assert nr.infer_role("nanbeige-chat", g["nodes"]["nanbeige-chat"], g) == "chat"
+    assert nr.infer_role("angel-coder", g["nodes"]["angel-coder"], g) == "coder"
+    assert nr.infer_role("angel-chat", g["nodes"]["angel-chat"], g) == "chat"
     assert nr.infer_role("coder", g["nodes"]["coder"], g) == "coder"
 
 
@@ -36,22 +38,24 @@ def test_private_angel_type_names_only():
     g = _fleet()
     priv = nr.private_topology(g, "angel")
     nodes = priv["nodes"]
+    assert set(priv["hosts"]) == {"angel"}
     assert set(nodes) == {"coder", "chat", "guardian"}
     assert nodes["guardian"]["host"] == "angel"
     assert nodes["guardian"]["role"] == "guardian"
     assert nodes["guardian"]["status"] == "planned"
     assert nodes["coder"]["host"] == "angel"
-    assert nodes["coder"]["model"] == "nanbeige43-33b-q4km"
-    assert nodes["coder"]["status"] == "planned"  # 33B nanbeige deferred (hardware limits, #682)
+    assert nodes["coder"]["model"] == "qwen35-2b-q4km"
+    assert nodes["coder"]["ctx"] == 262144
+    assert nodes["coder"]["status"] == "planned"  # full native context awaits Angel RAM qualification
     assert nodes["chat"]["status"] == "planned"
+    assert nodes["chat"]["model"] == "gpt-oss-20b-mxfp4"
+    assert nodes["chat"]["ctx"] == 131072
     assert nodes["coder"]["role"] == "coder"
     assert nodes["chat"]["role"] == "chat"
     for name in nodes:
         assert not nr.is_host_prefixed(name, g)
     spec = priv["speculative"]
-    assert set(spec) == {"nanbeige-ngram"}
-    assert spec["nanbeige-ngram"]["target"] == "coder"
-    assert spec["nanbeige-ngram"]["status"] == "planned"
+    assert "nanbeige-ngram" not in spec
     assert "coder-ngram" not in spec
     assert "coder-draft" not in spec
 
@@ -80,10 +84,18 @@ def test_generate_graph_cli_angel(tmp_path):
         text=True,
     )
     assert r.returncode == 0, r.stderr + r.stdout
-    assert "nanbeige-coder→coder" in r.stdout or "nanbeige-coder->coder" in r.stdout or "→coder" in r.stdout
+    assert "angel-coder→coder" in r.stdout or "angel-coder->coder" in r.stdout or "→coder" in r.stdout
     out = os.path.join(str(tmp_path), "graph-angel.yaml")
     g = familia_yaml.loads(open(out, encoding="utf-8").read())
     assert set(g["nodes"]) == {"coder", "chat", "guardian"}
+    assert set(g["models"]) == {"qwen35-2b-q4km", "gpt-oss-20b-mxfp4", "dolphin3-cyber-8b-q2k"}
+    assert set(g["runtimes"]) == {"llama-b12359-freebsd"}
+    assert g["nodes"]["chat"].get("card_set") is None
+    assert g["nodes"]["chat"]["ctx"] == 131072
+    assert g["agents"] == {}
+    assert "pentests" not in g and "harnesses" not in g
+    assert set(g["runtimes"]) == {"llama-b12359-freebsd"}
+    assert graph_types.validate_types(g) == []
 
 
 def test_modify_graph_host_list_and_bad_model(tmp_path):
@@ -127,6 +139,5 @@ def test_private_miryam_includes_guardian():
     assert "guardian" in priv["nodes"]
     assert priv["nodes"]["guardian"]["role"] == "guardian"
     assert "guardian" in (priv.get("aliases") or {})
-    assert priv["speculative"]["coder-ngram"]["target"] == "coder"
-    assert priv["speculative"]["coder-ngram"]["status"] == "active"
+    assert priv["speculative"] == {}
     assert priv["nodes"]["coder"]["model"] == "qwen35-2b-q4km"

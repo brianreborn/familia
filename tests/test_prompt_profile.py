@@ -113,11 +113,10 @@ def test_unstable_line_cuts_prefix(monkeypatch):
     assert pc.stable_prefix("x", "s", [], "VOL", unstable=("Python toolchain:",)) == "<tools>T</tools>A\n"
     assert pc.stable_prefix("x", "s", [], "VOL") == "<tools>T</tools>A\nPython toolchain: x\nB "
 
-def test_spill_path_in_server_args(tmp_path, monkeypatch):
+def test_angel_chat_server_args_keep_full_native_context(tmp_path, monkeypatch):
     import validate_graph as vg
     monkeypatch.setenv("HOME", str(tmp_path))
     g = vg.load(os.path.join(ROOT, "graph.yaml"))
-    a = vg.server_args(g, "nanbeige-coder")
-    want = os.path.join(str(tmp_path), ".cache/familia/spill/angel-coder")
-    assert a[a.index("--slot-save-path") + 1] == want
-
+    a = vg.server_args(g, "angel-chat")
+    assert a[a.index("-c") + 1] == "131072"
+    assert "--slot-save-path" not in a

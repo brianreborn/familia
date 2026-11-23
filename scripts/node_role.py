@@ -112,7 +112,7 @@ def private_topology(graph: dict, host: str) -> dict:
 
     Schema still uses a unique-key map — uniqueness holds *inside* one private
     topology (one coder per host). Same role on another host lives in that
-    host's private graph. Fleet keys stay capability names (nanbeige-coder,
+    host's private graph. Fleet keys stay capability names (angel-coder,
     dogfood-coder) so two coders can share one fleet file.
     """
     import copy
@@ -180,130 +180,36 @@ def private_topology(graph: dict, host: str) -> dict:
             aliases_out[k] = v
     g["aliases"] = aliases_out
 
-    # Agents: keep those already on this host; else clone fleet hermes onto host
-    # so required agents: section is non-empty and hermes can target type aliases.
-    agents_in = g.get("agents") or {}
-    agents = {
-        k: v for k, v in agents_in.items()
-        if isinstance(v, dict) and v.get("host") == host
+    # Private graphs are executable deployment files. Keep only model/runtime
+    # records referenced by local nodes.
+    used_models = {node.get("model") for node in new_nodes.values()}
+    used_runtimes = {node.get("runtime") for node in new_nodes.values()}
+    g["hosts"] = {host: g["hosts"][host]}
+    g["transports"] = {
+        key: value for key, value in (g.get("transports") or {}).items()
+        if value.get("from") == host and value.get("to") == host
     }
-    if not agents and "hermes" in agents_in and isinstance(agents_in["hermes"], dict):
-        h = copy.deepcopy(agents_in["hermes"])
-        h["host"] = host
-        # Point at type aliases that exist locally
-        pref = "coder" if "coder" in aliases_out else next(iter(aliases_out), None)
-        if pref:
-            h["aliases"] = {"main": pref, "auxiliary": pref}
-        agents = {"hermes": h}
-    for an, av in list(agents.items()):
-        amap = av.get("aliases") or {}
-        if isinstance(amap, dict):
-            av["aliases"] = {ak: al for ak, al in amap.items() if al in aliases_out}
-            if not av["aliases"] and aliases_out:
-                pref = "coder" if "coder" in aliases_out else next(iter(aliases_out))
-                av["aliases"] = {"main": pref, "auxiliary": pref}
-    g["agents"] = agents
-
-    spec = g.get("speculative") or {}
-    g["speculative"] = {
-        k: v for k, v in spec.items()
-        if isinstance(v, dict) and v.get("target") in local_keys
+    g.pop("meshes", None)
+    g["models"] = {
+        key: value for key, value in (g.get("models") or {}).items()
+        if key in used_models
     }
-    g["pentests"] = {
-        k: v for k, v in (g.get("pentests") or {}).items()
-        if isinstance(v, dict) and v.get("node") in local_keys
+    g["runtimes"] = {
+        key: value for key, value in (g.get("runtimes") or {}).items()
+        if key in used_runtimes
     }
-    # Pentests / harnesses may reference agents hosted elsewhere in the fleet
-    # (e.g. pentest-ops on miryam). Keep those agent descriptors so private
-    # graphs still validate (ref=agents). Remap aliases onto local type names.
-    needed = set()
-    for block in (g.get("pentests") or {}).values():
-        if isinstance(block, dict) and isinstance(block.get("agent"), str):
-            needed.add(block["agent"])
-    for block in (g.get("harnesses") or {}).values():
-        if isinstance(block, dict) and isinstance(block.get("agent"), str):
-            needed.add(block["agent"])
-    for aname in sorted(needed):
-        if aname in agents:
-            continue
-        src = agents_in.get(aname)
-        if not isinstance(src, dict):
-            # Drop dangling refs rather than leave an unsatisfiable graph
-            for sec in ("pentests", "harnesses"):
-                for k, v in list((g.get(sec) or {}).items()):
-                    if isinstance(v, dict) and v.get("agent") == aname:
-                        if sec == "pentests":
-                            del g["pentests"][k]
-                        else:
-                            v = dict(v)
-                            v.pop("agent", None)
-                            g["harnesses"][k] = v
-            continue
-        cloned = copy.deepcopy(src)
-        cloned["host"] = host
-        amap = cloned.get("aliases") or {}
-        if isinstance(amap, dict) and aliases_out:
-            remapped = {}
-            for ak, al in amap.items():
-                if al in aliases_out:
-                    remapped[ak] = al
-                elif prefer_public_role(str(al)) in aliases_out:
-                    remapped[ak] = prefer_public_role(str(al))
-                elif "guardian" in aliases_out and ak in ("main", "auxiliary"):
-                    remapped[ak] = "guardian"
-                elif "coder" in aliases_out and ak in ("main", "auxiliary"):
-                    remapped[ak] = "coder"
-            if not remapped:
-                pref = "guardian" if "guardian" in aliases_out else (
-                    "coder" if "coder" in aliases_out else next(iter(aliases_out))
-                )
-                remapped = {"main": pref, "auxiliary": pref}
-            cloned["aliases"] = remapped
-        agents[aname] = cloned
-    g["agents"] = agents
-    g["kv_channels"] = {
-        k: v for k, v in (g.get("kv_channels") or {}).items()
-        if isinstance(v, dict) and v.get("from") in local_keys and v.get("to") in local_keys
+    g["options"] = {
+        key: {**value, "candidate_hosts": [h for h in value.get("candidate_hosts", []) if h == host]}
+        for key, value in (g.get("options") or {}).items()
+        if not value.get("candidate_hosts") or host in value.get("candidate_hosts", [])
     }
-    # Harnesses: keep only those whose node is local; drop or rewrite agent ref
-    harnesses_out = {}
-    for k, v in (g.get("harnesses") or {}).items():
-        if not isinstance(v, dict) or v.get("node") not in local_keys:
-            continue
-        v = dict(v)
-        if v.get("agent") and v.get("agent") not in agents:
-            v.pop("agent", None)
-        harnesses_out[k] = v
-    g["harnesses"] = harnesses_out
-
-    # Drop cross-host agency/fleet/room refs that would fail validation
-    for sec in ("fleets", "rooms", "reaches", "councils", "agencies", "swarms", "stores"):
-        block = g.get(sec) or {}
-        if not isinstance(block, dict):
-            continue
-        kept = {}
-        for k, v in block.items():
-            if not isinstance(v, dict):
-                continue
-            if sec == "agencies":
-                assigns = v.get("assignments") or {}
-                if isinstance(assigns, dict):
-                    v = dict(v)
-                    v["assignments"] = {
-                        ak: av for ak, av in assigns.items()
-                        if not isinstance(av, str) or av in agents
-                    }
-                    # drop agency if assignments empty and had any before
-                    if assigns and not v["assignments"]:
-                        continue
-            ags = v.get("agents")
-            if isinstance(ags, list):
-                v = dict(v)
-                v["agents"] = [a for a in ags if a in agents]
-                if not v["agents"]:
-                    continue
-            kept[k] = v
-        g[sec] = kept
+    g["speculative"] = {}
+    g["agents"] = {}
+    for section in (
+        "pentests", "harnesses", "fleets", "rooms", "reaches", "councils",
+        "agencies", "swarms", "stores", "kv_channels", "system_agents", "self_improve",
+    ):
+        g.pop(section, None)
     return g
 
 

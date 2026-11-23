@@ -5,9 +5,10 @@ Ready-made shapes (single, fan-out, escalation chain, tools, two-host): see [gra
 `graph.yaml` declares the whole topology: which hosts exist, what runs where,
 which model sits behind each route name, and which agents use them. Every
 section is a **type** registered in `scripts/graph_types.py`. Every field is
-required unless it's marked optional, and nothing has a default. If the graph
-doesn't fit the hardware, a runtime, or an agent, the validator fails loudly
-instead of choosing something on its own.
+required unless it's marked optional, and nothing has a default. `agents` may
+be absent or empty in a host-private inference graph; agent placement belongs
+to the canonical fleet graph. If a graph doesn't fit the hardware, runtime, or
+agent, the validator fails loudly instead of choosing something on its own.
 
 ```sh
 python3 scripts/validate_graph.py              # schema + GGUF metadata + RAM budget
@@ -95,13 +96,13 @@ Canonical enum: `scripts/box_archetypes.py` → `HOST_KINDS`.
 
 `vm` is **obsolete** and fails validation loudly. Remap former VM-labelled hosts to a form factor (the Grok Bot `box` host is `desktop`).
 
-`scripts/generate_graph.py` reads `hosts.<name>.kind`, applies that kind's default shape (role order + header comments), then applies `config/host-overrides.yaml` and `--set` overrides. Missing shape roles are listed in the generated file as not-yet-placed — they are not invented as fake nodes.
+`scripts/generate_graph.py` reads `hosts.<name>.kind`, applies that kind's default shape (role order + header comments), then applies `config/host-overrides.yaml` and `--set` overrides. Each host override replaces a whole named node/gateway record so model-specific settings cannot leak across model changes. Private graphs retain only local nodes, their referenced models/runtimes, local gateways and aliases; fleet policy and agent placement remain in `graph.yaml`. Relative runtime/model paths continue to resolve from the repository root. Missing shape roles are listed as not-yet-placed — they are not invented as fake nodes.
 
 ## Rules the validator enforces
 
 | Type | Rules |
 |---|---|
-| host | `gpus` is required on every host: `null` means inventory unknown, `[]` means measured and no GPUs, and a list records detected GPUs. GPU offload is rejected while inventory is `null`. `measured: true` requires os, cpu, threads, ram_mib, gpus, reserve_ram_mib; `gpus: null` is allowed when CPU/RAM facts are measured but GPU inventory is not. `measured: false` must not carry numeric facts and cannot host active nodes; numbers someone else reported go in `reported:` with a `source`. FreeBSD is a valid host OS; `angel` is the FreeBSD test host, measured in graph.yaml; place active nodes explicitly (Nanbeige planned). `os: windows` requires a `windows` block: repo_path, models_path, runtime_path, startup (scheduled-task, start.bat, service, manual, or tbd), wake. Standing RAM rule: never aim for high utilization; miryam reserve is 3072 (`docs/ram-safety.md`). `local_names` lists OS hostnames that resolve to this graph host key; the machine-local pin (`~/.local/state/familia/hostname`, via `scripts/hostname_pin.py`) is **not** in graph.yaml — it only tells menus/start which graph host this machine is. |
+| host | `gpus` is required on every host: `null` means inventory unknown, `[]` means measured and no GPUs, and a list records detected GPUs. GPU offload is rejected while inventory is `null`. `measured: true` requires os, cpu, threads, ram_mib, gpus, reserve_ram_mib; `gpus: null` is allowed when CPU/RAM facts are measured but GPU inventory is not. `measured: false` must not carry numeric facts and cannot host active nodes; numbers someone else reported go in `reported:` with a `source`. FreeBSD is a valid host OS; Angel is measured but has no active model nodes: the Qwen3.5 coder (262144 context) and GPT-OSS chat (131072 context) placements remain planned until the full-context RAM and swap checks pass. Its pinned runtime is `llama-b12359-freebsd` (llama.cpp 1.0.0). Nanbeige is catalog-only research. `os: windows` requires a `windows` block: repo_path, models_path, runtime_path, startup (scheduled-task, start.bat, service, manual, or tbd), wake. Standing RAM rule: never aim for high utilization; miryam reserve is 3072 (`docs/ram-safety.md`). `local_names` lists OS hostnames that resolve to this graph host key; the machine-local pin (`~/.local/state/familia/hostname`, via `scripts/hostname_pin.py`) is **not** in graph.yaml — it only tells menus/start which graph host this machine is. |
 | gpu | Every GPU entry needs vendor, model, vram_mib, backend, backend_status and measured. Backends: concrete GPU APIs plus `auto` (prefer GPU when available) and `none` (only when the hardware truly has no usable GPU API). Prefer `auto` or a concrete backend over unjustified `none`. If `measured: false`, vram_mib must be null and backend_status can't be `verified`. A measured GPU must give vram_mib, using 0 for a shared-memory iGPU. `kind: unknown` is only allowed while unmeasured. |
 | transport | `local` must have from == to; every other kind must link two different hosts. |
 | runtime | `commit` must be a git sha, since a branch name isn't a pin. `supported_archs` lists only archs verified to load on that build. `backends` lists what the build was compiled with and must include cpu. `spec_types` lists the `--spec-type` values the build accepts. Several builds can be deployed side by side; `--check-runtimes` runs each `bin --version` and checks the commit. |

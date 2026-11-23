@@ -5,16 +5,19 @@ Aligned with thread: isolation crosstalk, zero-copy DMA metrics (when hardware e
 ## Coordinator
 
 - One SSH hub host runs the harness (box or miryam).
-- Targets: angel (Nanbeige / nvso), qodesh (sm11 — when online, sole Worker), miryam (Vulkan).
+- Targets: angel (historical VVRAM design / nvso), qodesh (sm11 — when online, sole Worker), miryam (Vulkan).
 - Never co-start two heavy nodes on angel; never parallel qodesh workers.
 
-## Software VVRAM (angel Nanbeige) — runnable once activated
+## Software VVRAM (historical Angel Nanbeige candidate)
+
+Nanbeige is catalog-only research and is not currently placeable on Angel. Keep this
+benchmark plan dormant unless a separately reviewed host-capacity result changes that.
 
 Record per run (JSONL under `~/perf/logs/` or install-notes `perf/`):
 
 | Field | Example |
 |-------|---------|
-| host / node | angel / nanbeige-coder |
+| host / node | angel / historical Nanbeige candidate |
 | load_mode | mmap |
 | swap_used_mib before/after | from `swapinfo` |
 | RSS / VSZ peak | `ps` / `top` |
@@ -41,7 +44,7 @@ Protocol:
 ## Crosstalk / isolation
 
 - Pin coordinator load away from target CPUs when possible (`cpuset` on FreeBSD).
-- For G84 SO-domain fantasy: measure interference between domains once hardware exists; today measure angel Nanbeige vs idle desktop only.
+- For G84 SO-domain research: measure interference between domains only once the required hardware exists; current Angel model candidates are documented in `graph.yaml`.
 
 ## gpu-legacy (qodesh)
 

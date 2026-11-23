@@ -1,0 +1,2800 @@
+{
+ "archs": [
+  "(unknown)",
+  "afmoe",
+  "apertus",
+  "arcee",
+  "arctic",
+  "arwkv7",
+  "baichuan",
+  "bailingmoe",
+  "bailingmoe2",
+  "bailingmoe3",
+  "beam",
+  "bert",
+  "bitnet",
+  "bloom",
+  "chameleon",
+  "chatglm",
+  "clef",
+  "clip",
+  "clover_moe",
+  "codeshell",
+  "cogvlm",
+  "cohere2",
+  "cohere2moe",
+  "command-r",
+  "dbrx",
+  "deci",
+  "deepseek",
+  "deepseek2",
+  "deepseek2-ocr",
+  "deepseek32",
+  "deepseek4",
+  "deepseek41",
+  "dflash",
+  "dots1",
+  "dots3note",
+  "dream",
+  "eagle3",
+  "ernie4_5",
+  "ernie4_5-moe",
+  "eurobert",
+  "exaone",
+  "exaone-moe",
+  "exaone4",
+  "falcon",
+  "falcon-h1",
+  "flint",
+  "gemma",
+  "gemma-embedding",
+  "gemma-embedding2",
+  "gemma2",
+  "gemma3",
+  "gemma3n",
+  "gemma4",
+  "gemma4-assistant",
+  "glm-dsa",
+  "glm4",
+  "glm4moe",
+  "glm5-next",
+  "gpt-oss",
+  "gpt2",
+  "gptj",
+  "gptneox",
+  "granite",
+  "granite_swa",
+  "granitehybrid",
+  "granitemoe",
+  "graniteswitch",
+  "grok",
+  "grovemoe",
+  "hrm_text",
+  "hunyuan-dense",
+  "hunyuan-moe",
+  "hunyuan_vl",
+  "hy_v3",
+  "hy_v4",
+  "internlm2",
+  "jais",
+  "jais2",
+  "jamba",
+  "jina-bert-v2",
+  "jina-bert-v3",
+  "k2-horizon",
+  "kimi-k3",
+  "kimi-k31",
+  "kimi-linear",
+  "kolibri1",
+  "laguna",
+  "lfm2",
+  "lfm2moe",
+  "lfm3",
+  "limite",
+  "llada",
+  "llada-moe",
+  "llama",
+  "llama-embed",
+  "llama4",
+  "maincoder",
+  "maion-coder",
+  "mamba",
+  "mamba2",
+  "maple",
+  "mellum",
+  "metis16",
+  "mimo2",
+  "minicpm",
+  "minicpm3",
+  "minimax-01",
+  "minimax-m2",
+  "minimax-m3",
+  "mistral-large4",
+  "mistral3",
+  "mistral4",
+  "modern-bert",
+  "mpt",
+  "muse-glimmer",
+  "muse-spark",
+  "nanbeige",
+  "nemotron",
+  "nemotron_h",
+  "nemotron_h_moe",
+  "neo-bert",
+  "nomic-bert",
+  "nomic-bert-moe",
+  "olmo",
+  "olmo2",
+  "olmoe",
+  "openelm",
+  "orion",
+  "paddleocr",
+  "pangu-embedded",
+  "phi2",
+  "phi3",
+  "phimoe",
+  "plamo",
+  "plamo2",
+  "plamo3",
+  "plm",
+  "pockettts",
+  "qwen",
+  "qwen2",
+  "qwen2moe",
+  "qwen2vl",
+  "qwen3",
+  "qwen35",
+  "qwen35moe",
+  "qwen3moe",
+  "qwen3next",
+  "qwen3tts",
+  "qwen3vl",
+  "qwen3vlmoe",
+  "qwen4exp",
+  "refact",
+  "ricursive",
+  "rnd1",
+  "rwkv6",
+  "rwkv6qwen2",
+  "rwkv7",
+  "seed_oss",
+  "sensenova_u1",
+  "smallthinker",
+  "smollm3",
+  "spark2_5",
+  "stablelm",
+  "starcoder",
+  "starcoder2",
+  "step35",
+  "t5",
+  "t5encoder",
+  "talkie",
+  "vllm-decision2",
+  "wavtokenizer-dec",
+  "xing4_0",
+  "xverse"
+ ],
+ "commit": "2a8600387b40f2820d17973067020ce11377904d",
+ "eog": [
+  "<|eot_id|>",
+  "<|eot|>",
+  "<|im_end|>",
+  "<|end|>",
+  "<|return|>",
+  "<|call|>",
+  "<|flush|>",
+  "<|calls|>",
+  "<end_of_turn>",
+  "<|endoftext|>",
+  "</s>",
+  "<|eom_id|>",
+  "<EOT>",
+  "_<EOT>",
+  "[EOT]",
+  "[EOS]",
+  "<|end_of_text|>",
+  "<|user|>",
+  "<|observation|>",
+  "<end_of_utterance>",
+  "<eos>",
+  "<turn|>",
+  "<|tool_response>",
+  "<｜end▁of▁sentence｜>",
+  "[e~[",
+  "<|ifm|im_end|>"
+ ],
+ "fetched": "2026-11-23",
+ "flags": [
+  {
+   "aliases": [
+    "-----"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--adaptive-decay"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--adaptive-target"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--allow-unauthenticated-tools"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--api-key"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--api-key-file"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--api-prefix"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--cache-idle-slots",
+    "--no-cache-idle-slots"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--cache-prompt",
+    "--no-cache-prompt"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--cache-reuse"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--chat-template"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--chat-template-file"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--chat-template-kwargs"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--check-tensors"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--completion-bash"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--connect"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--connect-code"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--context-shift",
+    "--no-context-shift"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--control-vector"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--control-vector-layer-range"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--control-vector-scaled"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--cors-credentials",
+    "--no-cors-credentials"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--cors-headers"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--cors-methods"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--cors-origins"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--cpu-strict"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--cpu-strict-batch"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--draft",
+    "--draft-n",
+    "--draft-max"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--draft-min",
+    "--draft-n-min"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--dry-allowed-length"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--dry-base"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--dry-multiplier"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--dry-penalty-last-n"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--dry-sequence-breaker"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--dynatemp-exp"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--dynatemp-range"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--embd-gemma-default"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--embd-normalize"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--embedding",
+    "--embeddings"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--fim-qwen-1.5b-default"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--fim-qwen-14b-spec"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--fim-qwen-30b-default"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--fim-qwen-3b-default"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--fim-qwen-7b-default"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--fim-qwen-7b-spec"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--frequency-penalty"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--gpt-oss-120b-default"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--gpt-oss-20b-default"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--grammar"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--grammar-file"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--hf-repo"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--host"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--ignore-eos"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--image-max-tokens"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--image-min-tokens"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--jinja",
+    "--no-jinja"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--keep"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--kv-unified-per-slot"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--list-devices"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--log-colors"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--log-disable"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--log-file"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--log-jsonl",
+    "--no-log-jsonl"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--log-prefix",
+    "--no-log-prefix"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--log-prompts-dir"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--log-timestamps",
+    "--no-log-timestamps"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--lora"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--lora-init-without-apply"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--lora-scaled"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--mcp-servers-config"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--mcp-servers-json"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--media-allow-private-urls"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--media-path"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--metrics"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--min-p"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--mirostat"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--mirostat-ent"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--mirostat-lr"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--mmproj-auto",
+    "--no-mmproj",
+    "--no-mmproj-auto"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--mmproj-offload",
+    "--no-mmproj-offload"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--models-autoload",
+    "--no-models-autoload"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--models-dir"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--models-max"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--models-memory-margin"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--models-preset"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--moe-cache-cpu-share"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--moe-cache-mib"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--mtmd-batch-max-tokens"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--no-host"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--numa"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--offline"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--op-offload",
+    "--no-op-offload"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--override-kv"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--path"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--perf",
+    "--no-perf"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--ple",
+    "--shard"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--poll"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--poll-batch"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--pooling"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--port"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--prefill-assistant",
+    "--no-prefill-assistant"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--presence-penalty"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--prio"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--prio-batch"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--props"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--reasoning-budget"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--reasoning-budget-message"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--reasoning-effort"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--reasoning-format"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--reasoning-preserve",
+    "--no-reasoning-preserve"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--repack",
+    "-nr",
+    "--no-repack"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--repeat-last-n"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--repeat-penalty"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--rerank",
+    "--reranking"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--reuse-port"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--rope-freq-base"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--rope-freq-scale"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--rope-scale"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--rope-scaling"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--rpc"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--sampler-seq",
+    "--sampling-seq"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--samplers"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--skip-chat-parsing",
+    "--no-skip-chat-parsing"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--sleep-idle-seconds"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--slot-save-path"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--slots",
+    "--no-slots"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--spec-default"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--spec-draft-backend-sampling",
+    "--no-spec-draft-backend-sampling"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--spec-draft-cpu-mask",
+    "-Cd",
+    "--cpu-mask-draft"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--spec-draft-cpu-mask-batch",
+    "-Cbd",
+    "--cpu-mask-batch-draft"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--spec-draft-cpu-moe",
+    "-cmoed",
+    "--cpu-moe-draft"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--spec-draft-cpu-range",
+    "-Crd",
+    "--cpu-range-draft"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--spec-draft-cpu-strict",
+    "--cpu-strict-draft"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--spec-draft-cpu-strict-batch",
+    "--cpu-strict-batch-draft"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--spec-draft-device",
+    "-devd",
+    "--device-draft"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--spec-draft-hf",
+    "-hfd",
+    "-hfrd",
+    "--hf-repo-draft"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--spec-draft-model",
+    "-md",
+    "--model-draft"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--spec-draft-n-cpu-moe",
+    "--spec-draft-ncmoe",
+    "-ncmoed",
+    "--n-cpu-moe-draft"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--spec-draft-n-max"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--spec-draft-n-min"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--spec-draft-n-ubatch"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--spec-draft-ngl",
+    "-ngld",
+    "--gpu-layers-draft",
+    "--n-gpu-layers-draft"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--spec-draft-override-tensor",
+    "-otd",
+    "--override-tensor-draft"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--spec-draft-p-min",
+    "--draft-p-min"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--spec-draft-p-split",
+    "--draft-p-split"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--spec-draft-poll",
+    "--poll-draft"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--spec-draft-poll-batch",
+    "--poll-batch-draft"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--spec-draft-prio",
+    "--prio-draft"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--spec-draft-prio-batch",
+    "--prio-batch-draft"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--spec-draft-sampling"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--spec-draft-threads",
+    "-td",
+    "--threads-draft"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--spec-draft-threads-batch",
+    "-tbd",
+    "--threads-batch-draft"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--spec-draft-type-k",
+    "-ctkd",
+    "--cache-type-k-draft"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--spec-draft-type-v",
+    "-ctvd",
+    "--cache-type-v-draft"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--spec-ngram-"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--spec-ngram-map-k-min-hits"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--spec-ngram-map-k-size-m"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--spec-ngram-map-k-size-n"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--spec-ngram-map-k4v-min-hits"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--spec-ngram-map-k4v-size-m"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--spec-ngram-map-k4v-size-n"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--spec-ngram-min-hits"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--spec-ngram-mod-n-match"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--spec-ngram-mod-n-max"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--spec-ngram-mod-n-min"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--spec-ngram-simple-min-hits"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--spec-ngram-simple-size-m"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--spec-ngram-simple-size-n"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--spec-ngram-size-m"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--spec-ngram-size-n"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--spec-synth-len"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--spec-synth-rates"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--spec-type"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--spm-infill"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--sse-ping-interval"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--ssl-cert-file"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--ssl-key-file"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--swa-full"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--tags"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--temp",
+    "--temperature"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--threads"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--threads-http"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--tools"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--tools-runtime"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--top-k"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--top-nsigma",
+    "--top-n-sigma"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--top-p"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--tts-lang"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--tts-voice"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--typical",
+    "--typical-p"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--ui",
+    "--webui",
+    "--no-ui",
+    "--no-webui"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--ui-config",
+    "--webui-config"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--ui-config-file",
+    "--webui-config-file"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--ui-mcp-proxy",
+    "--webui-mcp-proxy",
+    "--no-ui-mcp-proxy",
+    "--no-webui-mcp-proxy"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--version"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--video-ffmpeg-dir"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--video-fps"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--video-timestamp-interval"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--vision-gemma-12b-default"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--vision-gemma-4b-default"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--warmup",
+    "--no-warmup"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "--xtc-probability"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--xtc-threshold"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--yarn-attn-factor"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--yarn-beta-fast"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--yarn-beta-slow"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--yarn-ext-factor"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "--yarn-orig-ctx"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-C",
+    "--cpu-mask"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-Cb",
+    "--cpu-mask-batch"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-Cr",
+    "--cpu-range"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "-Crb",
+    "--cpu-range-batch"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "-a",
+    "--alias"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-ag",
+    "--agent",
+    "-no-ag",
+    "--no-agent"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "-b",
+    "--batch-size"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-bs",
+    "--backend-sampling"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "-c",
+    "--ctx-size"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-cb",
+    "--cont-batching",
+    "-nocb",
+    "--no-cont-batching"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "-cl",
+    "--cache-list"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "-cmoe",
+    "--cpu-moe"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "-cms",
+    "--checkpoint-min-step"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-cram",
+    "--cache-ram"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-ctk",
+    "--cache-type-k"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-ctv",
+    "--cache-type-v"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-ctxcp",
+    "--ctx-checkpoints",
+    "--swa-checkpoints"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-dev",
+    "--device"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-dr",
+    "--docker-repo"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-e",
+    "--escape",
+    "--no-escape"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "-fa",
+    "--flash-attn"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-fit",
+    "--fit"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-fitc",
+    "--fit-ctx"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-fitt",
+    "--fit-target"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "-h",
+    "--help",
+    "--usage"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "-hf",
+    "-hfr",
+    "--hf-repo"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-hff",
+    "--hf-file"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-hft",
+    "--hf-token"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-j",
+    "--json-schema"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-jf",
+    "--json-schema-file"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-kvo",
+    "--kv-offload",
+    "-nkvo",
+    "--no-kv-offload"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "-kvu",
+    "--kv-unified",
+    "-no-kvu",
+    "--no-kv-unified"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "-l",
+    "--logit-bias"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-lcd",
+    "--lookup-cache-dynamic"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-lcs",
+    "--lookup-cache-static"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-lm",
+    "--load-mode"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-lv",
+    "--verbosity",
+    "--log-verbosity"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-lzm",
+    "--lazy-mode"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-m",
+    "--model"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-mg",
+    "--main-gpu"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-mm",
+    "--mmproj"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-mmdev",
+    "--mmproj-device"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-mmu",
+    "--mmproj-url"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-mu",
+    "--model-url"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-n",
+    "--predict",
+    "--n-predict"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-ncffn",
+    "--n-cpu-ffn"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-ncmoe",
+    "--n-cpu-moe"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-ngl",
+    "--gpu-layers",
+    "--n-gpu-layers"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-np",
+    "--parallel"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-ot",
+    "--override-tensor"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-r",
+    "--reverse-prompt"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-rea",
+    "--reasoning"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-s",
+    "--seed"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-sm",
+    "--split-mode"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-sp",
+    "--special"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  },
+  {
+   "aliases": [
+    "-sps",
+    "--slot-prompt-similarity"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-t",
+    "--threads"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-tb",
+    "--threads-batch"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-to",
+    "--timeout"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-ts",
+    "--tensor-split"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-ub",
+    "--ubatch-size"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 1
+  },
+  {
+   "aliases": [
+    "-v",
+    "--verbose",
+    "--log-verbose"
+   ],
+   "examples": [
+    "LLAMA_EXAMPLE_SERVER"
+   ],
+   "nargs": 0
+  }
+ ],
+ "name": "b12359",
+ "ref": "2a8600387b40f2820d17973067020ce11377904d",
+ "repo": "brianreborn/llama.cpp",
+ "source": "llama-server --help and source tables at 2a8600387b40f2820d17973067020ce11377904d"
+}

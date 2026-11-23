@@ -413,8 +413,9 @@ flowchart TB
     m_hub["lan-nexus hub + lan-bt tracker"]
   end
   subgraph fbsd["FreeBSD node"]
-    a_coder["coder node<br/>Nanbeige4.3-33B, server_tools all"]
-    a_plan["chat, guardian nodes (planned)"]
+    a_coder["coder node<br/>Qwen3.5-2B, full native context; planned"]
+    a_chat["chat node<br/>GPT-OSS-20B, full native context; planned"]
+    a_guardian["guardian node<br/>planned"]
   end
   subgraph win["Windows node"]
     q_res["resident node (CPU)"]
@@ -461,7 +462,7 @@ Shell environment variables always take precedence over saved settings.
 - **Standalone bootstrap UI:** use `./start.sh --bootstrap` to run the pinned code-bootstraps-llama.cpp router (safe-mode build path; decision/route = Laya). Its `PORT`, `PROFILE`, `CTX`, `CODER_CTX`, `MODELS_MAX`, and `TOOLS` settings do not configure graph nodes. See [docs/safe-mode-bootstrap.md](docs/safe-mode-bootstrap.md).
 - **Session control:** `DETACH_MODE=screen-attached|screen|tmux|nohup|foreground ./start.sh`. `screen-attached` is the default (reattach with `screen -r familia-server`); Termux takes a wake lock when `termux-wake-lock` is installed but does not silently background the graph. Screen sessions are named `familia-server`; `screen-attached` starts attached with 10,000 lines of scrollback (`Ctrl-A`, then `[` to review history; `Ctrl-A`, then `D` to detach; `screen -r familia-server` to resume). nohup logs go to `.cache/graph.log`.
 
-**FreeBSD note:** `angel` remains unmeasured and has no active graph nodes, so `./start.sh --dry-run --host angel` reports that nothing is eligible to start. For now, install no packages on FreeBSD and do not use `familia install`; build the pinned llama.cpp checkout from source with `BUILD_DIR=build-freebsd GPU=off scripts/build-linux.sh` in `code-bootstraps-llama.cpp`. Measure the host and explicitly place nodes before expecting graph startup there.
+**FreeBSD note:** Angel is measured and has a pinned native FreeBSD llama.cpp 1.0.0 runtime. Its Qwen3.5-2B coder (262144 context) and GPT-OSS-20B chat (131072 context) nodes are explicitly planned; neither starts until its full documented context passes the host RAM and swap checks. Generate and validate the private graph before any launch: `python3 scripts/generate_graph.py angel`, then `python3 scripts/validate_graph.py --graph generated/graph-angel.yaml --host angel --check-runtimes --check-swap`. Do not install packages on FreeBSD through `familia install`.
 
 **Critical fixes for v0.2.0:**
 - **Issue #19** (Hermes context overflow): Fixed by enforcing slot context validation and catching oversized requests

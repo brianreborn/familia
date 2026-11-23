@@ -19,7 +19,7 @@ Exit 0 when valid, 1 with one line per problem otherwise (2 for a usage error).
                  host swap total MiB is below the budget (SSD/VVRAM ops gate; docs/vvram-ssd/LAYER.md).
 Never guesses or inflates. Schema: scripts/graph_types.py, docs/graph-types.md.
 """
-import hashlib, json, os, struct, sys, unicodedata
+import hashlib, json, os, re, struct, sys, unicodedata
 import yaml
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from graph_types import validate_types, TYPES  # noqa: E402
@@ -131,14 +131,27 @@ def validate(graph, check_files=True, host=None):
     if host is None:
         host = local
     hosts, models, totals = graph["hosts"], graph["models"], {}
-    base = os.path.dirname(os.path.abspath(graph.get("_path", "graph.yaml")))
+    # Generated per-host graphs live under generated/, but their relative artifact
+    # paths are declared against the source graph at the repository root.
+    graph_path = os.path.abspath(graph.get("_path", "graph.yaml"))
+    base = os.path.dirname(graph_path)
+    if os.path.basename(graph_path).startswith("graph-"):
+        import config_paths
+        if (os.path.dirname(graph_path) == os.path.realpath(config_paths.generated_dir())
+                or os.path.dirname(graph_path).startswith(os.path.realpath(config_paths.generated_dir()) + os.sep)):
+            base = config_paths.ROOT
     for rn, r in graph["runtimes"].items():
         if "bin" in r and "--check-runtimes" in sys.argv and (host is None or host in r.get("hosts", [])):
             b = os.path.join(base, os.path.expanduser(r["bin"]))
             if not os.access(b, os.X_OK): errs.append(f"runtimes.{rn}: binary not executable: {b}"); continue
             import subprocess
             v = subprocess.run([b, "--version"], capture_output=True, text=True, timeout=30)
-            if str(r["commit"])[:9] not in v.stdout + v.stderr: errs.append(f"runtimes.{rn}: {b} does not report commit {r['commit']}")
+            # llama.cpp --version reports the short commit (7 hex characters),
+            # while graph pins retain the full SHA. Compare the reported form.
+            commit = str(r["commit"])
+            expected = commit[:7] if re.fullmatch(r"[0-9a-f]{40}", commit) else commit
+            if expected not in v.stdout + v.stderr:
+                errs.append(f"runtimes.{rn}: {b} does not report commit {r['commit']}")
     metas = {}
     for name, n in graph["nodes"].items():
         if n["status"] == "planned": continue
@@ -773,8 +786,17 @@ def server_args(graph, name):
             a += ["--spec-type", sp["spec_type"]]
     r = graph["runtimes"][n["runtime"]]
     # argv[0] is always the binary: runtimes.<r>.bin (relative to graph.yaml), else llama-server on PATH
-    binary = (os.path.join(os.path.dirname(os.path.abspath(graph.get("_path", "graph.yaml"))), r["bin"])
-              if "bin" in r else "llama-server")
+    if "bin" in r:
+        graph_path = os.path.abspath(graph.get("_path", "graph.yaml"))
+        base = os.path.dirname(graph_path)
+        if os.path.basename(graph_path).startswith("graph-"):
+            import config_paths
+            generated = os.path.realpath(config_paths.generated_dir())
+            if base == generated or base.startswith(generated + os.sep):
+                base = config_paths.ROOT
+        binary = os.path.join(base, os.path.expanduser(r["bin"]))
+    else:
+        binary = "llama-server"
     return [binary] + a
 
 USAGE = __doc__.split("\n\n")[1]
