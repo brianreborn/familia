@@ -18,9 +18,9 @@ from pathlib import Path
 
 DEFAULT_HOSTS = ("angel", "miryam", "surface1", "galaxy1", "galaxy2", "note9")
 REMOTE_ROOTS = {
-    "miryam": "/home/green/familia",
-    "surface1": "/home/green/swarm/familia-repo",
-    "surface7": "/home/green/swarm/familia-repo",
+    "miryam": "~/familia",
+    "surface1": "~/swarm/familia-repo",
+    "surface7": "~/swarm/familia-repo",
     "galaxy1": "/data/data/com.termux/files/home/familia/repo",
     "galaxy2": "/data/data/com.termux/files/home/familia/repo",
     "note9": "/data/data/com.termux/files/home/familia/repo",
