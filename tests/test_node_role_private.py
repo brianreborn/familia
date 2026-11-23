@@ -43,7 +43,7 @@ def test_private_angel_type_names_only():
     assert nodes["coder"]["host"] == "angel"
     assert nodes["coder"]["model"] == "nanbeige43-33b-q4km"
     assert nodes["coder"]["status"] == "active"
-    assert nodes["chat"]["status"] == "planned"  # Nanbeige-33B deferred 2026-11-22 (#682): hardware cannot support it
+    assert nodes["chat"]["status"] == "planned"
     assert nodes["coder"]["role"] == "coder"
     assert nodes["chat"]["role"] == "chat"
     for name in nodes:

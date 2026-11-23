@@ -1,8 +1,7 @@
 # Planned → active (P0, 2026-11-22)
 
 Brian, 2026-11-22: "planned is now actively required, it's priority 0." Every node in
-`graph.yaml` that was `status: planned` on main `292859e` is now `status: active`, except
-`nanbeige-chat` (the Nanbeige-33B model is deferred: current hardware cannot support it, #682). Where a node
+`graph.yaml` that was `status: planned` on main `292859e` is now `status: active`. Where a node
 cannot actually run yet, it stays active (required) and its missing artifact is listed below:
 nothing is faked (no invented sha, no registry `weights: present` without a fetch).
 
@@ -18,12 +17,13 @@ them on 2026-11-22.
 | vulkan-handset-decision | phone7 | SmolLM2-135M-Instruct-Q4_0 | termux-llama-cpp-0.6.0 | — | test_graph_types | phone7 online with Termux pkg; no flag table for the Termux pkg build |
 | vulkan-handset-general | phone8 | Qwen2.5-0.5B-Instruct-Q4_K_M | termux-llama-cpp-0.6.0 | — | (none) | phone8 online with Termux pkg; no flag table for the Termux pkg build |
 | embed | miryam | embeddinggemma-2-Q8_0 | **llama-b12359** (was llama-b11944) | embed | test_start_graph (#38 deferral) | b12359 runtime installed on miryam (`install/linux/install.sh`); GGUF on miryam; RAM beside the coder unmeasured (#38) |
-| nanbeige-chat | angel | Nanbeige4.3-33B-UNCENSORED-Q4_K_M (same file as nanbeige-coder) | llama-b11669-freebsd (build b12359) | — | test_node_role_private, test_start_graph | **stays planned**: deferred 2026-11-22 by Brian (#682), the current hardware cannot support the 33B model. nanbeige-coder keeps its status from main |
 | fleet-guardian | miryam | Dolphin3.0-Llama3.1-8B-abliterated.Q2_K | **llama-b12359** (was llama-b11944) | guardian, pentest, defender (never routed) | test_activate_guardian_weights, test_graph_types, test_node_role_private | GGUF not fetched: registry `weights: absent (damp)`; `validate_graph` refuses the node until fetched + sha measured |
 | freebsd-guardian | angel | Dolphin3.0-Llama3.1-8B-abliterated.Q2_K | llama-b11669-freebsd (build b12359) | — (private key `guardian`) | test_activate_guardian_weights, test_node_role_private | same GGUF missing on angel |
 
 `pentests.fleet` and `pentests.freebsd-guardian` are active too. Their seatbelts are unchanged:
 `tools.allow: []`, `launch_test_only: true`, `requires_operator_confirm: true`.
+
+Excluded: `nanbeige-chat` (Nanbeige4.3-33B on angel) stays planned and is not part of this change; 33B models are too slow for the available memory.
 
 ## Fail-closed rules kept
 
