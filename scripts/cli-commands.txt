@@ -133,6 +133,9 @@ home apps list|home.apps.list
 home apps start|home.apps.start
 home apps stop|home.apps.stop
 home apps status|home.apps.status
+home apps browse|home.apps.browse
+home apps web|home.apps.web
+appstore|home.apps.browse
 home talk|home.talk
 home find-models|home.find-models
 home search-x|home.search-x
