@@ -139,12 +139,19 @@ def select_host(graph, requested=None, environ=None, hostname=None):
     )
 
 
+# Roles that run as active nodes but are reached directly on their own port, never through the
+# gateway: an alias naming one is listed as omitted instead of routed (#38 P0 planned->active).
+DIRECT_ONLY_ROLES = ("decision",)
+
+
 def _alias_member(graph, host, alias_name, alias, node_name):
     """One alias member as {node, kind, url, remote}, or None when it cannot be routed from here
     (not active, or on another host without `remote: true` / a usable addr / a non-loopback bind)."""
     node = graph["nodes"][node_name]
     if node.get("status") != "active":
         return None
+    if not node.get("embeddings") and graph_validator.node_type(graph, node_name) in DIRECT_ONLY_ROLES:
+        return None  # active, reached on its own port (docs/planned-to-active.md); never a gateway route
     local = node.get("host") == host
     if not local:
         if alias.get("remote") is not True:

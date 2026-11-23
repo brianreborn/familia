@@ -333,7 +333,7 @@ def check_offload(name, n, h, r, errs):
     if gp.get("backend") != be: errs.append(f"{w}: backend {be!r} but GPU {mg} backend is {gp.get('backend')!r}")
     if gp.get("measured") is not True or gp.get("backend_status") != "verified":
         errs.append(f"{w}: ngl {ngl} on unmeasured/unverified GPU {mg} ({gp.get('model')}); measure it and set backend_status verified first")
-    elif gp.get("vram_mib") == 0 and gp.get("vendor") not in ("intel", "qualcomm", "arm", "apple"):
+    elif gp.get("vram_mib") == 0 and gp.get("vendor") not in ("intel", "qualcomm", "arm", "apple", "samsung"):
         errs.append(f"{w}: ngl {ngl} but GPU {mg} has vram_mib 0")
 
 SPEC_TYPES = {"draft-simple", "draft-eagle3", "draft-mtp", "draft-dflash", "draft-dspark",

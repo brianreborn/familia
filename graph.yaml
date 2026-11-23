@@ -334,6 +334,16 @@ runtimes:
     backends: [cpu, vulkan]
     spec_types: [draft-simple, ngram-simple, ngram-map-k, ngram-map-k4v, ngram-mod, ngram-cache]
 
+  llama-b12359:
+    kind: llama-server
+    build: b12359 (llama.cpp v1.0.0; installer prebuilt pin, install/linux/install.sh -> runtime/b12359)
+    commit: b1b770d90d94cad9e9ea5b993bdbc383a522fb28
+    bin: ~/.local/share/familia/runtime/b12359/llama-server
+    hosts: [miryam]
+    supported_archs: [qwen35, gemma-embedding2, llama, lfm2, lfm3, qwen2, gemma2, gemma3, nanbeige]
+    backends: [cpu, vulkan]
+    spec_types: [draft-simple, ngram-simple, ngram-map-k, ngram-map-k4v, ngram-mod, ngram-cache]
+
   llama-b11669:
     kind: llama-server
     build: b11669 (llama.cpp 0.7.0)
@@ -605,7 +615,7 @@ nodes:
     bind: 127.0.0.1
     port: 18101
     cache_ram_mib: 256
-    status: planned
+    status: active               # P0 2026-11-22: planned is required (Brian); see docs/planned-to-active.md
     escalates_to: [coder, cpu-resident-coder]   # docs/escalation.md: fastest measured first (miryam coder 17.4 t/s vs 0.91 here)
     escalation: {mode: suggest}              # coder crosses host: needs first-time consent
 
@@ -619,12 +629,12 @@ nodes:
       ctx: "decision prompts are short; 2048 keeps the Vulkan KV small on the shared-memory HD 620 beside the coder on 7.1 GiB miryam; 8192 not measured"
     parallel: 1
     kv_type: q8_0
-    flash_attn: false
+    flash_attn: true             # q8_0 V cache needs -fa; was implicit (validator warning)
     offload: {backend: vulkan, ngl: 99, split: none, main_gpu: 0}   # HD 620 verified; slower than CPU, frees CPU for the coder
     bind: 127.0.0.1
     port: 18111
     cache_ram_mib: 64
-    status: planned
+    status: active               # P0 2026-11-22: planned is required (Brian); see docs/planned-to-active.md
     escalates_to: [coder]                    # same host; docs/escalation.md
     escalation: {mode: suggest}
 
@@ -643,7 +653,7 @@ nodes:
     bind: 127.0.0.1
     port: 18110
     cache_ram_mib: 64            # tiny; phone7 reserve_ram_mib 5120 leaves ~2.3 GiB
-    status: planned              # launch via familia-start once the node is wired into the fleet
+    status: active               # P0 2026-11-22: planned is required (Brian); see docs/planned-to-active.md
 
   vulkan-handset-general:
     model: qwen25-05b-q4km-termux
@@ -660,7 +670,7 @@ nodes:
     bind: 127.0.0.1
     port: 18112
     cache_ram_mib: 128           # min MemAvailable 1945 MiB during the run; reserve 5120
-    status: planned
+    status: active               # P0 2026-11-22: planned is required (Brian); see docs/planned-to-active.md
   coder:
     status: active
     model: qwen35-2b-q4km
@@ -682,11 +692,11 @@ nodes:
     port: 9941
     cache_ram_mib: 1024          # >= per-slot prompt state (~426 MiB KV @ 64K q8_0)
   embed:
-    status: planned
+    status: active               # P0 2026-11-22: planned is required (Brian); see docs/planned-to-active.md
     model: egemma2-q8
     role: embed
     host: miryam
-    runtime: llama-b11944
+    runtime: llama-b12359
     ctx: 8192
     parallel: 1
     kv_type: f16
@@ -810,7 +820,7 @@ nodes:
     port: 18201
     cache_ram_mib: 512
     load_mode: mmap
-    status: planned
+    status: active               # P0 2026-11-22: planned is required (Brian); see docs/planned-to-active.md
     card_set: "Reasoning and chat tasks"
     override_reasons:
       ctx: 'same RAM budget as nanbeige-coder; heavy ctx relative to host, not full 512K'
