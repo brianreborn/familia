@@ -53,3 +53,11 @@ def block_live_forge(request, monkeypatch):
     monkeypatch.setattr(socket.socket, "connect_ex", _blocked_connect_ex)
     monkeypatch.setattr(os, "system", _blocked_os_system)
     monkeypatch.setattr(urllib.request, "urlopen", _blocked_urlopen)
+
+
+@pytest.fixture(autouse=True)
+def _no_local_security_level(monkeypatch, tmp_path_factory):
+    """A machine's own security level override (docs/security-levels.md) must not change test results."""
+    monkeypatch.delenv("FAMILIA_SECURITY_LEVEL", raising=False)
+    monkeypatch.setenv("FAMILIA_SECURITY_OVERRIDE",
+                       str(tmp_path_factory.getbasetemp() / "no-security.local.yaml"))
