@@ -27,6 +27,10 @@ Excluded: `nanbeige-chat` (Nanbeige4.3-33B on angel) stays planned and is not pa
 
 ## Fail-closed rules kept
 
+To park or re-enable these seats locally without editing `graph.yaml`, use
+[security levels](security-levels.md): `familia security off | guardian | pentest | full`.
+
+
 - `familia start` never launches a guardian / pentest / defender node, even when active. They start
   only through the operator path: `FAMILIA_OPERATOR_CONFIRM=yes sh with-fleet.sh --role guardian --operator-start`.
 - Their gateway aliases (`guardian`, `pentest`, `defender`) are listed as omitted, never routed.

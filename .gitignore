@@ -40,3 +40,6 @@ logs/
 *.log.*
 development-session*.txt
 !tests/fixtures/**/*.log
+
+# Local security level override (docs/security-levels.md) — never commit
+/security.local.yaml

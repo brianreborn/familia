@@ -1572,8 +1572,22 @@ def agents_status(_apply, _extra):
         if isinstance(spec, dict) and isinstance(spec.get("skills"), list):
             skills = [str(s) for s in spec["skills"]]
         say("  %s  skills=%d" % (name, len(skills)))
+    security_level_line()
     listener_notice()
     return 0
+
+
+def security_level_line():
+    """One line for the security node level (docs/security-levels.md); never fails the status."""
+    try:
+        import security_levels
+        g = security_levels._load_graph(os.path.join(ROOT, "graph.yaml"))
+        p = security_levels.plan(g)
+        on = [k for k, e in p["entries"].items() if e["status"] == "active"] if p["source"] else []
+        say("security level: %s%s  (familia security status)" % (
+            p["level"], ("; on: " + ", ".join(on)) if on else ""))
+    except Exception as e:  # pragma: no cover - status must not crash on a bad override
+        say("security level: unknown (%s); familia security status" % e)
 
 
 def agents_install(apply, extra):
