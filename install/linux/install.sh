@@ -1,4 +1,5 @@
 #!/bin/sh
+# Legacy platform installer. Prefer install/unix/install.sh for new installs.
 # familia one-click installer: desktop Linux (Ubuntu/Debian and similar) and macOS.
 # Usage: sh install/linux/install.sh [flags]   (flags below)
 #   curl -fsSLo install-familia-node.sh https://raw.githubusercontent.com/brianreborn/familia/main/install/linux/install.sh && \

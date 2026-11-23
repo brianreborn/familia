@@ -2,6 +2,7 @@
 # tests/test_menu.py fails when a user-facing script is in neither this list nor
 # scripts/menu-items.txt, so a new script can't go missing from the menu.
 install.sh|bootstrap you run before familia is on disk (download, then sh ./install-familia.sh); inside a checkout use Set up -> Install
+install/unix/install.sh|unified Unix installer (Linux, FreeBSD, macOS, Termux); called directly or by install/unix wrappers
 scripts/channel.py|release-channel resolver (docs/release-channels.md); installers and hf_fetch call it, pick the channel with --channel or FAMILIA_CHANNEL
 scripts/fleet_greeting.py|fleet greeting helper; called by hermes.sh, proto_chat.sh and start_graph at startup
 scripts/windows/familia-menu.ps1|the Windows menu itself (started by familia.cmd)
@@ -106,3 +107,4 @@ scripts/hermes-escalation-config.sh|default environment settings for escalation-
 scripts/watchdog_test.sh|test helper running a command under a timeout watchdog for CI/local testing
 scripts/twitter_intake.sh|read-only Galaxy1 X/Twitter intake; validates ideas-from-x skill and stops before issue review
 scripts/progress_report.py|hourly GitHub issue/PR progress report generator for release review (docs/progress-report.md; Actions artifact, no source writes)
+scripts/check_pins.py|CI-only verifier for full-SHA repository pins; invoked by pin-integrity workflow, not a user menu command

@@ -66,6 +66,18 @@ def test_reasoning_and_general_nodes_route_as_chat(model_role, node_role):
     assert routes == {"chat": "http://127.0.0.1:9001"}
 
 
+@pytest.mark.parametrize("fail_closed_role", ["guardian", "pentest"])
+def test_fail_closed_model_role_warns_and_refuses_proxy_alias(fail_closed_role):
+    g = load("single-node.yaml")
+    g["models"]["mchat"]["role"] = fail_closed_role
+    g["aliases"]["chat"]["node"] = ["chat"]  # warning lookup must accept fallback-list aliases
+    assert vg.validate(g, check_files=False)[0] == []
+    assert any("aliases.chat:" in w and "fail-closed" in w for w in vg.WARNINGS)
+    assert vg.tool_policy(g, "chat") == []
+    with pytest.raises(start_graph.StartupError, match="fail-closed node"):
+        start_graph.local_topology(g, "h1")
+
+
 def test_alias_to_unroutable_role_warns_before_start_refuses():
     g = load("single-node.yaml")
     g["models"]["mchat"]["role"] = "vision"
@@ -75,21 +87,10 @@ def test_alias_to_unroutable_role_warns_before_start_refuses():
         start_graph.local_topology(g, "h1")
 
 
-@pytest.mark.parametrize("fail_closed_role", ["guardian", "pentest"])
-def test_tr4_fail_closed_role_refuses_proxy_alias(fail_closed_role):
-    # Node role relabelling over a fail-closed model must not launder the model into proxy routing
-    g = load("single-node.yaml")
-    g["models"]["mchat"]["role"] = fail_closed_role
-    # In graph_types, guardian/pentest models allow guardian/pentest node roles
-    # If node role is set to guardian/pentest or if model is fail-closed, start_graph must refuse proxy alias
-    assert any(w.startswith("aliases.chat:") and "fail-closed" in w for w in vg.routing_warnings(g))
-    with pytest.raises(start_graph.StartupError, match="targets fail-closed role"):
-        start_graph.local_topology(g, "h1")
-
-
 @pytest.mark.parametrize("mutate,expect", [
     (lambda g: g["aliases"].__setitem__("x", {"node": "nope", "gateway": "gw"}), "no such nodes entry 'nope'"),
-    (lambda g: g["aliases"]["chat"].__setitem__("node", ["chat"]), "expected a nodes name"),
+    (lambda g: g["aliases"]["chat"].__setitem__("node", ["chat", "ghost"]), "no such nodes entry 'ghost'"),
+    (lambda g: g["aliases"]["chat"].__setitem__("node", []), "non-empty list"),
 ])
 def test_start_dry_run_reports_validation_not_traceback(tmp_path, mutate, expect):
     g = load("single-node.yaml"); mutate(g)

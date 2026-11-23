@@ -1,4 +1,5 @@
 #!/bin/sh
+# Legacy platform installer. Prefer install/unix/install.sh for new installs.
 # familia installer: FreeBSD (user scope, POSIX sh, no bash, no GNU-only flags).
 # This file is the single download. Verify it BEFORE running it:
 #   fetch -o install-familia.sh URL      (or: curl -fsSLo install-familia.sh URL)

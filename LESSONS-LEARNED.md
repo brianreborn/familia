@@ -346,3 +346,16 @@ Source: Brian voice session, 2026-11-10.
    *Rule:* design interactive swarm feedback and operator-facing status to
    land under about 400 ms. Treat the IBM / Laurie Wired citation as
    unverified until the source image is checked.
+
+## L-batch-scripting: Script-First Batching & Scoped Stream Redirection (2026-11-21)
+- When an execution plan consists of a known sequence of tool/command calls conditioned on step completion:
+  - Consolidate commands into a single executable shell script rather than issuing multiple round-trip tool calls.
+  - Redirect stdout and stderr into dedicated scoped temporary files, reading them only upon command failure or when explicitly required.
+  - Aggressively manage stream artifact lifecycles with traps (`EXIT INT TERM`) and immediate cleanup to prevent unbounded temporary file accumulation.
+
+
+## L-llama-release-bump: Bump to most recent llama.cpp Release build on releases
+
+- **Trigger:** Whenever cutting a familia release (alpha, beta, or final).
+- **Rule:** Check upstream llama.cpp releases (`ggerganov/llama.cpp`) and bump default runtime builds, pins, and installers to the latest stable/release tag (e.g. `b12609`).
+- **Rationale:** Ensures edge runtimes and acceleration backends benefit from the latest upstream kernel improvements, quantization layouts, and security fixes across all swarm platforms.

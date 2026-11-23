@@ -294,6 +294,16 @@ def validate(graph, check_files=True, host=None):
             WARNINGS.append(
                 f"hosts.{h}: estimated free after nodes {free_after:.0f} MiB < 2048 MiB provisional floor "
                 f"on host with ram_mib {ram} < 8192 (guidance; see docs/ram-safety.md)")
+    # TR-4 (#621): refuse node.role override when either node.role or model.role is fail-closed
+    for nn, nd in (graph.get("nodes") or {}).items():
+        if nd.get("role"):
+            nr = normalize_role(nd["role"])
+            mr = normalize_role(((graph.get("models") or {}).get(nd.get("model")) or {}).get("role"))
+            if (nr in FAIL_CLOSED_TYPES or mr in FAIL_CLOSED_TYPES) and nr != mr:
+                # Allow guardian/pentest/defender aliases among themselves (e.g. public flavor), but reject routable overrides
+                if not (nr in FAIL_CLOSED_TYPES and mr in FAIL_CLOSED_TYPES):
+                    errs.append(f"nodes.{nn}: role {nd['role']!r} overrides fail-closed model role {mr!r} (TR-4)")
+
     errs += check_vvram_policy(graph, metas=metas)
     return errs, totals
 
@@ -343,9 +353,6 @@ def merge_args(base, extra):
         i += 2 if v is not None else 1
     return out
 
-# Fail-closed types that must never be proxy-routable or receive tools
-FAIL_CLOSED_TYPES = ("guardian", "pentest", "defender")
-
 # Model roles the green-roomz graph-proxy manifest can carry (start_graph.local_topology).
 PROXY_ROUTABLE_ROLES = ("chat", "coder", "general", "reasoning")
 
@@ -367,12 +374,11 @@ def routing_warnings(graph):
             continue
         if n.get("embeddings"):
             continue
-        role = node_type(graph, al["node"])
-        model_name = n.get("model")
-        model = models.get(model_name) if isinstance(model_name, str) else {}
-        model_role = (model.get("role") or "").strip().lower()
-        if role in FAIL_CLOSED_TYPES or model_role in FAIL_CLOSED_TYPES:
-            out.append(f"aliases.{a}: node {al['node']!r} has fail-closed role (node {role!r}, model {model_role!r}); "
+        role = node_type(graph, prim)
+        model = models.get(n.get("model")) or {}
+        model_role = normalize_role(model.get("role"))
+        if is_fail_closed(graph, prim):
+            out.append(f"aliases.{a}: node {prim!r} has fail-closed role (node {role!r}, model {model_role!r}); "
                        f"familia start refuses it (fail-closed models cannot be made proxy-routable) -- "
                        f"reach it directly on its port or drop the alias")
         elif role not in PROXY_ROUTABLE_ROLES:
@@ -559,6 +565,18 @@ def check_swap_budgets(graph, host=None):
 FAIL_CLOSED_TYPES = ("guardian", "pentest", "defender")
 
 
+def is_fail_closed(graph, name):
+    """True if either the node's normalized role or its model's normalized role is fail-closed.
+    Prevents role overrides on a node from bypassing fail-closed model restrictions (TR-4, #621)."""
+    n = (graph.get("nodes") or {}).get(name) or {}
+    node_role = normalize_role(n.get("role"))
+    if node_role in FAIL_CLOSED_TYPES:
+        return True
+    m = (graph.get("models") or {}).get(n.get("model")) or {}
+    model_role = normalize_role(m.get("role"))
+    return model_role in FAIL_CLOSED_TYPES
+
+
 def normalize_role(role):
     """Casefold + NFKC so Guardian / GUARDIAN / fullwidth forms match the TYPE names.
 
@@ -626,7 +644,7 @@ def tool_route(graph, name):
     t = (nodes.get(name) or {}).get("tool_route")
     if not isinstance(t, str) or t == name or t not in nodes:
         return None
-    if node_type(graph, t) in FAIL_CLOSED_TYPES or nodes[t].get("tool_route"):
+    if is_fail_closed(graph, t) or nodes[t].get("tool_route"):
         return None
     if not tool_capable(graph, t) or tool_policy(graph, t) == []:
         return None
@@ -643,7 +661,7 @@ def tool_policy(graph, name):
       TOOLS-007/008); shell/write tools need an explicit server_tools;
       tool-capable via a validated `tool_route` -> the target's tool_policy (TOOLS-009); else []."""
     n = graph["nodes"][name]
-    if node_type(graph, name) in FAIL_CLOSED_TYPES:
+    if is_fail_closed(graph, name):
         return []
     if "server_tools" in n:
         st = n.get("server_tools")

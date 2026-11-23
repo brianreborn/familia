@@ -12,8 +12,7 @@
 # when not in --pipe.
 #
 # Installer discovery (PR #321 paths; degrade if absent):
-#   thin client: packaging/android/familia-android-smoke.sh
-#   on-phone:    install/termux/install-hermes-android.sh
+#   on-device:   install/termux/install-hermes-android.sh
 #                or install/termux/install.sh
 # Override: FAMILIA_ANDROID_INSTALLER. Only flags the detected script
 # accepts are passed; other switches stay visible as [n/a: ...].
@@ -25,7 +24,7 @@
 #   sh scripts/android-cockpit-switches.sh --show     installer command only
 #   sh scripts/android-cockpit-switches.sh --help
 #
-# Secure defaults: thin client, gate ON, --yes refused, dry-run ON,
+# Secure defaults: gate ON, --yes refused, dry-run ON,
 # never auto-start. Each device serves its own webapp (Brian,
 # 2026-11-10 11:15 PM PT, "each its own" / self-hosting): on-phone
 # and local modes default the host/URL to http://127.0.0.1:9941
@@ -62,7 +61,6 @@ NARROW=0
 
 # Secure defaults (cockpit). The installer CLI still treats --dry-run as opt-in;
 # this menu passes --dry-run unless the user turns the switch off.
-THIN_CLIENT=1
 CTX_GATE=1
 FAMILIA_CTX_VAL=""
 ALLOW_YES=0
@@ -314,23 +312,15 @@ resolve_installer() {
     err "FAMILIA_ANDROID_INSTALLER is set but not a readable file"
     return 1
   fi
-  _thin="$ROOT/packaging/android/familia-android-smoke.sh"
   _hermes="$ROOT/install/termux/install-hermes-android.sh"
   _inst="$ROOT/install/termux/install.sh"
   _pick=""
-  if [ "$THIN_CLIENT" = 1 ]; then
-    if [ -f "$_thin" ] && [ -r "$_thin" ]; then _pick=$_thin
-    elif [ -f "$_inst" ] && [ -r "$_inst" ]; then _pick=$_inst
-    elif [ "$START_FAMILIA" = 1 ] && [ -f "$_hermes" ] && [ -r "$_hermes" ]; then _pick=$_hermes
-    fi
-  else
-    # hermes always starts familia-start (no skip-start flag). Only pick it
-    # when start is ON; otherwise prefer install.sh.
-    if [ "$START_FAMILIA" = 1 ] && [ -f "$_hermes" ] && [ -r "$_hermes" ]; then _pick=$_hermes
-    elif [ -f "$_inst" ] && [ -r "$_inst" ]; then _pick=$_inst
-    elif [ -f "$_thin" ] && [ -r "$_thin" ]; then _pick=$_thin
-    elif [ -f "$_hermes" ] && [ -r "$_hermes" ]; then _pick=$_hermes
-    fi
+  # on-device inference is the only mode; prefer install.sh, fall back to hermes installer.
+  # hermes always starts familia-start (no skip-start flag). Only pick it
+  # when start is ON; otherwise prefer install.sh.
+  if [ "$START_FAMILIA" = 1 ] && [ -f "$_hermes" ] && [ -r "$_hermes" ]; then _pick=$_hermes
+  elif [ -f "$_inst" ] && [ -r "$_inst" ]; then _pick=$_inst
+  elif [ -f "$_hermes" ] && [ -r "$_hermes" ]; then _pick=$_hermes
   fi
   if [ -n "$_pick" ]; then
     INSTALLER=$_pick
@@ -761,14 +751,14 @@ valid_cbl_asset() {
 
 known_key() {
   case "$1" in
-    THIN_CLIENT|CTX_GATE|FAMILIA_CTX_VAL|ALLOW_YES|DRY_RUN|KEEP_PREFIX|START_FAMILIA|HTTPS|DEV_ALLOW_HTTP|HOST|PORT|TIER|LIC_LLAMA31|LIC_DOLPHIN|LIC_LFM|FETCH_PYYAML|COMMIT|URL_FILE|CBL_TAG|CBL_SHA|CBL_ASSET|CBL_URL|API_KEY_FILE|RUNTIME_KIND) return 0 ;;
+    CTX_GATE|FAMILIA_CTX_VAL|ALLOW_YES|DRY_RUN|KEEP_PREFIX|START_FAMILIA|HTTPS|DEV_ALLOW_HTTP|HOST|PORT|TIER|LIC_LLAMA31|LIC_DOLPHIN|LIC_LFM|FETCH_PYYAML|COMMIT|URL_FILE|CBL_TAG|CBL_SHA|CBL_ASSET|CBL_URL|API_KEY_FILE|RUNTIME_KIND) return 0 ;;
     *) return 1 ;;
   esac
 }
 
 secure_default_for() {
   case "$1" in
-    THIN_CLIENT|CTX_GATE|DRY_RUN|LIC_LLAMA31|LIC_DOLPHIN) printf '%s' 1 ;;
+    CTX_GATE|DRY_RUN|LIC_LLAMA31|LIC_DOLPHIN) printf '%s' 1 ;;
     ALLOW_YES|KEEP_PREFIX|START_FAMILIA|HTTPS|DEV_ALLOW_HTTP|LIC_LFM|FETCH_PYYAML) printf '%s' 0 ;;
     RUNTIME_KIND) printf '%s' cbl ;;
     *) printf '%s' "" ;;
@@ -785,10 +775,9 @@ apply_key() {
   _k=$1
   _v=$2
   case "$_k" in
-    THIN_CLIENT|CTX_GATE|ALLOW_YES|DRY_RUN|KEEP_PREFIX|START_FAMILIA|HTTPS|DEV_ALLOW_HTTP|LIC_LLAMA31|LIC_DOLPHIN|LIC_LFM|FETCH_PYYAML)
+    CTX_GATE|ALLOW_YES|DRY_RUN|KEEP_PREFIX|START_FAMILIA|HTTPS|DEV_ALLOW_HTTP|LIC_LLAMA31|LIC_DOLPHIN|LIC_LFM|FETCH_PYYAML)
       if valid_bool "$_v"; then
         case "$_k" in
-          THIN_CLIENT) THIN_CLIENT=$_v ;;
           CTX_GATE) CTX_GATE=$_v ;;
           ALLOW_YES) ALLOW_YES=$_v ;;
           DRY_RUN) DRY_RUN=$_v ;;
@@ -805,7 +794,6 @@ apply_key() {
       fi
       warn_bad "$_k"
       case "$_k" in
-        THIN_CLIENT) THIN_CLIENT=1 ;;
         CTX_GATE) CTX_GATE=1 ;;
         ALLOW_YES) ALLOW_YES=0 ;;
         DRY_RUN) DRY_RUN=1 ;;
@@ -972,12 +960,9 @@ load_file() {
     err "could not read settings file; using values already loaded or the secure defaults"
     return 0
   }
-  if [ "$THIN_CLIENT" != 1 ]; then
-    if _br=$(onphone_block_reason); then
-      err "on-phone inference ignored in settings: $_br"
-      THIN_CLIENT=1
+  if _br=$(onphone_block_reason); then
+      err "on-phone inference requirements not met in settings: $_br (continuing anyway)"
     fi
-  fi
   if [ -n "$CBL_TAG$CBL_ASSET$CBL_URL" ] && ! valid_sha "$CBL_SHA"; then
     err "CBL override ignored in settings: tag/url/asset requires a 64-hex sha256"
     CBL_TAG=""; CBL_SHA=""; CBL_ASSET=""; CBL_URL=""
@@ -1006,7 +991,6 @@ save_settings() {
   mkdir -m 700 -p "$CONFIG_DIR" || { err "could not create $CONFIG_DIR"; return 1; }
   if ! {
     printf '# familia android cockpit switches. Do not store API key secrets here, only paths.\n'
-    printf 'THIN_CLIENT=%s\n' "$THIN_CLIENT"
     printf 'CTX_GATE=%s\n' "$CTX_GATE"
     printf 'FAMILIA_CTX_VAL=%s\n' "$FAMILIA_CTX_VAL"
     printf 'ALLOW_YES=%s\n' "$ALLOW_YES"
@@ -1067,9 +1051,7 @@ licenses_csv() {
 }
 
 mode_label() {
-  if [ "$THIN_CLIENT" = 1 ]; then say "thin client"
-  else say "on-phone inference"
-  fi
+  say "on-device inference"
 }
 
 shell_quote() {
@@ -1148,11 +1130,10 @@ assemble_and() {
   if flag_ok --host || flag_ok --port; then
     if [ -z "$HOST" ] || [ -z "$PORT" ]; then err "set host and port first"; return 1; fi
   fi
-  if [ "$THIN_CLIENT" != 1 ]; then
-    if _br=$(onphone_block_reason); then
-      err "$_br"
-      return 1
-    fi
+  # Hardware check: RAM/ctx warnings are advisory (shown in status); they do not block
+  # the run because on-device inference is always the mode and the installer decides.
+  if _br=$(onphone_block_reason); then
+    err "note: on-device requirements may not be met: $_br (the installer will check)"
   fi
   if [ "$SCRIPT_KIND" = hermes ] && [ "$START_FAMILIA" != 1 ]; then
     err "install-hermes-android.sh always starts familia-start and has no skip-start flag; turn start ON to run it, or use install.sh"
@@ -1200,12 +1181,10 @@ assemble_and() {
   if [ "$CTX_GATE" != 1 ] && env_ok FAMILIA_HERMES_CTX_GATE && flag_ok --no-ctx-gate; then
     set -- "$@" "FAMILIA_HERMES_CTX_GATE=off"
   fi
-  if [ "$THIN_CLIENT" != 1 ] && env_ok FAMILIA_RUNTIME; then
+  if env_ok FAMILIA_RUNTIME; then
     set -- "$@" "FAMILIA_RUNTIME=$RUNTIME_KIND"
   fi
-  if [ "$THIN_CLIENT" != 1 ]; then
-    set -- "$@" "FAMILIA_BIND=127.0.0.1"
-  fi
+  set -- "$@" "FAMILIA_BIND=127.0.0.1"
   # Test hook only (P4): FAMILIA_TEST_MODE=1 and a validated path.
   if [ "${FAMILIA_TEST_MODE:-}" = 1 ] && argv_file_ok "${FAMILIA_ARGV_FILE:-}"; then
     set -- "$@" "FAMILIA_ARGV_FILE=$FAMILIA_ARGV_FILE"
@@ -1217,13 +1196,9 @@ assemble_and() {
   if flag_ok --port && [ -n "$PORT" ]; then set -- "$@" --port "$PORT"; fi
   if [ "$HTTPS" = 1 ] && flag_ok --https; then set -- "$@" --https; fi
   if [ -n "$URL_FILE" ] && flag_ok --url-file; then set -- "$@" --url-file "$URL_FILE"; fi
-  if [ "$THIN_CLIENT" != 1 ]; then
-    if flag_ok --local-inference; then set -- "$@" --local-inference; fi
-    if flag_ok --runtime; then set -- "$@" --runtime "$RUNTIME_KIND"; fi
-  else
-    if flag_ok --no-runtime; then set -- "$@" --no-runtime; fi
-  fi
-  if [ "$CTX_GATE" != 1 ] && flag_ok --no-ctx-gate && [ "$THIN_CLIENT" != 1 ]; then
+  if flag_ok --local-inference; then set -- "$@" --local-inference; fi
+  if flag_ok --runtime; then set -- "$@" --runtime "$RUNTIME_KIND"; fi
+  if [ "$CTX_GATE" != 1 ] && flag_ok --no-ctx-gate; then
     set -- "$@" --no-ctx-gate
   fi
   if [ "$DRY_RUN" = 1 ] && flag_ok --dry-run; then set -- "$@" --dry-run; fi
@@ -1394,7 +1369,7 @@ paint_status() {
   if [ "${COMPACT:-0}" = 1 ]; then
     say_row "  $_inst  $(listener_key_label)"
   else
-    say_row "  status  mode=$(mode_label)$(star_if "$THIN_CLIENT" 1)  gate=$(onoff "$CTX_GATE")$(star_if "$CTX_GATE" 1)  dry-run=$(onoff "$DRY_RUN")$(star_if "$DRY_RUN" 1)  start=$(onoff "$START_FAMILIA")$(star_if "$START_FAMILIA" 0)  HTTPS=$(onoff "$HTTPS")$(star_if "$HTTPS" "$(https_default)")"
+    say_row "  status  gate=$(onoff "$CTX_GATE")$(star_if "$CTX_GATE" 1)  dry-run=$(onoff "$DRY_RUN")$(star_if "$DRY_RUN" 1)  start=$(onoff "$START_FAMILIA")$(star_if "$START_FAMILIA" 0)  HTTPS=$(onoff "$HTTPS")$(star_if "$HTTPS" "$(https_default)")"
     say_row "  $_inst  $(listener_key_label)"
   fi
   if [ -n "$HOST" ] && ! is_https_loopback "$HOST" && [ "$HTTPS" != 1 ] && [ "$DEV_ALLOW_HTTP" = 1 ]; then
@@ -1429,18 +1404,17 @@ paint_title() {
 paint_safety() {
   heading "Safety"
   if [ "${COMPACT:-0}" = 1 ]; then
-    say_row "   1) Mode     [$(mode_label)]$(star_if "$THIN_CLIENT" 1)"
-    say_row "   2) Gate     [$(onoff "$CTX_GATE")]$(star_if "$CTX_GATE" 1)"
+    say_row "   1) Gate     [$(onoff "$CTX_GATE")]$(star_if "$CTX_GATE" 1)"
     if flag_ok --no-ctx-gate || env_ok FAMILIA_HERMES_CTX_GATE; then
       :
     else
       say_row "      [$(na_label)]"
     fi
-    say_row "   3) CTX      [${FAMILIA_CTX_VAL:-unset}]"
-    say_row "   4) --yes    [n/a: ACCEPT required]"
-    say_row "   5) Dry-run  [$(onoff "$DRY_RUN")]$(star_if "$DRY_RUN" 1)"
-    say_row "   6) Keep     [$(sw_val --keep "$(onoff "$KEEP_PREFIX")")]$(star_if "$KEEP_PREFIX" 0)"
-    say_row "   7) Start    [$(onoff "$START_FAMILIA")]$(star_if "$START_FAMILIA" 0)"
+    say_row "   2) CTX      [${FAMILIA_CTX_VAL:-unset}]"
+    say_row "   3) --yes    [n/a: ACCEPT required]"
+    say_row "   4) Dry-run  [$(onoff "$DRY_RUN")]$(star_if "$DRY_RUN" 1)"
+    say_row "   5) Keep     [$(sw_val --keep "$(onoff "$KEEP_PREFIX")")]$(star_if "$KEEP_PREFIX" 0)"
+    say_row "   6) Start    [$(onoff "$START_FAMILIA")]$(star_if "$START_FAMILIA" 0)"
     if [ "$SCRIPT_KIND" = hermes ] && [ "$START_FAMILIA" != 1 ]; then
       say_row "      [n/a: hermes always starts]"
     elif ! flag_ok --start && ! flag_ok --no-open; then
@@ -1448,19 +1422,18 @@ paint_safety() {
     fi
     return 0
   fi
-  say_row "   1) Mode (thin client / on-phone inference)     [$(mode_label)]$(star_if "$THIN_CLIENT" 1)"
-  say_row "   2) Context gate 64000                          [$(onoff "$CTX_GATE")]$(star_if "$CTX_GATE" 1)"
+  say_row "   1) Context gate 64000                          [$(onoff "$CTX_GATE")]$(star_if "$CTX_GATE" 1)"
   if flag_ok --no-ctx-gate || env_ok FAMILIA_HERMES_CTX_GATE; then
     :
   else
     say_row "      [$(na_label)]"
   fi
-  say_row "   3) Context override FAMILIA_CTX                [${FAMILIA_CTX_VAL:-unset}]"
-  say_row "   4) Allow --yes"
+  say_row "   2) Context override FAMILIA_CTX                [${FAMILIA_CTX_VAL:-unset}]"
+  say_row "   3) Allow --yes"
   say_row "      [n/a: typed ACCEPT is required; this screen never passes --yes]"
-  say_row "   5) Dry-run                                     [$(onoff "$DRY_RUN")]$(star_if "$DRY_RUN" 1)"
-  say_row "   6) Keep prefix (leaves the prefix on disk)     [$(sw_val --keep "$(onoff "$KEEP_PREFIX")")]$(star_if "$KEEP_PREFIX" 0)"
-  say_row "   7) Start after install                         [$(onoff "$START_FAMILIA")]$(star_if "$START_FAMILIA" 0)"
+  say_row "   4) Dry-run                                     [$(onoff "$DRY_RUN")]$(star_if "$DRY_RUN" 1)"
+  say_row "   5) Keep prefix (leaves the prefix on disk)     [$(sw_val --keep "$(onoff "$KEEP_PREFIX")")]$(star_if "$KEEP_PREFIX" 0)"
+  say_row "   6) Start after install                         [$(onoff "$START_FAMILIA")]$(star_if "$START_FAMILIA" 0)"
   if [ "$SCRIPT_KIND" = hermes ] && [ "$START_FAMILIA" != 1 ]; then
     say_row "      [n/a: install-hermes-android.sh always starts familia-start; turn start ON to run it]"
   elif ! flag_ok --start && ! flag_ok --no-open; then
@@ -1471,58 +1444,58 @@ paint_safety() {
 paint_network() {
   heading "Network"
   if [ "${COMPACT:-0}" = 1 ]; then
-    say_row "   8) HTTPS    [$(sw_val --https "$(onoff "$HTTPS")")]$(star_if "$HTTPS" "$(https_default)")"
-    say_row "   9) Host     [$(host_display)]"
-    say_row "  10) Port     [$(port_display)]"
+    say_row "   7) HTTPS    [$(sw_val --https "$(onoff "$HTTPS")")]$(star_if "$HTTPS" "$(https_default)")"
+    say_row "   8) Host     [$(host_display)]"
+    say_row "   9) Port     [$(port_display)]"
     if _u=$(webapp_url); then
       say_row "      url $_u"
     fi
-    say_row "  11) URL file [${URL_FILE:-unset}]"
+    say_row "  10) URL file [${URL_FILE:-unset}]"
     if ! flag_ok --url-file; then
       say_row "      [$(na_label)]"
     fi
-    say_row "  12) API key  [$(key_display)]"
-    say_row "  24) dev: allow plain HTTP [$(onoff "$DEV_ALLOW_HTTP")]$(star_if "$DEV_ALLOW_HTTP" 0)"
+    say_row "  11) API key  [$(key_display)]"
+    say_row "  23) dev: allow plain HTTP [$(onoff "$DEV_ALLOW_HTTP")]$(star_if "$DEV_ALLOW_HTTP" 0)"
     return 0
   fi
-  say_row "   8) HTTPS                                       [$(sw_val --https "$(onoff "$HTTPS")")]$(star_if "$HTTPS" "$(https_default)")"
-  say_row "   9) Host                                        [$(host_display)]"
-  say_row "  10) Port                                        [$(port_display)]"
+  say_row "   7) HTTPS                                       [$(sw_val --https "$(onoff "$HTTPS")")]$(star_if "$HTTPS" "$(https_default)")"
+  say_row "   8) Host                                        [$(host_display)]"
+  say_row "   9) Port                                        [$(port_display)]"
   if _u=$(webapp_url); then
     say_row "      url  $_u"
   fi
-  say_row "  11) URL file (--url-file)                        [${URL_FILE:-unset}]"
+  say_row "  10) URL file (--url-file)                        [${URL_FILE:-unset}]"
   if ! flag_ok --url-file; then
     say_row "      [$(na_label)]"
   fi
-  say_row "  12) API key file (path only, never the key)     [$(key_display)]"
-  say_row "  24) dev: allow plain HTTP                       [$(onoff "$DEV_ALLOW_HTTP")]$(star_if "$DEV_ALLOW_HTTP" 0)"
+  say_row "  11) API key file (path only, never the key)     [$(key_display)]"
+  say_row "  23) dev: allow plain HTTP                       [$(onoff "$DEV_ALLOW_HTTP")]$(star_if "$DEV_ALLOW_HTTP" 0)"
 }
 
 paint_models() {
   heading "Models"
   if [ "${COMPACT:-0}" = 1 ]; then
-    say_row "  13) Tier     [${TIER:-auto}]"
-    say_row "  14) Runtime  [$RUNTIME_KIND]"
+    say_row "  12) Tier     [${TIER:-auto}]"
+    say_row "  13) Runtime  [$RUNTIME_KIND]"
     if ! flag_ok --runtime && ! env_ok FAMILIA_RUNTIME; then
       say_row "      [$(na_label)]"
     fi
-    say_row "  15) Llama    [$(onoff "$LIC_LLAMA31")]"
-    say_row "  16) Dolphin  [$(onoff "$LIC_DOLPHIN")]"
-    say_row "  17) LFM      [$(onoff "$LIC_LFM")]$(star_if "$LIC_LFM" 0)"
+    say_row "  14) Llama    [$(onoff "$LIC_LLAMA31")]"
+    say_row "  15) Dolphin  [$(onoff "$LIC_DOLPHIN")]"
+    say_row "  16) LFM      [$(onoff "$LIC_LFM")]$(star_if "$LIC_LFM" 0)"
     if ! flag_ok --licenses; then
       say_row "      [$(na_label)]"
     fi
     return 0
   fi
-  say_row "  13) Model tier (auto|tiny|small|medium|large)   [${TIER:-auto}]"
-  say_row "  14) On-phone runtime (cbl|pkg)                  [$RUNTIME_KIND]"
+  say_row "  12) Model tier (auto|tiny|small|medium|large)   [${TIER:-auto}]"
+  say_row "  13) On-device runtime (cbl|pkg)                 [$RUNTIME_KIND]"
   if ! flag_ok --runtime && ! env_ok FAMILIA_RUNTIME; then
     say_row "      [$(na_label)]"
   fi
-  say_row "  15) License set: Llama 3.1                      [$(onoff "$LIC_LLAMA31")]"
-  say_row "  16) License set: Dolphin                        [$(onoff "$LIC_DOLPHIN")]"
-  say_row "  17) License set: LFM                            [$(onoff "$LIC_LFM")]$(star_if "$LIC_LFM" 0)"
+  say_row "  14) License set: Llama 3.1                      [$(onoff "$LIC_LLAMA31")]"
+  say_row "  15) License set: Dolphin                        [$(onoff "$LIC_DOLPHIN")]"
+  say_row "  16) License set: LFM                            [$(onoff "$LIC_LFM")]$(star_if "$LIC_LFM" 0)"
   if ! flag_ok --licenses; then
     say_row "      [$(na_label)]"
   fi
@@ -1531,22 +1504,22 @@ paint_models() {
 paint_advanced() {
   heading "Advanced"
   if [ "${COMPACT:-0}" = 1 ]; then
-    say_row "  18) PyYAML   [$(sw_val --fetch-pyyaml "$(onoff "$FETCH_PYYAML")")]$(star_if "$FETCH_PYYAML" 0)"
-    say_row "  19) CBL pin  [${CBL_TAG:-in-repo pin}]"
-    say_row "  20) Commit   [${COMMIT:-unset}]"
-    say_row "  21) Show installer command"
-    say_row "  22) Run installer (then return here)"
-    say_row "  23) Continue to web cockpit"
+    say_row "  17) PyYAML   [$(sw_val --fetch-pyyaml "$(onoff "$FETCH_PYYAML")")]$(star_if "$FETCH_PYYAML" 0)"
+    say_row "  18) CBL pin  [${CBL_TAG:-in-repo pin}]"
+    say_row "  19) Commit   [${COMMIT:-unset}]"
+    say_row "  20) Show installer command"
+    say_row "  21) Run installer (then return here)"
+    say_row "  22) Continue to web cockpit"
     say_row "   d) Reset to secure defaults"
     say_row "   q) Exit (back to familia home)"
     return 0
   fi
-  say_row "  18) Fetch PyYAML if missing (pip --user)        [$(sw_val --fetch-pyyaml "$(onoff "$FETCH_PYYAML")")]$(star_if "$FETCH_PYYAML" 0)"
-  say_row "  19) CBL pin override (tag + sha256)             [${CBL_TAG:-in-repo pin}]"
-  say_row "  20) Commit (40-hex)                             [${COMMIT:-unset}]"
-  say_row "  21) Show installer command"
-  say_row "  22) Run installer (then return here)"
-  say_row "  23) Continue to web cockpit"
+  say_row "  17) Fetch PyYAML if missing (pip --user)        [$(sw_val --fetch-pyyaml "$(onoff "$FETCH_PYYAML")")]$(star_if "$FETCH_PYYAML" 0)"
+  say_row "  18) CBL pin override (tag + sha256)             [${CBL_TAG:-in-repo pin}]"
+  say_row "  19) Commit (40-hex)                             [${COMMIT:-unset}]"
+  say_row "  20) Show installer command"
+  say_row "  21) Run installer (then return here)"
+  say_row "  22) Continue to web cockpit"
   say_row "   d) Reset to secure defaults"
   say_row "   q) Exit (back to familia home)"
 }
@@ -1556,7 +1529,7 @@ paint_will_run() {
   if [ -n "$_prev" ]; then
     say_row "  will run: $_prev"
   elif installer_available; then
-    say_row "  will run: (set required fields, then 21/22)"
+    say_row "  will run: (set required fields, then 20/21)"
   else
     say_row "  will run: installer not available on this commit"
   fi
@@ -1793,7 +1766,6 @@ edit_cbl() {
 }
 
 reset_defaults() {
-  THIN_CLIENT=1
   CTX_GATE=1
   FAMILIA_CTX_VAL=""
   ALLOW_YES=0
@@ -1819,34 +1791,14 @@ reset_defaults() {
   CBL_URL=""
   API_KEY_FILE=""
   RUNTIME_KIND=cbl
-  say "reset to secure defaults (thin client, gate ON, --yes refused, dry-run ON, no auto-start, self-host http://127.0.0.1:9941, HTTPS on for remote hosts, plain HTTP only with dev: allow plain HTTP)."
+  say "reset to secure defaults (gate ON, --yes refused, dry-run ON, no auto-start, self-host http://127.0.0.1:9941, HTTPS on for remote hosts, plain HTTP only with dev: allow plain HTTP)."
 }
 
 do_choice() {
   _c=$1
   case "$_c" in
-    1)
-      if [ "$THIN_CLIENT" = 1 ]; then
-        if _br=$(onphone_block_reason); then
-          err "on-phone inference is disabled: $_br"
-          return 0
-        fi
-        THIN_CLIENT=0
-      else
-        THIN_CLIENT=1
-        if [ "$START_FAMILIA" = 1 ]; then
-          START_FAMILIA=0
-          say "start turned off (thin client never auto-starts a local server)."
-        fi
-      fi
-      apply_self_host_defaults
-      say "mode=$(mode_label)"
-      if [ -n "$HOST" ] && is_loopback "$HOST"; then
-        say "webapp host $(webapp_url) (this device; a remote host is an explicit opt-in)"
-      fi
-      ;;
-    2) CTX_GATE=$(toggle "$CTX_GATE"); say "gate=$(onoff "$CTX_GATE")" ;;
-    3)
+    1) CTX_GATE=$(toggle "$CTX_GATE"); say "gate=$(onoff "$CTX_GATE")" ;;
+    2)
       _old=$FAMILIA_CTX_VAL
       prompt_val "FAMILIA_CTX integer (or 'clear')" FAMILIA_CTX_VAL
       if [ "$FAMILIA_CTX_VAL" = clear ] || [ "$FAMILIA_CTX_VAL" = unset ]; then
@@ -1855,41 +1807,34 @@ do_choice() {
         err "ctx must be an integer; left unchanged"
         FAMILIA_CTX_VAL=$_old
       fi
-      if [ "$THIN_CLIENT" != 1 ]; then
-        if _br=$(onphone_block_reason); then
-          THIN_CLIENT=1
-          err "on-phone turned off: $_br"
-        fi
+      if _br=$(onphone_block_reason); then
+        err "on-phone requirements changed: $_br"
       fi
       ;;
-    4)
+    3)
       err "allow --yes is n/a: typed ACCEPT is required; this screen never passes --yes"
       ;;
-    5) DRY_RUN=$(toggle "$DRY_RUN"); say "dry-run=$(onoff "$DRY_RUN")" ;;
-    6)
+    4) DRY_RUN=$(toggle "$DRY_RUN"); say "dry-run=$(onoff "$DRY_RUN")" ;;
+    5)
       KEEP_PREFIX=$(toggle "$KEEP_PREFIX")
       say "keep prefix=$(onoff "$KEEP_PREFIX")"
       if [ "$KEEP_PREFIX" = 1 ]; then
         err "warning: --keep leaves the prefix on disk (smoke is throwaway unless --keep)."
       fi
       ;;
-    7)
+    6)
       START_FAMILIA=$(toggle "$START_FAMILIA")
-      if [ "$START_FAMILIA" = 1 ] && [ "$THIN_CLIENT" = 1 ]; then
-        say "start=$(onoff "$START_FAMILIA") (thin client: open the host webapp, no local server)"
-      else
-        say "start=$(onoff "$START_FAMILIA")"
-      fi
+      say "start=$(onoff "$START_FAMILIA")"
       ;;
-    8)
+    7)
       if [ "$HTTPS" = 1 ] && [ -n "$HOST" ] && ! is_https_loopback "$HOST" && [ "$DEV_ALLOW_HTTP" != 1 ]; then
-        err "plain HTTP to a remote host needs 24) dev: allow plain HTTP (or FAMILIA_DEV_ALLOW_HTTP=1); HTTPS left ON"
+        err "plain HTTP to a remote host needs 23) dev: allow plain HTTP (or FAMILIA_DEV_ALLOW_HTTP=1); HTTPS left ON"
       else
         HTTPS=$(toggle "$HTTPS")
         say "https=$(onoff "$HTTPS")"
       fi
       ;;
-    9)
+    8)
       _old=$HOST
       prompt_val "host (hostname, IPv4, or [IPv6])" HOST
       if [ -n "$HOST" ] && ! valid_host "$HOST"; then
@@ -1899,10 +1844,10 @@ do_choice() {
       apply_self_host_defaults
       apply_https_policy
       if [ -n "$HOST" ] && ! is_https_loopback "$HOST" && [ "$HTTPS" = 1 ] && [ "$DEV_ALLOW_HTTP" != 1 ]; then
-        say "HTTPS enabled for remote host (plain HTTP needs 24) dev: allow plain HTTP)"
+        say "HTTPS enabled for remote host (plain HTTP needs 23) dev: allow plain HTTP)"
       fi
       ;;
-    10)
+    9)
       _old=$PORT
       prompt_val "port (1-65535)" PORT
       if [ -n "$PORT" ] && ! valid_port "$PORT"; then
@@ -1910,7 +1855,7 @@ do_choice() {
         PORT=$_old
       fi
       ;;
-    11)
+    10)
       _old=$URL_FILE
       prompt_val "absolute path to --url-file (one-use host link)" URL_FILE
       if [ -n "$URL_FILE" ]; then
@@ -1921,7 +1866,7 @@ do_choice() {
         fi
       fi
       ;;
-    12)
+    11)
       _old=$API_KEY_FILE
       prompt_val "API key file path (not the key itself)" API_KEY_FILE
       if [ -n "$API_KEY_FILE" ]; then
@@ -1932,7 +1877,7 @@ do_choice() {
         fi
       fi
       ;;
-    13)
+    12)
       _old=$TIER
       prompt_val "tier (auto|tiny|small|medium|large)" TIER
       if [ "$TIER" = auto ]; then TIER=""; fi
@@ -1941,26 +1886,26 @@ do_choice() {
         TIER=$_old
       fi
       ;;
-    14)
+    13)
       _old=$RUNTIME_KIND
-      prompt_val "on-phone runtime (cbl|pkg)" RUNTIME_KIND
+      prompt_val "on-device runtime (cbl|pkg)" RUNTIME_KIND
       if ! valid_runtime "$RUNTIME_KIND"; then
         err "runtime must be cbl or pkg; left unchanged"
         RUNTIME_KIND=$_old
       fi
       ;;
-    15) LIC_LLAMA31=$(toggle "$LIC_LLAMA31"); say "llama31=$(onoff "$LIC_LLAMA31")" ;;
-    16) LIC_DOLPHIN=$(toggle "$LIC_DOLPHIN"); say "dolphin=$(onoff "$LIC_DOLPHIN")" ;;
-    17)
+    14) LIC_LLAMA31=$(toggle "$LIC_LLAMA31"); say "llama31=$(onoff "$LIC_LLAMA31")" ;;
+    15) LIC_DOLPHIN=$(toggle "$LIC_DOLPHIN"); say "dolphin=$(onoff "$LIC_DOLPHIN")" ;;
+    16)
       LIC_LFM=$(toggle "$LIC_LFM")
       say "lfm=$(onoff "$LIC_LFM")"
       if [ "$LIC_LFM" = 1 ]; then
         lfm_pin_warning
       fi
       ;;
-    18) FETCH_PYYAML=$(toggle "$FETCH_PYYAML"); say "fetch-pyyaml=$(onoff "$FETCH_PYYAML")" ;;
-    19) edit_cbl ;;
-    20)
+    17) FETCH_PYYAML=$(toggle "$FETCH_PYYAML"); say "fetch-pyyaml=$(onoff "$FETCH_PYYAML")" ;;
+    18) edit_cbl ;;
+    19)
       _old=$COMMIT
       prompt_val "40-hex commit" COMMIT
       if [ -n "$COMMIT" ] && ! valid_commit "$COMMIT"; then
@@ -1968,9 +1913,9 @@ do_choice() {
         COMMIT=$_old
       fi
       ;;
-    21) show_command ;;
-    22) run_installer ;;
-    24)
+    20) show_command ;;
+    21) run_installer ;;
+    23)
       DEV_ALLOW_HTTP=$(toggle "$DEV_ALLOW_HTTP")
       # Menu toggle is what persists; drop any session env override.
       DEV_ALLOW_HTTP_SAVED=$DEV_ALLOW_HTTP
@@ -1985,7 +1930,7 @@ do_choice() {
         fi
       fi
       ;;
-    23|c|C)
+    22|c|C)
       if [ "${FAMILIA_COCKPIT_HOOK:-}" = 1 ]; then
         return 4
       fi

@@ -42,7 +42,7 @@ def test_private_angel_type_names_only():
     assert nodes["guardian"]["status"] == "planned"
     assert nodes["coder"]["host"] == "angel"
     assert nodes["coder"]["model"] == "nanbeige43-33b-q4km"
-    assert nodes["coder"]["status"] == "active"
+    assert nodes["coder"]["status"] == "planned"  # 33B nanbeige deferred (hardware limits, #682)
     assert nodes["chat"]["status"] == "planned"
     assert nodes["coder"]["role"] == "coder"
     assert nodes["chat"]["role"] == "chat"
