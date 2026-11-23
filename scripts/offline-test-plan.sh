@@ -25,5 +25,5 @@ if [[ "${RUN:-0}" == "1" ]]; then
   python3 scripts/hermes_harness.py --selftest-compaction
 else
   echo "Set RUN=1 to execute hermes --selftest-compaction and other live steps."
-  echo "Manual: #40 Vulkan ngl0, #41 cache reuse, #44 qodesh-resident, #43 swapfile paste."
+  echo "Manual: #40 Vulkan ngl0, #41 cache reuse, #44 cpu-resident-coder, #43 swapfile paste."
 fi

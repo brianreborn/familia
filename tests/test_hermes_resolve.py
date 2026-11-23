@@ -180,8 +180,9 @@ def test_single_agent_render_allows_below_min_ctx(capsys, monkeypatch):
     import yaml
     import hermes_modes as hm
     g = yaml.safe_load(open(os.path.join(ROOT, "graph.yaml")))
-    # Synthetic node below hermes min_ctx 64000 (angel-coder is now 65536 / #125).
-    base = g["nodes"].get("angel-coder") or g["nodes"]["coder"]
+    # Synthetic node below hermes min_ctx 64000, cloned from the active coder (the 33B
+    # nanbeige model is deferred for hardware limits and is not required here).
+    base = g["nodes"]["coder"]
     g["nodes"]["small-ctx"] = dict(copy.deepcopy(base), ctx=32768, parallel=1, port=19999, status="active")
     # single_agent refuses nodes on another fleet host; pretend we run on the node's host.
     monkeypatch.setattr(hm.socket, "gethostname", lambda: g["nodes"]["small-ctx"]["host"])
@@ -194,17 +195,17 @@ def test_single_agent_render_allows_below_min_ctx(capsys, monkeypatch):
         hm.single_agent(g, "hermes", "small-ctx", enforce_min_ctx=True)
 
 
-def test_angel_coder_meets_hermes_min_ctx(monkeypatch):
-    """#125: angel-coder.ctx 65536 clears agents.hermes.min_ctx 64000."""
+def test_active_coder_meets_hermes_min_ctx(monkeypatch):
+    """#125: the active coder (ctx 65536) clears agents.hermes.min_ctx 64000.
+    Does not use the 33B nanbeige-coder: it is deferred for hardware limits."""
     import yaml
     import hermes_modes as hm
     g = yaml.safe_load(open(os.path.join(ROOT, "graph.yaml")))
-    if "angel-coder" not in g.get("nodes", {}):
-        pytest.skip("no angel-coder in graph")
-    assert hm.slot(g["nodes"]["angel-coder"]) >= g["agents"]["hermes"]["min_ctx"]
-    monkeypatch.setattr(hm.socket, "gethostname", lambda: g["nodes"]["angel-coder"]["host"])
-    g2, name = hm.single_agent(g, "hermes", "angel-coder", enforce_min_ctx=True)
-    assert name == "hermes@angel-coder"
+    assert g["nodes"]["coder"]["status"] == "active"
+    assert hm.slot(g["nodes"]["coder"]) >= g["agents"]["hermes"]["min_ctx"]
+    monkeypatch.setattr(hm.socket, "gethostname", lambda: g["nodes"]["coder"]["host"])
+    g2, name = hm.single_agent(g, "hermes", "coder", enforce_min_ctx=True)
+    assert name == "hermes@coder"
     assert g2["agents"][name]["context_length"] == 65536
 
 
@@ -245,9 +246,11 @@ def test_path_prefers_full_cli_over_legacy_runner(tmp_path):
     interp = _safe_interp(tmp_path)
     legacy = _write(tmp_path / "bin" / "hermes-agent", _legacy(interp))
     full = _write(tmp_path / "bin" / "hermes", _full(interp))
+    # Exclude snap paths so the test exercises the PATH / which() branch.
+    _exists = lambda p: (os.path.exists(p) and not str(p).startswith("/snap/")) or p in ("/v/bin/python3", "/v/lib")
     b, _py, _sp = hh.resolve_hermes(
         environ={"HERMES_PY": "/v/bin/python3", "HERMES_SP": "/v/lib"},
-        exists=lambda p: os.path.exists(p) or p in ("/v/bin/python3", "/v/lib"),
+        exists=_exists,
         which=lambda n: {"hermes-agent": legacy, "hermes": full}.get(n),
         system="Linux", missing="defaults")
     assert b == full
@@ -258,9 +261,11 @@ def test_path_keeps_non_legacy_hermes_agent(tmp_path):
     interp = _safe_interp(tmp_path)
     wrapper = _write(tmp_path / "bin" / "hermes-agent", "#!/bin/sh\nexec python3 -m hermes_cli.main \"$@\"\n")
     _write(tmp_path / "bin" / "hermes", _full(interp))
+    # Exclude snap paths so the test exercises the PATH / which() branch.
+    _exists = lambda p: (os.path.exists(p) and not str(p).startswith("/snap/")) or p in ("/v/bin/python3", "/v/lib")
     b, _py, _sp = hh.resolve_hermes(
         environ={"HERMES_PY": "/v/bin/python3", "HERMES_SP": "/v/lib"},
-        exists=lambda p: os.path.exists(p) or p in ("/v/bin/python3", "/v/lib"),
+        exists=_exists,
         which=lambda n: wrapper if n == "hermes-agent" else None,
         system="Linux", missing="defaults")
     assert b == wrapper
@@ -327,9 +332,11 @@ def test_sibling_hermes_not_taken_when_world_writable(tmp_path, capsys):
     interp = _safe_interp(tmp_path)
     legacy = _write(tmp_path / "bin" / "hermes-agent", _legacy(interp))
     _write(tmp_path / "bin" / "hermes", _full(interp), mode=0o777)
+    # Exclude snap paths so the test exercises the PATH / which() branch.
+    _exists = lambda p: (os.path.exists(p) and not str(p).startswith("/snap/")) or p in ("/v/bin/python3", "/v/lib")
     b, _py, _sp = hh.resolve_hermes(
         environ={"HERMES_PY": "/v/bin/python3", "HERMES_SP": "/v/lib"},
-        exists=lambda p: os.path.exists(p) or p in ("/v/bin/python3", "/v/lib"),
+        exists=_exists,
         which=lambda n: legacy if n == "hermes-agent" else None, system="Linux", missing="defaults")
     assert b == legacy
     assert "world-writable" in capsys.readouterr().err

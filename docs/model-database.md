@@ -62,6 +62,8 @@ per repo and do not stop the other repos.
 | `card_commands` | the card's / base card's / official GitHub README's examples verbatim: source `repo FILE:Lx-y`, tool, scope (model or family), parsed llama.cpp flags or a `translation` |
 | `required_params` | `kind` (chat / embed / decision / raw), `native_ctx` and its source, `yarn`, and `items`: class REQUIRED / RECOMMENDED / OPTIONAL, flag, value, source, why_required (`@...` items are for the client) |
 | `blockers`, `params_problems`, `params_build` | what prevents a correct launch; unresolved checks; the llama.cpp build the flags were checked against |
+
+`params_build` records the fixed build used to analyze model-card examples and launch parameters. It is separate from the current `code-bootstraps-llama.cpp` serving pin and from each graph node's runtime. Changing this analysis baseline requires regenerating the affected model records and their source evidence; it does not change a running node's runtime.
 | `base_chain`, `github`, `github_dropped` | base models up to 4 levels; the official GitHub repos used (commit-pinned) and links not used |
 | `updated`, `by` | date and tool |
 

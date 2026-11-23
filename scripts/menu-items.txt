@@ -11,6 +11,7 @@ setup.first-time|Set up|First-time setup on this machine (deps → licenses → 
 setup.update|Set up|Update this checkout (git pull --ff-only, then sync pins)|PY scripts/sync_pins.py --update|lic||python scripts\sync_pins.py --update
 setup.licenses|Set up|Review / accept licenses|PY scripts/licenses.py review|||python scripts\licenses.py review
 setup.settings|Set up|Change launcher settings (terminal)|sh scripts/configure.sh --interactive|||
+setup.android-cockpit|Set up|Android installer switches (on-device inference; gate, dry-run, key, host)|sh scripts/android-cockpit-switches.sh|||
 setup.sync-goal|Set up|Sync pinned parts only (asks preview vs apply)|sh scripts/setup_goals.sh sync-pins|lic||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\setup-goals.ps1 -Goal sync-pins
 setup.safe-build|Set up|Safe-mode / offline build help|sh scripts/safe-build-help.sh|||powershell -NoProfile -Command "Write-Host (Get-Content -Raw docs\safe-mode-bootstrap.md)"
 setup.logon-task|Set up|Windows: start the model server at logon (registers the task)||||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-task.ps1 -Install -Model {MODEL:model file name, e.g. qwen2.5-0.5b-instruct-q4_0.gguf}
@@ -25,14 +26,18 @@ reach.enable|Reach tools (Agent-Reach)|Opt an agent into Agent-Reach (writes rea
 reach.disable|Reach tools (Agent-Reach)|Remove an agent from Agent-Reach|PY scripts/agent_reach.py disable --agent {AGENT:agent name [hermes]}|||python scripts\agent_reach.py disable --agent {AGENT:agent name [hermes]}
 reach.link|Reach tools (Agent-Reach)|Link Agent-Reach skill + CLI wrapper into an agent's HERMES_HOME|PY scripts/agent_reach.py link --agent {AGENT:agent name [hermes]}|||python scripts\agent_reach.py link --agent {AGENT:agent name [hermes]}
 reach.mcp|Reach tools (Agent-Reach)|Print mcpServers JSON for llama UI / code-bootstraps|PY scripts/agent_reach.py mcp-example|||python scripts\agent_reach.py mcp-example
+models.list-all|Models|List every graph model, unplaced option, and model-database entry|PY scripts/catalog.py models|||python scripts\catalog.py models
 models.add|Models|Add a model from a Hugging Face folder or a .gguf|scripts/add-model.sh {PATH:model folder or .gguf file}|||python scripts\add_model.py {PATH:model folder or .gguf file}
 models.lfm3|Models|LFM3 family: download an optional LFM3 model (lfm3 lfm3-qad lfm3-vl lfm3-omni lfm3-audio; vision/audio use --mmproj; media picks Linux/macOS only for now)|sh code-bootstraps-llama.cpp/scripts/fetch-models.sh --pick {PICK:LFM3 pick (lfm3 lfm3-qad lfm3-vl lfm3-omni lfm3-audio) [lfm3-vl]}|lic|file:code-bootstraps-llama.cpp/scripts/fetch-models.sh|powershell -NoProfile -ExecutionPolicy Bypass -File code-bootstraps-llama.cpp\scripts\fetch-models.ps1 -Pick {PICK:LFM3 pick (lfm3 lfm3-qad lfm3-vl lfm3-omni lfm3-audio) [lfm3-vl]}
 models.fetch|Models|Download and add a model from Hugging Face (asks you to accept its license)|scripts/add-model.sh --fetch {REPO:Hugging Face repo ORG/NAME[@REV]} --quant {QUANT:quant [Q4_K_M]}|||python scripts\add_model.py --fetch {REPO:Hugging Face repo ORG/NAME[@REV]} --quant {QUANT:quant [Q4_K_M]}
 models.cards|Models|Fetch only a model's card, config and license (no weights)|PY scripts/hf_fetch.py {REPO:Hugging Face repo ORG/NAME[@REV]} --damp-run|||python scripts\hf_fetch.py {REPO:Hugging Face repo ORG/NAME[@REV]} --damp-run
 models.license|Models|Show one model's license and what it obliges you to|PY scripts/model_license.py show {ID:model database id (see Advanced: model database list)}|||python scripts\model_license.py show {ID:model database id (see Advanced: model database list)}
+models.pick|Models|Pick a model for this host: full catalog, search, Enter = host default; previews a host graph (writes generated/ only with --write)|PY scripts/model_pick.py menu --host {HOST:local graph host [hostname]} --role {ROLE:node role [coder]}|||python scripts\model_pick.py menu --host {HOST:local graph host [hostname]} --role {ROLE:node role [coder]}
 models.check|Models|Check graph.yaml: models, RAM budget, required launch parameters|PY scripts/validate_graph.py --graph graph.yaml|||python scripts\validate_graph.py --graph graph.yaml
 models.explain|Models|Show the exact launch parameters for one node|PY scripts/validate_graph.py --graph graph.yaml --explain {NODE:node name, e.g. coder}|||python scripts\validate_graph.py --graph graph.yaml --explain {NODE:node name, e.g. coder}
 models.licenses|Models|List model, skill and engine licenses (records nothing)|PY scripts/licenses.py list|||python scripts\licenses.py list
+graphs.list|Graphs|List every graph and the command that configures it|PY scripts/catalog.py graphs|||python scripts\catalog.py graphs
+graphs.configure|Graphs|Show nodes on one graph and the edit command (writes nothing)|PY scripts/catalog.py configure {GRAPH:graph path or host [graph.yaml]}|||python scripts\catalog.py configure {GRAPH:graph path or host [graph.yaml]}
 agents.hermes-model|Agents (hermes)|Hermes: single model (pick model)|scripts/hermes.sh --model {MODEL:model or node [coder]}|lic|grep:scripts/hermes_modes.py:"--model"|
 agents.hermes-graph|Agents (hermes)|Hermes: full graph|scripts/hermes.sh --graph-mode|lic|grep:scripts/hermes_modes.py:--graph-mode|
 agents.hermes|Agents (hermes)|Hermes on the graph coder node (64K context)|scripts/hermes.sh|lic||
@@ -78,6 +83,7 @@ adv.args|Advanced: models & graph|validate_graph: the llama-server arguments for
 adv.routes|Advanced: models & graph|graph_router (default gateway): check a routes file (single, pair, fallback, chain, router, remote, tools)|PY scripts/graph_router.py {ROUTES:routes file [examples/graphs/router/fallback.yaml]} --check|||python scripts\graph_router.py {ROUTES:routes file [examples\graphs\router\fallback.yaml]} --check
 adv.verify|Advanced: models & graph|validate_graph: also verify model sha256 and runtimes (slow)|PY scripts/validate_graph.py --graph graph.yaml --verify-sha --check-runtimes|||python scripts\validate_graph.py --graph graph.yaml --verify-sha --check-runtimes
 adv.graph-edit|Advanced: models & graph|modify_graph: assign models: key to a type-named node (prefer --host for private topology)|PY scripts/modify_graph.py --host {HOST:host e.g. angel} --assign-model {ASSIGN:type=models-key e.g. coder=nanbeige43-33b-q4km}|||python scripts\modify_graph.py --host {HOST:host e.g. angel} --assign-model {ASSIGN:type=models-key e.g. coder=nanbeige43-33b-q4km}
+adv.protograph|Advanced: models & graph|protograph: recipe -> graph.yaml (dry run; skills/protograph/SKILL.md)|PY scripts/protograph.py {RECIPE:recipe file [skills/protograph/examples/single-chat.recipe.yaml]}|||python scripts\protograph.py {RECIPE:recipe file [skills\protograph\examples\single-chat.recipe.yaml]}
 adv.db-list|Advanced: models & graph|Model database: list entries|PY scripts/model_db.py list|||python scripts\model_db.py list
 adv.db-show|Advanced: models & graph|Model database: show one entry|PY scripts/model_db.py show {ID:model database id}|||python scripts\model_db.py show {ID:model database id}
 adv.db-damp|Advanced: models & graph|Model database: add a repo without weights (damp)|PY scripts/model_db.py damp {REPO:Hugging Face repo ORG/NAME[@REV]}|||python scripts\model_db.py damp {REPO:Hugging Face repo ORG/NAME[@REV]}
@@ -113,6 +119,41 @@ setup.path-remove|Advanced: hosts & benchmarks|Low-level: remove familia PATH bl
 setup.cli-status|Advanced: hosts & benchmarks|Low-level: show where familia is on PATH|sh scripts/install-cli.sh status|||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-cli.ps1 -Status
 setup.uninstall-cli|Advanced: hosts & benchmarks|Low-level: take familia off PATH (asks first)|sh scripts/install-cli.sh uninstall|||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-cli.ps1 -Uninstall
 test.proving-grounds|◆ Proving grounds (graded)|Graded progress on the three top-level proving grounds (fleet + nexus + bt); not pass/fail|sh scripts/proving_grounds.sh|||
+home.models.install|Models|Home: install models|PY scripts/home_catalog.py models install|||python scripts\home_catalog.py models install
+home.models.list|Models|Home: list models|PY scripts/home_catalog.py models list|||python scripts\home_catalog.py models list
+home.models.start|Models|Home: start models (API key; --apply)|PY scripts/home_catalog.py models start|||python scripts\home_catalog.py models start
+home.models.stop|Models|Home: stop models (--apply)|PY scripts/home_catalog.py models stop|||python scripts\home_catalog.py models stop
+home.models.status|Models|Home: models status|PY scripts/home_catalog.py models status|||python scripts\home_catalog.py models status
+home.harnesses.install|Self-improving harness (Harness2)|Home: install harnesses|PY scripts/home_catalog.py harnesses install|||python scripts\home_catalog.py harnesses install
+home.harnesses.list|Self-improving harness (Harness2)|Home: list harnesses|PY scripts/home_catalog.py harnesses list|||python scripts\home_catalog.py harnesses list
+home.harnesses.start|Self-improving harness (Harness2)|Home: start harnesses (--apply)|PY scripts/home_catalog.py harnesses start|||python scripts\home_catalog.py harnesses start
+home.harnesses.stop|Self-improving harness (Harness2)|Home: stop harnesses (--apply)|PY scripts/home_catalog.py harnesses stop|||python scripts\home_catalog.py harnesses stop
+home.harnesses.status|Self-improving harness (Harness2)|Home: harness status|PY scripts/home_catalog.py harnesses status|||python scripts\home_catalog.py harnesses status
+home.agents.install|Agents (hermes)|Home: install agents|PY scripts/home_catalog.py agents install|||python scripts\home_catalog.py agents install
+home.agents.list|Agents (hermes)|Home: list agents|PY scripts/home_catalog.py agents list|||python scripts\home_catalog.py agents list
+home.agents.start|Agents (hermes)|Home: start agents (API key; --apply)|PY scripts/home_catalog.py agents start|||python scripts\home_catalog.py agents start
+home.agents.stop|Agents (hermes)|Home: stop agents (--apply)|PY scripts/home_catalog.py agents stop|||python scripts\home_catalog.py agents stop
+home.agents.status|Agents (hermes)|Home: agents status|PY scripts/home_catalog.py agents status|||python scripts\home_catalog.py agents status
+home.mcp.install|MCP servers|Home: install MCP servers (no listener)|PY scripts/home_catalog.py mcp install|||python scripts\home_catalog.py mcp install
+home.mcp.list|MCP servers|Home: list MCP servers|PY scripts/home_catalog.py mcp list|||python scripts\home_catalog.py mcp list
+home.mcp.start|MCP servers|Home: start MCP servers (refuses to bind)|PY scripts/home_catalog.py mcp start|||python scripts\home_catalog.py mcp start
+home.mcp.stop|MCP servers|Home: stop MCP servers|PY scripts/home_catalog.py mcp stop|||python scripts\home_catalog.py mcp stop
+home.mcp.status|MCP servers|Home: MCP server status|PY scripts/home_catalog.py mcp status|||python scripts\home_catalog.py mcp status
+home.tools.install|Tool sets|Home: install tool sets|PY scripts/home_catalog.py tools install|||python scripts\home_catalog.py tools install
+home.tools.list|Tool sets|Home: list tool sets|PY scripts/home_catalog.py tools list|||python scripts\home_catalog.py tools list
+home.tools.start|Tool sets|Home: start tool sets (not a process)|PY scripts/home_catalog.py tools start|||python scripts\home_catalog.py tools start
+home.tools.stop|Tool sets|Home: stop tool sets|PY scripts/home_catalog.py tools stop|||python scripts\home_catalog.py tools stop
+home.tools.status|Tool sets|Home: tool set status|PY scripts/home_catalog.py tools status|||python scripts\home_catalog.py tools status
+home.apps.install|App store|Home: install from the app store (no download)|PY scripts/home_catalog.py apps install|||python scripts\home_catalog.py apps install
+home.apps.list|App store|Home: list the app store|PY scripts/home_catalog.py apps list|||python scripts\home_catalog.py apps list
+home.apps.start|App store|Home: start app store (no listener)|PY scripts/home_catalog.py apps start|||python scripts\home_catalog.py apps start
+home.apps.stop|App store|Home: stop the app store|PY scripts/home_catalog.py apps stop|||python scripts\home_catalog.py apps stop
+home.apps.status|App store|Home: app store status|PY scripts/home_catalog.py apps status|||python scripts\home_catalog.py apps status
+home.apps.browse|App store|Home: browse the app store (tweet cards; gum or plain text)|sh scripts/appstore.sh|||python scripts\appstore.py text
+home.apps.web|App store|Home: write the app store web page (static HTML, no remote loads)|PY scripts/appstore.py html|||python scripts\appstore.py html
+home.talk|Front door|Talk to the protomodel|sh scripts/proto_chat.sh|||
+home.find-models|Front door|Find more models|sh scripts/find_models.sh|||
+home.search-x|Front door|Search my X / Twitter posts|sh scripts/search_x.sh|||
 help.quickstart|Help|Read the quick start|PAGER QUICKSTART.md|||more QUICKSTART.md
 help.search|Help|Search every group for a word (in the menu: /word, then n / N)|./familia-menu.sh --search {WORD:word to look for, e.g. model}|||familia.cmd -Search {WORD:word to look for, e.g. model}
 help.cli|Help|Every menu item as a command (same as --list)|./familia-menu.sh --list|||familia.cmd -List

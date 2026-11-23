@@ -1,6 +1,6 @@
 # Heavyweight-model escalation (semi-automatic)
 
-The light node (e.g. `qodesh-smol-cpu`, SmolLM2) handles everything by default.
+The light node (e.g. `cpu-smol-decision`, SmolLM2) handles everything by default.
 When a session looks stuck, familia can swap in a heavier model, then swap back.
 
 > **Status (2026-10-19):** the graph fields, the decision/consent/handoff CLI and the
@@ -12,7 +12,7 @@ When a session looks stuck, familia can swap in a heavier model, then swap back.
 ## Graph fields (per node, optional)
 
 ```yaml
-escalates_to: [coder, qodesh-resident]   # ordered fallback list; may be on other hosts
+escalates_to: [coder, cpu-resident-coder]   # ordered fallback list; may be on other hosts
 escalation:
   mode: suggest        # off | suggest (default) | auto
   triggers:            # all optional; defaults shown
@@ -36,7 +36,7 @@ reported as `crosses_host: true`.
 
 - Signals: `outputs`, `failures`, `user_messages`, `tags`, `elapsed_s`, `reply_tokens`.
 - Targets are ranked by best measured tg t/s from `registry/records.jsonl` for that
-  model on that host (e.g. miryam `coder` 17.4 t/s beats `qodesh-resident` 0.91 t/s);
+  model on that host (e.g. miryam `coder` 17.4 t/s beats `cpu-resident-coder` 0.91 t/s);
   unmeasured targets go last; unreachable hosts are dropped. ETA = reply_tokens / t/s.
 - The system may suggest an edge but never opens one unasked. `auto` only applies
   when the node's mode is `auto` AND (same host OR consent recorded for that
@@ -54,8 +54,8 @@ node once the heavy reply lands.
 ## CLI
 
 ```
-python scripts/escalate.py decide --node qodesh-smol-cpu --signals s.json [--reachable qodesh,miryam]
-python scripts/escalate.py consent --node qodesh-smol-cpu --target coder
+python scripts/escalate.py decide --node cpu-smol-decision --signals s.json [--reachable qodesh,miryam]
+python scripts/escalate.py consent --node cpu-smol-decision --target coder
 python scripts/escalate.py handoff --signals s.json
 python scripts/escalate.py accept       # accept the pending suggestion from the proxy
 ```

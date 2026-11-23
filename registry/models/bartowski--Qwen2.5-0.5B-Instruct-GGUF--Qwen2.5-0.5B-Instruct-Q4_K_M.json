@@ -1066,7 +1066,7 @@
   }
  },
  "found_in": [
-  "graph.yaml models.qwen25-05b-q4km-phone"
+  "graph.yaml models.qwen25-05b-q4km-termux"
  ],
  "match": "LFS sha256 match",
  "local_check": null,

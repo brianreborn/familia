@@ -14,7 +14,7 @@ Record per run (JSONL under `~/perf/logs/` or install-notes `perf/`):
 
 | Field | Example |
 |-------|---------|
-| host / node | angel / angel-coder |
+| host / node | angel / nanbeige-coder |
 | load_mode | mmap |
 | swap_used_mib before/after | from `swapinfo` |
 | RSS / VSZ peak | `ps` / `top` |

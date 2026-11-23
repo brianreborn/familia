@@ -10,10 +10,10 @@ import pytest
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MENU = os.path.join(ROOT, "familia-menu.sh")
 ITEMS_FILE = os.path.join(ROOT, "scripts", "menu-items.txt")
-GROUPS = ["Set up", "Skills", "Reach tools (Agent-Reach)", "Models", "Agents (hermes)", "App catalog",
+GROUPS = ["Set up", "Skills", "Reach tools (Agent-Reach)", "Models", "Graphs", "Agents (hermes)", "App catalog",
           "Self-improving harness (Harness2)", "Test & benchmark", "Hosts",
           "Advanced: models & graph", "Advanced: agents", "Advanced: hosts & benchmarks",
-          "◆ Proving grounds (graded)", "Help"]
+          "◆ Proving grounds (graded)", "MCP servers", "Tool sets", "App store", "Front door", "Help"]
 INTERNAL_FILE = os.path.join(ROOT, "scripts", "menu-internal.txt")
 # --help works but has no usage/example line yet; owned by another job (familia #74).
 HELP_NO_EXAMPLE = {"scripts/serve.sh"}
@@ -106,7 +106,7 @@ def test_local_host_measure_menu_uses_short_hostname_as_default(tmp_path):
     state = tmp_path / "state"
     state.mkdir()
     hostname = subprocess.check_output(["hostname"], text=True).strip().split(".", 1)[0].lower()
-    r = menu("--pipe", "--dry-run", inp="9\n5\n\nlaptop\nq\n", XDG_STATE_HOME=str(state))
+    r = menu("--pipe", "--dry-run", inp="10\n5\n\nlaptop\nq\n", XDG_STATE_HOME=str(state))
     assert r.returncode == 0, (r.stdout, r.stderr)
     assert f"local graph host [{hostname}]" in r.stderr
     assert f"--name {hostname}" in r.stdout
@@ -117,7 +117,7 @@ def test_local_host_measure_menu_prefers_hostname_pin(tmp_path):
     fam = state / "familia"
     fam.mkdir(parents=True)
     (fam / "hostname").write_text("phone7\n", encoding="utf-8")
-    r = menu("--pipe", "--dry-run", inp="9\n5\n\nlaptop\nq\n", XDG_STATE_HOME=str(state))
+    r = menu("--pipe", "--dry-run", inp="10\n5\n\nlaptop\nq\n", XDG_STATE_HOME=str(state))
     assert r.returncode == 0, (r.stdout, r.stderr)
     assert "local graph host [phone7]" in r.stderr
     assert "--name phone7" in r.stdout
@@ -235,8 +235,11 @@ def test_piped_choices():
     assert r.returncode == 0, r.stderr
     assert "Running: python3 scripts/skills.py list" in r.stdout
     assert "green-probe" in r.stdout and "license-blocked" in r.stdout
-    r = menu("--pipe", "--dry-run", inp="9\nx\n2\n7\nq\n")
-    assert "isn't one of the choices" in r.stdout
+    # Only invalid picks (#227): a valid pick here once ran model_db.py backfill (network) and hung
+    # the test for 120 s after the groups were renumbered. --dry-run stays as a second guard.
+    r = menu("--pipe", "--dry-run", inp="99\nx\n2\n99\nb\nq\n")
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.count("isn't one of the choices") >= 3, r.stdout[-800:]
 
 
 def test_menu_choice_accepts_environment_assignments_and_forwarded_arguments():
@@ -255,8 +258,8 @@ def test_search_choice_accepts_environment_assignments_and_forwarded_arguments()
 
 
 def test_long_group_is_paged_instead_of_showing_a_wall_of_items():
-    # Hosts has 11 items after the phone assistants moved to App catalog (#397; page_size 7).
-    r = menu("--pipe", "--dry-run", inp="9\n>\n<\nb\nq\n")
+    # Hosts has 11 items after the six phone-assistant entries moved to App catalog (page_size 7).
+    r = menu("--pipe", "--dry-run", inp="10\n>\n<\nb\nq\n")
     assert r.returncode == 0, r.stderr
     assert "Page 1 of 2 (items 1-7 of 11)" in r.stdout
     assert "Page 2 of 2 (items 8-11 of 11)" in r.stdout
@@ -327,7 +330,8 @@ def test_familia_home_list_goals():
     r = subprocess.run(["sh", home, "--list-goals"], cwd=ROOT, capture_output=True, text=True, env=env())
     assert r.returncode == 0, r.stderr
     out = r.stdout
-    for goal in ("Talk to the protomodel", "Find more models", "Search my X / Twitter posts",
+    for goal in ("Talk to the protomodel", "Find more models", "List all models",
+                 "Configure all graphs", "Search my X / Twitter posts",
                  "Install / first-time setup", "Proving grounds", "Legacy menu"):
         assert goal in out, goal
     r2 = subprocess.run(["sh", os.path.join(ROOT, "familia")], cwd=ROOT, capture_output=True, text=True,

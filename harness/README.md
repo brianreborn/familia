@@ -10,4 +10,4 @@ Linux/Termux/FreeBSD/Windows). It is not a Harness² target and is not loaded by
 hermes (hermes needs 64K). Use it with the graph alias `safe-build` /
 `docs/safe-mode-bootstrap.md`. The weights identity in the pinned
 code-bootstraps component is **Laya-Q8_0.gguf** (decision/route); the chat face
-is SmolLM2-135M via `miryam-gpu-decision`.
+is SmolLM2-135M via `vulkan-igpu-decision`.

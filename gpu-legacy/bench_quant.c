@@ -2,9 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <windows.h>
 #include "sm11_shim.h"
-static double qpc_ms(void){static LARGE_INTEGER f;static int i;LARGE_INTEGER c;if(!i){QueryPerformanceFrequency(&f);i=1;}QueryPerformanceCounter(&c);return 1000.0*(double)c.QuadPart/(double)f.QuadPart;}
+#include "sm11_compat.h"
+#define qpc_ms() sm11_time_ms()
 static void pack_q4(const float* w,int n,int d,void* out){
   unsigned char* o=(unsigned char*)out;
   for(int row=0;row<d;row++) for(int b=0;b<n/32;b++){

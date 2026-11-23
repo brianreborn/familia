@@ -302,9 +302,10 @@ def test_h4_tool_enabled_server_requires_api_key(tmp_path, monkeypatch):
         a = v.launch_tools_argv(g, "coder-a")
         assert a[0] == "--tools" and a[-2:] == ["--api-key-file", path] and "--api-key" not in a
     g = _g(); g["nodes"]["coder-a"]["server_tools"] = "none"
-    assert v.launch_tools_argv(g, "coder-a") == []  # no tools -> argv unchanged
+    assert v.launch_tools_argv(g, "coder-a") == []  # no tools here; server_args still adds launch_auth_argv
     import inspect
-    assert "launch_tools_argv(graph, name)" in inspect.getsource(v.server_args)  # the one argv owner
+    src = inspect.getsource(v.server_args)
+    assert "launch_tools_argv(graph, name) or launch_auth_argv(graph, name)" in src
     # fail closed when the key file cannot be created
     monkeypatch.setenv("API_KEY_FILE", "/proc/familia-h4-no-such/api-keys")
     import pytest

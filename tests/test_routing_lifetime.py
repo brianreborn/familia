@@ -28,11 +28,14 @@ def tree(tmp_path):
     t = tmp_path / "repo"; (t / "scripts").mkdir(parents=True); (t / "lib").mkdir()
     shutil.copy(os.path.join(ROOT, "scripts", "serve.sh"), t / "scripts" / "serve.sh")
     shutil.copy(os.path.join(ROOT, "lib", "msg.mk"), t / "lib" / "msg.mk")
+    for _n in ("bind_auth_guard.py", "familia_auth.py"):
+        shutil.copy(os.path.join(ROOT, "scripts", _n), t / "scripts" / _n)
+    kf = tmp_path / "api-keys"; kf.write_text("k" * 32); kf.chmod(0o600)
     srv = tmp_path / "bin" / "llama-server"; srv.parent.mkdir(); srv.write_text(FAKE_SERVER); srv.chmod(0o755)
     model = tmp_path / "m.gguf"; model.write_bytes(b"GGUF")
     pidfile = tmp_path / "server.pid"
     (t / "scripts" / "validate_graph.py").write_text(
-        f"print({str(srv)!r} + ' -m ' + {str(model)!r} + ' -ngl 0 --tools all --pidfile ' + {str(pidfile)!r})\n")
+        f"print({str(srv)!r} + ' -m ' + {str(model)!r} + ' -ngl 0 --tools all --pidfile ' + {str(pidfile)!r} + ' --api-key-file ' + {str(kf)!r})\n")
     (t / "scripts" / "licenses.py").write_text("raise SystemExit(0)\n")
     env = dict(os.environ, FAMILIA_MEMCAP="0", FAMILIA_GUARD="0", FAMILIA_LOG_DIR=str(tmp_path / "logs"))
     env.pop("FAMILIA_HOST", None)
@@ -68,6 +71,26 @@ def _spawn(argv, **kw):
     """start_graph.run launches serve.sh/gateway with start_new_session=True (own group)."""
     f = getattr(start_graph, "spawn_child", None)
     return f(argv, **kw) if f else subprocess.Popen(argv, start_new_session=True, **kw)
+
+
+def test_sigterm_to_serve_sh_reaps_the_server_child(tree):
+    """SIGTERM to the serve.sh pid alone, during the server run, must not orphan it."""
+    t, pidfile, env = tree
+    child = subprocess.Popen(
+        ["sh", str(t / "scripts" / "serve.sh"), "coder"], cwd=str(t), env=env,
+    )
+    pid = None
+    try:
+        pid, _port = _wait_pidfile(pidfile)
+        os.kill(child.pid, signal.SIGTERM)
+        assert child.wait(timeout=8) == 143
+        assert _gone(pid), "llama-server stand-in survived SIGTERM to serve.sh"
+    finally:
+        if child.poll() is None:
+            child.kill()
+            child.wait()
+        if pid and _alive(pid):
+            os.kill(pid, signal.SIGKILL)
 
 
 def test_stop_children_reaps_serve_sh_runtime_and_frees_port(tree):

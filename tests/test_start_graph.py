@@ -31,7 +31,7 @@ def test_local_topology_starts_only_local_active_nodes_and_routes():
     nodes, remote, gateways, omitted, remote_gateways = start_graph.local_topology(graph(), "miryam")
     # embed is planned since 146b712 (#38 defers EmbeddingGemma-2): listed in omitted, not started
     assert nodes == ["coder"]
-    assert {name for name, _ in remote} >= {"qodesh-gpu-decision", "qodesh-resident"}
+    assert {name for name, _ in remote} >= {"cuda-sm11-decision", "cpu-resident-coder"}
     assert len(gateways) == 1
     name, gateway, aliases = gateways[0]
     assert name == "roomz"
@@ -47,9 +47,10 @@ def test_local_topology_starts_only_local_active_nodes_and_routes():
 
 
 def test_freebsd_host_runs_its_nodes_without_starting_a_gateway():
-    # angel-coder is active on angel since the Nanbeige prize; the gateway stays on miryam
+    # the 33B nanbeige nodes are deferred (hardware limits, #682): angel starts no local node;
+    # the gateway stays on miryam
     nodes, remote, gateways, omitted, remote_gateways = start_graph.local_topology(graph(), "angel")
-    assert nodes == ["angel-coder"]
+    assert nodes == []
     assert remote
     assert gateways == []
     assert omitted == []
@@ -58,9 +59,9 @@ def test_freebsd_host_runs_its_nodes_without_starting_a_gateway():
 
 def test_local_active_node_with_unimplemented_runtime_fails_closed():
     g = graph()
-    g["nodes"]["qodesh-gpu-decision"]["host"] = "miryam"
+    g["nodes"]["cuda-sm11-decision"]["host"] = "miryam"
     with pytest.raises(start_graph.StartupError, match="unsupported runtime kind"):
-        start_graph.validate_local_nodes(g, "miryam", ["qodesh-gpu-decision"], check_files=False)
+        start_graph.validate_local_nodes(g, "miryam", ["cuda-sm11-decision"], check_files=False)
 
 
 def test_graph_proxy_manifest_preserves_graph_routes_without_remote_aliases():

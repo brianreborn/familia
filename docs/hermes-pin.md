@@ -63,10 +63,21 @@ That loads the rendered HERMES_HOME with that hermes (config schema incl. `mcp_s
 `approvals`, toolsets, MCP `${VAR}` interpolation, aux routing, skills, child-process symbols).
 Then update the channel's entry in `config/hermes-agent.pins.json`.
 
+On every pin bump, re-verify that `_try_openrouter` still returns early when
+`free_only` is set and the model is not `:free` / `stealth/` (v0.22.6:
+`agent/auxiliary_client.py`). If that skip hatch is gone, local-only must not
+rely on it alone.
+
 `vision`, `voice_chat`, `moa_reference` and `moa_aggregator` are also pinned to the local node, and
 Mixture of Agents is disabled with a local-only `moa.presets.default` (upstream's built-in preset
 uses openai-codex and openrouter). A node without vision or voice fails those tasks locally instead
-of upstream's `auto` falling through to a cloud provider. Cloud LLM credentials are removed from
+of upstream's `auto` falling through to a cloud provider. The same local-only render also sets
+`auxiliary.free_only: true` and `auxiliary.openrouter_model: disabled` so hermes-agent's
+OpenRouter aux auto-chain is skipped (upstream stock default is a hosted
+OpenRouter SKU; runtime default a `:free` Nemotron; Gemini is on the Nous lane).
+`providers` is written `{}` and `custom_providers` is written `[]`.
+`fallback_providers: []` is the v0.22.6 disable switch;
+`fallback_model` and `smart_model_routing` stay omitted so they stay disabled. Cloud LLM credentials are removed from
 the hermes child environment: every env name the installed hermes-agent's provider registry declares
 (`hermes_cli/auth.py` rows and `plugins/model-providers/*` `env_vars`, parsed from its source, never
 imported), plus a static superset (`*_API_KEY`, `*_API_TOKEN`, `ANTHROPIC_TOKEN`,
@@ -84,8 +95,32 @@ Ambient non-LLM secrets are not carried into hermes (and so not into its termina
 `*_PASSWD`, `*_PWD`, `*_TOKEN`, `*_PRIVATE_KEY`, `*_DSN`, `*_DATABASE_URL`, `*_DB_URL`,
 `*_REDIS_URL`, `*AMQP*_URL`/`_URI`, `MONGO*`/`POSTGRES*`/`MYSQL*`/`RABBITMQ*_URL`/`_URI`.
 Secret-shaped names are matched before any keep list, so `FAMILIA_GH_TOKEN` and `HERMES_TOKEN`
-drop too. Any var whose value has URL userinfo (`scheme://user:pass@…` or `scheme://token@host`,
-no colon required) is also dropped (plain URLs such as a local llama endpoint are kept). `*_URI`
+drop too. Any var whose value has URL userinfo is also dropped: `scheme://userinfo@…`
+(including `token@host`, no colon required, a vendor:driver: prefix such as
+`jdbc:mysql://user:pass@host`, and values wrapped in quotes, a leading BOM, or
+whitespace), scheme-relative `//userinfo@host`, and schemeless `user:pass@host`.
+Password-less git/ssh remotes with a conventional login are kept (`git@host:path`,
+`user@host/path`, `ssh://git@host/path`, `git+ssh://…`, `org-<digits>@host:path`);
+a password in those forms, including a percent-encoded colon (`%3A`), still drops.
+A token-shaped username (`ssh://token@host`, `token@host:path`) is not exempt and
+drops. The git/ssh exemption applies per URL, so a value that starts with a
+password-less `ssh://git@host` remote and later carries `https://user:pass@…`
+still drops.
+ `user@localhost:22` with a conventional login is kept as the same
+password-less scp-style shape (host:port and scp path are not distinguished);
+bare `user@localhost` still drops. Percent-encoded `@` and `:` (`%40`, `%3A`,
+including double-encoded `%2540` and triple-encoded `%252540`) are decoded before
+the check, capped at three unquote rounds. If a further round would still change
+the value (four or more `%25` layers, e.g. `%25252540`), the value is dropped —
+the cap fails closed on depth rather than leaving a still-encoded delimiter in
+place. An encoded slash (`%2F`) is not decoded first, so a
+slash inside a password cannot hide the `@`. Plain URLs
+such as a local llama endpoint are kept. A whole-value plain email (`alice@example.com`) is
+also kept so harmless vars like `ADMIN_EMAIL` are not scrubbed; `mailto:alice@example.com`
+is kept, but `mailto:user:pass@host` and other harmless-scheme values with userinfo
+(`tag:pw@host`) drop. `//alice@example.com` and
+`user@localhost` are not treated as emails and still drop. `pkg@1.2.3` (npm/pip
+specs) also drops as bare user@host. `*_URI`
 is value-based: dropped only when the value has userinfo or a known credential DSN scheme
 (`postgres://`, `mongodb://`, `redis://`, `amqp://`, …); names like `REDIRECT_URI` stay.
 Graph-declared MCP names and harness control vars (`HERMES_HOME`, `FAMILIA_API_KEY`, …) are kept.

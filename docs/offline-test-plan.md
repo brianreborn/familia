@@ -35,9 +35,9 @@ python3 scripts/hermes_harness.py --escalate --light <light-node>
 # cross-host needs consented tunnel; binds are 127.0.0.1
 ```
 
-## E. qodesh-resident (#44)
+## E. cpu-resident-coder (#44)
 ```powershell
-# Windows: start qodesh-resident; one completion; then co-run with GPU SmolLM2; watch free RAM
+# Windows: start cpu-resident-coder; one completion; then co-run with GPU SmolLM2; watch free RAM
 ```
 
 ## F. Pre-existing failures (#45, closed)

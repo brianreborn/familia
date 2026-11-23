@@ -294,24 +294,42 @@ def validate(graph, check_files=True, host=None):
             WARNINGS.append(
                 f"hosts.{h}: estimated free after nodes {free_after:.0f} MiB < 2048 MiB provisional floor "
                 f"on host with ram_mib {ram} < 8192 (guidance; see docs/ram-safety.md)")
+    # TR-4 (#621): refuse node.role override when either node.role or model.role is fail-closed
+    for nn, nd in (graph.get("nodes") or {}).items():
+        if nd.get("role"):
+            nr = normalize_role(nd["role"])
+            mr = normalize_role(((graph.get("models") or {}).get(nd.get("model")) or {}).get("role"))
+            if (nr in FAIL_CLOSED_TYPES or mr in FAIL_CLOSED_TYPES) and nr != mr:
+                # Allow guardian/pentest/defender aliases among themselves (e.g. public flavor), but reject routable overrides
+                if not (nr in FAIL_CLOSED_TYPES and mr in FAIL_CLOSED_TYPES):
+                    errs.append(f"nodes.{nn}: role {nd['role']!r} overrides fail-closed model role {mr!r} (TR-4)")
+
     errs += check_vvram_policy(graph, metas=metas)
     return errs, totals
 
 # Vulkan llama.cpp builds allocate ~1.83 GB of Vulkan host buffers in shmem even with -ngl 0
 # (miryam, b11374), which counts against the memcap scope and stalls the server. With no GPU
 # layers, hide the Vulkan devices. An explicit GGML_VK_VISIBLE_DEVICES in env wins.
-def tool_key_file(n, env=None):
-    """Per-instance key file for a tool-enabled node (created 0600 once, never rotated).
-    Fails closed: no readable key -> SystemExit, the node does not start."""
+def tool_key_path(n, env=None):
+    """Path of the per-instance key file for a node. Never a graph.yaml value.
+    The file is not created here; serve.sh / bind_auth_guard.py --ensure creates it
+    once (0600) at launch if needed."""
     import familia_auth
     env = os.environ if env is None else env
-    path = env.get("API_KEY_FILE") or familia_auth.instance_key_file(port=n["port"], env=env)
+    return env.get("API_KEY_FILE") or familia_auth.instance_key_file(port=n["port"], env=env)
+
+
+def tool_key_file(n, env=None):
+    """Per-instance key file (created 0600 once, never rotated).
+    Fails closed: no readable key -> SystemExit, the node does not start."""
+    import familia_auth
+    path = tool_key_path(n, env)
     try:
         k = familia_auth.load_or_create_key_file(path)
     except OSError as e:
-        raise SystemExit(f"graph: ERROR: tool-enabled node on port {n['port']}: cannot create its API key file ({e.__class__.__name__}); not starting")
+        raise SystemExit(f"graph: ERROR: node on port {n['port']}: cannot create its API key file ({e.__class__.__name__}); not starting")
     if not k:
-        raise SystemExit(f"graph: ERROR: tool-enabled node on port {n['port']}: empty API key file; not starting")
+        raise SystemExit(f"graph: ERROR: node on port {n['port']}: empty API key file; not starting")
     return path
 
 def server_env(graph, name, env=None):
@@ -541,6 +559,18 @@ def check_swap_budgets(graph, host=None):
 FAIL_CLOSED_TYPES = ("guardian", "pentest", "defender")
 
 
+def is_fail_closed(graph, name):
+    """True if either the node's normalized role or its model's normalized role is fail-closed.
+    Prevents role overrides on a node from bypassing fail-closed model restrictions (TR-4, #621)."""
+    n = (graph.get("nodes") or {}).get(name) or {}
+    node_role = normalize_role(n.get("role"))
+    if node_role in FAIL_CLOSED_TYPES:
+        return True
+    m = (graph.get("models") or {}).get(n.get("model")) or {}
+    model_role = normalize_role(m.get("role"))
+    return model_role in FAIL_CLOSED_TYPES
+
+
 def normalize_role(role):
     """Casefold + NFKC so Guardian / GUARDIAN / fullwidth forms match the TYPE names.
 
@@ -608,7 +638,7 @@ def tool_route(graph, name):
     t = (nodes.get(name) or {}).get("tool_route")
     if not isinstance(t, str) or t == name or t not in nodes:
         return None
-    if node_type(graph, t) in FAIL_CLOSED_TYPES or nodes[t].get("tool_route"):
+    if is_fail_closed(graph, t) or nodes[t].get("tool_route"):
         return None
     if not tool_capable(graph, t) or tool_policy(graph, t) == []:
         return None
@@ -625,7 +655,7 @@ def tool_policy(graph, name):
       TOOLS-007/008); shell/write tools need an explicit server_tools;
       tool-capable via a validated `tool_route` -> the target's tool_policy (TOOLS-009); else []."""
     n = graph["nodes"][name]
-    if node_type(graph, name) in FAIL_CLOSED_TYPES:
+    if is_fail_closed(graph, name):
         return []
     if "server_tools" in n:
         st = n.get("server_tools")
@@ -656,12 +686,20 @@ def tools_argv(graph, name):
     return []
 
 
+def launch_auth_argv(graph, name, env=None):
+    """Always pass --api-key-file (CFG-CRED-009 / CFG-GRAPH-NODES-112). The key FILE is
+    passed, never the key, so it does not show in argv/ps. Path only: the file is created
+    at launch if missing."""
+    return ["--api-key-file", tool_key_path(graph["nodes"][name], env)]
+
+
 def launch_tools_argv(graph, name):
     """--tools plus, on every tool-enabled server, --api-key-file (H4): llama-server then
     requires the per-instance key on every endpoint, /tools included. The key FILE is passed,
-    never the key, so it does not show in argv/ps."""
+    never the key, so it does not show in argv/ps. No-tools launches still get the key
+    from server_args via launch_auth_argv."""
     ta = tools_argv(graph, name)
-    return ta + ["--api-key-file", tool_key_file(graph["nodes"][name])] if ta else []
+    return ta + launch_auth_argv(graph, name) if ta else []
 
 
 def quantized_v_needs_fa(n):
@@ -693,7 +731,8 @@ def server_args(graph, name):
     a += ["--cache-ram", str(n["cache_ram_mib"])]
     # llama-ui Server Tools: /tools is feature_disabled (403) unless --tools is set at launch.
     # DUP-04/CFG-SPEC-TOOLS: explicit per-TYPE decision on every launch (override via server_tools).
-    a += launch_tools_argv(graph, name)
+    # CFG-GRAPH-NODES-112: every llama-server launch also gets --api-key-file, tools or not.
+    a += launch_tools_argv(graph, name) or launch_auth_argv(graph, name)
     # Model parameters (#51): REQUIRED + RECOMMENDED from the model database (cards, configs,
     # GGUF), node.sampling / override_reasons applied. A REQUIRED one that cannot be met is fatal.
     import model_db
