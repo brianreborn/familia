@@ -17,8 +17,8 @@ them on 2026-11-22.
 | vulkan-handset-decision | phone7 | SmolLM2-135M-Instruct-Q4_0 | termux-llama-cpp-0.6.0 | — | test_graph_types | phone7 online with Termux pkg; no flag table for the Termux pkg build |
 | vulkan-handset-general | phone8 | Qwen2.5-0.5B-Instruct-Q4_K_M | termux-llama-cpp-0.6.0 | — | (none) | phone8 online with Termux pkg; no flag table for the Termux pkg build |
 | embed | miryam | embeddinggemma-2-Q8_0 | **llama-b12359** (was llama-b11944) | embed | test_start_graph (#38 deferral) | b12359 runtime installed on miryam (`install/linux/install.sh`); GGUF on miryam; RAM beside the coder unmeasured (#38) |
-| fleet-guardian | miryam | Dolphin3.0-Llama3.1-8B-abliterated.Q2_K | **llama-b12359** (was llama-b11944) | guardian, pentest, defender (never routed) | test_activate_guardian_weights, test_graph_types, test_node_role_private | GGUF not fetched: registry `weights: absent (damp)`; `validate_graph` refuses the node until fetched + sha measured |
-| freebsd-guardian | angel | Dolphin3.0-Llama3.1-8B-abliterated.Q2_K | llama-b11669-freebsd (build b12359) | — (private key `guardian`) | test_activate_guardian_weights, test_node_role_private | same GGUF missing on angel |
+| fleet-guardian | miryam | Dolphin3.0-Llama3.1-8B-abliterated.Q2_K | **llama-b12359** (was llama-b11944) | guardian, pentest, defender (never routed) | test_activate_guardian_weights, test_graph_types, test_node_role_private | fetched on miryam 2026-11-22 (CPU only, 3,179,141,248 bytes, sha256 `8944d35b…` matches the pin); operator-start only |
+| freebsd-guardian | angel | Dolphin3.0-Llama3.1-8B-abliterated.Q2_K | llama-b11669-freebsd (build b12359) | — (private key `guardian`) | test_activate_guardian_weights, test_node_role_private | same GGUF on angel: requested on #685; #693 does not merge until angel confirms its copy |
 
 `pentests.fleet` and `pentests.freebsd-guardian` are active too. Their seatbelts are unchanged:
 `tools.allow: []`, `launch_test_only: true`, `requires_operator_confirm: true`.
