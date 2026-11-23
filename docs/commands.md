@@ -275,6 +275,10 @@ Default front door is the six-item home (`./familia`). This catalog is the fallb
 | `home.apps.start` | Home: start app store (no listener) | `python3 scripts/home_catalog.py apps start` | `python scripts\home_catalog.py apps start` |
 | `home.apps.stop` | Home: stop the app store | `python3 scripts/home_catalog.py apps stop` | `python scripts\home_catalog.py apps stop` |
 | `home.apps.status` | Home: app store status | `python3 scripts/home_catalog.py apps status` | `python scripts\home_catalog.py apps status` |
+| `home.apps.browse` | Home: browse the app store (tweet cards; gum or plain text) | `sh scripts/appstore.sh` | `python scripts\appstore.py text` |
+| `home.apps.web` | Home: write the app store web page (static HTML, no remote loads) | `python3 scripts/appstore.py html` | `python scripts\appstore.py html` |
+
+The app store shows tweets that promote apps: app name, pitch, link and platform first, the tweet and its author below. Data ships in the release package as `appstore/data/feed.json` plus `appstore/data/media/` (checked by `appstore/data/SHA256SUMS`); with no release items the example fixture `examples/appstore/feed.sample.json` (fake data) is shown. See [appstore.md](appstore.md).
 
 ### Front door
 
