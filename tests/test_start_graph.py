@@ -49,7 +49,7 @@ def test_local_topology_starts_only_local_active_nodes_and_routes():
 def test_freebsd_host_runs_its_nodes_without_starting_a_gateway():
     # Angel has one active, hardware-fitting coder node; the gateway stays local.
     nodes, remote, gateways, omitted, remote_gateways = start_graph.local_topology(graph(), "angel")
-    assert nodes == ["coder"]
+    assert nodes == ["angel-coder"]
     assert remote
     assert gateways == []
     assert omitted == []
