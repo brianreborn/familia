@@ -142,10 +142,8 @@ hosts:
         notes: PCI inventory measured 2026-11-18; CUDA 6.5/NVIDIA 341 support set is operator-reported but not verified as a FreeBSD runtime on Angel
     local_names: [gabriel, Gabriel, uriel, Uriel, angel.local, uriel.local, gabriel.local]
     notes: >-
-      Nanbeige4.3-33B Q4_K_M (~18.7 GiB) active via nanbeige-coder (nanbeige-chat stays planned; do not co-start). Before activate: measure SSD swap
-      (target ~24 GiB familia swap or proven RSS) + mkdir ~/.cache/familia/spill/angel-{coder,chat}.
-      Software VVRAM: load_mode mmap (see install-notes/vvram-ssd/LAYER.md). FreeBSD nvso scaffold
-      in gpu-legacy/nvso (stubs; not required for Nanbeige). Do not co-start nanbeige-coder and nanbeige-chat.
+      Nanbeige4.3-33B Q4_K_M (~18.7 GiB) is a research candidate only; Angel cannot support it as a usable model.
+      Keep nanbeige-coder and nanbeige-chat planned and inactive. Do not start either node on Angel.
   macmini:
     kind: desktop
     measured: true
@@ -521,7 +519,7 @@ models:
     arch: llama                  # GGUF general.architecture; llama.cpp also knows nanbeige (aliased in validator)
     trained_ctx: 524288
     role: coder                  # also used for chat via nanbeige-chat card_set; roles in db: coder+chat
-    notes: "Prize on angel (FreeBSD). damp-run on box 2026-10-26; weights stay on angel. Dual coder+chat via card_set. Needs measured SSD swap/spill before activate (vvram-ssd/LAYER.md)."
+    notes: "Research candidate only; Angel cannot support this 33B model as a usable deployment. Do not activate or start on Angel. A prior damp-run on box (2026-10-26) is not evidence of Angel support."
     db: dealignai--Nanbeige4.3-33B-UNCENSORED-GGUF--Nanbeige4.3-33B-UNCENSORED-Q4_K_M
 
 
@@ -720,7 +718,7 @@ nodes:
 
 
   # --- dogfood box multi-size topology (2026-10-26): tiny decision + mid coder.
-  # Prize large model is Nanbeige4.3-33B on angel (nanbeige-coder / nanbeige-chat), not on box.
+  # Nanbeige4.3-33B is a research candidate only; it is not deployable on angel or box.
   dogfood-decision:
     model: smollm2-135m-q4-linux
     role: decision
@@ -777,7 +775,7 @@ nodes:
     port: 18200
     cache_ram_mib: 3584         # baseline for 32K (~3536 MiB KV); at 64K expect ~2× (advisory; mmap+swap)
     load_mode: mmap              # SSD-friendly for 18.7 GiB weights
-    status: active
+    status: planned
     card_set: "Agentic and tool-use tasks"
     # llama-ui Server Tools: without --tools, /tools returns 403 feature_disabled and the
     # UI shows no tools (capabilities stay completion-only; default chat_format Content-only).
