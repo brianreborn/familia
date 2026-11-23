@@ -275,6 +275,10 @@ Default front door is the six-item home (`./familia`). This catalog is the fallb
 | `home.apps.start` | Home: start app store (no listener) | `python3 scripts/home_catalog.py apps start` | `python scripts\home_catalog.py apps start` |
 | `home.apps.stop` | Home: stop the app store | `python3 scripts/home_catalog.py apps stop` | `python scripts\home_catalog.py apps stop` |
 | `home.apps.status` | Home: app store status | `python3 scripts/home_catalog.py apps status` | `python scripts\home_catalog.py apps status` |
+| `home.apps.browse` | Home: browse the app store (tweet cards; gum or plain text) | `sh scripts/appstore.sh` | `python scripts\appstore.py text` |
+| `home.apps.web` | Home: write the app store web page (static HTML, no remote loads) | `python3 scripts/appstore.py html` | `python scripts\appstore.py html` |
+
+The app store shows tweets that promote apps: app name, pitch, link and platform first, the tweet and its author below. Data ships in the release package as `appstore/data/feed.json` plus `appstore/data/media/` (checked by `appstore/data/SHA256SUMS`); with no release items the example fixture `examples/appstore/feed.sample.json` (fake data) is shown. See [appstore.md](appstore.md).
 
 ### Front door
 
@@ -326,6 +330,7 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/activate_guardian_weights.py` | guardian weight fetch/measure/activate (Dolphin3-Cyber Q2_K); operator step run via with-fleet.sh, docs/guardian-weights.md |
 | `scripts/activate_guardian_weights.sh` | thin wrapper for scripts/activate_guardian_weights.py |
 | `scripts/config_docs.py` | developer tool: generates/checks docs/config (CFG-* ids); not an end-user action |
+| `scripts/check_pins.py` | CI-only verifier for full-SHA repository pins; invoked by the pin-integrity workflow, not a user command |
 | `scripts/familia_auth.py` | library: per-instance API key headers for proxies and probes |
 | `scripts/bind_auth_guard.py` | pre-start auth guard called by scripts/serve.sh and scripts/windows/start.bat; refuses a launch argv that would bind without a valid --api-key-file (DESIGN.md Security) |
 | `scripts/guardian_ready.py` | offline guardian/defender readiness check (#147); developer/CI helper |

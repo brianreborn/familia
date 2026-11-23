@@ -144,6 +144,8 @@ home.apps.list|App store|Home: list the app store|PY scripts/home_catalog.py app
 home.apps.start|App store|Home: start app store (no listener)|PY scripts/home_catalog.py apps start|||python scripts\home_catalog.py apps start
 home.apps.stop|App store|Home: stop the app store|PY scripts/home_catalog.py apps stop|||python scripts\home_catalog.py apps stop
 home.apps.status|App store|Home: app store status|PY scripts/home_catalog.py apps status|||python scripts\home_catalog.py apps status
+home.apps.browse|App store|Home: browse the app store (tweet cards; gum or plain text)|sh scripts/appstore.sh|||python scripts\appstore.py text
+home.apps.web|App store|Home: write the app store web page (static HTML, no remote loads)|PY scripts/appstore.py html|||python scripts\appstore.py html
 home.talk|Front door|Talk to the protomodel|sh scripts/proto_chat.sh|||
 home.find-models|Front door|Find more models|sh scripts/find_models.sh|||
 home.search-x|Front door|Search my X / Twitter posts|sh scripts/search_x.sh|||
