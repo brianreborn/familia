@@ -45,7 +45,7 @@ def test_ensure_server_cold_refuses_spawn(monkeypatch):
     spawned = []
     monkeypatch.setattr(hh.subprocess, "Popen", lambda *a, **k: spawned.append(a) or None)
     with pytest.raises(SystemExit) as e:
-        hh.ensure_server({}, "nanbeige-coder", _node(server_tools="all"))
+        hh.ensure_server({}, "removed-large-coder", _node(server_tools="all"))
     assert e.value.code == 1
     assert spawned == []
 
@@ -60,20 +60,20 @@ def test_ensure_server_rejects_up_without_tools(monkeypatch):
     monkeypatch.setattr(hh, "props", lambda n: {"default_generation_settings": {"n_ctx": 65536}})
     monkeypatch.setattr(hh, "tools_live", lambda n: False)
     with pytest.raises(SystemExit) as e:
-        hh.ensure_server({}, "nanbeige-coder", _node(server_tools="all"))
+        hh.ensure_server({}, "removed-large-coder", _node(server_tools="all"))
     assert e.value.code == 1
 
 
 def test_ensure_server_accepts_up_with_tools(monkeypatch):
     monkeypatch.setattr(hh, "props", lambda n: {"default_generation_settings": {"n_ctx": 65536}})
     monkeypatch.setattr(hh, "tools_live", lambda n: True)
-    assert hh.ensure_server({}, "nanbeige-coder", _node(server_tools="all")) == 65536
+    assert hh.ensure_server({}, "removed-large-coder", _node(server_tools="all")) == 65536
 
 
 def test_ensure_server_ctx_mismatch(monkeypatch):
     monkeypatch.setattr(hh, "props", lambda n: {"default_generation_settings": {"n_ctx": 8192}})
     with pytest.raises(SystemExit):
-        hh.ensure_server({}, "nanbeige-coder", _node(server_tools="all"))
+        hh.ensure_server({}, "removed-large-coder", _node(server_tools="all"))
 
 
 def test_warm_prompt_skips_low_mem(monkeypatch):
@@ -81,7 +81,7 @@ def test_warm_prompt_skips_low_mem(monkeypatch):
     monkeypatch.setattr(hh, "mem_available_mib", lambda: 1000)
     called = []
     monkeypatch.setattr(hh, "hermes_prefix", lambda home: called.append("prefix") or {})
-    assert hh.warm_prompt({}, "nanbeige-coder", _node(slot_save=True), "/tmp") is None
+    assert hh.warm_prompt({}, "removed-large-coder", _node(slot_save=True), "/tmp") is None
     assert called == []
 
 
@@ -110,5 +110,5 @@ def test_warm_prompt_passes_timeout(monkeypatch):
     # warm_prompt imports prompt_cache inside — patch sys.modules path used after import
     import importlib
     monkeypatch.setitem(sys.modules, "prompt_cache", pc)
-    assert hh.warm_prompt({}, "nanbeige-coder", _node(slot_save=True), "/tmp") == "restored"
+    assert hh.warm_prompt({}, "removed-large-coder", _node(slot_save=True), "/tmp") == "restored"
     assert seen["timeout"] == 123

@@ -49,7 +49,7 @@ The interactive menu and `--list` show these paths before the command groups. Fo
 | Add and launch a model | `models.fetch` -> add its node to `graph.yaml` -> `models.check` -> `hosts.serve <NODE>` (or gum home → Find more models) |
 | Run Hermes on the graph coder | `models.check` -> `agents.hermes` (license-gated) |
 
-**Not done yet:** the FreeBSD llama.cpp 0.7.0 build and model-load smoke test on `angel` have not been run, and `angel` is measured in `graph.yaml` but still has no active nodes. FreeBSD currently has no package-based setup here: do not run `familia install` or install packages; build the pinned llama.cpp checkout from source using the already available toolchain. From `code-bootstraps-llama.cpp`, run `BUILD_DIR=build-freebsd GPU=off scripts/build-linux.sh`, then verify `build-freebsd/bin/llama-server --version`. Planned Nanbeige nodes need the GGUF on disk before `status: active`.
+**Not done yet:** the FreeBSD llama.cpp 0.7.0 build and model-load smoke test on `angel` have not been run, and `angel` is measured in `graph.yaml` but still has no active nodes. FreeBSD currently has no package-based setup here: do not run `familia install` or install packages; build the pinned llama.cpp checkout from source using the already available toolchain. From `code-bootstraps-llama.cpp`, run `BUILD_DIR=build-freebsd GPU=off scripts/build-linux.sh`, then verify `build-freebsd/bin/llama-server --version`. Planned named large model nodes need the GGUF on disk before `status: active`.
 
 ## Menu items by group (legacy catalog)
 
@@ -205,7 +205,7 @@ The virtual app store (#397): `scripts/app_catalog.py`. It lists every app famil
 | `adv.args` | validate_graph: the llama-server arguments for one node | `python3 scripts/validate_graph.py --graph graph.yaml --args <NODE>` | `python scripts\validate_graph.py --graph graph.yaml --args <NODE>` |
 | `adv.routes` | graph_router (default gateway): check a routes file (single, pair, fallback, chain, router, remote, tools); see docs/graph-recipes.md | `python3 scripts/graph_router.py <ROUTES> --check` | `python scripts\graph_router.py <ROUTES> --check` |
 | `adv.verify` | validate_graph: also verify model sha256 and runtimes (slow) | `python3 scripts/validate_graph.py --graph graph.yaml --verify-sha --check-runtimes` | `python scripts\validate_graph.py --graph graph.yaml --verify-sha --check-runtimes` |
-| `adv.graph-edit` | modify_graph: assign a models: key to a type-named node | `python3 scripts/modify_graph.py --host angel --assign-model coder=nanbeige43-33b-q4km` | `python scripts\modify_graph.py --host angel --assign-model coder=nanbeige43-33b-q4km` |
+| `adv.graph-edit` | modify_graph: assign a models: key to a type-named node | `python3 scripts/modify_graph.py --host angel --assign-model coder=removed-large-model` | `python scripts\modify_graph.py --host angel --assign-model coder=removed-large-model` |
 | `adv.protograph` | protograph: recipe -> graph.yaml (dry run; skills/protograph/SKILL.md) | `python3 scripts/protograph.py <RECIPE>` | `python scripts\protograph.py <RECIPE>` |
 | `adv.db-list` | Model database: list entries | `python3 scripts/model_db.py list` | `python scripts\model_db.py list` |
 | `adv.db-show` | Model database: show one entry | `python3 scripts/model_db.py show <ID>` | `python scripts\model_db.py show <ID>` |

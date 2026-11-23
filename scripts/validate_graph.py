@@ -157,7 +157,7 @@ def validate(graph, check_files=True, host=None):
         try: meta = gguf_meta(path)
         except Exception as e: errs.append(f"nodes.{name}: cannot read GGUF: {e}"); continue
         arch = meta.get("general.architecture")
-        _ARCH_ALIAS = {"llama": "nanbeige", "nanbeige": "llama"}
+        _ARCH_ALIAS = {"llama": "large-model", "large-model": "llama"}
         if arch != m["arch"] and _ARCH_ALIAS.get(arch) != m["arch"] and _ARCH_ALIAS.get(m["arch"]) != arch:
             errs.append(f"models.{n['model']}: GGUF architecture is {arch!r}, graph says {m['arch']!r}")
         fq, mq = meta.get("familia.quant"), m.get("quant")  # LittleBit (docs/littlebit.md)
@@ -218,7 +218,7 @@ def validate(graph, check_files=True, host=None):
                 WARNINGS.append(msg + " (non-Android: advisory; raise cache_ram_mib when you want prompt cache)")
         weight_mib = os.path.getsize(path) / 2**20
         # Software VVRAM (docs/vvram-ssd/LAYER.md): mmap + swap_budget means weights are
-        # file/swap-backed; counting the full GGUF as RAM hard-fails Nanbeige on 24 GiB hosts.
+        # file/swap-backed; counting the full GGUF as RAM hard-fails named large model on 24 GiB hosts.
         # Still charge KV + cache_ram + overhead; warn so operators keep swap measured.
         if n.get("load_mode") == "mmap" and n.get("swap_budget_mib"):
             WARNINGS.append(
@@ -294,6 +294,14 @@ def validate(graph, check_files=True, host=None):
             WARNINGS.append(
                 f"hosts.{h}: estimated free after nodes {free_after:.0f} MiB < 2048 MiB provisional floor "
                 f"on host with ram_mib {ram} < 8192 (guidance; see docs/ram-safety.md)")
+    known_roles = set(FAIL_CLOSED_TYPES) | set(TOOL_CAPABLE_BY_TYPE) | {"stt", "tts"}
+    for nn, nd in (graph.get("nodes") or {}).items():
+        model = (graph.get("models") or {}).get(nd.get("model")) or {}
+        for raw in (nd.get("role"), model.get("role")):
+            normalized = normalize_role(raw)
+            if isinstance(raw, str) and raw and normalized not in known_roles:
+                errs.append(f"nodes.{nn}: unknown or non-ASCII role {raw!r} (TR-3; fail closed)")
+
     # TR-4 (#621): refuse node.role override when either node.role or model.role is fail-closed
     for nn, nd in (graph.get("nodes") or {}).items():
         if nd.get("role"):
@@ -570,11 +578,11 @@ def is_fail_closed(graph, name):
     Prevents role overrides on a node from bypassing fail-closed model restrictions (TR-4, #621)."""
     n = (graph.get("nodes") or {}).get(name) or {}
     node_role = normalize_role(n.get("role"))
-    if node_role in FAIL_CLOSED_TYPES:
+    if node_role in FAIL_CLOSED_TYPES or is_unknown_role(node_role):
         return True
     m = (graph.get("models") or {}).get(n.get("model")) or {}
     model_role = normalize_role(m.get("role"))
-    return model_role in FAIL_CLOSED_TYPES
+    return model_role in FAIL_CLOSED_TYPES or is_unknown_role(model_role)
 
 
 def normalize_role(role):
@@ -587,10 +595,18 @@ def normalize_role(role):
     """
     if not isinstance(role, str) or not role:
         return role
+    role = "".join(c for c in role if unicodedata.category(c) != "Cf").strip()
     return unicodedata.normalize("NFKC", role).casefold()
 # TYPE presumption when neither node nor model declares `tool_capable`.
 TOOL_CAPABLE_BY_TYPE = {"coder": True, "chat": True, "general": True, "reasoning": True,
                         "embed": False, "decision": False, "vision": False, "diffusion": False}
+
+
+def is_unknown_role(role):
+    """Unknown non-empty roles are fail-closed until explicitly catalogued."""
+    if not isinstance(role, str) or not role:
+        return False
+    return role not in (set(FAIL_CLOSED_TYPES) | set(TOOL_CAPABLE_BY_TYPE) | {"stt", "tts"})
 # Back-compat name: per-TYPE default expressed as a policy (derived from capability).
 # H4: the default grant is read-only. Shell/write tools (exec_shell_command, write_file, edit_file)
 # are granted only when `server_tools` explicitly lists them (or says "all").
