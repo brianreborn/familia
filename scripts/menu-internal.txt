@@ -108,3 +108,4 @@ scripts/watchdog_test.sh|test helper running a command under a timeout watchdog 
 scripts/twitter_intake.sh|read-only Galaxy1 X/Twitter intake; validates ideas-from-x skill and stops before issue review
 scripts/progress_report.py|hourly GitHub issue/PR progress report generator for release review (docs/progress-report.md; Actions artifact, no source writes)
 scripts/check_pins.py|CI-only verifier for full-SHA repository pins; invoked by pin-integrity workflow, not a user menu command
+scripts/swarm/deploy_fleet.py|CI/deployment controller; invoked by fleet-deploy workflow, not an interactive menu action
