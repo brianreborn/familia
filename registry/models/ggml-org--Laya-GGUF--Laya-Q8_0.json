@@ -1573,13 +1573,13 @@
  "local_check": {
   "host": "angel",
   "sha256_ok": true,
-  "checked": "2026-11-14"
+  "checked": "2026-11-20"
  },
  "unknown": [
   "card_defaults: the card and generation_config.json state no sampling values"
  ],
  "warnings": null,
- "updated": "2026-11-14",
+ "updated": "2026-11-20",
  "by": "scripts/model_db.py",
  "gguf_meta": {
   "general.architecture": "modern-bert",

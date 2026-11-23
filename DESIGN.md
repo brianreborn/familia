@@ -46,7 +46,7 @@ A name a person or an agent types is one English word for the job. `coder` stays
 | Was | Route |
 |---|---|
 | general, general-text-speculator | `chat` |
-| coder, qwenstral-code-speculator | `coder` |
+| coder, code-generation-agent | `coder` |
 | decision, tool-router-agent | `route` |
 | language | `translate` |
 | vision-layout-agent | `vision` |
