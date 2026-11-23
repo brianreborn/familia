@@ -23,6 +23,7 @@ import hashlib, json, os, struct, sys, unicodedata
 import yaml
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from graph_types import validate_types, TYPES  # noqa: E402
+from loopback import is_loopback  # noqa: E402,F401
 
 KV_BYTES = {"f16": 2.0, "bf16": 2.0, "q8_0": 1.0625, "q4_0": 0.5625, "f32": 4.0}
 
@@ -601,23 +602,8 @@ def node_type(graph, name):
     return normalize_role(m.get("role"))
 
 
-def _loopback(bind):
-    """True only for a loopback bind: localhost (any case, no DNS), 127.0.0.0/8
-    (e.g. 127.0.0.2), ::1, [::1], and IPv4-mapped ::ffff:127.x / [::ffff:127.x].
-    ::, 0.0.0.0, other DNS names, and anything unparseable are NOT loopback
-    (fail-safe). Uses ipaddress only — never resolves names."""
-    import ipaddress
-    b = str(bind or "").strip()
-    if b.lower() == "localhost":
-        return True
-    if b.startswith("[") and b.endswith("]"):
-        b = b[1:-1]
-    try:
-        ip = ipaddress.ip_address(b)
-    except ValueError:
-        return False
-    mapped = getattr(ip, "ipv4_mapped", None)
-    return (mapped or ip).is_loopback
+# TR-6: one shared loopback check (scripts/loopback.py); _loopback kept for callers/tests.
+_loopback = is_loopback
 
 
 def tool_capable(graph, name):
