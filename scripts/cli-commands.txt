@@ -108,7 +108,7 @@ phone agent probe|hosts.phone-agent-probe
 phone agent open|hosts.phone-agent-open
 phone agent ask|hosts.phone-agent-ask
 phone agent consent|hosts.phone-agent-consent
-home|raw|sh scripts/familia_home.sh||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\familia-home.ps1|six equal home items; legacy menu if gum cannot be installed
+home|raw|sh scripts/familia_home.sh||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\familia-home.ps1|Talk first, then six equal items; legacy menu if gum is missing or stdin is not a terminal
 home models install|home.models.install
 home models list|home.models.list
 home models start|home.models.start

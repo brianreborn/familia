@@ -3,11 +3,15 @@
 
 usage: python3 scripts/home_catalog.py AREA VERB [--apply] [ARG...]
        python3 scripts/home_catalog.py --list-home
+       python3 scripts/home_catalog.py --items
+       python3 scripts/home_catalog.py --select LABEL...
        python3 scripts/home_catalog.py --titles
        python3 scripts/home_catalog.py --verbs
        python3 scripts/home_catalog.py --tree [AREA]
 
-Areas (equal on the home menu): models, harnesses, agents, mcp, tools, apps.
+Home order: Talk to the protomodel, Find more models, Search my X / Twitter
+posts, then the six equal areas (models, harnesses, agents, mcp, tools, apps),
+then the older home rows, with Legacy menu last.
 Verbs: install, list, start, stop, status.
 --tree prints every menu item and graph entry under its area, from the
 registry scripts/menu-categories.txt (scripts/menu_registry.py).
@@ -53,6 +57,19 @@ VERBS = ("install", "list", "start", "stop", "status")
 AREA_OF = dict(AREAS)
 TITLES = tuple(title for _, title in AREAS)
 VERBS_TEXT = "install, list, start, stop, status"
+# Selectable home order. The six titles stay equal to each other.
+FRONT_DOOR = (
+    "Talk to the protomodel",
+    "Find more models",
+    "Search my X / Twitter posts",
+)
+HOME_TAIL = (
+    "Open llama-ui web cockpit",
+    "List all models",
+    "Configure all graphs",
+    "Legacy menu",
+)
+HOME_ITEMS = FRONT_DOOR + TITLES + HOME_TAIL
 LEGACY_GOALS = (
     "Talk to the protomodel",
     "Open llama-ui web cockpit",
@@ -1846,14 +1863,125 @@ ACTIONS = {
 
 
 def print_home():
-    say("familia home - six equal items:")
-    for i, title in enumerate(TITLES, 1):
-        say("  %d) %-12s %s" % (i, title, VERBS_TEXT))
+    """Numbered home list. Talk is 1. Legacy menu is last. The six stay equal."""
+    say("familia home:")
+    n = 1
+    for title in FRONT_DOOR:
+        say("  %d) %s" % (n, title))
+        n += 1
+    for title in TITLES:
+        say("  %d) %-18s %s" % (n, title, VERBS_TEXT))
+        n += 1
+    for title in HOME_TAIL:
+        say("  %d) %s" % (n, title))
+        n += 1
     say("  q) Quit")
-    say("Legacy menu (fallback; reaches every item above): ./familia --legacy-menu")
-    say("Legacy goals still on that menu:")
-    for goal in LEGACY_GOALS:
-        say("  %s" % goal)
+    say("Legacy menu is last. It reaches every catalog item: ./familia --legacy-menu")
+    left = [goal for goal in LEGACY_GOALS if goal not in HOME_ITEMS]
+    if left:
+        say("Still reached from the legacy menu: %s." % "; ".join(left))
+
+
+def select_items(items):
+    """Numbered tty menu. Arrows move, digits choose, Enter confirms.
+
+    Writes the chosen label to stdout. Exit codes: 0 chosen, 3 Esc,
+    4 EOF, 130 interrupt, 2 the terminal could not be read.
+    q returns the label Quit. A bare Esc is back, not a partial arrow.
+    """
+    if not items or not sys.stdin.isatty():
+        return 2
+    import signal
+    try:
+        import select as select_mod
+        import termios
+        import tty
+    except Exception:
+        return 2
+    fd = sys.stdin.fileno()
+    try:
+        old = termios.tcgetattr(fd)
+    except Exception:
+        return 2
+    idx = 0
+    typed = ""
+
+    def draw():
+        sys.stderr.write("\n")
+        for i, label in enumerate(items, 1):
+            mark = ">" if (i - 1) == idx else " "
+            sys.stderr.write("%s %2d) %s\n" % (mark, i, label))
+        sys.stderr.write("Number and Enter, or arrows. q quits. Esc goes back.\n")
+        sys.stderr.flush()
+
+    def finish(code, label=None):
+        if label is not None:
+            sys.stdout.write(label + "\n")
+            sys.stdout.flush()
+        return code
+
+    def on_int(_signum, _frame):
+        raise KeyboardInterrupt
+
+    previous = signal.signal(signal.SIGINT, on_int)
+    try:
+        # Enter cbreak before drawing so Esc / Ctrl-D are bytes, not line-discipline
+        # EOF. TCSADRAIN keeps typeahead. TCSAFLUSH would drop it.
+        tty.setcbreak(fd, termios.TCSADRAIN)
+        draw()
+        while True:
+            try:
+                ch = os.read(fd, 1)
+            except InterruptedError:
+                return finish(130)
+            if not ch:
+                return finish(4)
+            b = ch[0]
+            if b == 3:
+                return finish(130)
+            if b == 4:
+                return finish(4)
+            if b == 27:
+                ready, _, _ = select_mod.select([fd], [], [], 0.08)
+                if not ready:
+                    return finish(3)
+                nxt = os.read(fd, 1)
+                if nxt in (b"[", b"O"):
+                    ready, _, _ = select_mod.select([fd], [], [], 0.08)
+                    final = os.read(fd, 1) if ready else b""
+                    if final == b"A":
+                        idx = (idx - 1) % len(items)
+                        typed = ""
+                        draw()
+                    elif final == b"B":
+                        idx = (idx + 1) % len(items)
+                        typed = ""
+                        draw()
+                    else:
+                        return finish(3)
+                    continue
+                return finish(3)
+            if b in (10, 13):
+                if typed == "":
+                    return finish(0, items[idx])
+                if typed.isdigit():
+                    n = int(typed)
+                    if 1 <= n <= len(items):
+                        return finish(0, items[n - 1])
+                sys.stderr.write("familia-home: that number is not on the menu.\n")
+                typed = ""
+                draw()
+                continue
+            if b in (ord("q"), ord("Q")) and typed == "":
+                return finish(0, "Quit")
+            if 48 <= b <= 57 and len(typed) < 4:
+                typed += chr(b)
+    except KeyboardInterrupt:
+        return finish(130)
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old)
+        signal.signal(signal.SIGINT, previous)
+    return 2
 
 
 def usage():
@@ -1869,6 +1997,12 @@ def main(argv=None):
     if argv[0] == "--list-home":
         print_home()
         return 0
+    if argv[0] == "--items":
+        for title in HOME_ITEMS:
+            say(title)
+        return 0
+    if argv[0] == "--select":
+        return select_items(argv[1:])
     if argv[0] == "--titles":
         for title in TITLES:
             say(title)

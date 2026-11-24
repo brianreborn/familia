@@ -166,7 +166,7 @@ ENV = [
     ("FAMILIA_ACCEPT_LICENSES", "yes accepts the license review without a prompt (the summary is still printed); same as \\-\\-yes."),
     ("FAMILIA_ACCEPT_UNKNOWN_LICENSES", "yes also accepts licenses that could not be determined."),
     ("FAMILIA_LICENSE_ACCEPT_FILE", "Where license acceptance is recorded (default .cache/familia/license\\-acceptance.json)."),
-    ("FAMILIA_NO_TTY", "1 makes the menu behave as if there were no terminal (print the items, exit 2)."),
+    ("FAMILIA_NO_TTY", "1 opens the legacy numeric menu on stdin. A terminal on stdin still gets the selectable home menu unless this is set. CI=true alone does not force line mode."),
     ("FAMILIA_MENU_PIPE", "1 lets menus read choices from a pipe."),
     ("FAMILIA_GRAPH", "Graph file to use instead of graph.yaml, where the script supports it."),
     ("FAMILIA_HOSTS_OVERLAY", "Path to hosts.local.yaml connection overlay (#104); default ~/.config/familia/hosts.local.yaml."),

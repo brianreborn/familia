@@ -21,6 +21,9 @@
 #   ./familia-menu.sh --run skills.menu
 #   ./familia-menu.sh --search hermes
 # With no terminal (and no --list/--run/--search/--pipe) it prints the items and exits 2.
+# With --pipe, or when FAMILIA_NO_TTY=1, choices come from stdin. Those reads are
+# bounded (line length, number of reads, invalid attempts) and then exit 2.
+# Control and CSI bytes are stripped before a choice is printed.
 set -eu
 
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
@@ -136,10 +139,103 @@ $(groups)
 EOF2
 }
 
+# Non-tty input (pipe, or FAMILIA_NO_TTY=1) is bounded and never echoed raw.
+MENU_READS=0
+MENU_INVALID=0
+MENU_MAX_LINE=256
+MENU_MAX_READS=200
+MENU_MAX_INVALID=32
+
+bounded_input() {
+  if [ "${FAMILIA_NO_TTY:-}" = 1 ]; then
+    return 0
+  fi
+  if [ -t 0 ]; then
+    return 1
+  fi
+  return 0
+}
+
+menu_give_up() {
+  say "familia: input limit reached; exiting."
+  exit 2
+}
+
+note_invalid() {
+  if ! bounded_input; then
+    return 0
+  fi
+  MENU_INVALID=$((MENU_INVALID + 1))
+  if [ "$MENU_INVALID" -ge "$MENU_MAX_INVALID" ]; then
+    menu_give_up
+  fi
+}
+
+# Drop CSI and other controls, then keep a short ASCII snippet.
+sanitize_echo() {
+  # argv is: -c, --, text. The text is last so a leading dash is not an option.
+  "$PY" -c 'import re,sys
+s=sys.argv[-1] if len(sys.argv)>2 else ""
+s=re.sub(r"\x1b\[[0-9;?]*[ -/]*[@-~]", "", s)
+s=re.sub(r"[\x00-\x1f\x7f]", "", s)
+sys.stdout.write(s[:60])' -- "$1"
+}
+
+read_bounded_line() {  # read_bounded_line VAR ; return 1 on EOF
+  local __dest=$1 __n=0 __ch="" __line=""
+  while [ "$__n" -lt "$MENU_MAX_LINE" ]; do
+    LC_ALL=C IFS= read -r -n 1 __ch || {
+      if [ "$__n" -eq 0 ]; then
+        return 1
+      fi
+      break
+    }
+    if [ -z "$__ch" ]; then
+      break
+    fi
+    __line="${__line}${__ch}"
+    __n=$((__n + 1))
+  done
+  if [ "$__n" -ge "$MENU_MAX_LINE" ]; then
+    local __d=0
+    while [ "$__d" -lt 100000 ]; do
+      LC_ALL=C IFS= read -r -n 1 __ch || break
+      if [ -z "$__ch" ]; then
+        break
+      fi
+      __d=$((__d + 1))
+    done
+    say "familia: line too long; not used."
+    note_invalid
+    printf -v "$__dest" '%s' ""
+    return 0
+  fi
+  printf -v "$__dest" '%s' "$(sanitize_echo "$__line")"
+}
+
 read_line() {  # read_line PROMPT VAR ; returns 1 on EOF
-  local __p=$1 __v
+  local __p=$1 __v=""
   printf '%s' "$__p" >&2
-  IFS= read -r __v || { [ -n "$__v" ] || return 1; }
+  if bounded_input; then
+    MENU_READS=$((MENU_READS + 1))
+    if [ "$MENU_READS" -gt "$MENU_MAX_READS" ]; then
+      menu_give_up
+    fi
+    if [ ! -t 0 ]; then
+      read_bounded_line __v || return 1
+    else
+      IFS= read -r __v || { [ -n "$__v" ] || return 1; }
+      if [ "${#__v}" -gt "$MENU_MAX_LINE" ]; then
+        say "familia: line too long; not used."
+        note_invalid
+        __v=""
+      else
+        __v=$(sanitize_echo "$__v")
+      fi
+    fi
+  else
+    IFS= read -r __v || { [ -n "$__v" ] || return 1; }
+  fi
   printf -v "$2" '%s' "$__v"
 }
 # Menus leave only on q/quit/exit. EOF on a terminal asks again.
@@ -357,6 +453,7 @@ search_ui() {  # search_ui OP TEXT ; OP is / ? n N. Returns 3 to quit the menu.
       /*|\?*) search_ui "${choice:0:1}" "${choice:1}"; return $? ;;
     esac
     if ! [[ $choice =~ ^[0-9]+$ ]] || [ "$choice" -lt 1 ] || [ "$choice" -gt ${#SK[@]} ]; then
+      note_invalid
       say "'$choice' isn't one of the choices. Type a number from 1 to ${#SK[@]}, n, N, /word or b."; continue
     fi
     SCUR=$((choice-1))
@@ -399,6 +496,7 @@ EOF2
     local rc=0; search_key "$choice" || rc=$?
     case $rc in 0) continue ;; 3) return 0 ;; 4) return 2 ;; esac
     if ! [[ $choice =~ ^[0-9]+$ ]] || [ "$choice" -lt 1 ] || [ "$choice" -gt "$n" ]; then
+      note_invalid
       say "'$choice' isn't one of the choices. Type a number from 1 to $n, /word to search, or q."; continue
     fi
     g=${gs[$((choice-1))]}
@@ -450,6 +548,7 @@ EOF2
       local rc=0; search_key "$choice" || rc=$?
       case $rc in 0) continue ;; 3) return 0 ;; 4) return 2 ;; esac
       if ! [[ $choice =~ ^[0-9]+$ ]] || [ "$choice" -lt 1 ] || [ "$choice" -gt "$n" ]; then
+        note_invalid
         if [ "$pages" -gt 1 ]; then
           say "'$choice' isn't one of the choices. Type a number from 1 to $n, </> page, /word to search, or b."
         else

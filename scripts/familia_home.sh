@@ -1,19 +1,22 @@
 #!/bin/sh
-# familia_home.sh: six equal top-level items. The legacy menu is the fallback
-# and the CLI for every action (scripts/home_catalog.py via familia-menu.sh).
+# familia_home.sh: Talk to the protomodel is item 1. Find more models and
+# Search my X / Twitter posts follow. The six areas stay equal to each other
+# (Models, Harnesses, Agents, MCP servers, Tool sets, App store). Legacy menu
+# is last. The legacy menu is also the fallback and the CLI for every action.
 # Usage:
-#   sh scripts/familia_home.sh                 interactive home
-#   sh scripts/familia_home.sh --list-goals    print the six items (tests)
-#   FAMILIA_NO_TTY=1 sh scripts/familia_home.sh
-# List mode (no tty, FAMILIA_NO_TTY, or --list-goals) prints and exits 0.
-# The interactive menu exits only on Quit.
+#   sh scripts/familia_home.sh                 interactive numbered menu
+#   sh scripts/familia_home.sh --list-goals    print the numbered list and exit 0
+#   sh scripts/familia_home.sh -l              same explicit list
+# No tty (stdin is not a terminal, or FAMILIA_NO_TTY=1) opens the legacy
+# numeric menu and reads stdin. It does not print the list and exit.
+# CI=true alone does not do that: an interactive ssh with a tty stays here.
+# Arrows and digits both select. gum is used only when it accepts numbers;
+# otherwise this is the numeric prompt (arrows included). No gum at all falls
+# back to the legacy menu.
 #
-# Ctrl-C (INT) stays in the menu. HUP and TERM leave, because the terminal is gone.
-# An ignored INT is not used: a child action must still be interruptible.
-# gum exit 1 or 130 after 0.2s is a cancel. Anything else, or a cancel faster
-# than 0.2s, counts as a failure. After 3 failures the legacy menu opens.
-# If stdin is not a terminal at that point, exit 2 (closed input, not a quit).
-# FAMILIA_HOME_FORCE_MENU=1 enters the loop even when stdin is not a terminal.
+# On a tty, Ctrl-C, Esc and EOF in a submenu return here. At this menu they
+# exit 0. A running action still stays in the menu when interrupted.
+# HUP and TERM leave, because the terminal is gone.
 #
 # gum is not installed unless you say yes. The default answer is no, and no
 # falls back to the legacy menu. install-gum.sh verifies the pinned sha256.
@@ -31,7 +34,6 @@ gum() {
 }
 
 _interrupted=0
-GUM_FAILS=0
 on_int() {
   _interrupted=1
   printf '\n' >&2
@@ -51,11 +53,13 @@ while [ $# -gt 0 ]; do
       cat <<'USAGE'
 Usage: sh scripts/familia_home.sh [--list-goals]
 
-Six equal items: Models, Harnesses, Agents, MCP servers, Tool sets, App store.
-Each has install, list, start, stop and status.
-The menu exits only on Quit. Ctrl-C stays in the menu.
-If gum is missing you are asked before any download (default no). No, or a gum
-that keeps failing, opens the legacy menu:
+Talk to the protomodel is 1. Then Find more models and Search my X / Twitter
+posts. Then six equal items: Models, Harnesses, Agents, MCP servers, Tool sets,
+App store. Each of those has install, list, start, stop and status.
+Legacy menu is last. --list-goals prints the list and exits 0.
+With no terminal, the legacy numeric menu reads stdin.
+If gum is missing you are asked before any download (default no). No opens
+the legacy menu:
   ./familia menu | ./familia --legacy-menu | FAMILIA_LEGACY_MENU=1 ./familia
 example: sh scripts/familia_home.sh --list-goals
 USAGE
@@ -82,11 +86,26 @@ print_goals() {
   "$PY" "$ROOT/scripts/home_catalog.py" --list-home
 }
 
-if [ "${FAMILIA_HOME_FORCE_MENU:-}" != 1 ]; then
-  if [ "$LIST_ONLY" = 1 ] || [ "${FAMILIA_NO_TTY:-}" = 1 ] || [ ! -t 0 ]; then
-    print_goals
-    exit 0
+# No tty means stdin is not a terminal, or FAMILIA_NO_TTY=1.
+# Do not treat CI=true by itself as line mode.
+no_stdin_tty() {
+  if [ "${FAMILIA_NO_TTY:-}" = 1 ]; then
+    return 0
   fi
+  if [ -t 0 ]; then
+    return 1
+  fi
+  return 0
+}
+
+if [ "$LIST_ONLY" = 1 ]; then
+  print_goals
+  exit 0
+fi
+if no_stdin_tty; then
+  printf 'familia-home: no terminal; opening the legacy numeric menu.\n' >&2
+  export FAMILIA_NO_TTY=1
+  exec bash "$ROOT/familia-menu.sh" --pipe
 fi
 
 command -v "$PY" >/dev/null 2>&1 || fallback_legacy "$PY was not found"
@@ -106,6 +125,12 @@ gum_usable() {
   gum choose --help 2>&1 | grep -q -- '--height' || return 1
 }
 
+# gum choose has no number keys unless a build advertises --numbered (#746).
+gum_takes_numbers() {
+  gum_usable || return 1
+  gum choose --help 2>&1 | grep -q -- '--numbered'
+}
+
 # Ask before any download. install-gum.sh defaults to no and checks sha256.
 if ! have_gum; then
   if [ "${FAMILIA_SKIP_GUM_INSTALL:-}" != 1 ] && [ -t 0 ] && [ -f "$ROOT/scripts/install-gum.sh" ]; then
@@ -114,8 +139,9 @@ if ! have_gum; then
 fi
 if ! gum_usable; then
   if [ ! -t 0 ]; then
-    printf 'familia-home: gum is not usable and stdin is not a terminal. Not a quit.\n' >&2
-    exit 2
+    printf 'familia-home: no terminal; opening the legacy numeric menu.\n' >&2
+    export FAMILIA_NO_TTY=1
+    exec bash "$ROOT/familia-menu.sh" --pipe
   fi
   fallback_legacy "gum is missing, too old, or failed its version check"
 fi
@@ -138,68 +164,80 @@ home_note() {
   osc7501_emit working --id home --msg "$1" --title "familia home" --app familia 2>/dev/null || true
 }
 
-now_ms() {
-  _ms=$("$PY" -c 'import time; print(int(time.monotonic()*1000))' 2>/dev/null) || _ms=0
-  printf '%s\n' "${_ms:-0}"
-}
-
 # 7-bit banner. Box drawing is not required; pipes and logs stay ASCII.
 banner() {
   printf '%s\n' '  +------------------------------------------------------------------+'
-  printf '%s\n' '  | familia   six equal items   Quit is the only exit               |'
+  printf '%s\n' '  | familia   Talk first   six equal items   Legacy menu last        |'
   printf '%s\n' '  +------------------------------------------------------------------+'
 }
 
-gum_failed() {
-  GUM_FAILS=$((GUM_FAILS + 1))
-  if [ "$GUM_FAILS" -ge 3 ]; then
-    if [ ! -t 0 ]; then
-      printf 'familia-home: input closed. Not a quit.\n' >&2
-      exit 2
-    fi
-    fallback_legacy "gum failed ${GUM_FAILS} times"
-  fi
-  sleep 1 || true
-  printf 'familia-home: %s; retry %s of 3\n' "$1" "$GUM_FAILS" >&2
-  return 1
-}
-
-# pick HEADER ITEM... sets PICKED. Returns 1 on cancel (not a quit).
-# Not called in a command substitution: GUM_FAILS has to survive the call.
+# pick HEADER ITEM... sets PICKED.
+# 0 chosen, 3 Esc, 4 EOF, 130 interrupt, 2 terminal could not be read.
+# Digits and arrows both work. gum is used only when it accepts numbers.
 pick() {
   _hdr=$1
   shift
   PICKED=
   note_interrupt
-  if ! gum_usable; then
-    gum_failed "gum is not usable"
-    return 1
+  printf '%s\n' "$_hdr" >&2
+  _tmp=$(mktemp "${TMPDIR:-/tmp}/familia-home-pick.XXXXXX" 2>/dev/null) || return 2
+  _rc=0
+  if gum_takes_numbers; then
+    set +e
+    gum choose --numbered --header "$_hdr" --height 16 "$@" > "$_tmp"
+    _rc=$?
+    set -e
+    if [ "$_rc" -eq 0 ]; then
+      IFS= read -r PICKED < "$_tmp" || PICKED=
+      rm -f "$_tmp" || true
+      if [ -n "$PICKED" ]; then
+        if [ -t 0 ]; then
+          stty sane 2>/dev/null || true
+        fi
+        return 0
+      fi
+    fi
+    # 1 is Esc from gum. 130 is Ctrl-C. Do not start a second prompt.
+    if [ "$_rc" -eq 1 ] || [ "$_rc" -eq 130 ]; then
+      rm -f "$_tmp" || true
+      if [ -t 0 ]; then
+        stty sane 2>/dev/null || true
+      fi
+      if [ "$_rc" -eq 1 ]; then
+        return 3
+      fi
+      return 130
+    fi
   fi
-  _t0=$(now_ms) || _t0=0
-  _tmp=$(mktemp "${TMPDIR:-/tmp}/familia-home-pick.XXXXXX" 2>/dev/null) || {
-    gum_failed "mktemp failed"
-    return 1
-  }
   set +e
-  gum choose --header "$_hdr" --height 16 "$@" > "$_tmp"
+  "$PY" "$ROOT/scripts/home_catalog.py" --select "$@" > "$_tmp"
   _rc=$?
   set -e
-  _t1=$(now_ms) || _t1=0
-  _sel=$(cat "$_tmp" 2>/dev/null || true)
+  if [ -t 0 ]; then
+    stty sane 2>/dev/null || true
+  fi
+  if [ "$_rc" -eq 0 ]; then
+    IFS= read -r PICKED < "$_tmp" || PICKED=
+  fi
   rm -f "$_tmp" || true
-  _dt=$((${_t1:-0} - ${_t0:-0})) || _dt=0
-  if [ "$_rc" -eq 0 ] && [ -n "${_sel:-}" ]; then
-    GUM_FAILS=0
-    PICKED=$_sel
+  if [ "$_rc" -eq 0 ] && [ -n "$PICKED" ]; then
     return 0
   fi
-  # exit 1 is Esc. exit 130 is Ctrl-C while gum owns the terminal.
-  if { [ "$_rc" -eq 1 ] || [ "$_rc" -eq 130 ]; } && [ "$_dt" -ge 200 ]; then
-    GUM_FAILS=0
+  if [ "$_rc" -eq 0 ]; then
     return 1
   fi
-  gum_failed "gum exited ${_rc}"
-  return 1
+  return "$_rc"
+}
+
+pick_home() {
+  set --
+  while IFS= read -r _item || [ -n "$_item" ]; do
+    [ -n "$_item" ] || continue
+    set -- "$@" "$_item"
+  done <<EOF
+$("$PY" "$ROOT/scripts/home_catalog.py" --items)
+EOF
+  pick "What do you want to do? Type a number or use arrows. q quits." "$@"
 }
 
 area_of() {
@@ -304,6 +342,16 @@ submenu() {
         install list start stop status Back Quit || _ok=$?
     fi
     if [ "$_ok" != 0 ]; then
+      # Esc, EOF and Ctrl-C in a submenu return to the main menu.
+      case "$_ok" in
+        3|4|130)
+          _interrupted=0
+          return 0
+          ;;
+        2)
+          fallback_legacy "the numbered menu could not read the terminal"
+          ;;
+      esac
       printf 'familia-home: staying in %s. Choose Back or Quit.\n' "$_title" >&2
       continue
     fi
@@ -348,27 +396,48 @@ legacy_goal() {
     "$PY" "$ROOT/scripts/catalog.py" graphs || true
     return 0
     ;;
+  "Talk to the protomodel")
+    sh "$ROOT/scripts/proto_chat.sh" || true
+    return 0
+    ;;
+  "Find more models")
+    sh "$ROOT/scripts/find_models.sh" || true
+    return 0
+    ;;
+  "Search my X / Twitter posts")
+    sh "$ROOT/scripts/search_x.sh" || true
+    return 0
+    ;;
   *)
     return 1
     ;;
   esac
 }
 
-home_note "six equal items" || true
+home_note "Talk to the protomodel" || true
 while true; do
   note_interrupt || true
   banner || true
-  if ! pick "What do you want to do? Quit is the only exit." \
-    Models Harnesses Agents "MCP servers" "Tool sets" "App store" \
-    "Open llama-ui web cockpit" "List all models" "Configure all graphs" \
-    "Legacy menu" Quit; then
+  _ok=0
+  pick_home || _ok=$?
+  if [ "$_ok" != 0 ]; then
+    # Esc, EOF and Ctrl-C at the main menu exit cleanly.
+    case "$_ok" in
+      3|4|130)
+        _interrupted=0
+        exit 0
+        ;;
+      2)
+        fallback_legacy "the numbered menu could not read the terminal"
+        ;;
+    esac
     printf 'familia-home: staying in the menu. Choose Quit to leave.\n' >&2
     continue
   fi
   sel=$PICKED
   case "$sel" in
     Quit) exit 0 ;;
-    "Open llama-ui web cockpit"|"List all models"|"Configure all graphs")
+    "Talk to the protomodel"|"Find more models"|"Search my X / Twitter posts"|"Open llama-ui web cockpit"|"List all models"|"Configure all graphs")
       legacy_goal "$sel" || printf 'familia-home: staying in the menu.\n' >&2
       ;;
     "Legacy menu")

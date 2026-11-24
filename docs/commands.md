@@ -2,7 +2,7 @@
 | `scripts/progress_report.py` | hourly GitHub issue/PR progress-report generator for release review; writes artifact files only under reports/progress when run locally, no git mutation | `python3 scripts/progress_report.py` | — |
 # Every familia command
 
-This page mirrors `scripts/menu-items.txt` (legacy catalog). Default `./familia` opens the home menu (`scripts/familia_home.sh`): six equal items (Models, Harnesses, Agents, MCP servers, Tool sets, App store), each with install, list, start, stop and status. It exits only on Quit. If gum is missing and cannot be installed, it falls back to this catalog instead of exiting. Use `./familia menu` / `--legacy-menu` for the catalog directly. `tests/test_menu.py` checks this page lists every item.
+This page mirrors `scripts/menu-items.txt` (legacy catalog). Default `./familia` opens the home menu (`scripts/familia_home.sh`): Talk to the protomodel is item 1, then Find more models and Search my X / Twitter posts, then six equal items (Models, Harnesses, Agents, MCP servers, Tool sets, App store), each with install, list, start, stop and status. Legacy menu is last. Arrows and digits both select. If gum is missing and cannot be installed, it falls back to this catalog. With no terminal (or `FAMILIA_NO_TTY=1`) the same catalog reads stdin; `./familia --list-goals` is the only print-and-exit. Use `./familia menu` / `--legacy-menu` for the catalog directly. `tests/test_menu.py` checks this page lists every item.
 Run any row from the legacy menu, as a command (`./familia COMMAND`, below), or with `./familia run KEY [ARG...]` (Windows: `familia.cmd run KEY`). Add `--dry-run` before a command to print it without running (CLI mode only — items themselves are real runs).
 `<NAME>` is asked for when you pick the item. "licenses first" means `scripts/licenses.py gate` runs before it ([licenses.md](licenses.md)).
 
@@ -423,7 +423,7 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `install/windows/deps.ps1` | Windows deps check + winget/choco hints | — | `install\windows\deps.ps1` |
 | `scripts/build_appimage.sh` | Operator AppImage packaging (not menu) | — | — |
 | `scripts/perf/box_multi_size_smoke.py` | Perf/dev multi-size smoke (not menu) | — | — |
-| `scripts/familia_home.sh` | interactive home (six equal items); actions are legacy rows via `scripts/home_catalog.py` |
+| `scripts/familia_home.sh` | interactive home (Talk first, six equal items, Legacy menu last); actions are legacy rows via `scripts/home_catalog.py` |
 | `scripts/open_ui.sh` | open running llama web UI in default browser | — | — |
 | `scripts/ui_bridge.py` | terminal dashboard bridge inspecting running llama-ui slots and routes | — | — |
 | `scripts/windows/familia-home.ps1` | Windows mirror of familia_home.sh (started by familia.cmd) |

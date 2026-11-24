@@ -334,10 +334,12 @@ def test_familia_home_list_goals():
                  "Configure all graphs", "Search my X / Twitter posts",
                  "Install / first-time setup", "Proving grounds", "Legacy menu"):
         assert goal in out, goal
+    assert out.split("1)")[1].lstrip().startswith("Talk to the protomodel")
+    # no tty reads the legacy menu; it does not print the home list and exit 0
     r2 = subprocess.run(["sh", os.path.join(ROOT, "familia")], cwd=ROOT, capture_output=True, text=True,
-                        env=env(FAMILIA_NO_TTY="1"))
-    assert r2.returncode == 0, r2.stderr
-    assert "Talk to the protomodel" in r2.stdout
+                        env=env(FAMILIA_NO_TTY="1"), input="")
+    assert r2.returncode == 2, r2.stderr
+    assert "what do you want to do?" in r2.stdout
 
 
 def test_familia_legacy_menu_flag():
