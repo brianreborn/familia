@@ -10,6 +10,7 @@ Run the full report with:
   python3 tests/menu_harness.py --md PATH --json PATH
 """
 import os
+import shutil
 import sys
 
 import pytest
@@ -25,7 +26,13 @@ try:
 except ImportError:
     pexpect = None
 
+# pexpect.spawn and bash/sh are POSIX. Windows menus are a separate gap (M7).
+pytestmark = pytest.mark.skipif(
+    os.name == "nt",
+    reason="POSIX pty harness; Windows menus untested (M7)",
+)
 pexpect_needed = pytest.mark.skipif(pexpect is None, reason="pexpect is not installed")
+bash_needed = pytest.mark.skipif(shutil.which("bash") is None, reason="bash is not installed")
 
 
 @pytest.fixture(scope="module")
@@ -46,6 +53,7 @@ def test_catalog_parse_matches_menu_items(catalog):
     assert all(it["windows_visible"] for it in hidden)
 
 
+@bash_needed
 def test_legacy_explicit_q_and_eof_and_invalid_input():
     checks = {c.item: c for c in harness.check_legacy_exit_rules()}
     assert checks["legacy.explicit-q"].status == "PASS"
@@ -59,6 +67,7 @@ def test_home_list_goals_has_six_equal_items():
 
 
 @pexpect_needed
+@bash_needed
 def test_legacy_every_posix_item_reachable_by_number(catalog):
     _items, _groups, tree = catalog
     checks, rc, err = harness.walk_legacy_numbers(tree, timeout=25)
@@ -73,6 +82,7 @@ def test_legacy_every_posix_item_reachable_by_number(catalog):
 
 
 @pexpect_needed
+@bash_needed
 @pytest.mark.xfail(reason="M1: legacy menu has no arrow-key traversal yet (#733)", strict=False)
 def test_legacy_arrow_down_moves_highlight():
     checks = harness.check_legacy_arrows()
@@ -90,3 +100,34 @@ def test_home_interactive_accepts_numeric_entry():
 def test_home_fallback_returns_to_home_menu():
     checks = {c.item: c for c in harness.check_home_static()}
     assert checks["home.fallback-exec"].status == "PASS", checks["home.fallback-exec"].detail
+
+
+@pexpect_needed
+@bash_needed
+def test_legacy_ctrl_c_redraws_and_exit_quits():
+    checks = {c.item: c for c in harness.check_legacy_ctrl_c()}
+    got = checks["legacy.ctrl-c"]
+    assert got.status == "PASS", got.detail
+
+
+@pexpect_needed
+@bash_needed
+def test_legacy_tty_eof_reprompts_then_q():
+    checks = {c.item: c for c in harness.check_legacy_tty_eof()}
+    got = checks["legacy.tty-eof"]
+    assert got.status == "PASS", got.detail
+
+
+@pexpect_needed
+@bash_needed
+def test_legacy_hup_and_term_exit_and_list_has_no_int_trap():
+    checks = {c.item: c for c in harness.check_legacy_signal_defaults()}
+    for item in ("legacy.hup", "legacy.term", "legacy.list-sigint"):
+        assert checks[item].status == "PASS", checks[item].detail
+
+
+@pexpect_needed
+def test_home_ctrl_c_stays_until_quit():
+    checks = harness.check_home_ctrl_c()
+    assert checks
+    assert checks[0].status == "PASS", checks[0].detail

@@ -565,7 +565,7 @@ python3 tests/menu_harness.py --md report.md --json report.json
 python3 -m pytest -q tests/test_menu_harness.py
 ```
 
-It walks every posix-visible catalog item by number under `--dry-run`, checks that invalid input and EOF are not a successful quit, and reports arrow-key reachability. Heavy actions are not applied (no model downloads, no network-facing `--apply`). Arrow-key traversal is not implemented on the current legacy menu; those checks are expected to fail until M1 lands. See [docs/menu-gap-inventory.md](docs/menu-gap-inventory.md) and [TESTING.md](TESTING.md).
+It walks every posix-visible catalog item by number under `--dry-run`, checks that invalid input and EOF are not a successful quit, and checks that Ctrl-C at the legacy prompt redraws the menu while `q` / `exit` still exits 0. It also reports arrow-key reachability. Heavy actions are not applied (no model downloads, no network-facing `--apply`). Arrow-key traversal is not implemented on the current legacy menu; those checks are expected to fail until M1 lands. See [docs/menu-gap-inventory.md](docs/menu-gap-inventory.md) and [TESTING.md](TESTING.md).
 
 ---
 

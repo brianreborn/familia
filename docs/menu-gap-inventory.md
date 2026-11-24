@@ -73,7 +73,8 @@ Already fixed relative to the #476 write-up (do not re-file):
 - Gum cancel (Esc / exit 1 after 0.2s) stays in the menu (`pick()` 196-199).
 - Action errors stay in the menu (`run_verb` 285-288, legacy `run_item` failure at `familia-menu.sh` 462).
 - Ctrl-C stays in the home menu (`on_int` / `note_interrupt`, lines 35-42 and 74-78).
-- Legacy EOF on a pipe exits 2, not 0 (`closed_input` 147-153; `test_legacy_eof_is_not_a_successful_quit`).
+- Ctrl-C stays in the legacy menu. `familia-menu.sh` installs a POSIX `INT` trap only while the interactive menu is running (including `--pipe`). ^C at a prompt, at a value prompt, or during a child action cancels that step, prints `Use the Exit option to quit`, and redraws. `q` / `exit` still exits 0. `HUP` and `TERM` are not trapped. Child commands reset `INT` / `HUP` / `TERM` to the default so the action itself can be killed. `--list`, `--run`, and `--search` do not install the trap. The harness sends ^C (`pexpect` `sendintr`) and asserts this.
+- Legacy EOF on a pipe exits 2, not 0 (`closed_input`; `test_legacy_eof_is_not_a_successful_quit`).
 - No menu timeout was found.
 
 `Quit` inside an area submenu (`familia_home.sh` 312, Windows `Enter-Area` 217) exits the process. That is an explicit quit, so it does not break the rule, but it is inconsistent with `Back` (see section 5; M4).
@@ -132,6 +133,6 @@ Reference write-ups that are not current gaps: #327 (menu refactor), #328-#331 (
 
 ## 8. Harness
 
-`tests/menu_harness.py` walks the tree headlessly (`--dry-run`, isolated HOME, no `--apply`). `python3 tests/menu_harness.py` writes the report; `python3 -m pytest tests/test_menu_harness.py` is the test target. See the README "Menu test harness" section and TESTING.md.
+`tests/menu_harness.py` walks the tree headlessly (`--dry-run`, isolated HOME, no `--apply`). It also sends Ctrl-C at the legacy prompt, at a value prompt, and during a child action, and checks that `exit` still quits 0 while `HUP` and `TERM` still end the process. `python3 tests/menu_harness.py` writes the report; `python3 -m pytest tests/test_menu_harness.py` is the test target. See the README "Menu test harness" section and TESTING.md.
 
 -- X Bug Cartographer

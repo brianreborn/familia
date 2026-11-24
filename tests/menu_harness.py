@@ -6,6 +6,8 @@ Walks the current home and legacy menus and reports, per item:
   - reachable by arrow keys
   - dead-end (process exits or hangs instead of returning to a prompt)
   - the menu returns rather than exiting on errors or invalid input
+  - Ctrl-C at the legacy prompt and during a child action redraws the menu;
+    the Exit option (q / exit) still quits 0. HUP and TERM still end it.
 
 Headless and offline: --dry-run, isolated HOME, FAMILIA_SKIP_GUM_INSTALL=1,
 no --apply, no model downloads, no network-facing side effects.
@@ -24,6 +26,7 @@ import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -31,6 +34,10 @@ import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MENU = os.path.join(ROOT, "familia-menu.sh")
+BASH = shutil.which("bash")
+# Termux has no /bin/sh until termux-exec rewrites a shebang. Use the sh we found.
+SH = shutil.which("sh") or "/bin/sh"
+NOTICE = "Use the Exit option to quit"
 HOME = os.path.join(ROOT, "scripts", "familia_home.sh")
 FAMILIA = os.path.join(ROOT, "familia")
 CATALOG = os.path.join(ROOT, "scripts", "menu-items.txt")
@@ -57,6 +64,35 @@ except ImportError:  # pragma: no cover - optional
     pexpect = None
 
 
+_UTF8_LOCALE = None
+
+
+def utf8_locale():
+    """A locale this host actually has. C.UTF-8 is missing on some macOS and older FreeBSD."""
+    global _UTF8_LOCALE
+    if _UTF8_LOCALE:
+        return _UTF8_LOCALE
+    import locale as locale_mod
+
+    saved = locale_mod.setlocale(locale_mod.LC_ALL)
+    chosen = "C"
+    try:
+        for name in ("C.UTF-8", "en_US.UTF-8", "C"):
+            try:
+                locale_mod.setlocale(locale_mod.LC_ALL, name)
+            except locale_mod.Error:
+                continue
+            chosen = name
+            break
+    finally:
+        try:
+            locale_mod.setlocale(locale_mod.LC_ALL, saved)
+        except locale_mod.Error:
+            pass
+    _UTF8_LOCALE = chosen
+    return chosen
+
+
 def isolated_env(**kw):
     """HOME and PATH never see the developer's gum or caches."""
     home = tempfile.mkdtemp(prefix="familia-m5-harness-")
@@ -64,7 +100,14 @@ def isolated_env(**kw):
     for sub in ("cache", "run", ".local"):
         os.makedirs(os.path.join(home, sub), mode=0o700, exist_ok=True)
     env = dict(os.environ)
+    # CI=true (GitHub Actions) forces line mode once the M1 reader lands (M7 T-1).
+    # Drop it, and the T-4 detection knobs, so a laptop and CI start from the same env.
+    # Callers can still pass CI=1 via kw; env.update(kw) runs after these pops.
     for key in (
+        "CI",
+        "FAMILIA_MENU",
+        "FAMILIA_GLYPHS",
+        "FAMILIA_ESC_MS",
         "FAMILIA_NO_TTY",
         "FAMILIA_ACCEPT_LICENSES",
         "FAMILIA_HOME_FORCE_MENU",
@@ -86,7 +129,7 @@ def isolated_env(**kw):
     env["NO_COLOR"] = "1"
     env["FAMILIA_COLOR"] = "never"
     env["FAMILIA_SKIP_GUM_INSTALL"] = "1"
-    env["LC_ALL"] = "C.UTF-8"
+    env["LC_ALL"] = utf8_locale()
     env["COLUMNS"] = "120"
     env["LINES"] = "40"
     parts = [
@@ -208,14 +251,43 @@ def _expect_choose(child, timeout=20):
     return text
 
 
+def _need_pexpect(item):
+    if pexpect is None:
+        return Check("exit-rule", item, "SKIP", "pexpect is not installed")
+    if not BASH:
+        return Check("exit-rule", item, "SKIP", "bash is not installed")
+    return None
+
+
+def _stop_child(child):
+    if child is None:
+        return
+    try:
+        if child.isalive():
+            os.killpg(child.pid, signal.SIGKILL)
+    except (OSError, ProcessLookupError):
+        try:
+            child.close(force=True)
+        except Exception:
+            pass
+    try:
+        if child.isalive():
+            child.close(force=True)
+    except Exception:
+        pass
+
+
 def walk_legacy_numbers(tree, timeout=20):
     """Select every posix-visible item by number under --pipe --dry-run."""
     checks = []
+    if not BASH:
+        return [Check("number-walk", "legacy.complete", "SKIP", "bash is not installed")], None, ""
     env = isolated_env()
-    argv = ["bash", MENU, "--pipe", "--dry-run"]
-    child = _spawn(argv, env, timeout=timeout)
+    argv = [BASH, MENU, "--pipe", "--dry-run"]
+    child = None
     log = []
     try:
+        child = _spawn(argv, env, timeout=timeout)
         _expect_choose(child, timeout=timeout)
         for group in tree:
             child.sendline(str(group["index"]))
@@ -370,11 +442,24 @@ def walk_legacy_numbers(tree, timeout=20):
 
 def check_legacy_exit_rules(timeout=15):
     """Invalid input and EOF must not be a successful quit."""
+    if not BASH:
+        return [
+            Check("exit-rule", "legacy.explicit-q", "SKIP", "bash is not installed"),
+            Check("exit-rule", "legacy.eof", "SKIP", "bash is not installed"),
+            Check("exit-rule", "legacy.invalid-input", "SKIP", "bash is not installed"),
+        ]
     checks = []
     env = isolated_env()
+    try:
+        return _legacy_exit_rules(env, checks, timeout)
+    finally:
+        shutil.rmtree(env.get("_HARNESS_HOME", ""), ignore_errors=True)
+
+
+def _legacy_exit_rules(env, checks, timeout):
     # explicit q
     r = subprocess.run(
-        ["bash", MENU, "--pipe"],
+        [BASH, MENU, "--pipe"],
         input="q\n",
         cwd=ROOT,
         env=env,
@@ -395,7 +480,7 @@ def check_legacy_exit_rules(timeout=15):
         )
     # EOF is not a successful quit
     r = subprocess.run(
-        ["bash", MENU, "--pipe"],
+        [BASH, MENU, "--pipe"],
         input="",
         cwd=ROOT,
         env=env,
@@ -416,7 +501,7 @@ def check_legacy_exit_rules(timeout=15):
         )
     # invalid input stays, then q
     r = subprocess.run(
-        ["bash", MENU, "--pipe", "--dry-run"],
+        [BASH, MENU, "--pipe", "--dry-run"],
         input="zzz\nq\n",
         cwd=ROOT,
         env=env,
@@ -438,7 +523,6 @@ def check_legacy_exit_rules(timeout=15):
                 "rc=%s text=%s" % (r.returncode, blob[-240:]),
             )
         )
-    shutil.rmtree(env.get("_HARNESS_HOME", ""), ignore_errors=True)
     return checks
 
 
@@ -448,12 +532,15 @@ def check_legacy_arrows(timeout=15):
         return [
             Check("arrow", "legacy.top", "SKIP", "pexpect is not installed"),
         ]
+    if not BASH:
+        return [Check("arrow", "legacy.top", "SKIP", "bash is not installed")]
     env = isolated_env()
-    child = _spawn(["bash", MENU, "--dry-run"], env, timeout=timeout)
+    child = _spawn([BASH, MENU, "--dry-run"], env, timeout=timeout)
     try:
         _expect_choose(child, timeout=timeout)
-        child.send("\x1b[B")  # Down
-        time.sleep(0.3)
+        # A newline, then q on its own line. Without the newline, bash reads
+        # the CSI bytes and the later "q" as one choice and the quit waits out.
+        child.send("\x1b[B\r")  # Down, then Enter
         try:
             child.expect(r"Choose |isn't one of the choices", timeout=5)
             blob = (child.before or "") + (child.after or "")
@@ -504,8 +591,15 @@ def check_legacy_arrows(timeout=15):
 
 def check_home_static():
     """Home structure, numeric gap, extras vs list-goals, fallback exec."""
-    checks = []
     env = isolated_env()
+    try:
+        return _check_home_static(env)
+    finally:
+        shutil.rmtree(env.get("_HARNESS_HOME", ""), ignore_errors=True)
+
+
+def _check_home_static(env):
+    checks = []
     r = subprocess.run(
         ["sh", HOME, "--list-goals"],
         cwd=ROOT,
@@ -580,14 +674,20 @@ def check_home_static():
                 "fallback_legacy execs familia-menu.sh and never returns to the home menu",
             )
         )
-    shutil.rmtree(env.get("_HARNESS_HOME", ""), ignore_errors=True)
     return checks
 
 
 def check_home_stub_walk(timeout=20):
     """Walk every area/verb plus extras with a stub gum; menu must return until Quit."""
-    checks = []
     env = isolated_env(TERM="dumb")
+    try:
+        return _check_home_stub_walk(env, timeout)
+    finally:
+        shutil.rmtree(env.get("_HARNESS_HOME", ""), ignore_errors=True)
+
+
+def _check_home_stub_walk(env, timeout):
+    checks = []
     bin_dir = os.path.join(env["_HARNESS_HOME"], "bin")
     os.makedirs(bin_dir, exist_ok=True)
     # Sequence: each area, list, Back, then extras that are safe, then Quit.
@@ -600,7 +700,10 @@ def check_home_stub_walk(timeout=20):
     with open(choice_file, "w", encoding="ascii") as fh:
         fh.write("\n".join(choices) + "\n")
     gum = os.path.join(bin_dir, "gum")
-    script = """#!/bin/sh
+    # The stub stays under the mkdtemp HOME. Never put it on /sdcard: that
+    # mount is noexec on Termux. The shebang is the sh we found, not a
+    # hardcoded /bin/sh (Termux has none until termux-exec rewrites it).
+    script = """#!__SH__
 case "$1" in --version|-v) printf '%s\n' 'gum version 2.0.2'; exit 0 ;; esac
 if [ "$1" = choose ] && [ "$2" = --help ]; then
   printf '%s\n' '--header' '--height'; exit 0
@@ -613,7 +716,7 @@ if [ "$1" = choose ]; then
   exit 0
 fi
 exit 0
-""".replace("{path}", choice_file)
+""".replace("__SH__", SH).replace("{path}", choice_file)
     with open(gum, "w", encoding="ascii") as fh:
         fh.write(script)
     os.chmod(gum, 0o755)
@@ -621,7 +724,6 @@ exit 0
     # Drive via a pty so familia_home.sh sees a terminal.
     if pexpect is None:
         checks.append(Check("home-walk", "stub-gum", "SKIP", "pexpect is not installed"))
-        shutil.rmtree(env.get("_HARNESS_HOME", ""), ignore_errors=True)
         return checks
     child = _spawn(["sh", HOME], env, timeout=timeout)
     try:
@@ -669,8 +771,302 @@ exit 0
                 "%s: %s" % (type(exc).__name__, (child.before or "")[-300:]),
             )
         )
-    shutil.rmtree(env.get("_HARNESS_HOME", ""), ignore_errors=True)
     return checks
+
+
+def _posix_item(tree, key):
+    for group in tree:
+        for pno, page in enumerate(group["pages"]):
+            for local, rec in enumerate(page, 1):
+                if rec["key"] == key:
+                    return group, pno, local
+    return None, None, None
+
+
+def check_legacy_tty_eof(timeout=15):
+    """EOF on a real tty is not a quit, and the after-item Enter prompt is reached.
+
+    --pipe skips both. Platform ran this on a pty and it already passed.
+    """
+    skip = _need_pexpect("legacy.tty-eof")
+    if skip:
+        return [skip]
+    env = isolated_env()
+    child = None
+    try:
+        child = _spawn([BASH, MENU, "--dry-run"], env, timeout=timeout)
+        _expect_choose(child, timeout=timeout)
+        child.sendline("1")  # Set up
+        _expect_choose(child, timeout=timeout)
+        child.sendline("1")  # first item, no placeholder
+        child.expect("Press Enter", timeout=timeout)
+        child.sendline("")
+        _expect_choose(child, timeout=timeout)
+        child.sendeof()
+        child.expect("input closed", timeout=timeout)
+        _expect_choose(child, timeout=timeout)
+        child.sendline("q")
+        child.expect(pexpect.EOF, timeout=timeout)
+        rc = child.wait()
+        if rc == 0:
+            return [
+                Check(
+                    "exit-rule",
+                    "legacy.tty-eof",
+                    "PASS",
+                    "Press Enter, then tty EOF, reprompted; q exited 0",
+                )
+            ]
+        return [Check("exit-rule", "legacy.tty-eof", "FAIL", "q exited %s" % rc)]
+    except (pexpect.TIMEOUT, pexpect.EOF, OSError) as exc:
+        return [
+            Check(
+                "exit-rule",
+                "legacy.tty-eof",
+                "FAIL",
+                "%s: %s" % (type(exc).__name__, ((child.before if child else "") or "")[-240:]),
+            )
+        ]
+    finally:
+        _stop_child(child)
+        shutil.rmtree(env.get("_HARNESS_HOME", ""), ignore_errors=True)
+
+
+def check_legacy_ctrl_c(timeout=15):
+    """Ctrl-C at the prompt, at a sub-prompt, and during a child redraws.
+
+    The explicit Exit option (the word exit, same as q) still exits 0.
+    """
+    skip = _need_pexpect("legacy.ctrl-c")
+    if skip:
+        return [skip]
+    env = isolated_env()
+    child = None
+    try:
+        sleeper = os.path.join(env["_HARNESS_HOME"], "py-sleep")
+        with open(sleeper, "w", encoding="ascii") as fh:
+            fh.write("#!/bin/sh\nsleep 30\n")
+        os.chmod(sleeper, 0o755)
+        env["PYTHON"] = sleeper
+        items, _groups = load_catalog()
+        tree = posix_tree(items, _groups)
+        menu_group, _menu_page, menu_local = _posix_item(tree, "skills.menu")
+        list_group, list_page, list_local = _posix_item(tree, "skills.list")
+        if menu_group is None or list_group is None:
+            return [Check("exit-rule", "legacy.ctrl-c", "FAIL", "skills.menu or skills.list missing")]
+        child = _spawn([BASH, MENU], env, timeout=timeout)
+        _expect_choose(child, timeout=timeout)
+        child.sendintr()
+        child.expect(NOTICE, timeout=timeout)
+        _expect_choose(child, timeout=timeout)
+        child.sendline(str(menu_group["index"]))
+        _expect_choose(child, timeout=timeout)
+        child.sendline(str(menu_local))
+        child.expect("agent name", timeout=timeout)
+        child.sendintr()
+        child.expect(NOTICE, timeout=timeout)
+        _expect_choose(child, timeout=timeout)
+        for _ in range(list_page):
+            child.sendline(">")
+            _expect_choose(child, timeout=timeout)
+        child.sendline(str(list_local))
+        child.expect("Running:", timeout=timeout)
+        time.sleep(0.2)
+        child.sendintr()
+        child.expect(NOTICE, timeout=timeout)
+        _expect_choose(child, timeout=timeout)
+        child.sendline("exit")
+        child.expect(pexpect.EOF, timeout=timeout)
+        rc = child.wait()
+        if rc == 0:
+            return [
+                Check(
+                    "exit-rule",
+                    "legacy.ctrl-c",
+                    "PASS",
+                    "Ctrl-C at the prompt, at a sub-prompt, and during a child redraws; exit quits 0",
+                )
+            ]
+        return [Check("exit-rule", "legacy.ctrl-c", "FAIL", "exit status %s" % rc)]
+    except (pexpect.TIMEOUT, pexpect.EOF, OSError) as exc:
+        return [
+            Check(
+                "exit-rule",
+                "legacy.ctrl-c",
+                "FAIL",
+                "%s: %s" % (type(exc).__name__, ((child.before if child else "") or "")[-240:]),
+            )
+        ]
+    finally:
+        _stop_child(child)
+        shutil.rmtree(env.get("_HARNESS_HOME", ""), ignore_errors=True)
+
+
+def check_legacy_signal_defaults(timeout=10):
+    """HUP and TERM still kill the menu. --list does not install the INT trap."""
+    skip = _need_pexpect("legacy.hup-term")
+    if skip:
+        return [
+            skip,
+            Check("exit-rule", "legacy.list-sigint", "SKIP", skip.detail),
+        ]
+    checks = []
+    env = isolated_env()
+    try:
+        for sig, item, name in (
+            (signal.SIGHUP, "legacy.hup", "HUP"),
+            (signal.SIGTERM, "legacy.term", "TERM"),
+        ):
+            child = None
+            try:
+                child = _spawn([BASH, MENU], env, timeout=timeout)
+                _expect_choose(child, timeout=timeout)
+                os.kill(child.pid, sig)
+                child.expect(pexpect.EOF, timeout=timeout)
+                child.close()
+                if child.signalstatus == sig and NOTICE not in (child.before or ""):
+                    checks.append(
+                        Check("exit-rule", item, "PASS", "%s still ends the menu" % name)
+                    )
+                else:
+                    checks.append(
+                        Check(
+                            "exit-rule",
+                            item,
+                            "FAIL",
+                            "exit=%s signal=%s" % (child.exitstatus, child.signalstatus),
+                        )
+                    )
+            except (pexpect.TIMEOUT, pexpect.EOF, OSError) as exc:
+                checks.append(
+                    Check(
+                        "exit-rule",
+                        item,
+                        "FAIL",
+                        "%s: %s" % (type(exc).__name__, ((child.before if child else "") or "")[-200:]),
+                    )
+                )
+            finally:
+                _stop_child(child)
+        child = None
+        try:
+            child = _spawn([BASH, MENU, "--list"], env, timeout=timeout)
+            child.expect("familia menu items", timeout=timeout)
+            os.kill(child.pid, signal.SIGINT)
+            child.expect(pexpect.EOF, timeout=timeout)
+            child.close()
+            blob = child.before or ""
+            if child.signalstatus == signal.SIGINT and NOTICE not in blob:
+                checks.append(
+                    Check(
+                        "exit-rule",
+                        "legacy.list-sigint",
+                        "PASS",
+                        "--list has no INT trap; SIGINT still kills it",
+                    )
+                )
+            else:
+                checks.append(
+                    Check(
+                        "exit-rule",
+                        "legacy.list-sigint",
+                        "FAIL",
+                        "exit=%s signal=%s notice=%s"
+                        % (child.exitstatus, child.signalstatus, NOTICE in blob),
+                    )
+                )
+        except (pexpect.TIMEOUT, pexpect.EOF, OSError) as exc:
+            checks.append(
+                Check(
+                    "exit-rule",
+                    "legacy.list-sigint",
+                    "FAIL",
+                    "%s: %s" % (type(exc).__name__, ((child.before if child else "") or "")[-200:]),
+                )
+            )
+        finally:
+            _stop_child(child)
+        return checks
+    finally:
+        shutil.rmtree(env.get("_HARNESS_HOME", ""), ignore_errors=True)
+
+
+def check_home_ctrl_c(timeout=15):
+    """Ctrl-C while stub gum is choosing stays in the home menu, then Quit exits 0."""
+    if pexpect is None:
+        return [Check("exit-rule", "home.ctrl-c", "SKIP", "pexpect is not installed")]
+    if not SH:
+        return [Check("exit-rule", "home.ctrl-c", "SKIP", "sh is not installed")]
+    env = isolated_env(TERM="dumb")
+    child = None
+    try:
+        bin_dir = os.path.join(env["_HARNESS_HOME"], "bin")
+        os.makedirs(bin_dir, exist_ok=True)
+        mark = os.path.join(bin_dir, "gum-waiting")
+        gum = os.path.join(bin_dir, "gum")
+        # First choose sleeps so we can deliver ^C. Later chooses print Quit.
+        # Kept under the temp HOME (not /sdcard, which is noexec on Termux).
+        script = r"""#!__SH__
+case "$1" in --version|-v) printf '%s\n' 'gum version 2.0.2'; exit 0 ;; esac
+if [ "$1" = choose ] && [ "$2" = --help ]; then
+  printf '%s\n' '--header' '--height'; exit 0
+fi
+if [ "$1" = choose ]; then
+  if [ ! -f '__MARK__' ]; then
+    touch '__MARK__'
+    printf '%s\n' 'GUM-WAITING' >&2
+    sleep 30
+    exit 0
+  fi
+  printf '%s\n' Quit
+  exit 0
+fi
+exit 0
+""".replace("__SH__", SH).replace("__MARK__", mark)
+        with open(gum, "w", encoding="ascii") as fh:
+            fh.write(script)
+        os.chmod(gum, 0o755)
+        env["PATH"] = bin_dir + os.pathsep + env["PATH"]
+        child = _spawn([SH, HOME], env, timeout=timeout)
+        child.expect("six equal items", timeout=timeout)
+        child.expect("GUM-WAITING", timeout=timeout)
+        time.sleep(0.3)
+        child.sendintr()
+        child.expect("interrupted", timeout=timeout)
+        # expect() only keeps the text since the previous match, so hold the notice.
+        seen = (child.before or "") + (child.after or "")
+        child.expect(pexpect.EOF, timeout=timeout)
+        rc = child.wait()
+        blob = seen + (child.before or "")
+        if rc == 0 and "interrupted" in blob:
+            return [
+                Check(
+                    "exit-rule",
+                    "home.ctrl-c",
+                    "PASS",
+                    "Ctrl-C during gum stayed in the home menu; Quit exited 0",
+                )
+            ]
+        return [
+            Check(
+                "exit-rule",
+                "home.ctrl-c",
+                "FAIL",
+                "rc=%s out=%s" % (rc, blob[-240:]),
+            )
+        ]
+    except (pexpect.TIMEOUT, pexpect.EOF, OSError) as exc:
+        return [
+            Check(
+                "exit-rule",
+                "home.ctrl-c",
+                "FAIL",
+                "%s: %s" % (type(exc).__name__, ((child.before if child else "") or "")[-240:]),
+            )
+        ]
+    finally:
+        _stop_child(child)
+        shutil.rmtree(env.get("_HARNESS_HOME", ""), ignore_errors=True)
 
 
 def summarize(checks):
@@ -744,10 +1140,25 @@ def run(argv=None):
     if pexpect is None:
         notes.append("pexpect was not importable; interactive walks are skipped or limited")
 
-    checks = []
-    checks.extend(check_legacy_exit_rules(timeout=args.timeout))
-    checks.extend(check_home_static())
-    if not args.skip_walk and pexpect is not None:
+    windows_gap = Check(
+        "platform",
+        "windows.powershell",
+        "SKIP",
+        "POSIX pty harness; familia-menu.ps1 and familia-home.ps1 are untested (M7)",
+    )
+    if os.name == "nt":
+        checks = [windows_gap]
+        notes.append("Windows menus are not exercised by this harness")
+    else:
+        checks = []
+        checks.extend(check_legacy_exit_rules(timeout=args.timeout))
+        checks.extend(check_home_static())
+        checks.extend(check_legacy_tty_eof(timeout=args.timeout))
+        checks.extend(check_legacy_ctrl_c(timeout=args.timeout))
+        checks.extend(check_legacy_signal_defaults(timeout=args.timeout))
+    if os.name != "nt" and not BASH:
+        checks.append(Check("number-walk", "legacy.complete", "SKIP", "bash is not installed"))
+    elif os.name != "nt" and not args.skip_walk and pexpect is not None:
         walked, rc, err = walk_legacy_numbers(tree, timeout=args.timeout)
         checks.extend(walked)
         expected = [it["key"] for g in tree for it in g["items"]]
@@ -778,7 +1189,7 @@ def run(argv=None):
             checks.append(
                 Check("number-walk", "legacy.complete", "FAIL", "walk finished with rc=%s" % rc)
             )
-    else:
+    elif os.name != "nt":
         checks.append(
             Check(
                 "number-walk",
@@ -787,9 +1198,12 @@ def run(argv=None):
                 "skipped (--skip-walk or no pexpect)",
             )
         )
-    if pexpect is not None:
+    if os.name != "nt" and pexpect is not None:
         checks.extend(check_legacy_arrows(timeout=args.timeout))
         checks.extend(check_home_stub_walk(timeout=args.timeout))
+        checks.extend(check_home_ctrl_c(timeout=args.timeout))
+    if os.name != "nt":
+        checks.append(windows_gap)
 
     payload = {
         "root": ROOT,
