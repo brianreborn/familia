@@ -15,9 +15,10 @@ import sys
 
 import pytest
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if ROOT not in sys.path:
-    sys.path.insert(0, os.path.join(ROOT, "tests"))
+TESTS = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(TESTS)
+if TESTS not in sys.path:
+    sys.path.insert(0, TESTS)
 
 import menu_harness as harness  # noqa: E402
 
@@ -83,11 +84,38 @@ def test_legacy_every_posix_item_reachable_by_number(catalog):
 
 @pexpect_needed
 @bash_needed
+@pytest.mark.parametrize("key_id,seq", harness.T5_KEYS)
+def test_legacy_t5_key_does_not_quit(key_id, seq):
+    """A T-5 sequence must not end the menu. This is not xfailed."""
+    check = harness.check_t5_key(key_id, seq)
+    assert check.status != "SKIP" or "pexpect" in check.detail or "bash" in check.detail
+    assert "dead end" not in check.detail, check.detail
+    assert "exited after" not in check.detail, check.detail
+    assert "process exited" not in check.detail, check.detail
+
+
+@pexpect_needed
+@bash_needed
 @pytest.mark.xfail(reason="M1: legacy menu has no arrow-key traversal yet (#733)", strict=False)
-def test_legacy_arrow_down_moves_highlight():
-    checks = harness.check_legacy_arrows()
-    assert checks
-    assert checks[0].status == "PASS", checks[0].detail
+# When M1 lands, switch this to strict=True so an XPASS forces the marker off.
+@pytest.mark.parametrize("key_id,seq", harness.T5_KEYS)
+def test_legacy_t5_key_moves_highlight(key_id, seq):
+    check = harness.check_t5_key(key_id, seq)
+    assert check.status == "PASS", check.detail
+
+
+@pexpect_needed
+@bash_needed
+def test_legacy_menu_reprompts_at_40_columns():
+    checks = {c.item: c for c in harness.check_legacy_layout(columns=40, lines=40, item="legacy.cols-40")}
+    assert checks["legacy.cols-40"].status == "PASS", checks["legacy.cols-40"].detail
+
+
+@pexpect_needed
+@bash_needed
+def test_legacy_menu_reprompts_with_lc_all_c():
+    checks = {c.item: c for c in harness.check_legacy_layout(lc_all="C", item="legacy.lc-all-c")}
+    assert checks["legacy.lc-all-c"].status == "PASS", checks["legacy.lc-all-c"].detail
 
 
 @pytest.mark.xfail(reason="standing rule: numeric entry must keep working on the home menu", strict=False)

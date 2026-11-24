@@ -49,7 +49,7 @@ The home picker *does* use arrows, but only because it shells out to Charm gum:
 - Unix: `pick()` in `scripts/familia_home.sh` lines 169-203, `gum choose --header ... --height 16`.
 - Windows: `Pick-One` in `scripts/windows/familia-home.ps1` lines 122-139, same `gum choose`.
 
-This is M1's job. A new sub-issue records the gap and points at M1; the key loop is not implemented here. The harness reports arrow reachability of the legacy top-level menu as FAIL on current `main`.
+This is M1's job. A new sub-issue records the gap and points at M1; the key loop is not implemented here. The harness reports the M7 T-5 key table (CSI and SS3 arrows, Home/End, PgUp/PgDn, DEL, Backspace, and a lone Esc) as FAIL until M1 lands; those keys must not quit the menu. It also checks that the legacy menu still reprompts and that every posix-visible label is found at 40 columns and with `LC_ALL=C`.
 
 ## 2. Missing numeric selection on the home menu
 

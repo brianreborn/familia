@@ -12,7 +12,7 @@ Walks the current home and legacy menus and reports, per item:
 Headless and offline: --dry-run, isolated HOME, FAMILIA_SKIP_GUM_INSTALL=1,
 no --apply, no model downloads, no network-facing side effects.
 
-Prefer pexpect; fall back to the stdlib pty if pexpect is missing.
+Requires pexpect for interactive walks; those checks SKIP if it is missing. There is no stdlib pty fallback.
 
 Usage:
   python3 tests/menu_harness.py
@@ -58,6 +58,48 @@ HOME_EXTRAS = (
     "Legacy menu",
 )
 
+# M7 T-5 key table. Pytest xfails highlight-movement until M1 lands. M8 can reuse this list.
+T5_KEYS = (
+    ("csi-up", "\x1b[A"),
+    ("csi-down", "\x1b[B"),
+    ("csi-right", "\x1b[C"),
+    ("csi-left", "\x1b[D"),
+    ("ss3-up", "\x1bOA"),
+    ("ss3-down", "\x1bOB"),
+    ("ss3-right", "\x1bOC"),
+    ("ss3-left", "\x1bOD"),
+    ("home-H", "\x1b[H"),
+    ("home-1", "\x1b[1~"),
+    ("end-F", "\x1b[F"),
+    ("end-4", "\x1b[4~"),
+    ("pgup", "\x1b[5~"),
+    ("pgdn", "\x1b[6~"),
+    ("del", "\x1b[3~"),
+    ("backspace", "\x08"),
+    ("esc", "\x1b"),
+)
+
+# CSI / C1 / other controls, for report details (Boundary L4).
+_ANSI_RE = re.compile(
+    r"\x1b(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])|[\x00-\x08\x0b\x0c\x0e-\x1a\x1c-\x1f\x80-\x9f]"
+)
+
+
+def _safe_detail(text):
+    if text is None:
+        return ""
+    if not isinstance(text, str):
+        text = str(text)
+    return _ANSI_RE.sub("", text.replace("\r", ""))
+
+
+def _label_found(label, blob):
+    if not label:
+        return False
+    if label in (blob or ""):
+        return True
+    return re.sub(r"\s+", "", label) in re.sub(r"\s+", "", blob or "")
+
 try:
     import pexpect
 except ImportError:  # pragma: no cover - optional
@@ -97,11 +139,12 @@ def isolated_env(**kw):
     """HOME and PATH never see the developer's gum or caches."""
     home = tempfile.mkdtemp(prefix="familia-m5-harness-")
     os.chmod(home, 0o700)
-    for sub in ("cache", "run", ".local"):
+    for sub in ("cache", "run", ".local", "config", "data", "state"):
         os.makedirs(os.path.join(home, sub), mode=0o700, exist_ok=True)
     env = dict(os.environ)
     # CI=true (GitHub Actions) forces line mode once the M1 reader lands (M7 T-1).
     # Drop it, and the T-4 detection knobs, so a laptop and CI start from the same env.
+    # The CI=1 line-mode assertion itself is left to M1 (no raw-mode reader yet).
     # Callers can still pass CI=1 via kw; env.update(kw) runs after these pops.
     for key in (
         "CI",
@@ -113,6 +156,8 @@ def isolated_env(**kw):
         "FAMILIA_HOME_FORCE_MENU",
         "FAMILIA_LEGACY_MENU",
         "FAMILIA_MENU_PIPE",
+        "FAMILIA_GRAPH",
+        "GGUF_HOME",
         "http_proxy",
         "https_proxy",
         "HTTP_PROXY",
@@ -122,9 +167,26 @@ def isolated_env(**kw):
         "HUGGING_FACE_HUB_TOKEN",
     ):
         env.pop(key, None)
+    for key in list(env):
+        upper = key.upper()
+        if (
+            upper in ("GITHUB_TOKEN", "GH_TOKEN", "HF_TOKEN", "HUGGING_FACE_HUB_TOKEN")
+            or upper.startswith("FAMILIA_API_KEY")
+            or "API_KEY" in upper
+            or upper.endswith("_TOKEN")
+            or upper.endswith("_SECRET")
+        ):
+            env.pop(key, None)
     env["HOME"] = home
     env["XDG_CACHE_HOME"] = os.path.join(home, "cache")
     env["XDG_RUNTIME_DIR"] = os.path.join(home, "run")
+    env["XDG_CONFIG_HOME"] = os.path.join(home, "config")
+    env["XDG_DATA_HOME"] = os.path.join(home, "data")
+    env["XDG_STATE_HOME"] = os.path.join(home, "state")
+    # Dead proxy so a child that ignored --dry-run cannot go direct (Boundary L2).
+    env["http_proxy"] = env["https_proxy"] = env["HTTP_PROXY"] = env["HTTPS_PROXY"] = env["ALL_PROXY"] = (
+        "http://127.0.0.1:9"
+    )
     env["TERM"] = kw.pop("TERM", "xterm")
     env["NO_COLOR"] = "1"
     env["FAMILIA_COLOR"] = "never"
@@ -211,7 +273,7 @@ class Check:
         self.kind = kind
         self.item = item
         self.status = status  # PASS, FAIL, SKIP
-        self.detail = detail
+        self.detail = _safe_detail(detail)
 
     def as_dict(self):
         return {
@@ -222,9 +284,11 @@ class Check:
         }
 
 
-def _spawn(argv, env, timeout=20):
+def _spawn(argv, env, timeout=20, dimensions=None):
     if pexpect is None:
         raise RuntimeError("pexpect is required for the interactive walk")
+    if dimensions is None:
+        dimensions = (int(env.get("LINES") or 40), int(env.get("COLUMNS") or 120))
     child = pexpect.spawn(
         argv[0],
         argv[1:],
@@ -233,7 +297,7 @@ def _spawn(argv, env, timeout=20):
         encoding="utf-8",
         codec_errors="replace",
         timeout=timeout,
-        dimensions=(40, 120),
+        dimensions=dimensions,
     )
     child.delaybeforesend = 0.02
     return child
@@ -299,7 +363,6 @@ def walk_legacy_numbers(tree, timeout=20):
                     text = _expect_choose(child, timeout=timeout)
                     log.append(text)
                 for local, rec in enumerate(page, 1):
-                    shown = rec["label"] in (text or "") or rec["key"] in (child.before or "")
                     # The current page listing is in `text` (output since last Choose).
                     listed = rec["label"] in text
                     if rec["available"]:
@@ -343,10 +406,9 @@ def walk_legacy_numbers(tree, timeout=20):
                                 )
                                 return checks, child.exitstatus, "exited after %s" % rec["key"]
                             blob = (child.before or "") + nxt
-                            if rec["label"] not in text and rec["label"] not in blob and not listed:
-                                # still count as selected if dry-run or not-available appeared
-                                pass
-                            if "[dry-run]" in blob or "not available" in blob or "exited with status" in blob or "Running:" in blob:
+                            # Boundary L3: only [dry-run] or an explicit not-available
+                            # guard counts. "Running:" would mean the item actually ran.
+                            if "[dry-run]" in blob:
                                 checks.append(
                                     Check(
                                         "number",
@@ -356,14 +418,14 @@ def walk_legacy_numbers(tree, timeout=20):
                                         % (group["index"], pno + 1, local),
                                     )
                                 )
-                            elif "Choose " in nxt:
-                                # returned to the page; treat as a return, but flag if no dry-run
+                            elif "not available" in blob:
                                 checks.append(
                                     Check(
                                         "number",
                                         rec["key"],
                                         "PASS",
-                                        "selected by number; menu returned (no dry-run line)",
+                                        "selected %s; not-available guard; menu returned"
+                                        % rec["key"],
                                     )
                                 )
                             else:
@@ -372,13 +434,13 @@ def walk_legacy_numbers(tree, timeout=20):
                                         "number",
                                         rec["key"],
                                         "FAIL",
-                                        "unclear result: %s" % blob[-240:],
+                                        "no [dry-run] or not-available guard: %s" % blob[-240:],
                                     )
                                 )
                             text = nxt
                     else:
-                        # Disabled items are listed but must not be runnable.
-                        if listed or rec["label"] in text:
+                        # Disabled items must show an explicit not-available guard.
+                        if listed and "not available" in text:
                             checks.append(
                                 Check(
                                     "number",
@@ -526,21 +588,23 @@ def _legacy_exit_rules(env, checks, timeout):
     return checks
 
 
-def check_legacy_arrows(timeout=15):
-    """Arrow keys do not move a highlight on the current legacy menu (M1 gap)."""
-    if pexpect is None:
-        return [
-            Check("arrow", "legacy.top", "SKIP", "pexpect is not installed"),
-        ]
-    if not BASH:
-        return [Check("arrow", "legacy.top", "SKIP", "bash is not installed")]
+def check_t5_key(key_id, seq, timeout=15):
+    """Send one T-5 sequence at the top prompt. Dead-end is a real failure.
+
+    Highlight movement is the M1 behavior; its absence is reported as FAIL
+    so pytest can xfail it until M1 lands.
+    """
+    skip = _need_pexpect("legacy.t5.%s" % key_id)
+    if skip:
+        skip.kind = "arrow"
+        return skip
     env = isolated_env()
-    child = _spawn([BASH, MENU, "--dry-run"], env, timeout=timeout)
+    child = None
     try:
+        child = _spawn([BASH, MENU, "--dry-run"], env, timeout=timeout)
         _expect_choose(child, timeout=timeout)
-        # A newline, then q on its own line. Without the newline, bash reads
-        # the CSI bytes and the later "q" as one choice and the quit waits out.
-        child.send("\x1b[B\r")  # Down, then Enter
+        # Newline after the sequence so bash does not glue it to a later "q".
+        child.send(seq + "\r")
         try:
             child.expect(r"Choose |isn't one of the choices", timeout=5)
             blob = (child.before or "") + (child.after or "")
@@ -553,39 +617,125 @@ def check_legacy_arrows(timeout=15):
         except pexpect.TIMEOUT:
             child.close(force=True)
         rc = child.exitstatus
-        # Current menu has no highlight and treats the CSI sequence as a
-        # bad choice, or swallows it. Either way, arrows do not select.
         moved = "highlight" in blob.lower() or re.search(r">\s+\d+\)", blob)
+        item = "legacy.t5.%s" % key_id
         if not still_alive:
-            return [
-                Check(
-                    "arrow",
-                    "legacy.top",
-                    "FAIL",
-                    "process exited after Down arrow (dead end)",
-                )
-            ]
-        # Documented gap: no arrow-key traversal yet (owned by M1).
-        detail = "Down arrow did not move a highlight (current menu is numeric + /search only)"
-        if "isn't one of the choices" in blob or not moved:
-            return [Check("arrow", "legacy.top", "FAIL", detail)]
-        if rc == 0 and moved:
-            return [Check("arrow", "legacy.top", "PASS", "highlight moved after Down")]
-        return [Check("arrow", "legacy.top", "FAIL", detail + "; rc=%s" % rc)]
+            return Check("arrow", item, "FAIL", "process exited after %s (dead end)" % key_id)
+        if moved and rc == 0:
+            return Check("arrow", item, "PASS", "highlight moved after %s" % key_id)
+        return Check(
+            "arrow",
+            item,
+            "FAIL",
+            "%s did not move a highlight (current menu is numeric + /search only)" % key_id,
+        )
     except (pexpect.TIMEOUT, pexpect.EOF) as exc:
-        try:
-            child.close(force=True)
-        except Exception:
-            pass
+        return Check(
+            "arrow",
+            "legacy.t5.%s" % key_id,
+            "FAIL",
+            "%s: %s" % (type(exc).__name__, ((child.before if child else "") or "")[-200:]),
+        )
+    finally:
+        _stop_child(child)
+        shutil.rmtree(env.get("_HARNESS_HOME", ""), ignore_errors=True)
+
+
+def check_legacy_arrows(timeout=15, keys=None):
+    """T-5 sequences at the top-level legacy menu (M1 gap until highlight moves)."""
+    if keys is None:
+        keys = T5_KEYS
+    checks = []
+    if pexpect is None:
+        checks.append(Check("arrow", "legacy.top", "SKIP", "pexpect is not installed"))
+    elif not BASH:
+        checks.append(Check("arrow", "legacy.top", "SKIP", "bash is not installed"))
+    else:
+        for key_id, seq in keys:
+            checks.append(check_t5_key(key_id, seq, timeout=timeout))
+    # Reserved until M1 enters raw mode (M7 T-21/T-22).
+    checks.append(
+        Check(
+            "tty",
+            "legacy.stty-restore",
+            "SKIP",
+            "reserved until M1 adds raw mode (M7 T-21/T-22)",
+        )
+    )
+    return checks
+
+
+def check_legacy_layout(timeout=20, columns=120, lines=40, lc_all=None, item="legacy.layout"):
+    """Menu still reprompts and every posix-visible label is found (T-13/T-18)."""
+    skip = _need_pexpect(item)
+    if skip:
+        skip.kind = "layout"
+        return [skip]
+    env = isolated_env()
+    env["COLUMNS"] = str(columns)
+    env["LINES"] = str(lines)
+    if lc_all is not None:
+        env["LC_ALL"] = lc_all
+        env["LANG"] = lc_all
+    items, groups = load_catalog()
+    tree = posix_tree(items, groups)
+    child = None
+    try:
+        child = _spawn(
+            [BASH, MENU, "--dry-run"],
+            env,
+            timeout=timeout,
+            dimensions=(lines, columns),
+        )
+        blob = _expect_choose(child, timeout=timeout)
+        for group in tree:
+            child.sendline(str(group["index"]))
+            page_text = _expect_choose(child, timeout=timeout)
+            blob += page_text
+            for pno, page in enumerate(group["pages"]):
+                if pno:
+                    child.sendline(">")
+                    page_text = _expect_choose(child, timeout=timeout)
+                    blob += page_text
+            child.sendline("b")
+            blob += _expect_choose(child, timeout=timeout)
+        child.sendline("q")
+        child.expect(pexpect.EOF, timeout=timeout)
+        rc = child.wait()
+        missing = []
+        for group in tree:
+            if not _label_found(group["group"], blob):
+                missing.append("group:%s" % group["group"])
+            for rec in group["items"]:
+                if not _label_found(rec["label"], blob):
+                    missing.append(rec["key"])
+        detail_bits = "columns=%s lines=%s LC_ALL=%s rc=%s" % (
+            columns,
+            lines,
+            env.get("LC_ALL"),
+            rc,
+        )
+        if rc == 0 and not missing:
+            return [Check("layout", item, "PASS", "reprompted; every label found; %s" % detail_bits)]
         return [
             Check(
-                "arrow",
-                "legacy.top",
+                "layout",
+                item,
                 "FAIL",
-                "%s: %s" % (type(exc).__name__, (child.before or "")[-200:]),
+                "%s missing=%s" % (detail_bits, ", ".join(missing[:12]) or "none"),
+            )
+        ]
+    except (pexpect.TIMEOUT, pexpect.EOF, OSError) as exc:
+        return [
+            Check(
+                "layout",
+                item,
+                "FAIL",
+                "%s: %s" % (type(exc).__name__, ((child.before if child else "") or "")[-200:]),
             )
         ]
     finally:
+        _stop_child(child)
         shutil.rmtree(env.get("_HARNESS_HOME", ""), ignore_errors=True)
 
 
@@ -624,30 +774,26 @@ def _check_home_static(env):
     # (arrows only, no numeric entry). That is a standing-rule gap.
     with open(HOME, encoding="utf-8") as fh:
         src = fh.read()
-    if "gum choose" in src and "read_line" not in src.split("pick()")[0] if False else True:
-        has_numeric = bool(
-            re.search(r"pick\(\).*read ", src, re.S)
-        ) or "Choose 1-" in src
-        # pick() only calls gum choose; there is no number parser in the home loop.
-        pick_fn = src[src.find("# pick HEADER") : src.find("area_of()")]
-        if "gum choose" in pick_fn and "read " not in pick_fn:
-            checks.append(
-                Check(
-                    "number",
-                    "home.interactive",
-                    "FAIL",
-                    "interactive home uses gum choose only; numbered --list-goals entries cannot be typed",
-                )
+    # pick() only calls gum choose; there is no number parser in the home loop.
+    pick_fn = src[src.find("# pick HEADER") : src.find("area_of()")]
+    if "gum choose" in pick_fn and "read " not in pick_fn:
+        checks.append(
+            Check(
+                "number",
+                "home.interactive",
+                "FAIL",
+                "interactive home uses gum choose only; numbered --list-goals entries cannot be typed",
             )
-        else:
-            checks.append(
-                Check(
-                    "number",
-                    "home.interactive",
-                    "PASS",
-                    "home pick() accepts numeric input",
-                )
+        )
+    else:
+        checks.append(
+            Check(
+                "number",
+                "home.interactive",
+                "PASS",
+                "home pick() accepts numeric input",
             )
+        )
     # Extra items on the interactive pick() are not numbered in --list-goals.
     if all(x in src for x in HOME_EXTRAS) and "Open llama-ui web cockpit" not in "\n".join(
         ln for ln in out.splitlines() if ln.strip().startswith(("1)", "2)", "3)", "4)", "5)", "6)"))
@@ -1200,13 +1346,15 @@ def run(argv=None):
         )
     if os.name != "nt" and pexpect is not None:
         checks.extend(check_legacy_arrows(timeout=args.timeout))
+        checks.extend(check_legacy_layout(timeout=args.timeout, columns=40, lines=40, item="legacy.cols-40"))
+        checks.extend(check_legacy_layout(timeout=args.timeout, lc_all="C", item="legacy.lc-all-c"))
         checks.extend(check_home_stub_walk(timeout=args.timeout))
         checks.extend(check_home_ctrl_c(timeout=args.timeout))
     if os.name != "nt":
         checks.append(windows_gap)
 
     payload = {
-        "root": ROOT,
+        "root": ".",
         "posix_visible": sum(len(g["items"]) for g in tree),
         "groups": len(tree),
         "checks": [c.as_dict() for c in checks],
