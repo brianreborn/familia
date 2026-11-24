@@ -229,7 +229,10 @@ def test_fail_closed_roles_are_normalized_in_graph_types():
     for role in ("Guardian", "GUARDIAN", "ｇｕａｒｄｉａｎ"):
         x = g(); x["nodes"]["coder"]["role"] = role; x["nodes"]["coder"]["server_tools"] = "all"
         has(x, "not allowed for")
-        x = g(); x["nodes"]["removed-large-chat"]["tool_route"] = "coder"; x["nodes"]["coder"]["role"] = role
+        x = g()
+        x["nodes"]["chat"] = dict(x["nodes"]["coder"], role="chat", port=19999)
+        x["nodes"]["chat"]["tool_route"] = "coder"
+        x["nodes"]["coder"]["role"] = role
         has(x, "fail-closed")
 
 
@@ -422,6 +425,7 @@ def test_model_role_pentest_allowed():
     for _n, nd in (x.get("nodes") or {}).items():
         if isinstance(nd, dict) and nd.get("model") == "qwen35-2b-q4km":
             nd["role"] = "pentest"
+            nd.pop("server_tools", None)
     assert errs(x) == []
 
 
