@@ -1,16 +1,20 @@
 ﻿<#
 .SYNOPSIS
-  Six equal home items for Windows (mirrors scripts/familia_home.sh).
-  gum.exe when it is on PATH. A download is asked first (default no).
-  If gum cannot be installed, or it fails three times, the legacy menu runs.
-  Ctrl-C stays in the menu. Quit is the only exit.
+  Windows home menu (mirrors scripts/familia_home.sh).
+  Talk to the protomodel is item 1. The six areas stay equal. Legacy menu is last.
+  Numbered: arrows and digits. gum is used only when it accepts --numbered.
+  No gum falls back to the legacy menu. -ListGoals / --list-goals prints and exits.
+  No tty (redirected stdin or FAMILIA_NO_TTY=1) opens the legacy numeric menu.
+  CI=true alone does not force that. Ctrl-C, Esc and EOF in a submenu return
+  to this menu; at this menu they exit 0.
 .EXAMPLE
   powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\familia-home.ps1
 .EXAMPLE
   powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\familia-home.ps1 -ListGoals
 #>
 param(
-  [switch]$ListGoals
+  [switch]$ListGoals,
+  [Parameter(ValueFromRemainingArguments = $true)][string[]]$Rest
 )
 $ErrorActionPreference = 'Stop'
 $script:Interrupted = $false
@@ -50,8 +54,26 @@ function Show-Goals {
   exit $LASTEXITCODE
 }
 
-if ($ListGoals -or $env:FAMILIA_NO_TTY -eq '1' -or -not [Environment]::UserInteractive) {
-  Show-Goals
+$wantList = [bool]$ListGoals
+if ($Rest) {
+  foreach ($a in $Rest) {
+    if ($a -eq '--list-goals' -or $a -eq '-l' -or $a -eq '-ListGoals') { $wantList = $true }
+  }
+}
+if ($wantList) { Show-Goals }
+
+function Test-NoStdin {
+  # stdin redirected, or FAMILIA_NO_TTY=1. Do not consult CI.
+  if ($env:FAMILIA_NO_TTY -eq '1') { return $true }
+  try { return [Console]::IsInputRedirected } catch { return $false }
+}
+
+if (Test-NoStdin) {
+  Write-Host 'familia-home: no terminal; opening the legacy numeric menu.'
+  $env:FAMILIA_NO_TTY = '1'
+  $menu = Join-Path $root 'scripts\windows\familia-menu.ps1'
+  & powershell -NoProfile -ExecutionPolicy Bypass -File $menu -Pipe
+  exit $LASTEXITCODE
 }
 
 function Enter-Legacy([string]$why) {
@@ -88,54 +110,81 @@ if (-not (Get-Command gum -ErrorAction SilentlyContinue)) {
   }
 }
 if (-not (Test-GumUsable)) {
-  $redirected = $false
-  try { $redirected = [Console]::IsInputRedirected } catch { $redirected = $false }
-  if ($redirected -or -not [Environment]::UserInteractive) {
-    Write-Host 'familia-home: gum is not usable and stdin is not a terminal. Not a quit.'
-    exit 2
-  }
   Enter-Legacy 'gum is missing, too old, or failed its version check'
 }
 
 function Show-Banner {
   Write-Host '  +------------------------------------------------------------------+'
-  Write-Host '  | familia   six equal items   Quit is the only exit               |'
+  Write-Host '  | familia   Talk first   six equal items   Legacy menu last        |'
   Write-Host '  +------------------------------------------------------------------+'
 }
 
-function Fail-Gum([string]$why) {
-  $script:GumFails++
-  if ($script:GumFails -ge 3) {
-    try {
-      if ([Console]::IsInputRedirected) {
-        Write-Host 'familia-home: input closed. Not a quit.'
-        exit 2
-      }
-    } catch { }
-    Enter-Legacy "gum failed $($script:GumFails) times"
-  }
-  Start-Sleep -Seconds 1
-  Write-Host "familia-home: $why; retry $($script:GumFails) of 3"
-  return $null
+function Test-GumNumbers {
+  if (-not (Test-GumUsable)) { return $false }
+  $help = (& gum choose --help 2>&1 | Out-String)
+  return ($help -match '--numbered')
 }
 
-function Pick-One([string]$header, [string[]]$options) {
-  if ($script:Interrupted) {
-    Write-Host 'familia-home: interrupted; staying in the menu. Choose Quit to leave.'
-    $script:Interrupted = $false
+function Read-HomeChoice([string]$header, [string[]]$options) {
+  Write-Host $header
+  if (Test-GumNumbers) {
+    $sel = & gum choose --numbered --header $header --height 16 @options
+    if ($LASTEXITCODE -eq 0 -and $sel) { return @{ Code = 0; Value = [string]$sel } }
+    if ($LASTEXITCODE -eq 130) { return @{ Code = 130; Value = '' } }
+    return @{ Code = 3; Value = '' }
   }
-  if (-not (Test-GumUsable)) { return (Fail-Gum 'gum is not usable') }
-  $sw = [Diagnostics.Stopwatch]::StartNew()
-  $sel = & gum choose --header $header --height 16 @options
-  $rc = $LASTEXITCODE
-  $sw.Stop()
-  if ($rc -eq 0 -and $sel) { $script:GumFails = 0; return [string]$sel }
-  $fast = $sw.ElapsedMilliseconds -lt 200
-  if ((($rc -eq 1) -or ($rc -eq 130)) -and -not $fast) {
-    $script:GumFails = 0
-    return $null
+  $idx = 0
+  $typed = ''
+  $old = $false
+  try { $old = [Console]::TreatControlCAsInput } catch { $old = $false }
+  try { [Console]::TreatControlCAsInput = $true } catch { }
+  try {
+    while ($true) {
+      Write-Host ''
+      for ($i = 0; $i -lt $options.Count; $i++) {
+        $mark = ' '
+        if ($i -eq $idx) { $mark = '>' }
+        Write-Host ('{0} {1,2}) {2}' -f $mark, ($i + 1), $options[$i])
+      }
+      Write-Host 'Number and Enter, or arrows. q quits. Esc goes back.'
+      $key = $null
+      try { $key = [Console]::ReadKey($true) } catch { return @{ Code = 4; Value = '' } }
+      if ($null -eq $key) { return @{ Code = 4; Value = '' } }
+      if ($key.Key -eq 'Escape') { return @{ Code = 3; Value = '' } }
+      if ($key.Key -eq 'UpArrow') {
+        $idx = ($idx - 1 + $options.Count) % $options.Count
+        $typed = ''
+        continue
+      }
+      if ($key.Key -eq 'DownArrow') {
+        $idx = ($idx + 1) % $options.Count
+        $typed = ''
+        continue
+      }
+      $ctrl = $false
+      try { $ctrl = [bool]($key.Modifiers -band [ConsoleModifiers]::Control) } catch { $ctrl = $false }
+      if ($ctrl -and ($key.Key -eq 'C')) { return @{ Code = 130; Value = '' } }
+      if ($ctrl -and ($key.Key -eq 'D' -or $key.Key -eq 'Z')) { return @{ Code = 4; Value = '' } }
+      if ($key.Key -eq 'Enter') {
+        if ($typed -match '^\d+$') {
+          $n = [int]$typed
+          if ($n -ge 1 -and $n -le $options.Count) {
+            return @{ Code = 0; Value = $options[$n - 1] }
+          }
+          Write-Host 'familia-home: that number is not on the menu.'
+          $typed = ''
+          continue
+        }
+        return @{ Code = 0; Value = $options[$idx] }
+      }
+      if (($key.Key -eq 'Q') -and -not $typed) { return @{ Code = 0; Value = 'Quit' } }
+      if ($key.KeyChar -ge '0' -and $key.KeyChar -le '9' -and $typed.Length -lt 4) {
+        $typed += $key.KeyChar
+      }
+    }
+  } finally {
+    try { [Console]::TreatControlCAsInput = $old } catch { }
   }
-  return (Fail-Gum "gum exited $rc")
 }
 
 function Area-Of([string]$title) {
@@ -207,8 +256,10 @@ function Invoke-Verb([string]$area, [string]$verb) {
 
 function Enter-Area([string]$area, [string]$title) {
   while ($true) {
-    $sel = Pick-One "$title : install, list, start, stop, status. Quit leaves." @(
+    $picked = Read-HomeChoice "$title : install, list, start, stop, status. Quit leaves." @(
       'install', 'list', 'start', 'stop', 'status', 'Back', 'Quit')
+    if ($picked.Code -eq 3 -or $picked.Code -eq 4 -or $picked.Code -eq 130) { return }
+    $sel = $picked.Value
     if (-not $sel) {
       Write-Host "familia-home: staying in $title. Choose Back or Quit."
       continue
@@ -222,17 +273,41 @@ function Enter-Area([string]$area, [string]$title) {
   }
 }
 
-$titles = @('Models', 'Harnesses', 'Agents', 'MCP servers', 'Tool sets', 'App store')
+function Get-HomeItems {
+  $lines = & $script:PyExe (Join-Path $root 'scripts\home_catalog.py') --items
+  if ($LASTEXITCODE -ne 0 -or -not $lines) {
+    Enter-Legacy 'the home catalog failed'
+  }
+  return @($lines | Where-Object { $_ })
+}
+
+$titles = Get-HomeItems
 while ($true) {
   Show-Banner
-  $sel = Pick-One 'What do you want to do? Quit is the only exit.' @(
-    $titles + @('Open llama-ui web cockpit', 'List all models', 'Configure all graphs', 'Legacy menu', 'Quit'))
+  $picked = Read-HomeChoice 'What do you want to do? Type a number or use arrows. q quits.' $titles
+  if ($picked.Code -eq 3 -or $picked.Code -eq 4 -or $picked.Code -eq 130) { exit 0 }
+  $sel = $picked.Value
   if (-not $sel) {
     Write-Host 'familia-home: staying in the menu. Choose Quit to leave.'
     continue
   }
   switch ($sel) {
     'Quit' { exit 0 }
+    'Talk to the protomodel' {
+      $bash = Get-Command bash -ErrorAction SilentlyContinue
+      if (-not $bash) { Write-Host 'familia-home: bash is not on PATH. Staying in the menu.'; continue }
+      & bash (Join-Path $root 'scripts\proto_chat.sh')
+    }
+    'Find more models' {
+      $bash = Get-Command bash -ErrorAction SilentlyContinue
+      if (-not $bash) { Write-Host 'familia-home: bash is not on PATH. Staying in the menu.'; continue }
+      & bash (Join-Path $root 'scripts\find_models.sh')
+    }
+    'Search my X / Twitter posts' {
+      $bash = Get-Command bash -ErrorAction SilentlyContinue
+      if (-not $bash) { Write-Host 'familia-home: bash is not on PATH. Staying in the menu.'; continue }
+      & bash (Join-Path $root 'scripts\search_x.sh')
+    }
     'Open llama-ui web cockpit' {
       $bash = Get-Command bash -ErrorAction SilentlyContinue
       if (-not $bash) { Write-Host 'familia-home: bash is not on PATH. Staying in the menu.'; continue }

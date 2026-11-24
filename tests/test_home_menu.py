@@ -1,4 +1,4 @@
-"""Home menu (#476): six equal items, legacy fallback, exit only on explicit quit."""
+"""Home menu: Talk is item 1, numbered entry, legacy fallback, no print-and-exit."""
 import os
 import pty
 import select
@@ -55,25 +55,109 @@ def run(argv, **kw):
     )
 
 
-def test_list_goals_are_six_equal_items_and_ascii():
+def _numbered(text):
+    import re
+    rows = []
+    for ln in text.splitlines():
+        m = re.match(r"\s*(\d+)\)\s+(.*)$", ln)
+        if m:
+            rows.append((int(m.group(1)), m.group(2).strip()))
+    return rows
+
+
+def item_number(title):
+    r = run([sys.executable, CATALOG, "--items"])
+    assert r.returncode == 0, r.stderr
+    items = [ln.strip() for ln in r.stdout.splitlines() if ln.strip()]
+    assert items[0] == "Talk to the protomodel", items
+    for i, name in enumerate(items, 1):
+        if name == title:
+            return i
+    raise AssertionError(title + " not in " + repr(items))
+
+
+def test_list_goals_talk_is_first_and_exits_0():
     r = run(["sh", HOME, "--list-goals"])
     assert r.returncode == 0, r.stderr
     out = r.stdout
     assert "\x1b" not in out
     assert all(ord(ch) < 128 for ch in out)
-    lines = [ln for ln in out.splitlines() if VERBS in ln]
-    assert len(lines) == 6, out
-    for i, title in enumerate(TITLES):
-        assert lines[i].strip().startswith("%d)" % (i + 1)), lines[i]
-        assert title in lines[i]
+    rows = _numbered(out)
+    assert rows, out
+    assert rows[0] == (1, "Talk to the protomodel"), rows[:4]
+    assert rows[1][1] == "Find more models"
+    assert rows[2][1].startswith("Search my X")
+    assert rows[-1][1] == "Legacy menu"
+    verb_rows = [(n, label) for n, label in rows if VERBS in label]
+    assert len(verb_rows) == 6, out
+    nums = []
+    for (n, label), title in zip(verb_rows, TITLES):
+        assert label.startswith(title), label
+        nums.append(n)
+    assert nums == list(range(nums[0], nums[0] + 6))
+    assert nums[0] == 4
     for goal in LEGACY_GOALS:
         assert goal in out, goal
     assert "q) Quit" in out
-    # non-interactive front door is the same list and exits 0 (not an interactive quit)
-    r2 = run(["sh", FAMILIA], env=base_env(FAMILIA_NO_TTY="1"))
-    assert r2.returncode == 0, r2.stderr
-    assert "Talk to the protomodel" in r2.stdout
-    assert VERBS in r2.stdout
+    listed = run(["sh", FAMILIA, "--list-goals"], input="")
+    assert listed.returncode == 0, listed.stderr
+    assert _numbered(listed.stdout)[0][1] == "Talk to the protomodel"
+    assert "what do you want to do?" not in listed.stdout
+
+
+def test_no_tty_opens_legacy_menu_instead_of_printing_and_exiting():
+    # FAMILIA_NO_TTY=1, empty stdin: read the legacy menu, do not exit 0.
+    empty = run(["sh", FAMILIA], env=base_env(FAMILIA_NO_TTY="1"), input="")
+    assert empty.returncode == 2, (empty.returncode, empty.stdout, empty.stderr)
+    blob = empty.stdout + empty.stderr
+    assert "what do you want to do?" in blob
+    assert "no terminal, so no interactive menu" not in blob
+    assert "input closed" in blob.lower() or "type q" in blob.lower()
+    quit_ok = run(["sh", FAMILIA], env=base_env(FAMILIA_NO_TTY="1"), input="q\n")
+    assert quit_ok.returncode == 0, quit_ok.stderr
+    assert "what do you want to do?" in quit_ok.stdout
+    # A pipe with no FAMILIA_NO_TTY is still no tty.
+    piped = run(["sh", HOME], input="q\n")
+    assert piped.returncode == 0, piped.stderr
+    assert "what do you want to do?" in piped.stdout
+
+
+def test_nontty_sanitizes_control_and_csi_before_printing():
+    payload = "\x1b[2J\x1b[31mPWNED\x1b[0m\nq\n"
+    r = run(["sh", FAMILIA], input=payload)
+    blob = r.stdout + r.stderr
+    assert "\x1b" not in blob
+    assert "[31m" not in blob
+    assert "[2J" not in blob
+    assert r.returncode == 0, blob[-500:]
+
+
+def test_nontty_caps_line_length_and_invalid_attempts():
+    big = "Z" * 8000 + "\n"
+    bad = "nope\n" * 40
+    r = run(["bash", MENU, "--pipe"], input=big + bad)
+    blob = r.stdout + r.stderr
+    assert "Z" * 200 not in blob
+    assert r.returncode == 2, blob[-500:]
+    assert "limit" in blob.lower()
+
+
+def test_windows_home_lists_talk_first_and_does_not_print_and_exit():
+    ps = open(os.path.join(ROOT, "scripts", "windows", "familia-home.ps1"), encoding="utf-8-sig").read()
+    cmd = open(os.path.join(ROOT, "familia.cmd"), encoding="ascii").read()
+    menu = open(os.path.join(ROOT, "scripts", "windows", "familia-menu.ps1"), encoding="utf-8-sig").read()
+    home = open(HOME, encoding="utf-8").read()
+    assert "--items" in ps
+    assert "--list-goals" in ps
+    assert "Test-NoStdin" in ps
+    assert "$env:CI" not in ps
+    assert "FAMILIA_NO_TTY -eq '1' -or -not [Environment]::UserInteractive" not in ps
+    assert "if ($wantList) { Show-Goals }" in ps
+    assert "--list-goals" in cmd
+    assert "input limit reached" in menu
+    assert "ConvertTo-SafeEcho" in menu
+    assert "$CI" not in home
+    assert "Read-HomeChoice" in ps
 
 
 def test_catalog_list_and_status_are_local_ascii_and_do_not_bind():
@@ -236,32 +320,224 @@ def _pty(argv, env, feed=b"", timeout=20):
     return rc, b"".join(chunks).decode("utf-8", "replace")
 
 
-def test_home_stays_open_until_quit_and_survives_cancel_and_errors(tmp_path):
+def _gum_env(tmp_path, **kw):
+    """A gum that is present but does not accept numbers, so the numeric prompt runs."""
     bin_dir = str(tmp_path / "bin")
-    choices = _gum(bin_dir, ["CANCEL", "Models", "status", "Quit"])
+    _gum(bin_dir, ["Quit"])
     env = base_env(
         PATH=bin_dir + os.pathsep + "/usr/bin:/bin",
-        FAMILIA_GRAPH="/no/such/graph.yaml",
-        TERM="xterm",
+        TERM="dumb",
+        NO_COLOR="1",
+        FAMILIA_SKIP_GUM_INSTALL="1",
     )
-    env.pop("NO_COLOR", None)
-    rc, out = _pty(["sh", HOME], env)
+    env.update(kw)
+    return env
+
+
+def test_home_status_error_stays_until_quit(tmp_path):
+    env = _gum_env(tmp_path, FAMILIA_GRAPH="/no/such/graph.yaml")
+    models = item_number("Models")
+    rc, out = _pty(["sh", HOME], env, feed=("%d\n5\nq\n" % models).encode())
     assert rc == 0, out
-    assert "staying in the menu" in out
+    assert "staying in the menu" in out.lower() or "Staying in the menu" in out
     assert "exited 1" in out
-    assert "Choose Quit" in out or "Staying" in out
-    leftover = open(choices, encoding="ascii").read().strip()
-    assert leftover == "", leftover
 
 
-def test_home_lists_a_model_then_quits(tmp_path):
-    bin_dir = str(tmp_path / "bin")
-    _gum(bin_dir, ["Models", "list", "Quit"])
-    env = base_env(PATH=bin_dir + os.pathsep + "/usr/bin:/bin", TERM="dumb", NO_COLOR="1")
-    rc, out = _pty(["sh", HOME], env)
+def test_numbered_entry_selects_list_all_models(tmp_path):
+    env = _gum_env(tmp_path)
+    n = item_number("List all models")
+    rc, out = _pty(["sh", HOME], env, feed=("%d\nq\n" % n).encode())
     assert rc == 0, out
     assert "stories15m-fp32" in out
     assert "\x1b" not in out
+
+
+def test_arrows_move_the_highlight_and_digits_still_select(tmp_path):
+    env = _gum_env(tmp_path)
+    n = item_number("List all models")
+    feed = b"\x1b[B\x1b[A" + ("%d\nq\n" % n).encode()
+    rc, out = _pty(["sh", HOME], env, feed=feed)
+    assert rc == 0, out
+    assert ">  2) Find more models" in out
+    assert "stories15m-fp32" in out
+
+
+def test_invalid_number_stays_on_the_menu(tmp_path):
+    env = _gum_env(tmp_path)
+    n = item_number("List all models")
+    rc, out = _pty(["sh", HOME], env, feed=("99\n%d\nq\n" % n).encode())
+    assert rc == 0, out
+    assert "not on the menu" in out
+    assert "stories15m-fp32" in out
+
+
+def test_ci_true_with_a_tty_stays_on_the_selectable_menu(tmp_path):
+    env = _gum_env(tmp_path, CI="true")
+    rc, out = _pty(["sh", HOME], env, feed=b"q\n")
+    assert rc == 0, out
+    assert "Talk to the protomodel" in out
+    assert "NOT DONE YET" not in out
+    assert "what do you want to do?" not in out
+
+
+def test_familia_no_tty_on_a_real_tty_uses_the_legacy_menu(tmp_path):
+    env = _gum_env(tmp_path, FAMILIA_NO_TTY="1")
+    rc, out = _pty(["sh", HOME], env, feed=b"q\n")
+    assert rc == 0, out
+    assert "what do you want to do?" in out
+    assert "NOT DONE YET" in out
+
+
+def _pty_script(env, steps, timeout=20):
+    """steps: ('write', bytes) or ('wait', bytes) or ('signal',)."""
+    master, slave = pty.openpty()
+    proc = subprocess.Popen(
+        ["sh", HOME], stdin=slave, stdout=slave, stderr=slave, cwd=ROOT, env=env,
+        close_fds=True, start_new_session=True,
+    )
+    os.close(slave)
+    chunks = []
+    deadline = time.time() + timeout
+    try:
+        for step in steps:
+            kind = step[0]
+            if kind == "write":
+                os.write(master, step[1])
+            elif kind in ("wait", "wait_new"):
+                blob = b"".join(chunks)
+                mark = len(blob) if kind == "wait_new" else 0
+                while time.time() < deadline and proc.poll() is None:
+                    if step[1] in b"".join(chunks)[mark:]:
+                        break
+                    ready, _, _ = select.select([master], [], [], 0.2)
+                    if not ready:
+                        continue
+                    try:
+                        data = os.read(master, 4096)
+                    except OSError:
+                        continue
+                    if data:
+                        chunks.append(data)
+                if step[1] not in b"".join(chunks)[mark:]:
+                    raise AssertionError("did not see %r\n%s" % (
+                        step[1], b"".join(chunks).decode("utf-8", "replace")))
+            elif kind == "signal":
+                os.killpg(proc.pid, signal.SIGINT)
+            else:
+                raise AssertionError(kind)
+        text = _read_pty(master, proc, chunks, deadline)
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+            proc.wait(timeout=5)
+        os.close(master)
+    rc = proc.wait(timeout=5)
+    return rc, text.decode("utf-8", "replace")
+
+
+def test_esc_at_main_exits_and_esc_in_a_submenu_returns(tmp_path):
+    env = _gum_env(tmp_path)
+    models = item_number("Models")
+    rc, out = _pty_script(env, [
+        ("wait", b"Esc goes back"),
+        ("write", b"\x1b"),
+    ])
+    assert rc == 0, out
+    assert "Talk to the protomodel" in out
+    assert "stories15m-fp32" not in out
+    rc, out = _pty_script(env, [
+        ("write", ("%d\n" % models).encode()),
+        ("wait_new", b"1) install"),
+        ("write", b"\x1b"),
+        ("wait_new", b"Talk first"),
+        ("write", b"q\n"),
+    ])
+    assert rc == 0, out
+    assert out.count("Talk to the protomodel") >= 2
+    assert "install" in out
+
+
+def test_eof_at_main_exits_and_eof_in_a_submenu_returns(tmp_path):
+    env = _gum_env(tmp_path)
+    models = item_number("Models")
+    rc, out = _pty_script(env, [
+        ("wait", b"Esc goes back"),
+        ("write", b"\x04"),
+    ])
+    assert rc == 0, out
+    assert "Talk to the protomodel" in out
+    rc, out = _pty_script(env, [
+        ("write", ("%d\n" % models).encode()),
+        ("wait_new", b"1) install"),
+        ("write", b"\x04"),
+        ("wait_new", b"Talk first"),
+        ("write", b"q\n"),
+    ])
+    assert rc == 0, out
+    assert out.count("Talk first") >= 2
+    assert "install" in out
+
+
+def test_ctrl_c_at_main_exits_and_ctrl_c_in_a_submenu_returns(tmp_path):
+    env = _gum_env(tmp_path)
+    models = item_number("Models")
+    master, slave = pty.openpty()
+    proc = subprocess.Popen(
+        ["sh", HOME], stdin=slave, stdout=slave, stderr=slave, cwd=ROOT, env=env,
+        close_fds=True, start_new_session=True,
+    )
+    os.close(slave)
+    chunks = []
+    text = _read_pty(master, proc, chunks, time.time() + 8)
+    assert b"Talk to the protomodel" in text
+    os.killpg(proc.pid, signal.SIGINT)
+    text = _read_pty(master, proc, chunks, time.time() + 8)
+    if proc.poll() is None:
+        proc.kill()
+        proc.wait(timeout=5)
+        os.close(master)
+        raise AssertionError("main menu did not exit on SIGINT\n" + text.decode("utf-8", "replace"))
+    os.close(master)
+    rc = proc.wait(timeout=5)
+    out = text.decode("utf-8", "replace")
+    assert rc == 0, out
+
+    master, slave = pty.openpty()
+    proc = subprocess.Popen(
+        ["sh", HOME], stdin=slave, stdout=slave, stderr=slave, cwd=ROOT, env=env,
+        close_fds=True, start_new_session=True,
+    )
+    os.close(slave)
+    os.write(master, ("%d\n" % models).encode())
+    chunks = []
+    text = _read_pty(master, proc, chunks, time.time() + 8)
+    assert b"Esc goes back" in text
+    os.killpg(proc.pid, signal.SIGINT)
+    # Let the submenu return before typing q, so q is not eaten by the dying read.
+    deadline = time.time() + 8
+    while time.time() < deadline and proc.poll() is None and text.count(b"Talk first") < 2:
+        ready, _, _ = select.select([master], [], [], 0.2)
+        if not ready:
+            continue
+        try:
+            data = os.read(master, 4096)
+        except OSError:
+            continue
+        if data:
+            chunks.append(data)
+            text = b"".join(chunks)
+    os.write(master, b"q\n")
+    text = _read_pty(master, proc, chunks, time.time() + 8)
+    if proc.poll() is None:
+        proc.kill()
+        proc.wait(timeout=5)
+        os.close(master)
+        raise AssertionError("submenu SIGINT did not return\n" + text.decode("utf-8", "replace"))
+    os.close(master)
+    rc = proc.wait(timeout=5)
+    out = text.decode("utf-8", "replace")
+    assert rc == 0, out
+    assert out.count("Talk first") >= 2
 
 
 def test_missing_gum_falls_back_to_legacy_menu():
@@ -279,7 +555,8 @@ def test_missing_gum_falls_back_to_legacy_menu():
     assert out.count("six equal items") < 8
 
 
-def test_failing_gum_does_not_spin_and_falls_back(tmp_path):
+def test_gum_without_number_entry_uses_the_numeric_prompt(tmp_path):
+    """A gum whose choose fails still is not the selector: digits pick Talk's neighbors."""
     bin_dir = str(tmp_path / "bin")
     _fail_gum(bin_dir)
     env = base_env(
@@ -288,19 +565,19 @@ def test_failing_gum_does_not_spin_and_falls_back(tmp_path):
         NO_COLOR="1",
         FAMILIA_SKIP_GUM_INSTALL="1",
     )
-    rc, out = _pty(["sh", HOME], env, feed=b"q\n", timeout=15)
+    n = item_number("List all models")
+    rc, out = _pty(["sh", HOME], env, feed=("%d\nq\n" % n).encode(), timeout=20)
     assert rc == 0, out
-    assert "falling back to the legacy menu" in out
-    assert out.count("six equal items") < 8
-    assert "what do you want to do?" in out
+    assert "stories15m-fp32" in out
+    assert "falling back to the legacy menu" not in out
+    assert "what do you want to do?" not in out
 
 
-def test_failing_gum_with_no_tty_exits_2_not_zero(tmp_path):
+def test_no_tty_with_failing_gum_reads_the_legacy_menu(tmp_path):
     bin_dir = str(tmp_path / "bin")
     _fail_gum(bin_dir)
     env = base_env(
         PATH=bin_dir + os.pathsep + "/usr/bin:/bin",
-        FAMILIA_HOME_FORCE_MENU="1",
         FAMILIA_SKIP_GUM_INSTALL="1",
         TERM="dumb",
         NO_COLOR="1",
@@ -308,28 +585,27 @@ def test_failing_gum_with_no_tty_exits_2_not_zero(tmp_path):
     r = run(["sh", HOME], env=env, input="")
     assert r.returncode == 2, (r.returncode, r.stdout, r.stderr)
     blob = r.stdout + r.stderr
-    assert "Not a quit" in blob
-    assert blob.count("six equal items") < 8
+    assert "what do you want to do?" in blob
+    assert "type q" in blob.lower()
+    assert "familia home:" not in blob
 
 
 def test_list_all_models_returns_to_the_menu(tmp_path):
-    bin_dir = str(tmp_path / "bin")
-    _gum(bin_dir, ["List all models", "Quit"])
-    env = base_env(PATH=bin_dir + os.pathsep + "/usr/bin:/bin", TERM="dumb", NO_COLOR="1")
-    rc, out = _pty(["sh", HOME], env, timeout=20)
+    env = _gum_env(tmp_path)
+    n = item_number("List all models")
+    rc, out = _pty(["sh", HOME], env, feed=("%d\nq\n" % n).encode(), timeout=20)
     assert rc == 0, out
     assert "stories15m-fp32" in out
-    assert out.count("six equal items") >= 2
+    assert out.count("Talk first") >= 2
 
 
 def test_configure_graphs_returns_to_the_menu(tmp_path):
-    bin_dir = str(tmp_path / "bin")
-    _gum(bin_dir, ["Configure all graphs", "Quit"])
-    env = base_env(PATH=bin_dir + os.pathsep + "/usr/bin:/bin", TERM="dumb", NO_COLOR="1")
-    rc, out = _pty(["sh", HOME], env, timeout=30)
+    env = _gum_env(tmp_path)
+    n = item_number("Configure all graphs")
+    rc, out = _pty(["sh", HOME], env, feed=("%d\nq\n" % n).encode(), timeout=30)
     assert rc == 0, out
     assert "Graphs you can configure" in out
-    assert out.count("six equal items") >= 2
+    assert out.count("Talk first") >= 2
 
 
 def _scratch_tree(tmp_path, start_text):
@@ -361,7 +637,8 @@ def test_sigint_during_action_stays_until_quit(tmp_path):
         cwd=ROOT, env=env, close_fds=True, start_new_session=True,
     )
     os.close(slave)
-    os.write(master, b"y\n")
+    models = item_number("Models")
+    os.write(master, ("%d\n3\ny\nq\n" % models).encode())
     chunks = []
     sent = False
     deadline = time.time() + 20
@@ -403,15 +680,9 @@ def test_sigint_during_action_stays_until_quit(tmp_path):
 
 
 def test_install_prompts_for_the_missing_argument(tmp_path):
-    bin_dir = str(tmp_path / "bin")
-    _gum(bin_dir, ["Models", "install", "Quit"])
-    env = base_env(
-        PATH=bin_dir + os.pathsep + "/usr/bin:/bin",
-        TERM="dumb",
-        NO_COLOR="1",
-        FAMILIA_SKIP_GUM_INSTALL="1",
-    )
-    rc, out = _pty(["sh", HOME], env, feed=b"y\n\n", timeout=15)
+    env = _gum_env(tmp_path)
+    models = item_number("Models")
+    rc, out = _pty(["sh", HOME], env, feed=("%d\n1\ny\n\nq\n" % models).encode(), timeout=15)
     assert rc == 0, out
     assert "ORG/NAME" in out
     assert "not confirmed" in out
@@ -902,12 +1173,11 @@ def test_bootstrap_reuse_writes_the_listener_pid(tmp_path):
 
 
 def test_cockpit_q_returns_to_the_menu(tmp_path):
-    bin_dir = str(tmp_path / "bin")
-    _gum(bin_dir, ["Open llama-ui web cockpit", "Quit"])
-    env = base_env(PATH=bin_dir + os.pathsep + "/usr/bin:/bin", TERM="dumb", NO_COLOR="1")
-    rc, out = _pty(["sh", HOME], env, feed=b"q\n", timeout=25)
+    env = _gum_env(tmp_path)
+    n = item_number("Open llama-ui web cockpit")
+    rc, out = _pty(["sh", HOME], env, feed=("%d\nq\nq\n" % n).encode(), timeout=25)
     assert rc == 0, out
-    assert out.count("six equal items") >= 2
+    assert out.count("Talk first") >= 2
 
 
 def test_coarse_clock_needs_the_listening_port(monkeypatch, tmp_path, capsys):

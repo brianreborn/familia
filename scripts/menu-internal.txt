@@ -65,7 +65,7 @@ scripts/build_appimage.sh|operator AppImage packaging for milestones; not an end
 scripts/perf/box_multi_size_smoke.py|perf/dev smoke hitting decision+coder ports; run by operators on a box, not menu
 scripts/familia_agent_reach.py|thin wrapper / library around Agent-Reach; menu uses scripts/agent_reach.py
 scripts/system_prompt_check.py|offline system-prompt path checks (#115); developer/CI helper, not an end-user menu action
-scripts/familia_home.sh|interactive home (six equal items); actions are legacy rows via scripts/home_catalog.py
+scripts/familia_home.sh|interactive home (Talk first, six equal items, Legacy menu last); actions are legacy rows via scripts/home_catalog.py
 scripts/windows/familia-home.ps1|Windows mirror of familia_home.sh
 scripts/start_graph.py|graph dry-run helper; preview twin retired — use hosts.start / start.sh
 scripts/install-gum.sh|install helper: put Charm gum in ~/.local/bin; called by install.sh / setup_goals, not a menu item
