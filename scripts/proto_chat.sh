@@ -464,13 +464,10 @@ while true; do
         export FAMILIA_PROTO_ASSIST_FILE FAMILIA_PROTO_TOOL_FILE FAMILIA_PROTO_USER_FILE FAMILIA_PROTO_MAX_TOKENS
         follow=$(proto_complete "$line")
         unset FAMILIA_PROTO_ASSIST_FILE FAMILIA_PROTO_TOOL_FILE FAMILIA_PROTO_USER_FILE FAMILIA_PROTO_MAX_TOKENS
+        # The follow-up is shown and not executed. Tool output is fenced data,
+        # so a RUN line it contains cannot start another command.
         if [ -n "$follow" ]; then
           printf 'proto> %s\n\n' "$follow"
-          proto_exec_reply "$follow" "$exec_out"
-          exec2=$(cat "$PROTO_TMP/exec.out" 2>/dev/null || true)
-          if [ -n "$exec2" ]; then
-            printf 'run> %s\n\n' "$exec2"
-          fi
         fi
       fi
     fi
