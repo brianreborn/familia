@@ -628,13 +628,13 @@
  ],
  "match": "LFS sha256 match",
  "local_check": {
-  "host": "angel",
+  "host": "localhost",
   "sha256_ok": true,
-  "checked": "2026-11-14"
+  "checked": "2026-11-15"
  },
  "unknown": null,
  "warnings": null,
- "updated": "2026-11-14",
+ "updated": "2026-11-15",
  "by": "scripts/model_db.py",
  "gguf_meta": {
   "general.architecture": "llama",

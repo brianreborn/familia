@@ -98,7 +98,6 @@ Default front door is the gum home (`./familia`). This catalog is **fallback onl
 | `models.lfm3` | LFM3 family: download an optional LFM3 model (lfm3, lfm3-qad, lfm3-vl, lfm3-omni, lfm3-audio; vision/audio served with --mmproj; `lfm3-vl`/`lfm3-omni`/`lfm3-audio` are Linux/macOS only for now, Windows TODO #190) | `sh code-bootstraps-llama.cpp/scripts/fetch-models.sh --pick <PICK>` | `powershell -File code-bootstraps-llama.cpp\scripts\fetch-models.ps1 -Pick <PICK>` |
 | `models.cards` | Fetch only a model's card, config and license (no weights) | `python3 scripts/hf_fetch.py <REPO> --damp-run` | `python scripts\hf_fetch.py <REPO> --damp-run` |
 | `models.license` | Show one model's license and what it obliges you to | `python3 scripts/model_license.py show <ID>` | `python scripts\model_license.py show <ID>` |
-| `models.pick` | Pick a model for this host: full catalog, search, Enter = host default; previews a host graph (writes generated/ only with --write) | `python3 scripts/model_pick.py menu --host <HOST> --role <ROLE>` | `python scripts\model_pick.py menu --host <HOST> --role <ROLE>` |
 | `models.check` | Check graph.yaml: models, RAM budget, required launch parameters | `python3 scripts/validate_graph.py --graph graph.yaml` | `python scripts\validate_graph.py --graph graph.yaml` |
 | `models.explain` | Show the exact launch parameters for one node | `python3 scripts/validate_graph.py --graph graph.yaml --explain <NODE>` | `python scripts\validate_graph.py --graph graph.yaml --explain <NODE>` |
 | `models.licenses` | List model, skill and engine licenses (records nothing) | `python3 scripts/licenses.py list` | `python scripts\licenses.py list` |
@@ -169,7 +168,6 @@ Default front door is the gum home (`./familia`). This catalog is **fallback onl
 | `adv.routes` | graph_router (default gateway): check a routes file (single, pair, fallback, chain, router, remote, tools); see docs/graph-recipes.md | `python3 scripts/graph_router.py <ROUTES> --check` | `python scripts\graph_router.py <ROUTES> --check` |
 | `adv.verify` | validate_graph: also verify model sha256 and runtimes (slow) | `python3 scripts/validate_graph.py --graph graph.yaml --verify-sha --check-runtimes` | `python scripts\validate_graph.py --graph graph.yaml --verify-sha --check-runtimes` |
 | `adv.graph-edit` | modify_graph: assign a models: key to a type-named node | `python3 scripts/modify_graph.py --host angel --assign-model coder=nanbeige43-33b-q4km` | `python scripts\modify_graph.py --host angel --assign-model coder=nanbeige43-33b-q4km` |
-| `adv.protograph` | protograph: recipe -> graph.yaml (dry run; skills/protograph/SKILL.md) | `python3 scripts/protograph.py <RECIPE>` | `python scripts\protograph.py <RECIPE>` |
 | `adv.db-list` | Model database: list entries | `python3 scripts/model_db.py list` | `python scripts\model_db.py list` |
 | `adv.db-show` | Model database: show one entry | `python3 scripts/model_db.py show <ID>` | `python scripts\model_db.py show <ID>` |
 | `adv.db-damp` | Model database: add a repo without weights (damp) | `python3 scripts/model_db.py damp <REPO>` | `python scripts\model_db.py damp <REPO>` |
@@ -281,9 +279,6 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/swarm/swarm-bootstrap.sh` | fresh swarm worker checkout; one-time operator setup |
 | `scripts/task_suite_promote.py` | promote gate for model configs (#119); used by bench/CI flows |
 | `scripts/task_suite_runner.py` | fixed task suite runner (#119); used by bench/CI flows |
-| `scripts/bfcl_adapter.py` | BFCL -> task-suite adapter and scorer (bench-adapters); used by bench/CI flows |
-| `scripts/routerbench_pickle_to_parquet.py` | one-time RouterBench pickle -> parquet converter; operator data prep |
-| `scripts/routerbench_scorer.py` | offline RouterBench routing-policy scorer (bench-adapters); used by bench/CI flows |
 | `scripts/prompt_cache.py` | library: prefill an agent's fixed prompt prefix once, save it with llama-server slot save, restore it on later starts (#85); used by hermes.sh |
 | `scripts/system_prompt_check.py` | offline system-prompt path checks (#115); developer/CI helper, not an end-user menu action |
 | `scripts/familia_agent_reach.py` | thin wrapper / library around Agent-Reach; menu uses scripts/agent_reach.py |
@@ -345,6 +340,4 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/search_x.sh` | X/Twitter search via Agent-Reach from gum home |
 | `scripts/windows/familia-home.ps1` | Windows mirror of familia_home.sh (started by familia.cmd) |
 | `scripts/start_graph.py` | graph dry-run helper (prints `via graph_router` = default gateway, or `via graph-proxy` with `router: false`); hosts.start-preview twin retired — use hosts.start / start.sh |
-| `scripts/hermes-escalation-config.sh` | default environment settings for escalation-ready hermes runs |
-| `scripts/watchdog_test.sh` | test helper running a command under a timeout watchdog for CI/local testing |
 
