@@ -38,6 +38,22 @@ familia.cmd -Search WORD [-Run N] [-DryRun]
 
 `--search` exits 0 when something matched and 1 when nothing did.
 
+## Moving around the menu
+
+Every screen starts with a line that shows where you are, such as `[familia > Hosts > page 2 of 2]` or `[familia > search 'skills']`, and ends with the same key hints at every level. Type a key, then Enter:
+
+| Key | What it does |
+| --- | --- |
+| `1`-`N` | pick that item (`NAME=value` before it or values after it are passed on) |
+| `b` | back one level; at the top menu it stays put |
+| `q` | quit; the menu exits only on `q` |
+| `<` `>` | previous / next page in a long group |
+| `&word` | show only the items in this group whose key, label or command contains word (case ignored); `&` alone shows them all again |
+| `/word` `?word` `n` `N` | search every group ([Search](#search)) |
+| `h` | list these keys |
+
+Numbers always refer to the items on the current screen, after any `&` filter. Arrow keys come from the key reader (#733 M1): when `scripts/menu-keys.sh` defines `menu_key_read`, a terminal menu reads through it and Esc or Backspace act as `b`. The menu tries that file once, and only when it is a regular file in the menu's own checkout (symlinks resolved), owned by the checkout's owner, with neither it, `scripts/` nor the checkout group- or world-writable or a symlink. With `--pipe`, `TERM` unset, `dumb`, `unknown` or `emacs`, `FAMILIA_NO_TTY=1`, `FAMILIA_LEGACY_MENU=1` or no terminal, the typed keys above are the whole interface. `NAME=value` sets the environment for items but never the menu's own state: names such as `ROOT`, `PIPE`, `DRY` and `ITEMS_FILE` are refused with a message.
+
 ## Recommended paths
 
 The interactive menu and `--list` show these paths before the command groups. Follow the route for your goal; the listed commands still need their usual inputs, installed dependencies, and license acceptance.
