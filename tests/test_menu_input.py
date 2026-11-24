@@ -396,3 +396,141 @@ def test_legacy_input_is_hardened(tmp_path):
                        capture_output=True, text=True, env=env, timeout=60)
     assert r.returncode == 2
     assert "input line of 4096 or more characters; ignored" in r.stderr
+
+
+# ---- review fixes (Race on #736 @c35dc41) ---------------------------------------
+
+@pytest.mark.parametrize("intro,tail", [
+    (b"\x1b[", b"1;5A"), (b"\x1b[1", b";5A"), (b"\x1b[1;", b"5A"), (b"\x1bO", b"A"), (b"\x1bO5", b"A"),
+    (b"\x1b]0;ti", b"tle\x07"), (b"\x1b]52;c;", b"ZXZpbA==\x1b\\"), (b"\x1bP", b"dcs\x1b\\"),
+    (b"\x1b[M", b" !!"), (b"\x1b[M ", b"!!"), (b"\x9b", b"12~"),
+])
+def test_stalled_sequence_tail_never_leaks_after_a_timeout(intro, tail):
+    d = mi.Decoder(esc_timeout=0.05)
+    assert d.feed(intro) == []
+    assert d.pending_timeout() == d.seq_timeout  # not the 50 ms ESC timeout
+    assert d.timeout() == []                     # first silence: keep skipping
+    assert d.pending
+    assert d.feed(tail) == []                    # the late tail is eaten, not typed
+    assert names(d.feed(b"q")) == [(mi.K_CHAR, "q")]
+
+
+def test_second_silence_ends_a_stalled_sequence():
+    d = mi.Decoder()
+    d.feed(b"\x1b[")
+    d.timeout()
+    assert d.timeout() == [] and not d.pending
+    assert names(d.feed(b"1")) == [(mi.K_CHAR, "1")]
+
+
+def test_only_a_lone_esc_uses_the_short_timeout():
+    d = mi.Decoder(esc_timeout=0.05)
+    d.feed(b"\x1b")
+    assert d.pending_timeout() == 0.05
+    d.feed(b"[")
+    assert d.pending_timeout() == mi.SEQ_TIMEOUT
+
+
+def test_paste_that_never_goes_silent_is_emitted_at_the_cap():
+    d = mi.Decoder(paste_cap=10)
+    out = d.feed(b"\x1b[200~")
+    for _ in range(200):  # 200 KiB, no end marker, no silence
+        out += d.feed(b"1\r" * 512)
+    assert [k.name for k in out] == [mi.K_PASTE]
+    assert out[0].truncated and out[0].text == "1 1 1 1 1 "
+    assert len(d._paste) == 0 and len(d._pend) < len(mi.PASTE_END)
+    # the rest is skipped until the end marker, then keys are keys again
+    assert names(d.feed(b"1\r\x1b[201~q")) == [(mi.K_CHAR, "q")]
+    # or until silence
+    d.feed(b"\x1b[200~" + b"x" * 50)
+    assert d.timeout() == [] and not d.pending
+    assert names(d.feed(b"q")) == [(mi.K_CHAR, "q")]
+
+
+def test_reader_closed_fd_is_end_of_input():
+    r, w = os.pipe()
+    rd = mi.KeyReader(r)
+    os.close(r)
+    os.close(w)
+    with pytest.raises(EOFError):
+        rd.read_key(timeout=1)
+    rd = mi.KeyReader(-1)
+    with pytest.raises(EOFError):
+        rd.read_key(timeout=1)
+
+
+def test_reader_waits_for_a_slow_sequence_tail():
+    r, w = os.pipe()
+    try:
+        rd = mi.KeyReader(r, mi.Decoder(esc_timeout=0.02))
+        os.write(w, b"\x1b[1;")
+        assert rd.read_key(timeout=0.15) is None  # well past the ESC timeout: still waiting
+        os.write(w, b"5A")
+        k = rd.read_key(timeout=2)
+        assert k.name == mi.K_UP and k.mods == 4
+    finally:
+        os.close(r)
+        os.close(w)
+
+
+def test_m1_names():
+    keys = mi.decode(b"\x1b[A\x1b[B\x1b[H\x1b[F\x1b[5~\x1b[6~\r\x7f\x1b[3~\x03\x04x\x1bq\x1b[200~p\x1b[201~\t")
+    assert [mi.m1_key(k) for k in keys] == ["up", "down", "home", "end", "pgup", "pgdn", "enter", "backspace",
+                                            "delete", "intr", "eof", "x", "alt", "paste", "unknown"]
+    assert [mi.m1_key(k) for k in mi.decode(b"\x1b")] == ["esc"]
+
+
+def _front_door_pty(env, feed=b"q\n", timeout=60):
+    m, s = pty.openpty()
+    p = subprocess.Popen(["sh", os.path.join(ROOT, "familia")], stdin=s, stdout=s, stderr=s, cwd=ROOT, env=env,
+                         start_new_session=True)
+    os.close(s)
+    os.write(m, feed)
+    out = b""
+    end = time.time() + timeout
+    while time.time() < end:
+        try:
+            ready = __import__("select").select([m], [], [], 0.2)[0]
+            if ready:
+                chunk = os.read(m, 4096)
+                if not chunk:
+                    break
+                out += chunk
+            elif p.poll() is not None:
+                break
+        except OSError:
+            break
+    if p.poll() is None:
+        p.kill()
+    os.close(m)
+    return p.wait(timeout=10), out.decode("utf-8", "replace")
+
+
+def test_front_door_uses_the_probe_on_a_terminal(tmp_path):
+    env = _legacy_env(str(tmp_path))
+    env.pop("FAMILIA_NO_TTY")
+    env["FAMILIA_SKIP_GUM_INSTALL"] = "1"
+    env["PATH"] = os.path.dirname(sys.executable) + ":/usr/bin:/bin"
+    rc, out = _front_door_pty(env)  # TERM=dumb
+    assert rc == 0, out
+    assert "familia: legacy: TERM=dumb; using the legacy numeric menu" in out
+    assert "what do you want to do?" in out
+    # a real terminal type: the probe says fancy and the home menu runs
+    rc, out = _front_door_pty(dict(env, TERM="xterm"))
+    assert "using the legacy numeric menu" not in out
+    assert "familia-home:" in out
+    # FAMILIA_MENU_PROBE=0: the probe is skipped and the home menu decides
+    env["FAMILIA_MENU_PROBE"] = "0"
+    rc, out = _front_door_pty(env)
+    assert "using the legacy numeric menu" not in out
+    assert "familia-home:" in out
+
+
+def test_front_door_without_a_terminal_keeps_list_mode(tmp_path):
+    env = _legacy_env(str(tmp_path))
+    env.pop("FAMILIA_NO_TTY")
+    r = subprocess.run(["sh", os.path.join(ROOT, "familia")], cwd=ROOT, env=env, stdin=subprocess.DEVNULL,
+                       capture_output=True, text=True, timeout=60)
+    assert r.returncode == 0, r.stderr
+    assert "using the legacy numeric menu" not in r.stderr
+    assert "Talk to the protomodel" in r.stdout

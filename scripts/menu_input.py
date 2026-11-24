@@ -13,6 +13,7 @@ Interface for M1:
     Decoder().feed(data) -> [Key];  .pending;  .pending_timeout();  .timeout() -> [Key]
     decode(data) -> [Key]   (whole buffer, end of input; for tests and fuzzing)
     Key(name, text, mods, truncated); names are the K_* constants below.
+    m1_key(key) -> M1's key strings ("up", "enter", "intr", "eof", a character, ...).
         mods is the xterm modifier bitmask: 1 Shift, 2 Alt, 4 Ctrl (0 = none).
     BRACKETED_PASTE_ON / BRACKETED_PASTE_OFF: M1 writes these on enter / restore.
 
@@ -20,15 +21,19 @@ Rules:
 - Unknown or malformed CSI / SS3 / OSC / DCS / mouse sequences are consumed and
   dropped. Their bytes never come back as K_CHAR.
 - A lone ESC is K_ESC once no byte follows within esc_timeout (default 50 ms,
-  FAMILIA_ESC_TIMEOUT_MS, clamped to 10..1000).
+  FAMILIA_ESC_TIMEOUT_MS, clamped to 10..1000). After ESC [ / ESC O / ESC ] the
+  decoder waits up to seq_timeout (1 s) for the tail, then skips to the final
+  byte, BEL or ST, so a slow tail is never read as typed text.
 - A sequence longer than MAX_SEQ bytes is dropped; the rest of it is skipped.
 - Bracketed paste (ESC[200~ ... ESC[201~) is one K_PASTE whose text is literal
   and single-line: control and format characters removed, newlines and tabs
-  become spaces, at most paste_cap bytes kept (truncated=True when cut). A paste
-  is never split into keys. A paste with no end marker ends after paste_timeout.
+  become spaces, at most paste_cap bytes kept. At the cap the PASTE is emitted
+  with truncated=True and the rest is skipped until ESC[201~ or paste_timeout
+  of silence. A paste is never split into keys. A paste with no end marker
+  ends after paste_timeout.
 - Reads are at most READ_CHUNK bytes; nothing reads until EOF.
 
-usage: python3 scripts/menu_input.py probe
+usage: python3 scripts/menu_input.py probe [--stdout-fd N]
        python3 scripts/menu_input.py decode < captured-bytes
 example: python3 scripts/menu_input.py probe && echo fancy menu allowed
 """
@@ -70,6 +75,7 @@ READ_CHUNK = 256       # bytes per os.read
 PASTE_CAP = 4096       # bytes of pasted text kept
 ESC_TIMEOUT = 0.05     # seconds
 PASTE_TIMEOUT = 1.0    # seconds of silence that ends an unterminated paste
+SEQ_TIMEOUT = 1.0      # seconds to wait for the tail of a CSI / SS3 / OSC / mouse sequence
 
 PASTE_END = b"\x1b[201~"
 
@@ -84,7 +90,7 @@ _CSI_TILDE = {1: K_HOME, 7: K_HOME, 4: K_END, 8: K_END, 2: K_INSERT, 3: K_DELETE
 _SS3 = {"A": K_UP, "B": K_DOWN, "C": K_RIGHT, "D": K_LEFT, "H": K_HOME, "F": K_END, "M": K_ENTER,
         "P": "F1", "Q": "F2", "R": "F3", "S": "F4"}
 
-_GROUND, _ESC, _CSI, _SS3S, _STR, _STR_ESC, _MOUSE, _SKIP, _UTF8, _PASTE = range(10)
+_GROUND, _ESC, _CSI, _SS3S, _STR, _STR_ESC, _MOUSE, _SKIP, _UTF8, _PASTE, _PASTE_SKIP = range(11)
 
 
 def _clamp_ms(value, default, lo, hi):
@@ -112,11 +118,13 @@ def sanitize_paste(raw):
 class Decoder:
     """Byte-at-a-time terminal input decoder. Holds at most a bounded amount of state."""
 
-    def __init__(self, esc_timeout=None, paste_timeout=PASTE_TIMEOUT, paste_cap=PASTE_CAP):
+    def __init__(self, esc_timeout=None, paste_timeout=PASTE_TIMEOUT, paste_cap=PASTE_CAP, seq_timeout=SEQ_TIMEOUT):
         if esc_timeout is None:
             esc_timeout = _clamp_ms(os.environ.get("FAMILIA_ESC_TIMEOUT_MS"), ESC_TIMEOUT, 10, 1000)
         self.esc_timeout = esc_timeout
         self.paste_timeout = paste_timeout
+        self.seq_timeout = seq_timeout
+        self._stale = False       # a sequence already timed out once: next silence ends it
         self.paste_cap = max(0, int(paste_cap))
         self.dropped = 0          # sequences consumed and ignored (for tests / M8 fuzzing)
         self._state = _GROUND
@@ -134,7 +142,12 @@ class Decoder:
         return self._state != _GROUND
 
     def pending_timeout(self):
-        return self.paste_timeout if self._state == _PASTE else self.esc_timeout
+        st = self._state
+        if st in (_ESC, _UTF8):
+            return self.esc_timeout  # only a lone ESC (or half a character) is decided fast
+        if st in (_PASTE, _PASTE_SKIP):
+            return self.paste_timeout
+        return self.seq_timeout      # inside CSI / SS3 / OSC / mouse: wait for the tail
 
     def feed(self, data):
         for b in bytes(data):
@@ -143,26 +156,56 @@ class Decoder:
         return out
 
     def timeout(self):
-        """No byte came within pending_timeout(): resolve whatever is half-read."""
+        """No byte came within pending_timeout(): resolve whatever is half-read.
+
+        A sequence that stalls after its introducer is not dropped to ground at
+        once (its tail would then leak as text, e.g. ESC [ <stall> 1;5A -> '1').
+        CSI / SS3 go to _SKIP, which eats up to the final byte; OSC / DCS strings
+        and mouse reports keep skipping. A second silence ends them."""
+        st = self._state
+        if st == _ESC:
+            self._emit(K_ESC)
+            self._reset()
+        elif st == _PASTE:
+            self._pend_commit_all()
+            if self._state == _PASTE:  # the cap may already have emitted it
+                self._finish_paste()
+            self._reset()
+        elif st in (_CSI, _SS3S) and not self._stale:
+            self.dropped += 1
+            self._state = _SKIP
+            self._seq = bytearray()
+            self._stale = True
+        elif st in (_STR, _STR_ESC, _MOUSE) and not self._stale:
+            self._stale = True
+        else:
+            if st not in (_GROUND, _PASTE_SKIP, _SKIP):
+                self.dropped += 1
+            self._reset()
+        out, self._out = self._out, []
+        return out
+
+    def flush(self):
+        """End of input: a lone ESC is Esc, a paste is emitted, anything else is dropped."""
         st = self._state
         if st == _ESC:
             self._emit(K_ESC)
         elif st == _PASTE:
             self._pend_commit_all()
-            self._finish_paste()
-        elif st != _GROUND:
+            if self._state == _PASTE:
+                self._finish_paste()
+        elif st not in (_GROUND, _PASTE_SKIP, _SKIP):
             self.dropped += 1
         self._reset()
         out, self._out = self._out, []
         return out
-
-    flush = timeout
 
     # ---- internals -------------------------------------------------------------
     def _reset(self):
         self._state = _GROUND
         self._seq = bytearray()
         self._need = 0
+        self._stale = False
 
     def _emit(self, name, text="", mods=0, truncated=False):
         self._out.append(Key(name, text, mods, truncated))
@@ -196,7 +239,7 @@ class Decoder:
                 self._ground(b)
         elif st == _UTF8:
             self._utf8(b)
-        elif st == _PASTE:
+        elif st in (_PASTE, _PASTE_SKIP):
             self._paste_byte(b)
 
     def _ground(self, b):
@@ -379,14 +422,20 @@ class Decoder:
             self._commit(self._pend.pop(0))
         if bytes(self._pend) == PASTE_END:
             self._pend = bytearray()
-            self._finish_paste()
+            if self._state == _PASTE:
+                self._finish_paste()
             self._reset()
 
     def _commit(self, b):
+        if self._state == _PASTE_SKIP:
+            return  # past the cap: discarded until ESC[201~ or silence
         if len(self._paste) < self.paste_cap:
             self._paste.append(b)
         else:
+            # cap reached: hand the truncated paste over now, then skip the rest
             self._paste_cut = True
+            self._finish_paste()
+            self._state = _PASTE_SKIP
 
     def _pend_commit_all(self):
         for b in bytes(self._pend):
@@ -402,6 +451,23 @@ class Decoder:
         self._paste = bytearray()
         self._paste_cut = False
         self._emit(K_PASTE, sanitize_paste(raw), 0, cut)
+
+
+# M1 (scripts/menu_keys.py, #743) names, so its Picker can take these keys unchanged.
+M1_NAMES = {K_UP: "up", K_DOWN: "down", K_LEFT: "left", K_RIGHT: "right", K_HOME: "home", K_END: "end",
+            K_PGUP: "pgup", K_PGDN: "pgdn", K_ENTER: "enter", K_ESC: "esc", K_BACKSPACE: "backspace",
+            K_DELETE: "delete", K_CTRL_C: "intr", K_CTRL_D: "eof", K_PASTE: "paste", K_ALT: "alt"}
+M1_UNKNOWN = "unknown"
+
+
+def m1_key(key):
+    """Key -> the string M1's Picker.feed() takes: a printable character is itself,
+    named keys are lowercase ("up", "enter", "intr", "eof", ...), PASTE is "paste"
+    (its text stays in key.text: append it to the typed line, never feed it per char),
+    ALT is "alt", and anything else is "unknown"."""
+    if key.name == K_CHAR:
+        return key.text
+    return M1_NAMES.get(key.name, M1_UNKNOWN)
 
 
 def decode(data, **kw):
@@ -441,7 +507,15 @@ class KeyReader:
                 # time left in the inter-byte gap, measured from the last byte read
                 gap = max(0.0, self._last + self.decoder.pending_timeout() - time.monotonic())
                 wait = gap if wait is None else min(wait, gap)
-            ready, _, _ = select.select([self.fd], [], [], wait)
+            try:
+                ready, _, _ = select.select([self.fd], [], [], wait)
+            except InterruptedError:
+                continue
+            except (OSError, ValueError):
+                # EBADF, a hung-up fd, or fd -1: the input is gone
+                self._eof = True
+                self._queue.extend(self.decoder.flush())
+                continue
             if ready:
                 try:
                     data = os.read(self.fd, self.chunk)
@@ -526,14 +600,22 @@ def _show(key):
 
 def main(argv):
     if not argv or argv[0] in ("-h", "--help"):
-        print("usage: python3 scripts/menu_input.py probe | decode")
+        print("usage: python3 scripts/menu_input.py probe [--stdout-fd N] | decode")
         print("  probe   exit 0 and print 'fancy' when the arrow-key menu may run,")
         print("          else exit 3 and print 'legacy: REASON'")
         print("  decode  read bytes on stdin (at most 1 MiB) and print one key per line")
         print("example: python3 scripts/menu_input.py probe && echo fancy menu allowed")
         return 0 if argv else 2
     if argv[0] == "probe":
-        p = probe()
+        # --stdout-fd N: check fd N as the menu's stdout. A shell that captures
+        # this output with $(...) passes the real stdout as fd 3:  { x=$(... probe --stdout-fd 3); } 3>&1
+        out_fd = 1
+        if len(argv) == 3 and argv[1] == "--stdout-fd" and argv[2].isdigit() and len(argv[2]) < 4:
+            out_fd = int(argv[2])
+        elif len(argv) != 1:
+            print("menu_input: usage: probe [--stdout-fd N]", file=sys.stderr)
+            return 2
+        p = probe(0, out_fd)
         print("fancy" if p.fancy else "legacy: " + p.reason)
         return 0 if p.fancy else 3
     if argv[0] == "decode":

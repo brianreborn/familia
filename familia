@@ -29,6 +29,21 @@ if [ $# -eq 0 ]; then
   if [ "${FAMILIA_LEGACY_MENU:-}" = 1 ]; then
     exec bash "$ROOT/familia-menu.sh"
   fi
+  # #733 M2: on a terminal, scripts/menu_input.py probe decides fancy vs legacy
+  # (stdout not a terminal, TERM unset/dumb, no termios -> legacy numeric menu).
+  # Exit 0 = fancy; anything else (3 = legacy, or Python missing) = legacy.
+  # Not a terminal: familia_home.sh keeps its list mode (prints, exits 0).
+  # FAMILIA_MENU_PROBE=0 skips the probe (tests and debugging the home menu).
+  if [ -t 0 ] && [ "${FAMILIA_NO_TTY:-}" != 1 ] && [ "${FAMILIA_MENU_PROBE:-1}" != 0 ]; then
+    # fd 3 = the real stdout, so the probe checks the terminal and not the $(...) pipe
+    _prc=0
+    { _probe=$("${PYTHON:-python3}" "$ROOT/scripts/menu_input.py" probe --stdout-fd 3 2>/dev/null) || _prc=$?; } 3>&1
+    [ "$_prc" = 0 ] || {
+      printf 'familia: %s; using the legacy numeric menu (FAMILIA_MENU_PROBE=0 skips this check)\n' \
+        "${_probe:-legacy: the menu probe could not run}" >&2
+      exec bash "$ROOT/familia-menu.sh"
+    }
+  fi
   exec sh "$ROOT/scripts/familia_home.sh"
 fi
 
