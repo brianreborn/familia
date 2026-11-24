@@ -169,7 +169,8 @@ def compile_config(doc, base_dir=".", graph=None, here=None):
     """routes.yaml dict -> {nodes, routes}. Raises ConfigError with one clear message."""
     if not isinstance(doc, dict) or doc.get("version", 1) != 1:
         raise ConfigError("routes config needs version: 1")
-    cfg = {"nodes": {}, "refused": {}, "raw_routes": dict(doc.get("routes") or {}), "refused_routes": {}}
+    cfg = {"nodes": {}, "refused": {}, "raw_routes": dict(doc.get("routes") or {}),
+           "refused_routes": {k: str(v) for k, v in dict(doc.get("refused_routes") or {}).items()}}
     imported = set()
     if graph is None and doc.get("graph"):
         import familia_yaml
@@ -552,9 +553,18 @@ def make_server(cfg, host="127.0.0.1", port=9940, api_key=None):
                 return self._json(200, {"status": "ok", "routes": len(cfg["routes"])})
             if not self._authed(): return
             if p == "/v1/models":
-                return self._json(200, {"object": "list", "data": [
-                    {"id": r, "object": "model", "owned_by": "familia", "familia": {"type": rt["type"], "kind": rt["kind"]}}
-                    for r, rt in sorted(cfg["routes"].items())]})
+                data = [
+                    {"id": r, "object": "model", "owned_by": "familia",
+                     "familia": {"type": rt["type"], "kind": rt["kind"], "status": "ready"}}
+                    for r, rt in cfg["routes"].items()
+                ]
+                data.extend(
+                    {"id": r, "object": "model", "owned_by": "familia",
+                     "familia": {"status": "unavailable", "reason": why}}
+                    for r, why in cfg["refused_routes"].items()
+                )
+                data.sort(key=lambda m: m["id"])
+                return self._json(200, {"object": "list", "data": data})
             self._err(404, f"unknown path {p}")
 
         def do_POST(self):
