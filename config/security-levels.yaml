@@ -1,0 +1,40 @@
+# Security node levels (docs/security-levels.md). Data only: scripts/security_levels.py reads it.
+# graph.yaml is never rewritten. The chosen level lives in a local, untracked override file
+# (security.local.yaml, same lookup as hosts.local.yaml) or comes from FAMILIA_SECURITY_LEVEL /
+# `familia start --security-level=LEVEL`, and is merged into the graph at load time.
+#
+# A level only flips `status` (active/planned) on the members of its sets. It never touches
+# roles, aliases, escalates_to, tools or seatbelts, so the fail-closed rules are the same at
+# every level: guardian/pentest/defender nodes are never auto-started by `familia start`, never
+# a gateway route and never an escalation target; pentest seats stay operator-start only.
+schema: 1
+
+sets:
+  guardian:
+    description: guardian/defender monitoring nodes (fail-closed, operator-start only, never routed)
+    node_roles: [guardian, defender]      # matched on the node's normalized role (node.role > model.role)
+    nodes: []                             # extra node keys, if a guardian node uses another role
+  pentest:
+    description: pentest seats (pentests.*) and pentest-role nodes; launch-test only, operator confirm
+    pentests: "*"                         # every pentests.* entry
+    node_roles: [pentest]
+    requires: [guardian]                  # a seat is only on when its node is on
+    confirm: true                         # typed confirmation on a terminal; there is no --yes
+  other:
+    description: any other fail-closed security node not matched above (full only)
+    fail_closed: true                     # role or model role in guardian/pentest/defender
+    nodes: []                             # add future safety/security node keys here
+
+levels:
+  "off":                  # quoted: bare off is a YAML 1.1 boolean
+    description: every security node and pentest seat off (planned)
+    sets: []
+  guardian:
+    description: guardian/defender monitoring only; pentest seats off
+    sets: [guardian]
+  pentest:
+    description: guardian plus pentest seats (still operator-start only, confirm required)
+    sets: [guardian, pentest]
+  full:
+    description: every security node and seat, including any other fail-closed node
+    sets: [guardian, pentest, other]

@@ -332,6 +332,16 @@ runtimes:
     backends: [cpu, vulkan]
     spec_types: [draft-simple, ngram-simple, ngram-map-k, ngram-map-k4v, ngram-mod, ngram-cache]
 
+  llama-b12359:
+    kind: llama-server
+    build: b12359 (llama.cpp v1.0.0; installer prebuilt pin, install/linux/install.sh -> runtime/b12359)
+    commit: b1b770d90d94cad9e9ea5b993bdbc383a522fb28
+    bin: ~/.local/share/familia/runtime/b12359/llama-server
+    hosts: [miryam]
+    supported_archs: [qwen35, gemma-embedding2, llama, lfm2, lfm3, qwen2, gemma2, gemma3, nanbeige]
+    backends: [cpu, vulkan]
+    spec_types: [draft-simple, ngram-simple, ngram-map-k, ngram-map-k4v, ngram-mod, ngram-cache]
+
   llama-b11669:
     kind: llama-server
     build: b11669 (llama.cpp 0.7.0)
@@ -593,7 +603,7 @@ nodes:
     bind: 127.0.0.1
     port: 18101
     cache_ram_mib: 256
-    status: planned
+    status: active               # P0 2026-11-22: planned is required (Brian); see docs/planned-to-active.md
     escalates_to: [coder, cpu-resident-coder]   # docs/escalation.md: fastest measured first (miryam coder 17.4 t/s vs 0.91 here)
     escalation: {mode: suggest}              # coder crosses host: needs first-time consent
 
@@ -607,12 +617,12 @@ nodes:
       ctx: "decision prompts are short; 2048 keeps the Vulkan KV small on the shared-memory HD 620 beside the coder on 7.1 GiB miryam; 8192 not measured"
     parallel: 1
     kv_type: q8_0
-    flash_attn: false
+    flash_attn: true             # q8_0 V cache needs -fa; was implicit (validator warning)
     offload: {backend: vulkan, ngl: 99, split: none, main_gpu: 0}   # HD 620 verified; slower than CPU, frees CPU for the coder
     bind: 127.0.0.1
     port: 18111
     cache_ram_mib: 64
-    status: planned
+    status: active               # P0 2026-11-22: planned is required (Brian); see docs/planned-to-active.md
     escalates_to: [coder]                    # same host; docs/escalation.md
     escalation: {mode: suggest}
 
@@ -631,7 +641,7 @@ nodes:
     bind: 127.0.0.1
     port: 18110
     cache_ram_mib: 64            # tiny; phone7 reserve_ram_mib 5120 leaves ~2.3 GiB
-    status: planned              # launch via familia-start once the node is wired into the fleet
+    status: active               # P0 2026-11-22: planned is required (Brian); see docs/planned-to-active.md
 
   vulkan-handset-general:
     model: qwen25-05b-q4km-termux
@@ -648,7 +658,7 @@ nodes:
     bind: 127.0.0.1
     port: 18112
     cache_ram_mib: 128           # min MemAvailable 1945 MiB during the run; reserve 5120
-    status: planned
+    status: active               # P0 2026-11-22: planned is required (Brian); see docs/planned-to-active.md
   coder:
     status: active
     model: qwen35-2b-q4km
@@ -670,11 +680,11 @@ nodes:
     port: 9941
     cache_ram_mib: 1024          # >= per-slot prompt state (~426 MiB KV @ 64K q8_0)
   embed:
-    status: planned
+    status: active               # P0 2026-11-22: planned is required (Brian); see docs/planned-to-active.md
     model: egemma2-q8
     role: embed
     host: miryam
-    runtime: llama-b11944
+    runtime: llama-b12359
     ctx: 8192
     parallel: 1
     kv_type: f16
@@ -772,7 +782,7 @@ nodes:
     model: dolphin3-cyber-8b-q2k
     role: guardian              # public type; model catalog role remains pentest (synonym)
     host: miryam
-    runtime: llama-b11944
+    runtime: llama-b12359
     ctx: 8192
     parallel: 1
     kv_type: q8_0
@@ -782,8 +792,9 @@ nodes:
     bind: 127.0.0.1
     port: 18202
     cache_ram_mib: 1024
-    status: planned              # flip active after GGUF present + sha measured
-                                 # Boundary: python3 scripts/guardian_ready.py (never auto-activates; Hermes owns fetch)
+    status: active               # P0 2026-11-22, Brian confirmed. Fail-closed: never auto-started by familia start,
+                                 # never a gateway alias route or escalation target; operator-start only (with-fleet.sh).
+                                 # Boundary: python3 scripts/guardian_ready.py checks weights + sha before operator start
     card_set: "5. Recommended settings"
     override_reasons:
       ctx: "8B Q2_K advisory node; 8192 keeps KV small beside coder:9941 on miryam"
@@ -809,13 +820,13 @@ nodes:
     bind: 127.0.0.1
     port: 18203
     cache_ram_mib: 1024
-    status: planned
+    status: active               # P0 2026-11-22, Brian confirmed; fail-closed, operator-start only (see fleet-guardian)
     card_set: "5. Recommended settings"
     override_reasons:
       ctx: "guardian advisory node on angel; 8192 keeps KV modest beside the active coder"
       card_set: "same Recommended settings card as Ubuntu guardian node"
     note: >-
-      Guardian/defender on angel (FreeBSD jump). Planned until weights on angel + measured sha.
+      Guardian/defender on angel (FreeBSD jump). Active (P0 2026-11-22); operator-start only, needs weights on angel + measured sha.
       Private graph key is guardian (scripts/generate_graph.py angel). Seatbelts: tools dual-disable default.
       Ready-check (Boundary, no activate): python3 scripts/guardian_ready.py
 
@@ -856,7 +867,7 @@ pentests:
     report_to: familia-issues
     requires_operator_confirm: true
     launch_test_only: true      # seatbelt default (not a barricade): operator may widen per schema rules
-    status: planned             # flip active after weights + measured sha
+    status: active              # P0 2026-11-22, Brian confirmed; seatbelts above unchanged (tools.allow empty, launch_test_only, operator confirm)
     notes: >-
       Guardian/defender node flavor (owned-fleet). Seatbelts on by default.
       Automation: sh with-fleet.sh --role guardian --launch-test (aliases: fleet, pentest, defender).
@@ -874,7 +885,7 @@ pentests:
     report_to: familia-issues
     requires_operator_confirm: true
     launch_test_only: true
-    status: planned
+    status: active              # P0 2026-11-22, Brian confirmed; seatbelts unchanged
     notes: >-
       Guardian on the FreeBSD host (host id angel). Same seatbelts as pentests.fleet.
       Launch-test: sh with-fleet.sh --role freebsd-guardian --launch-test

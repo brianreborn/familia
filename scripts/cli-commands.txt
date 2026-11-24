@@ -83,6 +83,10 @@ monitor once|hosts.monitor-once
 monitor deaths|adv.monitor-deaths
 monitor|hosts.monitor
 start|hosts.start
+security status|security.status
+security list|security.list
+security level|security.level
+security|raw|PY scripts/security_levels.py||python scripts\security_levels.py|security node levels: off, guardian, pentest or full; status, list, enable SET, disable SET, clear (docs/security-levels.md)
 serve|hosts.serve
 host measure|hosts.measure-write
 host power|adv.power-probe

@@ -230,6 +230,21 @@ Runs: \fBsh with\-fleet.sh \-\-role guardian \-\-launch\-test\fR
 Legacy id \[u2192] guardian operator\-start (licenses first).
 .br
 Runs: \fBenv FAMILIA_OPERATOR_CONFIRM=yes sh with\-fleet.sh \-\-role guardian \-\-operator\-start\fR
+.TP
+\fBsecurity status\fR
+Security node levels: which guardian/pentest nodes are on and why.
+.br
+Runs: \fBpython3 scripts/security_levels.py status\fR
+.TP
+\fBsecurity list\fR
+List the security levels (off, guardian, pentest, full) and their sets.
+.br
+Runs: \fBpython3 scripts/security_levels.py list\fR
+.TP
+\fBsecurity level\fR \fI<LEVEL>\fR
+Set the security level (local override; graph.yaml unchanged; pentest asks you to type a confirmation).
+.br
+Runs: \fBpython3 scripts/security_levels.py <LEVEL>\fR
 .SS App catalog
 .TP
 \fBapps\fR
@@ -848,6 +863,11 @@ any registry.py command: add, query, summarize, suggest, match, power, lint.
 .br
 Runs: \fBpython3 scripts/registry.py\fR \fIARG\fR...
 .TP
+\fBsecurity\fR \fIARG\fR...
+security node levels: off, guardian, pentest or full; status, list, enable SET, disable SET, clear (docs/security\-levels.md).
+.br
+Runs: \fBpython3 scripts/security_levels.py\fR \fIARG\fR...
+.TP
 \fBhome\fR \fIARG\fR...
 six equal home items; legacy menu if gum cannot be installed.
 .br
@@ -926,6 +946,12 @@ Graph file to use instead of graph.yaml, where the script supports it.
 \fBFAMILIA_HOSTS_OVERLAY\fR
 Path to hosts.local.yaml connection overlay (#104); default ~/.config/familia/hosts.local.yaml.
 .TP
+\fBFAMILIA_SECURITY_LEVEL\fR
+Security node level for this run: off, guardian, pentest or full (docs/security\-levels.md). Wins over the local override; cannot confirm the pentest set.
+.TP
+\fBFAMILIA_SECURITY_OVERRIDE\fR
+Path to the security.local.yaml level override; default ~/.config/familia/security.local.yaml.
+.TP
 \fBPYTHON\fR
 Python interpreter (default python3).
 .TP
@@ -969,6 +995,12 @@ Monitor event log (deaths, OOM kills).
 \fIregistry/models/\fR
 The model database, one JSON file per model file.
 .TP
+\fIconfig/security\-levels.yaml\fR
+The security levels and sets (data only); familia security reads it.
+.TP
+\fI~/.config/familia/security.local.yaml\fR
+Local security level override written by familia security; never committed. graph.yaml is never rewritten.
+.TP
 \fIpins.txt\fR
 Pinned sub\-projects that scripts/configure.sh checks out.
 .SH EXIT STATUS
@@ -998,6 +1030,7 @@ familia hermes \-\-model coder          # hermes on one model
 familia hermes \-\-graph\-mode          # hermes on the whole graph
 familia harness2 set hermes propose
 familia monitor \-\-once
+familia security status              # which security nodes are on and why
 familia search license
 .fi
 .SH SEE ALSO

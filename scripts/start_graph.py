@@ -139,12 +139,21 @@ def select_host(graph, requested=None, environ=None, hostname=None):
     )
 
 
+# Roles that run as active nodes but are reached directly on their own port, never through the
+# gateway: an alias naming one is listed as omitted instead of routed (#38 P0 planned->active).
+DIRECT_ONLY_ROLES = ("decision",)
+
+
 def _alias_member(graph, host, alias_name, alias, node_name):
     """One alias member as {node, kind, url, remote}, or None when it cannot be routed from here
     (not active, or on another host without `remote: true` / a usable addr / a non-loopback bind)."""
     node = graph["nodes"][node_name]
     if node.get("status") != "active":
         return None
+    if not node.get("embeddings") and graph_validator.is_fail_closed(graph, node_name):
+        return None  # guardian/pentest/defender: never a gateway route, even when active (TOOLS-005)
+    if not node.get("embeddings") and graph_validator.node_type(graph, node_name) in DIRECT_ONLY_ROLES:
+        return None  # active, reached on its own port (docs/planned-to-active.md); never a gateway route
     local = node.get("host") == host
     if not local:
         if alias.get("remote") is not True:
@@ -247,7 +256,9 @@ def router_routes(aliases):
 
 def local_topology(graph, host):
     import node_state  # DUP-03 owner
-    nodes = node_state.local_active(graph, host)
+    # fail-closed seats (guardian/pentest/defender) are active but operator-start only
+    # (with-fleet.sh --operator-start, FAMILIA_OPERATOR_CONFIRM=yes): familia start never launches them
+    nodes = [n for n in node_state.local_active(graph, host) if not graph_validator.is_fail_closed(graph, n)]
     remote_nodes = node_state.remote_active(graph, host)
     gateways = []
     omitted_aliases = []
@@ -518,6 +529,20 @@ def _stop_children(children):
                     raise
 
 
+def _apply_security_level(graph, level):
+    """Merge the security level overlay (status only; docs/security-levels.md). graph.yaml is not written."""
+    import security_levels
+    try:
+        p = security_levels.apply(graph, level=level, quiet=False)
+    except security_levels.SecurityLevelError as e:
+        raise StartupError(f"security level: {e}") from e
+    if p["source"]:
+        on = [k for k, e in p["entries"].items() if e["status"] == "active"]
+        print(f"familia-graph: security level {p['level']} (from {p['source']}); "
+              f"security entries on: {', '.join(on) or 'none'}", file=sys.stderr)
+    return p
+
+
 def run(args=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--graph", type=Path, default=ROOT / "graph.yaml")
@@ -528,6 +553,13 @@ def run(args=None):
         "--fleet",
         action="store_true",
         help="force fleet graph.yaml (skip generated/graph-HOST.yaml private topology)",
+    )
+    parser.add_argument(
+        "--security-level",
+        metavar="LEVEL",
+        help="security node level for this run only: off, guardian, pentest or full "
+             "(config/security-levels.yaml; default FAMILIA_SECURITY_LEVEL, then the local override, "
+             "then graph.yaml). Guardian/pentest seats are still never started here.",
     )
     options = parser.parse_args(args)
     graph_path = options.graph.expanduser().resolve()
@@ -553,6 +585,7 @@ def run(args=None):
             graph_path = priv
             graph = graph_validator.load(str(graph_path))
             graph["_path"] = str(graph_path)
+        _apply_security_level(graph, options.security_level)
         # Validate first: local_topology indexes nodes by alias target, so an invalid graph
         # (unknown alias node, list alias) would otherwise crash with a raw KeyError/TypeError.
         errors, _ = graph_validator.validate(graph, check_files=False)

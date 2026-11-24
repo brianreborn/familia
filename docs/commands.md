@@ -133,6 +133,9 @@ Default front door is the six-item home (`./familia`). This catalog is the fallb
 | `agents.guardian-weights` | Guardian: dry-run fetch/measure/activate path (Dolphin3 Q2_K; no seatbelt edits) | `python3 scripts/activate_guardian_weights.py` | — |
 | `agents.pentest-launch-test` | Legacy id → guardian launch-test | `sh with-fleet.sh --role guardian --launch-test` | — |
 | `agents.pentest-start` | Legacy id → guardian operator-start | `env FAMILIA_OPERATOR_CONFIRM=yes sh with-fleet.sh --role guardian --operator-start` | — |
+| `security.status` | Security node levels: which guardian/pentest nodes are on and why ([security-levels](security-levels.md)) | `python3 scripts/security_levels.py status` | — |
+| `security.list` | List the security levels (off, guardian, pentest, full) and their sets | `python3 scripts/security_levels.py list` | — |
+| `security.level` | Set the security level (local override; graph.yaml unchanged; pentest asks for a typed confirmation) | `python3 scripts/security_levels.py <LEVEL>` | — |
 | `home.agents.install` | Home: install agents | `python3 scripts/home_catalog.py agents install` | `python scripts\home_catalog.py agents install` |
 | `home.agents.list` | Home: list agents | `python3 scripts/home_catalog.py agents list` | `python scripts\home_catalog.py agents list` |
 | `home.agents.start` | Home: start agents (API key; --apply) | `python3 scripts/home_catalog.py agents start` | `python scripts\home_catalog.py agents start` |

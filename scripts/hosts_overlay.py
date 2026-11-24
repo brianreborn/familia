@@ -255,7 +255,7 @@ def privacy_lint_path(path, skip_overlay_files=True) -> list[str]:
     """Lint a YAML file on disk for private connection literals."""
     p = Path(path)
     name = p.name
-    if skip_overlay_files and name in ("hosts.local.yaml", "graph.local.yaml", "monitor.json"):
+    if skip_overlay_files and name in ("hosts.local.yaml", "graph.local.yaml", "security.local.yaml", "monitor.json"):
         return []
     try:
         raw = p.read_text(encoding="utf-8")

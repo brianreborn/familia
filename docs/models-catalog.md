@@ -32,7 +32,7 @@ linked issue is working on it. **candidate** = an `options:` entry only.
 | Graph key | Role | Arch | Size and quant | Runtime | Fits | Status | Source |
 |---|---|---|---|---|---|---|---|
 | qwen35-2b-q4km | coder | qwen35 | Qwen3.5-2B Q4_K_M (est. ~2.9 GiB at 64k ctx) | llama-server pinned build | miryam (`coder`), qodesh (`cpu-resident-coder`, fallback, ~0.91 t/s) | in graph | — |
-| egemma2-q8 | embed | gemma-embedding2 | EmbeddingGemma 2 Q8_0 | llama-server | miryam (tight) | in graph, deferred #38 | [RT](https://x.com/BrianReborn_alt/status/2107564534047395851) |
+| egemma2-q8 | embed | gemma-embedding2 | EmbeddingGemma 2 Q8_0 | llama-server | miryam (tight) | active (P0 2026-11-22; was deferred #38) | [RT](https://x.com/BrianReborn_alt/status/2107564534047395851) |
 | stories15m-fp32 | decision | llama2c | 15M fp32 | qodesh legacy-GPU runtime | qodesh 8600 GT | in graph | — |
 | smollm2-135m-q4 | decision | llama | SmolLM2-135M-Instruct Q4_0, 87 MiB | qodesh CPU b11540 (`cpu-smol-decision`, default) | qodesh | in graph | — |
 | smollm2-135m-q4-linux, -termux, -q4km | decision | llama | SmolLM2-135M-Instruct Q4_0 / Q4_K_M | Vulkan builds | miryam iGPU, phones | in graph (planned nodes) | — |
