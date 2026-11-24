@@ -75,7 +75,7 @@ def test_shell_wrapper_derives_execed_python(monkeypatch, tmp_path):
     wrapper = tmp_path / "hermes-agent"
     wrapper.write_text("#!/bin/sh\nexec /opt/python3.15 /opt/hermes-agent \"$@\"\n", encoding="ascii")
     py = "/opt/python3.15"
-    monkeypatch.setattr(hh, "_read_shebang", lambda path: "/bin/sh")
+    monkeypatch.setattr(hh, "_read_shebang", lambda path, **_kwargs: "/bin/sh")
     assert hh._derive_py(str(wrapper), exists=lambda p: p in {str(wrapper), "/bin/sh", py}) == py
 
 
@@ -83,7 +83,7 @@ def test_freebsd_ignores_snap_path_strings():
     """On FreeBSD, even if a caller claims snap exists, ports bin wins when present."""
     present = {hh.FREEBSD_BIN, hh.FREEBSD_LIB, hh.SNAP_BIN}
 
-    def fake_shebang(path):
+    def fake_shebang(path, **_kwargs):
         return "/usr/local/bin/python3.12" if path == hh.FREEBSD_BIN else None
 
     old = hh._read_shebang
