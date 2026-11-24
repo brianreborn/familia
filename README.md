@@ -548,9 +548,24 @@ Start with [QUICKSTART.md](QUICKSTART.md), then [MANUAL.md](MANUAL.md).
 | [docs/monitoring.md](docs/monitoring.md) | `./familia-monitor`: SSH-based live console for every host, with process-death alerts |
 | [docs/install.md](docs/install.md), [docs/windows.md](docs/windows.md) | Installers and Windows startup |
 | [docs/release-channels.md](docs/release-channels.md) | Release channels: `bleeding` (default) or `stable` (most stable release of each dependency from the last N days) |
+| [docs/menu-gap-inventory.md](docs/menu-gap-inventory.md) | Menu gap inventory and M5 reachability harness (#733) |
 | [docs/known-issues.md](docs/known-issues.md) | Current problems and workarounds |
 | [docs/HANDOFF.md](docs/HANDOFF.md), [docs/offline-test-plan.md](docs/offline-test-plan.md) | Open work and the tests that resume it |
 | [docs/announcements/](docs/announcements/) | Release-note and announcement **drafts** (not published) |
+
+---
+
+## Menu test harness
+
+The interactive menus (home + legacy catalog) have an automated reachability harness for the #733 M5 inventory:
+
+```sh
+python3 tests/menu_harness.py                  # full report on stdout
+python3 tests/menu_harness.py --md report.md --json report.json
+python3 -m pytest -q tests/test_menu_harness.py
+```
+
+It walks every posix-visible catalog item by number under `--dry-run`, checks that invalid input and EOF are not a successful quit, and checks that Ctrl-C at the legacy prompt redraws the menu while `q` / `exit` still exits 0. It also reports arrow-key reachability. Heavy actions are not applied (no model downloads, no network-facing `--apply`). Arrow-key traversal is not implemented on the current legacy menu; those checks are expected to fail until M1 lands. See [docs/menu-gap-inventory.md](docs/menu-gap-inventory.md) and [TESTING.md](TESTING.md).
 
 ---
 

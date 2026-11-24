@@ -136,20 +136,66 @@ $(groups)
 EOF2
 }
 
-read_line() {  # read_line PROMPT VAR ; returns 1 on EOF
-  local __p=$1 __v
+read_line() {  # read_line PROMPT VAR
+  # 0: got a line (it may be empty). 1: EOF. 3: Ctrl-C, flag left set.
+  # bash does not return from read when an INT trap is set, so this read
+  # runs in POSIX mode, where SIGINT makes read return 130. dash and
+  # FreeBSD sh already return. The mode is restored before we leave.
+  local __p=$1 __v __st=0
   printf '%s' "$__p" >&2
-  IFS= read -r __v || { [ -n "$__v" ] || return 1; }
+  set -o posix
+  IFS= read -r __v || __st=$?
+  set +o posix
+  if [ "$__st" -ge 128 ] || [ "${_interrupted:-0}" = 1 ]; then
+    return 3
+  fi
+  if [ "$__st" -ne 0 ]; then
+    [ -n "${__v:-}" ] || return 1
+  fi
   printf -v "$2" '%s' "$__v"
 }
 # Menus leave only on q/quit/exit. EOF on a terminal asks again.
 # EOF on a pipe is not a successful quit (return 2).
+# Ctrl-C is not a quit: the INT trap sets _interrupted, read_line returns 3,
+# and the menu prints a notice and redraws. HUP and TERM are not trapped.
 closed_input() {
   say "familia: input closed. Menus exit only when you type q."
   if [ -t 0 ]; then
     return 0
   fi
   return 2
+}
+
+# POSIX sh handler (no local, no [[, no arrays): bash, dash, FreeBSD sh, Termux.
+# Installed only for the interactive menu. A non-zero trap status can make
+# bash exit, so a failed printf must not be the last command.
+_interrupted=0
+on_int() {
+  _interrupted=1
+  printf '\n' >&2 || true
+}
+note_interrupt() {
+  if [ "${_interrupted:-0}" = 1 ]; then
+    _interrupted=0
+    printf '%s\n' "familia-menu: interrupted. Use the Exit option to quit." >&2
+    return 0
+  fi
+  return 1
+}
+
+# 0: line is in VAR. 1: tty EOF (closed_input already spoke). 2: pipe closed.
+# 3: Ctrl-C; the flag stays set so the caller redraws and note_interrupt speaks.
+menu_read() {
+  local __st=0
+  read_line "$1" "$2" || __st=$?
+  if [ "$__st" -eq 0 ]; then
+    return 0
+  fi
+  if [ "$__st" -eq 3 ]; then
+    return 3
+  fi
+  closed_input || return 2
+  return 1
 }
 
 MENU_CHOICE=""
@@ -228,7 +274,7 @@ fill() {  # fill CMD ARGS... -> CMD with {NAME:prompt} filled from ARGS (as the 
     if [ ${#args[@]} -gt 0 ] && [[ ${args[0]} != -* ]]; then
       vals[$j]=${args[0]}; args=("${args[@]:1}")
     elif [ "$MODE" = menu ] || { [ -z "${defs[$j]}" ] && can_prompt; }; then
-      read_line "  ${prompts[$j]}: " val || return 1; vals[$j]=$val
+      read_line "  ${prompts[$j]}: " val || return $?; vals[$j]=$val
     elif [ -z "${defs[$j]}" ]; then
       err "item needs ${names[$j]} (${prompts[$j]}). Give it as a value: ${CLI_HINT:---run KEY} VALUE"; return 2
     fi
@@ -259,12 +305,19 @@ run_item() {  # run_item KEY ARGS...
   if [ "$gate" = lic ]; then
     $PY scripts/licenses.py gate || {
       local rc=$?
+      if [ "${_interrupted:-0}" = 1 ]; then
+        return 3
+      fi
       err "stopped: the licenses for this selection are not accepted yet. Review them with: $PY scripts/licenses.py review"
       return $rc
     }
   fi
   say "Running: $cmd"
-  bash -c "$cmd"
+  # New process image already resets caught traps. Set the defaults again so
+  # Ctrl-C kills this action (not the menu). HUP and TERM stay fatal here too.
+  # The menu's own INT trap is in the parent and brings us back.
+  bash -c "trap - INT HUP TERM
+$cmd"
 }
 
 # ---- search, like / ? n N in less and more ----------------------------------
@@ -319,7 +372,7 @@ print_matches() {  # print_matches TEXT ; returns 1 when nothing matches
   for i in "${!SK[@]}"; do show_match $((i+1)) "${SK[$i]}" "$t" "  "; done
 }
 search_ui() {  # search_ui OP TEXT ; OP is / ? n N. Returns 3 to quit the menu.
-  local op=$1 t=$2 choice k i
+  local op=$1 t=$2 choice k i _st
   local -a item_args=()
   case "$op" in
     /|\?)
@@ -345,10 +398,15 @@ search_ui() {  # search_ui OP TEXT ; OP is / ? n N. Returns 3 to quit the menu.
       show_match $((SCUR+1)) "${SK[$SCUR]}" "$t" "> " ;;
   esac
   while true; do
-    if ! read_line "Choose 1-${#SK[@]} to run, n/N next/previous match, /word to search again, b back: " choice; then
-      closed_input || return 4
-      continue
-    fi
+    note_interrupt || true
+    _st=0
+    menu_read "Choose 1-${#SK[@]} to run, n/N next/previous match, /word to search again, b back: " choice || _st=$?
+    case $_st in
+      0) ;;
+      1) continue ;;
+      3) return 0 ;;
+      *) return 4 ;;
+    esac
     parse_menu_input "$choice"; choice=$MENU_CHOICE
     case "$choice" in
       b|B|back|"") return 0 ;;
@@ -362,9 +420,22 @@ search_ui() {  # search_ui OP TEXT ; OP is / ? n N. Returns 3 to quit the menu.
     SCUR=$((choice-1))
     item_args=("${PENDING_ARGS[@]}" "${MENU_ARGS[@]}")
     PENDING_ARGS=()
-    run_item "${SK[$SCUR]}" "${item_args[@]}" || say "(that step exited with status $?)"
-    if [ "$PIPE" != 1 ] && ! read_line "Press Enter to go back to the menu..." choice; then
-      closed_input || return 4
+    _st=0
+    run_item "${SK[$SCUR]}" "${item_args[@]}" || _st=$?
+    if [ "${_interrupted:-0}" = 1 ] || [ "$_st" -eq 3 ]; then
+      return 0
+    fi
+    if [ "$_st" -ne 0 ]; then
+      say "(that step exited with status $_st)"
+    fi
+    if [ "$PIPE" != 1 ]; then
+      _st=0
+      menu_read "Press Enter to go back to the menu..." choice || _st=$?
+      case $_st in
+        0|1) ;;
+        3) return 0 ;;
+        *) return 4 ;;
+      esac
     fi
     return 0
   done
@@ -378,9 +449,20 @@ search_key() {  # 0 handled (stay), 3 quit, 4 stdin closed (not a quit), 1 not a
   return 0
 }
 
+# Interactive menu only. --list, --run, and --search do not install this trap,
+# so Ctrl-C still aborts those. HUP and TERM stay at the default and exit.
 menu() {
-  local gs g n choice items key first=1 page page_size=7 pages start end idx
+  local _menu_rc=0
+  trap 'on_int' INT
+  menu_loop || _menu_rc=$?
+  trap - INT
+  return $_menu_rc
+}
+
+menu_loop() {
+  local gs g n choice items key first=1 page page_size=7 pages start end idx _st
   while true; do
+    note_interrupt || true
     say ""
     if [ "$first" = 1 ]; then workflow_paths; first=0; fi
     say "familia: what do you want to do?"
@@ -389,10 +471,13 @@ menu() {
 $(groups)
 EOF2
     say "  q) Quit      /word search every group (n/N next/previous match)"
-    if ! read_line "Choose 1-$n, /search or q: " choice; then
-      closed_input || return 2
-      continue
-    fi
+    _st=0
+    menu_read "Choose 1-$n, /search or q: " choice || _st=$?
+    case $_st in
+      0) ;;
+      1|3) continue ;;
+      *) return 2 ;;
+    esac
     parse_menu_input "$choice"; choice=$MENU_CHOICE
     [ -n "$choice" ] || continue
     case "$choice" in q|Q|quit|exit) return 0 ;; esac
@@ -413,6 +498,7 @@ EOF2
     page=0
     pages=$(( (${#all_keys[@]} + page_size - 1) / page_size ))
     while true; do
+      note_interrupt || true
       say ""; say "$g: $(group_desc "$g")"
       start=$((page * page_size))
       end=$((start + page_size))
@@ -429,17 +515,17 @@ EOF2
         [ "$page" -lt "$((pages-1))" ] && say "  >) Next page"
       fi
       say "  b) Back      /word search every group (n/N next/previous match)"
+      _st=0
       if [ "$pages" -gt 1 ]; then
-        if ! read_line "Choose 1-$n, </> page, /search or b: " choice; then
-          closed_input || return 2
-          continue
-        fi
+        menu_read "Choose 1-$n, </> page, /search or b: " choice || _st=$?
       else
-        if ! read_line "Choose 1-$n, /search or b: " choice; then
-          closed_input || return 2
-          continue
-        fi
+        menu_read "Choose 1-$n, /search or b: " choice || _st=$?
       fi
+      case $_st in
+        0) ;;
+        1|3) continue ;;
+        *) return 2 ;;
+      esac
       parse_menu_input "$choice"; choice=$MENU_CHOICE
       [ -n "$choice" ] || continue
       case "$choice" in b|B|back|"") break ;; q|Q|quit|exit) return 0 ;; esac
@@ -459,10 +545,22 @@ EOF2
       fi
       local -a item_args=("${PENDING_ARGS[@]}" "${MENU_ARGS[@]}")
       PENDING_ARGS=()
-      run_item "${items[$((choice-1))]}" "${item_args[@]}" || say "(that step exited with status $?)"
-      if [ "$PIPE" != 1 ] && ! read_line "Press Enter to go back to the menu..." choice; then
-        closed_input || return 2
+      _st=0
+      run_item "${items[$((choice-1))]}" "${item_args[@]}" || _st=$?
+      if [ "${_interrupted:-0}" = 1 ] || [ "$_st" -eq 3 ]; then
         continue
+      fi
+      if [ "$_st" -ne 0 ]; then
+        say "(that step exited with status $_st)"
+      fi
+      if [ "$PIPE" != 1 ]; then
+        _st=0
+        menu_read "Press Enter to go back to the menu..." choice || _st=$?
+        case $_st in
+          0|1) ;;
+          3) continue ;;
+          *) return 2 ;;
+        esac
       fi
     done
   done

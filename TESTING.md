@@ -46,6 +46,7 @@ python3 scripts/validate_graph.py --no-files     # schema + placement rules only
 python3 scripts/validate_graph.py                # also reads GGUF headers and checks RAM/VRAM on this host
 python3 scripts/validate_graph.py --args NODE    # print the llama-server args for one node
 python3 -m pytest -q                             # unit tests
+python3 tests/menu_harness.py                    # #733 M5: walk every menu item (arrows + numbers, dry-run)
 bash proving_grounds/fleet_wiring.sh                    # repo/fleet wiring smoke test
 bash proving_grounds/nexus_localhost.sh               # ssh nexus on localhost (needs sshd binary)
 bash proving_grounds/bt_loopback.sh                   # private bittorrent loopback
