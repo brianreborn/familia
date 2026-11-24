@@ -99,6 +99,8 @@ def test_prompt_has_required_sections_and_avoids_platform_paths():
     present = [s for s in FORBIDDEN if s in text]
     assert not present, "prompt must stay platform-agnostic, found: " + ", ".join(present)
     assert "not a script in this tree" in text
+    assert "menu-internal" not in text
+    assert "RUN: ./familia" in text
 
 
 def test_skill_points_at_the_prompt_file():
@@ -124,13 +126,13 @@ def test_proto_chat_relative_override_is_repo_root_not_cwd(tmp_path):
     assert b"using the short fallback" not in r.stderr
 
 
-def test_proto_chat_absolute_override(tmp_path):
+def test_proto_chat_absolute_override_outside_is_rejected(tmp_path):
     custom = tmp_path / "custom.md"
     custom.write_text("CUSTOM-PROMPT-SENTINEL graph_definition\n", encoding="ascii")
     r = _print_prompt(tmp_path, FAMILIA_PROTOGRAPH_PROMPT=str(custom))
     assert r.returncode == 0, r.stderr
-    assert b"CUSTOM-PROMPT-SENTINEL" in r.stdout
-    assert b"version: 1" not in r.stdout.split(b"CUSTOM-PROMPT-SENTINEL", 1)[-1]
+    assert b"outside" in r.stderr and b"using the short fallback" in r.stderr
+    assert b"CUSTOM-PROMPT-SENTINEL" not in r.stdout
 
 
 def test_proto_chat_windows_drive_override_is_not_joined_to_the_repo(tmp_path):
@@ -155,22 +157,33 @@ def test_proto_chat_falls_back_when_missing(tmp_path):
         FAMILIA_FLEET_GREETING=str(tmp_path / "no-greeting.md"),
     )
     assert r.returncode == 0, r.stderr
-    assert b"protograph prompt file missing or empty" in r.stderr
+    assert b"outside" in r.stderr
     assert b"using the short fallback" in r.stderr
     assert r.stdout.rstrip(b"\n") == protograph.FALLBACK_SYSTEM_PROMPT.encode("utf-8")
     assert b"graph_definition" not in r.stdout
 
 
-def test_proto_chat_falls_back_when_empty_or_blank(tmp_path):
-    blank = tmp_path / "blank.md"
-    blank.write_text("\n\n  \t\n", encoding="ascii")
+def test_proto_chat_falls_back_when_name_missing_inside_prompts(tmp_path):
     r = _print_prompt(
         tmp_path,
-        FAMILIA_PROTOGRAPH_PROMPT=str(blank),
+        FAMILIA_PROTOGRAPH_PROMPT="skills/protograph/prompts/does-not-exist.md",
         FAMILIA_FLEET_GREETING=str(tmp_path / "no-greeting.md"),
     )
     assert r.returncode == 0, r.stderr
     assert b"missing or empty" in r.stderr
+    assert b"using the short fallback" in r.stderr
+    assert r.stdout.rstrip(b"\n") == protograph.FALLBACK_SYSTEM_PROMPT.encode("utf-8")
+
+
+def test_proto_chat_dotdot_override_is_rejected(tmp_path):
+    r = _print_prompt(
+        tmp_path,
+        FAMILIA_PROTOGRAPH_PROMPT="../etc/passwd",
+        FAMILIA_FLEET_GREETING=str(tmp_path / "no-greeting.md"),
+    )
+    assert r.returncode == 0, r.stderr
+    assert b"outside" in r.stderr
+    assert b"root:" not in r.stdout
     assert r.stdout.rstrip(b"\n") == protograph.FALLBACK_SYSTEM_PROMPT.encode("utf-8")
 
 
@@ -246,7 +259,90 @@ def test_protograph_py_still_requires_a_recipe():
 
 def test_windows_drive_override_is_not_joined_to_the_repo(tmp_path):
     # On POSIX, os.path.isabs("C:/...") is false. The loader must still not
-    # prefix ROOT onto a drive path.
+    # prefix ROOT onto a drive path, and a drive path is outside the prompts dir.
     path = protograph.system_prompt_path(root=str(ROOT), override=r"C:\no\such\prompt.md")
     assert path == r"C:\no\such\prompt.md"
     assert not path.startswith(str(ROOT))
+    text, _variant, fallback, warning = protograph.select_system_prompt(
+        8192, override=r"C:\no\such\prompt.md", greeting="")
+    assert fallback is True and text == protograph.FALLBACK_SYSTEM_PROMPT
+    assert "outside" in warning and r"C:\no\such\prompt.md" in warning
+
+
+def _prompt_tree(tmp_path):
+    d = tmp_path / "skills" / "protograph" / "prompts"
+    d.mkdir(parents=True)
+    return d
+
+
+def test_symlink_prompt_is_not_followed(tmp_path):
+    d = _prompt_tree(tmp_path)
+    secret = tmp_path / "secret.txt"
+    secret.write_text("SECRET-SHOULD-NOT-LOAD\n", encoding="ascii")
+    (d / "system.md").symlink_to(secret)
+    text, _variant, fallback, warning = protograph.select_system_prompt(
+        8192, root=str(tmp_path), greeting="")
+    assert fallback is True
+    assert "SECRET-SHOULD-NOT-LOAD" not in text
+    assert "symlink" in warning
+
+
+def test_empty_prompt_inside_prompts_dir_falls_back(tmp_path):
+    d = _prompt_tree(tmp_path)
+    (d / "system.md").write_text("\n\n  \t\n", encoding="ascii")
+    text, _variant, fallback, warning = protograph.select_system_prompt(
+        8192, root=str(tmp_path), greeting="")
+    assert fallback is True and text == protograph.FALLBACK_SYSTEM_PROMPT
+    assert "empty" in warning
+
+
+def test_non_ascii_prompt_inside_prompts_dir_falls_back(tmp_path):
+    d = _prompt_tree(tmp_path)
+    (d / "system.md").write_bytes(b"not ascii \xe2\x80\x94\n")
+    text, _variant, fallback, warning = protograph.select_system_prompt(
+        8192, root=str(tmp_path), greeting="")
+    assert fallback is True and text == protograph.FALLBACK_SYSTEM_PROMPT
+    assert "not ASCII" in warning
+
+
+def test_budget_across_graph_ctx_sizes():
+    import fleet_greeting
+    greeting = fleet_greeting.load()
+    ctxs = protograph.graph_ctx_values()
+    assert ctxs == [256, 2048, 8192, 65536]
+    seen = {}
+    for ctx in ctxs:
+        try:
+            text, variant, fallback, _warn = protograph.select_system_prompt(ctx, greeting=greeting)
+        except protograph.PromptRefuse as exc:
+            assert ctx < protograph.MAX_OUTPUT_TOKENS + protograph.USER_TURN_TOKENS
+            assert "ctx %s" % ctx in str(exc)
+            continue
+        again = protograph.select_system_prompt(ctx, greeting=greeting)
+        assert again[0] == text and again[1] == variant
+        assembled = fleet_greeting.prepend(text, greeting=greeting)
+        assert (protograph.estimate_tokens(assembled) + protograph.USER_TURN_TOKENS
+                + protograph.MAX_OUTPUT_TOKENS) <= ctx
+        assert "RUN: ./familia" in text
+        assert str(ctx) not in text
+        seen[ctx] = (variant, fallback, text)
+    assert seen[2048][0] == "compact" and seen[2048][1] is False
+    assert seen[8192][0] == "full" and seen[65536][0] == "full"
+    assert seen[8192][2] == seen[65536][2]
+    assert seen[2048][2] != seen[8192][2]
+    compact = (ROOT / "skills" / "protograph" / "prompts" / "system-compact.md").read_text(encoding="ascii")
+    assert seen[2048][2] == compact or seen[2048][2] == compact.rstrip("\n")
+
+
+def test_proto_chat_compact_for_ctx_2048_and_refuse_for_256(tmp_path):
+    small = _print_prompt(
+        tmp_path, "--ctx", "2048",
+        FAMILIA_FLEET_GREETING=str(ROOT / "docs" / "FLEET-GREETING.md"),
+    )
+    assert small.returncode == 0, small.stderr
+    assert b"prompt-id: protograph-system-compact" in small.stdout
+    assert b"RUN: ./familia" in small.stdout
+    refused = _print_prompt(tmp_path, "--ctx", "256")
+    assert refused.returncode != 0
+    err = refused.stderr.decode("utf-8", "replace")
+    assert "does not fit" in err or "cannot hold" in err

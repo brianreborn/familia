@@ -25,6 +25,7 @@ URL="${FAMILIA_PROTO_URL:-}"
 MODEL="${FAMILIA_PROTO_MODEL:-}"
 NO_START=0
 PRINT_PROMPT=0
+PROTO_CTX=""
 BOOT_PID=""
 
 usage() {
@@ -43,8 +44,11 @@ FAMILIA_PROTO_REPLY_TIMEOUT (default 900) bounds one reply.
 Quit with an empty line, /q, /quit, or exit.
 
 --print-system-prompt prints the system prompt (fleet greeting included) and
-exits. It does not start a server. FAMILIA_PROTOGRAPH_PROMPT overrides the
-prompt file (absolute path, or path relative to the repo root).
+exits. It does not start a server. --ctx N picks the full or compact prompt
+for that context size (the chat path uses the selected node's ctx).
+FAMILIA_PROTOGRAPH_PROMPT overrides the prompt file. The file must be a
+regular file inside skills/protograph/prompts (no symlink, no path outside
+that directory). A rejected file uses the short fallback.
 USAGE
 }
 
@@ -54,6 +58,7 @@ while [ $# -gt 0 ]; do
     --model) MODEL=${2-}; shift ;;
     --no-start) NO_START=1 ;;
     --print-system-prompt) PRINT_PROMPT=1 ;;
+    --ctx) PROTO_CTX=${2-}; shift ;;
     -h|--help) usage; exit 0 ;;
     *) printf 'proto-chat: unknown arg %s\n' "$1" >&2; usage >&2; exit 2 ;;
   esac
@@ -257,54 +262,40 @@ while True:
 PY
 }
 
-# Versioned protograph system prompt (#327). Path is relative to this script's
-# repo root (ROOT), never the caller's cwd, so FreeBSD sh, dash, and Termux
-# resolve it the same way. FAMILIA_PROTOGRAPH_PROMPT overrides: an absolute
-# path, a Windows drive path, or a path relative to ROOT.
-# Missing or empty file: the short pre-#327 prompt, plus a warning.
-_proto_prompt_path() {
-  _pp_over=${FAMILIA_PROTOGRAPH_PROMPT:-}
-  if [ -n "$_pp_over" ]; then
-    case "$_pp_over" in
-      /*|[A-Za-z]:[/\\]*) printf '%s\n' "$_pp_over" ;;
-      *) printf '%s\n' "$ROOT/$_pp_over" ;;
-    esac
-  else
-    printf '%s\n' "$ROOT/skills/protograph/prompts/system.md"
-  fi
-}
-
+# Versioned protograph system prompt (#327). protograph.py opens it with
+# O_NOFOLLOW and fstat, confined to skills/protograph/prompts, and picks the
+# full or compact file so the greeting, a user turn, and 512 output tokens
+# still fit the node's ctx. The chosen file is static (KV prefix reuse).
+# A rejected file warns and uses the short pre-#327 prompt.
 _proto_load_system_prompt() {
-  _pp=$(_proto_prompt_path) || _pp=""
-  _pp_body=""
-  if [ -n "$_pp" ] && [ -f "$_pp" ] && [ -r "$_pp" ]; then
-    # Redirect, not "cat --": FreeBSD cat does not treat -- as end of options.
-    _pp_body=$(cat < "$_pp") || _pp_body=""
+  _pp_rc=0
+  if [ -n "${1:-}" ]; then
+    _pp_body=$("$PY" "$FAMILIA_SCRIPTS/protograph.py" --print-prompt --ctx "$1") || _pp_rc=$?
+  elif [ -n "${2:-}" ]; then
+    _pp_body=$("$PY" "$FAMILIA_SCRIPTS/protograph.py" --print-prompt --model "$2") || _pp_rc=$?
+  else
+    _pp_body=$("$PY" "$FAMILIA_SCRIPTS/protograph.py" --print-prompt) || _pp_rc=$?
   fi
-  case "$_pp_body" in
-    *[![:space:]]*) SYSTEM_PROMPT="$_pp_body" ;;
-    *)
-    printf 'proto-chat: warning: protograph prompt file missing or empty (%s); using the short fallback\n' "${_pp:-unknown}" >&2
-    SYSTEM_PROMPT='You are the familia protomodel — a tiny local helper that runs on this machine.
-Help with local install and build (deps, licenses, configure, PATH).
-Help the user explore which larger models to fetch next (coding, chat, phone, vision).
-Help search the user'\''s X/Twitter posts when Agent-Reach / twitter-cli is available.
-Keep answers short and actionable. Prefer one next command. Never claim cloud access you do not have.'
-    ;;
-  esac
-  unset _pp _pp_body
+  if [ "$_pp_rc" -ne 0 ]; then
+    die "system prompt does not fit this model" "$_pp_rc"
+  fi
+  SYSTEM_PROMPT="$_pp_body"
+  unset _pp_body _pp_rc
   return 0
 }
 
-_proto_load_system_prompt
-# Fleet greeting (docs/FLEET-GREETING.md) first, once; a missing file only warns (scripts/fleet_greeting.py).
-# The trailing x keeps the command substitution from eating the prompt's last newline.
-if _greeted=$(printf '%s' "$SYSTEM_PROMPT" | "$PY" "$FAMILIA_SCRIPTS/fleet_greeting.py" prepend && printf x); then
-  SYSTEM_PROMPT=${_greeted%x}
-fi
-unset _greeted
+# Fleet greeting once, after the variant is chosen. The trailing x keeps the
+# last newline. A missing greeting file only warns (scripts/fleet_greeting.py).
+_proto_apply_greeting() {
+  if _greeted=$(printf '%s' "$SYSTEM_PROMPT" | "$PY" "$FAMILIA_SCRIPTS/fleet_greeting.py" prepend && printf x); then
+    SYSTEM_PROMPT=${_greeted%x}
+  fi
+  unset _greeted
+}
 
 if [ "$PRINT_PROMPT" = 1 ]; then
+  _proto_load_system_prompt "${PROTO_CTX:-}" ""
+  _proto_apply_greeting
   printf '%s\n' "$SYSTEM_PROMPT"
   exit 0
 fi
@@ -329,30 +320,36 @@ fi
 _proto_osc working --id home/proto --msg "loading $MODEL" --progress 50
 wait_model || die "model $MODEL did not load" 1
 say "endpoint $URL  model $MODEL"
+if [ -n "$PROTO_CTX" ]; then
+  _proto_load_system_prompt "$PROTO_CTX" ""
+else
+  _proto_load_system_prompt "" "$MODEL"
+fi
+_proto_apply_greeting
 _proto_osc working --id home/proto --msg "Talk to the protomodel ($MODEL)" --title "proto_chat"
 say "type a message (empty /q /quit /exit to quit)"
 printf '\n'
 
-while true; do
-  if [ -t 0 ] && [ "${FAMILIA_NO_TTY:-}" != 1 ]; then
-    printf 'you> '
-  fi
-  if ! IFS= read -r line; then
-    break
-  fi
-  case "$line" in
-    ""|/q|/quit|/exit|exit|quit) say "bye"; _proto_osc done --id home/proto --msg "proto chat ended"; break ;;
-  esac
-  reply=$("$PY" - "$URL" "$MODEL" "$SYSTEM_PROMPT" "$line" <<'PY' 2>"$PROTO_ERR" || true
-import json, os, sys, urllib.request, urllib.error
+# One chat completion. FAMILIA_PROTO_ASSIST_FILE + FAMILIA_PROTO_TOOL_FILE, when
+# both are set, append the previous reply and the command output (the feedback turn).
+proto_complete() {
+  "$PY" - "$URL" "$MODEL" "$SYSTEM_PROMPT" "$1" <<'PY' 2>"$PROTO_ERR" || true
+import os, sys
 sys.path.insert(0, os.environ["FAMILIA_SCRIPTS"]); import familia_auth
+import json, urllib.request
 url, model, system, user = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+messages = [
+    {"role": "system", "content": system},
+    {"role": "user", "content": user},
+]
+assist = os.environ.get("FAMILIA_PROTO_ASSIST_FILE") or ""
+tool = os.environ.get("FAMILIA_PROTO_TOOL_FILE") or ""
+if assist and tool:
+    messages.append({"role": "assistant", "content": open(assist, encoding="utf-8", errors="replace").read()})
+    messages.append({"role": "user", "content": open(tool, encoding="utf-8", errors="replace").read()})
 body = {
     "model": model,
-    "messages": [
-        {"role": "system", "content": system},
-        {"role": "user", "content": user},
-    ],
+    "messages": messages,
     "temperature": 0.7,
     "max_tokens": 512,
     "stream": False,
@@ -377,11 +374,29 @@ msg = choices[0].get("message") or {}
 content = (msg.get("content") or "").strip()
 reasoning = (msg.get("reasoning_content") or "").strip()
 if not content and reasoning:
-    # Model used its token budget on reasoning (e.g. DeepSeek/Qwen/LFM3)
     content = f"[reasoning: {reasoning}]"
 print(content or "(empty reply)", end="")
 PY
-)
+}
+
+# Execute RUN directives in $1 (a reply). Prints the host result, or nothing.
+proto_exec_reply() {
+  printf '%s\n' "$1" > "$PROTO_TMP/reply"
+  "$PY" "$FAMILIA_SCRIPTS/protograph.py" --exec-reply "$PROTO_TMP/reply" || true
+}
+
+while true; do
+  if [ -t 0 ] && [ "${FAMILIA_NO_TTY:-}" != 1 ]; then
+    printf 'you> '
+  fi
+  if ! IFS= read -r line; then
+    break
+  fi
+  case "$line" in
+    ""|/q|/quit|/exit|exit|quit) say "bye"; _proto_osc done --id home/proto --msg "proto chat ended"; break ;;
+  esac
+  unset FAMILIA_PROTO_ASSIST_FILE FAMILIA_PROTO_TOOL_FILE
+  reply=$(proto_complete "$line")
   if [ -z "$reply" ]; then
     if [ -s "$PROTO_ERR" ]; then
       printf 'proto> %s\n' "$(cat "$PROTO_ERR")"
@@ -390,5 +405,23 @@ PY
     fi
   else
     printf 'proto> %s\n\n' "$reply"
+    exec_out=$(proto_exec_reply "$reply")
+    if [ -n "$exec_out" ]; then
+      printf 'run> %s\n\n' "$exec_out"
+      printf '%s\n' "$reply" > "$PROTO_TMP/assist"
+      printf '%s\n' "$exec_out" > "$PROTO_TMP/tool"
+      FAMILIA_PROTO_ASSIST_FILE=$PROTO_TMP/assist
+      FAMILIA_PROTO_TOOL_FILE=$PROTO_TMP/tool
+      export FAMILIA_PROTO_ASSIST_FILE FAMILIA_PROTO_TOOL_FILE
+      follow=$(proto_complete "Command output follows.")
+      unset FAMILIA_PROTO_ASSIST_FILE FAMILIA_PROTO_TOOL_FILE
+      if [ -n "$follow" ]; then
+        printf 'proto> %s\n\n' "$follow"
+        exec2=$(proto_exec_reply "$follow")
+        if [ -n "$exec2" ]; then
+          printf 'run> %s\n\n' "$exec2"
+        fi
+      fi
+    fi
   fi
 done

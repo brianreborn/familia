@@ -95,10 +95,18 @@ Advanced: models & graph -> "protograph: recipe -> graph.yaml (dry run)"
 
 ## System prompt
 
-The protomodel chat (`scripts/proto_chat.sh`) loads the versioned system
-prompt at `skills/protograph/prompts/system.md` (version 1). Override with
-`FAMILIA_PROTOGRAPH_PROMPT`: an absolute path, or a path relative to the
-repo root, not the caller's working directory. `scripts/protograph.py
---print-prompt` prints the same file. A missing or empty file falls back
-to the short pre-#327 prompt and warns. The file is the generator text
-(#327 section 2). The compiler remains `scripts/protograph.py`.
+The protomodel chat (`scripts/proto_chat.sh`) loads
+`skills/protograph/prompts/system.md` (version 1). A ctx that cannot hold
+that file plus the fleet greeting, a user turn, and 512 output tokens gets
+the static compact file `system-compact.md` instead. Both files stay
+byte-for-byte stable so a prefix cache can reuse them. The loader opens
+with O_NOFOLLOW and fstat, and only accepts a regular file inside
+`skills/protograph/prompts`. `FAMILIA_PROTOGRAPH_PROMPT` may name another
+file in that directory only. A symlink, a path outside it, or a file that
+is not ASCII falls back to the short pre-#327 prompt and warns.
+`scripts/protograph.py --print-prompt --ctx N` prints the chosen file.
+
+The model executes menu commands by emitting `RUN: ./familia <subcommand>`.
+`proto_chat.sh` and `protograph.py --exec-reply` run that line as an argv
+array when the subcommand resolves to `scripts/menu-items.txt`. There is
+no shell. The compiler remains `scripts/protograph.py`.

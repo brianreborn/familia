@@ -34,8 +34,12 @@ from __future__ import annotations
 
 import argparse
 import copy
+import errno
 import os
+import re
 import shutil
+import stat
+import subprocess
 import sys
 import time
 
@@ -43,10 +47,21 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 
-# Versioned generator prompt (#327 section 2, #422 gap 7). Same file proto_chat.sh loads.
-PROMPT_REL = os.path.join("skills", "protograph", "prompts", "system.md")
+# Versioned generator prompt (#327 section 2, #422 gap 7). Same files proto_chat.sh loads.
+PROMPT_DIR_PARTS = ("skills", "protograph", "prompts")
+PROMPT_FULL_NAME = "system.md"
+PROMPT_COMPACT_NAME = "system-compact.md"
+PROMPT_REL = os.path.join(*PROMPT_DIR_PARTS, PROMPT_FULL_NAME)
 PROMPT_ENV = "FAMILIA_PROTOGRAPH_PROMPT"
-# Short proto_chat.sh prompt from before #327. Used only when the versioned file is missing.
+# chars/4, matching the Race review budget. The prefix is a static file, never resized per turn.
+MAX_OUTPUT_TOKENS = 512
+USER_TURN_TOKENS = 256
+# Reply cap for one user line: execute, feed the output back once, execute at most once more.
+RUN_LIMIT = 3
+RUN_TIMEOUT = 30
+AUDIT_ENV = "FAMILIA_PROTO_AUDIT"
+BIN_ENV = "FAMILIA_BIN"
+# Short proto_chat.sh prompt from before #327. Used only when the versioned file is rejected.
 FALLBACK_SYSTEM_PROMPT = (
     "You are the familia protomodel \u2014 a tiny local helper that runs on this machine.\n"
     "Help with local install and build (deps, licenses, configure, PATH).\n"
@@ -54,6 +69,137 @@ FALLBACK_SYSTEM_PROMPT = (
     "Help search the user's X/Twitter posts when Agent-Reach / twitter-cli is available.\n"
     "Keep answers short and actionable. Prefer one next command. Never claim cloud access you do not have."
 )
+_RUN_LINE = re.compile(r"(?m)^[ \t]*RUN:[ \t]*(.*\S)[ \t]*$")
+_RUN_FENCE = re.compile(r"(?ms)^```run[ \t]*\n(.*?)\n```[ \t]*$")
+_TOKEN = re.compile(r"^[A-Za-z0-9_./:=+-]+$")
+_RUN_FLAGS = {"--dry-run", "--yes", "--help"}
+_META = set(";&|$`<>(){}*?[]!\\'\"#\n\r\t")
+
+
+class PromptLoadError(Exception):
+    def __init__(self, reason, path=""):
+        self.reason = reason
+        self.path = path
+        super().__init__(reason)
+
+
+class PromptRefuse(Exception):
+    """The selected ctx cannot hold a system prefix, a user turn, and the reply."""
+
+
+def estimate_tokens(text):
+    """Upper bound used for the ctx budget: one token per four bytes, rounded up."""
+    n = len((text or "").encode("utf-8"))
+    return (n + 3) // 4
+
+
+def prompt_token_budget(ctx):
+    """Tokens left for the system prefix after a user turn and MAX_OUTPUT_TOKENS."""
+    return int(ctx) - MAX_OUTPUT_TOKENS - USER_TURN_TOKENS
+
+
+def _o_nofollow():
+    flag = getattr(os, "O_NOFOLLOW", 0)
+    if not flag:
+        raise PromptLoadError("O_NOFOLLOW unavailable")
+    return flag
+
+
+def _read_fd(fd, max_bytes):
+    """fstat the already-open fd, then read. Never stat the path and then open it."""
+    st = os.fstat(fd)
+    if not stat.S_ISREG(st.st_mode):
+        raise PromptLoadError("not a regular file")
+    if max_bytes is not None and st.st_size > max_bytes:
+        raise PromptLoadError("over budget")
+    want = st.st_size
+    data = b""
+    while len(data) < want:
+        chunk = os.read(fd, want - len(data))
+        if not chunk:
+            break
+        data += chunk
+        if max_bytes is not None and len(data) > max_bytes:
+            raise PromptLoadError("over budget")
+    return data
+
+
+def _open_under_root(root, parts, max_bytes):
+    """Walk parts from root with O_NOFOLLOW on every component, then fstat the fd."""
+    flag = _o_nofollow()
+    fd = os.open(root, os.O_RDONLY | os.O_DIRECTORY)
+    try:
+        for i, part in enumerate(parts):
+            if part in ("", ".", "..") or "/" in part or "\\" in part:
+                raise PromptLoadError("outside")
+            last = i == len(parts) - 1
+            flags = os.O_RDONLY | flag
+            if not last:
+                flags |= os.O_DIRECTORY
+            try:
+                nxt = os.open(part, flags, dir_fd=fd)
+            except OSError as exc:
+                # ELOOP is a symlink (O_NOFOLLOW). ENOENT is missing. Do not follow either.
+                if exc.errno == errno.ENOENT:
+                    reason = "missing or empty"
+                elif exc.errno in (getattr(errno, "ELOOP", -1), getattr(errno, "EPERM", -1)):
+                    reason = "symlink"
+                else:
+                    reason = "symlink or missing"
+                raise PromptLoadError(reason) from exc
+            os.close(fd)
+            fd = nxt
+        return _read_fd(fd, max_bytes)
+    finally:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+
+
+def confined_prompt_name(root, override):
+    """Basename inside skills/protograph/prompts, or PromptLoadError('outside')."""
+    if not (override or "").strip():
+        return PROMPT_FULL_NAME
+    raw = override.strip()
+    drive = len(raw) >= 3 and raw[0].isalpha() and raw[1] == ":" and raw[2] in "/\\"
+    prompts = os.path.join(root, *PROMPT_DIR_PARTS)
+    if os.path.isabs(raw) or drive:
+        norm = os.path.normpath(raw)
+        prefix = os.path.normpath(prompts) + os.sep
+        if not norm.startswith(prefix):
+            raise PromptLoadError("outside", raw)
+        rest = norm[len(prefix):]
+    else:
+        norm = os.path.normpath(raw)
+        if norm.startswith("..") or os.path.isabs(norm):
+            raise PromptLoadError("outside", raw)
+        rel = os.path.join(*PROMPT_DIR_PARTS)
+        if norm == rel:
+            raise PromptLoadError("outside", raw)
+        if norm.startswith(rel + os.sep):
+            rest = norm[len(rel) + 1:]
+        else:
+            rest = norm
+    if not rest or os.sep in rest or "/" in rest or "\\" in rest or rest in (".", ".."):
+        raise PromptLoadError("outside", raw)
+    return rest
+
+
+def read_prompt_file(root, name, max_bytes):
+    """Return ASCII text of prompts/<name>. Symlinks and over-budget files raise."""
+    try:
+        raw = _open_under_root(root, PROMPT_DIR_PARTS + (name,), max_bytes)
+    except PromptLoadError:
+        raise
+    except OSError as exc:
+        raise PromptLoadError("missing or empty") from exc
+    if not raw.strip():
+        raise PromptLoadError("empty")
+    try:
+        return raw.decode("ascii")
+    except UnicodeError as exc:
+        raise PromptLoadError("not ASCII") from exc
 
 
 def _is_abs_prompt(path):
@@ -64,36 +210,254 @@ def _is_abs_prompt(path):
 
 
 def system_prompt_path(root=None, override=None):
-    """Path of the versioned prompt. A relative override is under root, not the cwd."""
+    """Path the loader will consider. A relative override is under root, not the cwd."""
     root = root or ROOT
     if override is None:
         override = os.environ.get(PROMPT_ENV, "")
     override = (override or "").strip()
     if not override:
-        return os.path.join(root, PROMPT_REL)
+        return os.path.join(root, *PROMPT_DIR_PARTS, PROMPT_FULL_NAME)
     if _is_abs_prompt(override):
         return override
     return os.path.join(root, override)
 
 
-def load_system_prompt(root=None, override=None):
-    """Return (text, path, used_fallback).
+def graph_ctx_values(graph=None):
+    """Sorted unique nodes.*.ctx values from graph.yaml."""
+    if graph is None:
+        import familia_yaml
+        path = os.environ.get("FAMILIA_GRAPH") or os.path.join(ROOT, "graph.yaml")
+        graph = familia_yaml.load(path) or {}
+    found = set()
+    for node in (graph.get("nodes") or {}).values():
+        if isinstance(node, dict) and isinstance(node.get("ctx"), int):
+            found.add(node["ctx"])
+    return sorted(found)
 
-    A missing, empty, or non-ASCII file yields FALLBACK_SYSTEM_PROMPT. The caller warns.
+
+def ctx_for_model(model_id, graph=None):
+    """Ctx of the graph node or alias named by model_id, else None when the id is unknown."""
+    if graph is None:
+        import familia_yaml
+        path = os.environ.get("FAMILIA_GRAPH") or os.path.join(ROOT, "graph.yaml")
+        graph = familia_yaml.load(path) or {}
+    name = (model_id or "").strip()
+    nodes = graph.get("nodes") or {}
+    if name in nodes and isinstance(nodes[name], dict) and isinstance(nodes[name].get("ctx"), int):
+        return nodes[name]["ctx"]
+    aliases = graph.get("aliases") or {}
+    alias = aliases.get(name)
+    if isinstance(alias, dict):
+        node = alias.get("node")
+        if node in nodes and isinstance(nodes[node].get("ctx"), int):
+            return nodes[node]["ctx"]
+    # Longest node name contained in the id (server ids sometimes carry a suffix).
+    best = ""
+    for node, spec in nodes.items():
+        if isinstance(spec, dict) and isinstance(spec.get("ctx"), int) and node in name and len(node) > len(best):
+            best = node
+    if best:
+        return nodes[best]["ctx"]
+    return None
+
+
+def _greeting_text(greeting):
+    if greeting is not None:
+        return greeting
+    import fleet_greeting
+    return fleet_greeting.load() or ""
+
+
+def _assembled(body, greeting):
+    if not greeting:
+        return body
+    import fleet_greeting
+    return fleet_greeting.prepend(body, greeting=greeting)
+
+
+def _fits(body, greeting, ctx):
+    return estimate_tokens(_assembled(body, greeting)) + USER_TURN_TOKENS + MAX_OUTPUT_TOKENS <= int(ctx)
+
+
+def select_system_prompt(ctx, root=None, override=None, greeting=None):
+    """Return (text, variant, used_fallback, warning).
+
+    variant is 'full', 'compact', or 'fallback'. The text is a static file
+    (or the built-in fallback): nothing in it depends on ctx, so the prefix
+    is reusable. Over budget selects the compact file. A symlink, a path
+    outside skills/protograph/prompts, or a non-ASCII file falls back.
     """
+    root = root or ROOT
+    if override is None:
+        override = os.environ.get(PROMPT_ENV, "")
+    greeting = _greeting_text(greeting)
+    budget = prompt_token_budget(ctx)
+    if budget <= 0:
+        raise PromptRefuse(
+            f"ctx {ctx} cannot hold a {USER_TURN_TOKENS}-token user turn and "
+            f"{MAX_OUTPUT_TOKENS} output tokens"
+        )
+    # Byte cap is the ctx budget minus the greeting, not a fixed raw size.
+    gtok = estimate_tokens(_assembled("", greeting)) if greeting else 0
+    # _assembled("", greeting) still prepends a newline before an empty body.
+    # Budget the greeting block the same way prepend does for a real body.
+    if greeting:
+        import fleet_greeting
+        gtok = estimate_tokens(fleet_greeting.block(greeting) + "\n")
+    file_tokens = budget - gtok
+    if file_tokens <= 0:
+        raise PromptRefuse(
+            f"ctx {ctx} has no room for a system prompt after the fleet greeting, "
+            f"a user turn, and {MAX_OUTPUT_TOKENS} output tokens"
+        )
+    max_bytes = file_tokens * 4
+    warning = ""
+    try:
+        name = confined_prompt_name(root, override)
+    except PromptLoadError as exc:
+        warning = f"protograph prompt file outside the prompts directory ({exc.path or override}); using the short fallback"
+        if _fits(FALLBACK_SYSTEM_PROMPT, greeting, ctx):
+            return FALLBACK_SYSTEM_PROMPT, "fallback", True, warning
+        raise PromptRefuse(warning) from exc
+    try:
+        text = read_prompt_file(root, name, max_bytes)
+        if _fits(text, greeting, ctx):
+            variant = "compact" if name == PROMPT_COMPACT_NAME else "full"
+            return text, variant, False, ""
+        raise PromptLoadError("over budget")
+    except PromptLoadError as exc:
+        if exc.reason == "over budget" and name == PROMPT_FULL_NAME:
+            try:
+                compact = read_prompt_file(root, PROMPT_COMPACT_NAME, max_bytes)
+                if "RUN: ./familia" not in compact:
+                    raise PromptLoadError("compact missing run directive")
+                if _fits(compact, greeting, ctx):
+                    return compact, "compact", False, ""
+            except PromptLoadError:
+                pass
+            raise PromptRefuse(
+                f"ctx {ctx}: the full and compact system prompts do not leave room for "
+                f"a user turn and {MAX_OUTPUT_TOKENS} output tokens"
+            ) from exc
+        warning = f"protograph prompt file {exc.reason} ({name}); using the short fallback"
+        if _fits(FALLBACK_SYSTEM_PROMPT, greeting, ctx):
+            return FALLBACK_SYSTEM_PROMPT, "fallback", True, warning
+        raise PromptRefuse(warning) from exc
+
+
+def load_system_prompt(root=None, override=None, ctx=8192, greeting=""):
+    """Return (text, path, used_fallback). PromptRefuse if even the fallback does not fit."""
+    root = root or ROOT
     path = system_prompt_path(root, override)
+    text, _variant, fallback, warning = select_system_prompt(
+        ctx, root=root, override=override, greeting=greeting)
+    if warning:
+        print(f"protograph: warning: {warning}", file=sys.stderr)
+    return text, path, fallback
+
+def parse_run_directives(text):
+    """RUN: lines and ```run fences, in order, capped at RUN_LIMIT."""
+    found = []
+    for match in _RUN_LINE.finditer(text or ""):
+        found.append(match.group(1).strip())
+    for match in _RUN_FENCE.finditer(text or ""):
+        for line in match.group(1).splitlines():
+            line = line.strip()
+            if line.startswith("RUN:"):
+                line = line[4:].strip()
+            if line:
+                found.append(line)
+    return found[:RUN_LIMIT]
+
+
+def vet_familia_command(line):
+    """Return (argv, None) or (None, reason). argv[0] is the literal ./familia, not a path to exec."""
+    if any(ch in _META or ord(ch) < 32 or ord(ch) > 126 for ch in line):
+        return None, "metacharacter"
+    parts = line.split()
+    if len(parts) > 32:
+        return None, "too many arguments"
+    if not parts or parts[0] not in ("./familia", "familia"):
+        return None, "not a familia command"
+    args = parts[1:]
+    if any(_TOKEN.fullmatch(arg) is None for arg in args):
+        return None, "metacharacter"
+    flags, i = [], 0
+    while i < len(args) and args[i] in _RUN_FLAGS:
+        flags.append(args[i])
+        i += 1
+    rest = args[i:]
+    if not rest:
+        return None, "missing subcommand"
+    import familia_cli
+    hit, _k = familia_cli.resolve(rest)
+    if not hit or hit[0] != "item":
+        return None, "not in scripts/menu-items.txt"
+    return ["./familia", *flags, *rest], None
+
+
+def _audit(command, code, path=None):
+    path = os.environ.get(AUDIT_ENV) if path is None else path
+    if path is None:
+        path = os.path.join(ROOT, ".cache", "proto-run.log")
+    if path == "":
+        return
+    safe = "".join(ch if 32 <= ord(ch) < 127 else "?" for ch in str(command))[:240]
+    line = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()) + "\t" + safe + "\t" + str(code) + "\n"
+    directory = os.path.dirname(os.path.abspath(path))
+    os.makedirs(directory, mode=0o700, exist_ok=True)
+    flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT | _o_nofollow()
     try:
-        with open(path, "rb") as f:
-            raw = f.read()
-    except OSError:
-        return FALLBACK_SYSTEM_PROMPT, path, True
-    if not raw.strip():
-        return FALLBACK_SYSTEM_PROMPT, path, True
+        fd = os.open(path, flags, 0o600)
+    except OSError as exc:
+        print(f"protograph: warning: audit log not written ({exc.errno})", file=sys.stderr)
+        return
     try:
-        text = raw.decode("ascii")
-    except UnicodeError:
-        return FALLBACK_SYSTEM_PROMPT, path, True
-    return text, path, False
+        os.write(fd, line.encode("ascii"))
+    finally:
+        os.close(fd)
+
+
+def execute_familia(line, bin_path=None, timeout=None, audit=None):
+    """Exec one vetted familia command. shell=False. The model never chooses argv[0]."""
+    argv, err = vet_familia_command(line)
+    if err:
+        _audit(line, "refused", audit)
+        return {"status": "refused", "exit": "refused", "reason": err, "output": "", "argv": []}
+    exe = bin_path if bin_path is not None else (os.environ.get(BIN_ENV) or os.path.join(ROOT, "familia"))
+    if not os.path.isabs(exe):
+        exe = os.path.join(ROOT, exe)
+    if timeout is None:
+        timeout = float(os.environ.get("FAMILIA_PROTO_RUN_TIMEOUT", RUN_TIMEOUT))
+    cmd = [exe, *argv[1:]]
+    try:
+        proc = subprocess.run(cmd, shell=False, capture_output=True, timeout=timeout, cwd=ROOT)
+    except subprocess.TimeoutExpired as exc:
+        _audit(" ".join(argv), "timeout", audit)
+        out = (exc.stdout or b"") + (exc.stderr or b"")
+        return {"status": "timeout", "exit": "timeout", "reason": "timeout",
+                "output": out.decode("utf-8", "replace"), "argv": argv}
+    _audit(" ".join(argv), proc.returncode, audit)
+    out = proc.stdout.decode("utf-8", "replace") + proc.stderr.decode("utf-8", "replace")
+    return {"status": "ran", "exit": proc.returncode, "reason": "", "output": out, "argv": argv}
+
+
+def format_exec_result(result):
+    lines = [f"status: {result['status']}", f"exit: {result['exit']}"]
+    if result.get("reason"):
+        lines.append(f"reason: {result['reason']}")
+    if result.get("argv"):
+        lines.append("argv: " + " ".join(result["argv"]))
+    lines.append("---")
+    lines.append(result.get("output") or "")
+    return "\n".join(lines).rstrip("\n") + "\n"
+
+
+def execute_reply(text, **kwargs):
+    """Run every directive in a model reply. Empty string when there is nothing to run."""
+    chunks = [format_exec_result(execute_familia(line, **kwargs)) for line in parse_run_directives(text)]
+    return "".join(chunks)
+
 
 import yaml  # noqa: E402
 
@@ -315,12 +679,27 @@ def main(argv=None):
     ap.add_argument("--force", action="store_true", help="write even when validation fails (never for graph.yaml)")
     ap.add_argument("--print-prompt", action="store_true",
                     help="print the versioned protograph system prompt and exit")
+    ap.add_argument("--ctx", type=int, help="node ctx used to pick the full or compact prompt")
+    ap.add_argument("--model", default="", help="graph node or alias whose ctx picks the prompt")
+    ap.add_argument("--exec-reply", metavar="FILE", help="execute RUN directives in FILE and print the results")
     a = ap.parse_args(argv)
+    if a.exec_reply:
+        with open(a.exec_reply, encoding="utf-8", errors="replace") as fh:
+            sys.stdout.write(execute_reply(fh.read()))
+        return 0
     if a.print_prompt:
-        text, path, fallback = load_system_prompt()
-        if fallback:
-            print(f"protograph: warning: protograph prompt file missing, empty, or not ASCII ({path}); "
-                  "using the short fallback", file=sys.stderr)
+        ctx = a.ctx
+        if ctx is None and a.model:
+            ctx = ctx_for_model(a.model)
+        if ctx is None:
+            ctx = 8192
+        try:
+            text, _variant, _fallback, warning = select_system_prompt(ctx)
+        except PromptRefuse as exc:
+            print(f"protograph: error: {exc}", file=sys.stderr)
+            return 3
+        if warning:
+            print(f"protograph: warning: {warning}", file=sys.stderr)
         sys.stdout.write(text if text.endswith("\n") else text + "\n")
         return 0
     if not a.recipe:
