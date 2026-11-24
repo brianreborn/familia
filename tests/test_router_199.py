@@ -27,7 +27,13 @@ import escalation as E  # noqa: E402
 import hermes_harness as HH  # noqa: E402
 import start_graph as SG  # noqa: E402
 
-GRAPH = yaml.safe_load((ROOT / "graph.yaml").read_text(encoding="utf-8"))
+# Frozen copy of graph.yaml from this branch (PR head 9636d7e). Live
+# graph.yaml is not used for the default suite: an unrelated node status
+# change (for example embed: planned on later main) would flip strict
+# xfails or turn a pass into a failure. Opt in to live-graph checks with
+# FAMILIA_ROUTER199_LIVE_GRAPH=1.
+FIXTURE_GRAPH = ROOT / "tests/fixtures/router_199/graph.yaml"
+GRAPH = yaml.safe_load(FIXTURE_GRAPH.read_text(encoding="utf-8"))
 NOOP = "#199 routing no-op"
 
 # Expected routing per TYPE (docs/testing/router-199-findings.md, table 1).
@@ -77,8 +83,14 @@ class _Gateway(BaseHTTPRequestHandler):
             return
         req = urllib.request.Request(al["url"] + self.path, data=raw,
                                      headers={"Content-Type": "application/json"})
-        with urllib.request.urlopen(req, timeout=5) as r:
-            data = r.read()
+        try:
+            with urllib.request.urlopen(req, timeout=5) as r:
+                data = r.read()
+        except Exception:
+            self.send_response(502)
+            self.end_headers()
+            self.wfile.write(b'{"error":"upstream failed"}')
+            return
         self.send_response(200)
         self.end_headers()
         self.wfile.write(data)
@@ -121,13 +133,14 @@ def fleet():
             try:
                 with urllib.request.urlopen(req, timeout=5) as r:
                     return json.loads(r.read())["served_by"]
-            except urllib.error.HTTPError:
+            except (urllib.error.HTTPError, urllib.error.URLError):
                 return None
         return g, route, omitted
 
     yield boot
     for s in servers:
         s.shutdown()
+        s.server_close()
 
 
 def node_type(g, name):
@@ -163,7 +176,7 @@ def test_gateway_host_routes_type_to_matching_node(fleet, typ):
     assert node_type(g, served) in EXPECTED_TYPE[typ], f"{typ} landed on {served} ({node_type(g, served)})"
 
 
-def test_coder_and_general_must_not_collapse(fleet):
+def test_documents_coder_general_collapse(fleet):
     """Documents the current collapse: both names land on one node (no-op routing)."""
     _, route, _ = fleet(GRAPH, "miryam")
     assert route("coder") == route("general") == "coder"
@@ -270,3 +283,30 @@ def test_installer_launchers_pass_explicit_tools(path):
     lines = [l for l in text.splitlines() if re.search(r"exec .*(llama-server|\\\$B)", l)]
     assert lines
     assert all("--tools" in l for l in lines), lines
+
+
+# ------------------------------------------------- opt-in live graph.yaml
+@pytest.mark.skipif(
+    os.environ.get("FAMILIA_ROUTER199_LIVE_GRAPH") != "1",
+    reason="opt-in live graph.yaml; default suite uses the frozen fixture",
+)
+def test_live_graph_active_aliases_are_routable_or_reported(fleet):
+    """Invariants on the repo's live graph.yaml, not a fixed per-type matrix."""
+    live = yaml.safe_load((ROOT / "graph.yaml").read_text(encoding="utf-8"))
+    # Pick a host that has a local gateway if one exists; otherwise skip.
+    hosts_with_gw = sorted({
+        gw.get("host") for gw in (live.get("gateways") or {}).values()
+        if gw.get("host")
+    })
+    if not hosts_with_gw:
+        pytest.skip("live graph.yaml has no gateway host")
+    host = hosts_with_gw[0]
+    g, route, omitted = fleet(live, host)
+    declared = [
+        name for name, al in (live.get("aliases") or {}).items()
+        if (live.get("gateways") or {}).get((al or {}).get("gateway"), {}).get("host") == host
+    ]
+    for typ in declared:
+        served = route(typ)
+        # Either routed, or reported in omitted; never an unexpected raise.
+        assert served is not None or any(a == typ for a, *_ in omitted), typ
