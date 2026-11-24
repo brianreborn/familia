@@ -1,44 +1,28 @@
 # Security MCPs for 0.3.0: inventory, tool boundaries, and allowlist
 
 Issue: https://github.com/brianreborn/familia/issues/407
-Runner: galaxy1 (stamp v=1 host=galaxy1 role=swarm-pull prog=swarm-pull@0.2.6-live mode=live)
-Generated: 2026-11-11 06:04 PST
+Runner: galaxy1 (stamp v=1 host=galaxy1 role=swarm-pull prog=swarm-pull@0.2.9.3-live mode=live)
+Generated: 2026-11-23 21:45 PST
 Approved-content-sha256: 11b0ec19ea3a15576926b33b76eba07b84e8a052bb512e8a9e27b492869b0704
 
 Status: rough first pass by the swarm pull worker. Section 1 is a read-only
 probe run on the runner host (measured). Section 2 is a draft from a small
-local open model (llama-cli LFM2.5-1.2B-Instruct-Q4_K_M.gguf); treat it as unverified until reviewed.
+local open model (http http://127.0.0.1:18113); treat it as unverified until reviewed.
 
 ## 1. Read-only probe (measured on galaxy1)
 
-stamp v=1 host=galaxy1 role=swarm-pull prog=swarm-pull@0.2.6-live mode=live
+stamp v=1 host=galaxy1 role=swarm-pull prog=swarm-pull@0.2.9.3-live mode=live
 
 No specialized probe for this issue.
 
 ## 2. Local model draft (unverified)
 
-I need to know what the problem is asking, and how to approach it.
+(a) The issue is about ensuring the security of the familya project's MCPs (Multi-Component Platforms) in the new 0.3.0 release. It focuses on how to properly handle inventory, tool boundaries, and allowlists, especially in light of recent changes and vulnerabilities.
 
-How do I verify the current state of the familia project's security posture, and what steps should be taken to address the identified risks?
+(b) A possible approach would involve reviewing the current MCP configurations, checking for any misconfigurations or overlooked rules, and ensuring that tool boundaries are correctly set. Likely components include the `familya` codebase, MCP scripts, and the authentication setup.
 
-I need to confirm whether the existing boundary checks are sufficient, and if not, what tools or processes should be added to strengthen the security.
+(c) Risks could include potential security gaps, misconfigured tool boundaries, or incorrect inventory data leading to unauthorized access. Testing would involve simulating various scenarios to see if the system behaves as expected under different conditions.
 
-What are the next steps for the team?
-
-I should prioritize the risks, and identify the most critical path to address first.
-
-What are the potential outcomes if the current approach is not followed, and what should I document in the final report?
-
-What should I document in the final report?
-
-How should I structure the answer to make it clear and concise, and what should be the final output?
-
-I need to make sure that all steps should be followed precisely.
-
-COMPARE TO OTHER SIMILAR ISSUES (comparison table)
-
-I am not sure if I'm interpreting the issue description correctly.
-
-Please ensure the answer is tailored to this specific issue issue nonce.
+(d) Open questions include: What specific tool boundaries need adjustment? How can we verify that the inventory matches the expected setup? Are there any edge cases or scenarios that haven't been thoroughly tested?
 
 -- swarm/galaxy1
