@@ -58,9 +58,16 @@ else
 fi
 
 # Resolve role in graph: pentests.NAME, roles.NAME, agents.NAME (in that order).
-RESOLVED=$(ROLE="$ROLE" GRAPH="$GRAPH" python3 - <<'PY'
+RESOLVED=$(ROOT="$ROOT" ROLE="$ROLE" GRAPH="$GRAPH" python3 - <<'PY'
 import os, sys, yaml
 g = yaml.safe_load(open(os.environ["GRAPH"]))
+sys.path.insert(0, os.path.join(os.environ["ROOT"], "scripts"))
+import security_levels  # local security level overlay, status only (docs/security-levels.md)
+g["_path"] = os.environ["GRAPH"]
+try:
+    security_levels.apply(g, quiet=False)
+except security_levels.SecurityLevelError as e:
+    print("with-fleet.sh: security level: %s" % e, file=sys.stderr); sys.exit(3)
 role = os.environ["ROLE"]
 for section in ("pentests", "roles", "agents"):
     block = g.get(section) or {}
@@ -138,9 +145,16 @@ if [ "$OPERATOR_START" = 1 ]; then
     echo "with-fleet.sh: re-run with FAMILIA_OPERATOR_CONFIRM=yes" >&2
     exit 2
   fi
-  CHECK=$(NAME="$name" GRAPH="$GRAPH" python3 - <<'PY'
+  CHECK=$(ROOT="$ROOT" NAME="$name" GRAPH="$GRAPH" python3 - <<'PY'
 import os, sys, yaml
 g = yaml.safe_load(open(os.environ["GRAPH"]))
+sys.path.insert(0, os.path.join(os.environ["ROOT"], "scripts"))
+import security_levels  # local security level overlay, status only (docs/security-levels.md)
+g["_path"] = os.environ["GRAPH"]
+try:
+    security_levels.apply(g, quiet=False)
+except security_levels.SecurityLevelError as e:
+    print("with-fleet.sh: security level: %s" % e, file=sys.stderr); sys.exit(3)
 p = (g.get("pentests") or {}).get(os.environ["NAME"]) or {}
 if p.get("requires_operator_confirm") is not True:
     print("missing_confirm"); sys.exit(0)
@@ -160,7 +174,8 @@ PY
   ntools=$(printf '%s' "$CHECK" | cut -f4)
   [ -n "$onode" ] || { echo "with-fleet.sh: pentests.$name has no node" >&2; exit 1; }
   if [ "$ostatus" != "active" ]; then
-    echo "with-fleet.sh: guardian node still planned (status=$ostatus) — fetch weights, measure sha, set active, retry" >&2
+    echo "with-fleet.sh: guardian seat is not active (status=$ostatus); fetch weights, measure sha, set active, retry" >&2
+    echo "with-fleet.sh: if the security level turned it off: familia security status (docs/security-levels.md)" >&2
     echo "with-fleet.sh: helper: python3 scripts/activate_guardian_weights.py   # docs/guardian-weights.md" >&2
     echo "with-fleet.sh: fetch: scripts/add-model.sh --fetch RavichandranJ/Dolphin3-Cyber-8B-GGUF --quant Q2_K --role pentest --accept-licenses" >&2
     echo "with-fleet.sh: documented LAUNCH_FAILED fix: weights absent (LF_MODEL_FILE); see docs/guardian-weights.md" >&2

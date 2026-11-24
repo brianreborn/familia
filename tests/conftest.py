@@ -53,3 +53,16 @@ def block_live_forge(request, monkeypatch):
     monkeypatch.setattr(socket.socket, "connect_ex", _blocked_connect_ex)
     monkeypatch.setattr(os, "system", _blocked_os_system)
     monkeypatch.setattr(urllib.request, "urlopen", _blocked_urlopen)
+
+
+@pytest.fixture(autouse=True)
+def _no_local_security_level(monkeypatch, tmp_path_factory):
+    """A machine's own security preset or tier state must not change test results."""
+    base = tmp_path_factory.getbasetemp()
+    monkeypatch.delenv("FAMILIA_SECURITY_LEVEL", raising=False)
+    monkeypatch.delenv("FAMILIA_NODE_ID", raising=False)
+    monkeypatch.delenv("FAMILIA_TIER_CALLER", raising=False)
+    monkeypatch.delenv("FAMILIA_FLEET_ADMIN_KEY_FILE", raising=False)
+    monkeypatch.setenv("FAMILIA_SECURITY_OVERRIDE", str(base / "no-security.local.yaml"))
+    monkeypatch.setenv("FAMILIA_SECURITY_AUDIT", str(base / "security-audit.log"))
+    monkeypatch.setenv("FAMILIA_NODE_TIER_STATE", str(base / "node-tiers.json"))

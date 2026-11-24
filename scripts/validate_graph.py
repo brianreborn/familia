@@ -846,6 +846,12 @@ def main(argv):
     # Privacy lint runs on the tracked file *before* overlay merge (#104).
     privacy_errs = hosts_overlay.privacy_lint_graph(graph, path_label=path, raw_text=raw_text)
     hosts_overlay.merge_connection_overlay(graph, graph_path=path)
+    import security_levels  # local security level overlay: status only (docs/security-levels.md)
+    try:
+        security_levels.apply(graph, quiet=False)
+    except security_levels.SecurityLevelError as exc:
+        print("graph: ERROR: security level: %s" % exc, file=sys.stderr)
+        return 1
     if o["host"] and o["host"] not in graph.get("hosts", {}):
         print(f"graph: ERROR: no host {o['host']!r}", file=sys.stderr); return 1
     # #630: a stale generated/graph-HOST.yaml that dropped server_tools still

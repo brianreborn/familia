@@ -1,0 +1,376 @@
+# Security node levels (docs/security-levels.md). Data only: scripts/security_levels.py reads it.
+# graph.yaml is never rewritten. The chosen level lives in a local, untracked override file
+# (security.local.yaml, same lookup as hosts.local.yaml) or comes from FAMILIA_SECURITY_LEVEL /
+# `familia start --security-level=LEVEL`, and is merged into the graph at load time.
+#
+# A level only flips `status` (active/planned) on the members of its sets. It never touches
+# roles, aliases, escalates_to, tools or seatbelts, so the fail-closed rules are the same at
+# every level: guardian/pentest/defender nodes are never auto-started by `familia start`, never
+# a gateway route and never an escalation target; pentest seats stay operator-start only.
+schema: 1
+
+sets:
+  guardian:
+    description: guardian/defender monitoring nodes (fail-closed, operator-start only, never routed)
+    node_roles: [guardian, defender]      # matched on the node's normalized role (node.role > model.role)
+    nodes: []                             # extra node keys, if a guardian node uses another role
+  pentest:
+    description: pentest seats (pentests.*) and pentest-role nodes; launch-test only, operator confirm
+    pentests: "*"                         # every pentests.* entry
+    node_roles: [pentest]
+    requires: [guardian]                  # a seat is only on when its node is on
+    confirm: true                         # typed confirmation on a terminal; there is no --yes
+  other:
+    description: any other fail-closed security node not matched above (full only)
+    fail_closed: true                     # role or model role in guardian/pentest/defender
+    nodes: []                             # add future safety/security node keys here
+
+levels:
+  "off":                  # quoted: bare off is a YAML 1.1 boolean
+    description: every security node and pentest seat off (planned)
+    sets: []
+  guardian:
+    description: guardian/defender monitoring only; pentest seats off
+    sets: [guardian]
+  pentest:
+    description: guardian plus pentest seats (still operator-start only, confirm required)
+    sets: [guardian, pentest]
+  full:
+    description: every security node and seat, including any other fail-closed node
+    sets: [guardian, pentest, other]
+
+# Risk tiers are per node, not the presets above. Default is low. Nothing here
+# promotes a tier. Pentest-policy modes (docs/config/pentest-policy.md) map only
+# through policy_ladder. autonomous-lab is not granted. Integrity profiles are a
+# different axis (#684, #699): trust of an artifact, not capability of a node.
+risk:
+  default: "low"
+  order: ["low", "medium", "high"]
+  policy_ladder:
+    low: ["off", planned]
+    medium: ["slash-confirm"]
+    high: ["tools-confirm"]
+  not_granted: ["autonomous-lab"]
+
+integrity_profiles:
+  provenance: ["untrusted", "screened", "validated", "trusted"]
+  traditional: ["low", "medium", "high"]
+  note: "Integrity labels are not risk tiers. A node cannot promote its own output."
+
+node_types:
+  swarm-worker:
+    aliases: [swarm-runner, swarm-bench]
+    policy: none
+    tiers:
+      low:
+        arming: "none"
+        summary: "Disarmed swarm worker. The run loop does not take jobs."
+        adds: [register-idle, read-status, stay-disarmed]
+      medium:
+        arming: "explicit-arm"
+        summary: "Explicit arm for bench jobs. Live fleet dispatch stays off."
+        adds: [accept-bench-jobs]
+      high:
+        arming: "strongest-confirm"
+        summary: "Live swarm worker may pull an assigned task and report a result."
+        adds: [pull-assigned-tasks, report-results]
+  model-server:
+    aliases: [llama-server, sm11-legacy, drex-dlm]
+    policy: none
+    tiers:
+      low:
+        arming: "none"
+        summary: "Loopback model server with an API key and no server tools."
+        adds: [loopback-bind, api-key-required, no-server-tools]
+      medium:
+        arming: "explicit-arm"
+        summary: "Explicit arm for graph-declared server tools on loopback, still with an API key."
+        adds: [loopback-server-tools]
+      high:
+        arming: "strongest-confirm"
+        summary: "Operator-confirmed non-loopback bind. An API key is still required."
+        adds: [non-loopback-with-key]
+  coding-agent:
+    aliases: [coder, hermes, hermes-agent]
+    policy: none
+    tiers:
+      low:
+        arming: "none"
+        summary: "Read-only coding agent. No shell and no graph writes."
+        adds: [read-only-suggest, no-shell, no-graph-writes]
+      medium:
+        arming: "explicit-arm"
+        summary: "Explicit arm for local tool use inside this checkout."
+        adds: [local-tool-use]
+      high:
+        arming: "strongest-confirm"
+        summary: "Full coding-agent profile already declared in the graph. No listener of its own."
+        adds: [graph-declared-skills]
+  chat:
+    aliases: []
+    policy: none
+    tiers:
+      low:
+        arming: "none"
+        summary: "Local chat answers only."
+        adds: [answer-only]
+      medium:
+        arming: "explicit-arm"
+        summary: "Explicit arm for local tools the graph already declares."
+        adds: [local-tools-if-declared]
+      high:
+        arming: "strongest-confirm"
+        summary: "Strongest confirm before an off-host chat handoff."
+        adds: [off-host-handoff]
+  decision:
+    aliases: []
+    policy: none
+    tiers:
+      low:
+        arming: "none"
+        summary: "Route answers only. Escalation stays off."
+        adds: [route-answer-only]
+      medium:
+        arming: "explicit-arm"
+        summary: "Explicit arm before suggest-mode escalation already written in the graph."
+        adds: [escalation-suggest]
+      high:
+        arming: "strongest-confirm"
+        summary: "Strongest confirm before auto escalation. Does not edit the graph."
+        adds: [escalation-auto-gate]
+  reasoning:
+    aliases: []
+    policy: none
+    tiers:
+      low:
+        arming: "none"
+        summary: "Local reasoning answers only."
+        adds: [reason-locally]
+      medium:
+        arming: "explicit-arm"
+        summary: "Explicit arm for local tools the graph already declares."
+        adds: [local-tools-if-declared]
+      high:
+        arming: "strongest-confirm"
+        summary: "Strongest confirm before an off-host reasoning handoff."
+        adds: [off-host-handoff]
+  embed:
+    aliases: []
+    policy: none
+    tiers:
+      low:
+        arming: "none"
+        summary: "Local embedding calls only."
+        adds: [local-embed-only]
+      medium:
+        arming: "explicit-arm"
+        summary: "Explicit arm for batched local embedding."
+        adds: [batch-embed]
+      high:
+        arming: "strongest-confirm"
+        summary: "Strongest confirm before this node calls an off-host embedder."
+        adds: [off-host-embed-client]
+  vision:
+    aliases: []
+    policy: none
+    tiers:
+      low:
+        arming: "none"
+        summary: "Local image answers only."
+        adds: [local-image-answer]
+      medium:
+        arming: "explicit-arm"
+        summary: "Explicit arm for local vision tools the graph already declares."
+        adds: [local-image-tools]
+      high:
+        arming: "strongest-confirm"
+        summary: "Strongest confirm before an off-host vision handoff."
+        adds: [off-host-vision-handoff]
+  diffusion:
+    aliases: []
+    policy: none
+    tiers:
+      low:
+        arming: "none"
+        summary: "Local image generation only."
+        adds: [local-generate]
+      medium:
+        arming: "explicit-arm"
+        summary: "Explicit arm for local diffusion tools the graph already declares."
+        adds: [local-generate-tools]
+      high:
+        arming: "strongest-confirm"
+        summary: "Strongest confirm before an off-host diffusion handoff."
+        adds: [off-host-diffusion-handoff]
+  guardian:
+    aliases: [pentest, defender]
+    policy: pentest-policy
+    tiers:
+      low:
+        arming: "none"
+        summary: "Pentest policy off or planned. Readiness only, no tools, never auto-routed."
+        adds: [readiness-check, no-tools]
+      medium:
+        arming: "explicit-arm"
+        summary: "Permits pentest policy slash-confirm. Advisory only, no tools."
+        adds: [slash-confirm-advisory]
+      high:
+        arming: "strongest-confirm"
+        summary: "Permits pentest policy tools-confirm with audit. Does not grant autonomous-lab."
+        adds: [tools-confirm-audit]
+  general:
+    aliases: []
+    policy: none
+    tiers:
+      low:
+        arming: "none"
+        summary: "Local general answers only."
+        adds: [local-answer]
+      medium:
+        arming: "explicit-arm"
+        summary: "Explicit arm for local tools the graph already declares."
+        adds: [local-tools-if-declared]
+      high:
+        arming: "strongest-confirm"
+        summary: "Strongest confirm before an off-host general handoff."
+        adds: [off-host-handoff]
+  thin-client:
+    aliases: []
+    policy: none
+    tiers:
+      low:
+        arming: "none"
+        summary: "Menu only. No upstream model and no fleet arm."
+        adds: [menu-only]
+      medium:
+        arming: "explicit-arm"
+        summary: "Explicit arm to point at an upstream model server. The key stays in a 0600 file."
+        adds: [upstream-model-pointer]
+      high:
+        arming: "strongest-confirm"
+        summary: "Strongest confirm before this client forwards live operator prompts."
+        adds: [live-forward]
+  gateway:
+    aliases: [green-roomz, roomz]
+    policy: none
+    tiers:
+      low:
+        arming: "none"
+        summary: "Gateway stays stopped."
+        adds: [gateway-stopped]
+      medium:
+        arming: "explicit-arm"
+        summary: "Explicit arm for a loopback gateway that still requires an API key."
+        adds: [loopback-gateway]
+      high:
+        arming: "strongest-confirm"
+        summary: "Strongest confirm for the keyed gateway already described in the graph."
+        adds: [keyed-gateway]
+  system-agent:
+    aliases: []
+    policy: none
+    tiers:
+      low:
+        arming: "none"
+        summary: "System agent sends nothing off the device."
+        adds: [off-device-send-blocked]
+      medium:
+        arming: "explicit-arm"
+        summary: "Explicit arm to draft a status report locally. It is not sent."
+        adds: [local-draft-only]
+      high:
+        arming: "strongest-confirm"
+        summary: "Strongest confirm before any off-device send. This command sends nothing."
+        adds: [operator-confirmed-send]
+  host:
+    aliases: [desktop, phone, tablet, notebook, laptop, "1U", "2U", "3U", console, appliance, drone, watch, unknown]
+    policy: none
+    tiers:
+      low:
+        arming: "none"
+        summary: "Inventory and measure only. No node starts from the tier file."
+        adds: [inventory-only]
+      medium:
+        arming: "explicit-arm"
+        summary: "Explicit arm before placing nodes that stay planned."
+        adds: [place-planned-nodes]
+      high:
+        arming: "strongest-confirm"
+        summary: "Strongest confirm before starting nodes the graph already marks active."
+        adds: [start-active-nodes]
+  stt:
+    aliases: []
+    policy: none
+    tiers:
+      low:
+        arming: "none"
+        summary: "Local transcription only."
+        adds: [local-transcribe]
+      medium:
+        arming: "explicit-arm"
+        summary: "Explicit arm for local speech-to-text tools the graph already declares."
+        adds: [local-stt-tools]
+      high:
+        arming: "strongest-confirm"
+        summary: "Strongest confirm before an off-host speech-to-text handoff."
+        adds: [off-host-stt-handoff]
+  tts:
+    aliases: []
+    policy: none
+    tiers:
+      low:
+        arming: "none"
+        summary: "Local speech synthesis only."
+        adds: [local-speak]
+      medium:
+        arming: "explicit-arm"
+        summary: "Explicit arm for local text-to-speech tools the graph already declares."
+        adds: [local-tts-tools]
+      high:
+        arming: "strongest-confirm"
+        summary: "Strongest confirm before an off-host text-to-speech handoff."
+        adds: [off-host-tts-handoff]
+
+kind_map:
+  swarm-worker: swarm-worker
+  swarm-runner: swarm-worker
+  swarm-bench: swarm-worker
+  model-server: model-server
+  llama-server: model-server
+  sm11-legacy: model-server
+  drex-dlm: model-server
+  coding-agent: coding-agent
+  coder: coding-agent
+  hermes: coding-agent
+  hermes-agent: coding-agent
+  chat: chat
+  decision: decision
+  reasoning: reasoning
+  embed: embed
+  vision: vision
+  diffusion: diffusion
+  guardian: guardian
+  pentest: guardian
+  defender: guardian
+  general: general
+  thin-client: thin-client
+  gateway: gateway
+  green-roomz: gateway
+  roomz: gateway
+  system-agent: system-agent
+  host: host
+  desktop: host
+  phone: host
+  tablet: host
+  notebook: host
+  laptop: host
+  "1U": host
+  "2U": host
+  "3U": host
+  console: host
+  appliance: host
+  drone: host
+  watch: host
+  unknown: host
+  stt: stt
+  tts: tts

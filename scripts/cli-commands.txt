@@ -83,6 +83,13 @@ monitor once|hosts.monitor-once
 monitor deaths|adv.monitor-deaths
 monitor|hosts.monitor
 start|hosts.start
+security status|security.status
+security list|security.list
+security level|security.level
+security tier show|security.tier-show
+security tier escalate|security.tier-escalate
+security tier de-escalate|security.tier-deescalate
+security|raw|PY scripts/security_levels.py||python scripts\security_levels.py|security presets (off, guardian, pentest, full) and per-node risk tiers (tier show, escalate, de-escalate); docs/security-levels.md
 serve|hosts.serve
 host measure|hosts.measure-write
 host power|adv.power-probe

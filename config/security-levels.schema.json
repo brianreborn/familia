@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "familia security levels and per-node risk tiers",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "sets", "levels", "risk", "integrity_profiles", "node_types", "kind_map"],
+  "properties": {
+    "schema": {"const": 1},
+    "sets": {"type": "object", "minProperties": 1},
+    "levels": {"type": "object", "minProperties": 1},
+    "risk": {"$ref": "#/$defs/risk"},
+    "integrity_profiles": {"$ref": "#/$defs/integrity"},
+    "node_types": {"$ref": "#/$defs/nodeTypes"},
+    "kind_map": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "patternProperties": {
+        "^[A-Za-z0-9][A-Za-z0-9._-]*$": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "risk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["default", "order", "policy_ladder", "not_granted"],
+      "properties": {
+        "default": {"const": "low"},
+        "order": {"const": ["low", "medium", "high"]},
+        "policy_ladder": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["low", "medium", "high"],
+          "properties": {
+            "low": {"const": ["off", "planned"]},
+            "medium": {"const": ["slash-confirm"]},
+            "high": {"const": ["tools-confirm"]}
+          }
+        },
+        "not_granted": {"const": ["autonomous-lab"]}
+      }
+    },
+    "integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provenance", "traditional"],
+      "properties": {
+        "provenance": {"const": ["untrusted", "screened", "validated", "trusted"]},
+        "traditional": {"const": ["low", "medium", "high"]},
+        "note": {"type": "string", "minLength": 8, "pattern": "^[\\x20-\\x7E]+$"}
+      }
+    },
+    "adds": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string", "pattern": "^[a-z][a-z0-9-]*$"}
+    },
+    "summary": {"type": "string", "minLength": 8, "maxLength": 240, "pattern": "^[\\x20-\\x7E]+$"},
+    "lowTier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["arming", "summary", "adds"],
+      "properties": {
+        "arming": {"const": "none"},
+        "summary": {"$ref": "#/$defs/summary"},
+        "adds": {"$ref": "#/$defs/adds"}
+      }
+    },
+    "mediumTier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["arming", "summary", "adds"],
+      "properties": {
+        "arming": {"const": "explicit-arm"},
+        "summary": {"$ref": "#/$defs/summary"},
+        "adds": {"$ref": "#/$defs/adds"}
+      }
+    },
+    "highTier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["arming", "summary", "adds"],
+      "properties": {
+        "arming": {"const": "strongest-confirm"},
+        "summary": {"$ref": "#/$defs/summary"},
+        "adds": {"$ref": "#/$defs/adds"}
+      }
+    },
+    "nodeType": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["aliases", "policy", "tiers"],
+      "properties": {
+        "aliases": {
+          "type": "array",
+          "items": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"}
+        },
+        "policy": {"enum": ["none", "pentest-policy"]},
+        "tiers": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["low", "medium", "high"],
+          "properties": {
+            "low": {"$ref": "#/$defs/lowTier"},
+            "medium": {"$ref": "#/$defs/mediumTier"},
+            "high": {"$ref": "#/$defs/highTier"}
+          }
+        }
+      }
+    },
+    "nodeTypes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "swarm-worker", "model-server", "coding-agent", "chat", "decision",
+        "reasoning", "embed", "vision", "diffusion", "guardian", "general",
+        "thin-client", "gateway", "system-agent", "host", "stt", "tts"
+      ],
+      "properties": {
+        "swarm-worker": {"$ref": "#/$defs/nodeType"},
+        "model-server": {"$ref": "#/$defs/nodeType"},
+        "coding-agent": {"$ref": "#/$defs/nodeType"},
+        "chat": {"$ref": "#/$defs/nodeType"},
+        "decision": {"$ref": "#/$defs/nodeType"},
+        "reasoning": {"$ref": "#/$defs/nodeType"},
+        "embed": {"$ref": "#/$defs/nodeType"},
+        "vision": {"$ref": "#/$defs/nodeType"},
+        "diffusion": {"$ref": "#/$defs/nodeType"},
+        "guardian": {"$ref": "#/$defs/nodeType"},
+        "general": {"$ref": "#/$defs/nodeType"},
+        "thin-client": {"$ref": "#/$defs/nodeType"},
+        "gateway": {"$ref": "#/$defs/nodeType"},
+        "system-agent": {"$ref": "#/$defs/nodeType"},
+        "host": {"$ref": "#/$defs/nodeType"},
+        "stt": {"$ref": "#/$defs/nodeType"},
+        "tts": {"$ref": "#/$defs/nodeType"}
+      }
+    }
+  }
+}
