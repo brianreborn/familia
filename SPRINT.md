@@ -70,7 +70,7 @@ breaking Linux. Owner for investigation: unassigned swarm runners
   Re-run the test on angel at main after #362 before rewriting it.
 - #394 test_hermes_upstream_compat KeyError GITHUB_TOKEN.
 - #395 test_windows Activate.ps1 UTF-8 BOM on host venv.
-- graph.yaml still names Nanbeige4.3-33B Q4_K_M as angel-coder on
+- graph.yaml still names large model Q4_K_M as removed-large-coder on
   angel, which conflicts with the no-large-models-on-FreeBSD rule
   and Brian's choice of Qwen2.5-Coder 3B 4-bit with a 0.5B draft.
   The sprint line is the intended change; fix graph.yaml in a
@@ -154,6 +154,19 @@ ask-first.
   Charts/PR intended in familia-private under bench/2026-11-10/.
   In progress on miryam (screen bench-report), low priority.
   Target around 3:48 PM PT, partial results marked if needed.
+- Miryam swarm runners and cron state (stopped 2026-11-20):
+  * User crontab cleared (previously ran ~/.local/bin/swarm-runners-ensure.sh
+    at @reboot and every 10 min).
+  * Runners disarmed with ~/.swarm-disarmed in ~/actions-runner and
+    ~/actions-runner-cbl.
+  * Hermes agent user service stopped and disabled (hermes-agent.service).
+  * Re-establishment steps:
+    1. Re-enable hermes agent: systemctl --user enable --now hermes-agent.service
+    2. Re-arm runners: rm -f ~/actions-runner/.swarm-disarmed ~/actions-runner-cbl/.swarm-disarmed
+    3. Re-add crontab: crontab -e
+       @reboot sleep 30; $HOME/.local/bin/swarm-runners-ensure.sh
+       */10 * * * * $HOME/.local/bin/swarm-runners-ensure.sh
+    4. Trigger ensure script: sh $HOME/.local/bin/swarm-runners-ensure.sh
 
 ## 6. Security and review follow-ups
 

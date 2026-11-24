@@ -48,9 +48,8 @@ without `bsd.kmod.mk` prints a skip and exits 0 without producing `nvso.ko`;
 that exit is not a module build. The userspace smoke does not run either kmod
 target.
 
-Passing `CFLAGS=` on the `make` command line used to drop `-Iinclude` (GNU
-make does not append to command-line variables). The Makefile now forces that
-include path with `override`.
+The `-Iinclude` path is supplied separately from `CFLAGS`, so a command-line
+override such as `make CFLAGS=-O0 tools` keeps the public headers available.
 
 ## Evidence
 
@@ -82,7 +81,7 @@ Soft ABI 2 stores domain, map, queue-geometry, and descriptor summaries in the
 softc (`NVSO_POST_SOFT` on the DMA post path). SandForce/Vertex2 firmware and
 GPU↔SSD DMA are not implemented by that bookkeeping.
 
-## Software track (angel Nanbeige)
+## Software track (angel named large model)
 
 Use mmap + swap + spill — see LAYER.md. That path does **not** require `nvso.ko`.
 

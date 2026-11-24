@@ -55,9 +55,24 @@ def _cpu():
             for key in ("model name", "Hardware", "Processor"):
                 m = re.search(r"^%s\s*:\s*(.+)$" % key, txt, re.M)
                 if m:
-                    return m.group(1).strip()
+                    value = m.group(1).strip()
+                    if key != "Processor" or not value.lower().startswith(("aarch64 processor", "armv")):
+                        return value
         except OSError:
-            return None
+            pass
+    if os.path.isdir("/data/data/com.termux") or sys.platform == "android":
+        # Termux app sandboxes may not be able to read useful /proc/cpuinfo
+        # fields. Android system properties remain readable without root.
+        for prop in ("ro.soc.model", "ro.board.platform", "ro.hardware"):
+            try:
+                value = subprocess.check_output(
+                    ["/system/bin/getprop", prop], text=True,
+                    stderr=subprocess.DEVNULL,
+                ).strip()
+            except (OSError, subprocess.CalledProcessError):
+                continue
+            if value and value.lower() not in ("unknown", "unknown hardware"):
+                return "Android %s=%s" % (prop, value)
     if sys.platform.startswith("freebsd"):
         return _sysctl("hw.model")
     if sys.platform == "darwin":
@@ -108,7 +123,8 @@ def measure(kind, reserve):
         raise ValueError("could not measure physical RAM on this host")
     out.append(("ram_mib", str(ram)))
     out.append(("reserve_ram_mib", "%d                # policy (installer default), not measured; see docs/ram-safety.md" % reserve))
-    out.append(("gpus", "null                   # inventory unknown; measure GPUs before GPU offload"))
+    gpus = _gpu_inventory()
+    out.append(("gpus", _gpu_yaml(gpus)))
     return out
 
 def render(name, fields):
@@ -160,6 +176,70 @@ def default_reserve(ram):
     if not ram:
         return 3072
     return 3072 if ram < 12288 else 4096
+
+def _command_output(args):
+    try:
+        return subprocess.check_output(args, text=True, stderr=subprocess.DEVNULL).strip()
+    except (OSError, subprocess.CalledProcessError):
+        return None
+
+
+def _gpu_inventory():
+    """Return graph GPU inventory, [] for a measured no-GPU result, or None for unknown."""
+    if sys.platform.startswith("freebsd"):
+        out = _command_output(["pciconf", "-lv"])
+        if out is None:
+            return None
+        return _parse_freebsd_pci(out)
+    return None
+
+
+def _parse_freebsd_pci(out):
+    cards = []
+    blocks = []
+    current = []
+    for line in out.splitlines():
+        if line and not line.startswith((" ", "\t")):
+            if current:
+                blocks.append("\n".join(current))
+            current = [line]
+        elif current:
+            current.append(line)
+    if current:
+        blocks.append("\n".join(current))
+
+    for block in blocks:
+        header = block.splitlines()[0].lower()
+        if not re.search(r"\bclass=0x03[0-9a-f]{4}\b", header):
+            continue
+        vendor_match = re.search(r"^\s*vendor\s*=\s*['\"]([^'\"]+)['\"]", block, re.I | re.M)
+        device_match = re.search(r"^\s*device\s*=\s*['\"]([^'\"]+)['\"]", block, re.I | re.M)
+        if not vendor_match or not device_match:
+            continue
+        vendor = vendor_match.group(1).strip()
+        model = device_match.group(1).strip()
+        low_vendor = vendor.lower()
+        if low_vendor.startswith("nvidia"):
+            backend = "cuda-sm11-ptx" if re.search(r"\bG84\b|GeForce\s+8600", model, re.I) else "cuda"
+        elif low_vendor.startswith("intel"):
+            backend = "vulkan"
+        elif low_vendor.startswith(("amd", "ati")) or "advanced micro devices" in low_vendor:
+            backend = "rocm"
+        else:
+            backend = "none"
+        cards.append({"vendor": vendor, "model": model, "vram_mib": None,
+                      "backend": backend, "backend_status": "tbd",
+                      "compute_capability": None, "driver": None,
+                      "measured": False,
+                      "notes": "PCI inventory measured; VRAM and runtime backend not measured"})
+    return cards
+
+
+def _gpu_yaml(gpus):
+    if gpus is None:
+        return "null                   # inventory unknown; measure GPUs before GPU offload"
+    import json
+    return json.dumps(gpus, ensure_ascii=False, separators=(",", ":"))
 
 def main():
     ap = argparse.ArgumentParser()

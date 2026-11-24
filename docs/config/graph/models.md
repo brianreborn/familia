@@ -9,6 +9,7 @@ Purpose: one weights file plus identity. Labels use name + version, never a bare
 | CFG-GRAPH-MODELS-102 | `sha256` is a sha or `unmeasured`. Planned nodes may reference unmeasured weights | IMPLEMENTED | graph_types.py check_field sha; guardian_ready.check_weight |
 | CFG-GRAPH-MODELS-103 | `role` is the catalog TYPE. Node `role` may present a compatible view (CFG-GRAPH-NODES-104) | IMPLEMENTED | graph_types.py:179-193 |
 | CFG-GRAPH-MODELS-104 | Never skip a model for license reasons; licenses are gated by consent records | IMPLEMENTED | scripts/licenses.py, license_acceptance.py |
+| CFG-GRAPH-MODELS-105 | `text_roles` explicitly declares additional text-serving views; it does not imply audio or vision capability | IMPLEMENTED | graph_types.py:184-218; tests/test_graph_types.py |
 
 ## Field reference
 
@@ -29,5 +30,6 @@ Required fields have no defaults (validator: missing required → error). Consum
 | CFG-GRAPH-MODELS-008 | `notes` | opt | str | — | IMPLEMENTED | `scripts/add_model.py`, `scripts/bench_guard.py`, `scripts/graph_types.py`, `scripts/licenses.py`, `scripts/model_db.py`, `scripts/offline_secbench.py` +2 |
 | CFG-GRAPH-MODELS-010 | `tool_calls` | opt | bool | — | IMPLEMENTED | `scripts/graph_types.py`, `scripts/validate_graph.py` |
 | CFG-GRAPH-MODELS-009 | `quant` | opt | enum | one of `littlebit` | IMPLEMENTED | `scripts/add_model.py`, `scripts/graph_types.py`, `scripts/model_db.py`, `scripts/model_params.py`, `scripts/registry.py`, `scripts/scale_down.py` +2 |
+| CFG-GRAPH-MODELS-011 | `text_roles` | opt | strlist | chat, general, coder, reasoning | IMPLEMENTED | `scripts/graph_types.py`, `scripts/protograph.py` |
 
 <!-- END GENERATED: fields -->

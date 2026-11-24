@@ -13,7 +13,7 @@ branch for the installed repo and keeps it tracking `origin/<branch>`. Set
 `FAMILIA_BRANCH` or pass `--branch BRANCH` (`-Branch BRANCH` on Windows) to choose
 a branch explicitly. Running a downloaded installer without a git checkout defaults
 a new install to `main`, but an existing install stays on its current tracked branch.
-The bootstrap `install.sh` likewise updates an existing checkout from its configured
+The unified installer `install/unix/install.sh` likewise updates an existing checkout from its configured
 upstream; it does not force `main`. On FreeBSD, do not run the runtime installer:
 select/sync the desired familia branch with `./familia sync --branch BRANCH`, then
 build the pinned llama.cpp checkout from source as described above.

@@ -117,7 +117,7 @@ def test_spill_path_in_server_args(tmp_path, monkeypatch):
     import validate_graph as vg
     monkeypatch.setenv("HOME", str(tmp_path))
     g = vg.load(os.path.join(ROOT, "graph.yaml"))
-    a = vg.server_args(g, "angel-coder")
+    a = vg.server_args(g, "removed-large-coder")
     want = os.path.join(str(tmp_path), ".cache/familia/spill/angel-coder")
     assert a[a.index("--slot-save-path") + 1] == want
 

@@ -129,7 +129,7 @@ def _mem_mib() -> Optional[int]:
 
 
 def _find_small_gguf() -> Optional[Path]:
-    """Prefer a tiny local GGUF for bounded benches; never Nanbeige-class by default."""
+    """Prefer a tiny local GGUF for bounded benches; never named large model-class by default."""
     env = os.environ.get("FAMILIA_OFFLINE_IMPROVE_GGUF")
     if env:
         p = Path(env).expanduser()

@@ -198,6 +198,8 @@ def test_serve_sh_refuses_skew(tmp_path):
     shutil.copy(os.path.join(ROOT, "scripts", "serve.sh"), scripts / "serve.sh")
     shutil.copytree(os.path.join(ROOT, "lib"), root / "lib")  # serve.sh sources lib/msg.mk
     shutil.copy(os.path.join(ROOT, "scripts", "refuse_soname_skew.py"), scripts / "refuse_soname_skew.py")
+    for _n in ("bind_auth_guard.py", "familia_auth.py"):
+        shutil.copy(os.path.join(ROOT, "scripts", _n), scripts / _n)
     # validate_graph prints argv; licenses no-op
     pack = tmp_path / "grz-runtime"
     (pack / "bin").mkdir(parents=True)

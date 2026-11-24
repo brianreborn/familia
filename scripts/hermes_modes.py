@@ -30,8 +30,8 @@ usage: hermes.sh [--graph-mode | --model NODE | --mode graph|single] [--agent NA
   --graph-mode is the same as --mode graph (the default); --graph FILE only picks which graph.yaml.
   --client selects the frontend surface (cli default; desktop = Hermes Desktop; webapp = desktop-in-browser).
 example: scripts/hermes.sh --model coder --render-only
-       scripts/hermes.sh --model angel-coder --client desktop --yes
-       scripts/hermes.sh --model angel-coder --client webapp --yes
+       scripts/hermes.sh --model removed-large-coder --client desktop --yes
+       scripts/hermes.sh --model removed-large-coder --client webapp --yes
        hermes.sh harness2 COMMAND ...    Harness² review CLI (scripts/harness2.py); launches nothing
 """
 import copy, os, socket, subprocess, sys

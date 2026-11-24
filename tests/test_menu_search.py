@@ -169,3 +169,20 @@ def test_windows_search_runs(tmp_path):
     assert "would first run: python scripts\\licenses.py gate" in r.stdout
     r = run("-Pipe", "-DryRun", inp="/model data\nn\nN\nb\nq\n")
     assert re.findall(r"match (\d) of \d+ for 'model data'", r.stdout) == ["2", "1"]
+
+
+def _no_match_examples(path):
+    src = open(path, encoding="utf-8").read()
+    m = re.search(r"No item matches .*?\(e\.g\. ([^)]*)\)", src)
+    assert m, path
+    return [w.strip().lstrip("/") for w in m.group(1).split(",")]
+
+
+@pytest.mark.parametrize("path", [MENU, PS1], ids=["bash", "ps1"])
+def test_no_match_hint_examples_actually_match(path):
+    """#228: the 'No item matches' hint must not suggest a term that itself matches nothing."""
+    words = _no_match_examples(path)
+    assert words == _no_match_examples(MENU)  # both menus give the same hint
+    for w in words:
+        r = menu("--search", w)
+        assert r.returncode == 0 and "No item matches" not in r.stdout, (w, r.stdout[-400:])
