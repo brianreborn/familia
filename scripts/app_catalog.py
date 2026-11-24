@@ -5,7 +5,8 @@ One place for the app-like things familia can run: menu items that are
 really apps (skills store, model downloads, agents, phone assistants, ...),
 the gum-home tools the legacy catalog leaves out (web UI, ui_bridge
 dashboard, find models, X search), and ideas for new apps: open GitHub issues
-labeled `applications` across public brianreborn repositories.
+labeled `applications` across public brianreborn repositories (issues also
+labeled `research` are left out; see docs/research-bucket.md).
 
 Usage:
   app_catalog.py list [--json]                 apps you can run here
@@ -86,7 +87,7 @@ def ttl_s():
 
 
 def query_url():
-    q = f"is:issue is:open is:public label:{LABEL} user:{OWNER}"
+    q = f"is:issue is:open is:public label:{LABEL} -label:research user:{OWNER}"
     return API + "?" + urllib.parse.urlencode({"q": q, "per_page": 100, "sort": "updated"})
 
 
