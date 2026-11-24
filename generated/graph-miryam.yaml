@@ -172,7 +172,7 @@ hosts:
         runs 340. Placement may consider GPU offload candidates; offload still needs
         backend_status verified.'
   phone7:
-    host_id: galaxy1-db07b41d
+    host_id: galaxy1-845f9d5a
     alias_of: galaxy1
     kind: phone
     measured: true
@@ -203,7 +203,7 @@ hosts:
         by the Android linker namespace (missing android.hardware.graphics.mapper@4.0-impl-sgr.so),
         so clinfo reports 0 platforms.'
   phone8:
-    host_id: galaxy2-2e567cbe
+    host_id: galaxy2-bd0351ec
     alias_of: galaxy2
     kind: phone
     measured: true
@@ -234,14 +234,14 @@ hosts:
         by the Android linker namespace (missing android.hardware.graphics.mapper@4.0-impl-sgr.so),
         so clinfo reports 0 platforms.'
   galaxy1:
-    host_id: galaxy1-db07b41d
+    host_id: galaxy1-845f9d5a
     kind: phone
     measured: false
     gpus: null
     notes: 'Samsung Galaxy A57 Termux (fleet name galaxy1). SSH via ProxyJump angel.
       Legacy measured key: phone7. Prefer galaxy1 in new docs/scope allowlists.'
   galaxy2:
-    host_id: galaxy2-2e567cbe
+    host_id: galaxy2-bd0351ec
     kind: phone
     measured: false
     gpus: null

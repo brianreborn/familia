@@ -6,9 +6,19 @@ key is only a display label or lookup name.
 
 ## Format
 
-    <label-slug>-<fp8>        e.g. note9-7140b66c
+    host ID:    <label-slug>-<fp8>                       e.g. note9-7140b66c
+    host UUID:  128-bit RFC 4122 UUID (version-4 layout) e.g. 7140b66c-1c5a-4802-9105-604ae9117889
 
-* `fp8` = first 8 hex of `sha256("familia-hostid-v1|<anchor_type>|<anchor>")`.
+* `d = sha256("familia-hostid-v1|<anchor_type>|<anchor>")`; `host_uuid` is the first
+  32 hex of `d` with the version nibble set to 4 and the variant to `10xx`, the same
+  shape as systemd's `/etc/machine-id` but printed in RFC 4122 form.
+* `fp8` = the first 8 hex of `host_uuid` (= first 8 hex of `d`), so the ID suffix is
+  always the UUID prefix.
+* `state-uuid` hosts (no readable hardware serial) use a random version-4 UUID as the
+  host UUID directly; `fp8` is its first 8 hex.
+* `registry/fleet-hosts.yaml` pins one `host_uuid:` line per host. `hostid.py check`
+  requires a valid, unique v4 UUID per host whose prefix equals the ID suffix; all
+  aliases of a host (ssh aliases, legacy graph keys) resolve to that one entry and UUID.
 * The **fingerprint** (`fp8`) is the dedupe key. The label prefix is cosmetic, so
   a rename (phone7 -> galaxy1) still matches the same device.
 * The raw anchor never leaves the machine and is never committed; only the salted
@@ -33,9 +43,12 @@ are a last resort only (phones randomize them and USB tethering adds new ones).
 | 9 | mac            | first physical NIC (weak) |
 | 10 | hostname      | nothing readable: weak ID from the label (weak) |
 
-Android 16 Termux (the A57s) exposes none of 1-3, so galaxy1/galaxy2 carry weak
-IDs with `anchor_status: pending` until `python3 scripts/fleet/hostid.py --init`
-is run on each phone (a one-time write of a random UUID; needs the owner's OK).
+Android 16 Termux (the A57s) exposes none of 1-3, so galaxy1 and galaxy2 have a
+random v4 UUID pinned in the registry (anchor_type `state-uuid`). The phones still
+compute the weak hostname ID on their own; that old ID is listed under
+`previous_ids` so it resolves to the pinned entry. To make a phone report the
+pinned ID itself, run `python3 scripts/fleet/hostid.py --init --init-value <host_uuid>`
+on it (writes `$XDG_STATE_HOME/familia/host-uuid`; needs the owner's OK).
 When an anchor changes, move the entry to the new ID and list the old one under
 `previous_ids`. The Grok Bot box gets a new machine-id when it is replaced.
 
@@ -47,7 +60,7 @@ When an anchor changes, move the entry to the new ID and list the old one under
 
 ## Tools
 
-    sh scripts/fleet/hostid.sh [--label NAME] [--json]     # POSIX: Linux, Termux, FreeBSD, macOS
+    sh scripts/fleet/hostid.sh [--label NAME] [--json] [--uuid]   # POSIX: Linux, Termux, FreeBSD, macOS
     python3 scripts/fleet/hostid.py [--label NAME] [--json]
     scripts\fleet\hostid.cmd [-Label NAME] [-Json]          # Windows (hostid.ps1)
     python3 scripts/fleet/hostid.py resolve note9-usb       # -> note9-7140b66c
@@ -67,3 +80,11 @@ themselves is a separate step (pins, overlays and allowlists still use them).
 
 `scripts/swarm/deploy_fleet.py` resolves `--hosts` through the registry and
 drops later aliases of a device it already has (note9 + note9-usb deploys once).
+
+## Hostname pin vs registry
+
+The machine-local hostname pin (`$XDG_STATE_HOME/familia/hostname`, one line read by
+`scripts/hostname_pin.py`) only says which graph host this machine is; it stays one
+line. The per-host UUID lines live in the registry. `tests/test_installers.py` used to
+run `host_measure.py --name shalom --force` against the real state dir, which is how
+miryam, angel and the box ended up pinned to `shalom`; it now uses a throwaway dir.

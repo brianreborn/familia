@@ -1,7 +1,11 @@
 # Familia fleet registry, keyed by canonical host ID (see scripts/fleet/hostid.py).
 #
-# ID format: <label-slug>-<fp8>
-#   fp8 = first 8 hex of sha256("familia-hostid-v1|<anchor_type>|<anchor>")
+# ID format: <label-slug>-<fp8>; host_uuid: 128-bit RFC 4122 (version-4 layout) UUID,
+#   one line per host, like systemd's /etc/machine-id.
+#   d = sha256("familia-hostid-v1|<anchor_type>|<anchor>"); host_uuid = d[:32] with the
+#   v4 version/variant bits set; fp8 = first 8 hex of host_uuid (== the ID suffix).
+#   anchor_type state-uuid: host_uuid is a random v4 UUID pinned in this file (hosts
+#   with no readable hardware serial: galaxy1, galaxy2); fp8 = its first 8 hex.
 # The anchor is read on the device itself and is the same over every transport,
 # so USB, Wi-Fi and ethernet logins of one device resolve to one entry. Raw
 # serials / machine-ids are never stored here, only the salted 8-hex hash.
@@ -20,6 +24,7 @@ hosts:
   miryam-372efeab:
     label: miryam
     fingerprint: 372efeab
+    host_uuid: 372efeab-1484-49be-bbc8-e48949c994a9
     anchor_type: machine-id
     graph_host: miryam
     aliases: []
@@ -29,6 +34,7 @@ hosts:
   angel-5021f639:
     label: angel
     fingerprint: 5021f639
+    host_uuid: 5021f639-3263-4847-87f9-dd1aa288a3ff
     anchor_type: machine-id
     graph_host: angel
     aliases: [gabriel]
@@ -38,6 +44,7 @@ hosts:
   surface1-19e687ae:
     label: surface1
     fingerprint: 19e687ae
+    host_uuid: 19e687ae-05d2-4b87-a9b6-3f106f2aa270
     anchor_type: machine-id
     aliases: [surface7]
     transports:
@@ -46,9 +53,11 @@ hosts:
   box-06f5df8d:
     label: box
     fingerprint: 06f5df8d
+    host_uuid: 06f5df8d-e084-462a-8b94-39950b3bc946
     anchor_type: machine-id
     graph_host: box
-    aliases: []
+    # OS hostnames of box instances (graph.yaml hosts.box.local_names); current first
+    aliases: [grok-bot-vm-414137730, grok-bot-vm-414232872]
     anchor_status: >-
       Grok Bot box: machine-id is per box instance; a replaced box reports a new ID.
       Move the old ID to previous_ids when that happens.
@@ -60,6 +69,7 @@ hosts:
   note9-7140b66c:
     label: note9
     fingerprint: 7140b66c
+    host_uuid: 7140b66c-1c5a-4802-9105-604ae9117889
     anchor_type: soc-serial
     aliases: [note9-usb]
     transports:
@@ -67,35 +77,41 @@ hosts:
       - {kind: usb-adb-forward, ssh_alias: note9-usb, via: miryam}
 
   # galaxy1 == legacy measured graph key phone7 (same A57, SM-A576U).
-  galaxy1-db07b41d:
+  galaxy1-845f9d5a:
     label: galaxy1
-    fingerprint: db07b41d
-    anchor_type: hostname
+    fingerprint: 845f9d5a
+    host_uuid: 845f9d5a-27b0-4cfe-a894-e9e93a5f4363
+    anchor_type: state-uuid
     graph_host: galaxy1
     aliases: [phone7]
+    previous_ids: [galaxy1-db07b41d]
     anchor_status: >-
-      pending: Android 16 Termux exposes no serial/android_id/soc serial and the
-      Wi-Fi MAC is randomized. Fix: run `python3 scripts/fleet/hostid.py --init`
-      on the phone (writes a state-uuid anchor) with the owner's OK.
+      Random v4 UUID pinned here 2026-11-23 (owner approved): Android 16 Termux exposes
+      no serial/android_id/soc serial and the Wi-Fi MAC is randomized. The phone itself
+      still reports the weak galaxy1-db07b41d (resolved via previous_ids) until
+      `hostid.py --init --init-value <host_uuid>` is run on it (not done; needs owner OK).
     transports:
       - {kind: wifi, ssh_alias: galaxy1}
 
-  # galaxy2 == legacy measured graph key phone8. Weak ID confirmed on the device 2026-11-23.
-  galaxy2-2e567cbe:
+  # galaxy2 == legacy measured graph key phone8.
+  galaxy2-bd0351ec:
     label: galaxy2
-    fingerprint: 2e567cbe
-    anchor_type: hostname
+    fingerprint: bd0351ec
+    host_uuid: bd0351ec-3e61-40cb-b4a2-eafbe17e3887
+    anchor_type: state-uuid
     graph_host: galaxy2
     aliases: [phone8]
+    previous_ids: [galaxy2-2e567cbe]
     anchor_status: >-
-      pending: same Android 16 Termux limits as galaxy1 (no readable serial; MAC
-      randomized). Fix with `python3 scripts/fleet/hostid.py --init` on the phone, with the owner's OK.
+      Random v4 UUID pinned here 2026-11-23 (owner approved); same limits and same
+      device-side note as galaxy1.
     transports:
       - {kind: wifi, ssh_alias: galaxy2}
 
   macmini-d60789b1:
     label: macmini
     fingerprint: d60789b1
+    host_uuid: d60789b1-21b9-47d9-b81c-b27334928cde
     anchor_type: hostname
     graph_host: macmini
     aliases: [green-macmini, green-Macmini7-1]
@@ -106,6 +122,7 @@ hosts:
   qodesh-ff729b4e:
     label: qodesh
     fingerprint: ff729b4e
+    host_uuid: ff729b4e-572a-4d56-827d-a3586b57a019
     anchor_type: hostname
     graph_host: qodesh
     aliases: []
@@ -115,6 +132,7 @@ hosts:
   shalom-c81c5c56:
     label: shalom
     fingerprint: c81c5c56
+    host_uuid: c81c5c56-0150-461e-88dc-0647c1a6f665
     anchor_type: hostname
     graph_host: shalom
     aliases: []
@@ -124,6 +142,7 @@ hosts:
   godslove-23f43042:
     label: godslove
     fingerprint: 23f43042
+    host_uuid: 23f43042-7c33-4188-9929-4d669acda2ad
     anchor_type: hostname
     graph_host: godslove
     aliases: []
@@ -133,6 +152,7 @@ hosts:
   centos10-bigram-620fe4b0:
     label: centos10-bigram
     fingerprint: 620fe4b0
+    host_uuid: 620fe4b0-4a41-4b72-8a2d-e02739021481
     anchor_type: hostname
     graph_host: centos10-bigram
     aliases: []

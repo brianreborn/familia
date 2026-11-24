@@ -8,8 +8,22 @@ import host_measure
 from graph_types import validate_types
 import validate_graph
 
+import tempfile
+# host_measure pins the measured host as this machine's graph host. Keep that pin in a
+# throwaway state dir: running the suite once wrote "shalom" into real pins on
+# miryam, angel and the box (2026-11-23).
+_STATE = tempfile.mkdtemp(prefix="familia-test-state-")
+
+
 def _run(*a):
-    return subprocess.run([sys.executable, HM, *a], capture_output=True, text=True)
+    env = dict(os.environ, XDG_STATE_HOME=_STATE, LOCALAPPDATA=_STATE)
+    return subprocess.run([sys.executable, HM, *a], capture_output=True, text=True, env=env)
+
+
+def test_host_measure_pin_stays_out_of_real_state(tmp_path):
+    g = tmp_path / "graph.yaml"; shutil.copy(os.path.join(ROOT, "graph.yaml"), g)
+    assert _run("--name", "pinprobe", "--graph", str(g), "--kind", "laptop").returncode == 0
+    assert open(os.path.join(_STATE, "familia", "hostname")).read() == "pinprobe\n"
 
 def test_host_measure_insert_and_idempotent(tmp_path):
     g = tmp_path / "graph.yaml"; shutil.copy(os.path.join(ROOT, "graph.yaml"), g)

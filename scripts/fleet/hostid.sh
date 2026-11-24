@@ -1,10 +1,12 @@
 #!/bin/sh
 # familia fleet host ID (POSIX sh; Linux, Termux/Android, FreeBSD, macOS, Git-Bash).
 #
-#   hostid.sh [--label NAME] [--json] [--anchor-type]
+#   hostid.sh [--label NAME] [--json] [--uuid] [--anchor-type]
 #
-# Prints the canonical fleet host ID:  <label-slug>-<fp8>
-#   fp8 = first 8 hex of sha256("familia-hostid-v1|<anchor_type>|<anchor>")
+# Prints the canonical fleet host ID:  <label-slug>-<fp8>   (--uuid: the host UUID)
+#   d = sha256("familia-hostid-v1|<anchor_type>|<anchor>")
+#   host_uuid = d[:32] as an RFC 4122 version-4 UUID; fp8 = first 8 hex of host_uuid
+#   (state-uuid: the stored random v4 UUID is the host UUID; fp8 = its first 8 hex)
 # The anchor is a stable hardware/OS identifier that is the same over every
 # transport (USB, Wi-Fi, ethernet). The raw anchor is NEVER printed; only the
 # salted hash prefix leaves this script. Read-only: writes nothing.
@@ -20,14 +22,15 @@
 #   state-uuid      $XDG_STATE_HOME/familia/host-uuid (created only by hostid.py --init)
 #   mac             first physical NIC MAC (fallback only; differs per transport on phones)
 #   hostname        no anchor found: weak ID from the label (flagged in --json)
-LABEL=""; JSON=0; ATYPE_ONLY=0
+LABEL=""; JSON=0; ATYPE_ONLY=0; UUID_ONLY=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --label) LABEL=$2; shift 2 ;;
     --label=*) LABEL=${1#--label=}; shift ;;
     --json) JSON=1; shift ;;
     --anchor-type) ATYPE_ONLY=1; shift ;;
-    -h|--help) sed -n '2,23p' "$0"; exit 0 ;;
+    --uuid) UUID_ONLY=1; shift ;;
+    -h|--help) sed -n '2,25p' "$0"; exit 0 ;;
     *) echo "hostid.sh: unknown arg $1" >&2; exit 2 ;;
   esac
 done
@@ -85,10 +88,22 @@ sha() {
   elif command -v sha256 >/dev/null 2>&1; then sha256 -q
   else openssl dgst -sha256 -r; fi
 }
-FP=$(printf 'familia-hostid-v1|%s|%s' "$AT" "$AV" | sha | cut -c1-8)
+if [ "$AT" = state-uuid ]; then
+  D=$(printf '%s' "$AV" | tr -d '-')
+  case "$D" in ????????????4???[89ab]???????????????) [ ${#D} -eq 32 ] || D="" ;; *) D="" ;; esac
+  if [ -z "$D" ]; then AT=hostname; AV=$SLUG; fi
+fi
+if [ "$AT" != state-uuid ]; then
+  D=$(printf 'familia-hostid-v1|%s|%s' "$AT" "$AV" | sha | cut -c1-32)
+  case $(printf '%s' "$D" | cut -c17) in [048c]) V=8 ;; [159d]) V=9 ;; [26ae]) V=a ;; *) V=b ;; esac
+  D=$(printf '%s' "$D" | cut -c1-12)4$(printf '%s' "$D" | cut -c14-16)$V$(printf '%s' "$D" | cut -c18-32)
+fi
 AV=""
+U=$(printf '%s' "$D" | sed 's/^\(........\)\(....\)\(....\)\(....\)\(............\)$/\1-\2-\3-\4-\5/')
+FP=$(printf '%s' "$D" | cut -c1-8)
 if [ "$ATYPE_ONLY" = 1 ]; then echo "$AT"
+elif [ "$UUID_ONLY" = 1 ]; then echo "$U"
 elif [ "$JSON" = 1 ]; then
   W=false; [ "$AT" = hostname ] || [ "$AT" = mac ] && W=true
-  printf '{"host_id": "%s-%s", "label": "%s", "fingerprint": "%s", "anchor_type": "%s", "weak": %s}\n' "$SLUG" "$FP" "$SLUG" "$FP" "$AT" "$W"
+  printf '{"host_id": "%s-%s", "host_uuid": "%s", "label": "%s", "fingerprint": "%s", "anchor_type": "%s", "weak": %s}\n' "$SLUG" "$FP" "$U" "$SLUG" "$FP" "$AT" "$W"
 else echo "$SLUG-$FP"; fi

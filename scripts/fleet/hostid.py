@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 """Familia fleet host IDs (canonical host key; hostname is a display label only).
 
-ID format:  <label-slug>-<fp8>
-  fp8 = sha256("familia-hostid-v1|<anchor_type>|<anchor>").hexdigest()[:8]
+ID format:  <label-slug>-<fp8>      host UUID: 128-bit RFC 4122 string
+  d = sha256("familia-hostid-v1|<anchor_type>|<anchor>").hexdigest()
+  host_uuid = d[:32] shaped as a version-4 UUID (version nibble 4, variant 10xx)
+  fp8 = d[:8] = first 8 hex of host_uuid
+  anchor_type state-uuid: the stored random v4 UUID is the host UUID itself and
+  fp8 is its first 8 hex (no hashing). This is how a host with no readable
+  hardware serial is pinned (registry host_uuid; optional device file via --init).
 
 The anchor is a stable identifier that is the same over every transport (USB,
 Wi-Fi, ethernet), so one physical device always resolves to one ID. IP
@@ -17,7 +22,8 @@ Anchor order (same as scripts/fleet/hostid.sh):
 
 CLI:
   hostid.py [--label NAME] [--json]        print this host's ID (read-only)
-  hostid.py --init                         create $XDG_STATE_HOME/familia/host-uuid if
+  hostid.py --uuid                         print this host's 128-bit host UUID
+  hostid.py --init [--init-value UUID]     create $XDG_STATE_HOME/familia/host-uuid if
                                            no hardware anchor exists (opt-in write)
   hostid.py resolve NAME [--registry F]    map a label/alias/ssh alias/ID to its host ID
   hostid.py check [--registry F] [--graph G]  validate registry + graph host_id links
@@ -45,6 +51,7 @@ WEAK = ("mac", "hostname")
 BAD = {"", "unknown", "0", "00000000", "0123456789abcdef", "null",
        "00000000-0000-0000-0000-000000000000"}
 ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,23}-[0-9a-f]{8}$")
+UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
 SKIP_NIC = re.compile(r"^(lo|docker|veth|br|virbr|tun|tap|wg|rndis|usb|vnet|dummy|bond|tailscale|zt)")
 
 
@@ -55,11 +62,23 @@ def slug(label: str | None) -> str:
     return "host" if s in ("", "localhost") else s
 
 
-def fingerprint(anchor_type: str, anchor: str) -> str:
+def host_uuid(anchor_type: str, anchor: str) -> str:
+    """128-bit RFC 4122 (version 4 layout) host UUID; never reveals the raw anchor."""
     if anchor_type not in ANCHOR_TYPES:
         raise ValueError("unknown anchor type %r" % anchor_type)
     raw = "".join(anchor.split()).lower()
-    return hashlib.sha256(("%s|%s|%s" % (SALT, anchor_type, raw)).encode()).hexdigest()[:8]
+    if anchor_type == "state-uuid":
+        u = str(uuid.UUID(raw)).lower()
+        if not UUID_RE.match(u):
+            raise ValueError("state-uuid must be a version-4 UUID")
+        return u
+    d = hashlib.sha256(("%s|%s|%s" % (SALT, anchor_type, raw)).encode()).hexdigest()
+    v = "89ab"[int(d[16], 16) & 3]
+    return "%s-%s-4%s-%s%s-%s" % (d[0:8], d[8:12], d[13:16], v, d[17:20], d[20:32])
+
+
+def fingerprint(anchor_type: str, anchor: str) -> str:
+    return host_uuid(anchor_type, anchor)[:8]
 
 
 def make_id(label: str | None, anchor_type: str | None, anchor: str | None) -> dict:
@@ -68,8 +87,16 @@ def make_id(label: str | None, anchor_type: str | None, anchor: str | None) -> d
     a = "".join((anchor or "").split()).lower()
     if not anchor_type or a in BAD:
         anchor_type, a = "hostname", s
-    fp = fingerprint(anchor_type, a)
-    return {"host_id": "%s-%s" % (s, fp), "label": s, "fingerprint": fp,
+    if anchor_type == "state-uuid":
+        try:
+            u = host_uuid(anchor_type, a)
+        except ValueError:
+            anchor_type, a = "hostname", s
+            u = host_uuid(anchor_type, a)
+    else:
+        u = host_uuid(anchor_type, a)
+    fp = u[:8]
+    return {"host_id": "%s-%s" % (s, fp), "host_uuid": u, "label": s, "fingerprint": fp,
             "anchor_type": anchor_type, "weak": anchor_type in WEAK}
 
 
@@ -173,15 +200,19 @@ def local_id(label: str | None = None) -> dict:
     return make_id(local_label(label), t, a)
 
 
-def init_state_uuid(environ=None) -> Path | None:
-    """Create a persistent random anchor only when no hardware anchor exists."""
+def init_state_uuid(environ=None, value: str | None = None) -> Path | None:
+    """Create a persistent random anchor only when no hardware anchor exists.
+
+    value: the host_uuid already pinned in registry/fleet-hosts.yaml, so the device
+    then reports the same ID the registry uses (galaxy1/galaxy2)."""
     t, _ = local_anchor(environ)
     if t not in (None, "mac"):
         return None
     p = state_dir(environ) / "host-uuid"
     if not p.exists():
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(str(uuid.uuid4()) + "\n", encoding="ascii")
+        u = host_uuid("state-uuid", value) if value else str(uuid.uuid4())
+        p.write_text(u + "\n", encoding="ascii")
     return p
 
 
@@ -212,8 +243,8 @@ def resolve(name: str, reg: dict) -> str | None:
         if name in names_of(hid, e):
             return hid
     if ID_RE.match(name):  # same device under another label (label drift)
-        for hid in reg:
-            if fp_of(hid) == fp_of(name):
+        for hid, e in reg.items():
+            if fp_of(name) in [fp_of(hid)] + [fp_of(x) for x in (e.get("previous_ids") or [])]:
                 return hid
     return None
 
@@ -249,6 +280,7 @@ def check(reg: dict, graph: dict | None = None) -> list[str]:
     errs = []
     seen_fp: dict[str, str] = {}
     seen_name: dict[str, str] = {}
+    seen_uuid: dict[str, str] = {}
     for hid, e in reg.items():
         if not ID_RE.match(hid):
             errs.append("%s: bad id format" % hid)
@@ -259,6 +291,24 @@ def check(reg: dict, graph: dict | None = None) -> list[str]:
             errs.append("%s: anchor_type %r not in %s" % (hid, e.get("anchor_type"), ANCHOR_TYPES))
         if e.get("anchor_type") == "hostname" and fingerprint("hostname", hid.rsplit("-", 1)[0]) != fp_of(hid):
             errs.append("%s: weak hostname id does not match its label" % hid)
+        u = str(e.get("host_uuid") or "")
+        if not UUID_RE.match(u):
+            errs.append("%s: host_uuid %r is not a lowercase RFC 4122 version-4 UUID" % (hid, u))
+        elif u[:8] != fp_of(hid):
+            errs.append("%s: host_uuid prefix %s != id suffix" % (hid, u[:8]))
+        elif e.get("anchor_type") == "hostname" and host_uuid("hostname", hid.rsplit("-", 1)[0]) != u:
+            errs.append("%s: weak host_uuid does not match its label" % hid)
+        elif u in seen_uuid:
+            errs.append("%s: duplicate host_uuid (same as %s)" % (hid, seen_uuid[u]))
+        if UUID_RE.match(u):
+            seen_uuid.setdefault(u, hid)
+        for old in e.get("previous_ids") or []:
+            if not ID_RE.match(old):
+                errs.append("%s: previous id %r has a bad format" % (hid, old))
+            elif fp_of(old) in seen_fp and seen_fp[fp_of(old)] != hid:
+                errs.append("%s: previous id %s collides with %s" % (hid, old, seen_fp[fp_of(old)]))
+            else:
+                seen_fp[fp_of(old)] = hid
         if fp_of(hid) in seen_fp:
             errs.append("%s: duplicate device (same fingerprint as %s)" % (hid, seen_fp[fp_of(hid)]))
         seen_fp[fp_of(hid)] = hid
@@ -294,6 +344,8 @@ def main(argv=None) -> int:
     ap.add_argument("--label")
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--init", action="store_true")
+    ap.add_argument("--uuid", action="store_true", help="print the host UUID instead of the ID")
+    ap.add_argument("--init-value", help="with --init: the registry host_uuid to store")
     ap.add_argument("--registry", default=str(REGISTRY))
     ap.add_argument("--graph", default=str(GRAPH))
     a = ap.parse_args(argv)
@@ -311,10 +363,10 @@ def main(argv=None) -> int:
         print("ok" if not errs else "%d error(s)" % len(errs))
         return 1 if errs else 0
     if a.init:
-        p = init_state_uuid()
+        p = init_state_uuid(value=a.init_value)
         print("created/kept %s" % p if p else "hardware anchor present; nothing written")
     r = local_id(a.label)
-    print(json.dumps(r) if a.json else r["host_id"])
+    print(json.dumps(r) if a.json else r["host_uuid"] if a.uuid else r["host_id"])
     return 0
 
 
