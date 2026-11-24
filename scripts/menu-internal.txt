@@ -7,6 +7,7 @@ scripts/channel.py|release-channel resolver (docs/release-channels.md); installe
 scripts/fleet_greeting.py|fleet greeting helper; called by hermes.sh, proto_chat.sh and start_graph at startup
 scripts/windows/familia-menu.ps1|the Windows menu itself (started by familia.cmd)
 scripts/monitor.sh|the same console as ./familia-monitor, which the menu runs
+scripts/menu_registry.py|checks and prints the six-category menu registry scripts/menu-categories.txt; reached through python3 scripts/home_catalog.py --tree and tests
 scripts/hermes_harness.py|always run through scripts/hermes.sh, which the menu runs
 scripts/hermes_modes.py|the graph/single-model front end scripts/hermes.sh execs; run hermes.sh
 install/windows/install.bat|double-click wrapper for install\windows\install.ps1, which the Windows menu runs
@@ -111,4 +112,3 @@ scripts/progress_report.py|hourly GitHub issue/PR progress report generator for 
 scripts/check_pins.py|CI-only verifier for full-SHA repository pins; invoked by pin-integrity workflow, not a user menu command
 scripts/swarm/deploy_fleet.py|CI/deployment controller; invoked by fleet-deploy workflow, not an interactive menu action
 scripts/swarm/configure-fleet-role.sh|validated writer used by the Android cockpit fleet-role screen
-scripts/menu_registry.py|checks and prints the six-category menu registry scripts/menu-categories.txt; reached through python3 scripts/home_catalog.py --tree and tests
