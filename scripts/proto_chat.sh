@@ -303,8 +303,22 @@ fi
 # Private scratch for child stderr (honors TMPDIR, incl. Termux $PREFIX/tmp).
 _tbase=${TMPDIR:-${PREFIX:+$PREFIX/tmp}}
 PROTO_TMP=$(umask 077; mktemp -d "${_tbase:-/tmp}/familia-proto.XXXXXX") || die "mktemp failed" 1
-trap 'rm -rf -- "$PROTO_TMP"' EXIT HUP INT TERM
+PROTO_EXEC_PID=""
+# Stop a running familia exec (its python parent SIGTERMs, which killpg's the
+# session) before deleting the scratch dir. TERM, a grace wait, then KILL.
+_proto_stop_exec() {
+  _pid=${PROTO_EXEC_PID:-}
+  if [ -n "$_pid" ] && kill -0 "$_pid" 2>/dev/null; then
+    kill -TERM "$_pid" 2>/dev/null || true
+    sleep 1
+    kill -KILL "$_pid" 2>/dev/null || true
+    wait "$_pid" 2>/dev/null || true
+  fi
+  PROTO_EXEC_PID=""
+}
+trap '_proto_stop_exec; rm -rf -- "$PROTO_TMP"' EXIT HUP INT TERM
 PROTO_ERR=$PROTO_TMP/err
+export FAMILIA_PROTO_CTX_FILE=$PROTO_TMP/ctx
 
 if ! URL=$(find_endpoint); then
   say "no local OpenAI-compatible server detected"
@@ -326,6 +340,13 @@ else
   _proto_load_system_prompt "" "$MODEL"
 fi
 _proto_apply_greeting
+if [ -n "$PROTO_CTX" ]; then
+  PROTO_CTX_EFFECTIVE=$PROTO_CTX
+elif [ -s "$PROTO_TMP/ctx" ]; then
+  PROTO_CTX_EFFECTIVE=$(cat "$PROTO_TMP/ctx")
+else
+  PROTO_CTX_EFFECTIVE=8192
+fi
 _proto_osc working --id home/proto --msg "Talk to the protomodel ($MODEL)" --title "proto_chat"
 say "type a message (empty /q /quit /exit to quit)"
 printf '\n'
@@ -344,14 +365,22 @@ messages = [
 ]
 assist = os.environ.get("FAMILIA_PROTO_ASSIST_FILE") or ""
 tool = os.environ.get("FAMILIA_PROTO_TOOL_FILE") or ""
-if assist and tool:
+user_file = os.environ.get("FAMILIA_PROTO_USER_FILE") or ""
+if assist and tool and user_file:
+    messages = [
+        {"role": "system", "content": system},
+        {"role": "user", "content": open(user_file, encoding="utf-8", errors="replace").read()},
+        {"role": "assistant", "content": open(assist, encoding="utf-8", errors="replace").read()},
+        {"role": "user", "content": open(tool, encoding="utf-8", errors="replace").read()},
+    ]
+elif assist and tool:
     messages.append({"role": "assistant", "content": open(assist, encoding="utf-8", errors="replace").read()})
     messages.append({"role": "user", "content": open(tool, encoding="utf-8", errors="replace").read()})
 body = {
     "model": model,
     "messages": messages,
     "temperature": 0.7,
-    "max_tokens": 512,
+    "max_tokens": int(os.environ.get("FAMILIA_PROTO_MAX_TOKENS", "512")),
     "stream": False,
 }
 req = urllib.request.Request(
@@ -379,10 +408,22 @@ print(content or "(empty reply)", end="")
 PY
 }
 
-# Execute RUN directives in $1 (a reply). Prints the host result, or nothing.
+# Execute RUN directives in $1. $2 is the user turn already in the context.
+# Result text is left in PROTO_TMP/exec.out. follow_max (reply budget that
+# still fits ctx) is left in PROTO_TMP/follow_max. Runs in the current shell
+# so PROTO_EXEC_PID is visible to the signal trap.
 proto_exec_reply() {
   printf '%s\n' "$1" > "$PROTO_TMP/reply"
-  "$PY" "$FAMILIA_SCRIPTS/protograph.py" --exec-reply "$PROTO_TMP/reply" || true
+  printf '%s' "$2" > "$PROTO_TMP/user"
+  printf '%s' "$SYSTEM_PROMPT" > "$PROTO_TMP/system"
+  : > "$PROTO_TMP/exec.out"
+  "$PY" "$FAMILIA_SCRIPTS/protograph.py" --exec-reply "$PROTO_TMP/reply" \
+    --ctx "$PROTO_CTX_EFFECTIVE" \
+    --budget-system "$PROTO_TMP/system" --budget-user "$PROTO_TMP/user" \
+    --follow-max-file "$PROTO_TMP/follow_max" > "$PROTO_TMP/exec.out" &
+  PROTO_EXEC_PID=$!
+  wait "$PROTO_EXEC_PID" || true
+  PROTO_EXEC_PID=""
 }
 
 while true; do
@@ -405,21 +446,31 @@ while true; do
     fi
   else
     printf 'proto> %s\n\n' "$reply"
-    exec_out=$(proto_exec_reply "$reply")
+    printf '%s' "$line" > "$PROTO_TMP/turn"
+    proto_exec_reply "$reply" "$line"
+    exec_out=$(cat "$PROTO_TMP/exec.out" 2>/dev/null || true)
     if [ -n "$exec_out" ]; then
       printf 'run> %s\n\n' "$exec_out"
-      printf '%s\n' "$reply" > "$PROTO_TMP/assist"
-      printf '%s\n' "$exec_out" > "$PROTO_TMP/tool"
-      FAMILIA_PROTO_ASSIST_FILE=$PROTO_TMP/assist
-      FAMILIA_PROTO_TOOL_FILE=$PROTO_TMP/tool
-      export FAMILIA_PROTO_ASSIST_FILE FAMILIA_PROTO_TOOL_FILE
-      follow=$(proto_complete "Command output follows.")
-      unset FAMILIA_PROTO_ASSIST_FILE FAMILIA_PROTO_TOOL_FILE
-      if [ -n "$follow" ]; then
-        printf 'proto> %s\n\n' "$follow"
-        exec2=$(proto_exec_reply "$follow")
-        if [ -n "$exec2" ]; then
-          printf 'run> %s\n\n' "$exec2"
+      _follow_max=$(cat "$PROTO_TMP/follow_max" 2>/dev/null || echo 0)
+      if [ "$_follow_max" -eq 0 ]; then
+        printf 'run> follow-up skipped: reply does not fit ctx %s\n\n' "$PROTO_CTX_EFFECTIVE"
+      else
+        printf '%s\n' "$reply" > "$PROTO_TMP/assist"
+        printf '%s\n' "$exec_out" > "$PROTO_TMP/tool"
+        FAMILIA_PROTO_ASSIST_FILE=$PROTO_TMP/assist
+        FAMILIA_PROTO_TOOL_FILE=$PROTO_TMP/tool
+        FAMILIA_PROTO_USER_FILE=$PROTO_TMP/turn
+        FAMILIA_PROTO_MAX_TOKENS=$_follow_max
+        export FAMILIA_PROTO_ASSIST_FILE FAMILIA_PROTO_TOOL_FILE FAMILIA_PROTO_USER_FILE FAMILIA_PROTO_MAX_TOKENS
+        follow=$(proto_complete "$line")
+        unset FAMILIA_PROTO_ASSIST_FILE FAMILIA_PROTO_TOOL_FILE FAMILIA_PROTO_USER_FILE FAMILIA_PROTO_MAX_TOKENS
+        if [ -n "$follow" ]; then
+          printf 'proto> %s\n\n' "$follow"
+          proto_exec_reply "$follow" "$exec_out"
+          exec2=$(cat "$PROTO_TMP/exec.out" 2>/dev/null || true)
+          if [ -n "$exec2" ]; then
+            printf 'run> %s\n\n' "$exec2"
+          fi
         fi
       fi
     fi

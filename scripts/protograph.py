@@ -37,7 +37,9 @@ import copy
 import errno
 import os
 import re
+import select
 import shutil
+import signal
 import stat
 import subprocess
 import sys
@@ -59,6 +61,8 @@ USER_TURN_TOKENS = 256
 # Reply cap for one user line: execute, feed the output back once, execute at most once more.
 RUN_LIMIT = 3
 RUN_TIMEOUT = 30
+KILL_GRACE = 0.5
+TRUNC_MARK = "\n[output truncated]\n"
 AUDIT_ENV = "FAMILIA_PROTO_AUDIT"
 BIN_ENV = "FAMILIA_BIN"
 # Short proto_chat.sh prompt from before #327. Used only when the versioned file is rejected.
@@ -418,7 +422,154 @@ def _audit(command, code, path=None):
         os.close(fd)
 
 
-def execute_familia(line, bin_path=None, timeout=None, audit=None):
+def feedback_room(ctx, system_text, user_text, assistant_text):
+    """Return (follow_max_tokens, tool_byte_cap).
+
+    system + user + assistant + tool + follow_max fit in ctx. follow_max is
+    shrunk below MAX_OUTPUT_TOKENS when the slack is smaller than 512.
+    (0, 0) means even one output token does not fit; skip the follow-up.
+    """
+    used = (estimate_tokens(system_text) + estimate_tokens(user_text)
+            + estimate_tokens(assistant_text))
+    room = int(ctx) - used
+    if room < 1:
+        return 0, 0
+    follow = min(MAX_OUTPUT_TOKENS, max(1, room // 2))
+    if follow > room:
+        follow = room
+    tool_tokens = room - follow
+    return follow, tool_tokens * 4
+
+
+def _clip_bytes(raw, max_bytes):
+    """Return (bytes, truncated). The marker is inside the cap."""
+    if max_bytes is None or len(raw) <= max_bytes:
+        return raw, False
+    mark = TRUNC_MARK.encode("ascii")
+    keep = max_bytes - len(mark)
+    if keep < 0:
+        return mark[:max_bytes], True
+    return raw[:keep] + mark, True
+
+
+def _kill_group(proc, grace=KILL_GRACE):
+    """SIGTERM the child's process group, then SIGKILL, then wait. Idempotent."""
+    if proc is None or proc.poll() is not None:
+        return
+    pgid = proc.pid  # start_new_session: the child is the group leader
+    for sig in (signal.SIGTERM, signal.SIGKILL):
+        if proc.poll() is not None:
+            break
+        try:
+            os.killpg(pgid, sig)
+        except ProcessLookupError:
+            break
+        except OSError:
+            try:
+                proc.send_signal(sig)
+            except OSError:
+                break
+        try:
+            proc.wait(timeout=grace)
+            break
+        except subprocess.TimeoutExpired:
+            continue
+    if proc.poll() is None:
+        try:
+            proc.wait(timeout=grace)
+        except subprocess.TimeoutExpired:
+            pass
+
+
+def _read_capped(proc, timeout, max_bytes):
+    """Stream stdout and stderr until exit, timeout, or max_bytes.
+
+    Never holds more than max_bytes + one read chunk. On timeout or cap,
+    kill the process group and wait so grandchildren are not left running.
+    """
+    streams = [s for s in (proc.stdout, proc.stderr) if s is not None]
+    chunks = []
+    total = 0
+    timed_out = False
+    truncated = False
+    # Leave room for the truncation marker so the stored bytes stay <= max_bytes.
+    mark_len = len(TRUNC_MARK.encode("ascii")) if max_bytes is not None else 0
+    limit = None if max_bytes is None else max(0, max_bytes - mark_len)
+    deadline = None if not timeout else time.monotonic() + float(timeout)
+    while streams and not truncated and not timed_out:
+        now = time.monotonic()
+        if deadline is not None and now >= deadline:
+            timed_out = True
+            break
+        wait = 0.2 if deadline is None else max(0.0, min(0.2, deadline - now))
+        readable, _, _ = select.select(streams, [], [], wait)
+        if not readable:
+            if proc.poll() is not None:
+                readable, _, _ = select.select(streams, [], [], 0)
+                if not readable:
+                    break
+            continue
+        for stream in readable:
+            try:
+                block = os.read(stream.fileno(), 4096)
+            except OSError:
+                block = b""
+            if not block:
+                if stream in streams:
+                    streams.remove(stream)
+                continue
+            if limit is not None and total >= limit:
+                truncated = True
+                break
+            if limit is not None and total + len(block) > limit:
+                chunks.append(block[:limit - total])
+                total = limit
+                truncated = True
+                break
+            chunks.append(block)
+            total += len(block)
+    if timed_out or truncated:
+        _kill_group(proc)
+    if proc.poll() is None:
+        try:
+            proc.wait(timeout=KILL_GRACE)
+        except subprocess.TimeoutExpired:
+            _kill_group(proc)
+    for stream in (proc.stdout, proc.stderr):
+        if stream is not None:
+            try:
+                stream.close()
+            except OSError:
+                pass
+    return b"".join(chunks), timed_out, truncated
+
+
+def _run_group(cmd, timeout, max_bytes):
+    """Popen in a new session. SIGINT/SIGTERM kill that group, then this process exits."""
+    proc = subprocess.Popen(
+        cmd, shell=False, cwd=ROOT,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        start_new_session=True,
+    )
+
+    def _stop(signum, _frame):
+        _kill_group(proc)
+        raise SystemExit(128 + signum)
+
+    old_int = signal.getsignal(signal.SIGINT)
+    old_term = signal.getsignal(signal.SIGTERM)
+    signal.signal(signal.SIGINT, _stop)
+    signal.signal(signal.SIGTERM, _stop)
+    try:
+        return _read_capped(proc, timeout, max_bytes) + (proc.returncode,)
+    finally:
+        signal.signal(signal.SIGINT, old_int)
+        signal.signal(signal.SIGTERM, old_term)
+        if proc.poll() is None:
+            _kill_group(proc)
+
+
+def execute_familia(line, bin_path=None, timeout=None, audit=None, max_output_bytes=None):
     """Exec one vetted familia command. shell=False. The model never chooses argv[0]."""
     argv, err = vet_familia_command(line)
     if err:
@@ -429,17 +580,20 @@ def execute_familia(line, bin_path=None, timeout=None, audit=None):
         exe = os.path.join(ROOT, exe)
     if timeout is None:
         timeout = float(os.environ.get("FAMILIA_PROTO_RUN_TIMEOUT", RUN_TIMEOUT))
-    cmd = [exe, *argv[1:]]
-    try:
-        proc = subprocess.run(cmd, shell=False, capture_output=True, timeout=timeout, cwd=ROOT)
-    except subprocess.TimeoutExpired as exc:
+    data, timed_out, truncated, code = _run_group([exe, *argv[1:]], timeout, max_output_bytes)
+    if truncated and max_output_bytes is not None:
+        mark = TRUNC_MARK.encode("ascii")
+        data = data[:max(0, max_output_bytes - len(mark))] + mark
+        data = data[:max_output_bytes]
+    text = data.decode("utf-8", "replace")
+    if timed_out:
         _audit(" ".join(argv), "timeout", audit)
-        out = (exc.stdout or b"") + (exc.stderr or b"")
-        return {"status": "timeout", "exit": "timeout", "reason": "timeout",
-                "output": out.decode("utf-8", "replace"), "argv": argv}
-    _audit(" ".join(argv), proc.returncode, audit)
-    out = proc.stdout.decode("utf-8", "replace") + proc.stderr.decode("utf-8", "replace")
-    return {"status": "ran", "exit": proc.returncode, "reason": "", "output": out, "argv": argv}
+        return {"status": "timeout", "exit": "timeout", "reason": "timeout", "output": text, "argv": argv}
+    if truncated:
+        _audit(" ".join(argv), "truncated", audit)
+        return {"status": "truncated", "exit": "truncated", "reason": "output cap", "output": text, "argv": argv}
+    _audit(" ".join(argv), code if code is not None else 0, audit)
+    return {"status": "ran", "exit": code if code is not None else 0, "reason": "", "output": text, "argv": argv}
 
 
 def format_exec_result(result):
@@ -455,8 +609,34 @@ def format_exec_result(result):
 
 def execute_reply(text, **kwargs):
     """Run every directive in a model reply. Empty string when there is nothing to run."""
-    chunks = [format_exec_result(execute_familia(line, **kwargs)) for line in parse_run_directives(text)]
-    return "".join(chunks)
+    body, _follow = execute_reply_budgeted(text, **kwargs)
+    return body
+
+
+def execute_reply_budgeted(text, ctx=None, system_text=None, user_text=None, **kwargs):
+    """Run directives. Return (tool_text, follow_max_tokens).
+
+    When ctx and system_text are set, captured output is clipped so
+    system + user + assistant + tool + follow_max fit in ctx. A later RUN
+    is not started once the tool cap is spent, and only after the previous
+    process group has been waited out.
+    """
+    follow_max = MAX_OUTPUT_TOKENS
+    cap = kwargs.pop("max_output_bytes", None)
+    if ctx is not None and system_text is not None:
+        follow_max, cap = feedback_room(ctx, system_text, user_text or "", text or "")
+    chunks = []
+    for line in parse_run_directives(text):
+        if cap is not None and cap <= len(TRUNC_MARK.encode("ascii")):
+            break
+        result = execute_familia(line, max_output_bytes=cap, **kwargs)
+        piece = format_exec_result(result)
+        if cap is not None:
+            clipped, _cut = _clip_bytes(piece.encode("utf-8", "replace"), cap)
+            piece = clipped.decode("utf-8", "replace")
+            cap -= len(clipped)
+        chunks.append(piece)
+    return "".join(chunks), follow_max
 
 
 import yaml  # noqa: E402
@@ -682,10 +862,26 @@ def main(argv=None):
     ap.add_argument("--ctx", type=int, help="node ctx used to pick the full or compact prompt")
     ap.add_argument("--model", default="", help="graph node or alias whose ctx picks the prompt")
     ap.add_argument("--exec-reply", metavar="FILE", help="execute RUN directives in FILE and print the results")
+    ap.add_argument("--budget-system", help="assembled system prompt, for the follow-up ctx budget")
+    ap.add_argument("--budget-user", help="user turn text, for the follow-up ctx budget")
+    ap.add_argument("--follow-max-file", help="write the follow-up max_tokens here")
     a = ap.parse_args(argv)
     if a.exec_reply:
         with open(a.exec_reply, encoding="utf-8", errors="replace") as fh:
-            sys.stdout.write(execute_reply(fh.read()))
+            reply = fh.read()
+        system = user = None
+        if a.budget_system:
+            with open(a.budget_system, encoding="utf-8", errors="replace") as fh:
+                system = fh.read()
+        if a.budget_user:
+            with open(a.budget_user, encoding="utf-8", errors="replace") as fh:
+                user = fh.read()
+        text, follow_max = execute_reply_budgeted(
+            reply, ctx=a.ctx, system_text=system, user_text=user or "")
+        if a.follow_max_file:
+            with open(a.follow_max_file, "w", encoding="ascii") as fh:
+                fh.write(str(follow_max) + "\n")
+        sys.stdout.write(text)
         return 0
     if a.print_prompt:
         ctx = a.ctx
@@ -693,6 +889,10 @@ def main(argv=None):
             ctx = ctx_for_model(a.model)
         if ctx is None:
             ctx = 8192
+        ctx_file = os.environ.get("FAMILIA_PROTO_CTX_FILE")
+        if ctx_file:
+            with open(ctx_file, "w", encoding="ascii") as fh:
+                fh.write(str(ctx) + "\n")
         try:
             text, _variant, _fallback, warning = select_system_prompt(ctx)
         except PromptRefuse as exc:
