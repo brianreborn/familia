@@ -379,6 +379,30 @@ def test_trust_exec_checks_the_shebang_interpreter(tmp_path):
     assert why.startswith("its interpreter " + bad_py) and "world-writable" in why
 
 
+def test_shebang_double_accepts_path_env_via_trust_exec(tmp_path):
+    """Regression: a path-only _read_shebang stub TypeErrors when trust_exec passes path_env=."""
+    interp = _safe_interp(tmp_path)
+    script = _write(tmp_path / "bin" / "hermes", _full(interp))
+    seen = {}
+    real_read = hh._read_shebang
+
+    def fake_shebang(path, **_kwargs):
+        seen["kwargs"] = _kwargs
+        return real_read(path, **_kwargs)
+
+    # Direct call: the old `def fake_shebang(path):` TypeErrors here.
+    assert fake_shebang(script, path_env="/usr/local/bin") == interp
+
+    hh._read_shebang = fake_shebang
+    try:
+        real, why = hh.trust_exec(script)
+        assert why is None
+        assert real == os.path.realpath(script)
+        assert "path_env" in seen["kwargs"]
+    finally:
+        hh._read_shebang = real_read
+
+
 def test_read_shebang_env_resolves_against_path_env(tmp_path):
     """Boundary N1a: #!/usr/bin/env CMD uses path_env, not only the process PATH."""
     home_bin = tmp_path / "hh" / "bin"; home_bin.mkdir(parents=True)
