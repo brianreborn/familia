@@ -21,7 +21,7 @@ Rules (the point of this file):
 Config is a small YAML (`routes.yaml`), optionally pointing at a graph.yaml so node
 names resolve from the graph (url from bind/port and the hosts overlay addr).
 """
-import argparse, http.client, json, os, re, sys, threading, urllib.parse
+import argparse, http.client, json, os, re, secrets, sys, threading, urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -31,6 +31,7 @@ KINDS = {"chat", "embedding"}
 CONNECT_S = float(os.environ.get("FAMILIA_ROUTER_CONNECT_S", "3"))
 READ_S = float(os.environ.get("FAMILIA_ROUTER_TIMEOUT_S", "600"))
 BODY_LIMIT = 16 * 1024 * 1024
+DEFAULT_COMPLETION_RESERVE = 256
 NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 
 
@@ -65,9 +66,17 @@ def _node(name, spec):
     remote = not _is_loopback(u.hostname)
     if remote and spec.get("remote") is not True:
         raise ConfigError(f"node {name}: {u.hostname} is not loopback; set remote: true to allow a remote node")
+    context_tokens = spec.get("context_tokens")
+    if context_tokens is not None:
+        try:
+            context_tokens = int(context_tokens)
+        except (TypeError, ValueError):
+            raise ConfigError(f"node {name}: context_tokens must be an integer")
+        if context_tokens < 1:
+            raise ConfigError(f"node {name}: context_tokens must be positive")
     return {"name": name, "url": f"http://{u.netloc}", "host": u.hostname, "port": u.port, "kind": kind,
             "remote": remote, "tools": bool(spec.get("tools")), "key_file": spec.get("key_file"),
-            "graph_host": spec.get("graph_host")}
+            "graph_host": spec.get("graph_host"), "context_tokens": context_tokens}
 
 
 def nodes_from_graph(graph, here=None):
@@ -101,7 +110,8 @@ def nodes_from_graph(graph, here=None):
         except Exception:
             pass
         out[name] = {"url": f"http://{addr}:{n['port']}", "kind": "embedding" if n.get("embeddings") else "chat",
-                     "remote": not local, "tools": tools, "graph_host": h}
+                     "remote": not local, "tools": tools, "graph_host": h,
+                     "context_tokens": int(n["ctx"]) // max(1, int(n.get("parallel", 1))) if n.get("ctx") else None}
     return out, refused
 
 
@@ -273,7 +283,9 @@ def _key_headers(node):
 
 def call_node(node, path, body, stream_to=None):
     """POST body to node. Returns (status, headers, bytes) or streams to stream_to(status, headers, iter)."""
-    data = json.dumps(dict(body, model=body.get("model") and node["name"])).encode()
+    context_warning = body.get("_familia_context_warning")
+    outbound = {k: v for k, v in body.items() if k != "_familia_context_warning"}
+    data = json.dumps(dict(outbound, model=outbound.get("model") and node["name"])).encode()
     headers = {"Content-Type": "application/json", **_key_headers(node)}
     conn = http.client.HTTPConnection(node["host"], node["port"], timeout=CONNECT_S)
     try:
@@ -300,9 +312,15 @@ def call_node(node, path, body, stream_to=None):
                     yield b
             finally:
                 conn.close()
-        return stream_to(r.status, dict(r.getheaders()), it())
+        response_headers = dict(r.getheaders())
+        if context_warning:
+            response_headers["X-Familia-Context-Warning"] = context_warning
+        return stream_to(r.status, response_headers, it())
     raw = r.read(); conn.close()
-    return r.status, dict(r.getheaders()), raw
+    response_headers = dict(r.getheaders())
+    if context_warning:
+        response_headers["X-Familia-Context-Warning"] = context_warning
+    return r.status, response_headers, raw
 
 
 def _content(raw, who):
@@ -320,6 +338,82 @@ def _last_user(body):
     return ""
 
 
+def _prompt_tokens(body):
+    """Conservative, tokenizer-independent prompt estimate for admission control.
+
+    The router cannot assume the target tokenizer. Three characters per token is
+    deliberately conservative for JSON/tool output and multilingual text.
+    """
+    material = []
+    for key in ("messages", "tools", "tool_choice", "input"):
+        if key in body:
+            material.append(json.dumps(body[key], ensure_ascii=False, separators=(",", ":")))
+    return (sum(len(s) for s in material) + 2) // 3
+
+
+def _truncate_text(text, limit, marker):
+    if len(text) <= limit:
+        return text
+    if limit <= len(marker) + 2:
+        return marker[:limit]
+    left = (limit - len(marker)) // 2
+    right = limit - len(marker) - left
+    return text[:left] + marker + text[-right:]
+
+
+def _fit_context(node, body):
+    """Fit a request without silently dropping messages or changing user text.
+
+    Tool results are the only content eligible for automatic reduction. The
+    beginning and end are retained with an explicit marker. If non-tool input
+    alone is too large, return a structured client error instead.
+    """
+    limit = node.get("context_tokens")
+    if not limit:
+        return body
+    prompt = _prompt_tokens(body)
+    try:
+        requested = int(body.get("max_tokens", DEFAULT_COMPLETION_RESERVE))
+    except (TypeError, ValueError):
+        raise RouteError(400, "max_tokens must be a positive integer")
+    if requested < 1:
+        raise RouteError(400, "max_tokens must be a positive integer")
+    available = limit - requested
+    if prompt <= available:
+        return body
+    fitted = dict(body)
+    nonce = secrets.token_hex(32)
+    marker = f"\n\n/*{nonce}*/\n\n"
+    messages = [dict(m) if isinstance(m, dict) else m for m in (body.get("messages") or [])]
+    # Reduce the largest tool messages first. Recompute after every reduction
+    # because JSON overhead and tool metadata also count toward the budget.
+    candidates = [m for m in messages if isinstance(m, dict) and m.get("role") == "tool"
+                  and isinstance(m.get("content"), str)]
+    while candidates and _prompt_tokens(dict(fitted, messages=messages)) > available:
+        target = max(candidates, key=lambda m: len(m["content"]))
+        current = target["content"]
+        excess = _prompt_tokens(dict(fitted, messages=messages)) - available
+        new_len = max(32, len(current) - max(32, excess * 3))
+        if new_len >= len(current):
+            new_len = len(current) // 2
+        target["content"] = _truncate_text(current, new_len, marker)
+        if len(target["content"]) <= len(marker):
+            candidates.remove(target)
+    fitted["messages"] = messages
+    final_prompt = _prompt_tokens(fitted)
+    if final_prompt > available:
+        raise RouteError(400, f"request exceeds node {node['name']} context window after tool-output truncation: "
+                             f"estimated prompt {final_prompt} tokens + max_tokens {requested} > context_tokens {limit}; "
+                             "reduce non-tool input or max_tokens",
+                         node=node["name"], estimated_prompt_tokens=final_prompt,
+                         max_tokens=requested, context_tokens=limit)
+    fitted["_familia_context_warning"] = (
+        f"tool output truncated for node {node['name']} before context limit "
+        f"prompt_tokens={final_prompt}/{limit}; nonce_prefix={nonce[:32]}"
+    )
+    return fitted
+
+
 class Router:
     def __init__(self, cfg):
         self.cfg = cfg
@@ -333,6 +427,7 @@ class Router:
                                               and self.cfg["routes"][ref]["nodes"] == [ref] and ref in self.cfg["nodes"]):
             return self.route(ref, path, body, trail, stream_to)
         n = self.node(ref)
+        body = _fit_context(n, body)
         if stream_to is not None:
             outer = stream_to
             stream_to = lambda st, h, it: outer(st, dict(h, **{"X-Familia-Node": ref}), it)

@@ -13,7 +13,11 @@ Purpose: one physical box. A host is placement only. A node's TYPE carries capab
 | CFG-GRAPH-HOSTS-106 | Unmeasured hosts are excluded from placement: an active node on an unmeasured host is an error | IMPLEMENTED | graph_types.py:172 |
 | CFG-GRAPH-HOSTS-107 | `kind` selects the archetype default shape (roles, reserve, transports) used by generate_graph | IMPLEMENTED | scripts/box_archetypes.py |
 
-Writers: `scripts/host_measure.py:205` (installers call it), `scripts/modify_graph.py:242`, `scripts/generate_graph.py:145`.
+Writers: `scripts/host_measure.py:205` (installers call it), `scripts/modify_graph.py:242`, `scripts/generate_graph.py:145`. The Unix installer seeds its per-prefix graph from the checkout before measuring; measurement failures are reported instead of being swallowed.
+
+On Android, `host_measure.py` falls back to readable system properties when
+Termux cannot read a useful CPU model from `/proc/cpuinfo`; the selected
+property name and value are kept together in the measured `cpu` field.
 
 ## Field reference
 

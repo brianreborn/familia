@@ -7,7 +7,7 @@ graph:
   coder:
     name: coder
     node: coder
-    model: Nanbeige4.3-33B-UNCENSORED-Q4_K_M.gguf
+    model: large model-UNCENSORED-Q4_K_M.gguf
     context_length: 65536
     min_ctx: 64000
     # Tools available to this node

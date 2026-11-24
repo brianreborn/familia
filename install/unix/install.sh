@@ -510,11 +510,17 @@ fi
 [ -n "$NAME" ] || NAME="local-node"
 
 GRAPH_FILE="$ETC_DIR/graph.yaml"
+if [ ! -f "$GRAPH_FILE" ] && [ -f "$REPO_DIR/graph.yaml" ]; then
+  mkdir -p "$ETC_DIR"
+  cp "$REPO_DIR/graph.yaml" "$GRAPH_FILE"
+fi
 if [ -f "$REPO_DIR/scripts/host_measure.py" ]; then
   KIND="desktop"
   [ "$PLATFORM" = "termux" ] && KIND="phone"
   [ -d /sys/class/power_supply/BAT0 ] && KIND="laptop"
-  python3 "$REPO_DIR/scripts/host_measure.py" --name "$NAME" --kind "$KIND" --graph "$GRAPH_FILE" $FORCE_HOST 2>/dev/null || true
+  if ! python3 "$REPO_DIR/scripts/host_measure.py" --name "$NAME" --kind "$KIND" --graph "$GRAPH_FILE" $FORCE_HOST; then
+    say "warning: host measurement failed; no measured graph record was written"
+  fi
 fi
 
 # Generate Launcher: $BIN_DIR/familia-start

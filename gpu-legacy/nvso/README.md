@@ -81,7 +81,7 @@ Soft ABI 2 stores domain, map, queue-geometry, and descriptor summaries in the
 softc (`NVSO_POST_SOFT` on the DMA post path). SandForce/Vertex2 firmware and
 GPU↔SSD DMA are not implemented by that bookkeeping.
 
-## Software track (angel Nanbeige)
+## Software track (angel named large model)
 
 Use mmap + swap + spill — see LAYER.md. That path does **not** require `nvso.ko`.
 

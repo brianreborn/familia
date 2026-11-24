@@ -3,7 +3,7 @@
 
 Design law (2026-10-27, Brian): node TYPE implies capability. Placement is
 hosts via the host: field. Fleet graph.yaml keys are capability names
-(nanbeige-coder, cuda-sm11-decision, fleet-guardian), not hostnames.
+(removed-large-coder, cuda-sm11-decision, fleet-guardian), not hostnames.
 Private per-host graphs (generated/graph-HOST.yaml) collapse those to the
 type name only (coder, chat, guardian). Host-prefixed ids are legacy.
 """
@@ -112,7 +112,7 @@ def private_topology(graph: dict, host: str) -> dict:
 
     Schema still uses a unique-key map — uniqueness holds *inside* one private
     topology (one coder per host). Same role on another host lives in that
-    host's private graph. Fleet keys stay capability names (nanbeige-coder,
+    host's private graph. Fleet keys stay capability names (removed-large-coder,
     dogfood-coder) so two coders can share one fleet file.
     """
     import copy
@@ -142,8 +142,8 @@ def private_topology(graph: dict, host: str) -> dict:
     local_keys = set(new_nodes)
     g["nodes"] = new_nodes
     # Drop speculative rows before rename. Fleet `coder-ngram` targets miryam's
-    # node `coder`. After nanbeige-coder is renamed to `coder`, a post-rename
-    # target filter would keep that row and turn Nanbeige's launch into
+    # node `coder`. After removed-large-coder is renamed to `coder`, a post-rename
+    # target filter would keep that row and turn named large model's launch into
     # miryam's active n-gram spec. Keep only rows whose target is one of this
     # host's nodes, then rewrite those targets to the type name.
     local_old = set(local)

@@ -1,0 +1,59 @@
+name: Fleet deploy
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+  workflow_run:
+    workflows: [tests]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Tested commit or branch
+        required: true
+        default: main
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  merge-passing-pr:
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enable merge after required checks pass
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: gh pr merge "$PR" --repo "$GH_REPO" --auto --squash
+
+  deploy:
+    if: >-
+      (github.event_name == 'workflow_dispatch') ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref || github.event.workflow_run.head_sha || 'main' }}
+          persist-credentials: false
+      - name: Deploy enrolled fleet through graph launchers
+        env:
+          REF: ${{ github.event.inputs.ref || github.event.workflow_run.head_sha || 'main' }}
+        run: |
+          set -eu
+          python3 scripts/swarm/deploy_fleet.py --ref "$REF" --apply --retry \
+            | tee "$RUNNER_TEMP/fleet-deploy.jsonl"
+      - name: Publish deployment ledger
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          gh issue comment 683 --repo "$GH_REPO" --body-file "$RUNNER_TEMP/fleet-deploy.jsonl" || true

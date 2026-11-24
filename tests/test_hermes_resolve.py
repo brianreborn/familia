@@ -48,7 +48,7 @@ def test_freebsd_ports_layout_preferred():
     # shebang read: fake via exists-only derive — inject HERMES_PY unset, mock _read_shebang
     real_read = hh._read_shebang
 
-    def fake_shebang(path):
+    def fake_shebang(path, **_kwargs):
         if path == hh.FREEBSD_BIN:
             return "/usr/local/bin/python3.12"
         return real_read(path)
@@ -69,6 +69,14 @@ def test_freebsd_ports_layout_preferred():
     assert b == hh.FREEBSD_BIN
     assert py == "/usr/local/bin/python3.12"
     assert sp == hh.FREEBSD_LIB
+
+
+def test_shell_wrapper_derives_execed_python(monkeypatch, tmp_path):
+    wrapper = tmp_path / "hermes-agent"
+    wrapper.write_text("#!/bin/sh\nexec /opt/python3.15 /opt/hermes-agent \"$@\"\n", encoding="ascii")
+    py = "/opt/python3.15"
+    monkeypatch.setattr(hh, "_read_shebang", lambda path: "/bin/sh")
+    assert hh._derive_py(str(wrapper), exists=lambda p: p in {str(wrapper), "/bin/sh", py}) == py
 
 
 def test_freebsd_ignores_snap_path_strings():
@@ -180,8 +188,10 @@ def test_single_agent_render_allows_below_min_ctx(capsys, monkeypatch):
     import yaml
     import hermes_modes as hm
     g = yaml.safe_load(open(os.path.join(ROOT, "graph.yaml")))
-    # Synthetic node below hermes min_ctx 64000 (nanbeige-coder is now 65536 / #125).
-    base = g["nodes"].get("nanbeige-coder") or g["nodes"]["coder"]
+    # Synthetic node below hermes min_ctx 64000, cloned from the active coder (the 33B
+    # obsolete large-model is deferred for hardware limits and is not required here).
+    base = g["nodes"]["coder"]
+
     g["nodes"]["small-ctx"] = dict(copy.deepcopy(base), ctx=32768, parallel=1, port=19999, status="active")
     # single_agent refuses nodes on another fleet host; pretend we run on the node's host.
     monkeypatch.setattr(hm.socket, "gethostname", lambda: g["nodes"]["small-ctx"]["host"])
@@ -194,17 +204,18 @@ def test_single_agent_render_allows_below_min_ctx(capsys, monkeypatch):
         hm.single_agent(g, "hermes", "small-ctx", enforce_min_ctx=True)
 
 
-def test_angel_coder_meets_hermes_min_ctx(monkeypatch):
-    """#125: nanbeige-coder.ctx 65536 clears agents.hermes.min_ctx 64000."""
+def test_active_coder_meets_hermes_min_ctx(monkeypatch):
+    """#125: the active coder (ctx 65536) clears agents.hermes.min_ctx 64000.
+    Does not use the obsolete large coder: it is deferred for hardware limits."""
     import yaml
     import hermes_modes as hm
     g = yaml.safe_load(open(os.path.join(ROOT, "graph.yaml")))
-    if "nanbeige-coder" not in g.get("nodes", {}):
-        pytest.skip("no nanbeige-coder in graph")
-    assert hm.slot(g["nodes"]["nanbeige-coder"]) >= g["agents"]["hermes"]["min_ctx"]
-    monkeypatch.setattr(hm.socket, "gethostname", lambda: g["nodes"]["nanbeige-coder"]["host"])
-    g2, name = hm.single_agent(g, "hermes", "nanbeige-coder", enforce_min_ctx=True)
-    assert name == "hermes@nanbeige-coder"
+    assert g["nodes"]["coder"]["status"] == "active"
+    assert hm.slot(g["nodes"]["coder"]) >= g["agents"]["hermes"]["min_ctx"]
+    monkeypatch.setattr(hm.socket, "gethostname", lambda: g["nodes"]["coder"]["host"])
+    g2, name = hm.single_agent(g, "hermes", "coder", enforce_min_ctx=True)
+    assert name == "hermes@coder"
+
     assert g2["agents"][name]["context_length"] == 65536
 
 

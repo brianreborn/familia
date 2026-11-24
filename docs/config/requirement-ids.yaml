@@ -605,6 +605,8 @@ other:
     status: IMPLEMENTED
   CFG-GRAPH-HOSTS-107:
     status: IMPLEMENTED
+  # Planned is required for known unsupported host/model placements; status active is a
+  # deployment assertion, not a model-download or graph-schema default.
   CFG-GRAPH-NODES-101:
     status: IMPLEMENTED
   CFG-GRAPH-NODES-102:

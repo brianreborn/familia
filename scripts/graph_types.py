@@ -210,7 +210,7 @@ def check_node(g, name, n, errs):
     # coder-weight may set role: chat explicitly — allowed when roles differ).
     if n.get("role") and m is not None and m.get("role") and n.get("role") != m.get("role"):
         text_roles = m.get("text_roles") if isinstance(m.get("text_roles"), list) else []
-        # chat/general views of coder weights are intentional (nanbeige-chat / phone general)
+        # chat/general views of coder weights are intentional (removed-large-chat / phone general)
         allowed = (
             (n.get("role") in ("chat", "general") and m.get("role") == "coder")
             or (n.get("role") == "general" and m.get("role") == "chat")
@@ -227,8 +227,8 @@ def check_node(g, name, n, errs):
     if r is not None and m is not None and not planned:
         arch = m.get("arch")
         supported = list(r.get("supported_archs") or [])
-        # llama.cpp flag tables list both; Nanbeige GGUFs report general.architecture=llama
-        aliases = {"llama": "nanbeige", "nanbeige": "llama"}
+        # llama.cpp flag tables list both; named large model GGUFs report general.architecture=llama
+        aliases = {"llama": "large-model", "large-model": "llama"}
         ok = arch in supported or aliases.get(arch) in supported
         if not ok:
             errs.append(f"nodes.{name}: model {n['model']!r} arch {arch!r} not in runtime {n['runtime']!r} "

@@ -20,6 +20,8 @@ Purpose: one model instance (weights × runtime × host). The node TYPE (`role`,
 
 Writers: `modify_graph.py` (assign-model / split-node), `generate_graph.py`, `scale_down.py:219`, `activate_guardian_weights.py:265` (planned→active only by operator).
 
+Host capacity is specific to each host/model/context combination. Keep a node `planned` when the host cannot support that workload; `start_graph` starts only `active` nodes (CFG-GRAPH-NODES-101/102). Angel's large model placements are research-only and remain planned; they are not the FreeBSD default. See #553 and #667.
+
 ## Field reference
 
 <!-- BEGIN GENERATED: fields (scripts/config_docs.py --write) -->

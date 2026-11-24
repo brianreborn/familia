@@ -56,7 +56,7 @@ WIDTH=68
 USE_BOX=1
 COMPACT=0
 PAGE=1
-PAGES=4
+PAGES=5
 NARROW=0
 
 # Secure defaults (cockpit). The installer CLI still treats --dry-run as opt-in;
@@ -89,6 +89,23 @@ CBL_ASSET=""
 CBL_URL=""
 API_KEY_FILE=""
 RUNTIME_KIND=cbl
+FLEET_ROLE=none
+SWARM_MODE=dry-run
+SWARM_RUNNER=""
+SWARM_MODEL_URL=""
+SWARM_MODEL_KEY_FILE=""
+SWARM_UPSTREAM_HOST=""
+SWARM_UPSTREAM_PORT=9941
+SWARM_MODEL_THINK=1
+SWARM_MODEL_PASSES=3
+SWARM_MODEL_MAX_TOKENS=700
+SWARM_MODEL_THINK_TOKENS=800
+SWARM_MIN_MEM_GIB=""
+SWARM_MAX_LOAD1=""
+SWARM_MAX_API_CALLS=80
+SWARM_API_WINDOW_SEC=3600
+FLEET_ARM=0
+SWARM_CONFIG_FILE="$HOME/swarm/swarm-pull.conf"
 
 XDG_BASE="${XDG_CONFIG_HOME:-$HOME/.config}"
 CONFIG_DIR="$XDG_BASE/familia"
@@ -751,7 +768,7 @@ valid_cbl_asset() {
 
 known_key() {
   case "$1" in
-    CTX_GATE|FAMILIA_CTX_VAL|ALLOW_YES|DRY_RUN|KEEP_PREFIX|START_FAMILIA|HTTPS|DEV_ALLOW_HTTP|HOST|PORT|TIER|LIC_LLAMA31|LIC_DOLPHIN|LIC_LFM|FETCH_PYYAML|COMMIT|URL_FILE|CBL_TAG|CBL_SHA|CBL_ASSET|CBL_URL|API_KEY_FILE|RUNTIME_KIND) return 0 ;;
+    CTX_GATE|FAMILIA_CTX_VAL|ALLOW_YES|DRY_RUN|KEEP_PREFIX|START_FAMILIA|HTTPS|DEV_ALLOW_HTTP|HOST|PORT|TIER|LIC_LLAMA31|LIC_DOLPHIN|LIC_LFM|FETCH_PYYAML|COMMIT|URL_FILE|CBL_TAG|CBL_SHA|CBL_ASSET|CBL_URL|API_KEY_FILE|RUNTIME_KIND|FLEET_ROLE|SWARM_MODE|SWARM_RUNNER|SWARM_MODEL_URL|SWARM_MODEL_KEY_FILE|SWARM_UPSTREAM_HOST|SWARM_UPSTREAM_PORT|SWARM_MODEL_THINK|SWARM_MODEL_PASSES|SWARM_MODEL_MAX_TOKENS|SWARM_MODEL_THINK_TOKENS|SWARM_MIN_MEM_GIB|SWARM_MAX_LOAD1|SWARM_MAX_API_CALLS|SWARM_API_WINDOW_SEC|FLEET_ARM|SWARM_CONFIG_FILE) return 0 ;;
     *) return 1 ;;
   esac
 }
@@ -761,6 +778,15 @@ secure_default_for() {
     CTX_GATE|DRY_RUN|LIC_LLAMA31|LIC_DOLPHIN) printf '%s' 1 ;;
     ALLOW_YES|KEEP_PREFIX|START_FAMILIA|HTTPS|DEV_ALLOW_HTTP|LIC_LFM|FETCH_PYYAML) printf '%s' 0 ;;
     RUNTIME_KIND) printf '%s' cbl ;;
+    FLEET_ROLE) printf '%s' none ;;
+    SWARM_MODE) printf '%s' dry-run ;;
+    SWARM_MODEL_THINK|FLEET_ARM) printf '%s' 1 ;;
+    SWARM_MODEL_PASSES) printf '%s' 3 ;;
+    SWARM_MODEL_MAX_TOKENS) printf '%s' 700 ;;
+    SWARM_MODEL_THINK_TOKENS) printf '%s' 800 ;;
+    SWARM_UPSTREAM_PORT) printf '%s' 9941 ;;
+    SWARM_MAX_API_CALLS) printf '%s' 80 ;;
+    SWARM_API_WINDOW_SEC) printf '%s' 3600 ;;
     *) printf '%s' "" ;;
   esac
 }
@@ -845,6 +871,20 @@ apply_key() {
       RUNTIME_KIND=cbl
       return 1
       ;;
+    FLEET_ROLE) case "$_v" in none|thin-client|model-server|swarm-runner) FLEET_ROLE=$_v; return 0;; esac ;;
+    SWARM_MODE) case "$_v" in live|triage|review|dry-run) SWARM_MODE=$_v; return 0;; esac ;;
+    SWARM_MODEL_THINK|FLEET_ARM) if valid_bool "$_v"; then [ "$_k" = FLEET_ARM ] && FLEET_ARM=$_v || SWARM_MODEL_THINK=$_v; return 0; fi ;;
+    SWARM_MODEL_PASSES|SWARM_MODEL_MAX_TOKENS|SWARM_MODEL_THINK_TOKENS|SWARM_UPSTREAM_PORT|SWARM_MAX_API_CALLS|SWARM_API_WINDOW_SEC)
+      if valid_uint "$_v"; then
+        case "$_k" in
+          SWARM_MODEL_PASSES) SWARM_MODEL_PASSES=$_v;; SWARM_MODEL_MAX_TOKENS) SWARM_MODEL_MAX_TOKENS=$_v;; SWARM_MODEL_THINK_TOKENS) SWARM_MODEL_THINK_TOKENS=$_v;; SWARM_UPSTREAM_PORT) SWARM_UPSTREAM_PORT=$_v;; SWARM_MAX_API_CALLS) SWARM_MAX_API_CALLS=$_v;; SWARM_API_WINDOW_SEC) SWARM_API_WINDOW_SEC=$_v;;
+        esac
+        return 0
+      fi ;;
+    SWARM_MIN_MEM_GIB|SWARM_MAX_LOAD1)
+      if [ -z "$_v" ] || printf '%s' "$_v" | grep -Eq '^[0-9]+([.][0-9]+)?$'; then [ "$_k" = SWARM_MIN_MEM_GIB ] && SWARM_MIN_MEM_GIB=$_v || SWARM_MAX_LOAD1=$_v; return 0; fi ;;
+    SWARM_RUNNER|SWARM_MODEL_URL|SWARM_MODEL_KEY_FILE|SWARM_UPSTREAM_HOST|SWARM_CONFIG_FILE)
+      if [ -z "$_v" ] || no_ctl_chars "$_v"; then case "$_k" in SWARM_RUNNER) SWARM_RUNNER=$_v;; SWARM_MODEL_URL) SWARM_MODEL_URL=$_v;; SWARM_MODEL_KEY_FILE) SWARM_MODEL_KEY_FILE=$_v;; SWARM_UPSTREAM_HOST) SWARM_UPSTREAM_HOST=$_v;; SWARM_CONFIG_FILE) SWARM_CONFIG_FILE=$_v;; esac; return 0; fi ;;
     COMMIT)
       if [ -z "$_v" ]; then COMMIT=""; return 0; fi
       if valid_commit "$_v"; then COMMIT=$_v; return 0; fi
@@ -1014,6 +1054,8 @@ save_settings() {
     printf 'CBL_URL=%s\n' "$CBL_URL"
     printf 'API_KEY_FILE=%s\n' "$API_KEY_FILE"
     printf 'RUNTIME_KIND=%s\n' "$RUNTIME_KIND"
+    printf 'FLEET_ROLE=%s\nSWARM_MODE=%s\nSWARM_RUNNER=%s\nSWARM_MODEL_URL=%s\nSWARM_MODEL_KEY_FILE=%s\nSWARM_UPSTREAM_HOST=%s\nSWARM_UPSTREAM_PORT=%s\n' "$FLEET_ROLE" "$SWARM_MODE" "$SWARM_RUNNER" "$SWARM_MODEL_URL" "$SWARM_MODEL_KEY_FILE" "$SWARM_UPSTREAM_HOST" "$SWARM_UPSTREAM_PORT"
+    printf 'SWARM_MODEL_THINK=%s\nSWARM_MODEL_PASSES=%s\nSWARM_MODEL_MAX_TOKENS=%s\nSWARM_MODEL_THINK_TOKENS=%s\nSWARM_MIN_MEM_GIB=%s\nSWARM_MAX_LOAD1=%s\nSWARM_MAX_API_CALLS=%s\nSWARM_API_WINDOW_SEC=%s\nFLEET_ARM=%s\nSWARM_CONFIG_FILE=%s\n' "$SWARM_MODEL_THINK" "$SWARM_MODEL_PASSES" "$SWARM_MODEL_MAX_TOKENS" "$SWARM_MODEL_THINK_TOKENS" "$SWARM_MIN_MEM_GIB" "$SWARM_MAX_LOAD1" "$SWARM_MAX_API_CALLS" "$SWARM_API_WINDOW_SEC" "$FLEET_ARM" "$SWARM_CONFIG_FILE"
   } | atomic_write "$XDG_FILE"; then
     return 1
   fi
@@ -1524,6 +1566,20 @@ paint_advanced() {
   say_row "   q) Exit (back to familia home)"
 }
 
+paint_fleet_role() {
+  heading "Fleet role"
+  say_row "  24) Role (none|thin-client|model-server|swarm-runner) [$FLEET_ROLE]"
+  say_row "  25) Runner mode (live|triage|review|dry-run) [$SWARM_MODE]"
+  say_row "  26) Runner name [${SWARM_RUNNER:-auto hostname}]"
+  say_row "  27) Model URL (localhost only) [${SWARM_MODEL_URL:-unset}]"
+  say_row "  28) Model key file (path only) [${SWARM_MODEL_KEY_FILE:-unset}]"
+  say_row "  29) Upstream cockpit host [${SWARM_UPSTREAM_HOST:-unset}]"
+  say_row "  30) Effort: think/passes/max tokens [$SWARM_MODEL_THINK/$SWARM_MODEL_PASSES/$SWARM_MODEL_MAX_TOKENS]"
+  say_row "  31) Load gate: min GiB/max load [${SWARM_MIN_MEM_GIB:-off}/${SWARM_MAX_LOAD1:-off}]"
+  say_row "  32) API budget: calls/window [$SWARM_MAX_API_CALLS/$SWARM_API_WINDOW_SEC]"
+  say_row "  33) Arm/disarm and write swarm-pull.conf [$(onoff "$FLEET_ARM")]"
+}
+
 paint_will_run() {
   _prev=$(assemble_and preview 2>/dev/null) || _prev=""
   if [ -n "$_prev" ]; then
@@ -1558,6 +1614,7 @@ paint() {
       2) paint_network ;;
       3) paint_models ;;
       4) paint_advanced; say ""; paint_will_run ;;
+      5) paint_fleet_role ;;
     esac
     paint_nav
   else
@@ -1565,6 +1622,7 @@ paint() {
     paint_network
     paint_models
     paint_advanced
+    paint_fleet_role
     say ""
     paint_will_run
   fi
@@ -1794,6 +1852,32 @@ reset_defaults() {
   say "reset to secure defaults (gate ON, --yes refused, dry-run ON, no auto-start, self-host http://127.0.0.1:9941, HTTPS on for remote hosts, plain HTTP only with dev: allow plain HTTP)."
 }
 
+fleet_edit() {
+  _f=$1; _label=$2; _cur=$(eval "printf '%s' \"\${$_f}\""); _st=0; _in=""
+  read_line "  $_label [${_cur:-empty}]: " _in || _st=$?
+  [ "$_st" -eq 0 ] && [ -n "$_in" ] || return 0
+  apply_key "$_f" "$_in" || err "invalid $_label; left unchanged"
+}
+
+write_fleet_role() {
+  [ "$FLEET_ROLE" != model-server ] || [ -n "$SWARM_MODEL_KEY_FILE" ] || { err "model-server requires a model key file"; return 0; }
+  _args="--role $FLEET_ROLE --mode $SWARM_MODE --config $SWARM_CONFIG_FILE --upstream-port $SWARM_UPSTREAM_PORT --think $SWARM_MODEL_THINK --passes $SWARM_MODEL_PASSES --max-tokens $SWARM_MODEL_MAX_TOKENS --think-tokens $SWARM_MODEL_THINK_TOKENS --max-api-calls $SWARM_MAX_API_CALLS --api-window-sec $SWARM_API_WINDOW_SEC --arm $FLEET_ARM"
+  [ -z "$SWARM_RUNNER" ] || _args="$_args --runner $SWARM_RUNNER"
+  [ -z "$SWARM_MODEL_URL" ] || _args="$_args --model-url $SWARM_MODEL_URL"
+  [ -z "$SWARM_MODEL_KEY_FILE" ] || _args="$_args --model-key-file $SWARM_MODEL_KEY_FILE"
+  [ -z "$SWARM_UPSTREAM_HOST" ] || _args="$_args --upstream-host $SWARM_UPSTREAM_HOST"
+  [ -z "$SWARM_MIN_MEM_GIB" ] || _args="$_args --min-mem-gib $SWARM_MIN_MEM_GIB"
+  [ -z "$SWARM_MAX_LOAD1" ] || _args="$_args --max-load1 $SWARM_MAX_LOAD1"
+  say "proposed swarm-pull.conf change:"
+  # Values were validated above and the helper validates again; keep its diff visible.
+  # shellcheck disable=SC2086
+  sh "$ROOT/scripts/swarm/configure-fleet-role.sh" $_args --dry-run || return 0
+  _conf=""; read_line "  type WRITE to apply (anything else cancels): " _conf || true
+  [ "$_conf" = WRITE ] || { say "fleet role write cancelled"; return 0; }
+  # shellcheck disable=SC2086
+  sh "$ROOT/scripts/swarm/configure-fleet-role.sh" $_args || true
+}
+
 do_choice() {
   _c=$1
   case "$_c" in
@@ -1930,6 +2014,16 @@ do_choice() {
         fi
       fi
       ;;
+    24) fleet_edit FLEET_ROLE "fleet role (none|thin-client|model-server|swarm-runner)" ;;
+    25) fleet_edit SWARM_MODE "swarm runner mode (live|triage|review|dry-run)" ;;
+    26) fleet_edit SWARM_RUNNER "runner name" ;;
+    27) fleet_edit SWARM_MODEL_URL "model URL (localhost only)" ;;
+    28) fleet_edit SWARM_MODEL_KEY_FILE "model key file path" ;;
+    29) fleet_edit SWARM_UPSTREAM_HOST "upstream cockpit host" ;;
+    30) fleet_edit SWARM_MODEL_PASSES "model passes"; fleet_edit SWARM_MODEL_MAX_TOKENS "max answer tokens" ;;
+    31) fleet_edit SWARM_MIN_MEM_GIB "minimum free memory GiB"; fleet_edit SWARM_MAX_LOAD1 "maximum load1" ;;
+    32) fleet_edit SWARM_MAX_API_CALLS "API calls per window"; fleet_edit SWARM_API_WINDOW_SEC "API window seconds" ;;
+    33) FLEET_ARM=$(toggle "$FLEET_ARM"); write_fleet_role ;;
     22|c|C)
       if [ "${FAMILIA_COCKPIT_HOOK:-}" = 1 ]; then
         return 4
