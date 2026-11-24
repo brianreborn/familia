@@ -92,6 +92,9 @@ def main():
             print("fail no-home")
             return 12
         cache = os.path.join(home, ".cache")
+        # cache is 0700 (dirs need execute). The lock file is 0600 and owned
+        # by this user. fchmod after create so a loose umask cannot leave it
+        # group- or world-readable (FreeBSD and Linux).
         os.makedirs(cache, mode=0o700, exist_ok=True)
         lock_path = os.path.join(cache, "familia-a57-ci.lock")
         fd = os.open(lock_path, os.O_CREAT | os.O_RDWR, 0o600)
