@@ -574,8 +574,8 @@ def run(args=None):
         if options.dry_run:
             plans = validate_local_nodes(graph, host, nodes, check_files=False)
             _report_remote_topology(remote_nodes, remote_gateways, omitted_aliases)
-            print(f"familia-graph: host {host}; active local nodes: {', '.join(n for n, _ in plans) or 'none'}")
-            for name, argv in plans:
+            print(f"familia-graph: host {host}; active local nodes: {', '.join(n for n, _, _ in plans) or 'none'}")
+            for name, argv, _ in plans:
                 print(f"familia-graph: node {name}: {shlex.join(argv)}")
             for gateway_name, gateway, aliases in gateways:
                 via = (f"graph_router (caller auth: {__import__('familia_auth').instance_key_file(port=gateway['port'])}; /health public)"

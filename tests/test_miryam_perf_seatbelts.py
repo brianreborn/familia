@@ -96,7 +96,12 @@ def test_server_env_hides_vk_for_backend_cpu():
 
 def test_check_soname_skew_skips_without_platform():
     notes = []
-    assert mps.check_soname_skew("/nonexistent/llama-server", note_sink=notes) is True
+    # Main now ships scripts/refuse_soname_skew.py, so hide it to test the skip path.
+    sys.modules["refuse_soname_skew"] = None
+    try:
+        assert mps.check_soname_skew("/nonexistent/llama-server", note_sink=notes) is True
+    finally:
+        sys.modules.pop("refuse_soname_skew", None)
     assert any("not importable" in n for n in notes)
 
 
@@ -108,7 +113,7 @@ def test_apply_no_op_offload_idempotent():
 
 def test_thread_oversubscribe_note_when_vulkan_peer_active():
     x = g()
-    x["nodes"]["miryam-gpu-decision"]["status"] = "active"
+    x["nodes"]["vulkan-igpu-decision"]["status"] = "active"
     x["nodes"]["coder"]["threads"] = 8
     notes = mps.warn_thread_oversubscribe(x, "coder")
     assert any("Vulkan peer" in n for n in notes)
@@ -225,8 +230,12 @@ def test_assert_fingerprint_stable_allows_stable(monkeypatch):
 def test_assert_fingerprint_stable_skips_without_platform():
     notes = []
     # Ensure Platform module is not importable for this test.
-    sys.modules.pop("refuse_soname_skew", None)
-    result = mps.assert_fingerprint_stable("/x/llama-server", {"bin": {}}, note_sink=notes)
+    # Main now ships scripts/refuse_soname_skew.py, so popping the cache is not enough.
+    sys.modules["refuse_soname_skew"] = None
+    try:
+        result = mps.assert_fingerprint_stable("/x/llama-server", {"bin": {}}, note_sink=notes)
+    finally:
+        sys.modules.pop("refuse_soname_skew", None)
     assert result["ok"] is True
     assert result["reason"] == "skipped_no_platform"
     assert any("not importable" in n for n in notes)

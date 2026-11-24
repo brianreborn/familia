@@ -320,6 +320,15 @@ def validate(graph, check_files=True, host=None):
 # layers, hide the Vulkan devices. An explicit GGML_VK_VISIBLE_DEVICES in env wins.
 # Race #83: also when offload.backend is cpu (ngl may be omitted in odd graphs). Never touch
 # VK_ICD_FILENAMES / Mesa in the login shell — per-process spawn env only (Platform gpu-path-layout).
+def tool_key_path(n, env=None):
+    """Path of the per-instance key file for a node. Never a graph.yaml value.
+    The file is not created here; serve.sh / bind_auth_guard.py --ensure creates it
+    once (0600) at launch if needed."""
+    import familia_auth
+    env = os.environ if env is None else env
+    return env.get("API_KEY_FILE") or familia_auth.instance_key_file(port=n["port"], env=env)
+
+
 def tool_key_file(n, env=None):
     """Per-instance key file (created 0600 once, never rotated).
     Fails closed: no readable key -> SystemExit, the node does not start."""
@@ -804,7 +813,7 @@ def server_args(graph, name):
             a = ["--no-op-offload"] + a
         a = [bin_path] + a
     else:
-        a = [bin_path] + "llama-server"
+        a = ["llama-server"] + a
     return a
 
 USAGE = __doc__.split("\n\n")[1]
