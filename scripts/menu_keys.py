@@ -39,7 +39,7 @@ UP, DOWN, LEFT, RIGHT = "up", "down", "left", "right"
 HOME, END, PGUP, PGDN = "home", "end", "pgup", "pgdn"
 ENTER, ESC, BACKSPACE, DELETE = "enter", "esc", "backspace", "delete"
 EOF, INTR, UNKNOWN, PASTE = "eof", "intr", "unknown", "paste"
-SEQ_HOLD_CAP = 5.0  # seconds one half-read sequence may hold the reader before it is dropped
+SEQ_HOLD_CAP = 5.0  # backstop only: M2's KeyReader caps a sequence at SEQ_MAX_AGE (2 s) itself
 MAX_LINE = 4096  # longest typed or pasted answer kept (same bound as M2's read_line)
 
 class Picker:

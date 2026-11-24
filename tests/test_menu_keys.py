@@ -194,10 +194,10 @@ def test_pty_bracketed_paste_on_then_off():
 
 
 @needs_m2
-@pytest.mark.xfail(strict=False, reason="#736 KeyReader: after a stale timeout() the next window must be fresh")
 def test_pty_stalled_sequence_tail_is_not_typed_text():
     """ESC [ , a stall past seq_timeout, then the tail 1;5A: no CHAR may leak into the line
-    (a leaked '1' would pick item 1 / type '1;5A'). Enter then answers the highlight."""
+    (a leaked '1' would pick item 1 / type '1;5A'). Enter then answers the highlight.
+    Needs #736 >= b1a33e1 (fresh window after every timeout(), SEQ_MAX_AGE)."""
     p, m, s, before = _start_picker("--count", "3", "--cursor", "1")
     os.write(m, b"\x1b[")
     time.sleep(1.4)
