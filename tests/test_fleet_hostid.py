@@ -1,5 +1,6 @@
 """Fleet host IDs: one physical device -> one canonical ID over every transport."""
 import json
+import os
 import re
 import subprocess
 import sys
@@ -205,6 +206,8 @@ def test_init_with_registry_value_matches_registry(tmp_path, monkeypatch):
     monkeypatch.setattr(hostid, "local_anchor", lambda environ=None: (None, None))
     hid = hostid.resolve("galaxy1", REG)
     p = hostid.init_state_uuid(env, value=REG[hid]["host_uuid"])
+    if os.name == "posix":
+        assert (p.stat().st_mode & 0o777) == 0o600
     r = hostid.make_id("galaxy1", "state-uuid", p.read_text())
     assert r["host_id"] == hid
 

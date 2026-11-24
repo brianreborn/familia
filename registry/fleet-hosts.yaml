@@ -87,9 +87,9 @@ hosts:
     previous_ids: [galaxy1-db07b41d]
     anchor_status: >-
       Random v4 UUID pinned here 2026-11-23 (owner approved): Android 16 Termux exposes
-      no serial/android_id/soc serial and the Wi-Fi MAC is randomized. The phone itself
-      still reports the weak galaxy1-db07b41d (resolved via previous_ids) until
-      `hostid.py --init --init-value <host_uuid>` is run on it (not done; needs owner OK).
+      no serial/android_id/soc serial and the Wi-Fi MAC is randomized. Written to the
+      phone 2026-11-23 22:14 PT with `hostid.py --init --init-value <host_uuid>`
+      (~/.local/state/familia/host-uuid, mode 600); the phone now reports this ID.
     transports:
       - {kind: wifi, ssh_alias: galaxy1}
 
@@ -103,8 +103,8 @@ hosts:
     aliases: [phone8]
     previous_ids: [galaxy2-2e567cbe]
     anchor_status: >-
-      Random v4 UUID pinned here 2026-11-23 (owner approved); same limits and same
-      device-side note as galaxy1.
+      Random v4 UUID pinned here 2026-11-23 (owner approved); same limits as galaxy1.
+      Written to the phone 2026-11-23 22:14 PT the same way; the phone reports this ID.
     transports:
       - {kind: wifi, ssh_alias: galaxy2}
 

@@ -44,11 +44,21 @@ are a last resort only (phones randomize them and USB tethering adds new ones).
 | 10 | hostname      | nothing readable: weak ID from the label (weak) |
 
 Android 16 Termux (the A57s) exposes none of 1-3, so galaxy1 and galaxy2 have a
-random v4 UUID pinned in the registry (anchor_type `state-uuid`). The phones still
-compute the weak hostname ID on their own; that old ID is listed under
-`previous_ids` so it resolves to the pinned entry. To make a phone report the
+random v4 UUID pinned in the registry (anchor_type `state-uuid`). Their old weak
+hostname IDs are listed under `previous_ids` so older probes still resolve. To make a phone report the
 pinned ID itself, run `python3 scripts/fleet/hostid.py --init --init-value <host_uuid>`
 on it (writes `$XDG_STATE_HOME/familia/host-uuid`; needs the owner's OK).
+
+Standard path of the device ID file (one line, the v4 UUID, mode 600):
+
+| platform | path |
+|---|---|
+| Linux, FreeBSD, macOS | `${XDG_STATE_HOME:-~/.local/state}/familia/host-uuid` |
+| Termux (Android) | `/data/data/com.termux/files/home/.local/state/familia/host-uuid` |
+| Windows | `%LOCALAPPDATA%\familia\host-uuid` |
+
+galaxy1 and galaxy2 got this file on 2026-11-23 (owner approved), so they now report
+galaxy1-845f9d5a and galaxy2-bd0351ec themselves.
 When an anchor changes, move the entry to the new ID and list the old one under
 `previous_ids`. The Grok Bot box gets a new machine-id when it is replaced.
 

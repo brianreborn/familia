@@ -213,6 +213,10 @@ def init_state_uuid(environ=None, value: str | None = None) -> Path | None:
         p.parent.mkdir(parents=True, exist_ok=True)
         u = host_uuid("state-uuid", value) if value else str(uuid.uuid4())
         p.write_text(u + "\n", encoding="ascii")
+        try:
+            os.chmod(p, 0o600)
+        except OSError:
+            pass
     return p
 
 
