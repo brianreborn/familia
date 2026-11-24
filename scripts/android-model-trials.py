@@ -53,7 +53,17 @@ class Device:
                               timeout=timeout or self.timeout).stdout.strip()
 
     def forward(self, port: int) -> None:
-        self.unforward(port)  # clear a stale forward from an earlier run first
+        """Forward tcp:PORT. A stale forward from this phone is cleared; one owned by another
+        device (another trial run) is never touched: refuse instead."""
+        listing = subprocess.run([self.adb, "forward", "--list"], text=True,
+                                 stdout=subprocess.PIPE, stderr=subprocess.DEVNULL).stdout or ""
+        for line in listing.splitlines():
+            fields = line.split()
+            if len(fields) >= 2 and fields[1] == f"tcp:{port}":
+                if fields[0] != self.serial:
+                    raise RuntimeError(f"host port {port} is already forwarded to another device; "
+                                       "pick another --port")
+                self.unforward(port)
         subprocess.run([self.adb, "-s", self.serial, "forward", f"tcp:{port}", f"tcp:{port}"],
                        check=True, stdout=subprocess.DEVNULL)
 
@@ -72,6 +82,8 @@ def health(port: int, seconds: float = 2) -> bool:
 
 HEALTH_PROBE_SECONDS = 6
 STOP_GRACE_SECONDS = 10
+WATCHDOG_TICK_SECONDS: float = 2
+PHONE_SH = "/system/bin/sh"
 
 
 def serial_tag(serial: str) -> str:
@@ -100,6 +112,20 @@ def port_listening(device: Device, port: int) -> bool:
     return out.strip().endswith("busy")
 
 
+_OWNER_SH = r"""inode=$(awk -v p=':PORTHEX' '$2 ~ p"$" && $4 == "0A" {print $10; exit}' /proc/net/tcp /proc/net/tcp6 2>/dev/null)
+[ -n "$inode" ] || { echo none; exit 0; }
+p=$(cat PIDFILE 2>/dev/null)
+if [ -n "$p" ] && ls -l /proc/$p/fd 2>/dev/null | grep -q "socket:\[$inode\]"; then echo ours; else echo other; fi"""
+
+
+def port_owner(device: Device, port: int, pidfile: str) -> str:
+    """'ours' when the pid in pidfile owns the LISTEN socket on port, 'other' when some other
+    process does, 'none' when nothing listens. health() alone would accept any server's 200."""
+    out = device.shell(_OWNER_SH.replace("PORTHEX", f"{port:04X}").replace("PIDFILE", shlex.quote(pidfile)))
+    out = out.strip().splitlines()[-1] if out.strip() else "none"
+    return out if out in ("ours", "other") else "none"
+
+
 def wait_port_free(device: Device, port: int, seconds: int = STOP_GRACE_SECONDS) -> None:
     """CPU and Vulkan trials share one port: refuse to start while an old server still holds it,
     or a leftover server could answer health() for the next trial."""
@@ -114,12 +140,19 @@ def wait_port_free(device: Device, port: int, seconds: int = STOP_GRACE_SECONDS)
 
 def stop_trial(device: Device, base: str, timeout: int = 30, port: int | None = None) -> None:
     """Stop a trial's watchdog and server: TERM, wait, then KILL; then check the port is free."""
-    stop, pid = shlex.quote(base + ".stop"), shlex.quote(base + ".pid")
-    device.shell(
-        f"touch {stop}; p=$(cat {pid} 2>/dev/null); [ -n \"$p\" ] || exit 0; kill \"$p\" 2>/dev/null; "
-        f"i=0; while kill -0 \"$p\" 2>/dev/null && [ $i -lt {STOP_GRACE_SECONDS} ]; do sleep 1; i=$((i+1)); done; "
-        f"kill -0 \"$p\" 2>/dev/null && kill -9 \"$p\" 2>/dev/null; true",
-        timeout=timeout)
+    q = {k: shlex.quote(f"{base}.{k}") for k in ("stop", "pid", "wpid", "watchdog.sh")}
+    out = device.shell(f"""touch {q['stop']}
+i=0; while [ -e {q['watchdog.sh']} ] && {{ [ ! -s {q['pid']} ] || [ ! -s {q['wpid']} ]; }} && [ $i -lt 5 ]; do sleep 1; i=$((i+1)); done
+p=$(cat {q['pid']} 2>/dev/null); w=$(cat {q['wpid']} 2>/dev/null)
+alive() {{ for x in $p $w; do kill -0 "$x" 2>/dev/null && return 0; done; return 1; }}
+[ -n "$w" ] && kill -TERM -"$w" 2>/dev/null
+for x in $p $w; do kill -TERM "$x" 2>/dev/null; done
+i=0; while alive && [ $i -lt {STOP_GRACE_SECONDS} ]; do sleep 1; i=$((i+1)); done
+if alive; then [ -n "$w" ] && kill -9 -"$w" 2>/dev/null; for x in $p $w; do kill -9 "$x" 2>/dev/null; done; fi
+i=0; while alive && [ $i -lt 5 ]; do sleep 1; i=$((i+1)); done
+if alive; then echo STILL_ALIVE; else echo STOPPED; fi""", timeout=timeout)
+    if "STILL_ALIVE" in out:
+        raise RuntimeError(f"trial {base} survived kill -9")
     if port is not None:
         wait_port_free(device, port)
 
@@ -136,6 +169,7 @@ def start_watchdog(device: Device, base: str, model: str, gpu_layers: int, port:
         "--api-key-file", api_key_file,
     ]))
     watchdog = f'''#!/system/bin/sh
+echo $$ > {shlex.quote(base + '.wpid')}
 echo STARTING > {shlex.quote(statefile)}
 {server} > {shlex.quote(logfile)} 2>&1 &
 server_pid=$!
@@ -152,9 +186,11 @@ while kill -0 "$server_pid" 2>/dev/null; do
   ticks=$((ticks + 1))
   if [ -e {shlex.quote(busyfile)} ]; then
     failures=0  # a request is in flight; llama-server --parallel 1 may not answer /health until it ends
-  elif [ -e {shlex.quote(readyfile)} ] && [ $((ticks % {HEALTH_PROBE_SECONDS // 2})) -eq 0 ]; then
+  elif [ -e {shlex.quote(readyfile)} ] && [ $((ticks % {max(1, int(HEALTH_PROBE_SECONDS / WATCHDOG_TICK_SECONDS))})) -eq 0 ]; then
     if python3 -c 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:{port}/health", timeout=2).read()' >/dev/null 2>&1; then
       failures=0
+    elif [ -e {shlex.quote(busyfile)} ]; then
+      failures=0  # the request started while this probe was in flight
     else
       failures=$((failures + 1))
     fi
@@ -165,17 +201,19 @@ while kill -0 "$server_pid" 2>/dev/null; do
       exit 1
     fi
   fi
-  sleep 2
+  sleep {WATCHDOG_TICK_SECONDS}
 done
 if [ ! -e {shlex.quote(stopfile)} ]; then
   if [ -s {shlex.quote(logfile)} ]; then echo CRASHED > {shlex.quote(statefile)}; else echo 'KILLED?' > {shlex.quote(statefile)}; fi
   date -u '+%Y-%m-%dT%H:%M:%SZ server exited unexpectedly' >> {shlex.quote(base + '.watchdog')}
 fi
 '''
-    command = (f"rm -f {shlex.quote(pidfile)} {shlex.quote(statefile)} {shlex.quote(readyfile)} {shlex.quote(stopfile)} {shlex.quote(busyfile)}\n"
+    command = (f"rm -f {shlex.quote(pidfile)} {shlex.quote(statefile)} {shlex.quote(readyfile)} {shlex.quote(stopfile)} {shlex.quote(busyfile)} {shlex.quote(base + '.wpid')}\n"
                f"cat > {shlex.quote(watchdogfile)} <<'WATCHDOG_SCRIPT'\n{watchdog}WATCHDOG_SCRIPT\n"
                f"chmod 700 {shlex.quote(watchdogfile)}\n"
-               f"nohup /system/bin/sh {shlex.quote(watchdogfile)} > {shlex.quote(base + '.watchdog-launch')} 2>&1 </dev/null &\n")
+               # setsid: the watchdog leads its own process group, so stop_trial can signal both
+               f"if command -v setsid >/dev/null 2>&1; then s=setsid; else s=; fi\n"
+               f"nohup $s {PHONE_SH} {shlex.quote(watchdogfile)} > {shlex.quote(base + '.watchdog-launch')} 2>&1 </dev/null &\n")
     device.shell(command)
     return pidfile, logfile, statefile
 
@@ -240,7 +278,6 @@ def main(argv: list[str] | None = None) -> int:
     meminfo = device.shell("grep -E 'MemTotal|MemAvailable' /proc/meminfo")
     api_key = ensure_api_key(device, args.api_key_file)
     power = device.shell("dumpsys power 2>/dev/null | grep -E 'mWakefulness|mHoldingWakeLock' || true")
-    device.forward(args.port)
     event(event="trial-set-start", model=model, context=args.ctx, threads=args.threads,
           backend_devices=devices, memory=meminfo, power=power,
           api_key_file=args.api_key_file, health_probe_seconds=HEALTH_PROBE_SECONDS, watchdog=f"{trial_dir}/watchdog.sh", journal=str(journal))
@@ -251,6 +288,7 @@ def main(argv: list[str] | None = None) -> int:
     active: str | None = None
     kept = False
     try:
+        device.forward(args.port)
         for label, gpu_layers in configs:
             base = f"{trial_dir}/{label}"
             wait_port_free(device, args.port)
@@ -262,13 +300,17 @@ def main(argv: list[str] | None = None) -> int:
                   memory=device.shell("grep -E 'MemTotal|MemAvailable' /proc/meminfo"), watchdog_state=statefile)
             deadline = time.monotonic() + args.startup_timeout
             ready = False
+            state = "MISSING"
             while time.monotonic() < deadline:
                 state = device.shell(f"cat {shlex.quote(statefile)} 2>/dev/null || echo MISSING")
                 if state in ("CRASHED", "KILLED?"):
                     break
-                if health(args.port):
+                owner = port_owner(device, args.port, pidfile)
+                if owner == "ours" and health(args.port):
                     ready = True
                     break
+                if owner == "other":
+                    state = "PORT_OWNED_BY_OTHER"
                 time.sleep(2)
             if not ready:
                 log_tail = device.shell(f"tail -n 30 {shlex.quote(logfile)} 2>/dev/null || true")
@@ -298,7 +340,7 @@ def main(argv: list[str] | None = None) -> int:
                 elapsed = time.monotonic() - started
                 rate = float(answer.get("timings", {}).get("predicted_per_second", 0.0))
                 state = device.shell(f"cat {shlex.quote(statefile)} 2>/dev/null || echo MISSING")
-                if state != "RUNNING" or not health(args.port):
+                if state != "RUNNING" or port_owner(device, args.port, pidfile) != "ours" or not health(args.port):
                     raise RuntimeError(f"watchdog state after request: {state}")
                 results.append((rate, label, gpu_layers))
                 event(event="trial-ok", config=label, seconds=round(elapsed, 2), tokens_per_second=rate,
@@ -319,9 +361,11 @@ def main(argv: list[str] | None = None) -> int:
             active = base
             start_watchdog(device, base, model, gpu_layers, args.port, args.ctx, args.threads, args.api_key_file)
             deadline = time.monotonic() + args.startup_timeout
-            while time.monotonic() < deadline and not health(args.port):
+            final_pid = f"{base}.pid"
+            while time.monotonic() < deadline and not (port_owner(device, args.port, final_pid) == "ours"
+                                                       and health(args.port)):
                 time.sleep(2)
-            if health(args.port):
+            if port_owner(device, args.port, final_pid) == "ours" and health(args.port):
                 device.shell(f"touch {shlex.quote(readyfile)}")
                 active = None  # intentionally left running (--keep-best)
                 kept = True
@@ -331,13 +375,14 @@ def main(argv: list[str] | None = None) -> int:
                 event(event="final-start-failed", config=label, gpu_layers=gpu_layers)
                 failed = True
     finally:
-        if active is not None:
-            try:
-                stop_trial(device, active, timeout=20)
-            except Exception:  # best effort on the way out
-                pass
-        if not kept:  # --keep-best: leave the kept server reachable through its forward
-            device.unforward(args.port)
+        try:
+            if active is not None:
+                stop_trial(device, active, timeout=20, port=args.port)
+        except BaseException as error:  # incl. a second Ctrl-C; still remove the forward
+            print(f"android-model-trials: cleanup of {active} incomplete: {error!r}", file=sys.stderr)
+        finally:
+            if not kept:  # --keep-best: leave the kept server reachable through its forward
+                device.unforward(args.port)
     event(event="trial-set-finished", status="partial" if failed else "complete", journal=str(journal))
     if failed and not results:
         return 1
