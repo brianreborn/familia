@@ -136,11 +136,30 @@ $(groups)
 EOF2
 }
 
-read_line() {  # read_line PROMPT VAR ; returns 1 on EOF
-  local __p=$1 __v
+MAX_LINE=4096  # longest menu answer kept from a pipe or file (#733 M2: no unbounded reads)
+read_line() {  # read_line PROMPT VAR ; returns 1 on EOF or an overlong piped line
+  local __p=$1 __v __rest
   printf '%s' "$__p" >&2
-  IFS= read -r __v || { [ -n "$__v" ] || return 1; }
+  if [ -t 0 ]; then
+    IFS= read -r __v || { [ -n "$__v" ] || return 1; }
+  else
+    IFS= read -r -n "$MAX_LINE" __v || { [ -n "$__v" ] || return 1; }
+    if [ "${#__v}" -ge "$MAX_LINE" ]; then  # skip the rest of the line, a chunk at a time
+      while IFS= read -r -n "$MAX_LINE" __rest && [ "${#__rest}" -ge "$MAX_LINE" ]; do :; done
+      err "input line of $MAX_LINE or more characters; ignored"
+      return 1
+    fi
+  fi
+  # A terminal left in bracketed-paste mode wraps pastes in ESC[200~ ... ESC[201~.
+  # Pasted text is literal: drop the markers so they cannot reach a choice or a command.
+  __v=${__v//$'\e[200~'/}
+  __v=${__v//$'\e[201~'/}
   printf -v "$2" '%s' "$__v"
+}
+visible() {  # visible TEXT -> TEXT safe to print back: no control bytes, at most 60 chars
+  local v=${1//[^[:print:]]/?}
+  [ "${#v}" -le 60 ] || v="${v:0:60}..."
+  printf '%s' "$v"
 }
 # Menus leave only on q/quit/exit. EOF on a terminal asks again.
 # EOF on a pipe is not a successful quit (return 2).
@@ -357,7 +376,7 @@ search_ui() {  # search_ui OP TEXT ; OP is / ? n N. Returns 3 to quit the menu.
       /*|\?*) search_ui "${choice:0:1}" "${choice:1}"; return $? ;;
     esac
     if ! [[ $choice =~ ^[0-9]+$ ]] || [ "$choice" -lt 1 ] || [ "$choice" -gt ${#SK[@]} ]; then
-      say "'$choice' isn't one of the choices. Type a number from 1 to ${#SK[@]}, n, N, /word or b."; continue
+      say "'$(visible "$choice")' isn't one of the choices. Type a number from 1 to ${#SK[@]}, n, N, /word or b."; continue
     fi
     SCUR=$((choice-1))
     item_args=("${PENDING_ARGS[@]}" "${MENU_ARGS[@]}")
@@ -399,7 +418,7 @@ EOF2
     local rc=0; search_key "$choice" || rc=$?
     case $rc in 0) continue ;; 3) return 0 ;; 4) return 2 ;; esac
     if ! [[ $choice =~ ^[0-9]+$ ]] || [ "$choice" -lt 1 ] || [ "$choice" -gt "$n" ]; then
-      say "'$choice' isn't one of the choices. Type a number from 1 to $n, /word to search, or q."; continue
+      say "'$(visible "$choice")' isn't one of the choices. Type a number from 1 to $n, /word to search, or q."; continue
     fi
     g=${gs[$((choice-1))]}
     PENDING_ARGS=("${MENU_ARGS[@]}")
@@ -451,9 +470,9 @@ EOF2
       case $rc in 0) continue ;; 3) return 0 ;; 4) return 2 ;; esac
       if ! [[ $choice =~ ^[0-9]+$ ]] || [ "$choice" -lt 1 ] || [ "$choice" -gt "$n" ]; then
         if [ "$pages" -gt 1 ]; then
-          say "'$choice' isn't one of the choices. Type a number from 1 to $n, </> page, /word to search, or b."
+          say "'$(visible "$choice")' isn't one of the choices. Type a number from 1 to $n, </> page, /word to search, or b."
         else
-          say "'$choice' isn't one of the choices. Type a number from 1 to $n, /word to search, or b."
+          say "'$(visible "$choice")' isn't one of the choices. Type a number from 1 to $n, /word to search, or b."
         fi
         continue
       fi
