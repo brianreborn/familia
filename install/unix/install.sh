@@ -582,6 +582,41 @@ familia_env_scrub
 
 H="\${FAMILIA_BIND:-127.0.0.1}"; [ "\$H" = '[::1]' ] && H=::1
 familia_tools_check "\$H" "\$@"
+# #630: reapply a saved --tools value after a crash or a hand-start that omits
+# the flag. --tools none clears the save. A missing script keeps one-shot behavior.
+_tp="$REPO_DIR/scripts/tools_persist.py"
+if [ -f "\$_tp" ]; then
+  _act=\$(python3 "\$_tp" decide --bind "\$H" --port "\${FAMILIA_PORT:-9941}" -- "\$@" \${FAMILIA_EXTRA:-}) || exit \$?
+  case "\$_act" in
+    keep) ;;
+    append\ *)
+      set -- "\$@" --tools "\${_act#append }"
+      ;;
+    clear)
+      set -- "\$@" \${FAMILIA_EXTRA:-}
+      _n=\$#
+      _skip=0
+      for _t do
+        set -- "\$@" "\$_t"
+      done
+      shift \$_n
+      for _t do
+        if [ "\$_skip" = 1 ]; then _skip=0; shift; continue; fi
+        case \$_t in
+          --tools) _skip=1; shift; continue ;;
+          --tools=*) shift; continue ;;
+        esac
+        set -- "\$@" "\$_t"
+        shift
+      done
+      FAMILIA_EXTRA=
+      ;;
+    *)
+      echo "familia-start: tools persistence returned \${_act:-nothing}; refusing" >&2
+      exit 2
+      ;;
+  esac
+fi
 
 exec "\$B" -m "\$M" --host "\$H" --port "\${FAMILIA_PORT:-9941}" -c "\${FAMILIA_CTX:-4096}" --api-key-file "\$FAMILIA_KF" "\$@" \${FAMILIA_EXTRA:-}
 EOS

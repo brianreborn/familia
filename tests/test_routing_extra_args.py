@@ -7,7 +7,7 @@ familia-start (Linux and Termux) passes its own arguments to llama-server exactl
 the same override check, instead of checking them and then dropping them.
 
 The launcher is rendered from its real heredoc and run against a stub llama-server (POSIX only)."""
-import json, os, re, subprocess
+import json, os, re, shutil, subprocess
 import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -24,6 +24,9 @@ def _render(tmp_path, kind):
     pfx = tmp_path / "pfx"
     subprocess.run(["sh", "-c", 'cat > "$1" <<EOS\n' + m.group(1) + "\nEOS\n", "sh", str(out)], check=True,
                    env=dict(os.environ, PREFIX_DIR=str(pfx), PREFIX=str(pfx), VKDIR=str(tmp_path / "vk")))
+    dest = pfx / "repo" / "scripts"
+    dest.mkdir(parents=True, exist_ok=True)
+    shutil.copy(os.path.join(ROOT, "scripts", "tools_persist.py"), dest / "tools_persist.py")
     return out
 
 
@@ -46,7 +49,8 @@ def launcher(tmp_path, request):
     def run(*args, extra=None, ok=True, bind=None):
         env = {k: v for k, v in os.environ.items() if not k.startswith(("FAMILIA_", "LLAMA_"))}
         env.update(PATH=f"{bindir}:{os.environ['PATH']}", HOME=str(key.parent), FAMILIA_MODEL=str(model),
-                   FAMILIA_API_KEY_FILE=str(key), STUB_OUT=str(out))
+                   FAMILIA_API_KEY_FILE=str(key), STUB_OUT=str(out),
+                   XDG_CONFIG_HOME=str(key.parent / ".config"))
         if extra is not None:
             env["FAMILIA_EXTRA"] = extra
         if bind is not None:
@@ -98,6 +102,20 @@ def test_launcher_tools_refused_on_non_loopback_bind(launcher, argv, extra):
 
 def test_launcher_tools_allowed_on_loopback_bind(launcher):
     assert launcher("--tools", "all", bind="127.0.0.1") == ["--tools", "all"]
+
+
+def test_launcher_tools_persist_across_restart(launcher):
+    """#630: a later start with no --tools flag reapplies the saved value."""
+    assert launcher("--tools", "all", bind="127.0.0.1") == ["--tools", "all"]
+    assert launcher(bind="127.0.0.1") == ["--tools", "all"]
+    assert launcher("--tools", "none", bind="127.0.0.1") == []
+    assert launcher(bind="127.0.0.1") == []
+
+
+def test_launcher_saved_tools_refused_off_loopback(launcher):
+    assert launcher("--tools", "read_file,get_info", bind="127.0.0.1") == ["--tools", "read_file,get_info"]
+    r = launcher(bind="192.168.4.25", ok=False)
+    assert r.returncode == 2 and "--tools" in r.stderr and "loopback" in r.stderr, r.stderr
 
 
 def test_systemd_unit_passes_no_argv_and_no_extra_in_execstart():
