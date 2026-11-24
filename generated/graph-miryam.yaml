@@ -13,6 +13,7 @@
 version: 2
 hosts:
   miryam:
+    host_id: miryam-372efeab
     kind: laptop
     measured: true
     addr: REPLACE_ME
@@ -40,6 +41,7 @@ hosts:
         / tg64 16.9; min MemAvailable 3160 MiB. Real coder (Qwen3.5-2B, 64k ctx) not
         run: would leave under 3 GiB free.'
   qodesh:
+    host_id: qodesh-ff729b4e
     kind: desktop
     measured: true
     addr: REPLACE_ME
@@ -82,10 +84,12 @@ hosts:
       avx_required: false
       wake: tbd
   shalom:
+    host_id: shalom-c81c5c56
     kind: unknown
     measured: false
     gpus: null
   godslove:
+    host_id: godslove-23f43042
     kind: laptop
     measured: false
     os: freebsd-15
@@ -103,6 +107,7 @@ hosts:
       driver: null
       measured: false
   angel:
+    host_id: angel-5021f639
     kind: desktop
     measured: true
     os: freebsd
@@ -126,6 +131,7 @@ hosts:
       nvso scaffold in gpu-legacy/nvso (stubs; not required for named large model). Do not
       co-start removed-large-coder and removed-large-chat.'
   macmini:
+    host_id: macmini-d60789b1
     kind: desktop
     measured: true
     os: linux
@@ -144,6 +150,7 @@ hosts:
       measured (miryam HD620 was slower than CPU on SmolLM2). Do not co-start heavy
       coder+chat without checking MemAvailable.'
   centos10-bigram:
+    host_id: centos10-bigram-620fe4b0
     kind: desktop
     measured: true
     os: linux
@@ -165,6 +172,8 @@ hosts:
         runs 340. Placement may consider GPU offload candidates; offload still needs
         backend_status verified.'
   phone7:
+    host_id: galaxy1-db07b41d
+    alias_of: galaxy1
     kind: phone
     measured: true
     addr: REPLACE_ME
@@ -194,6 +203,8 @@ hosts:
         by the Android linker namespace (missing android.hardware.graphics.mapper@4.0-impl-sgr.so),
         so clinfo reports 0 platforms.'
   phone8:
+    host_id: galaxy2-2e567cbe
+    alias_of: galaxy2
     kind: phone
     measured: true
     addr: REPLACE_ME
@@ -223,18 +234,21 @@ hosts:
         by the Android linker namespace (missing android.hardware.graphics.mapper@4.0-impl-sgr.so),
         so clinfo reports 0 platforms.'
   galaxy1:
+    host_id: galaxy1-db07b41d
     kind: phone
     measured: false
     gpus: null
     notes: 'Samsung Galaxy A57 Termux (fleet name galaxy1). SSH via ProxyJump angel.
       Legacy measured key: phone7. Prefer galaxy1 in new docs/scope allowlists.'
   galaxy2:
+    host_id: galaxy2-2e567cbe
     kind: phone
     measured: false
     gpus: null
     notes: 'Samsung Galaxy A57 Termux (fleet name galaxy2). SSH via ProxyJump angel.
       Legacy measured key: phone8. Prefer galaxy2 in new docs/scope allowlists.'
   box:
+    host_id: box-06f5df8d
     kind: desktop
     measured: true
     local_names:

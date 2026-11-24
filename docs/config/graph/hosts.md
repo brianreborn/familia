@@ -43,5 +43,7 @@ Required fields have no defaults (validator: missing required → error). Consum
 | CFG-GRAPH-HOSTS-013 | `addr` | opt | str | — | IMPLEMENTED | `scripts/android_target.py`, `scripts/escalation_proxy.py`, `scripts/graph_router.py`, `scripts/graph_types.py`, `scripts/hosts_overlay.py`, `scripts/monitor.py` +2 |
 | CFG-GRAPH-HOSTS-014 | `user` | opt | str | — | IMPLEMENTED | `scripts/android_target.py`, `scripts/escalation.py`, `scripts/escalation_proxy.py`, `scripts/graph_router.py`, `scripts/graph_types.py`, `scripts/hermes_harness.py` +3 |
 | CFG-GRAPH-HOSTS-015 | `port` | opt | int | min 1 | IMPLEMENTED | `scripts/android_target.py`, `scripts/dogfood/dispatch.py`, `scripts/escalation_proxy.py`, `scripts/graph_router.py`, `scripts/graph_types.py`, `scripts/hermes_harness.py` +7 |
+| CFG-GRAPH-HOSTS-016 | `host_id` | opt | str | — | IMPLEMENTED | `scripts/fleet/hostid.py`, `scripts/graph_router.py`, `scripts/graph_types.py`, `scripts/swarm/deploy_fleet.py` |
+| CFG-GRAPH-HOSTS-017 | `alias_of` | opt | ref | ref → `hosts` | IMPLEMENTED | `scripts/fleet/hostid.py`, `scripts/graph_types.py` |
 
 <!-- END GENERATED: fields -->

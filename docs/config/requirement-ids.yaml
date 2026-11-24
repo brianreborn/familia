@@ -46,6 +46,12 @@ graph:
     port:
       id: CFG-GRAPH-HOSTS-015
       status: IMPLEMENTED
+    host_id:
+      id: CFG-GRAPH-HOSTS-016
+      status: IMPLEMENTED
+    alias_of:
+      id: CFG-GRAPH-HOSTS-017
+      status: IMPLEMENTED
   transports:
     kind:
       id: CFG-GRAPH-TRANSPORTS-001

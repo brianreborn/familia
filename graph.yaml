@@ -17,6 +17,7 @@ version: 2
 
 hosts:
   miryam:
+    host_id: miryam-372efeab           # canonical fleet key (registry/fleet-hosts.yaml); key above is a label
     kind: laptop
     measured: true
     # Connection details live in hosts.local.yaml overlay (#104); never commit real addr/user.
@@ -46,6 +47,7 @@ hosts:
           -t1 alone pp128 325.8 / tg64 45.8; together CPU pp128 26.9 / tg64 14.7, Vulkan pp128 134.4 / tg64 16.9;
           min MemAvailable 3160 MiB. Real coder (Qwen3.5-2B, 64k ctx) not run: would leave under 3 GiB free.
   qodesh:
+    host_id: qodesh-ff729b4e           # canonical fleet key (registry/fleet-hosts.yaml); key above is a label
     kind: desktop
     measured: true               # measured 2026-10-09 20:36 PT
     # Connection details live in hosts.local.yaml overlay (#104); OpenSSH client only on this host.
@@ -93,10 +95,12 @@ hosts:
       avx_required: false        # official win-cpu-x64 build ran on the non-AVX Athlon II X2 (2026-10-09)
       wake: tbd
   shalom:
+    host_id: shalom-c81c5c56           # canonical fleet key (registry/fleet-hosts.yaml); key above is a label
     kind: unknown
     measured: false
     gpus: null                   # inventory unknown; nothing recorded
   godslove:
+    host_id: godslove-23f43042           # canonical fleet key (registry/fleet-hosts.yaml); key above is a label
     kind: laptop
     measured: false              # reported, not measured: excluded from placement
     os: freebsd-15
@@ -114,6 +118,7 @@ hosts:
         driver: null
         measured: false
   angel:
+    host_id: angel-5021f639           # canonical fleet key (registry/fleet-hosts.yaml); key above is a label
     kind: desktop
     measured: true
     os: freebsd
@@ -145,6 +150,7 @@ hosts:
       Angel is a constrained FreeBSD host. Keep its active coder placement within
       measured RAM and leave oversized research placements inactive.
   macmini:
+    host_id: macmini-d60789b1           # canonical fleet key (registry/fleet-hosts.yaml); key above is a label
     kind: desktop
     measured: true
     # Address/login live only in ~/.config/familia/monitor.json and ~/.ssh/config (ProxyJump angel).
@@ -165,6 +171,7 @@ hosts:
       without checking MemAvailable.
 
   centos10-bigram:
+    host_id: centos10-bigram-620fe4b0           # canonical fleet key (registry/fleet-hosts.yaml); key above is a label
     kind: desktop
     # Facts measured 2026-10-19 on the host (registered Grok Bot machine). Address and login live only in
     # the private ~/.config/familia/monitor.json / ~/.ssh/config, never here.
@@ -189,6 +196,8 @@ hosts:
           Brian 2026-10-20 (#113): graph had unsupported/nouveau; host actually runs 340.
           Placement may consider GPU offload candidates; offload still needs backend_status verified.
   phone7:
+    host_id: galaxy1-db07b41d           # canonical fleet key (registry/fleet-hosts.yaml); key above is a label
+    alias_of: galaxy1              # same physical device; measured inventory kept here (legacy key)
     kind: phone
     measured: true               # measured 2026-10-09 ~22:50 PT over key-only SSH from qodesh
     # Termux sshd, key-only. Real addr/user in hosts.local.yaml (#104).
@@ -217,6 +226,8 @@ hosts:
           OpenCL unusable from Termux: the vendor libSGPUOpenCL.so is blocked by the Android
           linker namespace (missing android.hardware.graphics.mapper@4.0-impl-sgr.so), so clinfo reports 0 platforms.
   phone8:
+    host_id: galaxy2-2e567cbe           # canonical fleet key (registry/fleet-hosts.yaml); key above is a label
+    alias_of: galaxy2              # same physical device; measured inventory kept here (legacy key)
     kind: phone
     measured: true               # measured 2026-10-09 ~22:50 PT over key-only SSH from qodesh
     # Termux sshd, key-only. Real addr/user in hosts.local.yaml (#104).
@@ -248,6 +259,7 @@ hosts:
   # Fleet names (2026-10-27): galaxy1/galaxy2 are the A57 Termux phones (SSH via angel).
   # phone7/phone8 keys remain as legacy measured inventory aliases for the same hardware class.
   galaxy1:
+    host_id: galaxy1-db07b41d           # canonical fleet key (registry/fleet-hosts.yaml); key above is a label
     kind: phone
     measured: false              # fleet name; measured inventory still under legacy phone7
     gpus: null
@@ -255,6 +267,7 @@ hosts:
       Samsung Galaxy A57 Termux (fleet name galaxy1). SSH via ProxyJump angel.
       Legacy measured key: phone7. Prefer galaxy1 in new docs/scope allowlists.
   galaxy2:
+    host_id: galaxy2-2e567cbe           # canonical fleet key (registry/fleet-hosts.yaml); key above is a label
     kind: phone
     measured: false
     gpus: null
@@ -262,6 +275,7 @@ hosts:
       Samsung Galaxy A57 Termux (fleet name galaxy2). SSH via ProxyJump angel.
       Legacy measured key: phone8. Prefer galaxy2 in new docs/scope allowlists.
   box:
+    host_id: box-06f5df8d           # canonical fleet key (registry/fleet-hosts.yaml); key above is a label
     kind: desktop
     measured: true
     local_names: [grok-bot-vm-414232872, grok-bot-vm-414137730]  # OS hostname → graph host id (name is historical; kind is form factor)

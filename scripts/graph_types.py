@@ -623,6 +623,9 @@ TYPES = {
                 "windows": opt("any"),
                 # OS hostnames that map to this graph host (select_host / start.sh); not DNS
                 "local_names": opt("strlist"),
+                # canonical fleet host ID <label>-<fp8> (registry/fleet-hosts.yaml, scripts/fleet/hostid.py);
+                # the hosts.<key> name is a label. alias_of: legacy key for the same physical device.
+                "host_id": opt("str"), "alias_of": opt("ref", ref="hosts"),
                 # reachability for meshes (transport PoC, #22); key-only, never a password
                 "addr": opt("str"), "user": opt("str"), "port": opt("int", min=1)}, check_host,
                doc="physical/dedicated form-factor box (see box_archetypes.HOST_KINDS); not virtualization"),
