@@ -342,3 +342,57 @@ def test_without_m2_the_picker_steps_aside():
     finally:
         os.close(master)
         os.close(slave)
+
+
+def _descendants(pid):
+    kids, todo = [], [pid]
+    while todo:
+        p = todo.pop()
+        try:
+            with open("/proc/%d/task/%d/children" % (p, p)) as f:
+                c = [int(x) for x in f.read().split()]
+        except OSError:
+            c = []
+        kids += c
+        todo += c
+    return kids
+
+
+@needs_m2
+@pytest.mark.skipif(not os.path.isdir("/proc"), reason="needs /proc to find the picker")
+def test_menu_key_read_restores_tty_when_the_picker_is_killed_and_leaves_no_traps():
+    master, slave = os.openpty()
+    before = termios.tcgetattr(slave)
+    script = (". scripts/menu-keys.sh; read_line() { printf '%s' \"$1\" >&2; IFS= read -r \"$2\"; };"
+              "trap 'echo callers-int' INT; menu_key_read 'P: ' got 3; echo \"rc=$? got=$got\";"
+              "trap -p INT; trap -p EXIT | grep -c menu_keys || true")
+    env = dict(os.environ, TERM="xterm", ROOT=ROOT)
+    env.pop("FAMILIA_NO_TTY", None)
+    p = subprocess.Popen(["bash", "-c", script], cwd=ROOT, stdin=slave, stdout=slave, stderr=slave, env=env)
+    try:
+        deadline = time.time() + 10
+        while termios.tcgetattr(slave)[3] & termios.ICANON and time.time() < deadline:
+            time.sleep(0.05)
+        assert not termios.tcgetattr(slave)[3] & termios.ICANON, "picker never took the terminal"
+        for k in _descendants(p.pid):
+            try:
+                with open("/proc/%d/cmdline" % k, "rb") as f:
+                    if b"menu_keys.py" in f.read():
+                        os.kill(k, signal.SIGKILL)
+            except OSError:
+                pass
+        deadline = time.time() + 10
+        while not termios.tcgetattr(slave)[3] & termios.ICANON and time.time() < deadline:
+            time.sleep(0.05)
+        assert termios.tcgetattr(slave)[3] == before[3], "tty not restored after the picker died"
+        os.write(master, b"2\n")                       # now on the line prompt
+        out = _read_until(master, b"\n0", timeout=10)
+        assert p.wait(timeout=10) == 0
+        assert b"rc=0 got=2" in out
+        assert b"trap -- 'echo callers-int' SIGINT" in out   # caller's INT trap put back
+        assert b"\n0" in out                                 # no EXIT trap of ours left behind
+    finally:
+        if p.poll() is None:
+            p.kill()
+        os.close(master)
+        os.close(slave)
