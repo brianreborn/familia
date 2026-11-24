@@ -306,3 +306,29 @@ def test_serve_needs_accepted_licenses(tmp_path):
     (d / "scripts" / "licenses.py").unlink()
     r = subprocess.run(["sh", str(d / "scripts" / "serve.sh"), "coder"], env=env, capture_output=True, text=True)
     assert r.returncode == 1 and "licenses.py not found" in r.stderr and not _calls(tmp_path)
+
+
+def test_graph_llama_server_runtimes_have_flag_tables():
+    """#391: every git-pinned llama-server runtime must resolve to an in-tree flag table
+    so FAMILIA_SYNC=0 CI and FreeBSD smoke do not report 'flag support is unverified'."""
+    import yaml
+    graph = yaml.safe_load(open(os.path.join(ROOT, "graph.yaml"), encoding="utf-8"))
+    missing = []
+    for name, rt in (graph.get("runtimes") or {}).items():
+        if not isinstance(rt, dict):
+            continue
+        if rt.get("kind", "llama-server") != "llama-server":
+            continue
+        bname = lf.build_for_runtime(rt, runtime_name=name)
+        rec = lf.load(bname) if bname else None
+        commit = str(rt.get("commit") or "")
+        # pkg: pins have no llama.cpp tag; a missing table stays an explicit warning,
+        # never a guessed table (a wrong table is a blocker). Git-pinned builds must exist.
+        if rec is None and not commit.startswith("pkg:"):
+            missing.append((name, bname, rt.get("build"), commit))
+    assert missing == [], "missing registry/llama-builds tables: %r" % missing
+    # The angel FreeBSD runtime is pinned to b12359 (#632); that table must be present.
+    fb = (graph.get("runtimes") or {}).get("llama-b11669-freebsd") or {}
+    bname = lf.build_for_runtime(fb, runtime_name="llama-b11669-freebsd")
+    rec = lf.load(bname)
+    assert bname == "b12359" and rec and rec.get("commit") == fb.get("commit")

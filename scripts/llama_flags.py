@@ -173,12 +173,25 @@ def supports(build, flag, tool=SERVER):
     return "LLAMA_EXAMPLE_COMMON" in ex or tool in ex
 
 
-def build_for_runtime(rt):
-    """Build table name for a graph runtime: its 'build' tag (bNNNNN), else None."""
+def build_for_runtime(rt, runtime_name=None):
+    """Build table name for a graph runtime: its 'build' tag (bNNNNN), else flags_table.
+
+    If neither is set, a table named after the runtime is used when that file exists
+    under registry/llama-builds/ (so a pkg-backed runtime can ship a fixture without
+    editing graph.yaml).
+    """
     if not rt:
         return None
     m = re.search(r"\bb(\d{4,6})\b", str(rt.get("build", "")))
-    return "b" + m.group(1) if m else (rt.get("flags_table") or None)
+    if m:
+        return "b" + m.group(1)
+    if rt.get("flags_table"):
+        return rt.get("flags_table")
+    if runtime_name:
+        p = os.path.join(DB, runtime_name + ".json")
+        if os.path.isfile(p):
+            return runtime_name
+    return None
 
 
 def main(argv):
