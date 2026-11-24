@@ -8,7 +8,10 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 import hermes_harness as hh
 
-GRAPH = yaml.safe_load(open(os.path.join(ROOT, "graph.yaml")))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from retired_hosts import with_retired  # noqa: E402
+# Same-host routing cases use the retired qodesh nodes (removed from graph.yaml 2026-11-23) as a fixture.
+GRAPH = with_retired(yaml.safe_load(open(os.path.join(ROOT, "graph.yaml"))))
 STUB = os.path.join(ROOT, "tests", "fixtures", "mcp_stub", "server.py")
 
 

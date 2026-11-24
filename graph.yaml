@@ -45,57 +45,6 @@ hosts:
           llama-b11541: CPU stand-in coder LFM2.5-1.2B Q4_K_M -t3 alone pp128 43.5 / tg64 13.9, Vulkan SmolLM2 Q4_0
           -t1 alone pp128 325.8 / tg64 45.8; together CPU pp128 26.9 / tg64 14.7, Vulkan pp128 134.4 / tg64 16.9;
           min MemAvailable 3160 MiB. Real coder (Qwen3.5-2B, 64k ctx) not run: would leave under 3 GiB free.
-  qodesh:
-    kind: desktop
-    measured: true               # measured 2026-10-09 20:36 PT
-    # Connection details live in hosts.local.yaml overlay (#104); OpenSSH client only on this host.
-    addr: REPLACE_ME
-    user: REPLACE_ME
-    port: 22
-    os: windows
-    cpu: AMD Athlon II X2 B24 (2 cores / 2 threads)
-    threads: 2
-    ram_mib: 16379               # total; ~11490 MiB free at measurement
-    reserve_ram_mib: 4096        # policy, not measured: Windows 10 + green-roomz
-    notes: >-
-      Windows 10 Home 10.0.19045 x64. Value is 16 GB RAM (bigger CPU models than
-      miryam) but slow: ~3.0 tok/s CPU on 0.5B Q4 per green-roomz #4 (measured
-      there, not by familia). nvidia driver 341.92 present; sm11 PTX shim on E:\temp\gpu-legacy (not on PATH).
-      Drives: C: 4.6 GiB free, E: 35.4 GiB free (models go on E:).
-    gpus:
-      - vendor: nvidia
-        model: GeForce 8600 GT
-        vram_mib: 256
-        backend: cuda-sm11-ptx   # hand-written PTX + CUDA driver API (nvcuda.dll)
-        backend_status: verified
-        compute_capability: "1.1"
-        driver: 9.18.13.4192 (341.92, last Tesla-arch driver)
-        measured: true
-        notes: >-
-          Verified 2026-10-10 PT via familia gpu-legacy (feat/qodesh-legacy-gpu).
-          Fast path (full residency 57/57 MiB, OMP=2, unpinned): stories15M FP32
-          full-forward 34.3 tok/s alone; concurrent with CPU SmolLM2-135M Q4_0
-          33.3 tok/s GPU + 11.5 tok/s CPU (~3% contention). Prior 17 t/s was
-          OMP=1+pinned + 4/57 MiB resident. Catalog (#24): K2-Horizon-0.9B Q4
-          ~605 MiB too large; SmolLM2-135M Q4_0 87.4 MiB fits ~100 MiB budget
-          GGUF via ggml-sm11 (2026-10-10): SmolLM2 Q4_0 4.5 tok/s GPU, 56 MiB
-          resident (Q8_0 output stays CPU under 16 MiB VRAM margin); concurrent
-          4.5 GPU + 10.6 CPU. Backend cuda-sm11-ptx only.
-    windows:
-      repo_path: TBD
-      models_path: 'E:\temp\familia\models'   # start.bat default when E:\temp exists; else %USERPROFILE%\familia\models
-      runtime_path: TBD                  # no llama-server installed yet; start.bat looks in <repo>\runtime
-      # sm11-legacy runtime (shim + kernels.ptx) lives in E:\temp\gpu-legacy; see runtimes.
-      startup: start.bat         # manual run; scheduled-task once opted in (green-roomz uses scripts/serve-window.cmd, #18)
-      start_script: 'scripts\windows\start.bat'
-      task_name: familia-llama-server    # used only after install-task.ps1 -Install
-      autostart: false           # opt-in; flip with startup: scheduled-task after running install-task.ps1 -Install
-      avx_required: false        # official win-cpu-x64 build ran on the non-AVX Athlon II X2 (2026-10-09)
-      wake: tbd
-  shalom:
-    kind: unknown
-    measured: false
-    gpus: null                   # inventory unknown; nothing recorded
   godslove:
     kind: laptop
     measured: false              # reported, not measured: excluded from placement
@@ -287,7 +236,7 @@ meshes:
     root: ~/.familia/nexus        # peers/ + artifacts/<sha256>/ on the hub
     identity: ~/.ssh/id_ed25519
     host_key_policy: accept-new
-    members: [miryam, qodesh, phone7, phone8]
+    members: [miryam, phone7, phone8]
   lan-bt:
     type: bittorrent              # scripts/bt/; keys are magnet:<xt>:<path> (REQ-REPO-02)
     tracker: miryam
@@ -354,16 +303,6 @@ runtimes:
     spec_types: [draft-simple, ngram-simple, ngram-map-k, ngram-map-k4v, ngram-mod, ngram-cache]
 
 
-  sm11-legacy:
-    kind: sm11-legacy
-    build: "gpu-legacy run_sm11 + kernels.ptx (CUDA driver API, sm_11)"
-    commit: 7dc2b734db35e6bbbe8da3dcef4fb12eb55f865a
-    hosts: [qodesh]
-    supported_archs: [llama2c]
-    backends: [cpu, cuda-sm11-ptx]
-    spec_types: []
-    bin: gpu-legacy/out/run_sm11.exe
-
   termux-llama-cpp-0.6.0:
     kind: llama-server           # from the Termux package; pinned by package version (no upstream sha)
     build: Termux llama-cpp 0.5.0 + llama-cpp-backend-vulkan (pkg)
@@ -384,16 +323,6 @@ runtimes:
     backends: [cpu, vulkan]
     spec_types: []
 
-  llama-b11540-win-cpu:
-    kind: llama-server
-    build: b11540 win-cpu-x64
-    commit: 1e6f04a75
-    hosts: [qodesh]
-    supported_archs: [llama, qwen2, gemma2, gemma3, qwen35]  # qwen35 verified by llama-bench 2026-10-10
-    backends: [cpu]
-    spec_types: []
-    bin: E:/temp/llama-cpu/llama-server.exe
-
   lbref:
     # familia LittleBit reference runtime (numpy, docs/littlebit.md). Correctness only:
     # kind: reference has no HTTP server, so validate_graph.py --args refuses it.
@@ -401,7 +330,7 @@ runtimes:
     build: scripts/littlebit/lbref.py (familia, numpy)
     commit: lbref-v1
     bin: scripts/littlebit/lbref.py
-    hosts: [miryam, qodesh]
+    hosts: [miryam]
     supported_archs: [llama]
     backends: [cpu]
     spec_types: []
@@ -562,41 +491,6 @@ models:
 
 nodes:
 
-  cuda-sm11-decision:
-    model: stories15m-fp32
-    role: decision
-    host: qodesh
-    runtime: sm11-legacy
-    ctx: 256
-    parallel: 1
-    kv_type: f32
-    flash_attn: false
-    offload: {backend: cuda-sm11-ptx, ngl: 99, split: none, main_gpu: 0}
-    bind: 127.0.0.1
-    port: 18100
-    cache_ram_mib: 64
-    status: active
-
-  cpu-smol-decision:
-    model: smollm2-135m-q4
-    role: decision
-    host: qodesh
-    runtime: llama-b11540-win-cpu
-    ctx: 2048
-    override_reasons:            # model card / model-database deviations (#51)
-      ctx: "15-year-old qodesh (Athlon II X2, 1 thread beside the 8600 GT feeder): decision prompts are short, so 2048 keeps KV and prefill small; the card's 8192 was not measured here"
-    threads: 1                   # measured 2026-10-10: 1 thread pinned CPU0 + GPU node on CPU1 = ~30 tok/s combined; -t 2 starves the GPU feeder
-    parallel: 1
-    kv_type: q8_0
-    flash_attn: false
-    offload: {backend: cpu, ngl: 0, split: none, main_gpu: 0}
-    bind: 127.0.0.1
-    port: 18101
-    cache_ram_mib: 256
-    status: planned
-    escalates_to: [coder, cpu-resident-coder]   # docs/escalation.md: fastest measured first (miryam coder 17.4 t/s vs 0.91 here)
-    escalation: {mode: suggest}              # coder crosses host: needs first-time consent
-
   vulkan-igpu-decision:
     model: smollm2-135m-q4-linux
     role: decision
@@ -684,29 +578,6 @@ nodes:
     port: 9951
     embeddings: true
     cache_ram_mib: 0             # embedding servers keep no prompt cache
-  cpu-resident-coder:
-    # Pencilled in: green-roomz's resident 0.5B chat path on qodesh (#18).
-    # Planned nodes are schema-checked only; no placement, file or RAM checks.
-    status: active
-    model: qwen35-2b-q4km        # placeholder until a 0.5B model entry exists
-    role: coder
-    host: qodesh
-    runtime: llama-b11540-win-cpu
-    ctx: 2048
-    override_reasons:            # model card / model-database deviations (#51)
-      ctx: "15-year-old qodesh (Athlon II X2) prefills at ~1.44 t/s (measured, -t 2): 2048 tokens already take ~24 min, so a larger ctx is impractical"
-    parallel: 1
-    kv_type: q8_0
-    flash_attn: false
-    offload: {backend: cpu, ngl: 0, split: none, main_gpu: 0}
-    bind: 127.0.0.1
-    port: 9941
-    cache_ram_mib: 64
-    threads: 2
-    selection: fallback          # user-selectable; SmolLM2 stays qodesh default (Brian 2026-10-10)
-    note: "slower fallback: measured 0.91 tg / 1.44 pp t/s at -t 2 (0.69/1.06 at -t 1), coarse; use threads 2"
-
-
   # --- dogfood box multi-size topology (2026-10-26): tiny decision + mid coder.
   # Angel's active coder is a measured small model; oversized candidates remain absent.
   angel-coder:
@@ -849,7 +720,7 @@ pentests:
     agent: pentest-ops
     scope:
       # Owned-fleet allowlist only (default-deny home appliances). Prefer angel/galaxy* names.
-      allow: [miryam, angel, galaxy1, galaxy2, qodesh, shalom, godslove, phone7, phone8, box, centos10-bigram]
+      allow: [miryam, angel, galaxy1, galaxy2, godslove, phone7, phone8, box, centos10-bigram]
       deny: []
     tools:
       allow: []                 # seatbelt: dual-disable with launch_test_only; widen only by operator edit
@@ -867,7 +738,7 @@ pentests:
     node: freebsd-guardian
     agent: pentest-ops
     scope:
-      allow: [angel, galaxy1, galaxy2, miryam, phone7, phone8, box, centos10-bigram, qodesh, shalom, godslove]
+      allow: [angel, galaxy1, galaxy2, miryam, phone7, phone8, box, centos10-bigram, godslove]
       deny: []
     tools:
       allow: []
@@ -946,14 +817,6 @@ agencies:
 kv_channels:
   # C2C stage 1 (#22). Pencilled in: a second coder node does not exist yet.
   # scripts/c2c/kv_ship.py re-checks live: GGUF sha256, /props build_info, n_ctx per slot, kv types.
-  coder-self:
-    experimental: true
-    status: planned
-    from: coder
-    to: cpu-resident-coder          # placeholder peer: runtime and ctx differ today, so this cannot go active as-is
-    via: nexus
-    notes: Placeholder to exercise the type. See docs/c2c-stage1.md.
-
 options:
   # Unplaced model options (catalog only). Placement ignores this section; promote an
   # option by adding a real models: entry with a measured sha256. Everything below is
@@ -964,10 +827,9 @@ options:
     unverified: true
     sources: ["https://x.com/BrianReborn_alt/status/2106354389611094041"]
     size_note: 0.9B params; ~0.5 GB at Q4 (estimate, not measured) - needs <=~200 MB slice or heavy quant for 256 MB VRAM
-    gpu_candidate: true
-    gpu_host: qodesh
+    gpu_candidate: false         # qodesh (8600 GT) retired 2026-11-23
     placement_note: Best fit for 8600 GT always-on role per #20; partial offload (some layers on GPU) likely.
-    candidate_hosts: [qodesh, miryam]
+    candidate_hosts: [miryam]
   drex-1.5:
     role: decision
     unverified: true
@@ -981,8 +843,7 @@ options:
     unverified: true
     sources: ["https://x.com/BrianReborn_alt/status/2107800181316141401"]
     size_note: unknown
-    gpu_candidate: true
-    gpu_host: qodesh
+    gpu_candidate: false         # qodesh (8600 GT) retired 2026-11-23
     runtime_note: Diffusion LM; llama.cpp-compatible per post (drex-dlm runtime kind exists, unpinned).
     notes: "Possibly nace-ai/drex-dlm (EfficientDLM, 8.19B params, cc-by-nc-4.0) - link to Drex 1.1 not confirmed. At 8B it is not a 256 MB GPU fit either."
   laya-q8:
@@ -994,7 +855,7 @@ options:
     size_note: "Laya-Q8_0.gguf 449397600 bytes (~429 MiB); apache-2.0; miryam local_check sha256_ok 2026-10-19"
     gpu_candidate: false
     placement_note: "CPU decision/chat candidate; fits miryam/qodesh/angel RAM. FreeBSD angel's llama-b11669-freebsd runtime lists modern-bert support. No node yet."
-    candidate_hosts: [miryam, qodesh, angel]
+    candidate_hosts: [miryam, angel]
   lfm25-350m-q4km:
     role: decision
     unverified: true
@@ -1002,25 +863,22 @@ options:
     hf_repo: LiquidAI/LFM2.5-350M-GGUF
     db: LiquidAI--LFM2.5-350M-GGUF--LFM2.5-350M-Q4_K_M
     size_note: "LFM2.5-350M-Q4_K_M.gguf 229312224 bytes (~219 MiB); license lfm1.0 (read LICENSE before enable)"
-    gpu_candidate: true
-    gpu_host: qodesh
+    gpu_candidate: false         # qodesh (8600 GT) retired 2026-11-23
     placement_note: "Small CPU decision candidate for qodesh, miryam, phones, and FreeBSD angel (llama-b11669-freebsd supports lfm2). Review/accept lfm1.0 before fetching; "
-    candidate_hosts: [qodesh, miryam, phone7, phone8, angel]
+    candidate_hosts: [miryam, phone7, phone8, angel]
   glide:
     role: decision
     unverified: true
     sources: ["https://x.com/BrianReborn_alt/status/2107815038589567062"]
     size_note: unknown
-    gpu_candidate: true
-    gpu_host: qodesh
+    gpu_candidate: false         # qodesh (8600 GT) retired 2026-11-23
     notes: Decision Index winner per post.
   cloudflare-clef:
     role: decision
     unverified: true
     sources: ["https://x.com/BrianReborn_alt/status/2106238504938377271"]
     size_note: unknown
-    gpu_candidate: true
-    gpu_host: qodesh
+    gpu_candidate: false         # qodesh (8600 GT) retired 2026-11-23
     notes: On HF per post; repo id not resolved.
   gev-26b-decide:
     role: decision
@@ -1040,7 +898,7 @@ options:
     size_note: "whistle.cact 16.9 MB (HF API); checkpoints/whistle.safetensors 220.6 MB; apache-2.0"
     runtime_note: Cactus runtime (.cact, library cactus-needle); not llama-server. Needs an stt node kind before placement.
     placement_note: Phones and qodesh first (#25).
-    candidate_hosts: [phone7, phone8, qodesh]
+    candidate_hosts: [phone7, phone8]
   paradee-tts:
     role: tts
     unverified: true
@@ -1049,7 +907,7 @@ options:
     size_note: "8M params; onnx/paradee_int8.onnx 9.0 MB, paradee.onnx 37.0 MB (HF API); apache-2.0. Repo is the most likely match for the RT, not confirmed from the post."
     runtime_note: ONNX Runtime (CoreML port FluidInference/paradee-8m-coreml); not llama-server. Needs a tts node kind before placement.
     placement_note: Phones and qodesh first (#25).
-    candidate_hosts: [phone7, phone8, qodesh]
+    candidate_hosts: [phone7, phone8]
   # ---- #26 coder candidate
   qwen35-9b-coder:
     role: coder
@@ -1059,7 +917,6 @@ options:
     db: khazarai--Qwen3.5-9B-Kimi-k3-Distilled-GGUF--Qwen3.5-9B-Kimi-k3-Distilled-q8_0
     size_note: "Q8_0 main 9.53 GB (registry damp); apache-2.0; Q4 not in that damp pick — too big for phones/miryam"
     placement_note: qodesh only by RAM (16 GB, ~11.5 GB free). miryam (7 GB, 3 GB reserve) cannot fit it. No node yet (weights absent).
-    candidate_hosts: [qodesh]
     notes: Kimi-k3 distill; HF + license resolved via #78 damp-run. Still planned #26 for placement/measurement.
   # ---- docs/models-catalog.md additions (RT'd, bucket 2; all unverified)
   youtu-parsing-omni:
@@ -1093,8 +950,7 @@ options:
     unverified: true
     sources: ["https://x.com/BrianReborn_alt/status/2106237127449362760"]
     size_note: "0.6B-27B family (from post); only the 0.6B could approach the 256 MB GPU slice, and only heavily quantized"
-    gpu_candidate: true
-    gpu_host: qodesh
+    gpu_candidate: false         # qodesh (8600 GT) retired 2026-11-23
   kev-1.0:
     role: decision
     unverified: true
@@ -1121,7 +977,7 @@ options:
     db: Takenoko12345678--Qwen3.5-0.8B-Japanese-SFT-v2-GGUF--Qwen3.5-0.8B-Japanese-SFT-v2-Q4_K_M
     size_note: "Q4_K_M 529296736 bytes (~505 MiB); apache-2.0; registry damp entry present"
     placement_note: "Fits miryam/phones/qodesh as a small chat option; no node yet (weights not on hosts)."
-    candidate_hosts: [miryam, phone7, phone8, qodesh]
+    candidate_hosts: [miryam, phone7, phone8]
     notes: Japanese fine-tune; tiny local option. Arch qwen35 is in the pinned llama.cpp build (qwen35-2b-q4km runs today).
   lift-extract:
     role: vision

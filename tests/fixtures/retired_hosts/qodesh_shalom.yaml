@@ -1,0 +1,159 @@
+# Retired fleet hosts qodesh and shalom (removed from graph.yaml 2026-11-23 PT).
+# Test-only fixture: the schema features they exercised (Windows host block, sm11-legacy
+# runtime, cuda-sm11-ptx offload, unknown host kind, planned/fallback nodes) keep coverage.
+# Never merged into a live graph. See tests/retired_hosts.py.
+hosts:
+  qodesh:
+    kind: desktop
+    measured: true
+    addr: REPLACE_ME
+    user: REPLACE_ME
+    port: 22
+    os: windows
+    cpu: AMD Athlon II X2 B24 (2 cores / 2 threads)
+    threads: 2
+    ram_mib: 16379
+    reserve_ram_mib: 4096
+    notes: 'Windows 10 Home 10.0.19045 x64. Value is 16 GB RAM (bigger CPU models than miryam) but slow:
+      ~3.0 tok/s CPU on 0.5B Q4 per green-roomz #4 (measured there, not by familia). nvidia driver 341.92
+      present; sm11 PTX shim on E:\temp\gpu-legacy (not on PATH). Drives: C: 4.6 GiB free, E: 35.4 GiB
+      free (models go on E:).'
+    gpus:
+    - vendor: nvidia
+      model: GeForce 8600 GT
+      vram_mib: 256
+      backend: cuda-sm11-ptx
+      backend_status: verified
+      compute_capability: '1.1'
+      driver: 9.18.13.4192 (341.92, last Tesla-arch driver)
+      measured: true
+      notes: 'Verified 2026-10-10 PT via familia gpu-legacy (feat/qodesh-legacy-gpu). Fast path (full
+        residency 57/57 MiB, OMP=2, unpinned): stories15M FP32 full-forward 34.3 tok/s alone; concurrent
+        with CPU SmolLM2-135M Q4_0 33.3 tok/s GPU + 11.5 tok/s CPU (~3% contention). Prior 17 t/s was
+        OMP=1+pinned + 4/57 MiB resident. Catalog (#24): K2-Horizon-0.9B Q4 ~605 MiB too large; SmolLM2-135M
+        Q4_0 87.4 MiB fits ~100 MiB budget GGUF via ggml-sm11 (2026-10-10): SmolLM2 Q4_0 4.5 tok/s GPU,
+        56 MiB resident (Q8_0 output stays CPU under 16 MiB VRAM margin); concurrent 4.5 GPU + 10.6 CPU.
+        Backend cuda-sm11-ptx only.'
+    windows:
+      repo_path: TBD
+      models_path: E:\temp\familia\models
+      runtime_path: TBD
+      startup: start.bat
+      start_script: scripts\windows\start.bat
+      task_name: familia-llama-server
+      autostart: false
+      avx_required: false
+      wake: tbd
+  shalom:
+    kind: unknown
+    measured: false
+    gpus: null
+runtimes:
+  sm11-legacy:
+    kind: sm11-legacy
+    build: gpu-legacy run_sm11 + kernels.ptx (CUDA driver API, sm_11)
+    commit: 7dc2b734db35e6bbbe8da3dcef4fb12eb55f865a
+    hosts:
+    - qodesh
+    supported_archs:
+    - llama2c
+    backends:
+    - cpu
+    - cuda-sm11-ptx
+    spec_types: []
+    bin: gpu-legacy/out/run_sm11.exe
+  llama-b11540-win-cpu:
+    kind: llama-server
+    build: b11540 win-cpu-x64
+    commit: 1e6f04a75
+    hosts:
+    - qodesh
+    supported_archs:
+    - llama
+    - qwen2
+    - gemma2
+    - gemma3
+    - qwen35
+    backends:
+    - cpu
+    spec_types: []
+    bin: E:/temp/llama-cpu/llama-server.exe
+nodes:
+  cuda-sm11-decision:
+    model: stories15m-fp32
+    role: decision
+    host: qodesh
+    runtime: sm11-legacy
+    ctx: 256
+    parallel: 1
+    kv_type: f32
+    flash_attn: false
+    offload:
+      backend: cuda-sm11-ptx
+      ngl: 99
+      split: none
+      main_gpu: 0
+    bind: 127.0.0.1
+    port: 18100
+    cache_ram_mib: 64
+    status: active
+  cpu-smol-decision:
+    model: smollm2-135m-q4
+    role: decision
+    host: qodesh
+    runtime: llama-b11540-win-cpu
+    ctx: 2048
+    override_reasons:
+      ctx: '15-year-old qodesh (Athlon II X2, 1 thread beside the 8600 GT feeder): decision prompts are
+        short, so 2048 keeps KV and prefill small; the card''s 8192 was not measured here'
+    threads: 1
+    parallel: 1
+    kv_type: q8_0
+    flash_attn: false
+    offload:
+      backend: cpu
+      ngl: 0
+      split: none
+      main_gpu: 0
+    bind: 127.0.0.1
+    port: 18101
+    cache_ram_mib: 256
+    status: planned
+    escalates_to:
+    - coder
+    - cpu-resident-coder
+    escalation:
+      mode: suggest
+  cpu-resident-coder:
+    status: active
+    model: qwen35-2b-q4km
+    role: coder
+    host: qodesh
+    runtime: llama-b11540-win-cpu
+    ctx: 2048
+    override_reasons:
+      ctx: '15-year-old qodesh (Athlon II X2) prefills at ~1.44 t/s (measured, -t 2): 2048 tokens already
+        take ~24 min, so a larger ctx is impractical'
+    parallel: 1
+    kv_type: q8_0
+    flash_attn: false
+    offload:
+      backend: cpu
+      ngl: 0
+      split: none
+      main_gpu: 0
+    bind: 127.0.0.1
+    port: 9941
+    cache_ram_mib: 64
+    threads: 2
+    selection: fallback
+    note: 'slower fallback: measured 0.91 tg / 1.44 pp t/s at -t 2 (0.69/1.06 at -t 1), coarse; use threads
+      2'
+kv_channels:
+  coder-self:
+    experimental: true
+    status: planned
+    from: coder
+    to: cpu-resident-coder
+    via: nexus
+    notes: Placeholder to exercise the type. See docs/c2c-stage1.md.

@@ -36,9 +36,9 @@ Other hosts are reached in this order:
    It is never committed:
    ```json
    {"hosts": {
-     "qodesh": {"ssh": "qodesh"},
+     "angel": {"ssh": "angel"},
      "phone7": {"ssh": "phone7", "ssh_opts": ["-i", "~/.ssh/familia_monitor", "-o", "IdentitiesOnly=yes"]},
-     "shalom": {"enabled": false},
+     "godslove": {"enabled": false},
      "miryam": {"local": true}
    }}
    ```
@@ -147,7 +147,7 @@ machines and phones.
   WMI video controller; the legacy 341.xx driver reports `N/A` for most nvidia-smi fields). It is sent
   as `powershell -NoProfile -NonInteractive -Command "[Console]::In.ReadToEnd() | Invoke-Expression"`,
   so the command contains no `$` and works the same whether sshd's shell is cmd.exe or Git bash. The
-  Windows host needs OpenSSH **Server** to be monitored (qodesh currently has only the client). Running the
+  Windows host needs OpenSSH **Server** to be monitored. Running the
   console *on* Windows works without ControlMaster, which Win32-OpenSSH lacks.
 
 ## Hardened monitoring key (optional)

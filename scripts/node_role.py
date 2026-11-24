@@ -18,8 +18,8 @@ NODE_ROLES = frozenset(
 
 # Hostnames / aliases that appear as prefixes in transitional fleet keys.
 _DEFAULT_HOST_PREFIXES = (
-    "angel", "gabriel", "miryam", "qodesh", "box", "galaxy1", "galaxy2",
-    "phone7", "phone8", "godslove", "shalom", "centos10",
+    "angel", "gabriel", "miryam", "box", "galaxy1", "galaxy2",
+    "phone7", "phone8", "godslove", "centos10",
 )
 
 

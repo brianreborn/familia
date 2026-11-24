@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.join(ROOT, "scripts"))
 import start_graph  # noqa: E402
 import validate_graph  # noqa: E402
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 GRAPH = validate_graph.load(os.path.join(ROOT, "graph.yaml"))
 
 
@@ -31,7 +32,7 @@ def test_local_topology_starts_only_local_active_nodes_and_routes():
     nodes, remote, gateways, omitted, remote_gateways = start_graph.local_topology(graph(), "miryam")
     # embed is planned since 146b712 (#38 defers EmbeddingGemma-2): listed in omitted, not started
     assert nodes == ["coder"]
-    assert {name for name, _ in remote} >= {"cuda-sm11-decision", "cpu-resident-coder"}
+    assert {name for name, _ in remote} >= {"angel-coder"}
     assert len(gateways) == 1
     name, gateway, aliases = gateways[0]
     assert name == "roomz"
@@ -57,7 +58,8 @@ def test_freebsd_host_runs_its_nodes_without_starting_a_gateway():
 
 
 def test_local_active_node_with_unimplemented_runtime_fails_closed():
-    g = graph()
+    from retired_hosts import with_retired  # cuda-sm11-decision now lives only in a test fixture
+    g = with_retired(graph())
     g["nodes"]["cuda-sm11-decision"]["host"] = "miryam"
     with pytest.raises(start_graph.StartupError, match="unsupported runtime kind"):
         start_graph.validate_local_nodes(g, "miryam", ["cuda-sm11-decision"], check_files=False)

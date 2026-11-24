@@ -3,7 +3,10 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "scripts"))
 from graph_types import validate_types  # noqa: E402
 import validate_graph  # noqa: E402
-BASE = validate_graph.load(os.path.join(ROOT, "graph.yaml"))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from retired_hosts import with_retired  # noqa: E402
+# qodesh (the only Windows host) retired 2026-11-23; its block lives in a test fixture.
+BASE = with_retired(validate_graph.load(os.path.join(ROOT, "graph.yaml")))
 def w(): x = copy.deepcopy(BASE); return x, x["hosts"]["qodesh"]["windows"]
 def has(x, frag):
     e = validate_types(x); assert any(frag in m for m in e), e

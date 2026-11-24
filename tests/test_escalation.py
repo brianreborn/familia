@@ -91,6 +91,11 @@ def test_handoff_is_compact():
 def test_real_graph_valid_and_qodesh_prefers_miryam():
     gr = yaml.safe_load(open(os.path.join(ROOT, "graph.yaml")))
     assert not [e for e in validate_types(gr) if "escalat" in e]
+    # qodesh retired 2026-11-23: its escalating node now lives in a test fixture.
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from retired_hosts import with_retired
+    gr = with_retired(gr)
+    assert not [e for e in validate_types(gr) if "escalat" in e]
     t = [x["node"] for x in E.targets(gr, "cpu-smol-decision")]
     assert t[:2] == ["coder", "cpu-resident-coder"]
     d = E.decide(gr, "cpu-smol-decision", {"failures": 9}, RECS, {})

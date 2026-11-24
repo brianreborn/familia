@@ -1535,7 +1535,7 @@ def comment_author_login(c):
 def verifiable_runner_comment(comment, runner):
     """A claim or heartbeat counts when it is well-formed and its author is
     an allowed runner login, whatever the runner name (Race NB2: unknown
-    peers such as box, qodesh, shalom or note9 still block). With
+    peers such as box or note9 still block). With
     SWARM_RUNNER_LOGINS unset nothing counts (Race B3, fail closed); live
     mode is refused in that case by enforce_live_identity, so this only
     affects dry-run."""

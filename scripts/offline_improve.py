@@ -342,7 +342,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     peers = [p.strip() for p in args.peers.split(",") if p.strip()] or peer_hosts(graph, args.host)
     # Always try common fleet aliases if graph empty
     if not peers:
-        peers = [p for p in ("miryam", "box", "qodesh", "angel") if p.lower() != args.host.lower()]
+        peers = [p for p in ("miryam", "box", "angel") if p.lower() != args.host.lower()]
 
     def check() -> Tuple[bool, List[dict]]:
         if args.offline or os.environ.get("FAMILIA_OFFLINE_IMPROVE") == "force":

@@ -678,7 +678,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     graph = oi._load_graph(Path(args.graph))
     peers = [p.strip() for p in args.peers.split(",") if p.strip()] or oi.peer_hosts(graph, args.host)
     if not peers:
-        peers = [p for p in ("miryam", "box", "qodesh", "angel") if p.lower() != args.host.lower()]
+        peers = [p for p in ("miryam", "box", "angel") if p.lower() != args.host.lower()]
 
     extra_health = [u.strip() for u in args.health_urls.split(",") if u.strip()]
     health_urls = health_urls_from_env_and_graph(graph, args.host, extra=extra_health)
