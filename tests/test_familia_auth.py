@@ -14,11 +14,22 @@ def test_env_order_and_comma_list(tmp_path):
     assert FA.api_key(str(tmp_path), {"API_KEY_FILE": str(f)}) == "filekey"
 
 
-def test_bootstrap_root_secrets(tmp_path):
+def test_bootstrap_root_secrets(tmp_path, capsys):
+    """Legacy .secrets is a migration source, not a lookup path."""
     d = tmp_path / "code-bootstraps-llama.cpp" / ".secrets"; d.mkdir(parents=True)
-    (d / "api-keys").write_text("# llama-server API key(s)\nrootkey\n")
+    sec = d / "api-keys"
+    sec.write_text("# llama-server API key(s)\nrootkey\n")
+    sec.chmod(0o600)
+    env = {"XDG_CONFIG_HOME": str(tmp_path / "cfg"), "HOME": str(tmp_path / "home")}
     # Isolate from this machine's real instance key (~/.config/familia/instances/*/api-keys).
-    assert FA.api_key(str(tmp_path), {"XDG_CONFIG_HOME": str(tmp_path / "cfg")}) == "rootkey"
+    assert FA.api_key(str(tmp_path), env) == ""
+    assert FA.migrate_instance_key(port="9931", root=str(tmp_path), env=env) == "rootkey"
+    err = capsys.readouterr().err
+    assert "copied API key" in err and "#419" in err and "rootkey" not in err
+    inst = FA.instance_key_file(port="9931", env=env)
+    assert stat.S_IMODE(os.stat(inst).st_mode) == 0o600
+    assert FA.api_key(str(tmp_path), env) == "rootkey"
+    assert FA.migrate_instance_key(port="9931", root=str(tmp_path), env=env) == "rootkey"
 
 
 def test_incoming_auth_passes_through():
@@ -198,6 +209,11 @@ def test_key_for_url_uses_the_urls_port(tmp_path):
     assert FA.key_for_url("http://localhost:9931", env=env) == "k-default"
     env["FAMILIA_API_KEY"] = "explicit"
     assert FA.key_for_url("http://127.0.0.1:45109", env=env) == "explicit"
+    env.pop("FAMILIA_API_KEY")
+    override = tmp_path / "override.key"
+    override.write_text("from-file\n")
+    env["FAMILIA_API_KEY_FILE"] = str(override)
+    assert FA.key_for_url("http://127.0.0.1:45109", env=env) == "from-file"
 
 
 # --- combined key fix: persistence across restart + nested forwarding -------------------------
@@ -285,14 +301,29 @@ def test_familia_api_key_file_accepted(tmp_path):
     assert fa.api_key(str(tmp_path), env) == "from-api-env"
 
 
-def test_installer_key_file_is_a_fallback(tmp_path):
+def test_installer_key_file_is_a_fallback(tmp_path, capsys):
+    """api.key is migrated once into the instance file and is not a lookup candidate."""
     import familia_auth as fa
-    env = {"XDG_CONFIG_HOME": str(tmp_path)}
-    inst = fa.installer_key_file(env=env)
-    assert inst == str(tmp_path / "familia" / "api.key")
+    env = {"XDG_CONFIG_HOME": str(tmp_path), "HOME": str(tmp_path / "home")}
+    legacy = fa.installer_key_file(env=env)
+    assert legacy == str(tmp_path / "familia" / "api.key")
     cands = fa.candidate_key_files(env=env)
-    assert cands[0] == fa.instance_key_file(env=env)
-    assert inst in cands and cands.index(inst) > 0
+    assert cands == [fa.instance_key_file(env=env)]
+    assert legacy not in cands
+    os.makedirs(os.path.dirname(legacy))
+    with open(legacy, "w", encoding="ascii") as f:
+        f.write("legacytoken")
+    os.chmod(legacy, 0o600)
+    assert fa.api_key(str(tmp_path), env) == ""
+    assert fa.ensure_instance_key(env=env, root=str(tmp_path)) == "legacytoken"
+    assert fa.api_key(str(tmp_path), env) == "legacytoken"
+    err = capsys.readouterr().err
+    assert "copied API key" in err and "#419" in err and "legacytoken" not in err
+    # a later different legacy token must not rotate the instance key
+    with open(legacy, "w", encoding="ascii") as f:
+        f.write("othertoken")
+    os.chmod(legacy, 0o600)
+    assert fa.ensure_instance_key(env=env, root=str(tmp_path)) == "legacytoken"
 
 
 def test_load_or_create_writes_lf_no_bom(tmp_path):
@@ -345,6 +376,78 @@ def test_publish_unlinks_on_failed_write(tmp_path, monkeypatch):
     else:
         raise AssertionError("expected OSError")
     assert not os.path.exists(pth)
+
+
+def test_port_keyed_lookup_ignores_other_layouts(tmp_path):
+    """Two instances keep different keys. api.key and a Termux env do not change that."""
+    env = {"XDG_CONFIG_HOME": str(tmp_path), "HOME": str(tmp_path / "home")}
+    for port, key in (("9941", "key-aaa"), ("9955", "key-bbb")):
+        d = tmp_path / "familia" / "instances" / port
+        d.mkdir(parents=True)
+        p = d / "api-keys"
+        p.write_text("# llama-server API key(s), one per line\n" + key + "\n")
+        p.chmod(0o600)
+    legacy = tmp_path / "familia" / "api.key"
+    legacy.write_text("legacy-ccc")
+    legacy.chmod(0o600)
+    assert FA.key_for_url("http://127.0.0.1:9941/v1/models", env=env) == "key-aaa"
+    assert FA.key_for_url("http://127.0.0.1:9955/v1/models", env=env) == "key-bbb"
+    assert FA.api_key(str(tmp_path), dict(env, FAMILIA_PORT="9941")) == "key-aaa"
+    assert FA.api_key(str(tmp_path), dict(env, FAMILIA_PORT="9955")) == "key-bbb"
+    termux = dict(env, TERMUX_VERSION="0.118", PREFIX="/data/data/com.termux/files/usr", FAMILIA_PORT="9941")
+    plain = dict(env, FAMILIA_PORT="9941")
+    assert FA.api_key(str(tmp_path), termux) == FA.api_key(str(tmp_path), plain) == "key-aaa"
+    assert FA.key_for_url("http://127.0.0.1:9955", env=termux) == "key-bbb"
+    assert not hasattr(FA, "termux_api_key_file") and not hasattr(FA, "is_termux")
+
+
+def test_env_override_beats_the_instance_file(tmp_path):
+    env = {"XDG_CONFIG_HOME": str(tmp_path), "HOME": str(tmp_path), "FAMILIA_PORT": "9941"}
+    inst = FA.instance_key_file(env=env)
+    os.makedirs(os.path.dirname(inst))
+    with open(inst, "w", encoding="ascii") as f:
+        f.write("# c\ninstance-key\n")
+    os.chmod(inst, 0o600)
+    assert FA.api_key(str(tmp_path), dict(env, FAMILIA_API_KEY="from-env")) == "from-env"
+    f = tmp_path / "explicit"
+    f.write_text("from-file\n")
+    f.chmod(0o600)
+    assert FA.api_key(str(tmp_path), dict(env, API_KEY_FILE=str(f))) == "from-file"
+    g = tmp_path / "other"
+    g.write_text("from-familia-file\n")
+    g.chmod(0o600)
+    assert FA.api_key(str(tmp_path), dict(env, FAMILIA_API_KEY_FILE=str(g))) == "from-familia-file"
+
+
+def test_migration_perms_symlink_and_loose_source(tmp_path, capsys):
+    env = {"XDG_CONFIG_HOME": str(tmp_path / "cfg"), "HOME": str(tmp_path / "home")}
+    legacy = FA.installer_key_file(env=env)
+    os.makedirs(os.path.dirname(legacy))
+    with open(legacy, "w", encoding="ascii") as f:
+        f.write("tightkey")
+    os.chmod(legacy, 0o644)
+    assert FA.migrate_instance_key(env=env, root=str(tmp_path)) == ""
+    assert "group- or world-readable" in capsys.readouterr().err
+    assert not os.path.exists(FA.instance_key_file(env=env))
+    os.chmod(legacy, 0o600)
+    link = tmp_path / "cfg" / "familia" / "link.key"
+    os.symlink(legacy, link)
+    # a symlink source is not copied; the real 0600 file still is
+    got = FA.migrate_instance_key(env=env, root=str(tmp_path))
+    assert got == "tightkey"
+    inst = FA.instance_key_file(env=env)
+    assert stat.S_IMODE(os.stat(inst).st_mode) == 0o600
+    assert not os.path.islink(inst)
+    # destination symlink is not followed and the target is left alone
+    target = tmp_path / "target"
+    target.write_text("do-not-touch\n")
+    dest = tmp_path / "cfg" / "familia" / "instances" / "7777" / "api-keys"
+    dest.parent.mkdir(parents=True)
+    os.symlink(target, dest)
+    with pytest.raises(OSError):
+        FA.migrate_instance_key(port="7777", env=env, root=str(tmp_path))
+    assert target.read_text() == "do-not-touch\n"
+    assert os.path.islink(dest)
 
 
 def test_empty_leftover_key_file_is_replaced(tmp_path, monkeypatch):

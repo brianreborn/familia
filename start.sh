@@ -218,7 +218,18 @@ if [ ! -f "$BACKEND_START" ] && [ -f "$ROOT/../code-bootstraps-llama.cpp/start.s
   BACKEND_START="$ROOT/../code-bootstraps-llama.cpp/start.sh"
 fi
 
-# One instance per port (docs/api-key-design.md): probe it WITH the instance key first.
+# One instance per port (docs/api-key-design.md). The canonical key is
+# instances/<port>/api-keys. On first start, copy a legacy api.key or
+# .secrets/api-keys into that file (#419) before the probe so the key the
+# client sends is the key for this port.
+if [ -f "$ROOT/scripts/familia_auth.py" ]; then
+  if ! FAMILIA_PORT="${FAMILIA_PORT:-${PORT:-9931}}" python3 "$ROOT/scripts/familia_auth.py" ensure-instance; then
+    say "could not prepare the instance API key; refusing"
+    exit 1
+  fi
+fi
+
+# Probe WITH the instance key first.
 #   up (0)            -> already running: reuse it, do not bootstrap a second one
 #   key rejected (4)  -> a server is there but rejects our key: misconfiguration, stop loudly
 #   nothing there (3) -> start it

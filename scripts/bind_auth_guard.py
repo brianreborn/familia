@@ -7,11 +7,11 @@ exception: a key is required on every bind, loopback included, matching the
 installer F-10 policy (a key on every bind). The key is passed as
 --api-key-file. --api-key on argv is refused (it shows in ps).
 
-There are two on-disk layouts and no migration yet (see GitHub issue #419).
-Canonical for graph-launched nodes (serve.sh, start.bat, graph_router,
-familia_auth's default path) is instances/<port>/api-keys. familia-start
-uses ~/.config/familia/api.key. Clients accept API_KEY_FILE or
-FAMILIA_API_KEY_FILE as an override.
+The canonical store is instances/<port>/api-keys (mode 0600) on every platform
+(#419). ~/.config/familia/api.key and legacy .secrets/api-keys are migration
+sources: --ensure copies the first safe one into the instance file on first
+start and logs a notice. They are not a second lookup path. API_KEY_FILE or
+FAMILIA_API_KEY_FILE is an explicit override.
 
 The file must be a regular file (not a symlink), owner-readable, and not
 group- or world-readable (0600 or 0400 are both accepted). Every
@@ -115,6 +115,30 @@ def parse_host_and_key(argv):
     if isinstance(host, str) and host.startswith("[") and host.endswith("]"):
         host = host[1:-1]
     return host, key_file, api_key
+
+
+def parse_port(argv, default=None):
+    """Last --port before --extra-start, else familia_auth's default."""
+    import familia_auth
+    args = _strip_bin(argv)
+    port = None
+    i = 0
+    while i < len(args):
+        a = str(args[i])
+        if a == "--extra-start":
+            break
+        if a == "--port" and i + 1 < len(args) and str(args[i + 1]) != "--extra-start":
+            port = str(args[i + 1])
+            i += 2
+            continue
+        if a.startswith("--port="):
+            port = a.split("=", 1)[1]
+            i += 1
+            continue
+        i += 1
+    if port and port.isdigit() and 1 <= int(port) <= 65535:
+        return port
+    return str(default or familia_auth.DEFAULT_PORT)
 
 
 def parse_key_files(argv):
@@ -234,11 +258,13 @@ def check(argv, ensure=False):
         )
     key_files = parse_key_files(argv)
     if ensure:
+        port = parse_port(argv)
         for path in key_files:
             if not path:
                 continue
             try:
                 familia_auth.load_or_create_key_file(path)
+                familia_auth.seed_instance_from_file(port, path)
             except OSError as e:
                 return False, "cannot create API key file %s (%s)" % (path, e.__class__.__name__)
             except familia_auth.MissingKey as e:

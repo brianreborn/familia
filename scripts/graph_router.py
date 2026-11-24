@@ -652,9 +652,11 @@ def main(argv=None):
     key = None
     if not a.no_auth:
         import familia_auth
-        path = a.api_key_file or os.environ.get("API_KEY_FILE") or familia_auth.instance_key_file(port=a.port)
+        path = (a.api_key_file or os.environ.get("API_KEY_FILE") or os.environ.get("FAMILIA_API_KEY_FILE")
+                or familia_auth.instance_key_file(port=a.port))
         try:
             key = familia_auth.load_or_create_key_file(os.path.expanduser(path))
+            familia_auth.seed_instance_from_file(a.port, os.path.expanduser(path))
         except (OSError, familia_auth.MissingKey) as e:
             print(f"graph-router: ERROR: cannot read or create API key file {path} ({e.__class__.__name__}); not starting",
                   file=sys.stderr); return 2

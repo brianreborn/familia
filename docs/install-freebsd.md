@@ -51,8 +51,9 @@ reused); the FreeBSD `llama-cpp` pkg is not used. The installer and
 launcher refuse a llama-server whose `--help` lacks `--api-key-file`.
 
 Launcher (`~/.local/bin/familia-start`): loopback only (`localhost` maps
-to 127.0.0.1), API key `~/.config/familia/api.key` required (0600, owned
-by you, not a symlink), `LLAMA_API_KEY` and every `LLAMA_ARG_*` scrubbed,
+to 127.0.0.1), API key `~/.config/familia/instances/<port>/api-keys` required (0600,
+owned by you, not a symlink; a legacy `~/.config/familia/api.key` is copied in
+on first start), `LLAMA_API_KEY` and every `LLAMA_ARG_*` scrubbed,
 FAMILIA_EXTRA/argv `--host* --port* --api-key* --ssl* --path*` refused,
 FAMILIA_MODEL a bare name in models/ or an absolute existing file (no `..`),
 an unset or C/POSIX locale gets LC_CTYPE=C.UTF-8 (and LANG=C.UTF-8;

@@ -4,23 +4,29 @@ Every client that talks to :9931 (or any gateway that requires a key) must call
 auth_headers() / open_url() instead of building a bare urllib.Request. Requiring the key
 on the server is not enough: every caller, including internal and recursive ones, must send it.
 
-Key lookup order (first hit wins):
+The canonical store on every platform (Linux, Termux/phone, FreeBSD, Windows) is the
+per-instance file ${XDG_CONFIG_HOME:-~/.config}/familia/instances/<port>/api-keys
+(%APPDATA%\\familia\\instances\\<port>\\api-keys on Windows), mode 0600. The port the
+client calls picks the key. Search order between layouts does not (#419).
+
+Lookup (first hit wins):
   1. FAMILIA_API_KEY            explicit override
   2. LLAMA_API_KEY              set by code-bootstraps serve.sh (comma list; first key used)
   3. API_KEY_FILE or FAMILIA_API_KEY_FILE  (either name; first set wins)
-  4. the per-instance key file  ${XDG_CONFIG_HOME:-~/.config}/familia/instances/<port>/api-keys
-                                (%APPDATA%\familia\instances\<port> on Windows; port = FAMILIA_PORT/PORT, 9931)
-                                This is the canonical layout for graph-launched nodes.
-  5. the familia-start installer file  ${XDG_CONFIG_HOME:-~/.config}/familia/api.key
-                                (no migration between this and the per-instance file; see #419)
-  6. legacy <bootstrap root>/.secrets/api-keys for FAMILIA_BOOTSTRAP_ROOT, ROOT/code-bootstraps-llama.cpp,
-     ROOT/../code-bootstraps-llama.cpp, ~/code-bootstraps-llama.cpp
-The key is never generated here; serve.sh / start.bat / familia-start create it once and never rotate it.
+  4. instances/<port>/api-keys  port = the URL's port, else FAMILIA_PORT/PORT, else 9931
+An explicit env override is not an ambiguity: it wins for that process.
+
+~/.config/familia/api.key and legacy <bootstrap>/.secrets/api-keys are migration
+sources only. On first start, ensure-instance / the launchers copy the first safe
+source into the instance file and log a notice. They are not consulted at lookup.
+There is no Termux-only order (PR #321's termux_api_key_file check is not part of this layout).
 
 CLI:  python3 scripts/familia_auth.py curl-config -o FILE
                                                     -> writes 'header = "Authorization: Bearer ..."' to a NEW
                                                        0600 FILE for `curl -K FILE` (never to stdout; #177)
       python3 scripts/familia_auth.py fingerprint   -> safe-to-log HMAC-SHA256 key id
+      python3 scripts/familia_auth.py ensure-instance -> copy a legacy key into instances/<port>/api-keys
+                                                       or create that file (0600); the key stays off stdout
       python3 scripts/familia_auth.py has-key       -> exit 0 when a key is found
       python3 scripts/familia_auth.py probe [URL]   -> authenticated probe of the instance:
                                                        0 up, 3 nothing listening, 4 key rejected (401/403:
@@ -30,6 +36,7 @@ import hashlib
 import hmac
 import os
 import secrets
+import stat
 import sys
 import urllib.parse
 import urllib.request
@@ -76,7 +83,7 @@ def instance_key_file(port=None, env=None):
 
 
 def installer_key_file(env=None):
-    """Default familia-start key path (~/.config/familia/api.key). Not a migration (#419)."""
+    """Legacy familia-start path (~/.config/familia/api.key). Migration source only (#419)."""
     env = os.environ if env is None else env
     if os.name == "nt":
         base = env.get("APPDATA") or os.path.expanduser("~")
@@ -85,26 +92,280 @@ def installer_key_file(env=None):
     return os.path.join(base, "familia", "api.key")
 
 
+def migration_sources(root=ROOT, env=None):
+    """Legacy files copied into the instance file on first start. Not lookup candidates."""
+    env = os.environ if env is None else env
+    out = []
+
+    def add(path):
+        if path and path not in out:
+            out.append(path)
+
+    add(installer_key_file(env=env))
+    # Installers write $HOME/.config/familia/api.key even when XDG_CONFIG_HOME is set.
+    home = env.get("HOME") or os.path.expanduser("~")
+    add(os.path.join(home, ".config", "familia", "api.key"))
+    if os.name == "nt":
+        add(os.path.join(env.get("USERPROFILE") or home, ".config", "familia", "api.key"))
+    roots = [env.get("FAMILIA_BOOTSTRAP_ROOT", ""),
+             os.path.join(root, "code-bootstraps-llama.cpp"),
+             os.path.join(os.path.dirname(root), "code-bootstraps-llama.cpp"),
+             os.path.join(home, "code-bootstraps-llama.cpp")]
+    for r in roots:
+        if r:
+            add(os.path.join(r, ".secrets", "api-keys"))
+    return out
+
+
 def candidate_key_files(root=ROOT, env=None):
+    """Explicit file overrides, then the one instance file. No legacy layouts."""
     env = os.environ if env is None else env
     out = []
     for name in ("API_KEY_FILE", "FAMILIA_API_KEY_FILE"):
         v = env.get(name)
         if v and v not in out:
             out.append(v)
-    for path in (instance_key_file(env=env), installer_key_file(env=env)):
-        if path not in out:
-            out.append(path)
-    roots = [env.get("FAMILIA_BOOTSTRAP_ROOT", ""),
-             os.path.join(root, "code-bootstraps-llama.cpp"),
-             os.path.join(os.path.dirname(root), "code-bootstraps-llama.cpp"),
-             os.path.join(os.path.expanduser("~"), "code-bootstraps-llama.cpp")]
-    for r in roots:
-        if r:
-            path = os.path.join(r, ".secrets", "api-keys")
-            if path not in out:
-                out.append(path)
+    path = instance_key_file(env=env)
+    if path not in out:
+        out.append(path)
     return out
+
+
+_ENV_OVERRIDES = ("FAMILIA_API_KEY", "LLAMA_API_KEY", "API_KEY_FILE", "FAMILIA_API_KEY_FILE")
+
+
+def _read_nofollow(path):
+    """Read a key without following a final-component symlink (O_NOFOLLOW when present)."""
+    flags = os.O_RDONLY
+    if getattr(os, "O_NOFOLLOW", 0):
+        flags |= os.O_NOFOLLOW
+    try:
+        fd = os.open(path, flags)
+    except OSError:
+        return ""
+    try:
+        chunks = []
+        total = 0
+        while total < 1024 * 1024:
+            blob = os.read(fd, 65536)
+            if not blob:
+                break
+            chunks.append(blob)
+            total += len(blob)
+        else:
+            return ""
+        try:
+            text = b"".join(chunks).decode("utf-8")
+        except UnicodeDecodeError:
+            return ""
+    finally:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+    return _first_key_in(text)
+
+
+def _instance_port_of(path):
+    """Return the port if path is .../familia/instances/<port>/api-keys, else None."""
+    parts = os.path.normpath(path).split(os.sep)
+    if len(parts) >= 4 and parts[-1] == "api-keys" and parts[-3] == "instances" and parts[-4] == "familia":
+        port = parts[-2]
+        if port.isdigit() and 1 <= int(port) <= 65535:
+            return port
+    return None
+
+
+def _migration_source_key(path):
+    """Key from a legacy file, or '' when the file is missing or unsafe.
+
+    Unsafe (symlink, group/world-readable, BOM, CR, whitespace or comma in the
+    token) is skipped and noted. The key itself is never logged.
+    """
+    try:
+        if not os.path.lexists(path):
+            return ""
+    except OSError:
+        return ""
+    if os.path.islink(path):
+        print("familia_auth: not migrating %s (symlink)" % path, file=sys.stderr)
+        return ""
+    if not os.path.isfile(path):
+        print("familia_auth: not migrating %s (not a regular file)" % path, file=sys.stderr)
+        return ""
+    if os.name != "nt":
+        try:
+            mode = stat.S_IMODE(os.stat(path).st_mode)
+        except OSError:
+            return ""
+        if mode & 0o077:
+            print("familia_auth: not migrating %s (mode %04o is group- or world-readable)" % (path, mode),
+                  file=sys.stderr)
+            return ""
+        if not (mode & 0o400):
+            print("familia_auth: not migrating %s (mode %04o is not owner-readable)" % (path, mode),
+                  file=sys.stderr)
+            return ""
+    flags = os.O_RDONLY
+    if getattr(os, "O_NOFOLLOW", 0):
+        flags |= os.O_NOFOLLOW
+    try:
+        fd = os.open(path, flags)
+    except OSError as e:
+        print("familia_auth: not migrating %s (%s)" % (path, e.strerror or type(e).__name__), file=sys.stderr)
+        return ""
+    try:
+        data = b""
+        while len(data) < 1024 * 1024:
+            blob = os.read(fd, 65536)
+            if not blob:
+                break
+            data += blob
+        else:
+            print("familia_auth: not migrating %s (too large)" % path, file=sys.stderr)
+            return ""
+    finally:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+    if data.startswith(b"\xef\xbb\xbf"):
+        print("familia_auth: not migrating %s (UTF-8 BOM)" % path, file=sys.stderr)
+        return ""
+    if b"\r" in data:
+        print("familia_auth: not migrating %s (CR / CRLF)" % path, file=sys.stderr)
+        return ""
+    try:
+        text = data.decode("ascii")
+    except UnicodeDecodeError:
+        print("familia_auth: not migrating %s (not ASCII)" % path, file=sys.stderr)
+        return ""
+    key = _first_key_in(text)
+    if not key:
+        print("familia_auth: not migrating %s (no key)" % path, file=sys.stderr)
+        return ""
+    if any(c.isspace() for c in key) or "," in key:
+        print("familia_auth: not migrating %s (key token has whitespace or comma)" % path, file=sys.stderr)
+        return ""
+    return key
+
+
+def _install_existing_key(path, key, source):
+    """Publish key at path when that file has no key yet. 0600, no clobber, no symlink.
+
+    Returns the key now at path (an existing key, or the race winner's key).
+    """
+    if os.path.islink(path):
+        raise OSError("refusing to write an API key through symlink %s" % path)
+    existing = _read_nofollow(path)
+    if existing:
+        return existing
+    if _empty_regular_file(path):
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+    d = os.path.dirname(path) or "."
+    os.makedirs(d, mode=0o700, exist_ok=True)
+    tmp = os.path.join(d, ".%s.%d.%s" % (os.path.basename(path), os.getpid(), secrets.token_hex(4)))
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+    if getattr(os, "O_NOFOLLOW", 0):
+        flags |= os.O_NOFOLLOW
+    fd = os.open(tmp, flags, 0o600)
+    try:
+        payload = ("# llama-server API key(s), one per line\n" + key + "\n").encode("ascii")
+        _write_all(fd, payload, path)
+        os.fsync(fd)
+        os.close(fd)
+        fd = None
+        _publish_secret(tmp, path)
+        got = _wait_for_key(path)
+        if not got and _empty_regular_file(path):
+            try:
+                os.unlink(path)
+            except OSError:
+                pass
+            _publish_secret(tmp, path)
+            got = _wait_for_key(path)
+    finally:
+        if fd is not None:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+    if not got:
+        raise MissingKey("key file %s is empty" % path)
+    if source and got == key:
+        print("familia_auth: copied API key from %s into %s (#419). "
+              "Lookup uses this instance file unless an env override is set."
+              % (source, path), file=sys.stderr)
+    return got
+
+
+def migrate_instance_key(port=None, root=ROOT, env=None):
+    """Copy the first safe legacy key into the instance file when that file has none.
+
+    An existing instance key is never replaced. Returns the instance key, or ''
+    when there is nothing to copy. Symlink destinations are refused.
+    """
+    env = os.environ if env is None else env
+    path = instance_key_file(port=port, env=env)
+    if os.path.islink(path):
+        raise OSError("refusing to use symlink %s" % path)
+    existing = _read_nofollow(path)
+    if existing:
+        return existing
+    for src in migration_sources(root, env):
+        try:
+            if os.path.abspath(src) == os.path.abspath(path):
+                continue
+        except OSError:
+            continue
+        key = _migration_source_key(src)
+        if key:
+            return _install_existing_key(path, key, src)
+    return ""
+
+
+def seed_instance_from_file(port, src, env=None):
+    """Copy src's key into the instance file when the instance file has no key yet.
+
+    Used when a launcher was given an explicit key file: the server may use that
+    file, and port-based clients need the same key in the canonical store.
+    Never replaces an existing instance key.
+    """
+    env = os.environ if env is None else env
+    if not src:
+        return ""
+    dest = instance_key_file(port=port, env=env)
+    try:
+        if os.path.abspath(os.path.expanduser(src)) == os.path.abspath(dest):
+            return _read_nofollow(dest)
+    except OSError:
+        pass
+    if os.path.islink(dest):
+        raise OSError("refusing to write an API key through symlink %s" % dest)
+    existing = _read_nofollow(dest)
+    if existing:
+        return existing
+    key = _migration_source_key(os.path.expanduser(src))
+    if not key:
+        return ""
+    return _install_existing_key(dest, key, os.path.expanduser(src))
+
+
+def ensure_instance_key(port=None, root=ROOT, env=None):
+    """Instance key for port: the existing file, a migrated legacy key, or a new 0600 key."""
+    env = os.environ if env is None else env
+    path = instance_key_file(port=port, env=env)
+    k = migrate_instance_key(port=port, root=root, env=env)
+    if k:
+        return k
+    return load_or_create_key_file(path, env=env)
 
 
 def api_key(root=ROOT, env=None):
@@ -113,8 +374,13 @@ def api_key(root=ROOT, env=None):
         k = _first_key_in(env.get(name, ""))
         if k:
             return k
+    inst = instance_key_file(env=env)
     for path in candidate_key_files(root, env):
-        k = _read(path)
+        try:
+            same = os.path.abspath(path) == os.path.abspath(inst)
+        except OSError:
+            same = False
+        k = _read_nofollow(path) if same else _read(path)
         if k:
             return k
     return ""
@@ -168,14 +434,28 @@ def keys_match(given, expected):
     return hmac.compare_digest(a, b) and bool(expected)
 
 
-def load_or_create_key_file(path):
+def load_or_create_key_file(path, env=None):
     """Return the instance key at path; create it ONLY if missing.
 
-    First write is atomic and 0600: write a private temp file in the same dir (LF
-    bytes, no BOM), then link() it into place, which fails if another starter won
+    When path is the canonical instances/<port>/api-keys file and it has no key
+    yet, copy a legacy api.key or .secrets file into it first (#419). Otherwise
+    the first write is atomic and 0600: a private temp file in the same dir (LF
+    bytes, no BOM), then link() into place, which fails if another starter won
     the race; then everyone reads the winner's key. If link() is denied (Termux
     SELinux EACCES/EPERM, or ENOSYS/EXDEV), fall back to O_CREAT|O_EXCL|O_NOFOLLOW
-    with mode 0600 (still no-clobber). An existing key is never rotated."""
+    with mode 0600 (still no-clobber). An existing key is never rotated.
+    """
+    port = _instance_port_of(path)
+    if port is not None:
+        try:
+            canonical = os.path.abspath(instance_key_file(port=port, env=env))
+            same = os.path.abspath(path) == canonical
+        except OSError:
+            same = False
+        if same:
+            migrated = migrate_instance_key(port=port, env=env)
+            if migrated:
+                return migrated
     return _load_or_create_secret(path, "# llama-server API key(s), one per line\n")
 
 
@@ -328,8 +608,8 @@ def key_for_url(url, env=None):
     try:
         u = urllib.parse.urlparse(url)
         if u.port and (u.hostname or "") in ("127.0.0.1", "localhost", "::1") \
-                and not any(env.get(n) for n in ("FAMILIA_API_KEY", "LLAMA_API_KEY", "API_KEY_FILE")):
-            k = _read(instance_key_file(port=u.port, env=env))
+                and not any(env.get(n) for n in _ENV_OVERRIDES):
+            k = _read_nofollow(instance_key_file(port=u.port, env=env))
             if k:
                 return k
     except ValueError:
@@ -425,6 +705,14 @@ def main(argv):
         return curl_config(argv[2:], k)
     if cmd == "probe":
         return probe(argv[2] if len(argv) > 2 else None)
+    if cmd == "ensure-instance":
+        try:
+            got = ensure_instance_key()
+        except (OSError, MissingKey) as e:
+            print("familia_auth: cannot prepare the instance key (%s)" % (e.strerror if isinstance(e, OSError) and e.strerror else e),
+                  file=sys.stderr)
+            return 1
+        return 0 if got else 1
     if cmd == "has-key":
         return 0 if k else 1
     print(__doc__, file=sys.stderr)

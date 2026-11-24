@@ -1260,7 +1260,7 @@ def test_api_key_shows_resolved_path_not_default_label(tmp_path):
     assert r.returncode == 0, r.stderr
     out = r.stdout
     assert "[default]" not in out
-    assert _has(out, "api.key")
+    assert _has(out, "api-keys")
     key = write_key(tmp_path)
     write_cfg(tmp_path, "API_KEY_FILE=%s\n" % key)
     r = run_sw(tmp_path, "--pipe", inp="q\n")

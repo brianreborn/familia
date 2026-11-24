@@ -433,7 +433,9 @@ def test_router_caller_auth_required(fakes):
 def test_router_main_creates_instance_key_once(tmp_path, monkeypatch):
     """CLI default: per-port instance key, created 0600 on first start, never rotated; fail closed."""
     import stat, familia_auth
-    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path)); monkeypatch.delenv("API_KEY_FILE", raising=False)
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    monkeypatch.delenv("API_KEY_FILE", raising=False)
+    monkeypatch.delenv("FAMILIA_API_KEY_FILE", raising=False)
     cfgf = tmp_path / "r.yaml"; cfgf.write_text("version: 1\nnodes: {a: 'http://127.0.0.1:1'}\n")
     started = []
     monkeypatch.setattr(gr, "make_server", lambda cfg, h, p, api_key=None: started.append(api_key) or

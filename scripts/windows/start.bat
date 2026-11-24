@@ -76,6 +76,12 @@ if not exist "%BIN%" (
 
 if not exist "%FAMILIA_MODELS%\..\logs" mkdir "%FAMILIA_MODELS%\..\logs" >nul 2>&1
 set "LOG=%FAMILIA_MODELS%\..\logs\llama-server-%FAMILIA_PORT%.log"
+if not defined FAMILIA_API_KEY_FILE if defined API_KEY_FILE set "FAMILIA_API_KEY_FILE=%API_KEY_FILE%"
+rem Canonical store is instances\<port>\api-keys (#419). --ensure creates it
+rem once (0600) and, when it is missing, copies a legacy api.key or
+rem .secrets\api-keys into it. An explicit FAMILIA_API_KEY_FILE / API_KEY_FILE
+rem still wins for this launch and is copied into the instance file when that
+rem file has no key yet.
 if not defined FAMILIA_API_KEY_FILE (
   if defined APPDATA (
     set "FAMILIA_API_KEY_FILE=%APPDATA%\familia\instances\%FAMILIA_PORT%\api-keys"

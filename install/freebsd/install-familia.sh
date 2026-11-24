@@ -200,13 +200,68 @@ for _t in \${FAMILIA_EXTRA:-} "\$@"; do
 done
 H="\${FAMILIA_BIND:-127.0.0.1}"; [ "\$H" = '[::1]' ] && H=::1; [ "\$H" = localhost ] && H=127.0.0.1
 case "\$H" in 127.0.0.1|::1) ;; *) echo "familia-start: non-loopback bind \$H refused by this installer" >&2; exit 2 ;; esac
-KF="\${FAMILIA_API_KEY_FILE:-\$HOME/.config/familia/api.key}"
-[ -f "\$KF" ] && [ ! -L "\$KF" ] || { echo "familia-start: key file \$KF missing or a symlink; a key is required on every bind" >&2; exit 2; }
-if [ "\$(uname -s)" = FreeBSD ]; then KM=\$(stat -f %Lp "\$KF"); else KM=\$(stat -c %a "\$KF"); fi
-if [ "\$(uname -s)" = FreeBSD ]; then KU=\$(stat -f %u "\$KF"); else KU=\$(stat -c %u "\$KF"); fi
-[ "\$KU" = "\$(id -u)" ] || { echo "familia-start: \$KF is not owned by you" >&2; exit 2; }
-case "\$KM" in 600|400) ;; *) echo "familia-start: \$KF must be mode 0600" >&2; exit 2 ;; esac
-exec "\$B" -m "\$M" --host "\$H" --port "\${FAMILIA_PORT:-9941}" --api-key-file "\$KF" -c "\${FAMILIA_CTX:-4096}" \${FAMILIA_EXTRA:-} "\$@"
+# Canonical store is instances/<port>/api-keys (#419). api.key is copied in on first start.
+_port="\${FAMILIA_PORT:-9941}"
+case "\$_port" in *[!0-9]*) echo "familia-start: FAMILIA_PORT must be a number; refusing" >&2; exit 2 ;; esac
+if [ "\$_port" -lt 1 ] || [ "\$_port" -gt 65535 ]; then echo "familia-start: FAMILIA_PORT must be 1-65535; refusing" >&2; exit 2; fi
+_base="\${XDG_CONFIG_HOME:-\$HOME/.config}"
+_inst="\$_base/familia/instances/\$_port/api-keys"
+_familia_mode_owner() { # path; refuses symlink, bad mode, wrong owner
+  KF=\$1
+  [ -f "\$KF" ] && [ ! -L "\$KF" ] || { echo "familia-start: key file \$KF missing or a symlink; a key is required on every bind" >&2; exit 2; }
+  if [ "\$(uname -s)" = FreeBSD ]; then KM=\$(stat -f %Lp "\$KF"); else KM=\$(stat -c %a "\$KF"); fi
+  if [ "\$(uname -s)" = FreeBSD ]; then KU=\$(stat -f %u "\$KF"); else KU=\$(stat -c %u "\$KF"); fi
+  [ "\$KU" = "\$(id -u)" ] || { echo "familia-start: \$KF is not owned by you" >&2; exit 2; }
+  case "\$KM" in 600|400) ;; *) echo "familia-start: \$KF must be mode 0600" >&2; exit 2 ;; esac
+}
+_familia_publish_instance() { # token dest source
+  _tok=\$1; _dest=\$2; _src=\$3
+  [ -L "\$_dest" ] && { echo "familia-start: \$_dest is a symlink; refusing" >&2; exit 2; }
+  _dir=\$(dirname "\$_dest")
+  ( umask 077; mkdir -p "\$_dir" ) || { echo "familia-start: cannot create \$_dir; refusing" >&2; exit 2; }
+  _tmp="\$_dir/.api-keys.\$\$"
+  rm -f "\$_tmp"
+  ( umask 077; set -C; printf '%s\n' "# llama-server API key(s), one per line" "\$_tok" > "\$_tmp" ) || {
+    echo "familia-start: cannot write \$_tmp; refusing" >&2; exit 2; }
+  chmod 600 "\$_tmp" || { rm -f "\$_tmp"; echo "familia-start: cannot chmod \$_tmp; refusing" >&2; exit 2; }
+  if [ -e "\$_dest" ] || [ -L "\$_dest" ]; then rm -f "\$_tmp"
+  elif ln "\$_tmp" "\$_dest" 2>/dev/null; then rm -f "\$_tmp"
+  elif [ -e "\$_dest" ] || [ -L "\$_dest" ]; then rm -f "\$_tmp"
+  elif mv "\$_tmp" "\$_dest" 2>/dev/null; then chmod 600 "\$_dest" || { echo "familia-start: cannot chmod \$_dest; refusing" >&2; exit 2; }
+  else rm -f "\$_tmp"; echo "familia-start: cannot publish \$_dest; refusing" >&2; exit 2
+  fi
+  [ -L "\$_dest" ] && { echo "familia-start: \$_dest is a symlink; refusing" >&2; exit 2; }
+  echo "familia-start: migrated API key from \$_src into \$_dest (#419). \$_src is a migration source only and is not used for lookup." >&2
+}
+if [ -n "\${FAMILIA_API_KEY_FILE:-}" ]; then
+  _familia_mode_owner "\$FAMILIA_API_KEY_FILE"
+  KF=\$FAMILIA_API_KEY_FILE
+  if [ ! -e "\$_inst" ] && [ ! -L "\$_inst" ]; then
+    _tok=\$(tr -d '[:space:]' < "\$KF")
+    _familia_publish_instance "\$_tok" "\$_inst" "\$KF"
+  fi
+elif [ -e "\$_inst" ] || [ -L "\$_inst" ]; then
+  _familia_mode_owner "\$_inst"
+  KF=\$_inst
+else
+  _legacy="\$HOME/.config/familia/api.key"
+  _sec="\$HOME/code-bootstraps-llama.cpp/.secrets/api-keys"
+  if [ ! -e "\$_legacy" ] && [ ! -L "\$_legacy" ] && { [ -e "\$_sec" ] || [ -L "\$_sec" ]; }; then
+    _legacy=\$_sec
+  fi
+  _familia_mode_owner "\$_legacy"
+  _tok=""
+  while IFS= read -r _line || [ -n "\$_line" ]; do
+    case "\$_line" in ''|'#'*) continue ;; esac
+    _tok=\$_line
+    break
+  done < "\$_legacy"
+  case "\$_tok" in ''|*[[:space:]]*|*,*) echo "familia-start: \$_legacy has no usable key; refusing" >&2; exit 2 ;; esac
+  _familia_publish_instance "\$_tok" "\$_inst" "\$_legacy"
+  _familia_mode_owner "\$_inst"
+  KF=\$_inst
+fi
+exec "\$B" -m "\$M" --host "\$H" --port "\$_port" --api-key-file "\$KF" -c "\${FAMILIA_CTX:-4096}" \${FAMILIA_EXTRA:-} "\$@"
 EOS
   chmod 0755 "$LAUNCH.tmp.$$" && mv "$LAUNCH.tmp.$$" "$LAUNCH"
 fi
