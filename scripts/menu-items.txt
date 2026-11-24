@@ -7,6 +7,7 @@
 #   empty windows command = not available on Windows
 #   empty posix command = Windows only (hidden by familia-menu.sh)
 #   every user-facing script must appear here; internal-only ones are listed in scripts/menu-internal.txt
+#   every key also needs one row (its top-level category) in scripts/menu-categories.txt
 setup.first-time|Set up|First-time setup on this machine (deps → licenses → install → PATH)|sh scripts/setup_goals.sh first-time|||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\setup-goals.ps1 -Goal first-time
 setup.update|Set up|Update this checkout (git pull --ff-only, then sync pins)|PY scripts/sync_pins.py --update|lic||python scripts\sync_pins.py --update
 setup.licenses|Set up|Review / accept licenses|PY scripts/licenses.py review|||python scripts\licenses.py review

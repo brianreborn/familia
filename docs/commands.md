@@ -328,6 +328,7 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/fleet_greeting.py` | fleet greeting helper; called by hermes.sh, proto_chat.sh and start_graph at startup |
 | `scripts/windows/familia-menu.ps1` | the Windows menu itself (started by familia.cmd) |
 | `scripts/monitor.sh` | the same console as ./familia-monitor, which the menu runs |
+| `scripts/menu_registry.py` | Checks and prints the six-category menu registry `scripts/menu-categories.txt` (epic #733); run through `python3 scripts/home_catalog.py --tree` and the tests |
 | `scripts/hermes_harness.py` | always run through scripts/hermes.sh, which the menu runs |
 | `scripts/hermes_modes.py` | the graph/single-model front end scripts/hermes.sh execs; run hermes.sh |
 | `scripts/runtime_dir.py` | helper module the launchers and admission ledger import (private runtime dir); not run directly |
