@@ -32,6 +32,12 @@ class StartupError(RuntimeError):
     pass
 
 
+def _restore_server_tools(graph):
+    """#630: put fleet server_tools back onto a generated graph that dropped the key."""
+    import tools_persist
+    tools_persist.restore_server_tools(graph)
+
+
 def _fleet_banner(host):
     """One line when this host brings its graph topology up (joins the mesh). Best effort."""
     try:
@@ -535,6 +541,7 @@ def run(args=None):
     try:
         graph = graph_validator.load(str(graph_path))
         graph["_path"] = str(graph_path)
+        _restore_server_tools(graph)
         host = select_host(graph, options.host)
         fleet_default = (ROOT / "graph.yaml").resolve()
         import config_paths
@@ -553,6 +560,7 @@ def run(args=None):
             graph_path = priv
             graph = graph_validator.load(str(graph_path))
             graph["_path"] = str(graph_path)
+            _restore_server_tools(graph)
         # Validate first: local_topology indexes nodes by alias target, so an invalid graph
         # (unknown alias node, list alias) would otherwise crash with a raw KeyError/TypeError.
         errors, _ = graph_validator.validate(graph, check_files=False)

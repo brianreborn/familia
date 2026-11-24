@@ -238,6 +238,7 @@ M0 empty llama-ui Server Tools was fixed in `15d67b1` by setting `nanbeige-coder
 - **Symptom:** llama-ui Server Tools panel empty; `GET /tools` → 403 `feature_disabled`. `/v1/models` staying `capabilities:["completion"]` is normal and is not the check.
 - **Why:** llama.cpp enables server tools only at process start. Graph YAML does not hot-patch a live or crashed server.
 - **Prevent:** always start via `DETACH_MODE=screen-attached` + `start.sh` / `serve.sh` against **live** `graph.yaml` (not a stale `generated/graph-angel.yaml`). After every restart, confirm `ps` argv contains `--tools` and `GET http://127.0.0.1:<port>/tools` returns 200. Regenerate host graphs after schema changes. Do not hand-build llama-server argv without copying `validate_graph.py --args <node>` output.
+- **Fixed (#630):** `familia-start` stores the `--tools` value (mode 0600) and puts it back on a later start that omits the flag, including a crash restart. `validate_graph --args` / `serve.sh` / `start.sh` copy `server_tools` from `graph.yaml` when the generated graph no longer has the key. An explicit opt-out on the graph being launched still wins, and `--tools` stays loopback-only.
 
 ## L-node-type. Node type implies capability; placement is host: (2026-10-27)
 

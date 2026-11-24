@@ -310,6 +310,43 @@ fi
 # The launcher's own arguments (checked above) follow the key, exactly as given (#279 routing-extra-args).
 [ -n "\$FAMILIA_KF" ] || { echo "familia-start: no API key; refusing" >&2; exit 2; }
 set -- --api-key-file "\$FAMILIA_KF" "\$@"
+# #630: reapply a saved --tools value after a crash or a hand-start that omits
+# the flag. --tools none clears the save. A missing script keeps one-shot behavior.
+# decide uses the same bind allowlist as the check above (127.0.0.1, ::1, localhost).
+# Windows start.bat skips this hook.
+_tp="$PREFIX_DIR/repo/scripts/tools_persist.py"
+if [ -f "\$_tp" ]; then
+  _act=\$(python3 "\$_tp" decide --bind "\$B" --port "\${FAMILIA_PORT:-9941}" -- "\$@" \${FAMILIA_EXTRA:-}) || exit \$?
+  case "\$_act" in
+    keep) ;;
+    append\ *)
+      set -- "\$@" --tools "\${_act#append }"
+      ;;
+    clear)
+      set -- "\$@" \${FAMILIA_EXTRA:-}
+      _n=\$#
+      _skip=0
+      for _t do
+        set -- "\$@" "\$_t"
+      done
+      shift \$_n
+      for _t do
+        if [ "\$_skip" = 1 ]; then _skip=0; shift; continue; fi
+        case \$_t in
+          --tools) _skip=1; shift; continue ;;
+          --tools=*) shift; continue ;;
+        esac
+        set -- "\$@" "\$_t"
+        shift
+      done
+      FAMILIA_EXTRA=
+      ;;
+    *)
+      echo "familia-start: tools persistence returned \${_act:-nothing}; refusing" >&2
+      exit 2
+      ;;
+  esac
+fi
 # Defaults from the 2026-10-10 A57 sweep (#34): 3 threads, flash-attn on; -ngl 99 on Vulkan (CPU ngl 0 on 0.6.0 collapses to <1 t/s tg).
 exec llama-server -m "\$M" -ngl "\$NGL" -t "\${FAMILIA_THREADS:-3}" -fa "\${FAMILIA_FA:-on}" --host "\$B" --port "\${FAMILIA_PORT:-9941}" -c "\${FAMILIA_CTX:-2048}" "\$@" \${FAMILIA_EXTRA:-}
 EOS
