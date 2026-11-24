@@ -1,6 +1,11 @@
 """Menu navigation (#733 M4): where-you-are line, &filter, key help, back, and every node reachable."""
+import os
+import pty
 import re
+import select
+import shutil
 import subprocess
+import time
 
 import pytest
 
@@ -29,18 +34,115 @@ def test_every_group_has_a_description():
         assert g in line and line.split(g, 1)[1].strip(), f"group '{g}' has no description in group_desc"
 
 
-def test_key_reader_is_not_sourced_for_pipes(tmp_path):
-    # A menu-keys.sh that would print on load must not be read when stdin is a pipe.
-    import os
-    import shutil
+KEYS = 'echo LOADED-KEYS >&2\nmenu_key_read() { printf "%s" "$1" >&2; IFS= read -r "$2"; }\n'
+
+
+def checkout(tmp_path, keys=KEYS):
+    """A copy of the checkout (no .git/tests/docs) with modes the loader trusts."""
     root = tmp_path / "co"
     shutil.copytree(os.path.dirname(MENU_PATH), root, symlinks=True,
-                    ignore=shutil.ignore_patterns(".git", "tests", "docs"))
-    (root / "scripts" / "menu-keys.sh").write_text("echo SOURCED-KEYS\nmenu_key_read() { return 1; }\n")
+                    ignore=shutil.ignore_patterns(".git", "tests", "docs", "__pycache__"))
+    os.chmod(root, 0o755)
+    os.chmod(root / "scripts", 0o755)
+    if keys is not None:
+        (root / "scripts" / "menu-keys.sh").write_text(keys)
+        os.chmod(root / "scripts" / "menu-keys.sh", 0o644)
+    return root
+
+
+def tty_menu(root, lines, *args, **kw):
+    """Run the menu on a pty, answering each prompt with the next line. Returns (rc, text)."""
+    m, s = pty.openpty()
+    kw.setdefault("TERM", "xterm")
+    e = env(**kw)
+    e.pop("FAMILIA_NO_TTY", None)
+    p = subprocess.Popen(["bash", str(root / "familia-menu.sh"), *args], stdin=s, stdout=s, stderr=s,
+                         env=e, cwd=str(root), close_fds=True)
+    os.close(s)
+    out, sent, deadline = b"", 0, time.time() + 60
+    while time.time() < deadline:
+        r, _, _ = select.select([m], [], [], 0.2)
+        if r:
+            try:
+                d = os.read(m, 65536)
+            except OSError:
+                d = b""
+            if not d:
+                break
+            out += d
+        if sent < len(lines) and out.count(b"Choose") > sent:
+            os.write(m, (lines[sent] + "\n").encode())
+            sent += 1
+        if p.poll() is not None and not r:
+            break
+    p.wait(timeout=10)
+    os.close(m)
+    return p.returncode, out.decode(errors="replace")
+
+
+def test_key_reader_is_not_loaded_for_pipes_or_dumb_terminals(tmp_path):
+    root = checkout(tmp_path)
     r = subprocess.run(["bash", str(root / "familia-menu.sh"), "--pipe"], input="q\n",
                        capture_output=True, text=True, timeout=60, env=env())
     assert r.returncode == 0, r.stderr
-    assert "SOURCED-KEYS" not in r.stdout + r.stderr
+    assert "LOADED-KEYS" not in r.stdout + r.stderr
+    rc, out = tty_menu(root, ["q"], TERM="dumb")
+    assert rc == 0 and "LOADED-KEYS" not in out
+
+
+def test_key_reader_loads_once_on_a_terminal(tmp_path):
+    rc, out = tty_menu(checkout(tmp_path), ["1", "b", "2", "b", "q"])
+    assert rc == 0, out[-800:]
+    assert out.count("LOADED-KEYS") == 1
+    assert "[familia > Skills" in out
+
+
+def test_name_value_cannot_rearm_or_redirect_the_key_reader(tmp_path):
+    root = checkout(tmp_path, keys=None)  # no reader in the real checkout
+    evil = tmp_path / "evil"
+    (evil / "scripts").mkdir(parents=True)
+    (evil / "scripts" / "menu-keys.sh").write_text("echo EVIL-KEYS >&2\n")
+    hit = f"ROOT={evil} KEYS_FILE={evil}/scripts/menu-keys.sh KEYS_TRIED= KEYS_OK=yes"
+    rc, out = tty_menu(root, [hit + " 1", "b", "q"], f"ROOT={evil}", "KEYS_TRIED=", f"ITEMS_FILE={evil}/x")
+    assert rc == 0, out[-800:]
+    assert "EVIL-KEYS" not in out
+    for n in ("ROOT", "KEYS_FILE", "KEYS_TRIED", "KEYS_OK", "ITEMS_FILE"):
+        assert f"{n} is used by the menu itself; not setting it" in out, n
+    assert "[familia > Set up" in out  # the menu kept working on its own checkout
+
+
+def test_name_value_still_reaches_items():
+    r = menu("--pipe", "--dry-run", inp="2\nPIPE=0 DRY=0 FAMILIA_X=1 1\nb\nq\n")
+    assert r.returncode == 0, r.stderr
+    assert "PIPE is used by the menu itself" in r.stderr and "DRY is used by the menu itself" in r.stderr
+    assert "[dry-run]" in r.stdout  # DRY=0 did not turn dry-run off
+
+
+@pytest.mark.parametrize("case", ["file-0666", "file-0664", "scripts-0777", "checkout-0775",
+                                  "file-symlink", "scripts-symlink"])
+def test_untrusted_key_reader_is_refused(tmp_path, case):
+    root = checkout(tmp_path)
+    f = root / "scripts" / "menu-keys.sh"
+    if case == "file-0666":
+        os.chmod(f, 0o666)
+    elif case == "file-0664":
+        os.chmod(f, 0o664)
+    elif case == "scripts-0777":
+        os.chmod(root / "scripts", 0o777)
+    elif case == "checkout-0775":
+        os.chmod(root, 0o775)
+    elif case == "file-symlink":
+        real = tmp_path / "keys-elsewhere.sh"
+        real.write_text(KEYS)
+        f.unlink()
+        f.symlink_to(real)
+    elif case == "scripts-symlink":
+        moved = tmp_path / "scripts-real"
+        shutil.move(str(root / "scripts"), moved)
+        (root / "scripts").symlink_to(moved)
+    rc, out = tty_menu(root, ["q"])
+    assert rc == 0, out[-800:]
+    assert "LOADED-KEYS" not in out, case
 
 
 def test_same_key_hints_in_every_group():
@@ -73,7 +175,9 @@ def test_filter_narrows_the_group_and_ampersand_clears_it():
     assert m and 0 < int(m.group(1)) < len(mine), filtered
     rows = re.findall(r"^  \d+\) (.*)\n       runs: (.*)$", filtered.split("b) Back")[0], re.M)
     assert len(rows) == min(int(m.group(1)), PAGE)
-    assert all(word.lower() in (a + b).lower() or word.lower() in r.stdout.lower() for a, b in rows)
+    for label, _cmd in rows:  # each row is an item of this group whose key, label or command has the word
+        it = next(i for i in mine if i["label"] == label)
+        assert word.lower() in (it["key"] + " " + it["label"] + " " + _cmd).lower(), label
     assert "Filter:" not in cleared and f"page 1 of {-(-len(mine) // PAGE)}" in cleared
     assert f"No item in {g} matches 'zz-no-such'" in r.stdout
 

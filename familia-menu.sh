@@ -25,15 +25,29 @@
 # With no terminal (and no --list/--run/--search/--pipe) it prints the items and exits 2.
 set -eu
 
-ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# The real directory of this script (symlinks resolved), fixed before any NAME=value.
+ROOT=$(CDPATH= cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
+readonly ROOT
+readonly KEYS_FILE="$ROOT/scripts/menu-keys.sh"  # M1 key reader, snapshotted at startup (#733 M4)
 cd "$ROOT"
 PY=${PYTHON:-python3}
-while [ $# -gt 0 ] && [[ $1 =~ ^[A-Za-z_][A-Za-z0-9_]*= ]]; do
+# NAME=value (argv, a menu answer, familia CLI) sets the environment for the item,
+# but never the menu's own state: these names are refused at every export site.
+INTERNAL_NAMES=" ROOT KEYS_FILE KEYS_TRIED KEYS_OK INTERNAL_NAMES ITEMS_FILE ITEMS PIPE DRY MODE RUN_KEY SEARCH MENU_CHOICE MENU_ARGS PENDING_ARGS LAST_SEARCH SDIR SCUR SK "
+readonly INTERNAL_NAMES
+safe_export() {  # safe_export NAME=value -> export it unless NAME is the menu's own
+  local n=${1%%=*}
+  case "$INTERNAL_NAMES" in *" $n "*)
+    printf '%s\n' "familia-menu: $n is used by the menu itself; not setting it" >&2; return 0 ;;
+  esac
   export "$1"
+}
+while [ $# -gt 0 ] && [[ $1 =~ ^[A-Za-z_][A-Za-z0-9_]*= ]]; do
+  safe_export "$1"
   shift
 done
 
-ITEMS_FILE="$ROOT/scripts/menu-items.txt"
+readonly ITEMS_FILE="$ROOT/scripts/menu-items.txt"
 [ -f "$ITEMS_FILE" ] || { echo "familia-menu: $ITEMS_FILE is missing; restore it with: git checkout scripts/menu-items.txt" >&2; exit 1; }
 ITEMS=$(grep -v '^#' "$ITEMS_FILE" | grep -v '^[[:space:]]*$' | awk -F'|' '$4 != ""')  # empty posix command = Windows only
 
@@ -164,7 +178,7 @@ parse_menu_input() {  # parse leading NAME=value tokens, a numeric choice, then 
   MENU_ARGS=()
   read -r -a words <<<"$raw"
   while [ "$i" -lt "${#words[@]}" ] && [[ ${words[$i]} =~ ^[A-Za-z_][A-Za-z0-9_]*= ]]; do
-    export "${words[$i]}"
+    safe_export "${words[$i]}"
     i=$((i+1))
   done
   if [ "$i" -gt 0 ]; then
@@ -383,30 +397,63 @@ search_key() {  # 0 handled (stay), 3 quit, 4 stdin closed (not a quit), 1 not a
 }
 
 # ---- navigation (#733 M4): where you are, filter, key hints, help --------------
-# M1 owns the raw-mode key reader. When scripts/menu-keys.sh exists and defines
-# menu_key_read PROMPT VAR COUNT, a terminal menu reads through it; it must hand back
-# the same text a typed line would (a number, b, q, <, >, h, /word, &word).
-# Pipes, TERM=dumb and a missing reader (M2's fallback) keep the line reader below.
-# The reader is sourced lazily, once, from this script's own checkout, and only when
-# it is a regular file (not a symlink) owned by the same user as the checkout.
-KEYS_LOADED=""
-owner_uid() { stat -c %u "$1" 2>/dev/null || stat -f %u "$1" 2>/dev/null; }
-load_keys() {  # load_keys -> 0 when menu_key_read is available
-  if [ -z "$KEYS_LOADED" ]; then
-    KEYS_LOADED=no
-    local f="$ROOT/scripts/menu-keys.sh" ru fu
-    if [ -f "$f" ] && [ ! -L "$f" ]; then
-      ru=$(owner_uid "$ROOT"); fu=$(owner_uid "$f")
-      if [ -n "$ru" ] && [ "$ru" = "$fu" ]; then
-        # shellcheck source=/dev/null
-        . "$f" && KEYS_LOADED=yes
-      fi
-    fi
+# M1 owns the raw-mode key reader. When $KEYS_FILE defines menu_key_read PROMPT VAR COUNT,
+# a terminal menu reads through it; it hands back the line a typed answer would be
+# (a number, b, q, <, >, h, /word, &word). Anything else keeps the line reader below.
+# The file is tried at most once (readonly KEYS_TRIED / KEYS_OK) and only when it is a
+# regular file under the real checkout, owned by the checkout's owner, and neither it,
+# scripts/ nor the checkout is group/world-writable or a symlink. To close the gap
+# between checking and loading, it is opened once on fd 9, the open fd itself is
+# checked (and must still be the file the path names), its text is read from that fd,
+# and that text is what runs: nothing is re-opened by path.
+file_info() {  # file_info [-L] PATH -> "dev ino uid mode type" (mode octal, type lowercase)
+  local o=() i
+  [ "$1" = -L ] && { o=(-L); shift; }
+  i=$(stat ${o[@]+"${o[@]}"} -c '%d %i %u %a %F' -- "$1" 2>/dev/null) ||
+    i=$(stat ${o[@]+"${o[@]}"} -f '%d %i %u %Lp %HT' -- "$1" 2>/dev/null) || return 1
+  printf '%s' "$i" | tr '[:upper:]' '[:lower:]'
+}
+trusted_node() {  # trusted_node INFO UID KIND -> 0 when INFO is KIND, owned by UID, not g/o-writable
+  local uid mode type
+  read -r _ _ uid mode type <<<"$1"
+  [ -n "$mode" ] && [ "$uid" = "$2" ] && [ $(( 8#$mode & 8#022 )) = 0 ] && [[ $type == "$3"* ]]
+}
+keys_trusted_text() {  # prints the key reader's text when every check passes
+  local owner dinfo finfo fdinfo again text
+  [ -f "$KEYS_FILE" ] && [ ! -L "$KEYS_FILE" ] && [ ! -L "$ROOT/scripts" ] || return 1
+  [ "$(CDPATH='' cd -P -- "$ROOT/scripts" 2>/dev/null && pwd -P)" = "$ROOT/scripts" ] || return 1
+  dinfo=$(file_info "$ROOT") || return 1
+  owner=$(printf '%s' "$dinfo" | cut -d' ' -f3)
+  trusted_node "$dinfo" "$owner" directory || return 1
+  trusted_node "$(file_info "$ROOT/scripts")" "$owner" directory || return 1
+  finfo=$(file_info "$KEYS_FILE") || return 1
+  trusted_node "$finfo" "$owner" regular || return 1
+  exec 9<"$KEYS_FILE" || return 1
+  fdinfo=$(file_info -L /dev/fd/9) || { exec 9<&-; return 1; }
+  again=$(file_info "$KEYS_FILE") || { exec 9<&-; return 1; }
+  if [ "$fdinfo" != "$finfo" ] || [ "$again" != "$finfo" ]; then
+    exec 9<&-; return 1
   fi
-  [ "$KEYS_LOADED" = yes ] && declare -F menu_key_read >/dev/null
+  text=$(cat <&9); exec 9<&-
+  printf '%s\n' "$text"
+}
+load_keys() {  # load_keys -> 0 when menu_key_read is available
+  if [ -z "${KEYS_TRIED:-}" ]; then
+    readonly KEYS_TRIED=1
+    local text ok=no
+    if text=$(keys_trusted_text); then
+      eval "$text" && ok=yes
+    fi
+    readonly KEYS_OK=$ok
+  fi
+  [ "${KEYS_OK:-}" = yes ] && declare -F menu_key_read >/dev/null
+}
+fancy_ok() {  # the same terminal test as scripts/menu_input.py probe (#736)
+  [ "$PIPE" != 1 ] && [ "${FAMILIA_NO_TTY:-}" != 1 ] && [ "${FAMILIA_LEGACY_MENU:-}" != 1 ] &&
+    [ -t 0 ] && [ -t 1 ] && case "${TERM:-}" in ""|dumb|unknown|emacs) false ;; esac
 }
 nav_read() {  # nav_read PROMPT VAR COUNT ; returns 1 on EOF
-  if [ "$PIPE" != 1 ] && [ -t 0 ] && [ "${TERM:-dumb}" != dumb ] && load_keys; then
+  if fancy_ok && load_keys; then
     menu_key_read "$1" "$2" "${3:-0}" || return
     return 0
   fi
@@ -609,7 +656,7 @@ cli_search() {  # cli_search WORD [--run N ARG...]
 }
 cli_main() {
   while [ $# -gt 0 ] && [[ $1 =~ ^[A-Za-z_][A-Za-z0-9_]*= ]]; do
-    export "$1"
+    safe_export "$1"
     shift
   done
   while [ $# -gt 0 ]; do  # options before the command belong to familia itself

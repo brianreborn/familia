@@ -52,7 +52,7 @@ Every screen starts with a line that shows where you are, such as `[familia > Ho
 | `/word` `?word` `n` `N` | search every group ([Search](#search)) |
 | `h` | list these keys |
 
-Numbers always refer to the items on the current screen, after any `&` filter. Arrow keys come from the key reader (#733 M1): when `scripts/menu-keys.sh` defines `menu_key_read`, a terminal menu reads through it and Esc or Backspace act as `b`. With `--pipe`, `TERM=dumb` or no terminal, the typed keys above are the whole interface.
+Numbers always refer to the items on the current screen, after any `&` filter. Arrow keys come from the key reader (#733 M1): when `scripts/menu-keys.sh` defines `menu_key_read`, a terminal menu reads through it and Esc or Backspace act as `b`. The menu tries that file once, and only when it is a regular file in the menu's own checkout (symlinks resolved), owned by the checkout's owner, with neither it, `scripts/` nor the checkout group- or world-writable or a symlink. With `--pipe`, `TERM` unset, `dumb`, `unknown` or `emacs`, `FAMILIA_NO_TTY=1`, `FAMILIA_LEGACY_MENU=1` or no terminal, the typed keys above are the whole interface. `NAME=value` sets the environment for items but never the menu's own state: names such as `ROOT`, `PIPE`, `DRY` and `ITEMS_FILE` are refused with a message.
 
 ## Recommended paths
 
