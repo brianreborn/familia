@@ -372,6 +372,7 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/prompt_cache.py` | library: prefill an agent's fixed prompt prefix once, save it with llama-server slot save, restore it on later starts (#85); used by hermes.sh |
 | `scripts/system_prompt_check.py` | offline system-prompt path checks (#115); developer/CI helper, not an end-user menu action |
 | `scripts/familia_agent_reach.py` | thin wrapper / library around Agent-Reach; menu uses scripts/agent_reach.py |
+| `scripts/android-model-trials.py` | developer harness that benchmarks CPU vs Vulkan llama-server configs on an attached Android phone over adb; not a menu action |
 | `scripts/retry_wrapper.py` | library for agent model calls; its main is only a self-demo |
 | `scripts/isolated/hfchat.py` | adapter that graph nodes of kind isolated_remote call; not run by hand |
 | `scripts/c2c/kv_ship.py` | step of the C2C loopback test (Advanced menu), needs two running servers |

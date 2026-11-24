@@ -1,9 +1,24 @@
 #!/usr/bin/env python3
-"""Run a small, watchdog-supervised llama.cpp CPU/Vulkan trial matrix over ADB."""
+"""Run a small, watchdog-supervised llama.cpp CPU/Vulkan trial matrix over ADB.
+
+Requirements and limits:
+- Commands run through `adb shell run-as <package>`, which needs a debuggable
+  Termux build (release F-Droid/GitHub builds refuse with "package not
+  debuggable"). The script checks this first and stops with a clear message.
+- Keep Termux open with "Acquire wakelock" during a run; with the screen off the
+  CPU sleeps and the numbers are noise. The journal records the power state.
+- The server always binds with an API key (`--api-key-file`, default
+  `<termux-home>/.config/familia/api.key`, created 0600 if missing). Only
+  `/health` is unauthenticated.
+- Interrupts (^C, SIGTERM, timeouts) stop the active trial's server and
+  watchdog before exiting.
+"""
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import signal
 import shlex
 import subprocess
 import sys
@@ -19,16 +34,18 @@ def stamp() -> str:
 
 
 class Device:
-    def __init__(self, adb: str, serial: str, package: str, home: str, termux_home: str, prefix: str, timeout: int):
+    def __init__(self, adb: str, serial: str, package: str, home: str, termux_home: str, prefix: str, timeout: int,
+                 vulkan_dir: str | None = None):
         self.adb, self.serial, self.package = adb, serial, package
         self.home, self.termux_home, self.prefix, self.timeout = home, termux_home, prefix, timeout
+        self.vulkan_dir = vulkan_dir
 
     def shell(self, command: str, timeout: int | None = None) -> str:
         env = (f"export HOME={shlex.quote(self.termux_home)}\n"
                f"export PREFIX={shlex.quote(self.prefix)}\n"
                f"export PATH={shlex.quote(self.prefix + '/bin:/system/bin')}\n"
                f"export TMPDIR={shlex.quote(self.prefix + '/tmp')}\n"
-               f"export LD_LIBRARY_PATH={shlex.quote(self.home + '/vulkan:' + self.prefix + '/lib')}\n")
+               f"export LD_LIBRARY_PATH={shlex.quote(((self.vulkan_dir + ':') if self.vulkan_dir else '') + self.prefix + '/lib')}\n")
         argv = [self.adb, "-s", self.serial, "shell", "-T", "run-as", self.package,
                 "/system/bin/sh", "-s"]
         return subprocess.run(argv, check=True, text=True, stdout=subprocess.PIPE,
@@ -36,11 +53,12 @@ class Device:
                               timeout=timeout or self.timeout).stdout.strip()
 
     def forward(self, port: int) -> None:
+        self.unforward(port)  # clear a stale forward from an earlier run first
         subprocess.run([self.adb, "-s", self.serial, "forward", f"tcp:{port}", f"tcp:{port}"],
                        check=True, stdout=subprocess.DEVNULL)
 
     def unforward(self, port: int) -> None:
-        subprocess.run([self.adb, "-s", self.serial, "forward", f"--remove", f"tcp:{port}"],
+        subprocess.run([self.adb, "-s", self.serial, "forward", "--remove", f"tcp:{port}"],
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
@@ -52,15 +70,70 @@ def health(port: int, seconds: float = 2) -> bool:
         return False
 
 
+HEALTH_PROBE_SECONDS = 6
+STOP_GRACE_SECONDS = 10
+
+
+def serial_tag(serial: str) -> str:
+    """Short, stable, non-identifying tag for an ADB serial (journal and file names)."""
+    return hashlib.sha256(serial.encode()).hexdigest()[:12]
+
+
+def ensure_api_key(device: Device, key_file: str) -> str:
+    """Create (0600) or reuse the key file on the phone and return the key."""
+    q = shlex.quote(key_file)
+    key = device.shell(
+        f"umask 077; mkdir -p \"$(dirname {q})\"; "
+        f"if [ ! -s {q} ]; then od -An -tx1 -N32 /dev/urandom | tr -d ' \\n' > {q}; fi; "
+        f"chmod 600 {q}; cat {q}")
+    key = key.strip()
+    if len(key) < 16:
+        raise RuntimeError(f"API key file {key_file} is empty or too short")
+    return key
+
+
+def port_listening(device: Device, port: int) -> bool:
+    """True while anything on the phone still LISTENs on the port (IPv4 or IPv6)."""
+    out = device.shell(
+        f"awk -v p=':{port:04X}' '$2 ~ p\"$\" && $4 == \"0A\" {{f=1}} END {{print f ? \"busy\" : \"free\"}}' "
+        "/proc/net/tcp /proc/net/tcp6 2>/dev/null")
+    return out.strip().endswith("busy")
+
+
+def wait_port_free(device: Device, port: int, seconds: int = STOP_GRACE_SECONDS) -> None:
+    """CPU and Vulkan trials share one port: refuse to start while an old server still holds it,
+    or a leftover server could answer health() for the next trial."""
+    deadline = time.monotonic() + seconds
+    while True:
+        if not port_listening(device, port):
+            return
+        if time.monotonic() >= deadline:
+            raise RuntimeError(f"port {port} still in use on the phone; refusing to start the next trial")
+        time.sleep(1)
+
+
+def stop_trial(device: Device, base: str, timeout: int = 30, port: int | None = None) -> None:
+    """Stop a trial's watchdog and server: TERM, wait, then KILL; then check the port is free."""
+    stop, pid = shlex.quote(base + ".stop"), shlex.quote(base + ".pid")
+    device.shell(
+        f"touch {stop}; p=$(cat {pid} 2>/dev/null); [ -n \"$p\" ] || exit 0; kill \"$p\" 2>/dev/null; "
+        f"i=0; while kill -0 \"$p\" 2>/dev/null && [ $i -lt {STOP_GRACE_SECONDS} ]; do sleep 1; i=$((i+1)); done; "
+        f"kill -0 \"$p\" 2>/dev/null && kill -9 \"$p\" 2>/dev/null; true",
+        timeout=timeout)
+    if port is not None:
+        wait_port_free(device, port)
+
+
 def start_watchdog(device: Device, base: str, model: str, gpu_layers: int, port: int,
-                   ctx: int, threads: int) -> tuple[str, str, str]:
+                   ctx: int, threads: int, api_key_file: str) -> tuple[str, str, str]:
     pidfile, logfile, statefile = (f"{base}.{suffix}" for suffix in ("pid", "log", "state"))
-    readyfile, stopfile = f"{base}.ready", f"{base}.stop"
+    readyfile, stopfile, busyfile = f"{base}.ready", f"{base}.stop", f"{base}.busy"
     watchdogfile = f"{base}.watchdog.sh"
     server = " ".join(map(shlex.quote, [
         "llama-server", "--model", model, "--host", "127.0.0.1", "--port", str(port),
         "--ctx-size", str(ctx), "--threads", str(threads), "--threads-batch", str(threads),
         "--n-gpu-layers", str(gpu_layers), "--parallel", "1", "--no-webui",
+        "--api-key-file", api_key_file,
     ]))
     watchdog = f'''#!/system/bin/sh
 echo STARTING > {shlex.quote(statefile)}
@@ -69,13 +142,17 @@ server_pid=$!
 echo "$server_pid" > {shlex.quote(pidfile)}
 echo RUNNING > {shlex.quote(statefile)}
 failures=0
+ticks=0
 while kill -0 "$server_pid" 2>/dev/null; do
   if [ -e {shlex.quote(stopfile)} ]; then
     echo STOPPED > {shlex.quote(statefile)}
     kill "$server_pid" 2>/dev/null
     exit 0
   fi
-  if [ -e {shlex.quote(readyfile)} ]; then
+  ticks=$((ticks + 1))
+  if [ -e {shlex.quote(busyfile)} ]; then
+    failures=0  # a request is in flight; llama-server --parallel 1 may not answer /health until it ends
+  elif [ -e {shlex.quote(readyfile)} ] && [ $((ticks % {HEALTH_PROBE_SECONDS // 2})) -eq 0 ]; then
     if python3 -c 'import urllib.request; urllib.request.urlopen("http://127.0.0.1:{port}/health", timeout=2).read()' >/dev/null 2>&1; then
       failures=0
     else
@@ -91,11 +168,11 @@ while kill -0 "$server_pid" 2>/dev/null; do
   sleep 2
 done
 if [ ! -e {shlex.quote(stopfile)} ]; then
-  echo CRASHED > {shlex.quote(statefile)}
+  if [ -s {shlex.quote(logfile)} ]; then echo CRASHED > {shlex.quote(statefile)}; else echo 'KILLED?' > {shlex.quote(statefile)}; fi
   date -u '+%Y-%m-%dT%H:%M:%SZ server exited unexpectedly' >> {shlex.quote(base + '.watchdog')}
 fi
 '''
-    command = (f"rm -f {shlex.quote(pidfile)} {shlex.quote(statefile)} {shlex.quote(readyfile)} {shlex.quote(stopfile)}\n"
+    command = (f"rm -f {shlex.quote(pidfile)} {shlex.quote(statefile)} {shlex.quote(readyfile)} {shlex.quote(stopfile)} {shlex.quote(busyfile)}\n"
                f"cat > {shlex.quote(watchdogfile)} <<'WATCHDOG_SCRIPT'\n{watchdog}WATCHDOG_SCRIPT\n"
                f"chmod 700 {shlex.quote(watchdogfile)}\n"
                f"nohup /system/bin/sh {shlex.quote(watchdogfile)} > {shlex.quote(base + '.watchdog-launch')} 2>&1 </dev/null &\n")
@@ -103,12 +180,21 @@ fi
     return pidfile, logfile, statefile
 
 
-def main() -> int:
+def _raise_interrupt(signum: int, frame: object) -> None:
+    raise KeyboardInterrupt(f"signal {signum}")
+
+
+def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--adb", default="adb")
     ap.add_argument("--serial", required=True, help="ADB serial for the Android phone")
     ap.add_argument("--package", default="com.termux")
-    ap.add_argument("--home", default="/data/data/com.termux/files/home/brianreborn/familia-note9-0.5.0")
+    ap.add_argument("--home", default=None,
+                    help="familia tree on the phone (default: <termux-home>/familia)")
+    ap.add_argument("--api-key-file", default=None,
+                    help="key file on the phone (default: <termux-home>/.config/familia/api.key, created 0600)")
+    ap.add_argument("--vulkan-dir", default=None,
+                    help="opt-in directory prepended to LD_LIBRARY_PATH for a bundled Vulkan loader")
     ap.add_argument("--termux-home", default="/data/data/com.termux/files/home")
     ap.add_argument("--prefix", default="/data/data/com.termux/files/usr")
     ap.add_argument("--model", default="models/qwen2.5-coder-0.5b-instruct-q4_k_m.gguf")
@@ -119,18 +205,31 @@ def main() -> int:
     ap.add_argument("--startup-timeout", type=int, default=90)
     ap.add_argument("--request-timeout", type=int, default=90)
     ap.add_argument("--keep-best", action="store_true", help="leave the fastest healthy configuration running")
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
+    if args.home is None:
+        args.home = f"{args.termux_home}/familia"
+    if args.api_key_file is None:
+        args.api_key_file = f"{args.termux_home}/.config/familia/api.key"
     if args.ctx < 1:
         ap.error("--ctx must be a positive documented context size")
 
-    device = Device(args.adb, args.serial, args.package, args.home, args.termux_home, args.prefix, args.startup_timeout)
+    device = Device(args.adb, args.serial, args.package, args.home, args.termux_home, args.prefix, args.startup_timeout,
+                    args.vulkan_dir)
+    signal.signal(signal.SIGTERM, _raise_interrupt)
+    try:
+        device.shell("id -u")
+    except subprocess.CalledProcessError as error:
+        if "debuggable" in (error.output or ""):
+            raise RuntimeError(f"run-as {args.package} refused: it needs a debuggable Termux build") from error
+        raise
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     trial_dir = f"{args.home}/trials/{run_id}"
     device.shell(f"mkdir -p {shlex.quote(trial_dir)}")
-    journal = Path(f"android-model-trials-{args.serial}-{run_id}.jsonl")
+    tag = serial_tag(args.serial)
+    journal = Path(f"android-model-trials-{tag}-{run_id}.jsonl")
 
     def event(**fields: object) -> None:
-        row = {"time": stamp(), "serial": args.serial, **fields}
+        row = {"time": stamp(), "time_zone": "UTC", "device": tag, **fields}
         with journal.open("a", encoding="utf-8") as stream:
             stream.write(json.dumps(row, sort_keys=True) + "\n")
         print(json.dumps(row, sort_keys=True), flush=True)
@@ -139,18 +238,25 @@ def main() -> int:
     device.shell(f"test -r {shlex.quote(model)} && command -v llama-server")
     devices = device.shell("llama-server --list-devices 2>&1 || true")
     meminfo = device.shell("grep -E 'MemTotal|MemAvailable' /proc/meminfo")
+    api_key = ensure_api_key(device, args.api_key_file)
+    power = device.shell("dumpsys power 2>/dev/null | grep -E 'mWakefulness|mHoldingWakeLock' || true")
     device.forward(args.port)
     event(event="trial-set-start", model=model, context=args.ctx, threads=args.threads,
-          backend_devices=devices, memory=meminfo, watchdog=f"{trial_dir}/watchdog.sh", journal=str(journal))
+          backend_devices=devices, memory=meminfo, power=power,
+          api_key_file=args.api_key_file, health_probe_seconds=HEALTH_PROBE_SECONDS, watchdog=f"{trial_dir}/watchdog.sh", journal=str(journal))
 
     configs = [("cpu", 0), ("vulkan", 99)]
     results: list[tuple[float, str, int]] = []
     failed = False
+    active: str | None = None
+    kept = False
     try:
         for label, gpu_layers in configs:
             base = f"{trial_dir}/{label}"
+            wait_port_free(device, args.port)
+            active = base
             pidfile, logfile, statefile = start_watchdog(device, base, model, gpu_layers,
-                                                         args.port, args.ctx, args.threads)
+                                                         args.port, args.ctx, args.threads, args.api_key_file)
             readyfile = f"{base}.ready"
             event(event="trial-start", config=label, gpu_layers=gpu_layers,
                   memory=device.shell("grep -E 'MemTotal|MemAvailable' /proc/meminfo"), watchdog_state=statefile)
@@ -158,7 +264,7 @@ def main() -> int:
             ready = False
             while time.monotonic() < deadline:
                 state = device.shell(f"cat {shlex.quote(statefile)} 2>/dev/null || echo MISSING")
-                if state == "CRASHED":
+                if state in ("CRASHED", "KILLED?"):
                     break
                 if health(args.port):
                     ready = True
@@ -169,7 +275,8 @@ def main() -> int:
                 event(event="trial-failed", config=label, reason="server failed health check",
                       watchdog_state=state, log_tail=log_tail[-3000:])
                 failed = True
-                device.shell(f"touch {shlex.quote(base+'.stop')}; kill $(cat {shlex.quote(pidfile)}) 2>/dev/null || true")
+                stop_trial(device, base, port=args.port)
+                active = None
                 continue
 
             device.shell(f"touch {shlex.quote(readyfile)}")
@@ -177,11 +284,17 @@ def main() -> int:
             payload = json.dumps({"prompt": "Write a Python function that returns the factorial of n and rejects negative input.",
                                   "n_predict": 48, "temperature": 0, "stream": False}).encode()
             req = urllib.request.Request(f"http://127.0.0.1:{args.port}/completion", data=payload,
-                                         headers={"Content-Type": "application/json"}, method="POST")
+                                         headers={"Content-Type": "application/json",
+                                                  "Authorization": f"Bearer {api_key}"}, method="POST")
+            busyfile = shlex.quote(f"{base}.busy")
+            device.shell(f"touch {busyfile}")
             started = time.monotonic()
             try:
-                with urllib.request.urlopen(req, timeout=args.request_timeout) as response:
-                    answer = json.loads(response.read())
+                try:
+                    with urllib.request.urlopen(req, timeout=args.request_timeout) as response:
+                        answer = json.loads(response.read())
+                finally:
+                    device.shell(f"rm -f {busyfile}")
                 elapsed = time.monotonic() - started
                 rate = float(answer.get("timings", {}).get("predicted_per_second", 0.0))
                 state = device.shell(f"cat {shlex.quote(statefile)} 2>/dev/null || echo MISSING")
@@ -194,34 +307,49 @@ def main() -> int:
                 event(event="trial-failed", config=label, reason=str(exc))
                 failed = True
             finally:
-                device.shell(f"touch {shlex.quote(base+'.stop')}; kill $(cat {shlex.quote(pidfile)}) 2>/dev/null || true")
-                time.sleep(2)
+                stop_trial(device, base, port=args.port)
+                active = None
 
         if args.keep_best and results:
             rate, label, gpu_layers = max(results)
             base = f"{trial_dir}/final"
             pidfile, logfile, statefile = (f"{base}.{suffix}" for suffix in ("pid", "log", "state"))
             readyfile = f"{base}.ready"
-            start_watchdog(device, base, model, gpu_layers, args.port, args.ctx, args.threads)
+            wait_port_free(device, args.port)
+            active = base
+            start_watchdog(device, base, model, gpu_layers, args.port, args.ctx, args.threads, args.api_key_file)
             deadline = time.monotonic() + args.startup_timeout
             while time.monotonic() < deadline and not health(args.port):
                 time.sleep(2)
             if health(args.port):
                 device.shell(f"touch {shlex.quote(readyfile)}")
+                active = None  # intentionally left running (--keep-best)
+                kept = True
                 event(event="final-running", config=label, gpu_layers=gpu_layers, tokens_per_second=rate,
                       watchdog_state=statefile, watchdog_log=f"{base}.watchdog", server_log=logfile)
             else:
                 event(event="final-start-failed", config=label, gpu_layers=gpu_layers)
                 failed = True
     finally:
-        device.unforward(args.port)
+        if active is not None:
+            try:
+                stop_trial(device, active, timeout=20)
+            except Exception:  # best effort on the way out
+                pass
+        if not kept:  # --keep-best: leave the kept server reachable through its forward
+            device.unforward(args.port)
     event(event="trial-set-finished", status="partial" if failed else "complete", journal=str(journal))
-    return 1 if failed and not results else 0
+    if failed and not results:
+        return 1
+    return 3 if failed else 0  # 3 = partial: some configs failed
 
 
 if __name__ == "__main__":
     try:
         raise SystemExit(main())
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
+    except KeyboardInterrupt:
+        print("android-model-trials: interrupted; active trial stopped", file=sys.stderr)
+        raise SystemExit(130)
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, RuntimeError) as error:
         print(f"android-model-trials: {error}", file=sys.stderr)
         raise SystemExit(2)
