@@ -48,12 +48,11 @@ def test_local_topology_starts_only_local_active_nodes_and_routes():
 
 
 def test_freebsd_host_runs_its_nodes_without_starting_a_gateway():
-    # does not require the 33B nanbeige model (deferred for hardware limits, #682): whatever
-    # angel starts must be its own active nodes; the gateway stays on miryam
-    g = graph()
-    nodes, remote, gateways, omitted, remote_gateways = start_graph.local_topology(g, "angel")
-    assert all(g["nodes"][n]["host"] == "angel" and g["nodes"][n]["status"] == "active" for n in nodes)
-    assert "nanbeige-chat" not in nodes
+    # Angel has one active, hardware-fitting coder node (qwen35-2b-q4km);
+    # fail-closed freebsd-guardian is operator-start only and is not auto-started.
+    # The gateway stays on miryam.
+    nodes, remote, gateways, omitted, remote_gateways = start_graph.local_topology(graph(), "angel")
+    assert nodes == ["angel-coder"]
     assert remote
     assert gateways == []
     assert omitted == []

@@ -10,9 +10,8 @@ tool_route (TOOLS-009), and a discovery-only off-loopback source stays none.
 After #355 those two, and a fail-closed source (BUG-TR-1 / #358), are current
 behavior and asserted directly. Development 79d3d84 / #364 also closed BUG-TR-5, BUG-TR-6,
 and the case/fullwidth half of BUG-TR-3 (normalize_role NFKC + casefold); those are
-now asserted directly. xfail(strict=True) marks the remaining BUG-TR-3 gaps
-(whitespace, Cyrillic/Greek, and ZWSP). BUG-TR-4 was fixed and is asserted
-directly below."""
+now asserted directly. Whitespace, Cyrillic/Greek, and ZWSP variants are also
+required to remain fail-closed. BUG-TR-4 is asserted directly below."""
 import copy, json, os, socket, sys, threading, urllib.error, urllib.request
 
 import pytest
@@ -91,7 +90,6 @@ def test_fail_closed_role_variants_get_no_forward(role, where):
     assert EP.tool_target(g, "light") is None
 
 
-@pytest.mark.xfail(strict=True, reason=BUG_TR_3)
 @pytest.mark.parametrize("where", ["node_role", "model_role"])
 @pytest.mark.parametrize("role", CASE_OPEN + LOOKALIKE_OPEN, ids=ascii)
 def test_fail_closed_role_variants_still_open_get_no_forward(role, where):
@@ -104,7 +102,6 @@ def test_fail_closed_role_variant_end_to_end_stays_on_source():
     assert _lands(g3(0, 0, coder={"role": "Guardian"})) == ("light", ["light"])
 
 
-@pytest.mark.xfail(strict=True, reason=BUG_TR_3)
 def test_fail_closed_cyrillic_role_variant_end_to_end_stays_on_source():
     assert _lands(g3(0, 0, coder={"role": "gu\u0430rdian"})) == ("light", ["light"])
 

@@ -197,16 +197,16 @@ def test_nexus_never_routes_into_guardian_pentest_or_defender_same_host():
         if k != "cuda-sm11-decision" and not hh.tool_free(g, k):
             n["status"] = "planned"
     # Inject a same-host defender that *looks* tool-capable by model type but is tool_free by role.
-    g["nodes"]["qodesh-defender"] = dict(g["nodes"]["coder"], host="qodesh", port=1, status="active")
+    g["nodes"]["samehost-defender"] = dict(g["nodes"]["coder"], host="qodesh", port=1, status="active")
     # And a same-host guardian.
-    g["nodes"]["qodesh-guardian"] = dict(g["nodes"]["fleet-guardian"], host="qodesh", port=2, status="active",
+    g["nodes"]["samehost-guardian"] = dict(g["nodes"]["fleet-guardian"], host="qodesh", port=2, status="active",
                                          role="guardian")
     # Mesh peers that are guardian/pentest also flipped active — still must not be chosen.
     for k in ("fleet-guardian", "freebsd-guardian"):
         g["nodes"][k]["status"] = "active"
     r = hh.route_tools(g, "hermes")
     assert r["mode"] == "none" and r["node"] is None, r
-    assert hh.tool_free(g, "qodesh-defender") and hh.tool_free(g, "qodesh-guardian")
+    assert hh.tool_free(g, "samehost-defender") and hh.tool_free(g, "samehost-guardian")
 
 
 def test_nexus_never_routes_into_pentest_even_when_flagged_tool_capable():

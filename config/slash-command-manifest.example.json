@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "commands": [
+    "familia-focus-begin",
+    "familia-focus-await",
+    "familia-focus-end",
+    "familia-route",
+    "familia-internal-status"
+  ],
+  "consumers": {
+    "gateway": {
+      "aliases": [
+        {"name": "begin", "command": "familia-focus-begin"},
+        {"name": "await", "command": "familia-focus-await"},
+        {"name": "end", "command": "familia-focus-end"},
+        {"name": "coder", "command": "familia-route", "arguments": {"route": "coder"}},
+        {"name": "internal", "command": "familia-internal-status"}
+      ],
+      "help": ["begin", "await", "end", "coder"]
+    },
+    "minimal-client": {
+      "aliases": [],
+      "help": []
+    },
+    "renamed-client": {
+      "aliases": [
+        {"name": "start-focus", "command": "familia-focus-begin"}
+      ],
+      "help": ["start-focus"]
+    }
+  }
+}

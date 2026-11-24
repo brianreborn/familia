@@ -48,7 +48,7 @@ def test_freebsd_ports_layout_preferred():
     # shebang read: fake via exists-only derive — inject HERMES_PY unset, mock _read_shebang
     real_read = hh._read_shebang
 
-    def fake_shebang(path):
+    def fake_shebang(path, **_kwargs):
         if path == hh.FREEBSD_BIN:
             return "/usr/local/bin/python3.12"
         return real_read(path)
@@ -69,6 +69,14 @@ def test_freebsd_ports_layout_preferred():
     assert b == hh.FREEBSD_BIN
     assert py == "/usr/local/bin/python3.12"
     assert sp == hh.FREEBSD_LIB
+
+
+def test_shell_wrapper_derives_execed_python(monkeypatch, tmp_path):
+    wrapper = tmp_path / "hermes-agent"
+    wrapper.write_text("#!/bin/sh\nexec /opt/python3.15 /opt/hermes-agent \"$@\"\n", encoding="ascii")
+    py = "/opt/python3.15"
+    monkeypatch.setattr(hh, "_read_shebang", lambda path: "/bin/sh")
+    assert hh._derive_py(str(wrapper), exists=lambda p: p in {str(wrapper), "/bin/sh", py}) == py
 
 
 def test_freebsd_ignores_snap_path_strings():
@@ -181,8 +189,9 @@ def test_single_agent_render_allows_below_min_ctx(capsys, monkeypatch):
     import hermes_modes as hm
     g = yaml.safe_load(open(os.path.join(ROOT, "graph.yaml")))
     # Synthetic node below hermes min_ctx 64000, cloned from the active coder (the 33B
-    # nanbeige model is deferred for hardware limits and is not required here).
+    # obsolete large-model is deferred for hardware limits and is not required here).
     base = g["nodes"]["coder"]
+
     g["nodes"]["small-ctx"] = dict(copy.deepcopy(base), ctx=32768, parallel=1, port=19999, status="active")
     # single_agent refuses nodes on another fleet host; pretend we run on the node's host.
     monkeypatch.setattr(hm.socket, "gethostname", lambda: g["nodes"]["small-ctx"]["host"])
@@ -197,7 +206,7 @@ def test_single_agent_render_allows_below_min_ctx(capsys, monkeypatch):
 
 def test_active_coder_meets_hermes_min_ctx(monkeypatch):
     """#125: the active coder (ctx 65536) clears agents.hermes.min_ctx 64000.
-    Does not use the 33B nanbeige-coder: it is deferred for hardware limits."""
+    Does not use the obsolete large coder: it is deferred for hardware limits."""
     import yaml
     import hermes_modes as hm
     g = yaml.safe_load(open(os.path.join(ROOT, "graph.yaml")))
@@ -206,6 +215,7 @@ def test_active_coder_meets_hermes_min_ctx(monkeypatch):
     monkeypatch.setattr(hm.socket, "gethostname", lambda: g["nodes"]["coder"]["host"])
     g2, name = hm.single_agent(g, "hermes", "coder", enforce_min_ctx=True)
     assert name == "hermes@coder"
+
     assert g2["agents"][name]["context_length"] == 65536
 
 

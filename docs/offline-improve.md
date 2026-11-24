@@ -30,7 +30,7 @@ State lands under `~/.local/state/familia/offline-improve/<host>/`
 
 1. **Host RAM memcpy probe** (stdlib; same idea as `scripts/probe_links.py`).
 2. **Bounded `llama-bench`** on a *small* local GGUF when available
-   (`LFM2.5-1.2B` / SmolLM2-class — **not** Nanbeige 33B). Thread grid is
+   (`LFM2.5-1.2B` / SmolLM2-class — **not** named large model 33B). Thread grid is
    `{1, ncpu/2, ncpu}`. Skip with `--no-bench` or when no bench/GGUF exists.
 3. Persist JSON + append `history.jsonl`.
 
@@ -57,7 +57,7 @@ Example death hook:
 ## Angel / private topology
 
 After `generate_graph.py angel`, nodes are type-named (`coder` / `chat`). Offline
-improve does not start Nanbeige; it only benches a small GGUF so a disconnected
+improve does not start named large model; it only benches a small GGUF so a disconnected
 angel still gathers useful thread/RAM numbers until miryam/box answer SSH again.
 
 See also: [reconnect-selfheal.md](./reconnect-selfheal.md) (issue #149 — online-ish
