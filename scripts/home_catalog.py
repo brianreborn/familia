@@ -5,9 +5,12 @@ usage: python3 scripts/home_catalog.py AREA VERB [--apply] [ARG...]
        python3 scripts/home_catalog.py --list-home
        python3 scripts/home_catalog.py --titles
        python3 scripts/home_catalog.py --verbs
+       python3 scripts/home_catalog.py --tree [AREA]
 
 Areas (equal on the home menu): models, harnesses, agents, mcp, tools, apps.
 Verbs: install, list, start, stop, status.
+--tree prints every menu item and graph entry under its area, from the
+registry scripts/menu-categories.txt (scripts/menu_registry.py).
 
 The legacy menu runs this same script, so each home action has a CLI command.
 list and status read the local graph and catalogs. install, start and stop
@@ -1870,6 +1873,9 @@ def main(argv=None):
         for title in TITLES:
             say(title)
         return 0
+    if argv[0] == "--tree":
+        import menu_registry  # noqa: E402 - only this flag needs the registry
+        return menu_registry.main(["--tree"] + list(argv[1:2]))
     if argv[0] == "--verbs":
         for verb in VERBS:
             say(verb)

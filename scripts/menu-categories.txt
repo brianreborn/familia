@@ -1,0 +1,191 @@
+# familia menu registry (epic #733 M3): six equal top-level categories.
+# id|category|label|target   (plain ASCII; see scripts/menu_registry.py --help)
+# Categories, in menu order: models harnesses agents mcp tools apps
+# Every scripts/menu-items.txt key and every graph.yaml node, agent, harness,
+# self_improve entry and agent MCP server has exactly one row here.
+# tests/test_menu_registry.py fails when one is missing, stale or repeated.
+# New rows: python3 scripts/menu_registry.py --write, then fix the category by hand.
+
+# models
+setup.android-cockpit|models|Android installer switches (on-device inference; gate, dry-run, key, host)|item:setup.android-cockpit
+setup.logon-task|models|Windows: start the model server at logon (registers the task)|item:setup.logon-task
+models.list-all|models|List every graph model, unplaced option, and model-database entry|item:models.list-all
+models.add|models|Add a model from a Hugging Face folder or a .gguf|item:models.add
+models.lfm3|models|LFM3 family: download an optional LFM3 model (lfm3 lfm3-qad lfm3-vl lfm3-omni lfm3-audio; vision/audio use --mmproj; media picks Linux/macOS only for now)|item:models.lfm3
+models.fetch|models|Download and add a model from Hugging Face (asks you to accept its license)|item:models.fetch
+models.cards|models|Fetch only a model's card, config and license (no weights)|item:models.cards
+models.license|models|Show one model's license and what it obliges you to|item:models.license
+models.pick|models|Pick a model for this host: full catalog, search, Enter = host default; previews a host graph (writes generated/ only with --write)|item:models.pick
+models.check|models|Check graph.yaml: models, RAM budget, required launch parameters|item:models.check
+models.explain|models|Show the exact launch parameters for one node|item:models.explain
+models.licenses|models|List model, skill and engine licenses (records nothing)|item:models.licenses
+graphs.list|models|List every graph and the command that configures it|item:graphs.list
+graphs.configure|models|Show nodes on one graph and the edit command (writes nothing)|item:graphs.configure
+test.registry|models|Benchmark records: best measured model per host and role|item:test.registry
+test.registry-summary|models|Summary of every benchmark record|item:test.registry-summary
+hosts.monitor|models|Monitor hosts over SSH (read-only console; --once for one snapshot)|item:hosts.monitor
+hosts.monitor-once|models|One snapshot of every host, then exit|item:hosts.monitor-once
+hosts.start|models|Start the model server on this machine from graph.yaml|item:hosts.start
+hosts.serve|models|Start one graph node's model server (exact launch parameters from the graph)|item:hosts.serve
+hosts.measure-write|models|Measure and write this host (identify kind; GPU inventory stays unknown until measured)|item:hosts.measure-write
+hosts.pin|models|Pin this machine's graph host name (menus/start auto-use it)|item:hosts.pin
+hosts.pin-show|models|Show pinned graph host (or empty)|item:hosts.pin-show
+hosts.generate|models|Write a per-host graph to generated/graph-HOST.yaml|item:hosts.generate
+hosts.android|models|Start the node on an Android phone over SSH|item:hosts.android
+hosts.phones|models|Start every phone listed in graph.yaml|item:hosts.phones
+hosts.watchdog|models|Keep a phone's node running (restart it if it stops answering)|item:hosts.watchdog
+adv.args|models|validate_graph: the llama-server arguments for one node|item:adv.args
+adv.routes|models|graph_router (default gateway): check a routes file (single, pair, fallback, chain, router, remote, tools)|item:adv.routes
+adv.verify|models|validate_graph: also verify model sha256 and runtimes (slow)|item:adv.verify
+adv.graph-edit|models|modify_graph: assign models: key to a type-named node (prefer --host for private topology)|item:adv.graph-edit
+adv.protograph|models|protograph: recipe -> graph.yaml (dry run; skills/protograph/SKILL.md)|item:adv.protograph
+adv.db-list|models|Model database: list entries|item:adv.db-list
+adv.db-show|models|Model database: show one entry|item:adv.db-show
+adv.db-damp|models|Model database: add a repo without weights (damp)|item:adv.db-damp
+adv.db-backfill|models|Model database: backfill entries for models in the manifest|item:adv.db-backfill
+adv.llama-flags|models|llama_flags: does a pinned llama.cpp build have a flag?|item:adv.llama-flags
+adv.scale-down|models|Scale-down (opt-in smaller models) ? apply|item:adv.scale-down
+adv.licenses-json|models|All licenses as JSON (records nothing)|item:adv.licenses-json
+adv.registry-query|models|Benchmark records for one host|item:adv.registry-query
+adv.registry-match|models|Hardware profile that matches a host|item:adv.registry-match
+adv.registry-power|models|Power use recorded per host|item:adv.registry-power
+adv.registry-lint|models|Check the benchmark records|item:adv.registry-lint
+adv.power-probe|models|One power reading of this machine (read-only)|item:adv.power-probe
+adv.cpu-level|models|This CPU's x86-64 level and the numpy it needs|item:adv.cpu-level
+adv.phone-target|models|Phones in graph.yaml and how they are reached|item:adv.phone-target
+adv.monitor-deaths|models|Monitor: alert on crashed or killed model servers|item:adv.monitor-deaths
+adv.c2c-loopback|models|C2C test: move a KV cache between two local servers|item:adv.c2c-loopback
+adv.logon-task-remove|models|Windows: remove the logon task|item:adv.logon-task-remove
+home.models.install|models|Home: install models|item:home.models.install
+home.models.list|models|Home: list models|item:home.models.list
+home.models.start|models|Home: start models (API key; --apply)|item:home.models.start
+home.models.stop|models|Home: stop models (--apply)|item:home.models.stop
+home.models.status|models|Home: models status|item:home.models.status
+home.talk|models|Talk to the protomodel|item:home.talk
+home.find-models|models|Find more models|item:home.find-models
+node.cuda-sm11-decision|models|node cuda-sm11-decision (decision on qodesh)|graph:nodes.cuda-sm11-decision
+node.cpu-smol-decision|models|node cpu-smol-decision (decision on qodesh)|graph:nodes.cpu-smol-decision
+node.vulkan-igpu-decision|models|node vulkan-igpu-decision (decision on miryam)|graph:nodes.vulkan-igpu-decision
+node.vulkan-handset-decision|models|node vulkan-handset-decision (decision on phone7)|graph:nodes.vulkan-handset-decision
+node.vulkan-handset-general|models|node vulkan-handset-general (general on phone8)|graph:nodes.vulkan-handset-general
+node.coder|models|node coder (coder on miryam)|graph:nodes.coder
+node.embed|models|node embed (embed on miryam)|graph:nodes.embed
+node.cpu-resident-coder|models|node cpu-resident-coder (coder on qodesh)|graph:nodes.cpu-resident-coder
+node.angel-coder|models|node angel-coder (coder on angel)|graph:nodes.angel-coder
+node.dogfood-decision|models|node dogfood-decision (decision on box)|graph:nodes.dogfood-decision
+node.dogfood-coder|models|node dogfood-coder (coder on box)|graph:nodes.dogfood-coder
+node.fleet-guardian|models|node fleet-guardian (guardian on miryam)|graph:nodes.fleet-guardian
+node.freebsd-guardian|models|node freebsd-guardian (guardian on angel)|graph:nodes.freebsd-guardian
+
+# harnesses
+harness2.status|harnesses|Show which agents have Harness2 and in which mode|item:harness2.status
+harness2.set|harnesses|Set Harness? mode for any agent (hermes, llama UI, or other; off / propose / apply)|item:harness2.set
+harness2.review|harnesses|Review proposals: list, accept or revert|item:harness2.review
+harness2.terminal-rsi|harnesses|Terminal-RSI round for a harness target (proposals only; review with harness2.review)|item:harness2.terminal-rsi
+test.unit|harnesses|Run the unit tests (installs pytest into .cache/pylib once)|item:test.unit
+test.offline|harnesses|Offline test plan (prints live steps; RUN=1 to run them)|item:test.offline
+test.offline-secbench|harnesses|Opt-in offline security-model benches (#117); synthetic fixtures only|item:test.offline-secbench
+test.proving-grounds|harnesses|Graded progress on the three top-level proving grounds (fleet + nexus + bt); not pass/fail|item:test.proving-grounds
+home.harnesses.install|harnesses|Home: install harnesses|item:home.harnesses.install
+home.harnesses.list|harnesses|Home: list harnesses|item:home.harnesses.list
+home.harnesses.start|harnesses|Home: start harnesses (--apply)|item:home.harnesses.start
+home.harnesses.stop|harnesses|Home: stop harnesses (--apply)|item:home.harnesses.stop
+home.harnesses.status|harnesses|Home: harness status|item:home.harnesses.status
+harness.hermes-lab|harnesses|harness hermes-lab (files)|graph:harnesses.hermes-lab
+harness.hermes|harnesses|harness hermes (files)|graph:harnesses.hermes
+self-improve.harness2|harnesses|self-improve harness2 (off)|graph:self_improve.harness2
+self-improve.harness2-hermes|harnesses|self-improve harness2-hermes (off)|graph:self_improve.harness2-hermes
+
+# agents
+agents.hermes-model|agents|Hermes: single model (pick model)|item:agents.hermes-model
+agents.hermes-graph|agents|Hermes: full graph|item:agents.hermes-graph
+agents.hermes|agents|Hermes on the graph coder node (64K context)|item:agents.hermes
+agents.hermes-render|agents|Write the hermes config only; start nothing|item:agents.hermes-render
+agents.fleet-test|agents|Launch-test a role: validate, would-start, stop|item:agents.fleet-test
+agents.fleet|agents|Launch a role from graph.yaml (guardian/defender: seatbelts on by default)|item:agents.fleet
+agents.guardian-launch-test|agents|Guardian/defender node: launch-test (seatbelts on; validate ? would-start ? stop)|item:agents.guardian-launch-test
+agents.guardian-start|agents|Guardian/defender: operator-confirmed model start (owned scope; tools empty)|item:agents.guardian-start
+agents.pentest-launch-test|agents|Legacy id ? guardian launch-test|item:agents.pentest-launch-test
+agents.pentest-start|agents|Legacy id ? guardian operator-start|item:agents.pentest-start
+hosts.phone-agents|agents|Phone assistants (Bixby, Gemini): which are set up and what leaves the phone|item:hosts.phone-agents
+hosts.phone-agents-licenses|agents|Phone assistants: Shizuku license and the terms each assistant brings|item:hosts.phone-agents-licenses
+hosts.phone-agent-probe|agents|On this phone (Termux): is Shizuku running, which assistants are installed|item:hosts.phone-agent-probe
+hosts.phone-agent-open|agents|On this phone: bring Gemini or Bixby to the front (sends nothing)|item:hosts.phone-agent-open
+hosts.phone-agent-ask|agents|On this phone: ask Gemini (CLOUD: your text goes to Google; asks first)|item:hosts.phone-agent-ask
+hosts.phone-agent-consent|agents|On this phone: allow or withdraw cloud calls to an assistant|item:hosts.phone-agent-consent
+adv.hermes-selftest|agents|Hermes: check that context compaction keeps facts|item:adv.hermes-selftest
+adv.hermes-escalate|agents|Hermes with escalation to a bigger model when stuck|item:adv.hermes-escalate
+adv.escalate-accept|agents|Escalation: accept the pending suggestion|item:adv.escalate-accept
+adv.escalate-consent|agents|Escalation: allow a node to hand off to another host|item:adv.escalate-consent
+home.agents.install|agents|Home: install agents|item:home.agents.install
+home.agents.list|agents|Home: list agents|item:home.agents.list
+home.agents.start|agents|Home: start agents (API key; --apply)|item:home.agents.start
+home.agents.stop|agents|Home: stop agents (--apply)|item:home.agents.stop
+home.agents.status|agents|Home: agents status|item:home.agents.status
+agent.hermes|agents|agent hermes|graph:agents.hermes
+agent.hermes-lab|agents|agent hermes-lab|graph:agents.hermes-lab
+agent.pentest-ops|agents|agent pentest-ops|graph:agents.pentest-ops
+
+# mcp
+reach.mcp|mcp|Print mcpServers JSON for llama UI / code-bootstraps|item:reach.mcp
+home.mcp.install|mcp|Home: install MCP servers (no listener)|item:home.mcp.install
+home.mcp.list|mcp|Home: list MCP servers|item:home.mcp.list
+home.mcp.start|mcp|Home: start MCP servers (refuses to bind)|item:home.mcp.start
+home.mcp.stop|mcp|Home: stop MCP servers|item:home.mcp.stop
+home.mcp.status|mcp|Home: MCP server status|item:home.mcp.status
+
+# tools
+skills.menu|tools|Bundled skills: switch skills on/off for an agent (license-checked)|item:skills.menu
+skills.list|tools|List every skill with its license and status|item:skills.list
+skills.show|tools|Show one skill: license, where it lives, what it adds|item:skills.show
+skills.vendor|tools|Bring a survey skill into green-zkillz|item:skills.vendor
+skills.validate|tools|Check the skills catalog and the skills in graph.yaml|item:skills.validate
+reach.status|tools|Agent-Reach: pin checkout, CLI, which agents are opted in|item:reach.status
+reach.enable|tools|Opt an agent into Agent-Reach (writes reaches: in graph.yaml)|item:reach.enable
+reach.disable|tools|Remove an agent from Agent-Reach|item:reach.disable
+reach.link|tools|Link Agent-Reach skill + CLI wrapper into an agent's HERMES_HOME|item:reach.link
+adv.skills-paths|tools|Folders of the skills enabled for an agent|item:adv.skills-paths
+home.tools.install|tools|Home: install tool sets|item:home.tools.install
+home.tools.list|tools|Home: list tool sets|item:home.tools.list
+home.tools.start|tools|Home: start tool sets (not a process)|item:home.tools.start
+home.tools.stop|tools|Home: stop tool sets|item:home.tools.stop
+home.tools.status|tools|Home: tool set status|item:home.tools.status
+home.search-x|tools|Search my X / Twitter posts|item:home.search-x
+
+# apps
+setup.first-time|apps|First-time setup on this machine (deps ? licenses ? install ? PATH)|item:setup.first-time
+setup.update|apps|Update this checkout (git pull --ff-only, then sync pins)|item:setup.update
+setup.licenses|apps|Review / accept licenses|item:setup.licenses
+setup.settings|apps|Change launcher settings (terminal)|item:setup.settings
+setup.sync-goal|apps|Sync pinned parts only (asks preview vs apply)|item:setup.sync-goal
+setup.safe-build|apps|Safe-mode / offline build help|item:setup.safe-build
+setup.remove-path|apps|Remove familia from PATH (danger; )|item:setup.remove-path
+apps.catalog|apps|Virtual app store: every app familia can run, plus open "applications" issues (cached search)|item:apps.catalog
+apps.list|apps|List the apps (menu apps and the gum-home tools) and their ids|item:apps.list
+apps.search|apps|Search open "applications" issues across brianreborn (public; cached, 45 min TTL)|item:apps.search
+apps.refresh|apps|Refresh the app search cache now (one GitHub request)|item:apps.refresh
+apps.run|apps|Run one app by id (see apps.list)|item:apps.run
+adv.uninstall|apps|Uninstall from this host (models are kept)|item:adv.uninstall
+adv.numpy-wheel|apps|Windows: build numpy for CPUs without SSE4 (long; needs MSYS2)|item:adv.numpy-wheel
+adv.poudriere|apps|FreeBSD: build the familia package with poudriere|item:adv.poudriere
+setup.configure|apps|Low-level: set up this checkout (sync pins + git-pull hooks)|item:setup.configure
+setup.sync|apps|Low-level: bring every pinned part to its pin|item:setup.sync
+setup.deps|apps|Low-level: install local OS packages this host needs|item:setup.deps
+setup.install|apps|Low-level: install or update this host for real|item:setup.install
+setup.install-cli|apps|Low-level: put familia on PATH for real|item:setup.install-cli
+setup.path-add|apps|Low-level: add ~/.local/bin to PATH in ~/.profile|item:setup.path-add
+setup.path-remove|apps|Low-level: remove familia PATH block from ~/.profile|item:setup.path-remove
+setup.cli-status|apps|Low-level: show where familia is on PATH|item:setup.cli-status
+setup.uninstall-cli|apps|Low-level: take familia off PATH (asks first)|item:setup.uninstall-cli
+home.apps.install|apps|Home: install from the app store (no download)|item:home.apps.install
+home.apps.list|apps|Home: list the app store|item:home.apps.list
+home.apps.start|apps|Home: start app store (no listener)|item:home.apps.start
+home.apps.stop|apps|Home: stop the app store|item:home.apps.stop
+home.apps.status|apps|Home: app store status|item:home.apps.status
+home.apps.browse|apps|Home: browse the app store (tweet cards; gum or plain text)|item:home.apps.browse
+home.apps.web|apps|Home: write the app store web page (static HTML, no remote loads)|item:home.apps.web
+help.quickstart|apps|Read the quick start|item:help.quickstart
+help.search|apps|Search every group for a word (in the menu: /word, then n / N)|item:help.search
+help.cli|apps|Every menu item as a command (same as --list)|item:help.cli
+help.man|apps|The familia(1) manual: every command, option, setting and file|item:help.man
+help.internal|apps|Scripts the menu leaves out on purpose, and why|item:help.internal
