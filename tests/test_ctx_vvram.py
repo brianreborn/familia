@@ -16,7 +16,10 @@ def _graph():
 
 def test_vvram_spill_configured_angel_coder():
     g = _graph()
-    assert cv.vvram_spill_configured(g["nodes"]["removed-large-coder"]) is True
+    # #717 purged the oversized Angel model; the restored small coder has no VVRAM spill.
+    assert "removed-large-coder" not in g["nodes"]
+    assert "angel-coder" in g["nodes"]
+    assert cv.vvram_spill_configured(g["nodes"]["angel-coder"]) is False
     assert cv.vvram_spill_configured(g["nodes"]["coder"]) is False
 
 
