@@ -7,10 +7,11 @@ and computes the group index, item index, page, and page-local number.
 
 It does not read the keyboard or own the input loop (M1 / Race Reviewer).
 M1 (scripts/menu_keys.py, PR #743) highlights entries on the current page.
-Up/Down wrap on that page; Home/End and PgUp/PgDn jump to the first or last
-entry; a further PgDn/PgUp at the end/start of a page emits > / < when the
-menu set --next / --prev (familia-menu.sh paging). Highlight index i on a
-page selects the same item as numeric choice i.
+Up/Down wrap on that page; Home/End jump to the first or last entry.
+On M1 @ b837f09, PgDn/PgUp emit > / < immediately when the picker was
+created with --next / --prev (familia-menu.sh paging via menu-keys.sh);
+without those flags they jump to last/first. Highlight index i on a page
+selects the same item as numeric choice i.
 
 Menus exit only on an explicit user quit (q / quit / exit), never on an
 error, a finished action, invalid input, or a timeout.
@@ -176,10 +177,11 @@ def _menu_keys():
 def move_highlight(index, count, key, page_size=PAGE_SIZE, prev=False, next=False):
     """Move a 0-based highlight the way M1's Picker does.
 
-    Up/Down wrap. Home/End jump to the ends. PgUp/PgDn jump to first/last;
-    a further PgUp at 0 with prev=True returns '<', a further PgDn at the
-    last item with next=True returns '>'. Those strings are page turns in
-    familia-menu.sh, not new cursor positions.
+    Up/Down wrap. Home/End jump to the ends. With next=True, PgDn returns
+    '>' immediately (M1 b837f09 / menu-keys.sh always passes --next/--prev);
+    without it, PgDn jumps to the last item. With prev=True, PgUp returns
+    '<'; otherwise it jumps to the first item. Those strings are page turns
+    in familia-menu.sh, not new cursor positions.
     """
     if count <= 0:
         raise ValueError("empty group")
@@ -202,15 +204,15 @@ def move_highlight(index, count, key, page_size=PAGE_SIZE, prev=False, next=Fals
 def arrow_path_from_first(key, path=None, page_size=PAGE_SIZE):
     """M1 key sequence from the first item of a group to `key`, then Enter.
 
-    Full pages are skipped with PgDn-to-end then PgDn (emits '>'). Down
-    moves within the target page. Reachability by arrows means this path
-    selects the same page-local number the numeric path uses.
+    Full pages are skipped with one PgDn each (M1 emits '>' when next=True).
+    Down moves within the target page. Reachability by arrows means this
+    path selects the same page-local number the numeric path uses.
     """
     mk = _menu_keys()
     loc = locate(key, path=path, page_size=page_size)
     steps = []
-    for p in range(loc["page"]):
-        steps.extend([mk.PGDN, mk.PGDN])
+    for _p in range(loc["page"]):
+        steps.append(mk.PGDN)
     steps.extend([mk.DOWN] * (loc["page_local"] - 1))
     steps.append(mk.ENTER)
     return loc, steps

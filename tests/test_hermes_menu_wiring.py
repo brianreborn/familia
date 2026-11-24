@@ -142,8 +142,10 @@ def test_arrow_wraparound_and_home_end_match_m1_picker():
     assert menu_catalog.move_highlight(0, n, "Up") == n - 1
     assert menu_catalog.move_highlight(3, n, "Home") == 0
     assert menu_catalog.move_highlight(0, n, "End") == n - 1
-    # M1: PgDn jumps to the last entry; a second PgDn with next=True is ">".
+    # M1 @ b837f09: PgDn with next=True is ">" immediately; without next
+    # it jumps to the last entry. PgUp is the same with prev=True.
     assert menu_catalog.move_highlight(0, n, "PgDn") == n - 1
+    assert menu_catalog.move_highlight(0, n, "PgDn", next=True) == ">"
     assert menu_catalog.move_highlight(n - 1, n, "PgDn", next=True) == ">"
     assert menu_catalog.move_highlight(0, n, "PgUp") == 0
     assert menu_catalog.move_highlight(0, n, "PgUp", prev=True) == "<"
@@ -258,6 +260,11 @@ def _read_until(fd, needle, timeout=15):
 
 
 @pytest.mark.skipif(not hasattr(os, "openpty"), reason="no pty")
+@pytest.mark.skipif(
+    menu_catalog.load_m1_key_loop() is None
+    or getattr(menu_catalog.load_m1_key_loop(), "_m2", lambda: None)() is None,
+    reason="live arrow keys need scripts/menu_input.py (#736, M2)",
+)
 def test_pty_arrows_reach_hermes_webapp_and_guardian_weights():
     """Live M1 picker: arrows open Agents (hermes) and dry-run two M6 items."""
     import time
@@ -294,11 +301,9 @@ def test_pty_arrows_reach_hermes_webapp_and_guardian_weights():
         assert b"scripts/hermes.sh --client webapp" in out
         os.write(master, b"\r")
         _read_until(master, b"or b: ")
-        # Guardian weights is on a later page: PgDn to end, PgDn again to '>'.
+        # Guardian weights is on a later page: one PgDn (CSI 6~) turns the
+        # page immediately (M1 b837f09, menu-keys.sh always passes --next).
         for _ in range(loc_w["page"] - loc_web["page"]):
-            # From wherever we are, End (CSI F) then PgDn (CSI 6~)
-            os.write(master, b"\x1b[F")
-            time.sleep(0.05)
             os.write(master, b"\x1b[6~")
             time.sleep(0.08)
         _read_until(master, b"or b: ")
