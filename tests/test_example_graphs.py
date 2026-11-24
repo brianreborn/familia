@@ -15,12 +15,12 @@ EXAMPLES = sorted(EX.glob("*.yaml"))
 
 
 def load(name):
-    return yaml.safe_load((EX / name).read_text())
+    return yaml.safe_load((EX / name).read_text(encoding="utf-8"))
 
 
 @pytest.mark.parametrize("path", EXAMPLES, ids=lambda p: p.name)
 def test_example_validates(path):
-    errs, _ = vg.validate(yaml.safe_load(path.read_text()), check_files=False)
+    errs, _ = vg.validate(yaml.safe_load(path.read_text(encoding="utf-8")), check_files=False)
     assert errs == []
 
 
@@ -66,6 +66,18 @@ def test_reasoning_and_general_nodes_route_as_chat(model_role, node_role):
     assert routes == {"chat": "http://127.0.0.1:9001"}
 
 
+@pytest.mark.parametrize("fail_closed_role", ["guardian", "pentest"])
+def test_fail_closed_model_role_warns_and_refuses_proxy_alias(fail_closed_role):
+    g = load("single-node.yaml")
+    g["models"]["mchat"]["role"] = fail_closed_role
+    g["aliases"]["chat"]["node"] = ["chat"]  # warning lookup must accept fallback-list aliases
+    assert vg.validate(g, check_files=False)[0] == []
+    assert any("aliases.chat:" in w and "fail-closed" in w for w in vg.WARNINGS)
+    assert vg.tool_policy(g, "chat") == []
+    with pytest.raises(start_graph.StartupError, match="fail-closed node"):
+        start_graph.local_topology(g, "h1")
+
+
 def test_alias_to_unroutable_role_warns_before_start_refuses():
     g = load("single-node.yaml")
     g["models"]["mchat"]["role"] = "vision"
@@ -82,7 +94,7 @@ def test_alias_to_unroutable_role_warns_before_start_refuses():
 ])
 def test_start_dry_run_reports_validation_not_traceback(tmp_path, mutate, expect):
     g = load("single-node.yaml"); mutate(g)
-    f = tmp_path / "g.yaml"; f.write_text(yaml.safe_dump(g))
+    f = tmp_path / "g.yaml"; f.write_text(yaml.safe_dump(g), encoding="utf-8")
     p = subprocess.run([sys.executable, str(ROOT / "scripts" / "start_graph.py"), "--graph", str(f),
                         "--host", "h1", "--dry-run", "--fleet"], capture_output=True, text=True, cwd=ROOT,
                        env={**os.environ, "FAMILIA_HOST": ""})

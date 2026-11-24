@@ -55,9 +55,24 @@ def _cpu():
             for key in ("model name", "Hardware", "Processor"):
                 m = re.search(r"^%s\s*:\s*(.+)$" % key, txt, re.M)
                 if m:
-                    return m.group(1).strip()
+                    value = m.group(1).strip()
+                    if key != "Processor" or not value.lower().startswith(("aarch64 processor", "armv")):
+                        return value
         except OSError:
-            return None
+            pass
+    if os.path.isdir("/data/data/com.termux") or sys.platform == "android":
+        # Termux app sandboxes may not be able to read useful /proc/cpuinfo
+        # fields. Android system properties remain readable without root.
+        for prop in ("ro.soc.model", "ro.board.platform", "ro.hardware"):
+            try:
+                value = subprocess.check_output(
+                    ["/system/bin/getprop", prop], text=True,
+                    stderr=subprocess.DEVNULL,
+                ).strip()
+            except (OSError, subprocess.CalledProcessError):
+                continue
+            if value and value.lower() not in ("unknown", "unknown hardware"):
+                return "Android %s=%s" % (prop, value)
     if sys.platform.startswith("freebsd"):
         return _sysctl("hw.model")
     if sys.platform == "darwin":

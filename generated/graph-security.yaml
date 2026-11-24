@@ -47,8 +47,8 @@ graphs:
   default: graph.yaml
 
 models:
-  - name: Nanbeige4.3-33B-UNCENSORED-Q4_K_M
-    repository: dealignai/Nanbeige4.3-33B-UNCENSORED-GGUF
+  - name: large model-UNCENSORED-Q4_K_M
+    repository: dealignai/large model-UNCENSORED-GGUF
     revision: 48e83e05611ef35d343ae5232f0078d85ff516e3
     quant: Q4_K_M
     role: coder

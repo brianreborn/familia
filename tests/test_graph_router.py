@@ -108,6 +108,30 @@ def test_single_node_hang_times_out(fakes, monkeypatch):
     assert st == 504 and "timed out" in err(raw) and time.monotonic() - t < 3
 
 
+def test_tool_output_is_truncated_with_warning_before_context_limit(fakes):
+    node = fakes("small")
+    post = serve({"nodes": {"small": {"url": node.url, "context_tokens": 128}}})
+    body = {"model": "small", "messages": [
+        {"role": "user", "content": "summarize the result"},
+        {"role": "tool", "content": "BEGIN-" + ("x" * 1800) + "-END"},
+    ], "max_tokens": 16}
+    req = urllib.request.Request(post.srv and f"http://127.0.0.1:{post.srv.server_address[1]}/v1/chat/completions",
+                                 json.dumps(body).encode(), {"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=10) as r:
+        raw = r.read(); headers = dict(r.headers)
+    assert headers["X-Familia-Context-Warning"].startswith("tool output truncated")
+    seen = node.seen[0][1]
+    content = seen["messages"][1]["content"]
+    marker = "/*"
+    assert marker in content
+    nonce_prefix = headers["X-Familia-Context-Warning"].split("nonce_prefix=", 1)[1]
+    assert len(nonce_prefix) == 32 and all(c in "0123456789abcdef" for c in nonce_prefix)
+    nonce = content.split(marker, 1)[1].split("*/", 1)[0]
+    assert len(nonce) == 64 and nonce.startswith(nonce_prefix)
+    assert content.startswith("BEGIN-") and content.endswith("-END")
+    assert len(json.dumps(seen)) < len(json.dumps(body))
+
+
 # 2 chat + reasoning pair -----------------------------------------------------
 def test_chat_reasoning_pair(fakes):
     c, r = fakes("chat-n"), fakes("think-n")

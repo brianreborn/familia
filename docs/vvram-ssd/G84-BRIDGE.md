@@ -1,6 +1,6 @@
 # G84-BRIDGE — Implementation plan (FreeBSD-first nvso + gpu-legacy)
 
-Status: **in-tree soft bookkeeping (ABI 2)** in `gpu-legacy/nvso/`. The FreeBSD sources return 0 from domain create/map/gate/irq and from soft queue-export / DMA-post bookkeeping. SandForce firmware and GPU↔SSD DMA are still later — see [HVVRAM-ARCHITECTURE.md](./HVVRAM-ARCHITECTURE.md), [FIRMWARE-PLAN.md](./FIRMWARE-PLAN.md), [DESCRIPTOR-FORMAT.md](./DESCRIPTOR-FORMAT.md). The software Nanbeige path is [LAYER.md](./LAYER.md).
+Status: **in-tree soft bookkeeping (ABI 2)** in `gpu-legacy/nvso/`. The FreeBSD sources return 0 from domain create/map/gate/irq and from soft queue-export / DMA-post bookkeeping. SandForce firmware and GPU↔SSD DMA are still later — see [HVVRAM-ARCHITECTURE.md](./HVVRAM-ARCHITECTURE.md), [FIRMWARE-PLAN.md](./FIRMWARE-PLAN.md), [DESCRIPTOR-FORMAT.md](./DESCRIPTOR-FORMAT.md). The software named large model path is [LAYER.md](./LAYER.md).
 
 Evidence stays split, including where an older line in this file disagrees with the code:
 
@@ -10,7 +10,7 @@ Evidence stays split, including where an older line in this file disagrees with 
 
 ## Goal chain
 
-1. **Today:** angel Nanbeige via mmap+swap+spill (LAYER).
+1. **Today:** angel named large model via mmap+swap+spill (LAYER).
 2. **Near:** FreeBSD `nvso(4)` soft bookkeeping is in tree (ABI 2). Live `kldload` and a host round-trip are still pending (see the evidence split above).
 3. **Next paper path:** open SandForce/Vertex2 FW + GPU↔SSD DMA descriptors; OS maps+monitors.
 4. **Bridge:** reuse lessons from `gpu-legacy` sm11_shim (qodesh) and nvidia 340 / CUDA 6.5 ports — **not** full llama CUDA on 256 MiB.
@@ -93,7 +93,7 @@ Plan:
 
 ## Separation of tracks
 
-| Track | Blocks Nanbeige? | Owner host |
+| Track | Blocks named large model? | Owner host |
 |-------|------------------|------------|
 | LAYER mmap/swap | **Yes** (ops gate) | angel |
 | nvso stub compile | No | angel |
