@@ -91,6 +91,7 @@ group_desc() {
     "Advanced: models & graph") echo "model database, launch arguments, graph edits, scale-down" ;;
     "Advanced: agents") echo "skill folders, hermes self-test and escalation" ;;
     "Advanced: hosts & benchmarks") echo "low-level setup, benchmarks, power, uninstall, FreeBSD" ;;
+    "◆ Proving grounds (graded)") echo "fleet + nexus + bt runs; graded, not pass/fail" ;;
     "MCP servers") echo "graph MCP entries; this menu does not bind a port" ;;
     "Tool sets") echo "skill and tool catalogs on this machine" ;;
     "App store") echo "local app catalog; public search stays cached" ;;
@@ -386,12 +387,30 @@ search_key() {  # 0 handled (stay), 3 quit, 4 stdin closed (not a quit), 1 not a
 # menu_key_read PROMPT VAR COUNT, a terminal menu reads through it; it must hand back
 # the same text a typed line would (a number, b, q, <, >, h, /word, &word).
 # Pipes, TERM=dumb and a missing reader (M2's fallback) keep the line reader below.
-[ -f "$ROOT/scripts/menu-keys.sh" ] && . "$ROOT/scripts/menu-keys.sh"
-nav_read() {  # nav_read PROMPT VAR COUNT ; returns 1 on EOF
-  if [ "$PIPE" != 1 ] && [ -t 0 ] && [ "${TERM:-dumb}" != dumb ] && declare -F menu_key_read >/dev/null; then
-    menu_key_read "$1" "$2" "${3:-0}"; return
+# The reader is sourced lazily, once, from this script's own checkout, and only when
+# it is a regular file (not a symlink) owned by the same user as the checkout.
+KEYS_LOADED=""
+owner_uid() { stat -c %u "$1" 2>/dev/null || stat -f %u "$1" 2>/dev/null; }
+load_keys() {  # load_keys -> 0 when menu_key_read is available
+  if [ -z "$KEYS_LOADED" ]; then
+    KEYS_LOADED=no
+    local f="$ROOT/scripts/menu-keys.sh" ru fu
+    if [ -f "$f" ] && [ ! -L "$f" ]; then
+      ru=$(owner_uid "$ROOT"); fu=$(owner_uid "$f")
+      if [ -n "$ru" ] && [ "$ru" = "$fu" ]; then
+        # shellcheck source=/dev/null
+        . "$f" && KEYS_LOADED=yes
+      fi
+    fi
   fi
-  read_line "$1" "$2"
+  [ "$KEYS_LOADED" = yes ] && declare -F menu_key_read >/dev/null
+}
+nav_read() {  # nav_read PROMPT VAR COUNT ; returns 1 on EOF
+  if [ "$PIPE" != 1 ] && [ -t 0 ] && [ "${TERM:-dumb}" != dumb ] && load_keys; then
+    menu_key_read "$1" "$2" "${3:-0}" || return
+    return 0
+  fi
+  read_line "$1" "$2" || return
 }
 crumb() {  # crumb [LEVEL...] -> "[familia > Models > page 2 of 3]"
   local p=familia s

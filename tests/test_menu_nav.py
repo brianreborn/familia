@@ -1,9 +1,10 @@
 """Menu navigation (#733 M4): where-you-are line, &filter, key help, back, and every node reachable."""
 import re
+import subprocess
 
 import pytest
 
-from test_menu import items, menu, need_ok
+from test_menu import MENU as MENU_PATH, env, items, menu, need_ok
 
 GROUPS = list(dict.fromkeys(i["group"] for i in items() if i["cmd"]))
 PAGE = 7
@@ -17,6 +18,29 @@ def test_breadcrumb_shows_where_you_are_at_every_level():
     assert "[familia > Hosts > page 1 of 2]" in r.stdout
     assert "[familia > Hosts > page 2 of 2]" in r.stdout
     assert "[familia > search 'skills']" in r.stdout
+
+
+def test_every_group_has_a_description():
+    r = menu("--pipe", inp="q\n")
+    assert r.returncode == 0, r.stderr
+    top = r.stdout.split("[familia]", 1)[1]
+    for n, g in enumerate(GROUPS, 1):
+        line = re.search(rf"^ *{n}\) .*$", top, re.M).group(0)
+        assert g in line and line.split(g, 1)[1].strip(), f"group '{g}' has no description in group_desc"
+
+
+def test_key_reader_is_not_sourced_for_pipes(tmp_path):
+    # A menu-keys.sh that would print on load must not be read when stdin is a pipe.
+    import os
+    import shutil
+    root = tmp_path / "co"
+    shutil.copytree(os.path.dirname(MENU_PATH), root, symlinks=True,
+                    ignore=shutil.ignore_patterns(".git", "tests", "docs"))
+    (root / "scripts" / "menu-keys.sh").write_text("echo SOURCED-KEYS\nmenu_key_read() { return 1; }\n")
+    r = subprocess.run(["bash", str(root / "familia-menu.sh"), "--pipe"], input="q\n",
+                       capture_output=True, text=True, timeout=60, env=env())
+    assert r.returncode == 0, r.stderr
+    assert "SOURCED-KEYS" not in r.stdout + r.stderr
 
 
 def test_same_key_hints_in_every_group():
