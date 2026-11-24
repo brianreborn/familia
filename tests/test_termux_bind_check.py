@@ -35,8 +35,31 @@ def test_key_required_on_every_bind_including_loopback(tmp_path, bind):
 
 def test_loopback_uses_default_key_file(tmp_path):
     k = tmp_path / ".config" / "familia" / "api.key"; k.parent.mkdir(parents=True); k.write_text("x"); k.chmod(0o600)
-    r = gate({"HOME": str(tmp_path)}); assert r.returncode == 0, r.stderr; assert f"KF=[{k}]" in r.stdout
-    k.chmod(0o644); r = gate({"HOME": str(tmp_path)}); assert r.returncode == 2 and "0600" in r.stderr
+    r = gate({"HOME": str(tmp_path), "TERMUX_VERSION": "0.118"})
+    inst = tmp_path / ".config" / "familia" / "instances" / "9941" / "api-keys"
+    assert r.returncode == 0, r.stderr
+    assert f"KF=[{inst}]" in r.stdout and "x" in inst.read_text()
+    assert (inst.stat().st_mode & 0o777) == 0o600 and "migrated API key" in r.stderr
+    inst.chmod(0o644); r = gate({"HOME": str(tmp_path)}); assert r.returncode == 2 and "0600" in r.stderr
+
+
+def test_termux_port_matches_desktop_layout(tmp_path):
+    """Termux does not prefer api.key ahead of the per-port file."""
+    for port, token in (("9941", "key-aaa"), ("9950", "key-bbb")):
+        p = tmp_path / ".config" / "familia" / "instances" / port / "api-keys"
+        p.parent.mkdir(parents=True)
+        p.write_text("# llama-server API key(s), one per line\n" + token + "\n")
+        p.chmod(0o600)
+    legacy = tmp_path / ".config" / "familia" / "api.key"
+    legacy.write_text("legacy-ccc"); legacy.chmod(0o600)
+    env = {"HOME": str(tmp_path), "TERMUX_VERSION": "0.118", "PREFIX": "/data/data/com.termux/files/usr"}
+    r = gate(env)
+    inst_a = tmp_path / ".config" / "familia" / "instances" / "9941" / "api-keys"
+    assert r.returncode == 0 and f"KF=[{inst_a}]" in r.stdout, r.stderr
+    assert "legacy-ccc" not in r.stdout
+    r = gate({**env, "FAMILIA_PORT": "9950"})
+    inst_b = tmp_path / ".config" / "familia" / "instances" / "9950" / "api-keys"
+    assert r.returncode == 0 and f"KF=[{inst_b}]" in r.stdout, r.stderr
 
 
 def test_launcher_always_passes_key_file_and_install_generates_it():

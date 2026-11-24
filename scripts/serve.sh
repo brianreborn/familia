@@ -173,6 +173,8 @@ done
 unset _v
 # Auth guard (DESIGN.md Security, CFG-CRED-009): llama-server is not a localhost-without-key
 # exception. The final argv must include a --api-key-file (0600 or 0400, not group/world readable).
+# --ensure writes instances/<port>/api-keys, copying a legacy api.key or .secrets file
+# the first time that port's file is missing (#419).
 # $1 is a shell-quoted argv without extras. $extra is appended after --extra-start
 # for the check only, so --extra-start never reaches the server. The caller then
 # evals "set -- <argv> $extra" itself: "set --" inside a function does not change

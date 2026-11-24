@@ -163,8 +163,11 @@ def test_install_key_and_f6_refusals(tmp_path):
     r = _launch(launch, env); assert r.returncode == 2 and "0600" in r.stderr
     key.chmod(0o600)
     r = _launch(launch, env); assert r.returncode == 0, r.stderr
+    inst = home / ".config/familia/instances/9941/api-keys"
     call = log.read_text()
-    assert "--host 127.0.0.1" in call and f"--api-key-file {key}" in call
+    assert "--host 127.0.0.1" in call and f"--api-key-file {inst}" in call
+    assert stat.S_IMODE(inst.stat().st_mode) == 0o600 and key.read_text() in inst.read_text()
+    assert "migrated API key" in r.stderr and key.read_text() not in r.stderr
     assert "sudo" not in call and "doas" not in call and "pkg " not in call
     k1 = key.read_text(); assert _sh(["--yes"], env).returncode == 0; assert key.read_text() == k1
 

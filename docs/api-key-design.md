@@ -6,11 +6,11 @@ Summary: one stable key per instance/port, stored 0600 under XDG_CONFIG_HOME (AP
 
 Project rule (DESIGN.md Security, CFG-CRED-009): any service listening on the network must require an API key. Localhost-only without a key is allowed only for the named local-development-tool exceptions listed in DESIGN.md. familia llama-server launchers (`scripts/serve.sh`, `familia-start`, `scripts/windows/start.bat`) are not exceptions: they require a key on every bind, including loopback. `validate_graph.py --args` always includes `--api-key-file`; `scripts/bind_auth_guard.py` refuses a launch that would bind without one. The file must be owner-readable and not group- or world-readable (mode 0600 or 0400).
 
-## Two on-disk layouts (no migration yet)
+## One on-disk layout
 
-Canonical for graph-launched nodes (`scripts/serve.sh`, `scripts/windows/start.bat`, `graph_router`, and the default path in `scripts/familia_auth.py`): `~/.config/familia/instances/<port>/api-keys` (`%APPDATA%\\familia\\instances\\<port>\\api-keys` on Windows). Clients honor `API_KEY_FILE` or `FAMILIA_API_KEY_FILE` as an override.
+The canonical store on every platform, including Termux and phones, is `~/.config/familia/instances/<port>/api-keys` (`%APPDATA%\familia\instances\<port>\api-keys` on Windows), mode 0600. The port a client calls decides the key. `scripts/serve.sh`, `start.sh`, `familia-start` (Linux, Termux, FreeBSD, and the unix installer), and `scripts/windows/start.bat` write that file for the port they bind.
 
-`familia-start` (Linux, Termux, FreeBSD installers) uses `~/.config/familia/api.key` (one token, no newline) and `FAMILIA_API_KEY_FILE`. There is no migration between the two layouts ([#419](https://github.com/brianreborn/familia/issues/419)). Until that lands, `familia_auth` also looks at the default installer `api.key` path after the per-instance file.
+`~/.config/familia/api.key` and the legacy `code-bootstraps-llama.cpp/.secrets/api-keys` file are migration sources only ([#419](https://github.com/brianreborn/familia/issues/419)). On first start they are copied into the instance file and a notice is logged. Lookup does not search them. `FAMILIA_API_KEY`, `LLAMA_API_KEY`, `API_KEY_FILE`, and `FAMILIA_API_KEY_FILE` stay explicit overrides and win for that process. There is no Termux-only order.
 
 
 ## Callers on the familia side (established mechanisms only)

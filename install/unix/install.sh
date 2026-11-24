@@ -553,8 +553,44 @@ familia_extra_check() {
   done
 }
 
+# Canonical store is instances/<port>/api-keys (#419). $KEY_FILE is a migration source.
 familia_key_args() {
-  KF="\${FAMILIA_API_KEY_FILE:-$KEY_FILE}"
+  _port="\${FAMILIA_PORT:-9941}"
+  case "\$_port" in *[!0-9]*) echo "familia-start: FAMILIA_PORT must be a number; refusing" >&2; exit 2 ;; esac
+  if [ "\$_port" -lt 1 ] || [ "\$_port" -gt 65535 ]; then echo "familia-start: FAMILIA_PORT must be 1-65535; refusing" >&2; exit 2; fi
+  _base="\${XDG_CONFIG_HOME:-\$HOME/.config}"
+  _inst="\$_base/familia/instances/\$_port/api-keys"
+  _legacy="$KEY_FILE"
+  if [ -n "\${FAMILIA_API_KEY_FILE:-}" ]; then
+    KF="\$FAMILIA_API_KEY_FILE"
+  elif [ -e "\$_inst" ] || [ -L "\$_inst" ]; then
+    KF="\$_inst"
+  elif [ -e "\$_legacy" ] || [ -L "\$_legacy" ]; then
+    [ -L "\$_legacy" ] && { echo "familia-start: \$_legacy is a symlink; refusing" >&2; exit 2; }
+    [ -f "\$_legacy" ] || { echo "familia-start: \$_legacy is not a regular file" >&2; exit 2; }
+    _tok=\$(tr -d '[:space:]' < "\$_legacy")
+    [ -n "\$_tok" ] || { echo "familia-start: \$_legacy is empty; refusing" >&2; exit 2; }
+    _dir=\$(dirname "\$_inst")
+    ( umask 077; mkdir -p "\$_dir" ) || { echo "familia-start: cannot create \$_dir; refusing" >&2; exit 2; }
+    _tmp="\$_dir/.api-keys.\$\$"
+    rm -f "\$_tmp"
+    ( umask 077; set -C; printf '%s\n' "# llama-server API key(s), one per line" "\$_tok" > "\$_tmp" ) || {
+      echo "familia-start: cannot write \$_tmp; refusing" >&2; exit 2; }
+    chmod 600 "\$_tmp" || { rm -f "\$_tmp"; echo "familia-start: cannot chmod \$_tmp; refusing" >&2; exit 2; }
+    if [ -L "\$_inst" ]; then rm -f "\$_tmp"; echo "familia-start: \$_inst is a symlink; refusing" >&2; exit 2; fi
+    if [ ! -e "\$_inst" ]; then
+      if ln "\$_tmp" "\$_inst" 2>/dev/null; then rm -f "\$_tmp"
+      elif [ ! -e "\$_inst" ] && mv "\$_tmp" "\$_inst" 2>/dev/null; then chmod 600 "\$_inst"
+      else rm -f "\$_tmp"; echo "familia-start: cannot publish \$_inst; refusing" >&2; exit 2
+      fi
+      echo "familia-start: migrated API key from \$_legacy into \$_inst (#419). \$_legacy is a migration source only and is not used for lookup." >&2
+    else
+      rm -f "\$_tmp"
+    fi
+    KF="\$_inst"
+  else
+    echo "familia-start: API key file \$_legacy missing (0600 required)" >&2; exit 2
+  fi
   [ -e "\$KF" ] || { echo "familia-start: API key file \$KF missing (0600 required)" >&2; exit 2; }
   [ -L "\$KF" ] && { echo "familia-start: \$KF is a symlink; refusing" >&2; exit 2; }
   _r=\$(realpath -e -- "\$KF" 2>/dev/null) || _r="\$KF"

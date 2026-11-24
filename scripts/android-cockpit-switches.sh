@@ -118,7 +118,13 @@ PREFIX_FILE="$SMOKE_PREFIX/android-cockpit.env"
 say() { say_row "$*"; }
 err() { say_row "android-cockpit: $*" >&2; }
 
-default_key_path() { printf '%s' "$CONFIG_DIR/api.key"; }
+# Canonical store is instances/<port>/api-keys on the phone too (#419).
+# api.key remains a migration source the launcher copies on first start.
+default_key_path() {
+  _p=${PORT:-$DEFAULT_PORT}
+  printf '%s' "$CONFIG_DIR/instances/$_p/api-keys"
+}
+legacy_key_path() { printf '%s' "$CONFIG_DIR/api.key"; }
 
 expand_tilde() {
   # Quote the case patterns and the ${1#...} pattern: an unquoted ~ is
@@ -1134,8 +1140,13 @@ argv_file_ok() {
 
 require_key_file() {
   _kf=$(key_file_to_use)
+  # No explicit switch: a legacy api.key is enough. familia-start copies it into
+  # instances/<port>/api-keys on first start (#419).
+  if [ ! -e "$_kf" ] && [ -z "$API_KEY_FILE" ] && [ -e "$(legacy_key_path)" ]; then
+    _kf=$(legacy_key_path)
+  fi
   if [ ! -e "$_kf" ]; then
-    err "an API key file is required even on loopback (set switch 12 or create $(default_key_path)). Key is not logged."
+    err "an API key file is required even on loopback (set switch 12 or create $(default_key_path); $(legacy_key_path) is copied on first start). Key is not logged."
     return 1
   fi
   if ! safe_secret_file "$_kf"; then

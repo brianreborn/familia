@@ -332,8 +332,40 @@ familia_extra_check() {
   done
 }
 # BEGIN familia-linux-key (extracted by tests/test_linux_launcher_key.py)
-familia_key_args() { # F-10: key on every bind, loopback included
-  KF="\${FAMILIA_API_KEY_FILE:-\$HOME/.config/familia/api.key}"; FAMILIA_KF=""
+# Canonical store is instances/<port>/api-keys (#419). ~/.config/familia/api.key and
+# ~/code-bootstraps-llama.cpp/.secrets/api-keys are copied in on first start only.
+_familia_publish_instance() { # token dest source
+  _tok=\$1; _dest=\$2; _src=\$3
+  [ -L "\$_dest" ] && { echo "familia-start: \$_dest is a symlink; refusing" >&2; exit 2; }
+  _dir=\$(dirname "\$_dest")
+  ( umask 077; mkdir -p "\$_dir" ) || { echo "familia-start: cannot create \$_dir; refusing" >&2; exit 2; }
+  _tmp="\$_dir/.api-keys.\$\$"
+  rm -f "\$_tmp"
+  ( umask 077; set -C; printf '%s\n' "# llama-server API key(s), one per line" "\$_tok" > "\$_tmp" ) || {
+    echo "familia-start: cannot write \$_tmp; refusing" >&2; exit 2; }
+  chmod 600 "\$_tmp" || { rm -f "\$_tmp"; echo "familia-start: cannot chmod \$_tmp; refusing" >&2; exit 2; }
+  _published=0
+  if [ -e "\$_dest" ] || [ -L "\$_dest" ]; then
+    rm -f "\$_tmp"
+  elif ln "\$_tmp" "\$_dest" 2>/dev/null; then
+    rm -f "\$_tmp"; _published=1
+  elif [ -e "\$_dest" ] || [ -L "\$_dest" ]; then
+    rm -f "\$_tmp"
+  elif mv "\$_tmp" "\$_dest" 2>/dev/null; then
+    chmod 600 "\$_dest" || { echo "familia-start: cannot chmod \$_dest; refusing" >&2; exit 2; }
+    _published=1
+  else
+    rm -f "\$_tmp"
+    echo "familia-start: cannot publish \$_dest; refusing" >&2
+    exit 2
+  fi
+  [ -L "\$_dest" ] && { echo "familia-start: \$_dest is a symlink; refusing" >&2; exit 2; }
+  if [ "\$_published" -eq 1 ]; then
+    echo "familia-start: migrated API key from \$_src into \$_dest (#419). \$_src is a migration source only and is not used for lookup." >&2
+  fi
+}
+_familia_strict_key() { # one-token file (no CR/LF/whitespace). sets FAMILIA_KF
+  KF=\$1; FAMILIA_KF=""
   [ -e "\$KF" ] || [ -L "\$KF" ] || { echo "familia-start: API key file \$KF missing; a key is required on every bind (loopback included); re-run install or set FAMILIA_API_KEY_FILE to a 0600 key file" >&2; exit 2; }
   [ -L "\$KF" ] && { echo "familia-start: \$KF is a symlink; refusing" >&2; exit 2; }
   _r=\$(realpath -e -- "\$KF" 2>/dev/null) || { echo "familia-start: \$KF does not resolve; refusing" >&2; exit 2; }
@@ -345,6 +377,85 @@ familia_key_args() { # F-10: key on every bind, loopback included
   [ "\$_tok" -gt 0 ] || { echo "familia-start: \$KF is empty; refusing" >&2; exit 2; }
   [ "\$_all" -eq "\$_tok" ] || { echo "familia-start: \$KF contains CR/LF/whitespace (write it with printf '%s'); refusing" >&2; exit 2; }
   FAMILIA_KF="\$KF"
+}
+_familia_instance_key() { # canonical file: '#' comments and LF are allowed; a key line is not
+  KF=\$1; FAMILIA_KF=""
+  [ -e "\$KF" ] || [ -L "\$KF" ] || { echo "familia-start: API key file \$KF missing; a key is required on every bind (loopback included); re-run install or set FAMILIA_API_KEY_FILE to a 0600 key file" >&2; exit 2; }
+  [ -L "\$KF" ] && { echo "familia-start: \$KF is a symlink; refusing" >&2; exit 2; }
+  _r=\$(realpath -e -- "\$KF" 2>/dev/null) || { echo "familia-start: \$KF does not resolve; refusing" >&2; exit 2; }
+  KF="\$_r"
+  [ -f "\$KF" ] || { echo "familia-start: \$KF is not a regular file" >&2; exit 2; }
+  case "\$(stat -c %a "\$KF" 2>/dev/null)" in 600|400) ;; *) echo "familia-start: \$KF must be mode 0600" >&2; exit 2 ;; esac
+  [ "\$(stat -c %u "\$KF" 2>/dev/null)" = "\$(id -u)" ] || { echo "familia-start: \$KF is not owned by you" >&2; exit 2; }
+  _all=\$(wc -c < "\$KF"); _nocr=\$(tr -d "\$(printf '\r')" < "\$KF" | wc -c)
+  [ "\$_all" -eq "\$_nocr" ] || { echo "familia-start: \$KF contains CR/LF/whitespace (write it with printf '%s'); refusing" >&2; exit 2; }
+  _ok=0; _tok=""
+  while IFS= read -r _line || [ -n "\$_line" ]; do
+    case "\$_line" in
+      ''|'#'*) continue ;;
+      *[[:space:]]*|*,*) echo "familia-start: \$KF contains CR/LF/whitespace (write it with printf '%s'); refusing" >&2; exit 2 ;;
+    esac
+    _ok=1; _tok=\$_line
+  done < "\$KF"
+  [ "\$_ok" -eq 1 ] || { echo "familia-start: \$KF is empty; refusing" >&2; exit 2; }
+  FAMILIA_KF="\$KF"
+}
+familia_key_args() { # F-10: key on every bind, loopback included. The server gets the instance file.
+  _port="\${FAMILIA_PORT:-9941}"
+  case "\$_port" in
+    *[!0-9]*) echo "familia-start: FAMILIA_PORT must be a number; refusing" >&2; exit 2 ;;
+  esac
+  if [ "\$_port" -lt 1 ] || [ "\$_port" -gt 65535 ]; then
+    echo "familia-start: FAMILIA_PORT must be 1-65535; refusing" >&2; exit 2
+  fi
+  _base="\${XDG_CONFIG_HOME:-\$HOME/.config}"
+  _inst="\$_base/familia/instances/\$_port/api-keys"
+  _legacy="\$HOME/.config/familia/api.key"
+  FAMILIA_KF=""
+  if [ -n "\${FAMILIA_API_KEY_FILE:-}" ]; then
+    _familia_strict_key "\$FAMILIA_API_KEY_FILE"
+    if [ -n "\${XDG_CONFIG_HOME:-\${HOME:-}}" ] && [ ! -e "\$_inst" ] && [ ! -L "\$_inst" ]; then
+      _tok=\$(tr -d '[:space:]' < "\$FAMILIA_KF")
+      _familia_publish_instance "\$_tok" "\$_inst" "\$FAMILIA_KF"
+    fi
+    return 0
+  fi
+  if [ -e "\$_inst" ] || [ -L "\$_inst" ]; then
+    _familia_instance_key "\$_inst"
+    return 0
+  fi
+  if [ -e "\$_legacy" ] || [ -L "\$_legacy" ]; then
+    _familia_strict_key "\$_legacy"
+    _src=\$FAMILIA_KF
+    _tok=\$(tr -d '[:space:]' < "\$_src")
+    _familia_publish_instance "\$_tok" "\$_inst" "\$_src"
+    _familia_instance_key "\$_inst"
+    return 0
+  fi
+  _xdgleg="\$_base/familia/api.key"
+  if [ "\$_xdgleg" != "\$_legacy" ] && { [ -e "\$_xdgleg" ] || [ -L "\$_xdgleg" ]; }; then
+    _familia_strict_key "\$_xdgleg"
+    _src=\$FAMILIA_KF
+    _tok=\$(tr -d '[:space:]' < "\$_src")
+    _familia_publish_instance "\$_tok" "\$_inst" "\$_src"
+    _familia_instance_key "\$_inst"
+    return 0
+  fi
+  _sec="\${HOME:-}/code-bootstraps-llama.cpp/.secrets/api-keys"
+  if [ -n "\${HOME:-}" ] && { [ -e "\$_sec" ] || [ -L "\$_sec" ]; }; then
+    _familia_instance_key "\$_sec"
+    _src=\$FAMILIA_KF
+    _tok=""
+    while IFS= read -r _line || [ -n "\$_line" ]; do
+      case "\$_line" in ''|'#'*) continue ;; esac
+      _tok=\$_line; break
+    done < "\$_src"
+    _familia_publish_instance "\$_tok" "\$_inst" "\$_src"
+    _familia_instance_key "\$_inst"
+    return 0
+  fi
+  echo "familia-start: API key file \$_legacy missing; a key is required on every bind (loopback included); re-run install or set FAMILIA_API_KEY_FILE to a 0600 key file" >&2
+  exit 2
 }
 # llama-server also reads LLAMA_API_KEY, LLAMA_ARG_API_KEY_FILE and every LLAMA_ARG_*.
 familia_env_scrub() {

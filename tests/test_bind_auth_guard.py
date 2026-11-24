@@ -52,7 +52,10 @@ def test_refuses_bad_mode_symlink_empty_missing(tmp_path):
     assert ok is False and "empty" in msg
 
 
-def test_ensure_creates_missing_0600_file(tmp_path):
+def test_ensure_creates_missing_0600_file(tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
+    monkeypatch.delenv("API_KEY_FILE", raising=False)
+    monkeypatch.delenv("FAMILIA_API_KEY_FILE", raising=False)
     kf = str(tmp_path / "instances" / "9941" / "api-keys")
     ok, msg = g.check(["bin", "--host", "127.0.0.1", "--api-key-file", kf], ensure=True)
     assert ok is True, msg
@@ -144,6 +147,7 @@ def test_launch_auth_argv_always_adds_key_path(tmp_path, monkeypatch):
     import validate_graph as v
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
     monkeypatch.delenv("API_KEY_FILE", raising=False)
+    monkeypatch.delenv("FAMILIA_API_KEY_FILE", raising=False)
     n = {"port": 18120, "bind": "127.0.0.1"}
     path = v.tool_key_path(n)
     assert path.startswith(str(tmp_path)) and "18120" in path

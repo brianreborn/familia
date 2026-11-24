@@ -290,7 +290,9 @@ def test_h4_tool_enabled_server_requires_api_key(tmp_path, monkeypatch):
     """H4: every launch with --tools also gets --api-key-file (never the key on argv); the
     key file exists, is 0600, and a no-tools launch is unchanged."""
     import stat, validate_graph as v
-    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path)); monkeypatch.delenv("API_KEY_FILE", raising=False)
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    monkeypatch.delenv("API_KEY_FILE", raising=False)
+    monkeypatch.delenv("FAMILIA_API_KEY_FILE", raising=False)
     g = _g(); n = g["nodes"]["coder-a"]
     path = v.tool_key_file(n)
     assert path.startswith(str(tmp_path)) and str(n["port"]) in path

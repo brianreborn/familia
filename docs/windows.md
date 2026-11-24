@@ -21,8 +21,9 @@ loopback (DESIGN.md Security): `start.bat` passes `--api-key-file` from
 `scripts\bind_auth_guard.py` before starting the server (as a child of cmd, not exec).
 Set `FAMILIA_API_KEY_FILE` or `API_KEY_FILE` to override the path; both names are
 accepted by `familia_auth` clients. This per-instance file is the canonical layout
-for graph-launched nodes; `familia-start` uses `api.key` instead, and there is no
-migration yet ([#419](https://github.com/brianreborn/familia/issues/419)).
+on every platform ([#419](https://github.com/brianreborn/familia/issues/419)).
+`%APPDATA%\familia\api.key` and a legacy `.secrets\api-keys` file are copied into
+it on first start. This repo has no `serve.ps1`; `start.bat` is the Windows launcher.
 Python 3 is required for the guard. On Windows the POSIX 0600/0400 mode check is skipped;
 the file lives under the current user's `%APPDATA%`, and no ACL check is performed yet.
 `start.bat` and `serve.sh` unset `LLAMA_API_KEY` and every `LLAMA_ARG_*` variable

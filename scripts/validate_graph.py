@@ -324,7 +324,8 @@ def tool_key_path(n, env=None):
     once (0600) at launch if needed."""
     import familia_auth
     env = os.environ if env is None else env
-    return env.get("API_KEY_FILE") or familia_auth.instance_key_file(port=n["port"], env=env)
+    return (env.get("API_KEY_FILE") or env.get("FAMILIA_API_KEY_FILE")
+            or familia_auth.instance_key_file(port=n["port"], env=env))
 
 
 def tool_key_file(n, env=None):
@@ -333,7 +334,8 @@ def tool_key_file(n, env=None):
     import familia_auth
     path = tool_key_path(n, env)
     try:
-        k = familia_auth.load_or_create_key_file(path)
+        k = familia_auth.load_or_create_key_file(path, env=env)
+        familia_auth.seed_instance_from_file(n["port"], path, env=env)
     except OSError as e:
         raise SystemExit(f"graph: ERROR: node on port {n['port']}: cannot create its API key file ({e.__class__.__name__}); not starting")
     if not k:
