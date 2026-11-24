@@ -105,9 +105,10 @@ def test_launcher_tools_allowed_on_loopback_bind(launcher):
 
 
 def test_launcher_tools_persist_across_restart(launcher):
-    """#630: a later start with no --tools flag reapplies the saved value."""
+    """#630: a later start with no --tools flag reapplies the saved read-only list."""
+    saved = ["--tools", "read_file,file_glob_search,grep_search,get_info"]
     assert launcher("--tools", "all", bind="127.0.0.1") == ["--tools", "all"]
-    assert launcher(bind="127.0.0.1") == ["--tools", "all"]
+    assert launcher(bind="127.0.0.1") == saved
     assert launcher("--tools", "none", bind="127.0.0.1") == []
     assert launcher(bind="127.0.0.1") == []
 

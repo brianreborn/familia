@@ -42,13 +42,20 @@
   - llama.cpp enables Server Tools only when the process is started with `--tools`.
     A crash restart, a hand-start, or a stale `generated/graph-*.yaml` used to drop
     the flag, and `GET /tools` returned 403 `feature_disabled`.
-  - `familia-start` now saves the `--tools` value for that port (mode 0600,
-    `$XDG_CONFIG_HOME/familia/server-tools/<port>`, or `~/.config/familia/server-tools/<port>`)
-    and reapplies it when a later start omits the flag. `--tools none` clears the save.
-  - `start.sh` and `serve.sh` copy `server_tools` from `graph.yaml` onto a generated
-    graph that dropped the key. An explicit key on the graph being launched, including
-    an opt-out (`[]` / `none` / `false`), wins.
-  - `--tools` remains loopback-only. Every listener still requires an API key.
+  - `familia-start` saves a read-only tool list for that port (mode 0600,
+    owned by the user, under `$XDG_CONFIG_HOME/familia/server-tools/<port>`,
+    or `~/.config/familia/server-tools/<port>`) and reapplies it when a later
+    start omits the flag. `--tools all` is stored as the read-only list, not
+    as `all`. A file that contains `all`, an unknown name, or garbage is
+    refused. `--tools none` clears the save. The parent directory must be
+    owned by the user and not group or world writable. Windows `start.bat`
+    does not call this hook.
+  - `start.sh` and `serve.sh` copy `server_tools` from `graph.yaml` onto a
+    generated graph that dropped the key, and narrow a generated grant that
+    is wider than the fleet policy (a stale `all` becomes the fleet list).
+    An explicit opt-out (`[]` / `none` / `false`) stays.
+  - The familia-start bind allowlist is `127.0.0.1`, `::1`, and `localhost`.
+    Every listener still requires an API key.
     `hermes_harness.ensure_server` still refuses to adopt a live port whose graph asks
     for tools while `/tools` is feature_disabled. Do not grant `--tools` on a node
     where the live `tool_policy` would refuse that tool.

@@ -12,6 +12,8 @@ rem   FAMILIA_CTX        default 4096      FAMILIA_THREADS default 2
 rem   FAMILIA_KV         default q8_0      FAMILIA_EXTRA  extra llama-server args (whitespace-split; cmd metacharacters unsupported)
 rem   FAMILIA_API_KEY_FILE  0600 key file (default: %APPDATA%\familia\instances\<port>\api-keys)
 rem API key is required on every bind, loopback included (DESIGN.md Security).
+rem --tools persistence (scripts/tools_persist.py) is skipped here. Unix
+rem familia-start saves and reloads the flag. This file does not.
 rem Nothing here edits the graph; values should match the node in graph.yaml.
 setlocal EnableExtensions
 

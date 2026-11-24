@@ -208,6 +208,8 @@ if [ "\$(uname -s)" = FreeBSD ]; then KU=\$(stat -f %u "\$KF"); else KU=\$(stat 
 case "\$KM" in 600|400) ;; *) echo "familia-start: \$KF must be mode 0600" >&2; exit 2 ;; esac
 # #630: reapply a saved --tools value after a crash or a hand-start that omits
 # the flag. --tools none clears the save. A missing script keeps one-shot behavior.
+# decide uses the same bind allowlist as the check above (127.0.0.1, ::1, localhost).
+# Windows start.bat skips this hook.
 _tp="$PREFIX/repo/scripts/tools_persist.py"
 if [ -f "\$_tp" ]; then
   _act=\$(python3 "\$_tp" decide --bind "\$H" --port "\${FAMILIA_PORT:-9941}" -- "\$@" \${FAMILIA_EXTRA:-}) || exit \$?

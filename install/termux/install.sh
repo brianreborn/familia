@@ -312,6 +312,8 @@ fi
 set -- --api-key-file "\$FAMILIA_KF" "\$@"
 # #630: reapply a saved --tools value after a crash or a hand-start that omits
 # the flag. --tools none clears the save. A missing script keeps one-shot behavior.
+# decide uses the same bind allowlist as the check above (127.0.0.1, ::1, localhost).
+# Windows start.bat skips this hook.
 _tp="$PREFIX_DIR/repo/scripts/tools_persist.py"
 if [ -f "\$_tp" ]; then
   _act=\$(python3 "\$_tp" decide --bind "\$B" --port "\${FAMILIA_PORT:-9941}" -- "\$@" \${FAMILIA_EXTRA:-}) || exit \$?
