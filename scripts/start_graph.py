@@ -327,6 +327,7 @@ def validate_local_nodes(graph, host, nodes, *, check_files):
             argv = graph_validator.server_args(graph, name)
         except SystemExit as error:
             raise StartupError(str(error)) from error
+        fp_capture = None
         if check_files:
             if "/" not in argv[0] and shutil.which(argv[0]):
                 binary = Path(shutil.which(argv[0]))  # runtime without bin: llama-server on PATH
@@ -336,6 +337,17 @@ def validate_local_nodes(graph, host, nodes, *, check_files):
                 binary = ROOT / binary
             if not binary.is_file() or not os.access(binary, os.X_OK):
                 raise StartupError(f"runtime for node {name} is missing or not executable: {binary}")
+            # Race: first refuse after policy gate; fingerprint capture for late TOCTOU before Popen.
+            import miryam_perf_seatbelts as mps
+            skew_notes = []
+            if not mps.check_soname_skew(str(binary), note_sink=skew_notes):
+                raise StartupError(
+                    f"runtime for node {name} failed check_soname_skew: {binary}"
+                    + (f" ({'; '.join(skew_notes)})" if skew_notes else "")
+                )
+            fp_capture = mps.capture_spawn_fingerprint(str(binary), note_sink=skew_notes)
+            for note in skew_notes:
+                print(f"familia-graph: {note}", file=sys.stderr)
             model_arg = next((argv[i + 1] for i, value in enumerate(argv[:-1]) if value == "-m"), None)
             model_path = Path(model_arg).expanduser() if model_arg else None
             if model_path and not model_path.is_absolute():
@@ -358,7 +370,7 @@ def validate_local_nodes(graph, host, nodes, *, check_files):
                 if checked.returncode:
                     details = (checked.stdout + checked.stderr).strip()
                     raise StartupError(f"launch guard refused node {name}:\n{details}")
-        plans.append((name, argv))
+        plans.append((name, argv, fp_capture))
     return plans
 
 
@@ -570,8 +582,8 @@ def run(args=None):
         if options.dry_run:
             plans = validate_local_nodes(graph, host, nodes, check_files=False)
             _report_remote_topology(remote_nodes, remote_gateways, omitted_aliases)
-            print(f"familia-graph: host {host}; active local nodes: {', '.join(n for n, _ in plans) or 'none'}")
-            for name, argv in plans:
+            print(f"familia-graph: host {host}; active local nodes: {', '.join(n for n, _, _ in plans) or 'none'}")
+            for name, argv, _ in plans:
                 print(f"familia-graph: node {name}: {shlex.join(argv)}")
             for gateway_name, gateway, aliases in gateways:
                 via = (f"graph_router (caller auth: {__import__('familia_auth').instance_key_file(port=gateway['port'])}; /health public)"
@@ -600,7 +612,7 @@ def run(args=None):
             # Pentest refuse only; other sync issues warn+continue inside attach.
             raise StartupError(str(e)) from e
         plans = validate_local_nodes(graph, host, nodes, check_files=True)
-        for name, _ in plans:
+        for name, _, _ in plans:
             node = graph["nodes"][name]
             if not port_available(node["bind"], node["port"]):
                 raise StartupError(f"node {name} port {node['port']} is already occupied; nothing was started")
@@ -619,7 +631,22 @@ def run(args=None):
 
         signal.signal(signal.SIGTERM, interrupt)
         try:
-            for name, _ in plans:
+            for name, argv, fp_capture in plans:
+                # Race TOCTOU: re-stat fingerprint as late as practical before spawn.
+                import miryam_perf_seatbelts as mps
+                binary = Path(argv[0]).expanduser()
+                if not binary.is_absolute():
+                    binary = ROOT / binary
+                late_notes = []
+                stable = mps.assert_fingerprint_stable(
+                    str(binary), fp_capture, note_sink=late_notes
+                )
+                for note in late_notes:
+                    print(f"familia-graph: {note}", file=sys.stderr)
+                if not stable.get("ok"):
+                    raise StartupError(
+                        f"runtime for node {name} refused ({stable.get('reason')}): {binary}"
+                    )
                 child = subprocess.Popen(
                     ["sh", str(SCRIPTS / "serve.sh"), name],
                     cwd=ROOT,
