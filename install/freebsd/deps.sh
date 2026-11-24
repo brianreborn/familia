@@ -1,7 +1,7 @@
 #!/bin/sh
 # FAMILIA: FreeBSD deps helper (honest listing + opt-in pkg install).
-# Angel / Uriel: runtime installer is unsupported; build llama.cpp from the
-# pinned code-bootstraps-llama.cpp with:
+# The FreeBSD installer builds llama.cpp from the pinned brianreborn fork.
+# For a direct code-bootstraps build:
 #   BUILD_DIR=build-freebsd GPU=off scripts/build-linux.sh
 # getconf is in the FreeBSD base system (no package).
 # Usage:
@@ -13,26 +13,19 @@ deps.sh (FreeBSD): List packages useful for familia + code-bootstraps source bui
 Usage: sh install/freebsd/deps.sh [--install] [--yes] [--dry-run] [--profile base|build]
   base:  git curl python3 pyyaml pytest (pkg names below)
   build: base + cmake ninja gcc/llvm toolchain
-getconf: FreeBSD base (no pkg). llama-server: build from code-bootstraps, do not expect a binary pkg.
+getconf: FreeBSD base (no pkg). install-familia.sh builds pinned fork source b12359; not the llama-cpp pkg.
 Opt-in only: this script never runs pkg without --install.
 USAGE
   exit 0 ;; esac
 
-INSTALL=0; YES=0; DRY=0; PROFILE=base
-for a in "$@"; do
-  case "$a" in
-    --install) INSTALL=1 ;;
-    --yes|-y) YES=1 ;;
-    --dry-run|-n) DRY=1 ;;
-    base|build) PROFILE=$a ;;
-    --profile=*) PROFILE=${a#--profile=} ;;
-  esac
-done
-prev=""
-for a in "$@"; do
-  if [ "$prev" = "--profile" ]; then PROFILE=$a; fi
-  prev=$a
-done
+case $0 in */*) LIB=${0%/*} ;; *) LIB=. ;; esac   # no dirname: deps.sh runs on a bare PATH
+LIB=$(CDPATH='' cd -- "$LIB/../../lib" && pwd)
+MK_TAG=familia-deps
+# shellcheck source=SCRIPTDIR/../../lib/msg.mk
+. "$LIB/msg.mk"    # say
+# shellcheck source=SCRIPTDIR/../../lib/deps.mk
+. "$LIB/deps.mk"   # deps_args, deps_confirm
+deps_args "$@"
 case "$PROFILE" in base|build) ;; *) echo "familia-deps: unknown --profile $PROFILE" >&2; exit 2 ;; esac
 
 have_cmd() { command -v "$1" >/dev/null 2>&1; }
@@ -45,7 +38,7 @@ have_pytest() {
 have_cxx() { have_cmd c++ || have_cmd clang++ || have_cmd g++; }
 
 missing=""; present=""
-for pair in git:git curl:curl python3:python3 tar:tar; do
+for pair in git:git curl:curl python3:python3; do  # tar: FreeBSD base
   cmd=${pair#*:}; pkg=${pair%%:*}
   if have_cmd "$cmd"; then present="$present $pkg"; else missing="$missing $pkg"; fi
 done
@@ -60,11 +53,11 @@ if [ "$PROFILE" = build ]; then
   if have_cxx; then present="$present c++"; else missing="$missing llvm-or-gcc"; fi
 fi
 
-say() { echo "familia-deps: $*" >&2; }
 say "platform=FreeBSD profile=$PROFILE"
 say "present:${present:- (none)}"
 say "missing:${missing:- (none)}"
-say "pkg names (reference): git curl python3 py311-yaml py311-pytest cmake ninja llvm"
+PYV=311; command -v python3 >/dev/null 2>&1 && PYV=$(python3 -c 'import sys; print("%d%d" % sys.version_info[:2])')
+say "pkg names (reference): git curl python3 py$PYV-pyyaml py$PYV-pytest cmake ninja llvm"
 say "getconf: FreeBSD base — no package"
 say "llama.cpp: BUILD_DIR=build-freebsd GPU=off  (from code-bootstraps-llama.cpp/scripts/build-linux.sh)"
 say "home of the safe-mode *build* AI: pinned code-bootstraps-llama.cpp"
@@ -74,8 +67,8 @@ pkgs=""
 for m in $missing; do
   case "$m" in
     getconf*) ;; # base
-    pyyaml) pkgs="$pkgs py311-yaml" ;;
-    pytest) pkgs="$pkgs py311-pytest" ;;
+    pyyaml) pkgs="$pkgs py$PYV-pyyaml" ;;
+    pytest) pkgs="$pkgs py$PYV-pytest" ;;
     llvm-or-gcc) pkgs="$pkgs llvm" ;;
     *) pkgs="$pkgs $m" ;;
   esac
@@ -87,18 +80,23 @@ if [ -z "$pkgs" ]; then
   exit 0
 fi
 
-CMD="pkg install -y $pkgs"
-say "suggested: $CMD"
-if [ "$INSTALL" != 1 ]; then
-  say "re-run with --install to install them (add --yes for non-interactive). Angel: opt-in only."
+if [ "$(id -u)" = 0 ]; then
+  ESC=""
+elif have_cmd doas; then
+  ESC=doas
+elif have_cmd sudo; then
+  ESC=sudo
+else
+  say "pkg install needs root; install manually: pkg install -y $pkgs"
   exit 1
 fi
-if [ "$DRY" = 1 ]; then say "[dry-run] $CMD"; exit 0; fi
-if [ "$YES" != 1 ] && [ -r /dev/tty ]; then
-  printf 'familia-deps: run pkg install for missing packages now? [y/N] ' >&2
-  read -r ans < /dev/tty || ans=n
-  case "$ans" in y|Y|yes) ;; *) say "aborted"; exit 1 ;; esac
+CMD="${ESC:+$ESC }pkg install -y $pkgs"
+deps_confirm "$CMD" "run pkg install for missing packages now?" ". Angel: opt-in only."
+if [ -n "$ESC" ]; then
+  # shellcheck disable=SC2086
+  $ESC pkg install -y $pkgs
+else
+  # shellcheck disable=SC2086
+  pkg install -y $pkgs
 fi
-# shellcheck disable=SC2086
-pkg install -y $pkgs
 say "done"

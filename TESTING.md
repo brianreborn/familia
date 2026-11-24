@@ -1,7 +1,7 @@
-# Testing familia (v0.1.0-rc2)
+# Testing familia (v0.3.0)
 
 This page is for anyone who wants to try familia on their own hardware and report back.
-Everything here works from a plain checkout of `main` (or the `v0.1.0-rc2` tag). File
+Everything here works from a plain checkout of `main` (or the `v0.3.0` tag). File
 issues at https://github.com/brianreborn/familia/issues and include the output of the
 validator and test runs below.
 
@@ -12,9 +12,9 @@ download, and support a dry run. Details and flags: [docs/install.md](docs/insta
 
 | Platform | One click | Dry run |
 |---|---|---|
-| Desktop Linux (Ubuntu/Debian, also macOS, untested on a Mac) | `curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install/linux/install.sh \| sh` | add `-s -- --dry-run` |
+| Desktop Linux (Ubuntu/Debian, also macOS, untested on a Mac) | `curl -fsSLo install-familia-node.sh https://raw.githubusercontent.com/brianreborn/familia/main/install/linux/install.sh && sh ./install-familia-node.sh` | add `--dry-run` |
 | Windows 10/11 | double-click `install\windows\install.bat` (or `powershell -ExecutionPolicy Bypass -File install\windows\install.ps1`) | `-DryRun` |
-| Android (Termux from F-Droid/GitHub) | `curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install/termux/install.sh \| sh` | add `-s -- --dry-run` |
+| Android (Termux from F-Droid/GitHub) | `curl -fsSLo install-familia-termux.sh https://raw.githubusercontent.com/brianreborn/familia/main/install/termux/install.sh && sh ./install-familia-termux.sh` | add `--dry-run` |
 
 Each installer clones the repo, fetches a llama.cpp CPU runtime (ggml-org release with the
 sha256 checked at install time; Termux uses `pkg install llama-cpp`), measures the host and
@@ -26,8 +26,18 @@ From a checkout instead:
 
 ```sh
 git clone https://github.com/brianreborn/familia && cd familia
-python3 -m pip install --user pyyaml pytest      # plus gguf and "$(python3 scripts/cpu_level.py --numpy-spec)" for the LittleBit tests
+python3 -m pip install --user -r requirements-dev.txt      # plus gguf and "$(python3 scripts/cpu_level.py --numpy-spec)" for the LittleBit tests
 ```
+
+`pip install --user` puts PyYAML in the user site under your real home. The
+suite keeps that visible to child processes even when a test overrides `HOME`
+(it sets `PYTHONUSERBASE` and `PYTHONPATH`). If you run a script yourself with
+a fake `HOME`, set `PYTHONUSERBASE` to your real user base, or use a venv.
+
+A checkout under `/tmp` (or `/var/tmp`, `/dev/shm`) is supported. The A57
+dispatch and bench-idle tests use a user-owned cache outside those shared temp
+roots for lock and state directories, because the production code correctly
+refuses lock/state dirs there.
 
 ## 2. Validator and tests
 
@@ -36,9 +46,9 @@ python3 scripts/validate_graph.py --no-files     # schema + placement rules only
 python3 scripts/validate_graph.py                # also reads GGUF headers and checks RAM/VRAM on this host
 python3 scripts/validate_graph.py --args NODE    # print the llama-server args for one node
 python3 -m pytest -q                             # unit tests
-bash tests/test_with_fleet.sh                    # repo/fleet wiring smoke test
-bash tests/test_nexus_localhost.sh               # ssh nexus on localhost (needs sshd binary)
-bash tests/test_bt_loopback.sh                   # private bittorrent loopback
+bash proving_grounds/fleet_wiring.sh                    # repo/fleet wiring smoke test
+bash proving_grounds/nexus_localhost.sh               # ssh nexus on localhost (needs sshd binary)
+bash proving_grounds/bt_loopback.sh                   # private bittorrent loopback
 ```
 
 On Windows set `PYTHONUTF8=1` first. Test counts vary with optional tools and local model files;
@@ -56,13 +66,21 @@ The Python suite is necessary, but it is not a substitute for end-to-end task-su
 Substantial feature changes need a real integrated-path test with representative inputs. A new
 or materially changed model configuration stays planned/experimental until it passes a fixed
 role-appropriate task suite against a baseline using the same tasks. Define pass criteria before
-the run and record the exact model/runtime, configuration and prompt/template hashes, suite
-revision, seed, host/platform, per-task results, aggregate, and known limitations. Use each
-platform the feature claims to support where relevant; the initial targets are Ubuntu, Windows,
-FreeBSD, and Samsung Android/Termux. If an appropriate maintained suite is unavailable, add a
-small fixed representative suite before promotion and document its limits. This hard requirement
-is tracked in [#119](https://github.com/brianreborn/familia/issues/119); the durable runner and
-suite coverage are still to be built. Pentest tests remain launch-test-only.
+the run and record the exact model/runtime (name + version, not hash-only), configuration and
+prompt/template labels, suite revision, seed, platform class, per-task results, aggregate, and
+known limitations. Use each platform the feature claims to support where relevant; the initial
+targets are Ubuntu, Windows, FreeBSD, and Samsung Android/Termux (A57-class phones; not
+Note9-only). Full gate, fixed suite, result schema, runner, and promote refuse logic:
+[docs/testing/task-suite-acceptance.md](docs/testing/task-suite-acceptance.md)
+([#119](https://github.com/brianreborn/familia/issues/119)). Quick checks:
+
+```sh
+python3 scripts/task_suite_runner.py --dry-run --role coder --platform ubuntu
+python3 scripts/task_suite_promote.py check --role coder --model-name 'Example' --radical-trigger quantization
+python3 -m pytest -q tests/test_task_suite_gate.py
+```
+
+Pentest tests remain launch-test-only.
 
 - Windows without bash: 3 tests fail because they shell out to `bash`
   (`test_android_targets::test_scripts_have_no_hardcoded_targets_or_sshpass`,
@@ -186,4 +204,4 @@ From [docs/ram-safety.md](docs/ram-safety.md). The validator fails on a clear ov
 - **Python 3.12** from python.org, with `set PYTHONUTF8=1`. The bash tests call `python3`, so either disable the Microsoft Store "App execution aliases" for python3, or add a shim named `python3` that runs `exec python "$@"`.
 - **numpy:** run `pip install --user "$(python scripts/cpu_level.py --numpy-spec)"` (on Windows: `python -m pip install --user (python scripts\cpu_level.py --numpy-spec)`). The choice depends only on the CPU's x86-64 level. Below v2 (no SSSE3/SSE4.1/SSE4.2/POPCNT, e.g. Athlon II X2) you get `numpy<2.4`, because NumPy 2.4.0 raised its wheel baseline to X86_V2 and those wheels crash with 0xc000001d. Everything else, including ARM, gets current numpy. On v0/v1 Windows with Python 3.12 the installer first tries our own numpy 2.5.3 wheel built with `-Dcpu-baseline=none` (release asset; rebuild with `scripts\build_numpy_wheel.ps1`, needs MSYS2 ucrt64 gcc), then falls back to `numpy<2.4`. That wheel is experimental: long double (`np.longdouble`) math can crash it; familia never uses long double. See LESSONS-LEARNED.md.
 - **pytest:** `python -m pytest -q tests`. Expected: everything passes or skips except the known `test_overcommit_is_hard_error` failure and the bash-dependent tests listed in section 2.
-- **bash tests:** `test_nexus_localhost.sh` is Linux-only because it needs sudo/useradd. `test_bt_loopback.sh` needs `aria2c`. `test_with_fleet.sh` needs the graph's model files to be present.
+- **bash tests:** `proving_grounds/nexus_localhost.sh` is Linux-only because it needs sudo/useradd. `proving_grounds/bt_loopback.sh` needs `aria2c`. `proving_grounds/fleet_wiring.sh` needs the graph's model files to be present.

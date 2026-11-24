@@ -1,0 +1,6 @@
+{
+  "model": "candidate-sec-specialized",
+  "runtime": "offline-canned",
+  "revision": "test-1",
+  "text": "Findings: world-writable state file (mode 0666), bind all interfaces (0.0.0.0), auth disabled. Remediation: restrict permissions to owner-only, bind localhost when possible, and require authentication."
+}

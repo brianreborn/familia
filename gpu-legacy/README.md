@@ -9,6 +9,17 @@ Status: **working, GPU gives the same answer but runs slower than the CPU.** Gre
 - `sm11_shim.cu` + `build.bat`: the same interface for nvcc 6.5 + VS2013. **Not built**, because qodesh has no VS2013 `cl.exe` (the VS 12.0 folder is empty).
 - Build: `build-gcc.bat` (portable WinLibs gcc 16.1 at `E:\temp\tools\mingw64`, sha256 verified).
 
+The verified G84 runtime is the Windows `nvcuda.dll` path on qodesh. The POSIX
+shim can load `libcuda` when a compatible driver API is installed. The operator
+reports a CUDA 6.5/NVIDIA 341 support set, but it has not been validated as a
+FreeBSD runtime on Angel; the current G84 entry is PCI-inventory-only and must
+not be used for GPU offload. Building the POSIX tools on FreeBSD does not
+establish a working GPU runtime.
+
+The POSIX Makefile enables OpenMP by default for the CPU paths. FreeBSD clang
+may require `pkg install devel/openmp`; use `make OPENMP=` to build without
+OpenMP when that runtime is unavailable.
+
 ## Results (stories15M fp32, greedy, 200 tokens, 2 threads, Athlon II X2 B24)
 | runtime | tok/s |
 |---|---|
@@ -34,4 +45,4 @@ See [DECISION-MODEL.md](DECISION-MODEL.md) and [bench-decision/SUMMARY.md](bench
 
 ## nvso (FreeBSD research scaffold)
 
-See [nvso/README.md](nvso/README.md) and `docs/vvram-ssd/` — SO-domain + SSD DMA ioctl stubs; not used by stock sm11 path.
+See [nvso/README.md](nvso/README.md) and `docs/vvram-ssd/`. In-tree soft domain bookkeeping plus a userspace `nvsoctl -n` smoke. SandForce firmware and peer DMA are not in this path, and sm11 does not use it.

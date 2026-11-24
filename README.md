@@ -8,7 +8,24 @@ Your models and data stay on your machines. A file, context, or result moves acr
 
 familia is a **topology coordinator**. It doesn't replace your inference server or your agents. It pins them, checks them out side by side, and wires them into one graph you control: llama.cpp model servers, the green-roomz alias gateway, the green-agentz fleet, and agents such as hermes-agent, across the machines you own.
 
-> **Status:** pre-release (`v0.1.0-rc2`). Linux is the tested platform. **Want to help test? Start with [TESTING.md](TESTING.md).** See [Platform status](#platform-status) and [Known issues](docs/known-issues.md).
+> **Headline model: LFM3-1.7B-Uncensored** ([AtomicChat/LFM3-1.7B-Uncensored-GGUF](https://huggingface.co/AtomicChat/LFM3-1.7B-Uncensored-GGUF), base LiquidAI LFM3-1.7B, 256k context, tool calling). It is the single-node default (`start.sh` when this host has no active topology): one 1.13 GB file served as both `general` and `coder`. The checked-in fleet graph is not there yet: `nodes.coder` on miryam still uses `qwen35-2b-q4km` at 64k context (measured for Hermes). LFM3-VL/Omni/Audio stay opt-in. No safety tuning; you are responsible for its output. License `lfm1.0`: commercial use only for organisations under US$10M annual revenue. Want to iterate on it? Swap quants or sampling in [`code-bootstraps-llama.cpp/config/models-manifest.json`](https://github.com/brianreborn/code-bootstraps-llama.cpp/blob/main/config/models-manifest.json), or try the official LiquidAI builds with `scripts/fetch-models.sh --pick lfm3` / `--pick lfm3-qad` (opt-in downloads only).
+
+> **The LFM3 family: try them all.** Every pick is an opt-in, sha256-pinned download (never fetched by default), licensed `lfm1.0`. From the familia menu: **Models → LFM3 family** (`./familia --run models.lfm3 lfm3-vl`), or directly `sh code-bootstraps-llama.cpp/scripts/fetch-models.sh --pick NAME`:
+>
+> | pick | model | what it adds | size | status on b11944 |
+> |---|---|---|---|---|
+> | (default) | **LFM3-1.7B-Uncensored** Q4_K_M | chat + coder, tool calls, 256k ctx | 1.13 GB | tested |
+> | `lfm3` | LiquidAI LFM3-1.7B Q4_K_M | official (safety-tuned) build | 1.10 GB | tested |
+> | `lfm3-qad` | LiquidAI LFM3-1.7B QAD Q4_0 | ~20% faster prompt eval on CPU | 1.05 GB | tested |
+> | `lfm3-vl` | LiquidAI LFM3-VL-2B Q4_K_M + mmproj | **vision**: images in chat | 1.30 GB | tested (image prompt) |
+> | `lfm3-omni` | LiquidAI LFM3-Omni-2B Q4_K_M + mmproj | **images + audio** | 1.64 GB | partial tested (image OK, audio TODO) |
+> | `lfm3-audio` | LiquidAI LFM3-Audio-2B Q4_K_M + mmproj | **audio** input | 1.44 GB | partial tested (loads, audio TODO) |
+>
+> `lfm3-vl`, `lfm3-omni` and `lfm3-audio` are **Linux/macOS only for now**: `fetch-models.ps1` / `serve.ps1` do not fetch or pass the mmproj yet (TODO, #190).
+>
+> After a download, restart; each media pick is served as its own model (`lfm3-vl`, `lfm3-omni`, `lfm3-audio`) with `--mmproj`, so the web UI's image/audio attach and OpenAI `image_url` / `input_audio` messages work. Benchmarks: [#183](https://github.com/brianreborn/familia/issues/183).
+
+> **Status:** pre-release (targeting **v0.4.0**). FreeBSD is the first reference platform; Linux is the only one tested so far. **Want to help test? Start with [TESTING.md](TESTING.md).** See [Platform status](#platform-status) and [Known issues](docs/known-issues.md).
 
 **Projects familia coordinates:** [code-bootstraps-llama.cpp](https://github.com/brianreborn/code-bootstraps-llama.cpp) provides model serving and bootstrap tooling; [green-roomz](https://github.com/brianreborn/green-roomz) provides the alias gateway; [green-agentz](https://github.com/brianreborn/green-agentz) provides the agent fleet; [Agent-Reach](https://github.com/Panniantong/Agent-Reach) provides optional reach tools; and [nace-ai/llama.cpp](https://github.com/nace-ai/llama.cpp/tree/edlm) is the experimental DReX-DLM runtime. Their repositories and licenses remain independent; familia's [`pins.txt`](pins.txt) keeps the selected revisions together. [green-agency](https://github.com/brianreborn/green-agency) is retired and retained only for historical specifications.
 
@@ -50,8 +67,33 @@ improve small-model results yet. Details are in [docs/skills.md](docs/skills.md)
 ## Quick start
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install.sh | sh
+p=familia                          && \
+o=brianreborn                      && \
+h=raw.githubusercontent.com        && \
+u=https://$h/$o/$p/main/install.sh && \
+curl -fsSLo install-$p.sh $u       && \
+sh        ./install-$p.sh
 ```
+
+```sh
+p=familia && o=brianreborn && h=raw.githubusercontent.com && u=https://$h/$o/$p/main/install.sh && curl -fsSLo install-$p.sh $u && sh ./install-$p.sh
+```
+
+```sh
+# Options (from sh ./install-familia.sh --help):
+#   --dry-run    say what would happen; change nothing
+#   --yes        non-interactive; accept notice and licenses
+#   --auto-deps  install missing OS packages (asks once; may use sudo)
+#   --no-start   stop after setup
+#   --no-path    do not put familia on PATH
+#   --branch B   track branch B
+# Env: INSTALL_PREFIX=DIR (default ~/familia), INSTALL_ACK=yes,
+#      BUILD=1 (force source build), AUTO_DEPS=1, INSTALL_NO_START=1
+# Already downloaded? Rerun with options, no new download:
+sh ./install-familia.sh --dry-run
+```
+
+llama.cpp is **prebuilt-first**: the installer reuses an existing build, else downloads the sha256-checked b12359 release binary for your OS/arch (Linux, macOS, Windows), and builds from source only when none fits (FreeBSD, Termux) or you set `BUILD=1`.
 
 For the ordered checklist (measure host, place a model, validate, start), see [QUICKSTART.md — What you actually need](QUICKSTART.md#what-you-actually-need). That clones familia into `~/familia`, shows the license review, syncs the pinned sub-projects and starts the active local topology declared in `graph.yaml`. You type `yes` once to acknowledge the voluntary contribution notice (`INSTALL_ACK=yes` for unattended installs); paying is never required. The graph gateway is loopback-only at **http://127.0.0.1:9931**; use `GET /v1/models` to see the local aliases.
 
@@ -94,6 +136,303 @@ For the full design (transaction blocks, `/local` and `/remote`, snapshots as ca
 
 ---
 
+## Diagrams
+
+Mermaid diagrams of current `main`, rendered by GitHub. Dashed edges are planned or still in review; they are labeled. The text diagram above and the graph-types model in [docs/graph-types.md](docs/graph-types.md) are kept as they are.
+
+### Components
+
+```mermaid
+flowchart TB
+  subgraph clients["Clients"]
+    hcli["Hermes CLI<br/>scripts/hermes.sh (graph harness)"]
+    hdesk["Hermes desktop<br/>frontend client only"]
+    ui["llama-ui / OpenAI clients"]
+  end
+  subgraph familia["familia (this repo)"]
+    gyaml["graph.yaml<br/>hosts, runtimes, models, nodes,<br/>gateways, aliases, agents, meshes"]
+    validate["scripts/validate_graph.py<br/>graph_types.py"]
+    start["start.sh -> scripts/start_graph.py"]
+    proxy["scripts/escalation_proxy.py<br/>local escalation proxy"]
+    nexus["scripts/nexus/nexus.py<br/>nexus (lan-nexus)"]
+    hf["scripts/hf_fetch.py<br/>model database snapshots"]
+    reg["registry/<br/>models, records.jsonl, llama-builds,<br/>hardware, hosts.yaml"]
+  end
+  subgraph pins["Pinned sub-projects (pins.txt)"]
+    grz["green-roomz<br/>alias gateway / graph-proxy"]
+    cbl["code-bootstraps-llama.cpp<br/>llama-server builds, model fetch"]
+    agentz["green-agentz<br/>agent fleet"]
+  end
+  nodes["llama-server nodes<br/>one per active graph node"]
+
+  gyaml --> validate --> start
+  start -->|spawns, waits for /health| nodes
+  start -->|spawns graph-proxy| grz
+  start -->|syncs pins| pins
+  cbl -->|runtime binaries| nodes
+  hcli -->|escalation on| proxy --> nodes
+  hcli -->|no escalation: node aliases| nodes
+  hdesk -->|same path as the CLI| proxy
+  hdesk -->|no escalation| nodes
+  ui --> grz
+  grz -->|alias -> one node| nodes
+  hf --> reg
+  reg --> validate
+  nexus -->|"opt-in PoC: file sync only,<br/>artifacts by sha256"| nodes
+  agentz -.-> grz
+```
+
+### Request routing
+
+Hermes desktop is launched by `scripts/hermes.sh --client desktop`; only the final exec differs from the CLI, so it uses the same rendered `HERMES_HOME` aliases and the same proxy decision. The escalation proxy runs only with `--escalate`, or when the agent's main node declares `escalates_to` and its escalation mode is not `off`; otherwise Hermes talks to the node aliases directly.
+
+`#243` (merged) decides at launch which nodes get `--tools`. The runtime forward of tool-bearing requests to a node's `tool_route` target is [#251](https://github.com/brianreborn/familia/pull/251), still open, so it is drawn dashed.
+
+```mermaid
+flowchart LR
+  hcli["Hermes CLI<br/>(scripts/hermes.sh)"]
+  hdesk["Hermes desktop<br/>(frontend only, launched by<br/>scripts/hermes.sh --client desktop)"]
+  oai["OpenAI client / llama-ui"]
+  gw["green-roomz gateway 'roomz'<br/>local gateway"]
+  px["escalation_proxy<br/>local"]
+  subgraph aliases["aliases (graph.yaml)"]
+    a1["coder / general"]
+    a2["embed"]
+    a3["guardian / pentest / defender"]
+    a4["safe-build"]
+  end
+  coder["node coder<br/>local model server"]
+  embed["node embed<br/>local model server"]
+  pent["node pentest<br/>(planned)"]
+  dec["node vulkan-igpu-decision<br/>(planned)"]
+  heavy["escalates_to target node<br/>(ranked by measured t/s)"]
+  troute["tool_route target<br/>(tool-capable node)"]
+
+  oai --> gw
+  hcli -->|escalation on| px
+  hcli -->|no escalation| coder
+  hdesk -->|escalation on| px
+  hdesk -->|no escalation| coder
+  px -->|current upstream| coder
+  px -->|suggest / auto escalation,<br/>compact handoff, swap back| heavy
+  px -.->|"#251 (open): forward tool-bearing<br/>request to tool_route"| troute
+  gw --> a1 --> coder
+  gw --> a2 --> embed
+  gw --> a3 --> pent
+  gw --> a4 --> dec
+```
+
+Tool grants at launch (`validate_graph.tools_argv`, #243): `coder`, `chat`, `general` and `reasoning` nodes get `--tools all` by default when bound to loopback (default under review; a node's `tool_capable` or its model's `tool_calls` overrides the type presumption); `embed`, `decision`, `vision` and `diffusion` get none; `guardian`, `pentest` and `defender` always fail closed; an explicit `server_tools` key wins, and is only allowed on a loopback bind.
+
+### Node lifecycle (`start.sh` -> `scripts/start_graph.py`)
+
+```mermaid
+stateDiagram-v2
+  [*] --> SelectHost: --host NAME, FAMILIA_HOST, host pin, or hostname / local_names match
+  SelectHost --> SingleNode: via start.sh dry-run, host not in graph, no active local nodes, or graph validation failed
+  SingleNode --> [*]: code-bootstraps-llama.cpp single-node default (FAMILIA_SINGLE_NODE=0 disables)
+  SelectHost --> ValidateGraph: graph only (no file checks)
+  SelectHost --> Failed: unknown or ambiguous host (start_graph.py run directly)
+  ValidateGraph --> Failed: validation errors (nothing started)
+  ValidateGraph --> Stopped: no active local topology (exit 0)
+  ValidateGraph --> LicenseGate: license review
+  LicenseGate --> SyncPins: accepted
+  LicenseGate --> Failed: not accepted (nothing started)
+  SyncPins --> LicenseGate2: pins synced
+  SyncPins --> Failed: sync error (nothing started)
+  LicenseGate2 --> SelfImprove: accepted again after sync
+  LicenseGate2 --> Failed: not accepted (nothing started)
+  SelfImprove --> Preflight: attach accepted self-improve versions
+  SelfImprove --> Failed: pentest refuse
+  Preflight --> PortCheck: local node preflight (binary + model files)
+  Preflight --> Failed: files missing (nothing started)
+  PortCheck --> SpawnNode: node and gateway ports free
+  PortCheck --> Failed: port occupied, or Node.js / green-roomz missing
+  SpawnNode --> WaitNodeHealth: sh serve.sh NAME (one node at a time)
+  WaitNodeHealth --> SpawnNode: GET /health ok, next node
+  WaitNodeHealth --> SpawnGateway: last node healthy, local gateway declared
+  WaitNodeHealth --> Ready: last node healthy, no local gateway
+  WaitNodeHealth --> Stopping: child exited
+  SpawnGateway --> WaitGatewayHealth: green-roomz graph-proxy (one at a time)
+  WaitGatewayHealth --> SpawnGateway: GET /health ok, next gateway
+  WaitGatewayHealth --> Ready: last gateway healthy
+  WaitGatewayHealth --> Stopping: child exited or timeout
+  Ready --> Stopping: SIGINT / SIGTERM, or any child exits
+  Stopping --> Stopped: SIGTERM children in reverse, shared 10 s grace, then SIGKILL + wait
+  Failed --> [*]
+  Stopped --> [*]
+  note right of ValidateGraph
+    Only nodes with status active on this host start.
+    Remote nodes and gateways are reported, never contacted.
+  end note
+  note left of WaitNodeHealth
+    Node wait: FAMILIA_START_TIMEOUT, default 0 = unlimited
+    (fails only if the child exits).
+    Gateway wait: FAMILIA_START_TIMEOUT, default 60 s.
+  end note
+```
+
+### Installer flow and the license gate
+
+Target behavior per Brian's spec recorded in [#277](https://github.com/brianreborn/familia/issues/277) (ALPHA, not implemented yet): licenses are accepted only by an interactive click-through, `FAMILIA_ACCEPT_LICENSES=yes`, or a new `--accept-licenses` flag (`-AcceptLicenses` on Windows), and `--yes` / `-Yes` never accepts licenses. `main` still differs today: `--yes` sets `FAMILIA_ACCEPT_LICENSES` in every installer entry point and in `start.sh` / `start_graph.py --yes` (and the Linux installer's `--yes` also attests running as root). That is the bug #277 fixes.
+
+```mermaid
+flowchart TD
+  s(["install.sh / install/windows/install.ps1"]) --> args["parse flags<br/>(automation flags default on)"]
+  args --> notice["contribution notice<br/>(print-only per issue 277, INSTALL_ACK today)"]
+  notice --> fetch["clone or download<br/>GIT_TERMINAL_PROMPT=0"]
+  fetch --> deps["OS deps + Charm gum<br/>(default on, gated on --yes, not on licenses;<br/>non-interactive package managers)"]
+  deps --> lic{"licenses accepted<br/>explicitly? (scripts/licenses.py)"}
+  lic -->|"--accept-licenses (-AcceptLicenses) or<br/>FAMILIA_ACCEPT_LICENSES=yes"| pins["sync pins, fetch models"]
+  lic -->|"terminal: show licenses,<br/>person types yes"| pins
+  lic -->|"no TTY and no explicit acceptance"| stop["exit 2 with how to accept<br/>(nothing downloaded)"]
+  yes["--yes / -Yes"] -.->|"covers prompts EXCEPT the license"| args
+  pins --> path["install-cli: add to PATH"]
+  path --> run{"--no-start?"}
+  run -->|no| startg["start.sh<br/>(Windows: scripts/windows/start.bat)"]
+  run -->|yes| done(["done"])
+  startg --> done
+```
+
+ALPHA proposal, not built yet: unattended and test installs would answer the real license prompt through a pty driver, the way a person types, instead of a flag that skips it (#277 lists the pty driver as not started).
+
+### Hugging Face download cache
+
+`scripts/hf_fetch.py` on `main` downloads to `DEST.part`, checks the LFS sha256, then renames. The cache-coherent resume and revalidate layer (`scripts/hf_cache.py`) is on `release/llama-bump-hf-cache` and handed off in [#278](https://github.com/brianreborn/familia/issues/278); this is its state machine.
+
+```mermaid
+stateDiagram-v2
+  [*] --> Locked: take DEST.lock (held for the whole fetch)
+  Locked --> Revalidate: DEST + DEST.meta.json exist and sidecar matches url / sha256 / size / file size
+  Locked --> Resume: DEST.part + matching .part.meta.json with a validator (strong ETag, else Last-Modified)
+  Locked --> Fresh: nothing usable (stale .part discarded)
+  Revalidate --> Cached: 304, or 200 with same ETag + size and sha256 still good
+  Revalidate --> Downloading: ETag or size changed (reuse the 200 body from 0)
+  Revalidate --> Failed: other HTTP or network error (DEST and sidecar untouched)
+  Resume --> Downloading: Range + If-Range -> 206 at current offset, same validator
+  Resume --> Downloading: 200 (upstream changed): truncate and restart from 0, never splice
+  Resume --> Fresh: 416, or 206 with wrong offset or validator: discard .part
+  Resume --> Failed: other HTTP or network error (.part and .part.meta.json kept for the next resume)
+  Fresh --> Downloading: GET 200 into DEST.part
+  Fresh --> Failed: any status other than 200
+  Downloading --> Verify: complete, .part fsynced
+  Verify --> Commit: size and sha256 match (expected or LFS ETag)
+  Verify --> Failed: size or sha256 mismatch: remove .part + .part.meta.json
+  Commit --> Cached: os.replace, fsync dir, write sidecar, remove .part.meta.json
+  Cached --> [*]
+  Failed --> [*]
+```
+
+### Graph YAML and registry
+
+```mermaid
+erDiagram
+  HOST ||--o{ NODE : "runs"
+  HOST ||--o{ GPU : "has"
+  RUNTIME ||--o{ NODE : "serves"
+  MODEL ||--o{ NODE : "loaded by"
+  NODE ||--o{ ALIAS : "exactly one per alias"
+  GATEWAY ||--o{ ALIAS : "exposes"
+  AGENT }o--|| ALIAS : "main / auxiliary"
+  NODE ||--o{ NODE : "escalates_to / tool_route"
+  MESH }o--o{ HOST : "members"
+  MODEL }o--|| REGISTRY_MODEL : "db entry"
+  REGISTRY_MODEL ||--o{ RECORD : "measured on host"
+  HOST ||--o| HARDWARE_PROFILE : "registry/hosts.yaml"
+  RUNTIME ||--o| LLAMA_BUILD : "registry/llama-builds"
+
+  HOST {
+    string kind
+    string os
+    int ram_mib
+    int reserve_ram_mib
+  }
+  NODE {
+    string host
+    string model
+    string runtime
+    int port
+    string bind
+    string status
+    list server_tools
+  }
+  MODEL {
+    string gguf
+    string sha256
+    string arch
+    string role
+  }
+  RUNTIME {
+    string kind
+    string build
+    list supported_archs
+  }
+  GATEWAY {
+    string kind
+    string host
+    int port
+  }
+  AGENT {
+    string kind
+    string host
+    int context_length
+  }
+  MESH {
+    string type
+    string hub
+  }
+  REGISTRY_MODEL {
+    string repo
+    string revision
+    string file
+    string sha256
+    string license
+  }
+  RECORD {
+    string host
+    string device
+    float tg_tps
+  }
+  LLAMA_BUILD {
+    list archs
+  }
+```
+
+Field-level detail for every key is in [docs/graph-types.md](docs/graph-types.md) and `docs/config/graph/`.
+
+### Fleet deployment
+
+Hosts are shown by role only.
+
+```mermaid
+flowchart TB
+  subgraph gpu["GPU node (Linux)"]
+    m_gw["green-roomz gateway 'roomz'"]
+    m_coder["coder + embed nodes"]
+    m_hermes["Hermes agents"]
+    m_hub["lan-nexus hub + lan-bt tracker"]
+  end
+  subgraph fbsd["FreeBSD node"]
+    a_coder["coder node<br/>measured small coder, server_tools all"]
+    a_plan["chat, guardian nodes (planned)"]
+  end
+  subgraph win["Windows node"]
+    q_res["resident node (CPU)"]
+    q_gpu["cuda-sm11-decision<br/>legacy-GPU node runs llama2.c (no GGUF)"]
+  end
+  lin["Linux node<br/>test loop"]
+  ci["Linux CI / test node<br/>decision, coder nodes"]
+  phones["Android phones (Termux)"]
+
+  m_hub <-->|"lan-nexus"| win
+  m_hub <-->|"lan-nexus / lan-bt"| phones
+  win -.->|"cpu-smol-decision (planned) escalates_to coder"| m_coder
+```
+
+`graph.yaml` lists the Android phones under both legacy and fleet host names; `registry/hosts.yaml` maps all of them to one hardware profile. The legacy-GPU node runs llama2.c (no GGUF).
+
+---
+
 ## Sub-projects
 
 The sub-projects keep their own repositories and licenses. familia pins each one by revision in [`pins.txt`](pins.txt). They are pins, not submodules. Nothing is vendored. `scripts/configure.sh` checks them out next to the top-level tree, or links a sibling checkout that already exists.
@@ -101,13 +440,13 @@ The sub-projects keep their own repositories and licenses. familia pins each one
 | Pin (`pins.txt`) | Role | Repository |
 |---|---|---|
 | `code-bootstraps-llama.cpp` | Models and the agent: `llama-server` router, model fetch/verify, `/local`, `/remote`, installers, launcher settings | [brianreborn/code-bootstraps-llama.cpp](https://github.com/brianreborn/code-bootstraps-llama.cpp) |
-| `green-roomz` | Alias gateway, including familia's graph-proxy mode for local declared routes | [brianreborn/green-roomz](https://github.com/brianreborn/green-roomz) |
+| `green-roomz` | Alias gateway; its graph-proxy serves graph gateways only with `gateways.<g>.router: false` (default is scripts/graph_router.py) | [brianreborn/green-roomz](https://github.com/brianreborn/green-roomz) |
 | `green-agentz` | Agent fleet (green-brainz, green-fleetz, green-zkillz) | [brianreborn/green-agentz](https://github.com/brianreborn/green-agentz) |
 | `green-agency` | **Retired.** Kept for historical specs; not the fleet | [brianreborn/green-agency](https://github.com/brianreborn/green-agency) |
 | `agent-reach` | External reach tools, pinned and not vendored | [Panniantong/Agent-Reach](https://github.com/Panniantong/Agent-Reach) |
 | `llama-server__nace-ai__edlm` | Experimental runtime: DReX-DLM diffusion engine. Cloned only when an `ENGINE_*` setting asks for it | [nace-ai/llama.cpp](https://github.com/nace-ai/llama.cpp) (branch `edlm`) |
 
-**Used but not pinned:** [hermes-agent](https://github.com/NousResearch/hermes-agent). Always run it through the graph harness, `scripts/hermes.sh`, never as stock `hermes`. The stock `~/.hermes` config has compression off and points at small-context models, which fails with HTTP 400 on long turns ([#19](https://github.com/brianreborn/familia/issues/19)). The harness renders its own config (65,536-token context on the `coder` node, compression on, auxiliary tasks on local nodes) and only reads `~/.hermes`. Commands: [QUICKSTART.md](QUICKSTART.md#always-run-hermes-through-the-harness).
+**Pinned by channel, installed by you:** [hermes-agent](https://github.com/NousResearch/hermes-agent). familia does not clone or install it, but `config/hermes-agent.pins.json` names the release each channel targets (bleeding `v0.22.6`, stable `v0.22.5`; python 3.14) and `scripts/hermes_pin.py` resolves it, through the release-channel resolver when present ([docs/hermes-pin.md](docs/hermes-pin.md)). Always run it through the graph harness, `scripts/hermes.sh`, never as stock `hermes`. The stock `~/.hermes` config has compression off and points at small-context models, which fails with HTTP 400 on long turns ([#19](https://github.com/brianreborn/familia/issues/19)). The harness renders its own config (65,536-token context on the `coder` node, compression on, auxiliary tasks on local nodes) and only reads `~/.hermes`. Commands: [QUICKSTART.md](QUICKSTART.md#always-run-hermes-through-the-harness).
 
 Alternative engine builds follow the `<executable>__<author>__<branch>` naming scheme (for example `llama-server__ggerganov__master`), and each build lives in its own `bin/llama__<author>__<branch>/` directory so shared libraries can't collide. Building alternative engines from these pins is still TBD; `configure.sh` only clones them. Separately, the graph runs **official llama.cpp release builds side by side**: `b11374` serves `coder` (qwen35) and `b11539` is load-tested for `embed` (embeddinggemma-2, deferred in [#38](https://github.com/brianreborn/familia/issues/38)), each declared under `runtimes:` in `graph.yaml` with the architectures it was load-tested on. A node whose GGUF architecture isn't listed for its runtime fails validation.
 
@@ -143,7 +482,7 @@ Everything below is on `main`. "Planned (#N)" means tracked in that issue and no
 | Feature | Status |
 |---|---|
 | Declarative graph `graph.yaml` (typed schema v2, multi-host, GPU fields, speculative edges, `pentests` launch-test-only type) + `scripts/validate_graph.py` | Implemented. Fails on schema, runtime, GGUF arch, `context_length`, prompt-cache size and RAM overcommit; the RAM reserve and small-host floor are warnings ([docs/ram-safety.md](docs/ram-safety.md)) |
-| Model selection: `selection: default\|fallback` per node | Implemented (`qodesh-resident`, Qwen3.5-2B, is a user-selectable fallback; SmolLM2 stays the qodesh default) |
+| Model selection: `selection: default\|fallback` per node | Implemented (`cpu-resident-coder`, Qwen3.5-2B, is a user-selectable fallback; SmolLM2 stays the qodesh default) |
 | hermes harness `scripts/hermes.sh` / `hermes_harness.py` | Implemented, with graph mode (default) and single-model mode (`--model NODE`, 64K floor); live `--selftest-compaction` on miryam planned ([#42](https://github.com/brianreborn/familia/issues/42)) |
 | Self-improving harnesses: Harness² + Terminal-RSI over `harnesses:` / `self_improve:`, `scripts/harness2.py`, `scripts/self_improve_attach.py` | Experimental, off by default; attach from hermes, graph start / llama UI, or CLI. Any model role is allowed; pentest agents remain excluded. See [docs/harness2.md](docs/harness2.md) ([#65](https://github.com/brianreborn/familia/issues/65), [#88](https://github.com/brianreborn/familia/issues/88)) |
 | Official Hermes plugins (MCP + Skill) bridged into rendered HERMES_HOME | Opt-in `agents.<name>.plugins`; see [docs/hermes-plugins.md](docs/hermes-plugins.md) ([#92](https://github.com/brianreborn/familia/issues/92)) |
@@ -195,6 +534,7 @@ Start with [QUICKSTART.md](QUICKSTART.md), then [MANUAL.md](MANUAL.md).
 | [QUICKSTART.md](QUICKSTART.md) | Install, validate, start, add a model, test |
 | [MANUAL.md](MANUAL.md) | Settings, detaching, models, escalation, RAM safety, Windows |
 | [TESTING.md](TESTING.md) | Testing on your own hardware and reporting back |
+| [docs/testing/task-suite-acceptance.md](docs/testing/task-suite-acceptance.md) | Task-suite gate before active/default (#119) |
 | [DESIGN.md](DESIGN.md) | The graph, transactions, transports, snapshots |
 | [REQUIREMENTS.md](REQUIREMENTS.md) | Requirements and their status |
 | [LESSONS-LEARNED.md](LESSONS-LEARNED.md) | What went wrong before, and the rule that came out of it |
@@ -207,6 +547,7 @@ Start with [QUICKSTART.md](QUICKSTART.md), then [MANUAL.md](MANUAL.md).
 | [docs/ram-safety.md](docs/ram-safety.md) | RAM reserve rule and protections |
 | [docs/monitoring.md](docs/monitoring.md) | `./familia-monitor`: SSH-based live console for every host, with process-death alerts |
 | [docs/install.md](docs/install.md), [docs/windows.md](docs/windows.md) | Installers and Windows startup |
+| [docs/release-channels.md](docs/release-channels.md) | Release channels: `bleeding` (default) or `stable` (most stable release of each dependency from the last N days) |
 | [docs/known-issues.md](docs/known-issues.md) | Current problems and workarounds |
 | [docs/HANDOFF.md](docs/HANDOFF.md), [docs/offline-test-plan.md](docs/offline-test-plan.md) | Open work and the tests that resume it |
 | [docs/announcements/](docs/announcements/) | Release-note and announcement **drafts** (not published) |

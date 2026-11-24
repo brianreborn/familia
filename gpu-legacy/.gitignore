@@ -1,4 +1,4 @@
-﻿out/
+out/
 *.exe
 *.bin
 *.gguf
@@ -7,3 +7,11 @@ __pycache__/
 bench-concurrency/*.txt
 bench-concurrency/*.err
 bench-concurrency/runlog*.txt
+# In-tree Makefile outputs (no extension). Next `make && git add -A`
+# must not recommit these prebuilt binaries (#620, #629).
+/run
+/bench_batch_scale
+/bench_links
+/bench_matvec
+/bench_quant
+/bench_smolshape

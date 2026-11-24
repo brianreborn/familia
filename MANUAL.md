@@ -28,7 +28,7 @@ They are pins, not git submodules. A leftover `.gitmodules` / gitlink (mode `160
 - `--dry-run` shows what would move and uses no network; `--check` exits 1 when something is behind; `./familia update` is `git pull --ff-only` of familia and then a sync with the new `pins.txt`.
 - To test a familia development branch, run `./familia sync --branch BRANCH` (or `python3 scripts/sync_pins.py --branch BRANCH`). It fetches `origin/BRANCH`, switches this checkout to that branch (creating a local tracking branch if needed), fast-forwards only, then syncs every project to the revisions in that branch's `pins.txt`. Later updates and installer runs remain on the tracked branch. Use `--branch main` to explicitly switch back. Preview first with `./familia sync --branch BRANCH --dry-run`.
 
-Called automatically by: `install.sh`, `install/linux`, `install/termux` and `install/windows` installers, `scripts/configure.sh`, `start.sh`, `scripts/serve.sh`, `with-fleet.sh` (live launches; `--launch-test` only notes drift), `scripts/run-tests.sh`, `scripts/windows/start.bat`, and the `post-merge` / `post-rewrite` / `post-checkout` hooks `configure.sh` installs (an existing hook of yours is left alone). Not by `add-model` or model fetches. `FAMILIA_SYNC=0` skips it (it says so).
+Called automatically by: `install.sh`, `install/linux`, `install/termux` and `install/windows` installers, `scripts/configure.sh`, `start.sh`, `scripts/serve.sh`, `with-fleet.sh` (live launches; `--launch-test` only notes drift), `scripts/run-tests.sh`, `scripts/windows/start.bat`, and the `post-merge` / `post-rewrite` / `post-checkout` hooks `configure.sh` installs (an existing hook of yours is left alone). Not by `add-model` or model fetches. `FAMILIA_SYNC=0` skips it (it says so). Linked `git worktree` checkouts skip automatic sync by default (hooks and `--auto`) and print how to sync: `FAMILIA_SYNC=1` or `./familia sync`; an explicit sync still runs. Primary checkouts keep syncing automatically.
 
 Saved settings live in `code-bootstraps-llama.cpp/.cache/panel.env`. An environment variable always overrides a saved setting:
 
@@ -53,7 +53,7 @@ There is no visual graph editor and no natural-language configuration (see [Futu
 
 `start.sh` validates the graph, starts every active supported node assigned to the selected local host, waits for each node's health endpoint, and then starts the declared Green-Roomz graph proxy for local aliases. The current `miryam` graph exposes `coder` and `embed` at `http://127.0.0.1:9931`; query `GET /v1/models` for the available routes. Remote nodes and gateways are reported but never started or contacted without consent. Unsupported active runtime kinds or missing local artifacts fail before any process starts.
 
-`angel` is measured (`measured: true`, ~24 GiB) with **`angel-coder` active** for Nanbeige4.3-33B Q4_K_M (`angel-chat` stays planned; do not co-start). FreeBSD currently uses a source build only: install no packages and do not run `familia install`. Build the pinned llama.cpp checkout from `code-bootstraps-llama.cpp` with `BUILD_DIR=build-freebsd GPU=off scripts/build-linux.sh`, then verify `build-freebsd/bin/llama-server --version`. Graph serving there requires measured host facts and an explicit node placement.
+`angel` is measured (`measured: true`, ~24 GiB) with **`removed-large-coder` active** for large model Q4_K_M (`removed-large-chat` stays planned; do not co-start). FreeBSD currently uses a source build only: install no packages and do not run `familia install`. Build the pinned llama.cpp checkout from `code-bootstraps-llama.cpp` with `BUILD_DIR=build-freebsd GPU=off scripts/build-linux.sh`, then verify `build-freebsd/bin/llama-server --version`. Graph serving there requires measured host facts and an explicit node placement.
 
 The former standalone code-bootstraps UI/router is still available explicitly as `./start.sh --bootstrap`; that mode does not use `graph.yaml`.
 
@@ -96,7 +96,7 @@ python3 scripts/validate_graph.py --verify-sha # also hash the GGUFs
 ```
 
 - Every section and rule: [docs/graph-types.md](docs/graph-types.md). Why the graph works this way: [docs/configuration-graph.md](docs/configuration-graph.md).
-- **Default and fallback models.** A node marked `selection: fallback` is a user-selectable alternative, not the default. Today `qodesh-resident` (Qwen3.5-2B, about 0.9 tok/s) is the fallback on qodesh and SmolLM2 stays the default.
+- **Default and fallback models.** A node marked `selection: fallback` is a user-selectable alternative, not the default. Today `cpu-resident-coder` (Qwen3.5-2B, about 0.9 tok/s) is the fallback on qodesh and SmolLM2 stays the default.
 - **Per-host copies.** `python3 scripts/generate_graph.py HOST [--set NODE=MODEL_PATH]` writes `generated/graph-HOST.yaml` without touching `graph.yaml`; validate it with `--graph`.
 
 ## 4. Models
@@ -162,7 +162,7 @@ A light node can name heavier nodes in `escalates_to`. When a session looks stuc
 ```sh
 scripts/hermes.sh --escalate -- ARGS        # hermes behind the escalation proxy
 python3 scripts/escalate.py accept           # accept a pending suggestion
-python3 scripts/escalate.py consent --node qodesh-smol-cpu --target coder
+python3 scripts/escalate.py consent --node cpu-smol-decision --target coder
 ```
 
 The default mode is `suggest`. The green-roomz router hookup, live swap and reachability probe are planned ([#39](https://github.com/brianreborn/familia/issues/39)). Details: [docs/escalation.md](docs/escalation.md).

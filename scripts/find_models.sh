@@ -8,8 +8,7 @@ PY=${PYTHON:-python3}
 YES=0
 GUM=$(command -v gum || true)
 
-say() { printf 'find-models: %s\n' "$*"; }
-die() { printf 'find-models: error: %s\n' "$1" >&2; exit "${2:-1}"; }
+MK_TAG=find-models; MK_SAY_FD=1; . "$ROOT/lib/msg.mk"   # say (stdout), die
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -63,7 +62,7 @@ confirm() {
 # Ensure protomodel tip is available (best-effort; never a gate).
 if command -v curl >/dev/null 2>&1; then
   if ! curl -sf --connect-timeout 1 http://127.0.0.1:8080/v1/models >/dev/null 2>&1 \
-     && ! curl -sf --connect-timeout 1 http://127.0.0.1:9931/v1/models >/dev/null 2>&1; then
+     && { rc=0; python3 "$ROOT/scripts/familia_auth.py" probe >/dev/null || rc=$?; [ "$rc" != 4 ] || say "the :9931 server rejects our API key (see above); not starting another one"; [ "$rc" = 3 ]; }; then
     say "protomodel not up yet — starting chat helper in background (optional)…"
     sh "$ROOT/scripts/proto_chat.sh" --no-start >/dev/null 2>&1 || true
     # Don't block on start; fetch works without the chat server.

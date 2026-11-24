@@ -1,0 +1,42 @@
+# familia hosts connection overlay (#104)
+# Copy to:
+#   POSIX/Termux:  ~/.config/familia/hosts.local.yaml   ($XDG_CONFIG_HOME/familia/…)
+#   Windows:       %LOCALAPPDATA%\familia\hosts.local.yaml
+#   or repo-root:  hosts.local.yaml  (gitignored; survives ./familia update)
+#
+# Only addr / user / port (and optional meshes.*.bind) belong here.
+# Never commit this file. Override path with $FAMILIA_HOSTS_OVERLAY.
+# Keys stay host-oriented (miryam, qodesh, phone7, phone8). That is the overlay's
+# job: real machines. Node, model, and runtime ids in graph.yaml are capability names.
+#
+# Values below use TEST-NET documentation addresses — replace with your LAN.
+
+hosts:
+  miryam:
+    addr: 192.0.2.9
+    user: your-miryam-user
+    port: 22
+  qodesh:
+    addr: 192.0.2.2
+    user: your-windows-user
+    port: 22
+  phone7:
+    addr: 192.0.2.7
+    user: u0_a000
+    port: 8022
+  phone8:
+    addr: 192.0.2.8
+    user: u0_a001
+    port: 8022
+
+# Optional: BitTorrent tracker bind (defaults to hosts.<tracker>.addr after merge).
+# meshes:
+#   lan-bt:
+#     bind: 192.0.2.9
+
+# Swarm worker (docs/swarm-worker-requirements.md). Real address stays here only.
+# hosts:
+#   linux-55:
+#     addr: 192.0.2.55
+#     user: your-linux-user
+#     port: 22

@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "description": "Opt-in offline security-model benches (#117). Synthetic defensive fixtures only.",
+  "cases": [
+    {"file": "secrets_in_config.json"},
+    {"file": "insecure_default.json"},
+    {"file": "false_positive_control.json"},
+    {"file": "remediation_quality.json"},
+    {"file": "linux_sudoers_misconfig.json"}
+  ]
+}

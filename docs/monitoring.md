@@ -6,6 +6,18 @@ pipes a small read-only probe (`scripts/monitor/probe.py`, or `probe.ps1` on Win
 `ssh HOST python3 -` and reads back one JSON object. Nothing is installed on the remote, and no new
 port is opened anywhere. There is no HTTP dashboard.
 
+## Offline improve (disconnected hosts)
+
+When this host cannot reach fleet peers over SSH, run a bounded local perf cycle
+instead of idling — see [offline-improve.md](./offline-improve.md):
+
+```sh
+python3 scripts/offline_improve.py --check-only
+python3 scripts/offline_improve.py --loop
+```
+
+Optional: `./familia-monitor --watch-deaths --on-death 'python3 scripts/offline_improve.py --once'`.
+
 ## Quickstart
 
 ```sh
@@ -34,7 +46,7 @@ Other hosts are reached in this order:
    `enabled`, `local`. Hosts that are not in the graph can be added here as well.
 2. An `~/.ssh/config` alias with the graph host's name (`Host phone7` … `HostName`/`User`/`Port`).
 3. Nothing else by default. Addresses in `graph.yaml` are only used if you set `"allow_graph_addr": true`,
-   because connection details belong in private config.
+   because connection details belong in private config. The same rule applies to `graph.yaml` hosts themselves (#104): real `addr`/`user` live in `hosts.local.yaml` (see `docs/hosts-overlay.md`), not in the tracked graph.
 
 A host with no transport is listed as `no transport` and never contacted.
 

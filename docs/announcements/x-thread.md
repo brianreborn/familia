@@ -19,7 +19,8 @@ You own every edge. familia may suggest a connection. It never opens one on its 
 **3/**
 Two clicks to install:
 
-curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install.sh | sh
+curl -fsSLo install-familia.sh https://raw.githubusercontent.com/brianreborn/familia/main/install.sh && \
+  sh ./install-familia.sh
 
 then type "yes" to a voluntary contribution notice. Paying is never required.
 

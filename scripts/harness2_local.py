@@ -17,6 +17,7 @@ import hashlib, io, json, os, re, resource, shutil, subprocess, sys, tarfile, te
 from pathlib import Path
 
 import self_improve as SI
+import familia_auth  # noqa: E402  (instance key for every chat()/health call)
 
 H2_REPO = "https://github.com/google-research/harness2"
 H2_COMMIT = "1cfe254e8d25b15f37048c3730134686abe60335"
@@ -65,14 +66,17 @@ def make_chat(endpoint, model, timeout=3600):
     def chat(messages, max_tokens=2048):
         body = json.dumps({"model": model, "messages": messages, "max_tokens": max_tokens,
                            "chat_template_kwargs": {"enable_thinking": False}}).encode()
-        req = urllib.request.Request(endpoint.rstrip("/") + "/chat/completions", body, {"Content-Type": "application/json"})
+        # every (recursive) Harness² chat() call carries the instance key; fail closed if none
+        url = endpoint.rstrip("/") + "/chat/completions"
+        req = urllib.request.Request(url, body, familia_auth.auth_headers(
+            {"Content-Type": "application/json"}, key=familia_auth.key_for_url(url), required=True))
         with urllib.request.urlopen(req, timeout=timeout) as r: d = json.load(r)
         return THINK.sub("", d["choices"][0]["message"].get("content") or ""), d.get("usage") or {}
     return chat
 
 def endpoint_up(endpoint):
     try:
-        with urllib.request.urlopen(endpoint.rstrip("/").rsplit("/v1", 1)[0] + "/health", timeout=5) as r: return r.status == 200
+        with familia_auth.open_url(endpoint.rstrip("/").rsplit("/v1", 1)[0] + "/health", timeout=5) as r: return r.status == 200
     except Exception: return False
 
 class Meter:

@@ -3,6 +3,10 @@
 Accept rate per harness/model for the familia dogfood loop
 (`scripts/dogfood/dispatch.py`, `#110`).
 
+Adapters: `scripts/dogfood/hermes_loop.py` (single + graph) and
+`scripts/dogfood/harness2_loop.py` (Harness² propose). See
+`docs/dogfood-hermes-loop.md`.
+
 Each dispatcher run also writes `$OUT/dogfood-daily.md` (default
 `~/.cache/familia/dogfood/`). Pass `--record-docs` to refresh this file.
 
@@ -10,24 +14,27 @@ Each dispatcher run also writes `$OUT/dogfood-daily.md` (default
 
 | harness | real CLI | smoke switch |
 |---|---|---|
-| `hermes` | `scripts/hermes.sh --mode single` + `hermes-agent -z` in the task worktree | `--render-only` (+ argv check) |
-| `hermes-graph` | `scripts/hermes.sh --mode graph` + `hermes-agent -z` in the task worktree | `--render-only` (+ argv check) |
-| `harness2` | `scripts/harness2.py propose --target hermes-lab` | `--dry-run` |
+| `hermes` | `hermes_loop` → `hermes.sh --mode single` + `hermes-agent -z` in worktree | `--render-only` (+ argv/bin check) |
+| `hermes-graph` | `hermes_loop` → `hermes.sh --mode graph` + `hermes-agent -z` in worktree | `--render-only` (+ argv/bin check) |
+| `harness2` | `harness2_loop` → `harness2.py propose --target hermes-lab` | `--dry-run` |
 
 Tools for hermes oneshots are limited to `file,terminal,todo` with `cwd` = the
 task worktree (`FAMILIA_SYNC=0` on worktree create; see `#111`). Host lock /
 thread admission still wrap live runs (`scripts/with-host-lock`,
-`bench_guard.threads_in_use`).
+`bench_guard.threads_in_use`). Hermes bin via `hermes_harness.resolve_hermes`.
 
-## Live-land gap (miryam, 2026-10-27 America/Los_Angeles)
+## Live-land gap (follow-up)
 
-miryam had ~1–3.5 GiB MemAvailable and a broken/missing
-`Qwen3.5-2B-Q4_K_M.gguf` symlink when this wiring landed. The coder node needs
-64K ctx and the host reserve is 3072 MiB, so a live oneshot / Harness² propose
-was not run here. **Next step:** restore the coder GGUF, start
-`DETACH_MODE=screen-attached sh scripts/serve.sh coder` under the host lock,
-re-run `dispatch.py` without `--smoke`, and land one real iteration per
-harness. Leave `#110` open until those live lands verify on `origin/main`.
+Smoke proves real CLI invocation without weights. Live oneshot / Harness²
+propose still needs a host with coder GGUF + MemAvailable above
+`hosts.*.reserve_ram_mib`, then:
+
+```sh
+DETACH_MODE=screen-attached sh scripts/serve.sh coder   # under with-host-lock
+python3 scripts/dogfood/dispatch.py QUEUE.yaml --harness hermes,hermes-graph,harness2
+```
+
+Leave `#110` open until one live accept per harness lands on `origin/main`.
 
 ## Rates
 
@@ -36,4 +43,3 @@ harness. Leave `#110` open until those live lands verify on `origin/main`.
 | harness2/hermes-lab | 1 | 1 | 100% | 1 |
 | hermes-graph/coder | 1 | 1 | 100% | 1 |
 | hermes/coder | 1 | 1 | 100% | 1 |
-

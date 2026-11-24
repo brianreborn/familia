@@ -12,8 +12,7 @@ GOAL=""
 DRY=0
 YES=0
 
-say() { printf 'familia-setup: %s\n' "$*"; }
-die() { printf 'familia-setup: error: %s\n' "$1" >&2; exit "${2:-1}"; }
+MK_TAG=familia-setup; MK_SAY_FD=1; . "$ROOT/lib/msg.mk"   # say (stdout), die
 
 usage() {
   cat <<'USAGE'
@@ -50,13 +49,25 @@ done
 
 can_prompt() { [ -t 0 ] && [ "${FAMILIA_NO_TTY:-}" != 1 ]; }
 
+_setup_osc() {
+  if [ -f "$ROOT/scripts/osc7501.sh" ]; then
+    # shellcheck disable=SC1091
+    . "$ROOT/scripts/osc7501.sh" 2>/dev/null || return 0
+    osc7501_emit "$@" --app familia 2>/dev/null || true
+  fi
+}
+
 confirm() {
   # confirm QUESTION — --yes, or y on a terminal
   [ "$YES" = 1 ] && return 0
   can_prompt || return 1
+  _setup_osc blocked --id home/setup --kind permission --msg "$1" --title "confirm"
   printf '%s [y/N] ' "$1" >&2
   read -r a || return 1
-  case "$a" in y|Y|yes|YES) return 0 ;; esac
+  case "$a" in y|Y|yes|YES)
+    _setup_osc working --id home/setup --msg "confirmed"
+    return 0 ;;
+  esac
   return 1
 }
 
@@ -80,6 +91,15 @@ run_step() {
 }
 
 installer() {
+  if [ "$(uname -s 2>/dev/null || echo unknown)" = FreeBSD ] &&
+     [ -f "$ROOT/install/freebsd/install-familia.sh" ]; then
+    printf '%s\n' "$ROOT/install/freebsd/install-familia.sh"
+    return
+  fi
+  if [ -f "$ROOT/install/unix/install.sh" ]; then
+    printf '%s\n' "$ROOT/install/unix/install.sh"
+    return
+  fi
   if [ -f "$ROOT/install/linux/install.sh" ]; then
     printf '%s\n' "$ROOT/install/linux/install.sh"
   elif [ -f "$ROOT/install/termux/install.sh" ]; then
@@ -113,7 +133,12 @@ goal_first_time() {
     sh "$ROOT/scripts/prefetch-first-models.sh" --background || say "prefetch: soft-fail (non-fatal)"
   fi
 
-  run_step "SYNCING FRAME — OS packages" sh "$ROOT/install/deps.sh" --install
+  case "$(uname -s 2>/dev/null || echo unknown):$YES" in
+    FreeBSD:1) run_step "SYNCING FRAME — OS packages" sh "$ROOT/install/deps.sh" --install --profile build --yes ;;
+    FreeBSD:*) run_step "SYNCING FRAME — OS packages" sh "$ROOT/install/deps.sh" --install --profile build ;;
+    *:1) run_step "SYNCING FRAME — OS packages" sh "$ROOT/install/deps.sh" --install --yes ;;
+    *) run_step "SYNCING FRAME — OS packages" sh "$ROOT/install/deps.sh" --install ;;
+  esac
   # Ensure gum for the home (user-local); soft-fail.
   if [ -f "$ROOT/scripts/install-gum.sh" ]; then
     if [ "$DRY" = 1 ]; then

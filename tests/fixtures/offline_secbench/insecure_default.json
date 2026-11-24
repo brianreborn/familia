@@ -1,0 +1,15 @@
+{
+  "id": "insecure-default",
+  "platforms": ["*"],
+  "title": "World-writable mode documented as insecure default",
+  "artifact": {
+    "kind": "config-snippet",
+    "filename": "service.EXAMPLE_ONLY.conf",
+    "content": "# SYNTHETIC FIXTURE — descriptive only; no executable payload.\n[listener]\nbind = 0.0.0.0\n# documented insecure default: file mode 0666 (world-writable)\nstate_file_mode = 0666\nauth_required = false"
+  },
+  "expect": {
+    "must_find": ["world-writable", "bind all interfaces", "auth disabled"],
+    "must_not_find": ["buffer overflow exploit", "shellcode"],
+    "remediation_hints": ["restrict permissions", "bind localhost", "require authentication"]
+  }
+}

@@ -5,11 +5,17 @@ Nothing here picks a transport: callers name one, and it must be declared.
 """
 import ipaddress, os, yaml
 
+import hosts_overlay
+
 TRANSPORT_TYPES = {"ssh", "bittorrent"}
 HOST_KEYS = ("addr", "user", "port", "kind")
 
-def load(path):
-    g = yaml.safe_load(open(path)); g["_path"] = path; return g
+def load(path, apply_overlay=True):
+    g = yaml.safe_load(open(path)) or {}
+    g["_path"] = path
+    if apply_overlay:
+        hosts_overlay.merge_connection_overlay(g, graph_path=path)
+    return g
 
 def host(g, name):
     h = (g.get("hosts") or {}).get(name)
@@ -23,6 +29,8 @@ def transport(g, name, want):
     return t
 
 def _lan(addr):
+    if hosts_overlay.is_placeholder(addr):
+        return True  # deferred to overlay; privacy_lint rejects real private literals in tracked graph
     try: ip = ipaddress.ip_address(addr)
     except ValueError: return False
     return (ip.is_private or ip.is_loopback) and not ip.is_unspecified
@@ -34,7 +42,13 @@ def validate_transports(g):
            {t.get(k) for t in meshes.values() for k in ("hub", "tracker")}
     for hn, h in hosts.items():
         for k in (HOST_KEYS if hn in used else ()):
-            if k not in h: errs.append(f"host {hn}: missing required '{k}' (no defaults)")
+            if k not in h:
+                errs.append(f"host {hn}: missing required '{k}' (no defaults)")
+            elif k in ("addr", "user") and hosts_overlay.is_placeholder(h.get(k)):
+                # Placeholder OK in tracked graph; overlay must supply a real value at runtime.
+                pass
+            elif k == "port" and hosts_overlay.is_placeholder(h.get(k)):
+                errs.append(f"host {hn}: port placeholder; set a real port in hosts.local.yaml overlay (#104)")
         if "password" in h: errs.append(f"host {hn}: 'password' is not allowed; transports are key-only")
     for tn, t in meshes.items():
         ty = t.get("type")
@@ -58,7 +72,15 @@ def validate_transports(g):
             if "bind" in t and not _lan(str(t["bind"])):
                 errs.append(f"transport {tn}: bind {t['bind']!r} must be a loopback or private LAN address (not 0.0.0.0/public)")
             th = hosts.get(t.get("tracker")) or {}
-            if "bind" in t and th.get("addr") and str(t["bind"]) != str(th["addr"]) and not str(t["bind"]).startswith("127."):
+            bind_v, addr_v = t.get("bind"), th.get("addr")
+            if (
+                "bind" in t
+                and addr_v
+                and not hosts_overlay.is_placeholder(bind_v)
+                and not hosts_overlay.is_placeholder(addr_v)
+                and str(bind_v) != str(addr_v)
+                and not str(bind_v).startswith("127.")
+            ):
                 errs.append(f"transport {tn}: bind {t['bind']} != tracker host addr {th['addr']}")
             if t.get("client") not in ("aria2c",):
                 errs.append(f"transport {tn}: client {t.get('client')!r} unsupported (PoC: aria2c)")

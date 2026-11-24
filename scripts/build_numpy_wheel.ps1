@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Build a numpy 2.4+ wheel that runs on pre-x86-64-v2 CPUs (e.g. Athlon II X2) on Windows.
 .DESCRIPTION

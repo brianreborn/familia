@@ -36,6 +36,7 @@ model add|models.add
 model fetch|models.fetch
 model cards|models.cards
 model license|models.license
+model pick|models.pick
 model check|models.check
 model params|models.explain
 model args|adv.args
@@ -51,6 +52,7 @@ add-model|raw|scripts/add-model.sh||python scripts\add_model.py|scripts/add-mode
 check|models.check
 graph check|models.check
 graph explain|models.explain
+graph proto|adv.protograph
 graph args|adv.args
 graph generate|hosts.generate
 graph edit|adv.graph-edit
@@ -94,12 +96,54 @@ numpy-wheel|adv.numpy-wheel
 poudriere|adv.poudriere
 quickstart|help.quickstart
 internal|help.internal
+apps|apps.catalog
+app store|apps.catalog
+app list|apps.list
+app search|apps.search
+app refresh|apps.refresh
+app run|apps.run
 phone agents|hosts.phone-agents
 phone agents licenses|hosts.phone-agents-licenses
 phone agent probe|hosts.phone-agent-probe
 phone agent open|hosts.phone-agent-open
 phone agent ask|hosts.phone-agent-ask
 phone agent consent|hosts.phone-agent-consent
-home|raw|sh scripts/familia_home.sh||||Charm/gum front door (Talk to the protomodel first)
+home|raw|sh scripts/familia_home.sh||powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\familia-home.ps1|six equal home items; legacy menu if gum cannot be installed
+home models install|home.models.install
+home models list|home.models.list
+home models start|home.models.start
+home models stop|home.models.stop
+home models status|home.models.status
+home harnesses install|home.harnesses.install
+home harnesses list|home.harnesses.list
+home harnesses start|home.harnesses.start
+home harnesses stop|home.harnesses.stop
+home harnesses status|home.harnesses.status
+home agents install|home.agents.install
+home agents list|home.agents.list
+home agents start|home.agents.start
+home agents stop|home.agents.stop
+home agents status|home.agents.status
+home mcp install|home.mcp.install
+home mcp list|home.mcp.list
+home mcp start|home.mcp.start
+home mcp stop|home.mcp.stop
+home mcp status|home.mcp.status
+home tools install|home.tools.install
+home tools list|home.tools.list
+home tools start|home.tools.start
+home tools stop|home.tools.stop
+home tools status|home.tools.status
+home apps install|home.apps.install
+home apps list|home.apps.list
+home apps start|home.apps.start
+home apps stop|home.apps.stop
+home apps status|home.apps.status
+home apps browse|home.apps.browse
+home apps web|home.apps.web
+appstore|home.apps.browse
+home talk|home.talk
+home find-models|home.find-models
+home search-x|home.search-x
 proto-chat|raw|sh scripts/proto_chat.sh||||interactive protomodel REPL
-required-checks|raw|sh scripts/required_checks.sh||||★ must-run: fleet + nexus + bt bash smokes
+proving-grounds|raw|sh scripts/proving_grounds.sh||||graded: fleet + nexus + bt proving grounds

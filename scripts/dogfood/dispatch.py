@@ -10,10 +10,10 @@ QUEUE.yaml: list of {id, issue, goal, files: [...], accept: "shell cmd"}.
 Per task:
   - scratch git worktree off origin/main with FAMILIA_SYNC=0 (avoids pin-sync polluting
     the worktree; #111)
-  - invoke a REAL harness (not a single chat completion returning <file> blocks):
-      hermes         -> scripts/hermes.sh --mode single --model NODE  (+ hermes-agent -z)
-      hermes-graph   -> scripts/hermes.sh --mode graph               (+ hermes-agent -z)
-      harness2       -> scripts/harness2.py propose --target TARGET
+  - invoke a REAL harness via dogfood adapters (not a single chat completion):
+      hermes         -> hermes_loop (hermes.sh --mode single + hermes-agent -z)
+      hermes-graph   -> hermes_loop (hermes.sh --mode graph  + hermes-agent -z)
+      harness2       -> harness2_loop (harness2.py propose --target TARGET)
   - tools limited to the task worktree (cwd=worktree; hermes -t file,terminal,todo)
   - acceptance command run in the worktree (hermes paths); H2 path accepts on propose OK
   - host lock / thread admission when a live node is required (not in --smoke)
@@ -23,14 +23,20 @@ Per task:
   No llama-server, no weights. Use when free RAM cannot host the coder node.
 
 Nothing is committed or pushed by dispatch itself (loop.sh does that).
+Gum home / Continuity front door are untouched here.
 """
 from __future__ import annotations
 
 import argparse
+import contextlib
+import fcntl
 import json
 import os
+import re
 import subprocess
 import sys
+import shutil
+import tempfile
 import time
 import urllib.request
 from collections import defaultdict
@@ -41,11 +47,14 @@ import yaml
 
 HERE = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(HERE / "scripts"))
+sys.path.insert(0, str(HERE / "scripts" / "dogfood"))
 
-# Lean coding surface only — no web/search/browser (tools stay inside the worktree cwd).
-HERMES_TOOLSETS = "file,terminal,todo"
+import hermes_loop as HL  # noqa: E402
+import harness2_loop as H2  # noqa: E402
+
+HERMES_TOOLSETS = HL.TOOLSETS
 DEFAULT_HARNESSES = ("hermes", "hermes-graph", "harness2")
-HERMES_MODES = {"hermes": "single", "hermes-graph": "graph"}
+HERMES_MODES = dict(HL.HARNESS_TO_MODE)
 
 
 def sh(cmd, cwd=None, timeout=900, env=None):
@@ -64,12 +73,91 @@ def threads_in_use():
     return t()
 
 
-def wait_budget(n, cores, max_wait):
+def _budget_paths():
+    d = os.environ.get("FAMILIA_BUDGET_DIR") or os.path.expanduser("~/.local/state/familia")
+    os.makedirs(d, mode=0o700, exist_ok=True)
+    return os.path.join(d, "thread-budget.lock"), os.path.join(d, "thread-budget.json")
+
+
+def _pid_alive(pid):
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+
+
+def _read_reservations(path):
+    try:
+        with open(path) as f:
+            r = json.load(f)
+    except (OSError, ValueError):
+        return {}
+    # Drop reservations whose owner died (crash must not leak budget forever).
+    return {k: int(v) for k, v in r.items() if k.isdigit() and _pid_alive(int(k))}
+
+
+def _write_reservations(path, r):
+    tmp = path + ".%d" % os.getpid()
+    with open(tmp, "w") as f:
+        json.dump(r, f)
+    os.replace(tmp, path)
+
+
+@contextlib.contextmanager
+def _budget_lock():
+    lock, ledger = _budget_paths()
+    fd = os.open(lock, os.O_RDWR | os.O_CREAT, 0o600)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        yield ledger
+    finally:
+        fcntl.flock(fd, fcntl.LOCK_UN)
+        os.close(fd)
+
+
+def reserve_budget(n, cores, max_wait):
+    """R1 (#244): atomic check-and-reserve of n threads across dispatchers on this host.
+
+    The check (threads_in_use + live reservations + n <= cores) and the reservation are
+    done under one flock, so two dispatchers can no longer both see the budget free and
+    both spawn. Returns True once reserved; caller must release_budget() after the spawn
+    has settled (or finished). The reservation is conservative: it may double-count the
+    spawned process until released, which errs toward refusing, never oversubscribing."""
     t0 = time.time()
-    while threads_in_use() + n > cores:
+    pid = str(os.getpid())
+    while True:
+        with _budget_lock() as ledger:
+            r = _read_reservations(ledger)
+            held = sum(v for k, v in r.items() if k != pid)
+            if threads_in_use() + held + r.get(pid, 0) + n <= cores:
+                r[pid] = r.get(pid, 0) + n
+                _write_reservations(ledger, r)
+                return True
         if time.time() - t0 > max_wait:
             return False
         time.sleep(15)
+
+
+def release_budget(n):
+    pid = str(os.getpid())
+    with _budget_lock() as ledger:
+        r = _read_reservations(ledger)
+        left = r.get(pid, 0) - n
+        if left > 0:
+            r[pid] = left
+        else:
+            r.pop(pid, None)
+        _write_reservations(ledger, r)
+
+
+def wait_budget(n, cores, max_wait):
+    """Check-only (kept for callers that do not spawn). Spawners use reserve_budget()."""
+    if not reserve_budget(n, cores, max_wait):
+        return False
+    release_budget(n)
     return True
 
 
@@ -81,18 +169,39 @@ def endpoint_up(host, port, timeout=2):
         return False
 
 
+def new_worktree_dir(tid):
+    """Unpredictable 0700 worktree dir (honors TMPDIR); recorded in results.jsonl for loop.sh."""
+    safe = re.sub(r"[^A-Za-z0-9_.-]", "_", str(tid)).replace("..", "_")
+    wt = Path(tempfile.mkdtemp(prefix=f"dogfood-wt-{safe}-"))
+    _CREATED_WT.append(wt)
+    return wt
+
+
+_CREATED_WT: list = []
+
+
+def _discard_worktrees(repo, wts):
+    """Remove worktree dirs created by a task that died before recording results."""
+    for wt in wts:
+        try:
+            worktree_remove(repo, wt)
+        except Exception:
+            pass  # never mask the task's original error
+        shutil.rmtree(wt, ignore_errors=True)
+
+
 def worktree_add(repo, wt, ref="origin/main"):
     """Create a detached worktree without running pin-sync into it (#111)."""
     env = {"FAMILIA_SYNC": "0"}
-    sh(f"git worktree remove --force {wt}", cwd=repo, env=env)
-    rc, out = sh(f"git worktree add -q --detach {wt} {ref}", cwd=repo, env=env)
+    # wt is a fresh empty 0700 dir from new_worktree_dir(); never force-remove a guessable path.
+    rc, out = sh(["git", "worktree", "add", "-q", "--detach", str(wt), ref], cwd=repo, env=env)
     if rc != 0:
         raise RuntimeError(f"worktree add failed: {out[-500:]}")
     return wt
 
 
 def worktree_remove(repo, wt):
-    sh(f"git worktree remove --force {wt}", cwd=repo, env={"FAMILIA_SYNC": "0"})
+    sh(["git", "worktree", "remove", "--force", str(wt)], cwd=repo, env={"FAMILIA_SYNC": "0"})
 
 
 def task_prompt(t):
@@ -107,44 +216,23 @@ def task_prompt(t):
     )
 
 
+# Back-compat re-exports for tests / external callers that imported from dispatch.
 def hermes_home_for(mode, agent, node):
-    if mode == "single":
-        return Path(os.path.expanduser(f"~/.cache/familia/hermes-{agent}@{node}"))
-    return Path(os.path.expanduser(f"~/.cache/familia/hermes-{agent}"))
+    return HL.home_for(mode, agent, node)
 
 
 def build_hermes_render_cmd(mode, node, agent="hermes"):
-    cmd = [
-        "bash", str(HERE / "scripts" / "hermes.sh"),
-        "--mode", mode, "--agent", agent, "--yes", "--render-only",
-    ]
-    if mode == "single":
-        cmd += ["--model", node]
-    return cmd
+    return HL.build_render_cmd(mode, node, agent=agent, repo_root=HERE)
 
 
 def build_hermes_agent_cmd(prompt, toolsets=HERMES_TOOLSETS):
-    """Argv for hermes-agent oneshot inside the task worktree (after render)."""
-    return [
-        os.environ.get("HERMES_BIN") or "/snap/bin/hermes-agent",
-        "-z", prompt,
-        "-t", toolsets,
-        "--yolo",
-        "--accept-hooks",
-        "--source", "tool",
-    ]
+    return HL.build_agent_cmd(prompt, toolsets=toolsets)
 
 
 def build_harness2_cmd(target, *, smoke, max_tasks=1, enable=True):
-    cmd = [
-        sys.executable, str(HERE / "scripts" / "harness2.py"),
-        "propose", "--target", target, "--max-tasks", str(max_tasks), "--yes",
-    ]
-    if enable:
-        cmd.append("--enable")
-    if smoke:
-        cmd.append("--dry-run")
-    return cmd
+    return H2.build_propose_cmd(
+        target, smoke=smoke, max_tasks=max_tasks, enable=enable, repo_root=HERE,
+    )
 
 
 def with_host_lock_prefix():
@@ -163,7 +251,6 @@ def collect_patch(wt, scope_files):
         p = Path(wt) / rel
         if p.exists() or p.is_symlink():
             sh(["git", "add", "-A", "--", rel], cwd=wt)
-    # Also pick up new files created under scoped dirs / exact paths via status
     rc, st = sh(["git", "status", "--porcelain", "-uall"], cwd=wt)
     for line in (st or "").splitlines():
         if len(line) < 4:
@@ -178,23 +265,26 @@ def collect_patch(wt, scope_files):
 def run_hermes_task(t, harness, args, out_dir, repo):
     mode = HERMES_MODES[harness]
     tid = t["id"]
-    wt = Path(f"/tmp/dogfood-wt-{tid}")
+    wt = new_worktree_dir(tid)
     d = out_dir / tid
     d.mkdir(parents=True, exist_ok=True)
     worktree_add(repo, str(wt))
     prompt = task_prompt(t)
-    render_cmd = build_hermes_render_cmd(mode, args.model_node)
-    agent_cmd = build_hermes_agent_cmd(prompt)
-    home = hermes_home_for(mode, "hermes", args.model_node)
+    home = HL.home_for(mode, "hermes", args.model_node)
+    agent_cmd = HL.build_agent_cmd(prompt)
     transcript = {
         "harness": harness, "mode": mode, "smoke": args.smoke,
-        "render_cmd": render_cmd, "agent_cmd": agent_cmd,
+        "agent_cmd": agent_cmd,
         "hermes_home": str(home), "prompt": prompt, "worktree": str(wt),
+        "adapter": "scripts/dogfood/hermes_loop.py",
     }
     t0 = time.time()
 
     # Always render first (proves hermes.sh single/graph path; cheap; no server).
-    rc_r, out_r = sh(render_cmd, cwd=str(HERE), timeout=600)
+    rc_r, out_r, render_cmd = HL.run_render(
+        mode, args.model_node, sh=sh, repo_root=HERE, timeout=600,
+    )
+    transcript["render_cmd"] = render_cmd
     transcript["render_rc"] = rc_r
     transcript["render_out"] = out_r[-4000:]
     if rc_r != 0:
@@ -208,14 +298,12 @@ def run_hermes_task(t, harness, args, out_dir, repo):
         }
 
     if args.smoke:
-        # Prove agent argv construction + hermes binary exists; do not call the model.
-        bin_path = agent_cmd[0]
-        bin_ok = os.path.isfile(bin_path) or os.path.islink(bin_path)
+        bin_ok = HL.smoke_ok(agent_cmd)
         transcript["agent_bin_exists"] = bin_ok
         transcript["smoke_note"] = (
             "render-only OK; live oneshot skipped (--smoke). "
             "Live land needs coder node up (DETACH_MODE=screen-attached serve.sh) "
-            "and enough MemAvailable above hosts.miryam.reserve_ram_mib."
+            "and enough MemAvailable above hosts.*.reserve_ram_mib."
         )
         (d / "transcript.json").write_text(json.dumps(transcript, indent=1))
         (d / "patch.diff").write_text("")
@@ -234,19 +322,21 @@ def run_hermes_task(t, harness, args, out_dir, repo):
     host, port = node.get("bind", "127.0.0.1"), int(node.get("port", 9941))
     if not endpoint_up(host, port):
         if args.start_node:
-            if not wait_budget(args.threads, os.cpu_count() or 1, args.max_wait):
+            if not reserve_budget(args.threads, os.cpu_count() or 1, args.max_wait):
                 raise RuntimeError("thread budget never freed")
-            serve = with_host_lock_prefix() + [
-                "env", f"DETACH_MODE=screen-attached",
-                "bash", str(HERE / "scripts" / "serve.sh"), args.model_node,
-            ]
-            # serve.sh under screen returns after spawn; wait for health
-            sh(serve, cwd=str(HERE), timeout=120)
-            t_wait = time.time()
-            while not endpoint_up(host, port):
-                if time.time() - t_wait > 900:
-                    raise RuntimeError(f"node {args.model_node} did not come up on {host}:{port}")
-                time.sleep(3)
+            try:  # hold the reservation until the node is up (its threads are then visible)
+                serve = with_host_lock_prefix() + [
+                    "env", "DETACH_MODE=screen-attached",
+                    "bash", str(HERE / "scripts" / "serve.sh"), args.model_node,
+                ]
+                sh(serve, cwd=str(HERE), timeout=120)
+                t_wait = time.time()
+                while not endpoint_up(host, port):
+                    if time.time() - t_wait > 900:
+                        raise RuntimeError(f"node {args.model_node} did not come up on {host}:{port}")
+                    time.sleep(3)
+            finally:
+                release_budget(args.threads)
         else:
             raise RuntimeError(
                 f"node {args.model_node} not up on {host}:{port}; "
@@ -254,19 +344,19 @@ def run_hermes_task(t, harness, args, out_dir, repo):
                 f"or pass --start-node"
             )
 
-    env = os.environ.copy()
-    env["HERMES_HOME"] = str(home)
-    env["FAMILIA_SYNC"] = "0"
     # Hold big.lock for the duration of the agent loop (one big job).
-    locked = with_host_lock_prefix() + agent_cmd
-    rc_a, out_a = sh(locked, cwd=str(wt), timeout=args.task_timeout, env=env)
+    rc_a, out_a, agent_cmd, _env = HL.run_oneshot(
+        str(wt), prompt, home, sh=sh,
+        lock_prefix=with_host_lock_prefix(),
+        timeout=args.task_timeout,
+    )
+    transcript["agent_cmd"] = agent_cmd
     transcript["agent_rc"] = rc_a
     transcript["agent_out"] = out_a[-8000:]
     gen_s = round(time.time() - t0, 1)
 
     patch = collect_patch(str(wt), t.get("files") or [])
     (d / "patch.diff").write_text(patch)
-    touched = []
     rc_st, st = sh(["git", "diff", "--cached", "--name-only"], cwd=str(wt))
     touched = [x for x in (st or "").splitlines() if x.strip()]
     if not touched:
@@ -290,38 +380,43 @@ def run_hermes_task(t, harness, args, out_dir, repo):
 
 def run_harness2_task(t, args, out_dir, repo):
     tid = t["id"]
-    wt = Path(f"/tmp/dogfood-wt-{tid}")
+    wt = new_worktree_dir(tid)
     d = out_dir / tid
     d.mkdir(parents=True, exist_ok=True)
     # Worktree still created so loop.sh paths stay stable; H2 edits harness state, not the issue tree.
     worktree_add(repo, str(wt))
-    cmd = build_harness2_cmd(args.h2_target, smoke=args.smoke, max_tasks=args.h2_max_tasks)
     transcript = {
-        "harness": "harness2", "smoke": args.smoke, "cmd": cmd,
-        "worktree": str(wt), "note": (
+        "harness": "harness2", "smoke": args.smoke,
+        "worktree": str(wt), "adapter": "scripts/dogfood/harness2_loop.py",
+        "note": (
             "Harness² propose improves the target harness (prompt/skills), not the GitHub "
             "issue files. Real engine loop via scripts/harness2.py."
         ),
     }
     t0 = time.time()
     if args.smoke:
-        rc, out = sh(cmd, cwd=str(HERE), timeout=120)
+        rc, out, cmd = H2.run_propose(
+            args.h2_target, sh=sh, smoke=True, max_tasks=args.h2_max_tasks,
+            repo_root=HERE, timeout=120,
+        )
     else:
-        if not wait_budget(args.threads, os.cpu_count() or 1, args.max_wait):
+        if not reserve_budget(args.threads, os.cpu_count() or 1, args.max_wait):
             raise RuntimeError("thread budget never freed")
-        locked = with_host_lock_prefix() + cmd
-        rc, out = sh(locked, cwd=str(HERE), timeout=args.task_timeout)
+        try:  # reservation covers the whole propose run
+            rc, out, cmd = H2.run_propose(
+                args.h2_target, sh=sh, smoke=False, max_tasks=args.h2_max_tasks,
+                repo_root=HERE, lock_prefix=with_host_lock_prefix(),
+                timeout=args.task_timeout,
+            )
+        finally:
+            release_budget(args.threads)
+    transcript["cmd"] = cmd
     transcript["rc"] = rc
     transcript["out"] = out[-8000:]
     gen_s = round(time.time() - t0, 1)
     (d / "transcript.json").write_text(json.dumps(transcript, indent=1))
     (d / "patch.diff").write_text("")
-    ok = rc == 0 and (
-        ("dry-run:" in out) if args.smoke else ("proposal" in out.lower() or rc == 0)
-    )
-    # For live propose, exit 0 is success even if candidate == base (still a real loop).
-    if not args.smoke:
-        ok = rc == 0
+    ok = H2.propose_accepted(rc, out, smoke=args.smoke)
     (d / "accept.log").write_text(out[-4000:] if out else ("rc=%s" % rc))
     return {
         "id": tid, "issue": t.get("issue"), "harness": "harness2",
@@ -334,6 +429,17 @@ def run_harness2_task(t, args, out_dir, repo):
 
 
 def run_task(t, harness, args, out_dir, repo):
+    mark = len(_CREATED_WT)
+    try:
+        return _run_task(t, harness, args, out_dir, repo)
+    except BaseException:
+        _discard_worktrees(repo, _CREATED_WT[mark:])
+        raise
+    finally:
+        del _CREATED_WT[mark:]
+
+
+def _run_task(t, harness, args, out_dir, repo):
     if harness in HERMES_MODES:
         return run_hermes_task(t, harness, args, out_dir, repo)
     if harness == "harness2":
@@ -344,7 +450,6 @@ def run_task(t, harness, args, out_dir, repo):
 def update_daily(out_dir, results, model_label):
     """Append/refresh accept-rate table in OUT/dogfood-daily.md."""
     path = out_dir / "dogfood-daily.md"
-    # Aggregate from results.jsonl (already includes this run's lines).
     stats = defaultdict(lambda: {"ok": 0, "n": 0, "smoke": 0})
     jl = out_dir / "results.jsonl"
     rows = []
@@ -410,7 +515,6 @@ def main(argv=None):
     ap.add_argument("--ctx", type=int, default=None, help=argparse.SUPPRESS)
     a = ap.parse_args(argv)
 
-    # Normalize legacy "hermes,harness2" and map bare hermes -> single.
     raw = [x.strip() for x in a.harness.split(",") if x.strip()]
     hs = []
     for h in raw:
@@ -453,7 +557,6 @@ def main(argv=None):
         docs.write_text(daily.read_text())
         print("wrote", docs, flush=True)
     print("daily", daily, flush=True)
-    # Non-zero if any task failed (smoke expects all 0).
     if any(r.get("accept_rc", 1) != 0 for r in run_results):
         sys.exit(1)
 

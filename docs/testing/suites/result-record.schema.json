@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "familia-task-suite-result-record",
+  "title": "Familia task-suite acceptance record",
+  "type": "object",
+  "required": [
+    "schema",
+    "suite_id",
+    "suite_revision",
+    "seed",
+    "platform_class",
+    "candidate",
+    "baseline_id",
+    "harness",
+    "tasks",
+    "aggregate",
+    "gate",
+    "recorded_at"
+  ],
+  "properties": {
+    "schema": { "type": "integer", "const": 1 },
+    "suite_id": { "type": "string" },
+    "suite_revision": { "type": "string" },
+    "seed": { "type": "integer" },
+    "platform_class": {
+      "type": "string",
+      "description": "ubuntu | windows | freebsd | android-termux-a57 (or declared suite platform id)"
+    },
+    "host_key": {
+      "type": "string",
+      "description": "Optional graph host key only; never an address, login, or port"
+    },
+    "candidate": {
+      "type": "object",
+      "required": ["model_name", "model_version", "role", "runtime_name", "runtime_commit", "status_before"],
+      "properties": {
+        "model_name": { "type": "string", "description": "Human name, not hash-only" },
+        "model_version": { "type": "string" },
+        "quant": { "type": "string" },
+        "role": { "type": "string" },
+        "runtime_name": { "type": "string" },
+        "runtime_commit": { "type": "string" },
+        "engine": { "type": "string", "description": "llama | cactus | onnx | drex-dlm | lbref | other" },
+        "graph_fingerprint": { "type": "string" },
+        "prompt_profile": { "type": "string" },
+        "chat_template": { "type": "string" },
+        "system_prompt_label": { "type": "string" },
+        "node_id": { "type": "string" },
+        "status_before": { "type": "string", "enum": ["planned", "experimental", "active"] },
+        "radical_triggers": { "type": "array", "items": { "type": "string" } },
+        "multi_engine": {
+          "type": "object",
+          "description": "#150 same-role multi-engine topology under test",
+          "properties": {
+            "role": { "type": "string" },
+            "instances": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["label", "engine"],
+                "properties": {
+                  "label": { "type": "string" },
+                  "engine": { "type": "string" },
+                  "specialty": { "type": "string" },
+                  "weight": { "type": "string" }
+                }
+              }
+            },
+            "policy": { "type": "string" }
+          }
+        }
+      }
+    },
+    "baseline_id": { "type": "string" },
+    "harness": {
+      "type": "string",
+      "enum": ["plain-llamacpp", "hermes-single", "hermes-graph", "harness2"]
+    },
+    "tasks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "passed"],
+        "properties": {
+          "id": { "type": "string" },
+          "passed": { "type": "boolean" },
+          "score": { "type": "number" },
+          "latency_ms": { "type": "number" },
+          "route_taken": { "type": "string" },
+          "gold_route": { "type": "string" },
+          "engine_used": { "type": "string" },
+          "failure": { "type": "string" },
+          "output_excerpt": { "type": "string" }
+        }
+      }
+    },
+    "aggregate": {
+      "type": "object",
+      "required": ["n_tasks", "n_passed", "pass_rate"],
+      "properties": {
+        "n_tasks": { "type": "integer" },
+        "n_passed": { "type": "integer" },
+        "pass_rate": { "type": "number" },
+        "escalation_precision": { "type": ["number", "null"] },
+        "escalation_recall": { "type": ["number", "null"] },
+        "baseline_pass_rate": { "type": ["number", "null"] }
+      }
+    },
+    "gate": {
+      "type": "object",
+      "required": ["passed", "reasons"],
+      "properties": {
+        "passed": { "type": "boolean" },
+        "reasons": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "limitations": { "type": "array", "items": { "type": "string" } },
+    "recorded_at": { "type": "string" },
+    "notes": { "type": "string" }
+  },
+  "additionalProperties": true
+}

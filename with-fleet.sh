@@ -105,7 +105,7 @@ PY
 )
   if [ -n "$NODE_HOST" ]; then
     # Launch-test seatbelt: schema + host scope without requiring sibling hosts' GGUFs
-    # (e.g. angel Nanbeige absent on Ubuntu laptop must not barricade guardian smoke).
+    # (e.g. angel named large model absent on Ubuntu laptop must not barricade guardian smoke).
     if [ "$LAUNCH_TEST" = 1 ] || [ "$launch_only" = 1 ]; then
       echo "with-fleet.sh: launch-test artifact check for host $NODE_HOST (node $node; --no-files)" >&2
       python3 "$ROOT/scripts/validate_graph.py" --graph "$GRAPH" --host "$NODE_HOST" --no-files || {
@@ -161,8 +161,9 @@ PY
   [ -n "$onode" ] || { echo "with-fleet.sh: pentests.$name has no node" >&2; exit 1; }
   if [ "$ostatus" != "active" ]; then
     echo "with-fleet.sh: guardian node still planned (status=$ostatus) — fetch weights, measure sha, set active, retry" >&2
+    echo "with-fleet.sh: helper: python3 scripts/activate_guardian_weights.py   # docs/guardian-weights.md" >&2
     echo "with-fleet.sh: fetch: scripts/add-model.sh --fetch RavichandranJ/Dolphin3-Cyber-8B-GGUF --quant Q2_K --role pentest --accept-licenses" >&2
-    echo "with-fleet.sh: documented LAUNCH_FAILED fix: weights absent (LF_MODEL_FILE); see docs/guardian-nodes.md" >&2
+    echo "with-fleet.sh: documented LAUNCH_FAILED fix: weights absent (LF_MODEL_FILE); see docs/guardian-weights.md" >&2
     exit 1
   fi
   if [ "$ntools" != "0" ]; then
@@ -213,6 +214,9 @@ if [ "$kind" = "agents" ]; then
   # Licenses first: show what this selection brings in (docs/licenses.md).
   python3 "$ROOT/scripts/licenses.py" gate || {
     rc=$?; echo "with-fleet.sh: licenses not accepted; nothing started. Review: python3 scripts/licenses.py review" >&2; exit $rc; }
+  # fail closed: hermes talks to :9931, which needs the instance key (familia_auth; serve.sh creates it)
+  python3 "$ROOT/scripts/familia_auth.py" has-key || {
+    echo "with-fleet.sh: no instance API key found (start the server once: scripts/serve.sh, or set API_KEY_FILE); nothing started" >&2; exit 1; }
   exec bash "$ROOT/scripts/hermes.sh" --agent "$name"   # hermes.sh is bash (pipefail)
 fi
 

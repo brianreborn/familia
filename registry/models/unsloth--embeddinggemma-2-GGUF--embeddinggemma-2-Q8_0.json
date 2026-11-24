@@ -328,63 +328,63 @@
    "sha256": "f315cbbb30dd487e44d501c8902abe88808755e43753a96beed1964f0a48aa4f",
    "blob": "69acd57e65982bfc7046faee4aa7b64112ed3209",
    "fetched": false,
-   "skipped": "weight file not used here (557 MB)"
+   "skipped": "weight file, fetched only by a full run (557 MB)"
   },
   "embeddinggemma-2-F16.gguf": {
    "size": 557950240,
    "sha256": "0d4350867eddbb94af485501a3d07e9374c47779d88f8a39cd1abd6a8e2d0901",
    "blob": "ba8b8f2af7dde604bbc620a9b27c1f7487c95564",
    "fetched": false,
-   "skipped": "weight file not used here (557 MB)"
+   "skipped": "weight file, fetched only by a full run (557 MB)"
   },
   "embeddinggemma-2-Q8_0.gguf": {
    "size": 309855520,
    "sha256": "6f1bd4ac6c5df7444f9cca7ca36cafe6cfa34cd6f49fefb1e0b4be8143aed8bc",
    "blob": "86adccd2b412f02a584282022194950260a5048b",
    "fetched": false,
-   "skipped": "weight file not used here (309 MB)"
+   "skipped": "weight file, fetched only by a full run (309 MB)"
   },
   "embeddinggemma-2-UD-Q4_K_XL.gguf": {
    "size": 175673856,
    "sha256": "ea905fd08e8061db77a0031cbb5096d459d7cfd2bdd0ad2ba66e483f16719493",
    "blob": "58cdfe874def8955c1241e82f202174b3e08aa3b",
    "fetched": false,
-   "skipped": "weight file not used here (175 MB)"
+   "skipped": "weight file, fetched only by a full run (175 MB)"
   },
   "embeddinggemma-2-UD-Q5_K_XL.gguf": {
    "size": 210055680,
    "sha256": "a9d7a3b7eb421113f05e964e10882676f10fff83811b7876d5bb983db7c7ac41",
    "blob": "841db7f91e43af0972ec80cbfa457774279b98da",
    "fetched": false,
-   "skipped": "weight file not used here (210 MB)"
+   "skipped": "weight file, fetched only by a full run (210 MB)"
   },
   "embeddinggemma-2-UD-Q6_K_XL.gguf": {
    "size": 248812032,
    "sha256": "dc84f042bc3ffbe6122b3b38b2fb299d66f5f37b276c9d458db85d4a4f1e6ba3",
    "blob": "cb9612f48b57ac85114dea31d2c2a4f331dffe23",
    "fetched": false,
-   "skipped": "weight file not used here (248 MB)"
+   "skipped": "weight file, fetched only by a full run (248 MB)"
   },
   "mmproj-BF16.gguf": {
    "size": 982074880,
    "sha256": "995aaa56e88b9b631f651861d659b728a625ccc02a238be37cff56cf11dc0032",
    "blob": "3c92e60cae9601b0d4b76ed11c9fccdb845102be",
    "fetched": false,
-   "skipped": "weight file not used here (982 MB)"
+   "skipped": "weight file, fetched only by a full run (982 MB)"
   },
   "mmproj-F16.gguf": {
    "size": 980895232,
    "sha256": "74bf65c860d292a1eebafd7ca85b44532a2528f03017f9204fe1695916d2c66f",
    "blob": "2fbbdf8a36a68026050f62d7a0ff44b0144cd3c1",
    "fetched": false,
-   "skipped": "weight file not used here (980 MB)"
+   "skipped": "weight file, fetched only by a full run (980 MB)"
   },
   "mmproj-Q8_0.gguf": {
    "size": 554821120,
    "sha256": "90e7b0238009e2954f856f2081dcf7f35af026b64c765e98f4777053e1754460",
    "blob": "60f252cc7fecd0724511510850e7d48272d49108",
    "fetched": false,
-   "skipped": "weight file not used here (554 MB)"
+   "skipped": "weight file, fetched only by a full run (554 MB)"
   }
  },
  "base_repo_files": {
@@ -442,7 +442,7 @@
    "sha256": "197a32965d4b1105faf060417baa899e193fb73cd401f42ec9295234d5553d79",
    "blob": "95b4ef9f6465d3665486f6b374593a8d7d6ae003",
    "fetched": false,
-   "skipped": "weight file not used here (1488 MB)"
+   "skipped": "weight file, fetched only by a full run (1488 MB)"
   },
   "modules.json": {
    "size": 413,
@@ -495,13 +495,14 @@
   }
  },
  "found_in": [
+  "graph.yaml models.egemma2-q8",
   "manifest embed/default"
  ],
- "match": null,
+ "match": "LFS sha256 match",
  "local_check": {
-  "host": "miryam",
+  "host": "grok-bot-vm-414232872",
   "sha256_ok": true,
-  "checked": "2026-10-19"
+  "checked": "2026-10-30"
  },
  "unknown": [
   "card_defaults: the card and generation_config.json state no sampling values"
@@ -509,7 +510,7 @@
  "warnings": [
   "card states context 8192 (google/embeddinggemma-2 README.md:L45) but GGUF gemma-embedding2.context_length is 262144"
  ],
- "updated": "2026-10-19",
+ "updated": "2026-10-30",
  "by": "scripts/model_db.py",
  "gguf_meta": {
   "general.architecture": "gemma-embedding2",

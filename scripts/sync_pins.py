@@ -23,12 +23,18 @@ Options:
 Example:
   scripts/sync_pins.py --dry-run
 How it works: a part whose HEAD already is its pin costs one small file read (no git, no
-network). Otherwise every part is checked first; nothing moves if any part has uncommitted
-changes or commits that are on no branch, or if a missing pin cannot be fetched. Then all
+network). Otherwise every part is checked first; nothing moves if any part has
+commits that are on no branch, or if a missing pin cannot be fetched. Local edits never
+block: they are stashed (git stash push --include-untracked, named "familia-sync ..."), the
+part is moved, and the stash is popped. If the pop clashes, the edits stay in the stash and
+one line says how to restore them (--force does the same; --no-stash refuses instead). Then all
 parts are checked out to their pins, each HEAD is verified, and a failure puts back the
 ones already moved. Nothing is ever force-pushed, reset or cleaned.
 Engine pins (llama-server__*) are synced when they are checked out already or asked for by
-an ENGINE_* setting. FAMILIA_SYNC=0 skips syncing (a note is printed).
+an ENGINE_* setting. FAMILIA_SYNC=0 skips syncing (a note is printed). Linked git worktrees
+(`.git` is a file) skip automatic sync by default — hooks and `--auto` print how to sync
+(FAMILIA_SYNC=1 or `./familia sync`); an explicit sync still runs. Primary checkouts
+keep the previous default.
 Exit codes: 0 in sync; 1 could not sync (nothing changed); 2 usage; 3 refused (local
 changes); 4 synced, but the licenses changed and are not accepted yet.
 Stdlib only. Docs: MANUAL.md (Keeping the pinned parts in sync).
@@ -37,20 +43,77 @@ import os
 import re
 import shutil
 import subprocess
+import time
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 HEX = re.compile(r"[0-9a-f]{7,40}")
 HOOK_MARK = "# familia: sync pinned parts (scripts/sync_pins.py --install-hooks)"
-GIT_ENV = dict(os.environ, GIT_TERMINAL_PROMPT="0", LC_ALL="C")
+# Repo-binding vars set by git for hooks. If they leak into child `git -C <pin>`
+# calls, -C is ignored and pin checkouts move *familia* HEAD (#111).
+_GIT_REPO_ENV = (
+    "GIT_DIR",
+    "GIT_WORK_TREE",
+    "GIT_INDEX_FILE",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_COMMON_DIR",
+    "GIT_PREFIX",
+)
+
+
+def git_env(base=None):
+    """Env for child git: no hook/repo bindings, never prompts."""
+    env = dict(base if base is not None else os.environ)
+    env["GIT_TERMINAL_PROMPT"] = "0"
+    env["LC_ALL"] = "C"
+    for k in _GIT_REPO_ENV:
+        env.pop(k, None)
+    return env
 
 
 def say(msg, out=sys.stderr):
     print("familia sync: " + msg, file=out)
 
 
+AUTOSTASH = True  # local edits never block a sync: stash, move, pop (familia #181 U10)
+
+
+def stash_push(path, name, want):
+    """Stash local edits (tracked + untracked) under a named stash; return its commit or None."""
+    msg = "familia-sync %s before %s" % (time.strftime("%Y-%m-%d %H:%M:%S"), short(want))
+    r = git(path, "stash", "push", "--include-untracked", "-m", msg)
+    if r.returncode:
+        raise RuntimeError("could not save local changes in %s: %s" % (name, (r.stderr or r.stdout).strip()))
+    sha = git(path, "rev-parse", "-q", "--verify", "refs/stash").stdout.strip()
+    return sha or None
+
+
+def stash_pop(path, name, sha):
+    """Put the stashed edits back. On conflict keep them in the stash and leave the pin checked out."""
+    if not sha:
+        return True
+    r = git(path, "stash", "pop", "--index")
+    if r.returncode:
+        r = git(path, "stash", "pop")
+    if r.returncode == 0:
+        return True
+    # Conflict: the stash is still there (git keeps it when pop fails). Put the tracked files back
+    # to the pin; the edits stay safe in the stash. No reset --hard, nothing is cleaned.
+    git(path, "checkout", "-q", "-f", "HEAD", "--", ".")
+    git(path, "reset", "-q")  # unstage only
+    ref = "stash@{0}"
+    for line in git(path, "stash", "list", "--format=%gd %H").stdout.splitlines():
+        parts = line.split()
+        if len(parts) == 2 and parts[1] == sha:
+            ref = parts[0]
+    say("your local changes in %s clash with the update; they are saved in git stash %s (%s). "
+        "Restore them with: git -C %s stash pop %s" % (name, ref, short(sha), path, ref))
+    return False
+
+
 def git(path, *args, check=False):
-    r = subprocess.run(["git", "-C", path] + list(args), capture_output=True, text=True, env=GIT_ENV)
+    r = subprocess.run(["git", "-C", path] + list(args), capture_output=True, text=True, env=git_env())
     if check and r.returncode:
         raise RuntimeError("git %s: %s" % (" ".join(args), (r.stderr or r.stdout).strip()))
     return r
@@ -107,6 +170,15 @@ def git_dir(path):
         except OSError:
             return None
     return d if os.path.isdir(d) else None
+
+
+def is_linked_worktree(root):
+    """True when root is a linked `git worktree` (or similar): `.git` is a gitdir file.
+
+    Primary checkouts have a `.git/` directory. Linked worktrees are where
+    `git worktree add` lands; auto pin-sync there is slow and usually unwanted (#108).
+    """
+    return os.path.isfile(os.path.join(root, ".git"))
 
 
 def is_safe_pin_placeholder(path):
@@ -204,13 +276,17 @@ def plan(root, pins, engines):
             c["state"] = c["state"] or "ok"
             continue
         c["state"] = "move" if c["want"] else "fetch"
-        dirty = git(c["path"], "status", "--porcelain", "--untracked-files=no").stdout.strip()
+        # Submodule state is ignored: our own llama.cpp patches live there (familia #181 U10).
+        dirty = git(c["path"], "status", "--porcelain", "--ignore-submodules=all").stdout.strip()
         if dirty:
             n = len(dirty.splitlines())
-            c["state"], c["note"] = "refuse", ("%d uncommitted change%s in %s; commit or stash them "
-                                               "(git -C %s stash), then sync again"
-                                               % (n, "" if n == 1 else "s", c["path"], c["path"]))
-            continue
+            if AUTOSTASH:
+                c["stash"] = n
+            else:
+                c["state"], c["note"] = "refuse", ("%d local change%s in %s (--no-stash given); commit or stash "
+                                                   "them, or sync without --no-stash"
+                                                   % (n, "" if n == 1 else "s", c["path"]))
+                continue
         if c["have"] and git(c["path"], "symbolic-ref", "-q", "HEAD").returncode:
             on_ref = git(c["path"], "for-each-ref", "--count=1", "--contains", c["have"], "--format=x",
                          "refs/heads", "refs/remotes", "refs/tags").stdout.strip()
@@ -307,6 +383,11 @@ def apply(root, comps, quiet):
     done = []
     try:
         for c in todo:
+            if c.get("stash") and c["state"] in ("move", "fetch"):
+                c["stash_sha"] = stash_push(c["work"], c["name"], c["want"])
+                if not quiet:
+                    say("saved %d local change(s) in %s to the stash; putting them back after the move"
+                        % (c["stash"], c["name"]))
             r = git(c["work"], "-c", "advice.detachedHead=false", "checkout", "-q", c["want"])
             now = head(c["work"])
             if r.returncode or now != c["want"]:
@@ -327,10 +408,17 @@ def apply(root, comps, quiet):
         for c in done:
             if c["state"] in ("move", "fetch", "link") and c["have"]:
                 git(c["work"], "-c", "advice.detachedHead=false", "checkout", "-q", c["have"])
+        for c in todo:
+            if c.get("stash_sha"):
+                stash_pop(c["work"], c["name"], c["stash_sha"])
         for t in temps:
             shutil.rmtree(t, ignore_errors=True)
         say("FAILED: %s. Parts already moved were put back." % e)
         return 1
+    for c in todo:
+        if c.get("stash_sha"):
+            if stash_pop(c["work"], c["name"], c["stash_sha"]) and not quiet:
+                say("your local changes in %s are back in place" % c["name"])
     for c in todo:
         verb = {"clone": "cloned", "link": "linked sibling", "move": "moved", "fetch": "fetched and moved"}[c["state"]]
         if c["state"] == "clone" and c.get("replace_placeholder"):
@@ -358,15 +446,50 @@ def license_gate(root, mode):
 
 
 def install_hooks(root):
+    # Hooks are shared across worktrees; install into the common git dir.
     g = git_dir(root)
     if not g:
         say("%s is not a git checkout; no hooks installed" % root)
         return 1
-    hooks = os.path.join(g, "hooks")
+    common = g
+    cd = os.path.join(g, "commondir")
+    if os.path.isfile(cd):
+        try:
+            with open(cd, encoding="utf-8") as fh:
+                rel = fh.read().strip()
+            if rel:
+                common = os.path.normpath(os.path.join(g, rel))
+        except OSError:
+            pass
+    hooks = os.path.join(common, "hooks")
     os.makedirs(hooks, exist_ok=True)
+    # post-checkout gets prev_head new_head flag(1=branch,0=file). File checkouts
+    # must not sync: with a leaked GIT_DIR they used to move familia HEAD through
+    # each pin (#111). Linked worktrees skip auto-sync by default (#108/#111);
+    # opt in with FAMILIA_SYNC=1 or run ./familia sync.
     body = ("#!/bin/sh\n%s\n# After git pull / merge / rebase of familia: pins.txt may have changed.\n"
-            "root=$(git rev-parse --show-toplevel) || exit 0\n"
             "[ \"${FAMILIA_SYNC:-1}\" = 0 ] && exit 0\n"
+            "# post-checkout only: skip file checkouts (3rd arg is 0). File checkouts\n"
+            "# used to fire sync with a leaked GIT_DIR and move familia HEAD (#111).\n"
+            "case \"$0\" in\n"
+            "  */post-checkout)\n"
+            "    [ \"$3\" = \"1\" ] || exit 0\n"
+            "    ;;\n"
+            "esac\n"
+            "# Resolve root while hook GIT_DIR is still set, then drop repo bindings\n"
+            "# so child git -C <pin> cannot operate on familia itself (#111).\n"
+            "root=$(git rev-parse --show-toplevel) || exit 0\n"
+            "unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY \\\n"
+            "  GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR GIT_PREFIX\n"
+            "# Linked worktrees (git worktree add): skip pin sync by default (#108).\n"
+            "# Opt in: FAMILIA_SYNC=1, or sync explicitly: ./familia sync\n"
+            "if [ -f \"$root/.git\" ]; then\n"
+            "  case \"${FAMILIA_SYNC-}\" in\n"
+            "    1) ;;\n"
+            "    *) echo \"familia: linked worktree — skipped pin sync "
+            "(set FAMILIA_SYNC=1 or run: ./familia sync)\" >&2; exit 0 ;;\n"
+            "  esac\n"
+            "fi\n"
             "[ -f \"$root/scripts/sync_pins.py\" ] || exit 0\n"
             "PY=${PYTHON:-python3}; command -v \"$PY\" >/dev/null 2>&1 || PY=python\n"
             "\"$PY\" \"$root/scripts/sync_pins.py\" --root \"$root\" --quiet --license-gate warn || "
@@ -397,34 +520,34 @@ def do_update(root, rest, dry, branch=None):
             print("familia update: dry run; would fetch origin/%s, switch this checkout to track it, "
                   "fast-forward only, then sync the pins" % branch)
         else:
-            print("familia update: dry run; would run: git -C %s pull --ff-only, then sync the pins" % root)
+            print("familia update: dry run; would run: git -C %s pull --ff-only --autostash, then sync the pins" % root)
         print("familia update: the pins as they are now (pins.txt can change with the pull):")
         return main(rest)
     before = git(root, "rev-parse", "HEAD").stdout.strip()
     if branch:
         r = subprocess.run(["git", "-C", root, "fetch", "origin",
-                            "+refs/heads/%s:refs/remotes/origin/%s" % (branch, branch)], env=GIT_ENV)
+                            "+refs/heads/%s:refs/remotes/origin/%s" % (branch, branch)], env=git_env())
         if r.returncode:
             say("could not fetch origin/%s; nothing was synced. See: git -C %s status" % (branch, root))
             return 1
         exists = git(root, "show-ref", "--verify", "--quiet", "refs/heads/" + branch).returncode == 0
         if exists:
-            r = subprocess.run(["git", "-C", root, "switch", branch], env=GIT_ENV)
+            r = subprocess.run(["git", "-C", root, "switch", branch], env=git_env())
         else:
             r = subprocess.run(["git", "-C", root, "switch", "--track", "-c", branch,
-                                "origin/" + branch], env=GIT_ENV)
+                                "origin/" + branch], env=git_env())
         if r.returncode:
             say("could not switch to %s (check for local changes or branch conflicts); nothing was synced. "
                 "See: git -C %s status" % (branch, root))
             return 1
         r = subprocess.run(["git", "-C", root, "branch", "--set-upstream-to=origin/" + branch, branch],
-                           env=GIT_ENV)
+                           env=git_env())
         if r.returncode:
             say("could not set %s to track origin/%s; nothing was synced" % (branch, branch))
             return 1
-        r = subprocess.run(["git", "-C", root, "merge", "--ff-only", "origin/" + branch], env=GIT_ENV)
+        r = subprocess.run(["git", "-C", root, "merge", "--ff-only", "--autostash", "origin/" + branch], env=git_env())
     else:
-        r = subprocess.run(["git", "-C", root, "pull", "--ff-only"], env=GIT_ENV)
+        r = subprocess.run(["git", "-C", root, "pull", "--ff-only", "--autostash"], env=git_env())
     if r.returncode:
         say("git update failed (local commits or changes may prevent a fast-forward); nothing was synced. "
             "See: git -C %s status" % root)
@@ -433,13 +556,14 @@ def do_update(root, rest, dry, branch=None):
     if before != after:
         say("familia %s -> %s" % (short(before), short(after)))
     # Run the sync from the updated checkout: sync_pins.py itself may have changed.
-    env = dict(os.environ)
+    env = git_env()
     env.pop("FAMILIA_SYNC_DONE", None)
     return subprocess.run([sys.executable, os.path.join(root, "scripts", "sync_pins.py"), "--root", root] + rest,
                           env=env).returncode
 
 
 def main(argv):
+    global AUTOSTASH
     root = os.path.dirname(HERE)
     dry = auto = quiet = hooks = check = update = False
     branch = None
@@ -452,6 +576,10 @@ def main(argv):
             return 0
         elif a in ("--dry-run", "-n"):
             dry = True
+        elif a in ("--force", "--stash"):
+            AUTOSTASH = True
+        elif a == "--no-stash":
+            AUTOSTASH = False
         elif a == "--auto":
             auto = True
         elif a in ("--quiet", "-q"):
@@ -497,6 +625,11 @@ def main(argv):
         return do_update(root, rest, dry, branch)
     if os.environ.get("FAMILIA_SYNC", "1") == "0":
         say("skipped (FAMILIA_SYNC=0); the pinned parts may be behind pins.txt")
+        return 0
+    # Linked worktrees: automatic sync is opt-in (FAMILIA_SYNC=1). Explicit
+    # `./familia sync` / scripts/sync_pins.py without --auto still runs (#108).
+    if auto and is_linked_worktree(root) and os.environ.get("FAMILIA_SYNC") != "1":
+        say("linked worktree — skipped pin sync (set FAMILIA_SYNC=1 or run: ./familia sync)")
         return 0
     if auto and os.path.normcase(os.environ.get("FAMILIA_SYNC_DONE", "")) == os.path.normcase(root):
         return 0

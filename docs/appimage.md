@@ -1,6 +1,6 @@
 # familia AppImage (Linux, single-click)
 
-Milestone Linux builds prefer an **`.AppImage`** over a shell one-liner: download, mark executable (or double-click via the file manager), and the interactive **terminal menu** starts. No `curl | sh` required for packaging; a terminal is used for the menu.
+Milestone Linux builds prefer an **`.AppImage`** over a shell one-liner: download, mark executable (or double-click via the file manager), and the interactive **terminal menu** starts. No shell installer required for packaging; a terminal is used for the menu.
 
 The classic installers under `install/linux/install.sh` remain supported; AppImage is the milestone artifact.
 

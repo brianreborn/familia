@@ -13,7 +13,7 @@ branch for the installed repo and keeps it tracking `origin/<branch>`. Set
 `FAMILIA_BRANCH` or pass `--branch BRANCH` (`-Branch BRANCH` on Windows) to choose
 a branch explicitly. Running a downloaded installer without a git checkout defaults
 a new install to `main`, but an existing install stays on its current tracked branch.
-The bootstrap `install.sh` likewise updates an existing checkout from its configured
+The unified installer `install/unix/install.sh` likewise updates an existing checkout from its configured
 upstream; it does not force `main`. On FreeBSD, do not run the runtime installer:
 select/sync the desired familia branch with `./familia sync --branch BRANCH`, then
 build the pinned llama.cpp checkout from source as described above.
@@ -21,9 +21,9 @@ build the pinned llama.cpp checkout from source as described above.
 | Platform | One click | Installs to |
 |---|---|---|
 | Windows 10/11 | double-click `install\windows\install.bat` (or `powershell -ExecutionPolicy Bypass -File install\windows\install.ps1`) | `%LOCALAPPDATA%\familia`; models on `E:\temp\familia\models` when `E:\temp` exists |
-| Desktop Linux (Ubuntu/Debian…) and macOS | `curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install/linux/install.sh \| sh` | `~/.local/share/familia`, launcher `~/.local/bin/familia-start` |
+| Desktop Linux (Ubuntu/Debian…) and macOS | `curl -fsSLo install-familia-node.sh https://raw.githubusercontent.com/brianreborn/familia/main/install/linux/install.sh && sh ./install-familia-node.sh` | `~/.local/share/familia`, launcher `~/.local/bin/familia-start` |
 | Desktop Linux **AppImage** (milestone) | download `familia-*-x86_64.AppImage`, double-click (see [appimage.md](./appimage.md)) | writable checkout `~/.local/share/familia/appimage-checkout`; terminal menu |
-| Android (Termux from F-Droid/GitHub) | `curl -fsSL https://raw.githubusercontent.com/brianreborn/familia/main/install/termux/install.sh \| sh` | `~/familia`, launcher `$PREFIX/bin/familia-start` |
+| Android (Termux from F-Droid/GitHub) | `curl -fsSLo install-familia-termux.sh https://raw.githubusercontent.com/brianreborn/familia/main/install/termux/install.sh && sh ./install-familia-termux.sh` | `~/familia`, launcher `$PREFIX/bin/familia-start` |
 
 macOS uses the Linux script (README lists macOS as supported); it has been
 syntax-checked but **not run on a Mac**.
@@ -114,6 +114,7 @@ Every installer ends by putting `familia` on your PATH for your user only (no ro
 | Familia branch | `--branch BRANCH` | `--branch BRANCH` | `-Branch BRANCH` |
 | Skip runtime | `--no-runtime` | `--no-runtime` | `-NoRuntime` |
 | Don't put `familia` on PATH | `--no-path` | `--no-path` | `-NoPath` |
+| Release channel ([release-channels.md](release-channels.md)) | `--channel bleeding\|stable`, `--stable-days N` | not yet (env `FAMILIA_CHANNEL`) | not yet |
 
 Safety: no secrets are read or written; downloads are checksum-verified;
 nothing runs as root/admin; installers are idempotent. Measuring a host only

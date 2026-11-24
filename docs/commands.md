@@ -1,6 +1,8 @@
+| `scripts/twitter_intake.sh` | read-only Galaxy1 X/Twitter intake; validates the ideas-from-x skill and stops before issue review | `bash scripts/twitter_intake.sh` | — |
+| `scripts/progress_report.py` | hourly GitHub issue/PR progress-report generator for release review; writes artifact files only under reports/progress when run locally, no git mutation | `python3 scripts/progress_report.py` | — |
 # Every familia command
 
-This page mirrors `scripts/menu-items.txt` (legacy catalog). Default `./familia` opens the Charm/gum home (`scripts/familia_home.sh`); use `./familia menu` / `--legacy-menu` for this catalog. `tests/test_menu.py` checks this page lists every item.
+This page mirrors `scripts/menu-items.txt` (legacy catalog). Default `./familia` opens the home menu (`scripts/familia_home.sh`): six equal items (Models, Harnesses, Agents, MCP servers, Tool sets, App store), each with install, list, start, stop and status. It exits only on Quit. If gum is missing and cannot be installed, it falls back to this catalog instead of exiting. Use `./familia menu` / `--legacy-menu` for the catalog directly. `tests/test_menu.py` checks this page lists every item.
 Run any row from the legacy menu, as a command (`./familia COMMAND`, below), or with `./familia run KEY [ARG...]` (Windows: `familia.cmd run KEY`). Add `--dry-run` before a command to print it without running (CLI mode only — items themselves are real runs).
 `<NAME>` is asked for when you pick the item. "licenses first" means `scripts/licenses.py gate` runs before it ([licenses.md](licenses.md)).
 
@@ -47,11 +49,11 @@ The interactive menu and `--list` show these paths before the command groups. Fo
 | Add and launch a model | `models.fetch` -> add its node to `graph.yaml` -> `models.check` -> `hosts.serve <NODE>` (or gum home → Find more models) |
 | Run Hermes on the graph coder | `models.check` -> `agents.hermes` (license-gated) |
 
-**Not done yet:** the FreeBSD llama.cpp 0.7.0 build and model-load smoke test on `angel` have not been run, and `angel` is measured in `graph.yaml` but still has no active nodes. FreeBSD currently has no package-based setup here: do not run `familia install` or install packages; build the pinned llama.cpp checkout from source using the already available toolchain. From `code-bootstraps-llama.cpp`, run `BUILD_DIR=build-freebsd GPU=off scripts/build-linux.sh`, then verify `build-freebsd/bin/llama-server --version`. Planned Nanbeige nodes need the GGUF on disk before `status: active`.
+**Not done yet:** the FreeBSD llama.cpp 0.7.0 build and model-load smoke test on `angel` have not been run, and `angel` is measured in `graph.yaml` but still has no active nodes. FreeBSD currently has no package-based setup here: do not run `familia install` or install packages; build the pinned llama.cpp checkout from source using the already available toolchain. From `code-bootstraps-llama.cpp`, run `BUILD_DIR=build-freebsd GPU=off scripts/build-linux.sh`, then verify `build-freebsd/bin/llama-server --version`. Planned named large model nodes need the GGUF on disk before `status: active`.
 
 ## Menu items by group (legacy catalog)
 
-Default front door is the gum home (`./familia`). This catalog is **fallback only**.
+Default front door is the six-item home (`./familia`). This catalog is the fallback and the CLI for every home action.
 
 ### Set up
 
@@ -61,10 +63,13 @@ Default front door is the gum home (`./familia`). This catalog is **fallback onl
 | `setup.update` | Update this checkout (git pull --ff-only, then sync pins) | `python3 scripts/sync_pins.py --update` | `python scripts\sync_pins.py --update` |
 | `setup.licenses` | Review / accept licenses | `python3 scripts/licenses.py review` | `python scripts\licenses.py review` |
 | `setup.settings` | Change launcher settings (terminal) | `sh scripts/configure.sh --interactive` | — |
+| `setup.android-cockpit` | Android installer switches (on-device inference; gate, dry-run, key, host) | `sh scripts/android-cockpit-switches.sh` | — |
 | `setup.sync-goal` | Sync pinned parts only (asks preview vs apply) | `sh scripts/setup_goals.sh sync-pins` | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\setup-goals.ps1 -Goal sync-pins` |
 | `setup.safe-build` | Safe-mode / offline build help | `sh scripts/safe-build-help.sh` | `powershell -NoProfile -Command "Write-Host (Get-Content -Raw docs\safe-mode-bootstrap.md)"` |
 | `setup.logon-task` | Windows: start the model server at logon (registers the task) | — | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-task.ps1 -Install -Model <MODEL>` |
 | `setup.remove-path` | Remove familia from PATH (danger; ) | `sh scripts/setup_goals.sh remove-path` | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\setup-goals.ps1 -Goal remove-path` |
+
+`setup.android-cockpit` defaults each device to serve its own webapp at `http://127.0.0.1:9941` (loopback; on-device inference only). A remote host is an explicit opt-in and uses HTTPS. An API key file (mode 0600) is always required, including on loopback (`127.0.0.0/8` and `::1`): other Termux apps and adb can reach those addresses. The literal name `localhost` counts as loopback for the HTTPS default only (plain HTTP is OK). Plain HTTP to a remote host is allowed only when the named dev switch `dev: allow plain HTTP` is on (off by default, marked `*` when on), or when `FAMILIA_DEV_ALLOW_HTTP=1`. The warning is shown in the menu, in `--show`/`--dump`, and before the run confirm. `http://` CBL URLs are always rejected.
 
 ### Skills
 
@@ -90,13 +95,28 @@ Default front door is the gum home (`./familia`). This catalog is **fallback onl
 
 | Key | Label | POSIX | Windows |
 |---|---|---|---|
+| `models.list-all` | List every graph model, unplaced option, and model-database entry | `python3 scripts/catalog.py models` | `python scripts\catalog.py models` |
 | `models.add` | Add a model from a Hugging Face folder or a .gguf | `scripts/add-model.sh <PATH>` | `python scripts\add_model.py <PATH>` |
 | `models.fetch` | Download and add a model from Hugging Face (asks you to accept its license) | `scripts/add-model.sh --fetch <REPO> --quant <QUANT>` | `python scripts\add_model.py --fetch <REPO> --quant <QUANT>` |
+| `models.lfm3` | LFM3 family: download an optional LFM3 model (lfm3, lfm3-qad, lfm3-vl, lfm3-omni, lfm3-audio; vision/audio served with --mmproj; `lfm3-vl`/`lfm3-omni`/`lfm3-audio` are Linux/macOS only for now, Windows TODO #190) | `sh code-bootstraps-llama.cpp/scripts/fetch-models.sh --pick <PICK>` | `powershell -File code-bootstraps-llama.cpp\scripts\fetch-models.ps1 -Pick <PICK>` |
 | `models.cards` | Fetch only a model's card, config and license (no weights) | `python3 scripts/hf_fetch.py <REPO> --damp-run` | `python scripts\hf_fetch.py <REPO> --damp-run` |
 | `models.license` | Show one model's license and what it obliges you to | `python3 scripts/model_license.py show <ID>` | `python scripts\model_license.py show <ID>` |
+| `models.pick` | Pick a model for this host: full catalog, search, Enter = host default; previews a host graph (writes generated/ only with --write) | `python3 scripts/model_pick.py menu --host <HOST> --role <ROLE>` | `python scripts\model_pick.py menu --host <HOST> --role <ROLE>` |
 | `models.check` | Check graph.yaml: models, RAM budget, required launch parameters | `python3 scripts/validate_graph.py --graph graph.yaml` | `python scripts\validate_graph.py --graph graph.yaml` |
 | `models.explain` | Show the exact launch parameters for one node | `python3 scripts/validate_graph.py --graph graph.yaml --explain <NODE>` | `python scripts\validate_graph.py --graph graph.yaml --explain <NODE>` |
 | `models.licenses` | List model, skill and engine licenses (records nothing) | `python3 scripts/licenses.py list` | `python scripts\licenses.py list` |
+| `home.models.install` | Home: install models | `python3 scripts/home_catalog.py models install` | `python scripts\home_catalog.py models install` |
+| `home.models.list` | Home: list models | `python3 scripts/home_catalog.py models list` | `python scripts\home_catalog.py models list` |
+| `home.models.start` | Home: start models (API key; --apply) | `python3 scripts/home_catalog.py models start` | `python scripts\home_catalog.py models start` |
+| `home.models.stop` | Home: stop models (--apply) | `python3 scripts/home_catalog.py models stop` | `python scripts\home_catalog.py models stop` |
+| `home.models.status` | Home: models status | `python3 scripts/home_catalog.py models status` | `python scripts\home_catalog.py models status` |
+
+### Graphs
+
+| Key | Label | POSIX | Windows |
+|---|---|---|---|
+| `graphs.list` | List every graph and the command that configures it | `python3 scripts/catalog.py graphs` | `python scripts\catalog.py graphs` |
+| `graphs.configure` | Show nodes on one graph and the edit command (writes nothing) | `python3 scripts/catalog.py configure <GRAPH>` | `python scripts\catalog.py configure <GRAPH>` |
 
 ### Agents (hermes)
 
@@ -110,8 +130,32 @@ Default front door is the gum home (`./familia`). This catalog is **fallback onl
 | `agents.fleet` | Launch a role from graph.yaml (guardian/defender: seatbelts on by default) | `sh with-fleet.sh --role <ROLE>` | — |
 | `agents.guardian-launch-test` | Guardian/defender: launch-test (seatbelts on) | `sh with-fleet.sh --role guardian --launch-test` | — |
 | `agents.guardian-start` | Guardian/defender: operator-confirmed model start (tools empty) | `env FAMILIA_OPERATOR_CONFIRM=yes sh with-fleet.sh --role guardian --operator-start` | — |
+| `agents.guardian-weights` | Guardian: dry-run fetch/measure/activate path (Dolphin3 Q2_K; no seatbelt edits) | `python3 scripts/activate_guardian_weights.py` | — |
 | `agents.pentest-launch-test` | Legacy id → guardian launch-test | `sh with-fleet.sh --role guardian --launch-test` | — |
 | `agents.pentest-start` | Legacy id → guardian operator-start | `env FAMILIA_OPERATOR_CONFIRM=yes sh with-fleet.sh --role guardian --operator-start` | — |
+| `home.agents.install` | Home: install agents | `python3 scripts/home_catalog.py agents install` | `python scripts\home_catalog.py agents install` |
+| `home.agents.list` | Home: list agents | `python3 scripts/home_catalog.py agents list` | `python scripts\home_catalog.py agents list` |
+| `home.agents.start` | Home: start agents (API key; --apply) | `python3 scripts/home_catalog.py agents start` | `python scripts\home_catalog.py agents start` |
+| `home.agents.stop` | Home: stop agents (--apply) | `python3 scripts/home_catalog.py agents stop` | `python scripts\home_catalog.py agents stop` |
+| `home.agents.status` | Home: agents status | `python3 scripts/home_catalog.py agents status` | `python scripts\home_catalog.py agents status` |
+
+### App catalog
+
+The virtual app store (#397): `scripts/app_catalog.py`. It lists every app familia can run (menu apps by reference, and the gum-home tools the legacy catalog leaves out: web UI, ui_bridge dashboard, find models, X search, protomodel chat), and searches open issues labeled `applications` across public brianreborn repositories with a cache (`$XDG_CACHE_HOME/familia/app-catalog.json`, 45 min TTL, `FAMILIA_APP_CATALOG_TTL`; ETag revalidation when GitHub sends one; stale cache shown offline). The phone assistant rows moved here from Hosts; their keys are unchanged.
+
+| Key | Label | POSIX | Windows |
+|---|---|---|---|
+| `apps.catalog` | Virtual app store: every app familia can run, plus open "applications" issues (cached search) | `python3 scripts/app_catalog.py menu` | `python scripts\app_catalog.py menu` |
+| `apps.list` | List the apps (menu apps and the gum-home tools) and their ids | `python3 scripts/app_catalog.py list` | `python scripts\app_catalog.py list` |
+| `apps.search` | Search open "applications" issues across brianreborn (public; cached, 45 min TTL) | `python3 scripts/app_catalog.py search <WORDS>` | `python scripts\app_catalog.py search <WORDS>` |
+| `apps.refresh` | Refresh the app search cache now (one GitHub request) | `python3 scripts/app_catalog.py search --refresh` | `python scripts\app_catalog.py search --refresh` |
+| `apps.run` | Run one app by id (see apps.list) | `python3 scripts/app_catalog.py run <APP>` | `python scripts\app_catalog.py run <APP>` |
+| `hosts.phone-agents` | Phone assistants (Bixby, Gemini): which are set up and what leaves the phone | `python3 scripts/system_agents.py status` | `python scripts\system_agents.py status` |
+| `hosts.phone-agents-licenses` | Phone assistants: Shizuku license and the terms each assistant brings | `python3 scripts/system_agents.py licenses` | `python scripts\system_agents.py licenses` |
+| `hosts.phone-agent-probe` | On this phone (Termux): is Shizuku running, which assistants are installed | `python3 scripts/termux/system_agent.py probe` | — |
+| `hosts.phone-agent-open` | On this phone: bring Gemini or Bixby to the front (sends nothing) | `python3 scripts/termux/system_agent.py open --provider <PROVIDER>` | — |
+| `hosts.phone-agent-ask` | On this phone: ask Gemini (CLOUD: your text goes to Google; asks first) | `python3 scripts/termux/system_agent.py ask --provider gemini --text <TEXT>` | — |
+| `hosts.phone-agent-consent` | On this phone: allow or withdraw cloud calls to an assistant | `python3 scripts/termux/system_agent.py consent --provider <PROVIDER> <CHOICE>` | — |
 
 ### Self-improving harness (Harness2)
 
@@ -121,15 +165,22 @@ Default front door is the gum home (`./familia`). This catalog is **fallback onl
 | `harness2.set` | Set Harness² mode for any agent (hermes, llama UI, or other; off / propose / apply) | `python3 scripts/harness2.py set --agent <AGENT> --mode <MODE>` | `python scripts\harness2.py set --agent <AGENT> --mode <MODE>` |
 | `harness2.review` | Review proposals: list, accept or revert | `python3 scripts/harness2.py review` | `python scripts\harness2.py review` |
 | `harness2.terminal-rsi` | Terminal-RSI round for a harness target (proposals only; review with harness2.review) | `python3 scripts/terminal_rsi.py --target <TARGET>` | `python scripts\terminal_rsi.py --target <TARGET>` |
+| `home.harnesses.install` | Home: install harnesses | `python3 scripts/home_catalog.py harnesses install` | `python scripts\home_catalog.py harnesses install` |
+| `home.harnesses.list` | Home: list harnesses | `python3 scripts/home_catalog.py harnesses list` | `python scripts\home_catalog.py harnesses list` |
+| `home.harnesses.start` | Home: start harnesses (--apply) | `python3 scripts/home_catalog.py harnesses start` | `python scripts\home_catalog.py harnesses start` |
+| `home.harnesses.stop` | Home: stop harnesses (--apply) | `python3 scripts/home_catalog.py harnesses stop` | `python scripts\home_catalog.py harnesses stop` |
+| `home.harnesses.status` | Home: harness status | `python3 scripts/home_catalog.py harnesses status` | `python scripts\home_catalog.py harnesses status` |
 
 ### Test & benchmark
 
 | Key | Label | POSIX | Windows |
 |---|---|---|---|
 | `test.unit` | Run the unit tests (installs pytest into .cache/pylib once) | `sh scripts/run-tests.sh` | — |
+| `ops.offline-improve` | Offline perf loop when fleet peers unreachable | `python3 scripts/offline_improve.py --loop` | — |
 | `test.offline` | Offline test plan (prints live steps; RUN=1 to run them) | `bash scripts/offline-test-plan.sh` | — |
 | `test.registry` | Benchmark records: best measured model per host and role | `python3 scripts/registry.py suggest --host <HOST> --role <ROLE>` | `python scripts\registry.py suggest --host <HOST> --role <ROLE>` |
 | `test.registry-summary` | Summary of every benchmark record | `python3 scripts/registry.py summarize` | `python scripts\registry.py summarize` |
+| `test.offline-secbench` | Opt-in offline security-model benches (#117); synthetic fixtures only | `python3 scripts/offline_secbench.py --enable --platform <PLATFORM> --answers-dir <DIR>` | `python scripts\offline_secbench.py --enable --platform <PLATFORM> --answers-dir <DIR>` |
 
 ### Hosts
 
@@ -146,20 +197,16 @@ Default front door is the gum home (`./familia`). This catalog is **fallback onl
 | `hosts.android` | Start the node on an Android phone over SSH | `bash android_start.sh <HOST>` | — |
 | `hosts.phones` | Start every phone listed in graph.yaml | `bash android_multi_start.sh` | — |
 | `hosts.watchdog` | Keep a phone's node running (restart it if it stops answering) | `bash watchdog_android.sh <HOST>` | — |
-| `hosts.phone-agents` | Phone assistants (Bixby, Gemini): which are set up and what leaves the phone | `python3 scripts/system_agents.py status` | `python scripts\system_agents.py status` |
-| `hosts.phone-agents-licenses` | Phone assistants: Shizuku license and the terms each assistant brings | `python3 scripts/system_agents.py licenses` | `python scripts\system_agents.py licenses` |
-| `hosts.phone-agent-probe` | On this phone (Termux): is Shizuku running, which assistants are installed | `python3 scripts/termux/system_agent.py probe` | — |
-| `hosts.phone-agent-open` | On this phone: bring Gemini or Bixby to the front (sends nothing) | `python3 scripts/termux/system_agent.py open --provider <PROVIDER>` | — |
-| `hosts.phone-agent-ask` | On this phone: ask Gemini (CLOUD: your text goes to Google; asks first) | `python3 scripts/termux/system_agent.py ask --provider gemini --text <TEXT>` | — |
-| `hosts.phone-agent-consent` | On this phone: allow or withdraw cloud calls to an assistant | `python3 scripts/termux/system_agent.py consent --provider <PROVIDER> <CHOICE>` | — |
 
 ### Advanced: models & graph
 
 | Key | Label | POSIX | Windows |
 |---|---|---|---|
 | `adv.args` | validate_graph: the llama-server arguments for one node | `python3 scripts/validate_graph.py --graph graph.yaml --args <NODE>` | `python scripts\validate_graph.py --graph graph.yaml --args <NODE>` |
+| `adv.routes` | graph_router (default gateway): check a routes file (single, pair, fallback, chain, router, remote, tools); see docs/graph-recipes.md | `python3 scripts/graph_router.py <ROUTES> --check` | `python scripts\graph_router.py <ROUTES> --check` |
 | `adv.verify` | validate_graph: also verify model sha256 and runtimes (slow) | `python3 scripts/validate_graph.py --graph graph.yaml --verify-sha --check-runtimes` | `python scripts\validate_graph.py --graph graph.yaml --verify-sha --check-runtimes` |
-| `adv.graph-edit` | modify_graph: assign a models: key to a type-named node | `python3 scripts/modify_graph.py --host angel --assign-model coder=nanbeige43-33b-q4km` | `python scripts\modify_graph.py --host angel --assign-model coder=nanbeige43-33b-q4km` |
+| `adv.graph-edit` | modify_graph: assign a models: key to a type-named node | `python3 scripts/modify_graph.py --host angel --assign-model coder=removed-large-model` | `python scripts\modify_graph.py --host angel --assign-model coder=removed-large-model` |
+| `adv.protograph` | protograph: recipe -> graph.yaml (dry run; skills/protograph/SKILL.md) | `python3 scripts/protograph.py <RECIPE>` | `python scripts\protograph.py <RECIPE>` |
 | `adv.db-list` | Model database: list entries | `python3 scripts/model_db.py list` | `python scripts\model_db.py list` |
 | `adv.db-show` | Model database: show one entry | `python3 scripts/model_db.py show <ID>` | `python scripts\model_db.py show <ID>` |
 | `adv.db-damp` | Model database: add a repo without weights (damp) | `python3 scripts/model_db.py damp <REPO>` | `python scripts\model_db.py damp <REPO>` |
@@ -205,11 +252,53 @@ Default front door is the gum home (`./familia`). This catalog is **fallback onl
 | `setup.cli-status` | Low-level: show where familia is on PATH | `sh scripts/install-cli.sh status` | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-cli.ps1 -Status` |
 | `setup.uninstall-cli` | Low-level: take familia off PATH (asks first) | `sh scripts/install-cli.sh uninstall` | `powershell -NoProfile -ExecutionPolicy Bypass -File scripts\windows\install-cli.ps1 -Uninstall` |
 
-### ★ Required checks (must-run)
+### ◆ Proving grounds (graded)
 
 | Key | Label | POSIX | Windows |
 |---|---|---|---|
-| `test.required` | ★ Run ALL three critical bash smokes for real (fleet + nexus + bt) | `sh scripts/required_checks.sh` | — |
+| `test.proving-grounds` | Graded progress on the three top-level proving grounds (fleet + nexus + bt); not pass/fail | `sh scripts/proving_grounds.sh` | — |
+
+### MCP servers
+
+| Key | Label | POSIX | Windows |
+|---|---|---|---|
+| `home.mcp.install` | Home: install MCP servers (no listener) | `python3 scripts/home_catalog.py mcp install` | `python scripts\home_catalog.py mcp install` |
+| `home.mcp.list` | Home: list MCP servers | `python3 scripts/home_catalog.py mcp list` | `python scripts\home_catalog.py mcp list` |
+| `home.mcp.start` | Home: start MCP servers (refuses to bind) | `python3 scripts/home_catalog.py mcp start` | `python scripts\home_catalog.py mcp start` |
+| `home.mcp.stop` | Home: stop MCP servers | `python3 scripts/home_catalog.py mcp stop` | `python scripts\home_catalog.py mcp stop` |
+| `home.mcp.status` | Home: MCP server status | `python3 scripts/home_catalog.py mcp status` | `python scripts\home_catalog.py mcp status` |
+
+### Tool sets
+
+| Key | Label | POSIX | Windows |
+|---|---|---|---|
+| `home.tools.install` | Home: install tool sets | `python3 scripts/home_catalog.py tools install` | `python scripts\home_catalog.py tools install` |
+| `home.tools.list` | Home: list tool sets | `python3 scripts/home_catalog.py tools list` | `python scripts\home_catalog.py tools list` |
+| `home.tools.start` | Home: start tool sets (not a process) | `python3 scripts/home_catalog.py tools start` | `python scripts\home_catalog.py tools start` |
+| `home.tools.stop` | Home: stop tool sets | `python3 scripts/home_catalog.py tools stop` | `python scripts\home_catalog.py tools stop` |
+| `home.tools.status` | Home: tool set status | `python3 scripts/home_catalog.py tools status` | `python scripts\home_catalog.py tools status` |
+
+### App store
+
+| Key | Label | POSIX | Windows |
+|---|---|---|---|
+| `home.apps.install` | Home: install from the app store (no download) | `python3 scripts/home_catalog.py apps install` | `python scripts\home_catalog.py apps install` |
+| `home.apps.list` | Home: list the app store | `python3 scripts/home_catalog.py apps list` | `python scripts\home_catalog.py apps list` |
+| `home.apps.start` | Home: start app store (no listener) | `python3 scripts/home_catalog.py apps start` | `python scripts\home_catalog.py apps start` |
+| `home.apps.stop` | Home: stop the app store | `python3 scripts/home_catalog.py apps stop` | `python scripts\home_catalog.py apps stop` |
+| `home.apps.status` | Home: app store status | `python3 scripts/home_catalog.py apps status` | `python scripts\home_catalog.py apps status` |
+| `home.apps.browse` | Home: browse the app store (tweet cards; gum or plain text) | `sh scripts/appstore.sh` | `python scripts\appstore.py text` |
+| `home.apps.web` | Home: write the app store web page (static HTML, no remote loads) | `python3 scripts/appstore.py html` | `python scripts\appstore.py html` |
+
+The app store shows tweets that promote apps: app name, pitch, link and platform first, the tweet and its author below. Data ships in the release package as `appstore/data/feed.json` plus `appstore/data/media/` (checked by `appstore/data/SHA256SUMS`); with no release items the example fixture `examples/appstore/feed.sample.json` (fake data) is shown. See [appstore.md](appstore.md).
+
+### Front door
+
+| Key | Label | POSIX | Windows |
+|---|---|---|---|
+| `home.talk` | Talk to the protomodel | `sh scripts/proto_chat.sh` | - |
+| `home.find-models` | Find more models | `sh scripts/find_models.sh` | - |
+| `home.search-x` | Search my X / Twitter posts | `sh scripts/search_x.sh` | - |
 
 ### Help
 
@@ -227,29 +316,70 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 
 | script | why it's not in the menu |
 |---|---|
-| `install.sh` | bootstrap you run before familia is on disk (curl ... | sh); inside a checkout use Set up -> Install |
+| `install.sh` | bootstrap you run before familia is on disk (download, then sh ./install-familia.sh); inside a checkout use Set up -> Install |
+| `install/unix/install.sh` | unified Unix installer (Linux, FreeBSD, macOS, Termux); called directly or by install/unix wrappers |
+| `scripts/channel.py` | release-channel resolver (docs/release-channels.md); installers and hf_fetch call it, pick the channel with --channel or FAMILIA_CHANNEL |
+| `scripts/fleet_greeting.py` | fleet greeting helper; called by hermes.sh, proto_chat.sh and start_graph at startup |
 | `scripts/windows/familia-menu.ps1` | the Windows menu itself (started by familia.cmd) |
 | `scripts/monitor.sh` | the same console as ./familia-monitor, which the menu runs |
 | `scripts/hermes_harness.py` | always run through scripts/hermes.sh, which the menu runs |
 | `scripts/hermes_modes.py` | the graph/single-model front end scripts/hermes.sh execs; run hermes.sh |
+| `scripts/runtime_dir.py` | helper module the launchers and admission ledger import (private runtime dir); not run directly |
+| `scripts/runtime_dir.sh` | helper sourced by the shell launchers (private runtime dir); not run directly |
 | `install/windows/install.bat` | double-click wrapper for install\windows\install.ps1, which the Windows menu runs |
 | `start-green-roomz.sh` | guard stub; the real one is deployed onto the phone by android_start.sh |
 | `scripts/monitor/probe.py` | read-only probe the monitor pipes to each host over SSH |
 | `scripts/monitor/probe.ps1` | Windows version of the probe the monitor pipes over SSH |
 | `scripts/bench_parse.py` | filter for llama-bench output (pipe llama-bench -o csv into it); nothing to do on its own |
 | `scripts/bench_guard.py` | library for perf/bench drivers: GGUF metadata validation, current llama.cpp flag spellings, encoder ubatch rule, per-run memory cap (`meta FILE`, `memcap PEAK_MIB`) |
+| `scripts/install-gum.sh` | install helper: put Charm gum in ~/.local/bin; called by install.sh / setup_goals |
+| `scripts/pilot_hud.sh` | pilot HUD helpers sourced by familia_home / setup_goals |
+| `scripts/prefetch-first-models.sh` | first-try model fetch kicked by gum home / setup / proto_chat |
+| `scripts/windows/install-gum.ps1` | Windows gum installer called by install.ps1 |
+| `scripts/windows/prefetch-first-models.ps1` | Windows wrapper for prefetch-first-models |
+| `scripts/windows/launch_server.py` | Windows helper start.bat runs after the license gate; writes the llama-server pid and waits. Not a menu item |
+| `scripts/offline_improve.py` | on-host offline perf loop (docs/offline-improve.md) |
+| `scripts/activate_guardian_weights.py` | guardian weight fetch/measure/activate (Dolphin3-Cyber Q2_K); operator step run via with-fleet.sh, docs/guardian-weights.md |
+| `scripts/activate_guardian_weights.sh` | thin wrapper for scripts/activate_guardian_weights.py |
+| `scripts/config_docs.py` | developer tool: generates/checks docs/config (CFG-* ids); not an end-user action |
+| `scripts/check_pins.py` | CI-only verifier for full-SHA repository pins; invoked by the pin-integrity workflow, not a user command |
+| `scripts/familia_auth.py` | library: per-instance API key headers for proxies and probes |
+| `scripts/bind_auth_guard.py` | pre-start auth guard called by scripts/serve.sh and scripts/windows/start.bat; refuses a launch argv that would bind without a valid --api-key-file (DESIGN.md Security) |
+| `scripts/guardian_ready.py` | offline guardian/defender readiness check (#147); developer/CI helper |
+| `scripts/hosts_overlay.py` | library: local host connection overlay (#104) used by graph loaders |
+| `scripts/offline_improve.sh` | thin wrapper for scripts/offline_improve.py |
+| `scripts/osc7501.sh` | library: emits OSC 7501 status reports; sourced by setup_goals.sh / proto_chat.sh |
+| `scripts/reconnect_selfheal.py` | host probe + reconnect/self-repair loop (seatbelted); operator/daemon helper |
+| `scripts/reconnect_selfheal.sh` | thin wrapper for scripts/reconnect_selfheal.py |
+| `scripts/refuse_soname_skew.py` | pre-start guard called by scripts/serve.sh; fails closed on bin/lib skew |
+| `scripts/sec_assess.py` | operator-authorized security assessment mode (#116); deliberately not one click from the menu |
+| `scripts/swarm/a57_ssh_dispatch.py` | opt-in A57 python/compile smoke over SSH from the miryam swarm runner; not a phone Actions runner; see docs/ci/a57-ssh-dispatch.md |
+| `scripts/swarm/deploy_fleet.py` | CI deployment controller; invoked by fleet-deploy workflow, not an interactive menu action |
+| `scripts/swarm/configure-fleet-role.sh` | Validated writer used by the Android cockpit fleet-role screen |
+| `scripts/swarm/bench.sh` | swarm /run bench entry point (#183); run by swarm workers, not people; see docs/swarm-bench.md |
+| `scripts/swarm/bench_idle.py` | opt-in run-when-idle trigger for scripts/swarm/bench.sh (per host:user, nice 19, CPU only); run by a user timer or crontab; see docs/swarm-bench.md |
+| `scripts/swarm/forge.sh` | swarm forge adapter library; sourced by swarm scripts |
+| `scripts/swarm/forge/forgejo.sh` | Forgejo adapter stub sourced by scripts/swarm/forge.sh |
+| `scripts/swarm/forge/github.sh` | GitHub adapter sourced by scripts/swarm/forge.sh |
+| `scripts/swarm/swarm-bench-runner.sh` | registers this host as a self-hosted swarm worker; one-time operator setup |
+| `scripts/swarm/swarm-bootstrap.sh` | fresh swarm worker checkout; one-time operator setup |
+| `scripts/task_suite_promote.py` | promote gate for model configs (#119); used by bench/CI flows |
+| `scripts/task_suite_runner.py` | fixed task suite runner (#119); used by bench/CI flows |
+| `scripts/bfcl_adapter.py` | BFCL -> task-suite adapter and scorer (bench-adapters); used by bench/CI flows |
+| `scripts/routerbench_pickle_to_parquet.py` | one-time RouterBench pickle -> parquet converter; operator data prep |
+| `scripts/routerbench_scorer.py` | offline RouterBench routing-policy scorer (bench-adapters); used by bench/CI flows |
 | `scripts/prompt_cache.py` | library: prefill an agent's fixed prompt prefix once, save it with llama-server slot save, restore it on later starts (#85); used by hermes.sh |
 | `scripts/system_prompt_check.py` | offline system-prompt path checks (#115); developer/CI helper, not an end-user menu action |
 | `scripts/familia_agent_reach.py` | thin wrapper / library around Agent-Reach; menu uses scripts/agent_reach.py |
 | `scripts/retry_wrapper.py` | library for agent model calls; its main is only a self-demo |
 | `scripts/isolated/hfchat.py` | adapter that graph nodes of kind isolated_remote call; not run by hand |
 | `scripts/c2c/kv_ship.py` | step of the C2C loopback test (Advanced menu), needs two running servers |
-| `scripts/nexus/nexus.py` | SSH nexus proof of concept (#22); exercised by tests/test_nexus_localhost.sh |
-| `scripts/bt/fetch.sh` | BitTorrent transport proof of concept; exercised by tests/test_bt_loopback.sh |
-| `scripts/bt/seed.sh` | BitTorrent transport proof of concept; exercised by tests/test_bt_loopback.sh |
-| `scripts/bt/tracker.py` | BitTorrent transport proof of concept; exercised by tests/test_bt_loopback.sh |
-| `scripts/bt/mktorrent.py` | BitTorrent transport proof of concept; exercised by tests/test_bt_loopback.sh |
-| `scripts/bt/key.py` | BitTorrent transport proof of concept; exercised by tests/test_bt_loopback.sh |
+| `scripts/nexus/nexus.py` | SSH nexus proof of concept (#22); exercised by proving_grounds/nexus_localhost.sh |
+| `scripts/bt/fetch.sh` | BitTorrent transport proof of concept; exercised by proving_grounds/bt_loopback.sh |
+| `scripts/bt/seed.sh` | BitTorrent transport proof of concept; exercised by proving_grounds/bt_loopback.sh |
+| `scripts/bt/tracker.py` | BitTorrent transport proof of concept; exercised by proving_grounds/bt_loopback.sh |
+| `scripts/bt/mktorrent.py` | BitTorrent transport proof of concept; exercised by proving_grounds/bt_loopback.sh |
+| `scripts/bt/key.py` | BitTorrent transport proof of concept; exercised by proving_grounds/bt_loopback.sh |
 | `scripts/littlebit/convert.py` | LittleBit backend step; run through scale_down.py (Advanced menu) |
 | `scripts/littlebit/lbref.py` | LittleBit reference runtime used by scale_down.py and its checks |
 | `scripts/littlebit/check_ref.py` | LittleBit developer check against upstream PyTorch (needs torch) |
@@ -287,13 +417,14 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `install/linux/deps.sh` | Linux/macOS OS-deps helper (apt/dnf/pacman/zypper/brew); called via `install/deps.sh` | — | — |
 | `install/termux/deps.sh` | Termux OS-deps helper (`getconf`, pytest, …) | — | — |
 | `install/freebsd/deps.sh` | FreeBSD OS-deps helper (opt-in `pkg install`) | — | — |
+| `install/freebsd/install-familia.sh` | FreeBSD installer, invoked by curl/fetch or sh install-familia.sh | — | — |
 | `install/windows/deps.ps1` | Windows deps check + winget/choco hints | — | `install\windows\deps.ps1` |
 | `scripts/build_appimage.sh` | Operator AppImage packaging (not menu) | — | — |
 | `scripts/perf/box_multi_size_smoke.py` | Perf/dev multi-size smoke (not menu) | — | — |
-| `scripts/familia_home.sh` | Charm/gum front door (`./familia`); legacy catalog is fallback only |
-| `scripts/proto_chat.sh` | protomodel REPL from gum home "Talk to the protomodel" |
-| `scripts/find_models.sh` | guided model fetch from gum home "Find more models" |
-| `scripts/search_x.sh` | X/Twitter search via Agent-Reach from gum home |
+| `scripts/familia_home.sh` | interactive home (six equal items); actions are legacy rows via `scripts/home_catalog.py` |
+| `scripts/open_ui.sh` | open running llama web UI in default browser | — | — |
+| `scripts/ui_bridge.py` | terminal dashboard bridge inspecting running llama-ui slots and routes | — | — |
 | `scripts/windows/familia-home.ps1` | Windows mirror of familia_home.sh (started by familia.cmd) |
-| `scripts/start_graph.py` | graph dry-run helper; hosts.start-preview twin retired — use hosts.start / start.sh |
-
+| `scripts/start_graph.py` | graph dry-run helper (prints `via graph_router` = default gateway, or `via graph-proxy` with `router: false`); hosts.start-preview twin retired — use hosts.start / start.sh |
+| `scripts/hermes-escalation-config.sh` | default environment settings for escalation-ready hermes runs |
+| `scripts/watchdog_test.sh` | test helper running a command under a timeout watchdog for CI/local testing |

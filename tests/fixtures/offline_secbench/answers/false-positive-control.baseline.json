@@ -1,0 +1,6 @@
+{
+  "model": "baseline-generic",
+  "runtime": "offline-canned",
+  "revision": "test-1",
+  "text": "Warning: hardcoded api key detected (YOUR_API_KEY_HERE). This is an exposed secret / credential leak."
+}

@@ -1,0 +1,1258 @@
+{
+ "schema": 2,
+ "id": "AtomicChat--LFM3-1.7B-Uncensored-GGUF--LFM3-1.7B-Uncensored-AD-Q4_K_M",
+ "repo": "AtomicChat/LFM3-1.7B-Uncensored-GGUF",
+ "revision": "8851ef23eecf16f8d1bae46408cccd4249284bad",
+ "file": "LFM3-1.7B-Uncensored-AD-Q4_K_M.gguf",
+ "sha256": "b22df65673b54ed326f18f74826d76f3b65dadc237ffd6306cd52be04544827d",
+ "bytes": 1132208000,
+ "quant": "Q4_K_M",
+ "arch": "lfm3",
+ "roles": [
+  "general"
+ ],
+ "license": "lfm-open-license-v1.0 (https://huggingface.co/LiquidAI/LFM3-1.7B/blob/main/LICENSE)",
+ "license_source": "AtomicChat/LFM3-1.7B-Uncensored-GGUF card license",
+ "ctx": 262144,
+ "ctx_source": "GGUF lfm3.context_length",
+ "card_ctx": 262144,
+ "card_ctx_source": "LiquidAI/LFM3-1.7B README.md:L531",
+ "base_model": "LiquidAI/LFM3-1.7B",
+ "base_revision": "ac2586a34f1a1c03329dbdcdefabd8b6478ddaa7",
+ "card_defaults": {
+  "temp": 0.1,
+  "top-k": 50,
+  "repeat-penalty": 1.1
+ },
+ "card_defaults_source": {
+  "temp": "LiquidAI/LFM3-1.7B LiquidAI/LFM3-1.7B README.md:L152",
+  "top-k": "LiquidAI/LFM3-1.7B LiquidAI/LFM3-1.7B README.md:L152",
+  "repeat-penalty": "LiquidAI/LFM3-1.7B LiquidAI/LFM3-1.7B README.md:L152"
+ },
+ "card_default_set": "General (chat, tool use, agents, coding",
+ "card_defaults_how": "text/general task set among recommended",
+ "card_sampling_modes": {
+  "General (chat, tool use, agents, coding": {
+   "temp": 0.1,
+   "top-k": 50,
+   "repeat-penalty": 1.1
+  },
+  "Math & STEM (math, science": {
+   "temp": 1.0,
+   "top-p": 0.95,
+   "top-k": 20
+  },
+  "<p <small All models were served with vLLM in BF16 at their full context length: 262,144 tokens for LFM3-1.7B, Qwen3.5-4B, and Qwen3.5-9B, and 131,072 tokens fo": {
+   "temp": 0.6,
+   "top-p": 0.95
+  }
+ },
+ "card_default_mode": null,
+ "card_default_mode_source": null,
+ "card_sampling_sets": [
+  {
+   "label": "General (chat, tool use, agents, coding",
+   "kind": "recommended",
+   "mode": null,
+   "params": {
+    "temp": 0.1,
+    "top-k": 50,
+    "repeat-penalty": 1.1
+   },
+   "source": "LiquidAI/LFM3-1.7B README.md:L152"
+  },
+  {
+   "label": "Math & STEM (math, science",
+   "kind": "recommended",
+   "mode": null,
+   "params": {
+    "temp": 1.0,
+    "top-p": 0.95,
+    "top-k": 20
+   },
+   "source": "LiquidAI/LFM3-1.7B README.md:L153"
+  },
+  {
+   "label": "Transformers quick start",
+   "kind": "example",
+   "mode": null,
+   "params": {
+    "temp": 0.1,
+    "top-k": 50,
+    "repeat-penalty": 1.1
+   },
+   "source": "LiquidAI/LFM3-1.7B README.md:L170"
+  },
+  {
+   "label": "<p <small All models were served with vLLM in BF16 at their full context length: 262,144 tokens for LFM3-1.7B, Qwen3.5-4B, and Qwen3.5-9B, and 131,072 tokens fo",
+   "kind": "recommended",
+   "mode": null,
+   "params": {
+    "temp": 0.6,
+    "top-p": 0.95
+   },
+   "source": "LiquidAI/LFM3-1.7B README.md:L531"
+  }
+ ],
+ "card_commands": [
+  {
+   "source": "AtomicChat/LFM3-1.7B-Uncensored-GGUF README.md:L46-46",
+   "file": "README.md",
+   "lines": [
+    46,
+    46
+   ],
+   "lang": "bash",
+   "tool": "llama.cpp",
+   "kind": "command",
+   "text": "llama-cli -hf AtomicChat/LFM3-1.7B-Uncensored-GGUF:AD-Q4_K_M -p \"Hello\"",
+   "llama": [
+    {
+     "tool": "llama-cli",
+     "raw": "llama-cli -hf AtomicChat/LFM3-1.7B-Uncensored-GGUF:AD-Q4_K_M -p \"Hello\"",
+     "flags": [
+      {
+       "flag": "-hf",
+       "canonical": "--hf-repo",
+       "value": "AtomicChat/LFM3-1.7B-Uncensored-GGUF:AD-Q4_K_M",
+       "known": true,
+       "note": null
+      },
+      {
+       "flag": "-p",
+       "canonical": "--prompt",
+       "value": "Hello",
+       "known": true,
+       "note": null
+      }
+     ],
+     "positional": [],
+     "env": null
+    }
+   ],
+   "doc": "card",
+   "doc_sha": "8851ef23eecf16f8d1bae46408cccd4249284bad",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-1.7B README.md:L158-175",
+   "file": "README.md",
+   "lines": [
+    158,
+    175
+   ],
+   "lang": "python",
+   "tool": "transformers",
+   "kind": "code",
+   "text": "from transformers import pipeline\n\ngenerator = pipeline(\n    \"text-generation\",\n    model=\"LiquidAI/LFM3-1.7B\",\n    trust_remote_code=True,\n)\n\nmessages = [{\"role\": \"user\", \"content\": \"What is C. elegans?\"}]\noutput = generator(\n    messages,\n    do_sample=True,\n    temperature=0.1,\n    top_k=50,\n    repetition_penalty=1.1,\n    max_new_tokens=2048,\n)\nprint(output[0][\"generated_text\"][-1][\"content\"])",
+   "translation": {
+    "translated": true,
+    "params": [
+     {
+      "flag": "--temp",
+      "value": "0.1",
+      "from": "temperature: 0.1"
+     },
+     {
+      "flag": "--top-k",
+      "value": "50",
+      "from": "top_k: 50"
+     },
+     {
+      "flag": "--repeat-penalty",
+      "value": "1.1",
+      "from": "repetition_penalty: 1.1"
+     },
+     {
+      "flag": "-n",
+      "value": "2048",
+      "from": "max_new_tokens: 2048"
+     }
+    ],
+    "untranslatable": null
+   },
+   "doc": "base-card",
+   "doc_sha": "ac2586a34f1a1c03329dbdcdefabd8b6478ddaa7",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-1.7B README.md:L186-191",
+   "file": "README.md",
+   "lines": [
+    186,
+    191
+   ],
+   "lang": "text",
+   "tool": "text",
+   "kind": "prompt-format",
+   "text": "<|startoftext|><|im_start|>system\nYou are a helpful assistant trained by Liquid AI.<|im_end|>\n<|im_start|>user\nExplain how a heat pump works.<|im_end|>\n<|im_start|>assistant\n<think>",
+   "doc": "base-card",
+   "doc_sha": "ac2586a34f1a1c03329dbdcdefabd8b6478ddaa7",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-1.7B README.md:L208-214",
+   "file": "README.md",
+   "lines": [
+    208,
+    214
+   ],
+   "lang": "text",
+   "tool": "text",
+   "kind": "prompt-format",
+   "text": "<tool_call>\n<function=get_weather>\n<parameter=city>\nParis\n</parameter>\n</function>\n</tool_call>",
+   "doc": "base-card",
+   "doc_sha": "ac2586a34f1a1c03329dbdcdefabd8b6478ddaa7",
+   "scope": "model"
+  },
+  {
+   "source": "LiquidAI/LFM3-1.7B README.md:L229-240",
+   "file": "README.md",
+   "lines": [
+    229,
+    240
+   ],
+   "lang": "python",
+   "tool": "python",
+   "kind": "code",
+   "text": "tools = [\n    search_tool,\n    {\"type\": \"function\", \"defer_loading\": True, \"function\": get_weather_schema},\n]\nmessages.append({\n    \"role\": \"tool\",\n    \"tool_call_id\": call_id,\n    \"content\": [\n        {\"type\": \"text\", \"text\": \"Found 1 tool.\"},\n        {\"type\": \"tool_reference\", \"name\": \"get_weather\"},\n    ],\n})",
+   "doc": "base-card",
+   "doc_sha": "ac2586a34f1a1c03329dbdcdefabd8b6478ddaa7",
+   "scope": "model"
+  }
+ ],
+ "card_notes": [
+  {
+   "text": "<td style=\"border: 0; padding: 0.55em 0.75em;\"><strong>Context length</strong></td>",
+   "source": "LiquidAI/LFM3-1.7B README.md:L83"
+  },
+  {
+   "text": "<summary><strong>Chat template</strong></summary>",
+   "source": "LiquidAI/LFM3-1.7B README.md:L181"
+  },
+  {
+   "text": "LFM3 uses this ChatML format, generated from the checkpoint's [chat template](https://huggingface.co/LiquidAI/LFM3-1.7B/blob/main/chat_template.jinja):",
+   "source": "LiquidAI/LFM3-1.7B README.md:L183"
+  },
+  {
+   "text": "Use `tokenizer.apply_chat_template()` with `add_generation_prompt=True` to format messages automatically.",
+   "source": "LiquidAI/LFM3-1.7B README.md:L194"
+  },
+  {
+   "text": "Reasoning is enabled by default. You can set `enable_thinking=False` to disable thinking traces, but this behavior can be inconsistent, especially for reasoning-heavy tasks.",
+   "source": "LiquidAI/LFM3-1.7B README.md:L196"
+  },
+  {
+   "text": "Pass function schemas through `tools=...` to `apply_chat_template()`. The template formats tool definitions and results automatically. Generated calls use XML:",
+   "source": "LiquidAI/LFM3-1.7B README.md:L205"
+  },
+  {
+   "text": "LFM3 supports deferred tools. Set `defer_loading=True` to keep tool definitions out of the prompt until your harness's search tool returns their names as `tool_reference` parts. The chat template then inserts their definitions into `<additional_tools>`.",
+   "source": "LiquidAI/LFM3-1.7B README.md:L226"
+  },
+  {
+   "text": "Your harness implements and runs the search. Keep the full `tools` list, including deferred tools, on every request. In the system prompt, tell the model when to search:",
+   "source": "LiquidAI/LFM3-1.7B README.md:L243"
+  },
+  {
+   "text": "Works with vLLM, SGLang, and LFM3-compatible llama.cpp builds. For llama.cpp, use a GGUF with the current chat template or load it with `--chat-template-file`.",
+   "source": "LiquidAI/LFM3-1.7B README.md:L247"
+  },
+  {
+   "text": "<p><small>All models were served with vLLM in BF16 at their full context length: 262,144 tokens for LFM3-1.7B, Qwen3.5-4B, and Qwen3.5-9B, and 131,072 tokens for LFM2.5-2.6B, MiniCPM5-2B, and Gemma 4 E4B. Unless listed below, every eval uses temperature 0.6 and top_p 0.95, with no output limit other",
+   "source": "LiquidAI/LFM3-1.7B README.md:L531"
+  },
+  {
+   "text": "<strong>BFCL V4</strong>: greedy decoding, up to 32,768 output tokens.<br>",
+   "source": "LiquidAI/LFM3-1.7B README.md:L534"
+  },
+  {
+   "text": "<strong>ToolSandbox</strong>: greedy decoding, up to 1,024 tokens per turn.<br>",
+   "source": "LiquidAI/LFM3-1.7B README.md:L535"
+  },
+  {
+   "text": "<strong>Claw-Eval</strong>: greedy decoding, 3 trials per task.<br>",
+   "source": "LiquidAI/LFM3-1.7B README.md:L537"
+  },
+  {
+   "text": "<strong>BrowseComp-Plus</strong>: OpenClaw agent, greedy decoding, up to 8,192 tokens per turn.<br>",
+   "source": "LiquidAI/LFM3-1.7B README.md:L538"
+  }
+ ],
+ "chat_template": {
+  "gguf_sha256": "f45005c50cd2a97329722bf3a2dee9f16c04cdf825a589b280fb7e99e6827818",
+  "repo_sha256": "f45005c50cd2a97329722bf3a2dee9f16c04cdf825a589b280fb7e99e6827818",
+  "repo_file": "chat_template.jinja",
+  "same": true,
+  "gguf_chars": 12129,
+  "repo_chars": 12129,
+  "repo_label": "LiquidAI/LFM3-1.7B",
+  "use": "gguf"
+ },
+ "stop": {
+  "eos_token": "<|im_end|>",
+  "eos_token_id": [
+   124900
+  ],
+  "eos_token_id_source": "LiquidAI/LFM3-1.7B generation_config.json",
+  "analysis": {
+   "tokens": [
+    {
+     "id": 124900,
+     "text": "<|im_end|>",
+     "source": "LiquidAI/LFM3-1.7B generation_config.json eos_token_id",
+     "eog_by": "GGUF tokenizer.ggml.eos_token_id"
+    }
+   ],
+   "missing": [],
+   "gguf": {
+    "eos": 124900
+   }
+  }
+ },
+ "rope": {
+  "rope.freq_base": 1000000.0,
+  "config": {
+   "full_attention": {
+    "partial_rotary_factor": 0.5,
+    "rope_theta": 1000000.0,
+    "rope_type": "default"
+   },
+   "sliding_attention": {
+    "rope_theta": 10000,
+    "rope_type": "default"
+   }
+  }
+ },
+ "aux": null,
+ "gguf": {
+  "general.architecture": "lfm3",
+  "general.name": "LFM3-1.7B-Uncensored",
+  "general.file_type": 15,
+  "general.quantization_version": 2,
+  "_gguf_version": 3
+ },
+ "snapshot": {
+  "path": "AtomicChat--LFM3-1.7B-Uncensored-GGUF/8851ef23eecf16f8d1bae46408cccd4249284bad",
+  "fetched_bytes": 14131,
+  "errors": null,
+  "gated": false
+ },
+ "base_snapshot": {
+  "path": "LiquidAI--LFM3-1.7B/ac2586a34f1a1c03329dbdcdefabd8b6478ddaa7",
+  "fetched_bytes": 18435054,
+  "errors": null,
+  "gated": false
+ },
+ "repo_files": {
+  ".gitattributes": {
+   "size": 1893,
+   "sha256": null,
+   "blob": "d8354922c4e6cb4950f1e677f6085bae3968d020",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "LFM3-1.7B-Uncensored-AD-Q4_K_M.gguf": {
+   "size": 1132208000,
+   "sha256": "b22df65673b54ed326f18f74826d76f3b65dadc237ffd6306cd52be04544827d",
+   "blob": "6112182d21580ee48ff694433fcff2b56bdb4bca",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (1132 MB)"
+  },
+  "LFM3-1.7B-Uncensored-AD-Q6_K.gguf": {
+   "size": 1587969920,
+   "sha256": "4a7d91c094b9a0f8ed094093f3a0eb3cfeeb46b9bd491e33115689fc5d658b22",
+   "blob": "1cc5c07719cb64cf0f190be3b9477aaca0de706f",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (1587 MB)"
+  },
+  "LICENSE": {
+   "size": 10574,
+   "sha256": null,
+   "blob": "25e731c697c4fe4c52ee654cedf7106a827748d2",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "README.md": {
+   "size": 1664,
+   "sha256": null,
+   "blob": "425c91d5efd20bedee9ebe471afb7eacf05074df",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  }
+ },
+ "base_repo_files": {
+  ".eval_results/LFM3-1.7B.yaml": {
+   "size": 1553,
+   "sha256": null,
+   "blob": "0edd2cd8b3b9dcd54a87adf362d27f24e503273f",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  ".gitattributes": {
+   "size": 1838,
+   "sha256": null,
+   "blob": "6d2346e3c9f233ca07abefd3530497b08ca878af",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "LICENSE": {
+   "size": 10574,
+   "sha256": null,
+   "blob": "25e731c697c4fe4c52ee654cedf7106a827748d2",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "README.md": {
+   "size": 53353,
+   "sha256": null,
+   "blob": "293cdf5b6d5a5b6032e423adaafe7daadd9782b9",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "assets/icons/api.svg": {
+   "size": 233,
+   "sha256": null,
+   "blob": "8626acd537902ba4761fd62eec2bfae363197bd2",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "assets/icons/blog.svg": {
+   "size": 258,
+   "sha256": null,
+   "blob": "186f835548622364993de5843a3bd33eb7bb935c",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "assets/icons/docs.svg": {
+   "size": 276,
+   "sha256": null,
+   "blob": "ab29c7f647f30fbf9cfa7c5880fae78963667c00",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "assets/icons/try.svg": {
+   "size": 246,
+   "sha256": null,
+   "blob": "e4c1624c3225c6d3f8b302f52bb0339ddc20fbc2",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "assets/lfm3-edge-inference.webp": {
+   "size": 213860,
+   "sha256": "ac73ebf33a4ea9aa3191d64f28d10a3ed51531dfa5442390071b876ae1b37ea4",
+   "blob": "d5253663ae09494833b2e61fd041bc455eb03b82",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "assets/lfm3-gpu-throughput-b300.png": {
+   "size": 85302,
+   "sha256": null,
+   "blob": "659e2bf2de26130a2d93ef3f329935683916cc0f",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "assets/lfm3-post-training-recipe.webp": {
+   "size": 19342,
+   "sha256": null,
+   "blob": "4d1ba5945031f92b64ba31cc0fca6765fe5dc604",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "assets/lfm3-pre-training-recipe.webp": {
+   "size": 28860,
+   "sha256": null,
+   "blob": "c71f9250bca05d41a14ab063ee2b7054c8654cd1",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "assets/liquid-ai-banner.webp": {
+   "size": 38172,
+   "sha256": null,
+   "blob": "6215ed705c92655e6dbf40f955abc1169f3c3516",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "chat_template.jinja": {
+   "size": 12129,
+   "sha256": null,
+   "blob": "d0747b8b5fc99eaecfe02a04eefcff75eb181334",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "config.json": {
+   "size": 1454,
+   "sha256": null,
+   "blob": "99c878848ecd01f7b599148315c84634b5c5c656",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "configuration_lfm3.py": {
+   "size": 6113,
+   "sha256": null,
+   "blob": "a3cc0e726e8f4656f8468df5c8445f26e6dc8464",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "generation_config.json": {
+   "size": 328,
+   "sha256": null,
+   "blob": "828e9a1ac7789d8b38af0dfe573ab6362598745b",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "lfm3_conv.py": {
+   "size": 8532,
+   "sha256": null,
+   "blob": "a1b67afdb605452f5a99751862863d5460a1fa69",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "model.safetensors": {
+   "size": 3457635448,
+   "sha256": "135922caef64e81e52af88ede8b7c3ddaa9d6da220a9737fb3065275dbfb4330",
+   "blob": "fe4026d62a6850c14abd481137e151920a37072f",
+   "fetched": false,
+   "skipped": "weight file, fetched only by a full run (3457 MB)"
+  },
+  "modeling_lfm3.py": {
+   "size": 42359,
+   "sha256": null,
+   "blob": "0ccffc7ed179c2e3aaa19ab93bba735abb1d124d",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "special_tokens_map.json": {
+   "size": 92,
+   "sha256": null,
+   "blob": "5d871daaacbf26aaa9cb47c2935f30e797ee35a7",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  },
+  "tokenizer.json": {
+   "size": 17908635,
+   "sha256": "7e226e34bface23ccf6e495d157bf77186c1c30a7659880e1a8994db528c3701",
+   "blob": "6378e4e44d17d17b8acfd77923e66aef8c495234",
+   "verified": "lfs-sha256",
+   "fetched": true
+  },
+  "tokenizer_config.json": {
+   "size": 1545,
+   "sha256": null,
+   "blob": "562b1ed0762f36c964646b8737081ced6af40754",
+   "verified": "git-blob-sha1",
+   "fetched": true
+  }
+ },
+ "found_in": [
+  "add-model.sh --fetch"
+ ],
+ "match": null,
+ "local_check": {
+  "host": "grok-bot-vm-414137730",
+  "sha256_ok": true,
+  "checked": "2026-10-28"
+ },
+ "unknown": null,
+ "warnings": null,
+ "updated": "2026-10-28",
+ "by": "scripts/model_db.py",
+ "gguf_meta": {
+  "general.architecture": "lfm3",
+  "general.type": "model",
+  "general.size_label": "1.7B",
+  "general.license": "other",
+  "general.license.name": "lfm1.0",
+  "general.license.link": "LICENSE",
+  "general.base_model.count": 1,
+  "general.base_model.0.name": "LFM3 1.7B Base",
+  "general.base_model.0.organization": "LiquidAI",
+  "general.base_model.0.repo_url": "https://huggingface.co/LiquidAI/LFM3-1.7B-Base",
+  "general.tags": [
+   "liquid",
+   "lfm3",
+   "edge",
+   "conversational",
+   "custom_code",
+   "text-generation"
+  ],
+  "general.languages": [
+   "en",
+   "ar",
+   "zh",
+   "fr",
+   "de",
+   "it",
+   "ja",
+   "ko",
+   "pt",
+   "es",
+   "vi",
+   "th",
+   "id",
+   "hi",
+   "ru",
+   "pl"
+  ],
+  "lfm3.block_count": 24,
+  "lfm3.context_length": 262144,
+  "lfm3.embedding_length": 2048,
+  "lfm3.feed_forward_length": 7680,
+  "lfm3.attention.head_count": 16,
+  "lfm3.attention.head_count_kv": {
+   "array_len": 24
+  },
+  "lfm3.rope.freq_base": 1000000.0,
+  "lfm3.rope.freq_base_swa": 10000.0,
+  "lfm3.attention.layer_norm_rms_epsilon": 9.999999747378752e-06,
+  "lfm3.attention.key_length": 128,
+  "lfm3.attention.value_length": 128,
+  "lfm3.rope.dimension_count": 128,
+  "lfm3.attention.sliding_window_pattern": {
+   "array_len": 24
+  },
+  "lfm3.attention.sliding_window": 256,
+  "lfm3.shortconv.l_cache": 7,
+  "tokenizer.ggml.model": "gpt2",
+  "tokenizer.ggml.pre": "lfm2",
+  "tokenizer.ggml.tokens": {
+   "array_len": 128000
+  },
+  "tokenizer.ggml.token_type": {
+   "array_len": 128000
+  },
+  "tokenizer.ggml.merges": {
+   "array_len": 293320
+  },
+  "tokenizer.ggml.bos_token_id": 124894,
+  "tokenizer.ggml.eos_token_id": 124900,
+  "tokenizer.ggml.padding_token_id": 124893,
+  "tokenizer.ggml.add_bos_token": false,
+  "tokenizer.ggml.add_eos_token": false,
+  "tokenizer.chat_template": {
+   "sha256": "f45005c50cd2a97329722bf3a2dee9f16c04cdf825a589b280fb7e99e6827818",
+   "chars": 12129
+  },
+  "general.name": "LFM3-1.7B-Uncensored",
+  "atomic.abliterate.sets": "[\"enru\"]",
+  "atomic.abliterate.row": "18",
+  "atomic.abliterate.per_layer": "true",
+  "atomic.abliterate.writers": "noembd",
+  "atomic.abliterate.layers": "8-23",
+  "atomic.abliterate.directions_sha256": "1d2f833ae8ad936b8f442f1f477bf4b3f8f32c6ee74ec3a67821cf3688daf4eb",
+  "atomic.abliterate.scale": "2.0",
+  "general.quantization_version": 2,
+  "general.file_type": 15,
+  "quantize.imatrix.file": "/work/LFM3-1.7B-Uncensored/ablit-b/imatrix.gguf",
+  "quantize.imatrix.dataset": "/work/LFM3-1.7B-Uncensored/corpus/calib_train.txt",
+  "quantize.imatrix.entries_count": 153,
+  "quantize.imatrix.chunks_count": 9233,
+  "split.no": 0,
+  "split.tensors.count": 287,
+  "split.count": 1,
+  "_gguf_version": 3,
+  "_n_tensors": 287
+ },
+ "base_chain": [
+  {
+   "repo": "LiquidAI/LFM3-1.7B",
+   "api_id": "LiquidAI/LFM3-1.7B",
+   "revision": "ac2586a34f1a1c03329dbdcdefabd8b6478ddaa7",
+   "via": "card base_model",
+   "card_data": {
+    "license": "other",
+    "license_name": "lfm1.0",
+    "license_link": "LICENSE",
+    "language": [
+     "en",
+     "ar",
+     "zh",
+     "fr",
+     "de",
+     "it",
+     "ja",
+     "ko",
+     "pt",
+     "es",
+     "vi",
+     "th",
+     "id",
+     "hi",
+     "ru",
+     "pl"
+    ],
+    "base_model": "LiquidAI/LFM3-1.7B-Base",
+    "pipeline_tag": "text-generation",
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "text-generation",
+   "safetensors": {
+    "parameters": {
+     "BF16": 1728801536
+    },
+    "total": 1728801536
+   },
+   "license_files": [
+    "LICENSE"
+   ]
+  },
+  {
+   "repo": "LiquidAI/LFM3-1.7B-Base",
+   "api_id": "LiquidAI/LFM3-1.7B-Base",
+   "revision": "545fc8f4c7b5fa9f405105274cd29c4f8f44b526",
+   "via": "LiquidAI/LFM3-1.7B card base_model",
+   "card_data": {
+    "license": "other",
+    "license_name": "lfm1.0",
+    "license_link": "LICENSE",
+    "language": [
+     "en",
+     "ar",
+     "zh",
+     "fr",
+     "de",
+     "it",
+     "ja",
+     "ko",
+     "pt",
+     "es",
+     "vi",
+     "th",
+     "id",
+     "hi",
+     "ru",
+     "pl"
+    ],
+    "pipeline_tag": "text-generation",
+    "library_name": "transformers"
+   },
+   "pipeline_tag": "text-generation",
+   "safetensors": {
+    "parameters": {
+     "BF16": 1728801536
+    },
+    "total": 1728801536
+   },
+   "license_files": [
+    "LICENSE"
+   ]
+  }
+ ],
+ "github": null,
+ "github_dropped": null,
+ "descriptor": {
+  "repo_id": {
+   "effective": "AtomicChat/LFM3-1.7B-Uncensored-GGUF",
+   "source": "HF API id"
+  },
+  "revision": {
+   "effective": "8851ef23eecf16f8d1bae46408cccd4249284bad",
+   "source": "pinned (manifest / database)"
+  },
+  "latest_revision": {
+   "effective": "3ad712542eb9de349dbd28f2739b69c925cdec7d",
+   "source": "HF API main"
+  },
+  "file": {
+   "effective": "LFM3-1.7B-Uncensored-AD-Q4_K_M.gguf",
+   "source": "HF API siblings"
+  },
+  "bytes": {
+   "effective": 1132208000,
+   "source": "HF API LFS size"
+  },
+  "sha256": {
+   "effective": "b22df65673b54ed326f18f74826d76f3b65dadc237ffd6306cd52be04544827d",
+   "source": "HF API LFS oid"
+  },
+  "quant": {
+   "effective": "Q4_K_M",
+   "source": "file name",
+   "values": [
+    {
+     "value": "Q4_K_M",
+     "source": "file name"
+    },
+    {
+     "value": "Q4_K_M",
+     "source": "GGUF general.file_type"
+    }
+   ]
+  },
+  "license": {
+   "effective": "other",
+   "source": "AtomicChat/LFM3-1.7B-Uncensored-GGUF card license",
+   "values": [
+    {
+     "value": "other",
+     "source": "AtomicChat/LFM3-1.7B-Uncensored-GGUF card license"
+    },
+    {
+     "value": "other",
+     "source": "LiquidAI/LFM3-1.7B card license"
+    },
+    {
+     "value": "other",
+     "source": "LiquidAI/LFM3-1.7B-Base card license"
+    },
+    {
+     "value": "other",
+     "source": "GGUF general.license"
+    }
+   ]
+  },
+  "license_name": {
+   "effective": "lfm-open-license-v1.0",
+   "source": "AtomicChat/LFM3-1.7B-Uncensored-GGUF card license_name",
+   "values": [
+    {
+     "value": "lfm-open-license-v1.0",
+     "source": "AtomicChat/LFM3-1.7B-Uncensored-GGUF card license_name"
+    },
+    {
+     "value": "lfm1.0",
+     "source": "LiquidAI/LFM3-1.7B card license_name"
+    },
+    {
+     "value": "lfm1.0",
+     "source": "LiquidAI/LFM3-1.7B-Base card license_name"
+    },
+    {
+     "value": "lfm1.0",
+     "source": "GGUF general.license.name"
+    }
+   ]
+  },
+  "license_link": {
+   "effective": "https://huggingface.co/LiquidAI/LFM3-1.7B/blob/main/LICENSE",
+   "source": "AtomicChat/LFM3-1.7B-Uncensored-GGUF card license_link",
+   "values": [
+    {
+     "value": "https://huggingface.co/LiquidAI/LFM3-1.7B/blob/main/LICENSE",
+     "source": "AtomicChat/LFM3-1.7B-Uncensored-GGUF card license_link"
+    },
+    {
+     "value": "LICENSE",
+     "source": "LiquidAI/LFM3-1.7B card license_link"
+    },
+    {
+     "value": "LICENSE",
+     "source": "LiquidAI/LFM3-1.7B-Base card license_link"
+    },
+    {
+     "value": "LICENSE",
+     "source": "GGUF general.license.link"
+    }
+   ]
+  },
+  "license_file": {
+   "effective": "AtomicChat/LFM3-1.7B-Uncensored-GGUF@8851ef23eecf/LICENSE",
+   "source": "AtomicChat/LFM3-1.7B-Uncensored-GGUF repo file",
+   "values": [
+    {
+     "value": "AtomicChat/LFM3-1.7B-Uncensored-GGUF@8851ef23eecf/LICENSE",
+     "source": "AtomicChat/LFM3-1.7B-Uncensored-GGUF repo file"
+    },
+    {
+     "value": "LiquidAI/LFM3-1.7B@ac2586a34f1a/LICENSE",
+     "source": "LiquidAI/LFM3-1.7B repo file"
+    },
+    {
+     "value": "LiquidAI/LFM3-1.7B-Base@545fc8f4c7b5/LICENSE",
+     "source": "LiquidAI/LFM3-1.7B-Base repo file"
+    }
+   ]
+  },
+  "base_model_chain": {
+   "effective": "LiquidAI/LFM3-1.7B",
+   "source": "card base_model",
+   "values": [
+    {
+     "value": "LiquidAI/LFM3-1.7B",
+     "source": "card base_model"
+    },
+    {
+     "value": "LiquidAI/LFM3-1.7B-Base",
+     "source": "LiquidAI/LFM3-1.7B card base_model"
+    }
+   ]
+  },
+  "gguf_base_model": {
+   "effective": {
+    "name": "LFM3 1.7B Base",
+    "organization": "LiquidAI",
+    "repo_url": "https://huggingface.co/LiquidAI/LFM3-1.7B-Base"
+   },
+   "source": "GGUF general.base_model.0"
+  },
+  "architecture": {
+   "effective": "lfm3",
+   "source": "GGUF general.architecture",
+   "values": [
+    {
+     "value": "lfm3",
+     "source": "GGUF general.architecture"
+    },
+    {
+     "value": "lfm3",
+     "source": "HF API gguf.architecture"
+    }
+   ]
+  },
+  "hf_architectures": {
+   "effective": [
+    "Lfm3ForCausalLM"
+   ],
+   "source": "LiquidAI/LFM3-1.7B config.json architectures"
+  },
+  "hf_model_type": {
+   "effective": "lfm3",
+   "source": "LiquidAI/LFM3-1.7B config.json model_type"
+  },
+  "parameters": {
+   "effective": 1728801600,
+   "source": "HF API gguf.total (AtomicChat/LFM3-1.7B-Uncensored-GGUF)",
+   "values": [
+    {
+     "value": 1728801600,
+     "source": "HF API gguf.total (AtomicChat/LFM3-1.7B-Uncensored-GGUF)"
+    },
+    {
+     "value": 1728801536,
+     "source": "HF API safetensors.total (LiquidAI/LFM3-1.7B)"
+    },
+    {
+     "value": 1728801536,
+     "source": "HF API safetensors.total (LiquidAI/LFM3-1.7B-Base)"
+    }
+   ],
+   "conflict": true
+  },
+  "size_label": {
+   "effective": "1.7B",
+   "source": "GGUF general.size_label"
+  },
+  "ctx_statements": {
+   "effective": {
+    "value": 262144,
+    "quote": "- **Agentic training:** post-trained for agentic harnesses such as Hermes Agent, Pi, and OpenClaw, with a 256K-token context window."
+   },
+   "source": "LiquidAI/LFM3-1.7B README.md:L51",
+   "values": [
+    {
+     "value": {
+      "value": 262144,
+      "quote": "- **Agentic training:** post-trained for agentic harnesses such as Hermes Agent, Pi, and OpenClaw, with a 256K-token context window."
+     },
+     "source": "LiquidAI/LFM3-1.7B README.md:L51"
+    },
+    {
+     "value": {
+      "value": 262144,
+      "quote": "<p><small>All models were served with vLLM in BF16 at their full context length: 262,144 tokens for LFM3-1.7B, Qwen3.5-4B, and Qwen3.5-9B, and 131,072 tokens for LFM2.5-2.6B, MiniCPM5-2B, and Gemma 4 E4B. Unless listed below, every eval use"
+     },
+     "source": "LiquidAI/LFM3-1.7B README.md:L531"
+    },
+    {
+     "value": {
+      "value": 32768,
+      "quote": "<p><small>All models run as Q4_0 GGUF files in llama.cpp with 32,768 tokens of context, batch size 1, 100 output tokens, and GPU offload. Prefill is the prompt processing speed and decode is the generation speed, both in tokens per second. "
+     },
+     "source": "LiquidAI/LFM3-1.7B README.md:L557"
+    },
+    {
+     "value": {
+      "value": 131072,
+      "quote": "<img src=\"https://huggingface.co/LiquidAI/LFM3-1.7B/resolve/main/assets/lfm3-pre-training-recipe.webp\" alt=\"LFM3-1.7B pre-training: web and synthetic data (about 15T tokens), then code, math, and science (3T tokens at 4K context), followed "
+     },
+     "source": "LiquidAI/LFM3-1.7B README.md:L577"
+    },
+    {
+     "value": {
+      "value": 262144,
+      "quote": "- **Mid-training:** the last 3.5T tokens use curated, higher-quality data with a larger share of agentic traces and tool calls. This stage also extends the context window to 256K tokens."
+     },
+     "source": "LiquidAI/LFM3-1.7B README.md:L582"
+    }
+   ]
+  },
+  "ctx": {
+   "effective": 262144,
+   "source": "card: LiquidAI/LFM3-1.7B README.md:L531",
+   "values": [
+    {
+     "value": 262144,
+     "source": "card: LiquidAI/LFM3-1.7B README.md:L531"
+    },
+    {
+     "value": 262144,
+     "source": "LiquidAI/LFM3-1.7B config.json max_position_embeddings"
+    },
+    {
+     "value": 262144,
+     "source": "GGUF lfm3.context_length"
+    }
+   ],
+   "precedence": "card statement > config.json > GGUF header > GitHub README"
+  },
+  "pipeline_tag": {
+   "effective": "text-generation",
+   "source": "AtomicChat/LFM3-1.7B-Uncensored-GGUF HF API pipeline_tag",
+   "values": [
+    {
+     "value": "text-generation",
+     "source": "AtomicChat/LFM3-1.7B-Uncensored-GGUF HF API pipeline_tag"
+    },
+    {
+     "value": "text-generation",
+     "source": "LiquidAI/LFM3-1.7B HF API pipeline_tag"
+    },
+    {
+     "value": "text-generation",
+     "source": "LiquidAI/LFM3-1.7B-Base HF API pipeline_tag"
+    }
+   ]
+  },
+  "languages": {
+   "effective": [
+    "en",
+    "zh",
+    "de"
+   ],
+   "source": "AtomicChat/LFM3-1.7B-Uncensored-GGUF card language",
+   "values": [
+    {
+     "value": [
+      "en",
+      "zh",
+      "de"
+     ],
+     "source": "AtomicChat/LFM3-1.7B-Uncensored-GGUF card language"
+    },
+    {
+     "value": [
+      "en",
+      "ar",
+      "zh",
+      "fr",
+      "de",
+      "it",
+      "ja",
+      "ko",
+      "pt",
+      "es",
+      "vi",
+      "th",
+      "id",
+      "hi",
+      "ru",
+      "pl"
+     ],
+     "source": "LiquidAI/LFM3-1.7B card language"
+    },
+    {
+     "value": [
+      "en",
+      "ar",
+      "zh",
+      "fr",
+      "de",
+      "it",
+      "ja",
+      "ko",
+      "pt",
+      "es",
+      "vi",
+      "th",
+      "id",
+      "hi",
+      "ru",
+      "pl"
+     ],
+     "source": "LiquidAI/LFM3-1.7B-Base card language"
+    },
+    {
+     "value": [
+      "en",
+      "ar",
+      "zh",
+      "fr",
+      "de",
+      "it",
+      "ja",
+      "ko",
+      "pt",
+      "es",
+      "vi",
+      "th",
+      "id",
+      "hi",
+      "ru",
+      "pl"
+     ],
+     "source": "GGUF general.languages"
+    }
+   ],
+   "conflict": true
+  }
+ },
+ "required_params": {
+  "kind": "chat",
+  "native_ctx": 262144,
+  "native_ctx_source": "card: LiquidAI/LFM3-1.7B README.md:L531",
+  "yarn": null,
+  "yarn_source": null,
+  "items": [
+   {
+    "class": "REQUIRED",
+    "flag": "--jinja",
+    "value": null,
+    "source": "GGUF tokenizer.chat_template (f45005c50cd2)",
+    "why_required": "messages, tool calls and thinking are formatted by the model's chat template; without --jinja llama-server falls back to a built-in approximation"
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--temp",
+    "value": "0.1",
+    "source": "LiquidAI/LFM3-1.7B LiquidAI/LFM3-1.7B README.md:L152",
+    "why_required": "the card's recommended sampling (General (chat, tool use, agents, coding)"
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--top-k",
+    "value": "50",
+    "source": "LiquidAI/LFM3-1.7B LiquidAI/LFM3-1.7B README.md:L152",
+    "why_required": "the card's recommended sampling (General (chat, tool use, agents, coding)"
+   },
+   {
+    "class": "RECOMMENDED",
+    "flag": "--repeat-penalty",
+    "value": "1.1",
+    "source": "LiquidAI/LFM3-1.7B LiquidAI/LFM3-1.7B README.md:L152",
+    "why_required": "the card's recommended sampling (General (chat, tool use, agents, coding)"
+   }
+  ]
+ },
+ "blockers": null,
+ "params_problems": null,
+ "params_build": "b11374",
+ "native_ctx": 262144,
+ "native_ctx_source": "card: LiquidAI/LFM3-1.7B README.md:L531",
+ "license_info": {
+  "id": "lfm-open-license-v1.0",
+  "id_source": "AtomicChat/LFM3-1.7B-Uncensored-GGUF card front matter license_name",
+  "name": "lfm-open-license-v1.0",
+  "summary": "lfm-open-license-v1.0 (https://huggingface.co/LiquidAI/LFM3-1.7B/blob/main/LICENSE)",
+  "summary_source": "AtomicChat/LFM3-1.7B-Uncensored-GGUF card license",
+  "link": "https://huggingface.co/LiquidAI/LFM3-1.7B/blob/main/LICENSE",
+  "link_source": "AtomicChat/LFM3-1.7B-Uncensored-GGUF card license_link",
+  "texts": [
+   {
+    "file": "AtomicChat/LFM3-1.7B-Uncensored-GGUF@8851ef23eecf/LICENSE",
+    "path": "/home/box/.local/share/gguf/hf-meta/AtomicChat--LFM3-1.7B-Uncensored-GGUF/8851ef23eecf16f8d1bae46408cccd4249284bad/LICENSE",
+    "url": "https://huggingface.co/AtomicChat/LFM3-1.7B-Uncensored-GGUF/blob/8851ef23eecf16f8d1bae46408cccd4249284bad/LICENSE",
+    "sha256": "4d28ca14dedc0b3d0fcc2b3339f0e79931faa33874f3d24f522183a8fc70068c",
+    "bytes": 10574,
+    "what": "model"
+   },
+   {
+    "file": "LiquidAI/LFM3-1.7B@ac2586a34f1a/LICENSE",
+    "path": "/home/box/.local/share/gguf/hf-meta/LiquidAI--LFM3-1.7B/ac2586a34f1a1c03329dbdcdefabd8b6478ddaa7/LICENSE",
+    "url": "https://huggingface.co/LiquidAI/LFM3-1.7B/blob/ac2586a34f1a1c03329dbdcdefabd8b6478ddaa7/LICENSE",
+    "sha256": "4d28ca14dedc0b3d0fcc2b3339f0e79931faa33874f3d24f522183a8fc70068c",
+    "bytes": 10574,
+    "what": "model"
+   }
+  ],
+  "obligations": [
+   {
+    "quote": "\"Commercial Use\" shall mean any use of the Work for direct or indirect commercial advantage or monetary compensation.",
+    "source": "AtomicChat/LFM3-1.7B-Uncensored-GGUF LICENSE:L27"
+   },
+   {
+    "quote": "\"Non-Commercial or Research Purposes\" shall mean purposes that do not involve any use of the Work or a Derivative Work for Commercial Use.",
+    "source": "AtomicChat/LFM3-1.7B-Uncensored-GGUF LICENSE:L31"
+   },
+   {
+    "quote": "2. Grant of Copyright License. Subject to the terms and conditions of this License, including the Commercial Use limitation set forth in Section 5, each Contributor hereby grants to You a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable copyright license to reproduce, prepar...",
+    "source": "AtomicChat/LFM3-1.7B-Uncensored-GGUF LICENSE:L35"
+   },
+   {
+    "quote": "3. Grant of Patent License. Subject to the terms and conditions of this License, including the Commercial Use limitation set forth in Section 5, each Contributor hereby grants to You a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable (except as stated in this section) patent...",
+    "source": "AtomicChat/LFM3-1.7B-Uncensored-GGUF LICENSE:L37"
+   },
+   {
+    "quote": "(a) You must give any other recipients of the Work or Derivative Works a copy of this License; and",
+    "source": "AtomicChat/LFM3-1.7B-Uncensored-GGUF LICENSE:L41"
+   },
+   {
+    "quote": "(b) You must cause any modified files to carry prominent notices stating that You changed the files; and",
+    "source": "AtomicChat/LFM3-1.7B-Uncensored-GGUF LICENSE:L43"
+   },
+   {
+    "quote": "(c) You must retain, in the Source form of any Derivative Works that You distribute, all copyright, patent, trademark, and attribution notices from the Source form of the Work, excluding those notices that do not pertain to any part of the Derivative Works; and",
+    "source": "AtomicChat/LFM3-1.7B-Uncensored-GGUF LICENSE:L45"
+   },
+   {
+    "quote": "(d) If the Work includes a \"NOTICE\" text file as part of its distribution, then any Derivative Works that You distribute must include a readable copy of the attribution notices contained within such NOTICE file, excluding those notices that do not pertain to any part of the Derivative Works, in at l...",
+    "source": "AtomicChat/LFM3-1.7B-Uncensored-GGUF LICENSE:L47"
+   },
+   {
+    "quote": "\"Commercial Use\" shall mean any use of the Work for direct or indirect commercial advantage or monetary compensation.",
+    "source": "LiquidAI/LFM3-1.7B LICENSE:L27"
+   },
+   {
+    "quote": "\"Non-Commercial or Research Purposes\" shall mean purposes that do not involve any use of the Work or a Derivative Work for Commercial Use.",
+    "source": "LiquidAI/LFM3-1.7B LICENSE:L31"
+   },
+   {
+    "quote": "2. Grant of Copyright License. Subject to the terms and conditions of this License, including the Commercial Use limitation set forth in Section 5, each Contributor hereby grants to You a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable copyright license to reproduce, prepar...",
+    "source": "LiquidAI/LFM3-1.7B LICENSE:L35"
+   },
+   {
+    "quote": "3. Grant of Patent License. Subject to the terms and conditions of this License, including the Commercial Use limitation set forth in Section 5, each Contributor hereby grants to You a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable (except as stated in this section) patent...",
+    "source": "LiquidAI/LFM3-1.7B LICENSE:L37"
+   },
+   {
+    "quote": "(a) You must give any other recipients of the Work or Derivative Works a copy of this License; and",
+    "source": "LiquidAI/LFM3-1.7B LICENSE:L41"
+   },
+   {
+    "quote": "(b) You must cause any modified files to carry prominent notices stating that You changed the files; and",
+    "source": "LiquidAI/LFM3-1.7B LICENSE:L43"
+   },
+   {
+    "quote": "(c) You must retain, in the Source form of any Derivative Works that You distribute, all copyright, patent, trademark, and attribution notices from the Source form of the Work, excluding those notices that do not pertain to any part of the Derivative Works; and",
+    "source": "LiquidAI/LFM3-1.7B LICENSE:L45"
+   },
+   {
+    "quote": "(d) If the Work includes a \"NOTICE\" text file as part of its distribution, then any Derivative Works that You distribute must include a readable copy of the attribution notices contained within such NOTICE file, excluding those notices that do not pertain to any part of the Derivative Works, in at l...",
+    "source": "LiquidAI/LFM3-1.7B LICENSE:L47"
+   },
+   {
+    "quote": "<td style=\"border: 0; padding: 0.55em 0.75em;\">24 layers: 13 gated short convolutions, 5 sliding-window attention, 6 global attention</td>",
+    "source": "LiquidAI/LFM3-1.7B README.md:L80"
+   }
+  ],
+  "gated": false,
+  "unknown": false,
+  "seen": [
+   {
+    "value": "other",
+    "source": "AtomicChat/LFM3-1.7B-Uncensored-GGUF card license"
+   },
+   {
+    "value": "other",
+    "source": "LiquidAI/LFM3-1.7B card license"
+   },
+   {
+    "value": "other",
+    "source": "LiquidAI/LFM3-1.7B-Base card license"
+   },
+   {
+    "value": "other",
+    "source": "GGUF general.license"
+   }
+  ]
+ }
+}

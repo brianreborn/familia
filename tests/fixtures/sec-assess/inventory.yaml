@@ -1,0 +1,24 @@
+# Fixture-only inventory for sec_assess unit tests. Not a live target list.
+version: 2
+hosts:
+  fixture-alpha:
+    kind: desktop
+    measured: true
+    os: linux
+    ram_mib: 8192
+    reserve_ram_mib: 2048
+  fixture-beta:
+    kind: phone
+    measured: false
+    os: android
+    notes: "planned; no measured inventory"
+pentests:
+  fleet:
+    tools:
+      allow: []
+    launch_test_only: true
+    scope:
+      allow: [fixture-alpha, fixture-beta]
+      deny: []
+    requires_operator_confirm: true
+    status: planned

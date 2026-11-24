@@ -8,8 +8,7 @@ GUM=$(command -v gum || true)
 YES=0
 QUERY=""
 
-say() { printf 'search-x: %s\n' "$*"; }
-die() { printf 'search-x: error: %s\n' "$1" >&2; exit "${2:-1}"; }
+MK_TAG=search-x; MK_SAY_FD=1; . "$ROOT/lib/msg.mk"   # say (stdout), die
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -117,7 +116,7 @@ fi
 
 # Optional: ask protomodel to refine the query (best-effort, never required)
 if curl -sf --connect-timeout 1 http://127.0.0.1:8080/v1/models >/dev/null 2>&1 \
-   || curl -sf --connect-timeout 1 http://127.0.0.1:9931/v1/models >/dev/null 2>&1; then
+   || python3 "$ROOT/scripts/familia_auth.py" probe >/dev/null; then
   if can_prompt && confirm "Ask the protomodel to refine this query first?"; then
     say "(protomodel tip — paste a refined query if you like; Enter keeps yours)"
     printf '%s\n' "Refine this X search query for twitter-cli. Reply with ONLY the query string: $QUERY" \

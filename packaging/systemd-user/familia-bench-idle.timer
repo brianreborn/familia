@@ -1,0 +1,13 @@
+# OPT-IN example; see familia-bench-idle.service. bench_idle.py itself enforces the idle
+# check, the min interval (6 h default) and the lock, so a frequent tick is cheap.
+[Unit]
+Description=familia swarm bench idle check every 20 minutes
+
+[Timer]
+OnBootSec=30min
+OnUnitActiveSec=20min
+RandomizedDelaySec=5min
+Persistent=false
+
+[Install]
+WantedBy=timers.target

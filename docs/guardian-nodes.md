@@ -18,6 +18,38 @@ Widening seatbelts is an explicit graph edit + `requires_operator_confirm: true`
 (see `scripts/graph_types.py` `check_pentest`). Do not remove either tools
 disable for CI or smoke tests ([REQUIREMENTS.md](../REQUIREMENTS.md)).
 
+`scripts/pentest-role.json` is the legacy filename for the same dual-disable
+stub as `scripts/guardian-role.json`.
+
+## Ready-check (Boundary lane)
+
+Offline, fail-closed readiness — **never** flips `planned` → `active`, **never**
+fetches weights, **no network**:
+
+```sh
+python3 scripts/guardian_ready.py
+python3 scripts/guardian_ready.py --graph graph.yaml --json
+```
+
+Exit codes:
+
+| Code | Meaning |
+|------|---------|
+| 0 | Seatbelts OK **and** GGUF present with sha256 matching the graph |
+| 2 | Seatbelts OK, but weights MISSING / UNMEASURED / MISMATCH |
+| 1 | Seatbelt or schema failure (e.g. non-empty `tools.allow`) |
+
+Who does what:
+
+| Lane | Owns |
+|------|------|
+| **Boundary** (this doc / `guardian_ready.py`) | Dual-disable seatbelts, ready-check, docs/tests that keep CI tools disabled |
+| **Hermes Wiring / operator** | Fetch Dolphin3-Cyber-8B Q2_K (or successor), measure sha256 into `graph.yaml`, then flip node + `pentests.*` to `active` |
+| **Operator** | One-time seatbelt widen via graph edit + confirm — never strip CI dual-disable |
+
+Seatbelts are not barricades: the operator may widen them deliberately. The
+ready-check only reports; it does not activate.
+
 ## Launch
 
 ```sh
@@ -40,8 +72,12 @@ Menus: `agents.guardian-launch-test`, `agents.guardian-start` (legacy
 ## Graph hooks
 
 - Model catalog role may still say `pentest`; public node type is `guardian`
-- Fleet node key: `miryam-pentest` (transitional); private topology renames to `guardian`
-- Planned: `angel-guardian` → private key `guardian` on angel
+- Fleet node key: `fleet-guardian` (transitional); private topology renames to `guardian`
+- Planned: `freebsd-guardian` → private key `guardian` on angel
 - Section name `pentests:` remains the schema type; UX name is guardian/defender
 
 Weights / placement details: [pentest-models.md](pentest-models.md).
+
+## Security assessment (separate from guardian launch)
+
+Operator-authorized assessment is **not** guardian launch-test and is never started by `start.sh`/CI. See [security-assessment.md](security-assessment.md) (`scripts/sec_assess.py`).
