@@ -356,6 +356,7 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/swarm/a57_ssh_dispatch.py` | opt-in A57 python/compile smoke over SSH from the miryam swarm runner; not a phone Actions runner; see docs/ci/a57-ssh-dispatch.md |
 | `scripts/swarm/deploy_fleet.py` | CI deployment controller; invoked by fleet-deploy workflow, not an interactive menu action |
 | `scripts/swarm/configure-fleet-role.sh` | Validated writer used by the Android cockpit fleet-role screen |
+| `scripts/menu_registry.py` | Checks and prints the six-category menu registry `scripts/menu-categories.txt` (epic #733); run through `python3 scripts/home_catalog.py --tree` and the tests |
 | `scripts/swarm/bench.sh` | swarm /run bench entry point (#183); run by swarm workers, not people; see docs/swarm-bench.md |
 | `scripts/swarm/bench_idle.py` | opt-in run-when-idle trigger for scripts/swarm/bench.sh (per host:user, nice 19, CPU only); run by a user timer or crontab; see docs/swarm-bench.md |
 | `scripts/swarm/forge.sh` | swarm forge adapter library; sourced by swarm scripts |
