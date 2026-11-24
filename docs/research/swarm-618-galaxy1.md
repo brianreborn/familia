@@ -1,8 +1,8 @@
 # generated/graph-{console,drone,security,tool-handler}.yaml claim tool-denial controls the schema does not implement
 
 Issue: https://github.com/brianreborn/familia/issues/618
-Runner: galaxy1 (stamp v=1 host=galaxy1 role=swarm-pull prog=swarm-pull@0.2.6-live mode=live)
-Generated: 2026-11-16 22:05 PST
+Runner: galaxy1 (stamp v=1 host=galaxy1 role=swarm-pull prog=swarm-pull@0.2.9.3-live mode=live)
+Generated: 2026-11-23 22:10 PST
 Approved-content-sha256: f74a17ff5a096ce9f6cecc6d932bef1a62e21085a324e6306eec464b4273fd38
 
 Status: rough first pass by the swarm pull worker. Section 1 is a read-only
@@ -11,18 +11,18 @@ local open model (http http://127.0.0.1:18113); treat it as unverified until rev
 
 ## 1. Read-only probe (measured on galaxy1)
 
-stamp v=1 host=galaxy1 role=swarm-pull prog=swarm-pull@0.2.6-live mode=live
+stamp v=1 host=galaxy1 role=swarm-pull prog=swarm-pull@0.2.9.3-live mode=live
 
 No specialized probe for this issue.
 
 ## 2. Local model draft (unverified)
 
-(a) The issue is about a generation that expects certain schema rules but finds the system doesn't support them, leading to validation failures. It highlights a mismatch between expected behavior and actual implementation.
+(a) The issue is about a problem where generated graphs don't work because of missing or incorrect configuration settings. The system expects certain parameters but they're not being applied correctly.
 
-(b) The likely approach would involve adjusting the schema to match the expected keys or removing non-existent keys, and possibly updating documentation or tests to reflect the correct requirements. Files may need to be moved to documentation or skips.
+(b) To fix this, we should update the configuration files to match the expected schema or remove conflicting settings, and ensure the files are properly documented in tests. The relevant files are likely in docs or a separate test folder.
 
-(c) Risks include potential security misconfigurations, incorrect model behavior, and false confidence in system functionality. Testing would need to confirm that changes resolve the issue without introducing new vulnerabilities.
+(c) The main risks are false confidence in the system and potential security issues from unmonitored tool usage. Testing is needed to confirm behavior and prevent unauthorized access.
 
-(d) Open questions include: What specific keys are missing? How should the system handle missing configurations? Should tests be updated to reflect the correct schema?
+(d) We need to clarify what files are missing or incorrect, and verify that they're not being used in production. Also, we should check if any new guidelines are needed for documentation.
 
 -- swarm/galaxy1
