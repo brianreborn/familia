@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import stat
 import sys
 from pathlib import Path
 
@@ -125,11 +126,43 @@ def empty_state():
     return {"level": None, "enable": [], "disable": [], "confirmed": []}
 
 
+def _read_override(path):
+    """Read the override with O_NOFOLLOW. Refuse a symlink, a foreign owner, or a loose mode."""
+    flags = os.O_RDONLY
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    try:
+        fd = os.open(str(path), flags)
+    except OSError as exc:
+        raise SecurityLevelError("%s: cannot open the override (%s)" % (path, exc.errno)) from exc
+    try:
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode):
+            raise SecurityLevelError("%s: refusing a symlink override" % path)
+        if hasattr(os, "getuid") and st.st_uid != os.getuid():
+            raise SecurityLevelError("%s: override is not owned by the operator" % path)
+        if st.st_mode & 0o077:
+            raise SecurityLevelError("%s: override must be mode 0600 or 0400" % path)
+        data = b""
+        while True:
+            chunk = os.read(fd, 65536)
+            if not chunk:
+                break
+            data += chunk
+        return data.decode("utf-8")
+    finally:
+        os.close(fd)
+
+
 def load_state(path):
-    if path is None or not Path(path).is_file():
+    if path is None or not os.path.lexists(path):
         return empty_state()
     try:
-        raw = _yaml_load(path)
+        text = _read_override(path)
+        import familia_yaml
+        raw = familia_yaml.loads(text) or {}
+    except SecurityLevelError:
+        raise
     except Exception as e:  # malformed file: refuse, never guess
         raise SecurityLevelError(f"{path}: cannot parse ({e}); fix it or run `familia security clear`") from e
     if raw in (None, ""):
@@ -146,11 +179,13 @@ def load_state(path):
     if lv is not None and not isinstance(lv, str):
         raise SecurityLevelError(f"{path}: level must be a level name, got {lv!r}")
     st["level"] = lv or None
-    for k in ("enable", "disable", "confirmed"):
+    for k in ("enable", "disable"):
         v = raw.get(k) or []
         if not isinstance(v, list) or not all(isinstance(x, str) for x in v):
             raise SecurityLevelError(f"{path}: {k} must be a list of set names")
         st[k] = sorted(set(v))
+    # `confirmed:` is not a grant. A file that lists it does not turn the set on.
+    st["confirmed"] = []
     return st
 
 
@@ -159,7 +194,7 @@ def dump_state(state):
              "# docs/security-levels.md. Delete this file (or `familia security clear`) for graph.yaml as declared."]
     if state.get("level"):
         lines.append(f'level: "{state['level']}"')
-    for k in ("enable", "disable", "confirmed"):
+    for k in ("enable", "disable"):
         if state.get(k):
             lines.append(f"{k}: [{', '.join(sorted(state[k]))}]")
     return "\n".join(lines) + "\n"
@@ -167,10 +202,24 @@ def dump_state(state):
 
 def write_state(path, state):
     p = Path(path)
-    p.parent.mkdir(parents=True, exist_ok=True)
+    parent = p.parent
+    parent.mkdir(parents=True, exist_ok=True)
+    if parent.is_symlink():
+        raise SecurityLevelError("%s: refusing a symlink directory" % parent)
+    if p.is_symlink():
+        raise SecurityLevelError("%s: refusing a symlink override" % p)
     tmp = p.with_name(p.name + ".tmp")
-    tmp.write_text(dump_state(state), encoding="utf-8")
-    os.replace(tmp, p)
+    flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    fd = os.open(str(tmp), flags, 0o600)
+    try:
+        os.write(fd, dump_state(state).encode("utf-8"))
+        if hasattr(os, "fchmod"):
+            os.fchmod(fd, 0o600)
+    finally:
+        os.close(fd)
+    os.replace(str(tmp), str(p))
 
 
 # ---------------------------------------------------------------- graph membership
@@ -281,12 +330,23 @@ def plan(graph, spec=None, state=None, level=None, environ=None, override_path=N
             if missing:
                 enabled.remove(s); disabled.append(s); changed_req = True
                 warnings.append(f"set {s} stays off: it needs set {', '.join(missing)} on")
-    # Confirm-required sets (pentest) need a recorded typed confirmation.
+    # Confirm-required sets stay off unless a signed, unexpired grant is in the tier state.
+    # A `confirmed:` list in the override is ignored.
+    import security_tier
+    env = os.environ if environ is None else environ
+    key_path = (env.get(security_tier.ADMIN_KEY_ENV) or "").strip()
+    granted = []
+    if key_path and os.path.isabs(key_path):
+        try:
+            key = security_tier._read_key(key_path, security_tier._forbidden_roots(None, None, env))
+            granted = security_tier.active_grants(security_tier.state_file(env), key)
+        except security_tier.TierError:
+            granted = []
     for s in list(enabled):
-        if spec["sets"][s].get("confirm") and s not in (state.get("confirmed") or []):
+        if spec["sets"][s].get("confirm") and s not in granted:
             enabled.remove(s); disabled.append(s)
-            warnings.append(f"set {s} stays off: it needs a typed confirmation once on a terminal "
-                            f"(`familia security enable {s}`); a flag or env var cannot confirm it")
+            warnings.append(f"set {s} stays off: it needs a signed grant from a terminal nonce "
+                            f"(`familia security enable {s}`); a flag, env var, or confirmed: list cannot turn it on")
 
     entries = {}
     if source is None:
@@ -385,21 +445,24 @@ def _load_graph(path):
 
 
 def _confirm(sname, spec, isatty=None, ask=None):
-    isatty = isatty if isatty is not None else (lambda: sys.stdin.isatty())
+    import secrets
+    import security_tier
     ask = ask or input
-    if not isatty():
+    if not security_tier.is_real_tty(isatty if isatty is not None else None):
         raise SecurityLevelError(
-            f"turning on set {sname} needs a typed confirmation on a terminal; there is no --yes. "
+            f"turning on set {sname} needs a typed nonce on a terminal; there is no --yes. "
             f"Run `familia security enable {sname}` in a terminal")
+    nonce = secrets.token_hex(16)
     print(f"familia-security: set {sname}: {spec['sets'][sname].get('description', '')}", file=sys.stderr)
     print("familia-security: owned-fleet scope only. Seats stay operator-start only "
           "(FAMILIA_OPERATOR_CONFIRM=yes sh with-fleet.sh ... --operator-start) with tools.allow empty.", file=sys.stderr)
     try:
-        got = ask(f"Type {sname} to turn it on: ")
+        got = ask("Type nonce %s to turn on %s: " % (nonce, sname))
     except EOFError:
         got = ""
-    if got.strip() != sname:
+    if got.strip() != nonce:
         raise SecurityLevelError(f"not confirmed; set {sname} left off and nothing was written")
+    return nonce
 
 
 def _print_status(graph, p, host, out=None):
@@ -467,18 +530,25 @@ def change(graph, spec, path, cmd, arg, check_files=True, environ=None, isatty=N
     state = load_state(path)
     import security_tier
     env_for_raise = os.environ if environ is None else environ
-    if security_tier.preset_is_raise(cmd, arg, state):
-        blocked = security_tier.caller_blocks_raise(env_for_raise)
-        if blocked:
-            raise SecurityLevelError("refusing self-escalate: %s" % blocked)
     new = _new_state_for(cmd, arg, state, spec)
     want_on = _sets_on(spec, new, graph)
-    # Keep a confirmation only while its set stays on; turning it back on asks again.
-    new["confirmed"] = sorted(s for s in new.get("confirmed") or [] if s in want_on)
-    for s in want_on:
-        if spec["sets"][s].get("confirm") and s not in new["confirmed"]:
-            _confirm(s, spec, isatty=isatty, ask=ask)
-            new["confirmed"] = sorted(set(new["confirmed"]) | {s})
+    new["confirmed"] = []
+    if security_tier.preset_is_raise(cmd, arg, state):
+        try:
+            roots = security_tier._forbidden_roots(None, None, env_for_raise)
+            key_path = (env_for_raise.get(security_tier.ADMIN_KEY_ENV) or "").strip() or None
+            key = security_tier.require_admin_context(env_for_raise, key_path, roots, isatty)
+        except security_tier.TierError as exc:
+            raise SecurityLevelError(str(exc)) from exc
+        exp = str(int(__import__("time").time()) + security_tier.GRANT_TTL)
+        for s in want_on:
+            if spec["sets"][s].get("confirm"):
+                nonce = _confirm(s, spec, isatty=isatty, ask=ask)
+                try:
+                    security_tier.record_set_grant(
+                        security_tier.state_file(env_for_raise), key, s, nonce, exp)
+                except security_tier.TierError as exc:
+                    raise SecurityLevelError(str(exc)) from exc
     env = dict(os.environ if environ is None else environ)
     env.pop(ENV_LEVEL, None)  # show what the file itself does
     g2 = json.loads(json.dumps({k: v for k, v in graph.items() if not k.startswith("_")}))
@@ -533,6 +603,7 @@ def _add_tier_parsers(sub):
         parser.add_argument("--reason", required=True)
     grant.add_argument("--from", dest="old", required=True)
     grant.add_argument("--nonce", required=True)
+    grant.add_argument("--exp", default=None)
     de.add_argument("--host", required=True)
     de.add_argument("--node", required=True)
     de.add_argument("--to", required=True)
@@ -543,8 +614,21 @@ def _add_tier_parsers(sub):
     esc.add_argument("--admin-key-file", default=None)
     mint.add_argument("--from", dest="old", required=True)
     mint.add_argument("--nonce", default=None)
+    mint.add_argument("--exp", default=None)
     mint.add_argument("--admin-key-file", required=True)
     mint.add_argument("--out", required=True)
+
+
+def _admin_key(state_path, audit_path):
+    import security_tier
+    key_path = (os.environ.get(security_tier.ADMIN_KEY_ENV) or "").strip()
+    if not key_path:
+        return None
+    try:
+        return security_tier._read_key(
+            key_path, security_tier._forbidden_roots(state_path, audit_path, os.environ))
+    except security_tier.TierError:
+        return None
 
 
 def _tier_paths(args):
@@ -586,7 +670,8 @@ def _run_tier(spec, args):
         print("audit-check: ok (%d entries)" % len(rows))
         return 0
     if cmd == "show":
-        cur = security_tier.show_tier(spec, state_path, args.host, args.node)
+        key = _admin_key(state_path, audit_path)
+        cur = security_tier.show_tier(spec, state_path, args.host, args.node, key=key, audit_path=audit_path)
         print("host=%s" % cur["host"])
         print("node=%s" % cur["node"])
         print("type=%s" % (cur["type"] or "-"))
@@ -596,7 +681,11 @@ def _run_tier(spec, args):
             print("policy_modes=%s" % (",".join(security_tier.policy_modes(spec, cur["type"], cur["tier"])) or "-"))
         return 0
     if cmd == "list":
-        data = security_tier.load_tier_state(state_path)
+        key = _admin_key(state_path, audit_path)
+        data, status = security_tier.load_tier_state(state_path, key)
+        if status != "verified":
+            print("no recorded tiers; unlisted nodes are low")
+            return 0
         rows = sorted((data.get("nodes") or {}).values(), key=lambda r: (r["host"], r["node"]))
         if not rows:
             print("no recorded tiers; unlisted nodes are low")
@@ -605,11 +694,15 @@ def _run_tier(spec, args):
             print("%s %s %s %s" % (rec["host"], rec["node"], rec["type"], rec["tier"]))
         return 0
     if cmd == "grant-line":
+        blocked = security_tier.caller_blocks_raise(os.environ, args.actor, args.node)
+        if blocked:
+            raise security_tier.TierError("refusing self-escalate: %s" % blocked)
         security_tier._prepare(spec, args.host, args.node, args.type, args.actor, args.reason)
         if args.old not in security_tier.TIERS or args.to not in security_tier.TIERS:
             raise security_tier.TierError("from and to must be low, medium, or high")
+        exp = args.exp or str(int(__import__("time").time()) + security_tier.GRANT_TTL)
         print(security_tier.canonical_grant(
-            args.host, args.node, args.type, args.old, args.to, args.actor, args.nonce, args.reason))
+            args.host, args.node, args.type, args.old, args.to, args.actor, args.nonce, args.reason, exp))
         return 0
     if cmd == "escalate":
         event = security_tier.escalate(
@@ -622,39 +715,38 @@ def _run_tier(spec, args):
     if cmd == "de-escalate":
         event = security_tier.deescalate(
             spec, state_path, audit_path, args.host, args.node, args.to, args.actor, args.reason,
-            env=os.environ,
+            env=os.environ, key_path=args.admin_key_file if hasattr(args, "admin_key_file") else None,
         )
         print("%s/%s %s %s -> %s" % (event["host"], event["node"], event["type"], event["old_tier"], event["new_tier"]))
         return 0
     if cmd == "mint-token":
-        blocked = security_tier.caller_blocks_raise(os.environ, args.actor, args.node)
-        if blocked:
-            raise security_tier.TierError("refusing self-escalate: %s" % blocked)
         security_tier._prepare(spec, args.host, args.node, args.type, args.actor, args.reason)
-        cur = security_tier.show_tier(spec, state_path, args.host, args.node)
+        roots = security_tier._forbidden_roots(state_path, audit_path, os.environ)
+        key = security_tier.require_admin_context(os.environ, args.admin_key_file, roots)
+        cur = security_tier.show_tier(spec, state_path, args.host, args.node, key=key, audit_path=audit_path)
         if args.old != cur["tier"]:
             raise security_tier.TierError("from tier is %s; the node is at %s" % (args.old, cur["tier"]))
         if cur["type"] and cur["type"] != args.type:
             raise security_tier.TierError("type is %s; refusing to relabel" % cur["type"])
         nonce = args.nonce or __import__("secrets").token_hex(16)
+        exp = args.exp or str(int(__import__("time").time()) + security_tier.GRANT_TTL)
         line = security_tier.canonical_grant(
-            args.host, args.node, args.type, args.old, args.to, args.actor, nonce, args.reason)
-        roots = security_tier._forbidden_roots(state_path, audit_path, os.environ)
-        key = security_tier._read_key(args.admin_key_file, roots)
+            args.host, args.node, args.type, args.old, args.to, args.actor, nonce, args.reason, exp)
         if not os.path.isabs(args.out):
             raise security_tier.TierError("token output path must be absolute")
+        security_tier._assert_private_parents(args.out)
         security_tier._outside_roots(args.out, roots, "token output")
         if os.path.lexists(args.out):
             raise security_tier.TierError("token output already exists")
         mac = security_tier.sign_grant(key, line)
         parent = os.path.dirname(args.out)
-        os.makedirs(parent, 0o700, exist_ok=True)
         fd = os.open(args.out, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
         try:
+            if hasattr(os, "fchmod"):
+                os.fchmod(fd, 0o600)
             os.write(fd, (line + "\nhmac-sha256 " + mac + "\n").encode("ascii"))
         finally:
             os.close(fd)
-        os.chmod(args.out, 0o600)
         print("wrote %s" % args.out)
         return 0
     raise SecurityLevelError("unknown tier command %r" % (cmd,))

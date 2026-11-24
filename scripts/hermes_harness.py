@@ -1116,6 +1116,11 @@ def hermes_child_env(extra=None, environ=None):
             path_parts = [p for p in (env.get("PATH") or "").split(os.pathsep) if p]
             if bindir not in path_parts:
                 env["PATH"] = os.pathsep.join([bindir] + path_parts)
+    env.pop("FAMILIA_FLEET_ADMIN_KEY_FILE", None)
+    env["FAMILIA_TIER_CALLER"] = "node"
+    env.setdefault("FAMILIA_NODE_ID", "hermes")
+    env.setdefault("FAMILIA_NODE_HOME", home or os.getcwd())
+    env.setdefault("FAMILIA_NODE_WRITABLE", env["FAMILIA_NODE_HOME"])
     return env
 
 

@@ -31,9 +31,11 @@ SPEC_PATH = os.path.join(ROOT, "config", "security-levels.yaml")
 SCHEMA_PATH = os.path.join(ROOT, "config", "security-levels.schema.json")
 TIERS = ("low", "medium", "high")
 AUDIT_KEYS = (
-    "actor", "factor", "host", "kind", "new_tier", "node", "nonce",
+    "actor", "exp", "factor", "host", "kind", "new_tier", "node", "nonce",
     "old_tier", "prev", "reason", "ts", "type",
 )
+ADMIN_KEY_ENV = "FAMILIA_FLEET_ADMIN_KEY_FILE"
+GRANT_TTL = 3600
 _TOKEN = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
 _NONCE = re.compile(r"^[0-9a-f]{32}$")
 _REASON_ENC = re.compile(r"^(?:%[0-9A-F]{2}|[A-Za-z0-9._-])*$")
@@ -44,7 +46,10 @@ class TierError(Exception):
 
 
 def caller_blocks_raise(env, actor=None, node=None):
-    """Why this process may not raise a tier or a preset, or None."""
+    """Why this process is a node and may not raise, or None.
+
+    A missing marker is not permission. Raises also need require_admin_context.
+    """
     env = env or {}
     if env.get("FAMILIA_TIER_CALLER") == "node":
         return "FAMILIA_TIER_CALLER=node"
@@ -53,6 +58,28 @@ def caller_blocks_raise(env, actor=None, node=None):
     if actor is not None and node is not None and actor == node:
         return "actor equals the node id"
     return None
+
+
+def node_launch_env(base, node_id, node_home, writable):
+    """Env for a node process. The admin key is scrubbed. The marker is always set."""
+    env = dict(base or {})
+    env.pop(ADMIN_KEY_ENV, None)
+    env["FAMILIA_TIER_CALLER"] = "node"
+    env["FAMILIA_NODE_ID"] = str(node_id)
+    env["FAMILIA_NODE_HOME"] = str(node_home)
+    env["FAMILIA_NODE_WRITABLE"] = str(writable)
+    return env
+
+
+def is_real_tty(isatty=None):
+    if callable(isatty):
+        return bool(isatty())
+    if isatty is not None:
+        return bool(isatty)
+    try:
+        return os.isatty(0) and os.isatty(1)
+    except OSError:
+        return False
 
 
 def preset_is_raise(cmd, arg, state):
@@ -317,18 +344,7 @@ def _sha_line(line):
     return hashlib.sha256(line).hexdigest()
 
 
-def read_audit(path):
-    """(entries, prev_hash). Refuses a symlink, a loose mode, or a broken chain."""
-    if not path or not os.path.lexists(path):
-        return [], ""
-    st = os.lstat(path)
-    if stat.S_ISLNK(st.st_mode):
-        raise TierError("audit path is a symlink")
-    if not stat.S_ISREG(st.st_mode):
-        raise TierError("audit path is not a regular file")
-    if st.st_mode & 0o077:
-        raise TierError("audit log mode is too open")
-    raw = open(path, "rb").read()
+def _parse_audit(raw):
     try:
         raw.decode("ascii")
     except UnicodeDecodeError as exc:
@@ -354,6 +370,38 @@ def read_audit(path):
         entries.append(obj)
         prev = _sha_line(line)
     return entries, prev
+
+
+def read_audit(path):
+    """(entries, prev_hash, (dev, ino)). Opens O_NOFOLLOW and fstats the fd."""
+    if not path or not os.path.lexists(path):
+        return [], "", ("", "")
+    flags = os.O_RDONLY
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    try:
+        fd = os.open(path, flags)
+    except OSError as exc:
+        raise TierError("audit log cannot be opened") from exc
+    try:
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode):
+            raise TierError("audit path is not a regular file")
+        if hasattr(os, "getuid") and st.st_uid != os.getuid():
+            raise TierError("audit log is not owned by the operator")
+        if st.st_mode & 0o077:
+            raise TierError("audit log mode is too open")
+        raw = b""
+        while True:
+            chunk = os.read(fd, 65536)
+            if not chunk:
+                break
+            raw += chunk
+        ident = (str(st.st_dev), str(st.st_ino))
+    finally:
+        os.close(fd)
+    entries, prev = _parse_audit(raw)
+    return entries, prev, ident
 
 
 def _lock(path):
@@ -393,7 +441,8 @@ def append_event(path, event):
     event.setdefault("ts", time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()))
     fd = _lock(path)
     try:
-        _entries, prev = read_audit(path)
+        _entries, prev, _ident = read_audit(path)
+        event.setdefault("exp", "0")
         event["prev"] = prev
         for key in AUDIT_KEYS:
             if not isinstance(event.get(key), str) or event[key] == "" and key not in ("prev",):
@@ -408,10 +457,11 @@ def append_event(path, event):
             raise TierError("audit path is a symlink")
         out = os.open(path, flags, 0o600)
         try:
+            if hasattr(os, "fchmod"):
+                os.fchmod(out, 0o600)
             os.write(out, blob)
         finally:
             os.close(out)
-        os.chmod(path, 0o600)
     finally:
         _unlock(fd)
     return event
@@ -432,6 +482,7 @@ def audit_preset(old_state, new_state, cmd, arg, env):
         "reason": "familia security %s %s" % (cmd, arg),
         "factor": "preset",
         "nonce": secrets.token_hex(16),
+        "exp": "0",
     })
 
 
@@ -451,25 +502,66 @@ def _check_reason(reason):
     return reason
 
 
-def load_tier_state(path):
+def _empty_state():
+    return {"version": 1, "nodes": {}, "grants": [], "audit_dev": "", "audit_ino": "", "audit_tip": ""}
+
+
+def _state_payload(state):
+    body = {
+        "version": 1,
+        "nodes": state.get("nodes") or {},
+        "grants": state.get("grants") or [],
+        "audit_dev": str(state.get("audit_dev") or ""),
+        "audit_ino": str(state.get("audit_ino") or ""),
+        "audit_tip": str(state.get("audit_tip") or ""),
+    }
+    return json.dumps(body, sort_keys=True, separators=(",", ":")).encode("ascii")
+
+
+def load_tier_state(path, key=None):
+    """(state, status). status is missing, verified, or rejected.
+
+    A bad signature or a loose/symlink file fails closed: the caller must treat the tier as low.
+    """
     if not path or not os.path.lexists(path):
-        return {"version": 1, "nodes": {}}
-    st = os.lstat(path)
-    if stat.S_ISLNK(st.st_mode) or not stat.S_ISREG(st.st_mode):
-        raise TierError("tier state path is not a regular file")
-    if st.st_mode & 0o077:
-        raise TierError("tier state mode is too open")
-    raw = open(path, "rb").read()
+        return _empty_state(), "missing"
+    flags = os.O_RDONLY
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
     try:
-        data = json.loads(raw.decode("ascii"))
-    except (UnicodeDecodeError, ValueError) as exc:
-        raise TierError("tier state file is not ASCII JSON") from exc
-    if not isinstance(data, dict) or data.get("version") != 1 or not isinstance(data.get("nodes"), dict):
-        raise TierError("tier state file is not version 1")
-    return data
+        fd = os.open(path, flags)
+    except OSError:
+        return _empty_state(), "rejected"
+    try:
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode) or (hasattr(os, "getuid") and st.st_uid != os.getuid()) or st.st_mode & 0o077:
+            return _empty_state(), "rejected"
+        raw = b""
+        while True:
+            chunk = os.read(fd, 65536)
+            if not chunk:
+                break
+            raw += chunk
+    finally:
+        os.close(fd)
+    try:
+        wrapped = json.loads(raw.decode("ascii"))
+        payload = wrapped["payload"]
+        mac = wrapped["hmac-sha256"]
+        body = _state_payload(payload)
+    except (UnicodeDecodeError, ValueError, KeyError, TypeError):
+        return _empty_state(), "rejected"
+    if not key or not hmac.compare_digest(sign_grant(key, body.decode("ascii")), mac):
+        return _empty_state(), "rejected"
+    if not isinstance(payload.get("nodes"), dict):
+        return _empty_state(), "rejected"
+    payload["version"] = 1
+    return payload, "verified"
 
 
-def save_tier_state(path, state):
+def save_tier_state(path, state, key):
+    if not key:
+        raise TierError("refusing to write an unsigned tier state")
     parent = os.path.dirname(os.path.abspath(path))
     old = os.umask(0o077)
     try:
@@ -478,15 +570,21 @@ def save_tier_state(path, state):
         os.umask(old)
     if os.path.islink(parent):
         raise TierError("tier state directory is a symlink")
+    pst = os.lstat(parent)
+    if pst.st_uid != os.getuid() or pst.st_mode & 0o022:
+        raise TierError("tier state directory is not a private directory")
     if os.path.lexists(path) and os.path.islink(path):
         raise TierError("tier state path is a symlink")
-    blob = (json.dumps(state, indent=2, sort_keys=True) + "\n").encode("ascii")
+    body = _state_payload(state)
+    wrapped = {"hmac-sha256": sign_grant(key, body.decode("ascii")), "payload": json.loads(body.decode("ascii"))}
+    blob = (json.dumps(wrapped, sort_keys=True, separators=(",", ":")) + "\n").encode("ascii")
     fd, tmp = tempfile.mkstemp(prefix=".node-tiers.", dir=parent)
     try:
         os.write(fd, blob)
+        if hasattr(os, "fchmod"):
+            os.fchmod(fd, 0o600)
         os.close(fd)
         fd = None
-        os.chmod(tmp, 0o600)
         os.replace(tmp, path)
         tmp = None
     finally:
@@ -494,7 +592,6 @@ def save_tier_state(path, state):
             os.close(fd)
         if tmp and os.path.exists(tmp):
             os.unlink(tmp)
-    os.chmod(path, 0o600)
 
 
 def effective(state, host, node):
@@ -535,16 +632,16 @@ def _unquote_reason(text):
     return _check_reason(reason)
 
 
-def canonical_grant(host, node, node_type, old, new, actor, nonce, reason):
-    return "v1 host=%s node=%s type=%s from=%s to=%s actor=%s nonce=%s reason=%s" % (
-        host, node, node_type, old, new, actor, nonce, _quote_reason(reason))
+def canonical_grant(host, node, node_type, old, new, actor, nonce, reason, exp):
+    return "v2 host=%s node=%s type=%s from=%s to=%s actor=%s nonce=%s exp=%s reason=%s" % (
+        host, node, node_type, old, new, actor, nonce, exp, _quote_reason(reason))
 
 
-def parse_grant(line):
+def parse_grant(line, now=None):
     parts = line.split(" ")
-    keys = ["host", "node", "type", "from", "to", "actor", "nonce", "reason"]
-    if len(parts) != 9 or parts[0] != "v1":
-        raise TierError("grant line must be: v1 host= node= type= from= to= actor= nonce= reason=")
+    keys = ["host", "node", "type", "from", "to", "actor", "nonce", "exp", "reason"]
+    if len(parts) != 10 or parts[0] != "v2":
+        raise TierError("grant line must be v2 host= node= type= from= to= actor= nonce= exp= reason=")
     fields = {}
     for part, key in zip(parts[1:], keys):
         name, sep, value = part.partition("=")
@@ -553,6 +650,10 @@ def parse_grant(line):
         fields[key] = value
     if _NONCE.fullmatch(fields["nonce"]) is None:
         raise TierError("grant nonce must be 32 lowercase hex characters")
+    if not fields["exp"].isdigit():
+        raise TierError("grant exp must be a unix time")
+    if int(fields["exp"]) < int(time.time() if now is None else now):
+        raise TierError("grant has expired")
     fields["reason_text"] = _unquote_reason(fields["reason"])
     return fields
 
@@ -585,25 +686,57 @@ def _outside_roots(path, roots, label):
             raise TierError("%s is inside a node-controlled or recorded directory" % label)
 
 
-def _operator_file(path, roots, label):
+def _assert_private_parents(path):
+    """Reject a factor whose directory, or any ancestor, is group or world writable."""
+    cur = os.path.dirname(os.path.abspath(path))
+    root = os.path.abspath(os.sep)
+    while cur and cur != root:
+        try:
+            st = os.lstat(cur)
+        except OSError as exc:
+            raise TierError("cannot inspect parent directory %s" % cur) from exc
+        if stat.S_ISLNK(st.st_mode):
+            raise TierError("a parent directory is a symlink")
+        if st.st_mode & 0o022:
+            raise TierError("parent directory is group or world writable: %s" % cur)
+        cur = os.path.dirname(cur)
+
+
+def open_private(path, roots, label, walk_parents=True):
+    """Read a file with O_NOFOLLOW. fstat the fd. Do not chmod by path."""
     if not path or not os.path.isabs(path):
         raise TierError("%s path must be absolute" % label)
-    if not os.path.lexists(path):
-        raise TierError("%s does not exist" % label)
-    st = os.lstat(path)
-    if stat.S_ISLNK(st.st_mode) or not stat.S_ISREG(st.st_mode):
-        raise TierError("%s must be a regular file, not a symlink" % label)
-    if hasattr(os, "getuid") and st.st_uid != os.getuid():
-        raise TierError("%s is not owned by the operator" % label)
-    if st.st_mode & 0o077:
-        raise TierError("%s must be mode 0600 or 0400" % label)
+    if walk_parents:
+        _assert_private_parents(path)
     _outside_roots(path, roots, label)
-    return path
+    flags = os.O_RDONLY
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    try:
+        fd = os.open(path, flags)
+    except OSError as exc:
+        raise TierError("%s cannot be opened" % label) from exc
+    try:
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode):
+            raise TierError("%s must be a regular file, not a symlink" % label)
+        if hasattr(os, "getuid") and st.st_uid != os.getuid():
+            raise TierError("%s is not owned by the operator" % label)
+        if st.st_mode & 0o077:
+            raise TierError("%s must be mode 0600 or 0400" % label)
+        data = b""
+        while True:
+            chunk = os.read(fd, 65536)
+            if not chunk:
+                break
+            data += chunk
+        return data
+    finally:
+        os.close(fd)
 
 
 def _read_key(path, roots):
-    _operator_file(path, roots, "admin key")
-    raw = open(path, "rb").read()
+    raw = open_private(path, roots, "admin key")
     if raw.endswith(b"\n"):
         raw = raw[:-1]
         if raw.endswith(b"\r"):
@@ -613,8 +746,20 @@ def _read_key(path, roots):
     return raw
 
 
-def _match_grant(line, host, node, node_type, old, new, actor, reason):
-    fields = parse_grant(line)
+def require_admin_context(env, key_path, roots, isatty=None):
+    """A raise needs a terminal and a readable admin key. A missing node marker is not enough."""
+    blocked = caller_blocks_raise(env)
+    if blocked:
+        raise TierError("refusing self-escalate: %s" % blocked)
+    if not is_real_tty(isatty):
+        raise TierError("admin context requires a terminal")
+    if not key_path:
+        raise TierError("admin context requires %s or --admin-key-file" % ADMIN_KEY_ENV)
+    return _read_key(key_path, roots)
+
+
+def _match_grant(line, host, node, node_type, old, new, actor, reason, now=None):
+    fields = parse_grant(line, now=now)
     expect = {
         "host": host, "node": node, "type": node_type, "from": old, "to": new, "actor": actor,
     }
@@ -623,46 +768,53 @@ def _match_grant(line, host, node, node_type, old, new, actor, reason):
             raise TierError("grant %s does not match this request" % key)
     if fields["reason_text"] != reason:
         raise TierError("grant reason does not match this request")
-    canon = canonical_grant(host, node, node_type, old, new, actor, fields["nonce"], reason)
+    canon = canonical_grant(
+        host, node, node_type, old, new, actor, fields["nonce"], reason, fields["exp"])
     if line != canon:
         raise TierError("grant line is not in canonical form")
-    return fields["nonce"]
+    return fields["nonce"], fields["exp"]
 
 
-def _read_factor(confirm, token, key_path, roots, host, node, node_type, old, new, actor, reason, need_token):
-    nonce = None
-    factor = None
-    if confirm:
-        _operator_file(confirm, roots, "confirm file")
-        lines = open(confirm, "r", encoding="ascii").read().splitlines()
-        if len(lines) != 1:
-            raise TierError("confirm file must be one line")
-        nonce = _match_grant(lines[0], host, node, node_type, old, new, actor, reason)
-        factor = "confirm-file"
-    if token or need_token:
-        if not token:
-            raise TierError("high tier requires an admin-signed token")
-        if not key_path:
-            raise TierError("high tier requires FAMILIA_FLEET_ADMIN_KEY_FILE or --admin-key-file")
-        _operator_file(token, roots, "admin token")
-        key = _read_key(key_path, roots)
-        lines = open(token, "r", encoding="ascii").read().splitlines()
-        if len(lines) != 2 or not lines[1].startswith("hmac-sha256 "):
-            raise TierError("admin token must be a grant line plus hmac-sha256")
-        got = lines[1].split(" ", 1)[1].strip()
-        mac = sign_grant(key, lines[0])
-        if len(got) != len(mac) or not hmac.compare_digest(got, mac):
-            raise TierError("admin token hmac does not match")
-        token_nonce = _match_grant(lines[0], host, node, node_type, old, new, actor, reason)
-        if nonce and nonce != token_nonce:
-            raise TierError("confirm file and admin token name different nonces")
-        nonce = token_nonce
-        factor = "admin-token"
-    if factor is None:
-        raise TierError("escalate requires an out-of-band confirm file or admin token")
-    if need_token and factor != "admin-token":
-        raise TierError("high tier requires an admin-signed token")
-    return factor, nonce
+def _signed_lines(raw, label):
+    try:
+        text = raw.decode("ascii")
+    except UnicodeDecodeError as exc:
+        raise TierError("%s is not ASCII" % label) from exc
+    lines = text.splitlines()
+    if len(lines) != 2 or not lines[1].startswith("hmac-sha256 "):
+        raise TierError("%s must be a v2 grant plus hmac-sha256" % label)
+    return lines
+
+
+def _check_signed_grant(raw, key, label, host, node, node_type, old, new, actor, reason):
+    lines = _signed_lines(raw, label)
+    got = lines[1].split(" ", 1)[1].strip()
+    mac = sign_grant(key, lines[0])
+    if len(got) != len(mac) or not hmac.compare_digest(got, mac):
+        raise TierError("%s hmac does not match" % label)
+    return _match_grant(lines[0], host, node, node_type, old, new, actor, reason)
+
+
+def _consume(path):
+    try:
+        os.unlink(path)
+    except OSError as exc:
+        raise TierError("could not consume the grant file") from exc
+
+
+def _read_factor(confirm, token, key, roots, host, node, node_type, old, new, actor, reason):
+    """Both medium and high need an admin-signed grant. The file is consumed."""
+    path = token or confirm
+    if not path:
+        raise TierError("escalate requires an admin-signed grant file")
+    label = "admin token" if token else "confirm file"
+    if token and confirm:
+        label = "admin token"
+    raw = open_private(path, roots, label)
+    nonce, exp = _check_signed_grant(raw, key, label, host, node, node_type, old, new, actor, reason)
+    _consume(path)
+    factor = "admin-token" if token else "confirm-file"
+    return factor, nonce, exp
 
 
 # ---------------------------------------------------------------- changes
@@ -684,57 +836,114 @@ def _prepare(spec, host, node, node_type, actor, reason):
     return host, node, node_type, actor, reason
 
 
-def show_tier(spec, state_path, host, node):
+def show_tier(spec, state_path, host, node, key=None, audit_path=None):
     _check_id("host", host)
     _check_id("node", node)
-    return effective(load_tier_state(state_path), host, node)
+    state, status = load_tier_state(state_path, key)
+    if status != "verified" or not _binding_ok(state, audit_path):
+        return {"host": host, "node": node, "type": None, "tier": "low",
+                "source": "default" if status == "missing" else "unverified"}
+    return effective(state, host, node)
+
+
+def _binding_ok(state, audit_path):
+    if not state.get("audit_ino"):
+        return True
+    if not audit_path or not os.path.lexists(audit_path):
+        return False
+    try:
+        _entries, tip, ident = read_audit(audit_path)
+    except TierError:
+        return False
+    return (state.get("audit_dev"), state.get("audit_ino")) == ident and state.get("audit_tip") == tip
+
+
+def active_grants(state_path, key, now=None):
+    state, status = load_tier_state(state_path, key)
+    if status != "verified":
+        return []
+    now = int(time.time() if now is None else now)
+    names = []
+    for grant in state.get("grants") or []:
+        try:
+            if int(grant.get("exp") or 0) >= now and grant.get("set"):
+                names.append(grant["set"])
+        except (TypeError, ValueError):
+            continue
+    return names
+
+
+def record_set_grant(state_path, key, set_name, nonce, exp):
+    state, status = load_tier_state(state_path, key)
+    if status == "rejected":
+        raise TierError("tier state failed verification; refusing to record a grant")
+    if status == "missing":
+        state = _empty_state()
+    grants = [g for g in (state.get("grants") or []) if g.get("set") != set_name]
+    grants.append({"set": set_name, "nonce": nonce, "exp": str(exp)})
+    state["grants"] = grants
+    save_tier_state(state_path, state, key)
 
 
 def escalate(spec, state_path, audit_path, host, node, node_type, new_tier, actor, reason,
-             env=None, confirm=None, token=None, key_path=None):
+             env=None, confirm=None, token=None, key_path=None, isatty=None):
     env = env or {}
     host, node, node_type, actor, reason = _prepare(spec, host, node, node_type, actor, reason)
-    blocked = caller_blocks_raise(env, actor, node)
-    if blocked:
-        raise TierError("refusing self-escalate: %s" % blocked)
+    if actor == node:
+        raise TierError("refusing self-escalate: actor equals the node id")
+    roots = _forbidden_roots(state_path, audit_path, env)
+    key_path = key_path or (env.get(ADMIN_KEY_ENV) or "").strip() or None
+    key = require_admin_context(env, key_path, roots, isatty)
     new_rank = _rank(new_tier)
-    state = load_tier_state(state_path)
-    cur = effective(state, host, node)
+    state, status = load_tier_state(state_path, key)
+    if status == "rejected":
+        raise TierError("tier state failed verification; refusing to raise")
+    if not _binding_ok(state, audit_path):
+        raise TierError("audit log does not match the signed state")
+    cur = effective(state, host, node) if status == "verified" else {
+        "host": host, "node": node, "type": None, "tier": "low", "source": "default"}
     old = cur["tier"]
     if cur["type"] and cur["type"] != node_type:
         raise TierError("type is %s; refusing to relabel" % cur["type"])
     if new_rank <= _rank(old):
         raise TierError("already at %s; de-escalate to go lower" % old)
-    need_token = new_tier == "high"
-    roots = _forbidden_roots(state_path, audit_path, env)
-    key = key_path or (env.get("FAMILIA_FLEET_ADMIN_KEY_FILE") or "").strip() or None
-    factor, nonce = _read_factor(confirm, token, key, roots, host, node, node_type, old, new_tier, actor, reason, need_token)
-    return _commit_tier(state_path, audit_path, host, node, node_type, old, new_tier, actor, reason, factor, nonce)
+    factor, nonce, exp = _read_factor(confirm, token, key, roots, host, node, node_type, old, new_tier, actor, reason)
+    return _commit_tier(
+        state_path, audit_path, host, node, node_type, old, new_tier, actor, reason,
+        factor, nonce, exp, key, state if status == "verified" else _empty_state())
 
 
-def deescalate(spec, state_path, audit_path, host, node, new_tier, actor, reason, env=None):
+def deescalate(spec, state_path, audit_path, host, node, new_tier, actor, reason, env=None, key_path=None):
     env = env or {}
     _check_id("host", host)
     _check_id("node", node)
     _check_id("actor", actor)
     _check_reason(reason)
     new_rank = _rank(new_tier)
-    state = load_tier_state(state_path)
-    cur = effective(state, host, node)
-    if cur["source"] != "recorded":
+    key_path = key_path or (env.get(ADMIN_KEY_ENV) or "").strip() or None
+    roots = _forbidden_roots(state_path, audit_path, env)
+    key = _read_key(key_path, roots) if key_path else None
+    state, status = load_tier_state(state_path, key)
+    if status != "verified":
+        if os.path.lexists(state_path) and not os.path.islink(state_path):
+            os.unlink(state_path)
         raise TierError("already at the low tier; nothing to de-escalate")
+    if not _binding_ok(state, audit_path):
+        raise TierError("audit log does not match the signed state")
+    cur = effective(state, host, node)
     if cur["type"] not in (spec.get("node_types") or {}):
         raise TierError("recorded type %r is not in the catalog" % (cur["type"],))
     if new_rank >= _rank(cur["tier"]):
         raise TierError("de-escalate only lowers a tier; current tier is %s" % cur["tier"])
+    if not key:
+        raise TierError("de-escalate of a signed tier requires the admin key to re-sign")
     return _commit_tier(
         state_path, audit_path, host, node, cur["type"], cur["tier"], new_tier,
-        actor, reason, "local", secrets.token_hex(16),
-    )
+        actor, reason, "local", secrets.token_hex(16), "0", key, state)
 
 
-def _commit_tier(state_path, audit_path, host, node, node_type, old, new, actor, reason, factor, nonce):
-    """Append one audit line, then store the new tier. The log is not rewritten."""
+def _commit_tier(state_path, audit_path, host, node, node_type, old, new, actor, reason, factor, nonce, exp, key, state):
+    """Append one audit line, then store a signed tier. The log is not rewritten."""
     if not audit_path:
         raise TierError("no audit path; set FAMILIA_SECURITY_AUDIT or pass --audit")
     parent = os.path.dirname(os.path.abspath(audit_path)) or "."
@@ -743,21 +952,26 @@ def _commit_tier(state_path, audit_path, host, node, node_type, old, new, actor,
         os.makedirs(parent, 0o700, exist_ok=True)
     finally:
         os.umask(old_umask)
+    pst = os.lstat(parent)
+    if stat.S_ISLNK(pst.st_mode) or pst.st_uid != os.getuid() or pst.st_mode & 0o022:
+        raise TierError("audit directory is not a private directory")
     fd = _lock(audit_path)
     try:
-        entries, prev = read_audit(audit_path)
+        entries, prev, ident = read_audit(audit_path)
+        if state.get("audit_ino") and (state.get("audit_dev"), state.get("audit_ino")) != ident:
+            raise TierError("audit file is not the bound inode")
+        if state.get("audit_tip") and state.get("audit_tip") != prev:
+            raise TierError("audit log tip does not match the signed state")
         if any(ent.get("nonce") == nonce for ent in entries):
             raise TierError("refusing replay: nonce already in the audit log")
-        state = load_tier_state(state_path)
-        cur = effective(state, host, node)
-        if cur["tier"] != old:
+        fresh, status = load_tier_state(state_path, key)
+        cur_tier = effective(fresh, host, node)["tier"] if status == "verified" else "low"
+        if cur_tier != old:
             raise TierError("tier changed before the write; retry")
-        if cur["type"] and cur["type"] != node_type:
-            raise TierError("type is %s; refusing to relabel" % cur["type"])
         event = {
             "kind": "tier", "host": host, "node": node, "type": node_type,
             "old_tier": old, "new_tier": new, "actor": actor, "reason": reason,
-            "factor": factor, "nonce": nonce,
+            "factor": factor, "nonce": nonce, "exp": str(exp),
             "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "prev": prev,
         }
@@ -767,15 +981,22 @@ def _commit_tier(state_path, audit_path, host, node, node_type, old, new, actor,
             flags |= os.O_NOFOLLOW
         out = os.open(audit_path, flags, 0o600)
         try:
+            if hasattr(os, "fchmod"):
+                os.fchmod(out, 0o600)
             os.write(out, blob)
+            st = os.fstat(out)
+            ident = (str(st.st_dev), str(st.st_ino))
         finally:
             os.close(out)
-        os.chmod(audit_path, 0o600)
+        state = dict(fresh if status == "verified" else state)
         state.setdefault("nodes", {})
+        state.setdefault("grants", state.get("grants") or [])
         state["nodes"][host + "/" + node] = {
             "host": host, "node": node, "type": node_type, "tier": new,
         }
-        save_tier_state(state_path, state)
+        state["audit_dev"], state["audit_ino"] = ident
+        state["audit_tip"] = _sha_line(blob)
+        save_tier_state(state_path, state, key)
         return event
     finally:
         _unlock(fd)

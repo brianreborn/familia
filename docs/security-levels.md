@@ -70,7 +70,7 @@ The override file reuses the [hosts overlay](hosts-overlay.md) (#104/#97) lookup
 level: "guardian"
 enable: [pentest]      # optional extra sets
 disable: []            # optional sets forced off
-confirmed: [pentest]   # recorded typed confirmation; dropped when the set goes off
+# confirmed: is ignored. A pentest set stays off until a signed grant exists.
 ```
 
 The overlay is applied by `familia start` (`scripts/start_graph.py`), `familia validate`
@@ -138,8 +138,8 @@ gateway, system agent, speech) has `low`, `medium`, and `high`.
 | Tier | Arming | Meaning |
 |---|---|---|
 | low | none | Default. Smallest capability set. A missing record is low, and `show` does not create a file. |
-| medium | explicit-arm | Adds capabilities. Needs a confirm file the node does not control, or an admin token. |
-| high | strongest-confirm | Largest set. Needs an admin-signed token. A confirm file alone is refused. |
+| medium | explicit-arm | Adds capabilities. Needs a terminal, the admin key, and a signed grant file that is consumed. |
+| high | strongest-confirm | Largest set. Same admin context. The grant is signed and expires. |
 
 Changing a tier does not edit `graph.yaml`, does not write `security.local.yaml`,
 does not set `FAMILIA_FLEET_ARM`, and does not open a listener. A preset does
@@ -169,25 +169,29 @@ Raising a tier needs an operator `--actor` that is not the node id, a higher
 - to `medium`: `--confirm-file`, or an admin token
 - to `high`, including a jump from `low`: `--admin-token-file` plus the admin key
 
-The confirm file is one line, mode 0600 or 0400, owned by the operator, not a
-symlink, and outside the repo, the tier state directory, `FAMILIA_NODE_HOME`,
-and `FAMILIA_NODE_WRITABLE`. Print it, then write it from an operator shell:
+A raise needs a terminal and the admin key. A missing `FAMILIA_NODE_ID` is not
+permission. The grant file is two lines (v2 grant plus hmac-sha256), mode 0600
+or 0400, owned by the operator, not a symlink, not under a group or world
+writable directory, and outside the repo, the tier state directory,
+`FAMILIA_NODE_HOME`, and `FAMILIA_NODE_WRITABLE`. It names the node, the tier,
+a nonce, and an expiry, and it is deleted when used. Mint it from an operator
+shell:
 
 ```
 umask 077
-NONCE=$(python3 -c 'import secrets; print(secrets.token_hex(16))')
-python3 scripts/security_levels.py tier grant-line \
+python3 scripts/security_levels.py tier mint-token \
   --host miryam --node fleet-guardian --type guardian \
   --from low --to medium --actor brian --reason "arm slash-confirm" \
-  --nonce "$NONCE" > "$XDG_RUNTIME_DIR/familia-tier-grant"
-chmod 600 "$XDG_RUNTIME_DIR/familia-tier-grant"
+  --admin-key-file "$HOME/.config/familia/tier-admin.key" \
+  --out "$HOME/.config/familia/tier-grant"
 python3 scripts/security_levels.py tier escalate \
   --host miryam --node fleet-guardian --type guardian \
   --to medium --actor brian --reason "arm slash-confirm" \
-  --confirm-file "$XDG_RUNTIME_DIR/familia-tier-grant"
+  --confirm-file "$HOME/.config/familia/tier-grant" \
+  --admin-key-file "$HOME/.config/familia/tier-admin.key"
 ```
 
-`grant-line` only prints. High tier:
+`grant-line` only prints an unsigned line. It does not authorize a raise. High tier:
 
 ```
 umask 077
@@ -209,7 +213,8 @@ nonce is refused. `mint-token` is refused when the process is a node.
 
 ### De-escalate
 
-Lowering is local. No confirm file and no admin key. The node itself may do it.
+Lowering does not need a terminal or a grant file. Re-signing a recorded tier
+needs the admin key. Without a valid signature, show fails closed to low.
 
 ```
 python3 scripts/security_levels.py tier de-escalate \
@@ -219,25 +224,24 @@ python3 scripts/security_levels.py tier de-escalate \
 
 ### A node cannot self-escalate
 
-familia runs as the user, so a mode bit alone cannot split the node from the
-operator. `escalate`, `mint-token`, and any preset command that turns more on
-(`guardian`, `pentest`, `full`, `enable`) refuse when either of these is set:
+`familia start`, hermes, and the swarm run loop set `FAMILIA_TIER_CALLER=node`
+and `FAMILIA_NODE_ID`, and they remove `FAMILIA_FLEET_ADMIN_KEY_FILE` from the
+child environment. A raise also needs a positive admin context: a terminal and
+a readable admin key. Unsetting the node marker does not grant that.
+`--actor` equal to the node id is refused. `off`, `disable`, and `clear` stay
+available.
 
-1. `FAMILIA_TIER_CALLER=node`
-2. `FAMILIA_NODE_ID` (any value, not only the target)
+The tier file is HMAC-SHA256 with the admin key. A bad signature, a symlink, or
+an audit log whose tip or inode does not match that signature is treated as
+low. The audit log is append-only, opened with O_NOFOLLOW, and each line stores
+the hash of the previous line. A grant carries `exp`. A nonce is accepted only
+for the audit file the signature is bound to.
 
-`--actor` equal to the node id is also refused. Node launchers set both
-variables before agent code runs and do not export the admin key. De-escalate,
-`off`, `disable`, and `clear` stay available, so a node can lower itself.
-
-The confirm file and the admin key must sit outside the paths the node is
-declared to write. Residual: a process that can unset `FAMILIA_NODE_ID` and
-can read the admin key can mint a token. Launchers must not give the node that
-key. This command never clears those variables and never reads a key when the
-caller is a node.
-
-The typed `pentest` confirmation from the preset path is unchanged. An
-environment variable still cannot confirm that set.
+The pentest preset does not trust `confirmed:` in security.local.yaml. Turning
+that set on needs a terminal and the nonce the prompt prints, and the grant is
+signed. The override is opened with O_NOFOLLOW, must be mode 0600 or 0400, and
+is written atomically at mode 0600. An environment variable still cannot
+confirm the pentest set.
 
 ## Audit log
 

@@ -389,6 +389,12 @@ def _check_port_available(host, port, label):
         raise StartupError(f"{label} port {port} is already occupied; nothing was started")
 
 
+def node_launch_env(base, node_id, node_home, writable):
+    """Marker and scrubbed admin key for every process familia start launches."""
+    import security_tier
+    return security_tier.node_launch_env(base, node_id, node_home, writable)
+
+
 def _run_gate_and_sync(root, yes, graph_path=None):
     env = dict(os.environ)
     graph_file = str(graph_path or root / "graph.yaml")
@@ -646,10 +652,12 @@ def run(args=None):
         signal.signal(signal.SIGTERM, interrupt)
         try:
             for name, _ in plans:
+                node = graph["nodes"][name]
+                node_home = str(node.get("spill_path") or (CACHE / name))
                 child = subprocess.Popen(
                     ["sh", str(SCRIPTS / "serve.sh"), name],
                     cwd=ROOT,
-                    env=dict(launch_env, FAMILIA_HOST=host),
+                    env=node_launch_env(dict(launch_env, FAMILIA_HOST=host), name, node_home, node_home),
                     start_new_session=True,  # own process group: stopping it also stops llama-server
                 )
                 label = f"node {name}"
@@ -663,7 +671,7 @@ def run(args=None):
                 child = subprocess.Popen(
                     gateway_command(host, gateway_name, gateway, aliases, green_roomz),
                     cwd=ROOT,
-                    env=launch_env,
+                    env=node_launch_env(launch_env, "gateway-" + gateway_name, str(CACHE), str(CACHE)),
                     start_new_session=True,
                 )
                 label = f"gateway {gateway_name}"

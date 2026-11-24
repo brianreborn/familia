@@ -4,6 +4,7 @@ import hashlib
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -63,8 +64,8 @@ def test_no_override_is_a_noop():
 @pytest.mark.parametrize("level,expect", [
     ("off", set()),
     ("guardian", set(GUARDS)),
-    ("pentest", set(GUARDS) | set(SEATS)),
-    ("full", set(GUARDS) | set(SEATS)),
+    ("pentest", set(GUARDS)),
+    ("full", set(GUARDS)),
 ])
 def test_each_preset(level, expect):
     x = g()
@@ -89,10 +90,10 @@ def test_pentest_needs_a_recorded_confirmation_even_from_env():
     x = g()
     p = SL.apply(x, state=st(), environ={"FAMILIA_SECURITY_LEVEL": "pentest"})
     assert on(p) == set(GUARDS)
-    assert any("typed confirmation" in w for w in p["warnings"])
+    assert any("signed grant" in w or "cannot" in w for w in p["warnings"])
     x = g()
     p = SL.apply(x, level="full", state=st(confirmed=["pentest"]), environ=NO_ENV)
-    assert on(p) >= set(SEATS)
+    assert not (on(p) & set(SEATS))
 
 
 def test_precedence_flag_env_file():
@@ -145,9 +146,29 @@ def test_fail_closed_routing_is_the_same_at_every_level():
 
 # ---- CLI: toggling, idempotency, confirmation, graph.yaml untouched
 
+def admin_env(tmp_path, extra=None):
+    factor = Path.home() / ".familia-boundary-test" / ("levels-" + tmp_path.name)
+    factor.mkdir(parents=True, mode=0o700, exist_ok=True)
+    os.chmod(factor, 0o700)
+    key = factor / "admin.key"
+    key.write_bytes(b"familia-test-admin-key\n")
+    os.chmod(key, 0o600)
+    env = {
+        "FAMILIA_FLEET_ADMIN_KEY_FILE": str(key),
+        "FAMILIA_NODE_TIER_STATE": str(tmp_path / "tiers.json"),
+        "FAMILIA_SECURITY_AUDIT": str(tmp_path / "audit.log"),
+        "HOME": str(Path.home()),
+    }
+    if extra:
+        env.update(extra)
+    return env
+
+
 def change(tmp_path, cmd, arg, **kw):
+    extra = kw.pop("environ", None)
+    isatty = kw.pop("isatty", lambda: True)
     return SL.change(g(), SPEC, tmp_path / "security.local.yaml", cmd, arg, check_files=False,
-                     environ=NO_ENV, **kw)
+                     environ=admin_env(tmp_path, extra), isatty=isatty, **kw)
 
 
 def test_toggle_and_idempotent(tmp_path, capsys):
@@ -171,23 +192,24 @@ def test_toggle_and_idempotent(tmp_path, capsys):
 
 
 def test_off_in_a_hand_written_file_is_not_a_boolean(tmp_path):
-    f = tmp_path / "s.yaml"; f.write_text("level: off\n")
+    f = tmp_path / "s.yaml"
+    f.write_text("level: off\n")
+    os.chmod(f, 0o600)
     assert SL.load_state(f)["level"] == "off"
 
 
 def test_pentest_confirm_typed_no_tty_refused(tmp_path):
     path = tmp_path / "security.local.yaml"
-    with pytest.raises(SL.SecurityLevelError, match="no --yes"):
+    with pytest.raises(SL.SecurityLevelError, match="terminal"):
         change(tmp_path, "level", "pentest", isatty=lambda: False)
     assert not path.exists()
     with pytest.raises(SL.SecurityLevelError, match="not confirmed"):
         change(tmp_path, "level", "pentest", isatty=lambda: True, ask=lambda _p: "yes")
     assert not path.exists()
-    change(tmp_path, "level", "pentest", isatty=lambda: True, ask=lambda _p: "pentest")
-    assert SL.load_state(path)["confirmed"] == ["pentest"]
-    # lowering drops the confirmation; raising again asks again
+    change(tmp_path, "level", "pentest", isatty=lambda: True, ask=lambda p: p.split()[2])
+    assert "confirmed:" not in path.read_text()
     change(tmp_path, "level", "guardian")
-    assert SL.load_state(path)["confirmed"] == []
+    assert "confirmed:" not in path.read_text()
     with pytest.raises(SL.SecurityLevelError):
         change(tmp_path, "enable", "pentest", isatty=lambda: False)
 
@@ -195,9 +217,9 @@ def test_pentest_confirm_typed_no_tty_refused(tmp_path):
 def test_missing_model_is_a_clear_error_not_a_crash(tmp_path):
     x = g()
     x["models"][x["nodes"]["fleet-guardian"]["model"]]["gguf"] = str(tmp_path / "absent.gguf")
-    env = {"FAMILIA_HOST": "miryam", "XDG_STATE_HOME": str(tmp_path)}
+    env = admin_env(tmp_path, {"FAMILIA_HOST": "miryam", "XDG_STATE_HOME": str(tmp_path)})
     with pytest.raises(SL.SecurityLevelError, match="not on this machine"):
-        SL.change(x, SPEC, tmp_path / "s.yaml", "level", "guardian", environ=env)
+        SL.change(x, SPEC, tmp_path / "s.yaml", "level", "guardian", environ=env, isatty=lambda: True)
     assert not (tmp_path / "s.yaml").exists()
     assert SL.model_state(x, "fleet-guardian", "miryam")[0] == "missing"
     assert SL.model_state(x, "freebsd-guardian", "miryam")[0] == "remote"
@@ -221,9 +243,9 @@ def test_cli_end_to_end_keeps_graph_yaml_byte_identical(tmp_path):
         assert "Traceback" not in r.stderr
     assert sha(GRAPH_PATH) == before
     r = run_cli(tmp_path, "guardian", "--no-files")
-    assert r.returncode == 0
+    assert r.returncode == 1 and "terminal" in r.stderr
     r = run_cli(tmp_path, "status")
-    assert "security level: guardian" in r.stdout and "[off] pentests.fleet" in r.stdout
+    assert "security level: graph" in r.stdout and "[off] pentests.fleet" in r.stdout
     assert "never started by `familia start`" in r.stdout
     assert sha(GRAPH_PATH) == before
 
@@ -232,12 +254,14 @@ def test_cli_has_no_yes_bypass(tmp_path):
     r = run_cli(tmp_path, "pentest", "--yes")
     assert r.returncode == 2 and "unrecognized arguments: --yes" in r.stderr
     r = run_cli(tmp_path, "pentest", "--no-files")  # stdin is not a terminal
-    assert r.returncode == 1 and "typed confirmation" in r.stderr
+    assert r.returncode == 1 and "terminal" in r.stderr
     assert not (tmp_path / "security.local.yaml").exists()
 
 
 def test_bad_override_file_is_refused(tmp_path):
-    (tmp_path / "security.local.yaml").write_text("level: [x]\n")
+    bad = tmp_path / "security.local.yaml"
+    bad.write_text("level: [x]\n")
+    os.chmod(bad, 0o600)
     r = run_cli(tmp_path, "status")
     assert r.returncode == 1 and "level must be a level name" in r.stderr
 

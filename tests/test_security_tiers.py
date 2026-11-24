@@ -5,6 +5,8 @@ import os
 import stat
 import subprocess
 import sys
+import time
+from pathlib import Path
 
 import pytest
 
@@ -18,20 +20,37 @@ GRAPH = os.path.join(ROOT, "graph.yaml")
 REASON = "arm local tools"
 
 
+def private_dir(name):
+    root = Path.home() / ".familia-boundary-test"
+    root.mkdir(mode=0o700, exist_ok=True)
+    os.chmod(root, 0o700)
+    path = root / name
+    path.mkdir(mode=0o700, exist_ok=True)
+    os.chmod(path, 0o700)
+    return path
+
+
 def paths(tmp_path):
     state_dir = tmp_path / "state"
-    factor = tmp_path / "factor"
     state_dir.mkdir()
-    factor.mkdir()
+    os.chmod(state_dir, 0o700)
+    factor = private_dir(tmp_path.name)
+    keyfile(factor / "admin.key")
     return str(state_dir / "node-tiers.json"), str(state_dir / "audit.log"), factor
 
 
-def grant(path, host, node, typ, old, new, actor=REASON and "brian", reason=REASON, nonce=None):
+def _exp():
+    return str(int(time.time()) + 3600)
+
+
+def grant(path, host, node, typ, old, new, actor="brian", reason=REASON, nonce=None, key=None):
     nonce = nonce or "ab" * 16
-    line = ST.canonical_grant(host, node, typ, old, new, actor, nonce, reason)
+    line = ST.canonical_grant(host, node, typ, old, new, actor, nonce, reason, _exp())
+    if key:
+        line = line + "\nhmac-sha256 " + ST.sign_grant(key, line)
     path.write_text(line + "\n", encoding="ascii")
     os.chmod(path, 0o600)
-    return line, nonce
+    return line.split("\n", 1)[0], nonce
 
 
 def keyfile(path, secret=b"familia-test-admin-key"):
@@ -40,13 +59,21 @@ def keyfile(path, secret=b"familia-test-admin-key"):
     return secret
 
 
-def token(path, key, host, node, typ, old, new, actor="brian", reason=REASON, nonce=None):
+def token(path, key, host, node, typ, old, new, actor="brian", reason=REASON, nonce=None, exp=None):
     nonce = nonce or "cd" * 16
-    line = ST.canonical_grant(host, node, typ, old, new, actor, nonce, reason)
+    line = ST.canonical_grant(host, node, typ, old, new, actor, nonce, reason, exp or _exp())
     mac = ST.sign_grant(key, line)
     path.write_text(line + "\nhmac-sha256 " + mac + "\n", encoding="ascii")
     os.chmod(path, 0o600)
     return line, nonce
+
+
+def escalate(state, audit, factor, host, node, typ, new, confirm=None, token_path=None, env=None, actor="brian"):
+    return ST.escalate(
+        SPEC, state, audit, host, node, typ, new, actor, REASON,
+        env=env or {}, confirm=confirm, token=token_path,
+        key_path=str(factor / "admin.key"), isatty=True,
+    )
 
 
 def test_catalog_matches_schema_and_default_is_low():
@@ -116,16 +143,20 @@ def test_show_defaults_to_low_and_writes_nothing(tmp_path):
 def test_escalate_medium_then_deescalate_writes_an_append_only_audit(tmp_path):
     state, audit, factor = paths(tmp_path)
     line_path = factor / "grant"
-    _line, nonce = grant(line_path, "miryam", "coder", "coding-agent", "low", "medium")
-    event = ST.escalate(
-        SPEC, state, audit, "miryam", "coder", "coding-agent", "medium", "brian", REASON,
-        env={}, confirm=str(line_path),
-    )
+    key = keyfile(factor / "admin.key")
+    _line, nonce = grant(line_path, "miryam", "coder", "coding-agent", "low", "medium", key=key)
+    event = escalate(state, audit, factor, "miryam", "coder", "coding-agent", "medium", confirm=str(line_path))
     assert event["old_tier"] == "low" and event["new_tier"] == "medium"
     assert event["factor"] == "confirm-file" and event["nonce"] == nonce
     first = open(audit, "rb").read()
-    assert ST.effective(ST.load_tier_state(state), "miryam", "coder")["tier"] == "medium"
-    ST.deescalate(SPEC, state, audit, "miryam", "coder", "low", "coder", "back to default", env={"FAMILIA_NODE_ID": "coder"})
+    body, status = ST.load_tier_state(state, key)
+    assert status == "verified"
+    assert ST.effective(body, "miryam", "coder")["tier"] == "medium"
+    assert not line_path.exists()
+    ST.deescalate(
+        SPEC, state, audit, "miryam", "coder", "low", "coder", "back to default",
+        env={"FAMILIA_NODE_ID": "coder"}, key_path=str(factor / "admin.key"),
+    )
     second = open(audit, "rb").read()
     assert second.startswith(first)
     assert first.count(b"\n") == 1 and second.count(b"\n") == 2
@@ -143,19 +174,13 @@ def test_high_requires_an_admin_token_and_a_confirm_file_is_not_enough(tmp_path)
     state, audit, factor = paths(tmp_path)
     confirm = factor / "grant"
     grant(confirm, "miryam", "coder", "coding-agent", "low", "high", nonce="11" * 16)
-    with pytest.raises(ST.TierError, match="admin-signed token"):
-        ST.escalate(
-            SPEC, state, audit, "miryam", "coder", "coding-agent", "high", "brian", REASON,
-            env={}, confirm=str(confirm),
-        )
+    with pytest.raises(ST.TierError, match="hmac"):
+        escalate(state, audit, factor, "miryam", "coder", "coding-agent", "high", confirm=str(confirm))
     assert not os.path.exists(state) and not os.path.exists(audit)
     key = keyfile(factor / "admin.key")
     tok = factor / "token"
     token(tok, key, "miryam", "coder", "coding-agent", "low", "high", nonce="22" * 16)
-    event = ST.escalate(
-        SPEC, state, audit, "miryam", "coder", "coding-agent", "high", "brian", REASON,
-        env={}, token=str(tok), key_path=str(factor / "admin.key"),
-    )
+    event = escalate(state, audit, factor, "miryam", "coder", "coding-agent", "high", token_path=str(tok))
     assert event["new_tier"] == "high" and event["factor"] == "admin-token"
     assert ST.policy_modes(SPEC, "coding-agent", "high") == []
 
@@ -167,33 +192,25 @@ def test_self_escalate_is_refused_even_with_a_valid_token(tmp_path):
     token(tok, key, "miryam", "coder", "coding-agent", "low", "medium", nonce="33" * 16)
     env = {"FAMILIA_NODE_ID": "coder", "FAMILIA_TIER_CALLER": "node"}
     with pytest.raises(ST.TierError, match="self-escalate"):
-        ST.escalate(
-            SPEC, state, audit, "miryam", "coder", "coding-agent", "medium", "brian", REASON,
-            env=env, token=str(tok), key_path=str(factor / "admin.key"),
-        )
+        escalate(state, audit, factor, "miryam", "coder", "coding-agent", "medium", token_path=str(tok), env=env)
     with pytest.raises(ST.TierError, match="self-escalate"):
-        ST.escalate(
-            SPEC, state, audit, "miryam", "other", "chat", "medium", "brian", REASON,
-            env={"FAMILIA_NODE_ID": "coder"}, confirm=str(tok),
-        )
+        escalate(state, audit, factor, "miryam", "other", "chat", "medium", confirm=str(tok), env={"FAMILIA_NODE_ID": "coder"})
     with pytest.raises(ST.TierError, match="actor equals the node id"):
-        ST.escalate(
-            SPEC, state, audit, "miryam", "coder", "coding-agent", "medium", "coder", REASON,
-            env={}, token=str(tok), key_path=str(factor / "admin.key"),
-        )
+        escalate(state, audit, factor, "miryam", "coder", "coding-agent", "medium", token_path=str(tok), actor="coder")
     assert not os.path.exists(state) and not os.path.exists(audit)
 
 
 def test_factor_inside_a_node_writable_root_is_refused(tmp_path):
-    state, audit, _factor = paths(tmp_path)
-    nest = tmp_path / "nodehome"
-    nest.mkdir()
+    state, audit, factor = paths(tmp_path)
+    nest = factor / "nodehome"
+    nest.mkdir(mode=0o700, exist_ok=True)
+    os.chmod(nest, 0o700)
     confirm = nest / "grant"
-    grant(confirm, "miryam", "coder", "coding-agent", "low", "medium", nonce="44" * 16)
+    grant(confirm, "miryam", "coder", "coding-agent", "low", "medium", nonce="44" * 16, key=keyfile(factor / "admin.key"))
     with pytest.raises(ST.TierError, match="node-controlled"):
-        ST.escalate(
-            SPEC, state, audit, "miryam", "coder", "coding-agent", "medium", "brian", REASON,
-            env={"FAMILIA_NODE_HOME": str(nest)}, confirm=str(confirm),
+        escalate(
+            state, audit, factor, "miryam", "coder", "coding-agent", "medium",
+            confirm=str(confirm), env={"FAMILIA_NODE_HOME": str(nest)},
         )
     assert not os.path.exists(audit)
 
@@ -201,24 +218,23 @@ def test_factor_inside_a_node_writable_root_is_refused(tmp_path):
 def test_loose_factor_and_replay_are_refused(tmp_path):
     state, audit, factor = paths(tmp_path)
     confirm = factor / "grant"
-    _line, nonce = grant(confirm, "miryam", "coder", "coding-agent", "low", "medium", nonce="55" * 16)
+    key = keyfile(factor / "admin.key")
+    _line, nonce = grant(confirm, "miryam", "coder", "coding-agent", "low", "medium", nonce="55" * 16, key=key)
     os.chmod(confirm, 0o644)
     with pytest.raises(ST.TierError, match="0600"):
-        ST.escalate(
-            SPEC, state, audit, "miryam", "coder", "coding-agent", "medium", "brian", REASON,
-            env={}, confirm=str(confirm),
-        )
+        escalate(state, audit, factor, "miryam", "coder", "coding-agent", "medium", confirm=str(confirm))
     os.chmod(confirm, 0o600)
     ST.escalate(
         SPEC, state, audit, "miryam", "coder", "coding-agent", "medium", "brian", REASON,
-        env={}, confirm=str(confirm),
+        env={}, confirm=str(confirm), key_path=str(factor / "admin.key"), isatty=True,
     )
-    ST.deescalate(SPEC, state, audit, "miryam", "coder", "low", "brian", "lower before replay", env={})
+    ST.deescalate(
+        SPEC, state, audit, "miryam", "coder", "low", "brian", "lower before replay",
+        env={}, key_path=str(factor / "admin.key"),
+    )
+    grant(confirm, "miryam", "coder", "coding-agent", "low", "medium", nonce=nonce, key=key)
     with pytest.raises(ST.TierError, match="replay"):
-        ST.escalate(
-            SPEC, state, audit, "miryam", "coder", "coding-agent", "medium", "brian", REASON,
-            env={}, confirm=str(confirm),
-        )
+        escalate(state, audit, factor, "miryam", "coder", "coding-agent", "medium", confirm=str(confirm))
     assert nonce in open(audit, encoding="ascii").read()
 
 
@@ -257,8 +273,8 @@ def test_cli_show_is_low_and_graph_yaml_stays_byte_identical(tmp_path):
 def test_audit_mode_is_owner_only(tmp_path):
     state, audit, factor = paths(tmp_path)
     confirm = factor / "grant"
-    grant(confirm, "box", "embed", "embed", "low", "medium", nonce="66" * 16)
-    ST.escalate(SPEC, state, audit, "box", "embed", "embed", "medium", "brian", REASON, env={}, confirm=str(confirm))
+    grant(confirm, "box", "embed", "embed", "low", "medium", nonce="66" * 16, key=keyfile(factor / "admin.key"))
+    escalate(state, audit, factor, "box", "embed", "embed", "medium", confirm=str(confirm))
     mode = stat.S_IMODE(os.stat(audit).st_mode)
     assert mode == 0o600
     assert stat.S_IMODE(os.stat(state).st_mode) == 0o600
