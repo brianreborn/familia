@@ -6,9 +6,11 @@ is the registration hook: it parses scripts/menu-items.txt in that order
 and computes the group index, item index, page, and page-local number.
 
 It does not read the keyboard or own the input loop (M1 / Race Reviewer).
-When M1 lands, its highlight index i in a group must select the same item
-as numeric choice i (page-local after paging). Until then, tests use the
-indices below as the arrow-reachability contract.
+M1 (scripts/menu_keys.py, PR #743) highlights entries on the current page.
+Up/Down wrap on that page; Home/End and PgUp/PgDn jump to the first or last
+entry; a further PgDn/PgUp at the end/start of a page emits > / < when the
+menu set --next / --prev (familia-menu.sh paging). Highlight index i on a
+page selects the same item as numeric choice i.
 
 Menus exit only on an explicit user quit (q / quit / exit), never on an
 error, a finished action, invalid input, or a timeout.
@@ -163,49 +165,101 @@ def numeric_pipe_lines(key, path=None, page_size=PAGE_SIZE):
     return loc, lines
 
 
-def move_highlight(index, count, key, page_size=PAGE_SIZE):
-    """Arrow contract M1 must implement on a group's item list.
+def _menu_keys():
+    """Import Race Reviewer's M1 picker (scripts/menu_keys.py)."""
+    mod = load_m1_key_loop()
+    if mod is None or not hasattr(mod, "Picker"):
+        raise RuntimeError("scripts/menu_keys.py (M1 Picker) is required")
+    return mod
 
-    Up/Down wrap. Home/End jump to the ends. PgUp/PgDn jump by page_size
-    and clamp (they do not wrap). index and the return value are 0-based.
+
+def move_highlight(index, count, key, page_size=PAGE_SIZE, prev=False, next=False):
+    """Move a 0-based highlight the way M1's Picker does.
+
+    Up/Down wrap. Home/End jump to the ends. PgUp/PgDn jump to first/last;
+    a further PgUp at 0 with prev=True returns '<', a further PgDn at the
+    last item with next=True returns '>'. Those strings are page turns in
+    familia-menu.sh, not new cursor positions.
     """
     if count <= 0:
         raise ValueError("empty group")
-    if key == "Down":
-        return (index + 1) % count
-    if key == "Up":
-        return (index - 1) % count
-    if key == "Home":
-        return 0
-    if key == "End":
-        return count - 1
-    if key == "PgDn":
-        return min(count - 1, index + page_size)
-    if key == "PgUp":
-        return max(0, index - page_size)
-    raise ValueError("unknown key: %s" % key)
+    mk = _menu_keys()
+    names = {
+        "Up": mk.UP, "Down": mk.DOWN, "Home": mk.HOME, "End": mk.END,
+        "PgUp": mk.PGUP, "PgDn": mk.PGDN,
+        mk.UP: mk.UP, mk.DOWN: mk.DOWN, mk.HOME: mk.HOME, mk.END: mk.END,
+        mk.PGUP: mk.PGUP, mk.PGDN: mk.PGDN,
+    }
+    if key not in names:
+        raise ValueError("unknown key: %s" % key)
+    p = mk.Picker(count, cursor=index, prev=prev, next=next)
+    out = p.feed(names[key])
+    if out in ("<", ">"):
+        return out
+    return p.cursor
 
 
 def arrow_path_from_first(key, path=None, page_size=PAGE_SIZE):
-    """Down/PgDn sequence that moves the highlight from item 1 to `key`.
+    """M1 key sequence from the first item of a group to `key`, then Enter.
 
-    Reachability by arrows means this path exists in the same list numbers use.
+    Full pages are skipped with PgDn-to-end then PgDn (emits '>'). Down
+    moves within the target page. Reachability by arrows means this path
+    selects the same page-local number the numeric path uses.
     """
+    mk = _menu_keys()
     loc = locate(key, path=path, page_size=page_size)
     steps = []
-    index = 0
-    target = loc["item_index"] - 1
-    # Prefer a page jump, then Down, so PgDn is exercised when useful.
-    while index != target:
-        if target - index >= page_size:
-            steps.append("PgDn")
-            index = move_highlight(index, loc["group_size"], "PgDn", page_size)
-        else:
-            steps.append("Down")
-            index = move_highlight(index, loc["group_size"], "Down", page_size)
-        if len(steps) > loc["group_size"] + loc["pages"] + 1:
-            raise RuntimeError("arrow path did not reach %s" % key)
-    return loc, steps, index
+    for p in range(loc["page"]):
+        steps.extend([mk.PGDN, mk.PGDN])
+    steps.extend([mk.DOWN] * (loc["page_local"] - 1))
+    steps.append(mk.ENTER)
+    return loc, steps
+
+
+def feed_arrow_path(loc, steps, page_size=PAGE_SIZE):
+    """Replay arrow_path_from_first steps with M1's Picker. Returns the answer."""
+    mk = _menu_keys()
+    page = 0
+    pages = loc["pages"]
+    # items on this page
+    def page_count(p):
+        start = p * page_size
+        return min(page_size, loc["group_size"] - start)
+
+    p = mk.Picker(
+        page_count(page),
+        cursor=0,
+        prev=False,
+        next=pages > 1,
+    )
+    out = None
+    for key in steps:
+        if page >= pages:
+            raise RuntimeError("paged past the end reaching %s" % loc["key"])
+        out = p.feed(key)
+        if out == ">":
+            page += 1
+            p = mk.Picker(
+                page_count(page),
+                cursor=0,
+                prev=True,
+                next=page < pages - 1,
+            )
+            out = None
+            continue
+        if out == "<":
+            page -= 1
+            p = mk.Picker(
+                page_count(page),
+                cursor=0,
+                prev=page > 0,
+                next=True,
+            )
+            out = None
+            continue
+        if out is not None:
+            return out, page, p
+    return out, page, p
 
 
 def menu_sh_page_size(path=None):

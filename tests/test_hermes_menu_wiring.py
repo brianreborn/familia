@@ -1,11 +1,11 @@
 """#733 M6: every Hermes/guardian menu entry is reachable by number, by
 arrows (same sequence as numbers), and through the legacy fallback menu.
 
-M1 (Race Reviewer's key loop) is not in the tree yet. Arrow reachability is
-asserted against scripts/menu_catalog.py, the registration hook M1 must walk.
-When an M1 module appears, test_m1_key_loop_uses_the_same_sequence also
-imports it. Numeric --pipe paths and `familia --legacy-menu --list` exercise
-the live menu. Menus must stay open on a bad choice and leave only on q.
+Arrow reachability is asserted against scripts/menu_catalog.py walking the
+same sequence as numbers, driven by M1's scripts/menu_keys.py Picker
+(PR #743). Numeric --pipe paths and `familia --legacy-menu --list` exercise
+the live menu. A pty test drives arrows through familia-menu.sh itself.
+Menus must stay open on a bad choice and leave only on q.
 """
 from __future__ import annotations
 
@@ -124,30 +124,29 @@ def test_reachable_by_number_via_pipe(key):
 
 @pytest.mark.parametrize("key", KEYS)
 def test_reachable_by_arrows_on_the_shared_sequence(key):
-    loc, steps, index = menu_catalog.arrow_path_from_first(key)
-    assert steps or loc["item_index"] == 1
-    assert index == loc["item_index"] - 1
+    loc, steps = menu_catalog.arrow_path_from_first(key)
+    answer, page, picker = menu_catalog.feed_arrow_path(loc, steps)
+    assert page == loc["page"]
+    assert answer == str(loc["page_local"])
+    assert picker.cursor == loc["page_local"] - 1
     # The same index is what the numeric path uses (group-global, then paged).
-    assert loc["page"] * menu_catalog.PAGE_SIZE + loc["page_local"] - 1 == index
-    # Walk it again from highlight 0 to prove determinism.
-    i = 0
-    for step in steps:
-        i = menu_catalog.move_highlight(i, loc["group_size"], step)
-    assert i == index
+    assert loc["page"] * menu_catalog.PAGE_SIZE + loc["page_local"] - 1 == loc["item_index"] - 1
 
 
-def test_arrow_wraparound_and_home_end():
-    # Agents (hermes) is the long group that holds most M6 entries.
-    n = len(menu_catalog.group_items("Agents (hermes)"))
-    assert n >= 3
+def test_arrow_wraparound_and_home_end_match_m1_picker():
+    # Agents (hermes) is the long group that holds most M6 entries. The
+    # first page has PAGE_SIZE items and a next-page affordance.
+    n = menu_catalog.PAGE_SIZE
+    assert len(menu_catalog.group_items("Agents (hermes)")) > n
     assert menu_catalog.move_highlight(n - 1, n, "Down") == 0
     assert menu_catalog.move_highlight(0, n, "Up") == n - 1
     assert menu_catalog.move_highlight(3, n, "Home") == 0
     assert menu_catalog.move_highlight(0, n, "End") == n - 1
-    # PgDn from the start lands on the first item of the next page (or the end).
-    jumped = menu_catalog.move_highlight(0, n, "PgDn")
-    assert jumped == min(n - 1, menu_catalog.PAGE_SIZE)
+    # M1: PgDn jumps to the last entry; a second PgDn with next=True is ">".
+    assert menu_catalog.move_highlight(0, n, "PgDn") == n - 1
+    assert menu_catalog.move_highlight(n - 1, n, "PgDn", next=True) == ">"
     assert menu_catalog.move_highlight(0, n, "PgUp") == 0
+    assert menu_catalog.move_highlight(0, n, "PgUp", prev=True) == "<"
 
 
 def test_bad_number_stays_in_the_menu_until_quit():
@@ -164,22 +163,16 @@ def test_bad_number_stays_in_the_menu_until_quit():
 
 
 def test_m1_key_loop_uses_the_same_sequence():
-    """If Race's M1 module is present, it must expose the same group order."""
-    mod = menu_catalog.load_m1_key_loop()
-    if mod is None:
-        pytest.skip("M1 key loop is not in the tree yet (Race Reviewer, #733)")
-    # Soft contract: if the module lists group items, they match the catalog.
-    for name in ("group_items", "items_for_group", "navigable_items"):
-        fn = getattr(mod, name, None)
-        if callable(fn):
-            for group in menu_catalog.groups():
-                theirs = fn(group)
-                ours = [it["key"] for it in menu_catalog.group_items(group)]
-                if theirs and isinstance(theirs[0], dict) and "key" in theirs[0]:
-                    theirs = [it["key"] for it in theirs]
-                assert list(theirs) == ours, "M1 %s(%s) drifted from menu-items.txt" % (name, group)
-            return
-    pytest.skip("M1 module %s has no group_items hook yet" % mod.__name__)
+    """M1's Picker (PR #743) must select each M6 item by the shared path."""
+    mk = menu_catalog.load_m1_key_loop()
+    assert mk is not None, "scripts/menu_keys.py (M1) must be on this branch"
+    assert hasattr(mk, "Picker")
+    for key in KEYS:
+        loc, steps = menu_catalog.arrow_path_from_first(key)
+        answer, page, picker = menu_catalog.feed_arrow_path(loc, steps)
+        assert answer == str(loc["page_local"]), key
+        assert page == loc["page"], key
+        assert picker.cursor == loc["page_local"] - 1, key
 
 
 def test_new_client_and_weights_dry_run_via_run():
@@ -245,3 +238,85 @@ def test_cockpit_stays_on_the_home_menu_and_in_the_legacy_catalog():
     r = familia("--legacy-menu", "--list")
     assert r.returncode == 0
     assert "setup.android-cockpit" in r.stdout
+
+def _read_until(fd, needle, timeout=15):
+    import time
+    buf = b""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        import select
+        r, _, _ = select.select([fd], [], [], max(0, deadline - time.time()))
+        if not r:
+            continue
+        chunk = os.read(fd, 4096)
+        if not chunk:
+            break
+        buf += chunk
+        if needle in buf:
+            return buf
+    raise AssertionError("timed out waiting for %r in %r" % (needle, buf[-800:]))
+
+
+@pytest.mark.skipif(not hasattr(os, "openpty"), reason="no pty")
+def test_pty_arrows_reach_hermes_webapp_and_guardian_weights():
+    """Live M1 picker: arrows open Agents (hermes) and dry-run two M6 items."""
+    import time
+    loc_web = menu_catalog.locate("agents.hermes-webapp")
+    loc_w = menu_catalog.locate("agents.guardian-weights")
+    assert loc_web["group_index"] == loc_w["group_index"]
+    master, slave = os.openpty()
+    env = dict(os.environ, TERM="xterm", FAMILIA_COLOR="never")
+    for k in ("FAMILIA_NO_TTY", "FAMILIA_MENU_PIPE", "FAMILIA_ACCEPT_LICENSES"):
+        env.pop(k, None)
+    p = subprocess.Popen(
+        ["bash", MENU, "--dry-run"],
+        cwd=ROOT,
+        stdin=slave,
+        stdout=slave,
+        stderr=slave,
+        env=env,
+    )
+    try:
+        _read_until(master, b"Choose 1-")
+        # Down to the Agents (hermes) group, Enter.
+        for _ in range(loc_web["group_index"] - 1):
+            os.write(master, b"\x1b[B")
+            time.sleep(0.05)
+        os.write(master, b"\r")
+        _read_until(master, b"or b: ")
+        # Webapp is on page 1: Down to its page-local slot, Enter.
+        for _ in range(loc_web["page_local"] - 1):
+            os.write(master, b"\x1b[B")
+            time.sleep(0.05)
+        os.write(master, b"\r")
+        out = _read_until(master, b"Press Enter")
+        assert b"[dry-run]" in out
+        assert b"scripts/hermes.sh --client webapp" in out
+        os.write(master, b"\r")
+        _read_until(master, b"or b: ")
+        # Guardian weights is on a later page: PgDn to end, PgDn again to '>'.
+        for _ in range(loc_w["page"] - loc_web["page"]):
+            # From wherever we are, End (CSI F) then PgDn (CSI 6~)
+            os.write(master, b"\x1b[F")
+            time.sleep(0.05)
+            os.write(master, b"\x1b[6~")
+            time.sleep(0.08)
+        _read_until(master, b"or b: ")
+        for _ in range(loc_w["page_local"] - 1):
+            os.write(master, b"\x1b[B")
+            time.sleep(0.05)
+        os.write(master, b"\r")
+        out = _read_until(master, b"Press Enter")
+        assert b"[dry-run]" in out
+        assert b"activate_guardian_weights.py" in out
+        os.write(master, b"\r")
+        _read_until(master, b"or b: ")
+        os.write(master, b"\x1b")  # Esc -> back
+        _read_until(master, b"Choose 1-")
+        os.write(master, b"q")
+        assert p.wait(timeout=20) == 0
+    finally:
+        if p.poll() is None:
+            p.kill()
+        os.close(master)
+        os.close(slave)
