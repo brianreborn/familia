@@ -63,14 +63,11 @@ home.models.stop|models|Home: stop models (--apply)|item:home.models.stop
 home.models.status|models|Home: models status|item:home.models.status
 home.talk|models|Talk to the protomodel|item:home.talk
 home.find-models|models|Find more models|item:home.find-models
-node.cuda-sm11-decision|models|node cuda-sm11-decision (decision on qodesh)|graph:nodes.cuda-sm11-decision
-node.cpu-smol-decision|models|node cpu-smol-decision (decision on qodesh)|graph:nodes.cpu-smol-decision
 node.vulkan-igpu-decision|models|node vulkan-igpu-decision (decision on miryam)|graph:nodes.vulkan-igpu-decision
 node.vulkan-handset-decision|models|node vulkan-handset-decision (decision on phone7)|graph:nodes.vulkan-handset-decision
 node.vulkan-handset-general|models|node vulkan-handset-general (general on phone8)|graph:nodes.vulkan-handset-general
 node.coder|models|node coder (coder on miryam)|graph:nodes.coder
 node.embed|models|node embed (embed on miryam)|graph:nodes.embed
-node.cpu-resident-coder|models|node cpu-resident-coder (coder on qodesh)|graph:nodes.cpu-resident-coder
 node.angel-coder|models|node angel-coder (coder on angel)|graph:nodes.angel-coder
 node.dogfood-decision|models|node dogfood-decision (decision on box)|graph:nodes.dogfood-decision
 node.dogfood-coder|models|node dogfood-coder (coder on box)|graph:nodes.dogfood-coder

@@ -101,7 +101,7 @@ DEFAULT_SHAPES: Dict[str, Dict[str, Any]] = {
         "ctx_bias": "medium",
         "parallel_bias": 2,
         "notes": (
-            "Tower/desktop (angel, qodesh, centos-class): full assistant stack; "
+            "Tower/desktop (angel, centos-class): full assistant stack; "
             "guardian seatbelts on (launch-test, empty tools allow) until widened."
         ),
     },

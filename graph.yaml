@@ -837,7 +837,7 @@ options:
     hf_repo: nace-ai/drex-v1.5
     size_note: "HF API 2026-10-09: Qwen3_5ForCausalLM, 8.95B params (bf16 ~17.9 GB); nace-ai/drex-v1.5-Q8_0 9.53 GB; mradermacher/drex-v1.5-GGUF Q4_K_M 5.63 GB, Q4_K_S 5.35 GB, Q2_K 3.83 GB"
     gpu_candidate: false
-    placement_note: "Not a 256 MB GPU fit (9B). CPU only: Q4_K_M fits qodesh's ~9.6 GiB budget (<=60% of 16 GiB, 4 GiB reserve); does not fit miryam (4.1 GiB budget minus the coder). 128k ctx claimed."
+    placement_note: "[qodesh retired 2026-11-23] Not a 256 MB GPU fit (9B). CPU only: Q4_K_M fits qodesh's ~9.6 GiB budget (<=60% of 16 GiB, 4 GiB reserve); does not fit miryam (4.1 GiB budget minus the coder). 128k ctx claimed."
   drex-1.1:
     role: decision
     unverified: true
@@ -854,7 +854,7 @@ options:
     db: ggml-org--Laya-GGUF--Laya-Q8_0
     size_note: "Laya-Q8_0.gguf 449397600 bytes (~429 MiB); apache-2.0; miryam local_check sha256_ok 2026-10-19"
     gpu_candidate: false
-    placement_note: "CPU decision/chat candidate; fits miryam/qodesh/angel RAM. FreeBSD angel's llama-b11669-freebsd runtime lists modern-bert support. No node yet."
+    placement_note: "[qodesh retired 2026-11-23] CPU decision/chat candidate; fits miryam/qodesh/angel RAM. FreeBSD angel's llama-b11669-freebsd runtime lists modern-bert support. No node yet."
     candidate_hosts: [miryam, angel]
   lfm25-350m-q4km:
     role: decision
@@ -864,7 +864,7 @@ options:
     db: LiquidAI--LFM2.5-350M-GGUF--LFM2.5-350M-Q4_K_M
     size_note: "LFM2.5-350M-Q4_K_M.gguf 229312224 bytes (~219 MiB); license lfm1.0 (read LICENSE before enable)"
     gpu_candidate: false         # qodesh (8600 GT) retired 2026-11-23
-    placement_note: "Small CPU decision candidate for qodesh, miryam, phones, and FreeBSD angel (llama-b11669-freebsd supports lfm2). Review/accept lfm1.0 before fetching; "
+    placement_note: "[qodesh retired 2026-11-23] Small CPU decision candidate for qodesh, miryam, phones, and FreeBSD angel (llama-b11669-freebsd supports lfm2). Review/accept lfm1.0 before fetching; "
     candidate_hosts: [miryam, phone7, phone8, angel]
   glide:
     role: decision
@@ -897,7 +897,7 @@ options:
     hf_repo: Cactus-Compute/whistle
     size_note: "whistle.cact 16.9 MB (HF API); checkpoints/whistle.safetensors 220.6 MB; apache-2.0"
     runtime_note: Cactus runtime (.cact, library cactus-needle); not llama-server. Needs an stt node kind before placement.
-    placement_note: Phones and qodesh first (#25).
+    placement_note: "[qodesh retired 2026-11-23] Phones and qodesh first (#25)."
     candidate_hosts: [phone7, phone8]
   paradee-tts:
     role: tts
@@ -906,7 +906,7 @@ options:
     hf_repo: sahilmahendrakar/Paradee-8M-v1.0
     size_note: "8M params; onnx/paradee_int8.onnx 9.0 MB, paradee.onnx 37.0 MB (HF API); apache-2.0. Repo is the most likely match for the RT, not confirmed from the post."
     runtime_note: ONNX Runtime (CoreML port FluidInference/paradee-8m-coreml); not llama-server. Needs a tts node kind before placement.
-    placement_note: Phones and qodesh first (#25).
+    placement_note: "[qodesh retired 2026-11-23] Phones and qodesh first (#25)."
     candidate_hosts: [phone7, phone8]
   # ---- #26 coder candidate
   qwen35-9b-coder:
@@ -916,7 +916,7 @@ options:
     hf_repo: khazarai/Qwen3.5-9B-Kimi-k3-Distilled-GGUF
     db: khazarai--Qwen3.5-9B-Kimi-k3-Distilled-GGUF--Qwen3.5-9B-Kimi-k3-Distilled-q8_0
     size_note: "Q8_0 main 9.53 GB (registry damp); apache-2.0; Q4 not in that damp pick — too big for phones/miryam"
-    placement_note: qodesh only by RAM (16 GB, ~11.5 GB free). miryam (7 GB, 3 GB reserve) cannot fit it. No node yet (weights absent).
+    placement_note: "[qodesh retired 2026-11-23] qodesh only by RAM (16 GB, ~11.5 GB free). miryam (7 GB, 3 GB reserve) cannot fit it. No node yet (weights absent)."
     notes: Kimi-k3 distill; HF + license resolved via #78 damp-run. Still planned #26 for placement/measurement.
   # ---- docs/models-catalog.md additions (RT'd, bucket 2; all unverified)
   youtu-parsing-omni:
@@ -926,7 +926,7 @@ options:
     sources: ["https://x.com/BrianReborn_alt/status/2108756031493025930"]
     size_note: "~5B params, bf16 safetensors ~10.7 GB (rev 01f7e3e, per feat/youtu-parsing-omni-option)"
     runtime_note: "youtu_vita custom code; transformers trust_remote_code or vLLM + Tencent plugin. No llama.cpp/GGUF support."
-    placement_note: "bf16 exceeds qodesh's ~9.6 GiB budget and miryam's. Needs a non-llama runtime and a quantized build."
+    placement_note: "[qodesh retired 2026-11-23] bf16 exceeds qodesh's ~9.6 GiB budget and miryam's. Needs a non-llama runtime and a quantized build."
   voice-clone-1.7b:
     role: tts
     unverified: true
@@ -976,7 +976,7 @@ options:
     hf_repo: Takenoko12345678/Qwen3.5-0.8B-Japanese-SFT-v2-GGUF
     db: Takenoko12345678--Qwen3.5-0.8B-Japanese-SFT-v2-GGUF--Qwen3.5-0.8B-Japanese-SFT-v2-Q4_K_M
     size_note: "Q4_K_M 529296736 bytes (~505 MiB); apache-2.0; registry damp entry present"
-    placement_note: "Fits miryam/phones/qodesh as a small chat option; no node yet (weights not on hosts)."
+    placement_note: "[qodesh retired 2026-11-23] Fits miryam/phones/qodesh as a small chat option; no node yet (weights not on hosts)."
     candidate_hosts: [miryam, phone7, phone8]
     notes: Japanese fine-tune; tiny local option. Arch qwen35 is in the pinned llama.cpp build (qwen35-2b-q4km runs today).
   lift-extract:
