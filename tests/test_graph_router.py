@@ -398,6 +398,12 @@ def test_graph_alias_to_planned_node_is_409_not_dropped():
     with pytest.raises(urllib.error.HTTPError) as e:
         urllib.request.urlopen(req, timeout=5)
     assert e.value.code == 409 and "planned" in json.loads(e.value.read())["error"]["message"]
+    models = json.loads(urllib.request.urlopen(
+        f"http://127.0.0.1:{srv.server_address[1]}/v1/models", timeout=5).read())
+    by_id = {m["id"]: m for m in models["data"]}
+    assert "later" in by_id and by_id["later"]["familia"]["status"] == "unavailable"
+    assert "planned" in by_id["later"]["familia"]["reason"]
+    assert "chat" in by_id and by_id["chat"]["familia"]["status"] == "ready"
 
 
 # caller auth (H4 pattern) ----------------------------------------------------------

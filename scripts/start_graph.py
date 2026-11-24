@@ -231,8 +231,13 @@ def needs_router(aliases, gateway=None):
     return (gateway or {}).get("router", True) is not False  # default: graph_router; router: false = graph-proxy
 
 
-def router_routes(aliases):
-    """graph_router config (version 1) for a gateway's aliases."""
+def router_routes(aliases, omitted_aliases=None):
+    """graph_router config (version 1) for a gateway's aliases.
+
+    omitted_aliases: (alias, node, host) triples from local_topology. They are
+    listed on GET /v1/models as unavailable (planned, remote-without-consent)
+    and stay refused (409) if selected; they are not started.
+    """
     nodes, routes = {}, {}
     def key(m):  # router: route and node names are disjoint
         return m["node"] + "-node" if m["node"] in aliases else m["node"]
@@ -248,7 +253,18 @@ def router_routes(aliases):
             nodes[key(m)] = {"url": m["url"], "kind": m["kind"], "remote": m["remote"], "tools": m.get("tools", False)}
             names.append(key(m))
         routes[alias] = names[0] if len(names) == 1 else names
-    return {"version": 1, "nodes": nodes, "routes": routes}
+    refused = {}
+    for alias, node_name, remote_host in omitted_aliases or ():
+        if alias in routes or alias in refused:
+            continue
+        refused[alias] = (
+            f"route {alias} -> {node_name} omitted ({remote_host}); "
+            "not started"
+        )
+    out = {"version": 1, "nodes": nodes, "routes": routes}
+    if refused:
+        out["refused_routes"] = refused
+    return out
 
 
 def local_topology(graph, host):
@@ -417,14 +433,14 @@ def _run_gate_and_sync(root, yes, graph_path=None):
     return env
 
 
-def gateway_command(host, gateway_name, gateway, aliases, green_roomz):
+def gateway_command(host, gateway_name, gateway, aliases, green_roomz, omitted_aliases=None):
     """argv for one local gateway: green-roomz graph-proxy for plain one-node aliases, else
     scripts/graph_router.py (fallback lists, remote members) on the same port."""
     if needs_router(aliases, gateway):
         CACHE.mkdir(parents=True, exist_ok=True)
         path = CACHE / f"graph-router-{host}-{gateway_name}.json"
         tmp = path.with_suffix(".json.tmp")
-        tmp.write_text(json.dumps(router_routes(aliases), indent=2) + "\n", encoding="utf-8")
+        tmp.write_text(json.dumps(router_routes(aliases, omitted_aliases), indent=2) + "\n", encoding="utf-8")
         os.replace(tmp, path)
         return [sys.executable, str(SCRIPTS / "graph_router.py"), str(path), "--port", str(gateway["port"])]
     manifest_path = _write_proxy_manifest(host, gateway_name, gateway, aliases)
@@ -635,7 +651,8 @@ def run(args=None):
 
             for gateway_name, gateway, aliases in gateways:
                 child = subprocess.Popen(
-                    gateway_command(host, gateway_name, gateway, aliases, green_roomz),
+                    gateway_command(host, gateway_name, gateway, aliases, green_roomz,
+                                    omitted_aliases=omitted_aliases),
                     cwd=ROOT,
                     env=launch_env,
                     start_new_session=True,
