@@ -76,6 +76,9 @@ PASTE_CAP = 4096       # bytes of pasted text kept
 ESC_TIMEOUT = 0.05     # seconds
 PASTE_TIMEOUT = 1.0    # seconds of silence that ends an unterminated paste
 SEQ_TIMEOUT = 1.0      # seconds to wait for the tail of a CSI / SS3 / OSC / mouse sequence
+SEQ_MAX_AGE = 2.0      # wall-clock cap on one CSI / SS3 / OSC / mouse / skip, from its introducer
+PASTE_SKIP_MAX_AGE = 10.0  # wall-clock cap on skipping the rest of an over-cap paste
+MAX_SKIP_BYTES = 1 << 20  # byte cap on one CSI / SS3 / OSC / mouse / skip; the wall clock is the main cap
 
 PASTE_END = b"\x1b[201~"
 
@@ -118,12 +121,23 @@ def sanitize_paste(raw):
 class Decoder:
     """Byte-at-a-time terminal input decoder. Holds at most a bounded amount of state."""
 
-    def __init__(self, esc_timeout=None, paste_timeout=PASTE_TIMEOUT, paste_cap=PASTE_CAP, seq_timeout=SEQ_TIMEOUT):
+    def __init__(self, esc_timeout=None, paste_timeout=PASTE_TIMEOUT, paste_cap=PASTE_CAP, seq_timeout=SEQ_TIMEOUT,
+                 max_age=SEQ_MAX_AGE, paste_skip_max_age=PASTE_SKIP_MAX_AGE, max_skip_bytes=MAX_SKIP_BYTES,
+                 clock=None):
         if esc_timeout is None:
             esc_timeout = _clamp_ms(os.environ.get("FAMILIA_ESC_TIMEOUT_MS"), ESC_TIMEOUT, 10, 1000)
         self.esc_timeout = esc_timeout
         self.paste_timeout = paste_timeout
         self.seq_timeout = seq_timeout
+        self.max_age = max_age
+        self.paste_skip_max_age = paste_skip_max_age
+        self.max_skip_bytes = max_skip_bytes
+        if clock is None:
+            import time
+            clock = time.monotonic
+        self._clock = clock
+        self._since = 0.0         # when the current sequence (or paste skip) started
+        self._nbytes = 0          # bytes in the current sequence
         self._stale = False       # a sequence already timed out once: next silence ends it
         self.paste_cap = max(0, int(paste_cap))
         self.dropped = 0          # sequences consumed and ignored (for tests / M8 fuzzing)
@@ -151,17 +165,39 @@ class Decoder:
 
     def feed(self, data):
         for b in bytes(data):
+            self._check_live()
+            before = self._state
             self._byte(b)
+            if self._state != before and (before == _GROUND or self._state == _PASTE_SKIP):
+                self._since = self._clock()  # a new sequence, or the paste skip, starts now
+                self._nbytes = 0
         out, self._out = self._out, []
         return out
+
+    def _check_live(self):
+        """Liveness: a sequence that never ends (bytes keep coming, so no silence)
+        is abandoned after max_age seconds or max_skip_bytes bytes. Back to ground;
+        nothing it swallowed is emitted."""
+        st = self._state
+        if st in (_GROUND, _ESC, _UTF8, _PASTE):
+            return
+        self._nbytes += 1
+        age = self._clock() - self._since
+        if st == _PASTE_SKIP:
+            if age >= self.paste_skip_max_age:
+                self._reset()
+            return
+        if age >= self.max_age or self._nbytes > self.max_skip_bytes:
+            self._drop()
 
     def timeout(self):
         """No byte came within pending_timeout(): resolve whatever is half-read.
 
         A sequence that stalls after its introducer is not dropped to ground at
         once (its tail would then leak as text, e.g. ESC [ <stall> 1;5A -> '1').
-        CSI / SS3 go to _SKIP, which eats up to the final byte; OSC / DCS strings
-        and mouse reports keep skipping. A second silence ends them."""
+        CSI / SS3 go to _SKIP, which eats up to the final byte; OSC / DCS strings,
+        mouse reports and an overlong-sequence _SKIP keep skipping. A second
+        silence ends them. Liveness without silence: see _check_live."""
         st = self._state
         if st == _ESC:
             self._emit(K_ESC)
@@ -176,8 +212,8 @@ class Decoder:
             self._state = _SKIP
             self._seq = bytearray()
             self._stale = True
-        elif st in (_STR, _STR_ESC, _MOUSE) and not self._stale:
-            self._stale = True
+        elif st in (_STR, _STR_ESC, _MOUSE, _SKIP) and not self._stale:
+            self._stale = True  # first silence: keep skipping for one more window
         else:
             if st not in (_GROUND, _PASTE_SKIP, _SKIP):
                 self.dropped += 1
@@ -227,6 +263,10 @@ class Decoder:
         elif st in (_STR, _STR_ESC):
             self._str(b)
         elif st == _MOUSE:
+            if b < 0x20:  # X10 mouse bytes are >= 0x20: this is a key, not a report
+                self._drop()
+                self._ground(b)
+                return
             self._need -= 1
             if self._need <= 0:
                 self._drop()
@@ -335,6 +375,7 @@ class Decoder:
                 self.dropped += 1
                 self._state = _SKIP
                 self._seq = bytearray()
+                self._stale = False  # a fresh skip: its first silence keeps skipping (see timeout)
         elif 0x40 <= b <= 0x7E:
             self._seq.append(b)
             self._csi_dispatch(bytes(self._seq[2:-1]).decode("ascii"), chr(b))
@@ -389,6 +430,7 @@ class Decoder:
                 self.dropped += 1
                 self._state = _SKIP
                 self._seq = bytearray()
+                self._stale = False  # a fresh skip: its first silence keeps skipping (see timeout)
         elif 0x40 <= b <= 0x7E:
             self._reset()
             name = _SS3.get(chr(b))
@@ -402,6 +444,10 @@ class Decoder:
 
     def _str(self, b):
         # OSC/DCS/APC/PM/SOS: consumed until BEL or ST (ESC \). Never keys.
+        if b in (0x03, 0x04):  # Ctrl-C / Ctrl-D still work inside a runaway string
+            self._drop()
+            self._ground(b)
+            return
         if self._state == _STR_ESC:
             if b == 0x5C:
                 self._drop()
@@ -483,12 +529,14 @@ class KeyReader:
 
     def __init__(self, fd=0, decoder=None, chunk=READ_CHUNK):
         import select  # noqa: F401  (fails here, not mid-loop, where select is missing)
+        import time
         self.fd = fd
         self.decoder = decoder or Decoder()
         self.chunk = max(1, min(int(chunk), 4096))
         self._queue = collections.deque()
         self._eof = False
-        self._last = 0.0
+        # gap clock; starts now so a decoder handed over mid-sequence is not timed out at once
+        self._last = time.monotonic()
 
     def read_key(self, timeout=None):
         """Next Key; None when `timeout` seconds pass with no key; EOFError at end of input."""
@@ -532,6 +580,11 @@ class KeyReader:
                 continue
             if self.decoder.pending and time.monotonic() - self._last >= self.decoder.pending_timeout():
                 self._queue.extend(self.decoder.timeout())
+                # Restart the gap clock: a sequence that timed out once is now skipping
+                # and gets its own full window (seq_timeout) for the late tail. Without
+                # this the next pass saw a gap of 0, timed out again at once and went
+                # back to ground, so the tail ("1;5A") came out as typed text.
+                self._last = time.monotonic()
                 if self._queue:
                     continue
             if deadline is not None and time.monotonic() >= deadline:
@@ -619,7 +672,7 @@ def main(argv):
         print("fancy" if p.fancy else "legacy: " + p.reason)
         return 0 if p.fancy else 3
     if argv[0] == "decode":
-        data = sys.stdin.buffer.read(1 << 20)
+        data = sys.stdin.buffer.read(1 << 20) if sys.stdin is not None else b""  # closed stdin
         d = Decoder()
         for key in d.feed(data) + d.flush():
             print(_show(key))

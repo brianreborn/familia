@@ -534,3 +534,201 @@ def test_front_door_without_a_terminal_keeps_list_mode(tmp_path):
     assert r.returncode == 0, r.stderr
     assert "using the legacy numeric menu" not in r.stderr
     assert "Talk to the protomodel" in r.stdout
+
+
+# ---- KeyReader stall clock (Fuzz M8 P1 on #736 @67be19c) ---------------------------
+
+def _drain(rd, seconds):
+    """Call read_key for `seconds` like the menu loop does; return every key."""
+    out = []
+    end = time.monotonic() + seconds
+    while True:
+        left = end - time.monotonic()
+        if left <= 0:
+            return out
+        k = rd.read_key(timeout=left)
+        if k is not None:
+            out.append(k)
+
+
+def _stalled(gap, tail, pty_pair=False, **kw):
+    if pty_pair:
+        import termios
+        rfd, wfd = pty.openpty()  # master, slave: write into master, read the slave in raw mode
+        wfd, rfd = rfd, wfd
+        attrs = termios.tcgetattr(rfd)
+        attrs[3] &= ~(termios.ICANON | termios.ECHO | termios.ISIG)
+        attrs[0] &= ~termios.ICRNL
+        termios.tcsetattr(rfd, termios.TCSANOW, attrs)
+    else:
+        rfd, wfd = os.pipe()
+    try:
+        rd = mi.KeyReader(rfd, mi.Decoder(**kw))
+        os.write(wfd, b"\x1b[")
+        keys = _drain(rd, gap)  # the reader keeps polling through the silence
+        os.write(wfd, tail)
+        keys += _drain(rd, 0.4)
+        return keys
+    finally:
+        os.close(rfd)
+        os.close(wfd)
+
+
+@pytest.mark.parametrize("use_pty", [False, True])
+def test_reader_stall_under_seq_timeout_never_types_the_tail(use_pty):
+    keys = _stalled(0.3, b"1;5A", use_pty)  # past the 50 ms ESC timeout, under 1 s
+    assert not [k for k in keys if k.name == mi.K_CHAR], keys
+    assert [k.name for k in keys] in ([mi.K_UP], []), keys
+
+
+@pytest.mark.parametrize("use_pty", [False, True])
+def test_reader_stall_over_seq_timeout_drops_but_never_types_the_tail(use_pty):
+    keys = _stalled(1.3, b"1;5A", use_pty)  # past seq_timeout: may drop, must not type
+    assert not [k for k in keys if k.name == mi.K_CHAR], keys
+
+
+def test_reader_fuzz_repro_esc_bracket_sleep_then_A_enter():
+    keys = _stalled(1.3, b"A\r")
+    assert [k.name for k in keys] == [mi.K_ENTER], keys
+
+
+def test_reader_second_silence_ends_the_skip():
+    r, w = os.pipe()
+    try:
+        rd = mi.KeyReader(r, mi.Decoder(seq_timeout=0.2))
+        os.write(w, b"\x1b[")
+        assert _drain(rd, 0.6) == []  # first window -> skip, second window -> ground
+        assert not rd.decoder.pending
+        os.write(w, b"x")
+        assert [(k.name, k.text) for k in _drain(rd, 0.2)] == [(mi.K_CHAR, "x")]
+    finally:
+        os.close(r)
+        os.close(w)
+
+
+def test_reader_lone_esc_still_fast_and_gap_clock_starts_at_construction():
+    r, w = os.pipe()
+    try:
+        dec = mi.Decoder(esc_timeout=0.05)
+        dec.feed(b"\x1b[")  # handed over mid-sequence
+        rd = mi.KeyReader(r, dec)
+        os.write(w, b"B")
+        assert [k.name for k in _drain(rd, 0.2)] == [mi.K_DOWN]
+        os.write(w, b"\x1b")
+        t0 = time.monotonic()
+        assert rd.read_key(timeout=2).name == mi.K_ESC
+        assert time.monotonic() - t0 < 0.5
+    finally:
+        os.close(r)
+        os.close(w)
+
+
+def test_cli_decode_with_closed_stdin():
+    code = ("import sys, runpy; sys.stdin.close(); sys.stdin = None; sys.argv = ['menu_input.py', 'decode'];"
+            " runpy.run_path(%r, run_name='__main__')") % os.path.join(ROOT, "scripts", "menu_input.py")
+    r = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=30)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.strip() == "dropped 0"
+
+
+# ---- Race review of #736 @67be19c -------------------------------------------------
+
+def test_race_repro_read_key_none_then_tail():
+    r, w = os.pipe()
+    try:
+        rd = mi.KeyReader(r)
+        os.write(w, b"\x1b[")
+        assert rd.read_key(timeout=1.3) is None  # past seq_timeout: skipping, not ground
+        assert rd.decoder.pending
+        os.write(w, b"1;5A")
+        assert _drain(rd, 0.3) == []
+        os.write(w, b"q")
+        assert [(k.name, k.text) for k in _drain(rd, 0.2)] == [(mi.K_CHAR, "q")]
+    finally:
+        os.close(r)
+        os.close(w)
+
+
+@pytest.mark.parametrize("intro", [b"\x1b[" + b"0" * 40, b"\x1bO" + b"5" * 40])
+def test_overlong_sequence_skip_survives_its_first_timeout(intro):
+    d = mi.Decoder()
+    assert d.feed(intro) == []
+    assert d.timeout() == [] and d.pending
+    assert d.feed(b"1A") == []
+    assert names(d.feed(b"z")) == [(mi.K_CHAR, "z")]
+    # a second silence still ends it
+    d.feed(intro)
+    d.timeout()
+    assert d.timeout() == [] and not d.pending
+
+
+class _Clock:
+    def __init__(self):
+        self.t = 0.0
+
+    def __call__(self):
+        return self.t
+
+
+@pytest.mark.parametrize("intro,filler", [
+    (b"\x1b]", b"A"), (b"\x1bP", b"A"), (b"\x1b[", b"1"), (b"\x1b[" + b"1" * 40, b"1"), (b"\x1bO", b"5"),
+])
+def test_never_ending_sequence_is_abandoned_by_wall_clock(intro, filler):
+    clk = _Clock()
+    d = mi.Decoder(clock=clk)
+    assert d.feed(intro + filler * 100) == []
+    clk.t = 1.9
+    assert d.feed(filler * 100) == [] and d.pending
+    clk.t = 2.0
+    dropped = d.dropped
+    d.feed(filler)  # cap reached: back to ground, swallowed bytes not emitted
+    assert not d.pending and d.dropped > dropped
+    assert names(d.feed(b"\x1b[B")) == [mi.K_DOWN]
+
+
+def test_never_ending_sequence_is_abandoned_by_byte_cap():
+    d = mi.Decoder(max_skip_bytes=500)
+    assert d.feed(b"\x1b]" + b"A" * 500) == [] and d.pending
+    d.feed(b"A")
+    assert not d.pending
+
+
+def test_over_cap_paste_skip_has_its_own_wall_clock_cap():
+    clk = _Clock()
+    d = mi.Decoder(clock=clk, paste_cap=4)
+    out = d.feed(b"\x1b[200~" + b"x" * 100)
+    assert [k.name for k in out] == [mi.K_PASTE] and out[0].truncated
+    clk.t = mi.PASTE_SKIP_MAX_AGE - 0.1
+    assert d.feed(b"x" * 100) == [] and d.pending
+    clk.t = mi.PASTE_SKIP_MAX_AGE
+    d.feed(b"x")
+    assert not d.pending
+
+
+@pytest.mark.parametrize("intro", [b"\x1b]0;" + b"A" * 300, b"\x1bP" + b"A" * 300, b"\x1b[" + b"1" * 300,
+                                   b"\x1b[1;", b"\x1b[M", b"\x1b[M ", b"\x1bO"])
+@pytest.mark.parametrize("ctl,name", [(b"\x03", mi.K_CTRL_C), (b"\x04", mi.K_CTRL_D)])
+def test_ctrl_c_and_ctrl_d_break_out_of_any_skip(intro, ctl, name):
+    d = mi.Decoder()
+    assert names(d.feed(intro + ctl)) == [name]
+    assert not d.pending
+
+
+def test_reader_returns_on_a_never_ending_osc_stream():
+    r, w = os.pipe()
+    try:
+        rd = mi.KeyReader(r, mi.Decoder(max_age=0.3))
+        os.write(w, b"\x1b]0;")
+        t0 = time.monotonic()
+        while time.monotonic() - t0 < 0.6:  # junk keeps coming, no silence
+            os.write(w, b"A" * 8)
+            time.sleep(0.02)
+            assert rd.read_key(timeout=0.01) is None or True
+        os.write(w, b"\x03")
+        k = rd.read_key(timeout=1)
+        while k is not None and k.name == mi.K_CHAR:  # bytes after the cap may be text
+            k = rd.read_key(timeout=1)
+        assert k is not None and k.name == mi.K_CTRL_C
+    finally:
+        os.close(r)
+        os.close(w)
