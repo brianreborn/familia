@@ -22,17 +22,16 @@ def test_fleet_keys_are_capability_names_not_hostnames():
         for name in (g.get(section) or {}):
             if nr.is_host_prefixed(str(name), g):
                 bad.append(f"{section}.{name}")
-    # #717 restored Angel's small coder under the host-prefixed fleet key
-    # nodes.angel-coder. Renaming that key is a product decision. Any other
-    # host-prefixed key is still a regression.
-    assert bad == ["nodes.angel-coder"]
+    # #739 renamed nodes.angel-coder to nodes.small-coder (a capability
+    # name, not a host-prefixed key). Any host-prefixed key is a regression.
+    assert bad == []
 
 
 def test_infer_role_angel_chat_vs_coder():
     g = _fleet()
-    assert nr.infer_role("angel-coder", g["nodes"]["angel-coder"], g) == "coder"
+    assert nr.infer_role("small-coder", g["nodes"]["small-coder"], g) == "coder"
     assert nr.infer_role("coder", g["nodes"]["coder"], g) == "coder"
-    chat = dict(g["nodes"]["angel-coder"], role="chat")
+    chat = dict(g["nodes"]["small-coder"], role="chat")
     assert nr.infer_role("chat", chat, g) == "chat"
 
 
@@ -81,7 +80,7 @@ def test_generate_graph_cli_angel(tmp_path):
         text=True,
     )
     assert r.returncode == 0, r.stderr + r.stdout
-    assert "angel-coder→coder" in r.stdout or "angel-coder->coder" in r.stdout
+    assert "small-coder→coder" in r.stdout or "small-coder->coder" in r.stdout
     out = os.path.join(str(tmp_path), "graph-angel.yaml")
     g = familia_yaml.loads(open(out, encoding="utf-8").read())
     assert set(g["nodes"]) == {"coder", "guardian"}

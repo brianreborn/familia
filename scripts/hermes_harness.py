@@ -1474,6 +1474,15 @@ def render(g, agent, user_cfg_path=os.path.join(USER_HOME, "config.yaml"), base_
                           "protect_last_n": comp.get("protect_last_n", 8)}
     ag = cfg.setdefault("agent", {})
     ag["disabled_toolsets"] = [t for t in ag.get("disabled_toolsets", []) or [] if t != "context_engine"]
+    # hermes-agent v0.22.6 CustomProfile.default_reasoning_config fills
+    # medium when agent.reasoning_effort is unset and sends it as a
+    # top-level Completions.create() kwarg. Empty is treated as unset and
+    # would still get that default. Write "none" (disable thinking) so a
+    # stock medium/high cannot reach a local backend. Use the string, not
+    # YAML false/null: some hermes config paths treat null as unset.
+    # User agent.reasoning_effort is replaced, not inherited; a top-level
+    # reasoning_effort key is already dropped via OWNED.
+    ag["reasoning_effort"] = "none"
     aux = {"transient_retries": 2}
     for t in AUX_TASKS:
         aux[t] = {"provider": "custom", "model": alias, "base_url": base, "api_key": familia_auth.api_key() or "local",
