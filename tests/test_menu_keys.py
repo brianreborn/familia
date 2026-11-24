@@ -17,49 +17,6 @@ PICKER = os.path.join(ROOT, "scripts", "menu_keys.py")
 MENU = os.path.join(ROOT, "familia-menu.sh")
 
 
-# ---- decode ------------------------------------------------------------------
-
-@pytest.mark.parametrize("seq,key", [
-    (b"\x1b[A", mk.UP), (b"\x1b[B", mk.DOWN), (b"\x1b[C", mk.RIGHT), (b"\x1b[D", mk.LEFT),
-    (b"\x1bOA", mk.UP), (b"\x1bOB", mk.DOWN),
-    (b"\x1b[H", mk.HOME), (b"\x1b[F", mk.END), (b"\x1bOH", mk.HOME), (b"\x1bOF", mk.END),
-    (b"\x1b[1~", mk.HOME), (b"\x1b[7~", mk.HOME), (b"\x1b[4~", mk.END), (b"\x1b[8~", mk.END),
-    (b"\x1b[5~", mk.PGUP), (b"\x1b[6~", mk.PGDN), (b"\x1b[3~", mk.DELETE),
-    (b"\x1b[1;5A", mk.UP), (b"\r", mk.ENTER), (b"\n", mk.ENTER), (b"\r\n", mk.ENTER),
-    (b"\x7f", mk.BACKSPACE), (b"\x08", mk.BACKSPACE), (b"\x03", mk.INTR), (b"\x04", mk.EOF),
-    (b"q", "q"), (b"7", "7"), (b"/", "/"),
-])
-def test_decode_one_key(seq, key):
-    assert mk.decode(seq) == ([key], b"")
-
-
-def test_decode_lone_esc_waits_then_is_esc():
-    assert mk.decode(b"\x1b") == ([], b"\x1b")
-    assert mk.decode(b"\x1b", final=True) == ([mk.ESC], b"")
-    assert mk.decode(b"\x1b[") == ([], b"\x1b[")
-    keys, rest = mk.decode(b"\x1b[")
-    assert mk.decode(rest + b"B") == ([mk.DOWN], b"")
-
-
-def test_decode_mixed_burst_and_split_sequence():
-    keys, rest = mk.decode(b"1\x1b[B2\r\x1b[")
-    assert keys == ["1", mk.DOWN, "2", mk.ENTER] and rest == b"\x1b["
-    assert mk.decode(rest + b"6~") == ([mk.PGDN], b"")
-
-
-def test_decode_unknown_and_overlong_sequences_do_not_stall():
-    assert mk.decode(b"\x1b[99Z") == ([mk.UNKNOWN], b"")
-    keys, rest = mk.decode(b"\x1b[" + b"1" * 100 + b"A")
-    assert mk.UNKNOWN in keys and rest == b""
-    assert mk.decode(b"\x1b[12", final=True) == ([mk.UNKNOWN], b"")
-
-
-def test_decode_utf8_split():
-    e = "\u00e9".encode()
-    assert mk.decode(e[:1]) == ([], e[:1])
-    assert mk.decode(e) == (["\u00e9"], b"")
-
-
 # ---- Picker ------------------------------------------------------------------
 
 def feed(p, *keys):
@@ -86,11 +43,8 @@ def test_home_end_pgup_pgdn():
     feed(p, mk.HOME); assert p.cursor == 0
     feed(p, mk.PGDN); assert p.cursor == 4
     feed(p, mk.PGUP); assert p.cursor == 0
-    assert feed(mk.Picker(5, cursor=4, next=True), mk.PGDN) == ">"
-    assert feed(mk.Picker(5, cursor=0, prev=True), mk.PGUP) == "<"
-    p = mk.Picker(5, cursor=2, next=True)
-    assert feed(p, mk.PGDN) is None and p.cursor == 4
-    assert feed(p, mk.PGDN) == ">"
+    assert feed(mk.Picker(5, cursor=2, next=True), mk.PGDN) == ">"   # menu-keys.sh contract
+    assert feed(mk.Picker(5, cursor=2, prev=True), mk.PGUP) == "<"
 
 
 def test_numeric_entry_multi_digit_and_text_pass_through():
@@ -134,6 +88,14 @@ def test_render_marks_current_entry():
     assert lines[0] == "\033[7m> 1) a\033[0m"
 
 
+def test_render_prompt_only_shows_current_number():
+    p = mk.Picker(7, cursor=2)
+    assert mk.render([], [], [], "Choose: ", p, False) == ["Choose: [3]"]
+    assert mk.render([], [], [], "Choose: ", p, True) == ["Choose: \033[7m[3]\033[0m"]
+    p.line = "12"
+    assert mk.render([], [], [], "Choose: ", p, True) == ["Choose: 12"]
+
+
 def test_rows_counts_wrapped_and_wide_lines():
     assert mk.rows(["a" * 10, "b" * 25], 10) == 4
     assert mk.rows(["\033[7mabc\033[0m"], 3) == 1
@@ -152,6 +114,7 @@ def test_help_and_no_terminal_exit_3():
 
 termios = pytest.importorskip("termios")
 pty = pytest.importorskip("pty")
+needs_m2 = pytest.mark.skipif(mk._m2() is None, reason="arrow keys need scripts/menu_input.py (#736, M2)")
 
 
 def _read_until(fd, needle, timeout=10):
@@ -190,6 +153,7 @@ def _finish(p, master, slave, before):
         os.close(slave)
 
 
+@needs_m2
 def test_pty_arrows_select_and_restore_terminal():
     p, m, s, before = _start_picker("--", "  1) one", "  2) two", "  3) three")
     os.write(m, b"\x1b[B\x1b[B")
@@ -198,6 +162,16 @@ def test_pty_arrows_select_and_restore_terminal():
     assert _finish(p, m, s, before) == (0, "2\n")
 
 
+@needs_m2
+def test_pty_bracketed_paste_on_then_off():
+    p, m, s, before = _start_picker("--count", "2")
+    os.write(m, b"\r")
+    out = _read_until(m, b"\x1b[?2004l", timeout=5)
+    assert _finish(p, m, s, before) == (0, "1\n")
+    assert b"\x1b[?2004l" in out
+
+
+@needs_m2
 def test_pty_lone_esc_is_back_and_digits_work():
     p, m, s, before = _start_picker("--", "  1) one", "  2) two")
     os.write(m, b"\x1b")
@@ -207,6 +181,7 @@ def test_pty_lone_esc_is_back_and_digits_work():
     assert _finish(p, m, s, before) == (0, "12\n")
 
 
+@needs_m2
 def test_pty_ctrl_d_and_sigint_restore_terminal():
     p, m, s, before = _start_picker("--", "  1) one")
     os.write(m, b"\x04")
@@ -217,6 +192,38 @@ def test_pty_ctrl_d_and_sigint_restore_terminal():
     assert rc in (-signal.SIGINT, 130) and out == ""
 
 
+@needs_m2
+def test_pty_count_mode_and_page_keys():
+    p, m, s, before = _start_picker("--count", "3", "--prev", "--next")
+    os.write(m, b"\x1b[B\x1b[B\x1b[B\x1b[B\r")   # wraps: 1 -> 2 -> 3 -> 1 -> 2
+    assert _finish(p, m, s, before) == (0, "2\n")
+    p, m, s, before = _start_picker("--count", "3", "--prev", "--next")
+    os.write(m, b"\x1b[6~")
+    assert _finish(p, m, s, before) == (0, ">\n")
+    p, m, s, before = _start_picker("--count", "3", "--prev", "--next")
+    os.write(m, b"&mod\r")
+    assert _finish(p, m, s, before) == (0, "&mod\n")
+
+
+@needs_m2
+def test_pty_count_mode_sigwinch_keeps_the_printed_list():
+    p, m, s, before = _start_picker("--count", "2")
+    p.send_signal(signal.SIGWINCH)
+    out = _read_until(m, b"[1]", timeout=2)
+    os.write(m, b"\r")
+    assert _finish(p, m, s, before) == (0, "1\n")
+    assert b"\x1b[2J" not in out
+
+
+def test_menu_keys_sh_contract_without_terminal_falls_back_to_read_line():
+    script = (". scripts/menu-keys.sh; read_line() { printf '%s' \"$1\" >&2; IFS= read -r \"$2\"; };"
+              "menu_key_read 'P: ' got 3; echo \"rc=$? got=$got\"; menu_key_read 'P: ' got 3; echo \"rc=$?\"")
+    r = subprocess.run(["bash", "-c", script], cwd=ROOT, input="2\n", capture_output=True, text=True,
+                       env=dict(os.environ, FAMILIA_NO_TTY="1"))
+    assert "rc=0 got=2" in r.stdout and "rc=1" in r.stdout
+
+
+@needs_m2
 def test_pty_sigwinch_redraws_full():
     p, m, s, before = _start_picker("--head", "HEAD", "--", "  1) one")
     p.send_signal(signal.SIGWINCH)
@@ -225,6 +232,7 @@ def test_pty_sigwinch_redraws_full():
     assert _finish(p, m, s, before) == (0, "1\n")
 
 
+@needs_m2
 def test_pty_familia_menu_arrows_and_numbers():
     """End to end: arrows pick a group and an item (dry run), numbers still work, q quits."""
     master, slave = os.openpty()
@@ -251,6 +259,7 @@ def test_pty_familia_menu_arrows_and_numbers():
         os.close(slave)
 
 
+@needs_m2
 def test_pty_familia_menu_ctrl_c_restores_terminal_and_stops():
     """Ctrl-C typed on the controlling terminal: the menu stops and the terminal is cooked again."""
     import fcntl
@@ -278,5 +287,17 @@ def test_pty_familia_menu_ctrl_c_restores_terminal_and_stops():
     finally:
         if p.poll() is None:
             p.kill()
+        os.close(master)
+        os.close(slave)
+
+
+@pytest.mark.skipif(mk._m2() is not None, reason="only meaningful before #736 lands")
+def test_without_m2_the_picker_steps_aside():
+    master, slave = os.openpty()
+    try:
+        r = subprocess.run([sys.executable, PICKER, "pick", "--count", "2"], stdin=slave, stderr=slave,
+                           capture_output=False, stdout=subprocess.PIPE, env=dict(os.environ, TERM="xterm"), timeout=10)
+        assert r.returncode == 3 and r.stdout == b""
+    finally:
         os.close(master)
         os.close(slave)

@@ -267,6 +267,18 @@ run_item() {  # run_item KEY ARGS...
   bash -c "$cmd"
 }
 
+# ---- key reader (#733): M1 owns the raw-mode key reader. When scripts/menu-keys.sh exists and defines
+# menu_key_read PROMPT VAR COUNT, a terminal menu reads through it; it must hand back
+# the same text a typed line would (a number, b, q, <, >, h, /word, &word).
+# Pipes, TERM=dumb and a missing reader (M2's fallback) keep the line reader below.
+[ -f "$ROOT/scripts/menu-keys.sh" ] && . "$ROOT/scripts/menu-keys.sh"
+nav_read() {  # nav_read PROMPT VAR COUNT ; returns 1 on EOF
+  if [ "$PIPE" != 1 ] && [ -t 0 ] && [ "${TERM:-dumb}" != dumb ] && declare -F menu_key_read >/dev/null; then
+    menu_key_read "$1" "$2" "${3:-0}"; return
+  fi
+  read_line "$1" "$2"
+}
+
 # ---- search, like / ? n N in less and more ----------------------------------
 LAST_SEARCH=""; SDIR=1; SCUR=0; SK=()
 use_color() {
@@ -345,7 +357,7 @@ search_ui() {  # search_ui OP TEXT ; OP is / ? n N. Returns 3 to quit the menu.
       show_match $((SCUR+1)) "${SK[$SCUR]}" "$t" "> " ;;
   esac
   while true; do
-    if ! read_line "Choose 1-${#SK[@]} to run, n/N next/previous match, /word to search again, b back: " choice; then
+    if ! nav_read "Choose 1-${#SK[@]} to run, n/N next/previous match, /word to search again, b back: " choice "${#SK[@]}"; then
       closed_input || return 4
       continue
     fi
@@ -378,50 +390,18 @@ search_key() {  # 0 handled (stay), 3 quit, 4 stdin closed (not a quit), 1 not a
   return 0
 }
 
-# ---- arrow keys (epic #733 M1): scripts/menu_keys.py draws the list and reads keys ----
-# choose VAR PROMPT [--top|--prev|--next|--cursor N]... prints PICK_HEAD, PICK_ENTRIES and
-# PICK_FOOT and reads one answer into VAR. On a terminal the picker highlights an entry
-# (Up/Down/Home/End/PgUp/PgDn, Enter, Esc/Backspace = b, q, typed numbers or text);
-# anywhere else it prints the same lines and reads a line, exactly as before.
-# Returns 1 on end of input, like read_line.
-# FAMILIA_MENU_ARROWS=0 turns the picker off (line prompt only).
-PICK_HEAD=(); PICK_ENTRIES=(); PICK_FOOT=(); ARROWS_BROKEN=0
-arrow_ok() {  # seam for M2 (TERM=dumb / non-tty / legacy fallback rules)
-  [ "${FAMILIA_MENU_ARROWS:-1}" != 0 ] && [ "$ARROWS_BROKEN" = 0 ] && [ "$PIPE" != 1 ] &&
-    [ "${FAMILIA_NO_TTY:-}" != 1 ] && [ -t 0 ] && [ -t 2 ] && [ "${TERM:-dumb}" != dumb ]
-}
-choose() {
-  local __var=$1 __p=$2 __out __rc __l; shift 2
-  if arrow_ok; then
-    local -a __a=(pick --prompt "$__p" "$@")
-    for __l in ${PICK_HEAD[@]+"${PICK_HEAD[@]}"}; do __a+=(--head "$__l"); done
-    for __l in ${PICK_FOOT[@]+"${PICK_FOOT[@]}"}; do __a+=(--foot "$__l"); done
-    __rc=0; __out=$("$PY" "$ROOT/scripts/menu_keys.py" "${__a[@]}" -- ${PICK_ENTRIES[@]+"${PICK_ENTRIES[@]}"}) || __rc=$?
-    case $__rc in
-      0) printf -v "$__var" '%s' "$__out"; return 0 ;;
-      4) return 1 ;;
-      130) exit 130 ;;
-      *) ARROWS_BROKEN=1 ;;  # no usable terminal: line prompt from now on
-    esac
-  fi
-  for __l in ${PICK_HEAD[@]+"${PICK_HEAD[@]}"} ${PICK_ENTRIES[@]+"${PICK_ENTRIES[@]}"} ${PICK_FOOT[@]+"${PICK_FOOT[@]}"}; do
-    say "$__l"
-  done
-  read_line "$__p" "$__var"
-}
-
 menu() {
-  local gs g n choice items key first=1 page page_size=7 pages start end idx top_cursor=0
+  local gs g n choice items key first=1 page page_size=7 pages start end idx
   while true; do
     say ""
     if [ "$first" = 1 ]; then workflow_paths; first=0; fi
-    gs=(); n=0; PICK_ENTRIES=()
-    while IFS= read -r g; do gs+=("$g"); n=$((n+1)); PICK_ENTRIES+=("$(printf '  %2d) %-36s %s' "$n" "$g" "$(group_desc "$g")")"); done <<EOF2
+    say "familia: what do you want to do?"
+    gs=(); n=0
+    while IFS= read -r g; do gs+=("$g"); n=$((n+1)); printf '  %2d) %-36s %s\n' "$n" "$g" "$(group_desc "$g")"; done <<EOF2
 $(groups)
 EOF2
-    PICK_HEAD=("familia: what do you want to do?")
-    PICK_FOOT=("  q) Quit      /word search every group (n/N next/previous match)")
-    if ! choose choice "Choose 1-$n, /search or q: " --top --cursor "$top_cursor"; then
+    say "  q) Quit      /word search every group (n/N next/previous match)"
+    if ! nav_read "Choose 1-$n, /search or q: " choice "$n"; then
       closed_input || return 2
       continue
     fi
@@ -433,7 +413,6 @@ EOF2
     if ! [[ $choice =~ ^[0-9]+$ ]] || [ "$choice" -lt 1 ] || [ "$choice" -gt "$n" ]; then
       say "'$choice' isn't one of the choices. Type a number from 1 to $n, /word to search, or q."; continue
     fi
-    top_cursor=$((choice-1))
     g=${gs[$((choice-1))]}
     PENDING_ARGS=("${MENU_ARGS[@]}")
     local all_keys=() all_labels=() all_cmds=() all_needs=()
@@ -444,35 +423,31 @@ EOF2
 $ITEMS
 EOF2
     page=0
-    local sub_cursor=0
     pages=$(( (${#all_keys[@]} + page_size - 1) / page_size ))
     while true; do
-      say ""
-      PICK_HEAD=("$g: $(group_desc "$g")")
+      say ""; say "$g: $(group_desc "$g")"
       start=$((page * page_size))
       end=$((start + page_size))
       [ "$end" -gt "${#all_keys[@]}" ] && end=${#all_keys[@]}
-      [ "$pages" -gt 1 ] && PICK_HEAD+=("  Page $((page+1)) of $pages (items $((start+1))-$end of ${#all_keys[@]})")
-      items=(); n=0; PICK_ENTRIES=()
+      [ "$pages" -gt 1 ] && say "  Page $((page+1)) of $pages (items $((start+1))-$end of ${#all_keys[@]})"
+      items=(); n=0
       for ((idx=start; idx<end; idx++)); do
         items+=("${all_keys[$idx]}"); n=$((n+1))
         local note=""; need_ok "${all_needs[$idx]}" || note=" (not available yet)"
-        PICK_ENTRIES+=("$(printf '  %d) %s%s\n       runs: %s' "$n" "${all_labels[$idx]}" "$note" "$(shown "${all_cmds[$idx]}")")")
+        printf '  %d) %s%s\n       runs: %s\n' "$n" "${all_labels[$idx]}" "$note" "$(shown "${all_cmds[$idx]}")"
       done
-      PICK_FOOT=()
-      local -a pflags=(--cursor "$sub_cursor")
       if [ "$pages" -gt 1 ]; then
-        [ "$page" -gt 0 ] && { PICK_FOOT+=("  <) Previous page"); pflags+=(--prev); }
-        [ "$page" -lt "$((pages-1))" ] && { PICK_FOOT+=("  >) Next page"); pflags+=(--next); }
+        [ "$page" -gt 0 ] && say "  <) Previous page"
+        [ "$page" -lt "$((pages-1))" ] && say "  >) Next page"
       fi
-      PICK_FOOT+=("  b) Back      /word search every group (n/N next/previous match)")
+      say "  b) Back      /word search every group (n/N next/previous match)"
       if [ "$pages" -gt 1 ]; then
-        if ! choose choice "Choose 1-$n, </> page, /search or b: " "${pflags[@]}"; then
+        if ! nav_read "Choose 1-$n, </> page, /search or b: " choice "$n"; then
           closed_input || return 2
           continue
         fi
       else
-        if ! choose choice "Choose 1-$n, /search or b: " "${pflags[@]}"; then
+        if ! nav_read "Choose 1-$n, /search or b: " choice "$n"; then
           closed_input || return 2
           continue
         fi
@@ -481,8 +456,8 @@ EOF2
       [ -n "$choice" ] || continue
       case "$choice" in b|B|back|"") break ;; q|Q|quit|exit) return 0 ;; esac
       case "$choice" in
-        '>'|next) if [ "$page" -lt "$((pages-1))" ]; then page=$((page+1)); fi; sub_cursor=0; continue ;;
-        '<'|prev) if [ "$page" -gt 0 ]; then page=$((page-1)); fi; sub_cursor=0; continue ;;
+        '>'|next) if [ "$page" -lt "$((pages-1))" ]; then page=$((page+1)); fi; continue ;;
+        '<'|prev) if [ "$page" -gt 0 ]; then page=$((page-1)); fi; continue ;;
       esac
       local rc=0; search_key "$choice" || rc=$?
       case $rc in 0) continue ;; 3) return 0 ;; 4) return 2 ;; esac
@@ -494,7 +469,6 @@ EOF2
         fi
         continue
       fi
-      sub_cursor=$((choice-1))
       local -a item_args=("${PENDING_ARGS[@]}" "${MENU_ARGS[@]}")
       PENDING_ARGS=()
       run_item "${items[$((choice-1))]}" "${item_args[@]}" || say "(that step exited with status $?)"
