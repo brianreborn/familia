@@ -365,6 +365,7 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/swarm/swarm-bootstrap.sh` | fresh swarm worker checkout; one-time operator setup |
 | `scripts/task_suite_promote.py` | promote gate for model configs (#119); used by bench/CI flows |
 | `scripts/task_suite_runner.py` | fixed task suite runner (#119); used by bench/CI flows |
+| `scripts/tools_persist.py` | familia-start helper that saves and reloads --tools; not a menu action |
 | `scripts/bfcl_adapter.py` | BFCL -> task-suite adapter and scorer (bench-adapters); used by bench/CI flows |
 | `scripts/routerbench_pickle_to_parquet.py` | one-time RouterBench pickle -> parquet converter; operator data prep |
 | `scripts/routerbench_scorer.py` | offline RouterBench routing-policy scorer (bench-adapters); used by bench/CI flows |
