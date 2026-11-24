@@ -111,3 +111,7 @@ scripts/progress_report.py|hourly GitHub issue/PR progress report generator for 
 scripts/check_pins.py|CI-only verifier for full-SHA repository pins; invoked by pin-integrity workflow, not a user menu command
 scripts/swarm/deploy_fleet.py|CI/deployment controller; invoked by fleet-deploy workflow, not an interactive menu action
 scripts/swarm/configure-fleet-role.sh|validated writer used by the Android cockpit fleet-role screen
+scripts/fleet/hostid.sh|fleet host ID helper (docs/fleet-host-ids.md); prints this host's canonical ID, used by registration/dashboards, not a menu action
+scripts/fleet/hostid.py|fleet host ID helper (docs/fleet-host-ids.md); prints this host's canonical ID, used by registration/dashboards, not a menu action
+scripts/fleet/hostid.ps1|fleet host ID helper (docs/fleet-host-ids.md); prints this host's canonical ID, used by registration/dashboards, not a menu action
+scripts/fleet/hostid.cmd|fleet host ID helper (docs/fleet-host-ids.md); prints this host's canonical ID, used by registration/dashboards, not a menu action

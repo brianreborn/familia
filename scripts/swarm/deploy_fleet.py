@@ -12,6 +12,7 @@ import argparse
 import json
 import os
 import subprocess
+import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -29,6 +30,31 @@ HEALTH_PORTS = {"miryam": 9931, "surface1": 47201, "surface7": 47201,
                 "galaxy1": 9931, "galaxy2": 9931, "note9": 9931}
 ROOT = Path(__file__).resolve().parents[2]
 LEDGER = Path(os.environ.get("FAMILIA_DEPLOY_LEDGER", ROOT / ".cache" / "fleet-deploy.jsonl"))
+
+
+def dedupe_hosts(hosts: list[str], reg: dict | None = None) -> list[tuple[str, str | None]]:
+    """Collapse names of one physical device (note9 + note9-usb, phone7 + galaxy1).
+
+    Names resolve through registry/fleet-hosts.yaml (canonical host IDs); the first
+    name given for a device wins and later aliases of the same host ID are dropped.
+    Unknown names pass through with host_id None.
+    """
+    sys.path.insert(0, str(ROOT / "scripts" / "fleet"))
+    import hostid  # noqa: E402
+    if reg is None:
+        try:
+            reg = hostid.load_registry()
+        except (OSError, ImportError):
+            reg = {}
+    out, seen = [], set()
+    for h in hosts:
+        hid = hostid.resolve(h, reg)
+        if hid and hid in seen:
+            continue
+        if hid:
+            seen.add(hid)
+        out.append((h, hid))
+    return out
 
 
 def now() -> str:
@@ -72,14 +98,15 @@ def main() -> int:
     ap.add_argument("--timeout", type=int, default=120)
     ap.add_argument("--retry", action="store_true", help="retry failed hosts with documented backoff")
     args = ap.parse_args()
-    hosts = [h.strip() for h in args.hosts.split(",") if h.strip()]
+    hosts = dedupe_hosts([h.strip() for h in args.hosts.split(",") if h.strip()])
     failures = 0
-    for host in hosts:
+    for host, host_id in hosts:
         attempt = 0
         while True:
             attempt += 1
             result = deploy(host, args.ref, apply=args.apply, timeout=args.timeout)
             result["attempt"] = attempt
+            result["host_id"] = host_id
             record(result)
             print(json.dumps(result, sort_keys=True))
             if result["status"] in ("healthy", "dry-run"):

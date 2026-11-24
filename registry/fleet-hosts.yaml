@@ -1,0 +1,140 @@
+# Familia fleet registry, keyed by canonical host ID (see scripts/fleet/hostid.py).
+#
+# ID format: <label-slug>-<fp8>
+#   fp8 = first 8 hex of sha256("familia-hostid-v1|<anchor_type>|<anchor>")
+# The anchor is read on the device itself and is the same over every transport,
+# so USB, Wi-Fi and ethernet logins of one device resolve to one entry. Raw
+# serials / machine-ids are never stored here, only the salted 8-hex hash.
+# Labels and aliases (ssh aliases, legacy graph keys) are display/lookup names.
+# Addresses and Termux accounts stay in the untracked hosts.local.yaml overlay (#104).
+#
+# anchor_type hostname = weak ID (no readable hardware anchor yet). anchor_status
+# says why; when the anchor becomes readable, the entry moves to the new ID and
+# the old one goes under previous_ids.
+#
+# Get a host's ID:   sh scripts/fleet/hostid.sh   (or hostid.py / hostid.ps1)
+# Resolve a name:    python3 scripts/fleet/hostid.py resolve note9-usb
+# Validate:          python3 scripts/fleet/hostid.py check
+version: 1
+hosts:
+  miryam-372efeab:
+    label: miryam
+    fingerprint: 372efeab
+    anchor_type: machine-id
+    graph_host: miryam
+    aliases: []
+    transports:
+      - {kind: local}
+
+  angel-5021f639:
+    label: angel
+    fingerprint: 5021f639
+    anchor_type: machine-id
+    graph_host: angel
+    aliases: [gabriel]
+    transports:
+      - {kind: ethernet, ssh_alias: angel}
+
+  surface1-19e687ae:
+    label: surface1
+    fingerprint: 19e687ae
+    anchor_type: machine-id
+    aliases: [surface7]
+    transports:
+      - {kind: wifi, ssh_alias: surface1}
+
+  box-06f5df8d:
+    label: box
+    fingerprint: 06f5df8d
+    anchor_type: machine-id
+    graph_host: box
+    aliases: []
+    anchor_status: >-
+      Grok Bot box: machine-id is per box instance; a replaced box reports a new ID.
+      Move the old ID to previous_ids when that happens.
+    transports:
+      - {kind: local}
+
+  # Was two fleet members (note9 + note9-usb). Both logins report the same
+  # soc-serial anchor (checked 2026-11-23 over Wi-Fi and over the adb forward).
+  note9-7140b66c:
+    label: note9
+    fingerprint: 7140b66c
+    anchor_type: soc-serial
+    aliases: [note9-usb]
+    transports:
+      - {kind: wifi, ssh_alias: note9}
+      - {kind: usb-adb-forward, ssh_alias: note9-usb, via: miryam}
+
+  # galaxy1 == legacy measured graph key phone7 (same A57, SM-A576U).
+  galaxy1-db07b41d:
+    label: galaxy1
+    fingerprint: db07b41d
+    anchor_type: hostname
+    graph_host: galaxy1
+    aliases: [phone7]
+    anchor_status: >-
+      pending: Android 16 Termux exposes no serial/android_id/soc serial and the
+      Wi-Fi MAC is randomized. Fix: run `python3 scripts/fleet/hostid.py --init`
+      on the phone (writes a state-uuid anchor) with the owner's OK.
+    transports:
+      - {kind: wifi, ssh_alias: galaxy1}
+
+  # galaxy2 == legacy measured graph key phone8. Weak ID confirmed on the device 2026-11-23.
+  galaxy2-2e567cbe:
+    label: galaxy2
+    fingerprint: 2e567cbe
+    anchor_type: hostname
+    graph_host: galaxy2
+    aliases: [phone8]
+    anchor_status: >-
+      pending: same Android 16 Termux limits as galaxy1 (no readable serial; MAC
+      randomized). Fix with `python3 scripts/fleet/hostid.py --init` on the phone, with the owner's OK.
+    transports:
+      - {kind: wifi, ssh_alias: galaxy2}
+
+  macmini-d60789b1:
+    label: macmini
+    fingerprint: d60789b1
+    anchor_type: hostname
+    graph_host: macmini
+    aliases: [green-macmini, green-Macmini7-1]
+    anchor_status: pending (unreachable 2026-11-23)
+    transports:
+      - {kind: ethernet, ssh_alias: macmini}
+
+  qodesh-ff729b4e:
+    label: qodesh
+    fingerprint: ff729b4e
+    anchor_type: hostname
+    graph_host: qodesh
+    aliases: []
+    anchor_status: pending (Windows MachineGuid; not reachable from the survey hosts 2026-11-23)
+    transports: []
+
+  shalom-c81c5c56:
+    label: shalom
+    fingerprint: c81c5c56
+    anchor_type: hostname
+    graph_host: shalom
+    aliases: []
+    anchor_status: pending (not reachable from the survey hosts 2026-11-23)
+    transports: []
+
+  godslove-23f43042:
+    label: godslove
+    fingerprint: 23f43042
+    anchor_type: hostname
+    graph_host: godslove
+    aliases: []
+    anchor_status: pending (not reachable from the survey hosts 2026-11-23)
+    transports: []
+
+  centos10-bigram-620fe4b0:
+    label: centos10-bigram
+    fingerprint: 620fe4b0
+    anchor_type: hostname
+    graph_host: centos10-bigram
+    aliases: []
+    anchor_status: pending (placeholder host name; not reachable 2026-11-23)
+    transports: []
