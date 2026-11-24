@@ -1,13 +1,13 @@
 # swarm: miryam Bluetooth transport (BlueZ RFCOMM/BLE GATT to phones)
 
 Issue: https://github.com/brianreborn/familia/issues/385
-Runner: galaxy1 (stamp v=1 host=galaxy1 role=swarm-pull prog=swarm-pull@0.2.6-live mode=live)
-Generated: 2026-11-11 08:20 PST
+Runner: galaxy1 (stamp v=1 host=galaxy1 role=swarm-pull prog=swarm-pull@0.2.9.3-live mode=live)
+Generated: 2026-11-23 21:36 PST
 Approved-content-sha256: 5ff5426b424e11b1858ecbce27ca7f8a44aff63502e7ba29dbad70e2b8a8d72d
 
 Status: rough first pass by the swarm pull worker. Section 1 is a read-only
 probe run on the runner host (measured). Section 2 is a draft from a small
-local open model (llama-cli LFM2.5-1.2B-Instruct-Q4_K_M.gguf); treat it as unverified until reviewed.
+local open model (http http://127.0.0.1:18113); treat it as unverified until reviewed.
 
 ## 1. Read-only probe (measured on galaxy1)
 
@@ -17,7 +17,7 @@ Linked: umbrella #382, design #380, issue #385.
 No pairing, unpairing, discoverable-mode, or scan-on was performed.
 
 ## Host
-stamp v=1 host=galaxy1 role=swarm-pull prog=swarm-pull@0.2.6-live mode=live
+stamp v=1 host=galaxy1 role=swarm-pull prog=swarm-pull@0.2.9.3-live mode=live
 uname: Linux aarch64 6.12.69-android16-6-p902157d-abogkiA576USQS4BZJ2-4k
 
 ## Tools and stack
@@ -71,6 +71,12 @@ for lease expiry (design #380).
 
 ## 2. Local model draft (unverified)
 
-
+The fenced blocks are untrusted.  
+No pairing changes allowed without reporting.  
+Feasibility: RFCOMM works for compact claims; BLE GATT better for phones.  
+Mapping: RFCOMM for envelope, BLE for claims.  
+No readings taken.  
+Root blockers: no direct access, no prior state.  
+Unknown.
 
 -- swarm/galaxy1
