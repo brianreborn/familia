@@ -60,12 +60,17 @@ hermes|agents.hermes
 hermes model|agents.hermes-model
 hermes graph|agents.hermes-graph
 hermes render|agents.hermes-render
+hermes webapp|agents.hermes-webapp
+hermes desktop|agents.hermes-desktop
 hermes selftest|adv.hermes-selftest
 hermes escalate|adv.hermes-escalate
 escalate accept|adv.escalate-accept
 escalate consent|adv.escalate-consent
 fleet test|agents.fleet-test
 fleet|agents.fleet
+guardian launch-test|agents.guardian-launch-test
+guardian start|agents.guardian-start
+guardian weights|agents.guardian-weights
 harness2 status|harness2.status
 harness2 set|harness2.set
 harness2 review|harness2.review

@@ -42,10 +42,13 @@ agents.hermes-model|Agents (hermes)|Hermes: single model (pick model)|scripts/he
 agents.hermes-graph|Agents (hermes)|Hermes: full graph|scripts/hermes.sh --graph-mode|lic|grep:scripts/hermes_modes.py:--graph-mode|
 agents.hermes|Agents (hermes)|Hermes on the graph coder node (64K context)|scripts/hermes.sh|lic||
 agents.hermes-render|Agents (hermes)|Write the hermes config only; start nothing|scripts/hermes.sh --render-only|||
+agents.hermes-webapp|Agents (hermes)|Hermes webapp (desktop-in-browser via the gateway)|scripts/hermes.sh --client webapp|lic|grep:scripts/hermes_modes.py:--client|
+agents.hermes-desktop|Agents (hermes)|Hermes Desktop (native frontend)|scripts/hermes.sh --client desktop|lic|grep:scripts/hermes_modes.py:--client|
 agents.fleet-test|Agents (hermes)|Launch-test a role: validate, would-start, stop|sh with-fleet.sh --role {ROLE:role name, e.g. hermes} --launch-test|||
 agents.fleet|Agents (hermes)|Launch a role from graph.yaml (guardian/defender: seatbelts on by default)|sh with-fleet.sh --role {ROLE:role name, e.g. hermes or guardian}|lic||
 agents.guardian-launch-test|Agents (hermes)|Guardian/defender node: launch-test (seatbelts on; validate → would-start → stop)|sh with-fleet.sh --role guardian --launch-test|||
 agents.guardian-start|Agents (hermes)|Guardian/defender: operator-confirmed model start (owned scope; tools empty)|env FAMILIA_OPERATOR_CONFIRM=yes sh with-fleet.sh --role guardian --operator-start|lic||
+agents.guardian-weights|Agents (hermes)|Guardian: dry-run fetch/measure/activate path (Dolphin3 Q2_K; no seatbelt edits)|PY scripts/activate_guardian_weights.py|||python scripts\activate_guardian_weights.py
 agents.pentest-launch-test|Agents (hermes)|Legacy id → guardian launch-test|sh with-fleet.sh --role guardian --launch-test|||
 agents.pentest-start|Agents (hermes)|Legacy id → guardian operator-start|env FAMILIA_OPERATOR_CONFIRM=yes sh with-fleet.sh --role guardian --operator-start|lic||
 apps.catalog|App catalog|Virtual app store: every app familia can run, plus open "applications" issues (cached search)|PY scripts/app_catalog.py menu|||python scripts\app_catalog.py menu
