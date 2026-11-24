@@ -7,6 +7,11 @@ import validate_graph  # noqa: E402
 
 BASE = validate_graph.load(os.path.join(ROOT, "graph.yaml"))
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from retired_hosts import with_retired  # noqa: E402  (qodesh/shalom retired 2026-11-23)
+RT = with_retired(BASE)
+def rt(): return copy.deepcopy(RT)
+
 def g(): return copy.deepcopy(BASE)
 def errs(graph): return validate_types(graph)
 def has(graph, frag):
@@ -123,38 +128,38 @@ def test_offload_rules():
 
 def test_qodesh_gpu_offload_rejected():
     # plain cuda still mismatches the verified cuda-sm11-ptx GPU
-    x = g(); x["runtimes"]["llama-b11374"]["hosts"].append("qodesh"); x["runtimes"]["llama-b11374"]["backends"].append("cuda")
+    x = rt(); x["runtimes"]["llama-b11374"]["hosts"].append("qodesh"); x["runtimes"]["llama-b11374"]["backends"].append("cuda")
     n = x["nodes"]["cpu-resident-coder"]; n["status"] = "active"; n["offload"].update(backend="cuda", ngl=4)
     has(x, "backend 'cuda' but GPU 0 backend is 'cuda-sm11-ptx'")
 
 def test_gpu_fields():
-    x = g(); x["hosts"]["godslove"]["gpus"][0]["vram_mib"] = 4096; has(x, "measured is false; leave null")
-    x = g(); x["hosts"]["godslove"]["gpus"][0]["backend_status"] = "verified"; has(x, "verified requires measured")
-    x = g(); x["hosts"]["miryam"]["gpus"][0]["backend"] = "directx"; has(x, "not one of")
-    x = g(); del x["hosts"]["shalom"]["gpus"]; has(x, "missing required 'gpus'")
-    x = g(); x["hosts"]["miryam"]["gpus"][0]["vram_mib"] = None; has(x, "measured GPU needs vram_mib")
+    x = rt(); x["hosts"]["godslove"]["gpus"][0]["vram_mib"] = 4096; has(x, "measured is false; leave null")
+    x = rt(); x["hosts"]["godslove"]["gpus"][0]["backend_status"] = "verified"; has(x, "verified requires measured")
+    x = rt(); x["hosts"]["miryam"]["gpus"][0]["backend"] = "directx"; has(x, "not one of")
+    x = rt(); del x["hosts"]["shalom"]["gpus"]; has(x, "missing required 'gpus'")
+    x = rt(); x["hosts"]["miryam"]["gpus"][0]["vram_mib"] = None; has(x, "measured GPU needs vram_mib")
     for h in BASE["hosts"].values(): assert isinstance(h["gpus"], list) or h["gpus"] is None
-    x = g(); x["hosts"]["miryam"]["gpus"] = None
+    x = rt(); x["hosts"]["miryam"]["gpus"] = None
     x["nodes"]["coder"]["offload"].update(backend="vulkan", ngl=1)
     has(x, "GPU inventory on host 'miryam' is unknown")
 
 def test_windows_host_block():
-    x = g(); del x["hosts"]["qodesh"]["windows"]; has(x, "os windows requires a 'windows' block")
-    x = g(); x["hosts"]["qodesh"]["windows"]["startup"] = "magic"; has(x, "windows.startup")
-    x = g(); del x["hosts"]["qodesh"]["windows"]["wake"]; has(x, "missing required 'wake'")
-    x = g(); x["hosts"]["miryam"]["windows"] = dict(BASE["hosts"]["qodesh"]["windows"]); has(x, "requires os: windows")
+    x = rt(); del x["hosts"]["qodesh"]["windows"]; has(x, "os windows requires a 'windows' block")
+    x = rt(); x["hosts"]["qodesh"]["windows"]["startup"] = "magic"; has(x, "windows.startup")
+    x = rt(); del x["hosts"]["qodesh"]["windows"]["wake"]; has(x, "missing required 'wake'")
+    x = rt(); x["hosts"]["miryam"]["windows"] = dict(RT["hosts"]["qodesh"]["windows"]); has(x, "requires os: windows")
 
 def test_reported_only_unmeasured():
     x = g(); x["hosts"]["miryam"]["reported"] = {"source": "x"}; has(x, "only for unmeasured")
     x = g(); x["hosts"]["godslove"]["reported"] = {"ram_mib": 1}; has(x, "with a 'source'")
 
 def test_planned_node_skips_placement():
-    x = g(); n = x["nodes"]["cpu-resident-coder"]; n["status"] = "planned"; n["runtime"] = "llama-b11374"; assert errs(x) == []
+    x = rt(); n = x["nodes"]["cpu-resident-coder"]; n["status"] = "planned"; n["runtime"] = "llama-b11374"; assert errs(x) == []
     n["status"] = "active"; has(x, "not installed on host 'qodesh'")
 
 def test_node_selection_fallback():
-    assert BASE["nodes"]["cpu-resident-coder"]["selection"] == "fallback" and errs(g()) == []
-    x = g(); x["nodes"]["cpu-resident-coder"]["selection"] = "maybe"; has(x, "maybe")
+    assert RT["nodes"]["cpu-resident-coder"]["selection"] == "fallback" and errs(rt()) == []
+    x = rt(); x["nodes"]["cpu-resident-coder"]["selection"] = "maybe"; has(x, "maybe")
 
 def spec_draft(**kw):
     d = {"experimental": True, "status": "planned", "mode": "draft", "target": "coder", "draft": "egemma2-q8",
@@ -461,7 +466,7 @@ def test_cuda_sm11_ptx_backend_allowed():
     x = g(); x["hosts"]["miryam"]["gpus"][0]["backend"] = "cuda-sm11-ptx"; assert errs(x) == []
 
 def test_qodesh_sm11_decision_accepted():
-    x = g()
+    x = rt()
     assert x["hosts"]["qodesh"]["gpus"][0]["backend"] == "cuda-sm11-ptx"
     assert x["hosts"]["qodesh"]["gpus"][0]["backend_status"] == "verified"
     assert x["nodes"]["cuda-sm11-decision"]["offload"]["backend"] == "cuda-sm11-ptx"
@@ -487,14 +492,14 @@ def test_validate_graph_host_option_requires_declared_host():
     assert validate_graph.parse_argv(["--host", "miryam"])["host"] == "miryam"
 
 def test_qodesh_plain_cuda_still_rejected():
-    x = g()
+    x = rt()
     x["nodes"]["cuda-sm11-decision"]["offload"]["backend"] = "cuda"
     x["runtimes"]["sm11-legacy"]["backends"] = ["cpu", "cuda", "cuda-sm11-ptx"]
     has(x, "backend 'cuda' but GPU 0 backend is 'cuda-sm11-ptx'")
 
 
 def test_smollm2_catalog_and_measured_notes():
-    x = g()
+    x = rt()
     assert "smollm2-135m-q4" in x["models"]
     assert x["models"]["smollm2-135m-q4"]["role"] == "decision"
     assert x["nodes"]["cpu-smol-decision"]["status"] == "planned"

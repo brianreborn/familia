@@ -583,7 +583,7 @@ def check_kv_channel(g, name, c, errs):
     if a.get("kv_type") != b.get("kv_type"): errs.append(f"{w}: kv_type differs ({a.get('kv_type')} vs {b.get('kv_type')})")
 
 OPTION_ROLES = {"chat", "coder", "reasoning", "embed", "vision", "diffusion", "pentest", "guardian", "decision", "stt", "tts"}
-GPU_CANDIDATE_HOSTS = {"qodesh"}  # 8600 GT always-on role (feat/qodesh-legacy-gpu)
+GPU_CANDIDATE_HOSTS: set = set()  # qodesh (8600 GT always-on role) retired from the fleet 2026-11-23
 
 def check_option(g, name, o, errs):
     """Unplaced model options: a catalog, never placed. Nothing here is read by placement."""

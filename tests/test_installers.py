@@ -9,7 +9,12 @@ from graph_types import validate_types
 import validate_graph
 
 def _run(*a):
-    return subprocess.run([sys.executable, HM, *a], capture_output=True, text=True)
+    # host_measure writes a hostname pin; keep it out of the real ~/.local/state/familia
+    # (it used to leave "shalom" pinned on whatever machine ran the suite).
+    import tempfile
+    state = tempfile.mkdtemp(prefix="familia-pin-")
+    env = dict(os.environ, XDG_STATE_HOME=state, LOCALAPPDATA=state)
+    return subprocess.run([sys.executable, HM, *a], capture_output=True, text=True, env=env)
 
 def test_host_measure_insert_and_idempotent(tmp_path):
     g = tmp_path / "graph.yaml"; shutil.copy(os.path.join(ROOT, "graph.yaml"), g)
@@ -28,9 +33,9 @@ def test_host_measure_dry_run_and_force(tmp_path):
     snap = g.read_text()
     assert _run("--name", "x1", "--graph", str(g), "--kind", "laptop", "--dry-run").returncode == 0
     assert g.read_text() == snap
-    assert _run("--name", "shalom", "--graph", str(g), "--force", "--kind", "phone").returncode == 0
+    assert _run("--name", "godslove", "--graph", str(g), "--force", "--kind", "phone").returncode == 0
     d = yaml.safe_load(open(g))["hosts"]
-    assert d["shalom"]["measured"] is True and set(d) == set(yaml.safe_load(snap)["hosts"])
+    assert d["godslove"]["measured"] is True and set(d) == set(yaml.safe_load(snap)["hosts"])
 
 def test_host_measure_freebsd_sysctl_facts_are_graph_schema_compatible(tmp_path, monkeypatch):
     monkeypatch.setattr(host_measure, "sys", SimpleNamespace(platform="freebsd14"))
@@ -56,11 +61,14 @@ def test_host_measure_freebsd_sysctl_facts_are_graph_schema_compatible(tmp_path,
     candidate = validate_graph.load(str(graph_path))
     assert validate_types(candidate) == []
 
-def test_existing_unknown_host_kind_requires_explicit_choice():
+def test_existing_unknown_host_kind_requires_explicit_choice(tmp_path):
+    # shalom (the fleet's kind: unknown host) retired 2026-11-23; use a synthetic one.
     text = open(os.path.join(ROOT, "graph.yaml")).read()
+    text = text.replace("\nhosts:\n", "\nhosts:\n  unknownhost:\n    kind: unknown\n    measured: false\n    gpus: null\n", 1)
+    g = tmp_path / "graph.yaml"; g.write_text(text)
     assert host_measure.existing_kind(text, "angel") == "desktop"
-    assert host_measure.existing_kind(text, "shalom") == "unknown"
-    result = _run("--name", "shalom", "--graph", os.path.join(ROOT, "graph.yaml"), "--dry-run")
+    assert host_measure.existing_kind(text, "unknownhost") == "unknown"
+    result = _run("--name", "unknownhost", "--graph", str(g), "--dry-run")
     assert result.returncode != 0
     assert "specify --kind" in result.stderr
 

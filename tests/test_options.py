@@ -16,12 +16,14 @@ def test_all_options_unverified_and_unplaced():
 def test_decision_gpu_candidates():
     d = {n: o for n, o in BASE["options"].items() if o["role"] == "decision"}
     assert {"k2-type-0.9b", "drex-1.5", "drex-1.1", "glide", "cloudflare-clef", "gev-26b-decide"} <= set(d)
-    assert d["k2-type-0.9b"]["gpu_candidate"] is True and d["gev-26b-decide"]["gpu_candidate"] is False
+    # qodesh (the 8600 GT host) retired 2026-11-23: no decision option is a GPU candidate now.
+    assert d["k2-type-0.9b"]["gpu_candidate"] is False and d["gev-26b-decide"]["gpu_candidate"] is False
+    assert not any(o.get("gpu_candidate") for o in d.values()) and not any("gpu_host" in o for o in d.values())
 
 def test_option_checks():
     x = g(); x["options"]["glide"]["unverified"] = False; has(x, "needs hf_repo")
     x = g(); x["options"]["qwen35-9b-coder"]["gpu_candidate"] = True; has(x, "only for role decision")
-    x = g(); del x["options"]["glide"]["gpu_host"]; has(x, "needs gpu_host")
+    x = g(); x["options"]["glide"]["gpu_candidate"] = True; has(x, "needs gpu_host")
     x = g(); x["options"]["glide"]["candidate_hosts"] = ["nowhere"]; has(x, "no such host")
     x = g(); x["options"]["qwen35-2b-q4km"] = copy.deepcopy(x["options"]["glide"]); has(x, "same name as a placed model")
     x = g(); x["options"]["glide"]["role"] = "oracle"; has(x, "not one of")
@@ -34,7 +36,7 @@ def test_options_not_ram_counted():
 def test_speech_and_coder_options():
     o = BASE["options"]
     assert o["whistle-stt"]["role"] == "stt" and o["paradee-tts"]["role"] == "tts"
-    assert o["qwen35-9b-coder"]["candidate_hosts"] == ["qodesh"]
+    assert o["qwen35-9b-coder"].get("candidate_hosts", []) == []  # only candidate (qodesh) retired 2026-11-23
 
 def test_lfm_decision_option_is_available_to_freebsd_cpu():
     option = BASE["options"]["lfm25-350m-q4km"]
