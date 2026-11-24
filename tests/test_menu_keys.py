@@ -102,6 +102,28 @@ def test_rows_counts_wrapped_and_wide_lines():
     assert mk.rows(["\u4e2d" * 3], 4) == 2
 
 
+@pytest.mark.skipif(mk._m2() is None, reason="needs scripts/menu_input.py (#736, M2)")
+def test_m2_keys_map_onto_picker_keys():
+    """M1 has no decoder of its own; menu_input (M2, #736) is the decoder of record."""
+    mi = mk._m2()
+    Key = mi.Key
+    assert mk.from_m2(mi, Key("UP", "", 4, False)) == mk.UP          # Ctrl+Up is Up
+    assert mk.from_m2(mi, Key("CHAR", "7", 0, False)) == "7"
+    assert mk.from_m2(mi, Key("CTRL_D", "", 0, False)) == mk.EOF
+    assert mk.from_m2(mi, Key("CTRL_C", "", 0, False)) == mk.INTR
+    assert mk.from_m2(mi, Key("PASTE", "/model x", 0, False)) == (mk.PASTE, "/model x")
+    assert mk.Picker(3).feed(mk.from_m2(mi, Key("ALT", "b", 2, False))) is None  # never Esc = back
+    assert [mk.from_m2(mi, k) for k in mi.decode(b"\x1b[B\x1b[1;5A\r")] == [mk.DOWN, mk.UP, mk.ENTER]
+
+
+def test_paste_is_literal_single_line_and_bounded():
+    assert feed(mk.Picker(3), (mk.PASTE, "q\x1b[A"), mk.ENTER) == "q[A"   # a pasted q is text, not quit
+    assert feed(mk.Picker(3), (mk.PASTE, "/a\nb\tc"), mk.ENTER) == "/a b c"
+    p = mk.Picker(3)
+    feed(p, (mk.PASTE, "x" * 10000))
+    assert len(p.line) == mk.MAX_LINE
+
+
 def test_help_and_no_terminal_exit_3():
     r = subprocess.run([sys.executable, PICKER, "--help"], capture_output=True, text=True)
     assert r.returncode == 0 and "usage" in r.stdout.lower()

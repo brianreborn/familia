@@ -185,25 +185,18 @@ def _m2():
         if here not in sys.path:
             sys.path.insert(0, here)
         import menu_input
-        menu_input.KeyReader, menu_input.probe  # interface check
+        menu_input.KeyReader, menu_input.probe, menu_input.m1_key  # interface check (#736 >= 67be19c)
         return menu_input
     except (ImportError, AttributeError):
         return None
 
 
-_M2_NAMES = {"UP": UP, "DOWN": DOWN, "LEFT": LEFT, "RIGHT": RIGHT, "HOME": HOME, "END": END,
-             "PGUP": PGUP, "PGDN": PGDN, "ENTER": ENTER, "ESC": ESC, "BACKSPACE": BACKSPACE,
-             "DELETE": DELETE, "CTRL_C": INTR, "CTRL_D": EOF}
-
-
-def from_m2(key):
-    """M2 Key -> picker key. Modifiers are ignored (Ctrl+Up is Up); ALT, TAB, INSERT,
-    Ctrl-Z and anything else unknown is ignored (never Esc = back)."""
-    if key.name == "CHAR":
-        return key.text if len(key.text) == 1 else UNKNOWN
-    if key.name == "PASTE":
-        return (PASTE, key.text)
-    return _M2_NAMES.get(key.name, UNKNOWN)
+def from_m2(m2, key):
+    """M2 Key -> picker key via menu_input.m1_key (the one mapping, in M2). Modifiers
+    are ignored there (Ctrl+Up is up); alt/unknown are ignored here (never Esc = back).
+    A paste becomes (PASTE, text): literal text for the typed line, never keys."""
+    name = m2.m1_key(key)
+    return (PASTE, key.text) if name == PASTE else name
 
 
 def _posix_session(in_fd, out_fd, draw):
@@ -264,7 +257,7 @@ def _posix_session(in_fd, out_fd, draw):
                 del resized[:]
                 draw(full=True)
             if key is not None:
-                yield from_m2(key)
+                yield from_m2(m2, key)
     finally:
         restore_terminal()
         del _SAVED[:]
