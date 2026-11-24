@@ -54,7 +54,7 @@ jobs:
         with:
           python-version: "3.13"
       - name: python test deps
-        run: python -m pip install --quiet pytest pyyaml
+        run: python -m pip install --quiet pytest pyyaml pexpect
       - name: pytest
         env:
           LC_ALL: C.UTF-8
