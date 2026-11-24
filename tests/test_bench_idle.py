@@ -77,13 +77,26 @@ def test_busy_host_does_not_run_bench(base):
     assert not os.path.exists(os.path.join(base, "state", "stamp.json"))  # busy is not an attempt
 
 
+def test_idle_niceness_matches_platform():
+    """#392: Linux 19, FreeBSD/macOS 20. Adding 19 twice must not overshoot the cap."""
+    n = bi.idle_niceness()
+    if sys.platform.startswith(("linux", "cygwin")):
+        assert n == 19
+    else:
+        assert n == 20
+    # priority_argv uses that value
+    argv = bi.priority_argv()
+    if "nice" in argv:
+        assert argv[argv.index("nice") + 2] == str(n)
+
+
 def test_idle_runs_bench_without_force_low_priority_cpu_only(base):
     bench, out, env = _setup(base)
     assert bi.main(["--bench", bench], env=env, probe=IDLE) == 0
     e = _env_of(out)
     assert "SWARM_BENCH_FORCE" not in e  # inherited FORCE is stripped; bench.sh guards stay on
     assert e["CUDA_VISIBLE_DEVICES"] == "" and e["GGML_VK_VISIBLE_DEVICES"] == ""
-    assert int(open(os.path.join(out, "nice")).read()) == 19
+    assert int(open(os.path.join(out, "nice")).read()) == bi.idle_niceness()
     for base_env in ({}, {"SWARM_BENCH_FORCE": "1"}, {"SWARM_BENCH_FORCE": "0"}):
         assert "SWARM_BENCH_FORCE" not in bi.bench_env(base_env, "/x")
 

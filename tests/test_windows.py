@@ -42,8 +42,10 @@ def test_ps1_files_have_utf8_bom_for_windows_powershell_51():
     familia-home.ps1 / setup-goals.ps1 failed to parse. Every .ps1 must start with a UTF-8 BOM."""
     import pathlib
     root = pathlib.Path(__file__).resolve().parents[1]
+    skip = {".git", ".venv", "venv", ".cache", ".tox", ".eggs", "node_modules",
+            "__pycache__", "dist", "build", "out", "coverage"}
     bad = [str(p.relative_to(root)) for p in root.rglob("*.ps1")
-           if ".git" not in p.parts and not p.read_bytes().startswith(b"\xef\xbb\xbf")]
+           if not skip.intersection(p.parts) and not p.read_bytes().startswith(b"\xef\xbb\xbf")]
     assert not bad, f"add a UTF-8 BOM (PowerShell 5.1 parses these as ANSI): {bad}"
 
 
