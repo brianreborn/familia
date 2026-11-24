@@ -105,7 +105,7 @@ PY
 )
   if [ -n "$NODE_HOST" ]; then
     # Launch-test seatbelt: schema + host scope without requiring sibling hosts' GGUFs
-    # (e.g. angel Nanbeige absent on Ubuntu laptop must not barricade guardian smoke).
+    # (e.g. angel named large model absent on Ubuntu laptop must not barricade guardian smoke).
     if [ "$LAUNCH_TEST" = 1 ] || [ "$launch_only" = 1 ]; then
       echo "with-fleet.sh: launch-test artifact check for host $NODE_HOST (node $node; --no-files)" >&2
       python3 "$ROOT/scripts/validate_graph.py" --graph "$GRAPH" --host "$NODE_HOST" --no-files || {
@@ -214,6 +214,9 @@ if [ "$kind" = "agents" ]; then
   # Licenses first: show what this selection brings in (docs/licenses.md).
   python3 "$ROOT/scripts/licenses.py" gate || {
     rc=$?; echo "with-fleet.sh: licenses not accepted; nothing started. Review: python3 scripts/licenses.py review" >&2; exit $rc; }
+  # fail closed: hermes talks to :9931, which needs the instance key (familia_auth; serve.sh creates it)
+  python3 "$ROOT/scripts/familia_auth.py" has-key || {
+    echo "with-fleet.sh: no instance API key found (start the server once: scripts/serve.sh, or set API_KEY_FILE); nothing started" >&2; exit 1; }
   exec bash "$ROOT/scripts/hermes.sh" --agent "$name"   # hermes.sh is bash (pipefail)
 fi
 

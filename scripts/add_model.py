@@ -405,7 +405,7 @@ def gen_config_params(gen):
 def _soft_prefer_card_sets(pick):
     """When several recommended sets remain, soft-prefer the chat/reasoning/general one.
     Agentic/coding sets stay available via card_set — they must not also match soft-prefer
-    or dual cards (Nanbeige agentic + chat) stay ambiguous."""
+    or dual cards (named large model agentic + chat) stay ambiguous."""
     soft = [x for x in pick if re.search(
         r"(?i)\btext\b|\bgeneral\b|\bchat\b|\breasoning\b|\bconversational\b",
         x["label"])]

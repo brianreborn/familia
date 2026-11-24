@@ -6,10 +6,9 @@ Usage:
   ./scripts/generate_graph.py <host> --fleet-merge   # legacy: full fleet dump + overrides
 
 Default (--private): only nodes with host=<host>, renamed to type/role keys
-(coder, chat, embed, …). Placement stays on node.host. This is the design law:
-type implies capability; no angel-coder-style fake unique names in the operator
-graph. Fleet graph.yaml may still use transitional host-prefixed keys until the
-fleet map is reshaped.
+(coder, chat, embed, …). Placement stays on node.host. Fleet graph.yaml uses
+capability names (removed-large-coder, cuda-sm11-decision); this script collapses
+them to the type name on the private graph. Host-prefixed ids are legacy.
 
 Writes generated/graph-<host>.yaml (comments from fleet graph are not preserved;
 edit graph.yaml then regenerate).
@@ -24,14 +23,17 @@ from node_role import private_topology, resolve_model_assign  # noqa: E402
 from box_archetypes import shape_for, shape_header_lines, merge_shape_roles  # noqa: E402
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
+import familia_yaml  # DUP-01 loader owner
 BASE_GRAPH = REPO_ROOT / "graph.yaml"
 OVERrides_FILE = REPO_ROOT / "config" / "host-overrides.yaml"
-OUTPUT_DIR = REPO_ROOT / "generated"
+import os
+# FAMILIA_GENERATED_DIR redirects output (tests use tmp; CFG-FILE-007b)
+import config_paths  # noqa: E402
+OUTPUT_DIR = pathlib.Path(config_paths.generated_dir())
 
 
 def load_yaml(path: pathlib.Path):
-    with path.open("r", encoding="utf-8") as f:
-        return yaml.safe_load(f) or {}
+    return familia_yaml.load(str(path)) or {}  # DUP-01
 
 
 def merge_dict(base: dict, overrides: dict):

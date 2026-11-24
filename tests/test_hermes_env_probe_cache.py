@@ -102,10 +102,10 @@ def test_wrap_env_probe_module_idempotent(tmp_path, monkeypatch):
     assert calls["n"] == 1
 
 
-def test_hermes_child_env_prepends_overlay(monkeypatch):
+def test_hermes_child_env_prepends_overlay(monkeypatch, tmp_path):
     monkeypatch.setenv("PYTHONPATH", "/other")
-    env = hh.hermes_child_env({"HERMES_HOME": "/tmp/h"})
-    assert env["HERMES_HOME"] == "/tmp/h"
+    env = hh.hermes_child_env({"HERMES_HOME": str(tmp_path / "h")})
+    assert env["HERMES_HOME"] == str(tmp_path / "h")
     parts = env["PYTHONPATH"].split(os.pathsep)
     assert parts[0] == hh.ENV_PROBE_CACHE_OVERLAY
     assert "/other" in parts

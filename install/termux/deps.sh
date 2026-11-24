@@ -17,22 +17,14 @@ Usage: sh install/termux/deps.sh [--install] [--yes] [--dry-run] [--profile base
 USAGE
   exit 0 ;; esac
 
-INSTALL=0; YES=0; DRY=0; PROFILE=base; RUNTIME=1
-for a in "$@"; do
-  case "$a" in
-    --install) INSTALL=1 ;;
-    --yes|-y) YES=1 ;;
-    --dry-run|-n) DRY=1 ;;
-    --no-runtime) RUNTIME=0 ;;
-    base|build) PROFILE=$a ;;
-    --profile=*) PROFILE=${a#--profile=} ;;
-  esac
-done
-prev=""
-for a in "$@"; do
-  if [ "$prev" = "--profile" ]; then PROFILE=$a; fi
-  prev=$a
-done
+case $0 in */*) LIB=${0%/*} ;; *) LIB=. ;; esac   # no dirname: deps.sh runs on a bare PATH
+LIB=$(CDPATH='' cd -- "$LIB/../../lib" && pwd)
+MK_TAG=familia-deps
+# shellcheck source=SCRIPTDIR/../../lib/msg.mk
+. "$LIB/msg.mk"    # say
+# shellcheck source=SCRIPTDIR/../../lib/deps.mk
+. "$LIB/deps.mk"   # deps_args, deps_confirm
+deps_args "$@"
 case "$PROFILE" in base|build) ;; *) echo "familia-deps: unknown --profile $PROFILE" >&2; exit 2 ;; esac
 
 have_cmd() { command -v "$1" >/dev/null 2>&1; }
@@ -81,7 +73,6 @@ if [ "$PROFILE" = build ]; then
   for pair in $BUILD; do check_pair "${pair%%:*}" "${pair#*:}" hard; done
 fi
 
-say() { echo "familia-deps: $*" >&2; }
 say "platform=termux profile=$PROFILE"
 say "present:${present:- (none)}"
 say "missing:${missing:- (none)}"
@@ -121,17 +112,7 @@ CMD=""
   else CMD="pip install --quiet $pip_pkgs"; fi
 }
 
-say "suggested: $CMD"
-if [ "$INSTALL" != 1 ]; then
-  say "re-run with --install to install them (add --yes for non-interactive)"
-  exit 1
-fi
-if [ "$DRY" = 1 ]; then say "[dry-run] $CMD"; exit 0; fi
-if [ "$YES" != 1 ] && [ -r /dev/tty ]; then
-  printf 'familia-deps: install missing Termux packages now? [y/N] ' >&2
-  read -r ans < /dev/tty || ans=n
-  case "$ans" in y|Y|yes) ;; *) say "aborted"; exit 1 ;; esac
-fi
+deps_confirm "$CMD" "install missing Termux packages now?"
 if [ -n "$pkgs" ]; then
   # shellcheck disable=SC2086
   pkg install -y $pkgs

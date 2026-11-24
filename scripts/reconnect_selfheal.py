@@ -39,6 +39,7 @@ if str(_SCRIPTS) not in sys.path:
 import offline_improve as oi  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
+import config_paths  # DUP-02/DUP-10 owner
 STATE_ROOT = Path(
     os.environ.get("FAMILIA_RECONNECT_DIR")
     or (
@@ -53,7 +54,7 @@ BACKOFF_BASE_DEFAULT = 30.0
 BACKOFF_CAP_DEFAULT = 900.0
 BACKOFF_SCHEDULE_DOC = (30, 60, 120, 240, 480, 900)
 
-DEFAULT_DNS_TARGET = os.environ.get("FAMILIA_RECONNECT_DNS", "1.1.1.1")
+DEFAULT_DNS_TARGET = os.environ.get("FAMILIA_RECONNECT_DNS", "localhost")
 DEFAULT_SCREEN_NAME = os.environ.get("FAMILIA_SCREEN_NAME", "familia-server")
 
 
@@ -524,7 +525,7 @@ def _git_tree_clean(repo: Path, *, runner=None) -> Tuple[bool, str]:
     runner = runner or subprocess.run
     try:
         p = runner(
-            ["git", "-C", str(repo), "status", "--porcelain"],
+            ["git", "-C", str(repo), "status", "--porcelain", "--ignore-submodules=all"],
             capture_output=True,
             text=True,
             timeout=10,
@@ -543,7 +544,7 @@ def repair_git_fetch_tip(
     repo: Optional[Path] = None,
     runner=None,
 ) -> RepairResult:
-    """Optional git fetch tip when FAMILIA_RECONNECT_PULL=1 and tree is clean. Never surprise-pull dirty."""
+    """Optional git fetch tip when FAMILIA_RECONNECT_PULL=1. Fetch only: local edits are never touched or blocking."""
     if os.environ.get("FAMILIA_RECONNECT_PULL") != "1":
         return RepairResult(
             action=RepairAction.GIT_FETCH_TIP.value,
@@ -553,15 +554,8 @@ def repair_git_fetch_tip(
             reason="FAMILIA_RECONNECT_PULL!=1",
         )
     repo = repo or ROOT
+    # git fetch never touches the working tree, so local edits never block it (familia #181 U10).
     clean, why = _git_tree_clean(repo, runner=runner)
-    if not clean:
-        return RepairResult(
-            action=RepairAction.GIT_FETCH_TIP.value,
-            ok=False,
-            dry_run=dry_run,
-            detail="refused_dirty",
-            reason=f"refusing git fetch/pull on dirty tree ({why})",
-        )
     cmd = ["git", "-C", str(repo), "fetch", "--all", "--prune"]
     if dry_run:
         return RepairResult(
@@ -649,7 +643,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     ap.add_argument("--dry-run", action="store_true", default=False, help="force dry-run for repair (default when --repair)")
     ap.add_argument("--no-dry-run", action="store_true", help="allow non-dry repair (still seatbelted; needs FAMILIA_RECONNECT_ALLOW_START=1 for restarts)")
     ap.add_argument("--host", default=_hostname())
-    ap.add_argument("--graph", default=str(ROOT / "graph.yaml"))
+    ap.add_argument("--graph", default=None)  # DUP-02: resolved lazily after parse
     ap.add_argument("--peers", default="", help="comma-separated peer SSH aliases")
     ap.add_argument("--health-urls", default="", help="comma-separated local health URLs (else graph/env)")
     ap.add_argument("--dns", default=DEFAULT_DNS_TARGET)
@@ -664,6 +658,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     ap.add_argument("--list-actions", action="store_true", help="print self-repair action enum and exit 0")
     ap.add_argument("--show-backoff", action="store_true", help="print documented backoff schedule and exit 0")
     args = ap.parse_args(list(argv) if argv is not None else None)
+    args.graph = config_paths.graph_path(args.graph)  # DUP-02 lazy resolve
 
     if args.list_actions:
         print(json.dumps({"repair_actions": list_repair_actions(), "detach_mode": detach_mode()}, indent=2))

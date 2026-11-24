@@ -16,8 +16,7 @@
 set -eu
 ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 ACTION=install; SUB=""; DRY=0; YES=0; FORCE=0; OPT_PREFIX=""
-say() { echo "familia-cli: $*"; }
-die() { echo "familia-cli: error: $1" >&2; exit "${2:-1}"; }
+MK_TAG=familia-cli; MK_SAY_FD=1; . "$ROOT/lib/msg.mk"   # say (stdout), die
 abs() { case "$1" in /*) printf '%s\n' "$1" ;; *) printf '%s/%s\n' "$(pwd)" "$1" ;; esac; }
 xdg() { case "${1:-}" in /*) printf '%s\n' "$1" ;; *) printf '%s\n' "$2" ;; esac; }  # XDG: relative = unset
 
@@ -140,9 +139,12 @@ do_uninstall() {
 }
 
 remove_block() {
-  tmp=$(mktemp "${TMPDIR:-/tmp}/familia-profile.XXXXXX")
+  tdir=$(umask 077 && mktemp -d "${TMPDIR:-/tmp}/familia-profile.$$.XXXXXX") || die "mktemp -d failed"
+  trap '[ -n "$tdir" ] && rm -rf -- "$tdir" 2>/dev/null' EXIT
+  trap 'exit 129' HUP; trap 'exit 130' INT; trap 'exit 143' TERM
+  tmp="$tdir/profile"
   awk -v b="$BEGIN" -v e="$END" '$0==b{skip=1; next} skip&&$0==e{skip=0; next} !skip' "$PROFILE" > "$tmp"
-  cat "$tmp" > "$PROFILE"; rm -f "$tmp"   # rewrite in place: keeps the file's owner and mode
+  cat "$tmp" > "$PROFILE"; [ -n "$tdir" ] && rm -rf -- "$tdir" 2>/dev/null; tdir=   # rewrite in place: keeps the file's owner and mode
   say "removed the familia block from $PROFILE"
 }
 

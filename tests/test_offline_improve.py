@@ -96,5 +96,5 @@ def test_private_topology_keeps_pentest_ops_agent():
     g = familia_yaml.loads(open(os.path.join(ROOT, "graph.yaml"), encoding="utf-8").read())
     priv = nr.private_topology(g, "angel")
     assert "pentest-ops" in priv["agents"]
-    assert priv["pentests"]["angel"]["agent"] == "pentest-ops"
+    assert priv["pentests"]["freebsd-guardian"]["agent"] == "pentest-ops"
     assert priv["agents"]["pentest-ops"]["aliases"]["main"] == "guardian"

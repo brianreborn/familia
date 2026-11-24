@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   familia menu for Windows. Same items as ./familia-menu.sh (scripts\menu-items.txt).
 .DESCRIPTION
@@ -49,10 +49,13 @@ foreach ($line in (Get-Content $itemsFile)) {
 }
 $groupDesc = @{
   'Set up' = 'first-time, update, licenses, settings'; 'Skills' = 'pick the skills your agents use (green-zkillz)';
-  'Models' = 'add models, check the graph, see launch parameters'; 'Self-improving harness (Harness2)' = 'opt-in; review every change';
-  'Agents (hermes)' = 'run hermes on one model or the whole graph'; 'Test & benchmark' = 'benchmark records'; 'Hosts' = 'start this node, measure, monitor';
+  'Models' = 'list every model, add models, check the graph'; 'Graphs' = 'list every graph and configure fleet, host, or example graphs'; 'Self-improving harness (Harness2)' = 'opt-in; review every change';
+  'Agents (hermes)' = 'run hermes on one model or the whole graph'; 'App catalog' = 'cached public application search and app launch'; 'Test & benchmark' = 'benchmark records'; 'Hosts' = 'start this node, measure, monitor';
   'Advanced: models & graph' = 'model database, launch arguments, graph edits'; 'Advanced: agents' = 'skill folders, escalation';
-  'Advanced: hosts & benchmarks' = 'low-level setup, benchmarks, CPU level, uninstall, logon task'; 'Reach tools (Agent-Reach)' = 'opt agents into Agent-Reach web tools'; 'Help' = 'quick start, search, the full command list, what the menu leaves out'
+  'Advanced: hosts & benchmarks' = 'low-level setup, benchmarks, CPU level, uninstall, logon task'; 'Reach tools (Agent-Reach)' = 'opt agents into Agent-Reach web tools';
+  'MCP servers' = 'graph MCP entries; this menu does not bind a port'; 'Tool sets' = 'skill and tool catalogs on this machine';
+  'App store' = 'local app catalog; public search stays cached'; 'Front door' = 'older home goals: protomodel, model finder, X search';
+  'Help' = 'quick start, search, the full command list, what the menu leaves out'
 }
 $groups = @(); foreach ($i in $items) { if (-not ($groups -contains $i.Group)) { $groups += $i.Group } }
 
@@ -138,7 +141,7 @@ function RunCmd($gate, $cmd) {  # the license gate when asked for, then the comm
     Write-Host "[dry-run] $cmd"; return 0
   }
   if ($gate -eq 'lic') {
-    & python scripts\licenses.py gate | Out-Host
+    & python scripts/licenses.py gate | Out-Host
     if ($LASTEXITCODE) { Write-Host "$($script:Me): stopped: licenses not accepted yet. Review them with: python scripts\licenses.py review"; return $LASTEXITCODE }
   }
   Write-Host "Running: $cmd"
@@ -179,7 +182,7 @@ function ShowMatch($num, $i, $t, $mark) {
   Write-Host ('{0}{1,2}) ' -f $mark, $num) -NoNewline; WriteHl $i.Group $t; Write-Host ' > ' -NoNewline; WriteHl $i.Label $t; Write-Host $note
   Write-Host '       key: ' -NoNewline; WriteHl $i.Key $t; Write-Host '   runs: ' -NoNewline; WriteHl (Shown $i.Cmd) $t; Write-Host ''
 }
-function NoMatch($t) { Write-Host "No item matches '$t'. Try a shorter word, or a word from a command (e.g. /hermes, /dry-run)." }
+function NoMatch($t) { Write-Host "No item matches '$t'. Try a shorter word, or a word from a command (e.g. /hermes, /graph)." }
 function PrintMatches($t) {
   $m = FindMatches $t
   if ($m.Count -eq 0) { NoMatch $t; return 1 }
@@ -259,6 +262,11 @@ function ListItems {
   }
 }
 
+if (-not (Get-Command python -CommandType Application -ErrorAction SilentlyContinue)) {
+  # Linux/macOS pwsh (and some Windows installs) only ship python3 or the py launcher.
+  $alt = Get-Command python3, py -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+  if ($alt) { $script:PyExe = $alt.Source; function python { & $script:PyExe @args } }
+}
 if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
   Write-Host 'familia-menu: python was not found. Install Python 3 from python.org (tick "Add to PATH"), then run familia.cmd again.'
   exit 1
@@ -287,7 +295,7 @@ if ($Cli) {
     $k++
   }
   $rest = @(); if ($k -lt $a.Count) { $rest = @($a[$k..($a.Count - 1)]) }
-  if ($wantHelp) { & python scripts\familia_cli.py help --windows | Out-Host; exit 0 }
+  if ($wantHelp) { & python scripts/familia_cli.py help --windows | Out-Host; exit 0 }
   if ($Run -or $Search -or $List) {  # the old flag style: -Run KEY [ARG...] [-DryRun] [-Yes]
     $RunArgs = @(); foreach ($x in $rest) {
       if ($x -eq '-DryRun') { $DryRun = $true } elseif ($x -eq '-Yes') { $env:FAMILIA_ACCEPT_LICENSES = 'yes' } else { $RunArgs += $x } }
@@ -299,7 +307,7 @@ if ($Cli) {
           Write-Host 'The manual page is man\familia.1. Read it with: man ./man/familia.1 (Git Bash or WSL). The same commands:'
           $more = @()
         }
-        & python scripts\familia_cli.py help --windows @more | Out-Host; exit $LASTEXITCODE
+        & python scripts/familia_cli.py help --windows @more | Out-Host; exit $LASTEXITCODE
       }
       'list' { ListItems; exit 0 }
       'menu' { break }
@@ -313,12 +321,12 @@ if ($Cli) {
           if ($more[$i] -match '^(--run|-Run)$' -and $i + 1 -lt $more.Count) { $Run = $more[$i + 1]; $i++ } else { $RunArgs += $more[$i] } }
       }
       default {
-        $r = (& python scripts\familia_cli.py resolve --windows @rest | Select-Object -First 1)
+        $r = (& python scripts/familia_cli.py resolve --windows @rest | Select-Object -First 1)
         if ($r -match '^item (\S+) (\d+)$') {
           $key = $matches[1]; $n = [int]$matches[2]
           $script:CliHint = 'familia.cmd ' + ($rest[0..($n - 1)] -join ' ')
           $vals = @(); if ($rest.Count -gt $n) { $vals = @($rest[$n..($rest.Count - 1)]) }
-          if ($vals.Count -gt 0 -and $vals[0] -match '^(-h|--help)$') { & python scripts\familia_cli.py help --windows @($rest[0..($n - 1)]) | Out-Host; exit 0 }
+          if ($vals.Count -gt 0 -and $vals[0] -match '^(-h|--help)$') { & python scripts/familia_cli.py help --windows @($rest[0..($n - 1)]) | Out-Host; exit 0 }
           exit (RunItem $key $vals $false)
         }
         if ($r -match '^raw (\d+) (\S+) (.*)$') {
@@ -326,7 +334,7 @@ if ($Cli) {
           if ($rest.Count -gt $n) { foreach ($x in $rest[$n..($rest.Count - 1)]) { $cmd += ' ' + (Quote $x) } }
           exit (RunCmd $gate $cmd)
         }
-        $p = (& python scripts\familia_cli.py resolve @rest | Select-Object -First 1)
+        $p = (& python scripts/familia_cli.py resolve @rest | Select-Object -First 1)
         if ($p -and $p -ne 'none') { Write-Host "familia: '$($rest -join ' ')' runs only on Linux, Android or FreeBSD (./familia). See: familia.cmd help"; exit 2 }
         Write-Host "familia: unknown command '$($rest -join ' ')'. Try: familia.cmd help, or: familia.cmd search $w"; exit 2
       }
@@ -360,8 +368,19 @@ while ($true) {
   Write-Host 'familia: what do you want to do?'
   for ($n = 0; $n -lt $groups.Count; $n++) { Write-Host ('  {0}) {1,-36} {2}' -f ($n + 1), $groups[$n], $groupDesc[$groups[$n]]) }
   Write-Host '  q) Quit      /word search every group (n/N next/previous match)'
-  $c = Read-Host "Choose 1-$($groups.Count), /search or q"
-  if ($c -eq $null -or $c -eq 'q') { exit 0 }
+  try {
+    $c = Read-Host "Choose 1-$($groups.Count), /search or q"
+  } catch {
+    Write-Host 'familia: input closed. Menus exit only when you type q.'
+    if (InputRedirected) { exit 2 }
+    continue
+  }
+  if ($null -eq $c) {
+    Write-Host 'familia: input closed. Menus exit only when you type q.'
+    if (InputRedirected) { exit 2 }
+    continue
+  }
+  if ($c -eq 'q' -or $c -eq 'Q' -or $c -eq 'quit' -or $c -eq 'exit') { exit 0 }
   $sr = SearchKey $c; if ($sr -eq 'quit') { exit 0 }; if ($sr -eq 'done') { continue }
   if (-not ($c -match '^\d+$') -or [int]$c -lt 1 -or [int]$c -gt $groups.Count) { Write-Host "'$c' isn't one of the choices. Type a number, /word to search, or q."; continue }
   $g = $groups[[int]$c - 1]
@@ -383,10 +402,21 @@ while ($true) {
       if ($page -lt ($pages - 1)) { Write-Host '  >) Next page' }
     }
     Write-Host '  b) Back      /word search every group (n/N next/previous match)'
-    if ($pages -gt 1) { $c = Read-Host "Choose 1-$($end - $start), </> page, /search or b" }
-    else { $c = Read-Host "Choose 1-$($gi.Count), /search or b" }
-    if ($c -eq $null -or $c -eq 'b' -or $c -eq '') { break }
-    if ($c -eq 'q') { exit 0 }
+    try {
+      if ($pages -gt 1) { $c = Read-Host "Choose 1-$($end - $start), </> page, /search or b" }
+      else { $c = Read-Host "Choose 1-$($gi.Count), /search or b" }
+    } catch {
+      Write-Host 'familia: input closed. Menus exit only when you type q.'
+      if (InputRedirected) { exit 2 }
+      break
+    }
+    if ($null -eq $c) {
+      Write-Host 'familia: input closed. Menus exit only when you type q.'
+      if (InputRedirected) { exit 2 }
+      break
+    }
+    if ($c -eq 'b' -or $c -eq '') { break }
+    if ($c -eq 'q' -or $c -eq 'Q' -or $c -eq 'quit' -or $c -eq 'exit') { exit 0 }
     if ($c -eq '>' -or $c -eq 'next') { if ($page -lt ($pages - 1)) { $page++ }; continue }
     if ($c -eq '<' -or $c -eq 'prev') { if ($page -gt 0) { $page-- }; continue }
     $sr = SearchKey $c; if ($sr -eq 'quit') { exit 0 }; if ($sr -eq 'done') { continue }

@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Put `familia` on your PATH for this Windows user (no admin). The code stays in this checkout.
 .DESCRIPTION

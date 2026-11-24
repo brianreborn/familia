@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Background free-download of first-try CPU models (protomodel / safe-build).
 .EXAMPLE

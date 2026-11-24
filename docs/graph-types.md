@@ -1,5 +1,7 @@
 # familia graph types (graph.yaml v2)
 
+Ready-made shapes (single, fan-out, escalation chain, tools, two-host): see [graph-recipes.md](graph-recipes.md).
+
 `graph.yaml` declares the whole topology: which hosts exist, what runs where,
 which model sits behind each route name, and which agents use them. Every
 section is a **type** registered in `scripts/graph_types.py`. Every field is
@@ -99,7 +101,7 @@ Canonical enum: `scripts/box_archetypes.py` → `HOST_KINDS`.
 
 | Type | Rules |
 |---|---|
-| host | `gpus` is required on every host: `null` means inventory unknown, `[]` means measured and no GPUs, and a list records detected GPUs. GPU offload is rejected while inventory is `null`. `measured: true` requires os, cpu, threads, ram_mib, gpus, reserve_ram_mib; `gpus: null` is allowed when CPU/RAM facts are measured but GPU inventory is not. `measured: false` must not carry numeric facts and cannot host active nodes; numbers someone else reported go in `reported:` with a `source`. FreeBSD is a valid host OS; `angel` is the FreeBSD test host, measured in graph.yaml; place active nodes explicitly (Nanbeige planned). `os: windows` requires a `windows` block: repo_path, models_path, runtime_path, startup (scheduled-task, start.bat, service, manual, or tbd), wake. Standing RAM rule: never aim for high utilization; miryam reserve is 3072 (`docs/ram-safety.md`). `local_names` lists OS hostnames that resolve to this graph host key; the machine-local pin (`~/.local/state/familia/hostname`, via `scripts/hostname_pin.py`) is **not** in graph.yaml — it only tells menus/start which graph host this machine is. |
+| host | `gpus` is required on every host: `null` means inventory unknown, `[]` means measured and no GPUs, and a list records detected GPUs. GPU offload is rejected while inventory is `null`. `measured: true` requires os, cpu, threads, ram_mib, gpus, reserve_ram_mib; `gpus: null` is allowed when CPU/RAM facts are measured but GPU inventory is not. `measured: false` must not carry numeric facts and cannot host active nodes; numbers someone else reported go in `reported:` with a `source`. FreeBSD is a valid host OS; `angel` is the FreeBSD test host, measured in graph.yaml; place active nodes explicitly (named large model planned). `os: windows` requires a `windows` block: repo_path, models_path, runtime_path, startup (scheduled-task, start.bat, service, manual, or tbd), wake. Standing RAM rule: never aim for high utilization; miryam reserve is 3072 (`docs/ram-safety.md`). `local_names` lists OS hostnames that resolve to this graph host key; the machine-local pin (`~/.local/state/familia/hostname`, via `scripts/hostname_pin.py`) is **not** in graph.yaml — it only tells menus/start which graph host this machine is. |
 | gpu | Every GPU entry needs vendor, model, vram_mib, backend, backend_status and measured. Backends: concrete GPU APIs plus `auto` (prefer GPU when available) and `none` (only when the hardware truly has no usable GPU API). Prefer `auto` or a concrete backend over unjustified `none`. If `measured: false`, vram_mib must be null and backend_status can't be `verified`. A measured GPU must give vram_mib, using 0 for a shared-memory iGPU. `kind: unknown` is only allowed while unmeasured. |
 | transport | `local` must have from == to; every other kind must link two different hosts. |
 | runtime | `commit` must be a git sha, since a branch name isn't a pin. `supported_archs` lists only archs verified to load on that build. `backends` lists what the build was compiled with and must include cpu. `spec_types` lists the `--spec-type` values the build accepts. Several builds can be deployed side by side; `--check-runtimes` runs each `bin --version` and checks the commit. |
@@ -161,16 +163,16 @@ promote an experimental type, set `experimental=False`, drop its
 
 From `graph.yaml` on 2026-10-19. Addresses, users and ports live in the graph, not in the docs.
 
-| host | os | GPU | backend | backend_status | GPU measured |
+| host | os | GPU | backend | backend_status | runtime measured |
 |---|---|---|---|---|---|
 | miryam | linux | Intel HD 620 (shared RAM) | vulkan | verified (slower than the CPU for decode, LESSONS-LEARNED L10) | yes |
 | qodesh | windows 10 | GeForce 8600 GT, 256 MiB, CC 1.1, driver 341.92 | cuda-sm11-ptx (hand-written PTX, `gpu-legacy/`) | verified | yes |
 | shalom | ? | unknown (`gpus: null`) | | | no (host unmeasured) |
 | godslove | freebsd-15 | Ironlake / NVS | none | unsupported (green-roomz #5) | no |
-| angel | freebsd | unknown (`gpus: null`) | cpu (llama.cpp 0.7.0 via build-linux.sh) | measured (~24 GiB); Nanbeige planned | planned |
+| angel | freebsd | Intel HD Graphics 4600 + NVIDIA G84 / GeForce 8600 GT | Vulkan / `cuda-sm11-ptx` candidates only | PCI inventory measured; no physical GPU runtime verified; CPU node active | no |
 | phone7, phone8 | android 16 (Galaxy A57) | Samsung Xclipse 550, shared RAM, Vulkan 1.4.304 (driver 25.4.7) | vulkan (OpenCL blocked) | verified | yes |
 
-qodesh is worth having for its 16 GB of RAM: it can hold bigger CPU-only models than miryam. `nodes.qodesh-resident` (Qwen3.5-2B on the non-AVX b11540 CPU build) is `active` but marked `selection: fallback`: user-selectable, about 0.91 tok/s (coarse binary search), while SmolLM2 stays the qodesh default. The phone nodes stay `planned` while the phones are out of range ([#46](https://github.com/brianreborn/familia/issues/46)).
+qodesh is worth having for its 16 GB of RAM: it can hold bigger CPU-only models than miryam. `nodes.cpu-resident-coder` (Qwen3.5-2B on the non-AVX b11540 CPU build) is `active` but marked `selection: fallback`: user-selectable, about 0.91 tok/s (coarse binary search), while SmolLM2 stays the qodesh default. The phone nodes stay `planned` while the phones are out of range ([#46](https://github.com/brianreborn/familia/issues/46)).
 
 ## Guardian / pentest (authorized fleet testing)
 

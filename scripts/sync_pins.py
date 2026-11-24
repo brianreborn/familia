@@ -23,8 +23,11 @@ Options:
 Example:
   scripts/sync_pins.py --dry-run
 How it works: a part whose HEAD already is its pin costs one small file read (no git, no
-network). Otherwise every part is checked first; nothing moves if any part has uncommitted
-changes or commits that are on no branch, or if a missing pin cannot be fetched. Then all
+network). Otherwise every part is checked first; nothing moves if any part has
+commits that are on no branch, or if a missing pin cannot be fetched. Local edits never
+block: they are stashed (git stash push --include-untracked, named "familia-sync ..."), the
+part is moved, and the stash is popped. If the pop clashes, the edits stay in the stash and
+one line says how to restore them (--force does the same; --no-stash refuses instead). Then all
 parts are checked out to their pins, each HEAD is verified, and a failure puts back the
 ones already moved. Nothing is ever force-pushed, reset or cleaned.
 Engine pins (llama-server__*) are synced when they are checked out already or asked for by
@@ -40,6 +43,7 @@ import os
 import re
 import shutil
 import subprocess
+import time
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -70,6 +74,42 @@ def git_env(base=None):
 
 def say(msg, out=sys.stderr):
     print("familia sync: " + msg, file=out)
+
+
+AUTOSTASH = True  # local edits never block a sync: stash, move, pop (familia #181 U10)
+
+
+def stash_push(path, name, want):
+    """Stash local edits (tracked + untracked) under a named stash; return its commit or None."""
+    msg = "familia-sync %s before %s" % (time.strftime("%Y-%m-%d %H:%M:%S"), short(want))
+    r = git(path, "stash", "push", "--include-untracked", "-m", msg)
+    if r.returncode:
+        raise RuntimeError("could not save local changes in %s: %s" % (name, (r.stderr or r.stdout).strip()))
+    sha = git(path, "rev-parse", "-q", "--verify", "refs/stash").stdout.strip()
+    return sha or None
+
+
+def stash_pop(path, name, sha):
+    """Put the stashed edits back. On conflict keep them in the stash and leave the pin checked out."""
+    if not sha:
+        return True
+    r = git(path, "stash", "pop", "--index")
+    if r.returncode:
+        r = git(path, "stash", "pop")
+    if r.returncode == 0:
+        return True
+    # Conflict: the stash is still there (git keeps it when pop fails). Put the tracked files back
+    # to the pin; the edits stay safe in the stash. No reset --hard, nothing is cleaned.
+    git(path, "checkout", "-q", "-f", "HEAD", "--", ".")
+    git(path, "reset", "-q")  # unstage only
+    ref = "stash@{0}"
+    for line in git(path, "stash", "list", "--format=%gd %H").stdout.splitlines():
+        parts = line.split()
+        if len(parts) == 2 and parts[1] == sha:
+            ref = parts[0]
+    say("your local changes in %s clash with the update; they are saved in git stash %s (%s). "
+        "Restore them with: git -C %s stash pop %s" % (name, ref, short(sha), path, ref))
+    return False
 
 
 def git(path, *args, check=False):
@@ -236,13 +276,17 @@ def plan(root, pins, engines):
             c["state"] = c["state"] or "ok"
             continue
         c["state"] = "move" if c["want"] else "fetch"
-        dirty = git(c["path"], "status", "--porcelain", "--untracked-files=no").stdout.strip()
+        # Submodule state is ignored: our own llama.cpp patches live there (familia #181 U10).
+        dirty = git(c["path"], "status", "--porcelain", "--ignore-submodules=all").stdout.strip()
         if dirty:
             n = len(dirty.splitlines())
-            c["state"], c["note"] = "refuse", ("%d uncommitted change%s in %s; commit or stash them "
-                                               "(git -C %s stash), then sync again"
-                                               % (n, "" if n == 1 else "s", c["path"], c["path"]))
-            continue
+            if AUTOSTASH:
+                c["stash"] = n
+            else:
+                c["state"], c["note"] = "refuse", ("%d local change%s in %s (--no-stash given); commit or stash "
+                                                   "them, or sync without --no-stash"
+                                                   % (n, "" if n == 1 else "s", c["path"]))
+                continue
         if c["have"] and git(c["path"], "symbolic-ref", "-q", "HEAD").returncode:
             on_ref = git(c["path"], "for-each-ref", "--count=1", "--contains", c["have"], "--format=x",
                          "refs/heads", "refs/remotes", "refs/tags").stdout.strip()
@@ -339,6 +383,11 @@ def apply(root, comps, quiet):
     done = []
     try:
         for c in todo:
+            if c.get("stash") and c["state"] in ("move", "fetch"):
+                c["stash_sha"] = stash_push(c["work"], c["name"], c["want"])
+                if not quiet:
+                    say("saved %d local change(s) in %s to the stash; putting them back after the move"
+                        % (c["stash"], c["name"]))
             r = git(c["work"], "-c", "advice.detachedHead=false", "checkout", "-q", c["want"])
             now = head(c["work"])
             if r.returncode or now != c["want"]:
@@ -359,10 +408,17 @@ def apply(root, comps, quiet):
         for c in done:
             if c["state"] in ("move", "fetch", "link") and c["have"]:
                 git(c["work"], "-c", "advice.detachedHead=false", "checkout", "-q", c["have"])
+        for c in todo:
+            if c.get("stash_sha"):
+                stash_pop(c["work"], c["name"], c["stash_sha"])
         for t in temps:
             shutil.rmtree(t, ignore_errors=True)
         say("FAILED: %s. Parts already moved were put back." % e)
         return 1
+    for c in todo:
+        if c.get("stash_sha"):
+            if stash_pop(c["work"], c["name"], c["stash_sha"]) and not quiet:
+                say("your local changes in %s are back in place" % c["name"])
     for c in todo:
         verb = {"clone": "cloned", "link": "linked sibling", "move": "moved", "fetch": "fetched and moved"}[c["state"]]
         if c["state"] == "clone" and c.get("replace_placeholder"):
@@ -464,7 +520,7 @@ def do_update(root, rest, dry, branch=None):
             print("familia update: dry run; would fetch origin/%s, switch this checkout to track it, "
                   "fast-forward only, then sync the pins" % branch)
         else:
-            print("familia update: dry run; would run: git -C %s pull --ff-only, then sync the pins" % root)
+            print("familia update: dry run; would run: git -C %s pull --ff-only --autostash, then sync the pins" % root)
         print("familia update: the pins as they are now (pins.txt can change with the pull):")
         return main(rest)
     before = git(root, "rev-parse", "HEAD").stdout.strip()
@@ -489,9 +545,9 @@ def do_update(root, rest, dry, branch=None):
         if r.returncode:
             say("could not set %s to track origin/%s; nothing was synced" % (branch, branch))
             return 1
-        r = subprocess.run(["git", "-C", root, "merge", "--ff-only", "origin/" + branch], env=git_env())
+        r = subprocess.run(["git", "-C", root, "merge", "--ff-only", "--autostash", "origin/" + branch], env=git_env())
     else:
-        r = subprocess.run(["git", "-C", root, "pull", "--ff-only"], env=git_env())
+        r = subprocess.run(["git", "-C", root, "pull", "--ff-only", "--autostash"], env=git_env())
     if r.returncode:
         say("git update failed (local commits or changes may prevent a fast-forward); nothing was synced. "
             "See: git -C %s status" % root)
@@ -507,6 +563,7 @@ def do_update(root, rest, dry, branch=None):
 
 
 def main(argv):
+    global AUTOSTASH
     root = os.path.dirname(HERE)
     dry = auto = quiet = hooks = check = update = False
     branch = None
@@ -519,6 +576,10 @@ def main(argv):
             return 0
         elif a in ("--dry-run", "-n"):
             dry = True
+        elif a in ("--force", "--stash"):
+            AUTOSTASH = True
+        elif a == "--no-stash":
+            AUTOSTASH = False
         elif a == "--auto":
             auto = True
         elif a in ("--quiet", "-q"):

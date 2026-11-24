@@ -49,6 +49,13 @@ def check_field(g, sec, name, key, spec, val, errs):
     elif k == "ref":
         if not isinstance(val, str): errs.append(f"{where}: expected a {spec.ref} name, got {val!r}")
         elif val not in (g.get(spec.ref) or {}): errs.append(f"{where}: no such {spec.ref} entry {val!r}")
+    elif k == "noderefs":   # one name, or a non-empty fallback list of names (aliases.node)
+        vals = [val] if isinstance(val, str) else val
+        if not isinstance(vals, list) or not vals or not all(isinstance(v, str) for v in vals):
+            errs.append(f"{where}: expected a {spec.ref} name or a non-empty list of {spec.ref} names, got {val!r}"); return
+        if len(set(vals)) != len(vals): errs.append(f"{where}: duplicate entries")
+        for v in vals:
+            if v not in (g.get(spec.ref) or {}): errs.append(f"{where}: no such {spec.ref} entry {v!r}")
     elif k == "refs":
         if not isinstance(val, list) or not val or not all(isinstance(v, str) for v in val):
             errs.append(f"{where}: expected non-empty list of {spec.ref} names"); return
@@ -166,7 +173,33 @@ def check_runtime(g, name, r, errs):
 def slot_ctx(n):
     return n["ctx"] // n["parallel"] if isinstance(n.get("ctx"), int) and isinstance(n.get("parallel"), int) and n["parallel"] > 0 else None
 
+_WIN_RESERVED = {"CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$",
+                 *(f"{p}{i}" for p in ("COM", "LPT") for i in (*"123456789", "\u00b9", "\u00b2", "\u00b3"))}
+
+def windows_unsafe_name(name):
+    """Node names become file names (slots/<node>, serve-<node>.log); Windows refuses reserved
+    device names (CON, NUL.txt, ...) and names ending in a dot or space."""
+    s = str(name)
+    return s != s.rstrip(" .") or s.split(".")[0].rstrip(" ").upper() in _WIN_RESERVED
+
+TEXT_ROLE_VIEWS = {"chat", "general", "coder", "reasoning"}
+
+def check_model(g, name, m, errs):
+    text_roles = m.get("text_roles")
+    if text_roles is None:
+        return
+    if not isinstance(text_roles, list) or not all(isinstance(role, str) for role in text_roles):
+        errs.append(f"models.{name}.text_roles: expected a list of string role names")
+        return
+    invalid = sorted(set(text_roles) - TEXT_ROLE_VIEWS)
+    if invalid:
+        errs.append(f"models.{name}.text_roles: unknown text-role view(s) {invalid}")
+    if len(text_roles) != len(set(text_roles)):
+        errs.append(f"models.{name}.text_roles: duplicate text-role views")
+
 def check_node(g, name, n, errs):
+    if windows_unsafe_name(name):
+        errs.append(f"nodes.{name}: name is not a valid Windows file name (reserved device name or trailing dot/space)")
     h, r, m = lookup(g, "hosts", n.get("host")), lookup(g, "runtimes", n.get("runtime")), lookup(g, "models", n.get("model"))
     planned = n.get("status") == "planned"
     if h is not None and h.get("measured") is not True and not planned:
@@ -176,10 +209,13 @@ def check_node(g, name, n, errs):
     # Design law: optional node.role should match models[model].role (chat view of a
     # coder-weight may set role: chat explicitly — allowed when roles differ).
     if n.get("role") and m is not None and m.get("role") and n.get("role") != m.get("role"):
-        # chat/general views of coder weights are intentional (angel-chat / phone general)
+        text_roles = m.get("text_roles") if isinstance(m.get("text_roles"), list) else []
+        # chat/general views of coder weights are intentional (removed-large-chat / phone general)
         allowed = (
             (n.get("role") in ("chat", "general") and m.get("role") == "coder")
             or (n.get("role") == "general" and m.get("role") == "chat")
+            or (n.get("role") in TEXT_ROLE_VIEWS and m.get("role") in TEXT_ROLE_VIEWS
+                and n.get("role") in text_roles)
             # guardian/defender is the public node flavor; catalog weights may still say pentest
             or (n.get("role") in ("guardian", "defender") and m.get("role") in ("pentest", "guardian"))
             or (n.get("role") == "pentest" and m.get("role") == "guardian")
@@ -191,8 +227,8 @@ def check_node(g, name, n, errs):
     if r is not None and m is not None and not planned:
         arch = m.get("arch")
         supported = list(r.get("supported_archs") or [])
-        # llama.cpp flag tables list both; Nanbeige GGUFs report general.architecture=llama
-        aliases = {"llama": "nanbeige", "nanbeige": "llama"}
+        # llama.cpp flag tables list both; named large model GGUFs report general.architecture=llama
+        aliases = {"llama": "large-model", "large-model": "llama"}
         ok = arch in supported or aliases.get(arch) in supported
         if not ok:
             errs.append(f"nodes.{name}: model {n['model']!r} arch {arch!r} not in runtime {n['runtime']!r} "
@@ -215,10 +251,38 @@ def check_node(g, name, n, errs):
         if other < name and "planned" not in (o.get("status"), n.get("status")) and o.get("host") == n.get("host") and o.get("port") == n.get("port"):
             errs.append(f"nodes.{name}: port {n.get('port')} on host {n.get('host')!r} also used by node {other!r}")
 
+    tr = n.get("tool_route")
+    if tr is not None:
+        w = f"nodes.{name}.tool_route"
+        from validate_graph import normalize_role as _norm_role
+        _t = _norm_role(n.get("role") or (m or {}).get("role"))
+        nodes = g.get("nodes") or {}
+        tn = nodes.get(tr) if isinstance(tr, str) else None
+        if _t in ("guardian", "pentest", "defender"):
+            errs.append(f"{w}: not allowed for {_t} nodes; tools follow the pentest policy mode")
+        elif tr == name:
+            errs.append(f"{w}: cannot route to itself")
+        elif isinstance(tn, dict):
+            tm = (g.get("models") or {}).get(tn.get("model")) or {}
+            if _norm_role(tn.get("role") or tm.get("role")) in ("guardian", "pentest", "defender"):
+                errs.append(f"{w}: target {tr!r} is a fail-closed TYPE")
+            elif tn.get("tool_route"):
+                errs.append(f"{w}: target {tr!r} is itself routed (one hop only)")
+
     st = n.get("server_tools")
     if st is not None:
         w = f"nodes.{name}.server_tools"
-        if st == "all":
+        # Guardian/pentest/defender tools are governed by the pentest mode ladder, not by a
+        # node override; a server_tools override here would bypass it (docs/config/pentest-policy.md).
+        from validate_graph import normalize_role as _norm_role, _loopback as _is_loopback
+        _type = _norm_role(n.get("role") or (m or {}).get("role"))
+        opt_out = st in ([], "none", False)  # explicit opt-out: no --tools flag (CFG-SPEC-TOOLS-006)
+        if opt_out:
+            pass
+        elif _type in ("guardian", "pentest", "defender"):
+            errs.append(f"{w}: not allowed for {_type} nodes; tools follow the pentest policy mode "
+                        f"(docs/config/pentest-policy.md), not a node override")
+        elif st == "all":
             pass
         elif isinstance(st, list) and st and all(isinstance(x, str) and x for x in st):
             for t in st:
@@ -227,9 +291,9 @@ def check_node(g, name, n, errs):
                 elif t not in SERVER_TOOL_NAMES:
                     errs.append(f"{w}: unknown tool {t!r}; known: {list(SERVER_TOOL_NAMES)} or all")
         else:
-            errs.append(f"{w}: expected 'all' or non-empty list of tool names {list(SERVER_TOOL_NAMES)}")
+            errs.append(f"{w}: expected 'all', [] / none / false (opt-out), or a list of tool names {list(SERVER_TOOL_NAMES)}")
         bind = n.get("bind") or ""
-        if bind not in ("127.0.0.1", "::1", "localhost") and not str(bind).startswith("127."):
+        if not opt_out and not _is_loopback(bind):
             errs.append(f"{w}: only allowed when bind is loopback (got {bind!r}); llama.cpp --tools is host-exec")
 
 # llama-server built-in tools (--tools); llama-ui /tools is 403 without these (M0 tools regression).
@@ -303,16 +367,55 @@ def check_speculative(g, name, sp, errs):
     others = [o for o, x in (g.get("speculative") or {}).items() if x.get("target") == sp.get("target") and x.get("status") == "active" and o != name]
     if sp.get("status") == "active" and others: errs.append(f"{w}: target {sp.get('target')!r} already has active speculative {others}")
 
+def alias_nodes(a):
+    """Node names of an alias in fallback order: `node: x` -> [x]; `node: [x, y]` -> [x, y]."""
+    v = (a or {}).get("node") if isinstance(a, dict) else None
+    if isinstance(v, str): return [v]
+    return [x for x in v if isinstance(x, str)] if isinstance(v, list) else []
+
+
+def alias_primary(a):
+    """First node of an alias (what single-node consumers read), or None."""
+    ns = alias_nodes(a)
+    return ns[0] if ns else None
+
+
 def check_alias(g, name, a, errs):
-    gw, nd = lookup(g, "gateways", a.get("gateway")), lookup(g, "nodes", a.get("node"))
-    if gw and nd and gw.get("host") != nd.get("host"):
-        if not any(t.get("kind") != "local" and {t.get("from"), t.get("to")} == {gw.get("host"), nd.get("host")}
-                   for t in (g.get("transports") or {}).values()):
-            errs.append(f"aliases.{name}: gateway host {gw.get('host')!r} has no transport to node host {nd.get('host')!r}")
+    gw = lookup(g, "gateways", a.get("gateway"))
+    members = [(n, lookup(g, "nodes", n)) for n in alias_nodes(a)]
+    for n, nd in members:
+        if gw and nd and gw.get("host") != nd.get("host"):
+            if not any(t.get("kind") != "local" and {t.get("from"), t.get("to")} == {gw.get("host"), nd.get("host")}
+                       for t in (g.get("transports") or {}).values()):
+                errs.append(f"aliases.{name}: gateway host {gw.get('host')!r} has no transport to node host {nd.get('host')!r}")
+    if len(members) > 1:   # CFG-SPEC-ALIAS-002: one kind per alias
+        kinds = {bool(nd.get("embeddings")) for _, nd in members if nd}
+        if len(kinds) > 1: errs.append(f"aliases.{name}: fallback list mixes embedding and chat nodes")
 
 AGENT_ROLES = ("main", "auxiliary")
 
+MCP_KEYS = {"command", "args", "url", "env_from", "headers_from", "tools", "enabled", "notes"}
+ENV_NAME_RE = __import__("re").compile(r"^[A-Za-z_][A-Za-z0-9_]*$")  # POSIX env var names, any case (e.g. http_proxy) (CFG-CRED)
+
+def check_agent_mcp(name, mcp, errs):
+    for srv, c in (mcp or {}).items():
+        where = f"agents.{name}.mcp.{srv}"
+        if not isinstance(c, dict): errs.append(f"{where}: must be a map"); continue
+        for k in c:
+            if k not in MCP_KEYS: errs.append(f"{where}: unknown key {k!r} (allowed: {sorted(MCP_KEYS)}; "
+                                              "secrets go in env_from/headers_from by env var name)")
+        if bool(c.get("command")) == bool(c.get("url")): errs.append(f"{where}: exactly one of command or url")
+        if "args" in c and not (isinstance(c["args"], list) and all(isinstance(x, str) for x in c["args"])):
+            errs.append(f"{where}.args: list of strings")
+        for k in ("env_from", "headers_from"):
+            v = c.get(k)
+            if v is None: continue
+            items = v.values() if isinstance(v, dict) else v if isinstance(v, list) else None
+            if items is None or not all(isinstance(x, str) and ENV_NAME_RE.match(x) for x in items):
+                errs.append(f"{where}.{k}: env var names only (list, or map header -> env var name)")
+
 def check_agent(g, name, a, errs):
+    if "mcp" in a: check_agent_mcp(name, a.get("mcp"), errs)
     al = a.get("aliases")
     if not isinstance(al, dict): return
     for role in al:
@@ -324,7 +427,7 @@ def check_agent(g, name, a, errs):
             errs.append(f"agents.{name}.aliases.{role}: exactly one alias per role, got a list"); continue
         alias = lookup(g, "aliases", target)
         if alias is None: errs.append(f"agents.{name}.aliases.{role}: no such alias {target!r}"); continue
-        node = lookup(g, "nodes", alias.get("node"))
+        node = lookup(g, "nodes", alias_primary(alias))
         s = slot_ctx(node) if node else None
         if s is None: continue
         if isinstance(a.get("min_ctx"), int) and s < a["min_ctx"]:
@@ -536,11 +639,12 @@ TYPES = {
                    "backends": req("list"), "spec_types": req("strlist"), "bin": opt("str"),
                    "quants": opt("strlist")}, check_runtime, doc="inference engine build"),
     "models": T({"gguf": req("str"), "sha256": req("sha"), "arch": req("str"), "trained_ctx": req("int", min=1),
-                 "role": req("enum", choices={"chat", "coder", "decision", "reasoning", "embed", "vision", "diffusion", "pentest", "guardian"}),
+                "role": req("enum", choices={"chat", "coder", "decision", "reasoning", "embed", "vision", "diffusion", "pentest", "guardian"}),
                  "derived_from": opt("any"),
                  # model database entry (registry/models/<db>.json, docs/model-database.md, #51)
-                 "db": opt("str"), "notes": opt("str"),
-                 "quant": opt("enum", choices={"littlebit"})}, doc="weights file"),  # derived_from: written by scripts/scale_down.py
+                 "db": opt("str"), "notes": opt("str"), "tool_calls": opt("bool"),  # model can emit tool calls (CFG-SPEC-TOOLS-007)
+                 "quant": opt("enum", choices={"littlebit"}),
+                 "text_roles": opt("strlist")}, check_model, doc="weights file"),  # derived_from: written by scripts/scale_down.py
     "nodes": T({"model": req("ref", ref="models"), "host": req("ref", ref="hosts"), "runtime": req("ref", ref="runtimes"),
                 "ctx": req("int", min=1), "parallel": req("int", min=1),
                 "kv_type": req("enum", choices={"f16", "bf16", "q8_0", "q4_0", "f32"}), "flash_attn": req("bool"),
@@ -560,6 +664,8 @@ TYPES = {
                 "card_set": opt("str"), "sampling": opt("map"), "override_reasons": opt("map"),
                 # llama-server --tools (llama-ui Server Tools / agentic); "all" or list of SERVER_TOOL_NAMES
                 "server_tools": opt("any"),
+                # capability-based tools default (CFG-SPEC-TOOLS-007..010, docs/config/routing-spec.md)
+                "tool_capable": opt("bool"), "tool_route": opt("ref", ref="nodes"),
                 # type/role the node provides (coder|chat|embed|…). Design law: type implies
                 # capability; placement is host:. Prefer type-named keys in private host graphs.
                 "role": opt("enum", choices={"chat", "coder", "decision", "reasoning", "embed", "vision", "diffusion", "pentest", "guardian", "general"})},
@@ -573,8 +679,10 @@ TYPES = {
                      check_speculative, experimental=True,
                      doc="edge draft->target (same vocab) or model-free n-gram lookup decoding"),
     "gateways": T({"kind": req("enum", choices={"green-roomz"}), "host": req("ref", ref="hosts"),
-                   "port": req("int", min=1)}, doc="router exposing aliases"),
-    "aliases": T({"node": req("ref", ref="nodes"), "gateway": req("ref", ref="gateways")}, check_alias,
+                   "port": req("int", min=1), "router": opt("bool")},
+                  doc="router exposing aliases; served by scripts/graph_router.py (default; caller auth, 3 s connect "
+                      "bound); router: false uses green-roomz graph-proxy (retries a down node for 180 s)"),
+    "aliases": T({"node": req("noderefs", ref="nodes"), "gateway": req("ref", ref="gateways"), "remote": opt("bool")}, check_alias,
                  doc="route name -> exactly one node"),
     "agents": T({"kind": req("enum", choices={"hermes-agent"}), "host": req("ref", ref="hosts"),
                  "prompt_profile": opt("enum", choices={"auto", "lean", "full"}),  # #85
@@ -582,7 +690,10 @@ TYPES = {
                  # bundled skills (skills/catalog.json, scripts/skills.py, docs/skills.md)
                  "skills": opt("strlist"),
                  # portable Hermes plugins under ~/.hermes/plugins (docs/hermes-plugins.md, #92)
-                 "plugins": opt("strlist")},
+                 "plugins": opt("strlist"),
+                 # MCP servers rendered into HERMES_HOME mcp_servers (docs/hermes-mcp.md); secrets only
+                 # by env var name (env_from), never literal values in graph.yaml
+                 "mcp": opt("map")},
                 check_agent, doc="agent process"),
     "fleets": T({"repo": req("str"), "agents": req("refs", ref="agents")}, doc="green-agentz agent group"),
     "agencies": T({"repo": req("str"), "labels": req("list"), "assignments": req("map")}, check_agency,

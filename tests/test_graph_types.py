@@ -20,13 +20,14 @@ def test_llama_070_runtime_preserves_existing_model_architectures():
     previous_archs = {
         arch
         for name, spec in BASE["runtimes"].items()
-        if name.startswith("llama-b") and name not in {"llama-b11669", "llama-b11669-freebsd"}
+        # only builds older than 0.7.0 (b11669); newer runtimes may add archs (e.g. b11944 lfm3)
+        if name.startswith("llama-b") and int(name[7:].split("-")[0]) < 11669
         for arch in spec["supported_archs"]
     }
     assert runtime["build"] == "b11669 (llama.cpp 0.7.0)"
     assert previous_archs <= set(runtime["supported_archs"])
-    assert BASE["nodes"]["coder"]["runtime"] == "llama-b11669"
-    assert BASE["nodes"]["embed"]["runtime"] == "llama-b11669"
+    assert int(BASE["nodes"]["coder"]["runtime"].split("-b")[1].split("-")[0]) >= 11669  # 0.7.0 or newer
+    assert int(BASE["nodes"]["embed"]["runtime"].split("-b")[1].split("-")[0]) >= 11669  # 0.7.0 or newer
     freebsd = BASE["runtimes"]["llama-b11669-freebsd"]
     assert freebsd["hosts"] == ["angel"]
     assert freebsd["backends"] == ["cpu"]
@@ -47,7 +48,7 @@ def test_no_defaults(sec, name, key):
 def test_enums():
     x = g(); x["hosts"]["miryam"]["kind"] = "server"; has(x, "not one of")
     x = g(); x["models"]["qwen35-2b-q4km"]["role"] = "magic"; has(x, "not one of")
-    x = g(); x["transports"]["miryam-local"]["kind"] = "ftp"; has(x, "not one of")
+    x = g(); x["transports"]["local-loopback"]["kind"] = "ftp"; has(x, "not one of")
 
 
 
@@ -123,7 +124,7 @@ def test_offload_rules():
 def test_qodesh_gpu_offload_rejected():
     # plain cuda still mismatches the verified cuda-sm11-ptx GPU
     x = g(); x["runtimes"]["llama-b11374"]["hosts"].append("qodesh"); x["runtimes"]["llama-b11374"]["backends"].append("cuda")
-    n = x["nodes"]["qodesh-resident"]; n["status"] = "active"; n["offload"].update(backend="cuda", ngl=4)
+    n = x["nodes"]["cpu-resident-coder"]; n["status"] = "active"; n["offload"].update(backend="cuda", ngl=4)
     has(x, "backend 'cuda' but GPU 0 backend is 'cuda-sm11-ptx'")
 
 def test_gpu_fields():
@@ -148,12 +149,12 @@ def test_reported_only_unmeasured():
     x = g(); x["hosts"]["godslove"]["reported"] = {"ram_mib": 1}; has(x, "with a 'source'")
 
 def test_planned_node_skips_placement():
-    x = g(); n = x["nodes"]["qodesh-resident"]; n["status"] = "planned"; n["runtime"] = "llama-b11374"; assert errs(x) == []
+    x = g(); n = x["nodes"]["cpu-resident-coder"]; n["status"] = "planned"; n["runtime"] = "llama-b11374"; assert errs(x) == []
     n["status"] = "active"; has(x, "not installed on host 'qodesh'")
 
 def test_node_selection_fallback():
-    assert BASE["nodes"]["qodesh-resident"]["selection"] == "fallback" and errs(g()) == []
-    x = g(); x["nodes"]["qodesh-resident"]["selection"] = "maybe"; has(x, "maybe")
+    assert BASE["nodes"]["cpu-resident-coder"]["selection"] == "fallback" and errs(g()) == []
+    x = g(); x["nodes"]["cpu-resident-coder"]["selection"] = "maybe"; has(x, "maybe")
 
 def spec_draft(**kw):
     d = {"experimental": True, "status": "planned", "mode": "draft", "target": "coder", "draft": "egemma2-q8",
@@ -174,11 +175,15 @@ def test_speculative_ngram():
     x = g(); x["speculative"]["coder-ngram"]["spec_type"] = "draft-simple"; has(x, "needs an ngram-* spec_type")
     x = g(); x["speculative"]["coder-ngram"]["draft"] = "egemma2-q8"; has(x, "only applies to mode draft")
 
-def test_speculative_vocab_mismatch_and_ram():
+def test_speculative_vocab_mismatch_and_ram(monkeypatch):
+    monkeypatch.setenv("FAMILIA_HOST", "miryam")  # models miryam; validate() scopes to the local host
+    monkeypatch.setattr(validate_graph, "host_swap_total_mib", lambda: None)  # not this machine's swap
     # egemma2 (gemma4 tokenizer) cannot draft for qwen35 (gpt2 tokenizer): file-level check
     x = g(); x["_path"] = os.path.join(ROOT, "graph.yaml")
     x["speculative"]["d"] = spec_draft(status="experimental")
-    if not os.path.isfile(os.path.expanduser(BASE["models"]["egemma2-q8"]["gguf"])): pytest.skip("GGUFs not on this machine")
+    tgt = BASE["models"][BASE["nodes"]["coder"]["model"]]["gguf"]
+    if not all(os.path.isfile(os.path.expanduser(p)) for p in (BASE["models"]["egemma2-q8"]["gguf"], tgt)):
+        pytest.skip("draft and target GGUFs not both on this machine")
     e, tot = validate_graph.validate(x); assert any("tokenizer/vocab mismatch" in m for m in e), e
     _, base = validate_graph.validate(g()); assert tot["miryam"] > base["miryam"] + 290  # draft weights counted
 
@@ -191,7 +196,7 @@ def test_server_args_spec_flags():
 
 
 def test_server_tools_args_and_loopback():
-    """angel-coder-style server_tools emits --tools; non-loopback bind is rejected."""
+    """removed-large-coder-style server_tools emits --tools; non-loopback bind is rejected."""
     import graph_types
     x = g()
     x["nodes"]["coder"]["server_tools"] = "all"
@@ -206,11 +211,38 @@ def test_server_tools_args_and_loopback():
     x["nodes"]["coder"]["server_tools"] = "all"
     x["nodes"]["coder"]["bind"] = "0.0.0.0"
     has(x, "only allowed when bind is loopback")
+    for bind in ("127.0.0.2", "::ffff:127.0.0.1", "[::1]", "LOCALHOST"):
+        x = g(); x["nodes"]["coder"]["server_tools"] = "all"; x["nodes"]["coder"]["bind"] = bind
+        st = [e for e in errs(x) if "server_tools" in e and "loopback" in e]
+        assert st == [], (bind, st)
+    for bind in ("127.evil.example", "lan.example", "::", "0.0.0.0"):
+        x = g(); x["nodes"]["coder"]["server_tools"] = "all"; x["nodes"]["coder"]["bind"] = bind
+        has(x, "only allowed when bind is loopback")
     x = g(); x["nodes"]["coder"]["server_tools"] = ["nope"]; has(x, "unknown tool")
 
-def test_alias_exactly_one_node():
-    x = g(); x["aliases"]["coder"]["node"] = ["coder"]; has(x, "expected a nodes name")
+
+def test_fail_closed_roles_are_normalized_in_graph_types():
+    """#340: casefold/NFKC Guardian (etc.) cannot grant server_tools or be a tool_route target."""
+    import unicodedata
+    fw = unicodedata.normalize("NFKC", "ｇｕａｒｄｉａｎ")
+    assert fw == "guardian"
+    for role in ("Guardian", "GUARDIAN", "ｇｕａｒｄｉａｎ"):
+        x = g(); x["nodes"]["coder"]["role"] = role; x["nodes"]["coder"]["server_tools"] = "all"
+        has(x, "not allowed for")
+        x = g(); x["nodes"]["removed-large-chat"]["tool_route"] = "coder"; x["nodes"]["coder"]["role"] = role
+        has(x, "fail-closed")
+
+
+def test_alias_node_or_fallback_list():
+    """CFG-SPEC-ALIAS-001: aliases.<a>.node is one node (unchanged) or a fallback list."""
     x = g(); x["aliases"]["coder"]["node"] = "auto"; has(x, "no such nodes entry 'auto'")
+    x = g(); x["aliases"]["coder"]["node"] = ["coder"]; assert errs(x) == []
+    x = g(); x["aliases"]["coder"]["node"] = ["coder", "auto"]; has(x, "no such nodes entry 'auto'")
+    x = g(); x["aliases"]["coder"]["node"] = []; has(x, "non-empty list")
+    x = g(); x["aliases"]["coder"]["node"] = ["coder", "coder"]; has(x, "duplicate entries")
+    x = g(); x["aliases"]["coder"]["node"] = ["coder", "embed"]; has(x, "mixes embedding and chat")
+    x = g(); x["aliases"]["coder"]["node"] = 7; has(x, "expected a nodes name or a non-empty list")
+    x = g(); x["aliases"]["coder"]["remote"] = "yes"; has(x, "expected true/false")
 
 def test_duplicate_yaml_keys_rejected(tmp_path):
     p = tmp_path / "g.yaml"; p.write_text("version: 2\naliases:\n  coder: {node: a}\n  coder: {node: b}\n")
@@ -291,7 +323,7 @@ def test_pentest_baseline_planned():
     assert BASE["pentests"]["fleet"]["status"] == "planned"
     assert BASE["pentests"]["fleet"]["launch_test_only"] is True
     assert BASE["pentests"]["fleet"]["tools"]["allow"] == []
-    assert BASE["nodes"]["miryam-pentest"]["role"] == "guardian"
+    assert BASE["nodes"]["fleet-guardian"]["role"] == "guardian"
     x = g()
     x["pentests"]["android-fleet"] = _pentest()
     assert x["pentests"]["android-fleet"]["status"] == "planned"
@@ -393,8 +425,10 @@ def test_model_role_pentest_allowed():
     assert errs(x) == []
 
 
-def test_ram_safety_reserve_and_small_host_floor():
+def test_ram_safety_reserve_and_small_host_floor(monkeypatch):
     """reserve and small-host floor are provisional guidance -> warnings (docs/ram-safety.md)."""
+    monkeypatch.setenv("FAMILIA_HOST", "miryam")  # models miryam; validate() scopes to the local host
+    monkeypatch.setattr(validate_graph, "host_swap_total_mib", lambda: None)  # not this machine's swap
     coder = os.path.expanduser("~/.local/share/gguf/models/coder/Qwen3.5-2B-Q4_K_M.gguf")
     embed = os.path.expanduser("~/.local/share/gguf/models/embed/embeddinggemma-2-Q8_0.gguf")
     if not (os.path.isfile(coder) and os.path.isfile(embed)):
@@ -405,11 +439,11 @@ def test_ram_safety_reserve_and_small_host_floor():
     assert ram_errs == [], (ram_errs, totals)
     assert totals.get("miryam", 0) < 4000
     # Inflate reserve so coder+embed no longer fit.
-    x = g(); x["hosts"]["miryam"]["reserve_ram_mib"] = 4000
+    x = g(); x["hosts"]["miryam"]["reserve_ram_mib"] = 4500
     errs, _ = validate_graph.validate(x, check_files=True)
     assert any("reserve" in w and "exceeds ram_mib" in w for w in validate_graph.WARNINGS), validate_graph.WARNINGS
     # Soft floor: tiny reserve but free-after-estimate under 2048 on a small host.
-    x = g(); x["hosts"]["miryam"]["ram_mib"] = 5000; x["hosts"]["miryam"]["reserve_ram_mib"] = 200
+    x = g(); x["hosts"]["miryam"]["ram_mib"] = 4800; x["hosts"]["miryam"]["reserve_ram_mib"] = 200
     errs, _ = validate_graph.validate(x, check_files=True)
     assert any("2048 MiB provisional floor" in w for w in validate_graph.WARNINGS), validate_graph.WARNINGS
 
@@ -426,23 +460,32 @@ def test_qodesh_sm11_decision_accepted():
     x = g()
     assert x["hosts"]["qodesh"]["gpus"][0]["backend"] == "cuda-sm11-ptx"
     assert x["hosts"]["qodesh"]["gpus"][0]["backend_status"] == "verified"
-    assert x["nodes"]["qodesh-gpu-decision"]["offload"]["backend"] == "cuda-sm11-ptx"
+    assert x["nodes"]["cuda-sm11-decision"]["offload"]["backend"] == "cuda-sm11-ptx"
     assert x["models"]["stories15m-fp32"]["role"] == "decision"
-    assert x["runtimes"]["sm11-legacy-qodesh"]["kind"] == "sm11-legacy"
+    assert x["runtimes"]["sm11-legacy"]["kind"] == "sm11-legacy"
     assert errs(x) == []
 
+@pytest.mark.proving_ground  # depends on local model files / host fleet state
 def test_host_scoped_validation_skips_remote_artifacts_and_ram():
     errs, totals = validate_graph.validate(g(), check_files=True, host="angel")
     assert errs == []
-    assert totals == {}
+    import start_graph
+    try:
+        local = start_graph.select_host(BASE)
+    except BaseException:
+        local = None
+    if local == "angel":  # on angel the scope is local: only angel's RAM is totalled
+        assert set(totals) <= {"angel"}
+    else:  # elsewhere angel's artifacts and RAM are remote: skipped
+        assert totals == {}
 
 def test_validate_graph_host_option_requires_declared_host():
     assert validate_graph.parse_argv(["--host", "miryam"])["host"] == "miryam"
 
 def test_qodesh_plain_cuda_still_rejected():
     x = g()
-    x["nodes"]["qodesh-gpu-decision"]["offload"]["backend"] = "cuda"
-    x["runtimes"]["sm11-legacy-qodesh"]["backends"] = ["cpu", "cuda", "cuda-sm11-ptx"]
+    x["nodes"]["cuda-sm11-decision"]["offload"]["backend"] = "cuda"
+    x["runtimes"]["sm11-legacy"]["backends"] = ["cpu", "cuda", "cuda-sm11-ptx"]
     has(x, "backend 'cuda' but GPU 0 backend is 'cuda-sm11-ptx'")
 
 
@@ -450,7 +493,7 @@ def test_smollm2_catalog_and_measured_notes():
     x = g()
     assert "smollm2-135m-q4" in x["models"]
     assert x["models"]["smollm2-135m-q4"]["role"] == "decision"
-    assert x["nodes"]["qodesh-smol-cpu"]["status"] == "planned"
+    assert x["nodes"]["cpu-smol-decision"]["status"] == "planned"
     notes = x["hosts"]["qodesh"]["gpus"][0]["notes"]
     assert "34.3" in notes and "SmolLM2" in notes
     assert errs(x) == []
@@ -460,8 +503,8 @@ def test_runtime_pkg_pin_and_phone7_vulkan():
     x = g(); assert x["runtimes"]["termux-llama-cpp-0.6.0"]["commit"] == "pkg:llama-cpp=0.6.0"
     assert x["hosts"]["phone7"]["gpus"][0]["backend_status"] == "verified"
     assert x["hosts"]["phone8"]["gpus"][0]["backend_status"] == "verified"
-    assert x["hosts"]["miryam"]["gpus"][0]["backend_status"] == "verified" and x["nodes"]["miryam-gpu-decision"]["status"] == "planned"
-    assert x["nodes"]["phone7-decision"]["status"] == "planned"
+    assert x["hosts"]["miryam"]["gpus"][0]["backend_status"] == "verified" and x["nodes"]["vulkan-igpu-decision"]["status"] == "planned"
+    assert x["nodes"]["vulkan-handset-decision"]["status"] == "planned"
     x = g(); x["runtimes"]["termux-llama-cpp-0.6.0"]["commit"] = "main"; has(x, "is not a git sha")
     x = g(); x["runtimes"]["termux-llama-cpp-0.6.0"]["commit"] = "pkg:llama-cpp"; has(x, "is not a git sha")
 
@@ -501,3 +544,72 @@ def test_options_may_carry_db_field():
     else:
         opts[name]["db"] = "example--toy--Q4_0"
     assert errs(x) == []
+
+
+def test_server_tools_rejected_for_guardian_pentest_defender():
+    """Boundary: a server_tools override on guardian/pentest/defender would bypass the
+    pentest mode ladder; graph_types must reject it (CFG-PENT-POL / CFG-SPEC-TOOLS)."""
+    import graph_types  # noqa: F401
+    for node, override in (("fleet-guardian", "all"), ("freebsd-guardian", ["read_file"])):
+        x = g(); x["nodes"][node]["server_tools"] = override
+        has(x, "not allowed for")
+    # defender TYPE via explicit node role on a guardian-model node
+    x = g(); x["nodes"]["fleet-guardian"]["role"] = "defender"; x["nodes"]["fleet-guardian"]["server_tools"] = "all"
+    has(x, "not allowed for defender")
+    # a non-guardian node (coder) still accepts server_tools: all on loopback
+    x = g(); x["nodes"]["coder"]["server_tools"] = "all"; x["nodes"]["coder"]["bind"] = "127.0.0.1"
+    assert [e for e in errs(x) if "coder.server_tools" in e] == []
+
+
+def test_mcp_env_names_posix_any_case():
+    x = g()
+    agents = x.setdefault("agents", {})
+    a = next(iter(agents.values())) if agents else agents.setdefault("hermes", {})
+    a.setdefault("mcp", {})["srv"] = {"command": "x", "env_from": ["1bad-name"]}
+    has(x, "env var names only")
+    for ok in (["GOOD_NAME"], ["http_proxy"], ["Mixed_1"]):
+        a["mcp"]["srv"]["env_from"] = ok
+        assert [e for e in errs(x) if "env var names only" in e] == [], ok
+
+
+def test_server_tools_explicit_opt_out_validates():
+    """CFG-SPEC-TOOLS-006: [] / none / false is an explicit opt-out: valid on any bind and
+    any TYPE (incl. guardian), and emits no --tools flag."""
+    for opt in ([], "none", False):
+        x = g(); x["nodes"]["coder"]["server_tools"] = opt; x["nodes"]["coder"]["bind"] = "0.0.0.0"
+        assert [e for e in errs(x) if "server_tools" in e] == [], opt
+        assert "--tools" not in validate_graph.server_args(x, "coder"), opt
+        x = g(); x["nodes"]["freebsd-guardian"]["server_tools"] = opt
+        assert [e for e in errs(x) if "server_tools" in e] == [], opt
+    x = g(); x["nodes"]["coder"]["server_tools"] = "some"; has(x, "opt-out")
+
+
+def test_model_text_roles_allow_explicit_coder_view_and_reject_modalities():
+    x = g()
+    x["models"]["qwen35-2b-q4km"]["role"] = "chat"
+    x["models"]["qwen35-2b-q4km"]["text_roles"] = ["general", "coder"]
+    assert errs(x) == []
+
+    x["models"]["qwen35-2b-q4km"]["text_roles"] = ["audio"]
+    has(x, "unknown text-role view")
+
+def test_quantized_kv_without_fa_forces_fa_on_and_warns():
+    """sysrescue bring-up: kv q8_0 + flash_attn false -> llama-server 'quantized V cache requires flash_attn'."""
+    x = g(); n = x["nodes"]["coder"]; n["kv_type"] = "q8_0"; n["flash_attn"] = False
+    a = validate_graph.server_args(x, "coder")
+    assert a[a.index("-fa") + 1] == "on"
+    assert any(w.startswith("nodes.coder: kv_type q8_0 with flash_attn: false") for w in validate_graph.routing_warnings(x))
+    n["kv_type"] = "f16"
+    assert "-fa" not in validate_graph.server_args(x, "coder")
+    assert not any(w.startswith("nodes.coder: kv_type") for w in validate_graph.routing_warnings(x))
+
+
+def test_server_args_argv0_is_binary_and_threads_from_host():
+    x = g(); rt = x["runtimes"][x["nodes"]["coder"]["runtime"]]
+    rt.pop("bin", None); x["nodes"]["coder"].pop("threads", None)
+    a = validate_graph.server_args(x, "coder")
+    assert a[0] == "llama-server" and a[1] == "-m"            # never a bare "-m ..." argv
+    assert a[a.index("-t") + 1] == str(x["hosts"][x["nodes"]["coder"]["host"]]["threads"])
+    rt["bin"] = "bin/llama-server"; x["nodes"]["coder"]["threads"] = 3
+    a = validate_graph.server_args(x, "coder")
+    assert a[0].endswith("bin/llama-server") and a[a.index("-t") + 1] == "3"   # node.threads wins

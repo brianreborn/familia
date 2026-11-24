@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
   Check (and optionally hint-install) tools familia / code-bootstraps need on Windows.

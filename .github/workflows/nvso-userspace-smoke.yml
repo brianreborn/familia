@@ -1,0 +1,56 @@
+name: nvso-userspace-smoke
+# Build and smoke-test gpu-legacy/nvso userspace on a main PR.
+# The job does not load nvso.ko, open /dev/nvso0, create a kernel domain,
+# or contact a deployed host.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      matrix:
+        make: [make, bmake]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: install BSD make
+        if: matrix.make == 'bmake'
+        run: sudo apt-get update && sudo apt-get install -y bmake
+      - name: userspace ABI smoke
+        env:
+          MAKE: ${{ matrix.make }}
+        run: sh gpu-legacy/nvso/smoke-userspace.sh
+  posix-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        make: [make, bmake]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: install BSD make
+        if: matrix.make == 'bmake'
+        run: sudo apt-get update && sudo apt-get install -y bmake
+      - name: build POSIX tools with OpenMP
+        env:
+          MAKE: ${{ matrix.make }}
+        run: |
+          "$MAKE" -C gpu-legacy clean
+          "$MAKE" -C gpu-legacy CFLAGS=-O0
+      - name: build POSIX tools without OpenMP
+        env:
+          MAKE: ${{ matrix.make }}
+        run: |
+          "$MAKE" -C gpu-legacy clean
+          "$MAKE" -C gpu-legacy OPENMP= CFLAGS=-O0
+          cc -O0 -Wall -Wextra -I gpu-legacy -fsyntax-only gpu-legacy/test_mapped.c

@@ -27,7 +27,7 @@ Commands marked (licenses first) run \fBscripts/licenses.py gate\fR before anyth
 .SS Set up
 .TP
 \fBfirst\-time\fR
-First\-time setup on this machine (deps → licenses → install → PATH).
+First\-time setup on this machine (deps \[u2192] licenses \[u2192] install \[u2192] PATH).
 .br
 Runs: \fBsh scripts/setup_goals.sh first\-time\fR
 .TP
@@ -45,6 +45,11 @@ Runs: \fBpython3 scripts/licenses.py review\fR
 Change launcher settings (terminal).
 .br
 Runs: \fBsh scripts/configure.sh \-\-interactive\fR
+.TP
+\fBandroid\-cockpit\fR
+Android installer switches (on\-device inference; gate, dry\-run, key, host).
+.br
+Runs: \fBsh scripts/android\-cockpit\-switches.sh\fR
 .TP
 \fBsync\-goal\fR
 Sync pinned parts only (asks preview vs apply) (licenses first).
@@ -114,10 +119,20 @@ Print mcpServers JSON for llama UI / code\-bootstraps.
 Runs: \fBpython3 scripts/agent_reach.py mcp\-example\fR
 .SS Models
 .TP
+\fBlist\-all\fR
+List every graph model, unplaced option, and model\-database entry.
+.br
+Runs: \fBpython3 scripts/catalog.py models\fR
+.TP
 \fBmodel add\fR \fI<PATH>\fR
 Add a model from a Hugging Face folder or a .gguf.
 .br
 Runs: \fBscripts/add\-model.sh <PATH>\fR
+.TP
+\fBlfm3\fR \fI<PICK>\fR
+LFM3 family: download an optional LFM3 model (lfm3 lfm3\-qad lfm3\-vl lfm3\-omni lfm3\-audio; vision/audio use \-\-mmproj; media picks Linux/macOS only for now) (licenses first).
+.br
+Runs: \fBsh code\-bootstraps\-llama.cpp/scripts/fetch\-models.sh \-\-pick <PICK>\fR
 .TP
 \fBmodel fetch\fR \fI<REPO>\fR \fI<QUANT>\fR
 Download and add a model from Hugging Face (asks you to accept its license).
@@ -134,6 +149,11 @@ Show one model's license and what it obliges you to.
 .br
 Runs: \fBpython3 scripts/model_license.py show <ID>\fR
 .TP
+\fBmodel pick\fR \fI<HOST>\fR \fI<ROLE>\fR
+Pick a model for this host: full catalog, search, Enter = host default; previews a host graph (writes generated/ only with \-\-write).
+.br
+Runs: \fBpython3 scripts/model_pick.py menu \-\-host <HOST> \-\-role <ROLE>\fR
+.TP
 \fBmodel check\fR
 Check graph.yaml: models, RAM budget, required launch parameters.
 .br
@@ -148,6 +168,17 @@ Runs: \fBpython3 scripts/validate_graph.py \-\-graph graph.yaml \-\-explain <NOD
 List model, skill and engine licenses (records nothing).
 .br
 Runs: \fBpython3 scripts/licenses.py list\fR
+.SS Graphs
+.TP
+\fBgraphs list\fR
+List every graph and the command that configures it.
+.br
+Runs: \fBpython3 scripts/catalog.py graphs\fR
+.TP
+\fBgraphs configure\fR \fI<GRAPH>\fR
+Show nodes on one graph and the edit command (writes nothing).
+.br
+Runs: \fBpython3 scripts/catalog.py configure <GRAPH>\fR
 .SS Agents (hermes)
 .TP
 \fBhermes model\fR \fI<MODEL>\fR
@@ -176,19 +207,85 @@ Launch\-test a role: validate, would\-start, stop.
 Runs: \fBsh with\-fleet.sh \-\-role <ROLE> \-\-launch\-test\fR
 .TP
 \fBfleet\fR \fI<ROLE>\fR
-Launch a role from graph.yaml (pentest roles are only launch\-tested) (licenses first).
+Launch a role from graph.yaml (guardian/defender: seatbelts on by default) (licenses first).
 .br
 Runs: \fBsh with\-fleet.sh \-\-role <ROLE>\fR
 .TP
-\fBpentest\-launch\-test\fR
-Pentest fleet: launch\-test only (validate → would\-start → stop).
+\fBguardian\-launch\-test\fR
+Guardian/defender node: launch\-test (seatbelts on; validate \[u2192] would\-start \[u2192] stop).
 .br
-Runs: \fBsh with\-fleet.sh \-\-role fleet \-\-launch\-test\fR
+Runs: \fBsh with\-fleet.sh \-\-role guardian \-\-launch\-test\fR
+.TP
+\fBguardian\-start\fR
+Guardian/defender: operator\-confirmed model start (owned scope; tools empty) (licenses first).
+.br
+Runs: \fBenv FAMILIA_OPERATOR_CONFIRM=yes sh with\-fleet.sh \-\-role guardian \-\-operator\-start\fR
+.TP
+\fBpentest\-launch\-test\fR
+Legacy id \[u2192] guardian launch\-test.
+.br
+Runs: \fBsh with\-fleet.sh \-\-role guardian \-\-launch\-test\fR
 .TP
 \fBpentest\-start\fR
-Pentest fleet: operator\-confirmed model start (owned scope; no live scans) (licenses first).
+Legacy id \[u2192] guardian operator\-start (licenses first).
 .br
-Runs: \fBenv FAMILIA_OPERATOR_CONFIRM=yes sh with\-fleet.sh \-\-role fleet \-\-operator\-start\fR
+Runs: \fBenv FAMILIA_OPERATOR_CONFIRM=yes sh with\-fleet.sh \-\-role guardian \-\-operator\-start\fR
+.SS App catalog
+.TP
+\fBapps\fR
+Virtual app store: every app familia can run, plus open "applications" issues (cached search).
+.br
+Runs: \fBpython3 scripts/app_catalog.py menu\fR
+.TP
+\fBapp list\fR
+List the apps (menu apps and the gum\-home tools) and their ids.
+.br
+Runs: \fBpython3 scripts/app_catalog.py list\fR
+.TP
+\fBapp search\fR \fI<WORDS>\fR
+Search open "applications" issues across brianreborn (public; cached, 45 min TTL).
+.br
+Runs: \fBpython3 scripts/app_catalog.py search <WORDS>\fR
+.TP
+\fBapp refresh\fR
+Refresh the app search cache now (one GitHub request).
+.br
+Runs: \fBpython3 scripts/app_catalog.py search \-\-refresh\fR
+.TP
+\fBapp run\fR \fI<APP>\fR
+Run one app by id (see apps.list).
+.br
+Runs: \fBpython3 scripts/app_catalog.py run <APP>\fR
+.TP
+\fBphone agents\fR
+Phone assistants (Bixby, Gemini): which are set up and what leaves the phone.
+.br
+Runs: \fBpython3 scripts/system_agents.py status\fR
+.TP
+\fBphone agents licenses\fR
+Phone assistants: Shizuku license and the terms each assistant brings.
+.br
+Runs: \fBpython3 scripts/system_agents.py licenses\fR
+.TP
+\fBphone agent probe\fR
+On this phone (Termux): is Shizuku running, which assistants are installed.
+.br
+Runs: \fBpython3 scripts/termux/system_agent.py probe\fR
+.TP
+\fBphone agent open\fR \fI<PROVIDER>\fR
+On this phone: bring Gemini or Bixby to the front (sends nothing).
+.br
+Runs: \fBpython3 scripts/termux/system_agent.py open \-\-provider <PROVIDER>\fR
+.TP
+\fBphone agent ask\fR \fI<TEXT>\fR
+On this phone: ask Gemini (CLOUD: your text goes to Google; asks first) (licenses first).
+.br
+Runs: \fBpython3 scripts/termux/system_agent.py ask \-\-provider gemini \-\-text <TEXT>\fR
+.TP
+\fBphone agent consent\fR \fI<PROVIDER>\fR \fI<CHOICE>\fR
+On this phone: allow or withdraw cloud calls to an assistant.
+.br
+Runs: \fBpython3 scripts/termux/system_agent.py consent \-\-provider <PROVIDER> <CHOICE>\fR
 .SS Self\-improving harness (Harness2)
 .TP
 \fBharness2 status\fR
@@ -197,7 +294,7 @@ Show which agents have Harness2 and in which mode.
 Runs: \fBpython3 scripts/harness2.py status\fR
 .TP
 \fBharness2 set\fR \fI<AGENT>\fR \fI<MODE>\fR
-Set Harness² mode for any agent (hermes, llama UI, or other; off / propose / apply) (licenses first).
+Set Harness\[u00B2] mode for any agent (hermes, llama UI, or other; off / propose / apply) (licenses first).
 .br
 Runs: \fBpython3 scripts/harness2.py set \-\-agent <AGENT> \-\-mode <MODE>\fR
 .TP
@@ -231,6 +328,11 @@ Runs: \fBpython3 scripts/registry.py suggest \-\-host <HOST> \-\-role <ROLE>\fR
 Summary of every benchmark record.
 .br
 Runs: \fBpython3 scripts/registry.py summarize\fR
+.TP
+\fBoffline\-secbench\fR \fI<PLATFORM>\fR \fI<DIR>\fR
+Opt\-in offline security\-model benches (#117); synthetic fixtures only.
+.br
+Runs: \fBpython3 scripts/offline_secbench.py \-\-enable \-\-platform <PLATFORM> \-\-answers\-dir <DIR>\fR
 .SS Hosts
 .TP
 \fBmonitor\fR
@@ -287,36 +389,6 @@ Runs: \fBbash android_multi_start.sh\fR
 Keep a phone's node running (restart it if it stops answering) (licenses first).
 .br
 Runs: \fBbash watchdog_android.sh <HOST>\fR
-.TP
-\fBphone agents\fR
-Phone assistants (Bixby, Gemini): which are set up and what leaves the phone.
-.br
-Runs: \fBpython3 scripts/system_agents.py status\fR
-.TP
-\fBphone agents licenses\fR
-Phone assistants: Shizuku license and the terms each assistant brings.
-.br
-Runs: \fBpython3 scripts/system_agents.py licenses\fR
-.TP
-\fBphone agent probe\fR
-On this phone (Termux): is Shizuku running, which assistants are installed.
-.br
-Runs: \fBpython3 scripts/termux/system_agent.py probe\fR
-.TP
-\fBphone agent open\fR \fI<PROVIDER>\fR
-On this phone: bring Gemini or Bixby to the front (sends nothing).
-.br
-Runs: \fBpython3 scripts/termux/system_agent.py open \-\-provider <PROVIDER>\fR
-.TP
-\fBphone agent ask\fR \fI<TEXT>\fR
-On this phone: ask Gemini (CLOUD: your text goes to Google; asks first) (licenses first).
-.br
-Runs: \fBpython3 scripts/termux/system_agent.py ask \-\-provider gemini \-\-text <TEXT>\fR
-.TP
-\fBphone agent consent\fR \fI<PROVIDER>\fR \fI<CHOICE>\fR
-On this phone: allow or withdraw cloud calls to an assistant.
-.br
-Runs: \fBpython3 scripts/termux/system_agent.py consent \-\-provider <PROVIDER> <CHOICE>\fR
 .SS Advanced: models & graph
 .TP
 \fBmodel args\fR \fI<NODE>\fR
@@ -324,15 +396,25 @@ validate_graph: the llama\-server arguments for one node.
 .br
 Runs: \fBpython3 scripts/validate_graph.py \-\-graph graph.yaml \-\-args <NODE>\fR
 .TP
+\fBroutes\fR \fI<ROUTES>\fR
+graph_router (default gateway): check a routes file (single, pair, fallback, chain, router, remote, tools).
+.br
+Runs: \fBpython3 scripts/graph_router.py <ROUTES> \-\-check\fR
+.TP
 \fBmodel verify\fR
 validate_graph: also verify model sha256 and runtimes (slow).
 .br
 Runs: \fBpython3 scripts/validate_graph.py \-\-graph graph.yaml \-\-verify\-sha \-\-check\-runtimes\fR
 .TP
-\fBgraph edit\fR \fI<ASSIGN>\fR
-modify_graph: assign a model to a node (rewrites graph.yaml).
+\fBgraph edit\fR \fI<HOST>\fR \fI<ASSIGN>\fR
+modify_graph: assign models: key to a type\-named node (prefer \-\-host for private topology).
 .br
-Runs: \fBpython3 scripts/modify_graph.py \-\-assign\-model <ASSIGN>\fR
+Runs: \fBpython3 scripts/modify_graph.py \-\-host <HOST> \-\-assign\-model <ASSIGN>\fR
+.TP
+\fBgraph proto\fR \fI<RECIPE>\fR
+protograph: recipe \-> graph.yaml (dry run; skills/protograph/SKILL.md).
+.br
+Runs: \fBpython3 scripts/protograph.py <RECIPE>\fR
 .TP
 \fBmodel db list\fR
 Model database: list entries.
@@ -360,7 +442,7 @@ llama_flags: does a pinned llama.cpp build have a flag?.
 Runs: \fBpython3 scripts/llama_flags.py show <BUILD> <FLAG>\fR
 .TP
 \fBmodel scale\-down\fR
-Scale\-down (opt\-in smaller models) — apply.
+Scale\-down (opt\-in smaller models) \[u2014] apply.
 .br
 Runs: \fBpython3 scripts/scale_down.py\fR
 .TP
@@ -495,12 +577,194 @@ Runs: \fBsh scripts/install\-cli.sh status\fR
 Low\-level: take familia off PATH (asks first).
 .br
 Runs: \fBsh scripts/install\-cli.sh uninstall\fR
-.SS ★ Required checks (must\-run)
+.SS Proving grounds (graded)
 .TP
-\fBrequired\fR
-★ Run ALL three critical bash smokes for real (fleet + nexus + bt).
+\fBtest proving\-grounds\fR
+Graded progress on the three top\-level proving grounds (fleet + nexus + bt); not pass/fail.
 .br
-Runs: \fBsh scripts/required_checks.sh\fR
+Runs: \fBsh scripts/proving_grounds.sh\fR
+.SS Models
+.TP
+\fBhome models install\fR
+Home: install models.
+.br
+Runs: \fBpython3 scripts/home_catalog.py models install\fR
+.TP
+\fBhome models list\fR
+Home: list models.
+.br
+Runs: \fBpython3 scripts/home_catalog.py models list\fR
+.TP
+\fBhome models start\fR
+Home: start models (API key; \-\-apply).
+.br
+Runs: \fBpython3 scripts/home_catalog.py models start\fR
+.TP
+\fBhome models stop\fR
+Home: stop models (\-\-apply).
+.br
+Runs: \fBpython3 scripts/home_catalog.py models stop\fR
+.TP
+\fBhome models status\fR
+Home: models status.
+.br
+Runs: \fBpython3 scripts/home_catalog.py models status\fR
+.SS Self\-improving harness (Harness2)
+.TP
+\fBhome harnesses install\fR
+Home: install harnesses.
+.br
+Runs: \fBpython3 scripts/home_catalog.py harnesses install\fR
+.TP
+\fBhome harnesses list\fR
+Home: list harnesses.
+.br
+Runs: \fBpython3 scripts/home_catalog.py harnesses list\fR
+.TP
+\fBhome harnesses start\fR
+Home: start harnesses (\-\-apply).
+.br
+Runs: \fBpython3 scripts/home_catalog.py harnesses start\fR
+.TP
+\fBhome harnesses stop\fR
+Home: stop harnesses (\-\-apply).
+.br
+Runs: \fBpython3 scripts/home_catalog.py harnesses stop\fR
+.TP
+\fBhome harnesses status\fR
+Home: harness status.
+.br
+Runs: \fBpython3 scripts/home_catalog.py harnesses status\fR
+.SS Agents (hermes)
+.TP
+\fBhome agents install\fR
+Home: install agents.
+.br
+Runs: \fBpython3 scripts/home_catalog.py agents install\fR
+.TP
+\fBhome agents list\fR
+Home: list agents.
+.br
+Runs: \fBpython3 scripts/home_catalog.py agents list\fR
+.TP
+\fBhome agents start\fR
+Home: start agents (API key; \-\-apply).
+.br
+Runs: \fBpython3 scripts/home_catalog.py agents start\fR
+.TP
+\fBhome agents stop\fR
+Home: stop agents (\-\-apply).
+.br
+Runs: \fBpython3 scripts/home_catalog.py agents stop\fR
+.TP
+\fBhome agents status\fR
+Home: agents status.
+.br
+Runs: \fBpython3 scripts/home_catalog.py agents status\fR
+.SS MCP servers
+.TP
+\fBhome mcp install\fR
+Home: install MCP servers (no listener).
+.br
+Runs: \fBpython3 scripts/home_catalog.py mcp install\fR
+.TP
+\fBhome mcp list\fR
+Home: list MCP servers.
+.br
+Runs: \fBpython3 scripts/home_catalog.py mcp list\fR
+.TP
+\fBhome mcp start\fR
+Home: start MCP servers (refuses to bind).
+.br
+Runs: \fBpython3 scripts/home_catalog.py mcp start\fR
+.TP
+\fBhome mcp stop\fR
+Home: stop MCP servers.
+.br
+Runs: \fBpython3 scripts/home_catalog.py mcp stop\fR
+.TP
+\fBhome mcp status\fR
+Home: MCP server status.
+.br
+Runs: \fBpython3 scripts/home_catalog.py mcp status\fR
+.SS Tool sets
+.TP
+\fBhome tools install\fR
+Home: install tool sets.
+.br
+Runs: \fBpython3 scripts/home_catalog.py tools install\fR
+.TP
+\fBhome tools list\fR
+Home: list tool sets.
+.br
+Runs: \fBpython3 scripts/home_catalog.py tools list\fR
+.TP
+\fBhome tools start\fR
+Home: start tool sets (not a process).
+.br
+Runs: \fBpython3 scripts/home_catalog.py tools start\fR
+.TP
+\fBhome tools stop\fR
+Home: stop tool sets.
+.br
+Runs: \fBpython3 scripts/home_catalog.py tools stop\fR
+.TP
+\fBhome tools status\fR
+Home: tool set status.
+.br
+Runs: \fBpython3 scripts/home_catalog.py tools status\fR
+.SS App store
+.TP
+\fBhome apps install\fR
+Home: install from the app store (no download).
+.br
+Runs: \fBpython3 scripts/home_catalog.py apps install\fR
+.TP
+\fBhome apps list\fR
+Home: list the app store.
+.br
+Runs: \fBpython3 scripts/home_catalog.py apps list\fR
+.TP
+\fBhome apps start\fR
+Home: start app store (no listener).
+.br
+Runs: \fBpython3 scripts/home_catalog.py apps start\fR
+.TP
+\fBhome apps stop\fR
+Home: stop the app store.
+.br
+Runs: \fBpython3 scripts/home_catalog.py apps stop\fR
+.TP
+\fBhome apps status\fR
+Home: app store status.
+.br
+Runs: \fBpython3 scripts/home_catalog.py apps status\fR
+.TP
+\fBhome apps browse\fR
+Home: browse the app store (tweet cards; gum or plain text).
+.br
+Runs: \fBsh scripts/appstore.sh\fR
+.TP
+\fBhome apps web\fR
+Home: write the app store web page (static HTML, no remote loads).
+.br
+Runs: \fBpython3 scripts/appstore.py html\fR
+.SS Front door
+.TP
+\fBhome talk\fR
+Talk to the protomodel.
+.br
+Runs: \fBsh scripts/proto_chat.sh\fR
+.TP
+\fBhome find\-models\fR
+Find more models.
+.br
+Runs: \fBsh scripts/find_models.sh\fR
+.TP
+\fBhome search\-x\fR
+Search my X / Twitter posts.
+.br
+Runs: \fBsh scripts/search_x.sh\fR
 .SS Help
 .TP
 \fBquickstart\fR
@@ -585,7 +849,7 @@ any registry.py command: add, query, summarize, suggest, match, power, lint.
 Runs: \fBpython3 scripts/registry.py\fR \fIARG\fR...
 .TP
 \fBhome\fR \fIARG\fR...
-.
+six equal home items; legacy menu if gum cannot be installed.
 .br
 Runs: \fBsh scripts/familia_home.sh\fR \fIARG\fR...
 .TP
@@ -594,10 +858,10 @@ Runs: \fBsh scripts/familia_home.sh\fR \fIARG\fR...
 .br
 Runs: \fBsh scripts/proto_chat.sh\fR \fIARG\fR...
 .TP
-\fBrequired\-checks\fR \fIARG\fR...
+\fBproving\-grounds\fR \fIARG\fR...
 .
 .br
-Runs: \fBsh scripts/required_checks.sh\fR \fIARG\fR...
+Runs: \fBsh scripts/proving_grounds.sh\fR \fIARG\fR...
 .SS Built\-in commands
 .TP
 \fBhelp\fR [\fICOMMAND\fR]
@@ -658,6 +922,9 @@ Where license acceptance is recorded (default .cache/familia/license\-acceptance
 .TP
 \fBFAMILIA_GRAPH\fR
 Graph file to use instead of graph.yaml, where the script supports it.
+.TP
+\fBFAMILIA_HOSTS_OVERLAY\fR
+Path to hosts.local.yaml connection overlay (#104); default ~/.config/familia/hosts.local.yaml.
 .TP
 \fBPYTHON\fR
 Python interpreter (default python3).

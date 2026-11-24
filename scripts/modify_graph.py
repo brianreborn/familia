@@ -22,7 +22,7 @@ Supported actions:
 Examples:
   ./scripts/modify_graph.py --list
   ./scripts/modify_graph.py --host angel --list
-  ./scripts/modify_graph.py --host angel --assign-model coder=nanbeige43-33b-q4km --dry-run
+  ./scripts/modify_graph.py --host angel --assign-model coder=removed-large-model --dry-run
   ./scripts/modify_graph.py --assign-model coder=qwen35-2b-q4km --dry-run
 """
 import argparse
@@ -42,7 +42,10 @@ from node_role import (  # noqa: E402
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 BASE_GRAPH = REPO_ROOT / "graph.yaml"
 MANIFEST = REPO_ROOT / "code-bootstraps-llama.cpp" / "config" / "models-manifest.json"
-GENERATED = REPO_ROOT / "generated"
+import os
+# FAMILIA_GENERATED_DIR redirects generated graphs (tests use tmp; CFG-FILE-007b)
+import config_paths  # noqa: E402
+GENERATED = pathlib.Path(config_paths.generated_dir())
 
 
 def load_manifest():
@@ -131,7 +134,7 @@ def ensure_host_graph(host: str) -> pathlib.Path:
 def main():
     parser = argparse.ArgumentParser(
         description="Programmatic graph edits (comment-safe; models: keys only)",
-        epilog="Example: ./scripts/modify_graph.py --host angel --assign-model coder=nanbeige43-33b-q4km --dry-run",
+        epilog="Example: ./scripts/modify_graph.py --host angel --assign-model coder=removed-large-model --dry-run",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--host", help="Edit generated/graph-HOST.yaml (private type-named topology)")

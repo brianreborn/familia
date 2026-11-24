@@ -15,10 +15,20 @@ def _fleet():
     return familia_yaml.loads(open(os.path.join(ROOT, "graph.yaml"), encoding="utf-8").read())
 
 
+def test_fleet_keys_are_capability_names_not_hostnames():
+    g = _fleet()
+    bad = []
+    for section in ("nodes", "models", "runtimes", "transports", "speculative", "pentests", "aliases"):
+        for name in (g.get(section) or {}):
+            if nr.is_host_prefixed(str(name), g):
+                bad.append(f"{section}.{name}")
+    assert bad == []
+
+
 def test_infer_role_angel_chat_vs_coder():
     g = _fleet()
-    assert nr.infer_role("angel-coder", g["nodes"]["angel-coder"], g) == "coder"
-    assert nr.infer_role("angel-chat", g["nodes"]["angel-chat"], g) == "chat"
+    assert nr.infer_role("removed-large-coder", g["nodes"]["removed-large-coder"], g) == "coder"
+    assert nr.infer_role("removed-large-chat", g["nodes"]["removed-large-chat"], g) == "chat"
     assert nr.infer_role("coder", g["nodes"]["coder"], g) == "coder"
 
 
@@ -31,13 +41,20 @@ def test_private_angel_type_names_only():
     assert nodes["guardian"]["role"] == "guardian"
     assert nodes["guardian"]["status"] == "planned"
     assert nodes["coder"]["host"] == "angel"
-    assert nodes["coder"]["model"] == "nanbeige43-33b-q4km"
+    assert nodes["coder"]["model"] == "qwen35-2b-model"
     assert nodes["coder"]["status"] == "active"
+
     assert nodes["chat"]["status"] == "planned"
     assert nodes["coder"]["role"] == "coder"
     assert nodes["chat"]["role"] == "chat"
     for name in nodes:
         assert not nr.is_host_prefixed(name, g)
+    spec = priv["speculative"]
+    assert set(spec) == {"removed-large-ngram"}
+    assert spec["removed-large-ngram"]["target"] == "coder"
+    assert spec["removed-large-ngram"]["status"] == "planned"
+    assert "coder-ngram" not in spec
+    assert "coder-draft" not in spec
 
 
 def test_resolve_model_assign_rejects_typos_and_paths():
@@ -50,28 +67,35 @@ def test_resolve_model_assign_rejects_typos_and_paths():
         nr.resolve_model_assign(g, "models/coder/x.gguf")
 
 
-def test_generate_graph_cli_angel(tmp_path=None):
-    r = subprocess.run(
+def _genenv(tmp_path):
+    env = dict(os.environ)
+    env["FAMILIA_GENERATED_DIR"] = str(tmp_path)
+    return env
+
+
+def test_generate_graph_cli_angel(tmp_path):
+    r = subprocess.run(env=_genenv(tmp_path), args=
         [sys.executable, os.path.join(ROOT, "scripts", "generate_graph.py"), "angel"],
         cwd=ROOT,
         capture_output=True,
         text=True,
     )
     assert r.returncode == 0, r.stderr + r.stdout
-    assert "angel-coder→coder" in r.stdout or "angel-coder->coder" in r.stdout or "→coder" in r.stdout
-    out = os.path.join(ROOT, "generated", "graph-angel.yaml")
+    assert "removed-large-coder→coder" in r.stdout or "removed-large-coder->coder" in r.stdout or "→coder" in r.stdout
+    out = os.path.join(str(tmp_path), "graph-angel.yaml")
     g = familia_yaml.loads(open(out, encoding="utf-8").read())
     assert set(g["nodes"]) == {"coder", "chat", "guardian"}
 
 
-def test_modify_graph_host_list_and_bad_model():
-    subprocess.run(
+def test_modify_graph_host_list_and_bad_model(tmp_path):
+    env = _genenv(tmp_path)
+    subprocess.run(env=env, args=
         [sys.executable, os.path.join(ROOT, "scripts", "generate_graph.py"), "angel"],
         cwd=ROOT,
         check=True,
         capture_output=True,
     )
-    r = subprocess.run(
+    r = subprocess.run(env=env, args=
         [sys.executable, os.path.join(ROOT, "scripts", "modify_graph.py"),
          "--host", "angel", "--list"],
         cwd=ROOT,
@@ -80,8 +104,8 @@ def test_modify_graph_host_list_and_bad_model():
     )
     assert r.returncode == 0, r.stderr
     assert "coder:" in r.stdout and "host=angel" in r.stdout
-    assert "angel-coder" not in r.stdout
-    bad = subprocess.run(
+    assert "removed-large-coder" not in r.stdout
+    bad = subprocess.run(env=env, args=
         [sys.executable, os.path.join(ROOT, "scripts", "modify_graph.py"),
          "--host", "angel", "--assign-model", "coder=qwen35-2b", "--dry-run"],
         cwd=ROOT,
@@ -94,7 +118,7 @@ def test_modify_graph_host_list_and_bad_model():
 
 def test_infer_role_guardian_from_pentest_model():
     g = _fleet()
-    assert nr.infer_role("miryam-pentest", g["nodes"]["miryam-pentest"], g) == "guardian"
+    assert nr.infer_role("fleet-guardian", g["nodes"]["fleet-guardian"], g) == "guardian"
     assert nr.prefer_public_role("pentest") == "guardian"
 
 
@@ -104,3 +128,6 @@ def test_private_miryam_includes_guardian():
     assert "guardian" in priv["nodes"]
     assert priv["nodes"]["guardian"]["role"] == "guardian"
     assert "guardian" in (priv.get("aliases") or {})
+    assert priv["speculative"]["coder-ngram"]["target"] == "coder"
+    assert priv["speculative"]["coder-ngram"]["status"] == "active"
+    assert priv["nodes"]["coder"]["model"] == "qwen35-2b-q4km"

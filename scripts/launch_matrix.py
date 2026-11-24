@@ -274,6 +274,9 @@ def one(engine, model, a, host_limit, legacy, dry):
             ready = lambda p: http_ok("http://127.0.0.1:%d/health" % P)
         else:
             ready = lambda p: http_ok("http://127.0.0.1:%d/health" % P) and chat(P, sysmsg)
+        # DUP-04/CFG-SPEC-TOOLS: bench instances launch WITHOUT --tools on purpose (no graph TYPE
+        # here; tools would change CORS/memory and skew the benchmark). Production launches get the
+        # per-TYPE policy via validate_graph.server_args (start_graph / with-fleet).
         r = run([b] + args + ["--host", "127.0.0.1", "--port", str(P), "--jinja"], cap, a.timeout, ready, env)
     rec.update(rc=r["rc"], peak_mib=r["peak"], secs=r["secs"])
     k = killer(r["rc"], r["capkill"], r.get("oom"))

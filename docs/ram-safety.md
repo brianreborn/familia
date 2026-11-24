@@ -24,7 +24,13 @@ high RAM utilization.
    Test hard on purpose, but rely on earlyoom and zram to catch a spike instead of
    packing several heavy processes together.
 4. **Validate against the target host's measured `ram_mib`.**
-5. **iGPU and Vulkan memory is system RAM.** A Vulkan build allocates about
+5. **Separate installation from inference admission.** Android can install the
+   control plane with `--no-runtime` and no active local model nodes. This does
+   not relax runtime memory admission: preserve the host reserve and the
+   provisional 2 GiB free target for hosts under 8 GiB. A remote route to a
+   separately admitted coder is compatible with this profile; Hermes is
+   optional. Do not reduce a reserve merely to admit a local model.
+6. **iGPU and Vulkan memory is system RAM.** A Vulkan build allocates about
    1.8 GB of shared-memory host buffers even with `-ngl 0`, which counts against the
    memcap scope. `scripts/serve.sh` and the hermes harness hide the Vulkan devices
    (`GGML_VK_VISIBLE_DEVICES=`) for `-ngl 0` nodes (LESSONS-LEARNED L-vkshm; live
@@ -127,4 +133,4 @@ On angel-class hosts (lots of swap / software VVRAM), RAM overcommit and undersi
 
 ## mmap + SSD spill hosts (angel-class)
 
-When `load_mode: mmap` and `swap_budget_mib` are set, **keep `reserve_ram_mib`** (do not cut it to make Nanbeige “fit”). Admission uses `admit_peak_mib` (KV + cache + working set), not the full GGUF. See `docs/vvram-ssd/LAYER.md` coherent 64K policy.
+When `load_mode: mmap` and `swap_budget_mib` are set, **keep `reserve_ram_mib`** (do not cut it to make named large model “fit”). Admission uses `admit_peak_mib` (KV + cache + working set), not the full GGUF. See `docs/vvram-ssd/LAYER.md` coherent 64K policy.
