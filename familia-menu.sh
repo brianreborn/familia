@@ -17,6 +17,8 @@
 #   At a menu choice, enter FOO=value N [ARG...]        set environment and pass args to the chosen item
 # In the menu, at any level: /word searches every group, ?word searches backward,
 # n / N go to the next / previous match, and / alone repeats the last search.
+# Inside a group, &word keeps only the items that match (& alone clears it), b goes
+# back one level, h shows every key, and the top line shows where you are.
 # Examples:
 #   ./familia-menu.sh --run skills.menu
 #   ./familia-menu.sh --search hermes
@@ -39,7 +41,7 @@ DRY=0; PIPE=0; MODE=menu; RUN_KEY=""; SEARCH=""
 say() { printf '%s\n' "$*"; }
 err() { printf '%s: %s\n' "${ERR_NAME:-familia-menu}" "$*" >&2; }
 
-usage() { sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,24p' "$0" | sed 's/^# \{0,1\}//'; }
 
 installer() {
   case "${PREFIX:-}" in *com.termux*) echo install/termux/install.sh; return ;; esac
@@ -329,7 +331,7 @@ search_ui() {  # search_ui OP TEXT ; OP is / ? n N. Returns 3 to quit the menu.
       find_matches "$t"
       [ ${#SK[@]} -gt 0 ] || { no_match "$t"; return 0; }
       [ "$SDIR" = 1 ] && SCUR=0 || SCUR=$(( ${#SK[@]} - 1 ))
-      say ""; say "Search: '$t' (${#SK[@]} match(es) in every group; > marks the current one)"
+      say ""; crumb "search '$t'"; say "Search: '$t' (${#SK[@]} match(es) in every group; > marks the current one)"
       for i in "${!SK[@]}"; do
         if [ "$i" = "$SCUR" ]; then k="> "; else k="  "; fi
         show_match $((i+1)) "${SK[$i]}" "$t" "$k"
@@ -345,7 +347,7 @@ search_ui() {  # search_ui OP TEXT ; OP is / ? n N. Returns 3 to quit the menu.
       show_match $((SCUR+1)) "${SK[$SCUR]}" "$t" "> " ;;
   esac
   while true; do
-    if ! read_line "Choose 1-${#SK[@]} to run, n/N next/previous match, /word to search again, b back: " choice; then
+    if ! nav_read "Choose 1-${#SK[@]} to run, n/N next/previous match, /word to search again, h help, b back: " choice "${#SK[@]}"; then
       closed_input || return 4
       continue
     fi
@@ -353,11 +355,12 @@ search_ui() {  # search_ui OP TEXT ; OP is / ? n N. Returns 3 to quit the menu.
     case "$choice" in
       b|B|back|"") return 0 ;;
       q|Q|quit|exit) return 3 ;;
+      h|H|help) nav_help; continue ;;
       n|N) search_ui "$choice" ""; return $? ;;
       /*|\?*) search_ui "${choice:0:1}" "${choice:1}"; return $? ;;
     esac
     if ! [[ $choice =~ ^[0-9]+$ ]] || [ "$choice" -lt 1 ] || [ "$choice" -gt ${#SK[@]} ]; then
-      say "'$choice' isn't one of the choices. Type a number from 1 to ${#SK[@]}, n, N, /word or b."; continue
+      say "'$choice' isn't one of the choices. Type a number from 1 to ${#SK[@]}, n, N, /word, h or b."; continue
     fi
     SCUR=$((choice-1))
     item_args=("${PENDING_ARGS[@]}" "${MENU_ARGS[@]}")
@@ -378,28 +381,79 @@ search_key() {  # 0 handled (stay), 3 quit, 4 stdin closed (not a quit), 1 not a
   return 0
 }
 
+# ---- navigation (#733 M4): where you are, filter, key hints, help --------------
+# M1 owns the raw-mode key reader. When scripts/menu-keys.sh exists and defines
+# menu_key_read PROMPT VAR COUNT, a terminal menu reads through it; it must hand back
+# the same text a typed line would (a number, b, q, <, >, h, /word, &word).
+# Pipes, TERM=dumb and a missing reader (M2's fallback) keep the line reader below.
+[ -f "$ROOT/scripts/menu-keys.sh" ] && . "$ROOT/scripts/menu-keys.sh"
+nav_read() {  # nav_read PROMPT VAR COUNT ; returns 1 on EOF
+  if [ "$PIPE" != 1 ] && [ -t 0 ] && [ "${TERM:-dumb}" != dumb ] && declare -F menu_key_read >/dev/null; then
+    menu_key_read "$1" "$2" "${3:-0}"; return
+  fi
+  read_line "$1" "$2"
+}
+crumb() {  # crumb [LEVEL...] -> "[familia > Models > page 2 of 3]"
+  local p=familia s
+  for s in "$@"; do [ -n "$s" ] && p+=" > $s"; done
+  say "[$p]"
+}
+footer() {  # footer top|group|search : one key-hint line, the same words at every level
+  case "$1" in
+    top) say "  q) Quit   h) Help   /word search every group (n/N next/previous match)" ;;
+    group) say "  b) Back   q) Quit   h) Help   &word filter this menu   /word search every group (n/N next/previous match)" ;;
+  esac
+}
+nav_has() {  # nav_has TEXT WORD -> 0 when WORD is in TEXT, ignoring case (bash 3.2 safe)
+  local rc=1 had=0
+  shopt -q nocasematch && had=1
+  shopt -s nocasematch
+  [[ $1 == *"$2"* ]] && rc=0
+  [ "$had" = 1 ] || shopt -u nocasematch
+  return $rc
+}
+nav_help() {
+  say ""
+  say "Keys (type one, then Enter):"
+  say "  1-9...    pick that item (add NAME=value before it or values after it)"
+  say "  b         back one level (Backspace or Esc with arrow keys); at the top it stays"
+  say "  q         quit the menu (the only way out)"
+  say "  < >       previous / next page in a long group"
+  say "  &word     show only the items in this group that match word; & alone shows all"
+  say "  /word     search every group; ?word searches backward; / alone repeats"
+  say "  n N       next / previous search match"
+  say "  h         this help"
+  say "The [familia > ...] line shows where you are."
+}
+
 menu() {
-  local gs g n choice items key first=1 page page_size=7 pages start end idx
+  local gs g n choice items key first=1 page page_size=7 pages start end idx filter total
+  local -a view=()
   while true; do
     say ""
     if [ "$first" = 1 ]; then workflow_paths; first=0; fi
+    crumb
     say "familia: what do you want to do?"
     gs=(); n=0
     while IFS= read -r g; do gs+=("$g"); n=$((n+1)); printf '  %2d) %-36s %s\n' "$n" "$g" "$(group_desc "$g")"; done <<EOF2
 $(groups)
 EOF2
-    say "  q) Quit      /word search every group (n/N next/previous match)"
-    if ! read_line "Choose 1-$n, /search or q: " choice; then
+    footer top
+    if ! nav_read "Choose 1-$n, h help, /search or q: " choice "$n"; then
       closed_input || return 2
       continue
     fi
     parse_menu_input "$choice"; choice=$MENU_CHOICE
     [ -n "$choice" ] || continue
-    case "$choice" in q|Q|quit|exit) return 0 ;; esac
+    case "$choice" in
+      q|Q|quit|exit) return 0 ;;
+      h|H|help) nav_help; continue ;;
+      b|B|back) say "Already at the top menu; q quits."; continue ;;
+    esac
     local rc=0; search_key "$choice" || rc=$?
     case $rc in 0) continue ;; 3) return 0 ;; 4) return 2 ;; esac
     if ! [[ $choice =~ ^[0-9]+$ ]] || [ "$choice" -lt 1 ] || [ "$choice" -gt "$n" ]; then
-      say "'$choice' isn't one of the choices. Type a number from 1 to $n, /word to search, or q."; continue
+      say "'$choice' isn't one of the choices. Type a number from 1 to $n, /word to search, h for help, or q."; continue
     fi
     g=${gs[$((choice-1))]}
     PENDING_ARGS=("${MENU_ARGS[@]}")
@@ -410,51 +464,63 @@ EOF2
     done <<EOF2
 $ITEMS
 EOF2
-    page=0
-    pages=$(( (${#all_keys[@]} + page_size - 1) / page_size ))
+    page=0; filter=""
     while true; do
-      say ""; say "$g: $(group_desc "$g")"
+      view=()  # indexes into all_* that pass the &filter, in table order
+      for idx in "${!all_keys[@]}"; do
+        if [ -z "$filter" ] || nav_has "${all_keys[$idx]} ${all_labels[$idx]} $(shown "${all_cmds[$idx]}")" "$filter"; then view+=("$idx"); fi
+      done
+      total=${#view[@]}
+      pages=$(( (total + page_size - 1) / page_size ))
+      [ "$page" -lt "$pages" ] || page=0
+      say ""
+      if [ "$pages" -gt 1 ]; then crumb "$g" "page $((page+1)) of $pages"; else crumb "$g"; fi
+      say "$g: $(group_desc "$g")"
+      [ -n "$filter" ] && say "  Filter: '$filter' ($total of ${#all_keys[@]} items; & alone shows all)"
       start=$((page * page_size))
       end=$((start + page_size))
-      [ "$end" -gt "${#all_keys[@]}" ] && end=${#all_keys[@]}
-      [ "$pages" -gt 1 ] && say "  Page $((page+1)) of $pages (items $((start+1))-$end of ${#all_keys[@]})"
+      [ "$end" -gt "$total" ] && end=$total
+      [ "$pages" -gt 1 ] && say "  Page $((page+1)) of $pages (items $((start+1))-$end of $total)"
       items=(); n=0
       for ((idx=start; idx<end; idx++)); do
-        items+=("${all_keys[$idx]}"); n=$((n+1))
-        local note=""; need_ok "${all_needs[$idx]}" || note=" (not available yet)"
-        printf '  %d) %s%s\n       runs: %s\n' "$n" "${all_labels[$idx]}" "$note" "$(shown "${all_cmds[$idx]}")"
+        local i=${view[$idx]}
+        items+=("${all_keys[$i]}"); n=$((n+1))
+        local note=""; need_ok "${all_needs[$i]}" || note=" (not available yet)"
+        printf '  %d) %s%s\n       runs: %s\n' "$n" "${all_labels[$i]}" "$note" "$(shown "${all_cmds[$i]}")"
       done
       if [ "$pages" -gt 1 ]; then
         [ "$page" -gt 0 ] && say "  <) Previous page"
         [ "$page" -lt "$((pages-1))" ] && say "  >) Next page"
       fi
-      say "  b) Back      /word search every group (n/N next/previous match)"
-      if [ "$pages" -gt 1 ]; then
-        if ! read_line "Choose 1-$n, </> page, /search or b: " choice; then
-          closed_input || return 2
-          continue
-        fi
-      else
-        if ! read_line "Choose 1-$n, /search or b: " choice; then
-          closed_input || return 2
-          continue
-        fi
+      footer group
+      local hint=""; [ "$pages" -gt 1 ] && hint="</> page, "
+      if ! nav_read "Choose 1-$n, $hint&filter, h help, /search or b: " choice "$n"; then
+        closed_input || return 2
+        continue
       fi
       parse_menu_input "$choice"; choice=$MENU_CHOICE
       [ -n "$choice" ] || continue
-      case "$choice" in b|B|back|"") break ;; q|Q|quit|exit) return 0 ;; esac
       case "$choice" in
+        b|B|back) break ;;
+        q|Q|quit|exit) return 0 ;;
+        h|H|help) nav_help; continue ;;
         '>'|next) if [ "$page" -lt "$((pages-1))" ]; then page=$((page+1)); fi; continue ;;
         '<'|prev) if [ "$page" -gt 0 ]; then page=$((page-1)); fi; continue ;;
+        '&'*)
+          local want=${choice:1}
+          if [ -n "$want" ]; then
+            local hit=0
+            for idx in "${!all_keys[@]}"; do
+              nav_has "${all_keys[$idx]} ${all_labels[$idx]} $(shown "${all_cmds[$idx]}")" "$want" && { hit=1; break; }
+            done
+            if [ "$hit" = 0 ]; then say "No item in $g matches '$want'. Try /$want to search every group."; continue; fi
+          fi
+          filter=$want; page=0; continue ;;
       esac
       local rc=0; search_key "$choice" || rc=$?
       case $rc in 0) continue ;; 3) return 0 ;; 4) return 2 ;; esac
       if ! [[ $choice =~ ^[0-9]+$ ]] || [ "$choice" -lt 1 ] || [ "$choice" -gt "$n" ]; then
-        if [ "$pages" -gt 1 ]; then
-          say "'$choice' isn't one of the choices. Type a number from 1 to $n, </> page, /word to search, or b."
-        else
-          say "'$choice' isn't one of the choices. Type a number from 1 to $n, /word to search, or b."
-        fi
+        say "'$choice' isn't one of the choices. Type a number from 1 to $n, $hint/word to search, &word to filter, h for help, or b."
         continue
       fi
       local -a item_args=("${PENDING_ARGS[@]}" "${MENU_ARGS[@]}")
