@@ -24,6 +24,7 @@ _proto_osc() {
 URL="${FAMILIA_PROTO_URL:-}"
 MODEL="${FAMILIA_PROTO_MODEL:-}"
 NO_START=0
+PRINT_PROMPT=0
 BOOT_PID=""
 
 usage() {
@@ -40,6 +41,10 @@ sets the ceiling (default 1800, 3600 on Android/Termux or <=2 cores; 0 = no limi
 FAMILIA_PROTO_REPLY_TIMEOUT (default 900) bounds one reply.
 
 Quit with an empty line, /q, /quit, or exit.
+
+--print-system-prompt prints the system prompt (fleet greeting included) and
+exits. It does not start a server. FAMILIA_PROTOGRAPH_PROMPT overrides the
+prompt file (absolute path, or path relative to the repo root).
 USAGE
 }
 
@@ -48,6 +53,7 @@ while [ $# -gt 0 ]; do
     --url) URL=${2-}; shift ;;
     --model) MODEL=${2-}; shift ;;
     --no-start) NO_START=1 ;;
+    --print-system-prompt) PRINT_PROMPT=1 ;;
     -h|--help) usage; exit 0 ;;
     *) printf 'proto-chat: unknown arg %s\n' "$1" >&2; usage >&2; exit 2 ;;
   esac
@@ -251,17 +257,57 @@ while True:
 PY
 }
 
-SYSTEM_PROMPT='You are the familia protomodel — a tiny local helper that runs on this machine.
+# Versioned protograph system prompt (#327). Path is relative to this script's
+# repo root (ROOT), never the caller's cwd, so FreeBSD sh, dash, and Termux
+# resolve it the same way. FAMILIA_PROTOGRAPH_PROMPT overrides: an absolute
+# path, a Windows drive path, or a path relative to ROOT.
+# Missing or empty file: the short pre-#327 prompt, plus a warning.
+_proto_prompt_path() {
+  _pp_over=${FAMILIA_PROTOGRAPH_PROMPT:-}
+  if [ -n "$_pp_over" ]; then
+    case "$_pp_over" in
+      /*|[A-Za-z]:[/\\]*) printf '%s\n' "$_pp_over" ;;
+      *) printf '%s\n' "$ROOT/$_pp_over" ;;
+    esac
+  else
+    printf '%s\n' "$ROOT/skills/protograph/prompts/system.md"
+  fi
+}
+
+_proto_load_system_prompt() {
+  _pp=$(_proto_prompt_path) || _pp=""
+  _pp_body=""
+  if [ -n "$_pp" ] && [ -f "$_pp" ] && [ -r "$_pp" ]; then
+    # Redirect, not "cat --": FreeBSD cat does not treat -- as end of options.
+    _pp_body=$(cat < "$_pp") || _pp_body=""
+  fi
+  case "$_pp_body" in
+    *[![:space:]]*) SYSTEM_PROMPT="$_pp_body" ;;
+    *)
+    printf 'proto-chat: warning: protograph prompt file missing or empty (%s); using the short fallback\n' "${_pp:-unknown}" >&2
+    SYSTEM_PROMPT='You are the familia protomodel — a tiny local helper that runs on this machine.
 Help with local install and build (deps, licenses, configure, PATH).
 Help the user explore which larger models to fetch next (coding, chat, phone, vision).
 Help search the user'\''s X/Twitter posts when Agent-Reach / twitter-cli is available.
 Keep answers short and actionable. Prefer one next command. Never claim cloud access you do not have.'
+    ;;
+  esac
+  unset _pp _pp_body
+  return 0
+}
+
+_proto_load_system_prompt
 # Fleet greeting (docs/FLEET-GREETING.md) first, once; a missing file only warns (scripts/fleet_greeting.py).
 # The trailing x keeps the command substitution from eating the prompt's last newline.
 if _greeted=$(printf '%s' "$SYSTEM_PROMPT" | "$PY" "$FAMILIA_SCRIPTS/fleet_greeting.py" prepend && printf x); then
   SYSTEM_PROMPT=${_greeted%x}
 fi
 unset _greeted
+
+if [ "$PRINT_PROMPT" = 1 ]; then
+  printf '%s\n' "$SYSTEM_PROMPT"
+  exit 0
+fi
 
 # Private scratch for child stderr (honors TMPDIR, incl. Termux $PREFIX/tmp).
 _tbase=${TMPDIR:-${PREFIX:+$PREFIX/tmp}}

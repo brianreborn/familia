@@ -12,6 +12,8 @@ Examples:
   protograph.py skills/protograph/examples/single-chat.recipe.yaml
   protograph.py skills/protograph/examples/from-host.recipe.yaml --check
   protograph.py my.recipe.yaml --out generated/graph-proto.yaml --write
+  protograph.py --print-prompt
+                        # print skills/protograph/prompts/system.md and exit
 
 Recipe keys (see skills/protograph/SKILL.md for the full reference):
   protograph: 1                 required version marker
@@ -40,6 +42,58 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
+
+# Versioned generator prompt (#327 section 2, #422 gap 7). Same file proto_chat.sh loads.
+PROMPT_REL = os.path.join("skills", "protograph", "prompts", "system.md")
+PROMPT_ENV = "FAMILIA_PROTOGRAPH_PROMPT"
+# Short proto_chat.sh prompt from before #327. Used only when the versioned file is missing.
+FALLBACK_SYSTEM_PROMPT = (
+    "You are the familia protomodel \u2014 a tiny local helper that runs on this machine.\n"
+    "Help with local install and build (deps, licenses, configure, PATH).\n"
+    "Help the user explore which larger models to fetch next (coding, chat, phone, vision).\n"
+    "Help search the user's X/Twitter posts when Agent-Reach / twitter-cli is available.\n"
+    "Keep answers short and actionable. Prefer one next command. Never claim cloud access you do not have."
+)
+
+
+def _is_abs_prompt(path):
+    """True for a POSIX absolute path or a Windows drive path (even on POSIX)."""
+    if os.path.isabs(path):
+        return True
+    return len(path) >= 3 and path[0].isalpha() and path[1] == ":" and path[2] in "/\\"
+
+
+def system_prompt_path(root=None, override=None):
+    """Path of the versioned prompt. A relative override is under root, not the cwd."""
+    root = root or ROOT
+    if override is None:
+        override = os.environ.get(PROMPT_ENV, "")
+    override = (override or "").strip()
+    if not override:
+        return os.path.join(root, PROMPT_REL)
+    if _is_abs_prompt(override):
+        return override
+    return os.path.join(root, override)
+
+
+def load_system_prompt(root=None, override=None):
+    """Return (text, path, used_fallback).
+
+    A missing, empty, or non-ASCII file yields FALLBACK_SYSTEM_PROMPT. The caller warns.
+    """
+    path = system_prompt_path(root, override)
+    try:
+        with open(path, "rb") as f:
+            raw = f.read()
+    except OSError:
+        return FALLBACK_SYSTEM_PROMPT, path, True
+    if not raw.strip():
+        return FALLBACK_SYSTEM_PROMPT, path, True
+    try:
+        text = raw.decode("ascii")
+    except UnicodeError:
+        return FALLBACK_SYSTEM_PROMPT, path, True
+    return text, path, False
 
 import yaml  # noqa: E402
 
@@ -252,14 +306,25 @@ def main(argv=None):
     ap = argparse.ArgumentParser(prog="protograph.py", description=__doc__.split("\n")[0],
                                  epilog="Example: protograph.py skills/protograph/examples/single-chat.recipe.yaml",
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("recipe")
+    ap.add_argument("recipe", nargs="?")
     ap.add_argument("--out")
     ap.add_argument("--write", action="store_true")
     ap.add_argument("--yes", action="store_true", help="confirm an overwrite without asking")
     ap.add_argument("--check", action="store_true", help="validate only; print errors, exit 1 if any")
     ap.add_argument("--graph", help="reference graph for from_graph (default FAMILIA_GRAPH or graph.yaml)")
     ap.add_argument("--force", action="store_true", help="write even when validation fails (never for graph.yaml)")
+    ap.add_argument("--print-prompt", action="store_true",
+                    help="print the versioned protograph system prompt and exit")
     a = ap.parse_args(argv)
+    if a.print_prompt:
+        text, path, fallback = load_system_prompt()
+        if fallback:
+            print(f"protograph: warning: protograph prompt file missing, empty, or not ASCII ({path}); "
+                  "using the short fallback", file=sys.stderr)
+        sys.stdout.write(text if text.endswith("\n") else text + "\n")
+        return 0
+    if not a.recipe:
+        ap.error("the following arguments are required: recipe")
     try:
         with open(a.recipe, encoding="utf-8") as f:
             recipe = yaml.safe_load(f)

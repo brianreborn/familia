@@ -92,3 +92,13 @@ Report the disagreement instead of working around it.
 
 Advanced: models & graph -> "protograph: recipe -> graph.yaml (dry run)"
 (`adv.protograph`, CLI `familia graph proto RECIPE`).
+
+## System prompt
+
+The protomodel chat (`scripts/proto_chat.sh`) loads the versioned system
+prompt at `skills/protograph/prompts/system.md` (version 1). Override with
+`FAMILIA_PROTOGRAPH_PROMPT`: an absolute path, or a path relative to the
+repo root, not the caller's working directory. `scripts/protograph.py
+--print-prompt` prints the same file. A missing or empty file falls back
+to the short pre-#327 prompt and warns. The file is the generator text
+(#327 section 2). The compiler remains `scripts/protograph.py`.
