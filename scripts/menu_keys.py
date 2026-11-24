@@ -39,6 +39,7 @@ UP, DOWN, LEFT, RIGHT = "up", "down", "left", "right"
 HOME, END, PGUP, PGDN = "home", "end", "pgup", "pgdn"
 ENTER, ESC, BACKSPACE, DELETE = "enter", "esc", "backspace", "delete"
 EOF, INTR, UNKNOWN, PASTE = "eof", "intr", "unknown", "paste"
+SEQ_HOLD_CAP = 5.0  # seconds one half-read sequence may hold the reader before it is dropped
 MAX_LINE = 4096  # longest typed or pasted answer kept (same bound as M2's read_line)
 
 class Picker:
@@ -245,10 +246,13 @@ def _posix_session(in_fd, out_fd, draw):
         raw.append(new)
         enter_raw()
         draw(full=False)
+        import time
         reader = m2.KeyReader(in_fd)
+        held = None  # when the decoder started holding a half-read sequence
         while True:
             try:
                 # bounded wait so a resize is seen; the reader keeps partial sequences
+                # (M2's KeyReader owns the inter-byte timing, #736)
                 key = reader.read_key(timeout=0.2)
             except EOFError:  # closed input: report once and stop, never spin
                 yield EOF
@@ -258,6 +262,15 @@ def _posix_session(in_fd, out_fd, draw):
                 draw(full=True)
             if key is not None:
                 yield from_m2(m2, key)
+            if reader.decoder.pending and key is None:
+                held = held or time.monotonic()
+                if time.monotonic() - held > SEQ_HOLD_CAP:
+                    # wall-clock cap: an endless sequence (e.g. OSC) is dropped with a fresh
+                    # reader; Ctrl-C is a signal (ISIG on), so it is never blocked anyway
+                    reader = m2.KeyReader(in_fd)
+                    held = None
+            else:
+                held = None
     finally:
         restore_terminal()
         del _SAVED[:]

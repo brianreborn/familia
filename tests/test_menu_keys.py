@@ -194,6 +194,25 @@ def test_pty_bracketed_paste_on_then_off():
 
 
 @needs_m2
+@pytest.mark.xfail(strict=False, reason="#736 KeyReader: after a stale timeout() the next window must be fresh")
+def test_pty_stalled_sequence_tail_is_not_typed_text():
+    """ESC [ , a stall past seq_timeout, then the tail 1;5A: no CHAR may leak into the line
+    (a leaked '1' would pick item 1 / type '1;5A'). Enter then answers the highlight."""
+    p, m, s, before = _start_picker("--count", "3", "--cursor", "1")
+    os.write(m, b"\x1b[")
+    time.sleep(1.4)
+    os.write(m, b"1;5A")
+    time.sleep(0.3)
+    os.write(m, b"\r")
+    rc, out = _finish(p, m, s, before)
+    assert rc == 0 and out in ("2\n", "1\n"), out   # highlight (maybe moved by Up), never "1;5A"
+
+
+def test_seq_hold_cap_is_bounded():
+    assert 0 < mk.SEQ_HOLD_CAP <= 10
+
+
+@needs_m2
 def test_pty_lone_esc_is_back_and_digits_work():
     p, m, s, before = _start_picker("--", "  1) one", "  2) two")
     os.write(m, b"\x1b")
