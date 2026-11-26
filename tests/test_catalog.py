@@ -48,7 +48,7 @@ def test_graphs_lists_fleet_private_and_examples():
 def test_configure_fleet_is_read_only_and_shows_nodes():
     r = _run("configure", "graph.yaml")
     assert r.returncode == 0, r.stderr
-    assert "angel-coder" in r.stdout
+    assert "small-coder" in r.stdout
     assert "fleet-guardian" in r.stdout
     assert "Nothing was written." in r.stdout
     assert "removed-large-coder" not in r.stdout

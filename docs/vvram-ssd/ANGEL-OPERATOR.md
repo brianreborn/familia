@@ -36,7 +36,7 @@ git fetch origin main && git pull --ff-only origin main
 python3 scripts/generate_graph.py angel
 python3 scripts/validate_graph.py --graph generated/graph-angel.yaml --no-files
 python3 scripts/validate_graph.py --host angel --fleet   # or against private graph
-mkdir -p ~/.cache/familia/spill/angel-coder
+mkdir -p ~/.cache/familia/spill/small-coder
 swapinfo -k
 ./start.sh --host angel --yes
 curl -sS http://127.0.0.1:18200/health   # coder only
@@ -74,4 +74,3 @@ python3 scripts/offline_improve.py --host angel --loop
 
 Does not start named large model; benches a small GGUF + host RAM, persists under
 `~/.local/state/familia/offline-improve/angel/`, retries reconnect with backoff.
-

@@ -80,7 +80,7 @@ def test_router_models_list_includes_omitted_greenroom_aliases():
 def test_freebsd_host_runs_its_nodes_without_starting_a_gateway():
     # Angel has one active, hardware-fitting coder node; the gateway stays local.
     nodes, remote, gateways, omitted, remote_gateways = start_graph.local_topology(graph(), "angel")
-    assert nodes == ["angel-coder"]
+    assert nodes == ["small-coder"]
     assert remote
     assert gateways == []
     assert omitted == []

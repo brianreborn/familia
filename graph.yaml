@@ -690,7 +690,7 @@ nodes:
 
   # --- dogfood box multi-size topology (2026-10-26): tiny decision + mid coder.
   # Angel's active coder is a measured small model; oversized candidates remain absent.
-  angel-coder:
+  small-coder:
     model: qwen35-2b-q4km
     role: coder
     host: angel

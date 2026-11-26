@@ -180,6 +180,30 @@ def test_user_fallback_providers_dropped_unless_cloud_allowed(tmp_path, monkeypa
     assert cfg.get("fallback_providers") == payload
 
 
+def test_user_reasoning_effort_is_stripped_from_rendered_config(tmp_path, monkeypatch):
+    """User reasoning_effort: high is not inherited; render() writes local-safe none."""
+    assert "reasoning_effort" in hh.OWNED
+    user = tmp_path / "user.yaml"
+    # Both the top-level typo/legacy key and the key hermes-agent actually
+    # reads (agent.reasoning_effort) must lose a user "high".
+    user.write_text(yaml.safe_dump({
+        "reasoning_effort": "high",
+        "agent": {"reasoning_effort": "high"},
+    }))
+    monkeypatch.delenv(hh.ALLOW_CLOUD_ENV, raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    home, *_ = hh.render(copy.deepcopy(GRAPH), "hermes", user_cfg_path=str(user))
+    cfg = yaml.safe_load(open(os.path.join(home, "config.yaml")))
+    assert "reasoning_effort" not in cfg  # top-level OWNED key stays omitted
+    assert cfg.get("agent", {}).get("reasoning_effort") == "none"
+    # Primary model is still provider=custom when cloud is allowed.
+    monkeypatch.setenv(hh.ALLOW_CLOUD_ENV, "1")
+    home, *_ = hh.render(copy.deepcopy(GRAPH), "hermes", user_cfg_path=str(user))
+    cfg = yaml.safe_load(open(os.path.join(home, "config.yaml")))
+    assert "reasoning_effort" not in cfg
+    assert cfg.get("agent", {}).get("reasoning_effort") == "none"
+
+
 def test_allow_cloud_restores_upstream_routing(tmp_path, monkeypatch):
     monkeypatch.setenv(hh.ALLOW_CLOUD_ENV, "1")
     monkeypatch.setenv("HOME", str(tmp_path))

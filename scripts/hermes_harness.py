@@ -462,7 +462,7 @@ SECRET_RE = re.compile(r"(api_?key|token|secret|password|passwd|auth|cookie|cred
 # fallback_providers, which is inherited only when FAMILIA_HERMES_ALLOW_CLOUD=1).
 # When local-only, render() must also WRITE open/local values for these (not
 # only strip them): otherwise hermes-agent fills stock hosted defaults.
-OWNED = {"model", "auxiliary", "compression", "custom_providers", "providers", "smart_model_routing", "fallback_model", "fallback_providers"}
+OWNED = {"model", "auxiliary", "compression", "custom_providers", "providers", "smart_model_routing", "fallback_model", "fallback_providers", "reasoning_effort"}
 # Lean prompt profile (#85): the toolsets a coding agent on a small or old node needs. Long
 # guidance stays reachable through the skills tools (skills_list / skill_view load on demand).
 LEAN_TOOLSETS = ("terminal", "file", "todo", "clarify", "skills")
@@ -1474,6 +1474,15 @@ def render(g, agent, user_cfg_path=os.path.join(USER_HOME, "config.yaml"), base_
                           "protect_last_n": comp.get("protect_last_n", 8)}
     ag = cfg.setdefault("agent", {})
     ag["disabled_toolsets"] = [t for t in ag.get("disabled_toolsets", []) or [] if t != "context_engine"]
+    # hermes-agent v0.22.6 CustomProfile.default_reasoning_config fills
+    # medium when agent.reasoning_effort is unset and sends it as a
+    # top-level Completions.create() kwarg. Empty is treated as unset and
+    # would still get that default. Write "none" (disable thinking) so a
+    # stock medium/high cannot reach a local backend. Use the string, not
+    # YAML false/null: some hermes config paths treat null as unset.
+    # User agent.reasoning_effort is replaced, not inherited; a top-level
+    # reasoning_effort key is already dropped via OWNED.
+    ag["reasoning_effort"] = "none"
     aux = {"transient_retries": 2}
     for t in AUX_TASKS:
         aux[t] = {"provider": "custom", "model": alias, "base_url": base, "api_key": familia_auth.api_key() or "local",
