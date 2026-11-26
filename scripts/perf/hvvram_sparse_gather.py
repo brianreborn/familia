@@ -16,11 +16,12 @@ import json
 import mmap
 import os
 import random
-import resource
-import shlex
+try:
+    import resource
+except ImportError:  # Windows; /proc is unavailable and RSS remains best-effort.
+    resource = None
 import signal
 import subprocess
-import sys
 import time
 from pathlib import Path
 
@@ -41,6 +42,8 @@ def percentile(values: list[float], p: float) -> float | None:
 
 
 def rss_mib() -> float | None:
+    if resource is None:
+        return None
     try:
         with open("/proc/self/status", encoding="ascii") as stream:
             for line in stream:
