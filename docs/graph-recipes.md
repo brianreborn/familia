@@ -37,6 +37,10 @@ and preview what `familia start` would do with
   always includes `--api-key-file`, tools or not. Auth is not a graph.yaml field. Localhost without a
   key is only for the named exceptions in DESIGN.md; a recipe or example graph must not assume an open
   listener. New graphs (including a protograph recipe when that skill lands, #399) start from this rule.
+- The graph router sends each local node's key for every request. This is
+  independent of `server_tools`; a runtime without built-in tools can still
+  serve authenticated chat through the gateway. `server_tools` only declares
+  the server tool registry and must not be used as an authentication signal.
 - Down node: graph_router answers 503 within the 3 s connect bound (`FAMILIA_ROUTER_CONNECT_S`; a refused
   port measured 0.001 s on :9931). graph-proxy (`router: false`) retries ECONNREFUSED for 180 s before a 502
   (measured 181.4 s, green-roomz b2a8eac; fixed in its graph-proxy, not settable from the manifest).

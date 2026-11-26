@@ -77,6 +77,22 @@ def test_router_models_list_includes_omitted_greenroom_aliases():
     assert set(written["refused_routes"]) == {"defender", "embed", "guardian", "pentest", "safe-build"}
 
 
+def test_local_node_auth_does_not_depend_on_server_tools(tmp_path, monkeypatch):
+    import familia_auth, graph_router
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    g = _two_host()
+    g["nodes"]["chat"]["server_tools"] = "none"
+    aliases = start_graph.local_topology(g, "h1")[2][0][2]
+    cfg = start_graph.router_routes(aliases)
+    node = next(iter(cfg["nodes"].values()))
+    assert node["tools"] is False
+    assert node["key_file"] == familia_auth.instance_key_file(port=9001)
+    key = familia_auth.load_or_create_key_file(node["key_file"])
+    compiled = graph_router.compile_config(cfg)
+    route = next(iter(compiled["nodes"].values()))
+    assert graph_router._key_headers(route) == {"Authorization": "Bearer " + key}
+
+
 def test_freebsd_host_runs_its_nodes_without_starting_a_gateway():
     # Angel has one active, hardware-fitting coder node; the gateway stays local.
     nodes, remote, gateways, omitted, remote_gateways = start_graph.local_topology(graph(), "angel")

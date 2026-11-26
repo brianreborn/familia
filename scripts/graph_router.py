@@ -277,7 +277,7 @@ def _key_headers(node):
     else:
         k = ""
     if not k:
-        raise RouteError(503, f"node {node['name']} is tool-enabled but has no readable API key "
+        raise RouteError(503, f"node {node['name']} has no readable API key "
                               f"(key_file or ~/.config/familia/instances/{node['port']}/api-keys)", node=node["name"])
     return {"Authorization": "Bearer " + k}
 

@@ -18,6 +18,7 @@ import subprocess
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -244,16 +245,24 @@ def router_routes(aliases, omitted_aliases=None):
     nodes, routes = {}, {}
     def key(m):  # router: route and node names are disjoint
         return m["node"] + "-node" if m["node"] in aliases else m["node"]
+    def node_route(m):
+        route = {"url": m["url"], "kind": m["kind"], "remote": m["remote"], "tools": m.get("tools", False)}
+        if not m["remote"]:
+            # Every graph node requires a key, regardless of its tool registry.
+            # Keep transport auth separate from the advertised tools capability.
+            import familia_auth
+            route["key_file"] = familia_auth.instance_key_file(port=urllib.parse.urlsplit(m["url"]).port)
+        return route
     for alias, a in sorted(aliases.items()):
         if "chain" in a:
             for m in a["chain"]:
-                nodes[key(m)] = {"url": m["url"], "kind": m["kind"], "remote": m["remote"], "tools": m.get("tools", False)}
+                nodes[key(m)] = node_route(m)
             routes[alias] = {"chain": [key(m) for m in a["chain"]]}
             continue
         ms = a.get("members") or [{"node": alias + "--node", "url": a["url"], "kind": a["kind"], "remote": False, "tools": a.get("tools", False)}]
         names = []
         for m in ms:
-            nodes[key(m)] = {"url": m["url"], "kind": m["kind"], "remote": m["remote"], "tools": m.get("tools", False)}
+            nodes[key(m)] = node_route(m)
             names.append(key(m))
         routes[alias] = names[0] if len(names) == 1 else names
     refused = {}
