@@ -15,6 +15,7 @@ import hashlib
 import json
 import mmap
 import os
+import platform
 import random
 try:
     import resource
@@ -22,6 +23,7 @@ except ImportError:  # Windows; /proc is unavailable and RSS remains best-effort
     resource = None
 import signal
 import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -32,6 +34,39 @@ class Timeout(Exception):
 
 def _alarm(_signum: int, _frame: object) -> None:
     raise Timeout
+
+
+def boot_identity() -> str | None:
+    """Return a stable identifier for the current boot when the host exposes one."""
+    linux_boot_id = Path("/proc/sys/kernel/random/boot_id")
+    try:
+        return linux_boot_id.read_text(encoding="ascii").strip() or None
+    except OSError:
+        pass
+    try:
+        result = subprocess.run(
+            ["sysctl", "-n", "kern.boottime"],
+            check=False, capture_output=True, text=True, timeout=2,
+        )
+        value = result.stdout.strip()
+        return value or None
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def provenance(path: Path) -> dict[str, object]:
+    """Record enough host and filesystem facts to compare reboot runs."""
+    stat = path.stat()
+    fs = os.statvfs(path.parent)
+    return {
+        "platform": sys.platform,
+        "machine": platform.machine(),
+        "kernel": platform.release(),
+        "boot_id": boot_identity(),
+        "file_device": stat.st_dev,
+        "filesystem_block_bytes": fs.f_bsize,
+        "filesystem_free_bytes": fs.f_bavail * fs.f_frsize,
+    }
 
 
 def percentile(values: list[float], p: float) -> float | None:
@@ -186,17 +221,20 @@ def main(argv: list[str] | None = None) -> int:
     total = args.rows * args.row_bytes
     if total > args.max_bytes:
         ap.error(f"table is {total} bytes, above --max-bytes {args.max_bytes}; raise it explicitly")
-    if args.cache == "cold":
-        drop_cache(args.drop_cache_command)
     make_table(args.file, args.rows, args.row_bytes, args.seed)
     rng = random.Random(args.seed + 1)
     indexes = [rng.randrange(args.rows) for _ in range(args.gathers)]
     modes = ("mmap", "pread", "load") if args.mode == "all" else (args.mode,)
-    report = {"schema": 1, "experiment": "hvvram-sparse-gather", "cache": args.cache,
+    report = {"schema": 2, "experiment": "hvvram-sparse-gather", "cache": args.cache,
               "file": str(args.file), "bytes": total, "rows": args.rows,
               "row_bytes": args.row_bytes, "seed": args.seed, "gathers": args.gathers,
-              "results": []}
+              "provenance": provenance(args.file), "results": []}
     for mode in modes:
+        # Create and flush the table before touching the cache. Each cold arm
+        # receives its own explicit operator-authorized cache reset so a prior
+        # arm cannot warm the next arm's result.
+        if args.cache == "cold":
+            drop_cache(args.drop_cache_command)
         result = run_arm(args.file, mode, args.advice, indexes, args.row_bytes, args.timeout)
         report["results"].append(result)
         if result.get("status") == "timeout":

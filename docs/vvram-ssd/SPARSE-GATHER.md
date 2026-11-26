@@ -25,7 +25,8 @@ python3 scripts/perf/hvvram_sparse_gather.py \
 ```
 
 For a table larger than RAM, increase the size and quota explicitly. A cold
-run requires an operator-provided cache-drop command; the script will not
+run creates and flushes the table first, then requires an operator-provided
+cache-drop command before *each* arm; the script will not
 write `/proc/sys/vm/drop_caches`, FreeBSD sysctls, or any other global control
 interface implicitly:
 
@@ -38,3 +39,21 @@ python3 scripts/perf/hvvram_sparse_gather.py \
 
 Cold and warm results must be kept as separate records. The experiment is
 research-only and does not change graph admission or release gates.
+
+## Reboot-comparable records and decision rule
+
+Every report records the OS, machine architecture, kernel release, boot
+identity when available, backing-file device, filesystem block size, and free
+space. Keep the result JSON with the exact command and timestamp in the
+operator ledger. A new boot is a new comparison group; do not pool its latency
+percentiles with an earlier boot.
+
+Before calling a run promising, apply the existing issue #298 thresholds to
+the same table, row pattern, and host:
+
+- cold `mmap` p99 must be no more than twice warm `mmap` p99; and
+- `mmap` peak process RSS must remain below 10 percent of table size.
+
+The report measures process RSS, not global page cache. Treat an unavailable
+resident-page count as an observation gap, not as evidence that file pages
+were absent.
