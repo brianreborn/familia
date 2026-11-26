@@ -19,7 +19,8 @@ Recipe keys (see skills/protograph/SKILL.md for the full reference):
   runtime: {name, build, commit, supported_archs, backends}        or  runtime: {from_graph: NAME}
   models: {KEY: {gguf, sha256, arch, trained_ctx, role, db}  or  {from_graph: KEY}}
   nodes: [{role, model, ctx, port, [name, parallel, kv_type, flash_attn, threads, cache_ram_mib,
-          status, offload, override_reasons, server_tools, allow_unauthenticated_tools]}]
+          status, offload, load_mode, slot_save, spill_path, swap_budget_mib,
+          override_reasons, server_tools, allow_unauthenticated_tools]}]
   gateway: {port, [bind, router]} optional (default 8080); green-roomz gateway + one alias per node
   agent: {kind, main, [auxiliary], min_ctx}   optional (default: hermes-agent on the first node)
 
@@ -172,7 +173,8 @@ def build(recipe, recipe_dir=".", ref_graph=None):
             node["threads"] = n["threads"]
         if n.get("override_reasons"):
             node["override_reasons"] = dict(n["override_reasons"])   # model-card deviations (#51)
-        for k in ("server_tools", "allow_unauthenticated_tools"):
+        for k in ("server_tools", "allow_unauthenticated_tools", "load_mode", "slot_save",
+                  "spill_path", "swap_budget_mib"):
             if k in n:
                 node[k] = n[k]
         node["offload"] = n.get("offload", {"backend": "cpu", "ngl": 0, "split": "none", "main_gpu": 0})

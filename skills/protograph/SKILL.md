@@ -64,6 +64,10 @@ Report the disagreement instead of working around it.
    agent: {kind: hermes-agent, main: coder, min_ctx: 8192}   # optional
    ```
 
+   Nodes may also set `load_mode`, `slot_save`, `spill_path`, and
+   `swap_budget_mib` for a full-context, swap-backed graph. These values pass
+   through to graph.yaml and are checked by the normal graph validator.
+
    Working samples: `skills/protograph/examples/*.recipe.yaml`.
 3. **Dry run.** `python3 scripts/protograph.py RECIPE`. Read the plan lines
    (copied parts, defaults filled, RAM estimate) and every ERROR / WARNING.
