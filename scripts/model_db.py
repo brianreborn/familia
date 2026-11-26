@@ -1001,7 +1001,7 @@ def _ovr(reasons, flag):
 
 def runtime_build(graph, node):
     rt = (graph.get("runtimes") or {}).get(node.get("runtime")) or {}
-    name = lf.build_for_runtime(rt)
+    name = lf.build_for_runtime(rt, runtime_name=node.get("runtime"))
     return name, (lf.load(name) if name else None)
 
 
