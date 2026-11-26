@@ -506,8 +506,8 @@ class Router:
 
 def make_server(cfg, host="127.0.0.1", port=9940, api_key=None):
     """api_key: required on every endpoint except /health (H4 pattern); None = no caller auth (tests)."""
-    if not _is_loopback(host):
-        raise ConfigError("graph router binds loopback only")
+    if not _is_loopback(host) and api_key is None:
+        raise ConfigError("non-loopback graph router requires caller API-key auth")
     R = Router(cfg)
 
     def _hdr(v):
@@ -642,6 +642,8 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("config", help="routes.yaml")
     ap.add_argument("--port", type=int, default=int(os.environ.get("FAMILIA_ROUTER_PORT", "9940")))
+    ap.add_argument("--host", "--bind", dest="host", default=os.environ.get("FAMILIA_ROUTER_HOST", "127.0.0.1"),
+                    help="listen address (non-loopback requires API-key auth)")
     ap.add_argument("--host-id", help="graph host this router runs on (for graph-backed configs)")
     ap.add_argument("--api-key-file", help="caller key file (default: the per-port instance key "
                     "~/.config/familia/instances/<port>/api-keys, created 0600 once, never rotated)")
@@ -669,8 +671,11 @@ def main(argv=None):
             print(f"graph-router: ERROR: cannot read or create API key file {path} ({e.__class__.__name__}); not starting",
                   file=sys.stderr); return 2
         print(f"graph-router: caller auth on ({path}, {familia_auth.fingerprint(key)})", file=sys.stderr)
-    srv = make_server(cfg, "127.0.0.1", a.port, api_key=key)
-    print(f"graph-router: listening on 127.0.0.1:{a.port}", file=sys.stderr)
+    try:
+        srv = make_server(cfg, a.host, a.port, api_key=key)
+    except ConfigError as e:
+        print(f"graph-router: ERROR: {e}", file=sys.stderr); return 2
+    print(f"graph-router: listening on {a.host}:{a.port}", file=sys.stderr)
     try: srv.serve_forever()
     except KeyboardInterrupt: pass
     return 0

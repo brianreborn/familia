@@ -167,10 +167,13 @@ def _alias_member(graph, host, alias_name, alias, node_name):
                 f"alias {alias_name} targets node {node_name} with unsupported "
                 f"runtime kind {runtime.get('kind')!r}"
             )
-        if node.get("bind") not in ("127.0.0.1", "localhost", "::1"):
+        # A local node may intentionally listen on all interfaces.  The graph
+        # proxy still dials its loopback view, so 0.0.0.0/:: is safe here and
+        # does not make the proxy depend on a non-routable wildcard address.
+        if node.get("bind") not in ("127.0.0.1", "localhost", "::1", "0.0.0.0", "::"):
             raise StartupError(
                 f"alias {alias_name} targets node {node_name} bound to "
-                f"{node.get('bind')!r}; graph-proxy requires a loopback node bind"
+                f"{node.get('bind')!r}; graph-proxy needs a local or wildcard bind"
             )
     model = graph["models"][node["model"]]
     if node.get("embeddings"):
@@ -442,7 +445,10 @@ def gateway_command(host, gateway_name, gateway, aliases, green_roomz, omitted_a
         tmp = path.with_suffix(".json.tmp")
         tmp.write_text(json.dumps(router_routes(aliases, omitted_aliases), indent=2) + "\n", encoding="utf-8")
         os.replace(tmp, path)
-        return [sys.executable, str(SCRIPTS / "graph_router.py"), str(path), "--port", str(gateway["port"])]
+        cmd = [sys.executable, str(SCRIPTS / "graph_router.py"), str(path), "--port", str(gateway["port"])]
+        if gateway.get("bind"):
+            cmd += ["--host", gateway["bind"]]
+        return cmd
     manifest_path = _write_proxy_manifest(host, gateway_name, gateway, aliases)
     return ["node", str(green_roomz), "graph-proxy", "--manifest", str(manifest_path)]
 

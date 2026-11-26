@@ -383,3 +383,11 @@ Source: Brian voice session, 2026-11-10.
 - **Trigger:** Whenever cutting a familia release (alpha, beta, or final).
 - **Rule:** Check upstream llama.cpp releases (`ggerganov/llama.cpp`) and bump default runtime builds, pins, and installers to the latest stable/release tag (e.g. `b12609`).
 - **Rationale:** Ensures edge runtimes and acceleration backends benefit from the latest upstream kernel improvements, quantization layouts, and security fixes across all swarm platforms.
+
+## L-graph-lan-bind: Graph-owned LAN listeners must be explicit and authenticated (2026-11-26)
+
+- A graph can declare a wildcard or routable gateway bind when the service is intended to be a LAN entrypoint.
+- The router remains graph-managed; a hand-started backend or ad-hoc port forward is not an equivalent front door.
+- Any non-loopback router bind requires the generated per-port API key. Health may remain unauthenticated, but model and tool routes require the key.
+- Readiness probes may use `127.0.0.1` for a wildcard listener; externally advertised reachability must be tested from another host.
+- Record both the direct node port and canonical gateway port in host status, since a healthy backend does not prove the front door is reachable.

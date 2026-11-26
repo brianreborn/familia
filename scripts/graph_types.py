@@ -293,8 +293,8 @@ def check_node(g, name, n, errs):
         else:
             errs.append(f"{w}: expected 'all', [] / none / false (opt-out), or a list of tool names {list(SERVER_TOOL_NAMES)}")
         bind = n.get("bind") or ""
-        if not opt_out and not _is_loopback(bind):
-            errs.append(f"{w}: only allowed when bind is loopback (got {bind!r}); llama.cpp --tools is host-exec")
+        if not opt_out and not _is_loopback(bind) and n.get("allow_unauthenticated_tools") is not True:
+            errs.append(f"{w}: non-loopback bind {bind!r} requires allow_unauthenticated_tools: true")
 
 # llama-server built-in tools (--tools); llama-ui /tools is 403 without these (M0 tools regression).
 SERVER_TOOL_NAMES = (
@@ -663,7 +663,7 @@ TYPES = {
                 # contradicts the card (ctx, sampling keys, a non-default card_set) needs override_reasons.<key>
                 "card_set": opt("str"), "sampling": opt("map"), "override_reasons": opt("map"),
                 # llama-server --tools (llama-ui Server Tools / agentic); "all" or list of SERVER_TOOL_NAMES
-                "server_tools": opt("any"),
+                "server_tools": opt("any"), "allow_unauthenticated_tools": opt("bool"),
                 # capability-based tools default (CFG-SPEC-TOOLS-007..010, docs/config/routing-spec.md)
                 "tool_capable": opt("bool"), "tool_route": opt("ref", ref="nodes"),
                 # type/role the node provides (coder|chat|embed|…). Design law: type implies
@@ -679,7 +679,7 @@ TYPES = {
                      check_speculative, experimental=True,
                      doc="edge draft->target (same vocab) or model-free n-gram lookup decoding"),
     "gateways": T({"kind": req("enum", choices={"green-roomz"}), "host": req("ref", ref="hosts"),
-                   "port": req("int", min=1), "router": opt("bool")},
+                   "port": req("int", min=1), "router": opt("bool"), "bind": opt("str")},
                   doc="router exposing aliases; served by scripts/graph_router.py (default; caller auth, 3 s connect "
                       "bound); router: false uses green-roomz graph-proxy (retries a down node for 180 s)"),
     "aliases": T({"node": req("noderefs", ref="nodes"), "gateway": req("ref", ref="gateways"), "remote": opt("bool")}, check_alias,

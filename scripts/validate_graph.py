@@ -755,6 +755,8 @@ def server_args(graph, name):
     # DUP-04/CFG-SPEC-TOOLS: explicit per-TYPE decision on every launch (override via server_tools).
     # CFG-GRAPH-NODES-112: every llama-server launch also gets --api-key-file, tools or not.
     a += launch_tools_argv(graph, name) or launch_auth_argv(graph, name)
+    if n.get("allow_unauthenticated_tools") is True:
+        a += ["--allow-unauthenticated-tools"]
     # Model parameters (#51): REQUIRED + RECOMMENDED from the model database (cards, configs,
     # GGUF), node.sampling / override_reasons applied. A REQUIRED one that cannot be met is fatal.
     import model_db
@@ -795,8 +797,15 @@ def server_args(graph, name):
             a += ["--spec-type", sp["spec_type"]]
     r = graph["runtimes"][n["runtime"]]
     # argv[0] is always the binary: runtimes.<r>.bin (relative to graph.yaml), else llama-server on PATH
-    binary = (os.path.join(os.path.dirname(os.path.abspath(graph.get("_path", "graph.yaml"))), r["bin"])
-              if "bin" in r else "llama-server")
+    if "bin" not in r:
+        binary = "llama-server"
+    else:
+        rb = str(r["bin"])
+        # Bare runtime names are resolved by PATH on the target (Termux and
+        # package installs); only graph-relative paths are rooted at the graph.
+        binary = rb if os.path.isabs(rb) or "/" not in rb else os.path.join(
+            os.path.dirname(os.path.abspath(graph.get("_path", "graph.yaml"))), rb
+        )
     return [binary] + a
 
 USAGE = __doc__.split("\n\n")[1]

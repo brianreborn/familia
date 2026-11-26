@@ -32,8 +32,10 @@ Report the disagreement instead of working around it.
    recipe leaves out is written into the graph and listed in the plan.
 4. **No secrets, no real addresses.** `hosts.*.addr` / `user` stay
    `REPLACE_ME`; real ones live in `hosts.local.yaml` (#104).
-5. **Loopback only.** Nodes bind `127.0.0.1`. LAN exposure is a hand edit
-   with its own review, never a recipe output.
+5. **Explicit exposure.** Nodes bind `127.0.0.1` by default. A recipe may
+   request a non-loopback bind only with `allow_unauthenticated_tools: true`
+   when `server_tools` is enabled; Familia still requires and passes the
+   per-instance API-key file. The plan must call out the LAN exposure.
 6. **RAM safety.** Respect `ram_mib - reserve_ram_mib` (docs/ram-safety.md).
    An over-budget plan is an error, not a warning.
 7. **Measured means measured.** Never mark a host or GPU `measured: true`
