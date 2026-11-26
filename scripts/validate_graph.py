@@ -44,7 +44,11 @@ def gguf_meta(path):
             if t == 9:
                 et, n = struct.unpack("<IQ", f.read(12))
                 if et in fmt and et != 8:
-                    f.seek(struct.calcsize(fmt[et]) * n, 1); return ("array", n, None)
+                    size = struct.calcsize(fmt[et])
+                    if n <= 256:
+                        values = tuple(struct.unpack(fmt[et], f.read(size))[0] for _ in range(n))
+                        return ("array", n, None, values)
+                    f.seek(size * n, 1); return ("array", n, None)
                 h = hashlib.sha256() if et == 8 else None
                 for _ in range(n):
                     v = rval(et)
@@ -64,7 +68,30 @@ def vocab(meta):
 def kv_mib(meta, arch, ctx, kv_type):
     g = lambda k: meta.get(f"{arch}.{k}")
     layers, heads_kv, emb, heads = g("block_count"), g("attention.head_count_kv"), g("embedding_length"), g("attention.head_count")
-    if not all(isinstance(x, int) and x for x in (layers, heads_kv, emb, heads)):
+    if not all(isinstance(x, int) and x for x in (layers, emb, heads)):
+        return None
+    if isinstance(heads_kv, tuple) and len(heads_kv) == 4 and heads_kv[0] == "array":
+        counts = heads_kv[3]
+        if len(counts) != layers or not all(isinstance(x, int) and x >= 0 for x in counts):
+            return None
+        pattern = g("attention.sliding_window_pattern")
+        if pattern is None:
+            windows = (False,) * layers
+        elif isinstance(pattern, tuple) and len(pattern) == 4 and pattern[0] == "array" and len(pattern[3]) == layers:
+            windows = pattern[3]
+        else:
+            return None
+        window = g("attention.sliding_window")
+        if any(windows) and (not isinstance(window, int) or window <= 0):
+            return None
+        key_dim = g("attention.key_length") or emb // heads
+        value_dim = g("attention.value_length") or key_dim
+        if not all(isinstance(x, int) and x > 0 for x in (key_dim, value_dim)):
+            return None
+        tokens = sum(count * (min(ctx, window) if sliding else ctx)
+                     for count, sliding in zip(counts, windows))
+        return tokens * (key_dim + value_dim) * KV_BYTES[kv_type] / 2**20
+    if not isinstance(heads_kv, int) or heads_kv <= 0:
         return None
     head_dim = g("attention.key_length") or emb // heads
     # Hybrid models (e.g. qwen35) keep KV only on every Nth full-attention
