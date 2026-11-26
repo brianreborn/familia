@@ -25,7 +25,8 @@ import argparse, http.client, json, os, re, secrets, sys, threading, urllib.pars
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-LOOPBACK = {"127.0.0.1", "localhost", "::1"}
+from loopback import is_loopback  # noqa: E402
+
 SLASH_ONLY = {"guardian", "pentest", "defender"}
 KINDS = {"chat", "embedding"}
 CONNECT_S = float(os.environ.get("FAMILIA_ROUTER_CONNECT_S", "3"))
@@ -47,7 +48,8 @@ class RouteError(Exception):
 # ---------------------------------------------------------------- config ----
 
 def _is_loopback(host):
-    return (host or "").strip("[]") in LOOPBACK or (host or "").startswith("127.")
+    """TR-6: literal loopback only (no DNS); see scripts/loopback.py."""
+    return is_loopback(host)
 
 
 def _node(name, spec):

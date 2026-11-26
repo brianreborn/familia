@@ -187,13 +187,21 @@ def _key_file_error(path):
 
 
 def _is_loopback_host(host):
-    """Fail closed for bind hosts: only literal loopback forms are accepted."""
+    """Fail closed for bind hosts: only literal loopback forms are accepted.
+
+    Deliberately a standalone copy of scripts/loopback.py:is_loopback (TR-6):
+    serve.sh runs this file on its own, so it must not import sibling modules.
+    tests/test_loopback_tr6.py asserts both give the same answer."""
     import ipaddress
     b = str(host or "").strip()
     if b.lower() == "localhost":
         return True
     if b.startswith("[") and b.endswith("]"):
         b = b[1:-1]
+    if "%" in b:
+        b, zone = b.split("%", 1)
+        if not zone or ":" not in b:
+            return False  # only IPv6 literals carry a zone id; never look it up
     try:
         ip = ipaddress.ip_address(b)
     except ValueError:

@@ -1426,7 +1426,7 @@ def route_tools(g, agent):
 def node_base(g, k, from_host):
     """OpenAI base URL for node k as seen from from_host (loopback bind only works same-host)."""
     n = g["nodes"][k]; b = bind(n)
-    if n.get("host") != from_host and (b in ("localhost", "::1") or str(b).startswith("127.")):
+    if n.get("host") != from_host and vg.is_loopback(b):
         b = ((g.get("hosts") or {}).get(n.get("host")) or {}).get("addr") or b
     return f"http://{b}:{n['port']}/v1"
 

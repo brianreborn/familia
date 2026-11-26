@@ -6,6 +6,7 @@ Nothing here picks a transport: callers name one, and it must be declared.
 import ipaddress, os, yaml
 
 import hosts_overlay
+from loopback import is_loopback
 
 TRANSPORT_TYPES = {"ssh", "bittorrent"}
 HOST_KEYS = ("addr", "user", "port", "kind")
@@ -31,6 +32,8 @@ def transport(g, name, want):
 def _lan(addr):
     if hosts_overlay.is_placeholder(addr):
         return True  # deferred to overlay; privacy_lint rejects real private literals in tracked graph
+    if is_loopback(addr):
+        return True  # TR-6: [::1], ::ffff:127.x and localhost count as loopback too
     try: ip = ipaddress.ip_address(addr)
     except ValueError: return False
     return (ip.is_private or ip.is_loopback) and not ip.is_unspecified
@@ -79,7 +82,7 @@ def validate_transports(g):
                 and not hosts_overlay.is_placeholder(bind_v)
                 and not hosts_overlay.is_placeholder(addr_v)
                 and str(bind_v) != str(addr_v)
-                and not str(bind_v).startswith("127.")
+                and not is_loopback(bind_v)
             ):
                 errs.append(f"transport {tn}: bind {t['bind']} != tracker host addr {th['addr']}")
             if t.get("client") not in ("aria2c",):
