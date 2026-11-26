@@ -243,7 +243,7 @@ def privacy_lint_graph(graph: dict, path_label: str = "graph.yaml",
     errs = _check_host_fields(graph, path_label)
     # Generated private topologies are intentionally host-local and may carry an
     # explicit 0.0.0.0 listener; tracked fleet graphs still require overlays.
-    generated = "/generated/" in str(path_label).replace("\\", "/")
+    generated = "generated" in Path(str(path_label).replace("\\", "/")).parts
     if raw_text is not None and not generated:
         # Deduplicate while preserving order
         seen = set(errs)

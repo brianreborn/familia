@@ -33,6 +33,13 @@ def test_privacy_lint_rejects_rfc1918_and_termux(tmp_path):
     assert any("u0_a439" in e for e in errs), errs
 
 
+def test_generated_graph_allows_wildcard_bind_with_relative_path():
+    graph = {"hosts": {"note9": {"addr": "REPLACE_ME", "user": "REPLACE_ME"}}}
+    text = "nodes:\n  coder: {bind: 0.0.0.0}\n"
+    assert ho.privacy_lint_graph(graph, "generated/graph-note9.yaml", text) == []
+    assert ho.privacy_lint_graph(graph, "graph.yaml", text)
+
+
 def test_merge_overlay_fills_placeholders(tmp_path, monkeypatch):
     graph = {
         "_path": str(tmp_path / "graph.yaml"),
