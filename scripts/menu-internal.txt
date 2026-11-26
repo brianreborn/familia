@@ -63,6 +63,8 @@ install/termux/deps.sh|Termux helper behind install/deps.sh; Termux install.sh a
 install/freebsd/deps.sh|FreeBSD helper behind install/deps.sh (opt-in pkg); not a separate menu action
 scripts/build_appimage.sh|operator AppImage packaging for milestones; not an end-user menu task
 scripts/perf/box_multi_size_smoke.py|perf/dev smoke hitting decision+coder ports; run by operators on a box, not menu
+scripts/perf/hvvram_sparse_gather.py|operator benchmark for bounded HVVRAM sparse-gather experiments; not an end-user task
+scripts/perf/plot_recent_performance.py|operator chart generator for measured performance ledgers; not an end-user task
 scripts/familia_agent_reach.py|thin wrapper / library around Agent-Reach; menu uses scripts/agent_reach.py
 scripts/system_prompt_check.py|offline system-prompt path checks (#115); developer/CI helper, not an end-user menu action
 scripts/familia_home.sh|interactive home (Talk first, six equal items, Legacy menu last); actions are legacy rows via scripts/home_catalog.py

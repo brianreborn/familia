@@ -424,6 +424,8 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `install/windows/deps.ps1` | Windows deps check + winget/choco hints | — | `install\windows\deps.ps1` |
 | `scripts/build_appimage.sh` | Operator AppImage packaging (not menu) | — | — |
 | `scripts/perf/box_multi_size_smoke.py` | Perf/dev multi-size smoke (not menu) | — | — |
+| `scripts/perf/hvvram_sparse_gather.py` | Operator-only bounded HVVRAM sparse-gather benchmark; emits JSON metrics and an optional chart | — | — |
+| `scripts/perf/plot_recent_performance.py` | Operator-only chart generator for measured performance ledgers | — | — |
 | `scripts/familia_home.sh` | interactive home (Talk first, six equal items, Legacy menu last); actions are legacy rows via `scripts/home_catalog.py` |
 | `scripts/open_ui.sh` | open running llama web UI in default browser | — | — |
 | `scripts/ui_bridge.py` | terminal dashboard bridge inspecting running llama-ui slots and routes | — | — |
