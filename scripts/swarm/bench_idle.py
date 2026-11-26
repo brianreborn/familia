@@ -12,7 +12,7 @@ calls it every few minutes. Each call:
   3. checks idleness: 1- and 5-min load < --max-load, MemAvailable >= --min-avail-mib,
      no llama-server / llama-cli / llama-bench / llama-run process
      (comma list override: SWARM_BENCH_IDLE_BUSY_PROCS),
-  4. runs bench.sh at the lowest priority (nice 19, ionice idle class where available),
+  4. runs bench.sh at the lowest priority (nice 19 on Linux, 20 on FreeBSD; ionice idle class where available),
      CPU only (GPU devices hidden), with SWARM_BENCH_FORCE removed so bench.sh's own
      idle and RAM guards always apply,
   5. writes the markdown table to STATE/results/<UTC stamp>.md (0600) and one JSON line
@@ -191,10 +191,22 @@ def too_soon(stamp, now, min_interval, backoff):
     return max(0, int(last + wait - now))
 
 
+def idle_niceness():
+    """Highest (least urgent) niceness this platform accepts for an idle batch job.
+
+    Linux caps user niceness at 19. FreeBSD and other BSDs cap at 20. Adding 19
+    on top of an already-niced child (nice -n 19, then os.nice(19)) hits that
+    cap and made test_bench_idle see 20 on FreeBSD (#392).
+    """
+    if sys.platform.startswith(("linux", "cygwin")):
+        return 19
+    return 20
+
+
 def priority_argv():
     argv = []
     if shutil.which("nice"):
-        argv += ["nice", "-n", "19"]
+        argv += ["nice", "-n", str(idle_niceness())]
     if shutil.which("ionice"):  # Linux (util-linux); absent on FreeBSD/macOS
         argv += ["ionice", "-c3"]
     return argv
@@ -210,7 +222,10 @@ def bench_env(base, tmpdir):
 
 def _lower_self():
     try:
-        os.nice(19)  # no-op cap at 19 if already niced
+        target = idle_niceness()
+        current = os.nice(0)
+        if current < target:
+            os.nice(target - current)
     except OSError:
         pass
 
@@ -306,7 +321,7 @@ def _locked(a, env, sd, results, now, probe):
         log("skip: busy: " + why)  # cheap check; no stamp, the next tick re-checks
         return 0
     if a.dry_run:
-        log(f"idle: would run {a.bench} (nice 19, CPU only, guards on); results -> {results}")
+        log(f"idle: would run {a.bench} (nice {idle_niceness()}, CPU only, guards on); results -> {results}")
         return 0
     if not os.path.isfile(a.bench):
         log(f"bench not found: {a.bench}")
