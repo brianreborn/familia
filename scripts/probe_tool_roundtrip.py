@@ -73,10 +73,14 @@ def run(base_url: str, model: str, key_file: Path | None, timeout: int) -> tuple
         return 2, dict(result, status="fail", phase="tool_identity")
     body["messages"].extend([message, {"role": "tool", "tool_call_id": call["id"],
                                       "content": json.dumps({"receipt": receipt})}])
-    body.pop("tool_choice")
+    # The result leg checks consumption, not another tool decision. Some models
+    # spend more than 128 tokens formatting the continuation before emitting text.
+    body["tool_choice"] = "none"
+    body["max_tokens"] = 512
     second = completion(url, key, body, timeout)
     answer = (second["choices"][0].get("message") or {}).get("content") or ""
     result["elapsed_ms"] = round((time.monotonic() - started) * 1000)
+    result["second_finish_reason"] = second["choices"][0].get("finish_reason")
     result["receipt_echoed"] = receipt in answer
     if not result["receipt_echoed"]:
         return 2, dict(result, status="fail", phase="tool_result_continuation")
