@@ -33,17 +33,18 @@ def test_dry_run_status_shows_expected_sha():
     assert "galaxy1" in r.stdout and "galaxy2" in r.stdout
 
 
-def test_graph_pins_expected_sha_still_planned():
+def test_graph_pins_expected_sha_guardians_active_seatbelts_on():
+    """P0 2026-11-22 (Brian confirmed): guardian seats are active; seatbelts stay dual-disabled."""
     import sys
     sys.path.insert(0, str(ROOT / "scripts"))
     import familia_yaml
 
     g = familia_yaml.loads((ROOT / "graph.yaml").read_text(encoding="utf-8"))
     assert g["models"]["dolphin3-cyber-8b-q2k"]["sha256"] == EXPECTED
-    assert g["nodes"]["fleet-guardian"]["status"] == "planned"
-    assert g["nodes"]["freebsd-guardian"]["status"] == "planned"
-    assert g["pentests"]["fleet"]["status"] == "planned"
-    assert g["pentests"]["freebsd-guardian"]["status"] == "planned"
+    assert g["nodes"]["fleet-guardian"]["status"] == "active"
+    assert g["nodes"]["freebsd-guardian"]["status"] == "active"
+    assert g["pentests"]["fleet"]["status"] == "active"
+    assert g["pentests"]["freebsd-guardian"]["status"] == "active"
     # seatbelts untouched
     assert g["pentests"]["fleet"]["tools"]["allow"] == []
     assert g["pentests"]["fleet"]["launch_test_only"] is True

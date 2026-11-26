@@ -145,12 +145,21 @@ def select_host(graph, requested=None, environ=None, hostname=None):
     )
 
 
+# Roles that run as active nodes but are reached directly on their own port, never through the
+# gateway: an alias naming one is listed as omitted instead of routed (#38 P0 planned->active).
+DIRECT_ONLY_ROLES = ("decision",)
+
+
 def _alias_member(graph, host, alias_name, alias, node_name):
     """One alias member as {node, kind, url, remote}, or None when it cannot be routed from here
     (not active, or on another host without `remote: true` / a usable addr / a non-loopback bind)."""
     node = graph["nodes"][node_name]
     if node.get("status") != "active":
         return None
+    if not node.get("embeddings") and graph_validator.is_fail_closed(graph, node_name):
+        return None  # guardian/pentest/defender: never a gateway route, even when active (TOOLS-005)
+    if not node.get("embeddings") and graph_validator.node_type(graph, node_name) in DIRECT_ONLY_ROLES:
+        return None  # active, reached on its own port (docs/planned-to-active.md); never a gateway route
     local = node.get("host") == host
     if not local:
         if alias.get("remote") is not True:
@@ -269,7 +278,9 @@ def router_routes(aliases, omitted_aliases=None):
 
 def local_topology(graph, host):
     import node_state  # DUP-03 owner
-    nodes = node_state.local_active(graph, host)
+    # fail-closed seats (guardian/pentest/defender) are active but operator-start only
+    # (with-fleet.sh --operator-start, FAMILIA_OPERATOR_CONFIRM=yes): familia start never launches them
+    nodes = [n for n in node_state.local_active(graph, host) if not graph_validator.is_fail_closed(graph, n)]
     remote_nodes = node_state.remote_active(graph, host)
     gateways = []
     omitted_aliases = []

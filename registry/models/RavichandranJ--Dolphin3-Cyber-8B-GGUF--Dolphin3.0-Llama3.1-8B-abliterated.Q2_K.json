@@ -745,19 +745,24 @@
  },
  "base_repo_files": null,
  "found_in": [
+  "add-model.sh --fetch",
   "add-model.sh --fetch --damp-run"
  ],
  "match": null,
- "local_check": null,
+ "local_check": {
+  "host": "miryam",
+  "sha256_ok": true,
+  "checked": "2026-11-22"
+ },
  "unknown": [
   "card_defaults: ambiguous: 2 recommended sets and no single default; set card_set"
  ],
  "warnings": [
   "base model huihui-ai/Dolphin3.0-Llama3.1-8B-abliterated: https://huggingface.co/api/models/huihui-ai/Dolphin3.0-Llama3.1-8B-abliterated/revision/main: HTTP 401 unauthorized (gated or private; set HF_TOKEN) {\"error\":\"Invalid username or password.\"}"
  ],
- "updated": "2026-10-27",
+ "updated": "2026-11-22",
  "by": "scripts/model_db.py",
- "weights": "absent (damp)",
+ "weights": "present (miryam, sha256 checked 2026-11-22)",
  "gguf_meta": {
   "general.architecture": "llama",
   "general.type": "model",
