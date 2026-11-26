@@ -90,6 +90,25 @@ def test_transport_rules():
 def test_runtime_commit_must_be_sha():
     x = g(); x["runtimes"]["llama-b11374"]["commit"] = "main"; has(x, "not a git sha")
 
+def test_alternate_runtime_requires_adapter_contract():
+    x = g()
+    x["runtimes"]["mlc-a57"] = {
+        "kind": "mlc-llm", "build": "mlc-llm Android", "commit": "0123456789abcdef",
+        "hosts": ["galaxy1"], "supported_archs": ["llama"], "backends": ["cpu", "vulkan"],
+        "spec_types": [], "adapter": "green-roomz-mlc", "protocols": ["openai-http"],
+        "model_formats": ["mlc"], "modalities": ["text"], "health_path": "/health",
+    }
+    assert errs(x) == []
+
+def test_alternate_runtime_without_adapter_is_rejected():
+    x = g()
+    x["runtimes"]["mlc-a57"] = {
+        "kind": "mlc-llm", "build": "mlc-llm Android", "commit": "0123456789abcdef",
+        "hosts": ["galaxy1"], "supported_archs": ["llama"], "backends": ["cpu", "vulkan"],
+        "spec_types": [],
+    }
+    has(x, "requires a non-empty adapter")
+
 def test_arch_not_supported_catches_gemma_embedding2():
     x = g()
     x["models"]["egemma2"] = {"gguf": "/x.gguf", "sha256": "unmeasured", "arch": "gemma-embedding2", "trained_ctx": 8192, "role": "embed"}
