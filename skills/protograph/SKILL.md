@@ -92,3 +92,21 @@ Report the disagreement instead of working around it.
 
 Advanced: models & graph -> "protograph: recipe -> graph.yaml (dry run)"
 (`adv.protograph`, CLI `familia graph proto RECIPE`).
+
+## System prompt
+
+The protomodel chat (`scripts/proto_chat.sh`) loads
+`skills/protograph/prompts/system.md` (version 1). A ctx that cannot hold
+that file plus the fleet greeting, a user turn, and 512 output tokens gets
+the static compact file `system-compact.md` instead. Both files stay
+byte-for-byte stable so a prefix cache can reuse them. The loader opens
+with O_NOFOLLOW and fstat, and only accepts a regular file inside
+`skills/protograph/prompts`. `FAMILIA_PROTOGRAPH_PROMPT` may name another
+file in that directory only. A symlink, a path outside it, or a file that
+is not ASCII falls back to the short pre-#327 prompt and warns.
+`scripts/protograph.py --print-prompt --ctx N` prints the chosen file.
+
+The model executes menu commands by emitting `RUN: ./familia <subcommand>`.
+`proto_chat.sh` and `protograph.py --exec-reply` run that line as an argv
+array when the subcommand resolves to `scripts/menu-items.txt`. There is
+no shell. The compiler remains `scripts/protograph.py`.

@@ -360,7 +360,7 @@ run_item() {  # run_item KEY ARGS...
     }
   fi
   say "Running: $cmd"
-  bash -c "$cmd"
+  exec_line "$cmd"
 }
 
 # ---- search, like / ? n N in less and more ----------------------------------
@@ -587,7 +587,19 @@ run_raw() {  # run_raw GATE CMD ARGS...
   if [ "$gate" = lic ]; then
     $PY scripts/licenses.py gate || { local rc=$?; err "stopped: the licenses for this selection are not accepted yet. Review them with: $PY scripts/licenses.py review"; return $rc; }
   fi
-  bash -c "$cmd"
+  exec_line "$cmd"
+}
+# argv exec. The trusted command text plus %q-quoted arguments is split, not
+# evaluated. Model and user tokens never go through bash -c.
+exec_line() {
+  [ -n "${1:-}" ] || return 2
+  "$PY" - "$1" <<'PY'
+import os, shlex, sys
+args = shlex.split(sys.argv[1])
+if not args:
+    raise SystemExit(2)
+os.execvp(args[0], args)
+PY
 }
 cli_help() {  # cli_help [--man | COMMAND...]
   if [ "${1:-}" = --man ]; then
@@ -660,7 +672,7 @@ cli_main() {
           if [ "${1:-}" = --help ] || [ "${1:-}" = -h ]; then cli_help_item "$f1" "${words[@]}"; return $?; fi
           MODE=run; run_item "$f1" "$@"; return $? ;;
     raw) shift "$f1"
-         if [ "${1:-}" = --help ] || [ "${1:-}" = -h ]; then bash -c "$(expand "$f3") --help"; return $?; fi
+         if [ "${1:-}" = --help ] || [ "${1:-}" = -h ]; then exec_line "$(expand "$f3") --help"; return $?; fi
          [ "$f2" = - ] && f2=""
          run_raw "$f2" "$f3" "$@"; return $? ;;
     *) err "unknown command '$1'. Try: familia help, or: familia search $1"; return 2 ;;
@@ -671,7 +683,7 @@ cli_help_item() {  # cli_help_item KEY WORDS...: familia's view of the item, the
   $PY scripts/familia_cli.py help "$@"
   sp=$(script_part "$(expand "$(field "$key" 4)")") || return 0
   say ""; say "--- $sp --help ---"
-  bash -c "$sp --help"
+  exec_line "$sp --help"
 }
 
 while [ $# -gt 0 ]; do

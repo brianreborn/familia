@@ -24,6 +24,8 @@ _proto_osc() {
 URL="${FAMILIA_PROTO_URL:-}"
 MODEL="${FAMILIA_PROTO_MODEL:-}"
 NO_START=0
+PRINT_PROMPT=0
+PROTO_CTX=""
 BOOT_PID=""
 
 usage() {
@@ -40,6 +42,13 @@ sets the ceiling (default 1800, 3600 on Android/Termux or <=2 cores; 0 = no limi
 FAMILIA_PROTO_REPLY_TIMEOUT (default 900) bounds one reply.
 
 Quit with an empty line, /q, /quit, or exit.
+
+--print-system-prompt prints the system prompt (fleet greeting included) and
+exits. It does not start a server. --ctx N picks the full or compact prompt
+for that context size (the chat path uses the selected node's ctx).
+FAMILIA_PROTOGRAPH_PROMPT overrides the prompt file. The file must be a
+regular file inside skills/protograph/prompts (no symlink, no path outside
+that directory). A rejected file uses the short fallback.
 USAGE
 }
 
@@ -48,6 +57,8 @@ while [ $# -gt 0 ]; do
     --url) URL=${2-}; shift ;;
     --model) MODEL=${2-}; shift ;;
     --no-start) NO_START=1 ;;
+    --print-system-prompt) PRINT_PROMPT=1 ;;
+    --ctx) PROTO_CTX=${2-}; shift ;;
     -h|--help) usage; exit 0 ;;
     *) printf 'proto-chat: unknown arg %s\n' "$1" >&2; usage >&2; exit 2 ;;
   esac
@@ -251,23 +262,63 @@ while True:
 PY
 }
 
-SYSTEM_PROMPT='You are the familia protomodel — a tiny local helper that runs on this machine.
-Help with local install and build (deps, licenses, configure, PATH).
-Help the user explore which larger models to fetch next (coding, chat, phone, vision).
-Help search the user'\''s X/Twitter posts when Agent-Reach / twitter-cli is available.
-Keep answers short and actionable. Prefer one next command. Never claim cloud access you do not have.'
-# Fleet greeting (docs/FLEET-GREETING.md) first, once; a missing file only warns (scripts/fleet_greeting.py).
-# The trailing x keeps the command substitution from eating the prompt's last newline.
-if _greeted=$(printf '%s' "$SYSTEM_PROMPT" | "$PY" "$FAMILIA_SCRIPTS/fleet_greeting.py" prepend && printf x); then
-  SYSTEM_PROMPT=${_greeted%x}
+# Versioned protograph system prompt (#327). protograph.py opens it with
+# O_NOFOLLOW and fstat, confined to skills/protograph/prompts, and picks the
+# full or compact file so the greeting, a user turn, and 512 output tokens
+# still fit the node's ctx. The chosen file is static (KV prefix reuse).
+# A rejected file warns and uses the short pre-#327 prompt.
+_proto_load_system_prompt() {
+  _pp_rc=0
+  if [ -n "${1:-}" ]; then
+    _pp_body=$("$PY" "$FAMILIA_SCRIPTS/protograph.py" --print-prompt --ctx "$1") || _pp_rc=$?
+  elif [ -n "${2:-}" ]; then
+    _pp_body=$("$PY" "$FAMILIA_SCRIPTS/protograph.py" --print-prompt --model "$2") || _pp_rc=$?
+  else
+    _pp_body=$("$PY" "$FAMILIA_SCRIPTS/protograph.py" --print-prompt) || _pp_rc=$?
+  fi
+  if [ "$_pp_rc" -ne 0 ]; then
+    die "system prompt does not fit this model" "$_pp_rc"
+  fi
+  SYSTEM_PROMPT="$_pp_body"
+  unset _pp_body _pp_rc
+  return 0
+}
+
+# Fleet greeting once, after the variant is chosen. The trailing x keeps the
+# last newline. A missing greeting file only warns (scripts/fleet_greeting.py).
+_proto_apply_greeting() {
+  if _greeted=$(printf '%s' "$SYSTEM_PROMPT" | "$PY" "$FAMILIA_SCRIPTS/fleet_greeting.py" prepend && printf x); then
+    SYSTEM_PROMPT=${_greeted%x}
+  fi
+  unset _greeted
+}
+
+if [ "$PRINT_PROMPT" = 1 ]; then
+  _proto_load_system_prompt "${PROTO_CTX:-}" ""
+  _proto_apply_greeting
+  printf '%s\n' "$SYSTEM_PROMPT"
+  exit 0
 fi
-unset _greeted
 
 # Private scratch for child stderr (honors TMPDIR, incl. Termux $PREFIX/tmp).
 _tbase=${TMPDIR:-${PREFIX:+$PREFIX/tmp}}
 PROTO_TMP=$(umask 077; mktemp -d "${_tbase:-/tmp}/familia-proto.XXXXXX") || die "mktemp failed" 1
-trap 'rm -rf -- "$PROTO_TMP"' EXIT HUP INT TERM
+PROTO_EXEC_PID=""
+# Stop a running familia exec (its python parent SIGTERMs, which killpg's the
+# session) before deleting the scratch dir. TERM, a grace wait, then KILL.
+_proto_stop_exec() {
+  _pid=${PROTO_EXEC_PID:-}
+  if [ -n "$_pid" ] && kill -0 "$_pid" 2>/dev/null; then
+    kill -TERM "$_pid" 2>/dev/null || true
+    sleep 1
+    kill -KILL "$_pid" 2>/dev/null || true
+    wait "$_pid" 2>/dev/null || true
+  fi
+  PROTO_EXEC_PID=""
+}
+trap '_proto_stop_exec; rm -rf -- "$PROTO_TMP"' EXIT HUP INT TERM
 PROTO_ERR=$PROTO_TMP/err
+export FAMILIA_PROTO_CTX_FILE=$PROTO_TMP/ctx
 
 if ! URL=$(find_endpoint); then
   say "no local OpenAI-compatible server detected"
@@ -283,32 +334,53 @@ fi
 _proto_osc working --id home/proto --msg "loading $MODEL" --progress 50
 wait_model || die "model $MODEL did not load" 1
 say "endpoint $URL  model $MODEL"
+if [ -n "$PROTO_CTX" ]; then
+  _proto_load_system_prompt "$PROTO_CTX" ""
+else
+  _proto_load_system_prompt "" "$MODEL"
+fi
+_proto_apply_greeting
+if [ -n "$PROTO_CTX" ]; then
+  PROTO_CTX_EFFECTIVE=$PROTO_CTX
+elif [ -s "$PROTO_TMP/ctx" ]; then
+  PROTO_CTX_EFFECTIVE=$(cat "$PROTO_TMP/ctx")
+else
+  PROTO_CTX_EFFECTIVE=8192
+fi
 _proto_osc working --id home/proto --msg "Talk to the protomodel ($MODEL)" --title "proto_chat"
 say "type a message (empty /q /quit /exit to quit)"
 printf '\n'
 
-while true; do
-  if [ -t 0 ] && [ "${FAMILIA_NO_TTY:-}" != 1 ]; then
-    printf 'you> '
-  fi
-  if ! IFS= read -r line; then
-    break
-  fi
-  case "$line" in
-    ""|/q|/quit|/exit|exit|quit) say "bye"; _proto_osc done --id home/proto --msg "proto chat ended"; break ;;
-  esac
-  reply=$("$PY" - "$URL" "$MODEL" "$SYSTEM_PROMPT" "$line" <<'PY' 2>"$PROTO_ERR" || true
-import json, os, sys, urllib.request, urllib.error
+# One chat completion. FAMILIA_PROTO_ASSIST_FILE + FAMILIA_PROTO_TOOL_FILE, when
+# both are set, append the previous reply and the command output (the feedback turn).
+proto_complete() {
+  "$PY" - "$URL" "$MODEL" "$SYSTEM_PROMPT" "$1" <<'PY' 2>"$PROTO_ERR" || true
+import os, sys
 sys.path.insert(0, os.environ["FAMILIA_SCRIPTS"]); import familia_auth
+import json, urllib.request
 url, model, system, user = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+messages = [
+    {"role": "system", "content": system},
+    {"role": "user", "content": user},
+]
+assist = os.environ.get("FAMILIA_PROTO_ASSIST_FILE") or ""
+tool = os.environ.get("FAMILIA_PROTO_TOOL_FILE") or ""
+user_file = os.environ.get("FAMILIA_PROTO_USER_FILE") or ""
+if assist and tool and user_file:
+    messages = [
+        {"role": "system", "content": system},
+        {"role": "user", "content": open(user_file, encoding="utf-8", errors="replace").read()},
+        {"role": "assistant", "content": open(assist, encoding="utf-8", errors="replace").read()},
+        {"role": "user", "content": open(tool, encoding="utf-8", errors="replace").read()},
+    ]
+elif assist and tool:
+    messages.append({"role": "assistant", "content": open(assist, encoding="utf-8", errors="replace").read()})
+    messages.append({"role": "user", "content": open(tool, encoding="utf-8", errors="replace").read()})
 body = {
     "model": model,
-    "messages": [
-        {"role": "system", "content": system},
-        {"role": "user", "content": user},
-    ],
+    "messages": messages,
     "temperature": 0.7,
-    "max_tokens": 512,
+    "max_tokens": int(os.environ.get("FAMILIA_PROTO_MAX_TOKENS", "512")),
     "stream": False,
 }
 req = urllib.request.Request(
@@ -331,11 +403,41 @@ msg = choices[0].get("message") or {}
 content = (msg.get("content") or "").strip()
 reasoning = (msg.get("reasoning_content") or "").strip()
 if not content and reasoning:
-    # Model used its token budget on reasoning (e.g. DeepSeek/Qwen/LFM3)
     content = f"[reasoning: {reasoning}]"
 print(content or "(empty reply)", end="")
 PY
-)
+}
+
+# Execute RUN directives in $1. $2 is the user turn already in the context.
+# Result text is left in PROTO_TMP/exec.out. follow_max (reply budget that
+# still fits ctx) is left in PROTO_TMP/follow_max. Runs in the current shell
+# so PROTO_EXEC_PID is visible to the signal trap.
+proto_exec_reply() {
+  printf '%s\n' "$1" > "$PROTO_TMP/reply"
+  printf '%s' "$2" > "$PROTO_TMP/user"
+  printf '%s' "$SYSTEM_PROMPT" > "$PROTO_TMP/system"
+  : > "$PROTO_TMP/exec.out"
+  "$PY" "$FAMILIA_SCRIPTS/protograph.py" --exec-reply "$PROTO_TMP/reply" \
+    --ctx "$PROTO_CTX_EFFECTIVE" \
+    --budget-system "$PROTO_TMP/system" --budget-user "$PROTO_TMP/user" \
+    --follow-max-file "$PROTO_TMP/follow_max" > "$PROTO_TMP/exec.out" &
+  PROTO_EXEC_PID=$!
+  wait "$PROTO_EXEC_PID" || true
+  PROTO_EXEC_PID=""
+}
+
+while true; do
+  if [ -t 0 ] && [ "${FAMILIA_NO_TTY:-}" != 1 ]; then
+    printf 'you> '
+  fi
+  if ! IFS= read -r line; then
+    break
+  fi
+  case "$line" in
+    ""|/q|/quit|/exit|exit|quit) say "bye"; _proto_osc done --id home/proto --msg "proto chat ended"; break ;;
+  esac
+  unset FAMILIA_PROTO_ASSIST_FILE FAMILIA_PROTO_TOOL_FILE
+  reply=$(proto_complete "$line")
   if [ -z "$reply" ]; then
     if [ -s "$PROTO_ERR" ]; then
       printf 'proto> %s\n' "$(cat "$PROTO_ERR")"
@@ -344,5 +446,30 @@ PY
     fi
   else
     printf 'proto> %s\n\n' "$reply"
+    printf '%s' "$line" > "$PROTO_TMP/turn"
+    proto_exec_reply "$reply" "$line"
+    exec_out=$(cat "$PROTO_TMP/exec.out" 2>/dev/null || true)
+    if [ -n "$exec_out" ]; then
+      printf 'run> %s\n\n' "$exec_out"
+      _follow_max=$(cat "$PROTO_TMP/follow_max" 2>/dev/null || echo 0)
+      if [ "$_follow_max" -eq 0 ]; then
+        printf 'run> follow-up skipped: reply does not fit ctx %s\n\n' "$PROTO_CTX_EFFECTIVE"
+      else
+        printf '%s\n' "$reply" > "$PROTO_TMP/assist"
+        printf '%s\n' "$exec_out" > "$PROTO_TMP/tool"
+        FAMILIA_PROTO_ASSIST_FILE=$PROTO_TMP/assist
+        FAMILIA_PROTO_TOOL_FILE=$PROTO_TMP/tool
+        FAMILIA_PROTO_USER_FILE=$PROTO_TMP/turn
+        FAMILIA_PROTO_MAX_TOKENS=$_follow_max
+        export FAMILIA_PROTO_ASSIST_FILE FAMILIA_PROTO_TOOL_FILE FAMILIA_PROTO_USER_FILE FAMILIA_PROTO_MAX_TOKENS
+        follow=$(proto_complete "$line")
+        unset FAMILIA_PROTO_ASSIST_FILE FAMILIA_PROTO_TOOL_FILE FAMILIA_PROTO_USER_FILE FAMILIA_PROTO_MAX_TOKENS
+        # The follow-up is shown and not executed. Tool output is fenced data,
+        # so a RUN line it contains cannot start another command.
+        if [ -n "$follow" ]; then
+          printf 'proto> %s\n\n' "$follow"
+        fi
+      fi
+    fi
   fi
 done
