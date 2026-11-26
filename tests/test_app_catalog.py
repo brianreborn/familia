@@ -46,6 +46,7 @@ def test_first_fetch_writes_cache_and_query_is_public_only(cache_home):
     assert note == "" and items[0]["repo"] == "brianreborn/familia" and items[0]["number"] == 397
     url = f.calls[0][0]
     assert "is%3Apublic" in url and "label%3Aapplications" in url and "user%3Abrianreborn" in url
+    assert "-label%3Aresearch" in url
     c = json.loads((cache_home / "familia" / "app-catalog.json").read_text())
     assert c["etag"] == 'W/"abc"' and c["fetched_at"] == 1000 and c["ttl_s"] == 45 * 60
 

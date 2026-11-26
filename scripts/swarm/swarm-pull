@@ -50,6 +50,7 @@ BLOCK_LABELS = {
     "duplicate",
     "invalid",
     "deferred",
+    "research",  # research bucket: not actionable until promoted (docs/research-bucket.md)
 }
 FAMILIA_EXCLUDED = {327, 328, 329, 330, 331, 382}
 # 382 is the umbrella; children are claimed, not the umbrella itself.
