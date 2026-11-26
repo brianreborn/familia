@@ -77,6 +77,18 @@ def test_explicit_memory_and_slot_fields_reach_graph():
         assert node[key] == r["nodes"][0][key]
 
 
+def test_speculative_declaration_reaches_graph():
+    r = recipe()
+    r["runtime"]["spec_types"] = ["ngram-simple"]
+    r["speculative"] = {"chat-ngram": {"target": "chat", "mode": "ngram",
+                                    "spec_type": "ngram-simple", "status": "active",
+                                    "experimental": True}}
+    g, _ = protograph.build(r)
+    assert g["speculative"] == r["speculative"]
+    errs, _ = vg.validate(copy.deepcopy(g), check_files=False)
+    assert errs == []
+
+
 @pytest.mark.parametrize("mutate,msg", [
     (lambda r: r.pop("protograph"), "protograph: 1"),
     (lambda r: r["host"].pop("ram_mib"), "host: missing ram_mib"),

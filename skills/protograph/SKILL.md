@@ -67,6 +67,8 @@ Report the disagreement instead of working around it.
    Nodes may also set `load_mode`, `slot_save`, `spill_path`, and
    `swap_budget_mib` for a full-context, swap-backed graph. These values pass
    through to graph.yaml and are checked by the normal graph validator.
+   A `speculative` mapping may declare draft or n-gram speculation for a
+   generated node; the graph validator checks the target, mode, and flags.
 
    Working samples: `skills/protograph/examples/*.recipe.yaml`.
 3. **Dry run.** `python3 scripts/protograph.py RECIPE`. Read the plan lines

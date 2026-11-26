@@ -22,6 +22,7 @@ Recipe keys (see skills/protograph/SKILL.md for the full reference):
           status, offload, load_mode, slot_save, spill_path, swap_budget_mib,
           override_reasons, server_tools, allow_unauthenticated_tools]}]
   gateway: {port, [bind, router]} optional (default 8080); green-roomz gateway + one alias per node
+  speculative: {NAME: {target, mode, spec_type, status, ...}} optional
   agent: {kind, main, [auxiliary], min_ctx}   optional (default: hermes-agent on the first node)
 
 Every default the recipe leaves out is written explicitly into the graph
@@ -66,7 +67,7 @@ def build(recipe, recipe_dir=".", ref_graph=None):
     """recipe dict -> (graph dict, plan lines). Raises RecipeError on an incomplete or unsafe recipe."""
     if not isinstance(recipe, dict) or recipe.get("protograph") != 1:
         raise RecipeError("recipe must start with 'protograph: 1'")
-    unknown = set(recipe) - {"protograph", "host", "runtime", "models", "nodes", "gateway", "agent", "graph", "notes"}
+    unknown = set(recipe) - {"protograph", "host", "runtime", "models", "nodes", "gateway", "agent", "graph", "notes", "speculative"}
     if unknown:
         raise RecipeError(f"unknown recipe key(s): {', '.join(sorted(unknown))}")
     plan, base = [], None
@@ -181,6 +182,10 @@ def build(recipe, recipe_dir=".", ref_graph=None):
         node["port"] = n["port"]
         nodes[key] = node
     g = {"version": 2, "hosts": {name: host}, "runtimes": {rname: rt}, "models": models, "nodes": nodes}
+    if "speculative" in recipe:
+        if not isinstance(recipe["speculative"], dict):
+            raise RecipeError("speculative: expected a mapping of named configurations")
+        g["speculative"] = copy.deepcopy(recipe["speculative"])
     gw = recipe.get("gateway")
     if not gw:
         gw = {"port": 8080}
