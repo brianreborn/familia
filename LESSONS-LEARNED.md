@@ -383,3 +383,92 @@ Source: Brian voice session, 2026-11-10.
 - **Trigger:** Whenever cutting a familia release (alpha, beta, or final).
 - **Rule:** Check upstream llama.cpp releases (`ggerganov/llama.cpp`) and bump default runtime builds, pins, and installers to the latest stable/release tag (e.g. `b12609`).
 - **Rationale:** Ensures edge runtimes and acceleration backends benefit from the latest upstream kernel improvements, quantization layouts, and security fixes across all swarm platforms.
+
+## L-733-menu. The front door was demoted and the home became a printout (2026-11-23)
+
+Symptom (Brian, voice, 2026-11-23 9:44 PM PT): the main menu "only prints what
+you can do" instead of offering selectable options, and the front door
+(Talk to the protomodel) "got moved all the way to the back".
+
+Chain of cause (evidence in git and issues, not blame):
+1. 76e3cb4 (2026-10-27, Brian) set the order: "Talk to the protomodel first,
+   then Find more models, Search my X, Install ... Legacy menu last."
+2. #476 spec (written by Other Grok Bot ASSIST from Brian's 2026-11-10
+   approval) said "Six equal top-level items ... 1. Models ... 6. App store"
+   and listed Talk only as one of today's "seven goals" to be replaced. It
+   never said where the protomodel chat goes or that it stays first. It also
+   claimed to be "a superset of #327", but #327 asks that "all functional
+   actions are reachable directly, without the legacy menu".
+3. d0fbcb4 / PR #483 (implementer) filled that gap literally: Talk, Find
+   models and Search X became the legacy catalog group "Front door", placed
+   second-to-last (after App store, before Help), and a footer line
+   "Legacy goals still on that menu: Talk to the protomodel ..." at the
+   bottom of `familia_home.sh --list-goals`.
+4. The same change made list mode the default whenever stdin is not a tty
+   ("List mode (no tty, FAMILIA_NO_TTY, or --list-goals) prints and exits
+   0"), and tests/test_home_menu.py locks it in: "non-interactive front door
+   is the same list and exits 0". When stdin is not a terminal
+   (`ssh host ./familia` without `-t`, cron, pipes, CI, or
+   `FAMILIA_NO_TTY=1`), ./familia prints the catalog and exits 0. In a
+   terminal, including an interactive ssh session, gum choose opens, and it
+   has no numeric entry (#746). A terminal with gum missing falls back to
+   the legacy numeric menu (`familia_home.sh:115-120`), where digits work.
+   Windows (`familia.cmd` -> `familia-home.ps1`) prints only for
+   -ListGoals, FAMILIA_NO_TTY=1 or a non-interactive session
+   (`familia-home.ps1:53`); redirected stdin with gum unusable exits 2.
+   Rules (a)-(d) below apply to both front doors. Recorded inconsistency:
+   on a non-tty the Unix home exits 0 while the legacy menu exits 2.
+5. Epic #733 copied the "six equal" rule and "Numeric entry must keep
+   working" but no criterion for "front door first" or "selectable, never a
+   printout". M3 (#752) and M5 (#751) then built registries and a harness
+   around the existing six-item list, so the parallel bots reinforced it.
+
+Classification: primarily spec ambiguity (#476 dropped an existing,
+user-chosen ordering without a word; #733 inherited it), then an implementer
+choice that a test froze as correct. No single bot misread a clear rule.
+
+Corrective rules:
+- Any menu spec states, as testable acceptance criteria: (a) the first
+  selectable item of `./familia` is the front door (Talk to the protomodel);
+  (b) the main menu is numbered, selectable actions (arrow keys and digits),
+  never a printed list followed by exit; (c) a non-tty run is either the
+  legacy numeric menu in `--pipe` mode reading stdin (EOF exits 2: input
+  closed, not a quit), or an explicit `--list-goals`; a list is not the
+  default output of `./familia`. Non-tty input is bounded and never echoed
+  raw (#736: 4096-char line cap, sanitized echo); (d) ^C, Esc, invalid
+  input and EOF on a terminal return to the menu; only an explicit Quit
+  exits; EOF on a non-tty exits 2, never 0 (M7 spec in #733, T-23/T-30/T-31,
+  and the PR #751 review). Today ^C at the legacy menu prompt kills it
+  (`familia-menu.sh` has no trap), and the home's gum fallback execs into it.
+- A redesign that removes or reorders an existing top-level item must name
+  the item and its new position, and Brian approves that line explicitly.
+- Tests must not assert a regression as the contract ("same list and exits
+  0"). When a test locks in UX behavior, quote the rule it enforces.
+- Parallel epics (#733 M1-M8) start from a short "what the user sees first"
+  mock-up checked against the last user-approved ordering, before branches.
+
+Status: Brian approved the corrected requirements at 9:47 PM PT on
+2026-11-23: Talk to the protomodel first, a numbered selectable menu, and
+no print-and-exit except an explicit list flag (`--list-goals`). A separate
+PR implements that; this entry changes no menu code.
+
+## L-2026-11-23-ops. Other lessons from 2026-11-23
+
+- Surface crash: running the big coder and a small Qwen on the iGPU at the
+  same time (load about 7, high-70s C on a fanless tablet, observed live by
+  the tuning job's monitoring; the post-reboot journal is not read yet)
+  preceded SSH loss
+  and a hard reset. One heavy model process per small fanless host; no
+  concurrent iGPU load tests. Extends L4.
+- Direct pushes: two commits (65dad29, 717e54f) went straight to green-roomz
+  main without review during the Codex consolidation (#740). Agents push to
+  branches only; main changes only through a reviewed PR.
+- Load gate is not a stall: swarm-pull logging "iteration error: load gate"
+  and sleeping is the designed retry after load_gate() defers a job
+  (SWARM_RETRY_SEC, default 120 s, plus jitter); the gate also trips on
+  SWARM_MIN_MEM_GIB. Check load1 and MemAvailable before calling the loop
+  stuck or restarting it.
+- Checkpoint leftovers (#740): candidate branches, /tmp snapshots and
+  quarantine dirs from consolidation need an owner and a land/archive/drop
+  decision the same day; drop (branch or dir deletion) only with Brian's
+  OK, after an archive tag or tarball. Nothing durable lives only in /tmp.
