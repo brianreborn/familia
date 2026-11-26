@@ -5,7 +5,7 @@
 # and the Windows menu (familia.cmd).
 #
 # Usage:
-#   ./familia-menu.sh                 interactive menu (needs a terminal)
+#   ./familia-menu.sh                 interactive menu (needs a terminal; arrow keys or numbers)
 #   ./familia-menu.sh --list          print every item with its key and command
 #   ./familia-menu.sh --run KEY [ARG...]   run one item without the menu
 #   ./familia-menu.sh --dry-run ...   show the command instead of running it
@@ -363,6 +363,18 @@ run_item() {  # run_item KEY ARGS...
   bash -c "$cmd"
 }
 
+# ---- key reader (#733): M1 owns the raw-mode key reader. When scripts/menu-keys.sh exists and defines
+# menu_key_read PROMPT VAR COUNT, a terminal menu reads through it; it must hand back
+# the same text a typed line would (a number, b, q, <, >, h, /word, &word).
+# Pipes, TERM=dumb and a missing reader (M2's fallback) keep the line reader below.
+[ -f "$ROOT/scripts/menu-keys.sh" ] && . "$ROOT/scripts/menu-keys.sh"
+nav_read() {  # nav_read PROMPT VAR COUNT ; returns 1 on EOF
+  if [ "$PIPE" != 1 ] && [ -t 0 ] && [ "${TERM:-dumb}" != dumb ] && declare -F menu_key_read >/dev/null; then
+    menu_key_read "$1" "$2" "${3:-0}"; return
+  fi
+  read_line "$1" "$2"
+}
+
 # ---- search, like / ? n N in less and more ----------------------------------
 LAST_SEARCH=""; SDIR=1; SCUR=0; SK=()
 use_color() {
@@ -441,7 +453,7 @@ search_ui() {  # search_ui OP TEXT ; OP is / ? n N. Returns 3 to quit the menu.
       show_match $((SCUR+1)) "${SK[$SCUR]}" "$t" "> " ;;
   esac
   while true; do
-    if ! read_line "Choose 1-${#SK[@]} to run, n/N next/previous match, /word to search again, b back: " choice; then
+    if ! nav_read "Choose 1-${#SK[@]} to run, n/N next/previous match, /word to search again, b back: " choice "${#SK[@]}"; then
       closed_input || return 4
       continue
     fi
@@ -486,7 +498,7 @@ menu() {
 $(groups)
 EOF2
     say "  q) Quit      /word search every group (n/N next/previous match)"
-    if ! read_line "Choose 1-$n, /search or q: " choice; then
+    if ! nav_read "Choose 1-$n, /search or q: " choice "$n"; then
       closed_input || return 2
       continue
     fi
@@ -528,12 +540,12 @@ EOF2
       fi
       say "  b) Back      /word search every group (n/N next/previous match)"
       if [ "$pages" -gt 1 ]; then
-        if ! read_line "Choose 1-$n, </> page, /search or b: " choice; then
+        if ! nav_read "Choose 1-$n, </> page, /search or b: " choice "$n"; then
           closed_input || return 2
           continue
         fi
       else
-        if ! read_line "Choose 1-$n, /search or b: " choice; then
+        if ! nav_read "Choose 1-$n, /search or b: " choice "$n"; then
           closed_input || return 2
           continue
         fi

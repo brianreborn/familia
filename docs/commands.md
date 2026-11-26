@@ -126,11 +126,13 @@ Default front door is the six-item home (`./familia`). This catalog is the fallb
 | `agents.hermes-graph` | Hermes: full graph | `scripts/hermes.sh --graph-mode` | — |
 | `agents.hermes` | Hermes on the graph coder node (64K context) | `scripts/hermes.sh` | — |
 | `agents.hermes-render` | Write the hermes config only; start nothing | `scripts/hermes.sh --render-only` | — |
+| `agents.hermes-webapp` | Hermes webapp (desktop-in-browser via the gateway) | `scripts/hermes.sh --client webapp` | — |
+| `agents.hermes-desktop` | Hermes Desktop (native frontend) | `scripts/hermes.sh --client desktop` | — |
 | `agents.fleet-test` | Launch-test a role: validate, would-start, stop | `sh with-fleet.sh --role <ROLE> --launch-test` | — |
 | `agents.fleet` | Launch a role from graph.yaml (guardian/defender: seatbelts on by default) | `sh with-fleet.sh --role <ROLE>` | — |
 | `agents.guardian-launch-test` | Guardian/defender: launch-test (seatbelts on) | `sh with-fleet.sh --role guardian --launch-test` | — |
 | `agents.guardian-start` | Guardian/defender: operator-confirmed model start (tools empty) | `env FAMILIA_OPERATOR_CONFIRM=yes sh with-fleet.sh --role guardian --operator-start` | — |
-| `agents.guardian-weights` | Guardian: dry-run fetch/measure/activate path (Dolphin3 Q2_K; no seatbelt edits) | `python3 scripts/activate_guardian_weights.py` | — |
+| `agents.guardian-weights` | Guardian: dry-run fetch/measure/activate path (Dolphin3 Q2_K; no seatbelt edits) | `python3 scripts/activate_guardian_weights.py` | `python scripts\activate_guardian_weights.py` |
 | `agents.pentest-launch-test` | Legacy id → guardian launch-test | `sh with-fleet.sh --role guardian --launch-test` | — |
 | `agents.pentest-start` | Legacy id → guardian operator-start | `env FAMILIA_OPERATOR_CONFIRM=yes sh with-fleet.sh --role guardian --operator-start` | — |
 | `home.agents.install` | Home: install agents | `python3 scripts/home_catalog.py agents install` | `python scripts\home_catalog.py agents install` |
@@ -340,7 +342,7 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/windows/prefetch-first-models.ps1` | Windows wrapper for prefetch-first-models |
 | `scripts/windows/launch_server.py` | Windows helper start.bat runs after the license gate; writes the llama-server pid and waits. Not a menu item |
 | `scripts/offline_improve.py` | on-host offline perf loop (docs/offline-improve.md) |
-| `scripts/activate_guardian_weights.py` | guardian weight fetch/measure/activate (Dolphin3-Cyber Q2_K); operator step run via with-fleet.sh, docs/guardian-weights.md |
+| `scripts/activate_guardian_weights.py` | menu item `agents.guardian-weights`; guardian weight fetch/measure/activate (Dolphin3-Cyber Q2_K); docs/guardian-weights.md |
 | `scripts/activate_guardian_weights.sh` | thin wrapper for scripts/activate_guardian_weights.py |
 | `scripts/config_docs.py` | developer tool: generates/checks docs/config (CFG-* ids); not an end-user action |
 | `scripts/check_pins.py` | CI-only verifier for full-SHA repository pins; invoked by the pin-integrity workflow, not a user command |
@@ -357,6 +359,8 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/swarm/a57_ssh_dispatch.py` | opt-in A57 python/compile smoke over SSH from the miryam swarm runner; not a phone Actions runner; see docs/ci/a57-ssh-dispatch.md |
 | `scripts/swarm/deploy_fleet.py` | CI deployment controller; invoked by fleet-deploy workflow, not an interactive menu action |
 | `scripts/swarm/configure-fleet-role.sh` | Validated writer used by the Android cockpit fleet-role screen |
+| `scripts/menu_keys.py` | key decoder and picker behind scripts/menu-keys.sh (epic #733 M1); not a menu item itself |
+| `scripts/menu-keys.sh` | menu_key_read for familia-menu.sh nav_read (epic #733 M1); sourced, not run |
 | `scripts/swarm/bench.sh` | swarm /run bench entry point (#183); run by swarm workers, not people; see docs/swarm-bench.md |
 | `scripts/swarm/bench_idle.py` | opt-in run-when-idle trigger for scripts/swarm/bench.sh (per host:user, nice 19, CPU only); run by a user timer or crontab; see docs/swarm-bench.md |
 | `scripts/swarm/forge.sh` | swarm forge adapter library; sourced by swarm scripts |

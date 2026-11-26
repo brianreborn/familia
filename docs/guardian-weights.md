@@ -20,6 +20,8 @@ Boundary ready-check should read **`models.dolphin3-cyber-8b-q2k.sha256`** (must
 
 Dry-run first (nothing written):
 
+The same dry-run is the menu item `agents.guardian-weights` (`familia guardian weights`, or the Agents (hermes) group in the legacy menu).
+
 ```sh
 python3 scripts/activate_guardian_weights.py
 # or: sh scripts/activate_guardian_weights.sh

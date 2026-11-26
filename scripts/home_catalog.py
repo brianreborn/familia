@@ -1579,6 +1579,10 @@ def agents_list(_apply, _extra):
             host = str(spec.get("host") or "")
         say("  %s  kind=%s  host=%s" % (name, kind, host))
     say("CLI: familia hermes")
+    say("CLI: familia hermes webapp")
+    say("CLI: familia hermes desktop")
+    say("CLI: familia guardian weights")
+    say("CLI: familia guardian-launch-test")
     return 0
 
 

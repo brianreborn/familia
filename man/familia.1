@@ -201,6 +201,16 @@ Write the hermes config only; start nothing.
 .br
 Runs: \fBscripts/hermes.sh \-\-render\-only\fR
 .TP
+\fBhermes webapp\fR
+Hermes webapp (desktop\-in\-browser via the gateway) (licenses first).
+.br
+Runs: \fBscripts/hermes.sh \-\-client webapp\fR
+.TP
+\fBhermes desktop\fR
+Hermes Desktop (native frontend) (licenses first).
+.br
+Runs: \fBscripts/hermes.sh \-\-client desktop\fR
+.TP
 \fBfleet test\fR \fI<ROLE>\fR
 Launch\-test a role: validate, would\-start, stop.
 .br
@@ -211,15 +221,20 @@ Launch a role from graph.yaml (guardian/defender: seatbelts on by default) (lice
 .br
 Runs: \fBsh with\-fleet.sh \-\-role <ROLE>\fR
 .TP
-\fBguardian\-launch\-test\fR
+\fBguardian launch\-test\fR
 Guardian/defender node: launch\-test (seatbelts on; validate \[u2192] would\-start \[u2192] stop).
 .br
 Runs: \fBsh with\-fleet.sh \-\-role guardian \-\-launch\-test\fR
 .TP
-\fBguardian\-start\fR
+\fBguardian start\fR
 Guardian/defender: operator\-confirmed model start (owned scope; tools empty) (licenses first).
 .br
 Runs: \fBenv FAMILIA_OPERATOR_CONFIRM=yes sh with\-fleet.sh \-\-role guardian \-\-operator\-start\fR
+.TP
+\fBguardian weights\fR
+Guardian: dry\-run fetch/measure/activate path (Dolphin3 Q2_K; no seatbelt edits).
+.br
+Runs: \fBpython3 scripts/activate_guardian_weights.py\fR
 .TP
 \fBpentest\-launch\-test\fR
 Legacy id \[u2192] guardian launch\-test.
