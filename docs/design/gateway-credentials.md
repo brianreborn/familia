@@ -114,9 +114,9 @@ it. The terminal menu offers **Create**, **Copy/reveal**, **Write handoff**,
 
 ## Browser console and llama-ui
 
-The gateway address should eventually serve a small Green RoomZ-owned
-gateway console at `/`. It is a client configuration surface, not an
-operator-control plane:
+The gateway address serves a small dependency-free gateway console at `/`
+while Green RoomZ's richer console is developed. It is a client configuration
+surface, not an operator-control plane:
 
 - It discovers routes and protocols from the gateway.
 - It lets the user paste or select an already-imported credential for the
@@ -127,9 +127,10 @@ operator-control plane:
 - It does not put the key in a URL, logs, page source, or persistent browser
   storage by default.
 
-Until that console exists, a llama-ui client is configured with the gateway
-endpoint and a credential supplied through its own settings. The graph router
-should not pretend its API root is a full llama-ui web application.
+The initial console provides route discovery and a chat client. A llama-ui
+client is configured with the gateway endpoint and a credential supplied
+through its own settings. The graph router does not pretend its API root is a
+full llama-ui web application.
 
 ## Migration and release plan
 

@@ -426,6 +426,20 @@ def test_stale_all_narrows_to_the_fleet_list(tmp_path, monkeypatch):
     assert validate_graph.tools_argv(graph, "coder") == ["--tools", "read_file,grep_search"]
 
 
+def test_explicit_all_without_a_matching_fleet_policy_is_preserved(tmp_path, monkeypatch):
+    """A standalone generated graph is authoritative, not a read-only fallback."""
+    gen_dir = tmp_path / "generated"
+    gen_dir.mkdir()
+    monkeypatch.setenv("FAMILIA_GENERATED_DIR", str(gen_dir))
+    path = gen_dir / "graph-note9.yaml"
+    path.write_text("placeholder\\n")
+    graph = _graph({"coder": _node(tools="all")})
+    graph["_path"] = str(path)
+    assert tp.restore_server_tools(graph, fleet=_graph({})) == 0
+    assert graph["nodes"]["coder"]["server_tools"] == "all"
+    assert validate_graph.tools_argv(graph, "coder") == ["--tools", "all"]
+
+
 def test_live_fleet_all_is_not_narrowed(tmp_path, monkeypatch):
     gen_dir = tmp_path / "generated"
     gen_dir.mkdir()

@@ -149,12 +149,13 @@ def narrow_server_tools(current, fleet):
         return current
     if current is None:
         return fleet
-    if fleet is None or _is_opt_out(fleet):
-        if current == "all":
-            return list(READ_ONLY_TOOLS)
-        if _is_opt_out(fleet):
-            return []
+    # A generated graph can be the complete local declaration (for example a
+    # Termux protograph).  Without a matching fleet policy there is nothing to
+    # narrow against: preserve its explicit tool grant, including `all`.
+    if fleet is None:
         return current
+    if _is_opt_out(fleet):
+        return []
     if current == "all":
         if fleet == "all":
             return "all"

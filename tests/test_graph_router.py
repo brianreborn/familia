@@ -436,6 +436,15 @@ def test_router_caller_auth_required(fakes):
     assert a.seen[0][2] is None                               # caller key is never forwarded to a node
 
 
+def test_gateway_console_is_public_but_keeps_keys_client_side(fakes):
+    _a, base = _authed_server(fakes)
+    raw = urllib.request.urlopen(base + "/", timeout=5).read().decode("utf-8")
+    assert "Gateway API key" in raw
+    assert "session" in raw
+    assert "fetch('/v1/models'" in raw
+    assert "localStorage" not in raw and "sessionStorage" not in raw
+
+
 def test_router_main_creates_instance_key_once(tmp_path, monkeypatch):
     """CLI default: per-port instance key, created 0600 on first start, never rotated; fail closed."""
     import stat, familia_auth

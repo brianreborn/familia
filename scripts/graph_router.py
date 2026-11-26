@@ -510,6 +510,15 @@ def make_server(cfg, host="127.0.0.1", port=9940, api_key=None):
         raise ConfigError("non-loopback graph router requires caller API-key auth")
     R = Router(cfg)
 
+    def console():
+        """A small, dependency-free browser client for the graph gateway.
+
+        It deliberately owns no server credential lifecycle.  A caller pastes
+        a credential it already has; JavaScript keeps it only in memory and
+        sends it only as an Authorization header to this same gateway.
+        """
+        return b'''<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Familia gateway</title><style>body{max-width:50rem;margin:2rem auto;padding:0 1rem;background:#101317;color:#e7edf2;font:16px system-ui,sans-serif}input,select,textarea,button{box-sizing:border-box;width:100%;margin:.35rem 0;padding:.6rem;background:#1a222b;color:inherit;border:1px solid #486070;border-radius:.25rem}button{width:auto;cursor:pointer}label{display:block;margin-top:1rem}#chat{display:none}pre{white-space:pre-wrap;background:#121a20;padding:.7rem;border-radius:.25rem}.hint{color:#b7c8d4;font-size:.9em}</style><h1>Familia gateway</h1><p class="hint">Choose a caller API key for this browser session. The key stays in page memory, is never placed in the URL, and is cleared when this page closes or reloads.</p><label>Gateway API key<input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="Paste a key, then connect"></label><button id="connect">Connect</button> <button id="clear" type="button">Clear</button><p id="status" role="status"></p><section id="chat"><label>Route<select id="model"></select></label><label>Message<textarea id="message" rows="5" placeholder="Ask the selected route"></textarea></label><button id="send">Send</button><pre id="answer"></pre></section><script>(()=>{let key='';const $=id=>document.getElementById(id),status=$('status'),chat=$('chat'),model=$('model'),answer=$('answer');function headers(){return key?{Authorization:'Bearer '+key}:{};}async function connect(){key=$('key').value;status.textContent='Checking gateway...';answer.textContent='';try{let r=await fetch('/v1/models',{headers:headers()});if(!r.ok)throw new Error(r.status===401?'That key was not accepted.':'Gateway returned '+r.status);let d=await r.json();model.replaceChildren(...d.data.filter(x=>x.familia?.status==='ready').map(x=>{let o=document.createElement('option');o.value=x.id;o.textContent=x.id;return o;}));chat.style.display='block';status.textContent='Connected. '+model.options.length+' route(s) available.';}catch(e){chat.style.display='none';status.textContent=e.message;}}$('connect').onclick=connect;$('clear').onclick=()=>{key='';$('key').value='';chat.style.display='none';status.textContent='Key cleared from this page.';answer.textContent='';};$('send').onclick=async()=>{if(!key)return;answer.textContent='Waiting...';try{let r=await fetch('/v1/chat/completions',{method:'POST',headers:{...headers(),'Content-Type':'application/json'},body:JSON.stringify({model:model.value,messages:[{role:'user',content:$('message').value}]})});let d=await r.json();if(!r.ok)throw new Error(d.error?.message||('Gateway returned '+r.status));answer.textContent=d.choices?.[0]?.message?.content||JSON.stringify(d,null,2);}catch(e){answer.textContent=e.message;}};})();</script></html>'''
+
     def _hdr(v):
         """Header-safe text: drop CR, LF and other C0/DEL control chars."""
         return "".join(c for c in str(v) if c >= " " and c != "\x7f")
@@ -551,6 +560,14 @@ def make_server(cfg, host="127.0.0.1", port=9940, api_key=None):
             p = urllib.parse.urlparse(self.path).path
             if p in ("/health", "/v1/health"):
                 return self._json(200, {"status": "ok", "routes": len(cfg["routes"])})
+            if p in ("/", "/console"):
+                body = console()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers(); self.wfile.write(body)
+                return
             if not self._authed(): return
             if p == "/v1/models":
                 data = [
