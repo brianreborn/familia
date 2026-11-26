@@ -155,7 +155,8 @@ def check_transport(g, name, t, errs):
         errs.append(f"transports.{name}: kind {t.get('kind')} links a host to itself; use kind local")
 
 def check_runtime(g, name, r, errs):
-    if r.get("kind") == "llama-server":
+    kind = r.get("kind")
+    if kind == "llama-server":
         c = r.get("commit")
         # A git sha, or a distro package pin pkg:<name>=<version> (Termux llama-cpp reports no commit).
         if isinstance(c, str) and not re.match(r"^([0-9a-f]{7,40}|pkg:[a-z0-9][a-z0-9.+-]*=[0-9][A-Za-z0-9.+~-]*)$", c):
@@ -169,6 +170,13 @@ def check_runtime(g, name, r, errs):
     if isinstance(st, list):
         bad = [x for x in st if x not in SPEC_TYPES]
         if bad: errs.append(f"runtimes.{name}.spec_types: unknown {bad}")
+    if kind in ALTERNATE_ENGINE_KINDS:
+        adapter = r.get("adapter")
+        if not isinstance(adapter, str) or not adapter:
+            errs.append(f"runtimes.{name}: alternate engine kind {kind!r} requires a non-empty adapter")
+        protocols = r.get("protocols")
+        if not isinstance(protocols, list) or not protocols:
+            errs.append(f"runtimes.{name}: alternate engine kind {kind!r} requires protocols")
 
 def slot_ctx(n):
     return n["ctx"] // n["parallel"] if isinstance(n.get("ctx"), int) and isinstance(n.get("parallel"), int) and n["parallel"] > 0 else None
@@ -335,6 +343,11 @@ def check_offload(name, n, h, r, errs):
         errs.append(f"{w}: ngl {ngl} on unmeasured/unverified GPU {mg} ({gp.get('model')}); measure it and set backend_status verified first")
     elif gp.get("vram_mib") == 0 and gp.get("vendor") not in ("intel", "qualcomm", "arm", "apple"):
         errs.append(f"{w}: ngl {ngl} but GPU {mg} has vram_mib 0")
+
+ALTERNATE_ENGINE_KINDS = {
+    "mlc-llm", "executorch", "vllm", "sglang", "tensorrt-llm",
+    "onnx-genai", "mnn", "ncnn", "candle",
+}
 
 SPEC_TYPES = {"draft-simple", "draft-eagle3", "draft-mtp", "draft-dflash", "draft-dspark",
               "ngram-simple", "ngram-map-k", "ngram-map-k4v", "ngram-mod", "ngram-cache"}
@@ -634,10 +647,12 @@ TYPES = {
                  "hub": opt("str"), "root": opt("str"), "identity": opt("str"), "host_key_policy": opt("str"),
                  "tracker": opt("str"), "bind": opt("str"), "port": opt("int", min=1), "private": opt("bool"),
                  "client": opt("str")}, doc="multi-member transport (ssh nexus / bittorrent swarm)"),
-    "runtimes": T({"kind": req("enum", choices={"llama-server", "drex-dlm", "sm11-legacy", "reference"}), "build": req("str"), "commit": req("str"),
+    "runtimes": T({"kind": req("enum", choices={"llama-server", "drex-dlm", "sm11-legacy", "reference"} | ALTERNATE_ENGINE_KINDS), "build": req("str"), "commit": req("str"),
                    "hosts": req("refs", ref="hosts"), "supported_archs": req("list"),
                    "backends": req("list"), "spec_types": req("strlist"), "bin": opt("str"),
-                   "quants": opt("strlist")}, check_runtime, doc="inference engine build"),
+                   "quants": opt("strlist"), "adapter": opt("str"), "protocols": opt("strlist"),
+                   "model_formats": opt("strlist"), "modalities": opt("strlist"),
+                   "health_path": opt("str")}, check_runtime, doc="inference engine build"),
     "models": T({"gguf": req("str"), "sha256": req("sha"), "arch": req("str"), "trained_ctx": req("int", min=1),
                 "role": req("enum", choices={"chat", "coder", "decision", "reasoning", "embed", "vision", "diffusion", "pentest", "guardian"}),
                  "derived_from": opt("any"),

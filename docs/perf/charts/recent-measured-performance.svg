@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="520" viewBox="0 0 1200 520">
+<style>text{font:14px sans-serif;fill:#202124}.grid{stroke:#d9d9d9}.axis{stroke:#444}.line{fill:none;stroke:#2563eb;stroke-width:3}.line2{fill:none;stroke:#d97706;stroke-width:3}.dot{fill:#2563eb}.dot2{fill:#d97706}.bar1{fill:#4c78a8}.bar2{fill:#f58518}</style>
+<rect width="100%" height="100%" fill="white"/>
+<text x="600" y="30" text-anchor="middle" font-size="18">Familia measured performance (no engine-change claim)</text>
+<text x="300" y="58" text-anchor="middle">Miryam: SmolLM2 CPU thread sweep</text>
+<text x="900" y="58" text-anchor="middle">Recorded anchors, different conditions</text>
+<line class="grid" x1="50" y1="70.0" x2="560" y2="70.0"/>
+<text x="44" y="75.0" text-anchor="end">1742</text>
+<line class="grid" x1="640" y1="70.0" x2="1160" y2="70.0"/>
+<line class="grid" x1="50" y1="142.0" x2="560" y2="142.0"/>
+<text x="44" y="147.0" text-anchor="end">1394</text>
+<line class="grid" x1="640" y1="142.0" x2="1160" y2="142.0"/>
+<line class="grid" x1="50" y1="214.0" x2="560" y2="214.0"/>
+<text x="44" y="219.0" text-anchor="end">1045</text>
+<line class="grid" x1="640" y1="214.0" x2="1160" y2="214.0"/>
+<line class="grid" x1="50" y1="286.0" x2="560" y2="286.0"/>
+<text x="44" y="291.0" text-anchor="end">697</text>
+<line class="grid" x1="640" y1="286.0" x2="1160" y2="286.0"/>
+<line class="grid" x1="50" y1="358.0" x2="560" y2="358.0"/>
+<text x="44" y="363.0" text-anchor="end">348</text>
+<line class="grid" x1="640" y1="358.0" x2="1160" y2="358.0"/>
+<line class="grid" x1="50" y1="430.0" x2="560" y2="430.0"/>
+<text x="44" y="435.0" text-anchor="end">0</text>
+<line class="grid" x1="640" y1="430.0" x2="1160" y2="430.0"/>
+<line class="axis" x1="50" y1="430" x2="560" y2="430"/>
+<line class="axis" x1="50" y1="70" x2="50" y2="430"/>
+<text x="305" y="505" text-anchor="middle">threads / anchor</text>
+<text x="15" y="250" transform="rotate(-90 15 250)" text-anchor="middle">tokens/s</text>
+<circle class="dot" cx="130" cy="395.6" r="5"/>
+<text x="130" y="450" text-anchor="middle">1</text>
+<circle class="dot" cx="280" cy="384.1" r="5"/>
+<text x="280" y="450" text-anchor="middle">2</text>
+<circle class="dot" cx="430" cy="369.8" r="5"/>
+<text x="430" y="450" text-anchor="middle">3</text>
+<polyline class="line" points="130,395.6 280,384.1 430,369.8"/>
+<polyline class="line2" points="130,417.1 280,412.3 430,418.7"/>
+<text x="400" y="90" fill="#2563eb">prompt 256</text>
+<text x="400" y="110" fill="#d97706">decode 64</text>
+<rect class="bar1" x="680" y="124.9" width="90" height="305.1"/>
+<text x="725.0" y="116.9" text-anchor="middle">1476.2</text>
+<text x="725.0" y="450" text-anchor="middle">phone8
+Vulkan pp128</text>
+<rect class="bar1" x="800" y="409.3" width="90" height="20.7"/>
+<text x="845.0" y="401.3" text-anchor="middle">100.1</text>
+<text x="845.0" y="450" text-anchor="middle">phone8
+Vulkan tg64</text>
+<rect class="bar2" x="920" y="369.8" width="90" height="60.2"/>
+<text x="965.0" y="361.8" text-anchor="middle">291.1</text>
+<text x="965.0" y="450" text-anchor="middle">miryam
+CPU pp256
+3 threads</text>
+<rect class="bar2" x="1040" y="412.3" width="90" height="17.7"/>
+<text x="1085.0" y="404.3" text-anchor="middle">85.7</text>
+<text x="1085.0" y="450" text-anchor="middle">miryam
+CPU tg64
+2 threads</text>
+</svg>
