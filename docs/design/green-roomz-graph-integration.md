@@ -40,8 +40,8 @@ not a missing toggle in `graph.yaml`.
    The graph selects the root UI with `gateways.<name>.root_ui`; default to
    `unicorn`, with `llama-ui` and `hermes` as choices. Browser requests at `/`
    are served by the selected UI without changing the browser-visible path.
-   Requests to `/` that do not accept HTML receive a non-REST response
-   pointing to `/v1/` (proposed status code; see Open review item). No public
+   Requests to `/` whose `Accept` header excludes HTML receive `406` with a
+   pointer to `/v1/`. No public
    graph-router or raw node listener is required for normal clients.
 2. **One graph catalog.** `GET /v1/models` and model detail endpoints report
    every declared routable graph alias, including remote, fallback, and
@@ -119,14 +119,21 @@ selector in its host manifest. The default is `unicorn`. Supported values are
 - `/hermes` — Hermes Webapp, serving the Desktop renderer in a browser. Hermes
   Desktop itself is a native Electron client.
 
+Familia validates `root_ui` as one of these three values when loading the
+graph. A generated runtime manifest carries the validated value to Green
+RoomZ but never defines a second selector. An unavailable selected UI makes
+graph startup report a configuration/capability error; it never silently
+changes the chosen root UI. An unavailable explicit UI path reports that
+capability as unavailable without switching to another UI.
+
 For `GET` and `HEAD`, `/` serves the configured UI without redirecting the
 browser; absent `root_ui`, it serves Unicorn. The explicit UI aliases serve the
 same respective interfaces at `/unicorn`, `/llama-ui`, and `/hermes`. Assets,
 refreshes, and API calls must continue to work under each alias path. A root
-request whose `Accept` header excludes HTML receives a plain non-REST response
-with guidance to use `/v1/`. The proposed status is `406 Not Acceptable` (see
-Open review item). Other root methods and unknown root subpaths never resolve
-to REST operations.
+request whose `Accept` header excludes HTML receives plain `406 Not Acceptable`
+with guidance to use `/v1/`. Other root methods return `405 Method Not
+Allowed` with `Allow: GET, HEAD`; unknown UI paths return `404`. Neither
+resolves to a REST operation.
 
 Inference, catalog, protocol, and model APIs live under `/v1/...`. Health and
 metrics are explicit operational probes at `/health` and `/metrics`. Any
@@ -135,12 +142,24 @@ gateway must not expose an unversioned backend REST endpoint. UI assets and API
 calls stay on the Green RoomZ origin and cannot shadow `/v1` or escape the
 selected graph route.
 
+Green RoomZ serves browser HTML and assets at `/` or an explicit UI path. A
+browser's data call goes to `/v1`, where Green RoomZ authenticates the caller,
+selects a graph model from the request or UI session, and dispatches through
+the private graph adapter. The selected model is never inferred from the UI
+path. `/llama-ui` may serve a verified local UI bundle or proxy assets from a
+private llama.cpp backend; it never exposes a second public listener or lets
+the browser call the backend directly. All three UIs must send model identity
+through the graph-backed API contract.
+
 The non-sensitive UI shell may load before a caller key is provided so a
 browser can display its credential-entry flow. All catalog and inference data
 require caller authentication. The browser can enter or change its caller API
 key in page memory by default; it is never placed in a URL, page source, logs,
 or persistent storage by default. Green RoomZ keeps node credentials internal.
 A UI that cannot preserve this boundary is not eligible for a root UI route.
+The pre-key shell contains no catalog, prompts, secrets, or node configuration.
+Browser UI assets must be served with a restrictive content security policy;
+third-party scripts are not loaded into a page holding a caller key.
 
 The llama.cpp UI's engine-specific calls must preserve streaming,
 cancellation, catalog identity, and alias binding. Hermes Webapp must use the
@@ -153,11 +172,14 @@ cannot meet this contract remains unavailable until adapted.
   opt-in, and chain), only the Green RoomZ public listener is needed by a
   client.
 - Browser `GET /` serves the graph-selected UI without redirecting, defaulting
-  to Unicorn; non-browser root requests receive a non-REST response directing
-  clients to `/v1/` (status code remains a design question).
+  to Unicorn; requests whose `Accept` excludes HTML receive `406` directing
+  clients to `/v1/`. Other methods at `/` receive `405`.
 - `/unicorn`, `/llama-ui`, and `/hermes` resolve only to browser UIs and
   preserve gateway caller authentication and graph routing, including assets,
   refreshes, and API calls.
+- Unknown `root_ui` values are rejected during graph validation; an unavailable
+  selected UI produces a clear startup error, and an unavailable explicit UI
+  path never falls back to a different interface.
 - `/v1/models` lists the full graph catalog and truthful capabilities; no REST
   or model API is served at `/`. Protocol and engine-specific APIs are versioned
   under `/v1`; health and metrics are operational probes.
@@ -174,13 +196,6 @@ cannot meet this contract remains unavailable until adapted.
   port.
 - Graph startup, health, stop, and restart operate on the composed service and
   report backend and adapter failures separately.
-
-## Open review item
-
-For `GET /` requests whose `Accept` header excludes HTML, this design proposes
-`406 Not Acceptable` with a short pointer to `/v1/`. The invariant is settled:
-`/` never serves REST and never redirects an API request into `/v1/`. Confirm
-whether `406` is the preferred non-REST response before implementation.
 
 ## Research sources
 

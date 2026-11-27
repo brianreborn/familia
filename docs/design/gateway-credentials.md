@@ -118,9 +118,8 @@ it. The terminal menu offers **Create**, **Copy/reveal**, **Write handoff**,
 
 The Familia graph selects the UI at `/` with `gateways.<name>.root_ui`,
 defaulting to `unicorn`. The selected UI is served at `/` without a browser-
-visible redirect. Requests whose `Accept` header excludes HTML receive a
-non-REST response with guidance to `/v1/...` (proposed status: `406`; see the
-graph integration design). Browser routes are `/unicorn`, `/llama-ui`, and
+visible redirect. Requests whose `Accept` header excludes HTML receive plain
+`406` with guidance to `/v1/...`. Browser routes are `/unicorn`, `/llama-ui`, and
 `/hermes`. Model selection happens inside the UI from the graph catalog; a
 model or graph alias is not part of the URL. Hermes Desktop is Electron;
 `/hermes` serves Hermes Webapp, the desktop renderer in browser mode.
@@ -129,7 +128,8 @@ model or graph alias is not part of the URL. Hermes Desktop is Electron;
   engine-specific API routes use `/v1/...`.
 - `/health` and `/metrics` are operational probes.
 - UI shells may load before a caller key is entered so the user can reach the
-  key-entry flow. Catalog and inference data require caller authentication.
+  key-entry flow. Catalog and inference data require caller authentication;
+  the pre-key shell contains no protected data or third-party scripts.
 - Browser keys remain in page memory by default, not in URLs, logs, page source,
   or persistent browser storage.
 - UI choice belongs to the graph; Green RoomZ must not duplicate it in a host
