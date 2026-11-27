@@ -101,6 +101,9 @@ the user-facing ontology.
 
 ## Native llama.cpp UI path
 
+**Owner-confirmed UI placement:** the Green RoomZ interface stays at `/`; native llama.cpp UIs, when enabled, use model-specific paths such as `/ui/llama/<alias>/`.
+
+
 The llama.cpp b12609 server documentation describes a built-in Llama Chat UI,
 OpenAI-compatible chat, Responses and embeddings, Anthropic Messages, and a
 configurable `--api-prefix`. These are useful adapter capabilities, not proof
