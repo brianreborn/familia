@@ -114,39 +114,49 @@ menu actions under **Gateways / Access**:
 it. The terminal menu offers **Create**, **Copy/reveal**, **Write handoff**,
 **Revoke**, and **Select client profile** as distinct actions.
 
-## Green RoomZ browser root and versioned API
+## Green RoomZ browser routes and versioned API
 
-The Green RoomZ origin has one browser root at `/`; the Familia graph selects
-which UI it serves. `unicorn` is the default, with `llama-ui:<alias>` and
-`hermes-webapp` as choices. Hermes Desktop is Electron; its browser renderer is
-Hermes Webapp. The root is never a REST endpoint: non-HTML requests receive a
-plain 406 pointing clients to `/v1/...`.
+The Familia graph selects the UI at `/` with `gateways.<name>.root_ui`,
+defaulting to `unicorn`. The selected UI is served at `/` without a browser-
+visible redirect. Requests whose `Accept` header excludes HTML receive a
+non-REST response with guidance to `/v1/...` (proposed status: `406`; see the
+graph integration design). Browser routes are `/unicorn`, `/llama-ui`, and
+`/hermes`. Model selection happens inside the UI from the graph catalog; a
+model or graph alias is not part of the URL. Hermes Desktop is Electron;
+`/hermes` serves Hermes Webapp, the desktop renderer in browser mode.
 
-- Protocol, inference, model catalog, and other public APIs live under `/v1/`.
-  Health and metrics may remain explicit operational endpoints.
-- All UIs use the same Green RoomZ origin and caller-auth boundary. The browser
-  may enter or change its API key in page memory by default; it is not placed
-  in URLs, logs, page source, or persistent browser storage by default.
-- The UI selection is graph configuration and must not be duplicated in the
-  Green RoomZ host manifest.
-- A llama.cpp UI may use engine-specific operations only through explicit
-  versioned Green RoomZ routes bound to its graph alias. It must not expose
-  unversioned backend REST routes or contact a node directly.
-- Every selected UI must keep node credentials server-side and preserve the
-  graph catalog, streaming, cancellation, and API-key behavior.
+- UI paths are never REST endpoints. Model, catalog, inference, protocol, and
+  engine-specific API routes use `/v1/...`.
+- `/health` and `/metrics` are operational probes.
+- UI shells may load before a caller key is entered so the user can reach the
+  key-entry flow. Catalog and inference data require caller authentication.
+- Browser keys remain in page memory by default, not in URLs, logs, page source,
+  or persistent browser storage.
+- UI choice belongs to the graph; Green RoomZ must not duplicate it in a host
+  manifest.
+- A llama.cpp UI's engine-specific calls use versioned, alias-bound Green RoomZ
+  routes. No UI may contact a node directly or expose unversioned backend REST.
+- Every selected UI preserves the caller-auth boundary, graph catalog,
+  streaming, cancellation, and node-key confidentiality.
 
-See [`green-roomz-graph-integration.md`](./green-roomz-graph-integration.md)
-for the full adapter and acceptance contract.
+See the Green RoomZ graph integration design for the full adapter contract.
 
 ## Migration and release plan
+
+The graph integration must select the root UI and provide the explicit routes
+`/unicorn`, `/llama-ui`, and `/hermes`, each serving its matching UI regardless
+of which one is selected at `/`. Keep engine-specific calls versioned under
+`/v1` and bound to the selected graph route internally. Hermes in a browser is
+Hermes Webapp; the native Electron Desktop app is not served as a web page.
 
 1. Add the keyring library and its filesystem tests, keeping the current
    `api-keys` value as a migrated active credential.
 2. Change Green RoomZ edge authentication to use an immutable active-key
    snapshot and reload valid generations between requests.
 3. Add CLI and terminal-menu lifecycle commands, status, and audit records.
-4. Integrate the Green RoomZ graph adapter and root UI, then add client profile
-   import/selection and the model-specific llama.cpp UI path.
+4. Integrate the Green RoomZ graph adapter, graph-owned root UI selection, and
+   the `/unicorn`, `/llama-ui`, and `/hermes` browser routes; then add client
+   profile import and selection.
 5. Exercise create -> client import -> request -> revoke -> rejected request
    on Linux, FreeBSD, Windows, and Termux through the graph-managed Green
    RoomZ root.
@@ -161,6 +171,6 @@ for the full adapter and acceptance contract.
 - A partially written or unsafe credential set is rejected, and a live router
   retains the last known-good set.
 - Browser/client selection sends the selected credential and does not persist
-  it unless the operator explicitly imports it into that client profile.
+  it in browser storage by default; native client profile import is explicit.
 - The legacy single-key installation migrates without breaking an existing
   client before the operator rotates it.
