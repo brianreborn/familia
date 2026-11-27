@@ -9,7 +9,8 @@ The protograph may remain single-model and omit it. `familia start` must not
 offer a choice between Green RoomZ and a second public router. Green RoomZ owns
 the public listener, caller authentication, protocol surface, model catalog,
 and browser UI. Familia's graph remains the source of truth for host placement,
-model identity, route aliases, fallback order, and node credentials.
+model identity, route aliases, fallback order, node credentials, and the selected
+root UI.
 
 Graph routing becomes a Green RoomZ backend adapter. It may reuse the current
 graph-router implementation internally while that adapter is proven, but the
@@ -35,8 +36,12 @@ not a missing toggle in `graph.yaml`.
 ## Requirements
 
 1. **One public root.** A normal graph has one externally reachable Green
-   RoomZ listener. The listener serves the Green RoomZ interface and API; no
-   public graph-router or raw node listener is required for normal clients.
+   RoomZ listener. `/` is a browser UI entrypoint, never a REST/API endpoint.
+   The graph selects the root UI with `gateways.<name>.root_ui`; default to
+   `unicorn`, with `llama-ui:<alias>` and `hermes-webapp` as choices. A
+   non-HTML request to `/` receives a plain `406 Not Acceptable` pointing to
+   `/v1/`. No public graph-router or raw node listener is required for normal
+   clients.
 2. **One graph catalog.** `GET /v1/models` and model detail endpoints report
    every declared routable graph alias, including remote, fallback, and
    unavailable entries, with truthful per-protocol and per-modality
@@ -99,40 +104,57 @@ cover common work such as `/chat`, `/code`, `/image`, `/video`, `/audio`, and
 `/3d` based on those capabilities, without exposing backend or model names as
 the user-facing ontology.
 
-## Native llama.cpp UI path
+## Browser UI and versioned API
 
-**Owner-confirmed UI placement:** the Green RoomZ interface stays at `/`; native llama.cpp UIs, when enabled, use model-specific paths such as `/ui/llama/<alias>/`.
+The graph selects one browser UI at the Green RoomZ origin. `unicorn` is the
+first-party default; `llama-ui:<alias>` selects a graph alias, and
+`hermes-webapp` serves Hermes' desktop renderer in browser mode. Native Hermes
+Desktop is an Electron client, not a web page. UI choice is graph configuration,
+not a second Green RoomZ manifest setting.
 
+`GET` and `HEAD /` serve the configured browser UI only when the client accepts
+HTML. Other root requests receive a plain `406 Not Acceptable` with guidance to
+use `/v1/...`; the root never aliases an API or model endpoint. All public
+inference, catalog, protocol, and model APIs use `/v1/...`. Health and metrics
+remain explicit operational endpoints. UI asset and engine-specific calls must
+be routed through Green RoomZ and namespaced so they cannot shadow `/v1` or
+escape the selected graph alias.
 
-The llama.cpp b12609 server documentation describes a built-in Llama Chat UI,
-OpenAI-compatible chat, Responses and embeddings, Anthropic Messages, and a
-configurable `--api-prefix`. These are useful adapter capabilities, not proof
-that every installed runtime supports them. The adapter must verify the
-runtime-specific contract before exposing a UI path.
+The selected UI uses the Green RoomZ origin and caller-auth boundary. A browser
+can enter or change its caller API key in page memory by default; it is never
+placed in a URL, page source, logs, or persistent storage by default. Every UI
+must pass the caller key to Green RoomZ, which keeps node credentials internal.
+A UI that cannot preserve this boundary is not eligible for `root_ui`.
 
-`/ui/llama/<alias>/` identifies one graph alias. The gateway serves or proxies
-that alias's UI assets and maps the UI's supported backend paths to the same
-alias. The route must not let a client use the UI path to escape the graph,
-reach arbitrary node ports, or bypass per-node authentication. If a runtime
-cannot serve a prefix safely, Green RoomZ serves the static UI and routes its
-API requests itself.
+For `llama-ui:<alias>`, Green RoomZ serves or proxies the native UI assets and
+maps its engine-specific calls through the selected graph alias. Any native
+llama.cpp endpoints outside `/v1` are exposed only through an explicitly
+versioned Green RoomZ adapter route, never as unversioned public REST. The UI
+must preserve streaming, cancellation, model catalog identity, and auth. If the
+pinned runtime cannot be mounted and routed safely, that UI option remains
+unavailable until a Green RoomZ-owned frontend can reproduce the needed
+behavior.
 
 ## Acceptance
 
 - For each tested graph shape (single node, multiple aliases, fallback, remote
   opt-in, and chain), only the Green RoomZ public listener is needed by a
   client.
-- The root loads the Green RoomZ interface; the model-specific llama.cpp UI
-  path loads when the selected runtime supports it.
-- `/v1/models` lists the full graph catalog and its truthful capabilities.
+- `/` serves the graph-selected browser UI for HTML clients; non-HTML root
+  requests receive 406 guidance to `/v1/`.
+- Unicorn, a model-selected llama.cpp UI, and Hermes Webapp are selectable only
+  when they preserve the same-origin caller-auth and graph-routing contract.
+- `/v1/models` lists the full graph catalog and truthful capabilities; no REST
+  or model API is served at `/`. All protocol endpoints are versioned under
+  `/v1`, with health/metrics limited to explicit operational routes.
 - Model discovery distinguishes input and output support for text, image,
   video, audio, and spatial/3D media.
 - Each advertised protocol is tested end to end with a fake backend and at
   least one live llama.cpp backend. Unsupported protocols fail before the
   request is sent to a model node.
-- Wrong/missing caller credentials fail at the public root. Valid caller
-  credentials authenticate through the root while per-node credentials remain
-  internal.
+- Wrong/missing caller credentials fail at the public gateway. Browser UIs
+  can provide a caller key without persisting or exposing it; per-node
+  credentials remain internal.
 - Tool round trips, SSE streaming, cancellation, and errors traverse the same
   public root. No user-facing client needs a node address or a second router
   port.

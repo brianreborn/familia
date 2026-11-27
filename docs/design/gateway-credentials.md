@@ -114,26 +114,29 @@ menu actions under **Gateways / Access**:
 it. The terminal menu offers **Create**, **Copy/reveal**, **Write handoff**,
 **Revoke**, and **Select client profile** as distinct actions.
 
-## Green RoomZ root and llama.cpp UI
+## Green RoomZ browser root and versioned API
 
-The public graph root belongs to Green RoomZ. It serves the Green RoomZ
-interface and protocol APIs from one origin; a small temporary graph console
-is only an acceptance fixture, not the shipped root. See
-[`green-roomz-graph-integration.md`](./green-roomz-graph-integration.md) for
-the graph adapter and UI routing contract.
+The Green RoomZ origin has one browser root at `/`; the Familia graph selects
+which UI it serves. `unicorn` is the default, with `llama-ui:<alias>` and
+`hermes-webapp` as choices. Hermes Desktop is Electron; its browser renderer is
+Hermes Webapp. The root is never a REST endpoint: non-HTML requests receive a
+plain 406 pointing clients to `/v1/...`.
 
-- The Green RoomZ UI discovers the complete graph catalog and lets the browser
-  select a credential already imported or entered for that client.
-- A browser keeps a pasted key in page memory by default, offers **Use another
-  API key**, and never claims it can create a server credential.
-- The key is not placed in a URL, page source, logs, or persistent browser
-  storage by default.
-- A native llama.cpp chat UI for a graph alias is available at a model-specific
-  path such as `/ui/llama/<alias>/` when the runtime supports it. UI assets and
-  API requests stay on the Green RoomZ origin and pass through its caller auth
-  and Familia graph adapter; they never connect directly to a node.
-- Green RoomZ remains the public entrypoint even when the selected client is
-  llama.cpp's UI, Hermes, Codex, or an OpenAI-compatible SDK.
+- Protocol, inference, model catalog, and other public APIs live under `/v1/`.
+  Health and metrics may remain explicit operational endpoints.
+- All UIs use the same Green RoomZ origin and caller-auth boundary. The browser
+  may enter or change its API key in page memory by default; it is not placed
+  in URLs, logs, page source, or persistent browser storage by default.
+- The UI selection is graph configuration and must not be duplicated in the
+  Green RoomZ host manifest.
+- A llama.cpp UI may use engine-specific operations only through explicit
+  versioned Green RoomZ routes bound to its graph alias. It must not expose
+  unversioned backend REST routes or contact a node directly.
+- Every selected UI must keep node credentials server-side and preserve the
+  graph catalog, streaming, cancellation, and API-key behavior.
+
+See [`green-roomz-graph-integration.md`](./green-roomz-graph-integration.md)
+for the full adapter and acceptance contract.
 
 ## Migration and release plan
 
