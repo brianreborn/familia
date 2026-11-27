@@ -2,6 +2,15 @@
 
 Purpose: an alias router on one host: `scripts/graph_router.py` by default (caller auth with the per-port instance key, /health public, 3 s connect bound); `router: false` selects green-roomz graph-proxy.
 
+The graph owns `root_ui`, with `unicorn` as its default. The only valid values
+are `unicorn`, `llama-ui`, and `hermes`. The selected UI serves `/`; the three
+named paths select their corresponding interfaces, while APIs stay under
+`/v1`. The launcher carries the validated choice into the Green RoomZ graph
+manifest. Until the composed gateway adapter is available, explicit
+`llama-ui` or `hermes` selection fails during dry run and startup. The implicit
+Unicorn default keeps the existing model API gateway operational during this
+migration; its browser UI acceptance remains pending on that adapter.
+
 ## Semantics and invariants
 | ID | Requirement | Status | Pointer |
 |---|---|---|---|
@@ -14,14 +23,16 @@ Purpose: an alias router on one host: `scripts/graph_router.py` by default (call
 
 <!-- BEGIN GENERATED: fields (scripts/config_docs.py --write) -->
 
-Schema: `scripts/graph_types.py:649` (stable; router exposing aliases; served by scripts/graph_router.py (default; caller auth, 3 s connect bound); router: false uses green-roomz graph-proxy (retries a down node for 180 s)).
+Schema: `scripts/graph_types.py:696` (stable; router exposing aliases; served by scripts/graph_router.py (default; caller auth, 3 s connect bound); router: false uses green-roomz graph-proxy (retries a down node for 180 s)).
 Required fields have no defaults (validator: missing required → error). Consumers = static scan of scripts/ and top-level *.sh.
 
 | ID | Field | Req | Type | Allowed / ref | Status | Consumers (static scan) |
 |---|---|---|---|---|---|---|
-| CFG-GRAPH-GATEWAYS-001 | `kind` | **req** | enum | one of `green-roomz` | IMPLEMENTED | `scripts/graph_types.py`, `scripts/node_role.py`, `scripts/start_graph.py` |
-| CFG-GRAPH-GATEWAYS-002 | `host` | **req** | ref | ref → `hosts` | IMPLEMENTED | `scripts/graph_types.py`, `scripts/node_role.py`, `scripts/start_graph.py` |
-| CFG-GRAPH-GATEWAYS-003 | `port` | **req** | int | min 1 | IMPLEMENTED | `scripts/graph_types.py`, `scripts/node_role.py`, `scripts/start_graph.py` |
-| CFG-GRAPH-GATEWAYS-004 | `router` | opt | bool | — | IMPLEMENTED | `scripts/graph_types.py`, `scripts/start_graph.py` |
+| CFG-GRAPH-GATEWAYS-001 | `kind` | **req** | enum | one of `green-roomz` | IMPLEMENTED | `scripts/graph_types.py`, `scripts/node_role.py`, `scripts/protograph.py`, `scripts/start_graph.py` |
+| CFG-GRAPH-GATEWAYS-002 | `host` | **req** | ref | ref → `hosts` | IMPLEMENTED | `scripts/graph_types.py`, `scripts/node_role.py`, `scripts/protograph.py`, `scripts/start_graph.py` |
+| CFG-GRAPH-GATEWAYS-003 | `port` | **req** | int | min 1 | IMPLEMENTED | `scripts/graph_types.py`, `scripts/node_role.py`, `scripts/protograph.py`, `scripts/start_graph.py` |
+| CFG-GRAPH-GATEWAYS-004 | `router` | opt | bool | — | IMPLEMENTED | `scripts/graph_types.py`, `scripts/protograph.py`, `scripts/start_graph.py` |
+| CFG-GRAPH-GATEWAYS-005 | `bind` | opt | str | — | IMPLEMENTED | `scripts/graph_types.py`, `scripts/protograph.py`, `scripts/start_graph.py` |
+| CFG-GRAPH-GATEWAYS-006 | `root_ui` | opt | enum | one of `hermes`, `llama-ui`, `unicorn` | IMPLEMENTED | `scripts/graph_types.py`, `scripts/start_graph.py` |
 
 <!-- END GENERATED: fields -->
