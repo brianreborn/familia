@@ -404,3 +404,30 @@ Source: Brian voice session, 2026-11-10.
 - Make dry-run and preflight output report the graph's actual gateway interface.
   Probe wildcard listeners through loopback and address-specific listeners at
   their configured address; a loopback health probe does not prove LAN reachability.
+
+## L-pkg-transaction-safety (2026-11-27)
+
+- Never run `pkg install -y` for an unreviewed dependency change on a desktop
+  host. The `libesedb-e.20240420` install requested from
+  `ntfs-recovery-console` selected Python 3.12 dependencies that conflicted
+  with the installed Python 3.15 family. The resolver then removed ten
+  unrelated packages, including Plasma workspace and desktop. The exact
+  transaction is preserved in `/var/log/auth.log` and `/var/log/messages`.
+- Preview with `pkg install -n` and inspect every proposed removal. A first
+  plan that refuses under `pkg install -N` is not sufficient evidence of
+  safety: a later conflict-resolution pass can produce a new removal plan.
+  Abort instead of accepting that second plan. Do not combine `-N` and `-y`
+  for a conflicted transaction.
+- Treat Python-major-version package families as mutually exclusive until
+  the ports metadata proves otherwise. Build or stage the required ports in
+  an isolated environment, then install one reviewed package set atomically.
+  If a package is absent from repositories, report that availability gap;
+  do not substitute a different Python family on the live desktop.
+- After any package mutation, verify the desktop closure (`kwin_x11`,
+  `plasmashell`, workspace, desktop, power management, system settings) and
+  compare the complete installed/removed set with the transaction log. A
+  healthy process alone does not prove the package state is repaired.
+- Keep model proxies and other long-lived request services observable. A
+  suspended or stalled `llama_proxy.py` can make model calls appear broken
+  while backends remain healthy; check process state, listener ownership, and
+  a real authenticated request before changing models or graph configuration.
