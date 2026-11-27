@@ -90,6 +90,25 @@ def test_transport_rules():
 def test_runtime_commit_must_be_sha():
     x = g(); x["runtimes"]["llama-b11374"]["commit"] = "main"; has(x, "not a git sha")
 
+def test_alternate_runtime_requires_adapter_contract():
+    x = g()
+    x["runtimes"]["mlc-a57"] = {
+        "kind": "mlc-llm", "build": "mlc-llm Android", "commit": "0123456789abcdef",
+        "hosts": ["galaxy1"], "supported_archs": ["llama"], "backends": ["cpu", "vulkan"],
+        "spec_types": [], "adapter": "green-roomz-mlc", "protocols": ["openai-http"],
+        "model_formats": ["mlc"], "modalities": ["text"], "health_path": "/health",
+    }
+    assert errs(x) == []
+
+def test_alternate_runtime_without_adapter_is_rejected():
+    x = g()
+    x["runtimes"]["mlc-a57"] = {
+        "kind": "mlc-llm", "build": "mlc-llm Android", "commit": "0123456789abcdef",
+        "hosts": ["galaxy1"], "supported_archs": ["llama"], "backends": ["cpu", "vulkan"],
+        "spec_types": [],
+    }
+    has(x, "requires a non-empty adapter")
+
 def test_arch_not_supported_catches_gemma_embedding2():
     x = g()
     x["models"]["egemma2"] = {"gguf": "/x.gguf", "sha256": "unmeasured", "arch": "gemma-embedding2", "trained_ctx": 8192, "role": "embed"}
@@ -229,7 +248,10 @@ def test_fail_closed_roles_are_normalized_in_graph_types():
     for role in ("Guardian", "GUARDIAN", "ｇｕａｒｄｉａｎ"):
         x = g(); x["nodes"]["coder"]["role"] = role; x["nodes"]["coder"]["server_tools"] = "all"
         has(x, "not allowed for")
-        x = g(); x["nodes"]["removed-large-chat"]["tool_route"] = "coder"; x["nodes"]["coder"]["role"] = role
+        x = g()
+        x["nodes"]["chat"] = dict(x["nodes"]["coder"], role="chat", port=19999)
+        x["nodes"]["chat"]["tool_route"] = "coder"
+        x["nodes"]["coder"]["role"] = role
         has(x, "fail-closed")
 
 
@@ -422,6 +444,7 @@ def test_model_role_pentest_allowed():
     for _n, nd in (x.get("nodes") or {}).items():
         if isinstance(nd, dict) and nd.get("model") == "qwen35-2b-q4km":
             nd["role"] = "pentest"
+            nd.pop("server_tools", None)
     assert errs(x) == []
 
 

@@ -2,7 +2,7 @@
 | `scripts/progress_report.py` | hourly GitHub issue/PR progress-report generator for release review; writes artifact files only under reports/progress when run locally, no git mutation | `python3 scripts/progress_report.py` | — |
 # Every familia command
 
-This page mirrors `scripts/menu-items.txt` (legacy catalog). Default `./familia` opens the home menu (`scripts/familia_home.sh`): six equal items (Models, Harnesses, Agents, MCP servers, Tool sets, App store), each with install, list, start, stop and status. It exits only on Quit. If gum is missing and cannot be installed, it falls back to this catalog instead of exiting. Use `./familia menu` / `--legacy-menu` for the catalog directly. `tests/test_menu.py` checks this page lists every item.
+This page mirrors `scripts/menu-items.txt` (legacy catalog). Default `./familia` opens the home menu (`scripts/familia_home.sh`): Talk to the protomodel is item 1, then Find more models and Search my X / Twitter posts, then six equal items (Models, Harnesses, Agents, MCP servers, Tool sets, App store), each with install, list, start, stop and status. Legacy menu is last. Arrows and digits both select. If gum is missing and cannot be installed, it falls back to this catalog. With no terminal (or `FAMILIA_NO_TTY=1`) the same catalog reads stdin; `./familia --list-goals` is the only print-and-exit. Use `./familia menu` / `--legacy-menu` for the catalog directly. `tests/test_menu.py` checks this page lists every item.
 Run any row from the legacy menu, as a command (`./familia COMMAND`, below), or with `./familia run KEY [ARG...]` (Windows: `familia.cmd run KEY`). Add `--dry-run` before a command to print it without running (CLI mode only — items themselves are real runs).
 `<NAME>` is asked for when you pick the item. "licenses first" means `scripts/licenses.py gate` runs before it ([licenses.md](licenses.md)).
 
@@ -322,6 +322,7 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/fleet_greeting.py` | fleet greeting helper; called by hermes.sh, proto_chat.sh and start_graph at startup |
 | `scripts/windows/familia-menu.ps1` | the Windows menu itself (started by familia.cmd) |
 | `scripts/monitor.sh` | the same console as ./familia-monitor, which the menu runs |
+| `scripts/menu_registry.py` | Checks and prints the six-category menu registry `scripts/menu-categories.txt` (epic #733); run through `python3 scripts/home_catalog.py --tree` and the tests |
 | `scripts/hermes_harness.py` | always run through scripts/hermes.sh, which the menu runs |
 | `scripts/hermes_modes.py` | the graph/single-model front end scripts/hermes.sh execs; run hermes.sh |
 | `scripts/runtime_dir.py` | helper module the launchers and admission ledger import (private runtime dir); not run directly |
@@ -365,12 +366,14 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `scripts/swarm/swarm-bootstrap.sh` | fresh swarm worker checkout; one-time operator setup |
 | `scripts/task_suite_promote.py` | promote gate for model configs (#119); used by bench/CI flows |
 | `scripts/task_suite_runner.py` | fixed task suite runner (#119); used by bench/CI flows |
+| `scripts/tools_persist.py` | familia-start helper that saves and reloads --tools; not a menu action |
 | `scripts/bfcl_adapter.py` | BFCL -> task-suite adapter and scorer (bench-adapters); used by bench/CI flows |
 | `scripts/routerbench_pickle_to_parquet.py` | one-time RouterBench pickle -> parquet converter; operator data prep |
 | `scripts/routerbench_scorer.py` | offline RouterBench routing-policy scorer (bench-adapters); used by bench/CI flows |
 | `scripts/prompt_cache.py` | library: prefill an agent's fixed prompt prefix once, save it with llama-server slot save, restore it on later starts (#85); used by hermes.sh |
 | `scripts/system_prompt_check.py` | offline system-prompt path checks (#115); developer/CI helper, not an end-user menu action |
 | `scripts/familia_agent_reach.py` | thin wrapper / library around Agent-Reach; menu uses scripts/agent_reach.py |
+| `scripts/android-model-trials.py` | developer harness that benchmarks CPU vs Vulkan llama-server configs on an attached Android phone over adb; not a menu action |
 | `scripts/retry_wrapper.py` | library for agent model calls; its main is only a self-demo |
 | `scripts/isolated/hfchat.py` | adapter that graph nodes of kind isolated_remote call; not run by hand |
 | `scripts/c2c/kv_ship.py` | step of the C2C loopback test (Advanced menu), needs two running servers |
@@ -421,7 +424,9 @@ These are called by other scripts or are developer-only. The list is `scripts/me
 | `install/windows/deps.ps1` | Windows deps check + winget/choco hints | — | `install\windows\deps.ps1` |
 | `scripts/build_appimage.sh` | Operator AppImage packaging (not menu) | — | — |
 | `scripts/perf/box_multi_size_smoke.py` | Perf/dev multi-size smoke (not menu) | — | — |
-| `scripts/familia_home.sh` | interactive home (six equal items); actions are legacy rows via `scripts/home_catalog.py` |
+| `scripts/perf/hvvram_sparse_gather.py` | Operator-only bounded HVVRAM sparse-gather benchmark; emits JSON metrics and an optional chart | — | — |
+| `scripts/perf/plot_recent_performance.py` | Operator-only chart generator for measured performance ledgers | — | — |
+| `scripts/familia_home.sh` | interactive home (Talk first, six equal items, Legacy menu last); actions are legacy rows via `scripts/home_catalog.py` |
 | `scripts/open_ui.sh` | open running llama web UI in default browser | — | — |
 | `scripts/ui_bridge.py` | terminal dashboard bridge inspecting running llama-ui slots and routes | — | — |
 | `scripts/windows/familia-home.ps1` | Windows mirror of familia_home.sh (started by familia.cmd) |

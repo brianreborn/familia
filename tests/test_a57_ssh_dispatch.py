@@ -713,6 +713,32 @@ def test_remote_smoke_busy_when_lock_held(base):
         os.close(fd)
 
 
+def test_remote_smoke_lock_is_mode_0600_owned_by_runner(base):
+    """#596/#727: the empty flock file is 0600 and owned by the runner user.
+
+    ~/.cache is created 0700 (a directory needs execute bit; 0600 on the
+    directory would make it unusable). The lock file itself is 0600.
+    """
+    home = os.path.join(base, "home")
+    tmp = os.path.join(base, "tmp")
+    os.makedirs(home, mode=0o700)
+    os.makedirs(tmp, mode=0o700)
+    env = {"HOME": home, "TMPDIR": tmp, "PATH": "/usr/bin:/bin", "LANG": "C"}
+    r = subprocess.run(
+        [sys.executable, "-I", "-c", "import sys; exec(sys.stdin.buffer.read().decode())"],
+        input=d.REMOTE_SMOKE.encode(), capture_output=True, env=env, timeout=20,
+    )
+    assert r.returncode == 0, r.stderr
+    cache = os.path.join(home, ".cache")
+    lock_path = os.path.join(cache, "familia-a57-ci.lock")
+    cst = os.lstat(cache)
+    lst = os.lstat(lock_path)
+    assert stat.S_ISDIR(cst.st_mode)
+    assert cst.st_uid == os.geteuid() and stat.S_IMODE(cst.st_mode) == 0o700
+    assert stat.S_ISREG(lst.st_mode) and not stat.S_ISLNK(lst.st_mode)
+    assert lst.st_uid == os.geteuid() and stat.S_IMODE(lst.st_mode) == 0o600
+
+
 def test_remote_smoke_source_is_bounded():
     for bad in ("18112", "socket", "pkill", "subprocess", "urlopen", "urllib", "pip",
                 "apt", "pkg", "reboot", "termux-wake", "llama", "kill(", "ssh"):

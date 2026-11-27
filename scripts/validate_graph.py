@@ -848,6 +848,10 @@ def main(argv):
     hosts_overlay.merge_connection_overlay(graph, graph_path=path)
     if o["host"] and o["host"] not in graph.get("hosts", {}):
         print(f"graph: ERROR: no host {o['host']!r}", file=sys.stderr); return 1
+    # #630: a stale generated/graph-HOST.yaml that dropped server_tools still
+    # launches with the fleet graph.yaml value. An explicit key wins.
+    import tools_persist
+    tools_persist.restore_server_tools(graph)
     errs, totals = validate(graph, check_files=not o["no_files"], host=o["host"])
     errs = list(privacy_errs) + list(errs)
     from transport_graph import validate_transports

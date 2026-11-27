@@ -46,6 +46,37 @@ def test_local_topology_starts_only_local_active_nodes_and_routes():
     assert remote_gateways == []
 
 
+def test_router_models_list_includes_omitted_greenroom_aliases():
+    """GET /v1/models must list planned/omitted Green-Roomz aliases, not only ready routes."""
+    import json, threading, urllib.request, graph_router
+    nodes, remote, gateways, omitted, remote_gateways = start_graph.local_topology(graph(), "miryam")
+    name, gateway, aliases = gateways[0]
+    cfg = start_graph.router_routes(aliases, omitted)
+    compiled = graph_router.compile_config(cfg)
+    assert set(compiled["routes"]) == {"coder", "general"}
+    assert set(compiled["refused_routes"]) == {"defender", "embed", "guardian", "pentest", "safe-build"}
+    srv = graph_router.make_server(compiled, "127.0.0.1", 0)
+    srv.daemon_threads = True
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        models = json.loads(urllib.request.urlopen(
+            f"http://127.0.0.1:{srv.server_address[1]}/v1/models", timeout=5).read())
+    finally:
+        srv.shutdown()
+    by_id = {m["id"]: m for m in models["data"]}
+    assert set(by_id) == {"coder", "general", "defender", "embed", "guardian", "pentest", "safe-build"}
+    assert by_id["coder"]["familia"]["status"] == "ready"
+    assert by_id["general"]["familia"]["status"] == "ready"
+    for name in ("defender", "embed", "guardian", "pentest", "safe-build"):
+        assert by_id[name]["familia"]["status"] == "unavailable"
+        assert "omitted" in by_id[name]["familia"]["reason"]
+    argv = start_graph.gateway_command("miryam", name, gateway, aliases, "/gr", omitted_aliases=omitted)
+    assert any(str(a).endswith("graph_router.py") for a in argv)
+    routes_path = [a for a in argv if str(a).endswith(".json")][0]
+    written = json.loads(open(routes_path, encoding="utf-8").read())
+    assert set(written["refused_routes"]) == {"defender", "embed", "guardian", "pentest", "safe-build"}
+
+
 def test_freebsd_host_runs_its_nodes_without_starting_a_gateway():
     # Angel has one active, hardware-fitting coder node; the gateway stays local.
     nodes, remote, gateways, omitted, remote_gateways = start_graph.local_topology(graph(), "angel")

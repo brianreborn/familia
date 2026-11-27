@@ -7,6 +7,7 @@ scripts/channel.py|release-channel resolver (docs/release-channels.md); installe
 scripts/fleet_greeting.py|fleet greeting helper; called by hermes.sh, proto_chat.sh and start_graph at startup
 scripts/windows/familia-menu.ps1|the Windows menu itself (started by familia.cmd)
 scripts/monitor.sh|the same console as ./familia-monitor, which the menu runs
+scripts/menu_registry.py|checks and prints the six-category menu registry scripts/menu-categories.txt; reached through python3 scripts/home_catalog.py --tree and tests
 scripts/hermes_harness.py|always run through scripts/hermes.sh, which the menu runs
 scripts/hermes_modes.py|the graph/single-model front end scripts/hermes.sh execs; run hermes.sh
 install/windows/install.bat|double-click wrapper for install\windows\install.ps1, which the Windows menu runs
@@ -62,9 +63,11 @@ install/termux/deps.sh|Termux helper behind install/deps.sh; Termux install.sh a
 install/freebsd/deps.sh|FreeBSD helper behind install/deps.sh (opt-in pkg); not a separate menu action
 scripts/build_appimage.sh|operator AppImage packaging for milestones; not an end-user menu task
 scripts/perf/box_multi_size_smoke.py|perf/dev smoke hitting decision+coder ports; run by operators on a box, not menu
+scripts/perf/hvvram_sparse_gather.py|operator benchmark for bounded HVVRAM sparse-gather experiments; not an end-user task
+scripts/perf/plot_recent_performance.py|operator chart generator for measured performance ledgers; not an end-user task
 scripts/familia_agent_reach.py|thin wrapper / library around Agent-Reach; menu uses scripts/agent_reach.py
 scripts/system_prompt_check.py|offline system-prompt path checks (#115); developer/CI helper, not an end-user menu action
-scripts/familia_home.sh|interactive home (six equal items); actions are legacy rows via scripts/home_catalog.py
+scripts/familia_home.sh|interactive home (Talk first, six equal items, Legacy menu last); actions are legacy rows via scripts/home_catalog.py
 scripts/windows/familia-home.ps1|Windows mirror of familia_home.sh
 scripts/start_graph.py|graph dry-run helper; preview twin retired — use hosts.start / start.sh
 scripts/install-gum.sh|install helper: put Charm gum in ~/.local/bin; called by install.sh / setup_goals, not a menu item
@@ -95,6 +98,7 @@ scripts/swarm/swarm-bench-runner.sh|registers this host as a self-hosted swarm w
 scripts/swarm/swarm-bootstrap.sh|fresh swarm worker checkout; one-time operator setup
 scripts/task_suite_promote.py|promote gate for model configs (#119); used by bench/CI flows
 scripts/task_suite_runner.py|fixed task suite runner (#119); used by bench/CI flows
+scripts/tools_persist.py|familia-start helper that saves and reloads --tools; not a menu action
 scripts/runtime_dir.py|helper module the launchers and admission ledger import (private runtime dir); not run directly
 scripts/runtime_dir.sh|helper sourced by the shell launchers (private runtime dir); not run directly
 install/freebsd/install-familia.sh|FreeBSD installer, invoked by curl/fetch or sh install-familia.sh
@@ -110,3 +114,4 @@ scripts/progress_report.py|hourly GitHub issue/PR progress report generator for 
 scripts/check_pins.py|CI-only verifier for full-SHA repository pins; invoked by pin-integrity workflow, not a user menu command
 scripts/swarm/deploy_fleet.py|CI/deployment controller; invoked by fleet-deploy workflow, not an interactive menu action
 scripts/swarm/configure-fleet-role.sh|validated writer used by the Android cockpit fleet-role screen
+scripts/android-model-trials.py|developer harness that benchmarks CPU vs Vulkan llama-server configs on an attached Android phone over adb; not a menu action

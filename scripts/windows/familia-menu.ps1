@@ -72,6 +72,63 @@ function NeedOk($spec) {
 function Shown($c) { return ($c -replace '\{([A-Z]+):[^}]*\}', '<$1>') }
 function InputRedirected { try { return [Console]::IsInputRedirected } catch { return $false } }
 
+# Non-tty input (redirected stdin, or FAMILIA_NO_TTY=1) is bounded.
+# Control and CSI bytes are stripped before a choice is printed.
+$script:MenuReads = 0
+$script:MenuInvalid = 0
+$script:MenuMaxLine = 256
+$script:MenuMaxReads = 200
+$script:MenuMaxInvalid = 32
+
+function Test-BoundedInput {
+  if ($env:FAMILIA_NO_TTY -eq '1') { return $true }
+  return (InputRedirected)
+}
+
+function ConvertTo-SafeEcho([string]$Text) {
+  $s = $Text
+  if ($null -eq $s) { return '' }
+  $s = [regex]::Replace($s, "\x1b\[[0-9;?]*[ -/]*[@-~]", '')
+  $sb = New-Object System.Text.StringBuilder
+  foreach ($ch in $s.ToCharArray()) {
+    $code = [int]$ch
+    if ($code -ge 32 -and $code -ne 127) { [void]$sb.Append($ch) }
+  }
+  $out = $sb.ToString()
+  if ($out.Length -gt 60) { return $out.Substring(0, 60) }
+  return $out
+}
+
+function Stop-MenuInput {
+  Write-Host 'familia: input limit reached; exiting.'
+  exit 2
+}
+
+function Note-InvalidChoice {
+  if (-not (Test-BoundedInput)) { return }
+  $script:MenuInvalid++
+  if ($script:MenuInvalid -ge $script:MenuMaxInvalid) { Stop-MenuInput }
+}
+
+function Read-MenuLine([string]$prompt) {
+  if (-not (Test-BoundedInput)) {
+    try { return (Read-Host $prompt) } catch { return $null }
+  }
+  Write-Host "${prompt}: " -NoNewline
+  $script:MenuReads++
+  if ($script:MenuReads -gt $script:MenuMaxReads) { Stop-MenuInput }
+  if ($script:MenuInvalid -ge $script:MenuMaxInvalid) { Stop-MenuInput }
+  $line = $null
+  try { $line = [Console]::In.ReadLine() } catch { return $null }
+  if ($null -eq $line) { return $null }
+  if ($line.Length -gt $script:MenuMaxLine) {
+    Write-Host 'familia: line too long; not used.'
+    Note-InvalidChoice
+    return ''
+  }
+  return (ConvertTo-SafeEcho $line)
+}
+
 function CanPrompt { return (-not (InputRedirected)) -and $env:FAMILIA_NO_TTY -ne '1' }
 function ShortHostname {
   $name = $env:COMPUTERNAME
@@ -115,7 +172,7 @@ function Fill($cmd, $vals, $interactive) {
     }
     if ($got.ContainsKey($m.Index)) { $v = $got[$m.Index] }
     elseif ($rest.Count -gt 0 -and -not $rest[0].StartsWith('-')) { $v = $rest[0]; $rest.RemoveAt(0) }
-    elseif ($interactive -or (-not $def -and (CanPrompt))) { $v = Read-Host "  $prompt" }
+    elseif ($interactive -or (-not $def -and (CanPrompt))) { $v = Read-MenuLine "  $prompt" }
     elseif (-not $def) { Write-Host "$($script:Me): item needs $name ($prompt). Give it as a value: $hint VALUE"; return $null }
     else { $v = '' }
     if (-not $v) { $v = $def }
@@ -211,12 +268,12 @@ function SearchUi($op, $t) {  # returns 'quit' to leave the menu
     ShowMatch ($script:SCur + 1) $script:SK[$script:SCur] $t '> '
   }
   while ($true) {
-    $c = Read-Host "Choose 1-$($script:SK.Count) to run, n/N next/previous match, /word to search again, b back"
+    $c = Read-MenuLine "Choose 1-$($script:SK.Count) to run, n/N next/previous match, /word to search again, b back"
     if ($c -eq $null -or $c -eq '' -or $c -eq 'b') { return '' }
     if ($c -eq 'q') { return 'quit' }
     if ($c -ceq 'n' -or $c -ceq 'N') { return (SearchUi $c '') }
     if ($c.StartsWith('/') -or $c.StartsWith('?')) { return (SearchUi $c.Substring(0, 1) $c.Substring(1)) }
-    if (-not ($c -match '^\d+$') -or [int]$c -lt 1 -or [int]$c -gt $script:SK.Count) { Write-Host "'$c' isn't one of the choices. Type a number from 1 to $($script:SK.Count), n, N, /word or b."; continue }
+    if (-not ($c -match '^\d+$') -or [int]$c -lt 1 -or [int]$c -gt $script:SK.Count) { Note-InvalidChoice; Write-Host "'$c' isn't one of the choices. Type a number from 1 to $($script:SK.Count), n, N, /word or b."; continue }
     $script:SCur = [int]$c - 1
     $rc = RunItem $script:SK[$script:SCur].Key @() $true
     if ($rc) { Write-Host "(that step exited with status $rc)" }
@@ -369,7 +426,7 @@ while ($true) {
   for ($n = 0; $n -lt $groups.Count; $n++) { Write-Host ('  {0}) {1,-36} {2}' -f ($n + 1), $groups[$n], $groupDesc[$groups[$n]]) }
   Write-Host '  q) Quit      /word search every group (n/N next/previous match)'
   try {
-    $c = Read-Host "Choose 1-$($groups.Count), /search or q"
+    $c = Read-MenuLine "Choose 1-$($groups.Count), /search or q"
   } catch {
     Write-Host 'familia: input closed. Menus exit only when you type q.'
     if (InputRedirected) { exit 2 }
@@ -382,7 +439,7 @@ while ($true) {
   }
   if ($c -eq 'q' -or $c -eq 'Q' -or $c -eq 'quit' -or $c -eq 'exit') { exit 0 }
   $sr = SearchKey $c; if ($sr -eq 'quit') { exit 0 }; if ($sr -eq 'done') { continue }
-  if (-not ($c -match '^\d+$') -or [int]$c -lt 1 -or [int]$c -gt $groups.Count) { Write-Host "'$c' isn't one of the choices. Type a number, /word to search, or q."; continue }
+  if (-not ($c -match '^\d+$') -or [int]$c -lt 1 -or [int]$c -gt $groups.Count) { Note-InvalidChoice; Write-Host "'$c' isn't one of the choices. Type a number, /word to search, or q."; continue }
   $g = $groups[[int]$c - 1]
   $gi = @(); foreach ($i in $items) { if ($i.Group -eq $g) { $gi += $i } }
   $pageSize = 7; $page = 0
@@ -403,8 +460,8 @@ while ($true) {
     }
     Write-Host '  b) Back      /word search every group (n/N next/previous match)'
     try {
-      if ($pages -gt 1) { $c = Read-Host "Choose 1-$($end - $start), </> page, /search or b" }
-      else { $c = Read-Host "Choose 1-$($gi.Count), /search or b" }
+      if ($pages -gt 1) { $c = Read-MenuLine "Choose 1-$($end - $start), </> page, /search or b" }
+      else { $c = Read-MenuLine "Choose 1-$($gi.Count), /search or b" }
     } catch {
       Write-Host 'familia: input closed. Menus exit only when you type q.'
       if (InputRedirected) { exit 2 }
@@ -421,6 +478,7 @@ while ($true) {
     if ($c -eq '<' -or $c -eq 'prev') { if ($page -gt 0) { $page-- }; continue }
     $sr = SearchKey $c; if ($sr -eq 'quit') { exit 0 }; if ($sr -eq 'done') { continue }
     if (-not ($c -match '^\d+$') -or [int]$c -lt 1 -or [int]$c -gt ($end - $start)) {
+      Note-InvalidChoice
       if ($pages -gt 1) { Write-Host "'$c' isn't one of the choices. Type a number, </> page, /word to search, or b." }
       else { Write-Host "'$c' isn't one of the choices. Type a number, /word to search, or b." }
       continue

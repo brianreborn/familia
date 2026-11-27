@@ -38,24 +38,24 @@
 
 - **One known test failure**
   - `tests/test_ram_safety.py::test_overcommit_is_hard_error` fails on hosts that have the coder and embed model files, because the test graph trips an earlier reserve error first.
-- **angel Nanbeige / llama-ui showed no Server Tools (M0)**
-  - **Cause:** `llama-server` started without `--tools`. `/tools` returns HTTP 403
-    `feature_disabled`; llama-ui then shows an empty tools panel. Template still has
-    `chat_template_caps.supports_tools=true`. `/v1/models` `capabilities:["completion"]`
-    and default `chat_format: Content-only` are normal without an active tools request --
-    not the regression by themselves.
-  - **Fix:** set `nodes.<name>.server_tools: all` (or a tool-name list) on loopback-bound
-    nodes; `validate_graph`/`serve.sh` emit `--tools ...`. `nanbeige-coder` has this. Restart
-    the node (DETACH_MODE=screen-attached) after changing the graph.
-  - **Recurrence (2026-10-27):** `--tools` is launch-only. After a crash/restart, an argv
-    without `--tools` (hand-start, or stale `generated/graph-*.yaml`) empties the panel again
-    even though `graph.yaml` still has `server_tools: all`. Verify live argv + `GET /tools`,
-    not only the graph field. See LESSONS-LEARNED `L-server-tools`.
-  - **Harness:** `hermes_harness.ensure_server` will not daemon-spawn a missing node and will
-    refuse to adopt a live port when `server_tools` is set but `/tools` is feature_disabled.
-  - **No v0.4.0 waiver:** the launch-only `--tools` limit is v0.4.0 must-land
-    [#630](https://github.com/brianreborn/familia/issues/630) and blocks the tag. Until it
-    lands, after a crash, a hand-start, or a stale `generated/graph-*.yaml`, check
-    live argv and `GET /tools` before treating Server Tools as available. `server_tools` in
-    `graph.yaml` is necessary but not sufficient. See LESSONS-LEARNED `L-server-tools`.
-    Do not grant `--tools` on a node where the live `tool_policy` would refuse that tool.
+- **Server Tools stay on across restart (#630)**
+  - llama.cpp enables Server Tools only when the process is started with `--tools`.
+    A crash restart, a hand-start, or a stale `generated/graph-*.yaml` used to drop
+    the flag, and `GET /tools` returned 403 `feature_disabled`.
+  - `familia-start` saves a read-only tool list for that port (mode 0600,
+    owned by the user, under `$XDG_CONFIG_HOME/familia/server-tools/<port>`,
+    or `~/.config/familia/server-tools/<port>`) and reapplies it when a later
+    start omits the flag. `--tools all` is stored as the read-only list, not
+    as `all`. A file that contains `all`, an unknown name, or garbage is
+    refused. `--tools none` clears the save. The parent directory must be
+    owned by the user and not group or world writable. Windows `start.bat`
+    does not call this hook.
+  - `start.sh` and `serve.sh` copy `server_tools` from `graph.yaml` onto a
+    generated graph that dropped the key, and narrow a generated grant that
+    is wider than the fleet policy (a stale `all` becomes the fleet list).
+    An explicit opt-out (`[]` / `none` / `false`) stays.
+  - The familia-start bind allowlist is `127.0.0.1`, `::1`, and `localhost`.
+    Every listener still requires an API key.
+    `hermes_harness.ensure_server` still refuses to adopt a live port whose graph asks
+    for tools while `/tools` is feature_disabled. Do not grant `--tools` on a node
+    where the live `tool_policy` would refuse that tool.

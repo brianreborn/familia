@@ -849,7 +849,7 @@ any registry.py command: add, query, summarize, suggest, match, power, lint.
 Runs: \fBpython3 scripts/registry.py\fR \fIARG\fR...
 .TP
 \fBhome\fR \fIARG\fR...
-six equal home items; legacy menu if gum cannot be installed.
+Talk first, then six equal items; legacy menu if gum is missing or stdin is not a terminal.
 .br
 Runs: \fBsh scripts/familia_home.sh\fR \fIARG\fR...
 .TP
@@ -915,7 +915,7 @@ yes also accepts licenses that could not be determined.
 Where license acceptance is recorded (default .cache/familia/license\-acceptance.json).
 .TP
 \fBFAMILIA_NO_TTY\fR
-1 makes the menu behave as if there were no terminal (print the items, exit 2).
+1 opens the legacy numeric menu on stdin. A terminal on stdin still gets the selectable home menu unless this is set. CI=true alone does not force line mode.
 .TP
 \fBFAMILIA_MENU_PIPE\fR
 1 lets menus read choices from a pipe.

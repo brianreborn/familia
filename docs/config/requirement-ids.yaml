@@ -118,6 +118,21 @@ graph:
     quants:
       id: CFG-GRAPH-RUNTIMES-009
       status: IMPLEMENTED
+    adapter:
+      id: CFG-GRAPH-RUNTIMES-010
+      status: IMPLEMENTED
+    protocols:
+      id: CFG-GRAPH-RUNTIMES-011
+      status: IMPLEMENTED
+    model_formats:
+      id: CFG-GRAPH-RUNTIMES-012
+      status: IMPLEMENTED
+    modalities:
+      id: CFG-GRAPH-RUNTIMES-013
+      status: IMPLEMENTED
+    health_path:
+      id: CFG-GRAPH-RUNTIMES-014
+      status: IMPLEMENTED
   models:
     gguf:
       id: CFG-GRAPH-MODELS-001
@@ -676,6 +691,8 @@ other:
   CFG-GRAPH-RUNTIMES-103:
     status: IMPLEMENTED
   CFG-GRAPH-RUNTIMES-104:
+    status: IMPLEMENTED
+  CFG-GRAPH-RUNTIMES-105:
     status: IMPLEMENTED
   CFG-GRAPH-MODELS-101:
     status: IMPLEMENTED

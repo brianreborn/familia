@@ -75,7 +75,7 @@ def test_shell_wrapper_derives_execed_python(monkeypatch, tmp_path):
     wrapper = tmp_path / "hermes-agent"
     wrapper.write_text("#!/bin/sh\nexec /opt/python3.15 /opt/hermes-agent \"$@\"\n", encoding="ascii")
     py = "/opt/python3.15"
-    monkeypatch.setattr(hh, "_read_shebang", lambda path: "/bin/sh")
+    monkeypatch.setattr(hh, "_read_shebang", lambda path, **_kwargs: "/bin/sh")
     assert hh._derive_py(str(wrapper), exists=lambda p: p in {str(wrapper), "/bin/sh", py}) == py
 
 
@@ -83,7 +83,7 @@ def test_freebsd_ignores_snap_path_strings():
     """On FreeBSD, even if a caller claims snap exists, ports bin wins when present."""
     present = {hh.FREEBSD_BIN, hh.FREEBSD_LIB, hh.SNAP_BIN}
 
-    def fake_shebang(path):
+    def fake_shebang(path, **_kwargs):
         return "/usr/local/bin/python3.12" if path == hh.FREEBSD_BIN else None
 
     old = hh._read_shebang
@@ -377,6 +377,30 @@ def test_trust_exec_checks_the_shebang_interpreter(tmp_path):
     script = _write(tmp_path / "bin" / "hermes", "#!" + bad_py + "\nimport sys\n")
     why = hh.trust_exec(script)[1]
     assert why.startswith("its interpreter " + bad_py) and "world-writable" in why
+
+
+def test_shebang_double_accepts_path_env_via_trust_exec(tmp_path):
+    """Regression: a path-only _read_shebang stub TypeErrors when trust_exec passes path_env=."""
+    interp = _safe_interp(tmp_path)
+    script = _write(tmp_path / "bin" / "hermes", _full(interp))
+    seen = {}
+    real_read = hh._read_shebang
+
+    def fake_shebang(path, **_kwargs):
+        seen["kwargs"] = _kwargs
+        return real_read(path, **_kwargs)
+
+    # Direct call: the old `def fake_shebang(path):` TypeErrors here.
+    assert fake_shebang(script, path_env="/usr/local/bin") == interp
+
+    hh._read_shebang = fake_shebang
+    try:
+        real, why = hh.trust_exec(script)
+        assert why is None
+        assert real == os.path.realpath(script)
+        assert "path_env" in seen["kwargs"]
+    finally:
+        hh._read_shebang = real_read
 
 
 def test_read_shebang_env_resolves_against_path_env(tmp_path):

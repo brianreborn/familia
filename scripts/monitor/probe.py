@@ -53,6 +53,18 @@ def rd(path, default=None):
         return default
 
 
+def host_uptime():
+    """Return boot-relative seconds; Android may deny /proc/uptime to Termux."""
+    raw = rd("/proc/uptime")
+    try:
+        value = float((raw or "").split()[0])
+        if value >= 0:
+            return value
+    except (IndexError, ValueError):
+        pass
+    return time.monotonic()
+
+
 def parse_args(argv):
     o = {"ports": [], "since": time.time() - 3600, "logs": None, "interval": 0.25}
     it = iter(argv)
@@ -446,7 +458,7 @@ def collect(o):
     threads.append(threading.Thread(target=kills, args=(o["since"], kres), daemon=True))
     for t in threads:
         t.start()
-    uptime = float((rd("/proc/uptime") or "0").split()[0])
+    uptime = host_uptime()
     load = (rd("/proc/loadavg") or "").split()[:3]
     mem = parse_meminfo(rd("/proc/meminfo"))
     if mem["total_mib"] is None:  # FreeBSD/macOS: no /proc/meminfo
