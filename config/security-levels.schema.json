@@ -3,13 +3,12 @@
   "title": "familia security levels and per-node risk tiers",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema", "sets", "levels", "risk", "integrity_profiles", "node_types", "kind_map"],
+  "required": ["schema", "sets", "levels", "risk", "node_types", "kind_map"],
   "properties": {
     "schema": {"const": 1},
     "sets": {"type": "object", "minProperties": 1},
     "levels": {"type": "object", "minProperties": 1},
     "risk": {"$ref": "#/$defs/risk"},
-    "integrity_profiles": {"$ref": "#/$defs/integrity"},
     "node_types": {"$ref": "#/$defs/nodeTypes"},
     "kind_map": {
       "type": "object",
@@ -42,16 +41,6 @@
           }
         },
         "not_granted": {"const": ["autonomous-lab"]}
-      }
-    },
-    "integrity": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["provenance", "traditional"],
-      "properties": {
-        "provenance": {"const": ["untrusted", "screened", "validated", "trusted"]},
-        "traditional": {"const": ["low", "medium", "high"]},
-        "note": {"type": "string", "minLength": 8, "pattern": "^[\\x20-\\x7E]+$"}
       }
     },
     "adds": {

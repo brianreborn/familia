@@ -657,12 +657,6 @@ def _run_tier(spec, args):
                 print("  %s arming=%s policy_modes=%s adds=%s" % (
                     tier, block["arming"], modes, ",".join(block["adds"])))
                 print("    %s" % block["summary"])
-        print("integrity profiles are not risk tiers (#684, #699):")
-        for name, levels in spec["integrity_profiles"].items():
-            if name == "note":
-                print("  note: %s" % levels)
-            else:
-                print("  %s: %s" % (name, ",".join(levels)))
         return 0
     state_path, audit_path = _tier_paths(args)
     if cmd == "audit-check":

@@ -117,12 +117,12 @@ Do not treat these as one ladder.
 |---|---|---|---|
 | Preset | `off`, `guardian`, `pentest`, `full` | Which security nodes are `active` in the local overlay | `familia security <level>` (#700) |
 | Risk tier | `low`, `medium`, `high` | How much one node is allowed to do. Default `low` | `familia security tier` |
-| Integrity | provenance `untrusted` / `screened` / `validated` / `trusted`, or a traditional `low` / `medium` / `high` profile | How much an artifact or task is trusted. A producer cannot promote its own output | #684, #699. Not set by this command |
+| Integrity | Independently configured ordered labels | How much an artifact or task is trusted. A producer cannot promote its own output | #684, #699. Not set by this command |
 
-A traditional integrity profile reuses the words low, medium, and high. Those
-words are not risk tiers. `familia security low` is an unknown preset on
-purpose, so it cannot be read as either an integrity write or a fleet-wide
-risk change. Risk tiers are per node, under `tier`.
+Integrity profiles are a separate policy concern (#684, #699), not part of
+this node-risk catalog. Enterprises may define profiles that fit their policy;
+this command neither selects nor modifies them. Risk tiers are per node, under
+`tier`.
 
 Integrity promotion (#684) needs a validator that is not the producing task.
 Risk escalation uses the same idea: the node process does not hold the factor

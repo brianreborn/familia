@@ -101,9 +101,7 @@ def test_guardian_tiers_map_onto_the_pentest_ladder_and_stop_before_autonomous()
     assert ST.policy_modes(SPEC, "guardian", "medium") == ["slash-confirm"]
     assert ST.policy_modes(SPEC, "guardian", "high") == ["tools-confirm"]
     assert ST.policy_modes(SPEC, "coding-agent", "high") == []
-    assert SPEC["integrity_profiles"]["provenance"][0] == "untrusted"
-    assert SPEC["integrity_profiles"]["provenance"][-1] == "trusted"
-    assert SPEC["integrity_profiles"]["traditional"] == ["low", "medium", "high"]
+    assert "integrity_profiles" not in SPEC
 
 
 def test_low_is_not_a_security_preset():

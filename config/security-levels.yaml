@@ -52,11 +52,6 @@ risk:
     high: ["tools-confirm"]
   not_granted: ["autonomous-lab"]
 
-integrity_profiles:
-  provenance: ["untrusted", "screened", "validated", "trusted"]
-  traditional: ["low", "medium", "high"]
-  note: "Integrity labels are not risk tiers. A node cannot promote its own output."
-
 node_types:
   swarm-worker:
     aliases: [swarm-runner, swarm-bench]
