@@ -82,16 +82,18 @@ metadata described above. Secrets use one file per credential so revocation
 cannot accidentally replace or disclose another secret. The directory is
 validated against symlinks and unsafe ownership or modes on every mutation.
 
-The router reads a complete generation at startup and reloads a changed,
-valid generation between requests. It swaps the immutable in-memory matcher
-only after all referenced secret files validate. A bad update leaves the last
-known-good generation serving and emits a non-secret health/status error.
-Startup has no prior generation, so it fails closed.
+The public Green RoomZ gateway reads a complete generation at startup and
+reloads a changed, valid generation between requests. It swaps the immutable
+in-memory matcher only after all referenced secret files validate. A bad update
+leaves the last known-good generation serving and emits a non-secret
+health/status error. Startup has no prior generation, so it fails closed.
 
 The old `api-keys` file is migrated once into the first credential. A
 compatibility projection containing active secrets may exist only while a
 backend requires a multi-line key file; it is generated atomically and is not
-the source of truth. The graph router itself authenticates from the keyring.
+the source of truth. Green RoomZ authenticates callers at the public edge; the
+internal graph adapter receives the already-authenticated request and uses
+separate node credentials for backend calls.
 
 ## Familia interface
 
@@ -112,37 +114,39 @@ menu actions under **Gateways / Access**:
 it. The terminal menu offers **Create**, **Copy/reveal**, **Write handoff**,
 **Revoke**, and **Select client profile** as distinct actions.
 
-## Browser console and llama-ui
+## Green RoomZ root and llama.cpp UI
 
-The gateway address serves a small dependency-free gateway console at `/`
-while Green RoomZ's richer console is developed. It is a client configuration
-surface, not an operator-control plane:
+The public graph root belongs to Green RoomZ. It serves the Green RoomZ
+interface and protocol APIs from one origin; a small temporary graph console
+is only an acceptance fixture, not the shipped root. See
+[`green-roomz-graph-integration.md`](./green-roomz-graph-integration.md) for
+the graph adapter and UI routing contract.
 
-- It discovers routes and protocols from the gateway.
-- It lets the user paste or select an already-imported credential for the
-  current browser session.
-- It offers **Use another API key** and never claims it can create one.
-- It forwards that bearer token to API requests, including the embedded
-  llama-ui compatibility view.
-- It does not put the key in a URL, logs, page source, or persistent browser
+- The Green RoomZ UI discovers the complete graph catalog and lets the browser
+  select a credential already imported or entered for that client.
+- A browser keeps a pasted key in page memory by default, offers **Use another
+  API key**, and never claims it can create a server credential.
+- The key is not placed in a URL, page source, logs, or persistent browser
   storage by default.
-
-The initial console provides route discovery and a chat client. A llama-ui
-client is configured with the gateway endpoint and a credential supplied
-through its own settings. The graph router does not pretend its API root is a
-full llama-ui web application.
+- A native llama.cpp chat UI for a graph alias is available at a model-specific
+  path such as `/ui/llama/<alias>/` when the runtime supports it. UI assets and
+  API requests stay on the Green RoomZ origin and pass through its caller auth
+  and Familia graph adapter; they never connect directly to a node.
+- Green RoomZ remains the public entrypoint even when the selected client is
+  llama.cpp's UI, Hermes, Codex, or an OpenAI-compatible SDK.
 
 ## Migration and release plan
 
 1. Add the keyring library and its filesystem tests, keeping the current
    `api-keys` value as a migrated active credential.
-2. Change graph_router to authenticate against an immutable active-key
+2. Change Green RoomZ edge authentication to use an immutable active-key
    snapshot and reload valid generations between requests.
 3. Add CLI and terminal-menu lifecycle commands, status, and audit records.
-4. Add client profile import/selection and the minimal browser console.
+4. Integrate the Green RoomZ graph adapter and root UI, then add client profile
+   import/selection and the model-specific llama.cpp UI path.
 5. Exercise create -> client import -> request -> revoke -> rejected request
-   on Linux, FreeBSD, Windows, and Termux. Test the graph-managed gateway,
-   never a hand-started substitute.
+   on Linux, FreeBSD, Windows, and Termux through the graph-managed Green
+   RoomZ root.
 
 ## Acceptance tests
 
