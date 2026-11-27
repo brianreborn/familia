@@ -10,7 +10,7 @@ and preview what `familia start` would do with
 | Single node | `single-node.yaml` | `nodes`, one `aliases` entry, `gateways` | `scripts/graph_router.py` (alias = model name); `router: false` -> green-roomz graph-proxy | works |
 | Specialists fan-out | `fanout-specialists.yaml` | one alias per node | client picks alias; no auto-classifier | works (manual pick only) |
 | Light -> heavy chain | `escalation-chain.yaml` | `escalates_to`, `escalation.mode` | `scripts/escalation_proxy.py` (`hermes.sh --escalate`) | suggest/auto works with mock upstreams; green-roomz hookup planned (#39) |
-| Tools on a node | `explicit-tools.yaml` | `server_tools` (list or `all`), `tool_route` + `tool_capable: false` | llama-server `--tools`; nexus forward is PR #251 | works; set `server_tools` explicitly (#264 changes the implicit default to read-only) |
+| Tools on a node | `explicit-tools.yaml` | `server_tools` (list or `all`), `tool_route` + `tool_capable: false` | llama-server `--tools`; nexus forward is PR #251 | transport works; model tool calls require the probe below |
 | Two hosts | `two-host.yaml` | second host, runtime `hosts`, a non-local `transports` entry | each host's own `familia start` | per-host only; aliases to another host are omitted, never proxied |
 | Fallback when a node is down | `fallback-list.yaml` | `aliases.<a>.node: [first, backup, ...]` | `scripts/graph_router.py` (the default gateway) | works; a node is skipped only when unreachable or 502/503 |
 | Escalate light -> heavy | `escalation-chain.yaml` | `escalates_to` | escalation proxy falls back to the light node (tests/test_escalation_proxy.py) | unreachable targets are dropped; no target -> `decision: none` |
@@ -37,9 +37,34 @@ and preview what `familia start` would do with
   always includes `--api-key-file`, tools or not. Auth is not a graph.yaml field. Localhost without a
   key is only for the named exceptions in DESIGN.md; a recipe or example graph must not assume an open
   listener. New graphs (including a protograph recipe when that skill lands, #399) start from this rule.
+- The graph router sends each local node's key for every request. This is
+  independent of `server_tools`; a runtime without built-in tools can still
+  serve authenticated chat through the gateway. `server_tools` only declares
+  the server tool registry and must not be used as an authentication signal.
 - Down node: graph_router answers 503 within the 3 s connect bound (`FAMILIA_ROUTER_CONNECT_S`; a refused
   port measured 0.001 s on :9931). graph-proxy (`router: false`) retries ECONNREFUSED for 180 s before a 502
   (measured 181.4 s, green-roomz b2a8eac; fixed in its graph-proxy, not settable from the manifest).
+
+## Tool-call protocol gate
+
+`server_tools` exposes a server tool registry; it does not establish that the
+loaded model can emit a structured tool call. Check the canonical gateway route
+with a synthetic receipt tool before assigning tool-dependent work:
+
+```sh
+python3 scripts/probe_tool_roundtrip.py \
+  --base-url http://127.0.0.1:18080 --model coder
+```
+
+The probe reads the caller key from that port's local instance file by default;
+use `--api-key-file FILE` for an imported caller credential. It never prints the
+key or model output. Exit 0 means the route emitted a structured call and used
+the synthetic tool result; exit 2 means the model/protocol failed the round trip;
+exit 3 means the request or configuration failed. The probe does not execute a
+host tool. Full dogfood acceptance also requires a harness to execute an
+approved read-only tool and return its result through the same route. Keep
+unverified routes available for chat, but exclude them from tool-dependent
+swarm tasks.
 
 ## graph_router routes files (`examples/graphs/router/`)
 

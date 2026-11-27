@@ -19,8 +19,10 @@ Recipe keys (see skills/protograph/SKILL.md for the full reference):
   runtime: {name, build, commit, supported_archs, backends}        or  runtime: {from_graph: NAME}
   models: {KEY: {gguf, sha256, arch, trained_ctx, role, db}  or  {from_graph: KEY}}
   nodes: [{role, model, ctx, port, [name, parallel, kv_type, flash_attn, threads, cache_ram_mib,
-          status, offload, override_reasons]}]
-  gateway: {port}               optional (default 8080); green-roomz gateway + one alias per node
+          status, offload, load_mode, slot_save, spill_path, swap_budget_mib,
+          override_reasons, server_tools, allow_unauthenticated_tools]}]
+  gateway: {port, [bind, router]} optional (default 8080); green-roomz gateway + one alias per node
+  speculative: {NAME: {target, mode, spec_type, status, ...}} optional
   agent: {kind, main, [auxiliary], min_ctx}   optional (default: hermes-agent on the first node)
 
 Every default the recipe leaves out is written explicitly into the graph
@@ -65,7 +67,7 @@ def build(recipe, recipe_dir=".", ref_graph=None):
     """recipe dict -> (graph dict, plan lines). Raises RecipeError on an incomplete or unsafe recipe."""
     if not isinstance(recipe, dict) or recipe.get("protograph") != 1:
         raise RecipeError("recipe must start with 'protograph: 1'")
-    unknown = set(recipe) - {"protograph", "host", "runtime", "models", "nodes", "gateway", "agent", "graph", "notes"}
+    unknown = set(recipe) - {"protograph", "host", "runtime", "models", "nodes", "gateway", "agent", "graph", "notes", "speculative"}
     if unknown:
         raise RecipeError(f"unknown recipe key(s): {', '.join(sorted(unknown))}")
     plan, base = [], None
@@ -145,9 +147,14 @@ def build(recipe, recipe_dir=".", ref_graph=None):
             raise RecipeError(f"nodes[{i}]: port {n['port']} used twice")
         ports.add(n["port"])
         bind = n.get("bind", NODE_DEFAULTS["bind"])
-        if bind not in ("127.0.0.1", "::1", "localhost"):
-            raise RecipeError(f"nodes[{i}]: bind {bind!r} is not loopback; protograph only emits loopback nodes "
-                              f"(edit graph.yaml by hand for LAN exposure)")
+        tools = n.get("server_tools")
+        if bind not in ("127.0.0.1", "::1", "localhost") and not n.get("allow_unauthenticated_tools"):
+            raise RecipeError(
+                f"nodes[{i}]: bind {bind!r} requires allow_unauthenticated_tools: true "
+                "when tools are exposed off-loopback"
+            )
+        if tools not in (None, [], "none", False) and bind not in ("127.0.0.1", "::1", "localhost"):
+            plan.append(f"node {key}: server_tools exposed on {bind}; API-key auth remains required")
         node = {"model": n["model"], "host": name, "runtime": rname, "ctx": n["ctx"]}
         model_role = (models[n["model"]].get("role") or "").strip().lower()
         node_role = (n.get("role") or "").strip().lower()
@@ -167,10 +174,18 @@ def build(recipe, recipe_dir=".", ref_graph=None):
             node["threads"] = n["threads"]
         if n.get("override_reasons"):
             node["override_reasons"] = dict(n["override_reasons"])   # model-card deviations (#51)
+        for k in ("server_tools", "allow_unauthenticated_tools", "load_mode", "slot_save",
+                  "spill_path", "swap_budget_mib"):
+            if k in n:
+                node[k] = n[k]
         node["offload"] = n.get("offload", {"backend": "cpu", "ngl": 0, "split": "none", "main_gpu": 0})
         node["port"] = n["port"]
         nodes[key] = node
     g = {"version": 2, "hosts": {name: host}, "runtimes": {rname: rt}, "models": models, "nodes": nodes}
+    if "speculative" in recipe:
+        if not isinstance(recipe["speculative"], dict):
+            raise RecipeError("speculative: expected a mapping of named configurations")
+        g["speculative"] = copy.deepcopy(recipe["speculative"])
     gw = recipe.get("gateway")
     if not gw:
         gw = {"port": 8080}
@@ -179,6 +194,10 @@ def build(recipe, recipe_dir=".", ref_graph=None):
         raise RecipeError(f"gateway port {gw['port']} conflicts with node port")
     if True:
         g["gateways"] = {"gw": {"kind": "green-roomz", "host": name, "port": gw["port"]}}
+        if "router" in gw:
+            g["gateways"]["gw"]["router"] = bool(gw["router"])
+        if "bind" in gw:
+            g["gateways"]["gw"]["bind"] = gw["bind"]
         g["aliases"] = {k: {"node": k, "gateway": "gw"} for k in nodes}
     ag = recipe.get("agent")
     if not ag:

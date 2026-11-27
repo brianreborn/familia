@@ -383,3 +383,51 @@ Source: Brian voice session, 2026-11-10.
 - **Trigger:** Whenever cutting a familia release (alpha, beta, or final).
 - **Rule:** Check upstream llama.cpp releases (`ggerganov/llama.cpp`) and bump default runtime builds, pins, and installers to the latest stable/release tag (e.g. `b12609`).
 - **Rationale:** Ensures edge runtimes and acceleration backends benefit from the latest upstream kernel improvements, quantization layouts, and security fixes across all swarm platforms.
+
+## L-graph-lan-bind: Graph-owned LAN listeners must be explicit and authenticated (2026-11-26)
+
+- A graph can declare a wildcard or routable gateway bind when the service is intended to be a LAN entrypoint.
+- The router remains graph-managed; a hand-started backend or ad-hoc port forward is not an equivalent front door.
+- Any non-loopback router bind requires the generated per-port API key. Health may remain unauthenticated, but model and tool routes require the key.
+- Readiness probes may use `127.0.0.1` for a wildcard listener; externally advertised reachability must be tested from another host.
+- Record both the direct node port and canonical gateway port in host status, since a healthy backend does not prove the front door is reachable.
+
+## L-graph-runtime-capabilities (2026-11-27)
+
+- Validate the installed runtime's supported flags before selecting graph
+  capabilities; package builds can lag the upstream CLI. Keep router credentials
+  independent from backend tool support so a graph can authenticate a backend
+  even when the backend does not implement a tool registry.
+- A graph declaration and a successful process launch are separate evidence:
+  confirm the live argv, model file, gateway listener, authenticated model route,
+  and a complete tool round trip when tools are part of the acceptance criteria.
+- Make dry-run and preflight output report the graph's actual gateway interface.
+  Probe wildcard listeners through loopback and address-specific listeners at
+  their configured address; a loopback health probe does not prove LAN reachability.
+
+## L-pkg-transaction-safety (2026-11-27)
+
+- Never run `pkg install -y` for an unreviewed dependency change on a desktop
+  host. The `libesedb-e.20240420` install requested from
+  `ntfs-recovery-console` selected Python 3.12 dependencies that conflicted
+  with the installed Python 3.15 family. The resolver then removed ten
+  unrelated packages, including Plasma workspace and desktop. The exact
+  transaction is preserved in `/var/log/auth.log` and `/var/log/messages`.
+- Preview with `pkg install -n` and inspect every proposed removal. A first
+  plan that refuses under `pkg install -N` is not sufficient evidence of
+  safety: a later conflict-resolution pass can produce a new removal plan.
+  Abort instead of accepting that second plan. Do not combine `-N` and `-y`
+  for a conflicted transaction.
+- Treat Python-major-version package families as mutually exclusive until
+  the ports metadata proves otherwise. Build or stage the required ports in
+  an isolated environment, then install one reviewed package set atomically.
+  If a package is absent from repositories, report that availability gap;
+  do not substitute a different Python family on the live desktop.
+- After any package mutation, verify the desktop closure (`kwin_x11`,
+  `plasmashell`, workspace, desktop, power management, system settings) and
+  compare the complete installed/removed set with the transaction log. A
+  healthy process alone does not prove the package state is repaired.
+- Keep model proxies and other long-lived request services observable. A
+  suspended or stalled `llama_proxy.py` can make model calls appear broken
+  while backends remain healthy; check process state, listener ownership, and
+  a real authenticated request before changing models or graph configuration.

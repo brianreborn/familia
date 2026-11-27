@@ -196,14 +196,16 @@ def _publish_secret(tmp, path):
     empty or partial file is unlinked so a later start is not stuck.
     """
     import errno
-    try:
-        os.link(tmp, path)
-        return
-    except FileExistsError:
-        return
-    except OSError as e:
-        if e.errno not in (errno.EACCES, errno.EPERM, errno.ENOSYS, errno.EXDEV):
-            raise
+    link = getattr(os, "link", None)
+    if link is not None:
+        try:
+            link(tmp, path)
+            return
+        except FileExistsError:
+            return
+        except OSError as e:
+            if e.errno not in (errno.EACCES, errno.EPERM, errno.ENOSYS, errno.EXDEV):
+                raise
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
     if getattr(os, "O_NOFOLLOW", 0):
         flags |= os.O_NOFOLLOW

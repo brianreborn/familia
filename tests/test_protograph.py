@@ -67,6 +67,28 @@ def test_defaults_are_written_explicitly_and_listed():
     assert any("kv_type" in l and "recipe default" in l for l in plan)
 
 
+def test_explicit_memory_and_slot_fields_reach_graph():
+    r = recipe()
+    r["nodes"][0].update(load_mode="mmap", slot_save=True,
+                         spill_path="~/.cache/familia/slots/chat", swap_budget_mib=4096)
+    g, _ = protograph.build(r)
+    node = g["nodes"]["chat"]
+    for key in ("load_mode", "slot_save", "spill_path", "swap_budget_mib"):
+        assert node[key] == r["nodes"][0][key]
+
+
+def test_speculative_declaration_reaches_graph():
+    r = recipe()
+    r["runtime"]["spec_types"] = ["ngram-simple"]
+    r["speculative"] = {"chat-ngram": {"target": "chat", "mode": "ngram",
+                                    "spec_type": "ngram-simple", "status": "active",
+                                    "experimental": True}}
+    g, _ = protograph.build(r)
+    assert g["speculative"] == r["speculative"]
+    errs, _ = vg.validate(copy.deepcopy(g), check_files=False)
+    assert errs == []
+
+
 @pytest.mark.parametrize("mutate,msg", [
     (lambda r: r.pop("protograph"), "protograph: 1"),
     (lambda r: r["host"].pop("ram_mib"), "host: missing ram_mib"),

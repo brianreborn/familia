@@ -277,7 +277,7 @@ def _key_headers(node):
     else:
         k = ""
     if not k:
-        raise RouteError(503, f"node {node['name']} is tool-enabled but has no readable API key "
+        raise RouteError(503, f"node {node['name']} has no readable API key "
                               f"(key_file or ~/.config/familia/instances/{node['port']}/api-keys)", node=node["name"])
     return {"Authorization": "Bearer " + k}
 
@@ -506,9 +506,18 @@ class Router:
 
 def make_server(cfg, host="127.0.0.1", port=9940, api_key=None):
     """api_key: required on every endpoint except /health (H4 pattern); None = no caller auth (tests)."""
-    if not _is_loopback(host):
-        raise ConfigError("graph router binds loopback only")
+    if not _is_loopback(host) and api_key is None:
+        raise ConfigError("non-loopback graph router requires caller API-key auth")
     R = Router(cfg)
+
+    def console():
+        """A small, dependency-free browser client for the graph gateway.
+
+        It deliberately owns no server credential lifecycle.  A caller pastes
+        a credential it already has; JavaScript keeps it only in memory and
+        sends it only as an Authorization header to this same gateway.
+        """
+        return b'''<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Familia gateway</title><style>body{max-width:50rem;margin:2rem auto;padding:0 1rem;background:#101317;color:#e7edf2;font:16px system-ui,sans-serif}input,select,textarea,button{box-sizing:border-box;width:100%;margin:.35rem 0;padding:.6rem;background:#1a222b;color:inherit;border:1px solid #486070;border-radius:.25rem}button{width:auto;cursor:pointer}label{display:block;margin-top:1rem}#chat{display:none}pre{white-space:pre-wrap;background:#121a20;padding:.7rem;border-radius:.25rem}.hint{color:#b7c8d4;font-size:.9em}</style><h1>Familia gateway</h1><p class="hint">Choose a caller API key for this browser session. The key stays in page memory, is never placed in the URL, and is cleared when this page closes or reloads.</p><label>Gateway API key<input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="Paste a key, then connect"></label><button id="connect">Connect</button> <button id="clear" type="button">Clear</button><p id="status" role="status"></p><section id="chat"><label>Route<select id="model"></select></label><label>Message<textarea id="message" rows="5" placeholder="Ask the selected route"></textarea></label><button id="send">Send</button><pre id="answer"></pre></section><script>(()=>{let key='';const $=id=>document.getElementById(id),status=$('status'),chat=$('chat'),model=$('model'),answer=$('answer');function headers(){return key?{Authorization:'Bearer '+key}:{};}async function connect(){key=$('key').value;status.textContent='Checking gateway...';answer.textContent='';try{let r=await fetch('/v1/models',{headers:headers()});if(!r.ok)throw new Error(r.status===401?'That key was not accepted.':'Gateway returned '+r.status);let d=await r.json();model.replaceChildren(...d.data.filter(x=>x.familia?.status==='ready').map(x=>{let o=document.createElement('option');o.value=x.id;o.textContent=x.id;return o;}));chat.style.display='block';status.textContent='Connected. '+model.options.length+' route(s) available.';}catch(e){chat.style.display='none';status.textContent=e.message;}}$('connect').onclick=connect;$('clear').onclick=()=>{key='';$('key').value='';chat.style.display='none';status.textContent='Key cleared from this page.';answer.textContent='';};$('send').onclick=async()=>{if(!key)return;answer.textContent='Waiting...';try{let r=await fetch('/v1/chat/completions',{method:'POST',headers:{...headers(),'Content-Type':'application/json'},body:JSON.stringify({model:model.value,messages:[{role:'user',content:$('message').value}]})});let d=await r.json();if(!r.ok)throw new Error(d.error?.message||('Gateway returned '+r.status));answer.textContent=d.choices?.[0]?.message?.content||JSON.stringify(d,null,2);}catch(e){answer.textContent=e.message;}};})();</script></html>'''
 
     def _hdr(v):
         """Header-safe text: drop CR, LF and other C0/DEL control chars."""
@@ -551,6 +560,14 @@ def make_server(cfg, host="127.0.0.1", port=9940, api_key=None):
             p = urllib.parse.urlparse(self.path).path
             if p in ("/health", "/v1/health"):
                 return self._json(200, {"status": "ok", "routes": len(cfg["routes"])})
+            if p in ("/", "/console"):
+                body = console()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers(); self.wfile.write(body)
+                return
             if not self._authed(): return
             if p == "/v1/models":
                 data = [
@@ -642,6 +659,8 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("config", help="routes.yaml")
     ap.add_argument("--port", type=int, default=int(os.environ.get("FAMILIA_ROUTER_PORT", "9940")))
+    ap.add_argument("--host", "--bind", dest="host", default=os.environ.get("FAMILIA_ROUTER_HOST", "127.0.0.1"),
+                    help="listen address (non-loopback requires API-key auth)")
     ap.add_argument("--host-id", help="graph host this router runs on (for graph-backed configs)")
     ap.add_argument("--api-key-file", help="caller key file (default: the per-port instance key "
                     "~/.config/familia/instances/<port>/api-keys, created 0600 once, never rotated)")
@@ -669,8 +688,11 @@ def main(argv=None):
             print(f"graph-router: ERROR: cannot read or create API key file {path} ({e.__class__.__name__}); not starting",
                   file=sys.stderr); return 2
         print(f"graph-router: caller auth on ({path}, {familia_auth.fingerprint(key)})", file=sys.stderr)
-    srv = make_server(cfg, "127.0.0.1", a.port, api_key=key)
-    print(f"graph-router: listening on 127.0.0.1:{a.port}", file=sys.stderr)
+    try:
+        srv = make_server(cfg, a.host, a.port, api_key=key)
+    except ConfigError as e:
+        print(f"graph-router: ERROR: {e}", file=sys.stderr); return 2
+    print(f"graph-router: listening on {a.host}:{a.port}", file=sys.stderr)
     try: srv.serve_forever()
     except KeyboardInterrupt: pass
     return 0

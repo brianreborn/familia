@@ -44,7 +44,11 @@ def gguf_meta(path):
             if t == 9:
                 et, n = struct.unpack("<IQ", f.read(12))
                 if et in fmt and et != 8:
-                    f.seek(struct.calcsize(fmt[et]) * n, 1); return ("array", n, None)
+                    size = struct.calcsize(fmt[et])
+                    if n <= 256:
+                        values = tuple(struct.unpack(fmt[et], f.read(size))[0] for _ in range(n))
+                        return ("array", n, None, values)
+                    f.seek(size * n, 1); return ("array", n, None)
                 h = hashlib.sha256() if et == 8 else None
                 for _ in range(n):
                     v = rval(et)
@@ -64,7 +68,30 @@ def vocab(meta):
 def kv_mib(meta, arch, ctx, kv_type):
     g = lambda k: meta.get(f"{arch}.{k}")
     layers, heads_kv, emb, heads = g("block_count"), g("attention.head_count_kv"), g("embedding_length"), g("attention.head_count")
-    if not all(isinstance(x, int) and x for x in (layers, heads_kv, emb, heads)):
+    if not all(isinstance(x, int) and x for x in (layers, emb, heads)):
+        return None
+    if isinstance(heads_kv, tuple) and len(heads_kv) == 4 and heads_kv[0] == "array":
+        counts = heads_kv[3]
+        if len(counts) != layers or not all(isinstance(x, int) and x >= 0 for x in counts):
+            return None
+        pattern = g("attention.sliding_window_pattern")
+        if pattern is None:
+            windows = (False,) * layers
+        elif isinstance(pattern, tuple) and len(pattern) == 4 and pattern[0] == "array" and len(pattern[3]) == layers:
+            windows = pattern[3]
+        else:
+            return None
+        window = g("attention.sliding_window")
+        if any(windows) and (not isinstance(window, int) or window <= 0):
+            return None
+        key_dim = g("attention.key_length") or emb // heads
+        value_dim = g("attention.value_length") or key_dim
+        if not all(isinstance(x, int) and x > 0 for x in (key_dim, value_dim)):
+            return None
+        tokens = sum(count * (min(ctx, window) if sliding else ctx)
+                     for count, sliding in zip(counts, windows))
+        return tokens * (key_dim + value_dim) * KV_BYTES[kv_type] / 2**20
+    if not isinstance(heads_kv, int) or heads_kv <= 0:
         return None
     head_dim = g("attention.key_length") or emb // heads
     # Hybrid models (e.g. qwen35) keep KV only on every Nth full-attention
@@ -755,6 +782,8 @@ def server_args(graph, name):
     # DUP-04/CFG-SPEC-TOOLS: explicit per-TYPE decision on every launch (override via server_tools).
     # CFG-GRAPH-NODES-112: every llama-server launch also gets --api-key-file, tools or not.
     a += launch_tools_argv(graph, name) or launch_auth_argv(graph, name)
+    if n.get("allow_unauthenticated_tools") is True:
+        a += ["--allow-unauthenticated-tools"]
     # Model parameters (#51): REQUIRED + RECOMMENDED from the model database (cards, configs,
     # GGUF), node.sampling / override_reasons applied. A REQUIRED one that cannot be met is fatal.
     import model_db
@@ -795,8 +824,15 @@ def server_args(graph, name):
             a += ["--spec-type", sp["spec_type"]]
     r = graph["runtimes"][n["runtime"]]
     # argv[0] is always the binary: runtimes.<r>.bin (relative to graph.yaml), else llama-server on PATH
-    binary = (os.path.join(os.path.dirname(os.path.abspath(graph.get("_path", "graph.yaml"))), r["bin"])
-              if "bin" in r else "llama-server")
+    if "bin" not in r:
+        binary = "llama-server"
+    else:
+        rb = str(r["bin"])
+        # Bare runtime names are resolved by PATH on the target (Termux and
+        # package installs); only graph-relative paths are rooted at the graph.
+        binary = rb if os.path.isabs(rb) or "/" not in rb else os.path.join(
+            os.path.dirname(os.path.abspath(graph.get("_path", "graph.yaml"))), rb
+        )
     return [binary] + a
 
 USAGE = __doc__.split("\n\n")[1]
