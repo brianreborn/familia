@@ -107,6 +107,12 @@ agents.guardian-launch-test|agents|Guardian/defender node: launch-test (seatbelt
 agents.guardian-start|agents|Guardian/defender: operator-confirmed model start (owned scope; tools empty)|item:agents.guardian-start
 agents.pentest-launch-test|agents|Legacy id ? guardian launch-test|item:agents.pentest-launch-test
 agents.pentest-start|agents|Legacy id ? guardian operator-start|item:agents.pentest-start
+security.status|agents|Security node levels: which guardian/pentest nodes are on and why|item:security.status
+security.list|agents|List the security levels (off, guardian, pentest, full) and their sets|item:security.list
+security.level|agents|Set the security level (local override; graph.yaml unchanged; pentest asks you to type pentest)|item:security.level
+security.tier-show|agents|Show one node's risk tier (default is low)|item:security.tier-show
+security.tier-escalate|agents|Raise a node's risk tier (out-of-band confirm; a node cannot do this itself)|item:security.tier-escalate
+security.tier-deescalate|agents|Lower a node's risk tier (local; no admin token)|item:security.tier-deescalate
 hosts.phone-agents|agents|Phone assistants (Bixby, Gemini): which are set up and what leaves the phone|item:hosts.phone-agents
 hosts.phone-agents-licenses|agents|Phone assistants: Shizuku license and the terms each assistant brings|item:hosts.phone-agents-licenses
 hosts.phone-agent-probe|agents|On this phone (Termux): is Shizuku running, which assistants are installed|item:hosts.phone-agent-probe

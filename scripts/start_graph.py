@@ -151,6 +151,10 @@ def _alias_member(graph, host, alias_name, alias, node_name):
     node = graph["nodes"][node_name]
     if node.get("status") != "active":
         return None
+    # guardian/pentest/defender stay off the gateway even when a security level
+    # marks them active. Operator start is with-fleet.sh, not familia start.
+    if not node.get("embeddings") and graph_validator.is_fail_closed(graph, node_name):
+        return None
     local = node.get("host") == host
     if not local:
         if alias.get("remote") is not True:
@@ -178,8 +182,6 @@ def _alias_member(graph, host, alias_name, alias, node_name):
             raise StartupError(f"alias {alias_name} marks a non-embedding model as embeddings")
         kind = "embedding"
     else:
-        if graph_validator.is_fail_closed(graph, node_name):
-            raise StartupError(f"alias {alias_name} targets fail-closed node {node_name!r}")
         role = graph_validator.node_type(graph, node_name)  # node.role > model.role
         if role not in graph_validator.PROXY_ROUTABLE_ROLES:
             raise StartupError(
@@ -269,7 +271,9 @@ def router_routes(aliases, omitted_aliases=None):
 
 def local_topology(graph, host):
     import node_state  # DUP-03 owner
-    nodes = node_state.local_active(graph, host)
+    # Fail-closed seats are operator-start only (with-fleet.sh --operator-start).
+    # familia start never launches them, including when a security level marks them active.
+    nodes = [n for n in node_state.local_active(graph, host) if not graph_validator.is_fail_closed(graph, n)]
     remote_nodes = node_state.remote_active(graph, host)
     gateways = []
     omitted_aliases = []
@@ -399,6 +403,12 @@ def _report_remote_topology(remote_nodes, remote_gateways, omitted_aliases):
 def _check_port_available(host, port, label):
     if not port_available(host, port):
         raise StartupError(f"{label} port {port} is already occupied; nothing was started")
+
+
+def node_launch_env(base, node_id, node_home, writable):
+    """Marker and scrubbed admin key for every process familia start launches."""
+    import security_tier
+    return security_tier.node_launch_env(base, node_id, node_home, writable)
 
 
 def _run_gate_and_sync(root, yes, graph_path=None):
@@ -540,6 +550,20 @@ def _stop_children(children):
                     raise
 
 
+def _apply_security_level(graph, level):
+    """Merge the security level overlay (status only; docs/security-levels.md). graph.yaml is not written."""
+    import security_levels
+    try:
+        plan = security_levels.apply(graph, level=level, quiet=False)
+    except security_levels.SecurityLevelError as exc:
+        raise StartupError("security level: %s" % exc) from exc
+    if plan["source"]:
+        on = [key for key, entry in plan["entries"].items() if entry["status"] == "active"]
+        print("familia-graph: security level %s (from %s); security entries on: %s" % (
+            plan["level"], plan["source"], ", ".join(on) or "none"), file=sys.stderr)
+    return plan
+
+
 def run(args=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--graph", type=Path, default=ROOT / "graph.yaml")
@@ -550,6 +574,13 @@ def run(args=None):
         "--fleet",
         action="store_true",
         help="force fleet graph.yaml (skip generated/graph-HOST.yaml private topology)",
+    )
+    parser.add_argument(
+        "--security-level",
+        metavar="LEVEL",
+        help="security node level for this run only: off, guardian, pentest or full "
+             "(config/security-levels.yaml; default FAMILIA_SECURITY_LEVEL, then the local override, "
+             "then graph.yaml). Guardian and pentest seats are still never started here.",
     )
     options = parser.parse_args(args)
     graph_path = options.graph.expanduser().resolve()
@@ -577,6 +608,7 @@ def run(args=None):
             graph = graph_validator.load(str(graph_path))
             graph["_path"] = str(graph_path)
             _restore_server_tools(graph)
+        _apply_security_level(graph, options.security_level)
         # Validate first: local_topology indexes nodes by alias target, so an invalid graph
         # (unknown alias node, list alias) would otherwise crash with a raw KeyError/TypeError.
         errors, _ = graph_validator.validate(graph, check_files=False)
@@ -636,10 +668,12 @@ def run(args=None):
         signal.signal(signal.SIGTERM, interrupt)
         try:
             for name, _ in plans:
+                node = graph["nodes"][name]
+                node_home = str(node.get("spill_path") or (CACHE / name))
                 child = subprocess.Popen(
                     ["sh", str(SCRIPTS / "serve.sh"), name],
                     cwd=ROOT,
-                    env=dict(launch_env, FAMILIA_HOST=host),
+                    env=node_launch_env(dict(launch_env, FAMILIA_HOST=host), name, node_home, node_home),
                     start_new_session=True,  # own process group: stopping it also stops llama-server
                 )
                 label = f"node {name}"
@@ -654,7 +688,7 @@ def run(args=None):
                     gateway_command(host, gateway_name, gateway, aliases, green_roomz,
                                     omitted_aliases=omitted_aliases),
                     cwd=ROOT,
-                    env=launch_env,
+                    env=node_launch_env(launch_env, "gateway-" + gateway_name, str(CACHE), str(CACHE)),
                     start_new_session=True,
                 )
                 label = f"gateway {gateway_name}"

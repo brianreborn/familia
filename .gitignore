@@ -30,6 +30,8 @@ dist/*.AppDir.tar.gz
 # Local connection overlay (#104) — never commit real addr/user/port
 /hosts.local.yaml
 /graph.local.yaml
+# Local security level override (docs/security-levels.md); never commit
+/security.local.yaml
 # A57 SSH CI private inventory and pin (docs/ci/a57-ssh-dispatch.md)
 /a57-ssh-ci.yaml
 /a57-known_hosts

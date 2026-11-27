@@ -230,6 +230,36 @@ Runs: \fBsh with\-fleet.sh \-\-role guardian \-\-launch\-test\fR
 Legacy id \[u2192] guardian operator\-start (licenses first).
 .br
 Runs: \fBenv FAMILIA_OPERATOR_CONFIRM=yes sh with\-fleet.sh \-\-role guardian \-\-operator\-start\fR
+.TP
+\fBsecurity status\fR
+Security node levels: which guardian/pentest nodes are on and why.
+.br
+Runs: \fBpython3 scripts/security_levels.py status\fR
+.TP
+\fBsecurity list\fR
+List the security levels (off, guardian, pentest, full) and their sets.
+.br
+Runs: \fBpython3 scripts/security_levels.py list\fR
+.TP
+\fBsecurity level\fR \fI<LEVEL>\fR
+Set the security level (local override; graph.yaml unchanged; pentest asks you to type pentest).
+.br
+Runs: \fBpython3 scripts/security_levels.py <LEVEL>\fR
+.TP
+\fBsecurity tier show\fR \fI<HOST>\fR \fI<NODE>\fR
+Show one node's risk tier (default is low).
+.br
+Runs: \fBpython3 scripts/security_levels.py tier show \-\-host <HOST> \-\-node <NODE>\fR
+.TP
+\fBsecurity tier escalate\fR \fI<HOST>\fR \fI<NODE>\fR \fI<TYPE>\fR \fI<TO>\fR \fI<ACTOR>\fR \fI<REASON>\fR
+Raise a node's risk tier (out\-of\-band confirm; a node cannot do this itself).
+.br
+Runs: \fBpython3 scripts/security_levels.py tier escalate \-\-host <HOST> \-\-node <NODE> \-\-type <TYPE> \-\-to <TO> \-\-actor <ACTOR> \-\-reason <REASON>\fR
+.TP
+\fBsecurity tier de\-escalate\fR \fI<HOST>\fR \fI<NODE>\fR \fI<TO>\fR \fI<ACTOR>\fR \fI<REASON>\fR
+Lower a node's risk tier (local; no admin token).
+.br
+Runs: \fBpython3 scripts/security_levels.py tier de\-escalate \-\-host <HOST> \-\-node <NODE> \-\-to <TO> \-\-actor <ACTOR> \-\-reason <REASON>\fR
 .SS App catalog
 .TP
 \fBapps\fR
@@ -848,6 +878,11 @@ any registry.py command: add, query, summarize, suggest, match, power, lint.
 .br
 Runs: \fBpython3 scripts/registry.py\fR \fIARG\fR...
 .TP
+\fBsecurity\fR \fIARG\fR...
+security presets (off, guardian, pentest, full) and per\-node risk tiers (tier show, escalate, de\-escalate); docs/security\-levels.md.
+.br
+Runs: \fBpython3 scripts/security_levels.py\fR \fIARG\fR...
+.TP
 \fBhome\fR \fIARG\fR...
 Talk first, then six equal items; legacy menu if gum is missing or stdin is not a terminal.
 .br
@@ -926,6 +961,33 @@ Graph file to use instead of graph.yaml, where the script supports it.
 \fBFAMILIA_HOSTS_OVERLAY\fR
 Path to hosts.local.yaml connection overlay (#104); default ~/.config/familia/hosts.local.yaml.
 .TP
+\fBFAMILIA_SECURITY_LEVEL\fR
+Security preset for this run: off, guardian, pentest or full (docs/security\-levels.md). Wins over the local override; cannot confirm the pentest set and cannot raise a risk tier.
+.TP
+\fBFAMILIA_SECURITY_OVERRIDE\fR
+Path to the security.local.yaml preset override; default ~/.config/familia/security.local.yaml.
+.TP
+\fBFAMILIA_SECURITY_AUDIT\fR
+Append\-only log of preset and risk\-tier changes. Default ~/.local/state/familia/security\-audit.log.
+.TP
+\fBFAMILIA_NODE_TIER_STATE\fR
+Recorded risk tier per host/node. Missing means low. Default ~/.local/state/familia/node\-tiers.json.
+.TP
+\fBFAMILIA_NODE_ID\fR
+Set by a node launcher to that node's id. When set, tier escalate and preset raises are refused.
+.TP
+\fBFAMILIA_TIER_CALLER\fR
+node means this process is a node. Escalate, mint\-token and preset raises are refused.
+.TP
+\fBFAMILIA_FLEET_ADMIN_KEY_FILE\fR
+Admin HMAC key for high risk tiers. Mode 0600, outside the repo and outside node roots. Never commit the key.
+.TP
+\fBFAMILIA_NODE_HOME\fR
+A node's own directory. Confirm files and admin keys inside it are refused.
+.TP
+\fBFAMILIA_NODE_WRITABLE\fR
+Path list (os.pathsep) the node may write. Factors inside those roots are refused.
+.TP
 \fBPYTHON\fR
 Python interpreter (default python3).
 .TP
@@ -969,6 +1031,21 @@ Monitor event log (deaths, OOM kills).
 \fIregistry/models/\fR
 The model database, one JSON file per model file.
 .TP
+\fIconfig/security\-levels.yaml\fR
+Security presets, per\-node risk tiers, and the pentest\-policy map. familia security reads it.
+.TP
+\fIconfig/security\-levels.schema.json\fR
+Schema for that catalog. Default risk tier is low.
+.TP
+\fI~/.config/familia/security.local.yaml\fR
+Local security preset override written by familia security; never committed. graph.yaml is never rewritten.
+.TP
+\fI~/.local/state/familia/node\-tiers.json\fR
+Recorded risk tier per host/node. Absent means low.
+.TP
+\fI~/.local/state/familia/security\-audit.log\fR
+Append\-only log of every preset change and every risk\-tier change.
+.TP
 \fIpins.txt\fR
 Pinned sub\-projects that scripts/configure.sh checks out.
 .SH EXIT STATUS
@@ -998,6 +1075,8 @@ familia hermes \-\-model coder          # hermes on one model
 familia hermes \-\-graph\-mode          # hermes on the whole graph
 familia harness2 set hermes propose
 familia monitor \-\-once
+familia security status              # which security nodes are on, and why
+familia security tier show miryam coder
 familia search license
 .fi
 .SH SEE ALSO

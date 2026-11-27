@@ -74,8 +74,11 @@ def test_fail_closed_model_role_warns_and_refuses_proxy_alias(fail_closed_role):
     assert vg.validate(g, check_files=False)[0] == []
     assert any("aliases.chat:" in w and "fail-closed" in w for w in vg.WARNINGS)
     assert vg.tool_policy(g, "chat") == []
-    with pytest.raises(start_graph.StartupError, match="fail-closed node"):
-        start_graph.local_topology(g, "h1")
+    nodes, _remote, gateways, omitted, _rg = start_graph.local_topology(g, "h1")
+    assert "chat" not in nodes
+    routed = {alias for _name, _gw, aliases in gateways for alias in aliases}
+    assert "chat" not in routed
+    assert any(alias == "chat" for alias, _node, _host in omitted)
 
 
 def test_alias_to_unroutable_role_warns_before_start_refuses():

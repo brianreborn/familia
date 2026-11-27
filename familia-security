@@ -1,0 +1,5 @@
+#!/bin/sh
+# Canonical security-level command (same as `familia security ...`): docs/security-levels.md
+#   ./familia-security [status|list|off|guardian|pentest|full|enable SET|disable SET|clear]
+here=$(cd "$(dirname "$0")" && pwd)
+exec python3 "$here/scripts/security_levels.py" "$@"

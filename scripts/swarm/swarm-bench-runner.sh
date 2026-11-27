@@ -96,6 +96,11 @@ cat > "$DIR/swarm-run-loop.sh" <<LOOP
 #!/bin/sh
 # Keep Runner.Listener alive for this user (relaunch every 20s unless disarmed).
 cd "$DIR"
+export FAMILIA_TIER_CALLER=node
+export FAMILIA_NODE_ID="$NAME"
+export FAMILIA_NODE_HOME="$DIR"
+export FAMILIA_NODE_WRITABLE="$DIR"
+unset FAMILIA_FLEET_ADMIN_KEY_FILE
 while :; do
 	[ -f .swarm-disarmed ] && { sleep 20; continue; }
 	./run.sh >> "$DIR/_diag/swarm-loop.log" 2>&1
@@ -113,6 +118,10 @@ if [ "$SERVICE" -eq 1 ]; then
 Description=familia swarm runner $NAME
 After=network-online.target
 [Service]
+Environment=FAMILIA_TIER_CALLER=node
+Environment=FAMILIA_NODE_ID=$NAME
+Environment=FAMILIA_NODE_HOME=$DIR
+Environment=FAMILIA_NODE_WRITABLE=$DIR
 ExecStart=$DIR/swarm-run-loop.sh
 Restart=always
 RestartSec=20
