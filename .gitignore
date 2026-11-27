@@ -40,3 +40,4 @@ logs/
 *.log.*
 development-session*.txt
 !tests/fixtures/**/*.log
+generated/code-bootstraps-llama.cpp-1.0.0
