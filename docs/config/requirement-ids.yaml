@@ -311,6 +311,12 @@ graph:
     router:
       id: CFG-GRAPH-GATEWAYS-004
       status: IMPLEMENTED
+    bind:
+      id: CFG-GRAPH-GATEWAYS-005
+      status: IMPLEMENTED
+    root_ui:
+      id: CFG-GRAPH-GATEWAYS-006
+      status: IMPLEMENTED
   aliases:
     node:
       id: CFG-GRAPH-ALIASES-001

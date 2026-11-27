@@ -118,9 +118,47 @@ def test_graph_proxy_manifest_preserves_graph_routes_without_remote_aliases():
     assert manifest == {
         "schema_version": 1,
         "graph_host": "miryam",
-        "gateway": {"host": "127.0.0.1", "port": 9931},
+        "gateway": {"host": "127.0.0.1", "port": 9931, "root_ui": "unicorn"},
         "aliases": {n: {k: v for k, v in a.items() if k != "tools"} for n, a in aliases.items()},
     }
+
+
+def test_root_ui_validation_manifest_and_current_runtime_capability():
+    g = graph()
+    gateway = g["gateways"]["roomz"]
+    assert validate_graph.validate(g, check_files=False)[0] == []
+    aliases = start_graph.local_topology(g, "miryam")[2][0][2]
+    assert start_graph.graph_proxy_manifest("miryam", gateway, aliases)["gateway"]["root_ui"] == "unicorn"
+    for value in ("unicorn", "llama-ui", "hermes"):
+        gateway["root_ui"] = value
+        assert validate_graph.validate(g, check_files=False)[0] == []
+        assert start_graph.graph_proxy_manifest("miryam", gateway, aliases)["gateway"]["root_ui"] == value
+        if value == "unicorn":
+            start_graph.check_root_ui_capability("roomz", gateway)
+        else:
+            with pytest.raises(start_graph.StartupError, match=f"root_ui '{value}' is unavailable"):
+                start_graph.check_root_ui_capability("roomz", gateway)
+    gateway["root_ui"] = "other"
+    errors, _ = validate_graph.validate(g, check_files=False)
+    assert any("gateways.roomz.root_ui" in error and "not one of" in error for error in errors)
+
+
+def test_root_ui_dry_run_refuses_unavailable_selection(tmp_path, capsys):
+    import yaml
+    g = _two_host()
+    graph_path = tmp_path / "graph.yaml"
+    for value, expected in ((None, 0), ("unicorn", 0), ("llama-ui", 1), ("hermes", 1), ("other", 1)):
+        if value is None:
+            g["gateways"]["gw"].pop("root_ui", None)
+        else:
+            g["gateways"]["gw"]["root_ui"] = value
+        graph_path.write_text(yaml.safe_dump(g))
+        assert start_graph.run(["--graph", str(graph_path), "--host", "h1", "--dry-run"]) == expected
+        output = capsys.readouterr()
+        if value in ("llama-ui", "hermes"):
+            assert f"root_ui '{value}' is unavailable" in output.err
+        if value == "other":
+            assert "gateways.gw.root_ui" in output.err
 
 
 def _two_host():

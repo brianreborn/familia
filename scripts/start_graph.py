@@ -394,9 +394,26 @@ def graph_proxy_manifest(host, gateway, aliases):
     return {
         "schema_version": 1,
         "graph_host": host,
-        "gateway": {"host": "127.0.0.1", "port": gateway["port"]},
+        "gateway": {"host": "127.0.0.1", "port": gateway["port"],
+                    "root_ui": gateway.get("root_ui", "unicorn")},
         "aliases": {n: {k: v for k, v in a.items() if k != "tools"} for n, a in aliases.items()},
     }
+
+
+def check_root_ui_capability(gateway_name, gateway):
+    """Refuse explicit UIs that neither current graph launcher can serve.
+
+    The composed Green RoomZ adapter will replace this temporary capability
+    guard with runtime discovery. Legacy graph_router and graph-proxy have no
+    browser UI support; leave the implicit Unicorn default operational during
+    the migration rather than disrupting existing fleet model APIs.
+    """
+    root_ui = gateway.get("root_ui", "unicorn")
+    if root_ui != "unicorn":
+        raise StartupError(
+            f"gateway {gateway_name}: root_ui {root_ui!r} is unavailable in the "
+            "current graph runtime; install the Green RoomZ graph UI adapter"
+        )
 
 
 def _report_remote_topology(remote_nodes, remote_gateways, omitted_aliases):
@@ -466,6 +483,7 @@ def _run_gate_and_sync(root, yes, graph_path=None):
 def gateway_command(host, gateway_name, gateway, aliases, green_roomz, omitted_aliases=None):
     """argv for one local gateway: green-roomz graph-proxy for plain one-node aliases, else
     scripts/graph_router.py (fallback lists, remote members) on the same port."""
+    check_root_ui_capability(gateway_name, gateway)
     if needs_router(aliases, gateway):
         CACHE.mkdir(parents=True, exist_ok=True)
         path = CACHE / f"graph-router-{host}-{gateway_name}.json"
@@ -616,6 +634,8 @@ def run(args=None):
         if errors:
             raise StartupError("graph validation failed:\n  " + "\n  ".join(errors))
         nodes, remote_nodes, gateways, omitted_aliases, remote_gateways = local_topology(graph, host)
+        for gateway_name, gateway, _ in gateways:
+            check_root_ui_capability(gateway_name, gateway)
         if options.dry_run:
             plans = validate_local_nodes(graph, host, nodes, check_files=False)
             _report_remote_topology(remote_nodes, remote_gateways, omitted_aliases)
@@ -628,6 +648,7 @@ def run(args=None):
                 print(
                     f"familia-graph: gateway {gateway_name} on "
                     f"{gateway_bind(gateway)}:{gateway['port']} via {via}; "
+                    f"root_ui: {gateway.get('root_ui', 'unicorn')}; "
                     f"aliases: {', '.join(aliases)}"
                 )
             if not nodes and not gateways:

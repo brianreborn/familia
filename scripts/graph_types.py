@@ -694,7 +694,8 @@ TYPES = {
                      check_speculative, experimental=True,
                      doc="edge draft->target (same vocab) or model-free n-gram lookup decoding"),
     "gateways": T({"kind": req("enum", choices={"green-roomz"}), "host": req("ref", ref="hosts"),
-                   "port": req("int", min=1), "router": opt("bool"), "bind": opt("str")},
+                   "port": req("int", min=1), "router": opt("bool"), "bind": opt("str"),
+                   "root_ui": opt("enum", choices={"unicorn", "llama-ui", "hermes"})},
                   doc="router exposing aliases; served by scripts/graph_router.py (default; caller auth, 3 s connect "
                       "bound); router: false uses green-roomz graph-proxy (retries a down node for 180 s)"),
     "aliases": T({"node": req("noderefs", ref="nodes"), "gateway": req("ref", ref="gateways"), "remote": opt("bool")}, check_alias,
