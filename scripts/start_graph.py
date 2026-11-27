@@ -413,6 +413,24 @@ def _check_port_available(host, port, label):
         raise StartupError(f"{label} port {port} is already occupied; nothing was started")
 
 
+def gateway_bind(gateway):
+    """Return the interface graph_router binds, matching its command default."""
+    return gateway.get("bind") or "127.0.0.1"
+
+
+def gateway_probe_host(gateway):
+    """Use loopback for wildcard binds and the configured address otherwise."""
+    host = gateway_bind(gateway)
+    return "127.0.0.1" if host in ("0.0.0.0", "::") else host
+
+
+def gateway_probe_url(gateway):
+    host = gateway_probe_host(gateway)
+    if ":" in host and not host.startswith("["):
+        host = f"[{host}]"
+    return f"http://{host}:{gateway['port']}/health"
+
+
 def _run_gate_and_sync(root, yes, graph_path=None):
     env = dict(os.environ)
     graph_file = str(graph_path or root / "graph.yaml")
@@ -607,7 +625,11 @@ def run(args=None):
             for gateway_name, gateway, aliases in gateways:
                 via = (f"graph_router (caller auth: {__import__('familia_auth').instance_key_file(port=gateway['port'])}; /health public)"
                        if needs_router(aliases, gateway) else "graph-proxy (router: false; down node retried up to 180 s)")
-                print(f"familia-graph: gateway {gateway_name} on 127.0.0.1:{gateway['port']} via {via}; aliases: {', '.join(aliases)}")
+                print(
+                    f"familia-graph: gateway {gateway_name} on "
+                    f"{gateway_bind(gateway)}:{gateway['port']} via {via}; "
+                    f"aliases: {', '.join(aliases)}"
+                )
             if not nodes and not gateways:
                 print("familia-graph: no active local nodes or routable local gateway; nothing would start")
                 print(f"familia-graph: next: give host {host} a node in graph.yaml (or set FAMILIA_HOST), then re-run", file=sys.stderr)
@@ -636,7 +658,7 @@ def run(args=None):
             if not port_available(node["bind"], node["port"]):
                 raise StartupError(f"node {name} port {node['port']} is already occupied; nothing was started")
         for gateway_name, gateway, _ in gateways:
-            _check_port_available("127.0.0.1", gateway["port"], f"gateway {gateway_name}")
+            _check_port_available(gateway_bind(gateway), gateway["port"], f"gateway {gateway_name}")
         proxied = [g for g in gateways if not needs_router(g[2], g[1])]
         if proxied and not shutil.which("node"):
             raise StartupError("Node.js is required to start Green-Roomz graph-proxy")
@@ -675,9 +697,9 @@ def run(args=None):
                 label = f"gateway {gateway_name}"
                 children.append((child, label))
                 print(f"familia-graph: starting {label}", file=sys.stderr)
-                _wait_ready(child, f"http://127.0.0.1:{gateway['port']}/health",
-                            label, float(os.environ.get("FAMILIA_START_TIMEOUT", "60")))
-                print(f"familia-graph: {label} ready on 127.0.0.1:{gateway['port']} "
+                _wait_ready(child, gateway_probe_url(gateway), label,
+                            float(os.environ.get("FAMILIA_START_TIMEOUT", "60")))
+                print(f"familia-graph: {label} ready on {gateway_bind(gateway)}:{gateway['port']} "
                       f"({', '.join(aliases)})")
 
             while True:

@@ -391,3 +391,16 @@ Source: Brian voice session, 2026-11-10.
 - Any non-loopback router bind requires the generated per-port API key. Health may remain unauthenticated, but model and tool routes require the key.
 - Readiness probes may use `127.0.0.1` for a wildcard listener; externally advertised reachability must be tested from another host.
 - Record both the direct node port and canonical gateway port in host status, since a healthy backend does not prove the front door is reachable.
+
+## L-graph-runtime-capabilities (2026-11-27)
+
+- Validate the installed runtime's supported flags before selecting graph
+  capabilities; package builds can lag the upstream CLI. Keep router credentials
+  independent from backend tool support so a graph can authenticate a backend
+  even when the backend does not implement a tool registry.
+- A graph declaration and a successful process launch are separate evidence:
+  confirm the live argv, model file, gateway listener, authenticated model route,
+  and a complete tool round trip when tools are part of the acceptance criteria.
+- Make dry-run and preflight output report the graph's actual gateway interface.
+  Probe wildcard listeners through loopback and address-specific listeners at
+  their configured address; a loopback health probe does not prove LAN reachability.

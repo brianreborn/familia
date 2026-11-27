@@ -205,6 +205,20 @@ def test_dry_run_reports_gateway_process(tmp_path):
         assert via in r.stdout, r.stdout
 
 
+def test_dry_run_reports_configured_gateway_bind(tmp_path):
+    import subprocess, yaml
+    g = _two_host()
+    g["gateways"]["gw"]["bind"] = "0.0.0.0"
+    p = tmp_path / "g.yaml"; p.write_text(yaml.safe_dump(g))
+    r = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "start_graph.py"), "--graph", str(p),
+                        "--host", "h1", "--dry-run", "--fleet"], capture_output=True, text=True, cwd=ROOT)
+    assert r.returncode == 0, r.stderr
+    assert "gateway gw on 0.0.0.0:8080" in r.stdout, r.stdout
+    assert start_graph.gateway_probe_url(g["gateways"]["gw"]) == "http://127.0.0.1:8080/health"
+    g["gateways"]["gw"]["bind"] = "10.0.0.8"
+    assert start_graph.gateway_probe_url(g["gateways"]["gw"]) == "http://10.0.0.8:8080/health"
+
+
 def _cascade_graph():
     g = _two_host()
     g["nodes"]["critic"] = dict(g["nodes"]["chat"], port=9003)
